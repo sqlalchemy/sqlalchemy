@@ -30,15 +30,15 @@ class CascadeOptions(frozenset):
 
     def __new__(cls, arg):
         values = set([
-                    c for c 
+                    c for c
                     in re.split('\s*,\s*', arg or "")
                     if c
                 ])
 
         if values.difference(cls._allowed_cascades):
             raise sa_exc.ArgumentError(
-                    "Invalid cascade option(s): %s" % 
-                    ", ".join([repr(x) for x in 
+                    "Invalid cascade option(s): %s" %
+                    ", ".join([repr(x) for x in
                         sorted(
                             values.difference(cls._allowed_cascades)
                     )])
@@ -98,12 +98,12 @@ def polymorphic_union(table_map, typecolname, aliasname='p_union', cast_nulls=Tr
     See  :ref:`concrete_inheritance` for an example of how
     this is used.
 
-    :param table_map: mapping of polymorphic identities to 
+    :param table_map: mapping of polymorphic identities to
      :class:`.Table` objects.
-    :param typecolname: string name of a "discriminator" column, which will be 
+    :param typecolname: string name of a "discriminator" column, which will be
      derived from the query, producing the polymorphic identity for each row.  If
      ``None``, no polymorphic discriminator is generated.
-    :param aliasname: name of the :func:`~sqlalchemy.sql.expression.alias()` 
+    :param aliasname: name of the :func:`~sqlalchemy.sql.expression.alias()`
      construct generated.
     :param cast_nulls: if True, non-existent columns, which are represented as labeled
      NULLs, will be passed into CAST.   This is a legacy behavior that is problematic
@@ -117,7 +117,7 @@ def polymorphic_union(table_map, typecolname, aliasname='p_union', cast_nulls=Tr
     for key in table_map.keys():
         table = table_map[key]
 
-        # mysql doesnt like selecting from a select; 
+        # mysql doesnt like selecting from a select;
         # make it an alias of the select
         if isinstance(table, sql.Select):
             table = table.alias()
@@ -215,14 +215,14 @@ class ORMAdapter(sql_util.ColumnAdapter):
     and the AliasedClass if any is referenced.
 
     """
-    def __init__(self, entity, equivalents=None, 
+    def __init__(self, entity, equivalents=None,
                             chain_to=None, adapt_required=False):
         self.mapper, selectable, is_aliased_class = _entity_info(entity)
         if is_aliased_class:
             self.aliased_class = entity
         else:
             self.aliased_class = None
-        sql_util.ColumnAdapter.__init__(self, selectable, 
+        sql_util.ColumnAdapter.__init__(self, selectable,
                                         equivalents, chain_to,
                                         adapt_required=adapt_required)
 
@@ -252,7 +252,7 @@ class AliasedClass(object):
     The resulting object is an instance of :class:`.AliasedClass`, however
     it implements a ``__getattribute__()`` scheme which will proxy attribute
     access to that of the ORM class being aliased.  All classmethods
-    on the mapped entity should also be available here, including 
+    on the mapped entity should also be available here, including
     hybrids created with the :ref:`hybrids_toplevel` extension,
     which will receive the :class:`.AliasedClass` as the "class" argument
     when classmethods are called.
@@ -260,15 +260,15 @@ class AliasedClass(object):
     :param cls: ORM mapped entity which will be "wrapped" around an alias.
     :param alias: a selectable, such as an :func:`.alias` or :func:`.select`
      construct, which will be rendered in place of the mapped table of the
-     ORM entity.  If left as ``None``, an ordinary :class:`.Alias` of the 
+     ORM entity.  If left as ``None``, an ordinary :class:`.Alias` of the
      ORM entity's mapped table will be generated.
     :param name: A name which will be applied both to the :class:`.Alias`
      if one is generated, as well as the name present in the "named tuple"
      returned by the :class:`.Query` object when results are returned.
     :param adapt_on_names: if True, more liberal "matching" will be used when
-     mapping the mapped columns of the ORM entity to those of the given selectable - 
-     a name-based match will be performed if the given selectable doesn't 
-     otherwise have a column that corresponds to one on the entity.  The 
+     mapping the mapped columns of the ORM entity to those of the given selectable -
+     a name-based match will be performed if the given selectable doesn't
+     otherwise have a column that corresponds to one on the entity.  The
      use case for this is when associating an entity with some derived
      selectable such as one that uses aggregate functions::
 
@@ -311,8 +311,8 @@ class AliasedClass(object):
 
     def __getstate__(self):
         return {
-            'mapper':self.__mapper, 
-            'alias':self.__alias, 
+            'mapper':self.__mapper,
+            'alias':self.__alias,
             'name':self._sa_label_name,
             'adapt_on_names':self.__adapt_on_names,
         }
@@ -333,7 +333,7 @@ class AliasedClass(object):
     def __adapt_element(self, elem):
         return self.__adapter.traverse(elem).\
                     _annotate({
-                        'parententity': self, 
+                        'parententity': self,
                         'parentmapper':self.__mapper}
                     )
 
@@ -400,7 +400,7 @@ class _ORMJoin(expression.Join):
 
     __visit_name__ = expression.Join.__visit_name__
 
-    def __init__(self, left, right, onclause=None, 
+    def __init__(self, left, right, onclause=None,
                             isouter=False, join_to_left=True):
         adapt_from = None
 
@@ -477,8 +477,8 @@ def join(left, right, onclause=None, isouter=False, join_to_left=True):
     as its functionality is encapsulated within that of the
     :meth:`.Query.join` method, which features a
     significant amount of automation beyond :func:`.orm.join`
-    by itself.  Explicit usage of :func:`.orm.join` 
-    with :class:`.Query` involves usage of the 
+    by itself.  Explicit usage of :func:`.orm.join`
+    with :class:`.Query` involves usage of the
     :meth:`.Query.select_from` method, as in::
 
         from sqlalchemy.orm import join
@@ -486,7 +486,7 @@ def join(left, right, onclause=None, isouter=False, join_to_left=True):
             select_from(join(User, Address, User.addresses)).\\
             filter(Address.email_address=='foo@bar.com')
 
-    In modern SQLAlchemy the above join can be written more 
+    In modern SQLAlchemy the above join can be written more
     succinctly as::
 
         session.query(User).\\
@@ -516,12 +516,12 @@ def with_parent(instance, prop):
 
     The SQL rendered is the same as that rendered when a lazy loader
     would fire off from the given parent on that attribute, meaning
-    that the appropriate state is taken from the parent object in 
+    that the appropriate state is taken from the parent object in
     Python without the need to render joins to the parent table
     in the rendered statement.
 
     .. versionchanged:: 0.6.4
-        This method accepts parent instances in all 
+        This method accepts parent instances in all
         persistence states, including transient, persistent, and detached.
         Only the requisite primary key/foreign key attributes need to
         be populated.  Previous versions didn't work with transient
@@ -532,8 +532,8 @@ def with_parent(instance, prop):
 
     :param property:
       String property name, or class-bound attribute, which indicates
-      what relationship from the instance should be used to reconcile the 
-      parent/child relationship. 
+      what relationship from the instance should be used to reconcile the
+      parent/child relationship.
 
     """
     if isinstance(prop, basestring):
@@ -542,8 +542,8 @@ def with_parent(instance, prop):
     elif isinstance(prop, attributes.QueryableAttribute):
         prop = prop.property
 
-    return prop.compare(operators.eq, 
-                        instance, 
+    return prop.compare(operators.eq,
+                        instance,
                         value_is_parent=True)
 
 
@@ -597,7 +597,7 @@ def _entity_descriptor(entity, key):
         return getattr(entity, key)
     except AttributeError:
         raise sa_exc.InvalidRequestError(
-                    "Entity '%s' has no property '%s'" % 
+                    "Entity '%s' has no property '%s'" %
                     (description, key)
                 )
 
@@ -639,7 +639,7 @@ def object_mapper(instance):
         raise exc.UnmappedInstanceError(instance)
 
 def class_mapper(class_, compile=True):
-    """Given a class, return the primary :class:`.Mapper` associated 
+    """Given a class, return the primary :class:`.Mapper` associated
     with the key.
 
     Raises :class:`.UnmappedClassError` if no mapping is configured
@@ -653,8 +653,8 @@ def class_mapper(class_, compile=True):
         mapper = class_manager.mapper
 
     except exc.NO_STATE:
-        if not isinstance(class_, type): 
-            raise sa_exc.ArgumentError("Class object expected, got '%r'." % class_) 
+        if not isinstance(class_, type):
+            raise sa_exc.ArgumentError("Class object expected, got '%r'." % class_)
         raise exc.UnmappedClassError(class_)
 
     if compile and mapperlib.module._new_mappers:
@@ -685,7 +685,7 @@ def has_identity(object):
     return state.has_identity
 
 def _is_mapped_class(cls):
-    """Return True if the given object is a mapped class, 
+    """Return True if the given object is a mapped class,
     :class:`.Mapper`, or :class:`.AliasedClass`."""
 
     if isinstance(cls, (AliasedClass, mapperlib.Mapper)):
@@ -698,7 +698,7 @@ def _is_mapped_class(cls):
     return False
 
 def _mapper_or_none(cls):
-    """Return the :class:`.Mapper` for the given class or None if the 
+    """Return the :class:`.Mapper` for the given class or None if the
     class is not mapped."""
 
     manager = attributes.manager_of_class(cls)

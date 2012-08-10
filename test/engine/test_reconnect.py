@@ -58,7 +58,7 @@ class MockReconnectTest(fixtures.TestBase):
         # note - using straight create_engine here
         # since we are testing gc
         db = create_engine(
-                    'postgresql://foo:bar@localhost/test', 
+                    'postgresql://foo:bar@localhost/test',
                     module=dbapi, _initialize=False)
 
         # monkeypatch disconnect checker
@@ -205,7 +205,7 @@ class CursorErrTest(fixtures.TestBase):
         dbapi = MDBAPI()
 
         db = testing_engine(
-                    'postgresql://foo:bar@localhost/test', 
+                    'postgresql://foo:bar@localhost/test',
                     options=dict(module=dbapi, _initialize=False))
 
     def test_cursor_explode(self):
@@ -424,7 +424,7 @@ class RecycleTest(fixtures.TestBase):
 
             # set the pool recycle down to 1.
             # we aren't doing this inline with the
-            # engine create since cx_oracle takes way 
+            # engine create since cx_oracle takes way
             # too long to create the 1st connection and don't
             # want to build a huge delay into this test.
 

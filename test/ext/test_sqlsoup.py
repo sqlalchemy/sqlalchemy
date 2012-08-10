@@ -87,7 +87,7 @@ class SQLSoupTest(fixtures.TestBase):
             exc.ArgumentError,
             "'tablename' or 'selectable' argument is "
                                     "required.",
-            db.map_to, 'users', 
+            db.map_to, 'users',
         )
 
     def test_map_to_string_not_selectable(self):

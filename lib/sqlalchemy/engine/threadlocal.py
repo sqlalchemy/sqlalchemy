@@ -7,7 +7,7 @@
 """Provides a thread-local transactional wrapper around the root Engine class.
 
 The ``threadlocal`` module is invoked when using the ``strategy="threadlocal"`` flag
-with :func:`~sqlalchemy.engine.create_engine`.  This module is semi-private and is 
+with :func:`~sqlalchemy.engine.create_engine`.  This module is semi-private and is
 invoked automatically when the threadlocal engine strategy is used.
 """
 

@@ -24,17 +24,17 @@ from sqlalchemy.sql import not_
 
 def association_proxy(target_collection, attr, **kw):
     """Return a Python property implementing a view of a target
-    attribute which references an attribute on members of the 
+    attribute which references an attribute on members of the
     target.
-    
+
     The returned value is an instance of :class:`.AssociationProxy`.
-    
+
     Implements a Python property representing a relationship as a collection of
     simpler values, or a scalar value.  The proxied property will mimic the collection type of
     the target (list, dict or set), or, in the case of a one to one relationship,
     a simple scalar value.
 
-    :param target_collection: Name of the attribute we'll proxy to.  
+    :param target_collection: Name of the attribute we'll proxy to.
       This attribute is typically mapped by
       :func:`~sqlalchemy.orm.relationship` to link to a target collection, but
       can also be a many-to-one or non-scalar relationship.
@@ -80,15 +80,15 @@ class AssociationProxy(object):
     """A descriptor that presents a read/write view of an object attribute."""
 
     def __init__(self, target_collection, attr, creator=None,
-                 getset_factory=None, proxy_factory=None, 
+                 getset_factory=None, proxy_factory=None,
                  proxy_bulk_set=None):
         """Construct a new :class:`.AssociationProxy`.
-        
+
         The :func:`.association_proxy` function is provided as the usual
         entrypoint here, though :class:`.AssociationProxy` can be instantiated
         and/or subclassed directly.
 
-        :param target_collection: Name of the collection we'll proxy to, 
+        :param target_collection: Name of the collection we'll proxy to,
           usually created with :func:`.relationship`.
 
         :param attr: Attribute on the collected instances we'll proxy for.  For example,
@@ -120,7 +120,7 @@ class AssociationProxy(object):
           collection implementation, you may supply a factory function to
           produce those collections.  Only applicable to non-scalar relationships.
 
-        :param proxy_bulk_set: Optional, use with proxy_factory.  See 
+        :param proxy_bulk_set: Optional, use with proxy_factory.  See
           the _set() method for details.
 
         """
@@ -140,11 +140,11 @@ class AssociationProxy(object):
     def remote_attr(self):
         """The 'remote' :class:`.MapperProperty` referenced by this
         :class:`.AssociationProxy`.
-        
+
         .. versionadded:: 0.7.3
-        
+
         See also:
-        
+
         :attr:`.AssociationProxy.attr`
 
         :attr:`.AssociationProxy.local_attr`
@@ -158,9 +158,9 @@ class AssociationProxy(object):
         :class:`.AssociationProxy`.
 
         .. versionadded:: 0.7.3
-        
+
         See also:
-        
+
         :attr:`.AssociationProxy.attr`
 
         :attr:`.AssociationProxy.remote_attr`
@@ -171,20 +171,20 @@ class AssociationProxy(object):
     @property
     def attr(self):
         """Return a tuple of ``(local_attr, remote_attr)``.
-        
-        This attribute is convenient when specifying a join 
+
+        This attribute is convenient when specifying a join
         using :meth:`.Query.join` across two relationships::
-        
+
             sess.query(Parent).join(*Parent.proxied.attr)
 
         .. versionadded:: 0.7.3
-        
+
         See also:
-        
+
         :attr:`.AssociationProxy.local_attr`
 
         :attr:`.AssociationProxy.remote_attr`
-        
+
         """
         return (self.local_attr, self.remote_attr)
 
@@ -195,10 +195,10 @@ class AssociationProxy(object):
     @util.memoized_property
     def target_class(self):
         """The intermediary class handled by this :class:`.AssociationProxy`.
-        
+
         Intercepted append/set/assignment events will result
         in the generation of new instances of this class.
-        
+
         """
         return self._get_property().mapper.class_
 
@@ -333,10 +333,10 @@ class AssociationProxy(object):
 
     def any(self, criterion=None, **kwargs):
         """Produce a proxied 'any' expression using EXISTS.
-        
+
         This expression will be a composed product
         using the :meth:`.RelationshipProperty.Comparator.any`
-        and/or :meth:`.RelationshipProperty.Comparator.has` 
+        and/or :meth:`.RelationshipProperty.Comparator.has`
         operators of the underlying proxied attributes.
 
         """
@@ -360,12 +360,12 @@ class AssociationProxy(object):
 
     def has(self, criterion=None, **kwargs):
         """Produce a proxied 'has' expression using EXISTS.
-        
+
         This expression will be a composed product
         using the :meth:`.RelationshipProperty.Comparator.any`
-        and/or :meth:`.RelationshipProperty.Comparator.has` 
+        and/or :meth:`.RelationshipProperty.Comparator.has`
         operators of the underlying proxied attributes.
-        
+
         """
 
         return self._comparator.has(
@@ -375,7 +375,7 @@ class AssociationProxy(object):
 
     def contains(self, obj):
         """Produce a proxied 'contains' expression using EXISTS.
-        
+
         This expression will be a composed product
         using the :meth:`.RelationshipProperty.Comparator.any`
         , :meth:`.RelationshipProperty.Comparator.has`,

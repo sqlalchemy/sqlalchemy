@@ -267,7 +267,7 @@ class MemUsageTest(EnsureZeroed):
             x = counter[0]
             dec = 10
             while dec > 0:
-                # trying to count in binary here, 
+                # trying to count in binary here,
                 # works enough to trip the test case
                 if pow(2, dec) < x:
                     setattr(w1, 'col%d' % dec, counter[0])
@@ -457,7 +457,7 @@ class MemUsageTest(EnsureZeroed):
                 pass
 
             mapper(A, table1, properties={
-                'bs':relationship(B, secondary=table3, 
+                'bs':relationship(B, secondary=table3,
                                     backref='as', order_by=table3.c.t1)
             })
             mapper(B, table2)

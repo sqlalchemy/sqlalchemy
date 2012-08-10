@@ -29,7 +29,7 @@ def sort_as_subsets(tuples, allitems):
         if not output:
             raise CircularDependencyError(
                     "Circular dependency detected.",
-                    find_cycles(tuples, allitems), 
+                    find_cycles(tuples, allitems),
                     _gen_edges(edges)
                 )
 
@@ -56,7 +56,7 @@ def find_cycles(tuples, allitems):
 
     output = set()
 
-    # we'd like to find all nodes that are 
+    # we'd like to find all nodes that are
     # involved in cycles, so we do the full
     # pass through the whole thing for each
     # node in the original list.
@@ -86,7 +86,7 @@ def find_cycles(tuples, allitems):
 
 def _gen_edges(edges):
     return set([
-                    (right, left) 
-                    for left in edges 
-                    for right in edges[left] 
+                    (right, left)
+                    for left in edges
+                    for right in edges[left]
                 ])

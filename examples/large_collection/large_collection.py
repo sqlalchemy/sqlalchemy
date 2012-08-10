@@ -6,7 +6,7 @@ from sqlalchemy.orm import (mapper, relationship, sessionmaker)
 
 meta = MetaData()
 
-org_table = Table('organizations', meta, 
+org_table = Table('organizations', meta,
     Column('org_id', Integer, primary_key=True),
     Column('org_name', String(50), nullable=False, key='name'),
     mysql_engine='InnoDB')
@@ -27,20 +27,20 @@ class Member(object):
         self.name = name
 
 mapper(Organization, org_table, properties = {
-    'members' : relationship(Member, 
+    'members' : relationship(Member,
         # Organization.members will be a Query object - no loading
         # of the entire collection occurs unless requested
-        lazy="dynamic", 
+        lazy="dynamic",
 
-        # Member objects "belong" to their parent, are deleted when 
+        # Member objects "belong" to their parent, are deleted when
         # removed from the collection
         cascade="all, delete-orphan",
 
         # "delete, delete-orphan" cascade does not load in objects on delete,
         # allows ON DELETE CASCADE to handle it.
-        # this only works with a database that supports ON DELETE CASCADE - 
+        # this only works with a database that supports ON DELETE CASCADE -
         # *not* sqlite or MySQL with MyISAM
-        passive_deletes=True, 
+        passive_deletes=True,
     )
 })
 
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     print "-------------------------\nflush one - save org + 3 members\n"
     sess.commit()
 
-    # the 'members' collection is a Query.  it issues 
+    # the 'members' collection is a Query.  it issues
     # SQL as needed to load subsets of the collection.
     print "-------------------------\nload subset of members\n"
     members = org.members.filter(member_table.c.name.like('%member t%')).all()
@@ -80,8 +80,8 @@ if __name__ == '__main__':
     print "-------------------------\nflush two - save 3 more members\n"
     sess.commit()
 
-    # delete the object.   Using ON DELETE CASCADE 
-    # SQL is only emitted for the head row - the Member rows 
+    # delete the object.   Using ON DELETE CASCADE
+    # SQL is only emitted for the head row - the Member rows
     # disappear automatically without the need for additional SQL.
     sess.delete(org)
     print "-------------------------\nflush three - delete org, delete members in one statement\n"

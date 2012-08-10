@@ -7,11 +7,11 @@ Association Proxy
 
 ``associationproxy`` is used to create a read/write view of a
 target attribute across a relationship.  It essentially conceals
-the usage of a "middle" attribute between two endpoints, and 
+the usage of a "middle" attribute between two endpoints, and
 can be used to cherry-pick fields from a collection of
 related objects or to reduce the verbosity of using the association
 object pattern.   Applied creatively, the association proxy allows
-the construction of sophisticated collections and dictionary 
+the construction of sophisticated collections and dictionary
 views of virtually any geometry, persisted to the database using
 standard, transparently configured relational patterns.
 
@@ -97,10 +97,10 @@ for us transparently::
 
 The :class:`.AssociationProxy` object produced by the :func:`.association_proxy` function
 is an instance of a `Python descriptor <http://docs.python.org/howto/descriptor.html>`_.
-It is always declared with the user-defined class being mapped, regardless of 
+It is always declared with the user-defined class being mapped, regardless of
 whether Declarative or classical mappings via the :func:`.mapper` function are used.
 
-The proxy functions by operating upon the underlying mapped attribute 
+The proxy functions by operating upon the underlying mapped attribute
 or collection in response to operations, and changes made via the proxy are immediately
 apparent in the mapped attribute, as well as vice versa.   The underlying
 attribute remains fully accessible.
@@ -129,7 +129,7 @@ Is translated by the association proxy into the operation::
 The example works here because we have designed the constructor for ``Keyword``
 to accept a single positional argument, ``keyword``.   For those cases where a
 single-argument constructor isn't feasible, the association proxy's creational
-behavior can be customized using the ``creator`` argument, which references a 
+behavior can be customized using the ``creator`` argument, which references a
 callable (i.e. Python function) that will produce a new object instance given the
 singular argument.  Below we illustrate this using a lambda as is typical::
 
@@ -137,7 +137,7 @@ singular argument.  Below we illustrate this using a lambda as is typical::
         # ...
 
         # use Keyword(keyword=kw) on append() events
-        keywords = association_proxy('kw', 'keyword', 
+        keywords = association_proxy('kw', 'keyword',
                         creator=lambda kw: Keyword(keyword=kw))
 
 The ``creator`` function accepts a single argument in the case of a list-
@@ -154,15 +154,15 @@ proxies are useful for keeping "association objects" out the way during
 regular use.
 
 Suppose our ``userkeywords`` table above had additional columns
-which we'd like to map explicitly, but in most cases we don't 
+which we'd like to map explicitly, but in most cases we don't
 require direct access to these attributes.  Below, we illustrate
-a new mapping which introduces the ``UserKeyword`` class, which 
+a new mapping which introduces the ``UserKeyword`` class, which
 is mapped to the ``userkeywords`` table illustrated earlier.
 This class adds an additional column ``special_key``, a value which
 we occasionally want to access, but not in the usual case.   We
 create an association proxy on the ``User`` class called
 ``keywords``, which will bridge the gap from the ``user_keywords``
-collection of ``User`` to the ``.keyword`` attribute present on each 
+collection of ``User`` to the ``.keyword`` attribute present on each
 ``UserKeyword``::
 
     from sqlalchemy import Column, Integer, String, ForeignKey
@@ -192,8 +192,8 @@ collection of ``User`` to the ``.keyword`` attribute present on each
         special_key = Column(String(50))
 
         # bidirectional attribute/collection of "user"/"user_keywords"
-        user = relationship(User, 
-                    backref=backref("user_keywords", 
+        user = relationship(User,
+                    backref=backref("user_keywords",
                                     cascade="all, delete-orphan")
                 )
 
@@ -216,14 +216,14 @@ collection of ``User`` to the ``.keyword`` attribute present on each
         def __repr__(self):
             return 'Keyword(%s)' % repr(self.keyword)
 
-With the above configuration, we can operate upon the ``.keywords`` 
+With the above configuration, we can operate upon the ``.keywords``
 collection of each ``User`` object, and the usage of ``UserKeyword``
 is concealed::
 
     >>> user = User('log')
     >>> for kw in (Keyword('new_from_blammo'), Keyword('its_big')):
     ...     user.keywords.append(kw)
-    ... 
+    ...
     >>> print(user.keywords)
     [Keyword('new_from_blammo'), Keyword('its_big')]
 
@@ -234,12 +234,12 @@ Where above, each ``.keywords.append()`` operation is equivalent to::
 The ``UserKeyword`` association object has two attributes here which are populated;
 the ``.keyword`` attribute is populated directly as a result of passing
 the ``Keyword`` object as the first argument.   The ``.user`` argument is then
-assigned as the ``UserKeyword`` object is appended to the ``User.user_keywords`` 
+assigned as the ``UserKeyword`` object is appended to the ``User.user_keywords``
 collection, where the bidirectional relationship configured between ``User.user_keywords``
 and ``UserKeyword.user`` results in a population of the ``UserKeyword.user`` attribute.
 The ``special_key`` argument above is left at its default value of ``None``.
 
-For those cases where we do want ``special_key`` to have a value, we 
+For those cases where we do want ``special_key`` to have a value, we
 create the ``UserKeyword`` object explicitly.  Below we assign all three
 attributes, where the assignment of ``.user`` has the effect of the ``UserKeyword``
 being appended to the ``User.user_keywords`` collection::
@@ -259,7 +259,7 @@ Proxying to Dictionary Based Collections
 
 The association proxy can proxy to dictionary based collections as well.   SQLAlchemy
 mappings usually use the :func:`.attribute_mapped_collection` collection type to
-create dictionary collections, as well as the extended techniques described in 
+create dictionary collections, as well as the extended techniques described in
 :ref:`dictionary_collections`.
 
 The association proxy adjusts its behavior when it detects the usage of a
@@ -269,7 +269,7 @@ arguments to the creation function instead of one, the key and the value. As
 always, this creation function defaults to the constructor of the intermediary
 class, and can be customized using the ``creator`` argument.
 
-Below, we modify our ``UserKeyword`` example such that the ``User.user_keywords`` 
+Below, we modify our ``UserKeyword`` example such that the ``User.user_keywords``
 collection will now be mapped using a dictionary, where the ``UserKeyword.special_key``
 argument will be used as the key for the dictionary.   We then apply a ``creator``
 argument to the ``User.keywords`` proxy so that these values are assigned appropriately
@@ -291,7 +291,7 @@ when new elements are added to the dictionary::
         # proxy to 'user_keywords', instantiating UserKeyword
         # assigning the new key to 'special_key', values to
         # 'keyword'.
-        keywords = association_proxy('user_keywords', 'keyword', 
+        keywords = association_proxy('user_keywords', 'keyword',
                         creator=lambda k, v:
                                     UserKeyword(special_key=k, keyword=v)
                     )
@@ -308,7 +308,7 @@ when new elements are added to the dictionary::
         # bidirectional user/user_keywords relationships, mapping
         # user_keywords with a dictionary against "special_key" as key.
         user = relationship(User, backref=backref(
-                        "user_keywords", 
+                        "user_keywords",
                         collection_class=attribute_mapped_collection("special_key"),
                         cascade="all, delete-orphan"
                         )
@@ -344,8 +344,8 @@ Composite Association Proxies
 
 Given our previous examples of proxying from relationship to scalar
 attribute, proxying across an association object, and proxying dictionaries,
-we can combine all three techniques together to give ``User`` 
-a ``keywords`` dictionary that deals strictly with the string value 
+we can combine all three techniques together to give ``User``
+a ``keywords`` dictionary that deals strictly with the string value
 of ``special_key`` mapped to the string ``keyword``.  Both the ``UserKeyword``
 and ``Keyword`` classes are entirely concealed.  This is achieved by building
 an association proxy on ``User`` that refers to an association proxy
@@ -365,11 +365,11 @@ present on ``UserKeyword``::
         id = Column(Integer, primary_key=True)
         name = Column(String(64))
 
-        # the same 'user_keywords'->'keyword' proxy as in 
+        # the same 'user_keywords'->'keyword' proxy as in
         # the basic dictionary example
         keywords = association_proxy(
-                    'user_keywords', 
-                    'keyword', 
+                    'user_keywords',
+                    'keyword',
                     creator=lambda k, v:
                                 UserKeyword(special_key=k, keyword=v)
                     )
@@ -380,11 +380,11 @@ present on ``UserKeyword``::
     class UserKeyword(Base):
         __tablename__ = 'user_keyword'
         user_id = Column(Integer, ForeignKey('user.id'), primary_key=True)
-        keyword_id = Column(Integer, ForeignKey('keyword.id'), 
+        keyword_id = Column(Integer, ForeignKey('keyword.id'),
                                                         primary_key=True)
         special_key = Column(String)
         user = relationship(User, backref=backref(
-                "user_keywords", 
+                "user_keywords",
                 collection_class=attribute_mapped_collection("special_key"),
                 cascade="all, delete-orphan"
                 )
@@ -394,7 +394,7 @@ present on ``UserKeyword``::
         # 'kw'
         kw = relationship("Keyword")
 
-        # 'keyword' is changed to be a proxy to the 
+        # 'keyword' is changed to be a proxy to the
         # 'keyword' attribute of 'Keyword'
         keyword = association_proxy('kw', 'keyword')
 
@@ -432,8 +432,8 @@ association proxy, to apply a dictionary value to the collection at once::
 
 One caveat with our example above is that because ``Keyword`` objects are created
 for each dictionary set operation, the example fails to maintain uniqueness for
-the ``Keyword`` objects on their string name, which is a typical requirement for 
-a tagging scenario such as this one.  For this use case the recipe 
+the ``Keyword`` objects on their string name, which is a typical requirement for
+a tagging scenario such as this one.  For this use case the recipe
 `UniqueObject <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/UniqueObject>`_, or
 a comparable creational strategy, is
 recommended, which will apply a "lookup first, then create" strategy to the constructor
@@ -450,32 +450,32 @@ and :meth:`.RelationshipProperty.Comparator.has` operations are available, and w
 a "nested" EXISTS clause, such as in our basic association object example::
 
     >>> print(session.query(User).filter(User.keywords.any(keyword='jek')))
-    SELECT user.id AS user_id, user.name AS user_name 
-    FROM user 
-    WHERE EXISTS (SELECT 1 
-    FROM user_keyword 
-    WHERE user.id = user_keyword.user_id AND (EXISTS (SELECT 1 
-    FROM keyword 
+    SELECT user.id AS user_id, user.name AS user_name
+    FROM user
+    WHERE EXISTS (SELECT 1
+    FROM user_keyword
+    WHERE user.id = user_keyword.user_id AND (EXISTS (SELECT 1
+    FROM keyword
     WHERE keyword.id = user_keyword.keyword_id AND keyword.keyword = :keyword_1)))
 
 For a proxy to a scalar attribute, ``__eq__()`` is supported::
 
     >>> print(session.query(UserKeyword).filter(UserKeyword.keyword == 'jek'))
     SELECT user_keyword.*
-    FROM user_keyword 
-    WHERE EXISTS (SELECT 1 
-        FROM keyword 
+    FROM user_keyword
+    WHERE EXISTS (SELECT 1
+        FROM keyword
         WHERE keyword.id = user_keyword.keyword_id AND keyword.keyword = :keyword_1)
 
 and ``.contains()`` is available for a proxy to a scalar collection::
 
     >>> print(session.query(User).filter(User.keywords.contains('jek')))
     SELECT user.*
-    FROM user 
-    WHERE EXISTS (SELECT 1 
-    FROM userkeywords, keyword 
-    WHERE user.id = userkeywords.user_id 
-        AND keyword.id = userkeywords.keyword_id 
+    FROM user
+    WHERE EXISTS (SELECT 1
+    FROM userkeywords, keyword
+    WHERE user.id = userkeywords.user_id
+        AND keyword.id = userkeywords.keyword_id
         AND keyword.keyword = :keyword_1)
 
 :class:`.AssociationProxy` can be used with :meth:`.Query.join` somewhat manually

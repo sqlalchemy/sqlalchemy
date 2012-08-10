@@ -80,7 +80,7 @@ class DefaultEngineStrategy(EngineStrategy):
                     return dialect.connect(*cargs, **cparams)
                 except Exception, e:
                     # Py3K
-                    #raise exc.DBAPIError.instance(None, None, 
+                    #raise exc.DBAPIError.instance(None, None,
                     #                   e, dialect.dbapi.Error,
                     #                   connection_invalidated=
                     #                       dialect.is_disconnect(e, None, None)
@@ -245,8 +245,8 @@ class MockEngineStrategy(EngineStrategy):
             from sqlalchemy.engine import ddl
             ddl.SchemaDropper(self.dialect, self, **kwargs).traverse_single(entity)
 
-        def _run_visitor(self, visitorcallable, element, 
-                                        connection=None, 
+        def _run_visitor(self, visitorcallable, element,
+                                        connection=None,
                                         **kwargs):
             kwargs['checkfirst'] = False
             visitorcallable(self.dialect, self,

@@ -25,7 +25,7 @@ class MakoBridge(TemplateBridge):
         builder.config.html_context['site_base'] = builder.config['site_base']
 
         self.lookup = TemplateLookup(directories=builder.config.templates_path,
-            #format_exceptions=True, 
+            #format_exceptions=True,
             imports=[
                 "from builder import util"
             ]
@@ -46,7 +46,7 @@ class MakoBridge(TemplateBridge):
 
         # RTD layout
         if rtd:
-            # add variables if not present, such 
+            # add variables if not present, such
             # as if local test of READTHEDOCS variable
             if 'MEDIA_URL' not in context:
                 context['MEDIA_URL'] = "http://media.readthedocs.org/"
@@ -107,14 +107,14 @@ class PyConWithSQLLexer(RegexLexer):
             'sqlpopup':[
                 (
                     r'(.*?\n)((?:PRAGMA|BEGIN|SELECT|INSERT|DELETE|ROLLBACK|COMMIT|ALTER|UPDATE|CREATE|DROP|PRAGMA|DESCRIBE).*?(?:{stop}\n?|$))',
-                    bygroups(using(PythonConsoleLexer), Token.Sql.Popup), 
+                    bygroups(using(PythonConsoleLexer), Token.Sql.Popup),
                     "#pop"
                 )
             ],
             'opensqlpopup':[
                 (
                     r'.*?(?:{stop}\n*|$)',
-                    Token.Sql, 
+                    Token.Sql,
                     "#pop"
                 )
             ]
@@ -136,14 +136,14 @@ class PythonWithSQLLexer(RegexLexer):
             'sqlpopup':[
                 (
                     r'(.*?\n)((?:PRAGMA|BEGIN|SELECT|INSERT|DELETE|ROLLBACK|COMMIT|ALTER|UPDATE|CREATE|DROP|PRAGMA|DESCRIBE).*?(?:{stop}\n?|$))',
-                    bygroups(using(PythonLexer), Token.Sql.Popup), 
+                    bygroups(using(PythonLexer), Token.Sql.Popup),
                     "#pop"
                 )
             ],
             'opensqlpopup':[
                 (
                     r'.*?(?:{stop}\n*|$)',
-                    Token.Sql, 
+                    Token.Sql,
                     "#pop"
                 )
             ]

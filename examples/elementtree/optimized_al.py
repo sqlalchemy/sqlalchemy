@@ -1,6 +1,6 @@
 """This script duplicates adjacency_list.py, but optimizes the loading
-of XML nodes to be based on a "flattened" datamodel. Any number of XML documents, 
-each of arbitrary complexity, can be loaded in their entirety via a single query 
+of XML nodes to be based on a "flattened" datamodel. Any number of XML documents,
+each of arbitrary complexity, can be loaded in their entirety via a single query
 which joins on only three tables.
 
 """
@@ -25,7 +25,7 @@ documents = Table('documents', meta,
     Column('filename', String(30), unique=True),
 )
 
-# stores XML nodes in an adjacency list model.  This corresponds to 
+# stores XML nodes in an adjacency list model.  This corresponds to
 # Element and SubElement objects.
 elements = Table('elements', meta,
     Column('element_id', Integer, primary_key=True),
@@ -61,15 +61,15 @@ class Document(object):
 
 ########################## PART IV - Persistence Mapping #####################
 
-# Node class.  a non-public class which will represent 
+# Node class.  a non-public class which will represent
 # the DB-persisted Element/SubElement object.  We cannot create mappers for
-# ElementTree elements directly because they are at the very least not new-style 
+# ElementTree elements directly because they are at the very least not new-style
 # classes, and also may be backed by native implementations.
 # so here we construct an adapter.
 class _Node(object):
     pass
 
-# Attribute class.  also internal, this will represent the key/value attributes stored for 
+# Attribute class.  also internal, this will represent the key/value attributes stored for
 # a particular Node.
 class _Attribute(object):
     def __init__(self, name, value):

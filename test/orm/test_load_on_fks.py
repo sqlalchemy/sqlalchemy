@@ -230,7 +230,7 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
                             #if manualflush and (not loadrel or fake_autoexpire):
                             #    # a flush occurs, we get p2
                             #    assert c1.parent is p2
-                            #elif not loadrel and not loadfk: 
+                            #elif not loadrel and not loadfk:
                             #    # problematically - we get None since committed state
                             #    # is empty when c1.parent_id was mutated, since we want
                             #    # to save on selects.  this is

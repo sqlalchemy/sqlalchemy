@@ -28,7 +28,7 @@ class AssertsUOW(object):
         print postsort_actions
         eq_(len(postsort_actions), expected, postsort_actions)
 
-class UOWTest(_fixtures.FixtureTest, 
+class UOWTest(_fixtures.FixtureTest,
                 testing.AssertsExecutionResults, AssertsUOW):
     run_inserts = None
 
@@ -55,17 +55,17 @@ class RudimentaryFlushTest(UOWTest):
                 sess.flush,
                 CompiledSQL(
                     "INSERT INTO users (name) VALUES (:name)",
-                    {'name': 'u1'} 
+                    {'name': 'u1'}
                 ),
                 CompiledSQL(
                     "INSERT INTO addresses (user_id, email_address) "
                     "VALUES (:user_id, :email_address)",
-                    lambda ctx: {'email_address': 'a1', 'user_id':u1.id} 
+                    lambda ctx: {'email_address': 'a1', 'user_id':u1.id}
                 ),
                 CompiledSQL(
                     "INSERT INTO addresses (user_id, email_address) "
                     "VALUES (:user_id, :email_address)",
-                    lambda ctx: {'email_address': 'a2', 'user_id':u1.id} 
+                    lambda ctx: {'email_address': 'a2', 'user_id':u1.id}
                 ),
             )
 
@@ -160,17 +160,17 @@ class RudimentaryFlushTest(UOWTest):
                 sess.flush,
                 CompiledSQL(
                     "INSERT INTO users (name) VALUES (:name)",
-                    {'name': 'u1'} 
+                    {'name': 'u1'}
                 ),
                 CompiledSQL(
                     "INSERT INTO addresses (user_id, email_address) "
                     "VALUES (:user_id, :email_address)",
-                    lambda ctx: {'email_address': 'a1', 'user_id':u1.id} 
+                    lambda ctx: {'email_address': 'a1', 'user_id':u1.id}
                 ),
                 CompiledSQL(
                     "INSERT INTO addresses (user_id, email_address) "
                     "VALUES (:user_id, :email_address)",
-                    lambda ctx: {'email_address': 'a2', 'user_id':u1.id} 
+                    lambda ctx: {'email_address': 'a2', 'user_id':u1.id}
                 ),
             )
 
@@ -280,8 +280,8 @@ class RudimentaryFlushTest(UOWTest):
         session.delete(c2)
         session.delete(parent)
 
-        # testing that relationships 
-        # are loaded even if all ids/references are 
+        # testing that relationships
+        # are loaded even if all ids/references are
         # expired
         self.assert_sql_execution(
             testing.db,
@@ -462,7 +462,7 @@ class RudimentaryFlushTest(UOWTest):
             testing.db,
             sess.flush,
             CompiledSQL(
-                "INSERT INTO users (id, name) VALUES (:id, :name)", 
+                "INSERT INTO users (id, name) VALUES (:id, :name)",
                 {'id':1, 'name':'u1'}),
             CompiledSQL(
                 "INSERT INTO addresses (id, user_id, email_address) "
@@ -511,9 +511,9 @@ class RudimentaryFlushTest(UOWTest):
             sess.flush,
             CompiledSQL(
                 "INSERT INTO nodes (id, parent_id, data) VALUES "
-                "(:id, :parent_id, :data)", 
-                [{'parent_id': None, 'data': None, 'id': 1}, 
-                {'parent_id': 1, 'data': None, 'id': 2}, 
+                "(:id, :parent_id, :data)",
+                [{'parent_id': None, 'data': None, 'id': 1},
+                {'parent_id': 1, 'data': None, 'id': 2},
                 {'parent_id': 2, 'data': None, 'id': 3}]
                 ),
         )
@@ -561,7 +561,7 @@ class RudimentaryFlushTest(UOWTest):
                 testing.db,
                 sess.flush,
                 CompiledSQL("UPDATE items SET description=:description "
-                            "WHERE items.id = :items_id", 
+                            "WHERE items.id = :items_id",
                             lambda ctx:{'description':'i2', 'items_id':i1.id})
         )
 
@@ -689,9 +689,9 @@ class SingleCycleTest(UOWTest):
         self.assert_sql_execution(
                 testing.db,
                 sess.flush,
-                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
+                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id",
                         lambda ctx:[{'id':n2.id}, {'id':n3.id}]),
-                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
+                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id",
                         lambda ctx: {'id':n1.id})
         )
 
@@ -715,13 +715,13 @@ class SingleCycleTest(UOWTest):
                 sess.flush,
                 AllOf(
                     CompiledSQL("UPDATE nodes SET parent_id=:parent_id "
-                        "WHERE nodes.id = :nodes_id", 
+                        "WHERE nodes.id = :nodes_id",
                         lambda ctx: {'nodes_id':n3.id, 'parent_id':None}),
                     CompiledSQL("UPDATE nodes SET parent_id=:parent_id "
-                        "WHERE nodes.id = :nodes_id", 
+                        "WHERE nodes.id = :nodes_id",
                         lambda ctx: {'nodes_id':n2.id, 'parent_id':None}),
                 ),
-                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
+                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id",
                     lambda ctx:{'id':n1.id})
         )
 
@@ -781,9 +781,9 @@ class SingleCycleTest(UOWTest):
         self.assert_sql_execution(
                 testing.db,
                 sess.flush,
-                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
+                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id",
                         lambda ctx:[{'id':n2.id},{'id':n3.id}]),
-                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
+                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id",
                         lambda ctx: {'id':n1.id})
         )
 
@@ -834,7 +834,7 @@ class SingleCycleTest(UOWTest):
         Node, nodes = self.classes.Node, self.tables.nodes
 
         mapper(Node, nodes, properties={
-            'children':relationship(Node, 
+            'children':relationship(Node,
                                     backref=backref('parent',
                                                 remote_side=nodes.c.id))
         })
@@ -856,7 +856,7 @@ class SingleCycleTest(UOWTest):
         Node, nodes = self.classes.Node, self.tables.nodes
 
         mapper(Node, nodes, properties={
-            'children':relationship(Node, 
+            'children':relationship(Node,
                 backref=backref('parent', remote_side=nodes.c.id)
             )
         })
@@ -875,37 +875,37 @@ class SingleCycleTest(UOWTest):
             sess.flush,
             CompiledSQL(
                 "INSERT INTO nodes (parent_id, data) VALUES "
-                "(:parent_id, :data)", 
+                "(:parent_id, :data)",
                 lambda ctx:{'parent_id':None, 'data':'n1'}
             ),
             CompiledSQL(
                 "INSERT INTO nodes (parent_id, data) VALUES "
-                "(:parent_id, :data)", 
+                "(:parent_id, :data)",
                 lambda ctx:{'parent_id':n1.id, 'data':'n11'}
             ),
             CompiledSQL(
                 "INSERT INTO nodes (parent_id, data) VALUES "
-                "(:parent_id, :data)", 
+                "(:parent_id, :data)",
                 lambda ctx:{'parent_id':n1.id, 'data':'n12'}
             ),
             CompiledSQL(
                 "INSERT INTO nodes (parent_id, data) VALUES "
-                "(:parent_id, :data)", 
+                "(:parent_id, :data)",
                 lambda ctx:{'parent_id':n1.id, 'data':'n13'}
             ),
             CompiledSQL(
                 "INSERT INTO nodes (parent_id, data) VALUES "
-                "(:parent_id, :data)", 
+                "(:parent_id, :data)",
                 lambda ctx:{'parent_id':n12.id, 'data':'n121'}
             ),
             CompiledSQL(
                 "INSERT INTO nodes (parent_id, data) VALUES "
-                "(:parent_id, :data)", 
+                "(:parent_id, :data)",
                 lambda ctx:{'parent_id':n12.id, 'data':'n122'}
             ),
             CompiledSQL(
                 "INSERT INTO nodes (parent_id, data) VALUES "
-                "(:parent_id, :data)", 
+                "(:parent_id, :data)",
                 lambda ctx:{'parent_id':n12.id, 'data':'n123'}
             ),
         )
@@ -975,8 +975,8 @@ class SingleCycleTest(UOWTest):
         session.delete(c2)
         session.delete(parent)
 
-        # testing that relationships 
-        # are loaded even if all ids/references are 
+        # testing that relationships
+        # are loaded even if all ids/references are
         # expired
         self.assert_sql_execution(
             testing.db,
@@ -1060,29 +1060,29 @@ class SingleCyclePlusAttributeTest(fixtures.MappedTest,
 
         n1.foobars.append(FooBar())
         # saveupdateall/deleteall for FooBar added here,
-        # plus processstate node.foobars 
+        # plus processstate node.foobars
         # currently the "all" procs stay in pairs
         self._assert_uow_size(sess, 6)
 
         sess.flush()
 
-class SingleCycleM2MTest(fixtures.MappedTest, 
+class SingleCycleM2MTest(fixtures.MappedTest,
                     testing.AssertsExecutionResults, AssertsUOW):
 
     @classmethod
     def define_tables(cls, metadata):
         nodes = Table('nodes', metadata,
-            Column('id', Integer, 
-                            primary_key=True, 
+            Column('id', Integer,
+                            primary_key=True,
                             test_needs_autoincrement=True),
             Column('data', String(30)),
             Column('favorite_node_id', Integer, ForeignKey('nodes.id'))
         )
 
         node_to_nodes =Table('node_to_nodes', metadata,
-            Column('left_node_id', Integer, 
+            Column('left_node_id', Integer,
                             ForeignKey('nodes.id'),primary_key=True),
-            Column('right_node_id', Integer, 
+            Column('right_node_id', Integer,
                             ForeignKey('nodes.id'),primary_key=True),
             )
 
@@ -1127,10 +1127,10 @@ class SingleCycleM2MTest(fixtures.MappedTest,
                             node_to_nodes.c.right_node_id).\
                     order_by(node_to_nodes.c.left_node_id,
                             node_to_nodes.c.right_node_id).\
-                    all(), 
+                    all(),
             sorted([
-                    (n1.id, n2.id), (n1.id, n3.id), (n1.id, n4.id), 
-                    (n2.id, n3.id), (n2.id, n5.id), 
+                    (n1.id, n2.id), (n1.id, n3.id), (n1.id, n4.id),
+                    (n2.id, n3.id), (n2.id, n5.id),
                     (n3.id, n5.id), (n3.id, n4.id)
                 ])
         )
@@ -1155,8 +1155,8 @@ class SingleCycleM2MTest(fixtures.MappedTest,
                     "node_to_nodes.left_node_id = :left_node_id AND "
                     "node_to_nodes.right_node_id = :right_node_id",
                     lambda ctx:[
-                        {'right_node_id': n2.id, 'left_node_id': n1.id}, 
-                        {'right_node_id': n3.id, 'left_node_id': n1.id}, 
+                        {'right_node_id': n2.id, 'left_node_id': n1.id},
+                        {'right_node_id': n3.id, 'left_node_id': n1.id},
                         {'right_node_id': n4.id, 'left_node_id': n1.id}
                     ]
                 ),
@@ -1182,9 +1182,9 @@ class SingleCycleM2MTest(fixtures.MappedTest,
                 "= :left_node_id AND node_to_nodes.right_node_id = "
                 ":right_node_id",
                 lambda ctx:[
-                    {'right_node_id': n5.id, 'left_node_id': n3.id}, 
-                    {'right_node_id': n4.id, 'left_node_id': n3.id}, 
-                    {'right_node_id': n3.id, 'left_node_id': n2.id}, 
+                    {'right_node_id': n5.id, 'left_node_id': n3.id},
+                    {'right_node_id': n4.id, 'left_node_id': n3.id},
+                    {'right_node_id': n3.id, 'left_node_id': n2.id},
                     {'right_node_id': n5.id, 'left_node_id': n2.id}
                 ]
             ),
@@ -1204,7 +1204,7 @@ class RowswitchAccountingTest(fixtures.MappedTest):
         Table('parent', metadata,
             Column('id', Integer, primary_key=True)
         )
-        Table('child', metadata, 
+        Table('child', metadata,
             Column('id', Integer, ForeignKey('parent.id'), primary_key=True)
         )
 
@@ -1219,7 +1219,7 @@ class RowswitchAccountingTest(fixtures.MappedTest):
             pass
 
         mapper(Parent, parent, properties={
-            'child':relationship(Child, uselist=False, 
+            'child':relationship(Child, uselist=False,
                                     cascade="all, delete-orphan",
                                     backref="parent")
         })
@@ -1255,14 +1255,14 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
     @classmethod
     def define_tables(cls, metadata):
         Table('t', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                         test_needs_autoincrement=True),
             Column('data', String(50)),
             Column('def_', String(50), server_default='def1')
         )
 
     def test_batch_interaction(self):
-        """test batching groups same-structured, primary 
+        """test batching groups same-structured, primary
         key present statements together.
 
         """
@@ -1299,8 +1299,8 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
             ),
             CompiledSQL(
                 "INSERT INTO t (id, data) VALUES (:id, :data)",
-                [{'data': 't3', 'id': 3}, 
-                    {'data': 't4', 'id': 4}, 
+                [{'data': 't3', 'id': 3},
+                    {'data': 't4', 'id': 4},
                     {'data': 't5', 'id': 5}]
             ),
             CompiledSQL(
@@ -1313,7 +1313,7 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
             ),
             CompiledSQL(
                 "INSERT INTO t (id, data, def_) VALUES (:id, :data, :def_)",
-                [{'data': 't9', 'id': 9, 'def_':'def2'}, 
+                [{'data': 't9', 'id': 9, 'def_':'def2'},
                 {'data': 't10', 'id': 10, 'def_':'def3'}]
             ),
             CompiledSQL(

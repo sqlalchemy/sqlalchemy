@@ -9,7 +9,7 @@ Usage is illustrated via a unit test module ``test_versioning.py``, which can
 be run via nose::
 
     cd examples/versioning
-    nosetests -v 
+    nosetests -v
 
 A fragment of example usage, using declarative::
 

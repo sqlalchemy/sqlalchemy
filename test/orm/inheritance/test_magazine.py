@@ -176,10 +176,10 @@ def _generate_round_trip_test(use_unions=False, use_joins=False):
                 'magazine': relationship(Magazine, backref=backref('pages', order_by=page_table.c.page_no))
             })
 
-        classified_page_mapper = mapper(ClassifiedPage, 
-                                    classified_page_table, 
-                                    inherits=magazine_page_mapper, 
-                                    polymorphic_identity='c', 
+        classified_page_mapper = mapper(ClassifiedPage,
+                                    classified_page_table,
+                                    inherits=magazine_page_mapper,
+                                    polymorphic_identity='c',
                                     primary_key=[page_table.c.id])
 
 

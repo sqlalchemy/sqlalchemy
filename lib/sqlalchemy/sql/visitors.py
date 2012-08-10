@@ -8,15 +8,15 @@
 
 SQLAlchemy schema and expression constructs rely on a Python-centric
 version of the classic "visitor" pattern as the primary way in which
-they apply functionality.  The most common use of this pattern 
-is statement compilation, where individual expression classes match 
-up to rendering methods that produce a string result.   Beyond this, 
-the visitor system is also used to inspect expressions for various 
-information and patterns, as well as for usage in 
+they apply functionality.  The most common use of this pattern
+is statement compilation, where individual expression classes match
+up to rendering methods that produce a string result.   Beyond this,
+the visitor system is also used to inspect expressions for various
+information and patterns, as well as for usage in
 some kinds of expression transformation.  Other kinds of transformation
 use a non-visitor traversal system.
 
-For many examples of how the visit system is used, see the 
+For many examples of how the visit system is used, see the
 sqlalchemy.sql.util and the sqlalchemy.sql.compiler modules.
 For an introduction to clause adaption, see
 http://techspot.zzzeek.org/2008/01/23/expression-transformations/
@@ -28,18 +28,18 @@ import re
 from sqlalchemy import util
 import operator
 
-__all__ = ['VisitableType', 'Visitable', 'ClauseVisitor', 
-    'CloningVisitor', 'ReplacingCloningVisitor', 'iterate', 
+__all__ = ['VisitableType', 'Visitable', 'ClauseVisitor',
+    'CloningVisitor', 'ReplacingCloningVisitor', 'iterate',
     'iterate_depthfirst', 'traverse_using', 'traverse',
     'cloned_traverse', 'replacement_traverse']
 
 class VisitableType(type):
     """Metaclass which assigns a `_compiler_dispatch` method to classes
     having a `__visit_name__` attribute.
-    
+
     The _compiler_dispatch attribute becomes an instance method which
     looks approximately like the following::
-    
+
         def _compiler_dispatch (self, visitor, **kw):
             '''Look for an attribute named "visit_" + self.__visit_name__
             on the visitor, and call it with the same kw params.'''
@@ -92,7 +92,7 @@ class Visitable(object):
     __metaclass__ = VisitableType
 
 class ClauseVisitor(object):
-    """Base class for visitor objects which can traverse using 
+    """Base class for visitor objects which can traverse using
     the traverse() function.
 
     """
@@ -144,7 +144,7 @@ class ClauseVisitor(object):
         return self
 
 class CloningVisitor(ClauseVisitor):
-    """Base class for visitor objects which can traverse using 
+    """Base class for visitor objects which can traverse using
     the cloned_traverse() function.
 
     """
@@ -160,7 +160,7 @@ class CloningVisitor(ClauseVisitor):
         return cloned_traverse(obj, self.__traverse_options__, self._visitor_dict)
 
 class ReplacingCloningVisitor(CloningVisitor):
-    """Base class for visitor objects which can traverse using 
+    """Base class for visitor objects which can traverse using
     the replacement_traverse() function.
 
     """
@@ -168,8 +168,8 @@ class ReplacingCloningVisitor(CloningVisitor):
     def replace(self, elem):
         """receive pre-copied elements during a cloning traversal.
 
-        If the method returns a new element, the element is used 
-        instead of creating a simple copy of the element.  Traversal 
+        If the method returns a new element, the element is used
+        instead of creating a simple copy of the element.  Traversal
         will halt on the newly returned element if it is re-encountered.
         """
         return None
@@ -232,7 +232,7 @@ def traverse_depthfirst(obj, opts, visitors):
     return traverse_using(iterate_depthfirst(obj, opts), obj, visitors)
 
 def cloned_traverse(obj, opts, visitors):
-    """clone the given expression structure, allowing 
+    """clone the given expression structure, allowing
     modifications by visitors."""
 
     cloned = util.column_dict()
@@ -256,7 +256,7 @@ def cloned_traverse(obj, opts, visitors):
 
 
 def replacement_traverse(obj, opts, replace):
-    """clone the given expression structure, allowing element 
+    """clone the given expression structure, allowing element
     replacement by a given replacement function."""
 
     cloned = util.column_dict()

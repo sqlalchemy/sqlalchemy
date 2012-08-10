@@ -10,8 +10,8 @@
 class level and at the instance level.
 
 The :mod:`~sqlalchemy.ext.hybrid` extension provides a special form of method
-decorator, is around 50 lines of code and has almost no dependencies on the rest 
-of SQLAlchemy.  It can, in theory, work with any descriptor-based expression 
+decorator, is around 50 lines of code and has almost no dependencies on the rest
+of SQLAlchemy.  It can, in theory, work with any descriptor-based expression
 system.
 
 Consider a mapping ``Interval``, representing integer ``start`` and ``end``
@@ -25,9 +25,9 @@ as the class itself::
     from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy.orm import Session, aliased
     from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
-    
+
     Base = declarative_base()
-    
+
     class Interval(Base):
         __tablename__ = 'interval'
 
@@ -50,7 +50,7 @@ as the class itself::
         @hybrid_method
         def intersects(self, other):
             return self.contains(other.start) | self.contains(other.end)
-    
+
 Above, the ``length`` property returns the difference between the ``end`` and
 ``start`` attributes.  With an instance of ``Interval``, this subtraction occurs
 in Python, using normal Python descriptor mechanics::
@@ -60,33 +60,33 @@ in Python, using normal Python descriptor mechanics::
     5
 
 When dealing with the ``Interval`` class itself, the :class:`.hybrid_property`
-descriptor evaluates the function body given the ``Interval`` class as 
+descriptor evaluates the function body given the ``Interval`` class as
 the argument, which when evaluated with SQLAlchemy expression mechanics
 returns a new SQL expression::
-    
+
     >>> print Interval.length
     interval."end" - interval.start
-    
+
     >>> print Session().query(Interval).filter(Interval.length > 10)
-    SELECT interval.id AS interval_id, interval.start AS interval_start, 
-    interval."end" AS interval_end 
-    FROM interval 
+    SELECT interval.id AS interval_id, interval.start AS interval_start,
+    interval."end" AS interval_end
+    FROM interval
     WHERE interval."end" - interval.start > :param_1
-    
-ORM methods such as :meth:`~.Query.filter_by` generally use ``getattr()`` to 
+
+ORM methods such as :meth:`~.Query.filter_by` generally use ``getattr()`` to
 locate attributes, so can also be used with hybrid attributes::
 
     >>> print Session().query(Interval).filter_by(length=5)
-    SELECT interval.id AS interval_id, interval.start AS interval_start, 
-    interval."end" AS interval_end 
-    FROM interval 
+    SELECT interval.id AS interval_id, interval.start AS interval_start,
+    interval."end" AS interval_end
+    FROM interval
     WHERE interval."end" - interval.start = :param_1
 
 The ``Interval`` class example also illustrates two methods, ``contains()`` and ``intersects()``,
 decorated with :class:`.hybrid_method`.
 This decorator applies the same idea to methods that :class:`.hybrid_property` applies
-to attributes.   The methods return boolean values, and take advantage 
-of the Python ``|`` and ``&`` bitwise operators to produce equivalent instance-level and 
+to attributes.   The methods return boolean values, and take advantage
+of the Python ``|`` and ``&`` bitwise operators to produce equivalent instance-level and
 SQL expression-level boolean behavior::
 
     >>> i1.contains(6)
@@ -97,24 +97,24 @@ SQL expression-level boolean behavior::
     True
     >>> i1.intersects(Interval(25, 29))
     False
-    
+
     >>> print Session().query(Interval).filter(Interval.contains(15))
-    SELECT interval.id AS interval_id, interval.start AS interval_start, 
-    interval."end" AS interval_end 
-    FROM interval 
+    SELECT interval.id AS interval_id, interval.start AS interval_start,
+    interval."end" AS interval_end
+    FROM interval
     WHERE interval.start <= :start_1 AND interval."end" > :end_1
 
     >>> ia = aliased(Interval)
     >>> print Session().query(Interval, ia).filter(Interval.intersects(ia))
-    SELECT interval.id AS interval_id, interval.start AS interval_start, 
-    interval."end" AS interval_end, interval_1.id AS interval_1_id, 
-    interval_1.start AS interval_1_start, interval_1."end" AS interval_1_end 
-    FROM interval, interval AS interval_1 
-    WHERE interval.start <= interval_1.start 
-        AND interval."end" > interval_1.start 
-        OR interval.start <= interval_1."end" 
+    SELECT interval.id AS interval_id, interval.start AS interval_start,
+    interval."end" AS interval_end, interval_1.id AS interval_1_id,
+    interval_1.start AS interval_1_start, interval_1."end" AS interval_1_end
+    FROM interval, interval AS interval_1
+    WHERE interval.start <= interval_1.start
+        AND interval."end" > interval_1.start
+        OR interval.start <= interval_1."end"
         AND interval."end" > interval_1."end"
-    
+
 Defining Expression Behavior Distinct from Attribute Behavior
 --------------------------------------------------------------
 
@@ -122,18 +122,18 @@ Our usage of the ``&`` and ``|`` bitwise operators above was fortunate, consider
 our functions operated on two boolean values to return a new one.   In many cases, the construction
 of an in-Python function and a SQLAlchemy SQL expression have enough differences that two
 separate Python expressions should be defined.  The :mod:`~sqlalchemy.ext.hybrid` decorators
-define the :meth:`.hybrid_property.expression` modifier for this purpose.   As an example we'll 
+define the :meth:`.hybrid_property.expression` modifier for this purpose.   As an example we'll
 define the radius of the interval, which requires the usage of the absolute value function::
 
     from sqlalchemy import func
-    
+
     class Interval(object):
         # ...
-        
+
         @hybrid_property
         def radius(self):
             return abs(self.length) / 2
-            
+
         @radius.expression
         def radius(cls):
             return func.abs(cls.length) / 2
@@ -143,22 +143,22 @@ Above the Python function ``abs()`` is used for instance-level operations, the S
 
     >>> i1.radius
     2
-    
+
     >>> print Session().query(Interval).filter(Interval.radius > 5)
-    SELECT interval.id AS interval_id, interval.start AS interval_start, 
-        interval."end" AS interval_end 
-    FROM interval 
+    SELECT interval.id AS interval_id, interval.start AS interval_start,
+        interval."end" AS interval_end
+    FROM interval
     WHERE abs(interval."end" - interval.start) / :abs_1 > :param_1
 
 Defining Setters
 ----------------
 
-Hybrid properties can also define setter methods.  If we wanted ``length`` above, when 
+Hybrid properties can also define setter methods.  If we wanted ``length`` above, when
 set, to modify the endpoint value::
 
     class Interval(object):
         # ...
-        
+
         @hybrid_property
         def length(self):
             return self.end - self.start
@@ -179,7 +179,7 @@ The ``length(self, value)`` method is now called upon set::
 Working with Relationships
 --------------------------
 
-There's no essential difference when creating hybrids that work with related objects as 
+There's no essential difference when creating hybrids that work with related objects as
 opposed to column-based data. The need for distinct expressions tends to be greater.
 Consider the following declarative mapping which relates a ``User`` to a ``SavingsAccount``::
 
@@ -187,9 +187,9 @@ Consider the following declarative mapping which relates a ``User`` to a ``Savin
     from sqlalchemy.orm import relationship
     from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy.ext.hybrid import hybrid_property
-    
+
     Base = declarative_base()
-    
+
     class SavingsAccount(Base):
         __tablename__ = 'account'
         id = Column(Integer, primary_key=True)
@@ -200,9 +200,9 @@ Consider the following declarative mapping which relates a ``User`` to a ``Savin
         __tablename__ = 'user'
         id = Column(Integer, primary_key=True)
         name = Column(String(100), nullable=False)
-        
+
         accounts = relationship("SavingsAccount", backref="owner")
-        
+
         @hybrid_property
         def balance(self):
             if self.accounts:
@@ -222,17 +222,17 @@ Consider the following declarative mapping which relates a ``User`` to a ``Savin
         def balance(cls):
             return SavingsAccount.balance
 
-The above hybrid property ``balance`` works with the first ``SavingsAccount`` entry in the list of 
+The above hybrid property ``balance`` works with the first ``SavingsAccount`` entry in the list of
 accounts for this user.   The in-Python getter/setter methods can treat ``accounts`` as a Python
-list available on ``self``.  
+list available on ``self``.
 
-However, at the expression level, we can't travel along relationships to column attributes 
-directly since SQLAlchemy is explicit about joins.   So here, it's expected that the ``User`` class will be 
+However, at the expression level, we can't travel along relationships to column attributes
+directly since SQLAlchemy is explicit about joins.   So here, it's expected that the ``User`` class will be
 used in an appropriate context such that an appropriate join to ``SavingsAccount`` will be present::
 
     >>> print Session().query(User, User.balance).join(User.accounts).filter(User.balance > 5000)
     SELECT "user".id AS user_id, "user".name AS user_name, account.balance AS account_balance
-    FROM "user" JOIN account ON "user".id = account.user_id 
+    FROM "user" JOIN account ON "user".id = account.user_id
     WHERE account.balance > :balance_1
 
 Note however, that while the instance level accessors need to worry about whether ``self.accounts``
@@ -242,8 +242,8 @@ would use an outer join::
     >>> from sqlalchemy import or_
     >>> print (Session().query(User, User.balance).outerjoin(User.accounts).
     ...         filter(or_(User.balance < 5000, User.balance == None)))
-    SELECT "user".id AS user_id, "user".name AS user_name, account.balance AS account_balance 
-    FROM "user" LEFT OUTER JOIN account ON "user".id = account.user_id 
+    SELECT "user".id AS user_id, "user".name AS user_name, account.balance AS account_balance
+    FROM "user" LEFT OUTER JOIN account ON "user".id = account.user_id
     WHERE account.balance <  :balance_1 OR account.balance IS NULL
 
 .. _hybrid_custom_comparators:
@@ -253,7 +253,7 @@ Building Custom Comparators
 
 The hybrid property also includes a helper that allows construction of custom comparators.
 A comparator object allows one to customize the behavior of each SQLAlchemy expression
-operator individually.  They are useful when creating custom types that have 
+operator individually.  They are useful when creating custom types that have
 some highly idiosyncratic behavior on the SQL side.
 
 The example class below allows case-insensitive comparisons on the attribute
@@ -263,9 +263,9 @@ named ``word_insensitive``::
     from sqlalchemy import func, Column, Integer, String
     from sqlalchemy.orm import Session
     from sqlalchemy.ext.declarative import declarative_base
-    
+
     Base = declarative_base()
-    
+
     class CaseInsensitiveComparator(Comparator):
         def __eq__(self, other):
             return func.lower(self.__clause_element__()) == func.lower(other)
@@ -274,27 +274,27 @@ named ``word_insensitive``::
         __tablename__ = 'searchword'
         id = Column(Integer, primary_key=True)
         word = Column(String(255), nullable=False)
-        
+
         @hybrid_property
         def word_insensitive(self):
             return self.word.lower()
-        
+
         @word_insensitive.comparator
         def word_insensitive(cls):
             return CaseInsensitiveComparator(cls.word)
 
-Above, SQL expressions against ``word_insensitive`` will apply the ``LOWER()`` 
+Above, SQL expressions against ``word_insensitive`` will apply the ``LOWER()``
 SQL function to both sides::
 
     >>> print Session().query(SearchWord).filter_by(word_insensitive="Trucks")
-    SELECT searchword.id AS searchword_id, searchword.word AS searchword_word 
-    FROM searchword 
+    SELECT searchword.id AS searchword_id, searchword.word AS searchword_word
+    FROM searchword
     WHERE lower(searchword.word) = lower(:lower_1)
 
 The ``CaseInsensitiveComparator`` above implements part of the :class:`.ColumnOperators`
 interface.   A "coercion" operation like lowercasing can be applied to all comparison operations
 (i.e. ``eq``, ``lt``, ``gt``, etc.) using :meth:`.Operators.operate`::
-    
+
     class CaseInsensitiveComparator(Comparator):
         def operate(self, op, other):
             return op(func.lower(self.__clause_element__()), func.lower(other))
@@ -310,7 +310,7 @@ by ``@word_insensitive.comparator``, only applies to the SQL side.
 A more comprehensive form of the custom comparator is to construct a *Hybrid Value Object*.
 This technique applies the target value or expression to a value object which is then
 returned by the accessor in all cases.   The value object allows control
-of all operations upon the value as well as how compared values are treated, both 
+of all operations upon the value as well as how compared values are treated, both
 on the SQL expression side as well as the Python value side.   Replacing the
 previous ``CaseInsensitiveComparator`` class with a new ``CaseInsensitiveWord`` class::
 
@@ -342,8 +342,8 @@ previous ``CaseInsensitiveComparator`` class with a new ``CaseInsensitiveWord`` 
 Above, the ``CaseInsensitiveWord`` object represents ``self.word``, which may be a SQL function,
 or may be a Python native.   By overriding ``operate()`` and ``__clause_element__()``
 to work in terms of ``self.word``, all comparison operations will work against the
-"converted" form of ``word``, whether it be SQL side or Python side.   
-Our ``SearchWord`` class can now deliver the ``CaseInsensitiveWord`` object unconditionally 
+"converted" form of ``word``, whether it be SQL side or Python side.
+Our ``SearchWord`` class can now deliver the ``CaseInsensitiveWord`` object unconditionally
 from a single hybrid call::
 
     class SearchWord(Base):
@@ -356,12 +356,12 @@ from a single hybrid call::
             return CaseInsensitiveWord(self.word)
 
 The ``word_insensitive`` attribute now has case-insensitive comparison behavior
-universally, including SQL expression vs. Python expression (note the Python value is 
+universally, including SQL expression vs. Python expression (note the Python value is
 converted to lower case on the Python side here)::
 
     >>> print Session().query(SearchWord).filter_by(word_insensitive="Trucks")
-    SELECT searchword.id AS searchword_id, searchword.word AS searchword_word 
-    FROM searchword 
+    SELECT searchword.id AS searchword_id, searchword.word AS searchword_word
+    FROM searchword
     WHERE lower(searchword.word) = :lower_1
 
 SQL expression versus SQL expression::
@@ -369,13 +369,13 @@ SQL expression versus SQL expression::
     >>> sw1 = aliased(SearchWord)
     >>> sw2 = aliased(SearchWord)
     >>> print Session().query(
-    ...                    sw1.word_insensitive, 
+    ...                    sw1.word_insensitive,
     ...                    sw2.word_insensitive).\\
     ...                        filter(
     ...                            sw1.word_insensitive > sw2.word_insensitive
     ...                        )
-    SELECT lower(searchword_1.word) AS lower_1, lower(searchword_2.word) AS lower_2 
-    FROM searchword AS searchword_1, searchword AS searchword_2 
+    SELECT lower(searchword_1.word) AS lower_1, lower(searchword_2.word) AS lower_2
+    FROM searchword AS searchword_1, searchword AS searchword_2
     WHERE lower(searchword_1.word) > lower(searchword_2.word)
 
 Python only expression::
@@ -403,7 +403,7 @@ Building Transformers
 ----------------------
 
 A *transformer* is an object which can receive a :class:`.Query` object and return a
-new one.   The :class:`.Query` object includes a method :meth:`.with_transformation` 
+new one.   The :class:`.Query` object includes a method :meth:`.with_transformation`
 that simply returns a new :class:`.Query` transformed by the given function.
 
 We can combine this with the :class:`.Comparator` class to produce one type
@@ -412,18 +412,18 @@ filtering criterion.
 
 Consider a mapped class ``Node``, which assembles using adjacency list into a hierarchical
 tree pattern::
-    
+
     from sqlalchemy import Column, Integer, ForeignKey
     from sqlalchemy.orm import relationship
     from sqlalchemy.ext.declarative import declarative_base
     Base = declarative_base()
-    
+
     class Node(Base):
         __tablename__ = 'node'
         id =Column(Integer, primary_key=True)
         parent_id = Column(Integer, ForeignKey('node.id'))
         parent = relationship("Node", remote_side=id)
-    
+
 Suppose we wanted to add an accessor ``grandparent``.  This would return the ``parent`` of
 ``Node.parent``.  When we have an instance of ``Node``, this is simple::
 
@@ -431,7 +431,7 @@ Suppose we wanted to add an accessor ``grandparent``.  This would return the ``p
 
     class Node(Base):
         # ...
-        
+
         @hybrid_property
         def grandparent(self):
             return self.parent.parent
@@ -460,7 +460,7 @@ attribute and filtered based on the given criterion::
         id =Column(Integer, primary_key=True)
         parent_id = Column(Integer, ForeignKey('node.id'))
         parent = relationship("Node", remote_side=id)
-        
+
         @hybrid_property
         def grandparent(self):
             return self.parent.parent
@@ -486,8 +486,8 @@ using :attr:`.Operators.eq` against the left and right sides, passing into
     {sql}>>> session.query(Node).\\
     ...        with_transformation(Node.grandparent==Node(id=5)).\\
     ...        all()
-    SELECT node.id AS node_id, node.parent_id AS node_parent_id 
-    FROM node JOIN node AS node_1 ON node_1.id = node.parent_id 
+    SELECT node.id AS node_id, node.parent_id AS node_parent_id
+    FROM node JOIN node AS node_1 ON node_1.id = node.parent_id
     WHERE :param_1 = node_1.parent_id
     {stop}
 
@@ -529,14 +529,14 @@ with each class::
     {sql}>>> session.query(Node).\\
     ...            with_transformation(Node.grandparent.join).\\
     ...            filter(Node.grandparent==Node(id=5))
-    SELECT node.id AS node_id, node.parent_id AS node_parent_id 
-    FROM node JOIN node AS node_1 ON node_1.id = node.parent_id 
+    SELECT node.id AS node_id, node.parent_id AS node_parent_id
+    FROM node JOIN node AS node_1 ON node_1.id = node.parent_id
     WHERE :param_1 = node_1.parent_id
     {stop}
 
 The "transformer" pattern is an experimental pattern that starts
 to make usage of some functional programming paradigms.
-While it's only recommended for advanced and/or patient developers, 
+While it's only recommended for advanced and/or patient developers,
 there's probably a whole lot of amazing things it can be used for.
 
 """
@@ -546,26 +546,26 @@ from sqlalchemy.orm import attributes, interfaces
 class hybrid_method(object):
     """A decorator which allows definition of a Python object method with both
     instance-level and class-level behavior.
-    
+
     """
 
 
     def __init__(self, func, expr=None):
         """Create a new :class:`.hybrid_method`.
-        
+
         Usage is typically via decorator::
-        
+
             from sqlalchemy.ext.hybrid import hybrid_method
-        
+
             class SomeClass(object):
                 @hybrid_method
                 def value(self, x, y):
                     return self._value + x + y
-            
+
                 @value.expression
                 def value(self, x, y):
                     return func.some_function(self._value, x, y)
-            
+
         """
         self.func = func
         self.expr = expr or func
@@ -585,25 +585,25 @@ class hybrid_method(object):
 class hybrid_property(object):
     """A decorator which allows definition of a Python descriptor with both
     instance-level and class-level behavior.
-    
+
     """
 
     def __init__(self, fget, fset=None, fdel=None, expr=None):
         """Create a new :class:`.hybrid_property`.
-        
+
         Usage is typically via decorator::
-        
+
             from sqlalchemy.ext.hybrid import hybrid_property
-        
+
             class SomeClass(object):
                 @hybrid_property
                 def value(self):
                     return self._value
-            
+
                 @value.setter
                 def value(self, value):
                     self._value = value
-            
+
         """
         self.fget = fget
         self.fset = fset
@@ -647,10 +647,10 @@ class hybrid_property(object):
 
     def comparator(self, comparator):
         """Provide a modifying decorator that defines a custom comparator producing method.
-        
+
         The return value of the decorated method should be an instance of
         :class:`~.hybrid.Comparator`.
-        
+
         """
 
         proxy_attr = attributes.\

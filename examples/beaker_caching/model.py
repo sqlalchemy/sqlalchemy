@@ -1,5 +1,5 @@
 """Model.   We are modeling Person objects with a collection
-of Address objects.  Each Address has a PostalCode, which 
+of Address objects.  Each Address has a PostalCode, which
 in turn references a City and then a Country:
 
 Person --(1..n)--> Address
@@ -70,7 +70,7 @@ class Address(Base):
     def __str__(self):
         return "%s\t"\
               "%s, %s\t"\
-              "%s" % (self.street, self.city.name, 
+              "%s" % (self.street, self.city.name,
                 self.postal_code.code, self.country.name)
 
 class Person(Base):

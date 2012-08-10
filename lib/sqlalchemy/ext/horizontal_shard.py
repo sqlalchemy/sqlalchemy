@@ -9,7 +9,7 @@
 Defines a rudimental 'horizontal sharding' system which allows a Session to
 distribute queries and persistence operations across multiple databases.
 
-For a usage example, see the :ref:`examples_sharding` example included in 
+For a usage example, see the :ref:`examples_sharding` example included in
 the source distribution.
 
 """
@@ -31,7 +31,7 @@ class ShardedQuery(Query):
     def set_shard(self, shard_id):
         """return a new query, limited to a single shard ID.
 
-        all subsequent operations with the returned query will 
+        all subsequent operations with the returned query will
         be against the single shard regardless of other state.
         """
 
@@ -45,7 +45,7 @@ class ShardedQuery(Query):
             result = self._connection_from_session(
                             mapper=self._mapper_zero(),
                             shard_id=shard_id).execute(
-                                                context.statement, 
+                                                context.statement,
                                                 self._params)
             return self.instances(result, context)
 
@@ -56,7 +56,7 @@ class ShardedQuery(Query):
             for shard_id in self.query_chooser(self):
                 partial.extend(iter_for_shard(shard_id))
 
-            # if some kind of in memory 'sorting' 
+            # if some kind of in memory 'sorting'
             # were done, this is where it would happen
             return iter(partial)
 
@@ -73,7 +73,7 @@ class ShardedQuery(Query):
                 return None
 
 class ShardedSession(Session):
-    def __init__(self, shard_chooser, id_chooser, query_chooser, shards=None, 
+    def __init__(self, shard_chooser, id_chooser, query_chooser, shards=None,
                  query_cls=ShardedQuery, **kwargs):
         """Construct a ShardedSession.
 
@@ -113,8 +113,8 @@ class ShardedSession(Session):
         if self.transaction is not None:
             return self.transaction.connection(mapper, shard_id=shard_id)
         else:
-            return self.get_bind(mapper, 
-                                shard_id=shard_id, 
+            return self.get_bind(mapper,
+                                shard_id=shard_id,
                                 instance=instance).contextual_connect(**kwargs)
 
     def get_bind(self, mapper, shard_id=None, instance=None, clause=None, **kw):

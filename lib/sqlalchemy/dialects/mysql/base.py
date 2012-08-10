@@ -44,7 +44,7 @@ Connection Timeouts
 -------------------
 
 MySQL features an automatic connection close behavior, for connections that have
-been idle for eight hours or more.   To circumvent having this issue, use the 
+been idle for eight hours or more.   To circumvent having this issue, use the
 ``pool_recycle`` option which controls the maximum age of any connection::
 
     engine = create_engine('mysql+mysqldb://...', pool_recycle=3600)
@@ -87,15 +87,15 @@ to be used.
 Transaction Isolation Level
 ---------------------------
 
-:func:`.create_engine` accepts an ``isolation_level`` 
-parameter which results in the command ``SET SESSION 
-TRANSACTION ISOLATION LEVEL <level>`` being invoked for 
+:func:`.create_engine` accepts an ``isolation_level``
+parameter which results in the command ``SET SESSION
+TRANSACTION ISOLATION LEVEL <level>`` being invoked for
 every new connection. Valid values for this parameter are
-``READ COMMITTED``, ``READ UNCOMMITTED``, 
+``READ COMMITTED``, ``READ UNCOMMITTED``,
 ``REPEATABLE READ``, and ``SERIALIZABLE``::
 
     engine = create_engine(
-                    "mysql://scott:tiger@localhost/test", 
+                    "mysql://scott:tiger@localhost/test",
                     isolation_level="READ UNCOMMITTED"
                 )
 
@@ -193,7 +193,7 @@ usual definition of "number of rows matched by an UPDATE or DELETE" statement.
 This is in contradiction to the default setting on most MySQL DBAPI drivers,
 which is "number of rows actually modified/deleted".  For this reason, the
 SQLAlchemy MySQL dialects always set the ``constants.CLIENT.FOUND_ROWS`` flag,
-or whatever is equivalent for the DBAPI in use, on connect, unless the flag value 
+or whatever is equivalent for the DBAPI in use, on connect, unless the flag value
 is overridden using DBAPI-specific options
 (such as ``client_flag`` for the MySQL-Python driver, ``found_rows`` for the
 OurSQL driver).
@@ -260,7 +260,7 @@ Index Types
 ~~~~~~~~~~~~~
 
 Some MySQL storage engines permit you to specify an index type when creating
-an index or primary key constraint. SQLAlchemy provides this feature via the 
+an index or primary key constraint. SQLAlchemy provides this feature via the
 ``mysql_using`` parameter on :class:`.Index`::
 
     Index('my_index', my_table.c.data, mysql_using='hash')
@@ -270,7 +270,7 @@ As well as the ``mysql_using`` parameter on :class:`.PrimaryKeyConstraint`::
     PrimaryKeyConstraint("data", mysql_using='hash')
 
 The value passed to the keyword argument will be simply passed through to the
-underlying CREATE INDEX or PRIMARY KEY clause, so it *must* be a valid index 
+underlying CREATE INDEX or PRIMARY KEY clause, so it *must* be a valid index
 type for your MySQL storage engine.
 
 More information can be found at:
@@ -1307,13 +1307,13 @@ class MySQLCompiler(compiler.SQLCompiler):
 
     def get_select_precolumns(self, select):
         """Add special MySQL keywords in place of DISTINCT.
-        
-        .. note:: 
-        
+
+        .. note::
+
           this usage is deprecated.  :meth:`.Select.prefix_with`
           should be used for special keywords at the start
           of a SELECT.
-          
+
         """
         if isinstance(select._distinct, basestring):
             return select._distinct.upper() + " "
@@ -1361,16 +1361,16 @@ class MySQLCompiler(compiler.SQLCompiler):
             if limit is None:
                 # hardwire the upper limit.  Currently
                 # needed by OurSQL with Python 3
-                # (https://bugs.launchpad.net/oursql/+bug/686232), 
+                # (https://bugs.launchpad.net/oursql/+bug/686232),
                 # but also is consistent with the usage of the upper
                 # bound as part of MySQL's "syntax" for OFFSET with
                 # no LIMIT
                 return ' \n LIMIT %s, %s' % (
-                                self.process(sql.literal(offset)), 
+                                self.process(sql.literal(offset)),
                                 "18446744073709551615")
             else:
                 return ' \n LIMIT %s, %s' % (
-                                self.process(sql.literal(offset)), 
+                                self.process(sql.literal(offset)),
                                 self.process(sql.literal(limit)))
         else:
             # No offset provided, so just use the limit
@@ -1384,10 +1384,10 @@ class MySQLCompiler(compiler.SQLCompiler):
             return None
 
     def update_tables_clause(self, update_stmt, from_table, extra_froms, **kw):
-        return ', '.join(t._compiler_dispatch(self, asfrom=True, **kw) 
+        return ', '.join(t._compiler_dispatch(self, asfrom=True, **kw)
                     for t in [from_table] + list(extra_froms))
 
-    def update_from_clause(self, update_stmt, from_table, 
+    def update_from_clause(self, update_stmt, from_table,
                                 extra_froms, from_hints, **kw):
         return None
 
@@ -1416,7 +1416,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             constraint_string += "KEY %s (%s)" % (
                         self.preparer.quote(
                             "idx_autoinc_%s" % auto_inc_column.name, None
-                        ), 
+                        ),
                         self.preparer.format_column(auto_inc_column)
                     )
 
@@ -1453,7 +1453,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
         opts = dict(
             (
-                k[len(self.dialect.name)+1:].upper(), 
+                k[len(self.dialect.name)+1:].upper(),
                 v
             )
             for k, v in table.kwargs.items()
@@ -1469,7 +1469,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
                 arg = "'%s'" % arg.replace("\\", "\\\\").replace("'", "''")
 
             if opt in ('DATA_DIRECTORY', 'INDEX_DIRECTORY',
-                       'DEFAULT_CHARACTER_SET', 'CHARACTER_SET', 
+                       'DEFAULT_CHARACTER_SET', 'CHARACTER_SET',
                        'DEFAULT_CHARSET',
                        'DEFAULT_COLLATE'):
                 opt = opt.replace('_', ' ')
@@ -1489,7 +1489,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         table = preparer.format_table(index.table)
         columns = [preparer.quote(c.name, c.quote) for c in index.columns]
         name = preparer.quote(
-                    self._index_identifier(index.name), 
+                    self._index_identifier(index.name),
                     index.quote)
 
         text = "CREATE "
@@ -1598,24 +1598,24 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         if type_.precision is None:
             return self._extend_numeric(type_, "NUMERIC")
         elif type_.scale is None:
-            return self._extend_numeric(type_, 
-                            "NUMERIC(%(precision)s)" % 
+            return self._extend_numeric(type_,
+                            "NUMERIC(%(precision)s)" %
                             {'precision': type_.precision})
         else:
-            return self._extend_numeric(type_, 
-                            "NUMERIC(%(precision)s, %(scale)s)" % 
+            return self._extend_numeric(type_,
+                            "NUMERIC(%(precision)s, %(scale)s)" %
                             {'precision': type_.precision, 'scale' : type_.scale})
 
     def visit_DECIMAL(self, type_):
         if type_.precision is None:
             return self._extend_numeric(type_, "DECIMAL")
         elif type_.scale is None:
-            return self._extend_numeric(type_, 
-                            "DECIMAL(%(precision)s)" % 
+            return self._extend_numeric(type_,
+                            "DECIMAL(%(precision)s)" %
                             {'precision': type_.precision})
         else:
-            return self._extend_numeric(type_, 
-                            "DECIMAL(%(precision)s, %(scale)s)" % 
+            return self._extend_numeric(type_,
+                            "DECIMAL(%(precision)s, %(scale)s)" %
                             {'precision': type_.precision, 'scale' : type_.scale})
 
     def visit_DOUBLE(self, type_):
@@ -1638,7 +1638,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         if self._mysql_type(type_) and \
             type_.scale is not None and \
             type_.precision is not None:
-            return self._extend_numeric(type_, 
+            return self._extend_numeric(type_,
                             "FLOAT(%s, %s)" % (type_.precision, type_.scale))
         elif type_.precision is not None:
             return self._extend_numeric(type_, "FLOAT(%s)" % (type_.precision,))
@@ -1647,24 +1647,24 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_INTEGER(self, type_):
         if self._mysql_type(type_) and type_.display_width is not None:
-            return self._extend_numeric(type_, 
-                        "INTEGER(%(display_width)s)" % 
+            return self._extend_numeric(type_,
+                        "INTEGER(%(display_width)s)" %
                         {'display_width': type_.display_width})
         else:
             return self._extend_numeric(type_, "INTEGER")
 
     def visit_BIGINT(self, type_):
         if self._mysql_type(type_) and type_.display_width is not None:
-            return self._extend_numeric(type_, 
-                        "BIGINT(%(display_width)s)" % 
+            return self._extend_numeric(type_,
+                        "BIGINT(%(display_width)s)" %
                         {'display_width': type_.display_width})
         else:
             return self._extend_numeric(type_, "BIGINT")
 
     def visit_MEDIUMINT(self, type_):
         if self._mysql_type(type_) and type_.display_width is not None:
-            return self._extend_numeric(type_, 
-                        "MEDIUMINT(%(display_width)s)" % 
+            return self._extend_numeric(type_,
+                        "MEDIUMINT(%(display_width)s)" %
                         {'display_width': type_.display_width})
         else:
             return self._extend_numeric(type_, "MEDIUMINT")
@@ -1677,8 +1677,8 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_SMALLINT(self, type_):
         if self._mysql_type(type_) and type_.display_width is not None:
-            return self._extend_numeric(type_, 
-                        "SMALLINT(%(display_width)s)" % 
+            return self._extend_numeric(type_,
+                        "SMALLINT(%(display_width)s)" %
                         {'display_width': type_.display_width}
                     )
         else:
@@ -1728,7 +1728,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
             return self._extend_string(type_, {}, "VARCHAR(%d)" % type_.length)
         else:
             raise exc.CompileError(
-                    "VARCHAR requires a length on dialect %s" % 
+                    "VARCHAR requires a length on dialect %s" %
                     self.dialect.name)
 
     def visit_CHAR(self, type_):
@@ -1744,7 +1744,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
             return self._extend_string(type_, {'national':True}, "VARCHAR(%(length)s)" % {'length': type_.length})
         else:
             raise exc.CompileError(
-                    "NVARCHAR requires a length on dialect %s" % 
+                    "NVARCHAR requires a length on dialect %s" %
                     self.dialect.name)
 
     def visit_NCHAR(self, type_):
@@ -1805,8 +1805,8 @@ class MySQLIdentifierPreparer(compiler.IdentifierPreparer):
             quote = '"'
 
         super(MySQLIdentifierPreparer, self).__init__(
-                                                dialect, 
-                                                initial_quote=quote, 
+                                                dialect,
+                                                initial_quote=quote,
                                                 escape_quote=quote)
 
     def _quote_free_identifiers(self, *ids):
@@ -1839,7 +1839,7 @@ class MySQLDialect(default.DefaultDialect):
     preparer = MySQLIdentifierPreparer
 
     # default SQL compilation settings -
-    # these are modified upon initialize(), 
+    # these are modified upon initialize(),
     # i.e. first connect
     _backslash_escapes = True
     _server_ansiquotes = False
@@ -1856,7 +1856,7 @@ class MySQLDialect(default.DefaultDialect):
         else:
             return None
 
-    _isolation_lookup = set(['SERIALIZABLE', 
+    _isolation_lookup = set(['SERIALIZABLE',
                 'READ UNCOMMITTED', 'READ COMMITTED', 'REPEATABLE READ'])
 
     def set_isolation_level(self, connection, level):
@@ -1864,7 +1864,7 @@ class MySQLDialect(default.DefaultDialect):
         if level not in self._isolation_lookup:
             raise exc.ArgumentError(
                 "Invalid value '%s' for isolation_level. "
-                "Valid isolation levels for %s are %s" % 
+                "Valid isolation levels for %s are %s" %
                 (level, self.name, ", ".join(self._isolation_lookup))
                 )
         cursor = connection.cursor()
@@ -1936,7 +1936,7 @@ class MySQLDialect(default.DefaultDialect):
             return self._extract_error_code(e) in \
                         (2006, 2013, 2014, 2045, 2055)
         elif isinstance(e, self.dbapi.InterfaceError):
-            # if underlying connection is closed, 
+            # if underlying connection is closed,
             # this is the error you get
             return "(0, '')" in str(e)
         else:
@@ -2150,9 +2150,9 @@ class MySQLDialect(default.DefaultDialect):
 
     def _parsed_state_or_create(self, connection, table_name, schema=None, **kw):
         return self._setup_parser(
-                        connection, 
-                        table_name, 
-                        schema, 
+                        connection,
+                        table_name,
+                        schema,
                         info_cache=kw.get('info_cache', None)
                     )
 
@@ -2160,7 +2160,7 @@ class MySQLDialect(default.DefaultDialect):
     def _tabledef_parser(self):
         """return the MySQLTableDefinitionParser, generate if needed.
 
-        The deferred creation ensures that the dialect has 
+        The deferred creation ensures that the dialect has
         retrieved server version information first.
 
         """

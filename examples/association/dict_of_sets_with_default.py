@@ -44,7 +44,7 @@ class B(Base):
     key = Column(String)
 
     values = association_proxy("elements", "value")
-    """Bridge the association from 'elements' over to the 
+    """Bridge the association from 'elements' over to the
     'value' element of C."""
 
     def __init__(self, key, values=None):

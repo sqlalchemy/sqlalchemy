@@ -32,7 +32,7 @@ class PersistentGisElement(GisElement):
 class TextualGisElement(GisElement, expression.Function):
     """Represents a Geometry value as expressed within application code; i.e. in wkt format.
 
-    Extends expression.Function so that the value is interpreted as 
+    Extends expression.Function so that the value is interpreted as
     GeomFromText(value) in a SQL expression context.
 
     """
@@ -74,7 +74,7 @@ class Geometry(TypeEngine):
                 return value
         return process
 
-# other datatypes can be added as needed, which 
+# other datatypes can be added as needed, which
 # currently only affect DDL statements.
 
 class Point(Geometry):
@@ -92,7 +92,7 @@ class LineString(Curve):
 # DDL integration
 
 class GISDDL(object):
-    """A DDL extension which integrates SQLAlchemy table create/drop 
+    """A DDL extension which integrates SQLAlchemy table create/drop
     methods with PostGis' AddGeometryColumn/DropGeometryColumn functions.
 
     Usage::
@@ -162,7 +162,7 @@ def _to_postgis(value):
 
 
 class GisAttribute(AttributeExtension):
-    """Intercepts 'set' events on a mapped instance attribute and 
+    """Intercepts 'set' events on a mapped instance attribute and
     converts the incoming value to a GIS expression.
 
     """
@@ -198,8 +198,8 @@ def GISColumn(*args, **kw):
 
     """
     return column_property(
-                Column(*args, **kw), 
-                extension=GisAttribute(), 
+                Column(*args, **kw),
+                extension=GisAttribute(),
                 comparator_factory=GisComparator
             )
 

@@ -121,7 +121,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         # backref fires
         assert a1.user is u2
 
-        # everything expires, no changes in 
+        # everything expires, no changes in
         # u1.addresses, so all is fine
         sess.commit()
         assert a1 not in u1.addresses
@@ -143,7 +143,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         u1.addresses
 
         # direct set - the "old" is "fetched",
-        # but only from the local session - not the 
+        # but only from the local session - not the
         # database, due to the PASSIVE_NO_FETCH flag.
         # this is a more fine grained behavior introduced
         # in 0.6
@@ -207,7 +207,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         sess.add_all([u1, u2, a1])
         sess.commit()
 
-        # direct set - the fetching of the 
+        # direct set - the fetching of the
         # "old" u1 here allows the backref
         # to remove it from the addresses collection
         a1.user = u2
@@ -230,7 +230,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         # u1.addresses is loaded
         u1.addresses
 
-        # direct set - the fetching of the 
+        # direct set - the fetching of the
         # "old" u1 here allows the backref
         # to remove it from the addresses collection
         a1.user = u2
@@ -455,8 +455,8 @@ class O2OScalarOrphanTest(_fixtures.FixtureTest):
 
         mapper(Address, addresses)
         mapper(User, users, properties = {
-            'address':relationship(Address, uselist=False, 
-                backref=backref('user', single_parent=True, 
+            'address':relationship(Address, uselist=False,
+                backref=backref('user', single_parent=True,
                                     cascade="all, delete-orphan"))
         })
 
@@ -491,7 +491,7 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
                                 cls.classes.Item)
 
         mapper(Item, items, properties={
-            'keywords':relationship(Keyword, secondary=item_keywords, 
+            'keywords':relationship(Keyword, secondary=item_keywords,
                                     backref='items')
         })
         mapper(Keyword, keywords)
@@ -603,8 +603,8 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
                                 cls.classes.Item)
 
         mapper(Item, items, properties={
-            'keyword':relationship(Keyword, secondary=item_keywords, 
-                                    uselist=False, 
+            'keyword':relationship(Keyword, secondary=item_keywords,
+                                    uselist=False,
                                     backref=backref("item", uselist=False))
         })
         mapper(Keyword, keywords)
@@ -718,7 +718,7 @@ class M2MStaleBackrefTest(_fixtures.FixtureTest):
                                 cls.classes.Item)
 
         mapper(Item, items, properties={
-            'keywords':relationship(Keyword, secondary=item_keywords, 
+            'keywords':relationship(Keyword, secondary=item_keywords,
                                     backref='items')
         })
         mapper(Keyword, keywords)

@@ -641,8 +641,8 @@ class ProxyFactoryTest(ListTest):
                     )
 
         class Parent(object):
-            children = association_proxy('_children', 'name', 
-                        proxy_factory=CustomProxy, 
+            children = association_proxy('_children', 'name',
+                        proxy_factory=CustomProxy,
                         proxy_bulk_set=CustomProxy.extend
                     )
 
@@ -1017,17 +1017,17 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('userkeywords', metadata, 
+        Table('userkeywords', metadata,
           Column('keyword_id', Integer,ForeignKey('keywords.id'), primary_key=True),
           Column('user_id', Integer, ForeignKey('users.id'))
         )
-        Table('users', metadata, 
+        Table('users', metadata,
             Column('id', Integer,
               primary_key=True, test_needs_autoincrement=True),
             Column('name', String(64)),
             Column('singular_id', Integer, ForeignKey('singular.id'))
         )
-        Table('keywords', metadata, 
+        Table('keywords', metadata,
             Column('id', Integer,
               primary_key=True, test_needs_autoincrement=True),
             Column('keyword', String(64)),
@@ -1090,7 +1090,7 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
         })
 
         mapper(UserKeyword, userkeywords, properties={
-            'user' : relationship(User, backref='user_keywords'), 
+            'user' : relationship(User, backref='user_keywords'),
             'keyword' : relationship(Keyword)
         })
         mapper(Singular, singular, properties={
@@ -1288,7 +1288,7 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
         User = self.classes.User
         self.assert_compile(
             self.session.query(User).join(
-                        User.keywords.local_attr, 
+                        User.keywords.local_attr,
                         User.keywords.remote_attr),
             "SELECT users.id AS users_id, users.name AS users_name, "
             "users.singular_id AS users_singular_id "
@@ -1321,7 +1321,7 @@ class DictOfTupleUpdateTest(fixtures.TestBase):
 
         m = MetaData()
         a = Table('a', m, Column('id', Integer, primary_key=True))
-        b = Table('b', m, Column('id', Integer, primary_key=True), 
+        b = Table('b', m, Column('id', Integer, primary_key=True),
                     Column('aid', Integer, ForeignKey('a.id')))
         mapper(A, a, properties={
             'orig':relationship(B, collection_class=attribute_mapped_collection('key'))

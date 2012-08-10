@@ -29,17 +29,17 @@ class RelationshipTest1(fixtures.MappedTest):
         global people, managers
 
         people = Table('people', metadata,
-           Column('person_id', Integer, Sequence('person_id_seq', 
-                                        optional=True), 
+           Column('person_id', Integer, Sequence('person_id_seq',
+                                        optional=True),
                                         primary_key=True),
-           Column('manager_id', Integer, 
-                                ForeignKey('managers.person_id', 
+           Column('manager_id', Integer,
+                                ForeignKey('managers.person_id',
                                 use_alter=True, name="mpid_fq")),
            Column('name', String(50)),
            Column('type', String(30)))
 
         managers = Table('managers', metadata,
-           Column('person_id', Integer, ForeignKey('people.person_id'), 
+           Column('person_id', Integer, ForeignKey('people.person_id'),
                                     primary_key=True),
            Column('status', String(30)),
            Column('manager_name', String(50))
@@ -64,7 +64,7 @@ class RelationshipTest1(fixtures.MappedTest):
         mapper(Manager, managers, inherits=Person,
                inherit_condition=people.c.person_id==managers.c.person_id)
 
-        eq_(class_mapper(Person).get_property('manager').synchronize_pairs, 
+        eq_(class_mapper(Person).get_property('manager').synchronize_pairs,
                 [(managers.c.person_id,people.c.manager_id)])
 
         session = create_session()
@@ -86,9 +86,9 @@ class RelationshipTest1(fixtures.MappedTest):
             pass
 
         mapper(Person, people)
-        mapper(Manager, managers, inherits=Person, 
+        mapper(Manager, managers, inherits=Person,
                             inherit_condition=people.c.person_id==
-                                        managers.c.person_id, 
+                                        managers.c.person_id,
         properties={
             'employee':relationship(Person, primaryjoin=(
                                             people.c.manager_id ==
@@ -115,7 +115,7 @@ class RelationshipTest2(fixtures.MappedTest):
     def define_tables(cls, metadata):
         global people, managers, data
         people = Table('people', metadata,
-           Column('person_id', Integer, primary_key=True, 
+           Column('person_id', Integer, primary_key=True,
                                         test_needs_autoincrement=True),
            Column('name', String(50)),
            Column('type', String(30)))
@@ -128,7 +128,7 @@ class RelationshipTest2(fixtures.MappedTest):
            )
 
         data = Table('data', metadata,
-            Column('person_id', Integer, ForeignKey('managers.person_id'), 
+            Column('person_id', Integer, ForeignKey('managers.person_id'),
                                                 primary_key=True),
             Column('data', String(30))
             )
@@ -155,14 +155,14 @@ class RelationshipTest2(fixtures.MappedTest):
         if jointype == "join1":
             poly_union = polymorphic_union({
                 'person':people.select(people.c.type=='person'),
-                'manager':join(people, managers, 
+                'manager':join(people, managers,
                         people.c.person_id==managers.c.person_id)
             }, None)
             polymorphic_on=poly_union.c.type
         elif jointype == "join2":
             poly_union = polymorphic_union({
                 'person':people.select(people.c.type=='person'),
-                'manager':managers.join(people, 
+                'manager':managers.join(people,
                         people.c.person_id==managers.c.person_id)
             }, None)
             polymorphic_on=poly_union.c.type
@@ -176,35 +176,35 @@ class RelationshipTest2(fixtures.MappedTest):
                     self.data = data
             mapper(Data, data)
 
-        mapper(Person, people, 
-                            with_polymorphic=('*', poly_union), 
-                            polymorphic_identity='person', 
+        mapper(Person, people,
+                            with_polymorphic=('*', poly_union),
+                            polymorphic_identity='person',
                             polymorphic_on=polymorphic_on)
 
         if usedata:
-            mapper(Manager, managers, 
-                            inherits=Person, 
+            mapper(Manager, managers,
+                            inherits=Person,
                             inherit_condition=people.c.person_id==
-                                    managers.c.person_id, 
+                                    managers.c.person_id,
                             polymorphic_identity='manager',
                   properties={
                     'colleague':relationship(
-                                Person, 
+                                Person,
                                 primaryjoin=managers.c.manager_id==
-                                    people.c.person_id, 
+                                    people.c.person_id,
                                 lazy='select', uselist=False),
                     'data':relationship(Data, uselist=False)
                  }
             )
         else:
-            mapper(Manager, managers, inherits=Person, 
+            mapper(Manager, managers, inherits=Person,
                                 inherit_condition=people.c.person_id==
-                                    managers.c.person_id, 
+                                    managers.c.person_id,
                                     polymorphic_identity='manager',
                   properties={
-                    'colleague':relationship(Person, 
+                    'colleague':relationship(Person,
                                 primaryjoin=managers.c.manager_id==
-                                        people.c.person_id, 
+                                        people.c.person_id,
                                         lazy='select', uselist=False)
                  }
             )
@@ -231,20 +231,20 @@ class RelationshipTest3(fixtures.MappedTest):
     def define_tables(cls, metadata):
         global people, managers, data
         people = Table('people', metadata,
-           Column('person_id', Integer, primary_key=True, 
+           Column('person_id', Integer, primary_key=True,
                                             test_needs_autoincrement=True),
            Column('colleague_id', Integer, ForeignKey('people.person_id')),
            Column('name', String(50)),
            Column('type', String(30)))
 
         managers = Table('managers', metadata,
-           Column('person_id', Integer, ForeignKey('people.person_id'), 
+           Column('person_id', Integer, ForeignKey('people.person_id'),
                                             primary_key=True),
            Column('status', String(30)),
            )
 
         data = Table('data', metadata,
-           Column('person_id', Integer, ForeignKey('people.person_id'), 
+           Column('person_id', Integer, ForeignKey('people.person_id'),
                                             primary_key=True),
            Column('data', String(30))
            )
@@ -263,13 +263,13 @@ def _generate_test(jointype="join1", usedata=False):
 
         if jointype == "join1":
             poly_union = polymorphic_union({
-                'manager':managers.join(people, 
+                'manager':managers.join(people,
                                     people.c.person_id==managers.c.person_id),
                 'person':people.select(people.c.type=='person')
             }, None)
         elif jointype =="join2":
             poly_union = polymorphic_union({
-                'manager':join(people, managers, 
+                'manager':join(people, managers,
                                     people.c.person_id==managers.c.person_id),
                 'person':people.select(people.c.type=='person')
             }, None)
@@ -282,34 +282,34 @@ def _generate_test(jointype="join1", usedata=False):
             mapper(Data, data)
 
         if usedata:
-            mapper(Person, people, 
-                                with_polymorphic=('*', poly_union), 
-                                polymorphic_identity='person', 
+            mapper(Person, people,
+                                with_polymorphic=('*', poly_union),
+                                polymorphic_identity='person',
                                 polymorphic_on=people.c.type,
                   properties={
-                    'colleagues':relationship(Person, 
+                    'colleagues':relationship(Person,
                                 primaryjoin=people.c.colleague_id==
-                                        people.c.person_id, 
-                                remote_side=people.c.colleague_id, 
+                                        people.c.person_id,
+                                remote_side=people.c.colleague_id,
                                 uselist=True),
                     'data':relationship(Data, uselist=False)
                     }
             )
         else:
-            mapper(Person, people, 
-                    with_polymorphic=('*', poly_union), 
-                    polymorphic_identity='person', 
+            mapper(Person, people,
+                    with_polymorphic=('*', poly_union),
+                    polymorphic_identity='person',
                     polymorphic_on=people.c.type,
                   properties={
-                    'colleagues':relationship(Person, 
+                    'colleagues':relationship(Person,
                         primaryjoin=people.c.colleague_id==people.c.person_id,
                         remote_side=people.c.colleague_id, uselist=True)
                     }
             )
 
-        mapper(Manager, managers, inherits=Person, 
+        mapper(Manager, managers, inherits=Person,
                     inherit_condition=people.c.person_id==
-                        managers.c.person_id, 
+                        managers.c.person_id,
                         polymorphic_identity='manager')
 
         sess = create_session()
@@ -355,22 +355,22 @@ class RelationshipTest4(fixtures.MappedTest):
     def define_tables(cls, metadata):
         global people, engineers, managers, cars
         people = Table('people', metadata,
-           Column('person_id', Integer, primary_key=True, 
+           Column('person_id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
            Column('name', String(50)))
 
         engineers = Table('engineers', metadata,
-           Column('person_id', Integer, ForeignKey('people.person_id'), 
+           Column('person_id', Integer, ForeignKey('people.person_id'),
                                     primary_key=True),
            Column('status', String(30)))
 
         managers = Table('managers', metadata,
-           Column('person_id', Integer, ForeignKey('people.person_id'), 
+           Column('person_id', Integer, ForeignKey('people.person_id'),
                                     primary_key=True),
            Column('longer_status', String(70)))
 
         cars = Table('cars', metadata,
-           Column('car_id', Integer, primary_key=True, 
+           Column('car_id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
            Column('owner', Integer, ForeignKey('people.person_id')))
 
@@ -411,17 +411,17 @@ class RelationshipTest4(fixtures.MappedTest):
                 'manager':people.join(managers),
             }, "type", 'employee_join')
 
-        person_mapper   = mapper(Person, people, 
-                                    with_polymorphic=('*', employee_join), 
-                                    polymorphic_on=employee_join.c.type, 
+        person_mapper   = mapper(Person, people,
+                                    with_polymorphic=('*', employee_join),
+                                    polymorphic_on=employee_join.c.type,
                                     polymorphic_identity='person')
-        engineer_mapper = mapper(Engineer, engineers, 
-                                    inherits=person_mapper, 
+        engineer_mapper = mapper(Engineer, engineers,
+                                    inherits=person_mapper,
                                     polymorphic_identity='engineer')
-        manager_mapper  = mapper(Manager, managers, 
-                                    inherits=person_mapper, 
+        manager_mapper  = mapper(Manager, managers,
+                                    inherits=person_mapper,
                                     polymorphic_identity='manager')
-        car_mapper      = mapper(Car, cars, 
+        car_mapper      = mapper(Car, cars,
                                     properties= {'employee':
                                             relationship(person_mapper)})
 
@@ -485,23 +485,23 @@ class RelationshipTest5(fixtures.MappedTest):
     def define_tables(cls, metadata):
         global people, engineers, managers, cars
         people = Table('people', metadata,
-           Column('person_id', Integer, primary_key=True, 
+           Column('person_id', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
            Column('name', String(50)),
            Column('type', String(50)))
 
         engineers = Table('engineers', metadata,
-           Column('person_id', Integer, ForeignKey('people.person_id'), 
+           Column('person_id', Integer, ForeignKey('people.person_id'),
                                 primary_key=True),
            Column('status', String(30)))
 
         managers = Table('managers', metadata,
-           Column('person_id', Integer, ForeignKey('people.person_id'), 
+           Column('person_id', Integer, ForeignKey('people.person_id'),
                                 primary_key=True),
            Column('longer_status', String(70)))
 
         cars = Table('cars', metadata,
-           Column('car_id', Integer, primary_key=True, 
+           Column('car_id', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
            Column('owner', Integer, ForeignKey('people.person_id')))
 
@@ -530,14 +530,14 @@ class RelationshipTest5(fixtures.MappedTest):
             def __repr__(self):
                 return "Car number %d" % self.car_id
 
-        person_mapper   = mapper(Person, people, 
-                                    polymorphic_on=people.c.type, 
+        person_mapper   = mapper(Person, people,
+                                    polymorphic_on=people.c.type,
                                     polymorphic_identity='person')
-        engineer_mapper = mapper(Engineer, engineers, 
-                                    inherits=person_mapper, 
+        engineer_mapper = mapper(Engineer, engineers,
+                                    inherits=person_mapper,
                                     polymorphic_identity='engineer')
-        manager_mapper  = mapper(Manager, managers, 
-                                    inherits=person_mapper, 
+        manager_mapper  = mapper(Manager, managers,
+                                    inherits=person_mapper,
                                     polymorphic_identity='manager')
         car_mapper      = mapper(Car, cars, properties= {
                                     'manager':relationship(
@@ -564,15 +564,15 @@ class RelationshipTest6(fixtures.MappedTest):
     def define_tables(cls, metadata):
         global people, managers, data
         people = Table('people', metadata,
-           Column('person_id', Integer, primary_key=True, 
+           Column('person_id', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
            Column('name', String(50)),
            )
 
         managers = Table('managers', metadata,
-           Column('person_id', Integer, ForeignKey('people.person_id'), 
+           Column('person_id', Integer, ForeignKey('people.person_id'),
                                 primary_key=True),
-           Column('colleague_id', Integer, 
+           Column('colleague_id', Integer,
                             ForeignKey('managers.person_id')),
            Column('status', String(30)),
            )
@@ -585,13 +585,13 @@ class RelationshipTest6(fixtures.MappedTest):
 
         mapper(Person, people)
 
-        mapper(Manager, managers, inherits=Person, 
+        mapper(Manager, managers, inherits=Person,
                             inherit_condition=people.c.person_id==\
                                     managers.c.person_id,
               properties={
-                'colleague':relationship(Manager, 
+                'colleague':relationship(Manager,
                                 primaryjoin=managers.c.colleague_id==\
-                                    managers.c.person_id, 
+                                    managers.c.person_id,
                                     lazy='select', uselist=False)
              }
         )
@@ -613,7 +613,7 @@ class RelationshipTest7(fixtures.MappedTest):
     def define_tables(cls, metadata):
         global people, engineers, managers, cars, offroad_cars
         cars = Table('cars', metadata,
-                Column('car_id', Integer, primary_key=True, 
+                Column('car_id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
                 Column('name', String(30)))
 
@@ -622,20 +622,20 @@ class RelationshipTest7(fixtures.MappedTest):
                                     nullable=False,primary_key=True))
 
         people = Table('people', metadata,
-                Column('person_id', Integer, primary_key=True, 
+                Column('person_id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
-                Column('car_id', Integer, ForeignKey('cars.car_id'), 
+                Column('car_id', Integer, ForeignKey('cars.car_id'),
                                     nullable=False),
                 Column('name', String(50)))
 
         engineers = Table('engineers', metadata,
-                Column('person_id', Integer, ForeignKey('people.person_id'), 
+                Column('person_id', Integer, ForeignKey('people.person_id'),
                                     primary_key=True),
                 Column('field', String(30)))
 
 
         managers = Table('managers', metadata,
-                Column('person_id', Integer, ForeignKey('people.person_id'), 
+                Column('person_id', Integer, ForeignKey('people.person_id'),
                                     primary_key=True),
                 Column('category', String(70)))
 
@@ -659,12 +659,12 @@ class RelationshipTest7(fixtures.MappedTest):
 
         class Engineer(Person):
             def __repr__(self):
-                return "Engineer %s, field %s" % (self.name, 
+                return "Engineer %s, field %s" % (self.name,
                                                 self.field)
 
         class Manager(Person):
             def __repr__(self):
-                return "Manager %s, category %s" % (self.name, 
+                return "Manager %s, category %s" % (self.name,
                                                 self.category)
 
         class Car(PersistentObject):
@@ -686,7 +686,7 @@ class RelationshipTest7(fixtures.MappedTest):
         car_join = polymorphic_union(
             {
                 'car' : cars.outerjoin(offroad_cars).\
-                        select(offroad_cars.c.car_id == None, 
+                        select(offroad_cars.c.car_id == None,
                                 fold_equivalents=True),
                 'offroad' : cars.join(offroad_cars)
             }, "type", 'car_join')
@@ -695,20 +695,20 @@ class RelationshipTest7(fixtures.MappedTest):
                 with_polymorphic=('*', car_join) ,polymorphic_on=car_join.c.type,
                 polymorphic_identity='car',
                 )
-        offroad_car_mapper = mapper(Offraod_Car, offroad_cars, 
+        offroad_car_mapper = mapper(Offraod_Car, offroad_cars,
                                     inherits=car_mapper, polymorphic_identity='offroad')
         person_mapper = mapper(Person, people,
-                with_polymorphic=('*', employee_join), 
+                with_polymorphic=('*', employee_join),
                 polymorphic_on=employee_join.c.type,
                 polymorphic_identity='person',
                 properties={
                     'car':relationship(car_mapper)
                     })
-        engineer_mapper = mapper(Engineer, engineers, 
-                                        inherits=person_mapper, 
+        engineer_mapper = mapper(Engineer, engineers,
+                                        inherits=person_mapper,
                                         polymorphic_identity='engineer')
-        manager_mapper  = mapper(Manager, managers, 
-                                        inherits=person_mapper, 
+        manager_mapper  = mapper(Manager, managers,
+                                        inherits=person_mapper,
                                         polymorphic_identity='manager')
 
         session = create_session()
@@ -735,13 +735,13 @@ class RelationshipTest8(fixtures.MappedTest):
     def define_tables(cls, metadata):
         global taggable, users
         taggable = Table('taggable', metadata,
-                         Column('id', Integer, primary_key=True, 
+                         Column('id', Integer, primary_key=True,
                                             test_needs_autoincrement=True),
                          Column('type', String(30)),
                          Column('owner_id', Integer, ForeignKey('taggable.id')),
                          )
         users = Table ('users', metadata,
-                       Column('id', Integer, ForeignKey('taggable.id'), 
+                       Column('id', Integer, ForeignKey('taggable.id'),
                                             primary_key=True),
                        Column('data', String(50)),
                        )
@@ -753,9 +753,9 @@ class RelationshipTest8(fixtures.MappedTest):
         class User(Taggable):
             pass
 
-        mapper( Taggable, taggable, 
-                    polymorphic_on=taggable.c.type, 
-                    polymorphic_identity='taggable', 
+        mapper( Taggable, taggable,
+                    polymorphic_on=taggable.c.type,
+                    polymorphic_identity='taggable',
         properties = {
             'owner' : relationship (User,
                        primaryjoin=taggable.c.owner_id ==taggable.c.id,
@@ -764,7 +764,7 @@ class RelationshipTest8(fixtures.MappedTest):
         })
 
 
-        mapper(User, users, inherits=Taggable, 
+        mapper(User, users, inherits=Taggable,
                 polymorphic_identity='user',
                inherit_condition=users.c.id == taggable.c.id,
                )
@@ -796,33 +796,33 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
         metadata = MetaData(testing.db)
         # table definitions
         status = Table('status', metadata,
-           Column('status_id', Integer, primary_key=True, 
+           Column('status_id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
            Column('name', String(20)))
 
         people = Table('people', metadata,
-           Column('person_id', Integer, primary_key=True, 
+           Column('person_id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
-           Column('status_id', Integer, ForeignKey('status.status_id'), 
+           Column('status_id', Integer, ForeignKey('status.status_id'),
                                     nullable=False),
            Column('name', String(50)))
 
         engineers = Table('engineers', metadata,
-           Column('person_id', Integer, ForeignKey('people.person_id'), 
+           Column('person_id', Integer, ForeignKey('people.person_id'),
                                     primary_key=True),
            Column('field', String(30)))
 
         managers = Table('managers', metadata,
-           Column('person_id', Integer, ForeignKey('people.person_id'), 
+           Column('person_id', Integer, ForeignKey('people.person_id'),
                                     primary_key=True),
            Column('category', String(70)))
 
         cars = Table('cars', metadata,
-           Column('car_id', Integer, primary_key=True, 
+           Column('car_id', Integer, primary_key=True,
                                         test_needs_autoincrement=True),
-           Column('status_id', Integer, ForeignKey('status.status_id'), 
+           Column('status_id', Integer, ForeignKey('status.status_id'),
                                         nullable=False),
-           Column('owner', Integer, ForeignKey('people.person_id'), 
+           Column('owner', Integer, ForeignKey('people.person_id'),
                                         nullable=False))
 
         metadata.create_all()
@@ -868,18 +868,18 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
 
         status_mapper   = mapper(Status, status)
         person_mapper   = mapper(Person, people,
-            with_polymorphic=('*', employee_join), 
+            with_polymorphic=('*', employee_join),
             polymorphic_on=employee_join.c.type,
-            polymorphic_identity='person', 
+            polymorphic_identity='person',
             properties={'status':relationship(status_mapper)})
-        engineer_mapper = mapper(Engineer, engineers, 
-                                        inherits=person_mapper, 
+        engineer_mapper = mapper(Engineer, engineers,
+                                        inherits=person_mapper,
                                         polymorphic_identity='engineer')
-        manager_mapper  = mapper(Manager, managers, 
-                                        inherits=person_mapper, 
+        manager_mapper  = mapper(Manager, managers,
+                                        inherits=person_mapper,
                                         polymorphic_identity='manager')
         car_mapper      = mapper(Car, cars, properties= {
-                    'employee':relationship(person_mapper), 
+                    'employee':relationship(person_mapper),
                     'status':relationship(status_mapper)})
 
         session = create_session()
@@ -891,10 +891,10 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
         session.add(dead)
         session.flush()
 
-        # TODO: we haven't created assertions for all 
+        # TODO: we haven't created assertions for all
         # the data combinations created here
 
-        # creating 5 managers named from M1 to M5 
+        # creating 5 managers named from M1 to M5
         # and 5 engineers named from E1 to E5
         # M4, M5, E4 and E5 are dead
         for i in range(1,5):
@@ -933,13 +933,13 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
                             "status Status active]")
         r = session.query(Engineer).join('status').\
                         filter(Person.name.in_(
-                            ['E2', 'E3', 'E4', 'M4', 'M2', 'M1']) & 
+                            ['E2', 'E3', 'E4', 'M4', 'M2', 'M1']) &
                             (status.c.name=="active")).order_by(Person.name)
         eq_(str(list(r)), "[Engineer E2, field X, status Status "
                             "active, Engineer E3, field X, status "
                             "Status active]")
 
-        r = session.query(Person).filter(exists([1], 
+        r = session.query(Person).filter(exists([1],
                             Car.owner==Person.person_id))
         eq_(str(list(r)), "[Engineer E4, field X, status Status dead]")
 
@@ -949,20 +949,20 @@ class MultiLevelTest(fixtures.MappedTest):
         global table_Employee, table_Engineer, table_Manager
         table_Employee = Table( 'Employee', metadata,
             Column( 'name', type_= String(100), ),
-            Column( 'id', primary_key= True, type_= Integer, 
+            Column( 'id', primary_key= True, type_= Integer,
                                     test_needs_autoincrement=True),
             Column( 'atype', type_= String(100), ),
         )
 
         table_Engineer = Table( 'Engineer', metadata,
             Column( 'machine', type_= String(100), ),
-            Column( 'id', Integer, ForeignKey( 'Employee.id', ), 
+            Column( 'id', Integer, ForeignKey( 'Employee.id', ),
                                         primary_key= True),
         )
 
         table_Manager = Table( 'Manager', metadata,
             Column( 'duties', type_= String(100), ),
-            Column( 'id', Integer, ForeignKey( 'Engineer.id', ), 
+            Column( 'id', Integer, ForeignKey( 'Engineer.id', ),
                                         primary_key= True, ),
         )
 
@@ -971,23 +971,23 @@ class MultiLevelTest(fixtures.MappedTest):
             def set( me, **kargs):
                 for k,v in kargs.iteritems(): setattr( me, k, v)
                 return me
-            def __str__(me): 
+            def __str__(me):
                 return str(me.__class__.__name__)+':'+str(me.name)
             __repr__ = __str__
-        class Engineer(Employee): 
+        class Engineer(Employee):
             pass
-        class Manager(Engineer): 
+        class Manager(Engineer):
             pass
 
         pu_Employee = polymorphic_union( {
-                    'Manager':  table_Employee.join( 
+                    'Manager':  table_Employee.join(
                                     table_Engineer).join( table_Manager),
-                    'Engineer': select([table_Employee, 
-                                    table_Engineer.c.machine], 
-                                    table_Employee.c.atype == 'Engineer', 
+                    'Engineer': select([table_Employee,
+                                    table_Engineer.c.machine],
+                                    table_Employee.c.atype == 'Engineer',
                                     from_obj=[
                                     table_Employee.join(table_Engineer)]),
-                    'Employee': table_Employee.select( 
+                    'Employee': table_Employee.select(
                                     table_Employee.c.atype == 'Employee'),
                 }, None, 'pu_employee', )
 
@@ -1000,9 +1000,9 @@ class MultiLevelTest(fixtures.MappedTest):
         pu_Engineer = polymorphic_union( {
                     'Manager':  table_Employee.join( table_Engineer).
                                     join( table_Manager),
-                    'Engineer': select([table_Employee, 
-                                    table_Engineer.c.machine], 
-                                    table_Employee.c.atype == 'Engineer', 
+                    'Engineer': select([table_Employee,
+                                    table_Engineer.c.machine],
+                                    table_Employee.c.atype == 'Engineer',
                                     from_obj=[
                                         table_Employee.join(table_Engineer)
                                     ]),
@@ -1025,7 +1025,7 @@ class MultiLevelTest(fixtures.MappedTest):
 
         a = Employee().set( name= 'one')
         b = Engineer().set( egn= 'two', machine= 'any')
-        c = Manager().set( name= 'head', machine= 'fast', 
+        c = Manager().set( name= 'head', machine= 'fast',
                                 duties= 'many')
 
         session = create_session()
@@ -1044,13 +1044,13 @@ class ManyToManyPolyTest(fixtures.MappedTest):
             collection_table
         base_item_table = Table(
             'base_item', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
             Column('child_name', String(255), default=None))
 
         item_table = Table(
             'item', metadata,
-            Column('id', Integer, ForeignKey('base_item.id'), 
+            Column('id', Integer, ForeignKey('base_item.id'),
                                         primary_key=True),
             Column('dummy', Integer, default=0))
 
@@ -1061,7 +1061,7 @@ class ManyToManyPolyTest(fixtures.MappedTest):
 
         collection_table = Table(
             'collection', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
             Column('name', Unicode(255)))
 
@@ -1084,8 +1084,8 @@ class ManyToManyPolyTest(fixtures.MappedTest):
             with_polymorphic=('*', item_join),
             polymorphic_on=base_item_table.c.child_name,
             polymorphic_identity='BaseItem',
-            properties=dict(collections=relationship(Collection, 
-                                    secondary=base_item_collection_table, 
+            properties=dict(collections=relationship(Collection,
+                                    secondary=base_item_collection_table,
                                     backref="items")))
 
         mapper(
@@ -1102,7 +1102,7 @@ class CustomPKTest(fixtures.MappedTest):
     def define_tables(cls, metadata):
         global t1, t2
         t1 = Table('t1', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
             Column('type', String(30), nullable=False),
             Column('data', String(30)))
@@ -1127,9 +1127,9 @@ class CustomPKTest(fixtures.MappedTest):
         d['t2'] = t1.join(t2)
         pjoin = polymorphic_union(d, None, 'pjoin')
 
-        mapper(T1, t1, polymorphic_on=t1.c.type, 
-                            polymorphic_identity='t1', 
-                            with_polymorphic=('*', pjoin), 
+        mapper(T1, t1, polymorphic_on=t1.c.type,
+                            polymorphic_identity='t1',
+                            with_polymorphic=('*', pjoin),
                             primary_key=[pjoin.c.id])
         mapper(T2, t2, inherits=T1, polymorphic_identity='t2')
         ot1 = T1()
@@ -1140,7 +1140,7 @@ class CustomPKTest(fixtures.MappedTest):
         sess.flush()
         sess.expunge_all()
 
-        # query using get(), using only one value.  
+        # query using get(), using only one value.
         # this requires the select_table mapper
         # has the same single-col primary key.
         assert sess.query(T1).get(ot1.id).id == ot1.id
@@ -1165,8 +1165,8 @@ class CustomPKTest(fixtures.MappedTest):
         d['t2'] = t1.join(t2)
         pjoin = polymorphic_union(d, None, 'pjoin')
 
-        mapper(T1, t1, polymorphic_on=t1.c.type, 
-                            polymorphic_identity='t1', 
+        mapper(T1, t1, polymorphic_on=t1.c.type,
+                            polymorphic_identity='t1',
                             with_polymorphic=('*', pjoin))
         mapper(T2, t2, inherits=T1, polymorphic_identity='t2')
         assert len(class_mapper(T1).primary_key) == 1
@@ -1179,7 +1179,7 @@ class CustomPKTest(fixtures.MappedTest):
         sess.flush()
         sess.expunge_all()
 
-        # query using get(), using only one value.  this requires the 
+        # query using get(), using only one value.  this requires the
         # select_table mapper
         # has the same single-col primary key.
         assert sess.query(T1).get(ot1.id).id == ot1.id
@@ -1194,7 +1194,7 @@ class InheritingEagerTest(fixtures.MappedTest):
         global people, employees, tags, peopleTags
 
         people = Table('people', metadata,
-                           Column('id', Integer, primary_key=True, 
+                           Column('id', Integer, primary_key=True,
                                         test_needs_autoincrement=True),
                            Column('_type', String(30), nullable=False),
                           )
@@ -1206,7 +1206,7 @@ class InheritingEagerTest(fixtures.MappedTest):
                         )
 
         tags = Table('tags', metadata,
-                           Column('id', Integer, primary_key=True, 
+                           Column('id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
                            Column('label', String(50), nullable=False),
                        )
@@ -1233,10 +1233,10 @@ class InheritingEagerTest(fixtures.MappedTest):
            def __init__(self, label):
                self.label = label
 
-        mapper(Person, people, polymorphic_on=people.c._type, 
+        mapper(Person, people, polymorphic_on=people.c._type,
                             polymorphic_identity='person', properties={
-            'tags': relationship(Tag, 
-                            secondary=peopleTags, 
+            'tags': relationship(Tag,
+                            secondary=peopleTags,
                             backref='people', lazy='joined')
         })
         mapper(Employee, employees, inherits=Person,
@@ -1264,24 +1264,24 @@ class InheritingEagerTest(fixtures.MappedTest):
 class MissingPolymorphicOnTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        tablea = Table('tablea', metadata, 
-            Column('id', Integer, primary_key=True, 
+        tablea = Table('tablea', metadata,
+            Column('id', Integer, primary_key=True,
                             test_needs_autoincrement=True),
             Column('adata', String(50)),
             )
-        tableb = Table('tableb', metadata, 
-            Column('id', Integer, primary_key=True, 
+        tableb = Table('tableb', metadata,
+            Column('id', Integer, primary_key=True,
                             test_needs_autoincrement=True),
             Column('aid', Integer, ForeignKey('tablea.id')),
             Column('data', String(50)),
             )
-        tablec = Table('tablec', metadata, 
-            Column('id', Integer, ForeignKey('tablea.id'), 
+        tablec = Table('tablec', metadata,
+            Column('id', Integer, ForeignKey('tablea.id'),
                                     primary_key=True),
             Column('cdata', String(50)),
             )
-        tabled = Table('tabled', metadata, 
-            Column('id', Integer, ForeignKey('tablec.id'), 
+        tabled = Table('tabled', metadata,
+            Column('id', Integer, ForeignKey('tablec.id'),
                                     primary_key=True),
             Column('ddata', String(50)),
             )
@@ -1303,13 +1303,13 @@ class MissingPolymorphicOnTest(fixtures.MappedTest):
         A, B, C, D = self.classes.A, self.classes.B, self.classes.C, \
             self.classes.D
         poly_select = select(
-                        [tablea, tableb.c.data.label('discriminator')], 
+                        [tablea, tableb.c.data.label('discriminator')],
                         from_obj=tablea.join(tableb)).alias('poly')
 
         mapper(B, tableb)
-        mapper(A, tablea, 
+        mapper(A, tablea,
                     with_polymorphic=('*', poly_select),
-                     polymorphic_on=poly_select.c.discriminator, 
+                     polymorphic_on=poly_select.c.discriminator,
         properties={
             'b':relationship(B, uselist=False)
         })
@@ -1324,9 +1324,9 @@ class MissingPolymorphicOnTest(fixtures.MappedTest):
         sess.flush()
         sess.expunge_all()
         eq_(
-            sess.query(A).all(), 
+            sess.query(A).all(),
             [
-                C(cdata='c1', adata='a1'), 
+                C(cdata='c1', adata='a1'),
                 D(cdata='c2', adata='a2', ddata='d2')
             ]
         )
@@ -1335,17 +1335,17 @@ class JoinedInhAdjacencyTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('people', metadata,
-                 Column('id', Integer, primary_key=True, 
+                 Column('id', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
                  Column('type', String(30)),
                  )
         Table('users', metadata,
-              Column('id', Integer, ForeignKey('people.id'), 
+              Column('id', Integer, ForeignKey('people.id'),
                                 primary_key=True),
               Column('supervisor_id', Integer, ForeignKey('people.id')),
         )
         Table('dudes', metadata,
-              Column('id', Integer, ForeignKey('users.id'), 
+              Column('id', Integer, ForeignKey('users.id'),
                                 primary_key=True),
         )
 
@@ -1463,13 +1463,13 @@ class Ticket2419Test(fixtures.DeclarativeMappedTest):
         class A(Base):
             __tablename__ = "a"
 
-            id = Column(Integer, primary_key=True, 
+            id = Column(Integer, primary_key=True,
                         test_needs_autoincrement=True)
 
         class B(Base):
             __tablename__ = "b"
 
-            id = Column(Integer, primary_key=True, 
+            id = Column(Integer, primary_key=True,
                         test_needs_autoincrement=True)
             ds = relationship("D")
             es = relationship("E")
@@ -1494,7 +1494,7 @@ class Ticket2419Test(fixtures.DeclarativeMappedTest):
                             test_needs_autoincrement=True)
             b_id = Column(Integer, ForeignKey('b.id'))
 
-    @testing.fails_on("oracle", 
+    @testing.fails_on("oracle",
             "seems like oracle's query engine can't "
             "handle this, not clear if there's an "
             "expression-level bug on our end though")

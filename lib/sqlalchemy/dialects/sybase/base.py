@@ -1,8 +1,8 @@
 # sybase/base.py
 # Copyright (C) 2010-2011 the SQLAlchemy authors and contributors <see AUTHORS file>
 # get_select_precolumns(), limit_clause() implementation
-# copyright (C) 2007 Fisch Asset Management 
-# AG http://www.fam.ch, with coding by Alexander Houben 
+# copyright (C) 2007 Fisch Asset Management
+# AG http://www.fam.ch, with coding by Alexander Houben
 # alexander.houben@thor-solutions.ch
 #
 # This module is part of SQLAlchemy and is released under
@@ -13,7 +13,7 @@
 .. note::
 
     The Sybase dialect functions on current SQLAlchemy versions
-    but is not regularly tested, and may have many issues and 
+    but is not regularly tested, and may have many issues and
     caveats not currently handled.   In particular, the table
     and database reflection features are not implemented.
 
@@ -130,7 +130,7 @@ class UNIQUEIDENTIFIER(sqltypes.TypeEngine):
 
 class IMAGE(sqltypes.LargeBinary):
     __visit_name__ = 'IMAGE'
- 
+
 
 class SybaseTypeCompiler(compiler.GenericTypeCompiler):
     def visit_large_binary(self, type_):
@@ -224,12 +224,12 @@ class SybaseExecutionContext(default.DefaultExecutionContext):
                 self._enable_identity_insert = False
 
             if self._enable_identity_insert:
-                self.cursor.execute("SET IDENTITY_INSERT %s ON" % 
+                self.cursor.execute("SET IDENTITY_INSERT %s ON" %
                     self.dialect.identifier_preparer.format_table(tbl))
 
         if self.isddl:
             # TODO: to enhance this, we can detect "ddl in tran" on the
-            # database settings.  this error message should be improved to 
+            # database settings.  this error message should be improved to
             # include a note about that.
             if not self.should_autocommit:
                 raise exc.InvalidRequestError(
@@ -240,7 +240,7 @@ class SybaseExecutionContext(default.DefaultExecutionContext):
                         "AUTOCOMMIT (Assuming no Sybase 'ddl in tran')")
 
             self.set_ddl_autocommit(
-                        self.root_connection.connection.connection, 
+                        self.root_connection.connection.connection,
                         True)
 
 
@@ -304,7 +304,7 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
                             field, self.process(extract.expr, **kw))
 
     def for_update_clause(self, select):
-        # "FOR UPDATE" is only allowed on "DECLARE CURSOR" 
+        # "FOR UPDATE" is only allowed on "DECLARE CURSOR"
         # which SQLAlchemy doesn't use
         return ''
 

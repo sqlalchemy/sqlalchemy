@@ -90,7 +90,7 @@ class MergeTest(fixtures.MappedTest):
 
         @profiling.function_call_count(variance=0.10,
                                 versions={'2.5':1050, '2.6':1050,
-                                        '2.6+cextension':1005, 
+                                        '2.6+cextension':1005,
                                         '2.7':1005,
                                         '3':1050}
                             )
@@ -106,14 +106,14 @@ class MergeTest(fixtures.MappedTest):
 class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
     """test overhead associated with many-to-one fetches.
 
-    Prior to the refactor of LoadLazyAttribute and 
+    Prior to the refactor of LoadLazyAttribute and
     query._get(), the load from identity map took 2x
     as many calls (65K calls here instead of around 33K)
     to load 1000 related objects from the identity map.
 
     """
 
-    # only need to test for unexpected variance in a large call 
+    # only need to test for unexpected variance in a large call
     # count here,
     # so remove some platforms that have wildly divergent
     # callcounts.
@@ -122,13 +122,13 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        parent = Table('parent', metadata, 
-                        Column('id', Integer, primary_key=True), 
+        parent = Table('parent', metadata,
+                        Column('id', Integer, primary_key=True),
                        Column('data', String(20)),
                        Column('child_id', Integer, ForeignKey('child.id'))
                        )
 
-        child = Table('child', metadata, 
+        child = Table('child', metadata,
                     Column('id', Integer,primary_key=True),
                   Column('data', String(20))
                  )
@@ -162,10 +162,10 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
         ])
         parent.insert().execute([
             {
-                'id':i, 
-                'data':'p%dc%d' % (i, (i % 250) + 1), 
+                'id':i,
+                'data':'p%dc%d' % (i, (i % 250) + 1),
                 'child_id':(i % 250) + 1
-            } 
+            }
             for i in xrange(1, 1000)
         ])
 
@@ -201,18 +201,18 @@ class MergeBackrefsTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('a', metadata,
-            Column('id', Integer, primary_key=True), 
+            Column('id', Integer, primary_key=True),
             Column('c_id', Integer, ForeignKey('c.id'))
         )
         Table('b', metadata,
-            Column('id', Integer, primary_key=True), 
+            Column('id', Integer, primary_key=True),
             Column('a_id', Integer, ForeignKey('a.id'))
         )
         Table('c', metadata,
-            Column('id', Integer, primary_key=True), 
+            Column('id', Integer, primary_key=True),
         )
         Table('d', metadata,
-            Column('id', Integer, primary_key=True), 
+            Column('id', Integer, primary_key=True),
             Column('a_id', Integer, ForeignKey('a.id'))
         )
 
@@ -248,7 +248,7 @@ class MergeBackrefsTest(fixtures.MappedTest):
                     cls.classes.C, cls.classes.D
         s = Session()
         s.add_all([
-            A(id=i, 
+            A(id=i,
                 bs=[B(id=(i * 50) + j) for j in xrange(1, 50)],
                 c=C(id=i),
                 ds=[D(id=(i * 50) + j) for j in xrange(1, 50)]
@@ -263,7 +263,7 @@ class MergeBackrefsTest(fixtures.MappedTest):
                     self.classes.C, self.classes.D
         s = Session()
         for a in [
-            A(id=i, 
+            A(id=i,
                 bs=[B(id=(i * 50) + j) for j in xrange(1, 50)],
                 c=C(id=i),
                 ds=[D(id=(i * 50) + j) for j in xrange(1, 50)]

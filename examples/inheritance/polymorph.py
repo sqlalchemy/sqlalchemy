@@ -8,29 +8,29 @@ from sqlalchemy.orm import mapper, relationship, sessionmaker
 metadata = MetaData()
 
 # a table to store companies
-companies = Table('companies', metadata, 
+companies = Table('companies', metadata,
    Column('company_id', Integer, primary_key=True),
    Column('name', String(50)))
 
 # we will define an inheritance relationship between the table "people" and
 # "engineers", and a second inheritance relationship between the table
 # "people" and "managers"
-people = Table('people', metadata, 
+people = Table('people', metadata,
    Column('person_id', Integer, primary_key=True),
    Column('company_id', Integer, ForeignKey('companies.company_id')),
    Column('name', String(50)),
    Column('type', String(30)))
 
-engineers = Table('engineers', metadata, 
-   Column('person_id', Integer, ForeignKey('people.person_id'), 
+engineers = Table('engineers', metadata,
+   Column('person_id', Integer, ForeignKey('people.person_id'),
                                     primary_key=True),
    Column('status', String(30)),
    Column('engineer_name', String(50)),
    Column('primary_language', String(50)),
   )
 
-managers = Table('managers', metadata, 
-   Column('person_id', Integer, ForeignKey('people.person_id'), 
+managers = Table('managers', metadata,
+   Column('person_id', Integer, ForeignKey('people.person_id'),
                                     primary_key=True),
    Column('status', String(30)),
    Column('manager_name', String(50))
@@ -47,7 +47,7 @@ class Engineer(Person):
     def __repr__(self):
         return "Engineer %s, status %s, engineer_name %s, "\
                 "primary_language %s" % \
-                    (self.name, self.status, 
+                    (self.name, self.status,
                         self.engineer_name, self.primary_language)
 class Manager(Person):
     def __repr__(self):

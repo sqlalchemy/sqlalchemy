@@ -18,7 +18,7 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
         MACADDR, NUMERIC, REAL, SMALLINT, TEXT, TIME, TIMESTAMP, \
         UUID, VARCHAR
 
-Types which are specific to PostgreSQL, or have PostgreSQL-specific 
+Types which are specific to PostgreSQL, or have PostgreSQL-specific
 construction arguments, are as follows:
 
 .. currentmodule:: sqlalchemy.dialects.postgresql

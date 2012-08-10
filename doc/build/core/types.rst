@@ -218,7 +218,7 @@ Or some PostgreSQL types::
 
 Each dialect provides the full set of typenames supported by
 that backend within its `__all__` collection, so that a simple
-`import *` or similar will import all supported types as 
+`import *` or similar will import all supported types as
 implemented for that backend::
 
     from sqlalchemy.dialects.postgresql import *
@@ -229,7 +229,7 @@ implemented for that backend::
                Column('inetaddr', INET)
     )
 
-Where above, the INTEGER and VARCHAR types are ultimately from 
+Where above, the INTEGER and VARCHAR types are ultimately from
 sqlalchemy.types, and INET is specific to the Postgresql dialect.
 
 Some dialect level types have the same name as the SQL standard type,
@@ -256,10 +256,10 @@ Overriding Type Compilation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A frequent need is to force the "string" version of a type, that is
-the one rendered in a CREATE TABLE statement or other SQL function 
+the one rendered in a CREATE TABLE statement or other SQL function
 like CAST, to be changed.   For example, an application may want
 to force the rendering of ``BINARY`` for all platforms
-except for one, in which is wants ``BLOB`` to be rendered.  Usage 
+except for one, in which is wants ``BLOB`` to be rendered.  Usage
 of an existing generic type, in this case :class:`.LargeBinary`, is
 preferred for most use cases.  But to control
 types more accurately, a compilation directive that is per-dialect
@@ -273,10 +273,10 @@ can be associated with any type::
         return "BLOB"
 
 The above code allows the usage of :class:`.types.BINARY`, which
-will produce the string ``BINARY`` against all backends except SQLite, 
+will produce the string ``BINARY`` against all backends except SQLite,
 in which case it will produce ``BLOB``.
 
-See the section :ref:`type_compilation_extension`, a subsection of 
+See the section :ref:`type_compilation_extension`, a subsection of
 :ref:`sqlalchemy.ext.compiler_toplevel`, for additional examples.
 
 Augmenting Existing Types
@@ -306,10 +306,10 @@ A common source of confusion regarding the :class:`.Unicode` type
 is that it is intended to deal *only* with Python ``unicode`` objects
 on the Python side, meaning values passed to it as bind parameters
 must be of the form ``u'some string'`` if using Python 2 and not 3.
-The encoding/decoding functions it performs are only to suit what the 
+The encoding/decoding functions it performs are only to suit what the
 DBAPI in use requires, and are primarily a private implementation detail.
 
-The use case of a type that can safely receive Python bytestrings, 
+The use case of a type that can safely receive Python bytestrings,
 that is strings that contain non-ASCII characters and are not ``u''``
 objects in Python 2, can be achieved using a :class:`.TypeDecorator`
 which coerces as needed::
@@ -355,9 +355,9 @@ many decimal places.   Here's a recipe that rounds them down::
 Backend-agnostic GUID Type
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Receives and returns Python uuid() objects.  Uses the PG UUID type 
+Receives and returns Python uuid() objects.  Uses the PG UUID type
 when using Postgresql, CHAR(32) on other backends, storing them
-in stringified hex format.   Can be modified to store 
+in stringified hex format.   Can be modified to store
 binary in CHAR(16) if desired::
 
     from sqlalchemy.types import TypeDecorator, CHAR
@@ -441,7 +441,7 @@ Creating New Types
 ~~~~~~~~~~~~~~~~~~
 
 The :class:`.UserDefinedType` class is provided as a simple base class
-for defining entirely new database types.   Use this to represent native 
+for defining entirely new database types.   Use this to represent native
 database types not known by SQLAlchemy.   If only Python translation behavior
 is needed, use :class:`.TypeDecorator` instead.
 

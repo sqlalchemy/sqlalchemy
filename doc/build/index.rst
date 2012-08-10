@@ -9,7 +9,7 @@ Getting Started
 
 A high level view and getting set up.
 
-:ref:`Overview <overview>` | 
+:ref:`Overview <overview>` |
 :ref:`Installation Guide <installation>` |
 :ref:`Migration from 0.6 <migration>`
 
@@ -57,7 +57,7 @@ SQLAlchemy Core
 ===============
 
 The breadth of SQLAlchemy's SQL rendering engine, DBAPI
-integration, transaction integration, and schema description services 
+integration, transaction integration, and schema description services
 are documented here.  In contrast to the ORM's domain-centric mode of usage, the SQL Expression Language provides a schema-centric usage paradigm.
 
 * **Read this first:**
@@ -76,15 +76,15 @@ are documented here.  In contrast to the ORM's domain-centric mode of usage, the
   :ref:`Database Introspection (Reflection) <metadata_reflection>` |
   :ref:`Insert/Update Defaults <metadata_defaults>` |
   :ref:`Constraints and Indexes <metadata_constraints>` |
-  :ref:`Using Data Definition Language (DDL) <metadata_ddl>` 
+  :ref:`Using Data Definition Language (DDL) <metadata_ddl>`
 
 * **Datatypes:**
-  :ref:`Overview <types_toplevel>` | 
-  :ref:`Generic Types <types_generic>` | 
+  :ref:`Overview <types_toplevel>` |
+  :ref:`Generic Types <types_generic>` |
   :ref:`SQL Standard Types <types_sqlstandard>` |
   :ref:`Vendor Specific Types <types_vendor>` |
   :ref:`Building Custom Types <types_custom>` |
-  :ref:`API <types_api>` 
+  :ref:`API <types_api>`
 
 * **Extending the Core:**
   :doc:`SQLAlchemy Events <core/event>` |

@@ -478,7 +478,7 @@ class BiDirectionalOneToManyTest(fixtures.MappedTest):
 
 
 class BiDirectionalOneToManyTest2(fixtures.MappedTest):
-    """Two mappers with a one-to-many relationship to each other, 
+    """Two mappers with a one-to-many relationship to each other,
     with a second one-to-many on one of the mappers"""
 
     run_define_tables = 'each'
@@ -667,8 +667,8 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
         sess.delete(p)
 
         self.assert_sql_execution(
-            testing.db, 
-            sess.flush, 
+            testing.db,
+            sess.flush,
             ExactSQL("UPDATE person SET favorite_ball_id=:favorite_ball_id "
                 "WHERE person.id = :person_id",
                 lambda ctx: {'person_id': p.id, 'favorite_ball_id': None}),
@@ -718,7 +718,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
             p2, b1.person
         )
 
-        # do it the other way 
+        # do it the other way
         p3.balls.append(b1)
         sess.commit()
         eq_(
@@ -798,7 +798,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
 
         sess.delete(p)
 
-        self.assert_sql_execution(testing.db, sess.flush, 
+        self.assert_sql_execution(testing.db, sess.flush,
             CompiledSQL("UPDATE ball SET person_id=:person_id "
                 "WHERE ball.id = :ball_id",
                 lambda ctx:[
@@ -912,7 +912,7 @@ class SelfReferentialPostUpdateTest(fixtures.MappedTest):
         # pre-trigger lazy loader on 'cats' to make the test easier
         cats.children
         self.assert_sql_execution(
-            testing.db, 
+            testing.db,
             session.flush,
             AllOf(
             CompiledSQL("UPDATE node SET prev_sibling_id=:prev_sibling_id "
@@ -935,12 +935,12 @@ class SelfReferentialPostUpdateTest(fixtures.MappedTest):
         session.delete(root)
 
         self.assert_sql_execution(
-            testing.db, 
+            testing.db,
             session.flush,
             CompiledSQL("UPDATE node SET next_sibling_id=:next_sibling_id "
-                "WHERE node.id = :node_id", 
+                "WHERE node.id = :node_id",
                 lambda ctx: [
-                            {'node_id': about.id, 'next_sibling_id': None}, 
+                            {'node_id': about.id, 'next_sibling_id': None},
                             {'node_id': stories.id, 'next_sibling_id': None}
                         ]
             ),
@@ -1180,7 +1180,7 @@ class PostUpdateBatchingTest(fixtures.MappedTest):
         p1.c3 = c31
 
         self.assert_sql_execution(
-            testing.db, 
+            testing.db,
             sess.flush,
             CompiledSQL(
                 "UPDATE parent SET c1_id=:c1_id, c2_id=:c2_id, "
@@ -1192,7 +1192,7 @@ class PostUpdateBatchingTest(fixtures.MappedTest):
         p1.c1 = p1.c2 = p1.c3 = None
 
         self.assert_sql_execution(
-            testing.db, 
+            testing.db,
             sess.flush,
             CompiledSQL(
                 "UPDATE parent SET c1_id=:c1_id, c2_id=:c2_id, "

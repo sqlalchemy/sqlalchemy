@@ -1,4 +1,4 @@
-"""Test the interaction of :class:`.MutableType` as well as the 
+"""Test the interaction of :class:`.MutableType` as well as the
 ``mutable=True`` flag with the ORM.
 
 For new mutablity functionality, see test.ext.test_mutable.
@@ -291,7 +291,7 @@ class PickledDictsTest(fixtures.MappedTest):
         Table('mutable_t', metadata,
             Column('id', Integer, primary_key=True,
                    test_needs_autoincrement=True),
-            Column('data', 
+            Column('data',
                 sa.PickleType(comparator=operator.eq, mutable=True)))
 
     @classmethod

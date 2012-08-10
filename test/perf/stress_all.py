@@ -137,7 +137,7 @@ unicodetest = (Unicode(20, assert_unicode=False), genunicodevalue,
 if test_types:
     tests = [booleantest, datetimetest, decimaltest, intervaltest,
              pickletypetest, typedecoratortest, unicodetest]
-    for engineurl in ('postgresql://scott:tiger@localhost/test', 
+    for engineurl in ('postgresql://scott:tiger@localhost/test',
                         'sqlite://', 'mysql://scott:tiger@localhost/test'):
         print "\n%s\n" % engineurl
         for datatype, genvalue, kwargs in tests:
@@ -156,7 +156,7 @@ if test_methods:
                getitem_str_results, getitem_fallback_results,
                getitem_int_results, getitem_long_results, getitem_obj_results,
                slice_results]
-    for engineurl in ('postgresql://scott:tiger@localhost/test', 
+    for engineurl in ('postgresql://scott:tiger@localhost/test',
                        'sqlite://', 'mysql://scott:tiger@localhost/test'):
         print "\n%s\n" % engineurl
         test_table = prepare(Unicode(20, assert_unicode=False),

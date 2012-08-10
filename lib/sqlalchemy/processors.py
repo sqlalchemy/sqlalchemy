@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""defines generic type conversion functions, as used in bind and result 
+"""defines generic type conversion functions, as used in bind and result
 processors.
 
 They all share one common characteristic: None is passed through unchanged.
@@ -110,9 +110,9 @@ try:
 
     def to_decimal_processor_factory(target_class, scale=10):
         # Note that the scale argument is not taken into account for integer
-        # values in the C implementation while it is in the Python one. 
-        # For example, the Python implementation might return 
-        # Decimal('5.00000') whereas the C implementation will 
+        # values in the C implementation while it is in the Python one.
+        # For example, the Python implementation might return
+        # Decimal('5.00000') whereas the C implementation will
         # return Decimal('5'). These are equivalent of course.
         return DecimalResultProcessor(target_class, "%%.%df" % scale).process
 

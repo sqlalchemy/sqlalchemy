@@ -28,7 +28,7 @@ Usage example::
     class Bar(Base):
         __tablename__ = 'bar'
 
-        # illustrate overriding of "bar.foo_id" to have 
+        # illustrate overriding of "bar.foo_id" to have
         # a foreign key constraint otherwise not
         # reflected, such as when using MySQL
         foo_id = Column(Integer, ForeignKey('foo.id'))
@@ -42,6 +42,6 @@ Usage example::
         Foo(bars=[Bar(data='b3'), Bar(data='b4')], data='f2')
     ])
     s.commit()
- 
+
 
 """

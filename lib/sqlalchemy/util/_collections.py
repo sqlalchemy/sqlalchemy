@@ -210,7 +210,7 @@ class OrderedDict(dict):
             try:
                 self._list.append(key)
             except AttributeError:
-                # work around Python pickle loads() with 
+                # work around Python pickle loads() with
                 # dict subclass (seems to ignore __setstate__?)
                 self._list = [key]
         dict.__setitem__(self, key, object)
@@ -585,7 +585,7 @@ else:
                 self[key] = value = self.creator(key)
                 return value
 
-# define collections that are capable of storing 
+# define collections that are capable of storing
 # ColumnElement objects as hashable keys/elements.
 column_set = set
 column_dict = dict
@@ -595,12 +595,12 @@ populate_column_dict = PopulateDict
 def unique_list(seq, hashfunc=None):
     seen = {}
     if not hashfunc:
-        return [x for x in seq 
-                if x not in seen 
+        return [x for x in seq
+                if x not in seen
                 and not seen.__setitem__(x, True)]
     else:
-        return [x for x in seq 
-                if hashfunc(x) not in seen 
+        return [x for x in seq
+                if hashfunc(x) not in seen
                 and not seen.__setitem__(hashfunc(x), True)]
 
 class UniqueAppender(object):
@@ -801,15 +801,15 @@ class LRUCache(dict):
 
     def _manage_size(self):
         while len(self) > self.capacity + self.capacity * self.threshold:
-            by_counter = sorted(dict.values(self), 
+            by_counter = sorted(dict.values(self),
                             key=operator.itemgetter(2),
                             reverse=True)
             for item in by_counter[self.capacity:]:
                 try:
                     del self[item[0]]
                 except KeyError:
-                    # if we couldnt find a key, most 
-                    # likely some other thread broke in 
+                    # if we couldnt find a key, most
+                    # likely some other thread broke in
                     # on us. loop around and try again
                     break
 
@@ -870,7 +870,7 @@ class ScopedRegistry(object):
             pass
 
 class ThreadLocalRegistry(ScopedRegistry):
-    """A :class:`.ScopedRegistry` that uses a ``threading.local()`` 
+    """A :class:`.ScopedRegistry` that uses a ``threading.local()``
     variable for storage.
 
     """

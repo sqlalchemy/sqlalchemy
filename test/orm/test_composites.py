@@ -19,14 +19,14 @@ class PointTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('graphs', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
             Column('name', String(30)))
 
         Table('edges', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
-            Column('graph_id', Integer, 
+            Column('graph_id', Integer,
                                 ForeignKey('graphs.id')),
             Column('x1', Integer),
             Column('y1', Integer),
@@ -120,7 +120,7 @@ class PointTest(fixtures.MappedTest):
                                 self.classes.Point)
 
         # current contract.   the composite is None
-        # when hasn't been populated etc. on a 
+        # when hasn't been populated etc. on a
         # pending/transient object.
         e1 = Edge()
         assert e1.end is None
@@ -134,7 +134,7 @@ class PointTest(fixtures.MappedTest):
         # created unconditionally in all cases.
         # but as we are just trying to fix [ticket:2308] and
         # [ticket:2309] without changing behavior we maintain
-        # that only "persistent" gets the composite with the 
+        # that only "persistent" gets the composite with the
         # Nones
 
         sess.flush()
@@ -180,7 +180,7 @@ class PointTest(fixtures.MappedTest):
                     g.edges[1]
 
         eq_(
-            sess.query(Edge).filter(Edge.start==None).all(), 
+            sess.query(Edge).filter(Edge.start==None).all(),
             []
         )
 
@@ -207,7 +207,7 @@ class PointTest(fixtures.MappedTest):
         sess = self._fixture()
 
         eq_(
-            sess.query(Edge.start, Edge.end).all(), 
+            sess.query(Edge.start, Edge.end).all(),
             [(3, 4, 5, 6), (14, 5, 2, 7)]
         )
 
@@ -221,7 +221,7 @@ class PointTest(fixtures.MappedTest):
         del e.end
         sess.flush()
         eq_(
-            sess.query(Edge.start, Edge.end).all(), 
+            sess.query(Edge.start, Edge.end).all(),
             [(3, 4, 5, 6), (14, 5, None, None)]
         )
 
@@ -267,9 +267,9 @@ class PrimaryKeyTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('graphs', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                         test_needs_autoincrement=True),
-            Column('version_id', Integer, primary_key=True, 
+            Column('version_id', Integer, primary_key=True,
                                             nullable=True),
             Column('name', String(30)))
 
@@ -360,7 +360,7 @@ class DefaultsTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('foobars', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
             Column('x1', Integer, default=2),
             Column('x2', Integer),
@@ -396,10 +396,10 @@ class DefaultsTest(fixtures.MappedTest):
                     self.goofy_x1, self.x2, self.x3, self.x4
                 )
         mapper(Foobar, foobars, properties=dict(
-            foob=sa.orm.composite(FBComposite, 
-                                foobars.c.x1, 
-                                foobars.c.x2, 
-                                foobars.c.x3, 
+            foob=sa.orm.composite(FBComposite,
+                                foobars.c.x1,
+                                foobars.c.x2,
+                                foobars.c.x3,
                                 foobars.c.x4)
         ))
 
@@ -436,16 +436,16 @@ class MappedSelectTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('descriptions', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                             test_needs_autoincrement=True),
             Column('d1', String(20)),
             Column('d2', String(20)),
         )
 
         Table('values', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                             test_needs_autoincrement=True),
-            Column('description_id', Integer, 
+            Column('description_id', Integer,
                             ForeignKey('descriptions.id'),
                             nullable=False),
             Column('v1', String(20)),
@@ -472,7 +472,7 @@ class MappedSelectTest(fixtures.MappedTest):
         desc_values = select(
             [values, descriptions.c.d1, descriptions.c.d2],
             descriptions.c.id == values.c.description_id
-        ).alias('descriptions_values') 
+        ).alias('descriptions_values')
 
         mapper(Descriptions, descriptions, properties={
             'values': relationship(Values, lazy='dynamic'),
@@ -484,7 +484,7 @@ class MappedSelectTest(fixtures.MappedTest):
         })
 
         mapper(Values, desc_values, properties={
-            'custom_values': composite(CustomValues, 
+            'custom_values': composite(CustomValues,
                                             desc_values.c.v1,
                                             desc_values.c.v2),
 
@@ -520,16 +520,16 @@ class MappedSelectTest(fixtures.MappedTest):
 class ManyToOneTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        Table('a', 
+        Table('a',
             metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                             test_needs_autoincrement=True),
             Column('b1', String(20)),
             Column('b2_id', Integer, ForeignKey('b.id'))
         )
 
         Table('b', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                             test_needs_autoincrement=True),
             Column('data', String(20))
         )
@@ -595,7 +595,7 @@ class ConfigurationTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('edge', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
             Column('x1', Integer),
             Column('y1', Integer),
@@ -674,9 +674,9 @@ class ConfigurationTest(fixtures.MappedTest):
                                 self.classes.Edge,
                                 self.classes.Point)
         mapper(Edge, edge, properties={
-            'start':sa.orm.composite(Point, edge.c.x1, edge.c.y1, 
+            'start':sa.orm.composite(Point, edge.c.x1, edge.c.y1,
                                             deferred=True, group='s'),
-            'end': sa.orm.composite(Point, edge.c.x2, edge.c.y2, 
+            'end': sa.orm.composite(Point, edge.c.x2, edge.c.y2,
                                             deferred=True)
         })
         self._test_roundtrip()
@@ -685,7 +685,7 @@ class ComparatorTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('edge', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
             Column('x1', Integer),
             Column('y1', Integer),
@@ -732,7 +732,7 @@ class ComparatorTest(fixtures.MappedTest):
                     return diff_x * diff_x + diff_y * diff_y <= d * d
 
             mapper(Edge, edge, properties={
-                'start': sa.orm.composite(Point, edge.c.x1, edge.c.y1, 
+                'start': sa.orm.composite(Point, edge.c.x1, edge.c.y1,
                                           comparator_factory=CustomComparator),
                 'end': sa.orm.composite(Point, edge.c.x2, edge.c.y2)
             })
@@ -769,7 +769,7 @@ class ComparatorTest(fixtures.MappedTest):
                     e2
 
         eq_(
-            sess.query(Edge).filter(Edge.start==None).all(), 
+            sess.query(Edge).filter(Edge.start==None).all(),
             []
         )
 

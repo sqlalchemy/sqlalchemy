@@ -128,7 +128,7 @@ class WeakInstanceDict(IdentityMap):
                         o = existing_state._is_really_none()
                     if o is not None:
                         raise AssertionError("A conflicting state is already "
-                                        "present in the identity map for key %r" 
+                                        "present in the identity map for key %r"
                                         % (key, ))
                 else:
                     return

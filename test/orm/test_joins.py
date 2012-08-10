@@ -57,7 +57,7 @@ class QueryTest(_fixtures.FixtureTest):
         mapper(Keyword, keywords)
 
         mapper(Node, nodes, properties={
-            'children':relationship(Node, 
+            'children':relationship(Node,
                 backref=backref('parent', remote_side=[nodes.c.id])
             )
         })
@@ -140,17 +140,17 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         mapper(Machine, machines)
 
-        mapper(Person, people, 
-            polymorphic_on=people.c.type, 
-            polymorphic_identity='person', 
-            order_by=people.c.person_id, 
+        mapper(Person, people,
+            polymorphic_on=people.c.type,
+            polymorphic_identity='person',
+            order_by=people.c.person_id,
             properties={
                 'paperwork':relationship(Paperwork, order_by=paperwork.c.paperwork_id)
             })
         mapper(Engineer, engineers, inherits=Person, polymorphic_identity='engineer', properties={
                 'machines':relationship(Machine, order_by=machines.c.machine_id)
             })
-        mapper(Manager, managers, 
+        mapper(Manager, managers,
                     inherits=Person, polymorphic_identity='manager')
         mapper(Boss, boss, inherits=Manager, polymorphic_identity='boss')
         mapper(Paperwork, paperwork)
@@ -405,7 +405,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_multi_tuple_form(self):
-        """test the 'tuple' form of join, now superseded 
+        """test the 'tuple' form of join, now superseded
         by the two-element join() form.
 
         Not deprecating this style as of yet.
@@ -432,7 +432,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             sess.query(User).join(
-                                (Order, User.id==Order.user_id), 
+                                (Order, User.id==Order.user_id),
                                 (Item, Order.items)),
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users JOIN orders ON users.id = orders.user_id "
@@ -617,8 +617,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         for oalias,ialias in [(True, True), (False, False), (True, False), (False, True)]:
             eq_(
                 sess.query(User).join('orders', aliased=oalias).\
-                                join('items', 
-                                        from_joinpoint=True, 
+                                join('items',
+                                        from_joinpoint=True,
                                         aliased=ialias).\
                                 filter(Item.description == 'item 4').all(),
                 [User(name='jack')]
@@ -628,7 +628,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             eq_(
                 sess.query(User).join('orders', aliased=oalias).\
                                 filter(Order.user_id==9).\
-                                join('items', from_joinpoint=True, 
+                                join('items', from_joinpoint=True,
                                             aliased=ialias).\
                                 filter(Item.description=='item 4').all(),
                 []
@@ -637,7 +637,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         orderalias = aliased(Order)
         itemalias = aliased(Item)
         eq_(
-            sess.query(User).join(orderalias, 'orders'). 
+            sess.query(User).join(orderalias, 'orders').
                                 join(itemalias, 'items', from_joinpoint=True).
                                 filter(itemalias.description == 'item 4').all(),
             [User(name='jack')]
@@ -692,7 +692,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             sess.query(User).join, Address, Address.user,
         )
 
-        # but this one would silently fail 
+        # but this one would silently fail
         adalias = aliased(Address)
         assert_raises(
             sa_exc.InvalidRequestError,
@@ -848,7 +848,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         # be using the aliased flag in this way.
         self.assert_compile(
             sess.query(User).join(User.orders, aliased=True).
-                join(Item, 
+                join(Item,
                     and_(Order.id==order_items.c.order_id, order_items.c.item_id==Item.id),
                     from_joinpoint=True, aliased=True
                 ),
@@ -862,7 +862,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         oalias = orders.select()
         self.assert_compile(
             sess.query(User).join(oalias, User.orders).
-                join(Item, 
+                join(Item,
                     and_(Order.id==order_items.c.order_id, order_items.c.item_id==Item.id),
                     from_joinpoint=True
                 ),
@@ -938,7 +938,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
         eq_(
-            sess.query(User.name).join(Order, User.id==Order.user_id). 
+            sess.query(User.name).join(Order, User.id==Order.user_id).
                                 join(order_items, Order.id==order_items.c.order_id).
                                 join(Item, order_items.c.item_id==Item.id).
                                 filter(Item.description == 'item 4').all(),
@@ -1063,8 +1063,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             sess.query(OrderAlias).join('items').filter_by(description='item 3').\
                 order_by(OrderAlias.id).all(),
             [
-                Order(address_id=1,description=u'order 1',isopen=0,user_id=7,id=1), 
-                Order(address_id=4,description=u'order 2',isopen=0,user_id=9,id=2), 
+                Order(address_id=1,description=u'order 1',isopen=0,user_id=7,id=1),
+                Order(address_id=4,description=u'order 2',isopen=0,user_id=9,id=2),
                 Order(address_id=1,description=u'order 3',isopen=1,user_id=7,id=3)
             ]
         )
@@ -1076,8 +1076,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
                         filter_by(description='item 3').\
                 order_by(User.id, OrderAlias.id).all(),
             [
-                (User(name=u'jack',id=7), Order(address_id=1,description=u'order 1',isopen=0,user_id=7,id=1), u'item 3'), 
-                (User(name=u'jack',id=7), Order(address_id=1,description=u'order 3',isopen=1,user_id=7,id=3), u'item 3'), 
+                (User(name=u'jack',id=7), Order(address_id=1,description=u'order 1',isopen=0,user_id=7,id=1), u'item 3'),
+                (User(name=u'jack',id=7), Order(address_id=1,description=u'order 3',isopen=1,user_id=7,id=3), u'item 3'),
                 (User(name=u'fred',id=9), Order(address_id=4,description=u'order 2',isopen=0,user_id=9,id=2), u'item 3')
             ]
         )
@@ -1112,7 +1112,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         IAlias = aliased(Item)
         q = sess.query(Order, IAlias).select_from(join(Order, IAlias, 'items')).filter(IAlias.description=='item 3')
         l = q.all()
-        eq_(l, 
+        eq_(l,
             [
                 (order1, item3),
                 (order2, item3),
@@ -1235,10 +1235,10 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         eq_(
             sess.query(User, ualias).filter(User.id > ualias.id).order_by(desc(ualias.id), User.name).all(),
             [
-                (User(id=10,name=u'chuck'), User(id=9,name=u'fred')), 
-                (User(id=10,name=u'chuck'), User(id=8,name=u'ed')), 
-                (User(id=9,name=u'fred'), User(id=8,name=u'ed')), 
-                (User(id=10,name=u'chuck'), User(id=7,name=u'jack')), 
+                (User(id=10,name=u'chuck'), User(id=9,name=u'fred')),
+                (User(id=10,name=u'chuck'), User(id=8,name=u'ed')),
+                (User(id=9,name=u'fred'), User(id=8,name=u'ed')),
+                (User(id=10,name=u'chuck'), User(id=7,name=u'jack')),
                 (User(id=8,name=u'ed'), User(id=7,name=u'jack')),
                 (User(id=9,name=u'fred'), User(id=7,name=u'jack'))
             ]
@@ -1338,7 +1338,7 @@ class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('table1', metadata, 
+        Table('table1', metadata,
             Column('id', Integer, primary_key=True)
         )
         Table('table2', metadata,
@@ -1563,9 +1563,9 @@ class SelfRefMixedTest(fixtures.MappedTest, AssertsCompiledSQL):
                 backref=backref('parent', remote_side=[nodes.c.id])
             ),
             'subs' : relationship(Sub),
-            'assoc':relationship(Node, 
-                            secondary=assoc_table, 
-                            primaryjoin=nodes.c.id==assoc_table.c.left_id, 
+            'assoc':relationship(Node,
+                            secondary=assoc_table,
+                            primaryjoin=nodes.c.id==assoc_table.c.left_id,
                             secondaryjoin=nodes.c.id==assoc_table.c.right_id)
         })
         mapper(Sub, sub_table)
@@ -1618,13 +1618,13 @@ class CreateJoinsTest(fixtures.ORMTest, AssertsCompiledSQL):
     def _inherits_fixture(self):
         m = MetaData()
         base = Table('base', m, Column('id', Integer, primary_key=True))
-        a = Table('a', m, 
+        a = Table('a', m,
                 Column('id', Integer, ForeignKey('base.id'), primary_key=True),
                 Column('b_id', Integer, ForeignKey('b.id')))
-        b = Table('b', m, 
+        b = Table('b', m,
                 Column('id', Integer, ForeignKey('base.id'), primary_key=True),
                 Column('c_id', Integer, ForeignKey('c.id')))
-        c = Table('c', m, 
+        c = Table('c', m,
                 Column('id', Integer, ForeignKey('base.id'), primary_key=True))
         class Base(object):
             pass
@@ -1801,7 +1801,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
                 filter(Node.data=='n122').filter(parent.data=='n12').\
                 filter(grandparent.data=='n1').from_self().limit(1)
 
-        # parent, grandparent *are* inside the from_self(), so they 
+        # parent, grandparent *are* inside the from_self(), so they
         # should get aliased to the outside.
         self.assert_compile(
             q,
@@ -1975,7 +1975,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         sess = create_session()
         eq_(sess.query(Node).filter(Node.children.any(Node.data=='n1')).all(), [])
         eq_(sess.query(Node).filter(Node.children.any(Node.data=='n12')).all(), [Node(data='n1')])
-        eq_(sess.query(Node).filter(~Node.children.any()).order_by(Node.id).all(), 
+        eq_(sess.query(Node).filter(~Node.children.any()).order_by(Node.id).all(),
                 [Node(data='n11'), Node(data='n13'),Node(data='n121'),Node(data='n122'),Node(data='n123'),])
 
     def test_has(self):
@@ -1983,7 +1983,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         sess = create_session()
 
-        eq_(sess.query(Node).filter(Node.parent.has(Node.data=='n12')).order_by(Node.id).all(), 
+        eq_(sess.query(Node).filter(Node.parent.has(Node.data=='n12')).order_by(Node.id).all(),
             [Node(data='n121'),Node(data='n122'),Node(data='n123')])
         eq_(sess.query(Node).filter(Node.parent.has(Node.data=='n122')).all(), [])
         eq_(sess.query(Node).filter(~Node.parent.has()).all(), [Node(data='n1')])

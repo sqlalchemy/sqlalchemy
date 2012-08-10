@@ -20,20 +20,20 @@ Connect string::
 MySQL-Python Compatibility
 --------------------------
 
-The pymysql DBAPI is a pure Python port of the MySQL-python (MySQLdb) driver, 
-and targets 100% compatibility.   Most behavioral notes for MySQL-python apply to 
+The pymysql DBAPI is a pure Python port of the MySQL-python (MySQLdb) driver,
+and targets 100% compatibility.   Most behavioral notes for MySQL-python apply to
 the pymysql driver as well.
 
 """
 
-from sqlalchemy.dialects.mysql.mysqldb import MySQLDialect_mysqldb 
+from sqlalchemy.dialects.mysql.mysqldb import MySQLDialect_mysqldb
 
-class MySQLDialect_pymysql(MySQLDialect_mysqldb): 
+class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     driver = 'pymysql'
 
     description_encoding = None
-    @classmethod 
-    def dbapi(cls): 
-        return __import__('pymysql') 
+    @classmethod
+    def dbapi(cls):
+        return __import__('pymysql')
 
-dialect = MySQLDialect_pymysql 
+dialect = MySQLDialect_pymysql

@@ -84,11 +84,11 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         t.create(engine)
         try:
             engine.execute(t.insert(), {'d1': datetime.date(2010, 5,
-                           10), 
+                           10),
                           'd2': datetime.datetime( 2010, 5, 10, 12, 15, 25,
                           )})
             row = engine.execute(t.select()).first()
-            eq_(row, (1, datetime.date(2010, 5, 10), 
+            eq_(row, (1, datetime.date(2010, 5, 10),
             datetime.datetime( 2010, 5, 10, 12, 15, 25, )))
             r = engine.execute(func.current_date()).scalar()
             assert isinstance(r, basestring)
@@ -251,7 +251,7 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
             m2 = MetaData(db)
             t2 = Table('r_defaults', m2, autoload=True)
             self.assert_compile(
-                CreateTable(t2), 
+                CreateTable(t2),
                 "CREATE TABLE r_defaults (data VARCHAR(40) "
                 "DEFAULT 'my_default', val INTEGER DEFAULT 0 "
                 "NOT NULL)"
@@ -261,7 +261,7 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @testing.provide_metadata
     def test_boolean_default(self):
-        t= Table("t", self.metadata, 
+        t= Table("t", self.metadata,
                 Column("x", Boolean, server_default=sql.false()))
         t.create(testing.db)
         testing.db.execute(t.insert())
@@ -314,7 +314,7 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         CREATE TABLE "django_admin_log" (
             "id" integer NOT NULL PRIMARY KEY,
             "action_time" datetime NOT NULL,
-            "content_type_id" integer NULL 
+            "content_type_id" integer NULL
                     REFERENCES "django_content_type" ("id"),
             "object_id" text NULL,
             "change_message" text NOT NULL
@@ -457,26 +457,26 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             sql.false(), "0"
         )
         self.assert_compile(
-            sql.true(), 
+            sql.true(),
             "1"
         )
 
     def test_constraints_with_schemas(self):
         metadata = MetaData()
-        t1 = Table('t1', metadata, 
+        t1 = Table('t1', metadata,
                         Column('id', Integer, primary_key=True),
                         schema='master')
-        t2 = Table('t2', metadata, 
+        t2 = Table('t2', metadata,
                         Column('id', Integer, primary_key=True),
                         Column('t1_id', Integer, ForeignKey('master.t1.id')),
                         schema='master'
                     )
-        t3 = Table('t3', metadata, 
+        t3 = Table('t3', metadata,
                         Column('id', Integer, primary_key=True),
                         Column('t1_id', Integer, ForeignKey('master.t1.id')),
                         schema='alternate'
                     )
-        t4 = Table('t4', metadata, 
+        t4 = Table('t4', metadata,
                         Column('id', Integer, primary_key=True),
                         Column('t1_id', Integer, ForeignKey('master.t1.id')),
                     )
@@ -607,17 +607,17 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
         metadata = MetaData(testing.db)
         testing.db.execute("""
         CREATE VIRTUAL TABLE cattable using FTS3 (
-            id INTEGER NOT NULL, 
-            description VARCHAR(50), 
+            id INTEGER NOT NULL,
+            description VARCHAR(50),
             PRIMARY KEY (id)
         )
         """)
         cattable = Table('cattable', metadata, autoload=True)
         testing.db.execute("""
         CREATE VIRTUAL TABLE matchtable using FTS3 (
-            id INTEGER NOT NULL, 
+            id INTEGER NOT NULL,
             title VARCHAR(200),
-            category_id INTEGER NOT NULL, 
+            category_id INTEGER NOT NULL,
             PRIMARY KEY (id)
         )
         """)
@@ -782,7 +782,7 @@ class ReflectFKConstraintTest(fixtures.TestBase):
 
     def test_name_not_none(self):
         # we don't have names for PK constraints,
-        # it appears we get back None in the pragma for 
+        # it appears we get back None in the pragma for
         # FKs also (also it doesn't even appear to be documented on sqlite's docs
         # at http://www.sqlite.org/pragma.html#pragma_foreign_key_list
         # how did we ever know that's the "name" field ??)

@@ -194,7 +194,7 @@ class ConstraintTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
                 ('sometable', 'this_name_alsois_long', 'ix_sometable_t_3cf1'),
             ]:
 
-                t1 = Table(tname, MetaData(), 
+                t1 = Table(tname, MetaData(),
                             Column(cname, Integer, index=True),
                         )
                 ix1 = list(t1.indexes)[0]
@@ -213,24 +213,24 @@ class ConstraintTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         assert_raises(
             exc.IdentifierError,
             schema.CreateIndex(Index(
-                        "this_other_name_is_too_long_for_what_were_doing", 
+                        "this_other_name_is_too_long_for_what_were_doing",
                         t1.c.c)).compile,
             dialect=dialect
         )
 
     def test_index_declartion_inline(self):
-        t1 = Table('t1', metadata, 
+        t1 = Table('t1', metadata,
             Column('x', Integer),
             Column('y', Integer),
             Index('foo', 'x', 'y')
         )
         self.assert_compile(
-            schema.CreateIndex(list(t1.indexes)[0]), 
+            schema.CreateIndex(list(t1.indexes)[0]),
             "CREATE INDEX foo ON t1 (x, y)"
         )
 
     def test_index_asserts_cols_standalone(self):
-        t1 = Table('t1', metadata, 
+        t1 = Table('t1', metadata,
             Column('x', Integer)
         )
         t2 = Table('t2', metadata,
@@ -244,7 +244,7 @@ class ConstraintTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         )
 
     def test_index_asserts_cols_inline(self):
-        t1 = Table('t1', metadata, 
+        t1 = Table('t1', metadata,
             Column('x', Integer)
         )
         assert_raises_message(
@@ -365,7 +365,7 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_multiple(self):
         m = MetaData()
-        foo = Table("foo", m, 
+        foo = Table("foo", m,
             Column('id', Integer, primary_key=True),
             Column('bar', Integer, primary_key=True)
         )
@@ -414,11 +414,11 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
         m.drop_all(e)
 
         e.assert_sql([
-            'CREATE TABLE t (a INTEGER)', 
-            'CREATE TABLE t2 (a INTEGER, b INTEGER, CONSTRAINT fk_tb FOREIGN KEY(b) REFERENCES t (a))', 
-            'ALTER TABLE t2 ADD CONSTRAINT fk_ta FOREIGN KEY(a) REFERENCES t (a)', 
-            'ALTER TABLE t2 DROP CONSTRAINT fk_ta', 
-            'DROP TABLE t2', 
+            'CREATE TABLE t (a INTEGER)',
+            'CREATE TABLE t2 (a INTEGER, b INTEGER, CONSTRAINT fk_tb FOREIGN KEY(b) REFERENCES t (a))',
+            'ALTER TABLE t2 ADD CONSTRAINT fk_ta FOREIGN KEY(a) REFERENCES t (a)',
+            'ALTER TABLE t2 DROP CONSTRAINT fk_ta',
+            'DROP TABLE t2',
             'DROP TABLE t'
         ])
 

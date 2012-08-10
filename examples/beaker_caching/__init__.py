@@ -1,18 +1,18 @@
 """
 Illustrates how to embed Beaker cache functionality within
 the Query object, allowing full cache control as well as the
-ability to pull "lazy loaded" attributes from long term cache 
+ability to pull "lazy loaded" attributes from long term cache
 as well.
 
 In this demo, the following techniques are illustrated:
 
 * Using custom subclasses of Query
-* Basic technique of circumventing Query to pull from a 
+* Basic technique of circumventing Query to pull from a
   custom cache source instead of the database.
 * Rudimental caching with Beaker, using "regions" which allow
   global control over a fixed set of configurations.
-* Using custom MapperOption objects to configure options on 
-  a Query, including the ability to invoke the options 
+* Using custom MapperOption objects to configure options on
+  a Query, including the ability to invoke the options
   deep within an object graph when lazy loads occur.
 
 E.g.::
@@ -49,10 +49,10 @@ The demo scripts themselves, in order of complexity, are run as follows::
 Listing of files:
 
     environment.py - Establish the Session, the Beaker cache
-    manager, data / cache file paths, and configurations, 
+    manager, data / cache file paths, and configurations,
     bootstrap fixture data if necessary.
 
-    caching_query.py - Represent functions and classes 
+    caching_query.py - Represent functions and classes
     which allow the usage of Beaker caching with SQLAlchemy.
     Introduces a query option called FromCache.
 

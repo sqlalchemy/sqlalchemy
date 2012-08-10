@@ -77,15 +77,15 @@ class O2MTest(fixtures.MappedTest):
 class PolymorphicOnNotLocalTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        t1 = Table('t1', metadata, 
+        t1 = Table('t1', metadata,
                 Column('id', Integer, primary_key=True,
-                            test_needs_autoincrement=True), 
+                            test_needs_autoincrement=True),
                 Column('x', String(10)),
                 Column('q', String(10)))
-        t2 = Table('t2', metadata, 
+        t2 = Table('t2', metadata,
                 Column('id', Integer, primary_key=True,
-                            test_needs_autoincrement=True), 
-                Column('y', String(10)), 
+                            test_needs_autoincrement=True),
+                Column('y', String(10)),
                 Column('xid', ForeignKey('t1.id')))
 
     @classmethod
@@ -183,7 +183,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
             "discriminator":column_property(expr)
         }, polymorphic_identity="parent",
             polymorphic_on=expr)
-        mapper(Child, t2, inherits=Parent, 
+        mapper(Child, t2, inherits=Parent,
                 polymorphic_identity="child")
 
         self._roundtrip(parent_ident='p', child_ident='c')
@@ -215,7 +215,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         self._roundtrip(parent_ident='p', child_ident='c')
 
     def test_polymorphic_on_expr_implicit_map_no_label_single(self):
-        """test that single_table_criterion is propagated 
+        """test that single_table_criterion is propagated
         with a standalone expr"""
         t2, t1 = self.tables.t2, self.tables.t1
         Parent, Child = self.classes.Parent, self.classes.Child
@@ -230,7 +230,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         self._roundtrip(parent_ident='p', child_ident='c')
 
     def test_polymorphic_on_expr_implicit_map_w_label_single(self):
-        """test that single_table_criterion is propagated 
+        """test that single_table_criterion is propagated
         with a standalone expr"""
         t2, t1 = self.tables.t2, self.tables.t1
         Parent, Child = self.classes.Parent, self.classes.Child
@@ -256,7 +256,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
             "discriminator":cprop
         }, polymorphic_identity="parent",
             polymorphic_on=cprop)
-        mapper(Child, t2, inherits=Parent, 
+        mapper(Child, t2, inherits=Parent,
                 polymorphic_identity="child")
 
         self._roundtrip(parent_ident='p', child_ident='c')
@@ -273,7 +273,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
             "discriminator":cprop
         }, polymorphic_identity="parent",
             polymorphic_on="discriminator")
-        mapper(Child, t2, inherits=Parent, 
+        mapper(Child, t2, inherits=Parent,
                 polymorphic_identity="child")
 
         self._roundtrip(parent_ident='p', child_ident='c')
@@ -330,8 +330,8 @@ class FalseDiscriminatorTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         global t1
-        t1 = Table('t1', metadata, 
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True), 
+        t1 = Table('t1', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('type', Boolean, nullable=False))
 
     def test_false_on_sub(self):
@@ -407,12 +407,12 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('table_a', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
             Column('class_name', String(50))
         )
         Table('table_b', metadata,
-           Column('id', Integer, ForeignKey('table_a.id'), 
+           Column('id', Integer, ForeignKey('table_a.id'),
                                 primary_key=True),
            Column('class_name', String(50))
         )
@@ -434,13 +434,13 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
         class C(B):
             pass
 
-        mapper(A, table_a, 
-                        polymorphic_on=table_a.c.class_name, 
+        mapper(A, table_a,
+                        polymorphic_on=table_a.c.class_name,
                         polymorphic_identity='a')
-        mapper(B, table_b, inherits=A, 
-                        polymorphic_on=table_b.c.class_name, 
+        mapper(B, table_b, inherits=A,
+                        polymorphic_on=table_b.c.class_name,
                         polymorphic_identity='b')
-        mapper(C, table_c, inherits=B, 
+        mapper(C, table_c, inherits=B,
                         polymorphic_identity='c')
 
     def test_poly_configured_immediate(self):
@@ -491,25 +491,25 @@ class CascadeTest(fixtures.MappedTest):
     def define_tables(cls, metadata):
         global t1, t2, t3, t4
         t1= Table('t1', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
             Column('data', String(30))
             )
 
         t2 = Table('t2', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
             Column('t1id', Integer, ForeignKey('t1.id')),
             Column('type', String(30)),
             Column('data', String(30))
         )
         t3 = Table('t3', metadata,
-            Column('id', Integer, ForeignKey('t2.id'), 
+            Column('id', Integer, ForeignKey('t2.id'),
                                     primary_key=True),
             Column('moredata', String(30)))
 
         t4 = Table('t4', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
             Column('t3id', Integer, ForeignKey('t3.id')),
             Column('data', String(30)))
@@ -759,7 +759,7 @@ class EagerLazyTest(fixtures.MappedTest):
         self.assert_(len(q.first().eager) == 1)
 
 class EagerTargetingTest(fixtures.MappedTest):
-    """test a scenario where joined table inheritance might be 
+    """test a scenario where joined table inheritance might be
     confused as an eagerly loaded joined table."""
 
     @classmethod
@@ -784,7 +784,7 @@ class EagerTargetingTest(fixtures.MappedTest):
         class B(A):
             pass
 
-        mapper(A, a_table, polymorphic_on=a_table.c.type, polymorphic_identity='A', 
+        mapper(A, a_table, polymorphic_on=a_table.c.type, polymorphic_identity='A',
                 properties={
                     'children': relationship(A, order_by=a_table.c.name)
             })
@@ -947,9 +947,9 @@ class VersioningTest(fixtures.MappedTest):
         class Stuff(Base):
             pass
         mapper(Stuff, stuff)
-        mapper(Base, base, 
-                    polymorphic_on=base.c.discriminator, 
-                    version_id_col=base.c.version_id, 
+        mapper(Base, base,
+                    polymorphic_on=base.c.discriminator,
+                    version_id_col=base.c.version_id,
                     polymorphic_identity=1, properties={
             'stuff':relationship(Stuff)
         })
@@ -973,7 +973,7 @@ class VersioningTest(fixtures.MappedTest):
         sess.flush()
 
         assert_raises(orm_exc.StaleDataError,
-                        sess2.query(Base).with_lockmode('read').get, 
+                        sess2.query(Base).with_lockmode('read').get,
                         s1.id)
 
         if not testing.db.dialect.supports_sane_rowcount:
@@ -996,8 +996,8 @@ class VersioningTest(fixtures.MappedTest):
         class Sub(Base):
             pass
 
-        mapper(Base, base, 
-                    polymorphic_on=base.c.discriminator, 
+        mapper(Base, base,
+                    polymorphic_on=base.c.discriminator,
                     version_id_col=base.c.version_id, polymorphic_identity=1)
         mapper(Sub, subtable, inherits=Base, polymorphic_identity=2)
 
@@ -1075,16 +1075,16 @@ class DistinctPKTest(fixtures.MappedTest):
     def test_explicit_props(self):
         person_mapper = mapper(Person, person_table)
         mapper(Employee, employee_table, inherits=person_mapper,
-                        properties={'pid':person_table.c.id, 
+                        properties={'pid':person_table.c.id,
                                     'eid':employee_table.c.id})
         self._do_test(False)
 
     def test_explicit_composite_pk(self):
         person_mapper = mapper(Person, person_table)
-        mapper(Employee, employee_table, 
-                    inherits=person_mapper, 
+        mapper(Employee, employee_table,
+                    inherits=person_mapper,
                     primary_key=[person_table.c.id, employee_table.c.id])
-        assert_raises_message(sa_exc.SAWarning, 
+        assert_raises_message(sa_exc.SAWarning,
                                     r"On mapper Mapper\|Employee\|employees, "
                                     "primary key column 'persons.id' is being "
                                     "combined with distinct primary key column 'employees.id' "
@@ -1190,7 +1190,7 @@ class OverrideColKeyTest(fixtures.MappedTest):
     def define_tables(cls, metadata):
         global base, subtable
 
-        base = Table('base', metadata, 
+        base = Table('base', metadata,
             Column('base_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(255)),
             Column('sqlite_fixer', String(10))
@@ -1241,7 +1241,7 @@ class OverrideColKeyTest(fixtures.MappedTest):
             class_mapper(Sub).get_property('id').columns,
             [base.c.base_id, subtable.c.base_id]
         )
- 
+
         s1 = Sub()
         s1.id = 10
         sess = create_session()
@@ -1414,7 +1414,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
             Column('type', String(50)),
             Column('counter', Integer, server_default="1")
         )
-        Table('sub', metadata, 
+        Table('sub', metadata,
             Column('id', Integer, ForeignKey('base.id'), primary_key=True),
             Column('sub', String(50)),
             Column('counter', Integer, server_default="1"),
@@ -1431,7 +1431,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
         )
 
     def test_optimized_passes(self):
-        """"test that the 'optimized load' routine doesn't crash when 
+        """"test that the 'optimized load' routine doesn't crash when
         a column in the join condition is not available."""
 
         base, sub = self.tables.base, self.tables.sub
@@ -1446,7 +1446,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
 
         # redefine Sub's "id" to favor the "id" col in the subtable.
         # "id" is also part of the primary join condition
-        mapper(Sub, sub, inherits=Base, 
+        mapper(Sub, sub, inherits=Base,
                         polymorphic_identity='sub',
                         properties={'id':[sub.c.id, base.c.id]})
         sess = sessionmaker()()
@@ -1455,8 +1455,8 @@ class OptimizedLoadTest(fixtures.MappedTest):
         sess.commit()
         sess.expunge_all()
 
-        # load s1 via Base.  s1.id won't populate since it's relative to 
-        # the "sub" table.  The optimized load kicks in and tries to 
+        # load s1 via Base.  s1.id won't populate since it's relative to
+        # the "sub" table.  The optimized load kicks in and tries to
         # generate on the primary join, but cannot since "id" is itself unloaded.
         # the optimized load needs to return "None" so regular full-row loading proceeds
         s1 = sess.query(Base).first()
@@ -1501,7 +1501,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
         sess.expunge_all()
         # query a bunch of rows to ensure there's no cartesian
         # product against "base" occurring, it is in fact
-        # detecting that "base" needs to be in the join 
+        # detecting that "base" needs to be in the join
         # criterion
         eq_(
             sess.query(Base).order_by(Base.id).all(),
@@ -1587,24 +1587,24 @@ class OptimizedLoadTest(fixtures.MappedTest):
             pass
         class Sub(Base):
             pass
-        mapper(Base, base, polymorphic_on=base.c.type, 
+        mapper(Base, base, polymorphic_on=base.c.type,
                             polymorphic_identity='base')
         m = mapper(Sub, sub, inherits=Base, polymorphic_identity='sub')
 
         s1 = Sub()
-        assert m._optimized_get_statement(attributes.instance_state(s1), 
+        assert m._optimized_get_statement(attributes.instance_state(s1),
                                 ['counter2']) is None
 
         # loads s1.id as None
         eq_(s1.id, None)
 
         # this now will come up with a value of None for id - should reject
-        assert m._optimized_get_statement(attributes.instance_state(s1), 
+        assert m._optimized_get_statement(attributes.instance_state(s1),
                                 ['counter2']) is None
 
         s1.id = 1
         attributes.instance_state(s1).commit_all(s1.__dict__, None)
-        assert m._optimized_get_statement(attributes.instance_state(s1), 
+        assert m._optimized_get_statement(attributes.instance_state(s1),
                                 ['counter2']) is not None
 
     def test_load_expired_on_pending_twolevel(self):
@@ -1619,7 +1619,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
         class SubSub(Sub):
             pass
 
-        mapper(Base, base, polymorphic_on=base.c.type, 
+        mapper(Base, base, polymorphic_on=base.c.type,
                     polymorphic_identity='base')
         mapper(Sub, sub, inherits=Base, polymorphic_identity='sub')
         mapper(SubSub, subsub, inherits=Sub, polymorphic_identity='subsub')
@@ -1722,7 +1722,7 @@ class InhCondTest(fixtures.TestBase):
 
         mapper(Base, base_table)
         # succeeds, despite "owner" table not configured yet
-        m2 = mapper(Derived, derived_table, 
+        m2 = mapper(Derived, derived_table,
                     inherits=Base)
         assert m2.inherit_condition.compare(
                     base_table.c.id==derived_table.c.id
@@ -1734,7 +1734,7 @@ class InhCondTest(fixtures.TestBase):
             Column("id", Integer, primary_key=True)
         )
         derived_table = Table("derived", m,
-            Column("id", Integer, ForeignKey('base.id'), 
+            Column("id", Integer, ForeignKey('base.id'),
                 primary_key=True),
             Column('order_id', Integer, ForeignKey('order.foo'))
         )
@@ -1784,7 +1784,7 @@ class InhCondTest(fixtures.TestBase):
             Column("id", Integer, primary_key=True)
         )
         derived_table = Table("derived", m2,
-            Column("id", Integer, ForeignKey('base.id'), 
+            Column("id", Integer, ForeignKey('base.id'),
                 primary_key=True),
         )
 
@@ -1815,7 +1815,7 @@ class InhCondTest(fixtures.TestBase):
             Column("id", Integer, primary_key=True)
         )
         derived_table = Table("derived", m,
-            Column("id", Integer, ForeignKey('base.q'), 
+            Column("id", Integer, ForeignKey('base.q'),
                 primary_key=True),
         )
 
@@ -1840,12 +1840,12 @@ class PKDiscriminatorTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         parents = Table('parents', metadata,
-                           Column('id', Integer, primary_key=True, 
+                           Column('id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
                            Column('name', String(60)))
 
         children = Table('children', metadata,
-                        Column('id', Integer, ForeignKey('parents.id'), 
+                        Column('id', Integer, ForeignKey('parents.id'),
                                     primary_key=True),
                         Column('type', Integer,primary_key=True),
                         Column('name', String(60)))
@@ -1894,7 +1894,7 @@ class NoPolyIdentInMiddleTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('base', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                             test_needs_autoincrement=True),
             Column('type', String(50), nullable=False),
         )
@@ -1971,7 +1971,7 @@ class DeleteOrphanTest(fixtures.MappedTest):
     """Test the fairly obvious, that an error is raised
     when attempting to insert an orphan.
 
-    Previous SQLA versions would check this constraint 
+    Previous SQLA versions would check this constraint
     in memory which is the original rationale for this test.
 
     """
@@ -2016,14 +2016,14 @@ class PolymorphicUnionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def _fixture(self):
-        t1 = table('t1', column('c1', Integer), 
-                        column('c2', Integer), 
+        t1 = table('t1', column('c1', Integer),
+                        column('c2', Integer),
                         column('c3', Integer))
-        t2 = table('t2', column('c1', Integer), column('c2', Integer), 
-                                column('c3', Integer), 
+        t2 = table('t2', column('c1', Integer), column('c2', Integer),
+                                column('c3', Integer),
                                 column('c4', Integer))
-        t3 = table('t3', column('c1', Integer), 
-                                column('c3', Integer), 
+        t3 = table('t3', column('c1', Integer),
+                                column('c3', Integer),
                                 column('c5', Integer))
         return t1, t2, t3
 
@@ -2074,12 +2074,12 @@ class NameConflictTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         content = Table('content', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                     test_needs_autoincrement=True),
             Column('type', String(30))
         )
         foo = Table('foo', metadata,
-            Column('id', Integer, ForeignKey('content.id'), 
+            Column('id', Integer, ForeignKey('content.id'),
                         primary_key=True),
             Column('content_type', String(30))
         )
@@ -2089,9 +2089,9 @@ class NameConflictTest(fixtures.MappedTest):
             pass
         class Foo(Content):
             pass
-        mapper(Content, self.tables.content, 
+        mapper(Content, self.tables.content,
                     polymorphic_on=self.tables.content.c.type)
-        mapper(Foo, self.tables.foo, inherits=Content, 
+        mapper(Foo, self.tables.foo, inherits=Content,
                     polymorphic_identity='foo')
         sess = create_session()
         f = Foo()

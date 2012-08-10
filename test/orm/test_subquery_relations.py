@@ -811,7 +811,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         User, Order, Item = self.classes.User, \
             self.classes.Order, self.classes.Item
         mapper(User, self.tables.users, properties={
-            'orders':relationship(Order), 
+            'orders':relationship(Order),
         })
         mapper(Order, self.tables.orders, properties={
             'items':relationship(Item, secondary=self.tables.order_items),
@@ -1199,7 +1199,7 @@ class SelfReferentialTest(fixtures.MappedTest):
 class InheritanceToRelatedTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        Table('foo', metadata, 
+        Table('foo', metadata,
             Column("id", Integer, primary_key=True),
             Column("type", String(50)),
             Column("related_id", Integer, ForeignKey("related.id"))
@@ -1256,9 +1256,9 @@ class InheritanceToRelatedTest(fixtures.MappedTest):
         mapper(cls.classes.Foo, cls.tables.foo, properties={
             'related':relationship(cls.classes.Related)
         }, polymorphic_on=cls.tables.foo.c.type)
-        mapper(cls.classes.Bar, cls.tables.bar, polymorphic_identity='bar', 
+        mapper(cls.classes.Bar, cls.tables.bar, polymorphic_identity='bar',
                     inherits=cls.classes.Foo)
-        mapper(cls.classes.Baz, cls.tables.baz, polymorphic_identity='baz', 
+        mapper(cls.classes.Baz, cls.tables.baz, polymorphic_identity='baz',
                     inherits=cls.classes.Foo)
         mapper(cls.classes.Related, cls.tables.related)
 

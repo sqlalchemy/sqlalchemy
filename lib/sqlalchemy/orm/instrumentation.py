@@ -91,7 +91,7 @@ class ClassManager(dict):
         self.originals = {}
 
         self._bases = [mgr for mgr in [
-                        manager_of_class(base) 
+                        manager_of_class(base)
                         for base in self.class_.__bases__
                         if isinstance(base, type)
                  ] if mgr is not None]
@@ -139,7 +139,7 @@ class ClassManager(dict):
 
     def _instrument_init(self):
         # TODO: self.class_.__init__ is often the already-instrumented
-        # __init__ from an instrumented superclass.  We still need to make 
+        # __init__ from an instrumented superclass.  We still need to make
         # our own wrapper, but it would
         # be nice to wrap the original __init__ and not our existing wrapper
         # of such, since this adds method overhead.
@@ -212,7 +212,7 @@ class ClassManager(dict):
         if key in self.mutable_attributes:
             self.mutable_attributes.remove(key)
         for cls in self.class_.__subclasses__():
-            manager = manager_of_class(cls) 
+            manager = manager_of_class(cls)
             if manager:
                 manager.uninstrument_attribute(key, True)
 
@@ -277,12 +277,12 @@ class ClassManager(dict):
 
     def new_instance(self, state=None):
         instance = self.class_.__new__(self.class_)
-        setattr(instance, self.STATE_ATTR, 
+        setattr(instance, self.STATE_ATTR,
                     state or self._state_constructor(instance, self))
         return instance
 
     def setup_instance(self, instance, state=None):
-        setattr(instance, self.STATE_ATTR, 
+        setattr(instance, self.STATE_ATTR,
                     state or self._state_constructor(instance, self))
 
     def teardown_instance(self, instance):
@@ -387,7 +387,7 @@ class _ClassInstrumentationAdapter(ClassManager):
         if delegate:
             return delegate(key, state, factory)
         else:
-            return ClassManager.initialize_collection(self, key, 
+            return ClassManager.initialize_collection(self, key,
                                                         state, factory)
 
     def new_instance(self, state=None):
@@ -463,7 +463,7 @@ def is_instrumented(instance, key):
 class InstrumentationRegistry(object):
     """Private instrumentation registration singleton.
 
-    All classes are routed through this registry 
+    All classes are routed through this registry
     when first instrumented, however the InstrumentationRegistry
     is not actually needed unless custom ClassManagers are in use.
 
@@ -501,7 +501,7 @@ class InstrumentationRegistry(object):
 
         if factory != ClassManager and not self._extended:
             # somebody invoked a custom ClassManager.
-            # reinstall global "getter" functions with the more 
+            # reinstall global "getter" functions with the more
             # expensive ones.
             self._extended = True
             _install_lookup_strategy(self)
@@ -543,7 +543,7 @@ class InstrumentationRegistry(object):
         return factories
 
     def manager_of_class(self, cls):
-        # this is only called when alternate instrumentation 
+        # this is only called when alternate instrumentation
         # has been established
         if cls is None:
             return None
@@ -555,7 +555,7 @@ class InstrumentationRegistry(object):
             return finder(cls)
 
     def state_of(self, instance):
-        # this is only called when alternate instrumentation 
+        # this is only called when alternate instrumentation
         # has been established
         if instance is None:
             raise AttributeError("None has no persistent state.")
@@ -566,7 +566,7 @@ class InstrumentationRegistry(object):
                                     instance.__class__)
 
     def dict_of(self, instance):
-        # this is only called when alternate instrumentation 
+        # this is only called when alternate instrumentation
         # has been established
         if instance is None:
             raise AttributeError("None has no persistent state.")
@@ -632,7 +632,7 @@ instrumentation_finders.append(find_native_user_instrumentation_hook)
 def _generate_init(class_, class_manager):
     """Build an __init__ decorator that triggers ClassManager events."""
 
-    # TODO: we should use the ClassManager's notion of the 
+    # TODO: we should use the ClassManager's notion of the
     # original '__init__' method, once ClassManager is fixed
     # to always reference that.
     original__init__ = class_.__init__

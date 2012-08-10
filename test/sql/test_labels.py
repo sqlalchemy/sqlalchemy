@@ -27,14 +27,14 @@ class LongLabelsTest(fixtures.TablesTest, AssertsCompiledSQL):
     def define_tables(cls, metadata):
         table1 = Table("some_large_named_table", metadata,
             Column("this_is_the_primarykey_column", Integer,
-                            primary_key=True, 
+                            primary_key=True,
                             test_needs_autoincrement=True),
             Column("this_is_the_data_column", String(30))
             )
 
         table2 = Table("table_with_exactly_29_characs", metadata,
             Column("this_is_the_primarykey_column", Integer,
-                            primary_key=True, 
+                            primary_key=True,
                             test_needs_autoincrement=True),
             Column("this_is_the_data_column", String(30))
             )
@@ -46,13 +46,13 @@ class LongLabelsTest(fixtures.TablesTest, AssertsCompiledSQL):
         table1 = cls.tables.table1
         table2 = cls.tables.table2
         for data in [
-            {"this_is_the_primarykey_column":1, 
+            {"this_is_the_primarykey_column":1,
                         "this_is_the_data_column":"data1"},
-            {"this_is_the_primarykey_column":2, 
+            {"this_is_the_primarykey_column":2,
                         "this_is_the_data_column":"data2"},
-            {"this_is_the_primarykey_column":3, 
+            {"this_is_the_primarykey_column":3,
                         "this_is_the_data_column":"data3"},
-            {"this_is_the_primarykey_column":4, 
+            {"this_is_the_primarykey_column":4,
                         "this_is_the_data_column":"data4"}
         ]:
             testing.db.execute(
@@ -61,7 +61,7 @@ class LongLabelsTest(fixtures.TablesTest, AssertsCompiledSQL):
             )
         testing.db.execute(
             table2.insert(),
-            {"this_is_the_primary_key_column":1, 
+            {"this_is_the_primary_key_column":1,
             "this_is_the_data_column":"data"}
         )
 
@@ -78,7 +78,7 @@ class LongLabelsTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_too_long_name_disallowed(self):
         m = MetaData(testing.db)
-        t1 = Table("this_name_is_too_long_for_what_were_doing_in_this_test", 
+        t1 = Table("this_name_is_too_long_for_what_were_doing_in_this_test",
                         m, Column('foo', Integer))
         assert_raises(exceptions.IdentifierError, m.create_all)
         assert_raises(exceptions.IdentifierError, m.drop_all)
@@ -87,11 +87,11 @@ class LongLabelsTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_basic_result(self):
         table1 = self.tables.table1
-        s = table1.select(use_labels=True, 
+        s = table1.select(use_labels=True,
                         order_by=[table1.c.this_is_the_primarykey_column])
 
         result = [
-            (row[table1.c.this_is_the_primarykey_column], 
+            (row[table1.c.this_is_the_primarykey_column],
             row[table1.c.this_is_the_data_column])
             for row in testing.db.execute(s)
         ]
@@ -104,18 +104,18 @@ class LongLabelsTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_result_limit(self):
         table1 = self.tables.table1
-        # some dialects such as oracle (and possibly ms-sql 
+        # some dialects such as oracle (and possibly ms-sql
         # in a future version)
         # generate a subquery for limits/offsets.
-        # ensure that the generated result map corresponds 
+        # ensure that the generated result map corresponds
         # to the selected table, not
         # the select query
-        s = table1.select(use_labels=True, 
+        s = table1.select(use_labels=True,
                         order_by=[table1.c.this_is_the_primarykey_column]).\
                         limit(2)
 
         result = [
-            (row[table1.c.this_is_the_primarykey_column], 
+            (row[table1.c.this_is_the_primarykey_column],
             row[table1.c.this_is_the_data_column])
             for row in testing.db.execute(s)
         ]
@@ -127,12 +127,12 @@ class LongLabelsTest(fixtures.TablesTest, AssertsCompiledSQL):
     @testing.requires.offset
     def test_result_limit_offset(self):
         table1 = self.tables.table1
-        s = table1.select(use_labels=True, 
+        s = table1.select(use_labels=True,
                         order_by=[table1.c.this_is_the_primarykey_column]).\
                         limit(2).offset(1)
 
         result = [
-            (row[table1.c.this_is_the_primarykey_column], 
+            (row[table1.c.this_is_the_primarykey_column],
             row[table1.c.this_is_the_data_column])
             for row in testing.db.execute(s)
         ]
@@ -170,7 +170,7 @@ class LongLabelsTest(fixtures.TablesTest, AssertsCompiledSQL):
         dialect.max_identifier_length = IDENT_LENGTH
         self.assert_compile(
             select([table1, ta]).select_from(
-                        table1.join(ta, 
+                        table1.join(ta,
                             table1.c.this_is_the_data_column==
                             ta.c.this_is_the_data_column)).\
                         where(ta.c.this_is_the_data_column=='data3'),
@@ -210,13 +210,13 @@ class LongLabelsTest(fixtures.TablesTest, AssertsCompiledSQL):
     @testing.provide_metadata
     def test_insert_no_pk(self):
         t = Table("some_other_large_named_table", self.metadata,
-            Column("this_is_the_primarykey_column", Integer, 
-                            Sequence("this_is_some_large_seq"), 
+            Column("this_is_the_primarykey_column", Integer,
+                            Sequence("this_is_some_large_seq"),
                             primary_key=True),
             Column("this_is_the_data_column", String(30))
             )
         t.create(testing.db, checkfirst=True)
-        testing.db.execute(t.insert(), 
+        testing.db.execute(t.insert(),
                 **{"this_is_the_data_column":"data1"})
 
     @testing.requires.subqueries
@@ -238,7 +238,7 @@ class LongLabelsTest(fixtures.TablesTest, AssertsCompiledSQL):
         q = table1.select(table1.c.this_is_the_primarykey_column == 4).alias()
         x = select([q], use_labels=True)
 
-        self.assert_compile(x, 
+        self.assert_compile(x,
             "SELECT anon_1.this_is_the_primarykey_column AS "
             "anon_1_this_is_the_prim_1, anon_1.this_is_the_data_column "
             "AS anon_1_this_is_the_data_2 "
@@ -249,7 +249,7 @@ class LongLabelsTest(fixtures.TablesTest, AssertsCompiledSQL):
             "AS this_is_the_data_column "
             "FROM some_large_named_table "
             "WHERE some_large_named_table.this_is_the_primarykey_column "
-            "= :this_is_the_primarykey__1) AS anon_1", 
+            "= :this_is_the_primarykey__1) AS anon_1",
             dialect=compile_dialect)
 
         eq_(
@@ -264,13 +264,13 @@ class LongLabelsTest(fixtures.TablesTest, AssertsCompiledSQL):
         x = select([q])
 
         compile_dialect = default.DefaultDialect(label_length=10)
-        self.assert_compile(x, 
+        self.assert_compile(x,
             "SELECT foo.this_1, foo.this_2 FROM "
             "(SELECT some_large_named_table."
             "this_is_the_primarykey_column AS this_1, "
             "some_large_named_table.this_is_the_data_column AS this_2 "
             "FROM some_large_named_table WHERE "
-            "some_large_named_table.this_is_the_primarykey_column = :this_1) AS foo", 
+            "some_large_named_table.this_is_the_primarykey_column = :this_1) AS foo",
             dialect=compile_dialect)
 
         compile_dialect = default.DefaultDialect(label_length=4)
@@ -278,19 +278,19 @@ class LongLabelsTest(fixtures.TablesTest, AssertsCompiledSQL):
             "(SELECT some_large_named_table.this_is_the_primarykey_column "
             "AS _1, some_large_named_table.this_is_the_data_column AS _2 "
             "FROM some_large_named_table WHERE "
-            "some_large_named_table.this_is_the_primarykey_column = :_1) AS foo", 
+            "some_large_named_table.this_is_the_primarykey_column = :_1) AS foo",
         dialect=compile_dialect)
 
         q = table1.select(table1.c.this_is_the_primarykey_column == 4).alias()
         x = select([q], use_labels=True)
 
         compile_dialect = default.DefaultDialect(label_length=10)
-        self.assert_compile(x, 
+        self.assert_compile(x,
             "SELECT anon_1.this_2 AS anon_1, anon_1.this_4 AS anon_3 FROM "
             "(SELECT some_large_named_table.this_is_the_primarykey_column "
             "AS this_2, some_large_named_table.this_is_the_data_column AS this_4 "
             "FROM some_large_named_table WHERE "
-            "some_large_named_table.this_is_the_primarykey_column = :this_1) AS anon_1", 
+            "some_large_named_table.this_is_the_primarykey_column = :this_1) AS anon_1",
             dialect=compile_dialect)
 
         compile_dialect = default.DefaultDialect(label_length=4)
@@ -298,7 +298,7 @@ class LongLabelsTest(fixtures.TablesTest, AssertsCompiledSQL):
             "(SELECT some_large_named_table.this_is_the_primarykey_column "
             "AS _2, some_large_named_table.this_is_the_data_column AS _4 "
             "FROM some_large_named_table WHERE "
-            "some_large_named_table.this_is_the_primarykey_column = :_1) AS _1", 
+            "some_large_named_table.this_is_the_primarykey_column = :_1) AS _1",
             dialect=compile_dialect)
 
     def test_adjustable_result_schema_column(self):
@@ -321,7 +321,7 @@ class LongLabelsTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_adjustable_result_lightweight_column(self):
 
-        table1 = table("some_large_named_table", 
+        table1 = table("some_large_named_table",
             column("this_is_the_primarykey_column"),
             column("this_is_the_data_column")
         )

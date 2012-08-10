@@ -70,7 +70,7 @@ release_date = "June 16, 2012"
 
 site_base = "http://www.sqlalchemy.org"
 
-# arbitrary number recognized by builders.py, incrementing this 
+# arbitrary number recognized by builders.py, incrementing this
 # will force a rebuild
 build_number = 3
 

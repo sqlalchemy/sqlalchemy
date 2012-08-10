@@ -44,8 +44,8 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         s = select([table1.c.col1.label('c2'), table1.c.col1,
                    table1.c.col1.label('c1')])
 
-        # this tests the same thing as 
-        # test_direct_correspondence_on_labels below - 
+        # this tests the same thing as
+        # test_direct_correspondence_on_labels below -
         # that the presence of label() affects the 'distance'
         assert s.corresponding_column(table1.c.col1) is s.c.col1
 
@@ -100,7 +100,7 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         s = select([keyed])
         eq_(s.c.colx.key, 'colx')
 
-        # this would change to 'colx' 
+        # this would change to 'colx'
         # with #2397
         eq_(s.c.colx.name, 'x')
 
@@ -139,11 +139,11 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
             is j2.c.table1_col1
 
     def test_clone_append_column(self):
-        sel = select([literal_column('1').label('a')]) 
+        sel = select([literal_column('1').label('a')])
         cloned = visitors.ReplacingCloningVisitor().traverse(sel)
-        cloned.append_column(literal_column('2').label('b')) 
-        cloned.append_column(func.foo()) 
-        eq_(cloned.c.keys(), ['a', 'b', 'foo()']) 
+        cloned.append_column(literal_column('2').label('b'))
+        cloned.append_column(func.foo())
+        eq_(cloned.c.keys(), ['a', 'b', 'foo()'])
 
     def test_append_column_after_replace_selectable(self):
         basesel = select([literal_column('1').label('a')])
@@ -164,7 +164,7 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
             "JOIN (SELECT 1 AS a, 2 AS b) AS joinfrom "
             "ON basefrom.a = joinfrom.a"
         )
-        replaced.append_column(joinfrom.c.b) 
+        replaced.append_column(joinfrom.c.b)
         self.assert_compile(
             replaced,
             "SELECT basefrom.a, joinfrom.b FROM (SELECT 1 AS a) AS basefrom "
@@ -244,7 +244,7 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         assert u.corresponding_column(s2.c.table2_col2) is u.c.col2
 
     def test_union_precedence(self):
-        # conflicting column correspondence should be resolved based on 
+        # conflicting column correspondence should be resolved based on
         # the order of the select()s in the union
 
         s1 = select([table1.c.col1, table1.c.col2])
@@ -451,9 +451,9 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         eq_(c1._from_objects, [t])
         eq_(c2._from_objects, [t])
 
-        self.assert_compile(select([c1]), 
+        self.assert_compile(select([c1]),
                     "SELECT t.c1 FROM t")
-        self.assert_compile(select([c2]), 
+        self.assert_compile(select([c2]),
                     "SELECT t.c2 FROM t")
 
     def test_from_list_deferred_whereclause(self):
@@ -467,9 +467,9 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         eq_(c1._from_objects, [t])
         eq_(c2._from_objects, [t])
 
-        self.assert_compile(select([c1]), 
+        self.assert_compile(select([c1]),
                     "SELECT t.c1 FROM t")
-        self.assert_compile(select([c2]), 
+        self.assert_compile(select([c2]),
                     "SELECT t.c2 FROM t")
 
     def test_from_list_deferred_fromlist(self):
@@ -483,7 +483,7 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
 
         eq_(c1._from_objects, [t2])
 
-        self.assert_compile(select([c1]), 
+        self.assert_compile(select([c1]),
                     "SELECT t2.c1 FROM t2")
 
     def test_from_list_deferred_cloning(self):
@@ -505,20 +505,20 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         table1 = table('t1', column('a'))
         table2 = table('t2', column('b'))
         s1 = select([table1.c.a, table2.c.b])
-        self.assert_compile(s1, 
+        self.assert_compile(s1,
                 "SELECT t1.a, t2.b FROM t1, t2"
             )
         s2 = s1.with_only_columns([table2.c.b])
-        self.assert_compile(s2, 
+        self.assert_compile(s2,
                 "SELECT t2.b FROM t2"
             )
 
         s3 = sql_util.ClauseAdapter(table1).traverse(s1)
-        self.assert_compile(s3, 
+        self.assert_compile(s3,
             "SELECT t1.a, t2.b FROM t1, t2"
         )
         s4 = s3.with_only_columns([table2.c.b])
-        self.assert_compile(s4, 
+        self.assert_compile(s4,
             "SELECT t2.b FROM t2"
         )
 
@@ -675,13 +675,13 @@ class JoinConditionTest(fixtures.TestBase, AssertsExecutionResults):
 
     def test_join_cond_no_such_unrelated_table(self):
         m = MetaData()
-        # bounding the "good" column with two "bad" ones is so to 
+        # bounding the "good" column with two "bad" ones is so to
         # try to get coverage to get the "continue" statements
         # in the loop...
-        t1 = Table('t1', m, 
+        t1 = Table('t1', m,
                             Column('y', Integer, ForeignKey('t22.id')),
-                            Column('x', Integer, ForeignKey('t2.id')), 
-                            Column('q', Integer, ForeignKey('t22.id')), 
+                            Column('x', Integer, ForeignKey('t2.id')),
+                            Column('q', Integer, ForeignKey('t22.id')),
                             )
         t2 = Table('t2', m, Column('id', Integer))
         assert sql_util.join_condition(t1, t2).compare(t1.c.x==t2.c.id)
@@ -689,7 +689,7 @@ class JoinConditionTest(fixtures.TestBase, AssertsExecutionResults):
 
     def test_join_cond_no_such_unrelated_column(self):
         m = MetaData()
-        t1 = Table('t1', m, Column('x', Integer, ForeignKey('t2.id')), 
+        t1 = Table('t1', m, Column('x', Integer, ForeignKey('t2.id')),
                             Column('y', Integer, ForeignKey('t3.q')))
         t2 = Table('t2', m, Column('id', Integer))
         t3 = Table('t3', m, Column('id', Integer))
@@ -790,11 +790,11 @@ class PrimaryKeyTest(fixtures.TestBase, AssertsExecutionResults):
 
     def test_init_doesnt_blowitaway(self):
         meta = MetaData()
-        a = Table('a', meta, 
-                Column('id', Integer, primary_key=True), 
+        a = Table('a', meta,
+                Column('id', Integer, primary_key=True),
                 Column('x', Integer))
-        b = Table('b', meta, 
-                Column('id', Integer, ForeignKey('a.id'), primary_key=True), 
+        b = Table('b', meta,
+                Column('id', Integer, ForeignKey('a.id'), primary_key=True),
                 Column('x', Integer))
 
         j = a.join(b)
@@ -805,11 +805,11 @@ class PrimaryKeyTest(fixtures.TestBase, AssertsExecutionResults):
 
     def test_non_column_clause(self):
         meta = MetaData()
-        a = Table('a', meta, 
-                Column('id', Integer, primary_key=True), 
+        a = Table('a', meta,
+                Column('id', Integer, primary_key=True),
                 Column('x', Integer))
-        b = Table('b', meta, 
-                Column('id', Integer, ForeignKey('a.id'), primary_key=True), 
+        b = Table('b', meta,
+                Column('id', Integer, ForeignKey('a.id'), primary_key=True),
                 Column('x', Integer, primary_key=True))
 
         j = a.join(b, and_(a.c.id==b.c.id, b.c.x==5))
@@ -824,7 +824,7 @@ class PrimaryKeyTest(fixtures.TestBase, AssertsExecutionResults):
             Column('id', Integer, primary_key= True),
         )
 
-        engineer = Table('Engineer', metadata, 
+        engineer = Table('Engineer', metadata,
             Column('id', Integer,
                          ForeignKey('Employee.id'), primary_key=True))
 
@@ -921,8 +921,8 @@ class ReduceTest(fixtures.TestBase, AssertsExecutionResults):
                 'BaseItem':
                     base_item_table.select(
                             base_item_table.c.child_name
-                            == 'BaseItem'), 
-                'Item': base_item_table.join(item_table)}, 
+                            == 'BaseItem'),
+                'Item': base_item_table.join(item_table)},
                 None, 'item_join')
         eq_(util.column_set(sql_util.reduce_columns([item_join.c.id,
             item_join.c.dummy, item_join.c.child_name])),
@@ -961,7 +961,7 @@ class ReduceTest(fixtures.TestBase, AssertsExecutionResults):
 
                     select([
                         page_table.c.id,
-                        magazine_page_table.c.page_id, 
+                        magazine_page_table.c.page_id,
                         cast(null(), Integer).label('magazine_page_id')
                     ]).
                     select_from(page_table.join(magazine_page_table))
@@ -979,7 +979,7 @@ class ReduceTest(fixtures.TestBase, AssertsExecutionResults):
 
         pjoin = union(select([
                         page_table.c.id,
-                        magazine_page_table.c.page_id, 
+                        magazine_page_table.c.page_id,
                         cast(null(), Integer).label('magazine_page_id')
                       ]).
                       select_from(page_table.join(magazine_page_table)),
@@ -1089,7 +1089,7 @@ class AnnotationsTest(fixtures.TestBase):
         assert t1.c is t2.c
         assert t1.c.col1 is t2.c.col1
 
-        inner = select([s1]) 
+        inner = select([s1])
 
         assert inner.corresponding_column(t2.c.col1,
                 require_embedded=False) \
@@ -1163,7 +1163,7 @@ class AnnotationsTest(fixtures.TestBase):
             b4._annotations, b4.left._annotations:
             assert elem == {}
 
-        assert b2.left is not bin.left 
+        assert b2.left is not bin.left
         assert b3.left is not b2.left is not bin.left
         assert b4.left is bin.left  # since column is immutable
         assert b4.right is not bin.right is not b2.right is not b3.right

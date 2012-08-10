@@ -264,16 +264,16 @@ class DDLExecutionTest(fixtures.TestBase):
     def test_deprecated_append_ddl_listener_table(self):
         metadata, users, engine = self.metadata, self.users, self.engine
         canary = []
-        users.append_ddl_listener('before-create', 
+        users.append_ddl_listener('before-create',
                             lambda e, t, b:canary.append('mxyzptlk')
                         )
-        users.append_ddl_listener('after-create', 
+        users.append_ddl_listener('after-create',
                             lambda e, t, b:canary.append('klptzyxm')
                         )
-        users.append_ddl_listener('before-drop', 
+        users.append_ddl_listener('before-drop',
                             lambda e, t, b:canary.append('xyzzy')
                         )
-        users.append_ddl_listener('after-drop', 
+        users.append_ddl_listener('after-drop',
                             lambda e, t, b:canary.append('fnord')
                         )
 
@@ -293,16 +293,16 @@ class DDLExecutionTest(fixtures.TestBase):
     def test_deprecated_append_ddl_listener_metadata(self):
         metadata, users, engine = self.metadata, self.users, self.engine
         canary = []
-        metadata.append_ddl_listener('before-create', 
+        metadata.append_ddl_listener('before-create',
                             lambda e, t, b, tables=None:canary.append('mxyzptlk')
                         )
-        metadata.append_ddl_listener('after-create', 
+        metadata.append_ddl_listener('after-create',
                             lambda e, t, b, tables=None:canary.append('klptzyxm')
                         )
-        metadata.append_ddl_listener('before-drop', 
+        metadata.append_ddl_listener('before-drop',
                             lambda e, t, b, tables=None:canary.append('xyzzy')
                         )
-        metadata.append_ddl_listener('after-drop', 
+        metadata.append_ddl_listener('after-drop',
                             lambda e, t, b, tables=None:canary.append('fnord')
                         )
 
@@ -541,7 +541,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
         assert DDL('').execute_if(callable_=lambda d, y,z, **kw: True).\
                         _should_execute(tbl, cx)
         assert(DDL('').execute_if(
-                        callable_=lambda d, y,z, **kw: z.engine.name 
+                        callable_=lambda d, y,z, **kw: z.engine.name
                         != 'bogus').
                _should_execute(tbl, cx))
 

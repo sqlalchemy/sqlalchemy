@@ -6,7 +6,7 @@ for all parents.
 
 This configuration has the advantage that all Address
 rows are in one table, so that the definition of "Address"
-can be maintained in one place.   The association table 
+can be maintained in one place.   The association table
 contains the foreign key to Address so that Address
 has no dependency on the system.
 
@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session, relationship
 class Base(object):
     """Base class which provides automated table name
     and surrogate primary key column.
-    
+
     """
     @declared_attr
     def __tablename__(cls):
@@ -29,11 +29,11 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 class Address(Base):
-    """The Address class.   
-    
-    This represents all address records in a 
+    """The Address class.
+
+    This represents all address records in a
     single table.
-    
+
     """
     street = Column(String)
     city = Column(String)
@@ -41,23 +41,23 @@ class Address(Base):
 
     def __repr__(self):
         return "%s(street=%r, city=%r, zip=%r)" % \
-            (self.__class__.__name__, self.street, 
+            (self.__class__.__name__, self.street,
             self.city, self.zip)
 
 class HasAddresses(object):
     """HasAddresses mixin, creates a new address_association
     table for each parent.
-    
+
     """
     @declared_attr
     def addresses(cls):
         address_association = Table(
             "%s_addresses" % cls.__tablename__,
             cls.metadata,
-            Column("address_id", ForeignKey("address.id"), 
+            Column("address_id", ForeignKey("address.id"),
                                 primary_key=True),
-            Column("%s_id" % cls.__tablename__, 
-                                ForeignKey("%s.id" % cls.__tablename__), 
+            Column("%s_id" % cls.__tablename__,
+                                ForeignKey("%s.id" % cls.__tablename__),
                                 primary_key=True),
         )
         return relationship(Address, secondary=address_association)
@@ -75,7 +75,7 @@ session = Session(engine)
 
 session.add_all([
     Customer(
-        name='customer 1', 
+        name='customer 1',
         addresses=[
             Address(
                     street='123 anywhere street',

@@ -257,8 +257,8 @@ While SQLAlchemy directly supports emitting CREATE and DROP statements for schem
 constructs, the ability to alter those constructs, usually via the ALTER statement
 as well as other database-specific constructs, is outside of the scope of SQLAlchemy
 itself.  While it's easy enough to emit ALTER statements and similar by hand,
-such as by passing a string to :meth:`.Connection.execute` or by using the 
-:class:`.DDL` construct, it's a common practice to automate the maintenance of 
+such as by passing a string to :meth:`.Connection.execute` or by using the
+:class:`.DDL` construct, it's a common practice to automate the maintenance of
 database schemas in relation to application code using schema migration tools.
 
 There are two major migration tools available for SQLAlchemy:
@@ -266,12 +266,12 @@ There are two major migration tools available for SQLAlchemy:
 * `Alembic <http://alembic.readthedocs.org>`_ - Written by the author of SQLAlchemy,
   Alembic features a highly customizable environment and a minimalistic usage pattern,
   supporting such features as transactional DDL, automatic generation of "candidate"
-  migrations, an "offline" mode which generates SQL scripts, and support for branch 
+  migrations, an "offline" mode which generates SQL scripts, and support for branch
   resolution.
 * `SQLAlchemy-Migrate <http://code.google.com/p/sqlalchemy-migrate/>`_ - The original
   migration tool for SQLAlchemy, SQLAlchemy-Migrate is widely used and continues
-  under active development.   SQLAlchemy-Migrate includes features such as 
-  SQL script generation, ORM class generation, ORM model comparison, and extensive 
+  under active development.   SQLAlchemy-Migrate includes features such as
+  SQL script generation, ORM class generation, ORM model comparison, and extensive
   support for SQLite migrations.
 
 .. _metadata_binding:
@@ -1092,11 +1092,11 @@ Setting up Constraints when using the Declarative ORM Extension
 The :class:`.Table` is the SQLAlchemy Core construct that allows one to define
 table metadata, which among other things can be used by the SQLAlchemy ORM
 as a target to map a class.  The :ref:`Declarative <declarative_toplevel>`
-extension allows the :class:`.Table` object to be created automatically, given 
+extension allows the :class:`.Table` object to be created automatically, given
 the contents of the table primarily as a mapping of :class:`.Column` objects.
 
 To apply table-level constraint objects such as :class:`.ForeignKeyConstraint`
-to a table defined using Declarative, use the ``__table_args__`` attribute, 
+to a table defined using Declarative, use the ``__table_args__`` attribute,
 described at :ref:`declarative_table_args`.
 
 Constraints API
@@ -1179,9 +1179,9 @@ INDEX" is issued right after the create statements for the table:
     CREATE INDEX idx_col34 ON mytable (col3, col4){stop}
 
 Note in the example above, the :class:`.Index` construct is created
-externally to the table which it corresponds, using :class:`.Column` 
+externally to the table which it corresponds, using :class:`.Column`
 objects directly.  :class:`.Index` also supports
-"inline" definition inside the :class:`.Table`, using string names to 
+"inline" definition inside the :class:`.Table`, using string names to
 identify columns::
 
     meta = MetaData()
@@ -1308,7 +1308,7 @@ constraint will be added via ALTER:
 
     event.listen(
         users,
-        "after_create", 
+        "after_create",
         AddConstraint(constraint)
     )
     event.listen(
@@ -1331,11 +1331,11 @@ constraint will be added via ALTER:
     DROP TABLE users{stop}
 
 The real usefulness of the above becomes clearer once we illustrate the :meth:`.DDLEvent.execute_if`
-method.  This method returns a modified form of the DDL callable which will 
+method.  This method returns a modified form of the DDL callable which will
 filter on criteria before responding to a received event.   It accepts a
 parameter ``dialect``, which is the string name of a dialect or a tuple of such,
 which will limit the execution of the item to just those dialects.  It also
-accepts a ``callable_`` parameter which may reference a Python callable which will 
+accepts a ``callable_`` parameter which may reference a Python callable which will
 be invoked upon event reception, returning ``True`` or ``False`` indicating if
 the event should proceed.
 

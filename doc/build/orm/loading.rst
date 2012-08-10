@@ -21,14 +21,14 @@ in order to load the related object or objects:
 .. sourcecode:: python+sql
 
     {sql}>>> jack.addresses
-    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, 
+    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address,
     addresses.user_id AS addresses_user_id
     FROM addresses
     WHERE ? = addresses.user_id
     [5]
     {stop}[<Address(u'jack@google.com')>, <Address(u'j25@yahoo.com')>]
 
-The one case where SQL is not emitted is for a simple many-to-one relationship, when 
+The one case where SQL is not emitted is for a simple many-to-one relationship, when
 the related object can be identified by its primary key alone and that object is already
 present in the current :class:`.Session`.
 
@@ -66,17 +66,17 @@ parent objects:
 
     {sql}>>> jack = session.query(User).\
     ... options(subqueryload('addresses')).\
-    ... filter_by(name='jack').all() 
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, 
-    users.password AS users_password 
-    FROM users 
+    ... filter_by(name='jack').all()
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname,
+    users.password AS users_password
+    FROM users
     WHERE users.name = ?
     ('jack',)
-    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, 
-    addresses.user_id AS addresses_user_id, anon_1.users_id AS anon_1_users_id 
-    FROM (SELECT users.id AS users_id 
-    FROM users 
-    WHERE users.name = ?) AS anon_1 JOIN addresses ON anon_1.users_id = addresses.user_id 
+    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address,
+    addresses.user_id AS addresses_user_id, anon_1.users_id AS anon_1_users_id
+    FROM (SELECT users.id AS users_id
+    FROM users
+    WHERE users.name = ?) AS anon_1 JOIN addresses ON anon_1.users_id = addresses.user_id
     ORDER BY anon_1.users_id, addresses.id
     ('jack',)
 
@@ -162,9 +162,9 @@ Default Loading Strategies
 .. versionadded:: 0.7.5
     Default loader strategies as a new feature.
 
-Each of :func:`.joinedload`, :func:`.subqueryload`, :func:`.lazyload`, 
+Each of :func:`.joinedload`, :func:`.subqueryload`, :func:`.lazyload`,
 and :func:`.noload` can be used to set the default style of
-:func:`.relationship` loading 
+:func:`.relationship` loading
 for a particular query, affecting all :func:`.relationship` -mapped
 attributes not otherwise
 specified in the :class:`.Query`.   This feature is available by passing
@@ -174,19 +174,19 @@ the string ``'*'`` as the argument to any of these options::
 
 Above, the ``lazyload('*')`` option will supercede the ``lazy`` setting
 of all :func:`.relationship` constructs in use for that query,
-except for those which use the ``'dynamic'`` style of loading.   
+except for those which use the ``'dynamic'`` style of loading.
 If some relationships specify
 ``lazy='joined'`` or ``lazy='subquery'``, for example,
 using ``default_strategy(lazy='select')`` will unilaterally
 cause all those relationships to use ``'select'`` loading.
 
 The option does not supercede loader options stated in the
-query, such as :func:`.eagerload`, 
+query, such as :func:`.eagerload`,
 :func:`.subqueryload`, etc.  The query below will still use joined loading
 for the ``widget`` relationship::
 
     session.query(MyClass).options(
-                                lazyload('*'), 
+                                lazyload('*'),
                                 joinedload(MyClass.widget)
                             )
 
@@ -199,7 +199,7 @@ The Zen of Eager Loading
 -------------------------
 
 The philosophy behind loader strategies is that any set of loading schemes can be
-applied to a particular query, and *the results don't change* - only the number 
+applied to a particular query, and *the results don't change* - only the number
 of SQL statements required to fully load related objects and collections changes. A particular
 query might start out using all lazy loads.   After using it in context, it might be revealed
 that particular attributes or collections are always accessed, and that it would be more
@@ -220,7 +220,7 @@ is not valid - the ``Address`` entity is not named in the query:
     >>> jack = session.query(User).\
     ... options(joinedload(User.addresses)).\
     ... filter(User.name=='jack').\
-    ... order_by(Address.email_address).all() 
+    ... order_by(Address.email_address).all()
     {opensql}SELECT addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address,
     addresses_1.user_id AS addresses_1_user_id, users.id AS users_id, users.name AS users_name,
     users.fullname AS users_fullname, users.password AS users_password
@@ -228,7 +228,7 @@ is not valid - the ``Address`` entity is not named in the query:
     WHERE users.name = ? ORDER BY addresses.email_address   <-- this part is wrong !
     ['jack']
 
-Above, ``ORDER BY addresses.email_address`` is not valid since ``addresses`` is not in the 
+Above, ``ORDER BY addresses.email_address`` is not valid since ``addresses`` is not in the
 FROM list.   The correct way to load the ``User`` records and order by email
 address is to use :meth:`.Query.join`:
 
@@ -237,7 +237,7 @@ address is to use :meth:`.Query.join`:
     >>> jack = session.query(User).\
     ... join(User.addresses).\
     ... filter(User.name=='jack').\
-    ... order_by(Address.email_address).all() 
+    ... order_by(Address.email_address).all()
     {opensql}
     SELECT users.id AS users_id, users.name AS users_name,
     users.fullname AS users_fullname, users.password AS users_password
@@ -247,7 +247,7 @@ address is to use :meth:`.Query.join`:
 
 The statement above is of course not the same as the previous one, in that the columns from ``addresses``
 are not included in the result at all.   We can add :func:`.joinedload` back in, so that
-there are two joins - one is that which we are ordering on, the other is used anonymously to 
+there are two joins - one is that which we are ordering on, the other is used anonymously to
 load the contents of the ``User.addresses`` collection:
 
 .. sourcecode:: python+sql
@@ -256,7 +256,7 @@ load the contents of the ``User.addresses`` collection:
     ... join(User.addresses).\
     ... options(joinedload(User.addresses)).\
     ... filter(User.name=='jack').\
-    ... order_by(Address.email_address).all() 
+    ... order_by(Address.email_address).all()
     {opensql}SELECT addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address,
     addresses_1.user_id AS addresses_1_user_id, users.id AS users_id, users.name AS users_name,
     users.fullname AS users_fullname, users.password AS users_password
@@ -269,8 +269,8 @@ What we see above is that our usage of :meth:`.Query.join` is to supply JOIN cla
 to use in subsequent query criterion, whereas our usage of :func:`.joinedload` only concerns
 itself with the loading of the ``User.addresses`` collection, for each ``User`` in the result.
 In this case, the two joins most probably appear redundant - which they are.  If we
-wanted to use just one JOIN for collection loading as well as ordering, we use the 
-:func:`.contains_eager` option, described in :ref:`contains_eager` below.   But 
+wanted to use just one JOIN for collection loading as well as ordering, we use the
+:func:`.contains_eager` option, described in :ref:`contains_eager` below.   But
 to see why :func:`joinedload` does what it does, consider if we were **filtering** on a
 particular ``Address``:
 
@@ -281,7 +281,7 @@ particular ``Address``:
     ... options(joinedload(User.addresses)).\
     ... filter(User.name=='jack').\
     ... filter(Address.email_address=='someaddress@foo.com').\
-    ... all() 
+    ... all()
     {opensql}SELECT addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address,
     addresses_1.user_id AS addresses_1_user_id, users.id AS users_id, users.name AS users_name,
     users.fullname AS users_fullname, users.password AS users_password
@@ -308,14 +308,14 @@ the actual ``User`` rows we want.  Below we change :func:`.joinedload` into
     ... options(subqueryload(User.addresses)).\
     ... filter(User.name=='jack').\
     ... filter(Address.email_address=='someaddress@foo.com').\
-    ... all() 
+    ... all()
     {opensql}SELECT users.id AS users_id, users.name AS users_name,
     users.fullname AS users_fullname, users.password AS users_password
     FROM users JOIN addresses ON users.id = addresses.user_id
     WHERE users.name = ? AND addresses.email_address = ?
     ['jack', 'someaddress@foo.com']
 
-    # ... subqueryload() emits a SELECT in order 
+    # ... subqueryload() emits a SELECT in order
     # to load all address records ...
 
 When using joined eager loading, if the
@@ -323,8 +323,8 @@ query contains a modifier that impacts the rows returned
 externally to the joins, such as when using DISTINCT, LIMIT, OFFSET
 or equivalent, the completed statement is first
 wrapped inside a subquery, and the joins used specifically for joined eager
-loading are applied to the subquery.   SQLAlchemy's 
-joined eager loading goes the extra mile, and then ten miles further, to 
+loading are applied to the subquery.   SQLAlchemy's
+joined eager loading goes the extra mile, and then ten miles further, to
 absolutely ensure that it does not affect the end result of the query, only
 the way collections and related objects are loaded, no matter what the format of the query is.
 
@@ -344,18 +344,18 @@ references a scalar many-to-one reference.
    simple SELECT without any joins.
 
  * When using joined loading, the load of 100 objects and their collections will emit only one SQL
-   statement.  However, the 
-   total number of rows fetched will be equal to the sum of the size of all the collections, plus one 
+   statement.  However, the
+   total number of rows fetched will be equal to the sum of the size of all the collections, plus one
    extra row for each parent object that has an empty collection.  Each row will also contain the full
    set of columns represented by the parents, repeated for each collection item - SQLAlchemy does not
-   re-fetch these columns other than those of the primary key, however most DBAPIs (with some 
-   exceptions) will transmit the full data of each parent over the wire to the client connection in 
-   any case.  Therefore joined eager loading only makes sense when the size of the collections are 
+   re-fetch these columns other than those of the primary key, however most DBAPIs (with some
+   exceptions) will transmit the full data of each parent over the wire to the client connection in
+   any case.  Therefore joined eager loading only makes sense when the size of the collections are
    relatively small.  The LEFT OUTER JOIN can also be performance intensive compared to an INNER join.
 
  * When using subquery loading, the load of 100 objects will emit two SQL statements.  The second
    statement will fetch a total number of rows equal to the sum of the size of all collections.  An
-   INNER JOIN is used, and a minimum of parent columns are requested, only the primary keys.  So a 
+   INNER JOIN is used, and a minimum of parent columns are requested, only the primary keys.  So a
    subquery load makes sense when the collections are larger.
 
  * When multiple levels of depth are used with joined or subquery loading, loading collections-within-
@@ -367,7 +367,7 @@ references a scalar many-to-one reference.
  * When using the default lazy loading, a load of 100 objects will like in the case of the collection
    emit as many as 101 SQL statements.  However - there is a significant exception to this, in that
    if the many-to-one reference is a simple foreign key reference to the target's primary key, each
-   reference will be checked first in the current identity map using :meth:`.Query.get`.  So here, 
+   reference will be checked first in the current identity map using :meth:`.Query.get`.  So here,
    if the collection of objects references a relatively small set of target objects, or the full set
    of possible target objects have already been loaded into the session and are strongly referenced,
    using the default of `lazy='select'` is by far the most efficient way to go.
@@ -393,7 +393,7 @@ Routing Explicit Joins/Statements into Eagerly Loaded Collections
 ------------------------------------------------------------------
 
 The behavior of :func:`~sqlalchemy.orm.joinedload()` is such that joins are
-created automatically, using anonymous aliases as targets, the results of which 
+created automatically, using anonymous aliases as targets, the results of which
 are routed into collections and
 scalar references on loaded objects. It is often the case that a query already
 includes the necessary joins which represent a particular collection or scalar

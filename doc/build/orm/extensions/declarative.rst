@@ -4,7 +4,7 @@ Declarative
 ===========
 
 .. automodule:: sqlalchemy.ext.declarative
- 
+
 API Reference
 -------------
 

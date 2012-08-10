@@ -51,7 +51,7 @@ construct, then associated with the ``User`` class via the :func:`.mapper` funct
     mapper(User, user)
 
 Information about mapped attributes, such as relationships to other classes, are provided
-via the ``properties`` dictionary.  The example below illustrates a second :class:`.Table` 
+via the ``properties`` dictionary.  The example below illustrates a second :class:`.Table`
 object, mapped to a class called ``Address``, then linked to ``User`` via :func:`.relationship`::
 
     address = Table('address', metadata,
@@ -73,8 +73,8 @@ for the ``Address`` relationship, and not ``Address.id``, as ``Address`` may not
 yet be linked to table metadata, nor can we specify a string here.
 
 Some examples in the documentation still use the classical approach, but note that
-the classical as well as Declarative approaches are **fully interchangeable**.  Both 
-systems ultimately create the same configuration, consisting of a :class:`.Table`, 
+the classical as well as Declarative approaches are **fully interchangeable**.  Both
+systems ultimately create the same configuration, consisting of a :class:`.Table`,
 user-defined class, linked together with a :func:`.mapper`.  When we talk about
 "the behavior of :func:`.mapper`", this includes when using the Declarative system
 as well - it's still used, just behind the scenes.
@@ -125,7 +125,7 @@ with the desired key::
 Naming All Columns with a Prefix
 --------------------------------
 
-A way to automate the assignment of a prefix to 
+A way to automate the assignment of a prefix to
 the mapped attribute names relative to the column name
 is to use ``column_prefix``::
 
@@ -161,7 +161,7 @@ result in the former value being loaded first::
         id = Column(Integer, primary_key=True)
         name = column_property(Column(String(50)), active_history=True)
 
-:func:`.column_property` is also used to map a single attribute to 
+:func:`.column_property` is also used to map a single attribute to
 multiple columns.  This use case arises when mapping to a :func:`~.expression.join`
 which has attributes which are equated to each other::
 
@@ -174,7 +174,7 @@ which has attributes which are equated to each other::
 
 For more examples featuring this usage, see :ref:`maptojoin`.
 
-Another place where :func:`.column_property` is needed is to specify SQL expressions as 
+Another place where :func:`.column_property` is needed is to specify SQL expressions as
 mapped attributes, such as below where we create an attribute ``fullname``
 that is the string concatenation of the ``firstname`` and ``lastname``
 columns::
@@ -195,11 +195,11 @@ See examples of this usage at :ref:`mapper_sql_expressions`.
 Mapping a Subset of Table Columns
 ---------------------------------
 
-Sometimes, a :class:`.Table` object was made available using the 
-reflection process described at :ref:`metadata_reflection` to load 
+Sometimes, a :class:`.Table` object was made available using the
+reflection process described at :ref:`metadata_reflection` to load
 the table's structure from the database.
 For such a table that has lots of columns that don't need to be referenced
-in the application, the ``include_properties`` or ``exclude_properties`` 
+in the application, the ``include_properties`` or ``exclude_properties``
 arguments can specify that only a subset of columns should be mapped.
 For example::
 
@@ -241,7 +241,7 @@ should be included or excluded::
             'primary_key' : [user_table.c.id]
         }
 
-.. note:: 
+.. note::
 
    insert and update defaults configured on individual
    :class:`.Column` objects, i.e. those described at :ref:`metadata_defaults`
@@ -262,11 +262,11 @@ Deferred Column Loading
 ========================
 
 This feature allows particular columns of a table be loaded only
-upon direct access, instead of when the entity is queried using 
+upon direct access, instead of when the entity is queried using
 :class:`.Query`.  This feature is useful when one wants to avoid
 loading a large text or binary field into memory when it's not needed.
 Individual columns can be lazy loaded by themselves or placed into groups that
-lazy-load together, using the :func:`.orm.deferred` function to 
+lazy-load together, using the :func:`.orm.deferred` function to
 mark them as "deferred". In the example below, we define a mapping that will load each of
 ``.excerpt`` and ``.photo`` in separate, individual-row SELECT statements when each
 attribute is first referenced on the individual object instance::
@@ -341,8 +341,8 @@ Column Deferral API
 SQL Expressions as Mapped Attributes
 =====================================
 
-Attributes on a mapped class can be linked to SQL expressions, which can 
-be used in queries. 
+Attributes on a mapped class can be linked to SQL expressions, which can
+be used in queries.
 
 Using a Hybrid
 --------------
@@ -350,7 +350,7 @@ Using a Hybrid
 The easiest and most flexible way to link relatively simple SQL expressions to a class is to use a so-called
 "hybrid attribute",
 described in the section :ref:`hybrids_toplevel`.  The hybrid provides
-for an expression that works at both the Python level as well as at the 
+for an expression that works at both the Python level as well as at the
 SQL expression level.  For example, below we map a class ``User``,
 containing attributes ``firstname`` and ``lastname``, and include a hybrid that
 will provide for us the ``fullname``, which is the string concatenation of the two::
@@ -367,7 +367,7 @@ will provide for us the ``fullname``, which is the string concatenation of the t
         def fullname(self):
             return self.firstname + " " + self.lastname
 
-Above, the ``fullname`` attribute is interpreted at both the instance and 
+Above, the ``fullname`` attribute is interpreted at both the instance and
 class level, so that it is available from an instance::
 
     some_user = session.query(User).first()
@@ -410,21 +410,21 @@ Using column_property
 ---------------------
 
 The :func:`.orm.column_property` function can be used to map a SQL
-expression in a manner similar to a regularly mapped :class:`.Column`.   
+expression in a manner similar to a regularly mapped :class:`.Column`.
 With this technique, the attribute is loaded
 along with all other column-mapped attributes at load time.  This is in some
 cases an advantage over the usage of hybrids, as the value can be loaded
 up front at the same time as the parent row of the object, particularly if
 the expression is one which links to other tables (typically as a correlated
-subquery) to access data that wouldn't normally be 
+subquery) to access data that wouldn't normally be
 available on an already loaded object.
 
-Disadvantages to using :func:`.orm.column_property` for SQL expressions include that 
-the expression must be compatible with the SELECT statement emitted for the class 
-as a whole, and there are also some configurational quirks which can occur 
+Disadvantages to using :func:`.orm.column_property` for SQL expressions include that
+the expression must be compatible with the SELECT statement emitted for the class
+as a whole, and there are also some configurational quirks which can occur
 when using :func:`.orm.column_property` from declarative mixins.
 
-Our "fullname" example can be expressed using :func:`.orm.column_property` as 
+Our "fullname" example can be expressed using :func:`.orm.column_property` as
 follows::
 
     from sqlalchemy.orm import column_property
@@ -469,7 +469,7 @@ to add an additional property after the fact::
     User.address_count = column_property(
             select([func.count(Address.id)]).\
                 where(Address.user_id==User.id)
-        ) 
+        )
 
 For many-to-many relationships, use :func:`.and_` to join the fields of the
 association table to both tables in a relation, illustrated
@@ -479,7 +479,7 @@ here with a classical mapping::
 
     mapper(Author, authors, properties={
         'book_count': column_property(
-                            select([func.count(books.c.id)], 
+                            select([func.count(books.c.id)],
                                 and_(
                                     book_authors.c.author_id==authors.c.id,
                                     book_authors.c.book_id==books.c.id
@@ -490,9 +490,9 @@ Using a plain descriptor
 -------------------------
 
 In cases where a SQL query more elaborate than what :func:`.orm.column_property`
-or :class:`.hybrid_property` can provide must be emitted, a regular Python 
+or :class:`.hybrid_property` can provide must be emitted, a regular Python
 function accessed as an attribute can be used, assuming the expression
-only needs to be available on an already-loaded instance.   The function 
+only needs to be available on an already-loaded instance.   The function
 is decorated with Python's own ``@property`` decorator to mark it as a read-only
 attribute.   Within the function, :func:`.object_session`
 is used to locate the :class:`.Session` corresponding to the current object,
@@ -562,7 +562,7 @@ collection::
             assert '@' in address.email
             return address
 
-Note that the :func:`~.validates` decorator is a convenience function built on 
+Note that the :func:`~.validates` decorator is a convenience function built on
 top of attribute events.   An application that requires more control over
 configuration of attribute change behavior can make use of this system,
 described at :class:`~.AttributeEvents`.
@@ -635,8 +635,8 @@ that is, from the ``EmailAddress`` class directly:
     {sql}address = session.query(EmailAddress).\
                      filter(EmailAddress.email == 'address@example.com').\
                      one()
-    SELECT address.email AS address_email, address.id AS address_id 
-    FROM address 
+    SELECT address.email AS address_email, address.id AS address_id
+    FROM address
     WHERE address.email = ?
     ('address@example.com',)
     {stop}
@@ -664,21 +664,21 @@ logic::
 
         @hybrid_property
         def email(self):
-            """Return the value of _email up until the last twelve 
+            """Return the value of _email up until the last twelve
             characters."""
 
             return self._email[:-12]
 
         @email.setter
         def email(self, email):
-            """Set the value of _email, tacking on the twelve character 
+            """Set the value of _email, tacking on the twelve character
             value @example.com."""
 
             self._email = email + "@example.com"
 
         @email.expression
         def email(cls):
-            """Produce a SQL expression that represents the value 
+            """Produce a SQL expression that represents the value
             of the _email column, minus the last twelve characters."""
 
             return func.substr(cls._email, 0, func.length(cls._email) - 12)
@@ -691,8 +691,8 @@ attribute, a SQL function is rendered which produces the same effect:
 .. sourcecode:: python+sql
 
     {sql}address = session.query(EmailAddress).filter(EmailAddress.email == 'address').one()
-    SELECT address.email AS address_email, address.id AS address_id 
-    FROM address 
+    SELECT address.email AS address_email, address.id AS address_id
+    FROM address
     WHERE substr(address.email, ?, length(address.email) - ?) = ?
     (0, 12, 'address')
     {stop}
@@ -717,20 +717,20 @@ Custom Comparators
 
 The expressions returned by comparison operations, such as
 ``User.name=='ed'``, can be customized, by implementing an object that
-explicitly defines each comparison method needed. 
+explicitly defines each comparison method needed.
 
-This is a relatively rare use case which generally applies only to 
-highly customized types.  Usually, custom SQL behaviors can be 
+This is a relatively rare use case which generally applies only to
+highly customized types.  Usually, custom SQL behaviors can be
 associated with a mapped class by composing together the classes'
-existing mapped attributes with other expression components, 
-using the techniques described in :ref:`mapper_sql_expressions`.  
+existing mapped attributes with other expression components,
+using the techniques described in :ref:`mapper_sql_expressions`.
 Those approaches should be considered first before resorting to custom comparison objects.
 
 Each of :func:`.orm.column_property`, :func:`~.composite`, :func:`.relationship`,
 and :func:`.comparable_property` accept an argument called
 ``comparator_factory``.   A subclass of :class:`.PropComparator` can be provided
 for this argument, which can then reimplement basic Python comparison methods
-such as ``__eq__()``, ``__ne__()``, ``__lt__()``, and so on. 
+such as ``__eq__()``, ``__ne__()``, ``__lt__()``, and so on.
 
 It's best to subclass the :class:`.PropComparator` subclass provided by
 each type of property.  For example, to allow a column-mapped attribute to
@@ -758,7 +758,7 @@ function to produce case-insensitive matching::
     lower(address.email) = lower(:lower_1)
 
 When building a :class:`.PropComparator`, the ``__clause_element__()`` method
-should be used in order to acquire the underlying mapped column.  This will 
+should be used in order to acquire the underlying mapped column.  This will
 return a column that is appropriately wrapped in any kind of subquery
 or aliasing that has been applied in the context of the generated SQL statement.
 
@@ -774,7 +774,7 @@ provides a single attribute which represents the group of columns using the
 class you provide.
 
 .. versionchanged:: 0.7
-    Composites have been simplified such that 
+    Composites have been simplified such that
     they no longer "conceal" the underlying column based attributes.  Additionally,
     in-place mutation is no longer automatic; see the section below on
     enabling mutability to support tracking of in-place changes.
@@ -851,12 +851,12 @@ using the ``.start`` and ``.end`` attributes against ad-hoc ``Point`` instances:
     BEGIN (implicit)
     INSERT INTO vertice (x1, y1, x2, y2) VALUES (?, ?, ?, ?)
     (3, 4, 5, 6)
-    SELECT vertice.id AS vertice_id, 
-            vertice.x1 AS vertice_x1, 
-            vertice.y1 AS vertice_y1, 
-            vertice.x2 AS vertice_x2, 
-            vertice.y2 AS vertice_y2 
-    FROM vertice 
+    SELECT vertice.id AS vertice_id,
+            vertice.x1 AS vertice_x1,
+            vertice.y1 AS vertice_y1,
+            vertice.x2 AS vertice_x2,
+            vertice.y2 AS vertice_y2
+    FROM vertice
     WHERE vertice.x1 = ? AND vertice.y1 = ?
      LIMIT ? OFFSET ?
     (3, 4, 1, 0)
@@ -867,9 +867,9 @@ using the ``.start`` and ``.end`` attributes against ad-hoc ``Point`` instances:
 Tracking In-Place Mutations on Composites
 -----------------------------------------
 
-In-place changes to an existing composite value are 
+In-place changes to an existing composite value are
 not tracked automatically.  Instead, the composite class needs to provide
-events to its parent object explicitly.   This task is largely automated 
+events to its parent object explicitly.   This task is largely automated
 via the usage of the :class:`.MutableComposite` mixin, which uses events
 to associate each user-defined composite object with all parent associations.
 Please see the example in :ref:`mutable_composites`.
@@ -883,7 +883,7 @@ Redefining Comparison Operations for Composites
 The "equals" comparison operation by default produces an AND of all
 corresponding columns equated to one another. This can be changed using
 the ``comparator_factory``, described in :ref:`custom_comparators`.
-Below we illustrate the "greater than" operator, implementing 
+Below we illustrate the "greater than" operator, implementing
 the same expression that the base "greater than" does::
 
     from sqlalchemy.orm.properties import CompositeProperty
@@ -906,9 +906,9 @@ the same expression that the base "greater than" does::
         x2 = Column(Integer)
         y2 = Column(Integer)
 
-        start = composite(Point, x1, y1, 
+        start = composite(Point, x1, y1,
                             comparator_factory=PointComparator)
-        end = composite(Point, x2, y2, 
+        end = composite(Point, x2, y2,
                             comparator_factory=PointComparator)
 
 .. _maptojoin:
@@ -959,22 +959,22 @@ In the example above, the join expresses columns for both the
 ``user`` and the ``address`` table.  The ``user.id`` and ``address.user_id``
 columns are equated by foreign key, so in the mapping they are defined
 as one attribute, ``AddressUser.id``, using :func:`.column_property` to
-indicate a specialized column mapping.   Based on this part of the 
+indicate a specialized column mapping.   Based on this part of the
 configuration, the mapping will copy
 new primary key values from ``user.id`` into the ``address.user_id`` column
 when a flush occurs.
 
-Additionally, the ``address.id`` column is mapped explicitly to 
-an attribute named ``address_id``.   This is to **disambiguate** the 
-mapping of the ``address.id`` column from the same-named ``AddressUser.id`` 
+Additionally, the ``address.id`` column is mapped explicitly to
+an attribute named ``address_id``.   This is to **disambiguate** the
+mapping of the ``address.id`` column from the same-named ``AddressUser.id``
 attribute, which here has been assigned to refer to the ``user`` table
 combined with the ``address.user_id`` foreign key.
 
 The natural primary key of the above mapping is the composite of
 ``(user.id, address.id)``, as these are the primary key columns of the
-``user`` and ``address`` table combined together.  The identity of an 
+``user`` and ``address`` table combined together.  The identity of an
 ``AddressUser`` object will be in terms of these two values, and
-is represented from an ``AddressUser`` object as 
+is represented from an ``AddressUser`` object as
 ``(AddressUser.id, AddressUser.address_id)``.
 
 
@@ -983,14 +983,14 @@ Mapping a Class against Arbitrary Selects
 
 Similar to mapping against a join, a plain :func:`~.expression.select` object can be used with a
 mapper as well.  The example fragment below illustrates mapping a class
-called ``Customer`` to a :func:`~.expression.select` which includes a join to a 
+called ``Customer`` to a :func:`~.expression.select` which includes a join to a
 subquery::
 
     from sqlalchemy import select, func
 
     subq = select([
-                func.count(orders.c.id).label('order_count'), 
-                func.max(orders.c.price).label('highest_order'), 
+                func.count(orders.c.id).label('order_count'),
+                func.max(orders.c.price).label('highest_order'),
                 orders.c.customer_id
                 ]).group_by(orders.c.customer_id).alias()
 
@@ -1002,12 +1002,12 @@ subquery::
 
 Above, the full row represented by ``customer_select`` will be all the
 columns of the ``customers`` table, in addition to those columns
-exposed by the ``subq`` subquery, which are ``order_count``, 
+exposed by the ``subq`` subquery, which are ``order_count``,
 ``highest_order``, and ``customer_id``.  Mapping the ``Customer``
 class to this selectable then creates a class which will contain
 those attributes.
 
-When the ORM persists new instances of ``Customer``, only the 
+When the ORM persists new instances of ``Customer``, only the
 ``customers`` table will actually receive an INSERT.  This is because the
 primary key of the ``orders`` table is not represented in the mapping;  the ORM
 will only emit an INSERT into a table for which it has mapped the primary
@@ -1022,19 +1022,19 @@ persisting it towards a particular :class:`.Table`, but also *instrumenting*
 attributes upon the class which are structured specifically according to the
 table metadata.
 
-One potential use case for another mapper to exist at the same time is if we 
+One potential use case for another mapper to exist at the same time is if we
 wanted to load instances of our class not just from the immediate :class:`.Table`
 to which it is mapped, but from another selectable that is a derivation of that
 :class:`.Table`.   While there technically is a way to create such a :func:`.mapper`,
 using the ``non_primary=True`` option, this approach is virtually never needed.
-Instead, we use the functionality of the :class:`.Query` object to achieve this, 
+Instead, we use the functionality of the :class:`.Query` object to achieve this,
 using a method such as :meth:`.Query.select_from`
 or :meth:`.Query.from_statement` to specify a derived selectable.
 
 Another potential use is if we genuinely want instances of our class to
-be persisted into different tables at different times; certain kinds of 
+be persisted into different tables at different times; certain kinds of
 data sharding configurations may persist a particular class into tables
-that are identical in structure except for their name.   For this kind of 
+that are identical in structure except for their name.   For this kind of
 pattern, Python offers a better approach than the complexity of mapping
 the same class multiple times, which is to instead create new mapped classes
 for each target table.    SQLAlchemy refers to this as the "entity name"
@@ -1090,7 +1090,7 @@ next flush() operation, so the activity within a reconstructor should be
 conservative.
 
 :func:`~sqlalchemy.orm.reconstructor` is a shortcut into a larger system
-of "instance level" events, which can be subscribed to using the 
+of "instance level" events, which can be subscribed to using the
 event API - see :class:`.InstanceEvents` for the full API description
 of these events.
 

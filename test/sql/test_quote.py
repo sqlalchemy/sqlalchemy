@@ -94,7 +94,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(t1.select().apply_labels(), '''SELECT "foo"."t1"."col1" AS "foo_t1_col1" FROM "foo"."t1"''')
         a = t1.select().alias('anon')
         b = select([1], a.c.col1==2, from_obj=a)
-        self.assert_compile(b, 
+        self.assert_compile(b,
             '''SELECT 1 FROM (SELECT "foo"."t1"."col1" AS "col1" FROM '''\
             '''"foo"."t1") AS anon WHERE anon."col1" = :col1_1'''
         )
@@ -104,15 +104,15 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             Column('ColumnOne', Integer, quote=False), quote=False, schema="FooBar", quote_schema=False)
         self.assert_compile(t1.select(), "SELECT FooBar.TableOne.ColumnOne FROM FooBar.TableOne")
 
-        self.assert_compile(t1.select().apply_labels(), 
+        self.assert_compile(t1.select().apply_labels(),
             "SELECT FooBar.TableOne.ColumnOne AS "\
-            "FooBar_TableOne_ColumnOne FROM FooBar.TableOne"   # TODO: is this what we really want here ?  what if table/schema 
+            "FooBar_TableOne_ColumnOne FROM FooBar.TableOne"   # TODO: is this what we really want here ?  what if table/schema
                                                                # *are* quoted?
         )
 
         a = t1.select().alias('anon')
         b = select([1], a.c.ColumnOne==2, from_obj=a)
-        self.assert_compile(b, 
+        self.assert_compile(b,
             "SELECT 1 FROM (SELECT FooBar.TableOne.ColumnOne AS "\
             "ColumnOne FROM FooBar.TableOne) AS anon WHERE anon.ColumnOne = :ColumnOne_1"
         )
@@ -142,8 +142,8 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         if labels arent quoted, a query in postgresql in particular will fail since it produces:
 
         SELECT LaLa.lowercase, LaLa."UPPERCASE", LaLa."MixedCase", LaLa."ASC"
-        FROM (SELECT DISTINCT "WorstCase1".lowercase AS lowercase, 
-                "WorstCase1"."UPPERCASE" AS UPPERCASE, 
+        FROM (SELECT DISTINCT "WorstCase1".lowercase AS lowercase,
+                "WorstCase1"."UPPERCASE" AS UPPERCASE,
                 "WorstCase1"."MixedCase" AS MixedCase, "WorstCase1"."ASC" AS ASC \nFROM "WorstCase1") AS LaLa
 
         where the "UPPERCASE" column of "LaLa" doesnt exist.
@@ -179,7 +179,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("order", Integer))
         x = select([table.c.col1, table.c['from'], table.c.louisville, table.c.order])
 
-        self.assert_compile(x, 
+        self.assert_compile(x,
             '''SELECT "ImATable".col1, "ImATable"."from", "ImATable".louisville, "ImATable"."order" FROM "ImATable"''')
 
 

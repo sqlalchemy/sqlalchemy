@@ -55,12 +55,12 @@ which is a **proxy** object for an actual DBAPI connection.  The DBAPI
 connection is retrieved from the connection pool at the point at which
 :class:`.Connection` is created.
 
-The returned result is an instance of :class:`.ResultProxy`, which 
+The returned result is an instance of :class:`.ResultProxy`, which
 references a DBAPI cursor and provides a largely compatible interface
 with that of the DBAPI cursor.   The DBAPI cursor will be closed
-by the :class:`.ResultProxy` when all of its result rows (if any) are 
+by the :class:`.ResultProxy` when all of its result rows (if any) are
 exhausted.  A :class:`.ResultProxy` that returns no rows, such as that of
-an UPDATE statement (without any returned rows), 
+an UPDATE statement (without any returned rows),
 releases cursor resources immediately upon construction.
 
 When the :meth:`~.Connection.close` method is called, the referenced DBAPI
@@ -97,17 +97,17 @@ DBAPI connection resource to the pool (SQLAlchemy achieves this by the usage
 of weakref callbacks - *never* the ``__del__`` method) - however it's never a
 good idea to rely upon Python garbage collection to manage resources.
 
-Our example above illustrated the execution of a textual SQL string. 
-The :meth:`~.Connection.execute` method can of course accommodate more than 
+Our example above illustrated the execution of a textual SQL string.
+The :meth:`~.Connection.execute` method can of course accommodate more than
 that, including the variety of SQL expression constructs described
 in :ref:`sqlexpression_toplevel`.
 
 Using Transactions
 ==================
 
-.. note:: 
+.. note::
 
-  This section describes how to use transactions when working directly 
+  This section describes how to use transactions when working directly
   with :class:`.Engine` and :class:`.Connection` objects. When using the
   SQLAlchemy ORM, the public API for transaction control is via the
   :class:`.Session` object, which makes usage of the :class:`.Transaction`
@@ -201,15 +201,15 @@ CREATE TABLE, ALTER TABLE, and then issuing a COMMIT automatically if no
 transaction is in progress. The detection is based on the presence of the
 ``autocommit=True`` execution option on the statement.   If the statement
 is a text-only statement and the flag is not set, a regular expression is used
-to detect INSERT, UPDATE, DELETE, as well as a variety of other commands 
+to detect INSERT, UPDATE, DELETE, as well as a variety of other commands
 for a particular backend::
 
     conn = engine.connect()
     conn.execute("INSERT INTO users VALUES (1, 'john')")  # autocommits
 
 The "autocommit" feature is only in effect when no :class:`.Transaction` has
-otherwise been declared.   This means the feature is not generally used with 
-the ORM, as the :class:`.Session` object by default always maintains an 
+otherwise been declared.   This means the feature is not generally used with
+the ORM, as the :class:`.Session` object by default always maintains an
 ongoing :class:`.Transaction`.
 
 Full control of the "autocommit" behavior is available using the generative
@@ -232,8 +232,8 @@ refers to the usage of the ``execute()`` method on an object which is not a
 :class:`.Connection`.  This was illustrated using the :meth:`~.Engine.execute` method
 of :class:`.Engine`.
 
-In addition to "connectionless" execution, it is also possible 
-to use the :meth:`~.Executable.execute` method of 
+In addition to "connectionless" execution, it is also possible
+to use the :meth:`~.Executable.execute` method of
 any :class:`.Executable` construct, which is a marker for SQL expression objects
 that support execution.   The SQL expression object itself references an
 :class:`.Engine` or :class:`.Connection` known as the **bind**, which it uses
@@ -274,7 +274,7 @@ Implicit execution is also connectionless, and calls the ``execute()`` method
 on the expression itself, utilizing the fact that either an
 :class:`~sqlalchemy.engine.base.Engine` or
 :class:`~sqlalchemy.engine.base.Connection` has been *bound* to the expression
-object (binding is discussed further in 
+object (binding is discussed further in
 :ref:`metadata_toplevel`):
 
 .. sourcecode:: python+sql
@@ -363,7 +363,7 @@ call :meth:`.Engine.contextual_connect`::
     call_operation3(conn)
     conn.close()
 
-Calling :meth:`~.Connection.close` on the "contextual" connection does not release 
+Calling :meth:`~.Connection.close` on the "contextual" connection does not release
 its resources until all other usages of that resource are closed as well, including
 that any ongoing transactions are rolled back or committed.
 

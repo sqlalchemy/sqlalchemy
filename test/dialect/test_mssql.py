@@ -84,8 +84,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 self.assert_compile(
                     t.update().where(t.c.somecolumn=="q").
                             values(somecolumn="x").
-                            with_hint("WITH (PAGLOCK)", 
-                                    selectable=targ, 
+                            with_hint("WITH (PAGLOCK)",
+                                    selectable=targ,
                                     dialect_name=darg),
                     "UPDATE sometable WITH (PAGLOCK) "
                     "SET somecolumn=:somecolumn "
@@ -108,8 +108,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             for darg in ("*", "mssql"):
                 self.assert_compile(
                     t.delete().where(t.c.somecolumn=="q").
-                            with_hint("WITH (PAGLOCK)", 
-                                    selectable=targ, 
+                            with_hint("WITH (PAGLOCK)",
+                                    selectable=targ,
                                     dialect_name=darg),
                     "DELETE FROM sometable WITH (PAGLOCK) "
                     "WHERE sometable.somecolumn = :somecolumn_1"
@@ -132,8 +132,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             self.assert_compile(
                 t.update().where(t.c.somecolumn==t2.c.somecolumn).
                         values(somecolumn="x").
-                        with_hint("WITH (PAGLOCK)", 
-                                selectable=t2, 
+                        with_hint("WITH (PAGLOCK)",
+                                selectable=t2,
                                 dialect_name=darg),
                 "UPDATE sometable SET somecolumn=:somecolumn "
                 "FROM sometable, othertable WITH (PAGLOCK) "
@@ -147,8 +147,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     #    for darg in ("*", "mssql"):
     #        self.assert_compile(
     #            t.delete().where(t.c.somecolumn==t2.c.somecolumn).
-    #                    with_hint("WITH (PAGLOCK)", 
-    #                            selectable=t2, 
+    #                    with_hint("WITH (PAGLOCK)",
+    #                            selectable=t2,
     #                            dialect_name=darg),
     #            ""
     #        )
@@ -163,7 +163,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         for expr, compile in [
             (
-                select([literal("x"), literal("y")]), 
+                select([literal("x"), literal("y")]),
                 "SELECT 'x' AS anon_1, 'y' AS anon_2",
             ),
             (
@@ -693,8 +693,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
     def test_indexes_cols_with_commas(self):
         metadata = self.metadata
 
-        t1 = Table('t', metadata, 
-                        Column('x, col', Integer, key='x'), 
+        t1 = Table('t', metadata,
+                        Column('x, col', Integer, key='x'),
                         Column('y', Integer)
                     )
         Index('foo', t1.c.x, t1.c.y)
@@ -712,7 +712,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
     def test_indexes_cols_with_spaces(self):
         metadata = self.metadata
 
-        t1 = Table('t', metadata, Column('x col', Integer, key='x'), 
+        t1 = Table('t', metadata, Column('x col', Integer, key='x'),
                                     Column('y', Integer))
         Index('foo', t1.c.x, t1.c.y)
         metadata.create_all()
@@ -762,14 +762,14 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         case of a table having an identity (autoincrement)
         primary key column, and which also has a trigger configured
         to fire upon each insert and subsequently perform an
-        insert into a different table. 
+        insert into a different table.
 
         SQLALchemy's MSSQL dialect by default will attempt to
         use an OUTPUT_INSERTED clause, which in this case will
         raise the following error:
 
-        ProgrammingError: (ProgrammingError) ('42000', 334, 
-        "[Microsoft][SQL Server Native Client 10.0][SQL Server]The 
+        ProgrammingError: (ProgrammingError) ('42000', 334,
+        "[Microsoft][SQL Server Native Client 10.0][SQL Server]The
         target table 't1' of the DML statement cannot have any enabled
         triggers if the statement contains an OUTPUT clause without
         INTO clause.", 7748) 'INSERT INTO t1 (descr) OUTPUT inserted.id
@@ -796,7 +796,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
                 # though the ExecutionContext will still have a
                 # _select_lastrowid, so the SELECT SCOPE_IDENTITY() will
                 # hopefully be called instead.
-                implicit_returning = False 
+                implicit_returning = False
                 )
         t2 = Table('t2', meta,
                 Column('id', Integer, Sequence('fred', 200, 1),
@@ -834,7 +834,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
                 testing.db,
                 lambda: engine.execute(t1.insert()),
                 ExactSQL("INSERT INTO t1 DEFAULT VALUES"),
-                # we dont have an event for 
+                # we dont have an event for
                 # "SELECT @@IDENTITY" part here.
                 # this will be in 0.8 with #2459
         )
@@ -844,7 +844,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         meta = MetaData(testing.db)
         con = testing.db.connect()
         con.execute('create schema paj')
-        tbl = Table('test', meta, 
+        tbl = Table('test', meta,
                     Column('id', Integer, primary_key=True), schema='paj')
         tbl.create()
         try:
@@ -1005,12 +1005,12 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
             Column('category_id', Integer, ForeignKey('cattable.id')),
             PrimaryKeyConstraint('id', name='PK_matchtable'),
             )
-        DDL("""CREATE FULLTEXT INDEX 
-                       ON cattable (description) 
+        DDL("""CREATE FULLTEXT INDEX
+                       ON cattable (description)
                        KEY INDEX PK_cattable""").execute_at('after-create'
                 , matchtable)
-        DDL("""CREATE FULLTEXT INDEX 
-                       ON matchtable (title) 
+        DDL("""CREATE FULLTEXT INDEX
+                       ON matchtable (title)
                        KEY INDEX PK_matchtable""").execute_at('after-create'
                 , matchtable)
         metadata.create_all()
@@ -1197,7 +1197,7 @@ class ParseConnectTest(fixtures.TestBase, AssertsCompiledSQL):
             url.make_url('mssql+pymssql://scott:tiger@somehost/test')
         connection = dialect.create_connect_args(u)
         eq_(
-            [[], {'host': 'somehost', 'password': 'tiger', 
+            [[], {'host': 'somehost', 'password': 'tiger',
                     'user': 'scott', 'database': 'test'}], connection
         )
 
@@ -1205,7 +1205,7 @@ class ParseConnectTest(fixtures.TestBase, AssertsCompiledSQL):
             url.make_url('mssql+pymssql://scott:tiger@somehost:5000/test')
         connection = dialect.create_connect_args(u)
         eq_(
-            [[], {'host': 'somehost:5000', 'password': 'tiger', 
+            [[], {'host': 'somehost:5000', 'password': 'tiger',
                     'user': 'scott', 'database': 'test'}], connection
         )
 
@@ -1890,7 +1890,7 @@ class ReflectHugeViewTest(fixtures.TestBase):
         )
         self.view_str = view_str = \
             "CREATE VIEW huge_named_view AS SELECT %s FROM base_table" % (
-            ",".join("long_named_column_number_%d" % i 
+            ",".join("long_named_column_number_%d" % i
                         for i in xrange(self.col_num))
             )
         assert len(view_str) > 4000

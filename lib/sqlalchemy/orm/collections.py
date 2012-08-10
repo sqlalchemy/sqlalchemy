@@ -166,7 +166,7 @@ class _SerializableColumnGetter(object):
         state = instance_state(value)
         m = _state_mapper(state)
         key = [m._get_state_attr_by_column(
-                        state, state.dict, 
+                        state, state.dict,
                         m.mapped_table.columns[k])
                      for k in self.colkeys]
         if self.composite:
@@ -175,7 +175,7 @@ class _SerializableColumnGetter(object):
             return key[0]
 
 class _SerializableColumnGetterV2(_PlainColumnGetter):
-    """Updated serializable getter which deals with 
+    """Updated serializable getter which deals with
     multi-table mapped classes.
 
     Two extremely unusual cases are not supported.
@@ -709,8 +709,8 @@ class CollectionAdapter(object):
         """
         if initiator is not False and item is not None:
             return self.attr.fire_append_event(
-                                    self.owner_state, 
-                                    self.owner_state.dict, 
+                                    self.owner_state,
+                                    self.owner_state.dict,
                                     item, initiator)
         else:
             return item
@@ -725,8 +725,8 @@ class CollectionAdapter(object):
         """
         if initiator is not False and item is not None:
             self.attr.fire_remove_event(
-                                    self.owner_state, 
-                                    self.owner_state.dict, 
+                                    self.owner_state,
+                                    self.owner_state.dict,
                                     item, initiator)
 
     def fire_pre_remove_event(self, initiator=None):
@@ -737,8 +737,8 @@ class CollectionAdapter(object):
 
         """
         self.attr.fire_pre_remove_event(
-                                    self.owner_state, 
-                                    self.owner_state.dict, 
+                                    self.owner_state,
+                                    self.owner_state.dict,
                                     initiator=initiator)
 
     def __getstate__(self):

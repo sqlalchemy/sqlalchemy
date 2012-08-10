@@ -15,7 +15,7 @@ When mappers are configured in an inheritance relationship, SQLAlchemy has the
 ability to load elements "polymorphically", meaning that a single query can
 return objects of multiple types.
 
-.. note:: 
+.. note::
 
    This section currently uses classical mappings to illustrate inheritance
    configurations, and will soon be updated to standardize on Declarative.
@@ -38,7 +38,7 @@ For the following sections, assume this class relationship:
             self.manager_data = manager_data
         def __repr__(self):
             return (
-                self.__class__.__name__ + " " + 
+                self.__class__.__name__ + " " +
                 self.name + " " +  self.manager_data
             )
 
@@ -48,7 +48,7 @@ For the following sections, assume this class relationship:
             self.engineer_info = engineer_info
         def __repr__(self):
             return (
-                self.__class__.__name__ + " " + 
+                self.__class__.__name__ + " " +
                 self.name + " " +  self.engineer_info
             )
 
@@ -89,15 +89,15 @@ parent, and even a custom join condition can be specified between parent and
 child tables instead of using a foreign key::
 
     engineers = Table('engineers', metadata,
-       Column('employee_id', Integer, 
-                        ForeignKey('employees.employee_id'), 
+       Column('employee_id', Integer,
+                        ForeignKey('employees.employee_id'),
                         primary_key=True),
        Column('engineer_info', String(50)),
     )
 
     managers = Table('managers', metadata,
-       Column('employee_id', Integer, 
-                        ForeignKey('employees.employee_id'), 
+       Column('employee_id', Integer,
+                        ForeignKey('employees.employee_id'),
                         primary_key=True),
        Column('manager_data', String(50)),
     )
@@ -123,11 +123,11 @@ stored in the polymorphic discriminator column.
 
 .. sourcecode:: python+sql
 
-    mapper(Employee, employees, polymorphic_on=employees.c.type, 
+    mapper(Employee, employees, polymorphic_on=employees.c.type,
                                 polymorphic_identity='employee')
-    mapper(Engineer, engineers, inherits=Employee, 
+    mapper(Engineer, engineers, inherits=Employee,
                                 polymorphic_identity='engineer')
-    mapper(Manager, managers, inherits=Employee, 
+    mapper(Manager, managers, inherits=Employee,
                                 polymorphic_identity='manager')
 
 And that's it. Querying against ``Employee`` will return a combination of
@@ -156,7 +156,7 @@ SQL such as this:
 .. sourcecode:: python+sql
 
     {opensql}
-    SELECT employees.employee_id AS employees_employee_id, 
+    SELECT employees.employee_id AS employees_employee_id,
         employees.name AS employees_name, employees.type AS employees_type
     FROM employees
     []
@@ -170,12 +170,12 @@ issued along the lines of:
 .. sourcecode:: python+sql
 
     {opensql}
-    SELECT managers.employee_id AS managers_employee_id, 
+    SELECT managers.employee_id AS managers_employee_id,
         managers.manager_data AS managers_manager_data
     FROM managers
     WHERE ? = managers.employee_id
     [5]
-    SELECT engineers.employee_id AS engineers_employee_id, 
+    SELECT engineers.employee_id AS engineers_employee_id,
         engineers.engineer_info AS engineers_engineer_info
     FROM engineers
     WHERE ? = engineers.employee_id
@@ -201,17 +201,17 @@ produces a query which joins the ``employees`` table to both the ``engineers`` a
 
     query.all()
     {opensql}
-    SELECT employees.employee_id AS employees_employee_id, 
-        engineers.employee_id AS engineers_employee_id, 
-        managers.employee_id AS managers_employee_id, 
-        employees.name AS employees_name, 
-        employees.type AS employees_type, 
-        engineers.engineer_info AS engineers_engineer_info, 
+    SELECT employees.employee_id AS employees_employee_id,
+        engineers.employee_id AS engineers_employee_id,
+        managers.employee_id AS managers_employee_id,
+        employees.name AS employees_name,
+        employees.type AS employees_type,
+        engineers.engineer_info AS engineers_engineer_info,
         managers.manager_data AS managers_manager_data
-    FROM employees 
-        LEFT OUTER JOIN engineers 
-        ON employees.employee_id = engineers.employee_id 
-        LEFT OUTER JOIN managers 
+    FROM employees
+        LEFT OUTER JOIN engineers
+        ON employees.employee_id = engineers.employee_id
+        LEFT OUTER JOIN managers
         ON employees.employee_id = managers.employee_id
     []
 
@@ -240,7 +240,7 @@ should be used to load polymorphically:
 
     # custom selectable
     query.with_polymorphic(
-                [Engineer, Manager], 
+                [Engineer, Manager],
                 employees.outerjoin(managers).outerjoin(engineers)
             )
 
@@ -264,12 +264,12 @@ followed by a selectable.
 
 .. sourcecode:: python+sql
 
-    mapper(Employee, employees, polymorphic_on=employees.c.type, 
-                                polymorphic_identity='employee', 
+    mapper(Employee, employees, polymorphic_on=employees.c.type,
+                                polymorphic_identity='employee',
                                 with_polymorphic='*')
-    mapper(Engineer, engineers, inherits=Employee, 
+    mapper(Engineer, engineers, inherits=Employee,
                                 polymorphic_identity='engineer')
-    mapper(Manager, managers, inherits=Employee, 
+    mapper(Manager, managers, inherits=Employee,
                                 polymorphic_identity='manager')
 
 The above mapping will produce a query similar to that of
@@ -288,7 +288,7 @@ simplistic scenarios. However, it currently does not work with any
 classes - it also has to be called at the outset of a query.
 
 For total control of how :class:`.Query` joins along inheritance relationships,
-use the :class:`.Table` objects directly and construct joins manually.  For example, to 
+use the :class:`.Table` objects directly and construct joins manually.  For example, to
 query the name of employees with particular criterion::
 
     session.query(Employee.name).\
@@ -368,11 +368,11 @@ flexibility:
 
     session.query(Company).\
         join(
-            (employees.outerjoin(engineers).outerjoin(managers), 
+            (employees.outerjoin(engineers).outerjoin(managers),
             Company.employees)
         ).\
         filter(
-            or_(Engineer.engineer_info=='someinfo', 
+            or_(Engineer.engineer_info=='someinfo',
                 Manager.manager_data=='somedata')
         )
 
@@ -395,7 +395,7 @@ EXISTS query. To build one by hand looks like:
 
     session.query(Company).filter(
         exists([1],
-            and_(Engineer.engineer_info=='someinfo', 
+            and_(Engineer.engineer_info=='someinfo',
                 employees.c.company_id==companies.c.company_id),
             from_obj=employees.join(engineers)
         )
@@ -429,9 +429,9 @@ for the inheriting classes, leave their ``table`` parameter blank:
 
     employee_mapper = mapper(Employee, employees_table, \
         polymorphic_on=employees_table.c.type, polymorphic_identity='employee')
-    manager_mapper = mapper(Manager, inherits=employee_mapper, 
+    manager_mapper = mapper(Manager, inherits=employee_mapper,
                                         polymorphic_identity='manager')
-    engineer_mapper = mapper(Engineer, inherits=employee_mapper, 
+    engineer_mapper = mapper(Engineer, inherits=employee_mapper,
                                         polymorphic_identity='engineer')
 
 Note that the mappers for the derived classes Manager and Engineer omit the
@@ -491,17 +491,17 @@ each subselect:
         'engineer': engineers_table
     }, 'type', 'pjoin')
 
-    employee_mapper = mapper(Employee, employees_table, 
-                                        with_polymorphic=('*', pjoin), 
-                                        polymorphic_on=pjoin.c.type, 
+    employee_mapper = mapper(Employee, employees_table,
+                                        with_polymorphic=('*', pjoin),
+                                        polymorphic_on=pjoin.c.type,
                                         polymorphic_identity='employee')
-    manager_mapper = mapper(Manager, managers_table, 
-                                        inherits=employee_mapper, 
-                                        concrete=True, 
+    manager_mapper = mapper(Manager, managers_table,
+                                        inherits=employee_mapper,
+                                        concrete=True,
                                         polymorphic_identity='manager')
-    engineer_mapper = mapper(Engineer, engineers_table, 
-                                        inherits=employee_mapper, 
-                                        concrete=True, 
+    engineer_mapper = mapper(Engineer, engineers_table,
+                                        inherits=employee_mapper,
+                                        concrete=True,
                                         polymorphic_identity='engineer')
 
 Upon select, the polymorphic union produces a query like this:
@@ -510,22 +510,22 @@ Upon select, the polymorphic union produces a query like this:
 
     session.query(Employee).all()
     {opensql}
-    SELECT pjoin.type AS pjoin_type, 
-            pjoin.manager_data AS pjoin_manager_data, 
+    SELECT pjoin.type AS pjoin_type,
+            pjoin.manager_data AS pjoin_manager_data,
             pjoin.employee_id AS pjoin_employee_id,
     pjoin.name AS pjoin_name, pjoin.engineer_info AS pjoin_engineer_info
     FROM (
-        SELECT employees.employee_id AS employee_id, 
+        SELECT employees.employee_id AS employee_id,
             CAST(NULL AS VARCHAR(50)) AS manager_data, employees.name AS name,
             CAST(NULL AS VARCHAR(50)) AS engineer_info, 'employee' AS type
         FROM employees
     UNION ALL
-        SELECT managers.employee_id AS employee_id, 
+        SELECT managers.employee_id AS employee_id,
             managers.manager_data AS manager_data, managers.name AS name,
             CAST(NULL AS VARCHAR(50)) AS engineer_info, 'manager' AS type
         FROM managers
     UNION ALL
-        SELECT engineers.employee_id AS employee_id, 
+        SELECT engineers.employee_id AS employee_id,
             CAST(NULL AS VARCHAR(50)) AS manager_data, engineers.name AS name,
         engineers.engineer_info AS engineer_info, 'engineer' AS type
         FROM engineers
@@ -606,19 +606,19 @@ to the parent:
         Column('company_id', Integer, ForeignKey('companies.id'))
     )
 
-    mapper(Employee, employees_table, 
-                    with_polymorphic=('*', pjoin), 
-                    polymorphic_on=pjoin.c.type, 
+    mapper(Employee, employees_table,
+                    with_polymorphic=('*', pjoin),
+                    polymorphic_on=pjoin.c.type,
                     polymorphic_identity='employee')
 
-    mapper(Manager, managers_table, 
-                    inherits=employee_mapper, 
-                    concrete=True, 
+    mapper(Manager, managers_table,
+                    inherits=employee_mapper,
+                    concrete=True,
                     polymorphic_identity='manager')
 
-    mapper(Engineer, engineers_table, 
-                    inherits=employee_mapper, 
-                    concrete=True, 
+    mapper(Engineer, engineers_table,
+                    inherits=employee_mapper,
+                    concrete=True,
                     polymorphic_identity='engineer')
 
     mapper(Company, companies, properties={
@@ -650,7 +650,7 @@ bidirectionally reference ``C``::
             'some_c':relationship(C, back_populates='many_a')
     })
     mapper(C, c_table, properties={
-        'many_a':relationship(A, collection_class=set, 
+        'many_a':relationship(A, collection_class=set,
                                     back_populates='some_c'),
     })
 

@@ -5,7 +5,7 @@ Deprecated Event Interfaces
 
 .. module:: sqlalchemy.interfaces
 
-This section describes the class-based core event interface introduced in 
+This section describes the class-based core event interface introduced in
 SQLAlchemy 0.5.  The ORM analogue is described at :ref:`dep_interfaces_orm_toplevel`.
 
 .. deprecated:: 0.7

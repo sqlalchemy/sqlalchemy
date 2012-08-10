@@ -269,7 +269,7 @@ class MergeTest(_fixtures.FixtureTest):
         sess = create_session()
 
         # merge empty stuff.  goes in as NULL.
-        # not sure what this was originally trying to 
+        # not sure what this was originally trying to
         # test.
         u1 = sess.merge(User(id=1))
         sess.flush()
@@ -307,7 +307,7 @@ class MergeTest(_fixtures.FixtureTest):
         sess.flush()
 
         # blow it away from u5, but don't
-        # mark as expired.  so it would just 
+        # mark as expired.  so it would just
         # be blank.
         del u5.data
 
@@ -552,7 +552,7 @@ class MergeTest(_fixtures.FixtureTest):
         sess2 = create_session()
         a2 = sess2.merge(a1)
         eq_(
-            attributes.get_history(a2, 'user'), 
+            attributes.get_history(a2, 'user'),
             ([u2], (), ())
         )
         assert a2 in sess2.dirty
@@ -562,7 +562,7 @@ class MergeTest(_fixtures.FixtureTest):
         sess2 = create_session()
         a2 = sess2.merge(a1, load=False)
         eq_(
-            attributes.get_history(a2, 'user'), 
+            attributes.get_history(a2, 'user'),
             ((), [u1], ())
         )
         assert a2 not in sess2.dirty
@@ -1099,7 +1099,7 @@ class MergeTest(_fixtures.FixtureTest):
 
 
 class M2ONoUseGetLoadingTest(fixtures.MappedTest):
-    """Merge a one-to-many.  The many-to-one on the other side is set up 
+    """Merge a one-to-many.  The many-to-one on the other side is set up
     so that use_get is False.   See if skipping the "m2o" merge
     vs. doing it saves on SQL calls.
 
@@ -1130,11 +1130,11 @@ class M2ONoUseGetLoadingTest(fixtures.MappedTest):
         user, address = cls.tables.user, cls.tables.address
         mapper(User, user, properties={
             'addresses':relationship(Address, backref=
-                    backref('user', 
+                    backref('user',
                         # needlessly complex primaryjoin so that the
                         # use_get flag is False
                         primaryjoin=and_(
-                                user.c.id==address.c.user_id, 
+                                user.c.id==address.c.user_id,
                                 user.c.id==user.c.id
                            )
                     )
@@ -1149,20 +1149,20 @@ class M2ONoUseGetLoadingTest(fixtures.MappedTest):
         User, Address = cls.classes.User, cls.classes.Address
         s = Session()
         s.add_all([
-            User(id=1, name='u1', addresses=[Address(id=1, email='a1'), 
+            User(id=1, name='u1', addresses=[Address(id=1, email='a1'),
                                         Address(id=2, email='a2')])
         ])
         s.commit()
 
     # "persistent" - we get at an Address that was already present.
-    # With the "skip bidirectional" check removed, the "set" emits SQL 
+    # With the "skip bidirectional" check removed, the "set" emits SQL
     # for the "previous" version in any case,
     # address.user_id is 1, you get a load.
     def test_persistent_access_none(self):
         User, Address = self.classes.User, self.classes.Address
         s = Session()
         def go():
-            u1 = User(id=1, 
+            u1 = User(id=1,
                 addresses =[Address(id=1), Address(id=2)]
             )
             u2 = s.merge(u1)
@@ -1172,7 +1172,7 @@ class M2ONoUseGetLoadingTest(fixtures.MappedTest):
         User, Address = self.classes.User, self.classes.Address
         s = Session()
         def go():
-            u1 = User(id=1, 
+            u1 = User(id=1,
                 addresses =[Address(id=1), Address(id=2)]
             )
             u2 = s.merge(u1)
@@ -1184,7 +1184,7 @@ class M2ONoUseGetLoadingTest(fixtures.MappedTest):
         User, Address = self.classes.User, self.classes.Address
         s = Session()
         def go():
-            u1 = User(id=1, 
+            u1 = User(id=1,
                 addresses =[Address(id=1), Address(id=2)]
             )
             u2 = s.merge(u1)
@@ -1203,8 +1203,8 @@ class M2ONoUseGetLoadingTest(fixtures.MappedTest):
         User, Address = self.classes.User, self.classes.Address
         s = Session()
         def go():
-            u1 = User(id=1, 
-                addresses =[Address(id=1), Address(id=2), 
+            u1 = User(id=1,
+                addresses =[Address(id=1), Address(id=2),
                                 Address(id=3, email='a3')]
             )
             u2 = s.merge(u1)
@@ -1216,8 +1216,8 @@ class M2ONoUseGetLoadingTest(fixtures.MappedTest):
         User, Address = self.classes.User, self.classes.Address
         s = Session()
         def go():
-            u1 = User(id=1, 
-                addresses =[Address(id=1), Address(id=2), 
+            u1 = User(id=1,
+                addresses =[Address(id=1), Address(id=2),
                                 Address(id=3, email='a3')]
             )
             u2 = s.merge(u1)
@@ -1230,7 +1230,7 @@ class M2ONoUseGetLoadingTest(fixtures.MappedTest):
 class MutableMergeTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        Table("data", metadata, 
+        Table("data", metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', PickleType(comparator=operator.eq))
         )
@@ -1257,7 +1257,7 @@ class MutableMergeTest(fixtures.MappedTest):
 class CompositeNullPksTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        Table("data", metadata, 
+        Table("data", metadata,
             Column('pk1', String(10), primary_key=True),
             Column('pk2', String(10), primary_key=True),
         )
@@ -1326,7 +1326,7 @@ class LoadOnPendingTest(fixtures.MappedTest):
         r = self.classes.Rock(id=0, description='moldy')
         r.bug = bug
         m = self.sess.merge(r)
-        # we've already passed ticket #2374 problem since merge() returned, 
+        # we've already passed ticket #2374 problem since merge() returned,
         # but for good measure:
         assert m is not r
         eq_(m,r)
@@ -1344,13 +1344,13 @@ class LoadOnPendingTest(fixtures.MappedTest):
         self._merge_delete_orphan_o2o_with(self.classes.Bug(id=1))
 
 class PolymorphicOnTest(fixtures.MappedTest):
-    """Test merge() of polymorphic object when polymorphic_on 
+    """Test merge() of polymorphic object when polymorphic_on
     isn't a Column"""
 
     @classmethod
     def define_tables(cls, metadata):
         Table('employees', metadata,
-            Column('employee_id', Integer, primary_key=True, 
+            Column('employee_id', Integer, primary_key=True,
                             test_needs_autoincrement=True),
             Column('type', String(1), nullable=False),
             Column('data', String(50)),
@@ -1366,9 +1366,9 @@ class PolymorphicOnTest(fixtures.MappedTest):
             pass
 
     def _setup_polymorphic_on_mappers(self):
-        employee_mapper = mapper(self.classes.Employee, 
+        employee_mapper = mapper(self.classes.Employee,
             self.tables.employees,
-            polymorphic_on=case(value=self.tables.employees.c.type, 
+            polymorphic_on=case(value=self.tables.employees.c.type,
                 whens={
                     'E': 'employee',
                     'M': 'manager',
@@ -1388,7 +1388,7 @@ class PolymorphicOnTest(fixtures.MappedTest):
         """
         self._setup_polymorphic_on_mappers()
 
-        m = self.classes.Manager(employee_id=55, type='M', 
+        m = self.classes.Manager(employee_id=55, type='M',
                                 data='original data')
         self.sess.add(m)
         self.sess.commit()
@@ -1397,7 +1397,7 @@ class PolymorphicOnTest(fixtures.MappedTest):
         m = self.classes.Manager(employee_id=55, data='updated data')
         merged = self.sess.merge(m)
 
-        # we've already passed ticket #2449 problem since 
+        # we've already passed ticket #2449 problem since
         # merge() returned, but for good measure:
         assert m is not merged
         eq_(m,merged)

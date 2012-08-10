@@ -45,11 +45,11 @@ applications.
 Supported Databases
 ====================
 
-SQLAlchemy includes many :class:`~sqlalchemy.engine.base.Dialect` implementations for various 
-backends; each is described as its own package in the :ref:`sqlalchemy.dialects_toplevel` package.  A 
+SQLAlchemy includes many :class:`~sqlalchemy.engine.base.Dialect` implementations for various
+backends; each is described as its own package in the :ref:`sqlalchemy.dialects_toplevel` package.  A
 SQLAlchemy dialect always requires that an appropriate DBAPI driver is installed.
 
-The table below summarizes the state of DBAPI support in SQLAlchemy 0.7.  The values 
+The table below summarizes the state of DBAPI support in SQLAlchemy 0.7.  The values
 translate as:
 
 * yes / Python platform - The SQLAlchemy dialect is mostly or fully operational on the target platform.
@@ -272,7 +272,7 @@ connection pool, it follows that you should keep a single
 :class:`.Engine` per database established within an
 application, rather than creating a new one for each connection.
 
-.. note:: 
+.. note::
 
    :class:`.QueuePool` is not used by default for SQLite engines.  See
    :ref:`sqlite_toplevel` for details on SQLite connection pool usage.
@@ -335,7 +335,7 @@ been configured (i.e. such as via ``logging.basicConfig()``), the general
 namespace of SA loggers that can be turned on is as follows:
 
 * ``sqlalchemy.engine`` - controls SQL echoing.  set to ``logging.INFO`` for SQL query output, ``logging.DEBUG`` for query + result set output.
-* ``sqlalchemy.dialects`` - controls custom logging for SQL dialects.  See the documentation of individual dialects for details. 
+* ``sqlalchemy.dialects`` - controls custom logging for SQL dialects.  See the documentation of individual dialects for details.
 * ``sqlalchemy.pool`` - controls connection pool logging.  set to ``logging.INFO`` or lower to log connection pool checkouts/checkins.
 * ``sqlalchemy.orm`` - controls logging of various ORM functions.  set to ``logging.INFO`` for information on mapper configurations.
 
@@ -373,11 +373,11 @@ string. To set this to a specific name, use the "logging_name" and
 
    The SQLAlchemy :class:`.Engine` conserves Python function call overhead
    by only emitting log statements when the current logging level is detected
-   as ``logging.INFO`` or ``logging.DEBUG``.  It only checks this level when 
-   a new connection is procured from the connection pool.  Therefore when 
+   as ``logging.INFO`` or ``logging.DEBUG``.  It only checks this level when
+   a new connection is procured from the connection pool.  Therefore when
    changing the logging configuration for an already-running application, any
    :class:`.Connection` that's currently active, or more commonly a
    :class:`~.orm.session.Session` object that's active in a transaction, won't log any
-   SQL according to the new configuration until a new :class:`.Connection` 
-   is procured (in the case of :class:`~.orm.session.Session`, this is 
+   SQL according to the new configuration until a new :class:`.Connection`
+   is procured (in the case of :class:`~.orm.session.Session`, this is
    after the current transaction ends and a new one begins).

@@ -6,7 +6,7 @@ Connection Pooling
 .. module:: sqlalchemy.pool
 
 A connection pool is a standard technique used to maintain
-long running connections in memory for efficient re-use, 
+long running connections in memory for efficient re-use,
 as well as to provide
 management for the total number of connections an application
 might use simultaneously.
@@ -16,7 +16,7 @@ server-side web applications, a connection pool is the standard way to
 maintain a "pool" of active database connections in memory which are
 reused across requests.
 
-SQLAlchemy includes several connection pool implementations 
+SQLAlchemy includes several connection pool implementations
 which integrate with the :class:`.Engine`.  They can also be used
 directly for applications that want to add pooling to an otherwise
 plain DBAPI approach.
@@ -48,12 +48,12 @@ dataset within the scope of a single connection.
 All SQLAlchemy pool implementations have in common
 that none of them "pre create" connections - all implementations wait
 until first use before creating a connection.   At that point, if
-no additional concurrent checkout requests for more connections 
+no additional concurrent checkout requests for more connections
 are made, no additional connections are created.   This is why it's perfectly
 fine for :func:`.create_engine` to default to using a :class:`.QueuePool`
 of size five without regard to whether or not the application really needs five connections
 queued up - the pool would only grow to that size if the application
-actually used five connections concurrently, in which case the usage of a 
+actually used five connections concurrently, in which case the usage of a
 small pool is an entirely appropriate default behavior.
 
 Switching Pool Implementations
@@ -72,13 +72,13 @@ Disabling pooling using :class:`.NullPool`::
 
     from sqlalchemy.pool import NullPool
     engine = create_engine(
-              'postgresql+psycopg2://scott:tiger@localhost/test', 
+              'postgresql+psycopg2://scott:tiger@localhost/test',
               poolclass=NullPool)
 
 Using a Custom Connection Function
 ----------------------------------
 
-All :class:`.Pool` classes accept an argument ``creator`` which is 
+All :class:`.Pool` classes accept an argument ``creator`` which is
 a callable that creates a new connection.  :func:`.create_engine`
 accepts this function to pass onto the pool via an argument of
 the same name::
@@ -127,14 +127,14 @@ within a transparent proxy::
     cursor.execute("select foo")
 
 The purpose of the transparent proxy is to intercept the ``close()`` call,
-such that instead of the DBAPI connection being closed, its returned to the 
+such that instead of the DBAPI connection being closed, its returned to the
 pool::
 
     # "close" the connection.  Returns
     # it to the pool.
     conn.close()
 
-The proxy also returns its contained DBAPI connection to the pool 
+The proxy also returns its contained DBAPI connection to the pool
 when it is garbage collected,
 though it's not deterministic in Python that this occurs immediately (though
 it is typical with cPython).
@@ -148,24 +148,24 @@ Pool Events
 -----------
 
 Connection pools support an event interface that allows hooks to execute
-upon first connect, upon each new connection, and upon checkout and 
+upon first connect, upon each new connection, and upon checkout and
 checkin of connections.   See :class:`.PoolEvents` for details.
 
 Dealing with Disconnects
 ------------------------
 
-The connection pool has the ability to refresh individual connections as well as 
+The connection pool has the ability to refresh individual connections as well as
 its entire set of connections, setting the previously pooled connections as
-"invalid".   A common use case is allow the connection pool to gracefully recover 
+"invalid".   A common use case is allow the connection pool to gracefully recover
 when the database server has been restarted, and all previously established connections
 are no longer functional.   There are two approaches to this.
 
 Disconnect Handling - Optimistic
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The most common approach is to let SQLAlchemy handle disconnects as they 
-occur, at which point the pool is refreshed.   This assumes the :class:`.Pool` 
-is used in conjunction with a :class:`.Engine`.  The :class:`.Engine` has 
+The most common approach is to let SQLAlchemy handle disconnects as they
+occur, at which point the pool is refreshed.   This assumes the :class:`.Pool`
+is used in conjunction with a :class:`.Engine`.  The :class:`.Engine` has
 logic which can detect disconnection events and refresh the pool automatically.
 
 When the :class:`.Connection` attempts to use a DBAPI connection, and an
@@ -187,14 +187,14 @@ that they are replaced with new ones upon next checkout::
         if e.connection_invalidated:
             print "Connection was invalidated!"
 
-    # after the invalidate event, a new connection 
+    # after the invalidate event, a new connection
     # starts with a new Pool
     c = e.connect()
     c.execute("SELECT * FROM table")
 
 The above example illustrates that no special intervention is needed, the pool
 continues normally after a disconnection event is detected.   However, an exception is
-raised.   In a typical web application using an ORM Session, the above condition would 
+raised.   In a typical web application using an ORM Session, the above condition would
 correspond to a single request failing with a 500 error, then the web application
 continuing normally beyond that.   Hence the approach is "optimistic" in that frequent
 database restarts are not anticipated.
@@ -202,7 +202,7 @@ database restarts are not anticipated.
 Setting Pool Recycle
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-An additional setting that can augment the "optimistic" approach is to set the 
+An additional setting that can augment the "optimistic" approach is to set the
 pool recycle parameter.   This parameter prevents the pool from using a particular
 connection that has passed a certain age, and is appropriate for database backends
 such as MySQL that automatically close connections that have been stale after a particular
@@ -219,8 +219,8 @@ of the :class:`.Pool` itself, independent of whether or not an :class:`.Engine` 
 Disconnect Handling - Pessimistic
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-At the expense of some extra SQL emitted for each connection checked out from the pool, 
-a "ping" operation established by a checkout event handler 
+At the expense of some extra SQL emitted for each connection checked out from the pool,
+a "ping" operation established by a checkout event handler
 can detect an invalid connection before it's used::
 
     from sqlalchemy import exc
@@ -244,7 +244,7 @@ can detect an invalid connection before it's used::
 
 Above, the :class:`.Pool` object specifically catches :class:`~sqlalchemy.exc.DisconnectionError` and attempts
 to create a new DBAPI connection, up to three times, before giving up and then raising
-:class:`~sqlalchemy.exc.InvalidRequestError`, failing the connection.   This recipe will ensure 
+:class:`~sqlalchemy.exc.InvalidRequestError`, failing the connection.   This recipe will ensure
 that a new :class:`.Connection` will succeed even if connections
 in the pool have gone stale, provided that the database server is actually running.   The expense
 is that of an additional execution performed per checkout.   When using the ORM :class:`.Session`,
@@ -252,7 +252,7 @@ there is one connection checkout per transaction, so the expense is fairly low. 
 above also works with straight connection pool usage, that is, even if no :class:`.Engine` were
 involved.
 
-The event handler can be tested using a script like the following, restarting the database 
+The event handler can be tested using a script like the following, restarting the database
 server at the point at which the script pauses for input::
 
     from sqlalchemy import create_engine

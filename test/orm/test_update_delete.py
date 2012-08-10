@@ -12,7 +12,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
-              Column('id', Integer, primary_key=True, 
+              Column('id', Integer, primary_key=True,
                         test_needs_autoincrement=True),
               Column('name', String(32)),
               Column('age', Integer))
@@ -54,13 +54,13 @@ class UpdateDeleteTest(fixtures.MappedTest):
             (s.query(User).distinct(), "distinct")
         ):
             assert_raises_message(
-                exc.InvalidRequestError, 
-                r"Can't call Query.update\(\) when %s\(\) has been called" % mname, 
-                q.update, 
+                exc.InvalidRequestError,
+                r"Can't call Query.update\(\) when %s\(\) has been called" % mname,
+                q.update,
                 {'name':'ed'})
             assert_raises_message(
-                exc.InvalidRequestError, 
-                r"Can't call Query.delete\(\) when %s\(\) has been called" % mname, 
+                exc.InvalidRequestError,
+                r"Can't call Query.delete\(\) when %s\(\) has been called" % mname,
                 q.delete)
 
 
@@ -145,7 +145,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         assert_raises(exc.InvalidRequestError,
             sess.query(User).
-                filter(User.name == select([func.max(User.name)])).delete, 
+                filter(User.name == select([func.max(User.name)])).delete,
                 synchronize_session='evaluate'
         )
 
@@ -316,7 +316,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         john.name = 'j2'
 
         sess.query(User).filter_by(name='j2').\
-                            update({'age':42}, 
+                            update({'age':42},
                             synchronize_session='evaluate')
         eq_(john.age, 42)
 
@@ -328,7 +328,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         john.name = 'j2'
 
         sess.query(User).filter_by(name='j2').\
-                            update({'age':42}, 
+                            update({'age':42},
                             synchronize_session='fetch')
         eq_(john.age, 42)
 
@@ -364,10 +364,10 @@ class UpdateDeleteTest(fixtures.MappedTest):
         sess.expire(john, ['age'])
 
         # eval must be before the update.  otherwise
-        # we eval john, age has been expired and doesn't 
+        # we eval john, age has been expired and doesn't
         # match the new value coming in
         sess.query(User).filter_by(name='john').filter_by(age=25).\
-                            update({'name':'j2', 'age':40}, 
+                            update({'name':'j2', 'age':40},
                             synchronize_session='evaluate')
         eq_(john.name, 'j2')
         eq_(john.age, 40)
@@ -380,7 +380,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         sess.expire(john, ['age'])
 
         sess.query(User).filter_by(name='john').filter_by(age=25).\
-                            update({'name':'j2', 'age':40}, 
+                            update({'name':'j2', 'age':40},
                             synchronize_session='fetch')
         eq_(john.name, 'j2')
         eq_(john.age, 40)
@@ -415,13 +415,13 @@ class UpdateDeleteRelatedTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
-              Column('id', Integer, primary_key=True, 
+              Column('id', Integer, primary_key=True,
                         test_needs_autoincrement=True),
               Column('name', String(32)),
               Column('age', Integer))
 
         Table('documents', metadata,
-              Column('id', Integer, primary_key=True, 
+              Column('id', Integer, primary_key=True,
                         test_needs_autoincrement=True),
               Column('user_id', None, ForeignKey('users.id')),
               Column('title', String(32)))
@@ -462,7 +462,7 @@ class UpdateDeleteRelatedTest(fixtures.MappedTest):
 
         mapper(User, users)
         mapper(Document, documents, properties={
-            'user': relationship(User, lazy='joined', 
+            'user': relationship(User, lazy='joined',
                         backref=backref('documents', lazy='select'))
         })
 
@@ -476,7 +476,7 @@ class UpdateDeleteRelatedTest(fixtures.MappedTest):
                 update({'title': Document.title+Document.title}, synchronize_session='fetch')
 
         eq_([foo.title, bar.title, baz.title], ['foofoo','barbar', 'baz'])
-        eq_(sess.query(Document.title).order_by(Document.id).all(), 
+        eq_(sess.query(Document.title).order_by(Document.id).all(),
                 zip(['foofoo','barbar', 'baz']))
 
     def test_update_with_explicit_joinedload(self):
@@ -505,7 +505,7 @@ class ExpressionUpdateTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         data = Table('data', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                     test_needs_autoincrement=True),
             Column('counter', Integer, nullable=False, default=0)
         )

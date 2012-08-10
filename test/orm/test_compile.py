@@ -164,7 +164,7 @@ class CompileTest(fixtures.ORMTest):
         meta = MetaData()
 
         a = Table('a', meta, Column('id', Integer, primary_key=True))
-        b = Table('b', meta, Column('id', Integer, primary_key=True), 
+        b = Table('b', meta, Column('id', Integer, primary_key=True),
                                 Column('a_id', Integer, ForeignKey('a.id')))
 
         class A(object):pass

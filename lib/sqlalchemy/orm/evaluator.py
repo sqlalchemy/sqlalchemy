@@ -13,10 +13,10 @@ class UnevaluatableError(Exception):
     pass
 
 _straight_ops = set(getattr(operators, op)
-                    for op in ('add', 'mul', 'sub', 
+                    for op in ('add', 'mul', 'sub',
                                 # Py2K
                                 'div',
-                                # end Py2K 
+                                # end Py2K
                                 'mod', 'truediv',
                                'lt', 'le', 'ne', 'gt', 'ge', 'eq'))
 

@@ -51,7 +51,7 @@ class VersioningTest(fixtures.MappedTest):
     def _fixture(self):
         Foo, version_table = self.classes.Foo, self.tables.version_table
 
-        mapper(Foo, version_table, 
+        mapper(Foo, version_table,
                 version_id_col=version_table.c.version_id)
         s1 = Session()
         return s1
@@ -97,7 +97,7 @@ class VersioningTest(fixtures.MappedTest):
         # Only dialects with a sane rowcount can detect the
         # StaleDataError
         if testing.db.dialect.supports_sane_rowcount:
-            assert_raises_message(sa.orm.exc.StaleDataError, 
+            assert_raises_message(sa.orm.exc.StaleDataError,
             r"UPDATE statement on table 'version_table' expected "
             r"to update 1 row\(s\); 0 were matched.",
             s1.commit),
@@ -117,7 +117,7 @@ class VersioningTest(fixtures.MappedTest):
 
         if testing.db.dialect.supports_sane_rowcount:
             assert_raises_message(
-                sa.orm.exc.StaleDataError, 
+                sa.orm.exc.StaleDataError,
                 r"DELETE statement on table 'version_table' expected "
                 r"to delete 2 row\(s\); 1 were matched.",
                 s1.commit)
@@ -128,8 +128,8 @@ class VersioningTest(fixtures.MappedTest):
     def test_bump_version(self):
         """test that version number can be bumped.
 
-        Ensures that the UPDATE or DELETE is against the 
-        last committed version of version_id_col, not the modified 
+        Ensures that the UPDATE or DELETE is against the
+        last committed version of version_id_col, not the modified
         state.
 
         """
@@ -177,7 +177,7 @@ class VersioningTest(fixtures.MappedTest):
 
         # load, version is wrong
         assert_raises_message(
-                sa.orm.exc.StaleDataError, 
+                sa.orm.exc.StaleDataError,
                 r"Instance .* has version id '\d+' which does not "
                 r"match database-loaded version id '\d+'",
                 s1.query(Foo).with_lockmode('read').get, f1s1.id
@@ -351,7 +351,7 @@ class RowSwitchTest(fixtures.MappedTest):
                                 cls.classes.C,
                                 cls.classes.P)
 
-        mapper(P, p, version_id_col=p.c.version_id, 
+        mapper(P, p, version_id_col=p.c.version_id,
             properties={
             'c':relationship(C, uselist=False, cascade='all, delete-orphan')
         })
@@ -418,7 +418,7 @@ class AlternateGeneratorTest(fixtures.MappedTest):
                                 cls.classes.C,
                                 cls.classes.P)
 
-        mapper(P, p, version_id_col=p.c.version_id, 
+        mapper(P, p, version_id_col=p.c.version_id,
             version_id_generator=lambda x:make_uuid(),
             properties={
             'c':relationship(C, uselist=False, cascade='all, delete-orphan')
@@ -466,7 +466,7 @@ class AlternateGeneratorTest(fixtures.MappedTest):
 
         Session = sessionmaker()
 
-        # TODO: not sure this test is 
+        # TODO: not sure this test is
         # testing exactly what its looking for
 
         sess1 = Session()
@@ -528,7 +528,7 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
                                 self.tables.base,
                                 self.classes.Sub)
 
-        mapper(Base, base, 
+        mapper(Base, base,
                 version_id_col=base.c.version_id)
         mapper(Sub, sub, inherits=Base)
 
@@ -546,7 +546,7 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
                                 self.tables.base,
                                 self.classes.Sub)
 
-        mapper(Base, base, 
+        mapper(Base, base,
                 version_id_col=base.c.version_id)
         mapper(Sub, sub, inherits=Base)
 
@@ -568,7 +568,7 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
                                 self.classes.Sub)
 
         mapper(Base, base)
-        mapper(Sub, sub, inherits=Base, 
+        mapper(Sub, sub, inherits=Base,
                 version_id_col=sub.c.version_id)
 
         session = Session()
@@ -588,7 +588,7 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
                                 self.tables.base,
                                 self.classes.Sub)
 
-        mapper(Base, base, 
+        mapper(Base, base,
                 version_id_col=base.c.version_id)
 
         assert_raises_message(
@@ -599,5 +599,5 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
             "version_id_col should only be specified on "
             "the base-most mapper that includes versioning.",
             mapper,
-            Sub, sub, inherits=Base, 
+            Sub, sub, inherits=Base,
                 version_id_col=sub.c.version_id)

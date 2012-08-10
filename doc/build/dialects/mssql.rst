@@ -19,7 +19,7 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
         SMALLINT, SMALLMONEY, SQL_VARIANT, TEXT, TIME, \
         TIMESTAMP, TINYINT, UNIQUEIDENTIFIER, VARBINARY, VARCHAR
 
-Types which are specific to SQL Server, or have SQL Server-specific 
+Types which are specific to SQL Server, or have SQL Server-specific
 construction arguments, are as follows:
 
 .. currentmodule:: sqlalchemy.dialects.mssql

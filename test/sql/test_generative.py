@@ -8,7 +8,7 @@ from sqlalchemy.sql import util as sql_util
 from test.lib.testing import eq_, ne_, assert_raises
 
 class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
-    """test ClauseVisitor's traversal, particularly its 
+    """test ClauseVisitor's traversal, particularly its
     ability to copy and modify a ClauseElement in place."""
 
     @classmethod
@@ -16,7 +16,7 @@ class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
         global A, B
 
         # establish two ficticious ClauseElements.
-        # define deep equality semantics as well as deep 
+        # define deep equality semantics as well as deep
         # identity semantics.
         class A(ClauseElement):
             __visit_name__ = 'a'
@@ -79,7 +79,7 @@ class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
         a1 = A("expr1")
         struct = B(a1, A("expr2"), B(A("expr1b"), A("expr2b")), A("expr3"))
         struct2 = B(a1, A("expr2"), B(A("expr1b"), A("expr2b")), A("expr3"))
-        struct3 = B(a1, A("expr2"), B(A("expr1b"), 
+        struct3 = B(a1, A("expr2"), B(A("expr1b"),
                         A("expr2bmodified")), A("expr3"))
 
         assert a1.is_other(a1)
@@ -90,7 +90,7 @@ class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
         assert not struct.is_other(struct3)
 
     def test_clone(self):
-        struct = B(A("expr1"), A("expr2"), B(A("expr1b"), 
+        struct = B(A("expr1"), A("expr2"), B(A("expr1b"),
                         A("expr2b")), A("expr3"))
 
         class Vis(CloningVisitor):
@@ -105,7 +105,7 @@ class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
         assert not struct.is_other(s2)
 
     def test_no_clone(self):
-        struct = B(A("expr1"), A("expr2"), B(A("expr1b"), 
+        struct = B(A("expr1"), A("expr2"), B(A("expr1b"),
                                 A("expr2b")), A("expr3"))
 
         class Vis(ClauseVisitor):
@@ -120,11 +120,11 @@ class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
         assert struct.is_other(s2)
 
     def test_change_in_place(self):
-        struct = B(A("expr1"), A("expr2"), B(A("expr1b"), 
+        struct = B(A("expr1"), A("expr2"), B(A("expr1b"),
                                 A("expr2b")), A("expr3"))
-        struct2 = B(A("expr1"), A("expr2modified"), B(A("expr1b"), 
+        struct2 = B(A("expr1"), A("expr2modified"), B(A("expr1b"),
                                 A("expr2b")), A("expr3"))
-        struct3 = B(A("expr1"), A("expr2"), B(A("expr1b"), 
+        struct3 = B(A("expr1"), A("expr2"), B(A("expr1b"),
                                 A("expr2bmodified")), A("expr3"))
 
         class Vis(CloningVisitor):
@@ -184,7 +184,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
             column("col2"),
             column("col3"),
             )
-        t3 = Table('table3', MetaData(), 
+        t3 = Table('table3', MetaData(),
             Column('col1', Integer),
             Column('col2', Integer)
         )
@@ -198,7 +198,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
         f = t.c.col1 * 5
-        self.assert_compile(select([f]), 
+        self.assert_compile(select([f]),
                     "SELECT t1.col1 * :col1_1 AS anon_1 FROM t1")
 
         f.anon_label
@@ -206,7 +206,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         a = t.alias()
         f = sql_util.ClauseAdapter(a).traverse(f)
 
-        self.assert_compile(select([f]), 
+        self.assert_compile(select([f]),
                     "SELECT t1_1.col1 * :col1_1 AS anon_1 FROM t1 AS t1_1")
 
     def test_join(self):
@@ -227,7 +227,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
 
         aliased = t1.select().alias()
         aliased2 = t1.alias()
- 
+
         adapter = sql_util.ColumnAdapter(aliased)
 
         f = select([
@@ -237,7 +237,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
 
         s = select([aliased2]).select_from(aliased)
         eq_(str(s), str(f))
- 
+
         f = select([
             adapter.columns[func.count(aliased2.c.col1)]
         ]).select_from(aliased)
@@ -256,7 +256,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # fixed by [ticket:2419].   the inside columns
         # on aliased3 have _is_clone_of pointers to those of
-        # aliased2.  corresponding_column checks these 
+        # aliased2.  corresponding_column checks these
         # now.
         adapter = sql_util.ColumnAdapter(aliased1)
         f1 = select([
@@ -280,7 +280,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         aliased3 = cloned_traverse(aliased2, {}, {})
 
         # also fixed by [ticket:2419].  When we look at the
-        # *outside* columns of aliased3, they previously did not 
+        # *outside* columns of aliased3, they previously did not
         # have an _is_clone_of pointer.   But we now modified _make_proxy
         # to assign this.
         adapter = sql_util.ColumnAdapter(aliased1)
@@ -305,7 +305,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         aliased3 = cloned_traverse(aliased2, {}, {})
 
         # also fixed by [ticket:2419].  When we look at the
-        # *outside* columns of aliased3, they previously did not 
+        # *outside* columns of aliased3, they previously did not
         # have an _is_clone_of pointer.   But we now modified _make_proxy
         # to assign this.
         adapter = sql_util.ColumnAdapter(aliased1)
@@ -421,14 +421,14 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         assert sql_util.ClauseAdapter(u).traverse(t1) is u
 
     def test_binds(self):
-        """test that unique bindparams change their name upon clone() 
+        """test that unique bindparams change their name upon clone()
         to prevent conflicts"""
 
         s = select([t1], t1.c.col1==bindparam(None, unique=True)).alias()
         s2 = CloningVisitor().traverse(s).alias()
         s3 = select([s], s.c.col2==s2.c.col2)
 
-        self.assert_compile(s3, 
+        self.assert_compile(s3,
             "SELECT anon_1.col1, anon_1.col2, anon_1.col3 FROM "
             "(SELECT table1.col1 AS col1, table1.col2 AS col2, "
             "table1.col3 AS col3 FROM table1 WHERE table1.col1 = :param_1) "
@@ -440,7 +440,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select([t1], t1.c.col1==4).alias()
         s2 = CloningVisitor().traverse(s).alias()
         s3 = select([s], s.c.col2==s2.c.col2)
-        self.assert_compile(s3, 
+        self.assert_compile(s3,
             "SELECT anon_1.col1, anon_1.col2, anon_1.col3 FROM "
             "(SELECT table1.col1 AS col1, table1.col2 AS col2, "
             "table1.col3 AS col3 FROM table1 WHERE table1.col1 = :col1_1) "
@@ -451,14 +451,14 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_extract(self):
         s = select([extract('foo', t1.c.col1).label('col1')])
-        self.assert_compile(s, 
+        self.assert_compile(s,
                 "SELECT EXTRACT(foo FROM table1.col1) AS col1 FROM table1")
 
         s2 = CloningVisitor().traverse(s).alias()
         s3 = select([s2.c.col1])
-        self.assert_compile(s, 
+        self.assert_compile(s,
                 "SELECT EXTRACT(foo FROM table1.col1) AS col1 FROM table1")
-        self.assert_compile(s3, 
+        self.assert_compile(s3,
                 "SELECT anon_1.col1 FROM (SELECT EXTRACT(foo FROM "
                 "table1.col1) AS col1 FROM table1) AS anon_1")
 
@@ -466,8 +466,8 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
     @testing.emits_warning('.*replaced by another column with the same key')
     def test_alias(self):
         subq = t2.select().alias('subq')
-        s = select([t1.c.col1, subq.c.col1], 
-                    from_obj=[t1, subq, 
+        s = select([t1.c.col1, subq.c.col1],
+                    from_obj=[t1, subq,
                         t1.join(subq, t1.c.col1==subq.c.col2)]
                     )
         orig = str(s)
@@ -484,21 +484,21 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         assert orig == str(s) == str(s3) == str(s4)
 
         subq = subq.alias('subq')
-        s = select([t1.c.col1, subq.c.col1], 
-                    from_obj=[t1, subq, 
+        s = select([t1.c.col1, subq.c.col1],
+                    from_obj=[t1, subq,
                         t1.join(subq, t1.c.col1==subq.c.col2)]
                     )
         s5 = CloningVisitor().traverse(s)
         assert orig == str(s) == str(s5)
 
     def test_correlated_select(self):
-        s = select(['*'], t1.c.col1==t2.c.col1, 
+        s = select(['*'], t1.c.col1==t2.c.col1,
                     from_obj=[t1, t2]).correlate(t2)
         class Vis(CloningVisitor):
             def visit_select(self, select):
                 select.append_whereclause(t1.c.col2==7)
 
-        self.assert_compile(Vis().traverse(s), 
+        self.assert_compile(Vis().traverse(s),
                     "SELECT * FROM table1 WHERE table1.col1 = table2.col1 "
                     "AND table1.col2 = :col2_1")
 
@@ -755,8 +755,8 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         m = MetaData()
         a=Table( 'a',m,
           Column( 'id',    Integer, primary_key=True),
-          Column( 'xxx_id', Integer, 
-                        ForeignKey( 'a.id', name='adf',use_alter=True ) 
+          Column( 'xxx_id', Integer,
+                        ForeignKey( 'a.id', name='adf',use_alter=True )
         )
         )
 
@@ -791,7 +791,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
 
         alias = select([a]).select_from(a.join(b, a.c.x==b.c.x)).alias()
 
-        # two levels of indirection from c.x->b.x->a.x, requires recursive 
+        # two levels of indirection from c.x->b.x->a.x, requires recursive
         # corresponding_column call
         adapt = sql_util.ClauseAdapter(alias,
                 equivalents={b.c.x: set([a.c.x]), c.c.x: set([b.c.x])})
@@ -1171,7 +1171,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert_raises(
             exc.ArgumentError,
-            select().execution_options, 
+            select().execution_options,
                 isolation_level='READ_COMMITTED'
         )
 

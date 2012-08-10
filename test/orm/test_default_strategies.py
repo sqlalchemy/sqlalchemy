@@ -16,11 +16,11 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
             # keywords are not part of self.static.user_all_result, so
             # verify all the item keywords were loaded, with no more sql.
             # 'any' verifies at least some items have keywords; we build
-            # a list for any([...]) instead of any(...) to prove we've 
+            # a list for any([...]) instead of any(...) to prove we've
             # iterated all the items with no sql.
             f = util.flatten_iterator
-            assert any([i.keywords for i in 
-                f([o.items for o in f([u.orders for u in users])])]) 
+            assert any([i.keywords for i in
+                f([o.items for o in f([u.orders for u in users])])])
         self.assert_sql_count(testing.db, go, 0)
 
     def _assert_addresses_loaded(self, users):
@@ -85,13 +85,13 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         mapper(User, users, properties=dict(
             addresses=relationship(Address, lazy=True,
                                order_by=addresses.c.id),
-            orders=relationship(Order, 
+            orders=relationship(Order,
                             order_by=orders.c.id)))
 
         return create_session()
 
     def test_downgrade_baseline(self):
-        """Mapper strategy defaults load as expected 
+        """Mapper strategy defaults load as expected
         (compare to rest of DefaultStrategyOptionsTest downgrade tests)."""
         sess = self._downgrade_fixture()
         users = []
@@ -107,11 +107,11 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         self._assert_fully_loaded(users)
 
     def test_disable_eagerloads(self):
-        """Mapper eager load strategy defaults can be shut off 
+        """Mapper eager load strategy defaults can be shut off
         with enable_eagerloads(False)."""
 
-        # While this isn't testing a mapper option, it is included 
-        # as baseline reference for how XYZload('*') option 
+        # While this isn't testing a mapper option, it is included
+        # as baseline reference for how XYZload('*') option
         # should work, namely, it shouldn't affect later queries
         # (see other test_select_s)
         sess = self._downgrade_fixture()
@@ -156,8 +156,8 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
             sa.orm.subqueryload, '*', User.addresses
         )
     def test_select_with_joinedload(self):
-        """Mapper load strategy defaults can be downgraded with 
-        lazyload('*') option, while explicit joinedload() option 
+        """Mapper load strategy defaults can be downgraded with
+        lazyload('*') option, while explicit joinedload() option
         is still honored"""
         sess = self._downgrade_fixture()
         users = []
@@ -181,8 +181,8 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 3)
 
     def test_select_with_subqueryload(self):
-        """Mapper load strategy defaults can be downgraded with 
-        lazyload('*') option, while explicit subqueryload() option 
+        """Mapper load strategy defaults can be downgraded with
+        lazyload('*') option, while explicit subqueryload() option
         is still honored"""
         sess = self._downgrade_fixture()
         users = []
@@ -215,8 +215,8 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         eq_(users, self.static.user_all_result)
 
     def test_noload_with_joinedload(self):
-        """Mapper load strategy defaults can be downgraded with 
-        noload('*') option, while explicit joinedload() option 
+        """Mapper load strategy defaults can be downgraded with
+        noload('*') option, while explicit joinedload() option
         is still honored"""
         sess = self._downgrade_fixture()
         users = []
@@ -240,8 +240,8 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 0)
 
     def test_noload_with_subqueryload(self):
-        """Mapper load strategy defaults can be downgraded with 
-        noload('*') option, while explicit subqueryload() option 
+        """Mapper load strategy defaults can be downgraded with
+        noload('*') option, while explicit subqueryload() option
         is still honored"""
         sess = self._downgrade_fixture()
         users = []
@@ -268,7 +268,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 0)
 
     def test_joined(self):
-        """Mapper load strategy defaults can be upgraded with 
+        """Mapper load strategy defaults can be upgraded with
         joinedload('*') option."""
         sess = self._upgrade_fixture()
         users = []
@@ -285,7 +285,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         self._assert_fully_loaded(users)
 
     def test_joined_with_lazyload(self):
-        """Mapper load strategy defaults can be upgraded with 
+        """Mapper load strategy defaults can be upgraded with
         joinedload('*') option, while explicit lazyload() option
         is still honored"""
         sess = self._upgrade_fixture()
@@ -316,7 +316,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 1)
 
     def test_joined_with_subqueryload(self):
-        """Mapper load strategy defaults can be upgraded with 
+        """Mapper load strategy defaults can be upgraded with
         joinedload('*') option, while explicit subqueryload() option
         is still honored"""
         sess = self._upgrade_fixture()
@@ -335,7 +335,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         self._assert_fully_loaded(users)
 
     def test_subquery(self):
-        """Mapper load strategy defaults can be upgraded with 
+        """Mapper load strategy defaults can be upgraded with
         subqueryload('*') option."""
         sess = self._upgrade_fixture()
         users = []
@@ -352,7 +352,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         self._assert_fully_loaded(users)
 
     def test_subquery_with_lazyload(self):
-        """Mapper load strategy defaults can be upgraded with 
+        """Mapper load strategy defaults can be upgraded with
         subqueryload('*') option, while explicit lazyload() option
         is still honored"""
         sess = self._upgrade_fixture()
@@ -382,8 +382,8 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 1)
 
     def test_subquery_with_joinedload(self):
-        """Mapper load strategy defaults can be upgraded with 
-        subqueryload('*') option, while multiple explicit 
+        """Mapper load strategy defaults can be upgraded with
+        subqueryload('*') option, while multiple explicit
         joinedload() options are still honored"""
         sess = self._upgrade_fixture()
         users = []

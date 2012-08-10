@@ -67,7 +67,7 @@ class ExpireTest(_fixtures.FixtureTest):
         u = s.query(User).get(7)
         s.expunge_all()
 
-        assert_raises_message(sa_exc.InvalidRequestError, 
+        assert_raises_message(sa_exc.InvalidRequestError,
                         r"is not persistent within this Session", s.expire, u)
 
     def test_get_refreshes(self):
@@ -138,12 +138,12 @@ class ExpireTest(_fixtures.FixtureTest):
         s.rollback()
 
         assert u in s
-        # but now its back, rollback has occurred, the 
+        # but now its back, rollback has occurred, the
         # _remove_newly_deleted is reverted
         eq_(u.name, 'chuck')
 
     def test_deferred(self):
-        """test that unloaded, deferred attributes aren't included in the 
+        """test that unloaded, deferred attributes aren't included in the
         expiry list."""
 
         Order, orders = self.classes.Order, self.tables.orders
@@ -185,7 +185,7 @@ class ExpireTest(_fixtures.FixtureTest):
                                 self.classes.User)
 
         mapper(User, users, properties={
-            'addresses':relationship(Address, 
+            'addresses':relationship(Address,
                     order_by=addresses.c.email_address)
         })
         mapper(Address, addresses)
@@ -193,21 +193,21 @@ class ExpireTest(_fixtures.FixtureTest):
         u = s.query(User).get(8)
         adlist = u.addresses
         eq_(adlist, [
-            Address(email_address='ed@bettyboop.com'), 
+            Address(email_address='ed@bettyboop.com'),
             Address(email_address='ed@lala.com'),
-            Address(email_address='ed@wood.com'), 
+            Address(email_address='ed@wood.com'),
         ])
         a1 = u.addresses[2]
         a1.email_address = 'aaaaa'
         s.expire(u, ['addresses'])
         eq_(u.addresses, [
-            Address(email_address='aaaaa'), 
-            Address(email_address='ed@bettyboop.com'), 
+            Address(email_address='aaaaa'),
+            Address(email_address='ed@bettyboop.com'),
             Address(email_address='ed@lala.com'),
         ])
 
     def test_refresh_collection_exception(self):
-        """test graceful failure for currently unsupported 
+        """test graceful failure for currently unsupported
         immediate refresh of a collection"""
 
         users, Address, addresses, User = (self.tables.users,
@@ -222,12 +222,12 @@ class ExpireTest(_fixtures.FixtureTest):
         mapper(Address, addresses)
         s = create_session(autoflush=True, autocommit=False)
         u = s.query(User).get(8)
-        assert_raises_message(sa_exc.InvalidRequestError, 
-                        "properties specified for refresh", 
+        assert_raises_message(sa_exc.InvalidRequestError,
+                        "properties specified for refresh",
                         s.refresh, u, ['addresses'])
 
         # in contrast to a regular query with no columns
-        assert_raises_message(sa_exc.InvalidRequestError, 
+        assert_raises_message(sa_exc.InvalidRequestError,
                         "no columns with which to SELECT", s.query().all)
 
     def test_refresh_cancels_expire(self):
@@ -862,7 +862,7 @@ class ExpireTest(_fixtures.FixtureTest):
                                 self.classes.User)
 
         mapper(User, users, properties={
-            'addresses':relationship(Address, backref='user', lazy='joined', 
+            'addresses':relationship(Address, backref='user', lazy='joined',
                                     order_by=addresses.c.id),
             })
         mapper(Address, addresses)
@@ -941,7 +941,7 @@ class ExpireTest(_fixtures.FixtureTest):
         u1 = sess.query(User).options(undefer(User.name)).first()
         assert 'name' not in attributes.instance_state(u1).callables
 
-        # mass expire, the attribute was loaded, 
+        # mass expire, the attribute was loaded,
         # the attribute gets the callable
         sess.expire(u1)
         assert isinstance(
@@ -954,7 +954,7 @@ class ExpireTest(_fixtures.FixtureTest):
         assert 'name' not in attributes.instance_state(u1).callables
 
         # mass expire, attribute was loaded but then deleted,
-        # the callable goes away - the state wants to flip 
+        # the callable goes away - the state wants to flip
         # it back to its "deferred" loader.
         sess.expunge_all()
         u1 = sess.query(User).options(undefer(User.name)).first()
@@ -1164,7 +1164,7 @@ class ExpiredPendingTest(_fixtures.FixtureTest):
         # which attach to u1 will expect to be "pending"
         sess.expire(u1, ['addresses'])
 
-        # attach an Address.  now its "pending" 
+        # attach an Address.  now its "pending"
         # in user.addresses
         a2 = Address(email_address='a2')
         a2.user = u1

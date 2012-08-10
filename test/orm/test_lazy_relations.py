@@ -264,7 +264,7 @@ class LazyTest(_fixtures.FixtureTest):
                 User(id=8, address=Address(id=3)),
                 User(id=9, address=None),
                 User(id=10, address=None),
-            ], 
+            ],
             list(q)
         )
 
@@ -397,7 +397,7 @@ class LazyTest(_fixtures.FixtureTest):
             SomeDBInteger,
         ]:
             m = sa.MetaData()
-            users = Table('users', m, 
+            users = Table('users', m,
                 Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
                 Column('name', String(30), nullable=False),
             )
@@ -486,7 +486,7 @@ class LazyTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 1)
 
 class GetterStateTest(_fixtures.FixtureTest):
-    """test lazyloader on non-existent attribute returns 
+    """test lazyloader on non-existent attribute returns
     expected attribute symbols, maintain expected state"""
 
     run_inserts = None
@@ -516,8 +516,8 @@ class GetterStateTest(_fixtures.FixtureTest):
         User, Address, sess, a1 = self._u_ad_fixture(False)
         eq_(
             Address.user.impl.get(
-                attributes.instance_state(a1), 
-                attributes.instance_dict(a1), 
+                attributes.instance_state(a1),
+                attributes.instance_dict(a1),
                 passive=attributes.PASSIVE_RETURN_NEVER_SET),
             attributes.NEVER_SET
         )
@@ -528,8 +528,8 @@ class GetterStateTest(_fixtures.FixtureTest):
         User, Address, sess, a1 = self._u_ad_fixture(False)
         eq_(
             Address.user.impl.get_history(
-                attributes.instance_state(a1), 
-                attributes.instance_dict(a1), 
+                attributes.instance_state(a1),
+                attributes.instance_dict(a1),
                 passive=attributes.PASSIVE_RETURN_NEVER_SET),
             ((), (), ())
         )
@@ -540,8 +540,8 @@ class GetterStateTest(_fixtures.FixtureTest):
         User, Address, sess, a1 = self._u_ad_fixture(False)
         eq_(
             Address.user.impl.get(
-                attributes.instance_state(a1), 
-                attributes.instance_dict(a1), 
+                attributes.instance_state(a1),
+                attributes.instance_dict(a1),
                 passive=attributes.PASSIVE_NO_INITIALIZE),
             attributes.PASSIVE_NO_RESULT
         )
@@ -552,8 +552,8 @@ class GetterStateTest(_fixtures.FixtureTest):
         User, Address, sess, a1 = self._u_ad_fixture(False)
         eq_(
             Address.user.impl.get_history(
-                attributes.instance_state(a1), 
-                attributes.instance_dict(a1), 
+                attributes.instance_state(a1),
+                attributes.instance_dict(a1),
                 passive=attributes.PASSIVE_NO_INITIALIZE),
             attributes.HISTORY_BLANK
         )
@@ -564,8 +564,8 @@ class GetterStateTest(_fixtures.FixtureTest):
         User, Address, sess, a1 = self._u_ad_fixture(True)
         eq_(
             Address.user.impl.get(
-                attributes.instance_state(a1), 
-                attributes.instance_dict(a1), 
+                attributes.instance_state(a1),
+                attributes.instance_dict(a1),
                 passive=attributes.PASSIVE_NO_INITIALIZE),
             attributes.PASSIVE_NO_RESULT
         )
@@ -576,8 +576,8 @@ class GetterStateTest(_fixtures.FixtureTest):
         User, Address, sess, a1 = self._u_ad_fixture(True)
         eq_(
             Address.user.impl.get_history(
-                attributes.instance_state(a1), 
-                attributes.instance_dict(a1), 
+                attributes.instance_state(a1),
+                attributes.instance_dict(a1),
                 passive=attributes.PASSIVE_NO_INITIALIZE),
             attributes.HISTORY_BLANK
         )
@@ -588,8 +588,8 @@ class GetterStateTest(_fixtures.FixtureTest):
         User, Address, sess, a1 = self._u_ad_fixture(True)
         eq_(
             Address.user.impl.get(
-                attributes.instance_state(a1), 
-                attributes.instance_dict(a1), 
+                attributes.instance_state(a1),
+                attributes.instance_dict(a1),
                 passive=attributes.PASSIVE_RETURN_NEVER_SET),
             User(name='ed')
         )
@@ -598,8 +598,8 @@ class GetterStateTest(_fixtures.FixtureTest):
         User, Address, sess, a1 = self._u_ad_fixture(True)
         eq_(
             Address.user.impl.get_history(
-                attributes.instance_state(a1), 
-                attributes.instance_dict(a1), 
+                attributes.instance_state(a1),
+                attributes.instance_dict(a1),
                 passive=attributes.PASSIVE_RETURN_NEVER_SET),
             ((), [User(name='ed'), ], ())
         )

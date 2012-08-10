@@ -28,7 +28,7 @@ class SchemaGenerator(DDLBase):
         if table.schema:
             self.dialect.validate_identifier(table.schema)
         return not self.checkfirst or \
-                not self.dialect.has_table(self.connection, 
+                not self.dialect.has_table(self.connection,
                                     table.name, schema=table.schema)
 
     def _can_create_sequence(self, sequence):
@@ -39,8 +39,8 @@ class SchemaGenerator(DDLBase):
                  (
                  not self.checkfirst or
                  not self.dialect.has_sequence(
-                            self.connection, 
-                            sequence.name, 
+                            self.connection,
+                            sequence.name,
                             schema=sequence.schema)
                  )
             )
@@ -50,9 +50,9 @@ class SchemaGenerator(DDLBase):
             tables = self.tables
         else:
             tables = metadata.tables.values()
-        collection = [t for t in sql_util.sort_tables(tables) 
+        collection = [t for t in sql_util.sort_tables(tables)
                         if self._can_create_table(t)]
-        seq_coll = [s for s in metadata._sequences.values() 
+        seq_coll = [s for s in metadata._sequences.values()
                         if s.column is None and self._can_create_sequence(s)]
 
         metadata.dispatch.before_create(metadata, self.connection,
@@ -95,7 +95,7 @@ class SchemaGenerator(DDLBase):
 
     def visit_sequence(self, sequence, create_ok=False):
         if not create_ok and not self._can_create_sequence(sequence):
-            return 
+            return
         self.connection.execute(schema.CreateSequence(sequence))
 
     def visit_index(self, index):
@@ -116,9 +116,9 @@ class SchemaDropper(DDLBase):
             tables = self.tables
         else:
             tables = metadata.tables.values()
-        collection = [t for t in reversed(sql_util.sort_tables(tables)) 
+        collection = [t for t in reversed(sql_util.sort_tables(tables))
                                 if self._can_drop_table(t)]
-        seq_coll = [s for s in metadata._sequences.values() 
+        seq_coll = [s for s in metadata._sequences.values()
                                 if s.column is None and self._can_drop_sequence(s)]
 
         metadata.dispatch.before_drop(metadata, self.connection,
@@ -141,7 +141,7 @@ class SchemaDropper(DDLBase):
         self.dialect.validate_identifier(table.name)
         if table.schema:
             self.dialect.validate_identifier(table.schema)
-        return not self.checkfirst or self.dialect.has_table(self.connection, 
+        return not self.checkfirst or self.dialect.has_table(self.connection,
                                             table.name, schema=table.schema)
 
     def _can_drop_sequence(self, sequence):
@@ -150,8 +150,8 @@ class SchemaDropper(DDLBase):
                  not sequence.optional) and
                 (not self.checkfirst or
                  self.dialect.has_sequence(
-                                self.connection, 
-                                sequence.name, 
+                                self.connection,
+                                sequence.name,
                                 schema=sequence.schema))
             )
 

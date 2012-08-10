@@ -26,7 +26,7 @@ class AdaptTest(fixtures.TestBase):
         ]
 
     def _all_dialects(self):
-        return [d.base.dialect() for d in 
+        return [d.base.dialect() for d in
                 self._all_dialect_modules()]
 
     def _types_for_mod(self, mod):
@@ -327,11 +327,11 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
         self.assert_compile(t, "VARCHAR(50)", dialect=sl)
         self.assert_compile(t, "FLOAT", dialect=pg)
         eq_(
-            t.dialect_impl(dialect=sl).impl.__class__, 
+            t.dialect_impl(dialect=sl).impl.__class__,
             String().dialect_impl(dialect=sl).__class__
         )
         eq_(
-                t.dialect_impl(dialect=pg).impl.__class__, 
+                t.dialect_impl(dialect=pg).impl.__class__,
                 Float().dialect_impl(pg).__class__
         )
 
@@ -695,8 +695,8 @@ class UnicodeTest(fixtures.TestBase, AssertsExecutionResults):
                 ('oracle','cx_oracle'),
             )), \
             "name: %s driver %s returns_unicode_strings=%s" % \
-                                        (testing.db.name, 
-                                         testing.db.driver, 
+                                        (testing.db.name,
+                                         testing.db.driver,
                                          testing.db.dialect.returns_unicode_strings)
 
     def test_round_trip(self):
@@ -787,7 +787,7 @@ class UnicodeTest(fixtures.TestBase, AssertsExecutionResults):
 
             eq_(uni(unicodedata), unicodedata.encode('utf-8'))
 
-        # using convert unicode at engine level - 
+        # using convert unicode at engine level -
         # this should not be raising a warning
         unicode_engine = engines.utf8_engine(options={'convert_unicode':True,})
         unicode_engine.dialect.supports_unicode_binds = False
@@ -836,7 +836,7 @@ class UnicodeTest(fixtures.TestBase, AssertsExecutionResults):
         engine = engines.testing_engine(options={'encoding':'ascii'})
         m.create_all(engine)
         try:
-            # insert a row that should be ascii and 
+            # insert a row that should be ascii and
             # coerce from unicode with ignore on the bind side
             engine.execute(
                 table.insert(),
@@ -871,7 +871,7 @@ class UnicodeTest(fixtures.TestBase, AssertsExecutionResults):
 
             # one row will be ascii with ignores,
             # the other will be either ascii with the ignores
-            # or just the straight unicode+ utf8 value if the 
+            # or just the straight unicode+ utf8 value if the
             # dialect just returns unicode
             result = engine.execute(table.select().order_by(table.c.sort))
             ascii_row = result.fetchone()
@@ -929,10 +929,10 @@ class EnumTest(fixtures.TestBase):
     def teardown_class(cls):
         metadata.drop_all()
 
-    @testing.fails_on('postgresql+zxjdbc', 
+    @testing.fails_on('postgresql+zxjdbc',
                         'zxjdbc fails on ENUM: column "XXX" is of type XXX '
                         'but expression is of type character varying')
-    @testing.fails_on('postgresql+pg8000', 
+    @testing.fails_on('postgresql+pg8000',
                         'zxjdbc fails on ENUM: column "XXX" is of type XXX '
                         'but expression is of type text')
     def test_round_trip(self):
@@ -943,7 +943,7 @@ class EnumTest(fixtures.TestBase):
         ])
 
         eq_(
-            enum_table.select().order_by(enum_table.c.id).execute().fetchall(), 
+            enum_table.select().order_by(enum_table.c.id).execute().fetchall(),
             [
                 (1, 'two'),
                 (2, 'two'),
@@ -960,7 +960,7 @@ class EnumTest(fixtures.TestBase):
 
         eq_(
             non_native_enum_table.select().
-                    order_by(non_native_enum_table.c.id).execute().fetchall(), 
+                    order_by(non_native_enum_table.c.id).execute().fetchall(),
             [
                 (1, 'two'),
                 (2, 'two'),
@@ -978,19 +978,19 @@ class EnumTest(fixtures.TestBase):
         eq_(e1.adapt(ENUM).name, 'foo')
         eq_(e1.adapt(ENUM).schema, 'bar')
 
-    @testing.crashes('mysql', 
+    @testing.crashes('mysql',
                     'Inconsistent behavior across various OS/drivers'
                 )
     def test_constraint(self):
-        assert_raises(exc.DBAPIError, 
+        assert_raises(exc.DBAPIError,
             enum_table.insert().execute,
             {'id':4, 'someenum':'four'}
         )
 
-    @testing.fails_on('mysql', 
+    @testing.fails_on('mysql',
                     "the CHECK constraint doesn't raise an exception for unknown reason")
     def test_non_native_constraint(self):
-        assert_raises(exc.DBAPIError, 
+        assert_raises(exc.DBAPIError,
             non_native_enum_table.insert().execute,
             {'id':4, 'someenum':'four'}
         )
@@ -1004,7 +1004,7 @@ class EnumTest(fixtures.TestBase):
             Column('x', Enum("x", "y", name="pge"))
         )
         t.create(e, checkfirst=False)
-        # basically looking for the start of 
+        # basically looking for the start of
         # the constraint, or the ENUM def itself,
         # depending on backend.
         assert "('x'," in e.print_sql()
@@ -1058,32 +1058,32 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
         stream1 =self.load_stream('binary_data_one.dat')
         stream2 =self.load_stream('binary_data_two.dat')
         binary_table.insert().execute(
-                            primary_id=1, 
-                            misc='binary_data_one.dat', 
-                            data=stream1, 
-                            data_slice=stream1[0:100], 
-                            pickled=testobj1, 
+                            primary_id=1,
+                            misc='binary_data_one.dat',
+                            data=stream1,
+                            data_slice=stream1[0:100],
+                            pickled=testobj1,
                             mypickle=testobj3)
         binary_table.insert().execute(
-                            primary_id=2, 
-                            misc='binary_data_two.dat', 
-                            data=stream2, 
-                            data_slice=stream2[0:99], 
+                            primary_id=2,
+                            misc='binary_data_two.dat',
+                            data=stream2,
+                            data_slice=stream2[0:99],
                             pickled=testobj2)
         binary_table.insert().execute(
-                            primary_id=3, 
-                            misc='binary_data_two.dat', 
-                            data=None, 
-                            data_slice=stream2[0:99], 
+                            primary_id=3,
+                            misc='binary_data_two.dat',
+                            data=None,
+                            data_slice=stream2[0:99],
                             pickled=None)
 
         for stmt in (
             binary_table.select(order_by=binary_table.c.primary_id),
             text(
-                "select * from binary_table order by binary_table.primary_id", 
-                typemap={'pickled':PickleType, 
-                        'mypickle':MyPickleType, 
-                        'data':LargeBinary, 'data_slice':LargeBinary}, 
+                "select * from binary_table order by binary_table.primary_id",
+                typemap={'pickled':PickleType,
+                        'mypickle':MyPickleType,
+                        'data':LargeBinary, 'data_slice':LargeBinary},
                 bind=testing.db)
         ):
             l = stmt.execute().fetchall()
@@ -1154,9 +1154,9 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         meta.create_all()
 
         test_table.insert().execute({
-                                'id':1, 
-                                'data':'somedata', 
-                                'atimestamp':datetime.date(2007, 10, 15), 
+                                'id':1,
+                                'data':'somedata',
+                                'atimestamp':datetime.date(2007, 10, 15),
                                 'avalue':25, 'bvalue':'foo'})
 
     @classmethod
@@ -1180,7 +1180,7 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         eq_(
             testing.db.execute(
                     select([test_table.c.id, test_table.c.data, test_table.c.atimestamp])
-                    .where(expr), 
+                    .where(expr),
                     {"thedate":datetime.date(2007, 10, 15)}).fetchall(),
             [(1, 'somedata', datetime.date(2007, 10, 15))]
         )
@@ -1199,9 +1199,9 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         eq_(expr.right.type._type_affinity, String)
 
         eq_(
-            testing.db.execute(test_table.select().where(expr), 
+            testing.db.execute(test_table.select().where(expr),
                 {"somevalue":"foo"}).fetchall(),
-            [(1, 'somedata', 
+            [(1, 'somedata',
                 datetime.date(2007, 10, 15), 25, 'BIND_INfooBIND_OUT')]
         )
 
@@ -1358,7 +1358,7 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
 
     def test_null_comparison(self):
         eq_(
-            str(column('a', types.NullType()) + column('b', types.NullType())), 
+            str(column('a', types.NullType()) + column('b', types.NullType())),
             "a + b"
         )
 
@@ -1577,7 +1577,7 @@ class NumericTest(fixtures.TestBase):
         self._do_test(
             Numeric(precision=8, scale=4),
             [15.7563, decimal.Decimal("15.7563"), None],
-            [decimal.Decimal("15.7563"), None], 
+            [decimal.Decimal("15.7563"), None],
         )
 
     def test_numeric_as_float(self):
@@ -1597,7 +1597,7 @@ class NumericTest(fixtures.TestBase):
         self._do_test(
             Float(precision=8, asdecimal=True),
             [15.7563, decimal.Decimal("15.7563"), None],
-            [decimal.Decimal("15.7563"), None], 
+            [decimal.Decimal("15.7563"), None],
             filter_ = lambda n:n is not None and round(n, 5) or None
         )
 
@@ -1613,8 +1613,8 @@ class NumericTest(fixtures.TestBase):
     def test_precision_decimal(self):
         numbers = set([
             decimal.Decimal("54.234246451650"),
-            decimal.Decimal("0.004354"), 
-            decimal.Decimal("900.0"), 
+            decimal.Decimal("0.004354"),
+            decimal.Decimal("900.0"),
         ])
 
         self._do_test(
@@ -1627,7 +1627,7 @@ class NumericTest(fixtures.TestBase):
     def test_enotation_decimal(self):
         """test exceedingly small decimals.
 
-        Decimal reports values with E notation when the exponent 
+        Decimal reports values with E notation when the exponent
         is greater than 6.
 
         """
@@ -1652,7 +1652,7 @@ class NumericTest(fixtures.TestBase):
             numbers
         )
 
-    @testing.fails_on("sybase+pyodbc", 
+    @testing.fails_on("sybase+pyodbc",
                         "Don't know how do get these values through FreeTDS + Sybase")
     @testing.fails_on("firebird", "Precision must be from 1 to 18")
     def test_enotation_decimal_large(self):
@@ -1692,7 +1692,7 @@ class NumericTest(fixtures.TestBase):
         "this may be a bug due to the difficulty in handling "
         "oracle precision numerics"
     )
-    @testing.fails_on('postgresql+pg8000', 
+    @testing.fails_on('postgresql+pg8000',
         "pg-8000 does native decimal but truncates the decimals.")
     def test_numeric_no_decimal(self):
         numbers = set([
@@ -1794,8 +1794,8 @@ class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
         small_delta = datetime.timedelta(days=15, seconds=5874)
         delta = datetime.timedelta(414)
         interval_table.insert().execute(
-                                native_interval=small_delta, 
-                                native_interval_args=delta, 
+                                native_interval=small_delta,
+                                native_interval_args=delta,
                                 non_native_interval=delta
                                 )
         row = interval_table.select().execute().first()
@@ -1851,22 +1851,22 @@ class BooleanTest(fixtures.TestBase, AssertsExecutionResults):
         res3 = select([bool_table.c.id, bool_table.c.value]).\
                 order_by(bool_table.c.id).\
                 execute().fetchall()
-        eq_(res3, [(1, True), (2, False), 
-                    (3, True), (4, True), 
+        eq_(res3, [(1, True), (2, False),
+                    (3, True), (4, True),
                     (5, True), (6, None)])
 
         # ensure we're getting True/False, not just ints
         assert res3[0][1] is True
         assert res3[1][1] is False
 
-    @testing.fails_on('mysql', 
+    @testing.fails_on('mysql',
             "The CHECK clause is parsed but ignored by all storage engines.")
-    @testing.fails_on('mssql', 
+    @testing.fails_on('mssql',
             "FIXME: MS-SQL 2005 doesn't honor CHECK ?!?")
     @testing.skip_if(lambda: testing.db.dialect.supports_native_boolean)
     def test_constraint(self):
         assert_raises((exc.IntegrityError, exc.ProgrammingError),
-                        testing.db.execute, 
+                        testing.db.execute,
                         "insert into booltest (id, value) values(1, 5)")
 
     @testing.skip_if(lambda: testing.db.dialect.supports_native_boolean)
@@ -1885,7 +1885,7 @@ class PickleTest(fixtures.TestBase):
         ):
             assert p1.compare_values(p1.copy_value(obj), obj)
 
-        assert_raises(NotImplementedError, 
+        assert_raises(NotImplementedError,
                         p1.compare_values,
                         pickleable.BrokenComparable('foo'),
                         pickleable.BrokenComparable('foo'))

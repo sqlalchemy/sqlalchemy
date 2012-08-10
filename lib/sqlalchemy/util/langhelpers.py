@@ -242,7 +242,7 @@ def unbound_method_to_callable(func_or_cls):
 def generic_repr(obj, additional_kw=()):
     """Produce a __repr__() based on direct association of the __init__()
     specification vs. same-named attributes present.
-    
+
     """
     def genargs():
         try:
@@ -560,10 +560,10 @@ class importlater(object):
         from mypackage.somemodule import somesubmod
 
     except evaluted upon attribute access to "somesubmod".
-    
+
     importlater() currently requires that resolve_all() be
     called, typically at the bottom of a package's __init__.py.
-    This is so that __import__ still called only at 
+    This is so that __import__ still called only at
     module import time, and not potentially within
     a non-main thread later on.
 
@@ -606,14 +606,14 @@ class importlater(object):
         importlater._unresolved.discard(self)
         if self._il_addtl:
             self._initial_import = __import__(
-                                self._il_path, globals(), locals(), 
+                                self._il_path, globals(), locals(),
                                 [self._il_addtl])
         else:
             self._initial_import = __import__(self._il_path)
 
     def __getattr__(self, key):
         if key == 'module':
-            raise ImportError("Could not resolve module %s" 
+            raise ImportError("Could not resolve module %s"
                                 % self._full_path)
         try:
             attr = getattr(self.module, key)
@@ -869,8 +869,8 @@ def warn(msg, stacklevel=3):
     If msg is a string, :class:`.exc.SAWarning` is used as
     the category.
 
-    .. note:: 
-     
+    .. note::
+
        This function is swapped out when the test suite
        runs, with a compatible version that uses
        warnings.warn_explicit, so that the warnings registry can

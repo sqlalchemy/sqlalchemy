@@ -104,13 +104,13 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             'addresses':relationship(boom)
         })
 
-        # test that QueryableAttribute.__str__() doesn't 
+        # test that QueryableAttribute.__str__() doesn't
         # cause a compile.
         eq_(str(User.addresses), "User.addresses")
 
     def test_exceptions_sticky(self):
         """test preservation of mapper compile errors raised during hasattr(),
-        as well as for redundant mapper compile calls.  Test that 
+        as well as for redundant mapper compile calls.  Test that
         repeated calls don't stack up error messages.
 
         """
@@ -165,7 +165,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert_raises(sa.exc.ArgumentError, mapper, User, s)
 
     def test_reconfigure_on_other_mapper(self):
-        """A configure trigger on an already-configured mapper 
+        """A configure trigger on an already-configured mapper
         still triggers a check against all mappers."""
 
         users, Address, addresses, User = (self.tables.users,
@@ -219,7 +219,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                               : addresses.c.user_id})
 
     def test_constructor_exc(self):
-        """TypeError is raised for illegal constructor args, 
+        """TypeError is raised for illegal constructor args,
         whether or not explicit __init__ is present [ticket:908]."""
 
         users, addresses = self.tables.users, self.tables.addresses
@@ -237,7 +237,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert_raises(TypeError, Bar, x=5)
 
     def test_sort_states_comparisons(self):
-        """test that _sort_states() doesn't compare 
+        """test that _sort_states() doesn't compare
         insert_order to state.key, for set of mixed
         persistent/pending.  In particular Python 3 disallows
         this.
@@ -247,7 +247,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             def __init__(self, id):
                 self.id = id
         m = MetaData()
-        foo_t = Table('foo', m, 
+        foo_t = Table('foo', m,
                         Column('id', String, primary_key=True)
                     )
         m = mapper(Foo, foo_t)
@@ -508,7 +508,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
     def test_column_prop_deannotate(self):
-        """test that column property deannotates, 
+        """test that column property deannotates,
         bringing expressions down to the original mapped columns.
         """
         User, users = self.classes.User, self.tables.users
@@ -593,7 +593,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         class AddressUser(User):
             pass
         m1 = mapper(User, users, polymorphic_identity='user')
-        m2 = mapper(AddressUser, addresses, inherits=User, 
+        m2 = mapper(AddressUser, addresses, inherits=User,
                         polymorphic_identity='address')
         m3 = mapper(AddressUser, addresses, non_primary=True)
         assert m3._identity_class is m2._identity_class
@@ -638,7 +638,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         class Sub(Base):
             pass
         mapper(Base, users)
-        assert_raises_message(sa.exc.InvalidRequestError, 
+        assert_raises_message(sa.exc.InvalidRequestError,
                 "Configure a primary mapper first",
                 mapper, Sub, addresses, non_primary=True
             )
@@ -666,7 +666,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 pass
         class Empty(object):pass
 
-        empty = mapper(Empty, t, properties={'empty_id' : t.c.id}, 
+        empty = mapper(Empty, t, properties={'empty_id' : t.c.id},
                        include_properties=[])
         p_m = mapper(Person, t, polymorphic_on=t.c.type,
                      include_properties=('id', 'type', 'name'))
@@ -704,7 +704,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             want = set(want)
             eq_(have, want)
 
-        assert_props(HasDef, ['h_boss_id', 'h_employee_number', 'h_id', 
+        assert_props(HasDef, ['h_boss_id', 'h_employee_number', 'h_id',
                                 'name', 'h_name', 'h_vendor_id', 'h_type'])
         assert_props(Person, ['id', 'name', 'type'])
         assert_instrumented(Person, ['id', 'name', 'type'])
@@ -725,7 +725,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert_props(Frob, ['f_id', 'f_type', 'f_name', ])
 
 
-        # putting the discriminator column in exclude_properties, 
+        # putting the discriminator column in exclude_properties,
         # very weird.  As of 0.7.4 this re-maps it.
         class Foo(Person):
             pass
@@ -841,8 +841,8 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                                 self.tables.addresses,
                                 self.classes.Address)
 
-        m = mapper(Address, 
-                    addresses.join(email_bounces), 
+        m = mapper(Address,
+                    addresses.join(email_bounces),
                     properties={'id':[addresses.c.id, email_bounces.c.id]}
                 )
         configure_mappers()
@@ -1291,8 +1291,8 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             eq_(User.uc_name.method2('x'), "method2")
 
             assert_raises_message(
-                AttributeError, 
-                "Neither 'extendedproperty' object nor 'UCComparator' object has an attribute 'nonexistent'", 
+                AttributeError,
+                "Neither 'extendedproperty' object nor 'UCComparator' object has an attribute 'nonexistent'",
                 getattr, User.uc_name, 'nonexistent')
 
             # test compile
@@ -1338,8 +1338,8 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         })
 
         assert_raises_message(
-            AttributeError, 
-            "Neither 'InstrumentedAttribute' object nor 'MyComparator' object has an attribute 'nonexistent'", 
+            AttributeError,
+            "Neither 'InstrumentedAttribute' object nor 'MyComparator' object has an attribute 'nonexistent'",
             getattr, User.name, "nonexistent")
 
         eq_(str((User.name == 'ed').compile(dialect=sa.engine.default.DefaultDialect())) , "lower(users.name) = lower(:lower_1)")
@@ -1464,13 +1464,13 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         })
 
         assert_raises_message(
-            sa.orm.exc.UnmappedClassError, 
+            sa.orm.exc.UnmappedClassError,
             "Class 'test.orm._fixtures.Address' is not mapped",
             sa.orm.configure_mappers)
 
     def test_unmapped_not_type_error(self):
         assert_raises_message(
-            sa.exc.ArgumentError, 
+            sa.exc.ArgumentError,
             "Class object expected, got '5'.",
             class_mapper, 5
         )
@@ -1567,8 +1567,8 @@ class DocumentTest(fixtures.TestBase):
             pass
 
         mapper(Foo, t1, properties={
-            'bars':relationship(Bar, 
-                                    doc="bar relationship", 
+            'bars':relationship(Bar,
+                                    doc="bar relationship",
                                     backref=backref('foo',doc='foo relationship')
                                 ),
             'foober':column_property(t1.c.col3, doc='alternate data col'),
@@ -1705,7 +1705,7 @@ class OptionsTest(_fixtures.FixtureTest):
         self.sql_count_(1, go)
 
     def test_eager_degrade(self):
-        """An eager relationship automatically degrades to a lazy relationship 
+        """An eager relationship automatically degrades to a lazy relationship
         if eager columns are not available"""
 
         Address, addresses, users, User = (self.classes.Address,
@@ -1714,7 +1714,7 @@ class OptionsTest(_fixtures.FixtureTest):
                                 self.classes.User)
 
         mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), 
+            addresses = relationship(mapper(Address, addresses),
                                 lazy='joined', order_by=addresses.c.id)))
 
         sess = create_session()
@@ -1996,7 +1996,7 @@ class ValidatorTest(_fixtures.FixtureTest):
         sess.flush()
         sess.expunge_all()
         eq_(
-            sess.query(User).filter_by(name='edward').one(), 
+            sess.query(User).filter_by(name='edward').one(),
             User(name='edward', addresses=[Address(email_address='foo@bar.com')])
         )
 
@@ -2027,7 +2027,7 @@ class ValidatorTest(_fixtures.FixtureTest):
 
         eq_(
             dict((k, v[0].__name__) for k, v in u_m.validators.items()),
-            {'name':'validate_name', 
+            {'name':'validate_name',
             'addresses':'validate_address'}
         )
 
@@ -2064,20 +2064,20 @@ class ValidatorTest(_fixtures.FixtureTest):
         u1.addresses = [a2, a3]
 
         eq_(canary, [
-                ('name', 'ed', False), 
-                ('name', 'mary', False), 
-                ('name', 'mary', True), 
+                ('name', 'ed', False),
+                ('name', 'mary', False),
+                ('name', 'mary', True),
                 # append a1
-                ('addresses', a1, False), 
+                ('addresses', a1, False),
                 # remove a1
-                ('addresses', a1, True), 
+                ('addresses', a1, True),
                 # set to [a1, a2] - this is two appends
                 ('addresses', a1, False), ('addresses', a2, False),
                 # set to [a2, a3] - this is a remove of a1,
                 # append of a3.  the appends are first.
                 ('addresses', a3, False),
-                ('addresses', a1, True), 
-            ] 
+                ('addresses', a1, True),
+            ]
         )
 
 class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
@@ -2135,12 +2135,12 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                                     comparator_factory=MyFactory)
                     })
         self.assert_compile(
-                    User.name == 'ed', 
+                    User.name == 'ed',
                     "foobar(users.name) = foobar(:foobar_1)",
                     dialect=default.DefaultDialect())
 
         self.assert_compile(
-                    aliased(User).name == 'ed', 
+                    aliased(User).name == 'ed',
                     "foobar(users_1.name) = foobar(:foobar_1)",
                     dialect=default.DefaultDialect())
 
@@ -2164,7 +2164,7 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         mapper(User, users)
         mapper(Address, addresses, properties={
-            'user':relationship(User, comparator_factory=MyFactory, 
+            'user':relationship(User, comparator_factory=MyFactory,
                 backref=backref("addresses", comparator_factory=MyFactory2)
             )
             }
@@ -2472,9 +2472,9 @@ class DeferredTest(_fixtures.FixtureTest):
 
 
         order_select = sa.select([
-                        orders.c.id, 
-                        orders.c.user_id, 
-                        orders.c.address_id, 
+                        orders.c.id,
+                        orders.c.user_id,
+                        orders.c.address_id,
                         orders.c.description,
                         orders.c.isopen]).alias()
         mapper(Order, order_select, properties={
@@ -2529,7 +2529,7 @@ class SecondaryOptionsTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        Table("base", metadata, 
+        Table("base", metadata,
             Column('id', Integer, primary_key=True),
             Column('type', String(50), nullable=False)
         )
@@ -2562,11 +2562,11 @@ class SecondaryOptionsTest(fixtures.MappedTest):
         mapper(Base, base, polymorphic_on=base.c.type, properties={
             'related':relationship(Related, uselist=False)
         })
-        mapper(Child1, child1, inherits=Base, 
-                polymorphic_identity='child1', 
+        mapper(Child1, child1, inherits=Base,
+                polymorphic_identity='child1',
             properties={
-            'child2':relationship(Child2, 
-                                    primaryjoin=child1.c.child2id==base.c.id, 
+            'child2':relationship(Child2,
+                                    primaryjoin=child1.c.child2id==base.c.id,
                                     foreign_keys=child1.c.child2id)
         })
         mapper(Child2, child2, inherits=Base, polymorphic_identity='child2')
@@ -2620,18 +2620,18 @@ class SecondaryOptionsTest(fixtures.MappedTest):
             eq_(
                 child1s.all(),
                 [
-                    Child1(id=1, related=Related(id=1)), 
-                    Child1(id=2, related=Related(id=2)), 
+                    Child1(id=1, related=Related(id=1)),
+                    Child1(id=2, related=Related(id=2)),
                     Child1(id=3, related=Related(id=3))
                 ]
             )
         self.assert_sql_count(testing.db, go, 1)
 
         c1 = child1s[0]
- 
+
         self.assert_sql_execution(
-            testing.db, 
-            lambda: c1.child2, 
+            testing.db,
+            lambda: c1.child2,
             CompiledSQL(
                 "SELECT child2.id AS child2_id, base.id AS base_id, base.type AS base_type "
                 "FROM base JOIN child2 ON base.id = child2.id "
@@ -2657,8 +2657,8 @@ class SecondaryOptionsTest(fixtures.MappedTest):
         c1 = child1s[0]
 
         self.assert_sql_execution(
-            testing.db, 
-            lambda: c1.child2, 
+            testing.db,
+            lambda: c1.child2,
             CompiledSQL(
             "SELECT child2.id AS child2_id, base.id AS base_id, base.type AS base_type "
             "FROM base JOIN child2 ON base.id = child2.id WHERE base.id = :param_1",
@@ -2691,8 +2691,8 @@ class SecondaryOptionsTest(fixtures.MappedTest):
 
         # this *does* joinedload
         self.assert_sql_execution(
-            testing.db, 
-            lambda: c1.child2, 
+            testing.db,
+            lambda: c1.child2,
             CompiledSQL(
                 "SELECT child2.id AS child2_id, base.id AS base_id, base.type AS base_type, "
                 "related_1.id AS related_1_id FROM base JOIN child2 ON base.id = child2.id "
@@ -3033,8 +3033,8 @@ class RequirementsTest(fixtures.MappedTest):
         ])
         s.commit()
         eq_(
-            [(h1.value, h1.id, h2.value, h2.id) 
-            for h1, h2 in 
+            [(h1.value, h1.id, h2.value, h2.id)
+            for h1, h2 in
             s.query(H1, H2).join(H1.h2s).order_by(H1.id, H2.id)],
             [
                 ('abc', 1, 'abc', 1),

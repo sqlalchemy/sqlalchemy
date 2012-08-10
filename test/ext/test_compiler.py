@@ -123,7 +123,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_annotations(self):
-        """test that annotated clause constructs use the 
+        """test that annotated clause constructs use the
         decorated class' compiler.
 
         """
@@ -356,7 +356,7 @@ class DefaultOnExistingTest(fixtures.TestBase, AssertsCompiledSQL):
             return "BIND(%s)" % compiler.visit_bindparam(element, **kw)
 
         self.assert_compile(
-            t.select().where(t.c.c == 5), 
+            t.select().where(t.c.c == 5),
             "SELECT t.a, t.b, t.c FROM t WHERE t.c = BIND(:c_1)",
             use_default_dialect=True
         )
@@ -373,7 +373,7 @@ class DefaultOnExistingTest(fixtures.TestBase, AssertsCompiledSQL):
             return "BIND(%s)" % compiler.visit_bindparam(element, **kw)
 
         self.assert_compile(
-            t.insert(), 
+            t.insert(),
             "INSERT INTO t (a, b) VALUES (BIND(:a), BIND(:b))",
             {'a':1, 'b':2},
             use_default_dialect=True

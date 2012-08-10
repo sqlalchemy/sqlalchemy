@@ -26,7 +26,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("master_ssl_verify_server_cert", Integer))
         x = select([table.c.col1, table.c.master_ssl_verify_server_cert])
 
-        self.assert_compile(x, 
+        self.assert_compile(x,
             '''SELECT mysql_table.col1, mysql_table.`master_ssl_verify_server_cert` FROM mysql_table''')
 
     def test_create_index_simple(self):
@@ -66,7 +66,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_create_pk_plain(self):
         m = MetaData()
-        tbl = Table('testtbl', m, Column('data', String(255)), 
+        tbl = Table('testtbl', m, Column('data', String(255)),
             PrimaryKeyConstraint('data'))
 
         self.assert_compile(schema.CreateTable(tbl),
@@ -75,7 +75,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_create_pk_with_using(self):
         m = MetaData()
-        tbl = Table('testtbl', m, Column('data', String(255)), 
+        tbl = Table('testtbl', m, Column('data', String(255)),
             PrimaryKeyConstraint('data', mysql_using='btree'))
 
         self.assert_compile(schema.CreateTable(tbl),
@@ -86,7 +86,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 class DialectTest(fixtures.TestBase):
     __only_on__ = 'mysql'
 
-    @testing.only_on(['mysql+mysqldb', 'mysql+oursql'], 
+    @testing.only_on(['mysql+mysqldb', 'mysql+oursql'],
                     'requires particular SSL arguments')
     def test_ssl_arguments(self):
         dialect = testing.db.dialect
@@ -98,12 +98,12 @@ class DialectTest(fixtures.TestBase):
         for k in ('use_unicode', 'found_rows', 'client_flag'):
             kwarg.pop(k, None)
         eq_(
-            kwarg, 
+            kwarg,
             {
-                'passwd': 'tiger', 'db': 'test', 
-                'ssl': {'ca': '/ca.pem', 'cert': '/cert.pem', 
-                        'key': '/key.pem'}, 
-                'host': 'localhost', 'user': 'scott', 
+                'passwd': 'tiger', 'db': 'test',
+                'ssl': {'ca': '/ca.pem', 'cert': '/cert.pem',
+                        'key': '/key.pem'},
+                'host': 'localhost', 'user': 'scott',
                 'port': 3306
             }
         )
@@ -158,7 +158,7 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
         columns = [
             # column type, args, kwargs, expected ddl
-            # e.g. Column(Integer(10, unsigned=True)) == 
+            # e.g. Column(Integer(10, unsigned=True)) ==
             # 'INTEGER(10) UNSIGNED'
             (mysql.MSNumeric, [], {},
              'NUMERIC'),
@@ -592,7 +592,7 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             # there's a slight assumption here that this test can
             # complete within the scope of a single second.
             # if needed, can break out the eq_() just to check for
-            # timestamps that are within a few seconds of "now" 
+            # timestamps that are within a few seconds of "now"
             # using timedelta.
 
             now = testing.db.execute("select now()").scalar()
@@ -730,7 +730,7 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         enum_table.drop(checkfirst=True)
         enum_table.create()
 
-        assert_raises(exc.DBAPIError, enum_table.insert().execute, 
+        assert_raises(exc.DBAPIError, enum_table.insert().execute,
                         e1=None, e2=None, e3=None, e4=None)
 
         assert_raises(exc.StatementError, enum_table.insert().execute,
@@ -745,8 +745,8 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
         res = enum_table.select().execute().fetchall()
 
-        expected = [(None, 'a', 'a', None, 'a', None, None, None), 
-                    ('a', 'a', 'a', 'a', 'a', 'a', 'a', "'a'"), 
+        expected = [(None, 'a', 'a', None, 'a', None, None, None),
+                    ('a', 'a', 'a', 'a', 'a', 'a', 'a', "'a'"),
                     ('b', 'b', 'b', 'b', 'b', 'b', 'b', 'b')]
 
         # This is known to fail with MySQLDB 1.2.2 beta versions
@@ -786,8 +786,8 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             t1.insert().execute(value=u'drôle', value2=u'drôle')
             t1.insert().execute(value=u'réveillé', value2=u'réveillé')
             t1.insert().execute(value=u'S’il', value2=u'S’il')
-            eq_(t1.select().order_by(t1.c.id).execute().fetchall(), 
-                [(1, u'drôle', u'drôle'), (2, u'réveillé', u'réveillé'), 
+            eq_(t1.select().order_by(t1.c.id).execute().fetchall(),
+                [(1, u'drôle', u'drôle'), (2, u'réveillé', u'réveillé'),
                             (3, u'S’il', u'S’il')]
             )
 
@@ -802,7 +802,7 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             assert t2.c.value.type.enums[0:2] == \
                     (u'réveillé', u'drôle') #, u'S’il') # eh ?
             assert t2.c.value2.type.enums[0:2] == \
-                    (u'réveillé', u'drôle') #, u'S’il') # eh ? 
+                    (u'réveillé', u'drôle') #, u'S’il') # eh ?
         finally:
             metadata.drop_all()
 
@@ -1153,7 +1153,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         eq_(gen(prefixes=['ALL']), 'SELECT ALL q')
-        eq_(gen(prefixes=['DISTINCTROW']), 
+        eq_(gen(prefixes=['DISTINCTROW']),
                 'SELECT DISTINCTROW q')
 
         # Interaction with MySQL prefix extensions
@@ -1182,7 +1182,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            select(['q'], distinct='ALL', 
+            select(['q'], distinct='ALL',
                     prefixes=['HIGH_PRIORITY', 'SQL_SMALL_RESULT']),
             'SELECT HIGH_PRIORITY SQL_SMALL_RESULT ALL q'
         )
@@ -1211,7 +1211,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             )
         self.assert_compile(
             select([t]).limit(10),
-            "SELECT t.col1, t.col2 FROM t  LIMIT %s", 
+            "SELECT t.col1, t.col2 FROM t  LIMIT %s",
             {'param_1':10})
 
         self.assert_compile(
@@ -1232,9 +1232,9 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         ):
             type_ = sqltypes.to_instance(type_)
             assert_raises_message(
-                exc.CompileError, 
+                exc.CompileError,
                 "VARCHAR requires a length on dialect mysql",
-                type_.compile, 
+                type_.compile,
             dialect=mysql.dialect())
 
             t1 = Table('sometable', MetaData(),
@@ -1289,7 +1289,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             # 'SIGNED INTEGER' is a bigint, so this is ok.
             (m.MSBigInteger, "CAST(t.col AS SIGNED INTEGER)"),
             (m.MSBigInteger(unsigned=False), "CAST(t.col AS SIGNED INTEGER)"),
-            (m.MSBigInteger(unsigned=True), 
+            (m.MSBigInteger(unsigned=True),
                             "CAST(t.col AS UNSIGNED INTEGER)"),
             (m.MSBit, "t.col"),
 
@@ -1412,7 +1412,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         tname = 'zyrenian_zyme_zyzzogeton_zyzzogeton'
         cname = 'zyrenian_zyme_zyzzogeton_zo'
 
-        t1 = Table(tname, MetaData(), 
+        t1 = Table(tname, MetaData(),
                     Column(cname, Integer, index=True),
                 )
         ix1 = list(t1.indexes)[0]

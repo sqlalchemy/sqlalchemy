@@ -5,11 +5,11 @@ from sqlalchemy.orm import mapper, relationship, sessionmaker
 metadata = MetaData()
 
 # a table to store companies
-companies = Table('companies', metadata, 
+companies = Table('companies', metadata,
    Column('company_id', Integer, primary_key=True),
    Column('name', String(50)))
 
-employees_table = Table('employees', metadata, 
+employees_table = Table('employees', metadata,
     Column('employee_id', Integer, primary_key=True),
     Column('company_id', Integer, ForeignKey('companies.company_id')),
     Column('name', String(50)),
@@ -31,7 +31,7 @@ class Engineer(Person):
     def __repr__(self):
         return "Engineer %s, status %s, engineer_name %s, "\
                     "primary_language %s" % \
-                        (self.name, self.status, 
+                        (self.name, self.status,
                         self.engineer_name, self.primary_language)
 class Manager(Person):
     def __repr__(self):

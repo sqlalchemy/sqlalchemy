@@ -335,7 +335,7 @@ class ZooMarkTest(fixtures.TestBase):
     def test_profile_1_create_tables(self):
         self.test_baseline_1_create_tables()
 
-    @profiling.function_call_count(5786, {'2.7+cextension':5683, 
+    @profiling.function_call_count(5786, {'2.7+cextension':5683,
                                             '2.6+cextension':5992})
     def test_profile_1a_populate(self):
         self.test_baseline_1a_populate()

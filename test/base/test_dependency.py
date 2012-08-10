@@ -86,7 +86,7 @@ class DependencySortTest(fixtures.TestBase):
             eq_(err.cycles, set(['node1', 'node3', 'node2', 'node5',
                 'node4']))
             eq_(err.edges, set([('node3', 'node1'), ('node4', 'node1'),
-                ('node2', 'node3'), ('node1', 'node2'), 
+                ('node2', 'node3'), ('node1', 'node2'),
                 ('node4','node5'), ('node5', 'node4')]))
 
     def test_raise_on_cycle_two(self):
@@ -108,7 +108,7 @@ class DependencySortTest(fixtures.TestBase):
         except exc.CircularDependencyError, err:
             eq_(err.cycles, set(['node1', 'node3', 'node2']))
             eq_(err.edges, set([('node3', 'node1'), ('node2', 'node3'),
-                ('node3', 'node2'), ('node1', 'node2'), 
+                ('node3', 'node2'), ('node1', 'node2'),
                 ('node2','node4')]))
 
     def test_raise_on_cycle_three(self):
@@ -224,7 +224,7 @@ class DependencySortTest(fixtures.TestBase):
             ])
         # node6 only became present here once [ticket:2282] was addressed.
         eq_(
-            topological.find_cycles(tuples, allnodes), 
+            topological.find_cycles(tuples, allnodes),
             set(['node1','node2', 'node4', 'node6'])
         )
 
@@ -258,23 +258,23 @@ class DependencySortTest(fixtures.TestBase):
 
     def test_find_multiple_cycles_four(self):
         tuples = [
-            ('node6', 'node2'), 
-            ('node15', 'node19'), 
+            ('node6', 'node2'),
+            ('node15', 'node19'),
             ('node19', 'node2'), ('node4', 'node10'),
             ('node15', 'node13'),
-            ('node17', 'node11'), ('node1', 'node19'), ('node15', 'node8'), 
-            ('node6', 'node20'), ('node14', 'node11'), ('node6', 'node14'), 
+            ('node17', 'node11'), ('node1', 'node19'), ('node15', 'node8'),
+            ('node6', 'node20'), ('node14', 'node11'), ('node6', 'node14'),
             ('node11', 'node2'), ('node10', 'node20'), ('node1', 'node11'),
              ('node20', 'node19'), ('node4', 'node20'), ('node15', 'node20'),
              ('node9', 'node19'), ('node11', 'node10'), ('node11', 'node19'),
               ('node13', 'node6'), ('node3', 'node15'), ('node9', 'node11'),
-              ('node4', 'node17'), ('node2', 'node20'), ('node19', 'node10'), 
+              ('node4', 'node17'), ('node2', 'node20'), ('node19', 'node10'),
               ('node8', 'node4'), ('node11', 'node3'), ('node6', 'node1')
         ]
         allnodes = ['node%d' % i for i in xrange(1, 21)]
         eq_(
-            topological.find_cycles(tuples, allnodes), 
-            set(['node11', 'node10', 'node13', 'node15', 'node14', 'node17', 
-            'node19', 'node20', 'node8', 'node1', 'node3', 
+            topological.find_cycles(tuples, allnodes),
+            set(['node11', 'node10', 'node13', 'node15', 'node14', 'node17',
+            'node19', 'node20', 'node8', 'node1', 'node3',
             'node2', 'node4', 'node6'])
         )

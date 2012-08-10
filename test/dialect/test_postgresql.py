@@ -155,7 +155,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_create_index_with_ops(self):
         m = MetaData()
         tbl = Table('testtbl', m,
-                    Column('data', String), 
+                    Column('data', String),
                     Column('data2', Integer, key='d2'))
 
         idx = Index('test_idx1', tbl.c.data,
@@ -269,7 +269,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("variadic", Integer))
         x = select([table.c.col1, table.c.variadic])
 
-        self.assert_compile(x, 
+        self.assert_compile(x,
             '''SELECT pg_table.col1, pg_table."variadic" FROM pg_table''')
 
 
@@ -332,7 +332,7 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
     @testing.provide_metadata
     def test_arrays(self):
         metadata = self.metadata
-        t1 = Table('t', metadata, 
+        t1 = Table('t', metadata,
             Column('x', postgresql.ARRAY(Float)),
             Column('y', postgresql.ARRAY(REAL)),
             Column('z', postgresql.ARRAY(postgresql.DOUBLE_PRECISION)),
@@ -342,7 +342,7 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
         t1.insert().execute(x=[5], y=[5], z=[6], q=[decimal.Decimal("6.4")])
         row = t1.select().execute().first()
         eq_(
-            row, 
+            row,
             ([5], [5], [6], [decimal.Decimal("6.4")])
         )
 
@@ -415,7 +415,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         metadata = MetaData(testing.db)
         t1 = Table('table', metadata,
             Column('id', Integer, primary_key=True),
-            Column('value', 
+            Column('value',
                     Enum(u'réveillé', u'drôle', u'S’il',
                             name='onetwothreetype'))
         )
@@ -425,7 +425,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             t1.insert().execute(value=u'drôle')
             t1.insert().execute(value=u'réveillé')
             t1.insert().execute(value=u'S’il')
-            eq_(t1.select().order_by(t1.c.id).execute().fetchall(), 
+            eq_(t1.select().order_by(t1.c.id).execute().fetchall(),
                 [(1, u'drôle'), (2, u'réveillé'), (3, u'S’il')]
             )
             m2 = MetaData(testing.db)
@@ -454,11 +454,11 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     def test_disable_create(self):
         metadata = self.metadata
 
-        e1 = postgresql.ENUM('one', 'two', 'three', 
+        e1 = postgresql.ENUM('one', 'two', 'three',
                             name="myenum",
                             create_type=False)
 
-        t1 = Table('e1', metadata, 
+        t1 = Table('e1', metadata,
             Column('c1', e1)
         )
         # table can be created separately
@@ -472,14 +472,14 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     def test_generate_multiple(self):
         """Test that the same enum twice only generates once
         for the create_all() call, without using checkfirst.
-        
+
         A 'memo' collection held by the DDL runner
         now handles this.
-        
+
         """
         metadata = self.metadata
 
-        e1 = Enum('one', 'two', 'three', 
+        e1 = Enum('one', 'two', 'three',
                             name="myenum")
         t1 = Table('e1', metadata,
             Column('c1', e1)
@@ -616,9 +616,9 @@ class NumericInterpretationTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_numeric_default(self):
         metadata = self.metadata
-        # pg8000 appears to fail when the value is 0, 
+        # pg8000 appears to fail when the value is 0,
         # returns an int instead of decimal.
-        t =Table('t', metadata, 
+        t =Table('t', metadata,
             Column('id', Integer, primary_key=True),
             Column('nd', Numeric(asdecimal=True), default=1),
             Column('nf', Numeric(asdecimal=False), default=1),
@@ -1195,8 +1195,8 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = postgresql.dialect()
 
     def setup(self):
-        self.table = Table('t', MetaData(), 
-                Column('id',Integer, primary_key=True), 
+        self.table = Table('t', MetaData(),
+                Column('id',Integer, primary_key=True),
                 Column('a', String),
                 Column('b', String),
             )
@@ -1228,7 +1228,7 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_on_columns_inline_list(self):
         self.assert_compile(
-            select([self.table], 
+            select([self.table],
                     distinct=[self.table.c.a, self.table.c.b]).
                     order_by(self.table.c.a, self.table.c.b),
             "SELECT DISTINCT ON (t.a, t.b) t.id, "
@@ -1488,28 +1488,28 @@ class ReflectionTest(fixtures.TestBase):
 
             m1 = MetaData()
 
-            t2_schema = Table('some_other_table', 
-                                m1, 
-                                schema="test_schema_2", 
-                                autoload=True, 
+            t2_schema = Table('some_other_table',
+                                m1,
+                                schema="test_schema_2",
+                                autoload=True,
                                 autoload_with=conn)
-            t1_schema = Table('some_table', 
-                                m1, 
-                                schema="test_schema", 
+            t1_schema = Table('some_table',
+                                m1,
+                                schema="test_schema",
                                 autoload=True,
                                 autoload_with=conn)
 
-            t2_no_schema = Table('some_other_table', 
-                                m1, 
-                                autoload=True, 
+            t2_no_schema = Table('some_other_table',
+                                m1,
+                                autoload=True,
                                 autoload_with=conn)
 
-            t1_no_schema = Table('some_table', 
-                                m1, 
-                                autoload=True, 
+            t1_no_schema = Table('some_table',
+                                m1,
+                                autoload=True,
                                 autoload_with=conn)
 
-            # OK, this because, "test_schema" is 
+            # OK, this because, "test_schema" is
             # in the search path, and might as well be
             # the default too.  why would we assign
             # a "schema" to the Table ?
@@ -1574,7 +1574,7 @@ class ReflectionTest(fixtures.TestBase):
 
     @testing.provide_metadata
     def test_index_reflection_modified(self):
-        """reflect indexes when a column name has changed - PG 9 
+        """reflect indexes when a column name has changed - PG 9
         does not update the name of the column in the index def.
         [ticket:2141]
 
@@ -1671,7 +1671,7 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         current_encoding = c.connection.connection.encoding
         c.close()
 
-        # attempt to use an encoding that's not 
+        # attempt to use an encoding that's not
         # already set
         if current_encoding == 'UTF8':
             test_encoding = 'LATIN1'
@@ -2003,10 +2003,10 @@ class ArrayTest(fixtures.TestBase, AssertsExecutionResults):
         class Foo(object):
             pass
 
-        footable = Table('foo', metadata, 
-                        Column('id', Integer,primary_key=True), 
-                        Column('intarr', 
-                            postgresql.ARRAY(Integer, mutable=True), 
+        footable = Table('foo', metadata,
+                        Column('id', Integer,primary_key=True),
+                        Column('intarr',
+                            postgresql.ARRAY(Integer, mutable=True),
                             nullable=True))
         mapper(Foo, footable)
         metadata.create_all()
@@ -2047,9 +2047,9 @@ class ArrayTest(fixtures.TestBase, AssertsExecutionResults):
     def test_tuple_flag(self):
         metadata = self.metadata
         assert_raises_message(
-            exc.ArgumentError, 
+            exc.ArgumentError,
             "mutable must be set to False if as_tuple is True.",
-            postgresql.ARRAY, Integer, mutable=True, 
+            postgresql.ARRAY, Integer, mutable=True,
                 as_tuple=True)
 
         t1 = Table('t1', metadata,
@@ -2064,10 +2064,10 @@ class ArrayTest(fixtures.TestBase, AssertsExecutionResults):
 
         r = testing.db.execute(t1.select().order_by(t1.c.id)).fetchall()
         eq_(
-            r, 
+            r,
             [
-                (1, ('1', '2', '3'), (5.4, 5.6)), 
-                (2, ('4', '5', '6'), (1.0,)), 
+                (1, ('1', '2', '3'), (5.4, 5.6)),
+                (2, ('4', '5', '6'), (1.0,)),
                 (3, (('4', '5'), ('6', '7')), ((5.4, 5.6), (1.0, 1.1)))
             ]
         )
@@ -2319,7 +2319,7 @@ class UUIDTest(fixtures.TestBase):
     def test_uuid_string(self):
         import uuid
         self._test_round_trip(
-            Table('utable', MetaData(), 
+            Table('utable', MetaData(),
                 Column('data', postgresql.UUID())
             ),
             str(uuid.uuid4()),
@@ -2333,7 +2333,7 @@ class UUIDTest(fixtures.TestBase):
     def test_uuid_uuid(self):
         import uuid
         self._test_round_trip(
-            Table('utable', MetaData(), 
+            Table('utable', MetaData(),
                 Column('data', postgresql.UUID(as_uuid=True))
             ),
             uuid.uuid4(),
@@ -2392,16 +2392,16 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
                                   {'id': 2, 'description': 'Ruby'}])
         matchtable.insert().execute([{'id': 1, 'title'
                                     : 'Agile Web Development with Rails'
-                                    , 'category_id': 2}, 
+                                    , 'category_id': 2},
                                     {'id': 2,
                                     'title': 'Dive Into Python',
-                                    'category_id': 1}, 
+                                    'category_id': 1},
                                     {'id': 3, 'title'
                                     : "Programming Matz's Ruby",
-                                    'category_id': 2}, 
+                                    'category_id': 2},
                                     {'id': 4, 'title'
                                     : 'The Definitive Guide to Django',
-                                    'category_id': 1}, 
+                                    'category_id': 1},
                                     {'id': 5, 'title'
                                     : 'Python in a Nutshell',
                                     'category_id': 1}])
@@ -2494,12 +2494,12 @@ class TupleTest(fixtures.TestBase):
                 testing.db.execute(
                     select([
                             tuple_(
-                                literal_column("'a'"), 
+                                literal_column("'a'"),
                                 literal_column("'b'")
                             ).\
                                 in_([
                                     tuple_(*[
-                                            literal_column("'%s'" % letter) 
+                                            literal_column("'%s'" % letter)
                                             for letter in elem
                                         ]) for elem in test
                                 ])

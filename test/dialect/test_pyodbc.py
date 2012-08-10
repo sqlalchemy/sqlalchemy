@@ -12,6 +12,6 @@ class PyODBCTest(fixtures.TestBase):
             ("crap.crap.crap", ()),
         ]:
             eq_(
-                connector._parse_dbapi_version(vers), 
+                connector._parse_dbapi_version(vers),
                 expected
             )

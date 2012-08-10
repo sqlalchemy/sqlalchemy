@@ -440,7 +440,7 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(Unicode(50),"VARCHAR2(50)",dialect=dialect)
         self.assert_compile(UnicodeText(),"CLOB",dialect=dialect)
 
-        dialect = oracle.dialect(implicit_returning=True, 
+        dialect = oracle.dialect(implicit_returning=True,
                                     dbapi=testing.db.dialect.dbapi)
         dialect._get_server_version_info = server_version_info
         dialect.initialize(testing.db.connect())
@@ -483,23 +483,23 @@ class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
 
         for stmt in """
 create table test_schema.parent(
-    id integer primary key, 
+    id integer primary key,
     data varchar2(50)
 );
 
 create table test_schema.child(
     id integer primary key,
-    data varchar2(50), 
+    data varchar2(50),
     parent_id integer references test_schema.parent(id)
 );
 
 create synonym test_schema.ptable for test_schema.parent;
 create synonym test_schema.ctable for test_schema.child;
 
--- can't make a ref from local schema to the 
--- remote schema's table without this, 
+-- can't make a ref from local schema to the
+-- remote schema's table without this,
 -- *and* cant give yourself a grant !
--- so we give it to public.  ideas welcome. 
+-- so we give it to public.  ideas welcome.
 grant references on test_schema.parent to public;
 grant references on test_schema.child to public;
 """.split(";"):
@@ -520,11 +520,11 @@ drop synonym test_schema.ptable;
     def test_create_same_names_explicit_schema(self):
         schema = testing.db.dialect.default_schema_name
         meta = MetaData(testing.db)
-        parent = Table('parent', meta, 
+        parent = Table('parent', meta,
             Column('pid', Integer, primary_key=True),
             schema=schema
         )
-        child = Table('child', meta, 
+        child = Table('child', meta,
             Column('cid', Integer, primary_key=True),
             Column('pid', Integer, ForeignKey('%s.parent.pid' % schema)),
             schema=schema
@@ -539,10 +539,10 @@ drop synonym test_schema.ptable;
 
     def test_create_same_names_implicit_schema(self):
         meta = MetaData(testing.db)
-        parent = Table('parent', meta, 
+        parent = Table('parent', meta,
             Column('pid', Integer, primary_key=True),
         )
-        child = Table('child', meta, 
+        child = Table('child', meta,
             Column('cid', Integer, primary_key=True),
             Column('pid', Integer, ForeignKey('parent.pid')),
         )
@@ -560,7 +560,7 @@ drop synonym test_schema.ptable;
         parent = Table('parent', meta, autoload=True, schema='test_schema')
         child = Table('child', meta, autoload=True, schema='test_schema')
 
-        self.assert_compile(parent.join(child), 
+        self.assert_compile(parent.join(child),
                 "test_schema.parent JOIN test_schema.child ON "
                 "test_schema.parent.id = test_schema.child.parent_id")
         select([parent, child]).\
@@ -659,8 +659,8 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = oracle.OracleDialect()
 
     def test_no_clobs_for_string_params(self):
-        """test that simple string params get a DBAPI type of 
-        VARCHAR, not CLOB. This is to prevent setinputsizes 
+        """test that simple string params get a DBAPI type of
+        VARCHAR, not CLOB. This is to prevent setinputsizes
         from setting up cx_oracle.CLOBs on
         string-based bind params [ticket:793]."""
 
@@ -746,7 +746,7 @@ class TypesTest(fixtures.TestBase):
     @testing.fails_on('+zxjdbc', 'zxjdbc lacks the FIXED_CHAR dbapi type')
     def test_fixed_char(self):
         m = MetaData(testing.db)
-        t = Table('t1', m, 
+        t = Table('t1', m,
             Column('id', Integer, primary_key=True),
             Column('data', CHAR(30), nullable=False)
         )
@@ -759,14 +759,14 @@ class TypesTest(fixtures.TestBase):
                 dict(id=3, data="value 3")
             )
 
-            eq_(t.select().where(t.c.data=='value 2').execute().fetchall(), 
+            eq_(t.select().where(t.c.data=='value 2').execute().fetchall(),
                 [(2, 'value 2                       ')]
                 )
 
             m2 = MetaData(testing.db)
             t2 = Table('t1', m2, autoload=True)
             assert type(t2.c.data.type) is CHAR
-            eq_(t2.select().where(t2.c.data=='value 2').execute().fetchall(), 
+            eq_(t2.select().where(t2.c.data=='value 2').execute().fetchall(),
                 [(2, 'value 2                       ')]
                 )
 
@@ -833,7 +833,7 @@ class TypesTest(fixtures.TestBase):
 
     def test_numerics(self):
         m = MetaData(testing.db)
-        t1 = Table('t1', m, 
+        t1 = Table('t1', m,
             Column('intcol', Integer),
             Column('numericcol', Numeric(precision=9, scale=2)),
             Column('floatcol1', Float()),
@@ -847,11 +847,11 @@ class TypesTest(fixtures.TestBase):
         t1.create()
         try:
             t1.insert().execute(
-                intcol=1, 
-                numericcol=5.2, 
-                floatcol1=6.5, 
+                intcol=1,
+                numericcol=5.2,
+                floatcol1=6.5,
                 floatcol2 = 8.5,
-                doubleprec = 9.5, 
+                doubleprec = 9.5,
                 numbercol1=12,
                 numbercol2=14.85,
                 numbercol3=15.76
@@ -862,7 +862,7 @@ class TypesTest(fixtures.TestBase):
 
             for row in (
                 t1.select().execute().first(),
-                t2.select().execute().first() 
+                t2.select().execute().first()
             ):
                 for i, (val, type_) in enumerate((
                     (1, int),
@@ -912,13 +912,13 @@ class TypesTest(fixtures.TestBase):
         foo.create()
 
         foo.insert().execute(
-            {'idata':5, 'ndata':decimal.Decimal("45.6"), 
-                    'ndata2':decimal.Decimal("45.0"), 
+            {'idata':5, 'ndata':decimal.Decimal("45.6"),
+                    'ndata2':decimal.Decimal("45.0"),
                     'nidata':decimal.Decimal('53'), 'fdata':45.68392},
         )
 
         stmt = """
-        SELECT 
+        SELECT
             idata,
             ndata,
             ndata2,
@@ -931,11 +931,11 @@ class TypesTest(fixtures.TestBase):
         row = testing.db.execute(stmt).fetchall()[0]
         eq_([type(x) for x in row], [int, decimal.Decimal, decimal.Decimal, int, float])
         eq_(
-            row, 
+            row,
             (5, decimal.Decimal('45.6'), decimal.Decimal('45'), 53, 45.683920000000001)
         )
 
-        # with a nested subquery, 
+        # with a nested subquery,
         # both Numeric values that don't have decimal places, regardless
         # of their originating type, come back as ints with no useful
         # typing information beyond "numeric".  So native handler
@@ -944,7 +944,7 @@ class TypesTest(fixtures.TestBase):
         # totally sucks.
 
         stmt = """
-        SELECT 
+        SELECT
             (SELECT (SELECT idata FROM foo) FROM DUAL) AS idata,
             (SELECT CAST((SELECT ndata FROM foo) AS NUMERIC(20, 2)) FROM DUAL)
              AS ndata,
@@ -958,25 +958,25 @@ class TypesTest(fixtures.TestBase):
         row = testing.db.execute(stmt).fetchall()[0]
         eq_([type(x) for x in row], [int, decimal.Decimal, int, int, decimal.Decimal])
         eq_(
-            row, 
+            row,
             (5, decimal.Decimal('45.6'), 45, 53, decimal.Decimal('45.68392'))
         )
 
-        row = testing.db.execute(text(stmt, 
+        row = testing.db.execute(text(stmt,
                                 typemap={
-                                        'idata':Integer(), 
-                                        'ndata':Numeric(20, 2), 
-                                        'ndata2':Numeric(20, 2), 
+                                        'idata':Integer(),
+                                        'ndata':Numeric(20, 2),
+                                        'ndata2':Numeric(20, 2),
                                         'nidata':Numeric(5, 0),
                                         'fdata':Float()
                                 })).fetchall()[0]
         eq_([type(x) for x in row], [int, decimal.Decimal, decimal.Decimal, decimal.Decimal, float])
-        eq_(row, 
+        eq_(row,
             (5, decimal.Decimal('45.6'), decimal.Decimal('45'), decimal.Decimal('53'), 45.683920000000001)
         )
 
         stmt = """
-        SELECT 
+        SELECT
                 anon_1.idata AS anon_1_idata,
                 anon_1.ndata AS anon_1_ndata,
                 anon_1.ndata2 AS anon_1_ndata2,
@@ -984,15 +984,15 @@ class TypesTest(fixtures.TestBase):
                 anon_1.fdata AS anon_1_fdata
         FROM (SELECT idata, ndata, ndata2, nidata, fdata
         FROM (
-            SELECT 
+            SELECT
                 (SELECT (SELECT idata FROM foo) FROM DUAL) AS idata,
-                (SELECT CAST((SELECT ndata FROM foo) AS NUMERIC(20, 2)) 
+                (SELECT CAST((SELECT ndata FROM foo) AS NUMERIC(20, 2))
                 FROM DUAL) AS ndata,
-                (SELECT CAST((SELECT ndata2 FROM foo) AS NUMERIC(20, 2)) 
+                (SELECT CAST((SELECT ndata2 FROM foo) AS NUMERIC(20, 2))
                 FROM DUAL) AS ndata2,
-                (SELECT CAST((SELECT nidata FROM foo) AS NUMERIC(5, 0)) 
+                (SELECT CAST((SELECT nidata FROM foo) AS NUMERIC(5, 0))
                 FROM DUAL) AS nidata,
-                (SELECT CAST((SELECT fdata FROM foo) AS FLOAT) FROM DUAL) 
+                (SELECT CAST((SELECT fdata FROM foo) AS FLOAT) FROM DUAL)
                 AS fdata
             FROM dual
         )
@@ -1002,29 +1002,29 @@ class TypesTest(fixtures.TestBase):
         eq_([type(x) for x in row], [int, decimal.Decimal, int, int, decimal.Decimal])
         eq_(row, (5, decimal.Decimal('45.6'), 45, 53, decimal.Decimal('45.68392')))
 
-        row = testing.db.execute(text(stmt, 
+        row = testing.db.execute(text(stmt,
                                 typemap={
-                                        'anon_1_idata':Integer(), 
-                                        'anon_1_ndata':Numeric(20, 2), 
-                                        'anon_1_ndata2':Numeric(20, 2), 
-                                        'anon_1_nidata':Numeric(5, 0), 
+                                        'anon_1_idata':Integer(),
+                                        'anon_1_ndata':Numeric(20, 2),
+                                        'anon_1_ndata2':Numeric(20, 2),
+                                        'anon_1_nidata':Numeric(5, 0),
                                         'anon_1_fdata':Float()
                                 })).fetchall()[0]
         eq_([type(x) for x in row], [int, decimal.Decimal, decimal.Decimal, decimal.Decimal, float])
-        eq_(row, 
+        eq_(row,
             (5, decimal.Decimal('45.6'), decimal.Decimal('45'), decimal.Decimal('53'), 45.683920000000001)
         )
 
-        row = testing.db.execute(text(stmt, 
+        row = testing.db.execute(text(stmt,
                                 typemap={
-                                        'anon_1_idata':Integer(), 
-                                        'anon_1_ndata':Numeric(20, 2, asdecimal=False), 
-                                        'anon_1_ndata2':Numeric(20, 2, asdecimal=False), 
-                                        'anon_1_nidata':Numeric(5, 0, asdecimal=False), 
+                                        'anon_1_idata':Integer(),
+                                        'anon_1_ndata':Numeric(20, 2, asdecimal=False),
+                                        'anon_1_ndata2':Numeric(20, 2, asdecimal=False),
+                                        'anon_1_nidata':Numeric(5, 0, asdecimal=False),
                                         'anon_1_fdata':Float(asdecimal=True)
                                 })).fetchall()[0]
         eq_([type(x) for x in row], [int, float, float, float, decimal.Decimal])
-        eq_(row, 
+        eq_(row,
             (5, 45.6, 45, 53, decimal.Decimal('45.68392'))
         )
 
@@ -1092,7 +1092,7 @@ class TypesTest(fixtures.TestBase):
             # nvarchar returns unicode natively.  cx_oracle
             # _OracleNVarChar type should be at play here.
             assert isinstance(
-                t2.c.data.type.dialect_impl(testing.db.dialect), 
+                t2.c.data.type.dialect_impl(testing.db.dialect),
                 cx_oracle._OracleNVarChar)
 
         data = u'm’a réveillé.'
@@ -1140,12 +1140,12 @@ class TypesTest(fixtures.TestBase):
     def test_lobs_without_convert(self):
         engine = testing_engine(options=dict(auto_convert_lobs=False))
         metadata = MetaData()
-        t = Table("z_test", metadata, Column('id', Integer, primary_key=True), 
+        t = Table("z_test", metadata, Column('id', Integer, primary_key=True),
                  Column('data', Text), Column('bindata', LargeBinary))
         t.create(engine)
         try:
-            engine.execute(t.insert(), id=1, 
-                                        data='this is text', 
+            engine.execute(t.insert(), id=1,
+                                        data='this is text',
                                         bindata='this is binary')
             row = engine.execute(t.select()).first()
             eq_(row['data'].read(), 'this is text')
@@ -1192,17 +1192,17 @@ class DontReflectIOTTest(fixtures.TestBase):
     """test that index overflow tables aren't included in
     table_names."""
 
-    __only_on__ = 'oracle' 
+    __only_on__ = 'oracle'
 
     def setup(self):
         testing.db.execute("""
         CREATE TABLE admin_docindex(
-                token char(20), 
+                token char(20),
                 doc_id NUMBER,
                 token_frequency NUMBER,
                 token_offsets VARCHAR2(2000),
                 CONSTRAINT pk_admin_docindex PRIMARY KEY (token, doc_id))
-            ORGANIZATION INDEX 
+            ORGANIZATION INDEX
             TABLESPACE users
             PCTTHRESHOLD 20
             OVERFLOW TABLESPACE users
@@ -1226,13 +1226,13 @@ class BufferedColumnTest(fixtures.TestBase, AssertsCompiledSQL):
     def setup_class(cls):
         global binary_table, stream, meta
         meta = MetaData(testing.db)
-        binary_table = Table('binary_table', meta, 
+        binary_table = Table('binary_table', meta,
            Column('id', Integer, primary_key=True),
            Column('data', LargeBinary)
         )
         meta.create_all()
         stream = os.path.join(
-                        os.path.dirname(__file__), "..", 
+                        os.path.dirname(__file__), "..",
                         'binary_data_one.dat')
         stream = file(stream).read(12000)
 
@@ -1259,7 +1259,7 @@ class UnsupportedIndexReflectTest(fixtures.TestBase):
     def setup(self):
         global metadata
         metadata = MetaData(testing.db)
-        t1 = Table('test_index_reflect', metadata, 
+        t1 = Table('test_index_reflect', metadata,
                     Column('data', String(20), primary_key=True)
                 )
         metadata.create_all()
@@ -1290,7 +1290,7 @@ class RoundTripIndexTest(fixtures.TestBase):
         )
 
         # "group" is a keyword, so lower case
-        normalind = Index('tableind', table.c.id_b, table.c.group) 
+        normalind = Index('tableind', table.c.id_b, table.c.group)
 
         # create
         metadata.create_all()

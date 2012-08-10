@@ -73,14 +73,14 @@ Use the ``ordering_list`` function to set up the ``collection_class`` on relatio
 (as in the mapper example above).  This implementation depends on the list
 starting in the proper order, so be SURE to put an order_by on your relationship.
 
-.. warning:: 
+.. warning::
 
   ``ordering_list`` only provides limited functionality when a primary
-  key column or unique column is the target of the sort.  Since changing the order of 
-  entries often means that two rows must trade values, this is not possible when 
+  key column or unique column is the target of the sort.  Since changing the order of
+  entries often means that two rows must trade values, this is not possible when
   the value is constrained by a primary key or unique constraint, since one of the rows
   would temporarily have to point to a third available value so that the other row
-  could take its old value.   ``ordering_list`` doesn't do any of this for you, 
+  could take its old value.   ``ordering_list`` doesn't do any of this for you,
   nor does SQLAlchemy itself.
 
 ``ordering_list`` takes the name of the related object's ordering attribute as
@@ -184,7 +184,7 @@ class OrderingList(list):
         This implementation relies on the list starting in the proper order,
         so be **sure** to put an ``order_by`` on your relationship.
 
-        :param ordering_attr: 
+        :param ordering_attr:
           Name of the attribute that stores the object's order in the
           relationship.
 
@@ -201,7 +201,7 @@ class OrderingList(list):
           like stepped numbering, alphabetical and Fibonacci numbering, see
           the unit tests.
 
-        :param reorder_on_append: 
+        :param reorder_on_append:
           Default False.  When appending an object with an existing (non-None)
           ordering value, that value will be left untouched unless
           ``reorder_on_append`` is true.  This is an optimization to avoid a

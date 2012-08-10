@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Serializer/Deserializer objects for usage with SQLAlchemy query structures, 
+"""Serializer/Deserializer objects for usage with SQLAlchemy query structures,
 allowing "contextual" deserialization.
 
 Any SQLAlchemy query structure, either based on sqlalchemy.sql.*
@@ -31,19 +31,19 @@ Usage is nearly the same as that of the standard Python pickle module::
 
     print query2.all()
 
-Similar restrictions as when using raw pickle apply; mapped classes must be 
+Similar restrictions as when using raw pickle apply; mapped classes must be
 themselves be pickleable, meaning they are importable from a module-level
 namespace.
 
 The serializer module is only appropriate for query structures.  It is not
 needed for:
 
-* instances of user-defined classes.   These contain no references to engines, 
+* instances of user-defined classes.   These contain no references to engines,
   sessions or expression constructs in the typical case and can be serialized directly.
 
 * Table metadata that is to be loaded entirely from the serialized structure (i.e. is
-  not already declared in the application).   Regular pickle.loads()/dumps() can 
-  be used to fully dump any ``MetaData`` object, typically one which was reflected 
+  not already declared in the application).   Regular pickle.loads()/dumps() can
+  be used to fully dump any ``MetaData`` object, typically one which was reflected
   from an existing database at some previous point in time.  The serializer module
   is specifically for the opposite case, where the Table metadata is already present
   in memory.

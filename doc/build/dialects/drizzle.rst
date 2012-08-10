@@ -16,7 +16,7 @@ valid with Drizzle are importable from the top level dialect::
             DECIMAL, DOUBLE, ENUM, FLOAT, INT, INTEGER,
             NUMERIC, TEXT, TIME, TIMESTAMP, VARBINARY, VARCHAR
 
-Types which are specific to Drizzle, or have Drizzle-specific 
+Types which are specific to Drizzle, or have Drizzle-specific
 construction arguments, are as follows:
 
 .. currentmodule:: sqlalchemy.dialects.drizzle

@@ -60,11 +60,11 @@ The dynamic relationship supports limited write operations, via the
 
     jack.posts.append(Post('new post'))
 
-Since the read side of the dynamic relationship always queries the 
-database, changes to the underlying collection will not be visible 
-until the data has been flushed.  However, as long as "autoflush" is 
-enabled on the :class:`.Session` in use, this will occur 
-automatically each time the collection is about to emit a 
+Since the read side of the dynamic relationship always queries the
+database, changes to the underlying collection will not be visible
+until the data has been flushed.  However, as long as "autoflush" is
+enabled on the :class:`.Session` in use, this will occur
+automatically each time the collection is about to emit a
 query.
 
 To place a dynamic relationship on a backref, use the :func:`~.orm.backref`
@@ -73,13 +73,13 @@ function in conjunction with ``lazy='dynamic'``::
     class Post(Base):
         __table__ = posts_table
 
-        user = relationship(User, 
+        user = relationship(User,
                     backref=backref('posts', lazy='dynamic')
                 )
 
 Note that eager/lazy loading options cannot be used in conjunction dynamic relationships at this time.
 
-.. note:: 
+.. note::
 
    The :func:`~.orm.dynamic_loader` function is essentially the same
    as :func:`~.orm.relationship` with the ``lazy='dynamic'`` argument specified.
@@ -94,7 +94,7 @@ Note that eager/lazy loading options cannot be used in conjunction dynamic relat
 Setting Noload
 ---------------
 
-A "noload" relationship never loads from the database, even when 
+A "noload" relationship never loads from the database, even when
 accessed.   It is configured using ``lazy='noload'``::
 
     class MyClass(Base):
@@ -120,14 +120,14 @@ not supported on SQLite, and requires ``InnoDB`` tables when using MySQL::
     class MyClass(Base):
         __tablename__ = 'mytable'
         id = Column(Integer, primary_key=True)
-        children = relationship("MyOtherClass", 
-                        cascade="all, delete-orphan", 
+        children = relationship("MyOtherClass",
+                        cascade="all, delete-orphan",
                         passive_deletes=True)
 
     class MyOtherClass(Base):
         __tablename__ = 'myothertable'
         id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, 
+        parent_id = Column(Integer,
                     ForeignKey('mytable.id', ondelete='CASCADE')
                         )
 
@@ -179,7 +179,7 @@ default list, by specifying the ``collection_class`` option on
 Dictionary Collections
 -----------------------
 
-A little extra detail is needed when using a dictionary as a collection. 
+A little extra detail is needed when using a dictionary as a collection.
 This because objects are always loaded from the database as lists, and a key-generation
 strategy must be available to populate the dictionary correctly.  The
 :func:`.attribute_mapped_collection` function is by far the most common way
@@ -197,8 +197,8 @@ a dictionary of ``Note`` items keyed to the ``Note.keyword`` attribute::
     class Item(Base):
         __tablename__ = 'item'
         id = Column(Integer, primary_key=True)
-        notes = relationship("Note", 
-                    collection_class=attribute_mapped_collection('keyword'), 
+        notes = relationship("Note",
+                    collection_class=attribute_mapped_collection('keyword'),
                     cascade="all, delete-orphan")
 
     class Note(Base):
@@ -219,28 +219,28 @@ a dictionary of ``Note`` items keyed to the ``Note.keyword`` attribute::
     >>> item.notes.items()
     {'a': <__main__.Note object at 0x2eaaf0>}
 
-:func:`.attribute_mapped_collection` will ensure that 
+:func:`.attribute_mapped_collection` will ensure that
 the ``.keyword`` attribute of each ``Note`` complies with the key in the
 dictionary.   Such as, when assigning to ``Item.notes``, the dictionary
 key we supply must match that of the actual ``Note`` object::
 
     item = Item()
     item.notes = {
-                'a': Note('a', 'atext'), 
+                'a': Note('a', 'atext'),
                 'b': Note('b', 'btext')
             }
 
 The attribute which :func:`.attribute_mapped_collection` uses as a key
 does not need to be mapped at all!  Using a regular Python ``@property`` allows virtually
-any detail or combination of details about the object to be used as the key, as 
+any detail or combination of details about the object to be used as the key, as
 below when we establish it as a tuple of ``Note.keyword`` and the first ten letters
 of the ``Note.text`` field::
 
     class Item(Base):
         __tablename__ = 'item'
         id = Column(Integer, primary_key=True)
-        notes = relationship("Note", 
-                    collection_class=attribute_mapped_collection('note_key'), 
+        notes = relationship("Note",
+                    collection_class=attribute_mapped_collection('note_key'),
                     backref="item",
                     cascade="all, delete-orphan")
 
@@ -277,8 +277,8 @@ object directly::
     class Item(Base):
         __tablename__ = 'item'
         id = Column(Integer, primary_key=True)
-        notes = relationship("Note", 
-                    collection_class=column_mapped_collection(Note.__table__.c.keyword), 
+        notes = relationship("Note",
+                    collection_class=column_mapped_collection(Note.__table__.c.keyword),
                     cascade="all, delete-orphan")
 
 as well as :func:`.mapped_collection` which is passed any callable function.
@@ -290,12 +290,12 @@ with a ``@property`` as mentioned earlier::
     class Item(Base):
         __tablename__ = 'item'
         id = Column(Integer, primary_key=True)
-        notes = relationship("Note", 
-                    collection_class=mapped_collection(lambda note: note.text[0:10]), 
+        notes = relationship("Note",
+                    collection_class=mapped_collection(lambda note: note.text[0:10]),
                     cascade="all, delete-orphan")
 
 Dictionary mappings are often combined with the "Association Proxy" extension to produce
-streamlined dictionary views.  See :ref:`proxying_dictionaries` and :ref:`composite_association_proxy` 
+streamlined dictionary views.  See :ref:`proxying_dictionaries` and :ref:`composite_association_proxy`
 for examples.
 
 .. autofunction:: attribute_mapped_collection
@@ -322,7 +322,7 @@ about how the collection operates.
 
    For the first use case, the :func:`.orm.validates` decorator is by far
    the simplest way to intercept incoming values in all cases for the purposes
-   of validation and simple marshaling.  See :ref:`simple_validators` 
+   of validation and simple marshaling.  See :ref:`simple_validators`
    for an example of this.
 
    For the second use case, the :ref:`associationproxy_toplevel` extension is a
@@ -334,8 +334,8 @@ about how the collection operates.
    unaffected and avoids the need to carefully tailor collection behavior on a
    method-by-method basis.
 
-   Customized collections are useful when the collection needs to 
-   have special behaviors upon access or mutation operations that can't 
+   Customized collections are useful when the collection needs to
+   have special behaviors upon access or mutation operations that can't
    otherwise be modeled externally to the collection.   They can of course
    be combined with the above two approaches.
 
@@ -478,7 +478,7 @@ collection support to other classes. It uses a keying function to delegate to
             MappedCollection.__init__(self, keyfunc=lambda node: node.name)
             OrderedDict.__init__(self, *args, **kw)
 
-When subclassing :class:`.MappedCollection`, user-defined versions 
+When subclassing :class:`.MappedCollection`, user-defined versions
 of ``__setitem__()`` or ``__delitem__()`` should be decorated
 with :meth:`.collection.internally_instrumented`, **if** they call down
 to those same methods on :class:`.MappedCollection`.  This because the methods
@@ -491,7 +491,7 @@ rare cases::
                                         collection
 
     class MyMappedCollection(MappedCollection):
-        """Use @internally_instrumented when your methods 
+        """Use @internally_instrumented when your methods
         call down to already-instrumented methods.
 
         """
@@ -515,7 +515,7 @@ Iteration will go through ``itervalues()`` unless otherwise decorated.
 
 .. note::
 
-   Due to a bug in MappedCollection prior to version 0.7.6, this 
+   Due to a bug in MappedCollection prior to version 0.7.6, this
    workaround usually needs to be called before a custom subclass
    of :class:`.MappedCollection` which uses :meth:`.collection.internally_instrumented`
    can be used::

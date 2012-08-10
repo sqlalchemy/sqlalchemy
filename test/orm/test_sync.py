@@ -21,7 +21,7 @@ class AssertsUOW(object):
             uow.register_object(d, isdelete=True)
         return uow
 
-class SyncTest(fixtures.MappedTest, 
+class SyncTest(fixtures.MappedTest,
                     testing.AssertsExecutionResults, AssertsUOW):
 
     @classmethod
@@ -89,11 +89,11 @@ class SyncTest(fixtures.MappedTest,
             "Can't execute sync rule for source column 't2.id'; "
             r"mapper 'Mapper\|A\|t1' does not map this column.",
             sync.populate,
-                a1, 
-                a_mapper, 
-                b1, 
-                b_mapper, 
-                pairs, 
+                a1,
+                a_mapper,
+                b1,
+                b_mapper,
+                pairs,
                 uowcommit, False
         )
 
@@ -105,11 +105,11 @@ class SyncTest(fixtures.MappedTest,
             "Can't execute sync rule for destination "
             r"column 't1.id'; mapper 'Mapper\|B\|t2' does not map this column.",
             sync.populate,
-                a1, 
-                a_mapper, 
-                b1, 
-                b_mapper, 
-                pairs, 
+                a1,
+                a_mapper,
+                b1,
+                b_mapper,
+                pairs,
                 uowcommit, False
         )
 
@@ -190,14 +190,14 @@ class SyncTest(fixtures.MappedTest,
         a1.obj().id = 10
         pairs = [(a_mapper.c.id, b_mapper.c.id,)]
         eq_(
-            sync.source_modified(uowcommit, a1, a_mapper, pairs), 
+            sync.source_modified(uowcommit, a1, a_mapper, pairs),
             False
         )
 
     def test_source_modified_no_pairs(self):
         uowcommit, a1, b1, a_mapper, b_mapper = self._fixture()
         eq_(
-            sync.source_modified(uowcommit, a1, a_mapper, []), 
+            sync.source_modified(uowcommit, a1, a_mapper, []),
             False
         )
 
@@ -208,7 +208,7 @@ class SyncTest(fixtures.MappedTest,
         a1.obj().id = 12
         pairs = [(a_mapper.c.id, b_mapper.c.id,)]
         eq_(
-            sync.source_modified(uowcommit, a1, a_mapper, pairs), 
+            sync.source_modified(uowcommit, a1, a_mapper, pairs),
             True
         )
 

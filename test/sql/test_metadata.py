@@ -19,7 +19,7 @@ from test.lib.testing import eq_
 class MetaDataTest(fixtures.TestBase, ComparesTables):
     def test_metadata_connect(self):
         metadata = MetaData()
-        t1 = Table('table1', metadata, 
+        t1 = Table('table1', metadata,
             Column('col1', Integer, primary_key=True),
             Column('col2', String(20)))
         metadata.bind = testing.db
@@ -58,7 +58,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             Column('bar', Integer(), info={'foo':'bar'}),
         ]:
             c2 = col.copy()
-            for attr in ('name', 'type', 'nullable', 
+            for attr in ('name', 'type', 'nullable',
                         'primary_key', 'key', 'unique', 'info',
                         'doc'):
                 eq_(getattr(col, attr), getattr(c2, attr))
@@ -148,14 +148,14 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
     @testing.provide_metadata
     def test_dupe_tables(self):
         metadata = self.metadata
-        t1 = Table('table1', metadata, 
+        t1 = Table('table1', metadata,
             Column('col1', Integer, primary_key=True),
             Column('col2', String(20)))
 
         metadata.create_all()
         t1 = Table('table1', metadata, autoload=True)
         def go():
-            t2 = Table('table1', metadata, 
+            t2 = Table('table1', metadata,
                 Column('col1', Integer, primary_key=True),
                 Column('col2', String(20)))
         assert_raises_message(
@@ -173,11 +173,11 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         m = MetaData()
         t1 = Table('t', m, c1, c2)
 
-        kw = dict(onupdate="X", 
+        kw = dict(onupdate="X",
                         ondelete="Y", use_alter=True, name='f1',
                         deferrable="Z", initially="Q", link_to_name=True)
 
-        fk1 = ForeignKey(c1, **kw) 
+        fk1 = ForeignKey(c1, **kw)
         fk2 = ForeignKeyConstraint((c1,), (c2,), **kw)
 
         t1.append_constraint(fk2)
@@ -190,10 +190,10 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
 
     def test_check_constraint_copy(self):
         r = lambda x: x
-        c = CheckConstraint("foo bar", 
-                            name='name', 
-                            initially=True, 
-                            deferrable=True, 
+        c = CheckConstraint("foo bar",
+                            name='name',
+                            initially=True,
+                            deferrable=True,
                             _create_rule = r)
         c2 = c.copy()
         eq_(c2.name, 'name')
@@ -273,7 +273,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
 
         table2 = Table('othertable', meta,
             Column('id', Integer, Sequence('foo_seq'), primary_key=True),
-            Column('myid', Integer, 
+            Column('myid', Integer,
                         ForeignKey('mytable.myid'),
                     ),
             test_needs_fk=True,
@@ -359,7 +359,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         m2 = pickle.loads(pickle.dumps(m1))
 
         s2 = Sequence("x_seq")
-        t2 = Table('a', m2, 
+        t2 = Table('a', m2,
              Column('id',Integer,primary_key=True),
              Column('x', Integer, s2),
              extend_existing=True)
@@ -373,7 +373,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
 
         m1 = MetaData()
         s1 = Sequence("x_seq")
-        t = Table('a', m1, 
+        t = Table('a', m1,
              Column('x', Integer, s1)
         )
         assert m1._sequences['x_seq'] is s1
@@ -601,9 +601,9 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         table_c = table.tometadata(meta2, schema=None)
         table2_c = table2.tometadata(meta2, schema=None)
 
-        eq_(str(table_c.join(table2_c).onclause), 
+        eq_(str(table_c.join(table2_c).onclause),
                 str(table_c.c.myid == table2_c.c.myid))
-        eq_(str(table_c.join(table2_c).onclause), 
+        eq_(str(table_c.join(table2_c).onclause),
                 "someschema.mytable.myid = someschema.othertable.myid")
 
     def test_tometadata_strip_schema(self):
@@ -644,21 +644,21 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         ck = schema.CheckConstraint("x > y", name="someconstraint")
 
         for const, exp in (
-            (Sequence("my_seq"), 
+            (Sequence("my_seq"),
                 "Sequence('my_seq')"),
-            (Sequence("my_seq", start=5), 
+            (Sequence("my_seq", start=5),
                 "Sequence('my_seq', start=5)"),
-            (Column("foo", Integer), 
+            (Column("foo", Integer),
                 "Column('foo', Integer(), table=None)"),
-            (Table("bar", MetaData(), Column("x", String)), 
+            (Table("bar", MetaData(), Column("x", String)),
                 "Table('bar', MetaData(bind=None), "
                 "Column('x', String(), table=<bar>), schema=None)"),
-            (schema.DefaultGenerator(for_update=True), 
+            (schema.DefaultGenerator(for_update=True),
                 "DefaultGenerator(for_update=True)"),
             (schema.Index("bar", "c"), "Index('bar')"),
             (i1, "Index('bar', Column('x', Integer(), table=<foo>))"),
             (schema.FetchedValue(), "FetchedValue()"),
-            (ck, 
+            (ck,
                     "CheckConstraint("
                     "%s"
                     ", name='someconstraint')" % repr(ck.sqltext)),
@@ -675,7 +675,7 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
                       prefixes = ["TEMPORARY"])
 
         self.assert_compile(
-            schema.CreateTable(table1), 
+            schema.CreateTable(table1),
             "CREATE TEMPORARY TABLE temporary_table_1 (col1 INTEGER)"
         )
 
@@ -683,7 +683,7 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
                       Column("col1", Integer),
                       prefixes = ["VIRTUAL"])
         self.assert_compile(
-          schema.CreateTable(table2), 
+          schema.CreateTable(table2),
           "CREATE VIRTUAL TABLE temporary_table_2 (col1 INTEGER)"
         )
 
@@ -741,7 +741,7 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_default_schema_metadata_fk_alt_remote(self):
         m = MetaData(schema="foo")
         t1 = Table('t1', m, Column('x', Integer))
-        t2 = Table('t2', m, Column('x', Integer, ForeignKey('t1.x')), 
+        t2 = Table('t2', m, Column('x', Integer, ForeignKey('t1.x')),
                                 schema="bar")
         assert t2.c.x.references(t1.c.x)
 
@@ -797,8 +797,8 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
 class UseExistingTest(fixtures.TablesTest):
     @classmethod
     def define_tables(cls, metadata):
-        Table('users', metadata, 
-                    Column('id', Integer, primary_key=True), 
+        Table('users', metadata,
+                    Column('id', Integer, primary_key=True),
                     Column('name', String(30)))
 
     def _useexisting_fixture(self):
@@ -836,7 +836,7 @@ class UseExistingTest(fixtures.TablesTest):
         meta2 = self._useexisting_fixture()
         assert_raises(
             exc.ArgumentError,
-            Table, 'users', meta2, keep_existing=True, 
+            Table, 'users', meta2, keep_existing=True,
                 extend_existing=True
         )
 
@@ -845,13 +845,13 @@ class UseExistingTest(fixtures.TablesTest):
         meta2 = self._useexisting_fixture()
         assert_raises(
             exc.ArgumentError,
-            Table, 'users', meta2, useexisting=True, 
+            Table, 'users', meta2, useexisting=True,
                 extend_existing=True
         )
 
     def test_keep_existing_no_dupe_constraints(self):
         meta2 = self._notexisting_fixture()
-        users = Table('users', meta2, 
+        users = Table('users', meta2,
             Column('id', Integer),
             Column('name', Unicode),
             UniqueConstraint('name'),
@@ -861,7 +861,7 @@ class UseExistingTest(fixtures.TablesTest):
         assert 'id' in users.c
         eq_(len(users.constraints), 2)
 
-        u2 = Table('users', meta2, 
+        u2 = Table('users', meta2,
             Column('id', Integer),
             Column('name', Unicode),
             UniqueConstraint('name'),
@@ -871,7 +871,7 @@ class UseExistingTest(fixtures.TablesTest):
 
     def test_extend_existing_dupes_constraints(self):
         meta2 = self._notexisting_fixture()
-        users = Table('users', meta2, 
+        users = Table('users', meta2,
             Column('id', Integer),
             Column('name', Unicode),
             UniqueConstraint('name'),
@@ -881,7 +881,7 @@ class UseExistingTest(fixtures.TablesTest):
         assert 'id' in users.c
         eq_(len(users.constraints), 2)
 
-        u2 = Table('users', meta2, 
+        u2 = Table('users', meta2,
             Column('id', Integer),
             Column('name', Unicode),
             UniqueConstraint('name'),
@@ -904,7 +904,7 @@ class UseExistingTest(fixtures.TablesTest):
 
     def test_keep_existing_add_column(self):
         meta2 = self._useexisting_fixture()
-        users = Table('users', meta2, 
+        users = Table('users', meta2,
                         Column('foo', Integer),
                         autoload=True,
                       keep_existing=True)
@@ -918,14 +918,14 @@ class UseExistingTest(fixtures.TablesTest):
 
     def test_keep_existing_quote_no_orig(self):
         meta2 = self._notexisting_fixture()
-        users = Table('users', meta2, quote=True, 
+        users = Table('users', meta2, quote=True,
                         autoload=True,
                       keep_existing=True)
         assert users.quote
 
     def test_keep_existing_add_column_no_orig(self):
         meta2 = self._notexisting_fixture()
-        users = Table('users', meta2, 
+        users = Table('users', meta2,
                         Column('foo', Integer),
                         autoload=True,
                       keep_existing=True)
@@ -939,13 +939,13 @@ class UseExistingTest(fixtures.TablesTest):
 
     def test_keep_existing_quote_no_reflection(self):
         meta2 = self._useexisting_fixture()
-        users = Table('users', meta2, quote=True, 
+        users = Table('users', meta2, quote=True,
                       keep_existing=True)
         assert not users.quote
 
     def test_keep_existing_add_column_no_reflection(self):
         meta2 = self._useexisting_fixture()
-        users = Table('users', meta2, 
+        users = Table('users', meta2,
                         Column('foo', Integer),
                       keep_existing=True)
         assert "foo" not in users.c
@@ -964,7 +964,7 @@ class UseExistingTest(fixtures.TablesTest):
 
     def test_extend_existing_add_column(self):
         meta2 = self._useexisting_fixture()
-        users = Table('users', meta2, 
+        users = Table('users', meta2,
                         Column('foo', Integer),
                         autoload=True,
                       extend_existing=True)
@@ -978,14 +978,14 @@ class UseExistingTest(fixtures.TablesTest):
 
     def test_extend_existing_quote_no_orig(self):
         meta2 = self._notexisting_fixture()
-        users = Table('users', meta2, quote=True, 
+        users = Table('users', meta2, quote=True,
                         autoload=True,
                       extend_existing=True)
         assert users.quote
 
     def test_extend_existing_add_column_no_orig(self):
         meta2 = self._notexisting_fixture()
-        users = Table('users', meta2, 
+        users = Table('users', meta2,
                         Column('foo', Integer),
                         autoload=True,
                       extend_existing=True)
@@ -999,13 +999,13 @@ class UseExistingTest(fixtures.TablesTest):
 
     def test_extend_existing_quote_no_reflection(self):
         meta2 = self._useexisting_fixture()
-        users = Table('users', meta2, quote=True, 
+        users = Table('users', meta2, quote=True,
                       extend_existing=True)
         assert users.quote
 
     def test_extend_existing_add_column_no_reflection(self):
         meta2 = self._useexisting_fixture()
-        users = Table('users', meta2, 
+        users = Table('users', meta2,
                         Column('foo', Integer),
                       extend_existing=True)
         assert "foo" in users.c
@@ -1014,16 +1014,16 @@ class ConstraintTest(fixtures.TestBase):
     def _single_fixture(self):
         m = MetaData()
 
-        t1 = Table('t1', m, 
+        t1 = Table('t1', m,
             Column('a', Integer),
             Column('b', Integer)
         )
 
-        t2 = Table('t2', m, 
+        t2 = Table('t2', m,
             Column('a', Integer, ForeignKey('t1.a'))
         )
 
-        t3 = Table('t3', m, 
+        t3 = Table('t3', m,
             Column('a', Integer)
         )
         return t1, t2, t3
@@ -1090,7 +1090,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
 
         c = Column(Integer)
         assert_raises_message(
-            exc.ArgumentError, 
+            exc.ArgumentError,
             "Column must be constructed with a non-blank name or assign a "
             "non-blank .name ",
             Table, 't', MetaData(), c)
@@ -1099,7 +1099,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
 
         c = Column('', Integer)
         assert_raises_message(
-            exc.ArgumentError, 
+            exc.ArgumentError,
             "Column must be constructed with a non-blank name or assign a "
             "non-blank .name ",
             Table, 't', MetaData(), c)
@@ -1109,7 +1109,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         t = Table('t', MetaData(), c)
 
         assert_raises_message(
-            exc.ArgumentError, 
+            exc.ArgumentError,
             "Column object already assigned to Table 't'",
             Table, 'q', MetaData(), c)
 
@@ -1335,7 +1335,7 @@ class CatchAllEventsTest(fixtures.TestBase):
         event.listen(schema.SchemaItem, "after_parent_attach", after_attach)
 
         m = MetaData()
-        t1 = Table('t1', m, 
+        t1 = Table('t1', m,
             Column('id', Integer, Sequence('foo_id'), primary_key=True),
             Column('bar', String, ForeignKey('t2.id'))
         )
@@ -1375,7 +1375,7 @@ class CatchAllEventsTest(fixtures.TestBase):
             evt(target)
 
         m = MetaData()
-        t1 = Table('t1', m, 
+        t1 = Table('t1', m,
             Column('id', Integer, Sequence('foo_id'), primary_key=True),
             Column('bar', String, ForeignKey('t2.id')),
             Column('bat', Integer, unique=True),
@@ -1390,10 +1390,10 @@ class CatchAllEventsTest(fixtures.TestBase):
         eq_(
             canary,
             [
-            'PrimaryKeyConstraint->Table', 'PrimaryKeyConstraint->t1', 
+            'PrimaryKeyConstraint->Table', 'PrimaryKeyConstraint->t1',
             'ForeignKeyConstraint->Table', 'ForeignKeyConstraint->t1',
             'UniqueConstraint->Table', 'UniqueConstraint->t1',
-            'PrimaryKeyConstraint->Table', 'PrimaryKeyConstraint->t2', 
+            'PrimaryKeyConstraint->Table', 'PrimaryKeyConstraint->t2',
             'CheckConstraint->Table', 'CheckConstraint->t2',
             'UniqueConstraint->Table', 'UniqueConstraint->t2'
             ]

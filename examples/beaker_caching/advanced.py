@@ -1,6 +1,6 @@
 """advanced.py
 
-Illustrate usage of Query combined with the FromCache option, 
+Illustrate usage of Query combined with the FromCache option,
 including front-end loading, cache invalidation, namespace techniques
 and collection caching.
 
@@ -17,12 +17,12 @@ def load_name_range(start, end, invalidate=False):
     start/end are integers, range is then
     "person <start>" - "person <end>".
 
-    The cache option we set up is called "name_range", indicating 
+    The cache option we set up is called "name_range", indicating
     a range of names for the Person class.
 
     The `Person.addresses` collections are also cached.  Its basically
     another level of tuning here, as that particular cache option
-    can be transparently replaced with joinedload(Person.addresses). 
+    can be transparently replaced with joinedload(Person.addresses).
     The effect is that each Person and his/her Address collection
     is cached either together or separately, affecting the kind of
     SQL that emits for unloaded Person objects as well as the distribution
@@ -63,13 +63,13 @@ print ", ".join([p.name for p in load_name_range(2, 12)])
 print "\ntwenty five through forty, invalidate first:\n"
 print ", ".join([p.name for p in load_name_range(25, 40, True)])
 
-# illustrate the address loading from either cache/already 
+# illustrate the address loading from either cache/already
 # on the Person
 print "\n\nPeople plus addresses, two through twelve, addresses possibly from cache"
 for p in load_name_range(2, 12):
     print p.format_full()
 
-# illustrate the address loading from either cache/already 
+# illustrate the address loading from either cache/already
 # on the Person
 print "\n\nPeople plus addresses, two through twelve, addresses from cache"
 for p in load_name_range(2, 12):

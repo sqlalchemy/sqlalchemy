@@ -215,9 +215,9 @@ class ImplicitReturningFlag(fixtures.TestBase):
         # starts as False.  This is because all of Firebird,
         # Postgresql, Oracle, SQL Server started supporting RETURNING
         # as of a certain version, and the flag is not set until
-        # version detection occurs.  If some DB comes along that has 
+        # version detection occurs.  If some DB comes along that has
         # RETURNING in all cases, this test can be adjusted.
-        assert e.dialect.implicit_returning is False 
+        assert e.dialect.implicit_returning is False
 
         # version detection on connect sets it
         c = e.connect()

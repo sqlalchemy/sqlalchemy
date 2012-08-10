@@ -18,7 +18,7 @@ valid with MySQL are importable from the top level dialect::
             NUMERIC, NVARCHAR, REAL, SET, SMALLINT, TEXT, TIME, TIMESTAMP, \
             TINYBLOB, TINYINT, TINYTEXT, VARBINARY, VARCHAR, YEAR
 
-Types which are specific to MySQL, or have MySQL-specific 
+Types which are specific to MySQL, or have MySQL-specific
 construction arguments, are as follows:
 
 .. currentmodule:: sqlalchemy.dialects.mysql

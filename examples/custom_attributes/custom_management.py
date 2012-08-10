@@ -138,7 +138,7 @@ class MyCollectionAdapter(object):
 
     def fire_pre_remove_event(self, initiator=None):
         self.state.get_impl(self.key).\
-                        fire_pre_remove_event(self.state, self.state.dict, 
+                        fire_pre_remove_event(self.state, self.state.dict,
                                                         initiator)
 
 class MyCollection(object):
@@ -161,12 +161,12 @@ class MyCollection(object):
 if __name__ == '__main__':
     meta = MetaData(create_engine('sqlite://'))
 
-    table1 = Table('table1', meta, 
-                    Column('id', Integer, primary_key=True), 
+    table1 = Table('table1', meta,
+                    Column('id', Integer, primary_key=True),
                     Column('name', Text))
-    table2 = Table('table2', meta, 
-                    Column('id', Integer, primary_key=True), 
-                    Column('name', Text), 
+    table2 = Table('table2', meta,
+                    Column('id', Integer, primary_key=True),
+                    Column('name', Text),
                     Column('t1id', Integer, ForeignKey('table1.id')))
     meta.create_all()
 

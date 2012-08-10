@@ -1068,7 +1068,7 @@ class IsModifiedTest(_fixtures.FixtureTest):
         s.expire_all()
         u.name = 'newname'
 
-        # can't predict result here 
+        # can't predict result here
         # deterministically, depending on if
         # 'name' or 'addresses' is tested first
         mod  = s.is_modified(u)

@@ -11,10 +11,10 @@ from interfaces import EXT_CONTINUE
 class MapperExtension(object):
     """Base implementation for :class:`.Mapper` event hooks.
 
-    .. note:: 
-       
+    .. note::
+
        :class:`.MapperExtension` is deprecated.   Please
-       refer to :func:`.event.listen` as well as 
+       refer to :func:`.event.listen` as well as
        :class:`.MapperEvents`.
 
     New extension classes subclass :class:`.MapperExtension` and are specified
@@ -42,8 +42,8 @@ class MapperExtension(object):
     to the next ``MapperExtension`` for processing".  For methods
     that return objects like translated rows or new object
     instances, EXT_CONTINUE means the result of the method
-    should be ignored.   In some cases it's required for a 
-    default mapper activity to be performed, such as adding a 
+    should be ignored.   In some cases it's required for a
+    default mapper activity to be performed, such as adding a
     new instance to a result list.
 
     The symbol EXT_STOP has significance within a chain
@@ -91,29 +91,29 @@ class MapperExtension(object):
                         def reconstruct(instance, ctx):
                             ls_meth(self, instance)
                         return reconstruct
-                    event.listen(self.class_manager, 'load', 
+                    event.listen(self.class_manager, 'load',
                                         go(ls_meth), raw=False, propagate=True)
                 elif meth == 'init_instance':
                     def go(ls_meth):
                         def init_instance(instance, args, kwargs):
-                            ls_meth(self, self.class_, 
-                                        self.class_manager.original_init, 
+                            ls_meth(self, self.class_,
+                                        self.class_manager.original_init,
                                         instance, args, kwargs)
                         return init_instance
-                    event.listen(self.class_manager, 'init', 
+                    event.listen(self.class_manager, 'init',
                                         go(ls_meth), raw=False, propagate=True)
                 elif meth == 'init_failed':
                     def go(ls_meth):
                         def init_failed(instance, args, kwargs):
-                            util.warn_exception(ls_meth, self, self.class_, 
-                                            self.class_manager.original_init, 
+                            util.warn_exception(ls_meth, self, self.class_,
+                                            self.class_manager.original_init,
                                             instance, args, kwargs)
 
                         return init_failed
-                    event.listen(self.class_manager, 'init_failure', 
+                    event.listen(self.class_manager, 'init_failure',
                                         go(ls_meth), raw=False, propagate=True)
                 else:
-                    event.listen(self, "%s" % meth, ls_meth, 
+                    event.listen(self, "%s" % meth, ls_meth,
                                         raw=False, retval=True, propagate=True)
 
 
@@ -121,7 +121,7 @@ class MapperExtension(object):
         """Receive a class when the mapper is first constructed, and has
         applied instrumentation to the mapped class.
 
-        The return value is only significant within the ``MapperExtension`` 
+        The return value is only significant within the ``MapperExtension``
         chain; the parent mapper's behavior isn't modified by this method.
 
         """
@@ -130,25 +130,25 @@ class MapperExtension(object):
     def init_instance(self, mapper, class_, oldinit, instance, args, kwargs):
         """Receive an instance when it's constructor is called.
 
-        This method is only called during a userland construction of 
+        This method is only called during a userland construction of
         an object.  It is not called when an object is loaded from the
         database.
 
-        The return value is only significant within the ``MapperExtension`` 
+        The return value is only significant within the ``MapperExtension``
         chain; the parent mapper's behavior isn't modified by this method.
 
         """
         return EXT_CONTINUE
 
     def init_failed(self, mapper, class_, oldinit, instance, args, kwargs):
-        """Receive an instance when it's constructor has been called, 
+        """Receive an instance when it's constructor has been called,
         and raised an exception.
 
-        This method is only called during a userland construction of 
+        This method is only called during a userland construction of
         an object.  It is not called when an object is loaded from the
         database.
 
-        The return value is only significant within the ``MapperExtension`` 
+        The return value is only significant within the ``MapperExtension``
         chain; the parent mapper's behavior isn't modified by this method.
 
         """
@@ -160,9 +160,9 @@ class MapperExtension(object):
 
         This is called when the mapper first receives a row, before
         the object identity or the instance itself has been derived
-        from that row.   The given row may or may not be a 
+        from that row.   The given row may or may not be a
         ``RowProxy`` object - it will always be a dictionary-like
-        object which contains mapped columns as keys.  The 
+        object which contains mapped columns as keys.  The
         returned object should also be a dictionary-like object
         which recognizes mapped columns as keys.
 
@@ -197,7 +197,7 @@ class MapperExtension(object):
         """
         return EXT_CONTINUE
 
-    def append_result(self, mapper, selectcontext, row, instance, 
+    def append_result(self, mapper, selectcontext, row, instance,
                         result, **flags):
         """Receive an object instance before that instance is appended
         to a result list.
@@ -231,7 +231,7 @@ class MapperExtension(object):
 
         return EXT_CONTINUE
 
-    def populate_instance(self, mapper, selectcontext, row, 
+    def populate_instance(self, mapper, selectcontext, row,
                             instance, **flags):
         """Receive an instance before that instance has
         its attributes populated.
@@ -266,11 +266,11 @@ class MapperExtension(object):
         instance's lifetime.
 
         Note that during a result-row load, this method is called upon
-        the first row received for this instance.  Note that some 
-        attributes and collections may or may not be loaded or even 
+        the first row received for this instance.  Note that some
+        attributes and collections may or may not be loaded or even
         initialized, depending on what's present in the result rows.
 
-        The return value is only significant within the ``MapperExtension`` 
+        The return value is only significant within the ``MapperExtension``
         chain; the parent mapper's behavior isn't modified by this method.
 
         """
@@ -285,12 +285,12 @@ class MapperExtension(object):
 
         Column-based attributes can be modified within this method
         which will result in the new value being inserted.  However
-        *no* changes to the overall flush plan can be made, and 
+        *no* changes to the overall flush plan can be made, and
         manipulation of the ``Session`` will not have the desired effect.
-        To manipulate the ``Session`` within an extension, use 
+        To manipulate the ``Session`` within an extension, use
         ``SessionExtension``.
 
-        The return value is only significant within the ``MapperExtension`` 
+        The return value is only significant within the ``MapperExtension``
         chain; the parent mapper's behavior isn't modified by this method.
 
         """
@@ -300,7 +300,7 @@ class MapperExtension(object):
     def after_insert(self, mapper, connection, instance):
         """Receive an object instance after that instance is inserted.
 
-        The return value is only significant within the ``MapperExtension`` 
+        The return value is only significant within the ``MapperExtension``
         chain; the parent mapper's behavior isn't modified by this method.
 
         """
@@ -327,12 +327,12 @@ class MapperExtension(object):
 
         Column-based attributes can be modified within this method
         which will result in the new value being updated.  However
-        *no* changes to the overall flush plan can be made, and 
+        *no* changes to the overall flush plan can be made, and
         manipulation of the ``Session`` will not have the desired effect.
-        To manipulate the ``Session`` within an extension, use 
+        To manipulate the ``Session`` within an extension, use
         ``SessionExtension``.
 
-        The return value is only significant within the ``MapperExtension`` 
+        The return value is only significant within the ``MapperExtension``
         chain; the parent mapper's behavior isn't modified by this method.
 
         """
@@ -342,7 +342,7 @@ class MapperExtension(object):
     def after_update(self, mapper, connection, instance):
         """Receive an object instance after that instance is updated.
 
-        The return value is only significant within the ``MapperExtension`` 
+        The return value is only significant within the ``MapperExtension``
         chain; the parent mapper's behavior isn't modified by this method.
 
         """
@@ -357,7 +357,7 @@ class MapperExtension(object):
         desired effect. To manipulate the ``Session`` within an
         extension, use ``SessionExtension``.
 
-        The return value is only significant within the ``MapperExtension`` 
+        The return value is only significant within the ``MapperExtension``
         chain; the parent mapper's behavior isn't modified by this method.
 
         """
@@ -378,10 +378,10 @@ class SessionExtension(object):
 
     """Base implementation for :class:`.Session` event hooks.
 
-    .. note:: 
-    
+    .. note::
+
        :class:`.SessionExtension` is deprecated.   Please
-       refer to :func:`.event.listen` as well as 
+       refer to :func:`.event.listen` as well as
        :class:`.SessionEvents`.
 
     Subclasses may be installed into a :class:`.Session` (or
@@ -498,10 +498,10 @@ class AttributeExtension(object):
     """Base implementation for :class:`.AttributeImpl` event hooks, events
     that fire upon attribute mutations in user code.
 
-    .. note:: 
-    
+    .. note::
+
        :class:`.AttributeExtension` is deprecated.   Please
-       refer to :func:`.event.listen` as well as 
+       refer to :func:`.event.listen` as well as
        :class:`.AttributeEvents`.
 
     :class:`.AttributeExtension` is used to listen for set,
@@ -555,10 +555,10 @@ class AttributeExtension(object):
                             active_history=listener.active_history,
                             raw=True, retval=True)
         event.listen(self, 'remove', listener.remove,
-                            active_history=listener.active_history, 
+                            active_history=listener.active_history,
                             raw=True, retval=True)
         event.listen(self, 'set', listener.set,
-                            active_history=listener.active_history, 
+                            active_history=listener.active_history,
                             raw=True, retval=True)
 
     def append(self, state, value, initiator):

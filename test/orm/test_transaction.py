@@ -65,7 +65,7 @@ class SessionTransactionTest(FixtureTest):
         try:
             conn = testing.db.connect()
             trans = conn.begin()
-            sess = create_session(bind=conn, autocommit=False, 
+            sess = create_session(bind=conn, autocommit=False,
                                 autoflush=True)
             u1 = User(name='u1')
             sess.add(u1)
@@ -154,7 +154,7 @@ class SessionTransactionTest(FixtureTest):
         mapper(Address, addresses)
 
         engine2 = engines.testing_engine()
-        sess = create_session(autocommit=True, autoflush=False, 
+        sess = create_session(autocommit=True, autoflush=False,
                             twophase=True)
         sess.bind_mapper(User, testing.db)
         sess.bind_mapper(Address, engine2)
@@ -359,7 +359,7 @@ class SessionTransactionTest(FixtureTest):
         sess.add(u2)
         def go():
             sess.rollback()
-        assert_warnings(go, 
+        assert_warnings(go,
             ["Session's state has been changed on a "
             "non-active transaction - this state "
             "will be discarded."],
@@ -372,7 +372,7 @@ class SessionTransactionTest(FixtureTest):
         u1.name = 'newname'
         def go():
             sess.rollback()
-        assert_warnings(go, 
+        assert_warnings(go,
             ["Session's state has been changed on a "
             "non-active transaction - this state "
             "will be discarded."],
@@ -385,7 +385,7 @@ class SessionTransactionTest(FixtureTest):
         sess.delete(u1)
         def go():
             sess.rollback()
-        assert_warnings(go, 
+        assert_warnings(go,
             ["Session's state has been changed on a "
             "non-active transaction - this state "
             "will be discarded."],
@@ -433,7 +433,7 @@ class _LocalFixture(FixtureTest):
         users, addresses = cls.tables.users, cls.tables.addresses
         mapper(User, users, properties={
             'addresses':relationship(Address, backref='user',
-                                 cascade="all, delete-orphan", 
+                                 cascade="all, delete-orphan",
                                     order_by=addresses.c.id),
             })
         mapper(Address, addresses)
@@ -585,7 +585,7 @@ class AutoExpireTest(_LocalFixture):
         u1.addresses.remove(a1)
 
         s.flush()
-        eq_(s.query(Address).filter(Address.email_address=='foo').all(), 
+        eq_(s.query(Address).filter(Address.email_address=='foo').all(),
                 [])
         s.rollback()
         assert a1 not in s.deleted
@@ -659,7 +659,7 @@ class RollbackRecoverTest(_LocalFixture):
         s.commit()
         eq_(
             s.query(User).all(),
-            [User(id=1, name='edward', 
+            [User(id=1, name='edward',
                 addresses=[Address(email_address='foober')])]
         )
 
@@ -690,7 +690,7 @@ class RollbackRecoverTest(_LocalFixture):
         s.commit()
         eq_(
             s.query(User).all(),
-            [User(id=1, name='edward', 
+            [User(id=1, name='edward',
                 addresses=[Address(email_address='foober')])]
         )
 
@@ -711,17 +711,17 @@ class SavepointTest(_LocalFixture):
         u1.name = 'edward'
         u2.name = 'jackward'
         s.add_all([u3, u4])
-        eq_(s.query(User.name).order_by(User.id).all(), 
+        eq_(s.query(User.name).order_by(User.id).all(),
                     [('edward',), ('jackward',), ('wendy',), ('foo',)])
         s.rollback()
         assert u1.name == 'ed'
         assert u2.name == 'jack'
-        eq_(s.query(User.name).order_by(User.id).all(), 
+        eq_(s.query(User.name).order_by(User.id).all(),
                     [('ed',), ('jack',)])
         s.commit()
         assert u1.name == 'ed'
         assert u2.name == 'jack'
-        eq_(s.query(User.name).order_by(User.id).all(), 
+        eq_(s.query(User.name).order_by(User.id).all(),
                     [('ed',), ('jack',)])
 
     @testing.requires.savepoints
@@ -752,18 +752,18 @@ class SavepointTest(_LocalFixture):
         u1.name = 'edward'
         u2.name = 'jackward'
         s.add_all([u3, u4])
-        eq_(s.query(User.name).order_by(User.id).all(), 
+        eq_(s.query(User.name).order_by(User.id).all(),
                 [('edward',), ('jackward',), ('wendy',), ('foo',)])
         s.commit()
         def go():
             assert u1.name == 'edward'
             assert u2.name == 'jackward'
-            eq_(s.query(User.name).order_by(User.id).all(), 
+            eq_(s.query(User.name).order_by(User.id).all(),
                     [('edward',), ('jackward',), ('wendy',), ('foo',)])
         self.assert_sql_count(testing.db, go, 1)
 
         s.commit()
-        eq_(s.query(User.name).order_by(User.id).all(), 
+        eq_(s.query(User.name).order_by(User.id).all(),
                 [('edward',), ('jackward',), ('wendy',), ('foo',)])
 
     @testing.requires.savepoints
@@ -781,7 +781,7 @@ class SavepointTest(_LocalFixture):
         s.add(u2)
         eq_(s.query(User).order_by(User.id).all(),
             [
-                User(name='edward', addresses=[Address(email_address='foo'), 
+                User(name='edward', addresses=[Address(email_address='foo'),
                                         Address(email_address='bar')]),
                 User(name='jack', addresses=[Address(email_address='bat')])
             ]
@@ -789,14 +789,14 @@ class SavepointTest(_LocalFixture):
         s.rollback()
         eq_(s.query(User).order_by(User.id).all(),
             [
-                User(name='edward', addresses=[Address(email_address='foo'), 
+                User(name='edward', addresses=[Address(email_address='foo'),
                                         Address(email_address='bar')]),
             ]
         )
         s.commit()
         eq_(s.query(User).order_by(User.id).all(),
             [
-                User(name='edward', addresses=[Address(email_address='foo'), 
+                User(name='edward', addresses=[Address(email_address='foo'),
                                         Address(email_address='bar')]),
             ]
         )
@@ -920,7 +920,7 @@ class AccountingFlagsTest(_LocalFixture):
     def test_preflush_no_accounting(self):
         User, users = self.classes.User, self.tables.users
 
-        sess = Session(_enable_transaction_accounting=False, 
+        sess = Session(_enable_transaction_accounting=False,
                         autocommit=True, autoflush=False)
         u1 = User(name='ed')
         sess.add(u1)

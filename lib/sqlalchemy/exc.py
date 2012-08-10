@@ -28,21 +28,21 @@ class ArgumentError(SQLAlchemyError):
 
 class CircularDependencyError(SQLAlchemyError):
     """Raised by topological sorts when a circular dependency is detected.
-    
+
     There are two scenarios where this error occurs:
-    
+
     * In a Session flush operation, if two objects are mutually dependent
-      on each other, they can not be inserted or deleted via INSERT or 
+      on each other, they can not be inserted or deleted via INSERT or
       DELETE statements alone; an UPDATE will be needed to post-associate
       or pre-deassociate one of the foreign key constrained values.
-      The ``post_update`` flag described at :ref:`post_update` can resolve 
+      The ``post_update`` flag described at :ref:`post_update` can resolve
       this cycle.
     * In a :meth:`.MetaData.create_all`, :meth:`.MetaData.drop_all`,
       :attr:`.MetaData.sorted_tables` operation, two :class:`.ForeignKey`
       or :class:`.ForeignKeyConstraint` objects mutually refer to each
       other.  Apply the ``use_alter=True`` flag to one or both,
       see :ref:`use_alter`.
-      
+
     """
     def __init__(self, message, cycles, edges, msg=None):
         if msg is None:
@@ -54,7 +54,7 @@ class CircularDependencyError(SQLAlchemyError):
         self.edges = edges
 
     def __reduce__(self):
-        return self.__class__, (None, self.cycles, 
+        return self.__class__, (None, self.cycles,
                             self.edges, self.args[0])
 
 class CompileError(SQLAlchemyError):
@@ -70,9 +70,9 @@ class DisconnectionError(SQLAlchemyError):
     """A disconnect is detected on a raw DB-API connection.
 
     This error is raised and consumed internally by a connection pool.  It can
-    be raised by the :meth:`.PoolEvents.checkout` event 
+    be raised by the :meth:`.PoolEvents.checkout` event
     so that the host pool forces a retry; the exception will be caught
-    three times in a row before the pool gives up and raises 
+    three times in a row before the pool gives up and raises
     :class:`~sqlalchemy.exc.InvalidRequestError` regarding the connection attempt.
 
     """
@@ -121,7 +121,7 @@ class NoReferencedColumnError(NoReferenceError):
         self.column_name = cname
 
     def __reduce__(self):
-        return self.__class__, (self.args[0], self.table_name, 
+        return self.__class__, (self.args[0], self.table_name,
                             self.column_name)
 
 class NoSuchTableError(InvalidRequestError):
@@ -136,20 +136,20 @@ class DontWrapMixin(object):
     """A mixin class which, when applied to a user-defined Exception class,
     will not be wrapped inside of :class:`.StatementError` if the error is
     emitted within the process of executing a statement.
-    
+
     E.g.::
         from sqlalchemy.exc import DontWrapMixin
-        
+
         class MyCustomException(Exception, DontWrapMixin):
             pass
-        
+
         class MySpecialType(TypeDecorator):
             impl = String
-            
+
             def process_bind_param(self, value, dialect):
                 if value == 'invalid':
                     raise MyCustomException("invalid!")
-            
+
     """
 import sys
 if sys.version_info < (2, 5):
@@ -161,15 +161,15 @@ UnmappedColumnError = None
 
 class StatementError(SQLAlchemyError):
     """An error occurred during execution of a SQL statement.
-    
+
     :class:`StatementError` wraps the exception raised
     during execution, and features :attr:`.statement`
     and :attr:`.params` attributes which supply context regarding
     the specifics of the statement which had an issue.
 
-    The wrapped exception object is available in 
+    The wrapped exception object is available in
     the :attr:`.orig` attribute.
-    
+
     """
 
     statement = None
@@ -188,7 +188,7 @@ class StatementError(SQLAlchemyError):
         self.orig = orig
 
     def __reduce__(self):
-        return self.__class__, (self.args[0], self.statement, 
+        return self.__class__, (self.args[0], self.statement,
                                 self.params, self.orig)
 
     def __str__(self):
@@ -211,7 +211,7 @@ class DBAPIError(StatementError):
 
     :class:`DBAPIError` features :attr:`~.StatementError.statement`
     and :attr:`~.StatementError.params` attributes which supply context regarding
-    the specifics of the statement which had an issue, for the 
+    the specifics of the statement which had an issue, for the
     typical case when the error was raised within the context of
     emitting a SQL statement.
 
@@ -221,8 +221,8 @@ class DBAPIError(StatementError):
     """
 
     @classmethod
-    def instance(cls, statement, params, 
-                        orig, 
+    def instance(cls, statement, params,
+                        orig,
                         dbapi_base_err,
                         connection_invalidated=False):
         # Don't ever wrap these, just return them directly as if
@@ -236,7 +236,7 @@ class DBAPIError(StatementError):
             if not isinstance(orig, dbapi_base_err) and statement:
                 return StatementError(
                             "%s (original cause: %s)" % (
-                                str(orig), 
+                                str(orig),
                                 traceback.format_exception_only(orig.__class__, orig)[-1].strip()
                             ), statement, params, orig)
 
@@ -247,7 +247,7 @@ class DBAPIError(StatementError):
         return cls(statement, params, orig, connection_invalidated)
 
     def __reduce__(self):
-        return self.__class__, (self.statement, self.params, 
+        return self.__class__, (self.statement, self.params,
                     self.orig, self.connection_invalidated)
 
     def __init__(self, statement, params, orig, connection_invalidated=False):
@@ -258,7 +258,7 @@ class DBAPIError(StatementError):
         except Exception, e:
             text = 'Error in str() of DB-API-generated exception: ' + str(e)
         StatementError.__init__(
-                self, 
+                self,
                 '(%s) %s' % (orig.__class__.__name__, text),
                 statement,
                 params,

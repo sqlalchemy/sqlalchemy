@@ -91,11 +91,11 @@ class InstanceEvents(event.Events):
     When using :class:`.InstanceEvents`, several modifiers are
     available to the :func:`.event.listen` function.
 
-    :param propagate=False: When True, the event listener should 
-       be applied to all inheriting mappers as well as the 
+    :param propagate=False: When True, the event listener should
+       be applied to all inheriting mappers as well as the
        mapper which is the target of this listener.
     :param raw=False: When True, the "target" argument passed
-       to applicable event listener functions will be the 
+       to applicable event listener functions will be the
        instance's :class:`.InstanceState` management
        object, rather than the mapped instance itself.
 
@@ -142,17 +142,17 @@ class InstanceEvents(event.Events):
     def init(self, target, args, kwargs):
         """Receive an instance when it's constructor is called.
 
-        This method is only called during a userland construction of 
+        This method is only called during a userland construction of
         an object.  It is not called when an object is loaded from the
         database.
 
         """
 
     def init_failure(self, target, args, kwargs):
-        """Receive an instance when it's constructor has been called, 
+        """Receive an instance when it's constructor has been called,
         and raised an exception.
 
-        This method is only called during a userland construction of 
+        This method is only called during a userland construction of
         an object.  It is not called when an object is loaded from the
         database.
 
@@ -168,12 +168,12 @@ class InstanceEvents(event.Events):
         instance's lifetime.
 
         Note that during a result-row load, this method is called upon
-        the first row received for this instance.  Note that some 
-        attributes and collections may or may not be loaded or even 
+        the first row received for this instance.  Note that some
+        attributes and collections may or may not be loaded or even
         initialized, depending on what's present in the result rows.
 
-        :param target: the mapped instance.  If 
-         the event is configured with ``raw=True``, this will 
+        :param target: the mapped instance.  If
+         the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :param context: the :class:`.QueryContext` corresponding to the
@@ -184,16 +184,16 @@ class InstanceEvents(event.Events):
         """
 
     def refresh(self, target, context, attrs):
-        """Receive an object instance after one or more attributes have 
+        """Receive an object instance after one or more attributes have
         been refreshed from a query.
 
-        :param target: the mapped instance.  If 
-         the event is configured with ``raw=True``, this will 
+        :param target: the mapped instance.  If
+         the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :param context: the :class:`.QueryContext` corresponding to the
          current :class:`.Query` in progress.
-        :param attrs: iterable collection of attribute names which 
+        :param attrs: iterable collection of attribute names which
          were populated, or None if all column-mapped, non-deferred
          attributes were populated.
 
@@ -206,23 +206,23 @@ class InstanceEvents(event.Events):
         'keys' is a list of attribute names.  If None, the entire
         state was expired.
 
-        :param target: the mapped instance.  If 
-         the event is configured with ``raw=True``, this will 
+        :param target: the mapped instance.  If
+         the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :param attrs: iterable collection of attribute
-         names which were expired, or None if all attributes were 
+         names which were expired, or None if all attributes were
          expired.
 
         """
 
     def resurrect(self, target):
-        """Receive an object instance as it is 'resurrected' from 
+        """Receive an object instance as it is 'resurrected' from
         garbage collection, which occurs when a "dirty" state falls
         out of scope.
 
-        :param target: the mapped instance.  If 
-         the event is configured with ``raw=True``, this will 
+        :param target: the mapped instance.  If
+         the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
 
@@ -232,28 +232,28 @@ class InstanceEvents(event.Events):
         """Receive an object instance when its associated state is
         being pickled.
 
-        :param target: the mapped instance.  If 
-         the event is configured with ``raw=True``, this will 
+        :param target: the mapped instance.  If
+         the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
-        :param state_dict: the dictionary returned by 
+        :param state_dict: the dictionary returned by
          :class:`.InstanceState.__getstate__`, containing the state
          to be pickled.
-         
+
         """
 
     def unpickle(self, target, state_dict):
         """Receive an object instance after it's associated state has
         been unpickled.
 
-        :param target: the mapped instance.  If 
-         the event is configured with ``raw=True``, this will 
+        :param target: the mapped instance.  If
+         the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :param state_dict: the dictionary sent to
          :class:`.InstanceState.__setstate__`, containing the state
          dictionary which was pickled.
-        
+
         """
 
 class MapperEvents(event.Events):
@@ -267,7 +267,7 @@ class MapperEvents(event.Events):
             # execute a stored procedure upon INSERT,
             # apply the value to the row to be inserted
             target.calculated_value = connection.scalar(
-                                        "select my_special_function(%d)" 
+                                        "select my_special_function(%d)"
                                         % target.special_number)
 
         # associate the listener function with SomeMappedClass,
@@ -304,16 +304,16 @@ class MapperEvents(event.Events):
     When using :class:`.MapperEvents`, several modifiers are
     available to the :func:`.event.listen` function.
 
-    :param propagate=False: When True, the event listener should 
-       be applied to all inheriting mappers as well as the 
+    :param propagate=False: When True, the event listener should
+       be applied to all inheriting mappers as well as the
        mapper which is the target of this listener.
     :param raw=False: When True, the "target" argument passed
-       to applicable event listener functions will be the 
+       to applicable event listener functions will be the
        instance's :class:`.InstanceState` management
        object, rather than the mapped instance itself.
     :param retval=False: when True, the user-defined event function
        must have a return value, the purpose of which is either to
-       control subsequent event propagation, or to otherwise alter 
+       control subsequent event propagation, or to otherwise alter
        the operation in progress by the mapper.   Possible return
        values are:
 
@@ -322,7 +322,7 @@ class MapperEvents(event.Events):
        * ``sqlalchemy.orm.interfaces.EXT_STOP`` - cancel all subsequent
          event handlers in the chain.
        * other values - the return value specified by specific listeners,
-         such as :meth:`~.MapperEvents.translate_row` or 
+         such as :meth:`~.MapperEvents.translate_row` or
          :meth:`~.MapperEvents.create_instance`.
 
     """
@@ -340,7 +340,7 @@ class MapperEvents(event.Events):
             return target
 
     @classmethod
-    def _listen(cls, target, identifier, fn, 
+    def _listen(cls, target, identifier, fn,
                             raw=False, retval=False, propagate=False):
 
         if not raw or not retval:
@@ -370,7 +370,7 @@ class MapperEvents(event.Events):
             event.Events._listen(target, identifier, fn)
 
     def instrument_class(self, mapper, class_):
-        """Receive a class when the mapper is first constructed, 
+        """Receive a class when the mapper is first constructed,
         before instrumentation is applied to the mapped class.
 
         This event is the earliest phase of mapper construction.
@@ -404,11 +404,11 @@ class MapperEvents(event.Events):
         This corresponds to the :func:`.orm.configure_mappers` call, which
         note is usually called automatically as mappings are first
         used.
-        
+
         Theoretically this event is called once per
         application, but is actually called any time new mappers
         have been affected by a :func:`.orm.configure_mappers` call.   If new mappings
-        are constructed after existing ones have already been used, 
+        are constructed after existing ones have already been used,
         this event can be called again.
 
         """
@@ -420,9 +420,9 @@ class MapperEvents(event.Events):
         This listener is typically registered with ``retval=True``.
         It is called when the mapper first receives a row, before
         the object identity or the instance itself has been derived
-        from that row.   The given row may or may not be a 
+        from that row.   The given row may or may not be a
         :class:`.RowProxy` object - it will always be a dictionary-like
-        object which contains mapped columns as keys.  The 
+        object which contains mapped columns as keys.  The
         returned object should also be a dictionary-like object
         which recognizes mapped columns as keys.
 
@@ -431,7 +431,7 @@ class MapperEvents(event.Events):
         :param context: the :class:`.QueryContext`, which includes
          a handle to the current :class:`.Query` in progress as well
          as additional state information.
-        :param row: the result row being handled.  This may be 
+        :param row: the result row being handled.  This may be
          an actual :class:`.RowProxy` or may be a dictionary containing
          :class:`.Column` objects as keys.
         :return: When configured with ``retval=True``, the function
@@ -454,18 +454,18 @@ class MapperEvents(event.Events):
         :param context: the :class:`.QueryContext`, which includes
          a handle to the current :class:`.Query` in progress as well
          as additional state information.
-        :param row: the result row being handled.  This may be 
+        :param row: the result row being handled.  This may be
          an actual :class:`.RowProxy` or may be a dictionary containing
          :class:`.Column` objects as keys.
         :param class\_: the mapped class.
         :return: When configured with ``retval=True``, the return value
-         should be a newly created instance of the mapped class, 
+         should be a newly created instance of the mapped class,
          or ``EXT_CONTINUE`` indicating that default object construction
          should take place.
 
         """
 
-    def append_result(self, mapper, context, row, target, 
+    def append_result(self, mapper, context, row, target,
                         result, **flags):
         """Receive an object instance before that instance is appended
         to a result list.
@@ -478,27 +478,27 @@ class MapperEvents(event.Events):
         :param context: the :class:`.QueryContext`, which includes
          a handle to the current :class:`.Query` in progress as well
          as additional state information.
-        :param row: the result row being handled.  This may be 
+        :param row: the result row being handled.  This may be
          an actual :class:`.RowProxy` or may be a dictionary containing
          :class:`.Column` objects as keys.
-        :param target: the mapped instance being populated.  If 
-         the event is configured with ``raw=True``, this will 
+        :param target: the mapped instance being populated.  If
+         the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :param result: a list-like object where results are being
          appended.
-        :param \**flags: Additional state information about the 
+        :param \**flags: Additional state information about the
          current handling of the row.
         :return: If this method is registered with ``retval=True``,
          a return value of ``EXT_STOP`` will prevent the instance
-         from being appended to the given result list, whereas a 
+         from being appended to the given result list, whereas a
          return value of ``EXT_CONTINUE`` will result in the default
          behavior of appending the value to the result list.
 
         """
 
 
-    def populate_instance(self, mapper, context, row, 
+    def populate_instance(self, mapper, context, row,
                             target, **flags):
         """Receive an instance before that instance has
         its attributes populated.
@@ -518,11 +518,11 @@ class MapperEvents(event.Events):
         :param context: the :class:`.QueryContext`, which includes
          a handle to the current :class:`.Query` in progress as well
          as additional state information.
-        :param row: the result row being handled.  This may be 
+        :param row: the result row being handled.  This may be
          an actual :class:`.RowProxy` or may be a dictionary containing
          :class:`.Column` objects as keys.
-        :param target: the mapped instance.  If 
-         the event is configured with ``raw=True``, this will 
+        :param target: the mapped instance.  If
+         the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :return: When configured with ``retval=True``, a return
@@ -536,9 +536,9 @@ class MapperEvents(event.Events):
         """Receive an object instance before an INSERT statement
         is emitted corresponding to that instance.
 
-        This event is used to modify local, non-object related 
+        This event is used to modify local, non-object related
         attributes on the instance before an INSERT occurs, as well
-        as to emit additional SQL statements on the given 
+        as to emit additional SQL statements on the given
         connection.
 
         The event is often called for a batch of objects of the
@@ -552,23 +552,23 @@ class MapperEvents(event.Events):
 
         .. warning::
             Mapper-level flush events are designed to operate **on attributes
-            local to the immediate object being handled  
+            local to the immediate object being handled
             and via SQL operations with the given** :class:`.Connection` **only.**
-            Handlers here should **not** make alterations to the state of 
+            Handlers here should **not** make alterations to the state of
             the :class:`.Session` overall, and in general should not
-            affect any :func:`.relationship` -mapped attributes, as 
+            affect any :func:`.relationship` -mapped attributes, as
             session cascade rules will not function properly, nor is it
-            always known if the related class has already been handled.  
+            always known if the related class has already been handled.
             Operations that **are not supported in mapper events** include:
-        
+
             * :meth:`.Session.add`
             * :meth:`.Session.delete`
             * Mapped collection append, add, remove, delete, discard, etc.
             * Mapped relationship attribute set/del events, i.e. ``someobject.related = someotherobject``
-        
+
             Operations which manipulate the state of the object
             relative to other objects are better handled:
-        
+
             * In the ``__init__()`` method of the mapped object itself, or another method
               designed to establish some particular state.
             * In a ``@validates`` handler, see :ref:`simple_validators`
@@ -576,12 +576,12 @@ class MapperEvents(event.Events):
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
-        :param connection: the :class:`.Connection` being used to 
+        :param connection: the :class:`.Connection` being used to
          emit INSERT statements for this instance.  This
-         provides a handle into the current transaction on the 
+         provides a handle into the current transaction on the
          target database specific to this instance.
-        :param target: the mapped instance being persisted.  If 
-         the event is configured with ``raw=True``, this will 
+        :param target: the mapped instance being persisted.  If
+         the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :return: No return value is supported by this event.
@@ -594,7 +594,7 @@ class MapperEvents(event.Events):
 
         This event is used to modify in-Python-only
         state on the instance after an INSERT occurs, as well
-        as to emit additional SQL statements on the given 
+        as to emit additional SQL statements on the given
         connection.
 
         The event is often called for a batch of objects of the
@@ -608,23 +608,23 @@ class MapperEvents(event.Events):
 
         .. warning::
             Mapper-level flush events are designed to operate **on attributes
-            local to the immediate object being handled  
+            local to the immediate object being handled
             and via SQL operations with the given** :class:`.Connection` **only.**
-            Handlers here should **not** make alterations to the state of 
+            Handlers here should **not** make alterations to the state of
             the :class:`.Session` overall, and in general should not
-            affect any :func:`.relationship` -mapped attributes, as 
+            affect any :func:`.relationship` -mapped attributes, as
             session cascade rules will not function properly, nor is it
-            always known if the related class has already been handled.  
+            always known if the related class has already been handled.
             Operations that **are not supported in mapper events** include:
-        
+
             * :meth:`.Session.add`
             * :meth:`.Session.delete`
             * Mapped collection append, add, remove, delete, discard, etc.
             * Mapped relationship attribute set/del events, i.e. ``someobject.related = someotherobject``
-        
+
             Operations which manipulate the state of the object
             relative to other objects are better handled:
-        
+
             * In the ``__init__()`` method of the mapped object itself, or another method
               designed to establish some particular state.
             * In a ``@validates`` handler, see :ref:`simple_validators`
@@ -632,12 +632,12 @@ class MapperEvents(event.Events):
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
-        :param connection: the :class:`.Connection` being used to 
+        :param connection: the :class:`.Connection` being used to
          emit INSERT statements for this instance.  This
-         provides a handle into the current transaction on the 
+         provides a handle into the current transaction on the
          target database specific to this instance.
-        :param target: the mapped instance being persisted.  If 
-         the event is configured with ``raw=True``, this will 
+        :param target: the mapped instance being persisted.  If
+         the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :return: No return value is supported by this event.
@@ -648,9 +648,9 @@ class MapperEvents(event.Events):
         """Receive an object instance before an UPDATE statement
         is emitted corresponding to that instance.
 
-        This event is used to modify local, non-object related 
+        This event is used to modify local, non-object related
         attributes on the instance before an UPDATE occurs, as well
-        as to emit additional SQL statements on the given 
+        as to emit additional SQL statements on the given
         connection.
 
         This method is called for all instances that are
@@ -683,23 +683,23 @@ class MapperEvents(event.Events):
 
         .. warning::
             Mapper-level flush events are designed to operate **on attributes
-            local to the immediate object being handled  
+            local to the immediate object being handled
             and via SQL operations with the given** :class:`.Connection` **only.**
-            Handlers here should **not** make alterations to the state of 
+            Handlers here should **not** make alterations to the state of
             the :class:`.Session` overall, and in general should not
-            affect any :func:`.relationship` -mapped attributes, as 
+            affect any :func:`.relationship` -mapped attributes, as
             session cascade rules will not function properly, nor is it
-            always known if the related class has already been handled.  
+            always known if the related class has already been handled.
             Operations that **are not supported in mapper events** include:
-        
+
             * :meth:`.Session.add`
             * :meth:`.Session.delete`
             * Mapped collection append, add, remove, delete, discard, etc.
             * Mapped relationship attribute set/del events, i.e. ``someobject.related = someotherobject``
-        
+
             Operations which manipulate the state of the object
             relative to other objects are better handled:
-        
+
             * In the ``__init__()`` method of the mapped object itself, or another method
               designed to establish some particular state.
             * In a ``@validates`` handler, see :ref:`simple_validators`
@@ -707,12 +707,12 @@ class MapperEvents(event.Events):
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
-        :param connection: the :class:`.Connection` being used to 
+        :param connection: the :class:`.Connection` being used to
          emit UPDATE statements for this instance.  This
-         provides a handle into the current transaction on the 
+         provides a handle into the current transaction on the
          target database specific to this instance.
-        :param target: the mapped instance being persisted.  If 
-         the event is configured with ``raw=True``, this will 
+        :param target: the mapped instance being persisted.  If
+         the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :return: No return value is supported by this event.
@@ -724,12 +724,12 @@ class MapperEvents(event.Events):
 
         This event is used to modify in-Python-only
         state on the instance after an UPDATE occurs, as well
-        as to emit additional SQL statements on the given 
+        as to emit additional SQL statements on the given
         connection.
 
         This method is called for all instances that are
         marked as "dirty", *even those which have no net changes
-        to their column-based attributes*, and for which 
+        to their column-based attributes*, and for which
         no UPDATE statement has proceeded. An object is marked
         as dirty when any of its column-based attributes have a
         "set attribute" operation called or when any of its
@@ -756,23 +756,23 @@ class MapperEvents(event.Events):
 
         .. warning::
             Mapper-level flush events are designed to operate **on attributes
-            local to the immediate object being handled  
+            local to the immediate object being handled
             and via SQL operations with the given** :class:`.Connection` **only.**
-            Handlers here should **not** make alterations to the state of 
+            Handlers here should **not** make alterations to the state of
             the :class:`.Session` overall, and in general should not
-            affect any :func:`.relationship` -mapped attributes, as 
+            affect any :func:`.relationship` -mapped attributes, as
             session cascade rules will not function properly, nor is it
-            always known if the related class has already been handled.  
+            always known if the related class has already been handled.
             Operations that **are not supported in mapper events** include:
-        
+
             * :meth:`.Session.add`
             * :meth:`.Session.delete`
             * Mapped collection append, add, remove, delete, discard, etc.
             * Mapped relationship attribute set/del events, i.e. ``someobject.related = someotherobject``
-        
+
             Operations which manipulate the state of the object
             relative to other objects are better handled:
-        
+
             * In the ``__init__()`` method of the mapped object itself, or another method
               designed to establish some particular state.
             * In a ``@validates`` handler, see :ref:`simple_validators`
@@ -780,12 +780,12 @@ class MapperEvents(event.Events):
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
-        :param connection: the :class:`.Connection` being used to 
+        :param connection: the :class:`.Connection` being used to
          emit UPDATE statements for this instance.  This
-         provides a handle into the current transaction on the 
+         provides a handle into the current transaction on the
          target database specific to this instance.
-        :param target: the mapped instance being persisted.  If 
-         the event is configured with ``raw=True``, this will 
+        :param target: the mapped instance being persisted.  If
+         the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :return: No return value is supported by this event.
@@ -796,33 +796,33 @@ class MapperEvents(event.Events):
         """Receive an object instance before a DELETE statement
         is emitted corresponding to that instance.
 
-        This event is used to emit additional SQL statements on 
+        This event is used to emit additional SQL statements on
         the given connection as well as to perform application
         specific bookkeeping related to a deletion event.
 
         The event is often called for a batch of objects of the
         same class before their DELETE statements are emitted at
-        once in a later step. 
+        once in a later step.
 
         .. warning::
             Mapper-level flush events are designed to operate **on attributes
-            local to the immediate object being handled  
+            local to the immediate object being handled
             and via SQL operations with the given** :class:`.Connection` **only.**
-            Handlers here should **not** make alterations to the state of 
+            Handlers here should **not** make alterations to the state of
             the :class:`.Session` overall, and in general should not
-            affect any :func:`.relationship` -mapped attributes, as 
+            affect any :func:`.relationship` -mapped attributes, as
             session cascade rules will not function properly, nor is it
-            always known if the related class has already been handled.  
+            always known if the related class has already been handled.
             Operations that **are not supported in mapper events** include:
-        
+
             * :meth:`.Session.add`
             * :meth:`.Session.delete`
             * Mapped collection append, add, remove, delete, discard, etc.
             * Mapped relationship attribute set/del events, i.e. ``someobject.related = someotherobject``
-        
+
             Operations which manipulate the state of the object
             relative to other objects are better handled:
-        
+
             * In the ``__init__()`` method of the mapped object itself, or another method
               designed to establish some particular state.
             * In a ``@validates`` handler, see :ref:`simple_validators`
@@ -830,12 +830,12 @@ class MapperEvents(event.Events):
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
-        :param connection: the :class:`.Connection` being used to 
+        :param connection: the :class:`.Connection` being used to
          emit DELETE statements for this instance.  This
-         provides a handle into the current transaction on the 
+         provides a handle into the current transaction on the
          target database specific to this instance.
-        :param target: the mapped instance being deleted.  If 
-         the event is configured with ``raw=True``, this will 
+        :param target: the mapped instance being deleted.  If
+         the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :return: No return value is supported by this event.
@@ -846,33 +846,33 @@ class MapperEvents(event.Events):
         """Receive an object instance after a DELETE statement
         has been emitted corresponding to that instance.
 
-        This event is used to emit additional SQL statements on 
+        This event is used to emit additional SQL statements on
         the given connection as well as to perform application
         specific bookkeeping related to a deletion event.
 
         The event is often called for a batch of objects of the
         same class after their DELETE statements have been emitted at
-        once in a previous step. 
+        once in a previous step.
 
         .. warning::
             Mapper-level flush events are designed to operate **on attributes
-            local to the immediate object being handled  
+            local to the immediate object being handled
             and via SQL operations with the given** :class:`.Connection` **only.**
-            Handlers here should **not** make alterations to the state of 
+            Handlers here should **not** make alterations to the state of
             the :class:`.Session` overall, and in general should not
-            affect any :func:`.relationship` -mapped attributes, as 
+            affect any :func:`.relationship` -mapped attributes, as
             session cascade rules will not function properly, nor is it
-            always known if the related class has already been handled.  
+            always known if the related class has already been handled.
             Operations that **are not supported in mapper events** include:
-        
+
             * :meth:`.Session.add`
             * :meth:`.Session.delete`
             * Mapped collection append, add, remove, delete, discard, etc.
             * Mapped relationship attribute set/del events, i.e. ``someobject.related = someotherobject``
-        
+
             Operations which manipulate the state of the object
             relative to other objects are better handled:
-        
+
             * In the ``__init__()`` method of the mapped object itself, or another method
               designed to establish some particular state.
             * In a ``@validates`` handler, see :ref:`simple_validators`
@@ -880,12 +880,12 @@ class MapperEvents(event.Events):
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
-        :param connection: the :class:`.Connection` being used to 
+        :param connection: the :class:`.Connection` being used to
          emit DELETE statements for this instance.  This
-         provides a handle into the current transaction on the 
+         provides a handle into the current transaction on the
          target database specific to this instance.
-        :param target: the mapped instance being deleted.  If 
-         the event is configured with ``raw=True``, this will 
+        :param target: the mapped instance being deleted.  If
+         the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :return: No return value is supported by this event.
@@ -952,7 +952,7 @@ class SessionEvents(event.Events):
         transaction is ongoing.
 
         :param session: The target :class:`.Session`.
-        
+
         """
 
     def after_commit(self, session):
@@ -960,19 +960,19 @@ class SessionEvents(event.Events):
 
         Note that this may not be per-flush if a longer running
         transaction is ongoing.
-        
+
         :param session: The target :class:`.Session`.
-        
+
         """
 
     def after_rollback(self, session):
         """Execute after a real DBAPI rollback has occurred.
-        
+
         Note that this event only fires when the *actual* rollback against
-        the database occurs - it does *not* fire each time the 
-        :meth:`.Session.rollback` method is called, if the underlying 
+        the database occurs - it does *not* fire each time the
+        :meth:`.Session.rollback` method is called, if the underlying
         DBAPI transaction has already been rolled back.  In many
-        cases, the :class:`.Session` will not be in 
+        cases, the :class:`.Session` will not be in
         an "active" state during this event, as the current
         transaction is not valid.   To acquire a :class:`.Session`
         which is active after the outermost rollback has proceeded,
@@ -984,23 +984,23 @@ class SessionEvents(event.Events):
         """
 
     def after_soft_rollback(self, session, previous_transaction):
-        """Execute after any rollback has occurred, including "soft" 
+        """Execute after any rollback has occurred, including "soft"
         rollbacks that don't actually emit at the DBAPI level.
-        
+
         This corresponds to both nested and outer rollbacks, i.e.
-        the innermost rollback that calls the DBAPI's 
-        rollback() method, as well as the enclosing rollback 
+        the innermost rollback that calls the DBAPI's
+        rollback() method, as well as the enclosing rollback
         calls that only pop themselves from the transaction stack.
-        
-        The given :class:`.Session` can be used to invoke SQL and 
-        :meth:`.Session.query` operations after an outermost rollback 
+
+        The given :class:`.Session` can be used to invoke SQL and
+        :meth:`.Session.query` operations after an outermost rollback
         by first checking the :attr:`.Session.is_active` flag::
 
             @event.listens_for(Session, "after_soft_rollback")
             def do_something(session, previous_transaction):
                 if session.is_active:
                     session.execute("select * from some_table")
-        
+
         :param session: The target :class:`.Session`.
         :param previous_transaction: The :class:`.SessionTransaction` transactional
          marker object which was just closed.   The current :class:`.SessionTransaction`
@@ -1030,7 +1030,7 @@ class SessionEvents(event.Events):
         Note that the session's state is still in pre-flush, i.e. 'new',
         'dirty', and 'deleted' lists still show pre-flush state as well
         as the history settings on instance attributes.
-        
+
         :param session: The target :class:`.Session`.
         :param flush_context: Internal :class:`.UOWTransaction` object
          which handles the details of the flush.
@@ -1044,8 +1044,8 @@ class SessionEvents(event.Events):
         This will be when the 'new', 'dirty', and 'deleted' lists are in
         their final state.  An actual commit() may or may not have
         occurred, depending on whether or not the flush started its own
-        transaction or participated in a larger transaction. 
-        
+        transaction or participated in a larger transaction.
+
         :param session: The target :class:`.Session`.
         :param flush_context: Internal :class:`.UOWTransaction` object
          which handles the details of the flush.
@@ -1056,9 +1056,9 @@ class SessionEvents(event.Events):
 
         :param session: The target :class:`.Session`.
         :param transaction: The :class:`.SessionTransaction`.
-        :param connection: The :class:`~.engine.base.Connection` object 
+        :param connection: The :class:`~.engine.base.Connection` object
          which will be used for SQL statements.
-        
+
         """
 
     def after_attach(self, session, instance):
@@ -1072,7 +1072,7 @@ class SessionEvents(event.Events):
         This is called as a result of the :meth:`.Query.update` method.
 
         :param query: the :class:`.Query` object that this update operation was
-         called upon. 
+         called upon.
         :param query_context: The :class:`.QueryContext` object, corresponding
          to the invocation of an ORM query.
         :param result: the :class:`.ResultProxy` returned as a result of the
@@ -1086,7 +1086,7 @@ class SessionEvents(event.Events):
         This is called as a result of the :meth:`.Query.delete` method.
 
         :param query: the :class:`.Query` object that this update operation was
-         called upon. 
+         called upon.
         :param query_context: The :class:`.QueryContext` object, corresponding
          to the invocation of an ORM query.
         :param result: the :class:`.ResultProxy` returned as a result of the
@@ -1137,15 +1137,15 @@ class AttributeEvents(event.Events):
 
     :param propagate=False: When True, the listener function will
       be established not just for the class attribute given, but
-      for attributes of the same name on all current subclasses 
-      of that class, as well as all future subclasses of that 
-      class, using an additional listener that listens for 
+      for attributes of the same name on all current subclasses
+      of that class, as well as all future subclasses of that
+      class, using an additional listener that listens for
       instrumentation events.
     :param raw=False: When True, the "target" argument to the
       event will be the :class:`.InstanceState` management
       object, rather than the mapped instance itself.
-    :param retval=False: when True, the user-defined event 
-      listening must return the "value" argument from the 
+    :param retval=False: when True, the user-defined event
+      listening must return the "value" argument from the
       function.  This gives the listening function the opportunity
       to change the value that is ultimately used for a "set"
       or "append" event.
@@ -1161,7 +1161,7 @@ class AttributeEvents(event.Events):
             return target
 
     @classmethod
-    def _listen(cls, target, identifier, fn, active_history=False, 
+    def _listen(cls, target, identifier, fn, active_history=False,
                                         raw=False, retval=False,
                                         propagate=False):
         if active_history:
@@ -1202,9 +1202,9 @@ class AttributeEvents(event.Events):
           be the :class:`.InstanceState` object.
         :param value: the value being appended.  If this listener
           is registered with ``retval=True``, the listener
-          function must return this value, or a new value which 
+          function must return this value, or a new value which
           replaces it.
-        :param initiator: the attribute implementation object 
+        :param initiator: the attribute implementation object
           which initiated this event.
         :return: if the event was registered with ``retval=True``,
          the given value, or a new effective value, should be returned.
@@ -1218,7 +1218,7 @@ class AttributeEvents(event.Events):
           If the listener is registered with ``raw=True``, this will
           be the :class:`.InstanceState` object.
         :param value: the value being removed.
-        :param initiator: the attribute implementation object 
+        :param initiator: the attribute implementation object
           which initiated this event.
         :return: No return value is defined for this event.
         """
@@ -1231,15 +1231,15 @@ class AttributeEvents(event.Events):
           be the :class:`.InstanceState` object.
         :param value: the value being set.  If this listener
           is registered with ``retval=True``, the listener
-          function must return this value, or a new value which 
+          function must return this value, or a new value which
           replaces it.
         :param oldvalue: the previous value being replaced.  This
           may also be the symbol ``NEVER_SET`` or ``NO_VALUE``.
           If the listener is registered with ``active_history=True``,
           the previous value of the attribute will be loaded from
-          the database if the existing value is currently unloaded 
+          the database if the existing value is currently unloaded
           or expired.
-        :param initiator: the attribute implementation object 
+        :param initiator: the attribute implementation object
           which initiated this event.
         :return: if the event was registered with ``retval=True``,
          the given value, or a new effective value, should be returned.

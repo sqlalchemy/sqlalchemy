@@ -139,7 +139,7 @@ pool_timeout=10
         assert e.echo is True
 
         for param, values in [
-            ('convert_unicode', ('true', 'false', 'force')), 
+            ('convert_unicode', ('true', 'false', 'force')),
             ('echo', ('true', 'false', 'debug')),
             ('echo_pool', ('true', 'false', 'debug')),
             ('use_native_unicode', ('true', 'false')),
@@ -190,7 +190,7 @@ pool_timeout=10
             assert e.pool._reset_on_return is expected
 
         assert_raises(
-            exc.ArgumentError, 
+            exc.ArgumentError,
             create_engine, "postgresql://",
             pool_reset_on_return='hi', module=dbapi,
             _initialize=False
@@ -249,7 +249,7 @@ pool_timeout=10
         every backend.
 
         """
-        # pretend pysqlite throws the 
+        # pretend pysqlite throws the
         # "Cannot operate on a closed database." error
         # on connect.   IRL we'd be getting Oracle's "shutdown in progress"
 

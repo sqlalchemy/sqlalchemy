@@ -33,11 +33,11 @@ class GenericFunction(Function):
 class next_value(Function):
     """Represent the 'next value', given a :class:`.Sequence`
     as it's single argument.
-    
+
     Compiles into the appropriate function on each backend,
     or will raise NotImplementedError if used on a backend
     that does not provide support for sequences.
-    
+
     """
     type = sqltypes.Integer()
     name = "next_value"

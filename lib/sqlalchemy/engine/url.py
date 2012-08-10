@@ -110,7 +110,7 @@ class URL(object):
                 module = self._load_entry_point()
                 if module is None:
                     raise exc.ArgumentError(
-                        "Could not determine dialect for '%s'." % 
+                        "Could not determine dialect for '%s'." %
                         self.drivername)
 
             return module.dialect

@@ -299,7 +299,7 @@ class IdentitySetTest(fixtures.TestBase):
             ids2 - ids1,
             IdentitySet([o2, o3])
         )
-        
+
         ids2 -= ids1
         eq_(ids2, IdentitySet([o2, o3]))
 

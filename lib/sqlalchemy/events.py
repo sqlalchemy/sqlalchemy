@@ -17,11 +17,11 @@ class DDLEvents(event.Events):
     that is, :class:`.SchemaItem` and :class:`.SchemaEvent`
     subclasses, including :class:`.MetaData`, :class:`.Table`,
     :class:`.Column`.
-    
+
     :class:`.MetaData` and :class:`.Table` support events
     specifically regarding when CREATE and DROP
-    DDL is emitted to the database.  
-    
+    DDL is emitted to the database.
+
     Attachment events are also provided to customize
     behavior whenever a child schema element is associated
     with a parent, such as, when a :class:`.Column` is associated
@@ -37,14 +37,14 @@ class DDLEvents(event.Events):
         some_table = Table('some_table', m, Column('data', Integer))
 
         def after_create(target, connection, **kw):
-            connection.execute("ALTER TABLE %s SET name=foo_%s" % 
+            connection.execute("ALTER TABLE %s SET name=foo_%s" %
                                     (target.name, target.name))
 
         event.listen(some_table, "after_create", after_create)
 
-    DDL events integrate closely with the 
+    DDL events integrate closely with the
     :class:`.DDL` class and the :class:`.DDLElement` hierarchy
-    of DDL clause constructs, which are themselves appropriate 
+    of DDL clause constructs, which are themselves appropriate
     as listener callables::
 
         from sqlalchemy import DDL
@@ -81,7 +81,7 @@ class DDLEvents(event.Events):
          to the event.  The contents of this dictionary
          may vary across releases, and include the
          list of tables being generated for a metadata-level
-         event, the checkfirst flag, and other 
+         event, the checkfirst flag, and other
          elements used by internal events.
 
         """
@@ -97,7 +97,7 @@ class DDLEvents(event.Events):
          to the event.  The contents of this dictionary
          may vary across releases, and include the
          list of tables being generated for a metadata-level
-         event, the checkfirst flag, and other 
+         event, the checkfirst flag, and other
          elements used by internal events.
 
         """
@@ -113,7 +113,7 @@ class DDLEvents(event.Events):
          to the event.  The contents of this dictionary
          may vary across releases, and include the
          list of tables being generated for a metadata-level
-         event, the checkfirst flag, and other 
+         event, the checkfirst flag, and other
          elements used by internal events.
 
         """
@@ -129,52 +129,52 @@ class DDLEvents(event.Events):
          to the event.  The contents of this dictionary
          may vary across releases, and include the
          list of tables being generated for a metadata-level
-         event, the checkfirst flag, and other 
+         event, the checkfirst flag, and other
          elements used by internal events.
 
         """
 
     def before_parent_attach(self, target, parent):
-        """Called before a :class:`.SchemaItem` is associated with 
+        """Called before a :class:`.SchemaItem` is associated with
         a parent :class:`.SchemaItem`.
-        
+
         :param target: the target object
         :param parent: the parent to which the target is being attached.
-        
+
         :func:`.event.listen` also accepts a modifier for this event:
-        
+
         :param propagate=False: When True, the listener function will
          be established for any copies made of the target object,
          i.e. those copies that are generated when
          :meth:`.Table.tometadata` is used.
-        
+
         """
 
     def after_parent_attach(self, target, parent):
-        """Called after a :class:`.SchemaItem` is associated with 
+        """Called after a :class:`.SchemaItem` is associated with
         a parent :class:`.SchemaItem`.
 
         :param target: the target object
         :param parent: the parent to which the target is being attached.
-        
+
         :func:`.event.listen` also accepts a modifier for this event:
-        
+
         :param propagate=False: When True, the listener function will
          be established for any copies made of the target object,
          i.e. those copies that are generated when
          :meth:`.Table.tometadata` is used.
-        
+
         """
 
     def column_reflect(self, table, column_info):
         """Called for each unit of 'column info' retrieved when
-        a :class:`.Table` is being reflected.   
-        
+        a :class:`.Table` is being reflected.
+
         The dictionary of column information as returned by the
         dialect is passed, and can be modified.  The dictionary
-        is that returned in each element of the list returned 
-        by :meth:`.reflection.Inspector.get_columns`. 
-        
+        is that returned in each element of the list returned
+        by :meth:`.reflection.Inspector.get_columns`.
+
         The event is called before any action is taken against
         this dictionary, and the contents can be modified.
         The :class:`.Column` specific arguments ``info``, ``key``,
@@ -182,45 +182,45 @@ class DDLEvents(event.Events):
         will be passed to the constructor of :class:`.Column`.
 
         Note that this event is only meaningful if either
-        associated with the :class:`.Table` class across the 
+        associated with the :class:`.Table` class across the
         board, e.g.::
-        
+
             from sqlalchemy.schema import Table
             from sqlalchemy import event
 
             def listen_for_reflect(table, column_info):
                 "receive a column_reflect event"
                 # ...
-                
+
             event.listen(
-                    Table, 
-                    'column_reflect', 
+                    Table,
+                    'column_reflect',
                     listen_for_reflect)
-                
+
         ...or with a specific :class:`.Table` instance using
         the ``listeners`` argument::
-        
+
             def listen_for_reflect(table, column_info):
                 "receive a column_reflect event"
                 # ...
-                
+
             t = Table(
-                'sometable', 
+                'sometable',
                 autoload=True,
                 listeners=[
                     ('column_reflect', listen_for_reflect)
                 ])
-        
+
         This because the reflection process initiated by ``autoload=True``
         completes within the scope of the constructor for :class:`.Table`.
-        
+
         """
 
 class SchemaEventTarget(object):
     """Base class for elements that are the targets of :class:`.DDLEvents` events.
-    
+
     This includes :class:`.SchemaItem` as well as :class:`.SchemaType`.
-    
+
     """
     dispatch = event.dispatcher(DDLEvents)
 
@@ -230,9 +230,9 @@ class SchemaEventTarget(object):
         raise NotImplementedError()
 
     def _set_parent_with_dispatch(self, parent):
-        self.dispatch.before_parent_attach(self, parent) 
-        self._set_parent(parent) 
-        self.dispatch.after_parent_attach(self, parent) 
+        self.dispatch.before_parent_attach(self, parent)
+        self._set_parent(parent)
+        self.dispatch.after_parent_attach(self, parent)
 
 class PoolEvents(event.Events):
     """Available events for :class:`.Pool`.
@@ -350,10 +350,10 @@ class ConnectionEvents(event.Events):
 
     Some events allow modifiers to the listen() function.
 
-    :param retval=False: Applies to the :meth:`.before_execute` and 
+    :param retval=False: Applies to the :meth:`.before_execute` and
       :meth:`.before_cursor_execute` events only.  When True, the
       user-defined event function must have a return value, which
-      is a tuple of parameters that replace the given statement 
+      is a tuple of parameters that replace the given statement
       and parameters.  See those methods for a description of
       specific return arguments.
 
@@ -372,9 +372,9 @@ class ConnectionEvents(event.Events):
                 fn = wrap
             elif identifier == 'before_cursor_execute':
                 orig_fn = fn
-                def wrap(conn, cursor, statement, 
+                def wrap(conn, cursor, statement,
                         parameters, context, executemany):
-                    orig_fn(conn, cursor, statement, 
+                    orig_fn(conn, cursor, statement,
                         parameters, context, executemany)
                     return statement, parameters
                 fn = wrap
@@ -393,40 +393,40 @@ class ConnectionEvents(event.Events):
     def after_execute(self, conn, clauseelement, multiparams, params, result):
         """Intercept high level execute() events."""
 
-    def before_cursor_execute(self, conn, cursor, statement, 
+    def before_cursor_execute(self, conn, cursor, statement,
                         parameters, context, executemany):
         """Intercept low-level cursor execute() events."""
 
-    def after_cursor_execute(self, conn, cursor, statement, 
+    def after_cursor_execute(self, conn, cursor, statement,
                         parameters, context, executemany):
         """Intercept low-level cursor execute() events."""
 
-    def dbapi_error(self, conn, cursor, statement, parameters, 
+    def dbapi_error(self, conn, cursor, statement, parameters,
                         context, exception):
         """Intercept a raw DBAPI error.
-        
-        This event is called with the DBAPI exception instance 
-        received from the DBAPI itself, *before* SQLAlchemy wraps the 
+
+        This event is called with the DBAPI exception instance
+        received from the DBAPI itself, *before* SQLAlchemy wraps the
         exception with it's own exception wrappers, and before any
         other operations are performed on the DBAPI cursor; the
         existing transaction remains in effect as well as any state
         on the cursor.
-        
+
         The use case here is to inject low-level exception handling
         into an :class:`.Engine`, typically for logging and
         debugging purposes.   In general, user code should **not** modify
         any state or throw any exceptions here as this will
         interfere with SQLAlchemy's cleanup and error handling
         routines.
-        
+
         Subsequent to this hook, SQLAlchemy may attempt any
         number of operations on the connection/cursor, including
-        closing the cursor, rolling back of the transaction in the 
+        closing the cursor, rolling back of the transaction in the
         case of connectionless execution, and disposing of the entire
         connection pool if a "disconnect" was detected.   The
         exception is then wrapped in a SQLAlchemy DBAPI exception
         wrapper and re-thrown.
-        
+
         .. versionadded:: 0.7.7
 
         """

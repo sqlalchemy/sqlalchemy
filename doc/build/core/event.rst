@@ -3,7 +3,7 @@
 Events
 ======
 
-SQLAlchemy includes an event API which publishes a wide variety of hooks into 
+SQLAlchemy includes an event API which publishes a wide variety of hooks into
 the internals of both SQLAlchemy Core and ORM.
 
 .. versionadded:: 0.7
@@ -19,7 +19,7 @@ intercepted, and a target.  Additional positional and keyword arguments may be s
 specific types of events, which may specify alternate interfaces for the given event function, or provide
 instructions regarding secondary event targets based on the given target.
 
-The name of an event and the argument signature of a corresponding listener function is derived from 
+The name of an event and the argument signature of a corresponding listener function is derived from
 a class bound specification method, which exists bound to a marker class that's described in the documentation.
 For example, the documentation for :meth:`.PoolEvents.connect` indicates that the event name is ``"connect"``
 and that a user-defined listener function should receive two positional arguments::

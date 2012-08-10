@@ -101,8 +101,8 @@ default_strategy = 'plain'
 def create_engine(*args, **kwargs):
     """Create a new :class:`.Engine` instance.
 
-    The standard calling form is to send the URL as the 
-    first positional argument, usually a string 
+    The standard calling form is to send the URL as the
+    first positional argument, usually a string
     that indicates database dialect and connection arguments.
     Additional keyword arguments may then follow it which
     establish various options on the resulting :class:`.Engine`
@@ -111,14 +111,14 @@ def create_engine(*args, **kwargs):
 
     The string form of the URL is
     ``dialect+driver://user:password@host/dbname[?key=value..]``, where
-    ``dialect`` is a database name such as ``mysql``, ``oracle``, 
-    ``postgresql``, etc., and ``driver`` the name of a DBAPI, such as 
-    ``psycopg2``, ``pyodbc``, ``cx_oracle``, etc.  Alternatively, 
+    ``dialect`` is a database name such as ``mysql``, ``oracle``,
+    ``postgresql``, etc., and ``driver`` the name of a DBAPI, such as
+    ``psycopg2``, ``pyodbc``, ``cx_oracle``, etc.  Alternatively,
     the URL can be an instance of :class:`~sqlalchemy.engine.url.URL`.
 
-    ``**kwargs`` takes a wide variety of options which are routed 
-    towards their appropriate components.  Arguments may be 
-    specific to the :class:`.Engine`, the underlying :class:`.Dialect`, as well as the 
+    ``**kwargs`` takes a wide variety of options which are routed
+    towards their appropriate components.  Arguments may be
+    specific to the :class:`.Engine`, the underlying :class:`.Dialect`, as well as the
     :class:`.Pool`.  Specific dialects also accept keyword arguments that
     are unique to that dialect.   Here, we describe the parameters
     that are common to most :func:`.create_engine()` usage.
@@ -136,11 +136,11 @@ def create_engine(*args, **kwargs):
     :ref:`engines_toplevel`
 
     :ref:`connections_toplevel`
-    
+
     :param assert_unicode:  Deprecated.  This flag
         sets an engine-wide default value for
-        the ``assert_unicode`` flag on the 
-        :class:`.String` type - see that 
+        the ``assert_unicode`` flag on the
+        :class:`.String` type - see that
         type for further details.
 
     :param connect_args: a dictionary of options which will be
@@ -151,16 +151,16 @@ def create_engine(*args, **kwargs):
     :param convert_unicode=False: if set to True, sets
         the default behavior of ``convert_unicode`` on the
         :class:`.String` type to ``True``, regardless
-        of a setting of ``False`` on an individual 
+        of a setting of ``False`` on an individual
         :class:`.String` type, thus causing all :class:`.String`
         -based columns
         to accommodate Python ``unicode`` objects.  This flag
-        is useful as an engine-wide setting when using a 
+        is useful as an engine-wide setting when using a
         DBAPI that does not natively support Python
         ``unicode`` objects and raises an error when
         one is received (such as pyodbc with FreeTDS).
-        
-        See :class:`.String` for further details on 
+
+        See :class:`.String` for further details on
         what this flag indicates.
 
     :param creator: a callable which returns a DBAPI connection.
@@ -184,43 +184,43 @@ def create_engine(*args, **kwargs):
         :ref:`dbengine_logging` for information on how to configure logging
         directly.
 
-    :param encoding: Defaults to ``utf-8``.  This is the string 
-        encoding used by SQLAlchemy for string encode/decode 
-        operations which occur within SQLAlchemy, **outside of 
-        the DBAPI.**  Most modern DBAPIs feature some degree of 
+    :param encoding: Defaults to ``utf-8``.  This is the string
+        encoding used by SQLAlchemy for string encode/decode
+        operations which occur within SQLAlchemy, **outside of
+        the DBAPI.**  Most modern DBAPIs feature some degree of
         direct support for Python ``unicode`` objects,
         what you see in Python 2 as a string of the form
-        ``u'some string'``.  For those scenarios where the 
+        ``u'some string'``.  For those scenarios where the
         DBAPI is detected as not supporting a Python ``unicode``
-        object, this encoding is used to determine the 
+        object, this encoding is used to determine the
         source/destination encoding.  It is **not used**
         for those cases where the DBAPI handles unicode
         directly.
-        
+
         To properly configure a system to accommodate Python
-        ``unicode`` objects, the DBAPI should be 
+        ``unicode`` objects, the DBAPI should be
         configured to handle unicode to the greatest
         degree as is appropriate - see
         the notes on unicode pertaining to the specific
-        target database in use at :ref:`dialect_toplevel`. 
-        
-        Areas where string encoding may need to be accommodated 
-        outside of the DBAPI include zero or more of: 
-        
-        * the values passed to bound parameters, corresponding to 
+        target database in use at :ref:`dialect_toplevel`.
+
+        Areas where string encoding may need to be accommodated
+        outside of the DBAPI include zero or more of:
+
+        * the values passed to bound parameters, corresponding to
           the :class:`.Unicode` type or the :class:`.String` type
           when ``convert_unicode`` is ``True``;
-        * the values returned in result set columns corresponding 
-          to the :class:`.Unicode` type or the :class:`.String` 
+        * the values returned in result set columns corresponding
+          to the :class:`.Unicode` type or the :class:`.String`
           type when ``convert_unicode`` is ``True``;
-        * the string SQL statement passed to the DBAPI's 
-          ``cursor.execute()`` method; 
-        * the string names of the keys in the bound parameter 
-          dictionary passed to the DBAPI's ``cursor.execute()`` 
+        * the string SQL statement passed to the DBAPI's
+          ``cursor.execute()`` method;
+        * the string names of the keys in the bound parameter
+          dictionary passed to the DBAPI's ``cursor.execute()``
           as well as ``cursor.setinputsizes()`` methods;
-        * the string column names retrieved from the DBAPI's 
+        * the string column names retrieved from the DBAPI's
           ``cursor.description`` attribute.
-          
+
         When using Python 3, the DBAPI is required to support
         *all* of the above values as Python ``unicode`` objects,
         which in Python 3 are just known as ``str``.  In Python 2,
@@ -236,9 +236,9 @@ def create_engine(*args, **kwargs):
     :param implicit_returning=True: When ``True``, a RETURNING-
         compatible construct, if available, will be used to
         fetch newly generated primary key values when a single row
-        INSERT statement is emitted with no existing returning() 
-        clause.  This applies to those backends which support RETURNING 
-        or a compatible construct, including Postgresql, Firebird, Oracle, 
+        INSERT statement is emitted with no existing returning()
+        clause.  This applies to those backends which support RETURNING
+        or a compatible construct, including Postgresql, Firebird, Oracle,
         Microsoft SQL Server.   Set this to ``False`` to disable
         the automatic usage of RETURNING.
 
@@ -248,13 +248,13 @@ def create_engine(*args, **kwargs):
         "_(counter)". If ``None``, the value of
         ``dialect.max_identifier_length`` is used instead.
 
-    :param listeners: A list of one or more 
-        :class:`~sqlalchemy.interfaces.PoolListener` objects which will 
+    :param listeners: A list of one or more
+        :class:`~sqlalchemy.interfaces.PoolListener` objects which will
         receive connection pool events.
 
     :param logging_name:  String identifier which will be used within
         the "name" field of logging records generated within the
-        "sqlalchemy.engine" logger. Defaults to a hexstring of the 
+        "sqlalchemy.engine" logger. Defaults to a hexstring of the
         object's id.
 
     :param max_overflow=10: the number of connections to allow in
@@ -286,8 +286,8 @@ def create_engine(*args, **kwargs):
         of pool to be used.
 
     :param pool_logging_name:  String identifier which will be used within
-       the "name" field of logging records generated within the 
-       "sqlalchemy.pool" logger. Defaults to a hexstring of the object's 
+       the "name" field of logging records generated within the
+       "sqlalchemy.pool" logger. Defaults to a hexstring of the object's
        id.
 
     :param pool_size=5: the number of connections to keep open
@@ -307,7 +307,7 @@ def create_engine(*args, **kwargs):
         server configuration as well).
 
     :param pool_reset_on_return='rollback': set the "reset on return"
-        behavior of the pool, which is whether ``rollback()``, 
+        behavior of the pool, which is whether ``rollback()``,
         ``commit()``, or nothing is called upon connections
         being returned to the pool.  See the docstring for
         ``reset_on_return`` at :class:`.Pool`.

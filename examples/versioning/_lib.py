@@ -1,7 +1,7 @@
 """copy of ComparableEntity and eq_() from test.lib.
 
 This is just to support running the example outside of
-the SQLA testing environment which is no longer part of 
+the SQLA testing environment which is no longer part of
 SQLAlchemy as of 0.7.
 
 """

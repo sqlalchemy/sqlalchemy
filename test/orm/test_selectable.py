@@ -44,7 +44,7 @@ class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         selectable = select(["x", "y", "z"]).alias()
         assert_raises_message(
-            sa.exc.ArgumentError, 
+            sa.exc.ArgumentError,
             "could not assemble any primary key columns",
             mapper, Subset, selectable
         )
