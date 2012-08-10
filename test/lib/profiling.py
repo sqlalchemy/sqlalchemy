@@ -79,8 +79,20 @@ def profiled(target=None, **target_opts):
         return result
     return decorate
 
-def function_call_count(count=None, versions={}, variance=0.05):
-    """Assert a target for a test case's function call count."""
+def function_call_count(count=None, variance=0.05):
+    """Assert a target for a test case's function call count.
+
+    The main purpose of this assertion is to detect changes in
+    callcounts for various functions - the actual number is not as important.
+    Therefore, to help with cross-compatibility between Python interpreter
+    platforms/versions
+    as well as whether or not C extensions are in use, the call count is
+    "adjusted" to account for various functions that don't appear in all
+    environments.   This introduces the small possibility for a significant change
+    in callcount to be missed, in the case that the callcount is local
+    to that set of skipped functions.
+
+    """
 
     py_version = '.'.join([str(v) for v in sys.version_info])
 
@@ -159,7 +171,7 @@ def _exclude(path):
     if (
             "result.py" in pfname or
             "engine/base.py" in pfname
-        ) and pfuncname in ("__iter__", "__getitem__"):
+        ) and pfuncname in ("__iter__", "__getitem__", "__len__", "__init__"):
         return True
 
     if "utf_8.py" in pfname and pfuncname == "decode":

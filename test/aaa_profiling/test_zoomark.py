@@ -393,7 +393,7 @@ class ZooMarkTest(fixtures.TestBase):
     def test_profile_6_editing(self):
         self.test_baseline_6_editing()
 
-    @profiling.function_call_count(2095)
+    @profiling.function_call_count(1970)
     def test_profile_7_multiview(self):
         self.test_baseline_7_multiview()
 
