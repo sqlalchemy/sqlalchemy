@@ -36,7 +36,7 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
                          use_threadlocal=True)
 
 
-    @profiling.function_call_count(47, variance=.15)
+    @profiling.function_call_count()
     def test_first_connect(self):
         conn = pool.connect()
 
@@ -44,7 +44,7 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
         conn = pool.connect()
         conn.close()
 
-        @profiling.function_call_count(17, variance=.10)
+        @profiling.function_call_count()
         def go():
             conn2 = pool.connect()
             return conn2
@@ -53,7 +53,7 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
     def test_second_samethread_connect(self):
         conn = pool.connect()
 
-        @profiling.function_call_count(6)
+        @profiling.function_call_count()
         def go():
             return pool.connect()
         c2 = go()

@@ -365,35 +365,34 @@ class ZooMarkTest(fixtures.TestBase):
         metadata = MetaData(engine)
         engine.connect()
 
-    @profiling.function_call_count(3896)
     def test_profile_1_create_tables(self):
         self.test_baseline_1_create_tables()
 
-    @profiling.function_call_count(4200)
+    @profiling.function_call_count()
     def test_profile_1a_populate(self):
         self.test_baseline_1a_populate()
 
-    @profiling.function_call_count(218)
+    @profiling.function_call_count()
     def test_profile_2_insert(self):
         self.test_baseline_2_insert()
 
-    @profiling.function_call_count(2700)
+    @profiling.function_call_count()
     def test_profile_3_properties(self):
         self.test_baseline_3_properties()
 
-    @profiling.function_call_count(8500)
+    @profiling.function_call_count()
     def test_profile_4_expressions(self):
         self.test_baseline_4_expressions()
 
-    @profiling.function_call_count(875, variance=0.10)
+    @profiling.function_call_count()
     def test_profile_5_aggregates(self):
         self.test_baseline_5_aggregates()
 
-    @profiling.function_call_count(1475)
+    @profiling.function_call_count()
     def test_profile_6_editing(self):
         self.test_baseline_6_editing()
 
-    @profiling.function_call_count(1970)
+    @profiling.function_call_count()
     def test_profile_7_multiview(self):
         self.test_baseline_7_multiview()
 

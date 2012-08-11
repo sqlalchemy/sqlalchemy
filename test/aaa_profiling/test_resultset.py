@@ -6,17 +6,15 @@ NUM_RECORDS = 1000
 
 
 class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
-    __requires__ = 'cpython', 'cextensions',
-    __only_on__ = 'sqlite'
 
     @classmethod
     def setup_class(cls):
         global t, t2, metadata
         metadata = MetaData(testing.db)
-        t = Table('table', metadata, *[Column('field%d' % fnum, String)
+        t = Table('table', metadata, *[Column('field%d' % fnum, String(50))
                   for fnum in range(NUM_FIELDS)])
         t2 = Table('table2', metadata, *[Column('field%d' % fnum,
-                   Unicode) for fnum in range(NUM_FIELDS)])
+                   Unicode(50)) for fnum in range(NUM_FIELDS)])
 
     def setup(self):
         metadata.create_all()
@@ -34,25 +32,23 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
     def teardown(self):
         metadata.drop_all()
 
-    @profiling.function_call_count(316)
+    @profiling.function_call_count()
     def test_string(self):
         [tuple(row) for row in t.select().execute().fetchall()]
 
-    @profiling.function_call_count(316)
+    @profiling.function_call_count()
     def test_unicode(self):
         [tuple(row) for row in t2.select().execute().fetchall()]
 
     def test_contains_doesnt_compile(self):
         row = t.select().execute().first()
         c1 = Column('some column', Integer) + Column("some other column", Integer)
-        @profiling.function_call_count(9, variance=.15)
+        @profiling.function_call_count()
         def go():
             c1 in row
         go()
 
 class ExecutionTest(fixtures.TestBase):
-    __requires__ = 'cpython',
-    __only_on__ = 'sqlite'
 
     def test_minimal_connection_execute(self):
         # create an engine without any instrumentation.
@@ -61,7 +57,7 @@ class ExecutionTest(fixtures.TestBase):
         # ensure initial connect activities complete
         c.execute("select 1")
 
-        @profiling.function_call_count(40, variance=.10)
+        @profiling.function_call_count()
         def go():
             c.execute("select 1")
         go()
@@ -72,7 +68,7 @@ class ExecutionTest(fixtures.TestBase):
         # ensure initial connect activities complete
         e.execute("select 1")
 
-        @profiling.function_call_count(62, variance=.5)
+        @profiling.function_call_count()
         def go():
             e.execute("select 1")
         go()

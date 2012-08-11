@@ -10,8 +10,6 @@ import sys
 
 class MergeTest(fixtures.MappedTest):
 
-    __requires__ = 'cpython',
-
     @classmethod
     def define_tables(cls, metadata):
         Table('parent', metadata, Column('id', Integer,
@@ -60,19 +58,18 @@ class MergeTest(fixtures.MappedTest):
         # down from 185 on this this is a small slice of a usually
         # bigger operation so using a small variance
 
-        @profiling.function_call_count(96, variance=0.10)
+        @profiling.function_call_count(variance=0.10)
         def go1():
             return sess2.merge(p1, load=False)
         p2 = go1()
 
         # third call, merge object already present. almost no calls.
 
-        @profiling.function_call_count(16, variance=0.10)
+        @profiling.function_call_count(variance=0.10)
         def go2():
             return sess2.merge(p2, load=False)
         go2()
 
-    @testing.only_on('sqlite', 'Call counts tailored to pysqlite')
     def test_merge_load(self):
         Parent = self.classes.Parent
 
@@ -85,15 +82,17 @@ class MergeTest(fixtures.MappedTest):
         # using sqlite3 the C extension took it back up to approx. 1257
         # (py2.6)
 
-        @profiling.function_call_count(1016, variance=.10)
+        @profiling.function_call_count()
         def go():
             p2 = sess2.merge(p1)
         go()
 
         # one more time, count the SQL
 
+        def go2():
+            p2 = sess2.merge(p1)
         sess2 = sessionmaker(testing.db)()
-        self.assert_sql_count(testing.db, go, 2)
+        self.assert_sql_count(testing.db, go2, 2)
 
 class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
     """test overhead associated with many-to-one fetches.
@@ -105,12 +104,6 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
 
     """
 
-    # only need to test for unexpected variance in a large call
-    # count here,
-    # so remove some platforms that have wildly divergent
-    # callcounts.
-    __requires__ = 'python25', 'cpython'
-    __unsupported_on__ = 'postgresql+pg8000', 'mysql+pymysql'
 
     @classmethod
     def define_tables(cls, metadata):
@@ -168,7 +161,7 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
         parents = sess.query(Parent).all()
 
 
-        @profiling.function_call_count(110761, variance=.2)
+        @profiling.function_call_count(variance=.2)
         def go():
             for p in parents:
                 p.child
@@ -181,14 +174,13 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
         parents = sess.query(Parent).all()
         children = sess.query(Child).all()
 
-        @profiling.function_call_count(16988)
+        @profiling.function_call_count()
         def go():
             for p in parents:
                 p.child
         go()
 
 class MergeBackrefsTest(fixtures.MappedTest):
-    __only_on__ = 'sqlite'  # keep things simple
 
     @classmethod
     def define_tables(cls, metadata):
@@ -241,26 +233,26 @@ class MergeBackrefsTest(fixtures.MappedTest):
         s = Session()
         s.add_all([
             A(id=i,
-                bs=[B(id=(i * 50) + j) for j in xrange(1, 50)],
+                bs=[B(id=(i * 5) + j) for j in xrange(1, 5)],
                 c=C(id=i),
-                ds=[D(id=(i * 50) + j) for j in xrange(1, 50)]
+                ds=[D(id=(i * 5) + j) for j in xrange(1, 5)]
             )
-            for i in xrange(1, 50)
+            for i in xrange(1, 5)
         ])
         s.commit()
 
-    @profiling.function_call_count(1092497, variance=.10)
+    @profiling.function_call_count(variance=.10)
     def test_merge_pending_with_all_pks(self):
         A, B, C, D = self.classes.A, self.classes.B, \
                     self.classes.C, self.classes.D
         s = Session()
         for a in [
             A(id=i,
-                bs=[B(id=(i * 50) + j) for j in xrange(1, 50)],
+                bs=[B(id=(i * 5) + j) for j in xrange(1, 5)],
                 c=C(id=i),
-                ds=[D(id=(i * 50) + j) for j in xrange(1, 50)]
+                ds=[D(id=(i * 5) + j) for j in xrange(1, 5)]
             )
-            for i in xrange(1, 50)
+            for i in xrange(1, 5)
         ]:
             s.merge(a)
 
