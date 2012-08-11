@@ -94,12 +94,17 @@ class ProfileStatsFile(object):
 
     """
     def __init__(self):
+        from test.bootstrap.config import options
+        self.write = options.write_profiles
         dirname, fname = os.path.split(__file__)
         self.short_fname = "profiles.txt"
         self.fname = os.path.join(dirname, self.short_fname)
         self.data = collections.defaultdict(lambda: collections.defaultdict(dict))
         self._read()
-
+        if self.write:
+            # rewrite for the case where features changed,
+            # etc.
+            self._write()
 
     @util.memoized_property
     def platform_key(self):
@@ -124,7 +129,7 @@ class ProfileStatsFile(object):
         test_key = testing.current_test
         return test_key in self.data and self.platform_key in self.data[test_key]
 
-    def result(self, callcount, write):
+    def result(self, callcount):
         test_key = testing.current_test
         per_fn = self.data[test_key]
         per_platform = per_fn[self.platform_key]
@@ -143,7 +148,7 @@ class ProfileStatsFile(object):
 
         if not has_count:
             counts.append(callcount)
-            if write:
+            if self.write:
                 self._write()
             result = None
         else:
@@ -193,6 +198,7 @@ class ProfileStatsFile(object):
         for test_key in sorted(self.data):
 
             per_fn = self.data[test_key]
+            profile_f.write("\n# TEST: %s\n\n" % test_key)
             for platform_key in sorted(per_fn):
                 per_platform = per_fn[platform_key]
                 profile_f.write(
@@ -221,13 +227,11 @@ def function_call_count(variance=0.05):
     def decorate(fn):
         def wrap(*args, **kw):
 
-            from test.bootstrap.config import options
-            write = options.write_profiles
 
             if cProfile is None:
                 raise SkipTest("cProfile is not installed")
 
-            if not _profile_stats.has_stats() and not write:
+            if not _profile_stats.has_stats() and not _profile_stats.write:
                 raise SkipTest("No profiling stats available on this "
                             "platform for this function.  Run tests with "
                             "--write-profiles to add statistics to %s for "
@@ -242,7 +246,7 @@ def function_call_count(variance=0.05):
             stats = load_stats()
             callcount = stats.total_calls
 
-            expected = _profile_stats.result(callcount, write)
+            expected = _profile_stats.result(callcount)
             if expected is None:
                 expected_count = None
             else:
