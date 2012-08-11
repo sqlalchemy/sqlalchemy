@@ -75,6 +75,8 @@ class ExecutionTest(fixtures.TestBase):
 
 
 class RowProxyTest(fixtures.TestBase):
+    __requires__ = 'cpython',
+
     def _rowproxy_fixture(self, keys, processors, row):
         from sqlalchemy.engine.result import RowProxy
         class MockMeta(object):

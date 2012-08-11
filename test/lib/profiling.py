@@ -258,6 +258,7 @@ def function_call_count(variance=0.05):
                 )
             )
             stats.print_stats()
+            #stats.print_callers()
 
             if expected_count:
                 deviance = int(callcount * variance)
