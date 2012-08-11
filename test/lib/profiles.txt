@@ -2,18 +2,14 @@
 # This file is written out on a per-environment basis.
 # For each test in aaa_profiling, the corresponding function and 
 # environment is located within this file.  If it doesn't exist,
-# the file is altered and written out again.
+# the test is skipped.
 # If a callcount does exist, it is compared to what we received. 
 # assertions are raised if the counts do not match.
 # 
 # To add a new callcount test, apply the function_call_count 
-# decorator and re-run the tests - it will be added here.
+# decorator and re-run the tests using the --write-profiles option - 
+# this file will be rewritten including the new count.
 # 
-# The file is versioned so that well known platforms are available
-# for assertions.  Source control updates on local test environments
-# not already listed will create locally modified versions of the 
-# file that can be committed, or not, as well.
-
 
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_insert
 

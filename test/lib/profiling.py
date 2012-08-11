@@ -163,17 +163,14 @@ class ProfileStatsFile(object):
         "# This file is written out on a per-environment basis.\n"\
         "# For each test in aaa_profiling, the corresponding function and \n"\
         "# environment is located within this file.  If it doesn't exist,\n"\
-        "# the file is altered and written out again.\n"\
+        "# the test is skipped.\n"\
         "# If a callcount does exist, it is compared to what we received. \n"\
         "# assertions are raised if the counts do not match.\n"\
         "# \n"\
         "# To add a new callcount test, apply the function_call_count \n"\
-        "# decorator and re-run the tests - it will be added here.\n"\
+        "# decorator and re-run the tests using the --write-profiles option - \n"\
+        "# this file will be rewritten including the new count.\n"\
         "# \n"\
-        "# The file is versioned so that well known platforms are available\n"\
-        "# for assertions.  Source control updates on local test environments\n"\
-        "# not already listed will create locally modified versions of the \n"\
-        "# file that can be committed, or not, as well.\n\n"\
         "" % (self.fname)
 
     def _read(self):
