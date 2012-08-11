@@ -85,7 +85,7 @@ class MergeTest(fixtures.MappedTest):
         # using sqlite3 the C extension took it back up to approx. 1257
         # (py2.6)
 
-        @profiling.function_call_count(1128, variance=0.10)
+        @profiling.function_call_count(1016, variance=.10)
         def go():
             p2 = sess2.merge(p1)
         go()

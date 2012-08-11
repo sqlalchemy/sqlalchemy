@@ -369,7 +369,7 @@ class ZooMarkTest(fixtures.TestBase):
     def test_profile_1_create_tables(self):
         self.test_baseline_1_create_tables()
 
-    @profiling.function_call_count(4377)
+    @profiling.function_call_count(4200)
     def test_profile_1a_populate(self):
         self.test_baseline_1a_populate()
 
@@ -377,11 +377,11 @@ class ZooMarkTest(fixtures.TestBase):
     def test_profile_2_insert(self):
         self.test_baseline_2_insert()
 
-    @profiling.function_call_count(2837)
+    @profiling.function_call_count(2700)
     def test_profile_3_properties(self):
         self.test_baseline_3_properties()
 
-    @profiling.function_call_count(9700, variance=0.10)
+    @profiling.function_call_count(8500)
     def test_profile_4_expressions(self):
         self.test_baseline_4_expressions()
 

@@ -167,6 +167,8 @@ def _exclude(path):
             return True
         if "threading.py" in pfname:
             return True
+        if "cprocessors" in pfuncname:
+            return True
 
     if (
             "result.py" in pfname or
@@ -175,6 +177,10 @@ def _exclude(path):
         return True
 
     if "utf_8.py" in pfname and pfuncname == "decode":
+        return True
+
+    # hasattr seems to be inconsistent
+    if "hasattr" in path[-1][2]:
         return True
 
     if path[-1][2] in (
