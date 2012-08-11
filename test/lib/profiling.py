@@ -5,24 +5,26 @@ in a more fine-grained way than nose's profiling plugin.
 
 """
 
-import os, sys
+import os
+import sys
 from test.lib.util import gc_collect, decorator
+from test.lib import testing
 from nose import SkipTest
+import pstats
+import time
+import collections
+from sqlalchemy import util
+try:
+    import cProfile
+except ImportError:
+    cProfile = None
+from sqlalchemy.util.compat import jython, pypy, win32
 
-__all__ = 'profiled', 'function_call_count', 'conditional_call_count'
-
-all_targets = set()
-profile_config = { 'targets': set(),
-                   'report': True,
-                   'print_callers':False,
-                   'print_callees':False,
-                   'graphic':False,
-                   'sort': ('time', 'calls'),
-                   'limit': None }
-profiler = None
+from test.lib.requires import _has_cextensions
+_has_cext = _has_cextensions()
 
 def profiled(target=None, **target_opts):
-    """Optional function profiling.
+    """Function profiling.
 
     @profiled('label')
     or
@@ -33,21 +35,20 @@ def profiled(target=None, **target_opts):
     configuration and command-line options.
     """
 
-    # manual or automatic namespacing by module would remove conflict issues
+    profile_config = {'targets': set(),
+                       'report': True,
+                       'print_callers': False,
+                       'print_callees': False,
+                       'graphic': False,
+                       'sort': ('time', 'calls'),
+                       'limit': None}
     if target is None:
         target = 'anonymous_target'
-    elif target in all_targets:
-        print "Warning: redefining profile target '%s'" % target
-    all_targets.add(target)
 
     filename = "%s.prof" % target
 
     @decorator
     def decorate(fn, *args, **kw):
-        if (target not in profile_config['targets'] and
-            not target_opts.get('always', None)):
-            return fn(*args, **kw)
-
         elapsed, load_stats, result = _profile(
             filename, fn, *args, **kw)
 
@@ -59,8 +60,9 @@ def profiled(target=None, **target_opts):
             if report:
                 sort_ = target_opts.get('sort', profile_config['sort'])
                 limit = target_opts.get('limit', profile_config['limit'])
-                print "Profile report for target '%s' (%s)" % (
+                print ("Profile report for target '%s' (%s)" % (
                     target, filename)
+                    )
 
                 stats = load_stats()
                 stats.sort_stats(*sort_)
@@ -83,134 +85,201 @@ def profiled(target=None, **target_opts):
         return result
     return decorate
 
-def function_call_count(count=None, versions={}, variance=0.05):
+
+class ProfileStatsFile(object):
+    """"Store per-platform/fn profiling results in a file.
+
+    We're still targeting Py2.5, 2.4 on 0.7 with no dependencies,
+    so no json lib :(  need to roll something silly
+
+    """
+    def __init__(self):
+        from test.bootstrap.config import options
+        self.write = options.write_profiles
+        dirname, fname = os.path.split(__file__)
+        self.short_fname = "profiles.txt"
+        self.fname = os.path.join(dirname, self.short_fname)
+        self.data = collections.defaultdict(lambda: collections.defaultdict(dict))
+        self._read()
+        if self.write:
+            # rewrite for the case where features changed,
+            # etc.
+            self._write()
+
+    @util.memoized_property
+    def platform_key(self):
+
+        dbapi_key = testing.db.name + "_" + testing.db.driver
+
+        # keep it at 2.7, 3.1, 3.2, etc. for now.
+        py_version = '.'.join([str(v) for v in sys.version_info[0:2]])
+
+        platform_tokens = [py_version]
+        platform_tokens.append(dbapi_key)
+        if jython:
+            platform_tokens.append("jython")
+        if pypy:
+            platform_tokens.append("pypy")
+        if win32:
+            platform_tokens.append("win")
+        platform_tokens.append(_has_cext and "cextensions" or "nocextensions")
+        return "_".join(platform_tokens)
+
+    def has_stats(self):
+        test_key = testing.current_test
+        return test_key in self.data and self.platform_key in self.data[test_key]
+
+    def result(self, callcount):
+        test_key = testing.current_test
+        per_fn = self.data[test_key]
+        per_platform = per_fn[self.platform_key]
+
+        if 'counts' not in per_platform:
+            per_platform['counts'] = counts = []
+        else:
+            counts = per_platform['counts']
+
+        if 'current_count' not in per_platform:
+            per_platform['current_count'] = current_count = 0
+        else:
+            current_count = per_platform['current_count']
+
+        has_count = len(counts) > current_count
+
+        if not has_count:
+            counts.append(callcount)
+            if self.write:
+                self._write()
+            result = None
+        else:
+            result = per_platform['lineno'], counts[current_count]
+        per_platform['current_count'] += 1
+        return result
+
+
+    def _header(self):
+        return \
+        "# %s\n"\
+        "# This file is written out on a per-environment basis.\n"\
+        "# For each test in aaa_profiling, the corresponding function and \n"\
+        "# environment is located within this file.  If it doesn't exist,\n"\
+        "# the test is skipped.\n"\
+        "# If a callcount does exist, it is compared to what we received. \n"\
+        "# assertions are raised if the counts do not match.\n"\
+        "# \n"\
+        "# To add a new callcount test, apply the function_call_count \n"\
+        "# decorator and re-run the tests using the --write-profiles option - \n"\
+        "# this file will be rewritten including the new count.\n"\
+        "# \n"\
+        "" % (self.fname)
+
+    def _read(self):
+        profile_f = open(self.fname)
+        for lineno, line in enumerate(profile_f):
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+
+            test_key, platform_key, counts = line.split()
+            per_fn = self.data[test_key]
+            per_platform = per_fn[platform_key]
+            per_platform['counts'] = [int(count) for count in counts.split(",")]
+            per_platform['lineno'] = lineno + 1
+            per_platform['current_count'] = 0
+        profile_f.close()
+
+    def _write(self):
+        print("Writing profile file %s" % self.fname)
+        profile_f = open(self.fname, "w")
+        profile_f.write(self._header())
+        for test_key in sorted(self.data):
+
+            per_fn = self.data[test_key]
+            profile_f.write("\n# TEST: %s\n\n" % test_key)
+            for platform_key in sorted(per_fn):
+                per_platform = per_fn[platform_key]
+                profile_f.write(
+                    "%s %s %s\n" % (
+                        test_key,
+                        platform_key, ",".join(str(count) for count in per_platform['counts'])
+                    )
+                )
+        profile_f.close()
+
+_profile_stats = ProfileStatsFile()
+
+from sqlalchemy.util.compat import update_wrapper
+
+def function_call_count(variance=0.05):
     """Assert a target for a test case's function call count.
 
-    count
-      Optional, general target function call count.
+    The main purpose of this assertion is to detect changes in
+    callcounts for various functions - the actual number is not as important.
+    Callcounts are stored in a file keyed to Python version and OS platform
+    information.  This file is generated automatically for new tests,
+    and versioned so that unexpected changes in callcounts will be detected.
 
-    versions
-      Optional, a dictionary of Python version strings to counts,
-      for example::
-
-        { '2.5.1': 110,
-          '2.5': 100,
-          '2.4': 150 }
-
-      The best match for the current running python will be used.
-      If none match, 'count' will be used as the fallback.
-
-    variance
-      An +/- deviation percentage, defaults to 5%.
     """
 
-    # this could easily dump the profile report if --verbose is in effect
+    def decorate(fn):
+        def wrap(*args, **kw):
 
-    version_info = list(sys.version_info)
-    py_version = '.'.join([str(v) for v in sys.version_info])
-    try:
-        from sqlalchemy.cprocessors import to_float
-        cextension = True
-    except ImportError:
-        cextension = False
 
-    while version_info:
-        version = '.'.join([str(v) for v in version_info])
-        if cextension and (version + "+cextension") in versions:
-            version += "+cextension"
-            count = versions[version]
-            break
-        elif version in versions:
-            count = versions[version]
-            break
+            if cProfile is None:
+                raise SkipTest("cProfile is not installed")
 
-        version_info.pop()
+            if not _profile_stats.has_stats() and not _profile_stats.write:
+                raise SkipTest("No profiling stats available on this "
+                            "platform for this function.  Run tests with "
+                            "--write-profiles to add statistics to %s for "
+                            "this platform." % _profile_stats.short_fname)
 
-    if count is None:
-        print "Warning: no function call count specified for version: '%s'" % py_version
-        return lambda fn: fn
+            gc_collect()
 
-    @decorator
-    def decorate(fn, *args, **kw):
-        try:
-            filename = "%s.prof" % fn.__name__
 
-            elapsed, stat_loader, result = _profile(
-                filename, fn, *args, **kw)
+            timespent, load_stats, fn_result = _profile(
+                fn, *args, **kw
+            )
+            stats = load_stats()
+            callcount = stats.total_calls
 
-            stats = stat_loader()
-            calls = stats.total_calls
+            expected = _profile_stats.result(callcount)
+            if expected is None:
+                expected_count = None
+            else:
+                line_no, expected_count = expected
 
-            stats.sort_stats('calls', 'cumulative')
+            print("Pstats calls: %d Expected %s" % (
+                    callcount,
+                    expected_count
+                )
+            )
             stats.print_stats()
             #stats.print_callers()
-            deviance = int(count * variance)
-            if (calls < (count - deviance) or
-                calls > (count + deviance)):
-                raise AssertionError(
-                    "Function call count %s not within %s%% "
-                    "of expected %s. (Python version %s)" % (
-                    calls, (variance * 100), count, py_version))
 
-            return result
-        finally:
-            if os.path.exists(filename):
-                os.unlink(filename)
-    return decorate
-
-def conditional_call_count(discriminator, categories):
-    """Apply a function call count conditionally at runtime.
-
-    Takes two arguments, a callable that returns a key value, and a dict
-    mapping key values to a tuple of arguments to function_call_count.
-
-    The callable is not evaluated until the decorated function is actually
-    invoked.  If the `discriminator` returns a key not present in the
-    `categories` dictionary, no call count assertion is applied.
-
-    Useful for integration tests, where running a named test in isolation may
-    have a function count penalty not seen in the full suite, due to lazy
-    initialization in the DB-API, SA, etc.
-    """
-    @decorator
-    def decorate(fn, *args, **kw):
-        criteria = categories.get(discriminator(), None)
-        if criteria is None:
-            return fn(*args, **kw)
-
-        rewrapped = function_call_count(*criteria)(fn)
-        return rewrapped(*args, **kw)
+            if expected_count:
+                deviance = int(callcount * variance)
+                if abs(callcount - expected_count) > deviance:
+                    raise AssertionError(
+                        "Adjusted function call count %s not within %s%% "
+                        "of expected %s. (Delete line %d of file %s to regenerate "
+                            "this callcount, when tests are run with --write-profiles.)"
+                        % (
+                        callcount, (variance * 100),
+                        expected_count, line_no,
+                        _profile_stats.fname))
+            return fn_result
+        return update_wrapper(wrap, fn)
     return decorate
 
 
-def _profile(filename, fn, *args, **kw):
-    global profiler
-    if not profiler:
-        if sys.version_info > (2, 5):
-            try:
-                import cProfile
-                profiler = 'cProfile'
-            except ImportError:
-                pass
-        if not profiler:
-            try:
-                import hotshot
-                profiler = 'hotshot'
-            except ImportError:
-                profiler = 'skip'
+def _profile(fn, *args, **kw):
+    filename = "%s.prof" % fn.__name__
 
-    if profiler == 'skip':
-        raise SkipTest('Profiling not supported on this platform')
-    elif profiler == 'cProfile':
-        return _profile_cProfile(filename, fn, *args, **kw)
-    else:
-        return _profile_hotshot(filename, fn, *args, **kw)
-
-def _profile_cProfile(filename, fn, *args, **kw):
-    import cProfile, pstats, time
-
-    load_stats = lambda: pstats.Stats(filename)
-    gc_collect()
+    def load_stats():
+        st = pstats.Stats(filename)
+        os.unlink(filename)
+        return st
 
     began = time.time()
     cProfile.runctx('result = fn(*args, **kw)', globals(), locals(),
@@ -218,21 +287,4 @@ def _profile_cProfile(filename, fn, *args, **kw):
     ended = time.time()
 
     return ended - began, load_stats, locals()['result']
-
-def _profile_hotshot(filename, fn, *args, **kw):
-    import hotshot, hotshot.stats, time
-    load_stats = lambda: hotshot.stats.load(filename)
-
-    gc_collect()
-    prof = hotshot.Profile(filename)
-    began = time.time()
-    prof.start()
-    try:
-        result = fn(*args, **kw)
-    finally:
-        prof.stop()
-        ended = time.time()
-        prof.close()
-
-    return ended - began, load_stats, result
 

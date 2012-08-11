@@ -10,15 +10,13 @@ import sys
 
 class MergeTest(fixtures.MappedTest):
 
-    __requires__ = 'cpython',
-
     @classmethod
     def define_tables(cls, metadata):
-        parent = Table('parent', metadata, Column('id', Integer,
+        Table('parent', metadata, Column('id', Integer,
                        primary_key=True,
                        test_needs_autoincrement=True), Column('data',
                        String(20)))
-        child = Table('child', metadata, Column('id', Integer,
+        Table('child', metadata, Column('id', Integer,
                       primary_key=True, test_needs_autoincrement=True),
                       Column('data', String(20)), Column('parent_id',
                       Integer, ForeignKey('parent.id'), nullable=False))
@@ -38,8 +36,8 @@ class MergeTest(fixtures.MappedTest):
                                 cls.tables.parent,
                                 cls.tables.child)
 
-        mapper(Parent, parent, properties={'children'
-               : relationship(Child, backref='parent')})
+        mapper(Parent, parent, properties={'children':
+                        relationship(Child, backref='parent')})
         mapper(Child, child)
 
     @classmethod
@@ -47,8 +45,7 @@ class MergeTest(fixtures.MappedTest):
         parent, child = cls.tables.parent, cls.tables.child
 
         parent.insert().execute({'id': 1, 'data': 'p1'})
-        child.insert().execute({'id': 1, 'data': 'p1c1', 'parent_id'
-                               : 1})
+        child.insert().execute({'id': 1, 'data': 'p1c1', 'parent_id': 1})
 
     def test_merge_no_load(self):
         Parent = self.classes.Parent
@@ -61,21 +58,18 @@ class MergeTest(fixtures.MappedTest):
         # down from 185 on this this is a small slice of a usually
         # bigger operation so using a small variance
 
-        @profiling.function_call_count(variance=0.05,
-                versions={'2.7':80, '2.6':80, '2.5':94, '3': 83})
+        @profiling.function_call_count()
         def go():
             return sess2.merge(p1, load=False)
         p2 = go()
 
         # third call, merge object already present. almost no calls.
 
-        @profiling.function_call_count(variance=0.05,
-                versions={'2.7':11, '2.6':11, '2.5':15, '3': 12})
+        @profiling.function_call_count()
         def go():
             return sess2.merge(p2, load=False)
         p3 = go()
 
-    @testing.only_on('sqlite', 'Call counts tailored to pysqlite')
     def test_merge_load(self):
         Parent = self.classes.Parent
 
@@ -88,12 +82,7 @@ class MergeTest(fixtures.MappedTest):
         # using sqlite3 the C extension took it back up to approx. 1257
         # (py2.6)
 
-        @profiling.function_call_count(variance=0.10,
-                                versions={'2.5':1050, '2.6':1050,
-                                        '2.6+cextension':1005,
-                                        '2.7':1005,
-                                        '3':1050}
-                            )
+        @profiling.function_call_count()
         def go():
             p2 = sess2.merge(p1)
         go()
@@ -113,23 +102,17 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
 
     """
 
-    # only need to test for unexpected variance in a large call
-    # count here,
-    # so remove some platforms that have wildly divergent
-    # callcounts.
-    __requires__ = 'python25', 'cpython'
-    __unsupported_on__ = 'postgresql+pg8000', 'mysql+pymysql'
 
     @classmethod
     def define_tables(cls, metadata):
-        parent = Table('parent', metadata,
+        Table('parent', metadata,
                         Column('id', Integer, primary_key=True),
                        Column('data', String(20)),
                        Column('child_id', Integer, ForeignKey('child.id'))
                        )
 
-        child = Table('child', metadata,
-                    Column('id', Integer,primary_key=True),
+        Table('child', metadata,
+                    Column('id', Integer, primary_key=True),
                   Column('data', String(20))
                  )
 
@@ -176,7 +159,7 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
         parents = sess.query(Parent).all()
 
 
-        @profiling.function_call_count(108019, variance=.2)
+        @profiling.function_call_count()
         def go():
             for p in parents:
                 p.child
@@ -189,14 +172,13 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
         parents = sess.query(Parent).all()
         children = sess.query(Child).all()
 
-        @profiling.function_call_count(17987, {'3':18987})
+        @profiling.function_call_count()
         def go():
             for p in parents:
                 p.child
         go()
 
 class MergeBackrefsTest(fixtures.MappedTest):
-    __only_on__ = 'sqlite'  # keep things simple
 
     @classmethod
     def define_tables(cls, metadata):
@@ -231,12 +213,12 @@ class MergeBackrefsTest(fixtures.MappedTest):
     def setup_mappers(cls):
         A, B, C, D = cls.classes.A, cls.classes.B, \
                     cls.classes.C, cls.classes.D
-        a, b, c, d= cls.tables.a, cls.tables.b, \
+        a, b, c, d = cls.tables.a, cls.tables.b, \
                     cls.tables.c, cls.tables.d
         mapper(A, a, properties={
-            'bs':relationship(B, backref='a'),
-            'c':relationship(C, backref='as'),
-            'ds':relationship(D, backref='a'),
+            'bs': relationship(B, backref='a'),
+            'c': relationship(C, backref='as'),
+            'ds': relationship(D, backref='a'),
         })
         mapper(B, b)
         mapper(C, c)
@@ -249,26 +231,26 @@ class MergeBackrefsTest(fixtures.MappedTest):
         s = Session()
         s.add_all([
             A(id=i,
-                bs=[B(id=(i * 50) + j) for j in xrange(1, 50)],
+                bs=[B(id=(i * 5) + j) for j in xrange(1, 5)],
                 c=C(id=i),
-                ds=[D(id=(i * 50) + j) for j in xrange(1, 50)]
+                ds=[D(id=(i * 5) + j) for j in xrange(1, 5)]
             )
-            for i in xrange(1, 50)
+            for i in xrange(1, 5)
         ])
         s.commit()
 
-    @profiling.function_call_count(1092497, variance=.10)
+    @profiling.function_call_count()
     def test_merge_pending_with_all_pks(self):
         A, B, C, D = self.classes.A, self.classes.B, \
                     self.classes.C, self.classes.D
         s = Session()
         for a in [
             A(id=i,
-                bs=[B(id=(i * 50) + j) for j in xrange(1, 50)],
+                bs=[B(id=(i * 5) + j) for j in xrange(1, 5)],
                 c=C(id=i),
-                ds=[D(id=(i * 50) + j) for j in xrange(1, 50)]
+                ds=[D(id=(i * 5) + j) for j in xrange(1, 5)]
             )
-            for i in xrange(1, 50)
+            for i in xrange(1, 5)
         ]:
             s.merge(a)
 

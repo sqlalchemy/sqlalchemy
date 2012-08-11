@@ -331,44 +331,35 @@ class ZooMarkTest(fixtures.TestBase):
         session = sessionmaker(engine)()
         engine.connect()
 
-    @profiling.function_call_count(5600, {"3.2":5928})
+    @profiling.function_call_count()
     def test_profile_1_create_tables(self):
         self.test_baseline_1_create_tables()
 
-    @profiling.function_call_count(5786, {'2.7+cextension':5683,
-                                            '2.6+cextension':5992})
+    @profiling.function_call_count()
     def test_profile_1a_populate(self):
         self.test_baseline_1a_populate()
 
-    @profiling.function_call_count(413, {'3.2':398})
+    @profiling.function_call_count()
     def test_profile_2_insert(self):
         self.test_baseline_2_insert()
 
     # this number...
 
-    @profiling.function_call_count(6783, {
-        '2.6': 6058,
-        '2.7': 5922,
-        '2.7+cextension': 5714,
-        '2.6+cextension': 5714,
-        '3.2':5787,
-        })
+    @profiling.function_call_count()
     def test_profile_3_properties(self):
         self.test_baseline_3_properties()
 
     # and this number go down slightly when using the C extensions
 
-    @profiling.function_call_count(17698, {'2.7+cextension':17698, '2.6': 18943, '2.7':19110, '3.2':19264})
+    @profiling.function_call_count()
     def test_profile_4_expressions(self):
         self.test_baseline_4_expressions()
 
-    @profiling.function_call_count(1172, {'2.6+cextension': 1090,
-                                   '2.7+cextension': 1086},
-                                   variance=0.1)
+    @profiling.function_call_count()
     def test_profile_5_aggregates(self):
         self.test_baseline_5_aggregates()
 
-    @profiling.function_call_count(2545)
+    @profiling.function_call_count()
     def test_profile_6_editing(self):
         self.test_baseline_6_editing()
 

@@ -32,10 +32,7 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
     # probably
     # due to the event mechanics being established
     # or not already...
-    @profiling.function_call_count(72, {'2.4': 68, '2.7': 75,
-                                            '2.7+cextension': 75,
-                                            '3': 62},
-                                            variance=.15)
+    @profiling.function_call_count()
     def test_first_connect(self):
         conn = pool.connect()
 
@@ -43,10 +40,7 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
         conn = pool.connect()
         conn.close()
 
-        @profiling.function_call_count(32, {'2.4': 21, '2.7':29,
-                                            '3.2':25,
-                                            '2.7+cextension':29},
-                                            variance=.10)
+        @profiling.function_call_count()
         def go():
             conn2 = pool.connect()
             return conn2
@@ -55,7 +49,7 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
     def test_second_samethread_connect(self):
         conn = pool.connect()
 
-        @profiling.function_call_count(6, {'2.4': 4, '3':7})
+        @profiling.function_call_count()
         def go():
             return pool.connect()
         c2 = go()

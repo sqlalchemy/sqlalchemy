@@ -301,6 +301,7 @@ def cextensions(fn):
         skip_if(lambda: not _has_cextensions(), "C extensions not installed")
     )
 
+
 def dbapi_lastrowid(fn):
     if util.pypy:
         return _chain_decorators_on(

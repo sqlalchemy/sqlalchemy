@@ -19,6 +19,10 @@ from test.bootstrap.config import (
     _set_table_options, base_config, db, db_label, db_url, file_config, post_configure,
     pre_configure)
 
+testing = None
+engines = None
+util = None
+
 log = logging.getLogger('nose.plugins.sqlalchemy')
 
 class NoseSQLAlchemy(Plugin):
@@ -78,7 +82,8 @@ class NoseSQLAlchemy(Plugin):
                  "a db-default/InnoDB combo.")
         opt("--table-option", action="append", dest="tableopts", default=[],
             help="Add a dialect-specific table option, key=value")
-
+        opt("--write-profiles", action="store_true", dest="write_profiles", default=False,
+                help="Write/update profiling data.")
         global file_config
         file_config = ConfigParser.ConfigParser()
         file_config.readfp(StringIO.StringIO(base_config))
@@ -178,6 +183,7 @@ class NoseSQLAlchemy(Plugin):
 
     def beforeTest(self, test):
         testing.resetwarnings()
+        testing.current_test = test.id()
 
     def afterTest(self, test):
         engines.testing_reaper._after_test_ctx()
