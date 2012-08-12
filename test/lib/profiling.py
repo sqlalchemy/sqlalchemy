@@ -99,7 +99,7 @@ class ProfileStatsFile(object):
         dirname, fname = os.path.split(__file__)
         self.short_fname = "profiles.txt"
         self.fname = os.path.join(dirname, self.short_fname)
-        self.data = collections.defaultdict(lambda: collections.defaultdict(dict))
+        self.data = util.defaultdict(lambda: util.defaultdict(dict))
         self._read()
         if self.write:
             # rewrite for the case where features changed,
