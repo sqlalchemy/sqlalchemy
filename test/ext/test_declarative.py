@@ -1295,7 +1295,7 @@ class DeclarativeTest(DeclarativeTestBase):
     @testing.emits_warning(
         "The classname 'Test' is already in the registry "
         "of this declarative base, mapped to "
-        "<class 'test.ext.test_declarative.Test'>"
+        "<class 'test.ext.test_declarative..*Test'>"
         )
     def test_duplicate_classes_in_base(self):
 
