@@ -1236,23 +1236,6 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             create_session().query(User.id).filter_by(**{}).order_by(User.id).all()
         )
 
-    def test_filter_conjunctions(self):
-        User = self.classes.User
-        s = create_session()
-        self.assert_compile(
-            s.query(User).filter(User.name=="ed", User.id>5),
-            "SELECT users.id AS users_id, users.name "
-            "AS users_name FROM users WHERE users.name = "
-            ":name_1 AND users.id > :id_1"
-        )
-
-        self.assert_compile(
-            s.query(User).filter_by(name='ed', id=5),
-            "SELECT users.id AS users_id, users.name "
-            "AS users_name FROM users WHERE users.name "
-            "= :name_1 AND users.id = :id_1"
-        )
-
     def test_text_coerce(self):
         User = self.classes.User
         s = create_session()

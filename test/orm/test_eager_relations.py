@@ -798,10 +798,10 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         mapper(User, users, properties=odict(
             orders=relationship(Order, backref='user')
         ))
-        mapper(Order, orders, properties=odict(
-            items=relationship(Item, secondary=order_items, backref='orders'),
-            address=relationship(Address)
-        ))
+        mapper(Order, orders, properties=odict([
+            ('items', relationship(Item, secondary=order_items, backref='orders')),
+            ('address', relationship(Address))
+            ]))
         mapper(Address, addresses)
         mapper(Item, items)
 

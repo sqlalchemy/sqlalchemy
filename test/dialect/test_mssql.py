@@ -1125,8 +1125,9 @@ class ParseConnectTest(fixtures.TestBase, AssertsCompiledSQL):
             url.make_url('mssql://username:password@mydsn/?LANGUAGE=us_'
                          'english&foo=bar')
         connection = dialect.create_connect_args(u)
-        eq_([['dsn=mydsn;UID=username;PWD=password;LANGUAGE=us_english;'
-            'foo=bar'], {}], connection)
+        dsn_string = connection[0][0]
+        assert ";LANGUAGE=us_english" in dsn_string
+        assert ";foo=bar" in dsn_string
 
     def test_pyodbc_connect(self):
         u = url.make_url('mssql://username:password@hostspec/database')
