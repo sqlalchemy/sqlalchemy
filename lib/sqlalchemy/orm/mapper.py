@@ -1570,7 +1570,7 @@ class Mapper(_InspectionAttr):
     def _filter_properties(self, type_):
         if _new_mappers:
             configure_mappers()
-        return util.ImmutableProperties(dict(
+        return util.ImmutableProperties(util.OrderedDict(
             (k, v) for k, v in self._props.iteritems()
             if isinstance(v, type_)
         ))
