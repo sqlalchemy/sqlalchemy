@@ -912,9 +912,9 @@ class DeclarativeTest(DeclarativeTestBase):
             sa.exc.SAWarning,
             r"Regular \(i.e. not __special__\) attribute 'MyBase.somecol' "
             "uses @declared_attr, but owning class "
-            "<class 'test.ext.declarative.test_basic.MyBase'> is "
+            "<class 'test.ext.declarative..*test_basic..*MyBase'> is "
             "mapped - not applying to subclass <class "
-            "'test.ext.declarative.test_basic.MyClass'>.",
+            "'test.ext.declarative..*test_basic..*MyClass'>.",
             go
         )
 

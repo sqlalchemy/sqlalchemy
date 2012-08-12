@@ -1198,7 +1198,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         assert_raises_message(
             TypeError,
             "Could not create a copy of this <class "
-            "'test.sql.test_metadata.MyColumn'> "
+            "'test.sql.test_metadata..*MyColumn'> "
             "object.  Ensure the class includes a _constructor()",
             getattr, select([t1.select().alias()]), 'c'
         )

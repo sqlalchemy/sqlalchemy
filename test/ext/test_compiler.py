@@ -117,7 +117,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert_raises_message(
             exc.CompileError,
-            "<class 'test.ext.test_compiler.MyThingy'> "
+            "<class 'test.ext.test_compiler..*MyThingy'> "
             "construct has no default compilation handler.",
             str, MyThingy('x')
         )
