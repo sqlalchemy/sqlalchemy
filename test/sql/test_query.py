@@ -1012,14 +1012,6 @@ class QueryTest(fixtures.TestBase):
         r = testing.db.execute('select user_name from query_users').first()
         eq_(len(r), 1)
 
-    @testing.uses_deprecated(r'.*which subclass Executable')
-    def test_cant_execute_join(self):
-        try:
-            users.join(addresses).execute()
-        except exc.StatementError, e:
-            assert str(e).startswith('Not an executable clause ')
-
-
 
     def test_column_order_with_simple_query(self):
         # should return values in column definition order

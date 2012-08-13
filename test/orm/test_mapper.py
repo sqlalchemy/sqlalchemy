@@ -1269,7 +1269,8 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             def __getitem__(self, key):
                 return 'value'
 
-        class UCComparator(sa.orm.PropComparator):
+        from sqlalchemy.orm.properties import ColumnProperty
+        class UCComparator(ColumnProperty.Comparator):
             __hash__ = None
 
             def method1(self):
@@ -1314,7 +1315,8 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
             assert_raises_message(
                 AttributeError,
-                "Neither 'extendedproperty' object nor 'UCComparator' object has an attribute 'nonexistent'",
+                "Neither 'extendedproperty' object nor 'UCComparator' "
+                "object has an attribute 'nonexistent'",
                 getattr, User.uc_name, 'nonexistent')
 
             # test compile

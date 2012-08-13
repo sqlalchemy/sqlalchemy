@@ -168,7 +168,14 @@ class ColumnProperty(StrategizedProperty):
             else:
                 return self.prop.columns[0]._annotate({
                                                 "parententity": self.mapper,
-                                                "parentmapper":self.mapper})
+                                                "parentmapper": self.mapper})
+
+        def __getattr__(self, key):
+            """proxy attribute access down to the mapped column.
+
+            this allows user-defined comparison methods to be accessed.
+            """
+            return getattr(self.__clause_element__(), key)
 
         def operate(self, op, *other, **kwargs):
             return op(self.__clause_element__(), *other, **kwargs)
@@ -254,7 +261,7 @@ class RelationshipProperty(StrategizedProperty):
 
         if strategy_class:
             self.strategy_class = strategy_class
-        elif self.lazy== 'dynamic':
+        elif self.lazy == 'dynamic':
             from sqlalchemy.orm import dynamic
             self.strategy_class = dynamic.DynaLoader
         else:

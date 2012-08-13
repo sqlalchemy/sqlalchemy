@@ -237,9 +237,6 @@ class PropComparator(operators.ColumnOperators):
 
         return self.__class__(self.prop, self.mapper, adapter)
 
-    def __getattr__(self, key):
-        return getattr(self.__clause_element__(), key)
-
     @staticmethod
     def any_op(a, b, **kwargs):
         return a.any(b, **kwargs)

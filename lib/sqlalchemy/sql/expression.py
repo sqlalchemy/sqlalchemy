@@ -1988,55 +1988,58 @@ class _DefaultColumnComparator(ColumnOperators):
         return self.__compare(expr, op,
                               ClauseList(*args).self_group(against=op),
                               negate=negate_op)
-    def _neg_impl(self):
+    def _neg_impl(self, expr, op, **kw):
         """See :meth:`.ColumnOperators.__neg__`."""
-        return UnaryExpression(self.expr, operator=operators.neg)
+        return UnaryExpression(expr, operator=operators.neg)
 
-    def _startswith_impl(self, other, escape=None):
+    def _startswith_impl(self, expr, op, other, escape=None):
         """See :meth:`.ColumnOperators.startswith`."""
         # use __radd__ to force string concat behavior
         return self.__compare(
+            expr,
             operators.like_op,
             literal_column("'%'", type_=sqltypes.String).__radd__(
-                                self._check_literal(operators.like_op, other)
+                                self._check_literal(expr, operators.like_op, other)
                             ),
             escape=escape)
 
-    def _endswith_impl(self, other, escape=None):
+    def _endswith_impl(self, expr, op, other, escape=None):
         """See :meth:`.ColumnOperators.endswith`."""
         return self.__compare(
+            expr,
             operators.like_op,
             literal_column("'%'", type_=sqltypes.String) +
-                self._check_literal(operators.like_op, other),
+                self._check_literal(expr, operators.like_op, other),
             escape=escape)
 
-    def _contains_impl(self, other, escape=None):
+    def _contains_impl(self, expr, op, other, escape=None):
         """See :meth:`.ColumnOperators.contains`."""
         return self.__compare(
+            expr,
             operators.like_op,
             literal_column("'%'", type_=sqltypes.String) +
-                self._check_literal(operators.like_op, other) +
+                self._check_literal(expr, operators.like_op, other) +
                 literal_column("'%'", type_=sqltypes.String),
             escape=escape)
 
-    def _match_impl(self, other):
+    def _match_impl(self, expr, op, other):
         """See :meth:`.ColumnOperators.match`."""
-        return self.__compare(operators.match_op,
-                              self._check_literal(operators.match_op,
+        return self.__compare(expr, operators.match_op,
+                              self._check_literal(expr, operators.match_op,
                               other))
 
-    def _distinct_impl(self):
+    def _distinct_impl(self, expr, op):
         """See :meth:`.ColumnOperators.distinct`."""
-        return UnaryExpression(self, operator=operators.distinct_op,
-                                type_=self.type)
+        return UnaryExpression(expr, operator=operators.distinct_op,
+                                type_=expr.type)
 
-    def _between_impl(self, cleft, cright):
+    def _between_impl(self, expr, op, cleft, cright, **kw):
         """See :meth:`.ColumnOperators.between`."""
         return BinaryExpression(
-                self,
+                expr,
                 ClauseList(
-                    self._check_literal(operators.and_, cleft),
-                    self._check_literal(operators.and_, cright),
+                    self._check_literal(expr, operators.and_, cleft),
+                    self._check_literal(expr, operators.and_, cright),
                     operator=operators.and_,
                     group=False),
                 operators.between_op)
@@ -2068,6 +2071,13 @@ class _DefaultColumnComparator(ColumnOperators):
         "nullslast_op": (__scalar, nullslast),
         "in_op": (_in_impl, operators.notin_op),
         "collate": (_collate_impl,),
+        "match_op": (_match_impl,),
+        "distinct_op": (_distinct_impl,),
+        "between_op": (_between_impl, ),
+        "contains_op": (_contains_impl, ),
+        "startswith_op": (_startswith_impl,),
+        "endswith_op": (_endswith_impl,),
+        "neg": (_neg_impl,),
     }
 
     def operate(self, expr, op, *other, **kwargs):
@@ -2194,7 +2204,7 @@ class ColumnElement(ClauseElement, ColumnOperators):
         if self.comparator:
             return op(other, self.comparator, **kwargs)
         else:
-            return _DEFAULT_COMPARATOR.reverse_operate(self, op, *other, **kwargs)
+            return _DEFAULT_COMPARATOR.reverse_operate(self, op, other, **kwargs)
 
     def _bind_param(self, operator, obj):
         return BindParameter(None, obj,
@@ -3129,13 +3139,6 @@ class ClauseList(ClauseElement):
             self.clauses = [
                 _literal_as_text(clause)
                 for clause in clauses if clause is not None]
-
-    @util.memoized_property
-    def type(self):
-        if self.clauses:
-            return self.clauses[0].type
-        else:
-            return sqltypes.NULLTYPE
 
     def __iter__(self):
         return iter(self.clauses)
@@ -4288,8 +4291,7 @@ class ColumnClause(Immutable, ColumnElement):
                     _as_truncated(name if name else self.name),
                     selectable=selectable,
                     type_=self.type,
-                    is_literal=is_literal,
-                    comparator_factory=self.comparator_factory
+                    is_literal=is_literal
                 )
         c.proxies = [self]
         if selectable._is_clone_of is not None:

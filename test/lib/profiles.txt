@@ -1,4 +1,4 @@
-# /Users/classic/dev/sqlalchemy/./test/lib/profiles.txt
+# /Users/classic/dev/sqla_comparators/./test/lib/profiles.txt
 # This file is written out on a per-environment basis.
 # For each test in aaa_profiling, the corresponding function and 
 # environment is located within this file.  If it doesn't exist,
@@ -195,16 +195,13 @@ test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 3.2_
 
 # TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile
 
-test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.5_sqlite_pysqlite_nocextensions 9
-test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.6_sqlite_pysqlite_nocextensions 9
-test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_mysql_mysqldb_cextensions 9
-test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_mysql_mysqldb_nocextensions 9
-test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_postgresql_psycopg2_cextensions 9
-test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_postgresql_psycopg2_nocextensions 9
-test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_sqlite_pysqlite_cextensions 9
-test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_sqlite_pysqlite_nocextensions 9
-test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 3.2_postgresql_psycopg2_nocextensions 10
-test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 3.2_sqlite_pysqlite_nocextensions 10
+test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.6_sqlite_pysqlite_nocextensions 12
+test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_mysql_mysqldb_cextensions 12
+test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_mysql_mysqldb_nocextensions 12
+test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_postgresql_psycopg2_cextensions 12
+test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_postgresql_psycopg2_nocextensions 12
+test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_sqlite_pysqlite_cextensions 12
+test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_sqlite_pysqlite_nocextensions 12
 
 # TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_string
 

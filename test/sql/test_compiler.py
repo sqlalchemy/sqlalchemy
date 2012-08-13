@@ -940,6 +940,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                             table1.c.myid.like('hoho')
         eq_(str(clause), str(util.pickle.loads(util.pickle.dumps(clause))))
 
+        clause = tuple_(1, 2, 3)
+        eq_(str(clause), str(util.pickle.loads(util.pickle.dumps(clause))))
 
     def test_like(self):
         for expr, check, dialect in [
