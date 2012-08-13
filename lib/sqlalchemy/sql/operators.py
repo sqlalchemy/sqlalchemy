@@ -180,6 +180,9 @@ class custom_op(object):
         return isinstance(other, custom_op) and \
             other.opstring == self.opstring
 
+    def __hash__(self):
+        return id(self)
+
     def __call__(self, left, right, **kw):
         return left.operate(self, right, **kw)
 
