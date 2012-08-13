@@ -566,7 +566,7 @@ class OracleCompiler(compiler.SQLCompiler):
                     if not self.dialect.use_binds_for_limits:
                         max_row = sql.literal_column("%d" % max_row)
                     limitselect.append_whereclause(
-                            sql.literal_column("ROWNUM")<=max_row)
+                            sql.literal_column("ROWNUM") <= max_row)
 
                 # If needed, add the ora_rn, and wrap again with offset.
                 if select._offset is None:

@@ -427,14 +427,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         s = select([t]).where(t.c.x==5).order_by(t.c.y).offset(20)
 
-        self.assert_compile(
-            s,
-            "SELECT anon_1.x, anon_1.y FROM (SELECT t.x AS x, t.y "
-            "AS y, ROW_NUMBER() OVER (ORDER BY t.y) AS "
-            "mssql_rn FROM t WHERE t.x = :x_1) AS "
-            "anon_1 WHERE mssql_rn > :mssql_rn_1",
-            checkparams={u'mssql_rn_1': 20, u'x_1': 5}
-        )
+        # test that the select is not altered with subsequent compile
+        # calls
+        for i in xrange(2):
+            self.assert_compile(
+                s,
+                "SELECT anon_1.x, anon_1.y FROM (SELECT t.x AS x, t.y "
+                "AS y, ROW_NUMBER() OVER (ORDER BY t.y) AS "
+                "mssql_rn FROM t WHERE t.x = :x_1) AS "
+                "anon_1 WHERE mssql_rn > :mssql_rn_1",
+                checkparams={u'mssql_rn_1': 20, u'x_1': 5}
+            )
 
     def test_limit_offset_using_window(self):
         t = table('t', column('x', Integer), column('y', Integer))

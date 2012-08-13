@@ -809,7 +809,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
         so tries to wrap it in a subquery with ``row_number()`` criterion.
 
         """
-        if not getattr(select, '_mssql_visit', None) and select._offset:
+        if select._offset and not getattr(select, '_mssql_visit', None):
             # to use ROW_NUMBER(), an ORDER BY is required.
             orderby = self.process(select._order_by_clause)
             if not orderby:
@@ -818,6 +818,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
             _offset = select._offset
             _limit = select._limit
+            select = select._generate()
             select._mssql_visit = True
             select = select.column(
                 sql.literal_column("ROW_NUMBER() OVER (ORDER BY %s)" \
@@ -826,10 +827,10 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
             mssql_rn = sql.column('mssql_rn')
             limitselect = sql.select([c for c in select.c if
-                                        c.key!='mssql_rn'])
-            limitselect.append_whereclause(mssql_rn> _offset)
+                                        c.key != 'mssql_rn'])
+            limitselect.append_whereclause(mssql_rn > _offset)
             if _limit is not None:
-                limitselect.append_whereclause(mssql_rn<=(_limit + _offset))
+                limitselect.append_whereclause(mssql_rn <= (_limit + _offset))
             return self.process(limitselect, iswrapper=True, **kwargs)
         else:
             return compiler.SQLCompiler.visit_select(self, select, **kwargs)
