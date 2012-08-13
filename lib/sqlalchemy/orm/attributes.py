@@ -1022,6 +1022,9 @@ def backref_listeners(attribute, key, uselist):
         return child
 
     def emit_backref_from_collection_append_event(state, child, initiator):
+        if child is None:
+            return
+
         child_state, child_dict = instance_state(child), \
                                     instance_dict(child)
         child_impl = child_state.manager[key].impl
@@ -1207,7 +1210,6 @@ class History(History):
     def from_collection(cls, attribute, state, current):
         original = state.committed_state.get(attribute.key, _NO_HISTORY)
         current = getattr(current, '_sa_adapter')
-
         if original is NO_VALUE:
             return cls(list(current), (), ())
         elif original is _NO_HISTORY:

@@ -123,6 +123,16 @@ underneath "0.7.xx".
     Both features should be avoided, however.
     [ticket:2372]
 
+  - [feature] Adding/removing None from a mapped collection
+    now generates attribute events.  Previously, a None
+    append would be ignored in some cases.  Related
+    to [ticket:2229].
+
+  - [feature] The presence of None in a mapped collection
+    now raises an error during flush.   Previously,
+    None values in collections would be silently ignored.
+    [ticket:2229]
+
   - [bug] Improvements to joined/subquery eager
     loading dealing with chains of subclass entities
     sharing a common base, with no specific "join depth"

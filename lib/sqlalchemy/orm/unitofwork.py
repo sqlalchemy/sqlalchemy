@@ -29,6 +29,9 @@ def track_cascade_events(descriptor, prop):
         # process "save_update" cascade rules for when
         # an instance is appended to the list of another instance
 
+        if item is None:
+            return
+
         sess = sessionlib._state_session(state)
         if sess:
             prop = state.manager.mapper._props[key]
@@ -40,6 +43,9 @@ def track_cascade_events(descriptor, prop):
         return item
 
     def remove(state, item, initiator):
+        if item is None:
+            return
+
         sess = sessionlib._state_session(state)
         if sess:
             prop = state.manager.mapper._props[key]

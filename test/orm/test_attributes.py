@@ -2308,6 +2308,46 @@ class ListenerTest(fixtures.ORMTest):
         f1.barset.add(b1)
         assert f1.barset.pop().data == 'some bar appended'
 
+    def test_none_on_collection_event(self):
+        """test that append/remove of None in collections emits events.
+
+        This is new behavior as of 0.8.
+
+        """
+        class Foo(object):
+            pass
+        class Bar(object):
+            pass
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
+        attributes.register_attribute(Foo, 'barlist', uselist=True,
+                useobject=True)
+        canary = []
+        def append(state, child, initiator):
+            canary.append((state, child))
+        def remove(state, child, initiator):
+            canary.append((state, child))
+        event.listen(Foo.barlist, 'append', append)
+        event.listen(Foo.barlist, 'remove', remove)
+
+        b1, b2 = Bar(), Bar()
+        f1 = Foo()
+        f1.barlist.append(None)
+        eq_(canary, [(f1, None)])
+
+        canary[:] = []
+        f1 = Foo()
+        f1.barlist = [None, b2]
+        eq_(canary, [(f1, None), (f1, b2)])
+
+        canary[:] = []
+        f1 = Foo()
+        f1.barlist = [b1, None, b2]
+        eq_(canary, [(f1, b1), (f1, None), (f1, b2)])
+
+        f1.barlist.remove(None)
+        eq_(canary, [(f1, b1), (f1, None), (f1, b2), (f1, None)])
+
     def test_propagate(self):
         classes = [None, None, None]
         canary = []

@@ -716,7 +716,7 @@ class CollectionAdapter(object):
         operation.
 
         """
-        if initiator is not False and item is not None:
+        if initiator is not False:
             if self.invalidated:
                 self._warn_invalidated()
             return self.attr.fire_append_event(
@@ -734,7 +734,7 @@ class CollectionAdapter(object):
         an initiator value from a chained operation.
 
         """
-        if initiator is not False and item is not None:
+        if initiator is not False:
             if self.invalidated:
                 self._warn_invalidated()
             self.attr.fire_remove_event(
@@ -1032,7 +1032,7 @@ def _instrument_membership_mutator(method, before, argument, after):
 def __set(collection, item, _sa_initiator=None):
     """Run set events, may eventually be inlined into decorators."""
 
-    if _sa_initiator is not False and item is not None:
+    if _sa_initiator is not False:
         executor = getattr(collection, '_sa_adapter', None)
         if executor:
             item = getattr(executor, 'fire_append_event')(item, _sa_initiator)
@@ -1040,7 +1040,7 @@ def __set(collection, item, _sa_initiator=None):
 
 def __del(collection, item, _sa_initiator=None):
     """Run del events, may eventually be inlined into decorators."""
-    if _sa_initiator is not False and item is not None:
+    if _sa_initiator is not False:
         executor = getattr(collection, '_sa_adapter', None)
         if executor:
             getattr(executor, 'fire_remove_event')(item, _sa_initiator)

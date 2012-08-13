@@ -247,7 +247,11 @@ class DependencyProcessor(object):
                 self.mapper in uowcommit.mappers
 
     def _verify_canload(self, state):
-        if state is not None and \
+        if self.prop.uselist and state is None:
+            raise exc.FlushError(
+                    "Can't flush None value found in "
+                    "collection %s" % (self.prop, ))
+        elif state is not None and \
             not self.mapper._canload(state,
                             allow_subtypes=not self.enable_typechecks):
             if self.mapper._canload(state, allow_subtypes=True):
@@ -559,10 +563,10 @@ class OneToManyDP(DependencyProcessor):
                             pks_changed):
         source = state
         dest = child
+        self._verify_canload(child)
         if dest is None or \
                 (not self.post_update and uowcommit.is_deleted(dest)):
             return
-        self._verify_canload(child)
         if clearkeys:
             sync.clear(dest, self.mapper, self.prop.synchronize_pairs)
         else:
@@ -1032,8 +1036,7 @@ class ManyToManyDP(DependencyProcessor):
                                                 passive)
             if history:
                 for child in history.added:
-                    if child is None or \
-                            (processed is not None and
+                    if (processed is not None and
                                 (state, child) in processed):
                         continue
                     associationrow = {}
@@ -1044,8 +1047,7 @@ class ManyToManyDP(DependencyProcessor):
                         continue
                     secondary_insert.append(associationrow)
                 for child in history.deleted:
-                    if child is None or \
-                            (processed is not None and
+                    if (processed is not None and
                             (state, child) in processed):
                         continue
                     associationrow = {}
@@ -1130,6 +1132,8 @@ class ManyToManyDP(DependencyProcessor):
         if associationrow is None:
             return
 
+        self._verify_canload(child)
+
         if child is not None and not uowcommit.session._contains_state(child):
             if not child.deleted:
                 util.warn(
@@ -1137,8 +1141,6 @@ class ManyToManyDP(DependencyProcessor):
                     "operation along '%s' won't proceed" %
                     (mapperutil.state_class_str(child), operation, self.prop))
             return False
-
-        self._verify_canload(child)
 
         sync.populate_dict(state, self.parent, associationrow,
                                         self.prop.synchronize_pairs)
