@@ -1918,7 +1918,7 @@ class _DefaultColumnComparator(ColumnOperators):
 
     def __operate(self, expr, op, obj, reverse=False):
         obj = self._check_literal(expr, op, obj)
-        comparator_factory = None
+
         if reverse:
             left, right = obj, expr
         else:
@@ -1927,25 +1927,13 @@ class _DefaultColumnComparator(ColumnOperators):
         if left.type is None:
             op, result_type = sqltypes.NULLTYPE._adapt_expression(op,
                     right.type)
-            result_type = sqltypes.to_instance(result_type)
-            if right.type._compare_type_affinity(result_type):
-                comparator_factory = right.comparator_factory
         elif right.type is None:
             op, result_type = left.type._adapt_expression(op,
                     sqltypes.NULLTYPE)
-            result_type = sqltypes.to_instance(result_type)
-            if left.type._compare_type_affinity(result_type):
-                comparator_factory = left.comparator_factory
         else:
             op, result_type = left.type._adapt_expression(op, right.type)
-            result_type = sqltypes.to_instance(result_type)
-            if left.type._compare_type_affinity(result_type):
-                comparator_factory = left.comparator_factory
-            elif right.type._compare_type_affinity(result_type):
-                comparator_factory = right.comparator_factory
 
-        return BinaryExpression(left, right, op, type_=result_type,
-                    comparator_factory=comparator_factory)
+        return BinaryExpression(left, right, op, type_=result_type)
 
     def __scalar(self, expr, op, fn, **kw):
         return fn(expr)
@@ -2159,23 +2147,20 @@ class ColumnElement(ClauseElement, ColumnOperators):
     __visit_name__ = 'column'
     primary_key = False
     foreign_keys = []
+    type = None
     quote = None
     _label = None
     _key_label = None
     _alt_names = ()
 
-    comparator = None
-
-    class Comparator(operators.ColumnOperators):
-        def __init__(self, expr):
-            self.expr = expr
-
-        def operate(self, op, *other, **kwargs):
-            return _DEFAULT_COMPARATOR.operate(self.expr, op, *other, **kwargs)
-
-        def reverse_operate(self, op, other, **kwargs):
-            return _DEFAULT_COMPARATOR.reverse_operate(self.expr, op, other,
-                                                **kwargs)
+    @util.memoized_property
+    def comparator(self):
+        if self.type is None:
+            return None
+        elif self.type.comparator_factory is not None:
+            return self.type.comparator_factory(self)
+        else:
+            return None
 
     def __getattr__(self, key):
         if self.comparator is None:
@@ -3558,7 +3543,7 @@ class BinaryExpression(ColumnElement):
     __visit_name__ = 'binary'
 
     def __init__(self, left, right, operator, type_=None,
-                    negate=None, modifiers=None, comparator_factory=None):
+                    negate=None, modifiers=None):
         # allow compatibility with libraries that
         # refer to BinaryExpression directly and pass strings
         if isinstance(operator, basestring):
@@ -3568,10 +3553,6 @@ class BinaryExpression(ColumnElement):
         self.operator = operator
         self.type = sqltypes.to_instance(type_)
         self.negate = negate
-
-        self.comparator_factory = comparator_factory
-        if comparator_factory is not None:
-            self.comparator = comparator_factory(self)
 
         if modifiers is None:
             self.modifiers = {}
@@ -4209,11 +4190,6 @@ class ColumnClause(Immutable, ColumnElement):
       :func:`literal_column()` function is usually used to create such a
       :class:`.ColumnClause`.
 
-    :param comparator_factory: a :class:`.operators.ColumnOperators` subclass
-     which will produce custom operator behavior.
-
-     .. versionadded: 0.8 support for pluggable operators in
-        core column expressions.
 
     """
     __visit_name__ = 'column'
@@ -4222,15 +4198,11 @@ class ColumnClause(Immutable, ColumnElement):
 
     _memoized_property = util.group_expirable_memoized_property()
 
-    def __init__(self, text, selectable=None, type_=None, is_literal=False,
-                            comparator_factory=None):
+    def __init__(self, text, selectable=None, type_=None, is_literal=False):
         self.key = self.name = text
         self.table = selectable
         self.type = sqltypes.to_instance(type_)
         self.is_literal = is_literal
-        self.comparator_factory = comparator_factory
-        if comparator_factory:
-            self.comparator = comparator_factory(self)
 
     def _compare_name_for_result(self, other):
         if self.table is not None and hasattr(other, 'proxy_set'):

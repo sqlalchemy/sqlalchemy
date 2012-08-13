@@ -25,6 +25,7 @@ import codecs
 
 from . import exc, schema, util, processors, events, event
 from .sql import operators
+from .sql.expression import _DEFAULT_COMPARATOR
 from .util import pickle
 from .util.compat import decimal
 from .sql.visitors import Visitable
@@ -40,6 +41,23 @@ class AbstractType(Visitable):
 
 class TypeEngine(AbstractType):
     """Base for built-in types."""
+
+    class Comparator(operators.ColumnOperators):
+        def __init__(self, expr):
+            self.expr = expr
+
+        def operate(self, op, *other, **kwargs):
+            return _DEFAULT_COMPARATOR.operate(self.expr, op, *other, **kwargs)
+
+        def reverse_operate(self, op, other, **kwargs):
+            return _DEFAULT_COMPARATOR.reverse_operate(self.expr, op, other,
+                                                **kwargs)
+
+    comparator_factory = None
+    """A :class:`.TypeEngine.Comparator` class which will apply
+    to operations performed by owning :class:`.ColumnElement` objects.
+
+    """
 
     def copy_value(self, value):
         return value
@@ -451,6 +469,9 @@ class TypeDecorator(TypeEngine):
                                  "type being decorated")
         self.impl = to_instance(self.__class__.impl, *args, **kwargs)
 
+    @property
+    def comparator_factory(self):
+        return self.impl.comparator_factory
 
     def _gen_dialect_impl(self, dialect):
         """
@@ -700,11 +721,9 @@ class TypeDecorator(TypeEngine):
         return self.impl.compare_values(x, y)
 
     def _adapt_expression(self, op, othertype):
-        """
-        #todo
-        """
-        op, typ =self.impl._adapt_expression(op, othertype)
-        if typ is self.impl:
+        op, typ = self.impl._adapt_expression(op, othertype)
+        typ = to_instance(typ)
+        if typ._compare_type_affinity(self.impl):
             return op, self
         else:
             return op, typ
@@ -844,7 +863,7 @@ class _DateAffinity(object):
         othertype = othertype._type_affinity
         return op, \
                 self._expression_adaptations.get(op, self._blank_dict).\
-                get(othertype, self)
+                get(othertype, NULLTYPE)
 
 class String(Concatenable, TypeEngine):
     """The base for all string and character types.
@@ -1136,26 +1155,26 @@ class Integer(_DateAffinity, TypeEngine):
         return {
             operators.add:{
                 Date:Date,
-                Integer:Integer,
+                Integer:self.__class__,
                 Numeric:Numeric,
             },
             operators.mul:{
                 Interval:Interval,
-                Integer:Integer,
+                Integer:self.__class__,
                 Numeric:Numeric,
             },
             # Py2K
             operators.div:{
-                Integer:Integer,
+                Integer:self.__class__,
                 Numeric:Numeric,
             },
             # end Py2K
             operators.truediv:{
-                Integer:Integer,
+                Integer:self.__class__,
                 Numeric:Numeric,
             },
             operators.sub:{
-                Integer:Integer,
+                Integer:self.__class__,
                 Numeric:Numeric,
             },
         }
@@ -1311,26 +1330,26 @@ class Numeric(_DateAffinity, TypeEngine):
         return {
             operators.mul:{
                 Interval:Interval,
-                Numeric:Numeric,
-                Integer:Numeric,
+                Numeric:self.__class__,
+                Integer:self.__class__,
             },
             # Py2K
             operators.div:{
-                Numeric:Numeric,
-                Integer:Numeric,
+                Numeric:self.__class__,
+                Integer:self.__class__,
             },
             # end Py2K
             operators.truediv:{
-                Numeric:Numeric,
-                Integer:Numeric,
+                Numeric:self.__class__,
+                Integer:self.__class__,
             },
             operators.add:{
-                Numeric:Numeric,
-                Integer:Numeric,
+                Numeric:self.__class__,
+                Integer:self.__class__,
             },
             operators.sub:{
-                Numeric:Numeric,
-                Integer:Numeric,
+                Numeric:self.__class__,
+                Integer:self.__class__,
             }
         }
 
@@ -1380,21 +1399,21 @@ class Float(Numeric):
         return {
             operators.mul:{
                 Interval:Interval,
-                Numeric:Float,
+                Numeric:self.__class__,
             },
             # Py2K
             operators.div:{
-                Numeric:Float,
+                Numeric:self.__class__,
             },
             # end Py2K
             operators.truediv:{
-                Numeric:Float,
+                Numeric:self.__class__,
             },
             operators.add:{
-                Numeric:Float,
+                Numeric:self.__class__,
             },
             operators.sub:{
-                Numeric:Float,
+                Numeric:self.__class__,
             }
         }
 
@@ -1434,10 +1453,10 @@ class DateTime(_DateAffinity, TypeEngine):
     def _expression_adaptations(self):
         return {
             operators.add:{
-                Interval:DateTime,
+                Interval:self.__class__,
             },
             operators.sub:{
-                Interval:DateTime,
+                Interval:self.__class__,
                 DateTime:Interval,
             },
         }
@@ -1459,13 +1478,13 @@ class Date(_DateAffinity,TypeEngine):
     def _expression_adaptations(self):
         return {
             operators.add:{
-                Integer:Date,
+                Integer:self.__class__,
                 Interval:DateTime,
                 Time:DateTime,
             },
             operators.sub:{
                 # date - integer = date
-                Integer:Date,
+                Integer:self.__class__,
 
                 # date - date = integer.
                 Date:Integer,
@@ -1500,11 +1519,11 @@ class Time(_DateAffinity,TypeEngine):
         return {
             operators.add:{
                 Date:DateTime,
-                Interval:Time
+                Interval:self.__class__
             },
             operators.sub:{
                 Time:Interval,
-                Interval:Time,
+                Interval:self.__class__,
             },
         }
 
@@ -2050,22 +2069,22 @@ class Interval(_DateAffinity, TypeDecorator):
         return {
             operators.add:{
                 Date:DateTime,
-                Interval:Interval,
+                Interval:self.__class__,
                 DateTime:DateTime,
                 Time:Time,
             },
             operators.sub:{
-                Interval:Interval
+                Interval:self.__class__
             },
             operators.mul:{
-                Numeric:Interval
+                Numeric:self.__class__
             },
             operators.truediv: {
-                Numeric:Interval
+                Numeric:self.__class__
             },
             # Py2K
             operators.div: {
-                Numeric:Interval
+                Numeric:self.__class__
             }
             # end Py2K
         }
