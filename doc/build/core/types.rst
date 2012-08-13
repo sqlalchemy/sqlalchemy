@@ -297,7 +297,6 @@ to and from the database is required.
 
 .. autoclass:: TypeDecorator
    :members:
-   :undoc-members:
    :inherited-members:
    :show-inheritance:
 
@@ -500,8 +499,6 @@ is needed, use :class:`.TypeDecorator` instead.
 
 .. autoclass:: UserDefinedType
    :members:
-   :undoc-members:
-   :inherited-members:
    :show-inheritance:
 
 .. _types_api:
@@ -511,19 +508,17 @@ Base Type API
 
 .. autoclass:: AbstractType
    :members:
-   :undoc-members:
-   :inherited-members:
    :show-inheritance:
 
 .. autoclass:: TypeEngine
    :members:
-   :undoc-members:
-   :inherited-members:
    :show-inheritance:
+
+   .. autoclass:: TypeEngine.Comparator
+   .. automethod:: _adapt_expression
 
 .. autoclass:: Concatenable
    :members:
-   :undoc-members:
    :inherited-members:
    :show-inheritance:
 

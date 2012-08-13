@@ -43,6 +43,10 @@ class TypeEngine(AbstractType):
     """Base for built-in types."""
 
     class Comparator(operators.ColumnOperators):
+        """Base class for custom comparison operations defined at the
+        type level.  See :attr:`.TypeEngine.comparator_factory`.
+
+        """
         def __init__(self, expr):
             self.expr = expr
 
@@ -56,6 +60,80 @@ class TypeEngine(AbstractType):
     comparator_factory = None
     """A :class:`.TypeEngine.Comparator` class which will apply
     to operations performed by owning :class:`.ColumnElement` objects.
+
+    The :attr:`.comparator_factory` attribute is a hook consulted by
+    the core expression system when column and SQL expression operations
+    are performed.   When a :class:`.TypeEngine.Comparator` class is
+    associated with this attribute, it allows custom re-definition of
+    all existing operators, as well as definition of new operators.
+    Existing operators include those provided by Python operator overloading
+    such as :meth:`.operators.ColumnOperators.__add__` and
+    :meth:`.operators.ColumnOperators.__eq__`,
+    those provided as standard
+    attributes of :class:`.operators.ColumnOperators` such as
+    :meth:`.operators.ColumnOperators.like`
+    and :meth:`.operators.ColumnOperators.in_`.
+
+    Rudimentary usage of this hook is allowed through simple subclassing
+    of existing types, or alternatively by using :class:`.TypeDecorator`.
+    E.g. to overload the ``+`` operator on :class:`.Integer`::
+
+        from sqlalchemy import Integer
+
+        class MyInt(Integer):
+            class comparator_factory(Integer.Comparator):
+                def __add__(self, other):
+                    return self.op("goofy")(other)
+
+    Usage::
+
+        >>> sometable = Table("sometable", metadata, Column("data", MyInt))
+        >>> print sometable.c.data + 5
+        sometable.data goofy :data_1
+
+    New comparison methods and operations applied to :class:`.TypeEngine.Comparator`
+    are made available on parent SQL constructs using a ``__getattr__()`` scheme::
+
+        from sqlalchemy import Integer, func
+
+        class MyInt(Integer):
+            class comparator_factory(Integer.Comparator):
+                def log(self, other):
+                    return func.log(self, other)
+
+    E.g.::
+
+        >>> print sometable.c.data.log(5)
+        log(:log_1, :log_2)
+
+    The :class:`.TypeEngine` associated with a particular :class:`.ColumnElement`
+    is propagated during expression construction to the containing elements
+    according to simple "adaptation" rules.   An example of an "adaptation"
+    would be adding two integers leads to a "binary" expression that is also
+    of type integer::
+
+        >>> from sqlalchemy.sql import column
+        >>> from sqlalchemy.types import Integer
+        >>> c1 = column('c1', Integer)
+        >>> c2 = column('c2', Integer)
+        >>> c1.type
+        Integer()
+        >>> (c1 + c2).type
+        Integer()
+
+    If the two columns above were compared using a boolean operator,
+    the resulting type would instead be :class:`.Boolean`::
+
+        >>> (c1 == c2).type
+        Boolean()
+
+    The propagation of :class:`.TypeEngine.Comparator` throughout an expression
+    will follow with how the :class:`.TypeEngine` itself is propagated.  To
+    customize the behavior of most operators in this regard, see the
+    :meth:`._adapt_expression` method.
+
+    .. versionadded:: 0.8  The expression system was reworked to support
+      user-defined comparator objects specified at the type level.
 
     """
 
@@ -158,6 +236,26 @@ class TypeEngine(AbstractType):
     def _adapt_expression(self, op, othertype):
         """evaluate the return type of <self> <op> <othertype>,
         and apply any adaptations to the given operator.
+
+        This method determines the type of a resulting binary expression
+        given two source types and an operator.   For example, two
+        :class:`.Column` objects, both of the type :class:`.Integer`, will
+        produce a :class:`.BinaryExpression` that also has the type
+        :class:`.Integer` when compared via the addition (``+``) operator.
+        However, using the addition operator with an :class:`.Integer`
+        and a :class:`.Date` object will produce a :class:`.Date`, assuming
+        "days delta" behavior by the database (in reality, most databases
+        other than Postgresql don't accept this particular operation).
+
+        The method returns a tuple of the form <operator>, <type>.
+        The resulting operator and type will be those applied to the
+        resulting :class:`.BinaryExpression` as the final operator and the
+        right-hand side of the expression.
+
+        Note that only a subset of operators make usage of
+        :meth:`._adapt_expression`,
+        including math operators and user-defined operators, but not
+        boolean comparison or special SQL keywords like MATCH or BETWEEN.
 
         """
         return op, self
