@@ -319,7 +319,7 @@ objects::
     >>> Session = sessionmaker(bind=engine)
 
 In the case where your application does not yet have an
-:class:`~sqlalchemy.engine.base.Engine` when you define your module-level
+:class:`~sqlalchemy.engine.Engine` when you define your module-level
 objects, just set it up like this::
 
     >>> Session = sessionmaker()

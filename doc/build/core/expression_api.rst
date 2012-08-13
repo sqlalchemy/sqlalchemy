@@ -200,12 +200,9 @@ Classes
    :show-inheritance:
 
 .. autoclass:: sqlalchemy.sql.operators.Operators
-   :members:
+   :members: __and__, __or__, __invert__, op, operate, reverse_operate
    :undoc-members:
 
-   .. automethod:: __and__
-   .. automethod:: __or__
-   .. automethod:: __invert__
 
 .. autoclass:: Select
    :members:

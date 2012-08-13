@@ -30,7 +30,7 @@ psycopg2-specific keyword arguments which are accepted by
   ``connection.cursor('some name')``, which has the effect that result rows are
   not immediately pre-fetched and buffered after statement execution, but are
   instead left on the server and only retrieved as needed. SQLAlchemy's
-  :class:`~sqlalchemy.engine.base.ResultProxy` uses special row-buffering
+  :class:`~sqlalchemy.engine.ResultProxy` uses special row-buffering
   behavior when this feature is enabled, such that groups of 100 rows at a
   time are fetched over the wire to reduce conversational overhead.
   Note that the ``stream_results=True`` execution option is a more targeted

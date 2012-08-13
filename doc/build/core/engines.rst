@@ -13,7 +13,7 @@ The general structure can be illustrated as follows:
 
 .. image:: sqla_engine_arch.png
 
-Where above, an :class:`~sqlalchemy.engine.base.Engine` references both a
+Where above, an :class:`~sqlalchemy.engine.Engine` references both a
 :class:`~sqlalchemy.engine.base.Dialect` and a :class:`~sqlalchemy.pool.Pool`,
 which together interpret the DBAPI's module functions as well as the behavior
 of the database.
@@ -352,7 +352,7 @@ application that has logging enabled otherwise.
 
 The ``echo`` flags present as keyword arguments to
 :func:`~sqlalchemy.create_engine` and others as well as the ``echo`` property
-on :class:`~sqlalchemy.engine.base.Engine`, when set to ``True``, will first
+on :class:`~sqlalchemy.engine.Engine`, when set to ``True``, will first
 attempt to ensure that logging is enabled. Unfortunately, the ``logging``
 module provides no way of determining if output has already been configured
 (note we are referring to if a logging configuration has been set up, not just
@@ -364,7 +364,7 @@ configured **in addition** to any existing logger configurations. Therefore,
 **when using Python logging, ensure all echo flags are set to False at all
 times**, to avoid getting duplicate log lines.
 
-The logger name of instance such as an :class:`~sqlalchemy.engine.base.Engine`
+The logger name of instance such as an :class:`~sqlalchemy.engine.Engine`
 or :class:`~sqlalchemy.pool.Pool` defaults to using a truncated hex identifier
 string. To set this to a specific name, use the "logging_name" and
 "pool_logging_name" keyword arguments with :func:`sqlalchemy.create_engine`.

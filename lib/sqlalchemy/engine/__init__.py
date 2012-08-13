@@ -228,7 +228,7 @@ def create_engine(*args, **kwargs):
 
     :param execution_options: Dictionary execution options which will
         be applied to all connections.  See
-        :meth:`~sqlalchemy.engine.base.Connection.execution_options`
+        :meth:`~sqlalchemy.engine.Connection.execution_options`
 
     :param implicit_returning=True: When ``True``, a RETURNING-
         compatible construct, if available, will be used to
