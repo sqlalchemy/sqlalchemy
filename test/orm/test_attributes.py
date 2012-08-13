@@ -1206,6 +1206,72 @@ class BackrefTest(fixtures.ORMTest):
         # and this condition changes.
         assert c1 in p1.children
 
+class CyclicBackrefAssertionTest(fixtures.TestBase):
+    """test that infinite recursion due to incorrect backref assignments
+    is blocked.
+
+    """
+    def test_scalar_set_type_assertion(self):
+        A, B, C = self._scalar_fixture()
+        c1 = C()
+        b1 = B()
+        assert_raises_message(
+            ValueError,
+            "Object <B at .*> not associated with attribute of type C.a",
+            setattr, c1, 'a', b1
+        )
+
+    def test_collection_append_type_assertion(self):
+        A, B, C = self._collection_fixture()
+        c1 = C()
+        b1 = B()
+        assert_raises_message(
+            ValueError,
+            "Object <B at .*> not associated with attribute of type C.a",
+            c1.a.append, b1
+        )
+
+    def _scalar_fixture(self):
+        class A(object):
+            pass
+        class B(object):
+            pass
+        class C(object):
+            pass
+        instrumentation.register_class(A)
+        instrumentation.register_class(B)
+        instrumentation.register_class(C)
+        attributes.register_attribute(C, 'a', backref='c', useobject=True)
+        attributes.register_attribute(C, 'b', backref='c', useobject=True)
+
+        attributes.register_attribute(A, 'c', backref='a', useobject=True,
+                        uselist=True)
+        attributes.register_attribute(B, 'c', backref='b', useobject=True,
+                        uselist=True)
+
+        return A, B, C
+
+    def _collection_fixture(self):
+        class A(object):
+            pass
+        class B(object):
+            pass
+        class C(object):
+            pass
+        instrumentation.register_class(A)
+        instrumentation.register_class(B)
+        instrumentation.register_class(C)
+
+        attributes.register_attribute(C, 'a', backref='c', useobject=True,
+                                                uselist=True)
+        attributes.register_attribute(C, 'b', backref='c', useobject=True,
+                                                uselist=True)
+
+        attributes.register_attribute(A, 'c', backref='a', useobject=True)
+        attributes.register_attribute(B, 'c', backref='b', useobject=True)
+
+        return A, B, C
+
 class PendingBackrefTest(fixtures.ORMTest):
     def setup(self):
         global Post, Blog, called, lazy_load

@@ -22,6 +22,13 @@ CHANGES
     is combined with uselist=False.  This is an
     exception raise in 0.8.
 
+  - [bug] Fixed bug whereby user error in related-object
+    assignment could cause recursion overflow if the
+    assignment triggered a backref of the same name
+    as a bi-directional attribute on the incorrect
+    class to the same target.  An informative
+    error is raised now.
+
 - sql
   - [bug] Fixed CTE bug whereby positional
     bound parameters present in the CTEs themselves

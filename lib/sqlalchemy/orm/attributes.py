@@ -973,6 +973,14 @@ def backref_listeners(attribute, key, uselist):
 
     # use easily recognizable names for stack traces
 
+    parent_token = attribute.impl.parent_token
+
+    def _acceptable_key_err(child_state, initiator):
+        raise ValueError(
+            "Object %s not associated with attribute of "
+            "type %s" % (mapperutil.state_str(child_state),
+                    manager_of_class(initiator.class_)[initiator.key]))
+
     def emit_backref_from_scalar_set_event(state, child, oldchild, initiator):
         if oldchild is child:
             return child
@@ -991,35 +999,47 @@ def backref_listeners(attribute, key, uselist):
         if child is not None:
             child_state, child_dict = instance_state(child),\
                                         instance_dict(child)
-            child_state.manager[key].impl.append(
-                                            child_state,
-                                            child_dict,
-                                            state.obj(),
-                                            initiator,
-                                            passive=PASSIVE_NO_FETCH)
+            child_impl = child_state.manager[key].impl
+            if initiator.parent_token is not parent_token and \
+                initiator.parent_token is not child_impl.parent_token:
+                _acceptable_key_err(state, initiator)
+            child_impl.append(
+                                child_state,
+                                child_dict,
+                                state.obj(),
+                                initiator,
+                                passive=PASSIVE_NO_FETCH)
         return child
 
     def emit_backref_from_collection_append_event(state, child, initiator):
         child_state, child_dict = instance_state(child), \
                                     instance_dict(child)
-        child_state.manager[key].impl.append(
-                                            child_state,
-                                            child_dict,
-                                            state.obj(),
-                                            initiator,
-                                            passive=PASSIVE_NO_FETCH)
+        child_impl = child_state.manager[key].impl
+        if initiator.parent_token is not parent_token and \
+            initiator.parent_token is not child_impl.parent_token:
+            _acceptable_key_err(state, initiator)
+        child_impl.append(
+                                child_state,
+                                child_dict,
+                                state.obj(),
+                                initiator,
+                                passive=PASSIVE_NO_FETCH)
         return child
 
     def emit_backref_from_collection_remove_event(state, child, initiator):
         if child is not None:
             child_state, child_dict = instance_state(child),\
                                         instance_dict(child)
-            child_state.manager[key].impl.pop(
-                                            child_state,
-                                            child_dict,
-                                            state.obj(),
-                                            initiator,
-                                            passive=PASSIVE_NO_FETCH)
+            child_impl = child_state.manager[key].impl
+            # can't think of a path that would produce an initiator
+            # mismatch here, as it would require an existing collection
+            # mismatch.
+            child_impl.pop(
+                                child_state,
+                                child_dict,
+                                state.obj(),
+                                initiator,
+                                passive=PASSIVE_NO_FETCH)
 
     if uselist:
         event.listen(attribute, "append",
