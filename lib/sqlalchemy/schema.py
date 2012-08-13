@@ -765,6 +765,12 @@ class Column(SchemaItem, expression.ColumnClause):
               setups, such as the one demonstrated in the ORM documentation
               at :ref:`post_update`.
 
+        :param comparator_factory: a :class:`.operators.ColumnOperators` subclass
+         which will produce custom operator behavior.
+
+         .. versionadded: 0.8 support for pluggable operators in
+            core column expressions.
+
         :param default: A scalar, Python callable, or
             :class:`~sqlalchemy.sql.expression.ClauseElement` representing the
             *default value* for this column, which will be invoked upon insert
@@ -885,7 +891,9 @@ class Column(SchemaItem, expression.ColumnClause):
 
         no_type = type_ is None
 
-        super(Column, self).__init__(name, None, type_)
+        super(Column, self).__init__(name, None, type_,
+                                    comparator_factory=
+                                        kwargs.pop('comparator_factory', None))
         self.key = kwargs.pop('key', name)
         self.primary_key = kwargs.pop('primary_key', False)
         self.nullable = kwargs.pop('nullable', not self.primary_key)
@@ -1074,6 +1082,7 @@ class Column(SchemaItem, expression.ColumnClause):
                 name=self.name,
                 type_=self.type,
                 key = self.key,
+                comparator_factory = self.comparator_factory,
                 primary_key = self.primary_key,
                 nullable = self.nullable,
                 unique = self.unique,
@@ -1112,6 +1121,7 @@ class Column(SchemaItem, expression.ColumnClause):
                 key = key if key else name if name else self.key,
                 primary_key = self.primary_key,
                 nullable = self.nullable,
+                comparator_factory = self.comparator_factory,
                 quote=self.quote, _proxies=[self], *fk)
         except TypeError, e:
             # Py3K

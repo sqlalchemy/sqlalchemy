@@ -176,6 +176,10 @@ class custom_op(object):
         self.opstring = opstring
         self.precedence = precedence
 
+    def __eq__(self, other):
+        return isinstance(other, custom_op) and \
+            other.opstring == self.opstring
+
     def __call__(self, left, right, **kw):
         return left.operate(self, right, **kw)
 

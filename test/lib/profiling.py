@@ -95,7 +95,7 @@ class ProfileStatsFile(object):
     """
     def __init__(self):
         from test.bootstrap.config import options
-        self.write = options.write_profiles
+        self.write = options is not None and options.write_profiles
         dirname, fname = os.path.split(__file__)
         self.short_fname = "profiles.txt"
         self.fname = os.path.join(dirname, self.short_fname)

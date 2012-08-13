@@ -844,7 +844,7 @@ class _DateAffinity(object):
         othertype = othertype._type_affinity
         return op, \
                 self._expression_adaptations.get(op, self._blank_dict).\
-                get(othertype, NULLTYPE)
+                get(othertype, self)
 
 class String(Concatenable, TypeEngine):
     """The base for all string and character types.
