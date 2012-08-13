@@ -3545,6 +3545,10 @@ class BinaryExpression(ColumnElement):
 
     def __init__(self, left, right, operator, type_=None,
                     negate=None, modifiers=None):
+        # allow compatibility with libraries that
+        # refer to BinaryExpression directly and pass strings
+        if isinstance(operator, basestring):
+            operator = operators.custom_op(operator)
         self.left = _literal_as_text(left).self_group(against=operator)
         self.right = _literal_as_text(right).self_group(against=operator)
         self.operator = operator
