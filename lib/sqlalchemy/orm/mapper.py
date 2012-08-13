@@ -1746,7 +1746,7 @@ class Mapper(_InspectionAttr):
         item from the identity map.
 
         row
-          A ``sqlalchemy.engine.base.RowProxy`` instance or a
+          A ``sqlalchemy.engine.RowProxy`` instance or a
           dictionary corresponding result-set ``ColumnElement``
           instances to their values within a row.
 

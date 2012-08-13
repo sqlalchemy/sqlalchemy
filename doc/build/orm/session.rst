@@ -1404,9 +1404,9 @@ SQL expressions and strings can be executed via the
 :class:`~sqlalchemy.orm.session.Session` within its transactional context.
 This is most easily accomplished using the
 :func:`~sqlalchemy.orm.session.Session.execute` method, which returns a
-:class:`~sqlalchemy.engine.base.ResultProxy` in the same manner as an
-:class:`~sqlalchemy.engine.base.Engine` or
-:class:`~sqlalchemy.engine.base.Connection`::
+:class:`~sqlalchemy.engine.ResultProxy` in the same manner as an
+:class:`~sqlalchemy.engine.Engine` or
+:class:`~sqlalchemy.engine.Connection`::
 
     Session = sessionmaker(bind=engine)
     session = Session()
@@ -1417,15 +1417,15 @@ This is most easily accomplished using the
     # execute a SQL expression construct
     result = session.execute(select([mytable]).where(mytable.c.id==7))
 
-The current :class:`~sqlalchemy.engine.base.Connection` held by the
+The current :class:`~sqlalchemy.engine.Connection` held by the
 :class:`~sqlalchemy.orm.session.Session` is accessible using the
 :func:`~sqlalchemy.orm.session.Session.connection` method::
 
     connection = session.connection()
 
 The examples above deal with a :class:`~sqlalchemy.orm.session.Session` that's
-bound to a single :class:`~sqlalchemy.engine.base.Engine` or
-:class:`~sqlalchemy.engine.base.Connection`. To execute statements using a
+bound to a single :class:`~sqlalchemy.engine.Engine` or
+:class:`~sqlalchemy.engine.Connection`. To execute statements using a
 :class:`~sqlalchemy.orm.session.Session` which is bound either to multiple
 engines, or none at all (i.e. relies upon bound metadata), both
 :func:`~sqlalchemy.orm.session.Session.execute` and

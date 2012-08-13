@@ -82,8 +82,8 @@ class Inspector(object):
 
         :param bind: a :class:`~sqlalchemy.engine.base.Connectable`,
           which is typically an instance of
-          :class:`~sqlalchemy.engine.base.Engine` or
-          :class:`~sqlalchemy.engine.base.Connection`.
+          :class:`~sqlalchemy.engine.Engine` or
+          :class:`~sqlalchemy.engine.Connection`.
 
         For a dialect-specific instance of :class:`.Inspector`, see
         :meth:`Inspector.from_engine`
@@ -111,8 +111,8 @@ class Inspector(object):
 
         :param bind: a :class:`~sqlalchemy.engine.base.Connectable`,
           which is typically an instance of
-          :class:`~sqlalchemy.engine.base.Engine` or
-          :class:`~sqlalchemy.engine.base.Connection`.
+          :class:`~sqlalchemy.engine.Engine` or
+          :class:`~sqlalchemy.engine.Connection`.
 
         This method differs from direct a direct constructor call of :class:`.Inspector`
         in that the :class:`~sqlalchemy.engine.base.Dialect` is given a chance to provide

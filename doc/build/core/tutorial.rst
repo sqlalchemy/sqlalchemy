@@ -236,9 +236,9 @@ we use the ``connect()`` method::
 
     >>> conn = engine.connect()
     >>> conn #doctest: +ELLIPSIS
-    <sqlalchemy.engine.base.Connection object at 0x...>
+    <sqlalchemy.engine.Connection object at 0x...>
 
-The :class:`~sqlalchemy.engine.base.Connection` object represents an actively
+The :class:`~sqlalchemy.engine.Connection` object represents an actively
 checked out DBAPI connection resource. Lets feed it our
 :class:`~sqlalchemy.sql.expression.Insert` object and see what happens:
 
@@ -252,7 +252,7 @@ checked out DBAPI connection resource. Lets feed it our
 So the INSERT statement was now issued to the database. Although we got
 positional "qmark" bind parameters instead of "named" bind parameters in the
 output. How come ? Because when executed, the
-:class:`~sqlalchemy.engine.base.Connection` used the SQLite **dialect** to
+:class:`~sqlalchemy.engine.Connection` used the SQLite **dialect** to
 help generate the statement; when we use the ``str()`` function, the statement
 isn't aware of this dialect, and falls back onto a default which uses named
 parameters. We can view this manually as follows:
@@ -264,9 +264,9 @@ parameters. We can view this manually as follows:
     'INSERT INTO users (name, fullname) VALUES (?, ?)'
 
 What about the ``result`` variable we got when we called ``execute()`` ? As
-the SQLAlchemy :class:`~sqlalchemy.engine.base.Connection` object references a
+the SQLAlchemy :class:`~sqlalchemy.engine.Connection` object references a
 DBAPI connection, the result, known as a
-:class:`~sqlalchemy.engine.base.ResultProxy` object, is analogous to the DBAPI
+:class:`~sqlalchemy.engine.ResultProxy` object, is analogous to the DBAPI
 cursor object. In the case of an INSERT, we can get important information from
 it, such as the primary key values which were generated from our statement:
 
@@ -292,7 +292,7 @@ Our insert example above was intentionally a little drawn out to show some
 various behaviors of expression language constructs. In the usual case, an
 :class:`~sqlalchemy.sql.expression.Insert` statement is usually compiled
 against the parameters sent to the ``execute()`` method on
-:class:`~sqlalchemy.engine.base.Connection`, so that there's no need to use
+:class:`~sqlalchemy.engine.Connection`, so that there's no need to use
 the ``values`` keyword with :class:`~sqlalchemy.sql.expression.Insert`. Lets
 create a generic :class:`~sqlalchemy.sql.expression.Insert` statement again
 and use it in the "normal" way:
@@ -304,7 +304,7 @@ and use it in the "normal" way:
     {opensql}INSERT INTO users (id, name, fullname) VALUES (?, ?, ?)
     (2, 'wendy', 'Wendy Williams')
     COMMIT
-    {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
+    {stop}<sqlalchemy.engine.ResultProxy object at 0x...>
 
 Above, because we specified all three columns in the the ``execute()`` method,
 the compiled :class:`~sqlalchemy.sql.expression.Insert` included all three
@@ -328,7 +328,7 @@ inserted, as we do here to add some email addresses:
     {opensql}INSERT INTO addresses (user_id, email_address) VALUES (?, ?)
     ((1, 'jack@yahoo.com'), (1, 'jack@msn.com'), (2, 'www@www.org'), (2, 'wendy@aol.com'))
     COMMIT
-    {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
+    {stop}<sqlalchemy.engine.ResultProxy object at 0x...>
 
 Above, we again relied upon SQLite's automatic generation of primary key
 identifiers for each ``addresses`` row.
@@ -344,7 +344,7 @@ Connectionless / Implicit Execution
 ====================================
 
 We're executing our :class:`~sqlalchemy.sql.expression.Insert` using a
-:class:`~sqlalchemy.engine.base.Connection`. There's two options that allow
+:class:`~sqlalchemy.engine.Connection`. There's two options that allow
 you to not have to deal with the connection part. You can execute in the
 **connectionless** style, using the engine, which checks out from the
 connection pool a connection for you, performs the execute operation with that
@@ -359,11 +359,11 @@ of the operation:
     COMMIT
 
 and you can save even more steps than that, if you connect the
-:class:`~sqlalchemy.engine.base.Engine` to the
+:class:`~sqlalchemy.engine.Engine` to the
 :class:`~sqlalchemy.schema.MetaData` object we created earlier. When this is
 done, all SQL expressions which involve tables within the
 :class:`~sqlalchemy.schema.MetaData` object will be automatically **bound** to
-the :class:`~sqlalchemy.engine.base.Engine`. In this case, we call it
+the :class:`~sqlalchemy.engine.Engine`. In this case, we call it
 **implicit execution**:
 
 .. sourcecode:: pycon+sql
@@ -409,10 +409,10 @@ Above, we issued a basic :func:`.select` call, placing the ``users`` table
 within the COLUMNS clause of the select, and then executing. SQLAlchemy
 expanded the ``users`` table into the set of each of its columns, and also
 generated a FROM clause for us. The result returned is again a
-:class:`~sqlalchemy.engine.base.ResultProxy` object, which acts much like a
+:class:`~sqlalchemy.engine.ResultProxy` object, which acts much like a
 DBAPI cursor, including methods such as
-:func:`~sqlalchemy.engine.base.ResultProxy.fetchone` and
-:func:`~sqlalchemy.engine.base.ResultProxy.fetchall`. The easiest way to get
+:func:`~sqlalchemy.engine.ResultProxy.fetchone` and
+:func:`~sqlalchemy.engine.ResultProxy.fetchall`. The easiest way to get
 rows from it is to just iterate:
 
 .. sourcecode:: pycon+sql
@@ -464,7 +464,7 @@ But another way, whose usefulness will become apparent later on, is to use the
 
 Result sets which have pending rows remaining should be explicitly closed
 before discarding. While the cursor and connection resources referenced by the
-:class:`~sqlalchemy.engine.base.ResultProxy` will be respectively closed and
+:class:`~sqlalchemy.engine.ResultProxy` will be respectively closed and
 returned to the connection pool when the object is garbage collected, it's
 better to make it explicit as some database APIs are very picky about such
 things:
@@ -642,7 +642,7 @@ not all of them. MySQL users, fear not:
     concat(users.name, users.fullname)
 
 The above illustrates the SQL that's generated for an
-:class:`~sqlalchemy.engine.base.Engine` that's connected to a MySQL database;
+:class:`~sqlalchemy.engine.Engine` that's connected to a MySQL database;
 the ``||`` operator now compiles as MySQL's ``concat()`` function.
 
 If you have come across an operator which really isn't available, you can
@@ -1460,7 +1460,7 @@ that can be specified:
     UPDATE users SET name=? WHERE users.name = ?
     ('ed', 'jack')
     COMMIT
-    {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
+    {stop}<sqlalchemy.engine.ResultProxy object at 0x...>
 
     >>> # use bind parameters
     >>> u = users.update().\
@@ -1470,7 +1470,7 @@ that can be specified:
     UPDATE users SET name=? WHERE users.name = ?
     ('ed', 'jack')
     COMMIT
-    {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
+    {stop}<sqlalchemy.engine.ResultProxy object at 0x...>
 
     >>> # with binds, you can also update many rows at once
     {sql}>>> conn.execute(u,
@@ -1481,7 +1481,7 @@ that can be specified:
     UPDATE users SET name=? WHERE users.name = ?
     [('ed', 'jack'), ('mary', 'wendy'), ('jake', 'jim')]
     COMMIT
-    {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
+    {stop}<sqlalchemy.engine.ResultProxy object at 0x...>
 
     >>> # update a column to an expression.:
     {sql}>>> conn.execute(users.update().
@@ -1490,7 +1490,7 @@ that can be specified:
     UPDATE users SET fullname=(? || users.name)
     ('Fullname: ',)
     COMMIT
-    {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
+    {stop}<sqlalchemy.engine.ResultProxy object at 0x...>
 
 Correlated Updates
 ------------------
@@ -1508,7 +1508,7 @@ table, or the same table:
     LIMIT 1 OFFSET 0)
     ()
     COMMIT
-    {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
+    {stop}<sqlalchemy.engine.ResultProxy object at 0x...>
 
 Multiple Table Updates
 ----------------------
@@ -1571,13 +1571,13 @@ Finally, a delete.  This is accomplished easily enough using the
     DELETE FROM addresses
     ()
     COMMIT
-    {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
+    {stop}<sqlalchemy.engine.ResultProxy object at 0x...>
 
     {sql}>>> conn.execute(users.delete().where(users.c.name > 'm')) #doctest: +ELLIPSIS
     DELETE FROM users WHERE users.name > ?
     ('m',)
     COMMIT
-    {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
+    {stop}<sqlalchemy.engine.ResultProxy object at 0x...>
 
 Further Reference
 ==================

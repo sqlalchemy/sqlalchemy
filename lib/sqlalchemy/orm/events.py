@@ -1056,7 +1056,7 @@ class SessionEvents(event.Events):
 
         :param session: The target :class:`.Session`.
         :param transaction: The :class:`.SessionTransaction`.
-        :param connection: The :class:`~.engine.base.Connection` object
+        :param connection: The :class:`~.engine.Connection` object
          which will be used for SQL statements.
 
         """

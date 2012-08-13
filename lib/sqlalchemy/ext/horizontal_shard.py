@@ -92,7 +92,7 @@ class ShardedSession(Session):
           should be issued.  Results from all shards returned will be combined
           together into a single listing.
 
-        :param shards: A dictionary of string shard names to :class:`~sqlalchemy.engine.base.Engine`
+        :param shards: A dictionary of string shard names to :class:`~sqlalchemy.engine.Engine`
           objects.
 
         """

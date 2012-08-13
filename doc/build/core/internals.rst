@@ -7,7 +7,7 @@ Some key internal constructs are listed here.
 
 .. currentmodule: sqlalchemy
 
-.. autoclass:: sqlalchemy.engine.base.Compiled
+.. autoclass:: sqlalchemy.engine.Compiled
     :members:
     :undoc-members:
     :show-inheritance:
@@ -21,7 +21,7 @@ Some key internal constructs are listed here.
     :undoc-members:
     :show-inheritance:
 
-.. autoclass:: sqlalchemy.engine.base.Dialect
+.. autoclass:: sqlalchemy.engine.Dialect
     :members:
     :undoc-members:
     :show-inheritance:
@@ -31,7 +31,7 @@ Some key internal constructs are listed here.
     :undoc-members:
     :show-inheritance:
 
-.. autoclass:: sqlalchemy.engine.base.ExecutionContext
+.. autoclass:: sqlalchemy.engine.ExecutionContext
     :members:
     :undoc-members:
     :show-inheritance:

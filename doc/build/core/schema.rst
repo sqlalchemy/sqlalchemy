@@ -281,8 +281,8 @@ Binding MetaData to an Engine or Connection
 
 Notice in the previous section the creator/dropper methods accept an argument
 for the database engine in use. When a schema construct is combined with an
-:class:`~sqlalchemy.engine.base.Engine` object, or an individual
-:class:`~sqlalchemy.engine.base.Connection` object, we call this the *bind*.
+:class:`~sqlalchemy.engine.Engine` object, or an individual
+:class:`~sqlalchemy.engine.Connection` object, we call this the *bind*.
 In the above examples the bind is associated with the schema construct only
 for the duration of the operation. However, the option exists to persistently
 associate a bind with a set of schema constructs via the
@@ -297,7 +297,7 @@ associate a bind with a set of schema constructs via the
     meta.bind = engine
 
 We can now call methods like :func:`~sqlalchemy.schema.MetaData.create_all`
-without needing to pass the :class:`~sqlalchemy.engine.base.Engine`::
+without needing to pass the :class:`~sqlalchemy.engine.Engine`::
 
     meta.create_all()
 
@@ -328,7 +328,7 @@ specific need to arise. Bind is useful if:
 
 * You aren't using the ORM, are usually using "connectionless" execution, and
   find yourself constantly needing to specify the same
-  :class:`~sqlalchemy.engine.base.Engine` object throughout the entire
+  :class:`~sqlalchemy.engine.Engine` object throughout the entire
   application. Bind can be used here to provide "implicit" execution.
 * Your application has multiple schemas that correspond to different engines.
   Using one :class:`~sqlalchemy.schema.MetaData` for each schema, bound to
@@ -740,13 +740,13 @@ performance reasons.
 
 When the statement is executed with a single set of parameters (that is, it is
 not an "executemany" style execution), the returned
-:class:`~sqlalchemy.engine.base.ResultProxy` will contain a collection
+:class:`~sqlalchemy.engine.ResultProxy` will contain a collection
 accessible via ``result.postfetch_cols()`` which contains a list of all
 :class:`~sqlalchemy.schema.Column` objects which had an inline-executed
 default. Similarly, all parameters which were bound to the statement,
 including all Python and SQL expressions which were pre-executed, are present
 in the ``last_inserted_params()`` or ``last_updated_params()`` collections on
-:class:`~sqlalchemy.engine.base.ResultProxy`. The ``inserted_primary_key``
+:class:`~sqlalchemy.engine.ResultProxy`. The ``inserted_primary_key``
 collection contains a list of primary key values for the row inserted (a list
 so that single-column and composite-column primary keys are represented in the
 same format).

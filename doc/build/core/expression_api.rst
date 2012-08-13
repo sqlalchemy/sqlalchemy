@@ -181,7 +181,6 @@ Classes
    :members:
    :special-members:
 
-
 .. autoclass:: Select
    :members:
    :show-inheritance:

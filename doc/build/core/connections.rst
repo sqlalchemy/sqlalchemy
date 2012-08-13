@@ -4,7 +4,7 @@
 Working with Engines and Connections
 =====================================
 
-.. module:: sqlalchemy.engine.base
+.. module:: sqlalchemy.engine
 
 This section details direct usage of the :class:`.Engine`,
 :class:`.Connection`, and related objects. Its important to note that when
@@ -114,7 +114,7 @@ Using Transactions
   object internally. See :ref:`unitofwork_transaction` for further
   information.
 
-The :class:`~sqlalchemy.engine.base.Connection` object provides a ``begin()``
+The :class:`~sqlalchemy.engine.Connection` object provides a ``begin()``
 method which returns a :class:`~sqlalchemy.engine.base.Transaction` object.
 This object is usually used within a try/except clause so that it is
 guaranteed to ``rollback()`` or ``commit()``::
@@ -248,7 +248,7 @@ Given a table as below::
     )
 
 Explicit execution delivers the SQL text or constructed SQL expression to the
-``execute()`` method of :class:`~sqlalchemy.engine.base.Connection`:
+``execute()`` method of :class:`~sqlalchemy.engine.Connection`:
 
 .. sourcecode:: python+sql
 
@@ -260,7 +260,7 @@ Explicit execution delivers the SQL text or constructed SQL expression to the
     connection.close()
 
 Explicit, connectionless execution delivers the expression to the
-``execute()`` method of :class:`~sqlalchemy.engine.base.Engine`:
+``execute()`` method of :class:`~sqlalchemy.engine.Engine`:
 
 .. sourcecode:: python+sql
 
@@ -272,8 +272,8 @@ Explicit, connectionless execution delivers the expression to the
 
 Implicit execution is also connectionless, and calls the ``execute()`` method
 on the expression itself, utilizing the fact that either an
-:class:`~sqlalchemy.engine.base.Engine` or
-:class:`~sqlalchemy.engine.base.Connection` has been *bound* to the expression
+:class:`~sqlalchemy.engine.Engine` or
+:class:`~sqlalchemy.engine.Connection` has been *bound* to the expression
 object (binding is discussed further in
 :ref:`metadata_toplevel`):
 
@@ -287,9 +287,9 @@ object (binding is discussed further in
     result.close()
 
 In both "connectionless" examples, the
-:class:`~sqlalchemy.engine.base.Connection` is created behind the scenes; the
-:class:`~sqlalchemy.engine.base.ResultProxy` returned by the ``execute()``
-call references the :class:`~sqlalchemy.engine.base.Connection` used to issue
+:class:`~sqlalchemy.engine.Connection` is created behind the scenes; the
+:class:`~sqlalchemy.engine.ResultProxy` returned by the ``execute()``
+call references the :class:`~sqlalchemy.engine.Connection` used to issue
 the SQL statement. When the :class:`.ResultProxy` is closed, the underlying
 :class:`.Connection` is closed for us, resulting in the
 DBAPI connection being returned to the pool with transactional resources removed.
@@ -432,10 +432,10 @@ Connection / Engine API
     :show-inheritance:
     :members:
 
-.. autoclass:: sqlalchemy.engine.base.ResultProxy
+.. autoclass:: sqlalchemy.engine.ResultProxy
     :members:
 
-.. autoclass:: sqlalchemy.engine.base.RowProxy
+.. autoclass:: sqlalchemy.engine.RowProxy
     :members:
 
 .. autoclass:: Transaction
