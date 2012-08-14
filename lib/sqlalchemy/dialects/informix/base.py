@@ -249,8 +249,9 @@ class InfoSQLCompiler(compiler.SQLCompiler):
         else:
             return compiler.SQLCompiler.visit_function(self, func, **kw)
 
-    def visit_mod(self, binary, **kw):
-        return "MOD(%s, %s)" % (self.process(binary.left), self.process(binary.right))
+    def visit_mod_binary(self, binary, operator, **kw):
+        return "MOD(%s, %s)" % (self.process(binary.left, **kw),
+                                self.process(binary.right, **kw))
 
 
 class InfoDDLCompiler(compiler.DDLCompiler):

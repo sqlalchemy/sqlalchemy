@@ -407,8 +407,9 @@ class OracleCompiler(compiler.SQLCompiler):
         self._quoted_bind_names = {}
         super(OracleCompiler, self).__init__(*args, **kwargs)
 
-    def visit_mod(self, binary, **kw):
-        return "mod(%s, %s)" % (self.process(binary.left), self.process(binary.right))
+    def visit_mod_binary(self, binary, operator, **kw):
+        return "mod(%s, %s)" % (self.process(binary.left, **kw),
+                                self.process(binary.right, **kw))
 
     def visit_now_func(self, fn, **kw):
         return "CURRENT_TIMESTAMP"

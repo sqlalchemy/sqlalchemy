@@ -257,8 +257,9 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
 
 
 class PGCompiler_psycopg2(PGCompiler):
-    def visit_mod(self, binary, **kw):
-        return self.process(binary.left) + " %% " + self.process(binary.right)
+    def visit_mod_binary(self, binary, operator, **kw):
+        return self.process(binary.left, **kw) + " %% " + \
+                self.process(binary.right, **kw)
 
     def post_process_text(self, text):
         return text.replace('%', '%%')

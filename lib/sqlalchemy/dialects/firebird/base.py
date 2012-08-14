@@ -200,12 +200,10 @@ class FBTypeCompiler(compiler.GenericTypeCompiler):
 class FBCompiler(sql.compiler.SQLCompiler):
     """Firebird specific idiosyncrasies"""
 
-    def visit_mod(self, binary, **kw):
-        # Firebird lacks a builtin modulo operator, but there is
-        # an equivalent function in the ib_udf library.
+    def visit_mod_binary(self, binary, operator, **kw):
         return "mod(%s, %s)" % (
-                                self.process(binary.left),
-                                self.process(binary.right))
+                                self.process(binary.left, **kw),
+                                self.process(binary.right, **kw))
 
     def visit_alias(self, alias, asfrom=False, **kwargs):
         if self.dialect._version_two:

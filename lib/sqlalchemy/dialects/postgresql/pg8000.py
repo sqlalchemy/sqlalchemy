@@ -66,8 +66,9 @@ class PGExecutionContext_pg8000(PGExecutionContext):
 
 
 class PGCompiler_pg8000(PGCompiler):
-    def visit_mod(self, binary, **kw):
-        return self.process(binary.left) + " %% " + self.process(binary.right)
+    def visit_mod_binary(self, binary, operator, **kw):
+        return self.process(binary.left, **kw) + " %% " + \
+                        self.process(binary.right, **kw)
 
     def post_process_text(self, text):
         if '%%' in text:

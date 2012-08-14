@@ -534,9 +534,10 @@ class MaxDBCompiler(compiler.SQLCompiler):
         'TIMEZONE', 'TRANSACTION', 'TRUE', 'USER', 'UID', 'USERGROUP',
         'UTCDATE', 'UTCDIFF'])
 
-    def visit_mod(self, binary, **kw):
+    def visit_mod_binary(self, binary, operator, **kw):
         return "mod(%s, %s)" % \
-                    (self.process(binary.left), self.process(binary.right))
+                    (self.process(binary.left, **kw),
+                            self.process(binary.right, **kw))
 
     def default_from(self):
         return ' FROM DUAL'

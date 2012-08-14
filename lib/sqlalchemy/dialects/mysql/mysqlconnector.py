@@ -32,8 +32,9 @@ class MySQLExecutionContext_mysqlconnector(MySQLExecutionContext):
 
 
 class MySQLCompiler_mysqlconnector(MySQLCompiler):
-    def visit_mod(self, binary, **kw):
-        return self.process(binary.left) + " %% " + self.process(binary.right)
+    def visit_mod_binary(self, binary, operator, **kw):
+        return self.process(binary.left, **kw) + " %% " + \
+                        self.process(binary.right, **kw)
 
     def post_process_text(self, text):
         return text.replace('%', '%%')
