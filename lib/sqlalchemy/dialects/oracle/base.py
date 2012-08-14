@@ -398,7 +398,7 @@ class OracleCompiler(compiler.SQLCompiler):
     compound_keywords = util.update_copy(
         compiler.SQLCompiler.compound_keywords,
         {
-        expression.CompoundSelect.EXCEPT : 'MINUS'
+        expression.CompoundSelect.EXCEPT: 'MINUS'
         }
     )
 
@@ -416,8 +416,9 @@ class OracleCompiler(compiler.SQLCompiler):
     def visit_char_length_func(self, fn, **kw):
         return "LENGTH" + self.function_argspec(fn, **kw)
 
-    def visit_match_op(self, binary, **kw):
-        return "CONTAINS (%s, %s)" % (self.process(binary.left), self.process(binary.right))
+    def visit_match_op_binary(self, binary, operator, **kw):
+        return "CONTAINS (%s, %s)" % (self.process(binary.left),
+                                        self.process(binary.right))
 
     def get_select_hint_text(self, byfroms):
         return " ".join(

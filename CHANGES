@@ -313,6 +313,10 @@ underneath "0.7.xx".
     also customizable via the "precedence" argument
     on the ``op()`` method.  [ticket:2537]
 
+  - [feature] Custom unary operators can now be
+    used by combining operators.custom_op() with
+    UnaryExpression().
+
   - [changed] Most classes in expression.sql
     are no longer preceded with an underscore,
     i.e. Label, SelectBase, Generative, CompareMixin.

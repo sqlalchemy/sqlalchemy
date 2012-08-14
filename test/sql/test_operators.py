@@ -1,8 +1,11 @@
-from test.lib import fixtures
+from test.lib import fixtures, testing
+from test.lib.testing import assert_raises_message
 from sqlalchemy.sql import column, desc, asc, literal, collate
 from sqlalchemy.sql.expression import BinaryExpression, \
-                ClauseList, Grouping, _DefaultColumnComparator
+                ClauseList, Grouping, _DefaultColumnComparator,\
+                UnaryExpression
 from sqlalchemy.sql import operators
+from sqlalchemy import exc
 from sqlalchemy.schema import Column, Table, MetaData
 from sqlalchemy.types import Integer, TypeEngine, TypeDecorator
 
@@ -52,6 +55,65 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         right = "some collation"
         cc.operate(left, operators.collate, right).compare(
             collate(left, right)
+        )
+
+    def test_concat(self):
+        self._do_operate_test(operators.concat_op)
+
+class CustomUnaryOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def _factorial_fixture(self):
+        class MyInteger(Integer):
+            class comparator_factory(Integer.Comparator):
+                def factorial(self):
+                    return UnaryExpression(self.expr,
+                                modifier=operators.custom_op("!"),
+                                type_=MyInteger)
+
+                def factorial_prefix(self):
+                    return UnaryExpression(self.expr,
+                                operator=operators.custom_op("!!"),
+                                type_=MyInteger)
+
+        return MyInteger
+
+    def test_factorial(self):
+        col = column('somecol', self._factorial_fixture())
+        self.assert_compile(
+            col.factorial(),
+            "somecol !"
+        )
+
+    def test_double_factorial(self):
+        col = column('somecol', self._factorial_fixture())
+        self.assert_compile(
+            col.factorial().factorial(),
+            "somecol ! !"
+        )
+
+    def test_factorial_prefix(self):
+        col = column('somecol', self._factorial_fixture())
+        self.assert_compile(
+            col.factorial_prefix(),
+            "!! somecol"
+        )
+
+    def test_unary_no_ops(self):
+        assert_raises_message(
+            exc.CompileError,
+            "Unary expression has no operator or modifier",
+            UnaryExpression(literal("x")).compile
+        )
+
+    def test_unary_both_ops(self):
+        assert_raises_message(
+            exc.CompileError,
+            "Unary expression does not support operator and "
+                "modifier simultaneously",
+            UnaryExpression(literal("x"),
+                    operator=operators.custom_op("x"),
+                    modifier=operators.custom_op("y")).compile
         )
 
 class _CustomComparatorTests(object):

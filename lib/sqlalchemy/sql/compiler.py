@@ -65,7 +65,7 @@ BIND_TEMPLATES = {
 }
 
 
-OPERATORS =  {
+OPERATORS = {
     # binary
     operators.and_ : ' AND ',
     operators.or_ : ' OR ',
@@ -594,7 +594,7 @@ class SQLCompiler(engine.Compiled):
                         self.limit_clause(cs) or ""
 
         if self.ctes and \
-            compound_index==1 and not entry:
+            compound_index == 1 and not entry:
             text = self._render_cte_clause() + text
 
         self.stack.pop(-1)
@@ -604,12 +604,29 @@ class SQLCompiler(engine.Compiled):
             return text
 
     def visit_unary(self, unary, **kw):
-        s = unary.element._compiler_dispatch(self, **kw)
         if unary.operator:
-            s = OPERATORS[unary.operator] + s
-        if unary.modifier:
-            s = s + OPERATORS[unary.modifier]
-        return s
+            if unary.modifier:
+                raise exc.CompileError(
+                        "Unary expression does not support operator "
+                        "and modifier simultaneously")
+            disp = getattr(self, "visit_%s_unary_operator" %
+                                    unary.operator.__name__, None)
+            if disp:
+                return disp(unary, unary.operator, **kw)
+            else:
+                return self._generate_generic_unary_operator(unary,
+                                    OPERATORS[unary.operator], **kw)
+        elif unary.modifier:
+            disp = getattr(self, "visit_%s_unary_modifier" %
+                                    unary.modifier.__name__, None)
+            if disp:
+                return disp(unary, unary.modifier, **kw)
+            else:
+                return self._generate_generic_unary_modifier(unary,
+                                    OPERATORS[unary.modifier], **kw)
+        else:
+            raise exc.CompileError(
+                            "Unary expression has no operator or modifier")
 
     def visit_binary(self, binary, **kw):
         # don't allow "? = ?" to render
@@ -618,16 +635,38 @@ class SQLCompiler(engine.Compiled):
             isinstance(binary.right, sql.BindParameter):
             kw['literal_binds'] = True
 
-        return self._operator_dispatch(binary.operator,
-                    binary,
-                    lambda opstr: binary.left._compiler_dispatch(self, **kw) +
-                                        opstr +
-                                    binary.right._compiler_dispatch(
-                                            self, **kw),
-                    **kw
-        )
+        operator = binary.operator
+        disp = getattr(self, "visit_%s_binary" % operator.__name__, None)
+        if disp:
+            return disp(binary, operator, **kw)
+        else:
+            return self._generate_generic_binary(binary,
+                                OPERATORS[operator], **kw)
 
-    def visit_like_op(self, binary, **kw):
+    def visit_custom_op_binary(self, element, operator, **kw):
+        return self._generate_generic_binary(element,
+                            " " + operator.opstring + " ", **kw)
+
+    def visit_custom_op_unary_operator(self, element, operator, **kw):
+        return self._generate_generic_unary_operator(element,
+                            operator.opstring + " ", **kw)
+
+    def visit_custom_op_unary_modifier(self, element, operator, **kw):
+        return self._generate_generic_unary_modifier(element,
+                            " " + operator.opstring, **kw)
+
+    def _generate_generic_binary(self, binary, opstring, **kw):
+        return binary.left._compiler_dispatch(self, **kw) + \
+                                        opstring + \
+                            binary.right._compiler_dispatch(self, **kw)
+
+    def _generate_generic_unary_operator(self, unary, opstring, **kw):
+        return opstring + unary.element._compiler_dispatch(self, **kw)
+
+    def _generate_generic_unary_modifier(self, unary, opstring, **kw):
+        return unary.element._compiler_dispatch(self, **kw) + opstring
+
+    def visit_like_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
         return '%s LIKE %s' % (
                             binary.left._compiler_dispatch(self, **kw),
@@ -636,7 +675,7 @@ class SQLCompiler(engine.Compiled):
                     (' ESCAPE ' + self.render_literal_value(escape, None))
                     or '')
 
-    def visit_notlike_op(self, binary, **kw):
+    def visit_notlike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
         return '%s NOT LIKE %s' % (
                             binary.left._compiler_dispatch(self, **kw),
@@ -645,7 +684,7 @@ class SQLCompiler(engine.Compiled):
                     (' ESCAPE ' + self.render_literal_value(escape, None))
                     or '')
 
-    def visit_ilike_op(self, binary, **kw):
+    def visit_ilike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
         return 'lower(%s) LIKE lower(%s)' % (
                             binary.left._compiler_dispatch(self, **kw),
@@ -654,7 +693,7 @@ class SQLCompiler(engine.Compiled):
                     (' ESCAPE ' + self.render_literal_value(escape, None))
                     or '')
 
-    def visit_notilike_op(self, binary, **kw):
+    def visit_notilike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
         return 'lower(%s) NOT LIKE lower(%s)' % (
                             binary.left._compiler_dispatch(self, **kw),
@@ -663,16 +702,6 @@ class SQLCompiler(engine.Compiled):
                     (' ESCAPE ' + self.render_literal_value(escape, None))
                     or '')
 
-    def visit_custom_op(self, element, dispatch_operator, dispatch_fn, **kw):
-        return dispatch_fn(" " + dispatch_operator.opstring + " ")
-
-    def _operator_dispatch(self, operator, element, fn, **kw):
-        disp = getattr(self, "visit_%s" % operator.__name__, None)
-        if disp:
-            kw.update(dispatch_operator=operator, dispatch_fn=fn)
-            return disp(element, **kw)
-        else:
-            return fn(OPERATORS[operator])
 
     def visit_bindparam(self, bindparam, within_columns_clause=False,
                                             literal_binds=False, **kwargs):

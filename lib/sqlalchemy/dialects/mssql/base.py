@@ -748,12 +748,12 @@ class MSSQLCompiler(compiler.SQLCompiler):
     def visit_char_length_func(self, fn, **kw):
         return "LEN%s" % self.function_argspec(fn, **kw)
 
-    def visit_concat_op(self, binary, **kw):
+    def visit_concat_op_binary(self, binary, operator, **kw):
         return "%s + %s" % \
                 (self.process(binary.left, **kw),
                 self.process(binary.right, **kw))
 
-    def visit_match_op(self, binary, **kw):
+    def visit_match_op_binary(self, binary, operator, **kw):
         return "CONTAINS (%s, %s)" % (
                                         self.process(binary.left, **kw),
                                         self.process(binary.right, **kw))
@@ -969,14 +969,14 @@ class MSSQLStrictCompiler(MSSQLCompiler):
     """
     ansi_bind_rules = True
 
-    def visit_in_op(self, binary, **kw):
+    def visit_in_op_binary(self, binary, operator, **kw):
         kw['literal_binds'] = True
         return "%s IN %s" % (
                                 self.process(binary.left, **kw),
                                 self.process(binary.right, **kw)
             )
 
-    def visit_notin_op(self, binary, **kw):
+    def visit_notin_op_binary(self, binary, operator, **kw):
         kw['literal_binds'] = True
         return "%s NOT IN %s" % (
                                 self.process(binary.left, **kw),

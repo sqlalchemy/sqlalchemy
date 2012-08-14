@@ -1254,11 +1254,13 @@ class MySQLCompiler(compiler.SQLCompiler):
     def visit_sysdate_func(self, fn, **kw):
         return "SYSDATE()"
 
-    def visit_concat_op(self, binary, **kw):
-        return "concat(%s, %s)" % (self.process(binary.left), self.process(binary.right))
+    def visit_concat_op_binary(self, binary, operator, **kw):
+        return "concat(%s, %s)" % (self.process(binary.left),
+                                                self.process(binary.right))
 
-    def visit_match_op(self, binary, **kw):
-        return "MATCH (%s) AGAINST (%s IN BOOLEAN MODE)" % (self.process(binary.left), self.process(binary.right))
+    def visit_match_op_binary(self, binary, operator, **kw):
+        return "MATCH (%s) AGAINST (%s IN BOOLEAN MODE)" % \
+                    (self.process(binary.left), self.process(binary.right))
 
     def get_from_hint_text(self, table, text):
         return text

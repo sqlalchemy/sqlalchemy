@@ -2057,6 +2057,7 @@ class _DefaultColumnComparator(ColumnOperators):
         "mod": (__operate,),
         "truediv": (__operate,),
         "custom_op": (__operate,),
+        "concat_op": (__operate,),
         "lt": (__compare, operators.ge),
         "le": (__compare, operators.gt),
         "ne": (__compare, operators.eq),
@@ -3475,7 +3476,14 @@ class Extract(ColumnElement):
 
 
 class UnaryExpression(ColumnElement):
+    """Define a 'unary' expression.
 
+    A unary expression has a single column expression
+    and an operator.  The operator can be placed on the left
+    (where it is called the 'operator') or right (where it is called the
+    'modifier') of the column expression.
+
+    """
     __visit_name__ = 'unary'
 
     def __init__(self, element, operator=None, modifier=None,

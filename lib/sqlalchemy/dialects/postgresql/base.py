@@ -619,12 +619,12 @@ ischema_names = {
 
 class PGCompiler(compiler.SQLCompiler):
 
-    def visit_match_op(self, binary, **kw):
+    def visit_match_op_binary(self, binary, operator, **kw):
         return "%s @@ to_tsquery(%s)" % (
                         self.process(binary.left),
                         self.process(binary.right))
 
-    def visit_ilike_op(self, binary, **kw):
+    def visit_ilike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
         return '%s ILIKE %s' % \
                 (self.process(binary.left), self.process(binary.right)) \
@@ -632,7 +632,7 @@ class PGCompiler(compiler.SQLCompiler):
                         (' ESCAPE ' + self.render_literal_value(escape, None))
                         or '')
 
-    def visit_notilike_op(self, binary, **kw):
+    def visit_notilike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
         return '%s NOT ILIKE %s' % \
                 (self.process(binary.left), self.process(binary.right)) \
