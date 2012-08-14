@@ -509,8 +509,8 @@ def delete(table, whereclause=None, **kwargs):
 def and_(*clauses):
     """Join a list of clauses together using the ``AND`` operator.
 
-    The ``&`` operator is also overloaded on all
-    :class:`CompareMixin` subclasses to produce the
+    The ``&`` operator is also overloaded on all :class:`.ColumnElement`
+    subclasses to produce the
     same result.
 
     """
@@ -522,7 +522,7 @@ def or_(*clauses):
     """Join a list of clauses together using the ``OR`` operator.
 
     The ``|`` operator is also overloaded on all
-    :class:`CompareMixin` subclasses to produce the
+    :class:`.ColumnElement` subclasses to produce the
     same result.
 
     """
@@ -534,7 +534,7 @@ def not_(clause):
     """Return a negation of the given clause, i.e. ``NOT(clause)``.
 
     The ``~`` operator is also overloaded on all
-    :class:`CompareMixin` subclasses to produce the
+    :class:`.ColumnElement` subclasses to produce the
     same result.
 
     """
@@ -562,7 +562,7 @@ def between(ctest, cleft, cright):
     Equivalent of SQL ``clausetest BETWEEN clauseleft AND clauseright``.
 
     The :func:`between()` method on all
-    :class:`CompareMixin` subclasses provides
+    :class:`.ColumnElement` subclasses provides
     similar functionality.
 
     """
@@ -827,7 +827,7 @@ def literal(value, type_=None):
 
     Literal clauses are created automatically when non- :class:`.ClauseElement`
     objects (such as strings, ints, dates, etc.) are used in a comparison
-    operation with a :class:`CompareMixin`
+    operation with a :class:`.ColumnElement`
     subclass, such as a :class:`~sqlalchemy.schema.Column` object.
     Use this function to force the
     generation of a literal clause, which will be created as a
@@ -1875,12 +1875,8 @@ class Immutable(object):
         return self
 
 
-class _DefaultColumnComparator(ColumnOperators):
+class _DefaultColumnComparator(object):
     """Defines comparison and math operations.
-
-    The :class:`.CompareMixin` is part of the interface provided
-    by the :class:`.ColumnElement` class, which provides the base class
-    for all SQL expression units.
 
     See :class:`.ColumnOperators` and :class:`.Operators` for descriptions
     of all operations.
@@ -2126,8 +2122,7 @@ class ColumnElement(ClauseElement, ColumnOperators):
     ``NULL``, literals, etc.  :class:`.ColumnElement` is the ultimate base
     class for all such elements.
 
-    A :class:`.ColumnElement`, by subclassing the :class:`.CompareMixin` mixin
-    class, provides the ability to generate new :class:`.ClauseElement`
+    A :class:`.ColumnElement` provides the ability to generate new :class:`.ClauseElement`
     objects using Python expressions.  This means that Python operators
     such as ``==``, ``!=`` and ``<`` are overloaded to mimic SQL operations,
     and allow the construction of :class:`.ColumnElement` constructs which
@@ -3540,8 +3535,7 @@ class BinaryExpression(ColumnElement):
     """Represent an expression that is ``LEFT <operator> RIGHT``.
 
     A :class:`.BinaryExpression` is generated automatically
-    whenever two objects that subclass the :class:`.CompareMixin`
-    mixin are used in a Python binary expresion::
+    whenever two column expressions are used in a Python binary expresion::
 
         >>> from sqlalchemy.sql import column
         >>> column('a') + column('b')
