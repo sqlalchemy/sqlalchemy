@@ -231,6 +231,13 @@ underneath "0.7.xx".
     or remove operation is received on the
     now-detached collection.  [ticket:2476]
 
+  - [bug] Declarative can now propagate a column
+    declared on a single-table inheritance subclass
+    up to the parent class' table, when the parent
+    class is itself mapped to a join() or select()
+    statement, directly or via joined inheritane,
+    and not just a Table.   [ticket:2549]
+
   - [bug] An error is emitted when uselist=False
     is combined with a "dynamic" loader.
     This is a warning in 0.7.9.

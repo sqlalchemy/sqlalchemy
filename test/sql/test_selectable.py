@@ -578,6 +578,135 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         Table('t1', MetaData(), c1)
         eq_(c1._label, "t1_c1")
 
+
+class RefreshForNewColTest(fixtures.TestBase):
+    def test_join_uninit(self):
+        a = table('a', column('x'))
+        b = table('b', column('y'))
+        j = a.join(b, a.c.x == b.c.y)
+
+        q = column('q')
+        b.append_column(q)
+        j._refresh_for_new_column(q)
+        assert j.c.b_q is q
+
+    def test_join_init(self):
+        a = table('a', column('x'))
+        b = table('b', column('y'))
+        j = a.join(b, a.c.x == b.c.y)
+        j.c
+        q = column('q')
+        b.append_column(q)
+        j._refresh_for_new_column(q)
+        assert j.c.b_q is q
+
+
+    def test_join_samename_init(self):
+        a = table('a', column('x'))
+        b = table('b', column('y'))
+        j = a.join(b, a.c.x == b.c.y)
+        j.c
+        q = column('x')
+        b.append_column(q)
+        j._refresh_for_new_column(q)
+        assert j.c.b_x is q
+
+    def test_select_samename_init(self):
+        a = table('a', column('x'))
+        b = table('b', column('y'))
+        s = select([a, b]).apply_labels()
+        s.c
+        q = column('x')
+        b.append_column(q)
+        s._refresh_for_new_column(q)
+        assert q in s.c.b_x.proxy_set
+
+    def test_aliased_select_samename_uninit(self):
+        a = table('a', column('x'))
+        b = table('b', column('y'))
+        s = select([a, b]).apply_labels().alias()
+        q = column('x')
+        b.append_column(q)
+        s._refresh_for_new_column(q)
+        assert q in s.c.b_x.proxy_set
+
+    def test_aliased_select_samename_init(self):
+        a = table('a', column('x'))
+        b = table('b', column('y'))
+        s = select([a, b]).apply_labels().alias()
+        s.c
+        q = column('x')
+        b.append_column(q)
+        s._refresh_for_new_column(q)
+        assert q in s.c.b_x.proxy_set
+
+    def test_aliased_select_irrelevant(self):
+        a = table('a', column('x'))
+        b = table('b', column('y'))
+        c = table('c', column('z'))
+        s = select([a, b]).apply_labels().alias()
+        s.c
+        q = column('x')
+        c.append_column(q)
+        s._refresh_for_new_column(q)
+        assert 'c_x' not in s.c
+
+    def test_aliased_select_no_cols_clause(self):
+        a = table('a', column('x'))
+        s = select([a.c.x]).apply_labels().alias()
+        s.c
+        q = column('q')
+        a.append_column(q)
+        s._refresh_for_new_column(q)
+        assert 'a_q' not in s.c
+
+    def test_union_uninit(self):
+        a = table('a', column('x'))
+        s1 = select([a])
+        s2 = select([a])
+        s3 = s1.union(s2)
+        q = column('q')
+        a.append_column(q)
+        s3._refresh_for_new_column(q)
+        assert a.c.q in s3.c.q.proxy_set
+
+    def test_union_init_raises(self):
+        a = table('a', column('x'))
+        s1 = select([a])
+        s2 = select([a])
+        s3 = s1.union(s2)
+        s3.c
+        q = column('q')
+        a.append_column(q)
+        assert_raises_message(
+                NotImplementedError,
+                "CompoundSelect constructs don't support addition of "
+                "columns to underlying selectables",
+                s3._refresh_for_new_column, q
+        )
+    def test_nested_join_uninit(self):
+        a = table('a', column('x'))
+        b = table('b', column('y'))
+        c = table('c', column('z'))
+        j = a.join(b, a.c.x == b.c.y).join(c, b.c.y == c.c.z)
+
+        q = column('q')
+        b.append_column(q)
+        j._refresh_for_new_column(q)
+        assert j.c.b_q is q
+
+    def test_nested_join_init(self):
+        a = table('a', column('x'))
+        b = table('b', column('y'))
+        c = table('c', column('z'))
+        j = a.join(b, a.c.x == b.c.y).join(c, b.c.y == c.c.z)
+
+        j.c
+        q = column('q')
+        b.append_column(q)
+        j._refresh_for_new_column(q)
+        assert j.c.b_q is q
+
 class AnonLabelTest(fixtures.TestBase):
     """Test behaviors fixed by [ticket:2168]."""
 

@@ -244,6 +244,7 @@ def _as_declarative(cls, classname, dict_):
     elif inherits:
         inherited_mapper = _declared_mapping_info(inherits)
         inherited_table = inherited_mapper.local_table
+        inherited_mapped_table = inherited_mapper.mapped_table
 
         if table is None:
             # single table inheritance.
@@ -268,6 +269,9 @@ def _as_declarative(cls, classname, dict_):
                         (c, cls, inherited_table.c[c.name])
                     )
                 inherited_table.append_column(c)
+                if inherited_mapped_table is not None and \
+                    inherited_mapped_table is not inherited_table:
+                    inherited_mapped_table._refresh_for_new_column(c)
 
     mt = _MapperConfig(mapper_cls,
                        cls, table,
@@ -281,6 +285,7 @@ def _as_declarative(cls, classname, dict_):
 
 class _MapperConfig(object):
     configs = util.OrderedDict()
+    mapped_table = None
 
     def __init__(self, mapper_cls,
                         cls,

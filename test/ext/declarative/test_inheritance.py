@@ -577,6 +577,30 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         eq_(sess.query(Engineer).filter_by(primary_language='cobol'
             ).one(), Engineer(name='vlad', primary_language='cobol'))
 
+    def test_single_from_joined_colsonsub(self):
+        class Person(Base, fixtures.ComparableEntity):
+
+            __tablename__ = 'people'
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+            name = Column(String(50))
+            discriminator = Column('type', String(50))
+            __mapper_args__ = {'polymorphic_on': discriminator}
+
+        class Manager(Person):
+            __tablename__ = 'manager'
+            __mapper_args__ = {'polymorphic_identity': 'manager'}
+            id = Column(Integer, ForeignKey('people.id'), primary_key=True)
+            golf_swing = Column(String(50))
+
+        class Boss(Manager):
+            boss_name = Column(String(50))
+
+        is_(
+            Boss.__mapper__.column_attrs['boss_name'].columns[0],
+            Manager.__table__.c.boss_name
+        )
+
     def test_polymorphic_on_converted_from_inst(self):
         class A(Base):
             __tablename__ = 'A'

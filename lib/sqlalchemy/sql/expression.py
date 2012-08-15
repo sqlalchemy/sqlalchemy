@@ -2086,7 +2086,6 @@ class _DefaultColumnComparator(object):
         return o[0](self, expr, op, other, reverse=True, *o[1:], **kwargs)
 
 
-
     def _check_literal(self, expr, operator, other):
         if isinstance(other, BindParameter) and \
             isinstance(other.type, sqltypes.NullType):
@@ -2722,8 +2721,49 @@ class FromClause(Selectable):
         self.primary_key = ColumnSet()
         self.foreign_keys = set()
 
+    @property
+    def _cols_populated(self):
+        return '_columns' in self.__dict__
+
     def _populate_column_collection(self):
-        pass
+        """Called on subclasses to establish the .c collection.
+
+        Each implementation has a different way of establishing
+        this collection.
+
+        """
+
+    def _refresh_for_new_column(self, column):
+        """Given a column added to the .c collection of an underlying
+        selectable, produce the local version of that column, assuming this
+        selectable ultimately should proxy this column.
+
+        this is used to "ping" a derived selectable to add a new column
+        to its .c. collection when a Column has been added to one of the
+        Table objects it ultimtely derives from.
+
+        If the given selectable hasn't populated it's .c. collection yet,
+        it should at least pass on the message to the contained selectables,
+        but it will return None.
+
+        This method is currently used by Declarative to allow Table
+        columns to be added to a partially constructed inheritance
+        mapping that may have already produced joins.  The method
+        isn't public right now, as the full span of implications
+        and/or caveats aren't yet clear.
+
+        It's also possible that this functionality could be invoked by
+        default via an event, which would require that
+        selectables maintain a weak referencing collection of all
+        derivations.
+
+        """
+        if not self._cols_populated:
+            return None
+        elif column.key in self.columns and self.columns[column.key] is column:
+            return column
+        else:
+            return None
 
 class BindParameter(ColumnElement):
     """Represent a bind parameter.
@@ -3723,6 +3763,19 @@ class Join(FromClause):
         self.foreign_keys.update(itertools.chain(
                         *[col.foreign_keys for col in columns]))
 
+    def _refresh_for_new_column(self, column):
+        col = self.left._refresh_for_new_column(column)
+        if col is None:
+            col = self.right._refresh_for_new_column(column)
+        if col is not None:
+            if self._cols_populated:
+                self._columns[col._label] = col
+                self.foreign_keys.add(col)
+                if col.primary_key:
+                    self.primary_key.add(col)
+                return col
+        return None
+
     def _copy_internals(self, clone=_clone, **kw):
         self._reset_exported()
         self.left = clone(self.left, **kw)
@@ -3862,6 +3915,16 @@ class Alias(FromClause):
     def _populate_column_collection(self):
         for col in self.element.columns:
             col._make_proxy(self)
+
+    def _refresh_for_new_column(self, column):
+        col = self.element._refresh_for_new_column(column)
+        if col is not None:
+            if not self._cols_populated:
+                return None
+            else:
+                return col._make_proxy(self)
+        else:
+            return None
 
     def _copy_internals(self, clone=_clone, **kw):
         # don't apply anything to an aliased Table
@@ -4808,6 +4871,16 @@ class CompoundSelect(SelectBase):
             proxy.proxies = [c._annotate({'weight': i + 1}) for (i,
                              c) in enumerate(cols)]
 
+    def _refresh_for_new_column(self, column):
+        for s in self.selects:
+            s._refresh_for_new_column(column)
+
+        if not self._cols_populated:
+            return None
+
+        raise NotImplementedError("CompoundSelect constructs don't support "
+                "addition of columns to underlying selectables")
+
     def _copy_internals(self, clone=_clone, **kw):
         self._reset_exported()
         self.selects = [clone(s, **kw) for s in self.selects]
@@ -5473,6 +5546,19 @@ class Select(SelectBase):
                 c._make_proxy(self,
                         name=c._label if self.use_labels else None,
                         key=c._key_label if self.use_labels else None)
+
+    def _refresh_for_new_column(self, column):
+        for fromclause in self._froms:
+            col = fromclause._refresh_for_new_column(column)
+            if col is not None:
+                if col in self.inner_columns and self._cols_populated:
+                    our_label = col._key_label if self.use_labels else col.key
+                    if our_label not in self.c:
+                        return col._make_proxy(self,
+                            name=col._label if self.use_labels else None,
+                            key=col._key_label if self.use_labels else None)
+                return None
+        return None
 
     def self_group(self, against=None):
         """return a 'grouping' construct as per the ClauseElement
