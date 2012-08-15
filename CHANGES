@@ -91,6 +91,11 @@ CHANGES
     the "name" and "native_enum" flags.  Helps
     Alembic autogenerate.
 
+- mysql
+  - [bug] Updated mysqlconnector interface to use
+    updated "client flag" and "charset" APIs,
+    courtesy David McNelis.
+
 - mssql
   - [bug] Fixed compiler bug whereby a given
     select() would be modified if it had an "offset"
