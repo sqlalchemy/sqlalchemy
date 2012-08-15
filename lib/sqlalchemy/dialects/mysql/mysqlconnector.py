@@ -105,13 +105,6 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
 
     def _get_server_version_info(self, connection):
         dbapi_con = connection.connection
-
-        # TODO: why is this needed here?  we should have
-        # already set FOUND_ROWS in the connect args and should not
-        # be stepping on any exisiting client flags here.
-        from mysql.connector.constants import ClientFlag
-        dbapi_con.set_client_flags([ClientFlag.FOUND_ROWS])
-
         version = dbapi_con.get_server_version()
         return tuple(version)
 
