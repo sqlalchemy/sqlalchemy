@@ -107,13 +107,13 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
         dbapi_con = connection.connection
 
         from mysql.connector.constants import ClientFlag
-        dbapi_con.set_client_flag(ClientFlag.FOUND_ROWS)
+        dbapi_con.set_client_flags([ClientFlag.FOUND_ROWS])
 
         version = dbapi_con.get_server_version()
         return tuple(version)
 
     def _detect_charset(self, connection):
-        return connection.connection.get_characterset_info()
+        return connection.connection.charset
 
     def _extract_error_code(self, exception):
         return exception.errno
