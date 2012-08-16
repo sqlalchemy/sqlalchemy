@@ -804,6 +804,8 @@ class Session(object):
         with no active transaction will produce a result that auto-closes
         the underlying :class:`.Connection`.
 
+        The :meth:`.Session.execute` method does *not* invoke autoflush.
+
         :param clause:
             A :class:`.ClauseElement` (i.e. :func:`~.sql.expression.select`,
             :func:`~.sql.expression.text`, etc.) or string SQL statement to be executed.  The clause
