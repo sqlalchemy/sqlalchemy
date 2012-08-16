@@ -145,6 +145,9 @@ Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: sqlalchemy.sql.operators.custom_op
+   :members:
+
 .. autoclass:: CTE
    :members:
    :show-inheritance:

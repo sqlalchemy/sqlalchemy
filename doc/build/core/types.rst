@@ -488,6 +488,68 @@ cursor directly::
       def adapt(self, impltype):
           return MySpecialTime(self.special_argument)
 
+.. _types_operators:
+
+Redefining and Creating New Operators
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SQLAlchemy Core defines a fixed set of expression operators available to all column expressions.
+Some of these operations have the effect of overloading Python's built in operators;
+examples of such operators include
+:meth:`.ColumnOperators.__eq__` (``table.c.somecolumn == 'foo'``),
+:meth:`.ColumnOperators.neg` (``~table.c.flag``),
+and :meth:`.ColumnOperators.__add__` (``table.c.x + table.c.y``).  Other operators are exposed as
+explicit methods on column expressions, such as
+:meth:`.ColumnOperators.in_` (``table.c.value.in_(['x', 'y'])``) and :meth:`.ColumnOperators.like`
+(``table.c.value.like('%ed%')``).
+
+The Core expression constructs in all cases consult the type of the expression in order to determine
+the behavior of existing operators, as well as to locate additional operators that aren't part of
+the built in set.   The :class:`.TypeEngine` base class defines a root "comparison" implementation
+:class:`.TypeEngine.Comparator`, and many specific types provide their own sub-implementations of this
+class.   User-defined :class:`.TypeEngine.Comparator` implementations can be built directly into a
+simple subclass of a particular type in order to override or define new operations.  Below,
+we create a :class:`.Integer` subclass which overrides the :meth:`.ColumnOperators.__add__` operator::
+
+    from sqlalchemy import Integer
+
+    class MyInt(Integer):
+        class comparator_factory(Integer.Comparator):
+            def __add__(self, other):
+                return self.op("goofy")(other)
+
+The above configuration creates a new class ``MyInt``, which
+establishes the :attr:`.TypeEngine.comparator_factory` attribute as
+referring to a new class, subclassing the ``Comparator`` class
+associated with the :class:`.Integer` type.
+
+The implementation for :meth:`.ColumnOperators.__add__` is consulted
+by an owning SQL expression, by instantiating the ``Comparator`` with
+itself as as the ``expr`` attribute.   The mechanics of the expression
+system are such that operations continue recursively until an
+expression object produces a new SQL expression construct. Above, we
+could just as well have said ``self.expr.op("goofy")(other)`` instead
+of ``self.op("goofy")(other)``.
+
+New methods added to a ``Comparator`` are exposed on an owning SQL expression
+using a ``__getattr__`` scheme.  For example, to add an implementation of the
+Postgresql factorial operator::
+
+    from sqlalchemy import Integer
+    from sqlalchemy.sql import UnaryExpression
+    from sqlalchemy.sql import operators
+
+    class MyInteger(Integer):
+        class comparator_factory(Integer.Comparator):
+            def factorial(self):
+                return UnaryExpression(self.expr,
+                            modifier=operators.custom_op("!"),
+                            type_=MyInteger)
+
+
+
+
+
 
 Creating New Types
 ~~~~~~~~~~~~~~~~~~

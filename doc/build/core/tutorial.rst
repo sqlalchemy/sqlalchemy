@@ -646,7 +646,7 @@ The above illustrates the SQL that's generated for an
 the ``||`` operator now compiles as MySQL's ``concat()`` function.
 
 If you have come across an operator which really isn't available, you can
-always use the ``op()`` method; this generates whatever operator you need:
+always use the :meth:`.ColumnOperators.op` method; this generates whatever operator you need:
 
 .. sourcecode:: pycon+sql
 
@@ -658,6 +658,18 @@ This function can also be used to make bitwise operators explicit. For example::
     somecolumn.op('&')(0xff)
 
 is a bitwise AND of the value in `somecolumn`.
+
+Operator Customization
+-----------------------
+
+While :meth:`.ColumnOperators.op` is handy to get at a custom operator in a hurry,
+the Core supports fundamental customization and extension of the operator system at
+the type level.   The behavior of existing operators can be modified on a per-type
+basis, and new operations can be defined which become available for all column
+expressions that are part of that particular type.  See the section :ref:`types_operators`
+for a description.
+
+
 
 Conjunctions
 =============

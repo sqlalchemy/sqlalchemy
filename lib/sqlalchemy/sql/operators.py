@@ -170,6 +170,23 @@ class Operators(object):
 
 
 class custom_op(object):
+    """Represent a 'custom' operator.
+
+    :class:`.custom_op` is normally instantitated when the
+    :meth:`.ColumnOperators.op` method is used to create a
+    custom operator callable.  The class can also be used directly
+    when programmatically constructing expressions.   E.g.
+    to represent the "factorial" operation::
+
+        from sqlalchemy.sql import UnaryExpression
+        from sqlalchemy.sql import operators
+        from sqlalchemy import Numeric
+
+        unary = UnaryExpression(table.c.somecolumn,
+                modifier=operators.custom_op("!"),
+                type_=Numeric)
+
+    """
     __name__ = 'custom_op'
 
     def __init__(self, opstring, precedence=0):

@@ -733,57 +733,18 @@ based attribute.
 
 .. _custom_comparators:
 
-Custom Comparators
-------------------
+Operator Customization
+----------------------
 
-The expressions returned by comparison operations, such as
-``User.name=='ed'``, can be customized, by implementing an object that
-explicitly defines each comparison method needed.
-
-This is a relatively rare use case which generally applies only to
-highly customized types.  Usually, custom SQL behaviors can be
-associated with a mapped class by composing together the classes'
-existing mapped attributes with other expression components,
-using the techniques described in :ref:`mapper_sql_expressions`.
-Those approaches should be considered first before resorting to custom comparison objects.
-
-Each of :func:`.orm.column_property`, :func:`~.composite`, :func:`.relationship`,
-and :func:`.comparable_property` accept an argument called
-``comparator_factory``.   A subclass of :class:`.PropComparator` can be provided
-for this argument, which can then reimplement basic Python comparison methods
-such as ``__eq__()``, ``__ne__()``, ``__lt__()``, and so on.
-
-It's best to subclass the :class:`.PropComparator` subclass provided by
-each type of property.  For example, to allow a column-mapped attribute to
-do case-insensitive comparison::
-
-    from sqlalchemy.orm.properties import ColumnProperty
-    from sqlalchemy.sql import func, Column, Integer, String
-
-    class MyComparator(ColumnProperty.Comparator):
-        def __eq__(self, other):
-            return func.lower(self.__clause_element__()) == func.lower(other)
-
-    class EmailAddress(Base):
-        __tablename__ = 'address'
-        id = Column(Integer, primary_key=True)
-        email = column_property(
-                        Column('email', String),
-                        comparator_factory=MyComparator
-                    )
-
-Above, comparisons on the ``email`` column are wrapped in the SQL lower()
-function to produce case-insensitive matching::
-
-    >>> str(EmailAddress.email == 'SomeAddress@foo.com')
-    lower(address.email) = lower(:lower_1)
-
-When building a :class:`.PropComparator`, the ``__clause_element__()`` method
-should be used in order to acquire the underlying mapped column.  This will
-return a column that is appropriately wrapped in any kind of subquery
-or aliasing that has been applied in the context of the generated SQL statement.
-
-.. autofunction:: comparable_property
+The "operators" used by the SQLAlchemy ORM and Core expression language
+are fully customizable.  For example, the comparison expression
+``User.name == 'ed'`` makes usage of an operator built into Python
+itself called ``operator.eq`` - the actual SQL construct which SQLAlchemy
+associates with such an operator can be modified.  New
+operations can be associated with column expressions as well.   The operators
+which take place for column expressions are most directly redefined at the
+type level -  see the
+section :ref:`types_operators` for a description.
 
 .. _mapper_composite:
 
