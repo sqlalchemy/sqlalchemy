@@ -2099,6 +2099,8 @@ class _DefaultColumnComparator(object):
             if isinstance(other, (SelectBase, Alias)):
                 other = other.as_scalar()
             return other
+        elif isinstance(other, sqltypes.TypeEngine.Comparator):
+            return other.expr
         elif not isinstance(other, ClauseElement):
             return expr._bind_param(operator, other)
         elif isinstance(other, (SelectBase, Alias)):
@@ -2152,24 +2154,24 @@ class ColumnElement(ClauseElement, ColumnOperators):
     __visit_name__ = 'column'
     primary_key = False
     foreign_keys = []
-    type = None
     quote = None
     _label = None
     _key_label = None
     _alt_names = ()
 
     @util.memoized_property
+    def type(self):
+        return sqltypes.NULLTYPE
+
+    @util.memoized_property
     def comparator(self):
-        if self.type is None:
-            return None
-        elif self.type.comparator_factory is not None:
-            return self.type.comparator_factory(self)
-        else:
-            return None
+        return self.type.comparator_factory(self)
+
+    #def _assert_comparator(self):
+    #    assert self.comparator.expr is self
 
     def __getattr__(self, key):
-        if self.comparator is None:
-            raise AttributeError(key)
+        #self._assert_comparator()
         try:
             return getattr(self.comparator, key)
         except AttributeError:
@@ -2180,6 +2182,19 @@ class ColumnElement(ClauseElement, ColumnOperators):
                     key)
             )
 
+    def operate(self, op, *other, **kwargs):
+        #self._assert_comparator()
+        return op(self.comparator, *other, **kwargs)
+
+    def reverse_operate(self, op, other, **kwargs):
+        #self._assert_comparator()
+        return op(other, self.comparator, **kwargs)
+
+    def _bind_param(self, operator, obj):
+        return BindParameter(None, obj,
+                                    _compared_to_operator=operator,
+                                    _compared_to_type=self.type, unique=True)
+
     @property
     def expression(self):
         """Return a column expression.
@@ -2188,23 +2203,6 @@ class ColumnElement(ClauseElement, ColumnOperators):
 
         """
         return self
-
-    def operate(self, op, *other, **kwargs):
-        if self.comparator:
-            return op(self.comparator, *other, **kwargs)
-        else:
-            return _DEFAULT_COMPARATOR.operate(self, op, *other, **kwargs)
-
-    def reverse_operate(self, op, other, **kwargs):
-        if self.comparator:
-            return op(other, self.comparator, **kwargs)
-        else:
-            return _DEFAULT_COMPARATOR.reverse_operate(self, op, other, **kwargs)
-
-    def _bind_param(self, operator, obj):
-        return BindParameter(None, obj,
-                                    _compared_to_operator=operator,
-                                    _compared_to_type=self.type, unique=True)
 
     @property
     def _select_iterable(self):
@@ -4007,7 +4005,7 @@ class Grouping(ColumnElement):
 
     def __init__(self, element):
         self.element = element
-        self.type = getattr(element, 'type', None)
+        self.type = getattr(element, 'type', sqltypes.NULLTYPE)
 
     @property
     def _label(self):

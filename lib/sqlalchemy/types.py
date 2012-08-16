@@ -47,8 +47,12 @@ class TypeEngine(AbstractType):
         type level.  See :attr:`.TypeEngine.comparator_factory`.
 
         """
+
         def __init__(self, expr):
             self.expr = expr
+
+        def __reduce__(self):
+            return _reconstitute_comparator, (self.expr, )
 
         def operate(self, op, *other, **kwargs):
             return _DEFAULT_COMPARATOR.operate(self.expr, op, *other, **kwargs)
@@ -57,7 +61,7 @@ class TypeEngine(AbstractType):
             return _DEFAULT_COMPARATOR.reverse_operate(self.expr, op, other,
                                                 **kwargs)
 
-    comparator_factory = None
+    comparator_factory = Comparator
     """A :class:`.TypeEngine.Comparator` class which will apply
     to operations performed by owning :class:`.ColumnElement` objects.
 
@@ -405,6 +409,9 @@ class TypeEngine(AbstractType):
 
     def __repr__(self):
         return util.generic_repr(self)
+
+def _reconstitute_comparator(expression):
+    return expression.comparator
 
 class UserDefinedType(TypeEngine):
     """Base for user defined types.
