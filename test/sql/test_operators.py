@@ -23,7 +23,7 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         left = column('left')
         right = column('right')
 
-        assert cc.operate(left, operator, right).compare(
+        assert cc.operate(left, operator, right, result_type=Integer).compare(
             BinaryExpression(left, right, operator)
         )
 

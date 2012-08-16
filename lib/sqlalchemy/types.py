@@ -55,10 +55,22 @@ class TypeEngine(AbstractType):
             return _reconstitute_comparator, (self.expr, )
 
         def operate(self, op, *other, **kwargs):
+            if len(other) == 1:
+                obj = other[0]
+                obj = _DEFAULT_COMPARATOR._check_literal(self.expr, op, obj)
+                op, adapt_type = self.expr.type._adapt_expression(op,
+                    obj.type)
+                kwargs['result_type'] = adapt_type
+
             return _DEFAULT_COMPARATOR.operate(self.expr, op, *other, **kwargs)
 
         def reverse_operate(self, op, other, **kwargs):
-            return _DEFAULT_COMPARATOR.reverse_operate(self.expr, op, other,
+
+            obj = _DEFAULT_COMPARATOR._check_literal(self.expr, op, other)
+            op, adapt_type = obj.type._adapt_expression(op, self.expr.type)
+            kwargs['result_type'] = adapt_type
+
+            return _DEFAULT_COMPARATOR.reverse_operate(self.expr, op, obj,
                                                 **kwargs)
 
     comparator_factory = Comparator
