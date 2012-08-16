@@ -708,9 +708,10 @@ class PGCompiler(compiler.SQLCompiler):
             affinity = None
 
         casts = {
-                    sqltypes.Date:'date',
-                    sqltypes.DateTime:'timestamp',
-                    sqltypes.Interval:'interval', sqltypes.Time:'time'
+                    sqltypes.Date: 'date',
+                    sqltypes.DateTime: 'timestamp',
+                    sqltypes.Interval: 'interval',
+                    sqltypes.Time: 'time'
                 }
         cast = casts.get(affinity, None)
         if isinstance(extract.expr, sql.ColumnElement) and cast is not None:

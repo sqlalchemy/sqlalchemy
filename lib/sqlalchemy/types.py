@@ -11,21 +11,21 @@ types.
 For more information see the SQLAlchemy documentation on types.
 
 """
-__all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType', 'UserDefinedType',
-            'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'NVARCHAR','TEXT', 'Text',
+__all__ = ['TypeEngine', 'TypeDecorator', 'AbstractType', 'UserDefinedType',
+            'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'NVARCHAR', 'TEXT', 'Text',
             'FLOAT', 'NUMERIC', 'REAL', 'DECIMAL', 'TIMESTAMP', 'DATETIME',
             'CLOB', 'BLOB', 'BINARY', 'VARBINARY', 'BOOLEAN', 'BIGINT', 'SMALLINT',
             'INTEGER', 'DATE', 'TIME', 'String', 'Integer', 'SmallInteger',
             'BigInteger', 'Numeric', 'Float', 'DateTime', 'Date', 'Time',
             'LargeBinary', 'Binary', 'Boolean', 'Unicode', 'Concatenable',
-            'UnicodeText','PickleType', 'Interval', 'Enum' ]
+            'UnicodeText', 'PickleType', 'Interval', 'Enum']
 
 import datetime as dt
 import codecs
 
 from . import exc, schema, util, processors, events, event
 from .sql import operators
-from .sql.expression import _DEFAULT_COMPARATOR
+from .sql.expression import _DefaultColumnComparator
 from .util import pickle
 from .util.compat import decimal
 from .sql.visitors import Visitable
@@ -42,7 +42,7 @@ class AbstractType(Visitable):
 class TypeEngine(AbstractType):
     """Base for built-in types."""
 
-    class Comparator(operators.ColumnOperators):
+    class Comparator(_DefaultColumnComparator):
         """Base class for custom comparison operations defined at the
         type level.  See :attr:`.TypeEngine.comparator_factory`.
 
@@ -54,24 +54,6 @@ class TypeEngine(AbstractType):
         def __reduce__(self):
             return _reconstitute_comparator, (self.expr, )
 
-        def operate(self, op, *other, **kwargs):
-            if len(other) == 1:
-                obj = other[0]
-                obj = _DEFAULT_COMPARATOR._check_literal(self.expr, op, obj)
-                op, adapt_type = self.expr.type._adapt_expression(op,
-                    obj.type)
-                kwargs['result_type'] = adapt_type
-
-            return _DEFAULT_COMPARATOR.operate(self.expr, op, *other, **kwargs)
-
-        def reverse_operate(self, op, other, **kwargs):
-
-            obj = _DEFAULT_COMPARATOR._check_literal(self.expr, op, other)
-            op, adapt_type = obj.type._adapt_expression(op, self.expr.type)
-            kwargs['result_type'] = adapt_type
-
-            return _DEFAULT_COMPARATOR.reverse_operate(self.expr, op, obj,
-                                                **kwargs)
 
     comparator_factory = Comparator
     """A :class:`.TypeEngine.Comparator` class which will apply
@@ -142,11 +124,6 @@ class TypeEngine(AbstractType):
 
         >>> (c1 == c2).type
         Boolean()
-
-    The propagation of :class:`.TypeEngine.Comparator` throughout an expression
-    will follow with how the :class:`.TypeEngine` itself is propagated.  To
-    customize the behavior of most operators in this regard, see the
-    :meth:`._adapt_expression` method.
 
     .. versionadded:: 0.8  The expression system was reworked to support
       user-defined comparator objects specified at the type level.
@@ -247,34 +224,7 @@ class TypeEngine(AbstractType):
         .. versionadded:: 0.7.2
 
         """
-        return Variant(self, {dialect_name:type_})
-
-    def _adapt_expression(self, op, othertype):
-        """evaluate the return type of <self> <op> <othertype>,
-        and apply any adaptations to the given operator.
-
-        This method determines the type of a resulting binary expression
-        given two source types and an operator.   For example, two
-        :class:`.Column` objects, both of the type :class:`.Integer`, will
-        produce a :class:`.BinaryExpression` that also has the type
-        :class:`.Integer` when compared via the addition (``+``) operator.
-        However, using the addition operator with an :class:`.Integer`
-        and a :class:`.Date` object will produce a :class:`.Date`, assuming
-        "days delta" behavior by the database (in reality, most databases
-        other than Postgresql don't accept this particular operation).
-
-        The method returns a tuple of the form <operator>, <type>.
-        The resulting operator and type will be those applied to the
-        resulting :class:`.BinaryExpression` as the final operator and the
-        right-hand side of the expression.
-
-        Note that only a subset of operators make usage of
-        :meth:`._adapt_expression`,
-        including math operators and user-defined operators, but not
-        boolean comparison or special SQL keywords like MATCH or BETWEEN.
-
-        """
-        return op, self
+        return Variant(self, {dialect_name: type_})
 
     @util.memoized_property
     def _type_affinity(self):
@@ -334,7 +284,7 @@ class TypeEngine(AbstractType):
                 impl = self.adapt(type(self))
             # this can't be self, else we create a cycle
             assert impl is not self
-            dialect._type_memos[self] = d = {'impl':impl}
+            dialect._type_memos[self] = d = {'impl': impl}
             return d
 
     def _gen_dialect_impl(self, dialect):
@@ -461,22 +411,21 @@ class UserDefinedType(TypeEngine):
     """
     __visit_name__ = "user_defined"
 
-    def _adapt_expression(self, op, othertype):
-        """evaluate the return type of <self> <op> <othertype>,
-        and apply any adaptations to the given operator.
+    class Comparator(TypeEngine.Comparator):
+        def _adapt_expression(self, op, other_comparator):
+            if hasattr(self.type, 'adapt_operator'):
+                util.warn_deprecated(
+                    "UserDefinedType.adapt_operator is deprecated.  Create "
+                     "a UserDefinedType.Comparator subclass instead which "
+                     "generates the desired expression constructs, given a "
+                     "particular operator."
+                    )
+                return self.type.adapt_operator(op), self.type
+            else:
+                return op, self.type
 
-        """
-        return self.adapt_operator(op), self
+    comparator_factory = Comparator
 
-    def adapt_operator(self, op):
-        """A hook which allows the given operator to be adapted
-        to something new.
-
-        See also UserDefinedType._adapt_expression(), an as-yet-
-        semi-public method with greater capability in this regard.
-
-        """
-        return op
 
 class TypeDecorator(TypeEngine):
     """Allows the creation of types which add additional functionality
@@ -837,13 +786,6 @@ class TypeDecorator(TypeEngine):
         """
         return self.impl.compare_values(x, y)
 
-    def _adapt_expression(self, op, othertype):
-        op, typ = self.impl._adapt_expression(op, othertype)
-        typ = to_instance(typ)
-        if typ._compare_type_affinity(self.impl):
-            return op, self
-        else:
-            return op, typ
 
 class Variant(TypeDecorator):
     """A wrapping type that selects among a variety of
@@ -926,8 +868,6 @@ def adapt_type(typeobj, colspecs):
     return typeobj.adapt(impltype)
 
 
-
-
 class NullType(TypeEngine):
     """An unknown type.
 
@@ -943,11 +883,14 @@ class NullType(TypeEngine):
     """
     __visit_name__ = 'null'
 
-    def _adapt_expression(self, op, othertype):
-        if isinstance(othertype, NullType) or not operators.is_commutative(op):
-            return op, self
-        else:
-            return othertype._adapt_expression(op, self)
+    class Comparator(TypeEngine.Comparator):
+        def _adapt_expression(self, op, other_comparator):
+            if isinstance(other_comparator, NullType.Comparator) or \
+                not operators.is_commutative(op):
+                return op, self.expr.type
+            else:
+                return other_comparator._adapt_expression(op, self)
+    comparator_factory = Comparator
 
 NullTypeEngine = NullType
 
@@ -955,12 +898,16 @@ class Concatenable(object):
     """A mixin that marks a type as supporting 'concatenation',
     typically strings."""
 
-    def _adapt_expression(self, op, othertype):
-        if op is operators.add and issubclass(othertype._type_affinity,
-                (Concatenable, NullType)):
-            return operators.concat_op, self
-        else:
-            return op, self
+    class Comparator(TypeEngine.Comparator):
+        def _adapt_expression(self, op, other_comparator):
+            if op is operators.add and isinstance(other_comparator,
+                    (Concatenable.Comparator, NullType.Comparator)):
+                return operators.concat_op, self.expr.type
+            else:
+                return op, self.expr.type
+
+    comparator_factory = Comparator
+
 
 class _DateAffinity(object):
     """Mixin date/time specific expression adaptations.
@@ -975,12 +922,14 @@ class _DateAffinity(object):
     def _expression_adaptations(self):
         raise NotImplementedError()
 
-    _blank_dict = util.immutabledict()
-    def _adapt_expression(self, op, othertype):
-        othertype = othertype._type_affinity
-        return op, \
-                self._expression_adaptations.get(op, self._blank_dict).\
-                get(othertype, NULLTYPE)
+    class Comparator(TypeEngine.Comparator):
+        _blank_dict = util.immutabledict()
+        def _adapt_expression(self, op, other_comparator):
+            othertype = other_comparator.type._type_affinity
+            return op, \
+                    self.type._expression_adaptations.get(op, self._blank_dict).\
+                    get(othertype, NULLTYPE)
+    comparator_factory = Comparator
 
 class String(Concatenable, TypeEngine):
     """The base for all string and character types.

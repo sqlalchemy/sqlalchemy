@@ -12,18 +12,16 @@ from sqlalchemy.types import Integer, TypeEngine, TypeDecorator
 class DefaultColumnComparatorTest(fixtures.TestBase):
 
     def _do_scalar_test(self, operator, compare_to):
-        cc = _DefaultColumnComparator()
         left = column('left')
-        assert cc.operate(left, operator).compare(
+        assert left.comparator.operate(operator).compare(
             compare_to(left)
         )
 
     def _do_operate_test(self, operator):
-        cc = _DefaultColumnComparator()
         left = column('left')
         right = column('right')
 
-        assert cc.operate(left, operator, right, result_type=Integer).compare(
+        assert left.comparator.operate(operator, right).compare(
             BinaryExpression(left, right, operator)
         )
 
@@ -37,9 +35,8 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         self._do_operate_test(operators.add)
 
     def test_in(self):
-        cc = _DefaultColumnComparator()
         left = column('left')
-        assert cc.operate(left, operators.in_op, [1, 2, 3]).compare(
+        assert left.comparator.operate(operators.in_op, [1, 2, 3]).compare(
                 BinaryExpression(
                     left,
                     Grouping(ClauseList(
@@ -50,10 +47,9 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
             )
 
     def test_collate(self):
-        cc = _DefaultColumnComparator()
         left = column('left')
         right = "some collation"
-        cc.operate(left, operators.collate, right).compare(
+        left.comparator.operate(operators.collate, right).compare(
             collate(left, right)
         )
 
@@ -144,12 +140,8 @@ class _CustomComparatorTests(object):
         self._assert_add_override(6 - c1)
 
     def test_binary_multi_propagate(self):
-        c1 = Column('foo', self._add_override_factory(True))
-        self._assert_add_override((c1 - 6) + 5)
-
-    def test_no_binary_multi_propagate_wo_adapt(self):
         c1 = Column('foo', self._add_override_factory())
-        self._assert_not_add_override((c1 - 6) + 5)
+        self._assert_add_override((c1 - 6) + 5)
 
     def test_no_boolean_propagate(self):
         c1 = Column('foo', self._add_override_factory())
@@ -166,7 +158,7 @@ class _CustomComparatorTests(object):
         )
 
 class CustomComparatorTest(_CustomComparatorTests, fixtures.TestBase):
-    def _add_override_factory(self, include_adapt=False):
+    def _add_override_factory(self):
 
         class MyInteger(Integer):
             class comparator_factory(TypeEngine.Comparator):
@@ -176,19 +168,12 @@ class CustomComparatorTest(_CustomComparatorTests, fixtures.TestBase):
                 def __add__(self, other):
                     return self.expr.op("goofy")(other)
 
-            if include_adapt:
-                def _adapt_expression(self, op, othertype):
-                    if op.__name__ == 'custom_op':
-                        return op, self
-                    else:
-                        return super(MyInteger, self)._adapt_expression(
-                                                            op, othertype)
 
         return MyInteger
 
 
 class TypeDecoratorComparatorTest(_CustomComparatorTests, fixtures.TestBase):
-    def _add_override_factory(self, include_adapt=False):
+    def _add_override_factory(self):
 
         class MyInteger(TypeDecorator):
             impl = Integer
@@ -200,19 +185,12 @@ class TypeDecoratorComparatorTest(_CustomComparatorTests, fixtures.TestBase):
                 def __add__(self, other):
                     return self.expr.op("goofy")(other)
 
-            if include_adapt:
-                def _adapt_expression(self, op, othertype):
-                    if op.__name__ == 'custom_op':
-                        return op, self
-                    else:
-                        return super(MyInteger, self)._adapt_expression(
-                                                            op, othertype)
 
         return MyInteger
 
 
 class CustomEmbeddedinTypeDecoratorTest(_CustomComparatorTests, fixtures.TestBase):
-    def _add_override_factory(self, include_adapt=False):
+    def _add_override_factory(self):
         class MyInteger(Integer):
             class comparator_factory(TypeEngine.Comparator):
                 def __init__(self, expr):
@@ -221,13 +199,6 @@ class CustomEmbeddedinTypeDecoratorTest(_CustomComparatorTests, fixtures.TestBas
                 def __add__(self, other):
                     return self.expr.op("goofy")(other)
 
-            if include_adapt:
-                def _adapt_expression(self, op, othertype):
-                    if op.__name__ == 'custom_op':
-                        return op, self
-                    else:
-                        return super(MyInteger, self)._adapt_expression(
-                                                            op, othertype)
 
         class MyDecInteger(TypeDecorator):
             impl = MyInteger
@@ -235,7 +206,7 @@ class CustomEmbeddedinTypeDecoratorTest(_CustomComparatorTests, fixtures.TestBas
         return MyDecInteger
 
 class NewOperatorTest(_CustomComparatorTests, fixtures.TestBase):
-    def _add_override_factory(self, include_adapt=False):
+    def _add_override_factory(self):
         class MyInteger(Integer):
             class comparator_factory(TypeEngine.Comparator):
                 def __init__(self, expr):
@@ -243,15 +214,6 @@ class NewOperatorTest(_CustomComparatorTests, fixtures.TestBase):
 
                 def foob(self, other):
                     return self.expr.op("foob")(other)
-
-            if include_adapt:
-                def _adapt_expression(self, op, othertype):
-                    if op.__name__ == 'custom_op':
-                        return op, self
-                    else:
-                        return super(MyInteger, self)._adapt_expression(
-                                                            op, othertype)
-
         return MyInteger
 
     def _assert_add_override(self, expr):
@@ -262,5 +224,3 @@ class NewOperatorTest(_CustomComparatorTests, fixtures.TestBase):
     def _assert_not_add_override(self, expr):
         assert not hasattr(expr, "foob")
 
-    def test_no_binary_multi_propagate_wo_adapt(self):
-        pass

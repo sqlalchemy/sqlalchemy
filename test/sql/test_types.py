@@ -1222,6 +1222,7 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         eq_(expr.right.type.__class__, CHAR)
 
 
+    @testing.uses_deprecated
     @testing.fails_on('firebird', 'Data type unknown on the parameter')
     @testing.fails_on('mssql', 'int is unsigned ?  not clear')
     def test_operator_adapt(self):

@@ -1875,13 +1875,52 @@ class Immutable(object):
         return self
 
 
-class _DefaultColumnComparator(object):
+class _DefaultColumnComparator(operators.ColumnOperators):
     """Defines comparison and math operations.
 
     See :class:`.ColumnOperators` and :class:`.Operators` for descriptions
     of all operations.
 
     """
+
+    @util.memoized_property
+    def type(self):
+        return self.expr.type
+
+    def operate(self, op, *other, **kwargs):
+        o = self.operators[op.__name__]
+        return o[0](self, self.expr, op, *(other + o[1:]), **kwargs)
+
+    def reverse_operate(self, op, other, **kwargs):
+        o = self.operators[op.__name__]
+        return o[0](self, self.expr, op, other, reverse=True, *o[1:], **kwargs)
+
+    def _adapt_expression(self, op, other_comparator):
+        """evaluate the return type of <self> <op> <othertype>,
+        and apply any adaptations to the given operator.
+
+        This method determines the type of a resulting binary expression
+        given two source types and an operator.   For example, two
+        :class:`.Column` objects, both of the type :class:`.Integer`, will
+        produce a :class:`.BinaryExpression` that also has the type
+        :class:`.Integer` when compared via the addition (``+``) operator.
+        However, using the addition operator with an :class:`.Integer`
+        and a :class:`.Date` object will produce a :class:`.Date`, assuming
+        "days delta" behavior by the database (in reality, most databases
+        other than Postgresql don't accept this particular operation).
+
+        The method returns a tuple of the form <operator>, <type>.
+        The resulting operator and type will be those applied to the
+        resulting :class:`.BinaryExpression` as the final operator and the
+        right-hand side of the expression.
+
+        Note that only a subset of operators make usage of
+        :meth:`._adapt_expression`,
+        including math operators and user-defined operators, but not
+        boolean comparison or special SQL keywords like MATCH or BETWEEN.
+
+        """
+        return op, other_comparator.type
 
     def _boolean_compare(self, expr, op, obj, negate=None, reverse=False,
                         **kwargs
@@ -1912,13 +1951,15 @@ class _DefaultColumnComparator(object):
                             type_=sqltypes.BOOLEANTYPE,
                             negate=negate, modifiers=kwargs)
 
-    def _binary_operate(self, expr, op, obj, result_type, reverse=False):
+    def _binary_operate(self, expr, op, obj, reverse=False):
         obj = self._check_literal(expr, op, obj)
 
         if reverse:
             left, right = obj, expr
         else:
             left, right = expr, obj
+
+        op, result_type = left.comparator._adapt_expression(op, right.comparator)
 
         return BinaryExpression(left, right, op, type_=result_type)
 
@@ -1986,7 +2027,8 @@ class _DefaultColumnComparator(object):
             expr,
             operators.like_op,
             literal_column("'%'", type_=sqltypes.String).__radd__(
-                                self._check_literal(expr, operators.like_op, other)
+                                self._check_literal(expr,
+                                        operators.like_op, other)
                             ),
             escape=escape)
 
@@ -2068,21 +2110,16 @@ class _DefaultColumnComparator(object):
         "neg": (_neg_impl,),
     }
 
-    def operate(self, expr, op, *other, **kwargs):
-        o = self.operators[op.__name__]
-        return o[0](self, expr, op, *(other + o[1:]), **kwargs)
-
-    def reverse_operate(self, expr, op, other, **kwargs):
-        o = self.operators[op.__name__]
-        return o[0](self, expr, op, other, reverse=True, *o[1:], **kwargs)
 
     def _check_literal(self, expr, operator, other):
-        if isinstance(other, BindParameter) and \
-            isinstance(other.type, sqltypes.NullType):
-            # TODO: perhaps we should not mutate the incoming bindparam()
-            # here and instead make a copy of it.  this might
-            # be the only place that we're mutating an incoming construct.
-            other.type = expr.type
+        if isinstance(other, (ColumnElement, TextClause)):
+            if isinstance(other, BindParameter) and \
+                isinstance(other.type, sqltypes.NullType):
+                # TODO: perhaps we should not mutate the incoming
+                # bindparam() here and instead make a copy of it.
+                # this might be the only place that we're mutating
+                # an incoming construct.
+                other.type = expr.type
             return other
         elif hasattr(other, '__clause_element__'):
             other = other.__clause_element__()
@@ -2095,8 +2132,6 @@ class _DefaultColumnComparator(object):
             return expr._bind_param(operator, other)
         else:
             return other
-
-_DEFAULT_COMPARATOR = _DefaultColumnComparator()
 
 
 class ColumnElement(ClauseElement, ColumnOperators):
@@ -2155,11 +2190,7 @@ class ColumnElement(ClauseElement, ColumnOperators):
     def comparator(self):
         return self.type.comparator_factory(self)
 
-    #def _assert_comparator(self):
-    #    assert self.comparator.expr is self
-
     def __getattr__(self, key):
-        #self._assert_comparator()
         try:
             return getattr(self.comparator, key)
         except AttributeError:
@@ -2171,11 +2202,9 @@ class ColumnElement(ClauseElement, ColumnOperators):
             )
 
     def operate(self, op, *other, **kwargs):
-        #self._assert_comparator()
         return op(self.comparator, *other, **kwargs)
 
     def reverse_operate(self, op, other, **kwargs):
-        #self._assert_comparator()
         return op(other, self.comparator, **kwargs)
 
     def _bind_param(self, operator, obj):
@@ -3089,6 +3118,10 @@ class TextClause(Executable, ClauseElement):
             return list(self.typemap)[0]
         else:
             return sqltypes.NULLTYPE
+
+    @property
+    def comparator(self):
+        return self.type.comparator_factory(self)
 
     def self_group(self, against=None):
         if against is operators.in_op:
