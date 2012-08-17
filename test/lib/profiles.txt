@@ -1,15 +1,15 @@
-# /Users/classic/dev/sqla_comparators/./test/lib/profiles.txt
+# /Users/classic/dev/sqlalchemy/./test/lib/profiles.txt
 # This file is written out on a per-environment basis.
-# For each test in aaa_profiling, the corresponding function and
+# For each test in aaa_profiling, the corresponding function and 
 # environment is located within this file.  If it doesn't exist,
 # the test is skipped.
-# If a callcount does exist, it is compared to what we received.
+# If a callcount does exist, it is compared to what we received. 
 # assertions are raised if the counts do not match.
-#
-# To add a new callcount test, apply the function_call_count
-# decorator and re-run the tests using the --write-profiles option -
+# 
+# To add a new callcount test, apply the function_call_count 
+# decorator and re-run the tests using the --write-profiles option - 
 # this file will be rewritten including the new count.
-#
+# 
 
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_insert
 
@@ -26,16 +26,12 @@ test.aaa_profiling.test_compiler.CompileTest.test_insert 3.2_sqlite_pysqlite_noc
 
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_select
 
-test.aaa_profiling.test_compiler.CompileTest.test_select 2.5_sqlite_pysqlite_nocextensions 149
-test.aaa_profiling.test_compiler.CompileTest.test_select 2.6_sqlite_pysqlite_nocextensions 149
-test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_mysql_mysqldb_cextensions 149
-test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_mysql_mysqldb_nocextensions 149
-test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_postgresql_psycopg2_cextensions 149
-test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_postgresql_psycopg2_nocextensions 149
-test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_sqlite_pysqlite_cextensions 149
-test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_sqlite_pysqlite_nocextensions 149
-test.aaa_profiling.test_compiler.CompileTest.test_select 3.2_postgresql_psycopg2_nocextensions 161
-test.aaa_profiling.test_compiler.CompileTest.test_select 3.2_sqlite_pysqlite_nocextensions 161
+test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_postgresql_psycopg2_nocextensions 133
+test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_sqlite_pysqlite_nocextensions 133
+
+# TEST: test.aaa_profiling.test_compiler.CompileTest.test_select_second_time
+
+test.aaa_profiling.test_compiler.CompileTest.test_select_second_time 2.7_sqlite_pysqlite_nocextensions 133
 
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_update
 
@@ -195,6 +191,8 @@ test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 3.2_
 
 # TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile
 
+test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_postgresql_psycopg2_nocextensions 14
+test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_sqlite_pysqlite_nocextensions 14
 
 # TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_string
 
@@ -236,9 +234,7 @@ test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_2_insert 3.2_postgresql
 
 # TEST: test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_3_properties
 
-test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_3_properties 2.7_postgresql_psycopg2_cextensions 3093
-test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_3_properties 2.7_postgresql_psycopg2_nocextensions 3317
-test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_3_properties 3.2_postgresql_psycopg2_nocextensions 3094
+test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_3_properties 2.7_postgresql_psycopg2_nocextensions 3526
 
 # TEST: test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_4_expressions
 

@@ -38,7 +38,6 @@ class TextualGisElement(GisElement, expression.Function):
     """
 
     def __init__(self, desc, srid=-1):
-        assert isinstance(desc, basestring)
         self.desc = desc
         expression.Function.__init__(self, "ST_GeomFromText", desc, srid)
 
@@ -63,21 +62,30 @@ class Geometry(UserDefinedType):
 
         # override the __eq__() operator
         def __eq__(self, other):
-            return self.op('~=')(_to_postgis(other))
+            return self.op('~=')(other)
 
         # add a custom operator
         def intersects(self, other):
-            return self.op('&&')(_to_postgis(other))
+            return self.op('&&')(other)
 
         # any number of GIS operators can be overridden/added here
         # using the techniques above.
 
+    def _coerce_compared_value(self, op, value):
+        return self
+
     def get_col_spec(self):
         return self.name
 
+    def bind_expression(self, bindvalue):
+        return TextualGisElement(bindvalue)
+
+    def column_expression(self, col):
+        return func.ST_AsText(col, type_=self)
+
     def bind_processor(self, dialect):
         def process(value):
-            if value is not None:
+            if isinstance(value, GisElement):
                 return value.desc
             else:
                 return value
@@ -165,8 +173,6 @@ def setup_ddl_events():
             table.columns = table.info.pop('_saved_columns')
 setup_ddl_events()
 
-# ORM integration
-
 def _to_postgis(value):
     """Interpret a value as a GIS-compatible construct.
 
@@ -188,17 +194,6 @@ def _to_postgis(value):
     else:
         raise Exception("Invalid type")
 
-# without importing "orm", the "attribute_instrument"
-# event isn't even set up.
-from sqlalchemy import orm
-
-@event.listens_for(type, "attribute_instrument")
-def attribute_instrument(cls, key, inst):
-    type_ = getattr(inst, "type", None)
-    if isinstance(type_, Geometry):
-        @event.listens_for(inst, "set", retval=True)
-        def set_value(state, value, oldvalue, initiator):
-            return _to_postgis(value)
 
 
 # illustrate usage
@@ -245,7 +240,7 @@ if __name__ == '__main__':
     session.commit()
 
     # after flush and/or commit, all the TextualGisElements become PersistentGisElements.
-    assert str(r.road_geom) == "01020000000200000000000000B832084100000000E813104100000000283208410000000088601041"
+    assert str(r.road_geom) == "LINESTRING(198231 263418,198213 268322)"
 
     r1 = session.query(Road).filter(Road.road_name=='Graeme Ave').one()
 

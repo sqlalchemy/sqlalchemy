@@ -849,7 +849,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
         return ("ROLLBACK TRANSACTION %s"
                 % self.preparer.format_savepoint(savepoint_stmt))
 
-    def visit_column(self, column, result_map=None, **kwargs):
+    def visit_column(self, column, add_to_result_map=None, **kwargs):
         if column.table is not None and \
             (not self.isupdate and not self.isdelete) or self.is_subquery():
             # translate for schema-qualified table aliases
@@ -858,20 +858,19 @@ class MSSQLCompiler(compiler.SQLCompiler):
                 converted = expression._corresponding_column_or_error(
                                         t, column)
 
-                if result_map is not None:
-                    result_map[column.name
+                if add_to_result_map is not None:
+                    self.result_map[column.name
                                 if self.dialect.case_sensitive
                                 else column.name.lower()] = \
-                                    (column.name, (column, ),
+                                    (column.name, (column, ) + add_to_result_map,
                                                     column.type)
 
                 return super(MSSQLCompiler, self).\
                                 visit_column(converted,
                                             result_map=None, **kwargs)
 
-        return super(MSSQLCompiler, self).visit_column(column,
-                                                       result_map=result_map,
-                                                       **kwargs)
+        return super(MSSQLCompiler, self).visit_column(
+                        column, add_to_result_map=add_to_result_map, **kwargs)
 
     def visit_binary(self, binary, **kwargs):
         """Move bind parameters to the right-hand side of an operator, where
@@ -898,21 +897,13 @@ class MSSQLCompiler(compiler.SQLCompiler):
             target = stmt.table.alias("deleted")
 
         adapter = sql_util.ClauseAdapter(target)
-        def col_label(col):
-            adapted = adapter.traverse(col)
-            if isinstance(col, expression.Label):
-                return adapted.label(c.key)
-            else:
-                return self.label_select_column(None, adapted, asfrom=False)
 
         columns = [
-            self.process(
-                col_label(c),
-                within_columns_clause=True,
-                result_map=self.result_map
-            )
-            for c in expression._select_iterables(returning_cols)
-        ]
+                self._label_select_column(None, adapter.traverse(c),
+                                    True, False, {})
+                for c in expression._select_iterables(returning_cols)
+            ]
+
         return 'OUTPUT ' + ', '.join(columns)
 
     def get_cte_preamble(self, recursive):

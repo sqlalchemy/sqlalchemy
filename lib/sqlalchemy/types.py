@@ -25,7 +25,7 @@ import codecs
 
 from . import exc, schema, util, processors, events, event
 from .sql import operators
-from .sql.expression import _DefaultColumnComparator
+from .sql.expression import _DefaultColumnComparator, column, bindparam
 from .util import pickle
 from .util.compat import decimal
 from .sql.visitors import Visitable
@@ -162,6 +162,40 @@ class TypeEngine(AbstractType):
 
         """
         return None
+
+    def column_expression(self, colexpr):
+        """Given a SELECT column expression, return a wrapping SQL expression."""
+
+        return None
+
+    @util.memoized_property
+    def _has_column_expression(self):
+        """memoized boolean, check if column_expression is implemented."""
+        return self.column_expression(column('x')) is not None
+
+    def bind_expression(self, bindvalue):
+        """"Given a bind value (i.e. a :class:`.BindParameter` instance),
+        return a SQL expression in its place.
+
+        This is typically a SQL function that wraps the existing value
+        in a bind.   It is used for special data types that require
+        literals being wrapped in some special database function in all
+        cases, such as Postgis GEOMETRY types.
+
+        The method is evaluated at statement compile time, as opposed
+        to statement construction time.
+
+        Note that this method, when implemented, should always return
+        the exact same structure, without any conditional logic, as it
+        will be used during executemany() calls as well.
+
+        """
+        return None
+
+    @util.memoized_property
+    def _has_bind_expression(self):
+        """memoized boolean, check if bind_expression is implemented."""
+        return self.bind_expression(bindparam('x')) is not None
 
     def compare_values(self, x, y):
         """Compare two values for equality."""

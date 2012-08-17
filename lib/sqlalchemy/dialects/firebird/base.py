@@ -278,15 +278,11 @@ class FBCompiler(sql.compiler.SQLCompiler):
         return ""
 
     def returning_clause(self, stmt, returning_cols):
-
         columns = [
-                self.process(
-                    self.label_select_column(None, c, asfrom=False),
-                    within_columns_clause=True,
-                    result_map=self.result_map
-                )
+                self._label_select_column(None, c, True, False, {})
                 for c in expression._select_iterables(returning_cols)
             ]
+
         return 'RETURNING ' + ', '.join(columns)
 
 

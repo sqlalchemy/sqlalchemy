@@ -309,6 +309,31 @@ underneath "0.7.xx".
     replaced by inserted_primary_key.
 
 - sql
+  - [feature] Major rework of operator system
+    in Core, to allow redefinition of existing
+    operators as well as addition of new operators
+    at the type level.  New types can be created
+    from existing ones which add or redefine
+    operations that are exported out to column
+    expressions, in a similar manner to how the
+    ORM has allowed comparator_factory.   The new
+    architecture moves this capability into the
+    Core so that it is consistently usable in
+    all cases, propagating cleanly using existing
+    type propagation behavior.  [ticket:2547]
+
+  - [feature] To complement [ticket:2547], types
+    can now provide "bind expressions" and
+    "column expressions" which allow compile-time
+    injection of SQL expressions into statements
+    on a per-column or per-bind level.   This is
+    to suit the use case of a type which needs
+    to augment bind- and result- behavior at the
+    SQL level, as opposed to in the Python level.
+    Allows for schemes like transparent encryption/
+    decryption, usage of Postgis functions, etc.
+    [ticket:1534]
+
   - [feature] Revised the rules used to determine
     the operator precedence for the user-defined
     operator, i.e. that granted using the ``op()``

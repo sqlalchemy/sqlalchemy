@@ -143,7 +143,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(result2.fetchall(), [(2,False),])
 
 class SequenceReturningTest(fixtures.TestBase):
-    __requires__ = 'returning',
+    __requires__ = 'returning', 'sequences'
 
     def setup(self):
         meta = MetaData(testing.db)
