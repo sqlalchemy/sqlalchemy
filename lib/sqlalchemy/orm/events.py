@@ -25,8 +25,9 @@ class InstrumentationEvents(event.Events):
 
     @classmethod
     def _accept_with(cls, target):
+        # TODO: there's no coverage for this
         if isinstance(target, type):
-            return orm.instrumentation.instrumentation_registry
+            return orm.instrumentation._instrumentation_factory
         else:
             return None
 
@@ -36,7 +37,8 @@ class InstrumentationEvents(event.Events):
 
     @classmethod
     def _remove(cls, identifier, target, fn):
-        raise NotImplementedError("Removal of instrumentation events not yet implemented")
+        raise NotImplementedError("Removal of instrumentation events "
+                                    "not yet implemented")
 
     def class_instrument(self, cls):
         """Called after the given class is instrumented.

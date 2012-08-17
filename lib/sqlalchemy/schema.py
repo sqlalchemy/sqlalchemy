@@ -408,6 +408,11 @@ class Table(SchemaItem, expression.TableClause):
                     self, include_columns, exclude_columns
                 )
 
+    @util.memoized_property
+    def info(self):
+        """Dictionary provided for storage of additional information."""
+        return {}
+
     @property
     def _sorted_constraints(self):
         """Return the set of constraints as a list, sorted by creation order."""
@@ -964,6 +969,11 @@ class Column(SchemaItem, expression.ColumnClause):
                 return self.description
         else:
             return self.description
+
+    @util.memoized_property
+    def info(self):
+        """Dictionary provided for storage of additional information."""
+        return {}
 
     def references(self, column):
         """Return True if this Column references the given column via foreign

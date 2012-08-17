@@ -1,8 +1,6 @@
-from sqlalchemy.orm.interfaces import AttributeExtension
-from sqlalchemy.orm.properties import ColumnProperty
 from sqlalchemy.types import UserDefinedType
 from sqlalchemy.sql import expression
-from sqlalchemy import event
+from sqlalchemy import event, Table
 
 # Python datatypes
 
@@ -21,7 +19,8 @@ class GisElement(object):
         return self.desc
 
     def __repr__(self):
-        return "<%s at 0x%x; %r>" % (self.__class__.__name__, id(self), self.desc)
+        return "<%s at 0x%x; %r>" % (self.__class__.__name__,
+                                    id(self), self.desc)
 
 class PersistentGisElement(GisElement):
     """Represents a Geometry value as loaded from the database."""
@@ -30,7 +29,8 @@ class PersistentGisElement(GisElement):
         self.desc = desc
 
 class TextualGisElement(GisElement, expression.Function):
-    """Represents a Geometry value as expressed within application code; i.e. in wkt format.
+    """Represents a Geometry value as expressed within application code;
+    i.e. in wkt format.
 
     Extends expression.Function so that the value is interpreted as
     GeomFromText(value) in a SQL expression context.
@@ -52,12 +52,28 @@ class Geometry(UserDefinedType):
 
     """
 
+    name = "GEOMETRY"
+
     def __init__(self, dimension=None, srid=-1):
         self.dimension = dimension
         self.srid = srid
 
+    class comparator_factory(UserDefinedType.Comparator):
+        """Define custom operations for geometry types."""
+
+        # override the __eq__() operator
+        def __eq__(self, other):
+            return self.op('~=')(_to_postgis(other))
+
+        # add a custom operator
+        def intersects(self, other):
+            return self.op('&&')(_to_postgis(other))
+
+        # any number of GIS operators can be overridden/added here
+        # using the techniques above.
+
     def get_col_spec(self):
-        return "GEOMETRY"
+        return self.name
 
     def bind_processor(self, dialect):
         def process(value):
@@ -75,8 +91,7 @@ class Geometry(UserDefinedType):
                 return value
         return process
 
-# other datatypes can be added as needed, which
-# currently only affect DDL statements.
+# other datatypes can be added as needed.
 
 class Point(Geometry):
     name = 'POINT'
@@ -91,63 +106,76 @@ class LineString(Curve):
 
 
 # DDL integration
+# Postgis historically has required AddGeometryColumn/DropGeometryColumn
+# and other management methods in order to create Postgis columns.  Newer
+# versions don't appear to require these special steps anymore.  However,
+# here we illustrate how to set up these features in any case.
 
-class GISDDL(object):
-    """A DDL extension which integrates SQLAlchemy table create/drop
-    methods with PostGis' AddGeometryColumn/DropGeometryColumn functions.
+def setup_ddl_events():
+    @event.listens_for(Table, "before_create")
+    def before_create(target, connection, **kw):
+        dispatch("before-create", target, connection)
 
-    Usage::
+    @event.listens_for(Table, "after_create")
+    def after_create(target, connection, **kw):
+        dispatch("after-create", target, connection)
 
-        sometable = Table('sometable', metadata, ...)
+    @event.listens_for(Table, "before_drop")
+    def before_drop(target, connection, **kw):
+        dispatch("before-drop", target, connection)
 
-        GISDDL(sometable)
+    @event.listens_for(Table, "after_drop")
+    def after_drop(target, connection, **kw):
+        dispatch("after-drop", target, connection)
 
-        sometable.create()
-
-    """
-
-    def __init__(self, table):
-        event.listen(table, "before_create", self.before_create)
-        event.listen(table, "after_create", self.after_create)
-        event.listen(table, "before_drop", self.before_drop)
-        event.listen(table, "after_drop", self.before_drop)
-        self._stack = []
-
-    def before_create(self, target, connection, **kw):
-        self("before-create", target, connection)
-
-    def after_create(self, target, connection, **kw):
-        self("after-create", target, connection)
-
-    def before_drop(self, target, connection, **kw):
-        self("before-drop", target, connection)
-
-    def after_drop(self, target, connection, **kw):
-        self("after-drop", target, connection)
-
-    def __call__(self, event, table, bind):
+    def dispatch(event, table, bind):
         if event in ('before-create', 'before-drop'):
-            regular_cols = [c for c in table.c if not isinstance(c.type, Geometry)]
+            regular_cols = [c for c in table.c if not
+                                    isinstance(c.type, Geometry)]
             gis_cols = set(table.c).difference(regular_cols)
-            self._stack.append(table.c)
+            table.info["_saved_columns"] = table.c
+
+            # temporarily patch a set of columns not including the
+            # Geometry columns
             table.columns = expression.ColumnCollection(*regular_cols)
 
             if event == 'before-drop':
                 for c in gis_cols:
-                    bind.execute(select([func.DropGeometryColumn('public', table.name, c.name)], autocommit=True))
+                    bind.execute(
+                            select([
+                                func.DropGeometryColumn(
+                                    'public', table.name, c.name)],
+                                    autocommit=True)
+                            )
 
         elif event == 'after-create':
-            table.columns = self._stack.pop()
+            table.columns = table.info.pop('_saved_columns')
             for c in table.c:
                 if isinstance(c.type, Geometry):
-                    bind.execute(select([func.AddGeometryColumn(table.name, c.name, c.type.srid, c.type.get_col_spec(), c.type.dimension)], autocommit=True))
+                    bind.execute(
+                            select([
+                                    func.AddGeometryColumn(
+                                        table.name, c.name,
+                                        c.type.srid,
+                                        c.type.name,
+                                        c.type.dimension)],
+                                autocommit=True)
+                        )
         elif event == 'after-drop':
-            table.columns = self._stack.pop()
+            table.columns = table.info.pop('_saved_columns')
+setup_ddl_events()
 
 # ORM integration
 
 def _to_postgis(value):
-    """Interpret a value as a GIS-compatible construct."""
+    """Interpret a value as a GIS-compatible construct.
+
+
+    TODO.  I'd like to make this unnecessary also,
+    and see if the Geometry type can do the coersion.
+    This would require [ticket:1534].
+
+    """
 
     if hasattr(value, '__clause_element__'):
         return value.__clause_element__()
@@ -160,54 +188,24 @@ def _to_postgis(value):
     else:
         raise Exception("Invalid type")
 
+# without importing "orm", the "attribute_instrument"
+# event isn't even set up.
+from sqlalchemy import orm
 
-class GisAttribute(AttributeExtension):
-    """Intercepts 'set' events on a mapped instance attribute and
-    converts the incoming value to a GIS expression.
+@event.listens_for(type, "attribute_instrument")
+def attribute_instrument(cls, key, inst):
+    type_ = getattr(inst, "type", None)
+    if isinstance(type_, Geometry):
+        @event.listens_for(inst, "set", retval=True)
+        def set_value(state, value, oldvalue, initiator):
+            return _to_postgis(value)
 
-    """
-
-    def set(self, state, value, oldvalue, initiator):
-        return _to_postgis(value)
-
-class GisComparator(ColumnProperty.ColumnComparator):
-    """Intercepts standard Column operators on mapped class attributes
-    and overrides their behavior.
-
-    """
-
-    # override the __eq__() operator
-    def __eq__(self, other):
-        return self.__clause_element__().op('~=')(_to_postgis(other))
-
-    # add a custom operator
-    def intersects(self, other):
-        return self.__clause_element__().op('&&')(_to_postgis(other))
-
-    # any number of GIS operators can be overridden/added here
-    # using the techniques above.
-
-
-def GISColumn(*args, **kw):
-    """Define a declarative column property with GIS behavior.
-
-    This just produces orm.column_property() with the appropriate
-    extension and comparator_factory arguments.  The given arguments
-    are passed through to Column.  The declarative module extracts
-    the Column for inclusion in the mapped table.
-
-    """
-    return column_property(
-                Column(*args, **kw),
-                extension=GisAttribute(),
-                comparator_factory=GisComparator
-            )
 
 # illustrate usage
 if __name__ == '__main__':
     from sqlalchemy import (create_engine, MetaData, Column, Integer, String,
         func, literal, select)
-    from sqlalchemy.orm import sessionmaker, column_property
+    from sqlalchemy.orm import sessionmaker
     from sqlalchemy.ext.declarative import declarative_base
 
     engine = create_engine('postgresql://scott:tiger@localhost/test', echo=True)
@@ -219,12 +217,8 @@ if __name__ == '__main__':
 
         road_id = Column(Integer, primary_key=True)
         road_name = Column(String)
-        road_geom = GISColumn(Geometry(2))
+        road_geom = Column(Geometry(2))
 
-    # enable the DDL extension, which allows CREATE/DROP operations
-    # to work correctly.  This is not needed if working with externally
-    # defined tables.
-    GISDDL(Road.__table__)
 
     metadata.drop_all()
     metadata.create_all()
