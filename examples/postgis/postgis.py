@@ -1,6 +1,6 @@
 from sqlalchemy.orm.interfaces import AttributeExtension
 from sqlalchemy.orm.properties import ColumnProperty
-from sqlalchemy.types import TypeEngine
+from sqlalchemy.types import UserDefinedType
 from sqlalchemy.sql import expression
 from sqlalchemy import event
 
@@ -11,11 +11,11 @@ class GisElement(object):
 
     @property
     def wkt(self):
-        return func.AsText(literal(self, Geometry))
+        return func.ST_AsText(literal(self, Geometry))
 
     @property
     def wkb(self):
-        return func.AsBinary(literal(self, Geometry))
+        return func.ST_AsBinary(literal(self, Geometry))
 
     def __str__(self):
         return self.desc
@@ -40,23 +40,24 @@ class TextualGisElement(GisElement, expression.Function):
     def __init__(self, desc, srid=-1):
         assert isinstance(desc, basestring)
         self.desc = desc
-        expression.Function.__init__(self, "GeomFromText", desc, srid)
+        expression.Function.__init__(self, "ST_GeomFromText", desc, srid)
 
 
 # SQL datatypes.
 
-class Geometry(TypeEngine):
+class Geometry(UserDefinedType):
     """Base PostGIS Geometry column type.
 
     Converts bind/result values to/from a PersistentGisElement.
 
     """
 
-    name = 'GEOMETRY'
-
     def __init__(self, dimension=None, srid=-1):
         self.dimension = dimension
         self.srid = srid
+
+    def get_col_spec(self):
+        return "GEOMETRY"
 
     def bind_processor(self, dialect):
         def process(value):
@@ -137,10 +138,9 @@ class GISDDL(object):
 
         elif event == 'after-create':
             table.columns = self._stack.pop()
-
             for c in table.c:
                 if isinstance(c.type, Geometry):
-                    bind.execute(select([func.AddGeometryColumn(table.name, c.name, c.type.srid, c.type.name, c.type.dimension)], autocommit=True))
+                    bind.execute(select([func.AddGeometryColumn(table.name, c.name, c.type.srid, c.type.get_col_spec(), c.type.dimension)], autocommit=True))
         elif event == 'after-drop':
             table.columns = self._stack.pop()
 
