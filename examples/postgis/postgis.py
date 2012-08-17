@@ -253,6 +253,9 @@ if __name__ == '__main__':
     stmt = select([road_table]).where(road_table.c.road_geom.intersects(r1.road_geom))
     print session.execute(stmt).fetchall()
 
+    # TODO: for some reason the auto-generated labels have the internal replacement
+    # strings exposed, even though PG doesn't complain
+
     # look up the hex binary version, using SQLAlchemy casts
     as_binary = session.scalar(select([type_coerce(r.road_geom, Geometry(coerce_="binary"))]))
     assert as_binary.as_hex == \
