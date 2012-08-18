@@ -687,9 +687,8 @@ Postgresql factorial operator::
                             modifier=operators.custom_op("!"),
                             type_=MyInteger)
 
-
-
-
+.. versionadded:: 0.8  The expression system was enhanced to support
+  customization of operators on a per-type level.
 
 
 Creating New Types

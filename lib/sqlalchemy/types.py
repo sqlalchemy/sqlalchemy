@@ -125,8 +125,8 @@ class TypeEngine(AbstractType):
         >>> (c1 == c2).type
         Boolean()
 
-    .. versionadded:: 0.8  The expression system was reworked to support
-      user-defined comparator objects specified at the type level.
+    .. versionadded:: 0.8  The expression system was enhanced to support
+      customization of operators on a per-type level.
 
     """
 
