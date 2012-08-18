@@ -74,56 +74,7 @@ class TypeEngine(AbstractType):
 
     Rudimentary usage of this hook is allowed through simple subclassing
     of existing types, or alternatively by using :class:`.TypeDecorator`.
-    E.g. to overload the ``+`` operator on :class:`.Integer`::
-
-        from sqlalchemy import Integer
-
-        class MyInt(Integer):
-            class comparator_factory(Integer.Comparator):
-                def __add__(self, other):
-                    return self.op("goofy")(other)
-
-    Usage::
-
-        >>> sometable = Table("sometable", metadata, Column("data", MyInt))
-        >>> print sometable.c.data + 5
-        sometable.data goofy :data_1
-
-    New comparison methods and operations applied to :class:`.TypeEngine.Comparator`
-    are made available on parent SQL constructs using a ``__getattr__()`` scheme::
-
-        from sqlalchemy import Integer, func
-
-        class MyInt(Integer):
-            class comparator_factory(Integer.Comparator):
-                def log(self, other):
-                    return func.log(self, other)
-
-    E.g.::
-
-        >>> print sometable.c.data.log(5)
-        log(:log_1, :log_2)
-
-    The :class:`.TypeEngine` associated with a particular :class:`.ColumnElement`
-    is propagated during expression construction to the containing elements
-    according to simple "adaptation" rules.   An example of an "adaptation"
-    would be adding two integers leads to a "binary" expression that is also
-    of type integer::
-
-        >>> from sqlalchemy.sql import column
-        >>> from sqlalchemy.types import Integer
-        >>> c1 = column('c1', Integer)
-        >>> c2 = column('c2', Integer)
-        >>> c1.type
-        Integer()
-        >>> (c1 + c2).type
-        Integer()
-
-    If the two columns above were compared using a boolean operator,
-    the resulting type would instead be :class:`.Boolean`::
-
-        >>> (c1 == c2).type
-        Boolean()
+    See the documentation section :ref:`types_operators` for examples.
 
     .. versionadded:: 0.8  The expression system was enhanced to support
       customization of operators on a per-type level.

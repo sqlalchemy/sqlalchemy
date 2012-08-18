@@ -200,6 +200,10 @@ Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: UnaryExpression
+   :members:
+   :show-inheritance:
+
 .. autoclass:: Update
   :members:
   :show-inheritance:

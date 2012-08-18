@@ -661,23 +661,50 @@ we create a :class:`.Integer` subclass which overrides the :meth:`.ColumnOperato
 
 The above configuration creates a new class ``MyInt``, which
 establishes the :attr:`.TypeEngine.comparator_factory` attribute as
-referring to a new class, subclassing the ``Comparator`` class
+referring to a new class, subclassing the :class:`.TypeEngine.Comparator` class
 associated with the :class:`.Integer` type.
 
+Usage::
+
+    >>> sometable = Table("sometable", metadata, Column("data", MyInt))
+    >>> print sometable.c.data + 5
+    sometable.data goofy :data_1
+
 The implementation for :meth:`.ColumnOperators.__add__` is consulted
-by an owning SQL expression, by instantiating the ``Comparator`` with
+by an owning SQL expression, by instantiating the :class:`.TypeEngine.Comparator` with
 itself as as the ``expr`` attribute.   The mechanics of the expression
 system are such that operations continue recursively until an
 expression object produces a new SQL expression construct. Above, we
 could just as well have said ``self.expr.op("goofy")(other)`` instead
 of ``self.op("goofy")(other)``.
 
-New methods added to a ``Comparator`` are exposed on an owning SQL expression
-using a ``__getattr__`` scheme.  For example, to add an implementation of the
-Postgresql factorial operator::
+New methods added to a :class:`.TypeEngine.Comparator` are exposed on an
+owning SQL expression
+using a ``__getattr__`` scheme, which exposes methods added to
+:class:`.TypeEngine.Comparator` onto the owning :class:`.ColumnElement`.
+For example, to add a ``log()`` function
+to integers::
+
+    from sqlalchemy import Integer, func
+
+    class MyInt(Integer):
+        class comparator_factory(Integer.Comparator):
+            def log(self, other):
+                return func.log(self, other)
+
+Using the above type::
+
+    >>> print sometable.c.data.log(5)
+    log(:log_1, :log_2)
+
+
+Unary operations
+are also possible.  For example, to add an implementation of the
+Postgresql factorial operator, we combine the :class:`.UnaryExpression` construct
+along with a :class:`.custom_op` to produce the factorial expression::
 
     from sqlalchemy import Integer
-    from sqlalchemy.sql import UnaryExpression
+    from sqlalchemy.sql.expression import UnaryExpression
     from sqlalchemy.sql import operators
 
     class MyInteger(Integer):
@@ -686,6 +713,16 @@ Postgresql factorial operator::
                 return UnaryExpression(self.expr,
                             modifier=operators.custom_op("!"),
                             type_=MyInteger)
+
+Using the above type::
+
+    >>> from sqlalchemy.sql import column
+    >>> print column('x', MyInteger).factorial()
+    x !
+
+See also:
+
+:attr:`.TypeEngine.comparator_factory`
 
 .. versionadded:: 0.8  The expression system was enhanced to support
   customization of operators on a per-type level.

@@ -2141,21 +2141,21 @@ class _DefaultColumnComparator(operators.ColumnOperators):
 
 
 class ColumnElement(ClauseElement, ColumnOperators):
-    """Represent an element that is usable within the "column clause" portion
-    of a ``SELECT`` statement.
+    """Represent a column-oriented SQL expression suitable for usage in the
+    "columns" clause, WHERE clause etc. of a statement.
 
     While the most familiar kind of :class:`.ColumnElement` is the
     :class:`.Column` object, :class:`.ColumnElement` serves as the basis
     for any unit that may be present in a SQL expression, including
-    the columns associated with tables, aliases, and
-    subqueries, expressions, function calls, SQL keywords such as
-    ``NULL``, literals, etc.  :class:`.ColumnElement` is the ultimate base
-    class for all such elements.
+    the expressions themselves, SQL functions, bound parameters,
+    literal expressions, keywords such as ``NULL``, etc.  :class:`.ColumnElement`
+    is the ultimate base class for all such elements.
 
-    A :class:`.ColumnElement` provides the ability to generate new :class:`.ClauseElement`
+    A :class:`.ColumnElement` provides the ability to generate new
+    :class:`.ColumnElement`
     objects using Python expressions.  This means that Python operators
     such as ``==``, ``!=`` and ``<`` are overloaded to mimic SQL operations,
-    and allow the construction of :class:`.ColumnElement` constructs which
+    and allow the instantiation of further :class:`.ColumnElement` instances which
     are composed from other, more fundamental :class:`.ColumnElement`
     objects.  For example, two :class:`.ColumnClause` objects can be added
     together with the addition operator ``+`` to produce

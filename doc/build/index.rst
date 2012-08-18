@@ -84,6 +84,7 @@ are documented here.  In contrast to the ORM's domain-centric mode of usage, the
   :ref:`SQL Standard Types <types_sqlstandard>` |
   :ref:`Vendor Specific Types <types_vendor>` |
   :ref:`Building Custom Types <types_custom>` |
+  :ref:`Defining New Operators <types_operators>` |
   :ref:`API <types_api>`
 
 * **Extending the Core:**
@@ -94,7 +95,6 @@ are documented here.  In contrast to the ORM's domain-centric mode of usage, the
 
 * **Other:**
   :doc:`Runtime Inspection API <core/inspection>` |
-  :doc:`Serializing Expressions <core/serializer>` |
   :doc:`core/interfaces` |
   :doc:`core/exceptions`
 
