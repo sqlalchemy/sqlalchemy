@@ -196,14 +196,32 @@ class MapperProperty(_InspectionAttr):
         return operator(self.comparator, value)
 
 class PropComparator(operators.ColumnOperators):
-    """Defines comparison operations for MapperProperty objects.
+    """Defines boolean, comparison, and other operators for
+    :class:`.MapperProperty` objects.
+
+    SQLAlchemy allows for operators to
+    be redefined at both the Core and ORM level.  :class:`.PropComparator`
+    is the base class of operator redefinition for ORM-level operations,
+    including those of :class:`.ColumnProperty`, :class:`.RelationshipProperty`,
+    and :class:`.CompositeProperty`.
+
+    .. note:: With the advent of Hybrid properties introduced in SQLAlchemy
+       0.7, as well as Core-level operator redefinition in
+       SQLAlchemy 0.8, the use case for user-defined :class:`.PropComparator`
+       instances is extremely rare.  See :ref:`hybrids_toplevel` as well
+       as :ref:`types_operators`.
 
     User-defined subclasses of :class:`.PropComparator` may be created. The
     built-in Python comparison and math operator methods, such as
-    ``__eq__()``, ``__lt__()``, ``__add__()``, can be overridden to provide
+    :meth:`.operators.ColumnOperators.__eq__`,
+    :meth:`.operators.ColumnOperators.__lt__`, and
+    :meth:`.operators.ColumnOperators.__add__`, can be overridden to provide
     new operator behavior. The custom :class:`.PropComparator` is passed to
-    the mapper property via the ``comparator_factory`` argument. In each case,
+    the :class:`.MapperProperty` instance via the ``comparator_factory``
+    argument. In each case,
     the appropriate subclass of :class:`.PropComparator` should be used::
+
+        # definition of custom PropComparator subclasses
 
         from sqlalchemy.orm.properties import \\
                                 ColumnProperty,\\
@@ -211,13 +229,58 @@ class PropComparator(operators.ColumnOperators):
                                 RelationshipProperty
 
         class MyColumnComparator(ColumnProperty.Comparator):
-            pass
-
-        class MyCompositeComparator(CompositeProperty.Comparator):
-            pass
+            def __eq__(self, other):
+                return self.__clause_element__() == other
 
         class MyRelationshipComparator(RelationshipProperty.Comparator):
-            pass
+            def any(self, expression):
+                "define the 'any' operation"
+                # ...
+
+        class MyCompositeComparator(CompositeProperty.Comparator):
+            def __gt__(self, other):
+                "redefine the 'greater than' operation"
+
+                return sql.and_(*[a>b for a, b in
+                                  zip(self.__clause_element__().clauses,
+                                      other.__composite_values__())])
+
+
+        # application of custom PropComparator subclasses
+
+        from sqlalchemy.orm import column_property, relationship, composite
+        from sqlalchemy import Column, String
+
+        class SomeMappedClass(Base):
+            some_column = column_property(Column("some_column", String),
+                                    comparator_factory=MyColumnComparator)
+
+            some_relationship = relationship(SomeOtherClass,
+                                    comparator_factory=MyRelationshipComparator)
+
+            some_composite = composite(
+                    Column("a", String), Column("b", String),
+                    comparator_factory=MyCompositeComparator
+                )
+
+    Note that for column-level operator redefinition, it's usually
+    simpler to define the operators at the Core level, using the
+    :attr:`.TypeEngine.comparator_factory` attribute.  See
+    :ref:`types_operators` for more detail.
+
+    See also:
+
+    :class:`.ColumnProperty.Comparator`
+
+    :class:`.RelationshipProperty.Comparator`
+
+    :class:`.CompositeProperty.Comparator`
+
+    :class:`.ColumnOperators`
+
+    :ref:`types_operators`
+
+    :attr:`.TypeEngine.comparator_factory`
 
     """
 

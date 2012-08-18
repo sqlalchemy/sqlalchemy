@@ -948,8 +948,15 @@ class SQLCompiler(engine.Compiled):
             else:
                 add_to_result_map = None
 
-        if isinstance(col_expr, sql.Label):
-            result_expr = col_expr
+        if isinstance(column, sql.Label):
+            if col_expr is not column:
+                result_expr = _CompileLabel(
+                        col_expr,
+                        column.name,
+                        alt_names=(column.element,)
+                    )
+            else:
+                result_expr = col_expr
 
         elif select is not None and \
                 select.use_labels and \

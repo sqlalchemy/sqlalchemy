@@ -229,6 +229,9 @@ def function_call_count(variance=0.05):
                 raise SkipTest("cProfile is not installed")
 
             if not _profile_stats.has_stats() and not _profile_stats.write:
+                # run the function anyway, to support dependent tests
+                # (not a great idea but we have these in test_zoomark)
+                fn(*args, **kw)
                 raise SkipTest("No profiling stats available on this "
                             "platform for this function.  Run tests with "
                             "--write-profiles to add statistics to %s for "

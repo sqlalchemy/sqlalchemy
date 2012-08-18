@@ -161,6 +161,22 @@ class ColumnProperty(StrategizedProperty):
             dest_state._expire_attributes(dest_dict, [self.key])
 
     class Comparator(PropComparator):
+        """Produce boolean, comparison, and other operators for
+        :class:`.ColumnProperty` attributes.
+
+        See the documentation for :class:`.PropComparator` for a brief overview.
+
+        See also:
+
+        :class:`.PropComparator`
+
+        :class:`.ColumnOperators`
+
+        :ref:`types_operators`
+
+        :attr:`.TypeEngine.comparator_factory`
+
+        """
         @util.memoized_instancemethod
         def __clause_element__(self):
             if self.adapter:
@@ -198,9 +214,9 @@ class RelationshipProperty(StrategizedProperty):
 
     Public constructor is the :func:`.orm.relationship` function.
 
-    Of note here is the :class:`.RelationshipProperty.Comparator`
-    class, which implements comparison operations for scalar-
-    and collection-referencing mapped attributes.
+    See also:
+
+    :ref:`relationship_config_toplevel`
 
     """
 
@@ -304,8 +320,25 @@ class RelationshipProperty(StrategizedProperty):
             )
 
     class Comparator(PropComparator):
-        """Produce comparison operations for :func:`~.orm.relationship`-based
-         attributes."""
+        """Produce boolean, comparison, and other operators for
+        :class:`.RelationshipProperty` attributes.
+
+        See the documentation for :class:`.PropComparator` for a brief overview
+        of ORM level operator definition.
+
+        See also:
+
+        :class:`.PropComparator`
+
+        :class:`.ColumnProperty.Comparator`
+
+        :class:`.ColumnOperators`
+
+        :ref:`types_operators`
+
+        :attr:`.TypeEngine.comparator_factory`
+
+        """
 
         def __init__(self, prop, mapper, of_type=None, adapter=None):
             """Construction of :class:`.RelationshipProperty.Comparator`

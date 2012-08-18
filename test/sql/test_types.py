@@ -441,6 +441,13 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
             []
         )
 
+        eq_(
+            testing.db.scalar(
+                select([type_coerce(literal('d1BIND_OUT'), MyType)])
+            ),
+            'd1BIND_OUT'
+        )
+
     @classmethod
     def define_tables(cls, metadata):
         class MyType(types.UserDefinedType):
@@ -1300,9 +1307,9 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
             pass
 
         # unknown type + integer, right hand bind
-        # is an Integer
+        # coerces to given type
         expr = column("foo", MyFoobarType) + 5
-        assert expr.right.type._type_affinity is types.Integer
+        assert expr.right.type._type_affinity is MyFoobarType
 
         # untyped bind - it gets assigned MyFoobarType
         expr = column("foo", MyFoobarType) + bindparam("foo")
@@ -1321,7 +1328,7 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         assert expr.right.type._type_affinity is MyFoobarType
 
         expr = column("foo", MyFoobarType) - datetime.date(2010, 8, 25)
-        assert expr.right.type._type_affinity is types.Date
+        assert expr.right.type._type_affinity is MyFoobarType
 
     def test_date_coercion(self):
         from sqlalchemy.sql import column

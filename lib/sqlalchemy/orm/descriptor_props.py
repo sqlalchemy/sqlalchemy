@@ -73,7 +73,17 @@ class DescriptorProperty(MapperProperty):
 
 
 class CompositeProperty(DescriptorProperty):
+    """Defines a "composite" mapped attribute, representing a collection
+    of columns as one attribute.
 
+    :class:`.CompositeProperty` is constructed using the :func:`.composite`
+    function.
+
+    See also:
+
+    :ref:`mapper_composite`
+
+    """
     def __init__(self, class_, *attrs, **kwargs):
         self.attrs = attrs
         self.composite_class = class_
@@ -279,6 +289,23 @@ class CompositeProperty(DescriptorProperty):
         return self.comparator_factory(self)
 
     class Comparator(PropComparator):
+        """Produce boolean, comparison, and other operators for
+        :class:`.CompositeProperty` attributes.
+
+        See the example in :ref:`composite_operations` for an overview
+        of usage , as well as the documentation for :class:`.PropComparator`.
+
+        See also:
+
+        :class:`.PropComparator`
+
+        :class:`.ColumnOperators`
+
+        :ref:`types_operators`
+
+        :attr:`.TypeEngine.comparator_factory`
+
+        """
         def __init__(self, prop, adapter=None):
             self.prop = self.property = prop
             self.adapter = adapter

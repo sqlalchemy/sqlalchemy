@@ -760,6 +760,9 @@ def composite(class_, *cols, **kwargs):
     See the mapping documentation section :ref:`mapper_composite` for a full
     usage example.
 
+    The :class:`.MapperProperty` returned by :func:`.composite`
+    is the :class:`.CompositeProperty`.
+
     :param class\_:
       The "composite type" class.
 

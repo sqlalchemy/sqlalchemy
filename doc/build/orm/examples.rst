@@ -102,6 +102,8 @@ Polymorphic Associations
 
 See :ref:`examples_generic_associations` for a modern version of polymorphic associations.
 
+.. _examples_postgis:
+
 PostGIS Integration
 -------------------
 

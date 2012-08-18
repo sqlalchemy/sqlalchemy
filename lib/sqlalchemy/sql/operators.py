@@ -205,7 +205,8 @@ class custom_op(object):
 
 
 class ColumnOperators(Operators):
-    """Defines comparison and math operations.
+    """Defines boolean, comparison, and other operators for
+    :class:`.ColumnElement` expressions.
 
     By default, all methods call down to
     :meth:`.operate` or :meth:`.reverse_operate`,
@@ -229,10 +230,15 @@ class ColumnOperators(Operators):
     so that the ``==`` operation above is replaced by a clause
     construct.
 
-    The docstrings here will describe column-oriented
-    behavior of each operator.  For ORM-based operators
-    on related objects and collections, see
-    :class:`.RelationshipProperty.Comparator`.
+    See also:
+
+    :ref:`types_operators`
+
+    :attr:`.TypeEngine.comparator_factory`
+
+    :class:`.ColumnOperators`
+
+    :class:`.PropComparator`
 
     """
 

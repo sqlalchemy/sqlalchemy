@@ -164,7 +164,24 @@ class TypeEngine(AbstractType):
         return None
 
     def column_expression(self, colexpr):
-        """Given a SELECT column expression, return a wrapping SQL expression."""
+        """Given a SELECT column expression, return a wrapping SQL expression.
+
+        This is typically a SQL function that wraps a column expression
+        as rendered in the columns clause of a SELECT statement.
+        It is used for special data types that require
+        columns to be wrapped in some special database function in order
+        to coerce the value before being sent back to the application.
+        It is the SQL analogue of the :meth:`.TypeEngine.result_processor`
+        method.
+
+        The method is evaluated at statement compile time, as opposed
+        to statement construction time.
+
+        See also:
+
+        :ref:`types_sql_value_processing`
+
+        """
 
         return None
 
@@ -177,17 +194,24 @@ class TypeEngine(AbstractType):
         """"Given a bind value (i.e. a :class:`.BindParameter` instance),
         return a SQL expression in its place.
 
-        This is typically a SQL function that wraps the existing value
-        in a bind.   It is used for special data types that require
-        literals being wrapped in some special database function in all
-        cases, such as Postgis GEOMETRY types.
+        This is typically a SQL function that wraps the existing bound
+        parameter within the statement.  It is used for special data types
+        that require literals being wrapped in some special database function
+        in order to coerce an application-level value into a database-specific
+        format.  It is the SQL analogue of the :meth:`.TypeEngine.bind_processor`
+        method.
 
         The method is evaluated at statement compile time, as opposed
         to statement construction time.
 
         Note that this method, when implemented, should always return
         the exact same structure, without any conditional logic, as it
-        will be used during executemany() calls as well.
+        may be used in an executemany() call against an arbitrary number
+        of bound parameter sets.
+
+        See also:
+
+        :ref:`types_sql_value_processing`
 
         """
         return None
@@ -334,7 +358,7 @@ class TypeEngine(AbstractType):
         """
         return util.constructor_copy(self, cls, **kw)
 
-    def _coerce_compared_value(self, op, value):
+    def coerce_compared_value(self, op, value):
         """Suggest a type for a 'coerced' Python value in an expression.
 
         Given an operator and value, gives the type a chance
@@ -459,6 +483,23 @@ class UserDefinedType(TypeEngine):
                 return op, self.type
 
     comparator_factory = Comparator
+
+    def coerce_compared_value(self, op, value):
+        """Suggest a type for a 'coerced' Python value in an expression.
+
+        Default behavior for :class:`.UserDefinedType` is the
+        same as that of :class:`.TypeDecorator`; by default it returns
+        ``self``, assuming the compared value should be coerced into
+        the same type as this one.  See :meth:`.TypeDecorator.coerce_compared_value`
+        for more detail.
+
+        .. versionchanged:: 0.8 :meth:`.UserDefinedType.coerce_compared_value`
+           now returns ``self`` by default, rather than falling onto the
+           more fundamental behavior of :meth:`.TypeEngine.coerce_compared_value`.
+
+        """
+
+        return self
 
 
 class TypeDecorator(TypeEngine):
@@ -602,7 +643,8 @@ class TypeDecorator(TypeEngine):
         return self.impl._type_affinity
 
     def type_engine(self, dialect):
-        """Return a dialect-specific :class:`.TypeEngine` instance for this :class:`.TypeDecorator`.
+        """Return a dialect-specific :class:`.TypeEngine` instance
+        for this :class:`.TypeDecorator`.
 
         In most cases this returns a dialect-adapted form of
         the :class:`.TypeEngine` type represented by ``self.impl``.
@@ -777,11 +819,6 @@ class TypeDecorator(TypeEngine):
 
         """
         return self
-
-    def _coerce_compared_value(self, op, value):
-        """See :meth:`.TypeEngine._coerce_compared_value` for a description."""
-
-        return self.coerce_compared_value(op, value)
 
     def copy(self):
         """Produce a copy of this :class:`.TypeDecorator` instance.
@@ -1672,13 +1709,13 @@ class _Binary(TypeEngine):
         return process
     # end Py2K
 
-    def _coerce_compared_value(self, op, value):
-        """See :meth:`.TypeEngine._coerce_compared_value` for a description."""
+    def coerce_compared_value(self, op, value):
+        """See :meth:`.TypeEngine.coerce_compared_value` for a description."""
 
         if isinstance(value, basestring):
             return self
         else:
-            return super(_Binary, self)._coerce_compared_value(op, value)
+            return super(_Binary, self).coerce_compared_value(op, value)
 
     def get_dbapi_type(self, dbapi):
         return dbapi.BINARY
@@ -2193,10 +2230,10 @@ class Interval(_DateAffinity, TypeDecorator):
     def _type_affinity(self):
         return Interval
 
-    def _coerce_compared_value(self, op, value):
-        """See :meth:`.TypeEngine._coerce_compared_value` for a description."""
+    def coerce_compared_value(self, op, value):
+        """See :meth:`.TypeEngine.coerce_compared_value` for a description."""
 
-        return self.impl._coerce_compared_value(op, value)
+        return self.impl.coerce_compared_value(op, value)
 
 
 class REAL(Float):

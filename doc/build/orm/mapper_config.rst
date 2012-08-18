@@ -746,6 +746,13 @@ which take place for column expressions are most directly redefined at the
 type level -  see the
 section :ref:`types_operators` for a description.
 
+ORM level functions like :func:`.column_property`, :func:`.relationship`,
+and :func:`.composite` also provide for operator redefinition at the ORM
+level, by passing a :class:`.PropComparator` subclass to the ``comparator_factory``
+argument of each function.  Customization of operators at this level is a
+rare use case.  See the documentation at :class:`.PropComparator`
+for an overview.
+
 .. _mapper_composite:
 
 Composite Column Types
@@ -846,6 +853,7 @@ using the ``.start`` and ``.end`` attributes against ad-hoc ``Point`` instances:
 
 .. autofunction:: composite
 
+
 Tracking In-Place Mutations on Composites
 -----------------------------------------
 
@@ -857,14 +865,20 @@ to associate each user-defined composite object with all parent associations.
 Please see the example in :ref:`mutable_composites`.
 
 .. versionchanged:: 0.7
-    No automatic tracking of in-place changes to an existing composite value.
+    In-place changes to an existing composite value are no longer
+    tracked automatically; the functionality is superseded by the
+    :class:`.MutableComposite` class.
+
+.. _composite_operations:
 
 Redefining Comparison Operations for Composites
 -----------------------------------------------
 
 The "equals" comparison operation by default produces an AND of all
 corresponding columns equated to one another. This can be changed using
-the ``comparator_factory``, described in :ref:`custom_comparators`.
+the ``comparator_factory`` argument to :func:`.composite`, where we
+specify a custom :class:`.CompositeProperty.Comparator` class
+to define existing or new operations.
 Below we illustrate the "greater than" operator, implementing
 the same expression that the base "greater than" does::
 

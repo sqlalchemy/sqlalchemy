@@ -1,4 +1,4 @@
-from sqlalchemy import Table, Column, String, func, MetaData, select
+from sqlalchemy import Table, Column, String, func, MetaData, select, TypeDecorator
 from test.lib import fixtures, AssertsCompiledSQL, testing
 from test.lib.testing import eq_
 
@@ -77,24 +77,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "test_table WHERE test_table.y = lower(:y_2)"
         )
 
-class RoundTripTest(fixtures.TablesTest):
-    @classmethod
-    def define_tables(cls, metadata):
-        class MyString(String):
-            def bind_expression(self, bindvalue):
-                return func.lower(bindvalue)
-
-            def column_expression(self, col):
-                return func.upper(col)
-
-        Table(
-                'test_table',
-                metadata,
-                    Column('x', String(50)),
-                    Column('y', MyString(50)
-                )
-        )
-
+class RoundTripTestBase(object):
     def test_round_trip(self):
         testing.db.execute(
             self.tables.test_table.insert(),
@@ -150,8 +133,6 @@ class RoundTripTest(fixtures.TablesTest):
             "Y1"
         )
 
-    @testing.fails_if(lambda: True, "still need to propagate "
-                "result_map more effectively")
     def test_targeting_individual_labels(self):
         testing.db.execute(
             self.tables.test_table.insert(),
@@ -164,6 +145,44 @@ class RoundTripTest(fixtures.TablesTest):
         eq_(
             row[self.tables.test_table.c.y],
             "Y1"
+        )
+
+class StringRoundTripTest(fixtures.TablesTest, RoundTripTestBase):
+    @classmethod
+    def define_tables(cls, metadata):
+        class MyString(String):
+            def bind_expression(self, bindvalue):
+                return func.lower(bindvalue)
+
+            def column_expression(self, col):
+                return func.upper(col)
+
+        Table(
+                'test_table',
+                metadata,
+                    Column('x', String(50)),
+                    Column('y', MyString(50)
+                )
+        )
+
+
+class TypeDecRoundTripTest(fixtures.TablesTest, RoundTripTestBase):
+    @classmethod
+    def define_tables(cls, metadata):
+        class MyString(TypeDecorator):
+            impl = String
+            def bind_expression(self, bindvalue):
+                return func.lower(bindvalue)
+
+            def column_expression(self, col):
+                return func.upper(col)
+
+        Table(
+                'test_table',
+                metadata,
+                    Column('x', String(50)),
+                    Column('y', MyString(50)
+                )
         )
 
 class ReturningTest(fixtures.TablesTest):
