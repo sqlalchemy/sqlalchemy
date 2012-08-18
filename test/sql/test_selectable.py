@@ -1,7 +1,7 @@
 """Test various algorithmic properties of selectables."""
 
 from test.lib.testing import eq_, assert_raises, \
-    assert_raises_message
+    assert_raises_message, is_
 from sqlalchemy import *
 from test.lib import *
 from sqlalchemy.sql import util as sql_util, visitors
@@ -348,6 +348,14 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         criterion = a.c.table1_col1 == table2.c.col2
         self.assert_(criterion.compare(j.onclause))
 
+    def test_scalar_cloned_comparator(self):
+        sel = select([table1.c.col1]).as_scalar()
+        expr = sel == table1.c.col1
+
+        sel2 = visitors.ReplacingCloningVisitor().traverse(sel)
+
+        expr2 = sel2 == table1.c.col1
+        is_(expr2.left, sel2)
 
     def test_column_labels(self):
         a = select([table1.c.col1.label('acol1'),

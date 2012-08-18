@@ -1586,6 +1586,7 @@ class ClauseElement(Visitable):
         c = self.__class__.__new__(self.__class__)
         c.__dict__ = self.__dict__.copy()
         c.__dict__.pop('_cloned_set', None)
+        c.__dict__.pop('comparator', None)
 
         # this is a marker that helps to "equate" clauses to each other
         # when a Select returns its list of FROM clauses.  the cloning
