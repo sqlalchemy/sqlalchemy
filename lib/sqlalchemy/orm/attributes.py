@@ -84,6 +84,11 @@ NON_PERSISTENT_OK = util.symbol("NON_PERSISTENT_OK",
 canonical=16
 )
 
+LOAD_AGAINST_COMMITTED = util.symbol("LOAD_AGAINST_COMMITTED",
+"""callables should use committed values as primary/foreign keys during a load""",
+canonical=32
+)
+
 # pre-packaged sets of flags used as inputs
 PASSIVE_OFF = util.symbol("PASSIVE_OFF",
     "Callables can be emitted in all cases.",

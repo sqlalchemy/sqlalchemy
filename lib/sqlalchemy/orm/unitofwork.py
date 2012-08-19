@@ -178,7 +178,8 @@ class UOWTransaction(object):
                 and passive & attributes.SQL_OK:
                 impl = state.manager[key].impl
                 history = impl.get_history(state, state.dict,
-                                    attributes.PASSIVE_OFF)
+                                    attributes.PASSIVE_OFF |
+                                    attributes.LOAD_AGAINST_COMMITTED)
                 if history and impl.uses_objects:
                     state_history = history.as_state()
                 else:
@@ -188,12 +189,14 @@ class UOWTransaction(object):
             impl = state.manager[key].impl
             # TODO: store the history as (state, object) tuples
             # so we don't have to keep converting here
-            history = impl.get_history(state, state.dict, passive)
+            history = impl.get_history(state, state.dict, passive |
+                                attributes.LOAD_AGAINST_COMMITTED)
             if history and impl.uses_objects:
                 state_history = history.as_state()
             else:
                 state_history = history
-            self.attributes[hashkey] = (history, state_history, passive)
+            self.attributes[hashkey] = (history, state_history,
+                    passive)
 
         return state_history
 

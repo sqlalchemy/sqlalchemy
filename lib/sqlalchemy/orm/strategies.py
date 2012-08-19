@@ -377,7 +377,8 @@ class LazyLoader(AbstractRelationshipLoader):
 
     def lazy_clause(self, state, reverse_direction=False,
                                 alias_secondary=False,
-                                adapt_source=None):
+                                adapt_source=None,
+                                passive=None):
         if state is None:
             return self._lazy_none_clause(
                                         reverse_direction,
@@ -399,14 +400,13 @@ class LazyLoader(AbstractRelationshipLoader):
         else:
             mapper = self.parent_property.parent
 
-        o = state.obj() # strong ref
+        o = state.obj()  # strong ref
         dict_ = attributes.instance_dict(o)
 
         # use the "committed state" only if we're in a flush
         # for this state.
 
-        sess = _state_session(state)
-        if sess is not None and sess._flushing:
+        if passive and passive & attributes.LOAD_AGAINST_COMMITTED:
             def visit_bindparam(bindparam):
                 if bindparam._identifying_key in bind_to_col:
                     bindparam.callable = \
@@ -428,7 +428,7 @@ class LazyLoader(AbstractRelationshipLoader):
                                 traverse(criterion)
 
         criterion = visitors.cloned_traverse(
-                                criterion, {}, {'bindparam':visit_bindparam})
+                                criterion, {}, {'bindparam': visit_bindparam})
 
         if adapt_source:
             criterion = adapt_source(criterion)
@@ -505,12 +505,12 @@ class LazyLoader(AbstractRelationshipLoader):
                 not passive & attributes.RELATED_OBJECT_OK:
                 return attributes.PASSIVE_NO_RESULT
 
-        return self._emit_lazyload(session, state, ident_key)
+        return self._emit_lazyload(session, state, ident_key, passive)
 
     def _get_ident_for_use_get(self, session, state, passive):
         instance_mapper = state.manager.mapper
 
-        if session._flushing:
+        if passive & attributes.LOAD_AGAINST_COMMITTED:
             get_attr = instance_mapper._get_committed_state_attr_by_column
         else:
             get_attr = instance_mapper._get_state_attr_by_column
@@ -526,7 +526,7 @@ class LazyLoader(AbstractRelationshipLoader):
             for pk in self.mapper.primary_key
         ]
 
-    def _emit_lazyload(self, session, state, ident_key):
+    def _emit_lazyload(self, session, state, ident_key, passive):
         q = session.query(self.mapper)._adapt_all_clauses()
 
         q = q._with_invoke_all_eagers(False)
@@ -557,7 +557,7 @@ class LazyLoader(AbstractRelationshipLoader):
                         not isinstance(rev.strategy, LazyLoader):
                 q = q.options(EagerLazyOption((rev.key,), lazy='select'))
 
-        lazy_clause = self.lazy_clause(state)
+        lazy_clause = self.lazy_clause(state, passive=passive)
 
         if pending:
             bind_values = sql_util.bind_values(lazy_clause)

@@ -155,6 +155,32 @@ underneath "0.7.xx".
     would fail to function subsequent to this
     warning in any case.  [ticket:2405]
 
+  - [bug] Lazy loads emitted within flush events
+    such as before_flush(), before_update(),
+    etc. will now function as they would
+    within non-event code, regarding consideration
+    of the PK/FK values used in the lazy-emitted
+    query.   Previously,
+    special flags would be established that
+    would cause lazy loads to load related items
+    based on the "previous" value of the
+    parent PK/FK values specifically when called
+    upon within a flush; the signal to load
+    in this way is now localized to where the
+    unit of work actually needs to load that
+    way.  Note that the UOW does
+    sometimes load these collections before
+    the before_update() event is called,
+    so the usage of "passive_updates" or not
+    can affect whether or not a collection will
+    represent the "old" or "new" data, when
+    accessed within a flush event, based
+    on when the lazy load was emitted.
+    The change is backwards incompatible in
+    the exceedingly small chance that
+    user event code depended on the old
+    behavior. [ticket:2350]
+
   - [feature] Query now "auto correlates" by
     default in the same way as select() does.
     Previously, a Query used as a subquery
