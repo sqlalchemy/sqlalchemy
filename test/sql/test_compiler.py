@@ -5,7 +5,7 @@ import datetime, re, operator, decimal
 from sqlalchemy import *
 from sqlalchemy import exc, sql, util, types, schema
 from sqlalchemy.sql import table, column, label, compiler
-from sqlalchemy.sql.expression import ClauseList, _literal_as_text
+from sqlalchemy.sql.expression import ClauseList, _literal_as_text, HasPrefixes
 from sqlalchemy.engine import default
 from sqlalchemy.databases import *
 from test.lib import *
@@ -100,6 +100,15 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         else:
             assert not hasattr(select([table1.c.myid]).as_scalar().self_group(), 'columns')
             assert not hasattr(select([table1.c.myid]).as_scalar(), 'columns')
+
+    def test_prefix_constructor(self):
+        class Pref(HasPrefixes):
+            def _generate(self):
+                return self
+        assert_raises(exc.ArgumentError,
+                Pref().prefix_with,
+                "some prefix", not_a_dialect=True
+        )
 
     def test_table_select(self):
         self.assert_compile(table1.select(),
@@ -1284,12 +1293,22 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
-    def test_prefixes(self):
+    def test_prefix(self):
         self.assert_compile(
             table1.select().prefix_with("SQL_CALC_FOUND_ROWS").\
                                 prefix_with("SQL_SOME_WEIRD_MYSQL_THING"),
             "SELECT SQL_CALC_FOUND_ROWS SQL_SOME_WEIRD_MYSQL_THING "
             "mytable.myid, mytable.name, mytable.description FROM mytable"
+        )
+
+    def test_prefix_dialect_specific(self):
+        self.assert_compile(
+            table1.select().prefix_with("SQL_CALC_FOUND_ROWS", dialect='sqlite').\
+                                prefix_with("SQL_SOME_WEIRD_MYSQL_THING",
+                                        dialect='mysql'),
+            "SELECT SQL_SOME_WEIRD_MYSQL_THING "
+            "mytable.myid, mytable.name, mytable.description FROM mytable",
+            dialect=mysql.dialect()
         )
 
     def test_text(self):
@@ -2710,6 +2729,17 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
                     insert(table1, values=dict(myid=func.lala())),
                     "INSERT INTO mytable (myid) VALUES (lala())")
 
+    def test_insert_prefix(self):
+        stmt = table1.insert().prefix_with("A", "B", dialect="mysql").\
+                prefix_with("C", "D")
+        self.assert_compile(stmt,
+            "INSERT A B C D INTO mytable (myid, name, description) "
+            "VALUES (%s, %s, %s)", dialect=mysql.dialect()
+        )
+        self.assert_compile(stmt,
+            "INSERT C D INTO mytable (myid, name, description) "
+            "VALUES (:myid, :name, :description)")
+
     def test_inline_insert(self):
         metadata = MetaData()
         table = Table('sometable', metadata,
@@ -2784,6 +2814,17 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
             "name=(mytable.name || :name_1) "
             "WHERE mytable.myid = hoho(:hoho_1) AND mytable.name = :param_2 || "
             "mytable.name || :param_3")
+
+    def test_update_prefix(self):
+        stmt = table1.update().prefix_with("A", "B", dialect="mysql").\
+                prefix_with("C", "D")
+        self.assert_compile(stmt,
+            "UPDATE A B C D mytable SET myid=%s, name=%s, description=%s",
+            dialect=mysql.dialect()
+        )
+        self.assert_compile(stmt,
+            "UPDATE C D mytable SET myid=:myid, name=:name, "
+            "description=:description")
 
     def test_aliased_update(self):
         talias1 = table1.alias('t1')
@@ -2878,6 +2919,16 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
                                         where(table1.c.name=='somename'),
                         "DELETE FROM mytable WHERE mytable.myid = :myid_1 "
                         "AND mytable.name = :name_1")
+
+    def test_delete_prefix(self):
+        stmt = table1.delete().prefix_with("A", "B", dialect="mysql").\
+                prefix_with("C", "D")
+        self.assert_compile(stmt,
+            "DELETE A B C D FROM mytable",
+            dialect=mysql.dialect()
+        )
+        self.assert_compile(stmt,
+            "DELETE C D FROM mytable")
 
     def test_aliased_delete(self):
         talias1 = table1.alias('t1')

@@ -426,6 +426,13 @@ underneath "0.7.xx".
     method, auto correlates all selectables except those
     passed.
 
+  - [feature] The prefix_with() method is now available
+    on each of select(), insert(), update(), delete(),
+    all with the same API, accepting multiple
+    prefix calls, as well as a "dialect name" so that
+    the prefix can be limited to one kind of dialect.
+    [ticket:2431]
+
   - [feature] Added reduce_columns() method
     to select() construct, replaces columns inline
     using the util.reduce_columns utility function

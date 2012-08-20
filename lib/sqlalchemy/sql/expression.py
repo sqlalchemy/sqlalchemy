@@ -239,12 +239,6 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
       ``distinct`` is also available via the :meth:`~.Select.distinct`
       generative method.
 
-      .. note::
-
-         The ``distinct`` keyword's acceptance of a string
-         argument for usage with MySQL is deprecated.  Use
-         the ``prefixes`` argument or :meth:`~.Select.prefix_with`.
-
     :param for_update=False:
       when ``True``, applies ``FOR UPDATE`` to the end of the
       resulting statement.
@@ -284,13 +278,6 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
     :param order_by:
       a scalar or list of :class:`.ClauseElement` objects which will
       comprise the ``ORDER BY`` clause of the resulting select.
-
-    :param prefixes:
-      a list of strings or :class:`.ClauseElement` objects to include
-      directly after the SELECT keyword in the generated statement,
-      for dialect-specific query features.  ``prefixes`` is
-      also available via the :meth:`~.Select.prefix_with`
-      generative method.
 
     :param use_labels=False:
       when ``True``, the statement will be generated using labels
@@ -341,10 +328,6 @@ def insert(table, values=None, inline=False, **kwargs):
      are None during the compile phase, then the column specifications will be
      generated from the full list of table columns. Note that the
      :meth:`~Insert.values()` generative method may also be used for this.
-
-    :param prefixes: A list of modifier keywords to be inserted between INSERT
-      and INTO. Alternatively, the :meth:`~Insert.prefix_with` generative
-      method may be used.
 
     :param inline: if True, SQL defaults will be compiled 'inline' into the
       statement and not pre-executed.
@@ -4934,7 +4917,43 @@ class CompoundSelect(SelectBase):
         self._bind = bind
     bind = property(bind, _set_bind)
 
-class Select(SelectBase):
+class HasPrefixes(object):
+    _prefixes = ()
+
+    @_generative
+    def prefix_with(self, *expr, **kw):
+        """Add one or more expressions following the statement keyword, i.e.
+        SELECT, INSERT, UPDATE, or DELETE. Generative.
+
+        This is used to support backend-specific prefix keywords such as those
+        provided by MySQL.
+
+        E.g.::
+
+            stmt = table.insert().prefix_with("LOW_PRIORITY", dialect="mysql")
+
+        Multiple prefixes can be specified by multiple calls
+        to :meth:`.prefix_with`.
+
+        :param \*expr: textual or :class:`.ClauseElement` construct which
+         will be rendered following the INSERT, UPDATE, or DELETE
+         keyword.
+        :param \**kw: A single keyword 'dialect' is accepted.  This is an
+         optional string dialect name which will
+         limit rendering of this prefix to only that dialect.
+
+        """
+        dialect = kw.pop('dialect', None)
+        if kw:
+            raise exc.ArgumentError("Unsupported argument(s): %s" %
+                            ",".join(kw))
+        self._setup_prefixes(expr, dialect)
+
+    def _setup_prefixes(self, prefixes, dialect=None):
+        self._prefixes = self._prefixes + tuple(
+                            [(_literal_as_text(p), dialect) for p in prefixes])
+
+class Select(HasPrefixes, SelectBase):
     """Represents a ``SELECT`` statement.
 
     See also:
@@ -4978,17 +4997,7 @@ class Select(SelectBase):
         """
         self._should_correlate = correlate
         if distinct is not False:
-            if isinstance(distinct, basestring):
-                util.warn_deprecated(
-                    "A string argument passed to the 'distinct' "
-                    "keyword argument of 'select()' is deprecated "
-                    "- please use 'prefixes' or 'prefix_with()' "
-                    "to specify additional prefixes")
-                if prefixes:
-                    prefixes = util.to_list(prefixes) + [distinct]
-                else:
-                    prefixes = [distinct]
-            elif distinct is True:
+            if distinct is True:
                 self._distinct = True
             else:
                 self._distinct = [
@@ -5030,7 +5039,7 @@ class Select(SelectBase):
             self._having = None
 
         if prefixes:
-            self._prefixes = tuple([_literal_as_text(p) for p in prefixes])
+            self._setup_prefixes(prefixes)
 
         SelectBase.__init__(self, **kwargs)
 
@@ -5412,26 +5421,6 @@ class Select(SelectBase):
         else:
             self._distinct = True
 
-    @_generative
-    def prefix_with(self, *expr):
-        """return a new select() construct which will apply the given
-        expressions, typically strings, to the start of its columns clause,
-        not using any commas.   In particular is useful for MySQL
-        keywords.
-
-        e.g.::
-
-             select(['a', 'b']).prefix_with('HIGH_PRIORITY',
-                                    'SQL_SMALL_RESULT',
-                                    'ALL')
-
-        Would render::
-
-            SELECT HIGH_PRIORITY SQL_SMALL_RESULT ALL a, b
-
-         """
-        expr = tuple(_literal_as_text(e) for e in expr)
-        self._prefixes = self._prefixes + expr
 
     @_generative
     def select_from(self, fromclause):
@@ -5660,7 +5649,7 @@ class Select(SelectBase):
         self._bind = bind
     bind = property(bind, _set_bind)
 
-class UpdateBase(Executable, ClauseElement):
+class UpdateBase(HasPrefixes, Executable, ClauseElement):
     """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements.
 
     """
@@ -5671,6 +5660,7 @@ class UpdateBase(Executable, ClauseElement):
         Executable._execution_options.union({'autocommit': True})
     kwargs = util.immutabledict()
     _hints = util.immutabledict()
+    _prefixes = ()
 
     def _process_colparams(self, parameters):
         if isinstance(parameters, (list, tuple)):
@@ -5704,6 +5694,7 @@ class UpdateBase(Executable, ClauseElement):
     def _set_bind(self, bind):
         self._bind = bind
     bind = property(bind, _set_bind)
+
 
     _returning_re = re.compile(r'(?:firebird|postgres(?:ql)?)_returning')
 
@@ -5760,9 +5751,8 @@ class UpdateBase(Executable, ClauseElement):
         .. note::
 
          :meth:`.UpdateBase.with_hint` currently applies only to
-         Microsoft SQL Server.  For MySQL INSERT hints, use
-         :meth:`.Insert.prefix_with`.   UPDATE/DELETE hints for
-         MySQL will be added in a future release.
+         Microsoft SQL Server.  For MySQL INSERT/UPDATE/DELETE hints, use
+         :meth:`.UpdateBase.prefix_with`.
 
         The text of the hint is rendered in the appropriate
         location for the database backend in use, relative
@@ -5798,9 +5788,11 @@ class ValuesBase(UpdateBase):
 
     __visit_name__ = 'values_base'
 
-    def __init__(self, table, values):
+    def __init__(self, table, values, prefixes):
         self.table = table
         self.parameters = self._process_colparams(values)
+        if prefixes:
+            self._setup_prefixes(prefixes)
 
     @_generative
     def values(self, *args, **kwargs):
@@ -5860,7 +5852,6 @@ class Insert(ValuesBase):
     """
     __visit_name__ = 'insert'
 
-    _prefixes = ()
 
     def __init__(self,
                 table,
@@ -5870,13 +5861,11 @@ class Insert(ValuesBase):
                 prefixes=None,
                 returning=None,
                 **kwargs):
-        ValuesBase.__init__(self, table, values)
+        ValuesBase.__init__(self, table, values, prefixes)
         self._bind = bind
         self.select = None
         self.inline = inline
         self._returning = returning
-        if prefixes:
-            self._prefixes = tuple([_literal_as_text(p) for p in prefixes])
 
         if kwargs:
             self.kwargs = self._process_deprecated_kw(kwargs)
@@ -5891,16 +5880,6 @@ class Insert(ValuesBase):
         # TODO: coverage
         self.parameters = self.parameters.copy()
 
-    @_generative
-    def prefix_with(self, clause):
-        """Add a word or expression between INSERT and INTO. Generative.
-
-        If multiple prefixes are supplied, they will be separated with
-        spaces.
-
-        """
-        clause = _literal_as_text(clause)
-        self._prefixes = self._prefixes + (clause,)
 
 class Update(ValuesBase):
     """Represent an Update construct.
@@ -5916,9 +5895,10 @@ class Update(ValuesBase):
                 values=None,
                 inline=False,
                 bind=None,
+                prefixes=None,
                 returning=None,
                 **kwargs):
-        ValuesBase.__init__(self, table, values)
+        ValuesBase.__init__(self, table, values, prefixes)
         self._bind = bind
         self._returning = returning
         if whereclause is not None:
@@ -5982,10 +5962,14 @@ class Delete(UpdateBase):
             whereclause,
             bind=None,
             returning=None,
+            prefixes=None,
             **kwargs):
         self._bind = bind
         self.table = table
         self._returning = returning
+
+        if prefixes:
+            self._setup_prefixes(prefixes)
 
         if whereclause is not None:
             self._whereclause = _literal_as_text(whereclause)

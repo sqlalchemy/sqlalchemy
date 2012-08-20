@@ -1061,9 +1061,8 @@ class SQLCompiler(engine.Compiled):
                 text += hint_text + " "
 
         if select._prefixes:
-            text += " ".join(
-                            x._compiler_dispatch(self, **kwargs)
-                            for x in select._prefixes) + " "
+            text += self._generate_prefixes(select, select._prefixes, **kwargs)
+
         text += self.get_select_precolumns(select)
         text += ', '.join(inner_columns)
 
@@ -1115,6 +1114,17 @@ class SQLCompiler(engine.Compiled):
             return "(" + text + ")"
         else:
             return text
+
+    def _generate_prefixes(self, stmt, prefixes, **kw):
+        clause = " ".join(
+                            prefix._compiler_dispatch(self, **kw)
+                            for prefix, dialect_name in prefixes
+                            if dialect_name is None or
+                                dialect_name == self.dialect.name
+                            )
+        if clause:
+            clause += " "
+        return clause
 
     def _render_cte_clause(self):
         if self.positional:
@@ -1188,7 +1198,7 @@ class SQLCompiler(engine.Compiled):
             join.onclause._compiler_dispatch(self, **kwargs)
         )
 
-    def visit_insert(self, insert_stmt):
+    def visit_insert(self, insert_stmt, **kw):
         self.isinsert = True
         colparams = self._get_colparams(insert_stmt)
 
@@ -1202,14 +1212,13 @@ class SQLCompiler(engine.Compiled):
         preparer = self.preparer
         supports_default_values = self.dialect.supports_default_values
 
-        text = "INSERT"
+        text = "INSERT "
 
+        if insert_stmt._prefixes:
+            text += self._generate_prefixes(insert_stmt,
+                                insert_stmt._prefixes, **kw)
 
-        prefixes = [self.process(x) for x in insert_stmt._prefixes]
-        if prefixes:
-            text += " " + " ".join(prefixes)
-
-        text += " INTO "
+        text += "INTO "
         table_text = preparer.format_table(insert_stmt.table)
 
         if insert_stmt._hints:
@@ -1292,6 +1301,11 @@ class SQLCompiler(engine.Compiled):
         colparams = self._get_colparams(update_stmt, extra_froms)
 
         text = "UPDATE "
+
+        if update_stmt._prefixes:
+            text += self._generate_prefixes(update_stmt,
+                                update_stmt._prefixes, **kw)
+
         table_text = self.update_tables_clause(update_stmt, update_stmt.table,
                                                extra_froms, **kw)
 
@@ -1571,11 +1585,17 @@ class SQLCompiler(engine.Compiled):
 
         return values
 
-    def visit_delete(self, delete_stmt):
+    def visit_delete(self, delete_stmt, **kw):
         self.stack.append({'from': set([delete_stmt.table])})
         self.isdelete = True
 
-        text = "DELETE FROM "
+        text = "DELETE "
+
+        if delete_stmt._prefixes:
+            text += self._generate_prefixes(delete_stmt,
+                                delete_stmt._prefixes, **kw)
+
+        text += "FROM "
         table_text = delete_stmt.table._compiler_dispatch(self,
                                 asfrom=True, iscrud=True)
 
