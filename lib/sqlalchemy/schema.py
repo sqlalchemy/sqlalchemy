@@ -771,11 +771,12 @@ class Column(SchemaItem, expression.ColumnClause):
               at :ref:`post_update`.
 
         :param default: A scalar, Python callable, or
-            :class:`~sqlalchemy.sql.expression.ClauseElement` representing the
+            :class:`.ColumnElement` expression representing the
             *default value* for this column, which will be invoked upon insert
             if this column is otherwise not specified in the VALUES clause of
             the insert. This is a shortcut to using :class:`.ColumnDefault` as
-            a positional argument.
+            a positional argument; see that class for full detail on the
+            structure of the argument.
 
             Contrast this argument to ``server_default`` which creates a
             default generator on the database side.
@@ -1532,6 +1533,31 @@ class ColumnDefault(DefaultGenerator):
     """
 
     def __init__(self, arg, **kwargs):
+        """"Construct a new :class:`.ColumnDefault`.
+
+
+        :param arg: argument representing the default value.
+         May be one of the following:
+
+         * a plain non-callable Python value, such as a
+           string, integer, boolean, or other simple type.
+           The default value will be used as is each time.
+         * a SQL expression, that is one which derives from
+           :class:`.ColumnElement`.  The SQL expression will
+           be rendered into the INSERT or UPDATE statement,
+           or in the case of a primary key column when
+           RETURNING is not used may be
+           pre-executed before an INSERT within a SELECT.
+         * A Python callable.  The function will be invoked for each
+           new row subject to an INSERT or UPDATE.
+           The callable must accept exactly
+           zero or one positional arguments.  The one-argument form
+           will receive an instance of the :class:`.ExecutionContext`,
+           which provides contextual information as to the current
+           :class:`.Connection` in use as well as the current
+           statement and parameters.
+
+        """
         super(ColumnDefault, self).__init__(**kwargs)
         if isinstance(arg, FetchedValue):
             raise exc.ArgumentError(
@@ -1555,8 +1581,18 @@ class ColumnDefault(DefaultGenerator):
                     not self.is_sequence
 
     def _maybe_wrap_callable(self, fn):
-        """Backward compat: Wrap callables that don't accept a context."""
+        """Wrap callables that don't accept a context.
 
+        The alternative here is to require that
+        a simple callable passed to "default" would need
+        to be of the form "default=lambda ctx: datetime.now".
+        That is the more "correct" way to go, but the case
+        of using a zero-arg callable for "default" is so
+        much more prominent than the context-specific one
+        I'm having trouble justifying putting that inconvenience
+        on everyone.
+
+        """
         if inspect.isfunction(fn):
             inspectable = fn
         elif inspect.isclass(fn):
@@ -1571,7 +1607,8 @@ class ColumnDefault(DefaultGenerator):
         except TypeError:
             return lambda ctx: fn()
 
-        positionals = len(argspec[0])
+        defaulted = argspec[3] is not None and len(argspec[3]) or 0
+        positionals = len(argspec[0]) - defaulted
 
         # Py3K compat - no unbound methods
         if inspect.ismethod(inspectable) or inspect.isclass(fn):
@@ -1579,13 +1616,12 @@ class ColumnDefault(DefaultGenerator):
 
         if positionals == 0:
             return lambda ctx: fn()
-
-        defaulted = argspec[3] is not None and len(argspec[3]) or 0
-        if positionals - defaulted > 1:
+        elif positionals == 1:
+            return fn
+        else:
             raise exc.ArgumentError(
                 "ColumnDefault Python function takes zero or one "
                 "positional arguments")
-        return fn
 
     def _visit_name(self):
         if self.for_update:

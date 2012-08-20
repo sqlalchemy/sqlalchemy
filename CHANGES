@@ -442,6 +442,11 @@ underneath "0.7.xx".
     name.  The deprecated fold_equivalents() feature is
     removed [ticket:1729].
 
+  - [bug] Fixes to the interpretation of the
+    Column "default" parameter as a callable
+    to not pass ExecutionContext into a keyword
+    argument parameter.  [ticket:2520]
+
   - [bug] All of UniqueConstraint, ForeignKeyConstraint,
     CheckConstraint, and PrimaryKeyConstraint will
     attach themselves to their parent table automatically

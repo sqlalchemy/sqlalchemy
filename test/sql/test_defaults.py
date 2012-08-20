@@ -132,10 +132,13 @@ class DefaultTest(fixtures.TestBase):
 
     def test_bad_arg_signature(self):
         ex_msg = \
-          "ColumnDefault Python function takes zero or one positional arguments"
+          "ColumnDefault Python function takes zero "\
+          "or one positional arguments"
 
-        def fn1(x, y): pass
-        def fn2(x, y, z=3): pass
+        def fn1(x, y):
+            pass
+        def fn2(x, y, z=3):
+            pass
         class fn3(object):
             def __init__(self, x, y):
                 pass
@@ -150,28 +153,33 @@ class DefaultTest(fixtures.TestBase):
                                      sa.ColumnDefault, fn)
 
     def test_arg_signature(self):
-        def fn1(): pass
-        def fn2(): pass
-        def fn3(x=1): pass
-        def fn4(x=1, y=2, z=3): pass
+        def fn1():
+            pass
+        def fn2():
+            pass
+        def fn3(x=1):
+            eq_(x, 1)
+        def fn4(x=1, y=2, z=3):
+            eq_(x, 1)
         fn5 = list
         class fn6(object):
             def __init__(self, x):
-                pass
+                eq_(x, "context")
         class fn6(object):
             def __init__(self, x, y=3):
-                pass
+                eq_(x, "context")
         class FN7(object):
             def __call__(self, x):
-                pass
+                eq_(x, "context")
         fn7 = FN7()
         class FN8(object):
             def __call__(self, x, y=3):
-                pass
+                eq_(x, "context")
         fn8 = FN8()
 
         for fn in fn1, fn2, fn3, fn4, fn5, fn6, fn7, fn8:
             c = sa.ColumnDefault(fn)
+            c.arg("context")
 
     @testing.fails_on('firebird', 'Data type unknown')
     def test_standalone(self):
