@@ -58,9 +58,6 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
             def method1(self):
                 return "method1"
 
-            def __getitem__(self, key):
-                return 'value'
-
         prop = myprop(lambda self:None)
         Foo.foo = prop
 
@@ -71,7 +68,6 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
         assert Foo.foo is not prop
         assert Foo.foo.attr == 'bar'
         assert Foo.foo.method1() == 'method1'
-        assert Foo.foo['bar'] == 'value'
 
     def test_comparator(self):
         class Comparator(PropComparator):
@@ -85,9 +81,8 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
             def method2(self, other):
                 return "method2"
 
-            # TODO ?
-            #def __getitem__(self, key):
-            #    return 'value'
+            def __getitem__(self, key):
+                return 'value'
 
             def __eq__(self, other):
                 return column('foo') == func.upper(other)
@@ -98,8 +93,7 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
         eq_(Foo.foo.method1(), "method1")
         eq_(Foo.foo.method2('x'), "method2")
         assert Foo.foo.attr == 'bar'
-        # TODO ?
-        #assert Foo.foo['bar'] == 'value'
+        assert Foo.foo['bar'] == 'value'
         eq_(
             (Foo.foo == 'bar').__str__(),
             "foo = upper(:upper_1)"

@@ -10,7 +10,8 @@
 """Defines operators used in SQL expressions."""
 
 from operator import (
-    and_, or_, inv, add, mul, sub, mod, truediv, lt, le, ne, gt, ge, eq, neg
+    and_, or_, inv, add, mul, sub, mod, truediv, lt, le, ne, gt, ge, eq, neg,
+    getitem
     )
 
 # Py2K
@@ -305,6 +306,15 @@ class ColumnOperators(Operators):
         """
         return self.operate(neg)
 
+    def __getitem__(self, index):
+        """Implement the [] operator.
+
+        This can be used by some database-specific types
+        such as Postgresql ARRAY and HSTORE.
+
+        """
+        return self.operate(getitem, index)
+
     def concat(self, other):
         """Implement the 'concat' operator.
 
@@ -591,12 +601,18 @@ def is_ordering_modifier(op):
 
 _associative = _commutative.union([concat_op, and_, or_])
 
+_natural_self_precedent = _associative.union([getitem])
+"""Operators where if we have (a op b) op c, we don't want to
+parenthesize (a op b).
+
+"""
 
 _smallest = symbol('_smallest', canonical=-100)
 _largest = symbol('_largest', canonical=100)
 
 _PRECEDENCE = {
     from_: 15,
+    getitem: 15,
     mul: 7,
     truediv: 7,
     # Py2K
@@ -637,7 +653,7 @@ _PRECEDENCE = {
 
 
 def is_precedent(operator, against):
-    if operator is against and operator in _associative:
+    if operator is against and operator in _natural_self_precedent:
         return False
     else:
         return (_PRECEDENCE.get(operator,

@@ -2402,69 +2402,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={'date_1':datetime.date(2006,6,1),
                             'date_2':datetime.date(2006,6,5)})
 
-    def test_operator_precedence(self):
-        table = Table('op', metadata,
-            Column('field', Integer))
-        self.assert_compile(table.select((table.c.field == 5) == None),
-            "SELECT op.field FROM op WHERE (op.field = :field_1) IS NULL")
-        self.assert_compile(table.select((table.c.field + 5) == table.c.field),
-            "SELECT op.field FROM op WHERE op.field + :field_1 = op.field")
-        self.assert_compile(table.select((table.c.field + 5) * 6),
-            "SELECT op.field FROM op WHERE (op.field + :field_1) * :param_1")
-        self.assert_compile(table.select((table.c.field * 5) + 6),
-            "SELECT op.field FROM op WHERE op.field * :field_1 + :param_1")
-        self.assert_compile(table.select(5 + table.c.field.in_([5,6])),
-            "SELECT op.field FROM op WHERE :param_1 + (op.field IN (:field_1, :field_2))")
-        self.assert_compile(table.select((5 + table.c.field).in_([5,6])),
-            "SELECT op.field FROM op WHERE :field_1 + op.field IN (:param_1, :param_2)")
-        self.assert_compile(table.select(not_(and_(table.c.field == 5, table.c.field == 7))),
-            "SELECT op.field FROM op WHERE NOT (op.field = :field_1 AND op.field = :field_2)")
-        self.assert_compile(table.select(not_(table.c.field == 5)),
-            "SELECT op.field FROM op WHERE op.field != :field_1")
-        self.assert_compile(table.select(not_(table.c.field.between(5, 6))),
-            "SELECT op.field FROM op WHERE NOT (op.field BETWEEN :field_1 AND :field_2)")
-        self.assert_compile(table.select(not_(table.c.field) == 5),
-            "SELECT op.field FROM op WHERE (NOT op.field) = :param_1")
-        self.assert_compile(table.select((table.c.field == table.c.field).between(False, True)),
-            "SELECT op.field FROM op WHERE (op.field = op.field) BETWEEN :param_1 AND :param_2")
-        self.assert_compile(table.select(between((table.c.field == table.c.field), False, True)),
-            "SELECT op.field FROM op WHERE (op.field = op.field) BETWEEN :param_1 AND :param_2")
-
-    def test_associativity(self):
-        f = column('f')
-        self.assert_compile( f - f, "f - f" )
-        self.assert_compile( f - f - f, "(f - f) - f" )
-
-        self.assert_compile( (f - f) - f, "(f - f) - f" )
-        self.assert_compile( (f - f).label('foo') - f, "(f - f) - f" )
-
-        self.assert_compile( f - (f - f), "f - (f - f)" )
-        self.assert_compile( f - (f - f).label('foo'), "f - (f - f)" )
-
-        # because - less precedent than /
-        self.assert_compile( f / (f - f), "f / (f - f)" )
-        self.assert_compile( f / (f - f).label('foo'), "f / (f - f)" )
-
-        self.assert_compile( f / f - f, "f / f - f" )
-        self.assert_compile( (f / f) - f, "f / f - f" )
-        self.assert_compile( (f / f).label('foo') - f, "f / f - f" )
-
-        # because / more precedent than -
-        self.assert_compile( f - (f / f), "f - f / f" )
-        self.assert_compile( f - (f / f).label('foo'), "f - f / f" )
-        self.assert_compile( f - f / f, "f - f / f" )
-        self.assert_compile( (f - f) / f, "(f - f) / f" )
-
-        self.assert_compile( ((f - f) / f) - f, "(f - f) / f - f")
-        self.assert_compile( (f - f) / (f - f), "(f - f) / (f - f)")
-
-        # higher precedence
-        self.assert_compile( (f / f) - (f / f), "f / f - f / f")
-
-        self.assert_compile( (f / f) - (f - f), "f / f - (f - f)")
-        self.assert_compile( (f / f) / (f - f), "(f / f) / (f - f)")
-        self.assert_compile( f / (f / (f - f)), "f / (f / (f - f))")
-
 
     def test_delayed_col_naming(self):
         my_str = Column(String)
@@ -2837,6 +2774,21 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
                 "UPDATE mytable AS t1 SET name=:name FROM "
                 "mytable WHERE mytable.myid = :myid_1",
                 params = {table1.c.name:'fred'})
+
+    def test_update_to_expression(self):
+        """test update from an expression.
+
+        this logic is triggered currently by a left side that doesn't
+        have a key.  The current supported use case is updating the index
+        of a Postgresql ARRAY type.
+
+        """
+        expr = func.foo(table1.c.myid)
+        assert not hasattr(expr, "key")
+        self.assert_compile(
+            table1.update().values({expr: 'bar'}),
+            "UPDATE mytable SET foo(myid)=:param_1"
+        )
 
     def test_correlated_update(self):
         # test against a straight text subquery

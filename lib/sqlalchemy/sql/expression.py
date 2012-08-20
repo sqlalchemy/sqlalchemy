@@ -1404,7 +1404,10 @@ def _column_as_key(element):
         return element
     if hasattr(element, '__clause_element__'):
         element = element.__clause_element__()
-    return element.key
+    try:
+        return element.key
+    except AttributeError:
+        return None
 
 def _clause_element_as_expr(element):
     if hasattr(element, '__clause_element__'):
@@ -1940,7 +1943,7 @@ class _DefaultColumnComparator(operators.ColumnOperators):
                             type_=sqltypes.BOOLEANTYPE,
                             negate=negate, modifiers=kwargs)
 
-    def _binary_operate(self, expr, op, obj, reverse=False):
+    def _binary_operate(self, expr, op, obj, reverse=False, result_type=None):
         obj = self._check_literal(expr, op, obj)
 
         if reverse:
@@ -1948,7 +1951,9 @@ class _DefaultColumnComparator(operators.ColumnOperators):
         else:
             left, right = expr, obj
 
-        op, result_type = left.comparator._adapt_expression(op, right.comparator)
+        if result_type is None:
+            op, result_type = left.comparator._adapt_expression(
+                                                op, right.comparator)
 
         return BinaryExpression(left, right, op, type_=result_type)
 
@@ -2005,6 +2010,11 @@ class _DefaultColumnComparator(operators.ColumnOperators):
         return self._boolean_compare(expr, op,
                               ClauseList(*args).self_group(against=op),
                               negate=negate_op)
+
+    def _unsupported_impl(self, expr, op, *arg, **kw):
+        raise NotImplementedError("Operator '%s' is not supported on "
+                            "this expression" % op.__name__)
+
     def _neg_impl(self, expr, op, **kw):
         """See :meth:`.ColumnOperators.__neg__`."""
         return UnaryExpression(expr, operator=operators.neg)
@@ -2097,6 +2107,7 @@ class _DefaultColumnComparator(operators.ColumnOperators):
         "startswith_op": (_startswith_impl,),
         "endswith_op": (_endswith_impl,),
         "neg": (_neg_impl,),
+        "getitem": (_unsupported_impl,),
     }
 
 
@@ -3260,8 +3271,10 @@ class Tuple(ClauseList, ColumnElement):
 
     def __init__(self, *clauses, **kw):
         clauses = [_literal_as_binds(c) for c in clauses]
+        self.type = kw.pop('type_', None)
+        if self.type is None:
+            self.type = _type_from_args(clauses)
         super(Tuple, self).__init__(*clauses, **kw)
-        self.type = _type_from_args(clauses)
 
     @property
     def _select_iterable(self):

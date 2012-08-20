@@ -1,5 +1,5 @@
 # coding: utf-8
-from test.lib.testing import eq_, assert_raises, assert_raises_message
+from test.lib.testing import eq_, assert_raises, assert_raises_message, is_
 from test.lib import  engines
 import datetime
 from sqlalchemy import *
@@ -271,6 +271,71 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(x,
             '''SELECT pg_table.col1, pg_table."variadic" FROM pg_table''')
+
+    def test_array(self):
+        c = Column('x', postgresql.ARRAY(Integer))
+
+        self.assert_compile(
+            cast(c, postgresql.ARRAY(Integer)),
+            "CAST(x AS INTEGER[])"
+        )
+        self.assert_compile(
+                c[5],
+                "x[%(x_1)s]",
+                checkparams={'x_1': 5}
+        )
+
+        self.assert_compile(
+                c[5:7],
+                "x[%(x_1)s:%(x_2)s]",
+                checkparams={'x_2': 7, 'x_1': 5}
+        )
+        self.assert_compile(
+                c[5:7][2:3],
+                "x[%(x_1)s:%(x_2)s][%(param_1)s:%(param_2)s]",
+                checkparams={'x_2': 7, 'x_1': 5, 'param_1':2, 'param_2':3}
+        )
+        self.assert_compile(
+                c[5:7][3],
+                "x[%(x_1)s:%(x_2)s][%(param_1)s]",
+                checkparams={'x_2': 7, 'x_1': 5, 'param_1':3}
+        )
+
+    def test_array_literal_type(self):
+        is_(postgresql.array([1, 2]).type._type_affinity, postgresql.ARRAY)
+        is_(postgresql.array([1, 2]).type.item_type._type_affinity, Integer)
+
+        is_(postgresql.array([1, 2], type_=String).
+                    type.item_type._type_affinity, String)
+
+    def test_array_literal(self):
+        self.assert_compile(
+            func.array_dims(postgresql.array([1, 2]) +
+                        postgresql.array([3, 4, 5])),
+            "array_dims(ARRAY[%(param_1)s, %(param_2)s] || "
+                    "ARRAY[%(param_3)s, %(param_4)s, %(param_5)s])",
+            checkparams={'param_5': 5, 'param_4': 4, 'param_1': 1,
+                'param_3': 3, 'param_2': 2}
+        )
+
+    def test_update_array_element(self):
+        m = MetaData()
+        t = Table('t', m, Column('data', postgresql.ARRAY(Integer)))
+        self.assert_compile(
+            t.update().values({t.c.data[5]: 1}),
+            "UPDATE t SET data[%(data_1)s]=%(param_1)s",
+            checkparams={'data_1': 5, 'param_1': 1}
+        )
+
+    def test_update_array_slice(self):
+        m = MetaData()
+        t = Table('t', m, Column('data', postgresql.ARRAY(Integer)))
+        self.assert_compile(
+            t.update().values({t.c.data[2:5]: 2}),
+            "UPDATE t SET data[%(data_1)s:%(data_2)s]=%(param_1)s",
+            checkparams={'param_1': 2, 'data_2': 5, 'data_1': 2}
+
+        )
 
     def test_from_only(self):
         m = MetaData()
@@ -2033,8 +2098,8 @@ class ArrayTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(results[0]['intarr'], [1, 2, 3])
 
     def test_array_concat(self):
-        arrtable.insert().execute(intarr=[1, 2, 3], strarr=[u'abc',
-                                  u'def'])
+        arrtable.insert().execute(intarr=[1, 2, 3],
+                    strarr=[u'abc', u'def'])
         results = select([arrtable.c.intarr + [4, 5,
                          6]]).execute().fetchall()
         eq_(len(results), 1)
@@ -2051,6 +2116,61 @@ class ArrayTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(len(results), 2)
         eq_(results[0]['strarr'], [u'm\xe4\xe4', u'm\xf6\xf6'])
         eq_(results[1]['strarr'], [[u'm\xe4\xe4'], [u'm\xf6\xf6']])
+
+    def test_array_literal(self):
+        eq_(
+            testing.db.scalar(
+                select([
+                    postgresql.array([1, 2]) + postgresql.array([3, 4, 5])
+                ])
+                ), [1,2,3,4,5]
+        )
+
+    def test_array_getitem_single_type(self):
+        is_(arrtable.c.intarr[1].type._type_affinity, Integer)
+        is_(arrtable.c.strarr[1].type._type_affinity, String)
+
+    def test_array_getitem_slice_type(self):
+        is_(arrtable.c.intarr[1:3].type._type_affinity, postgresql.ARRAY)
+        is_(arrtable.c.strarr[1:3].type._type_affinity, postgresql.ARRAY)
+
+    def test_array_getitem_single_exec(self):
+        with testing.db.connect() as conn:
+            conn.execute(
+                arrtable.insert(),
+                intarr=[4, 5, 6],
+                strarr=[u'abc', u'def']
+            )
+            eq_(
+                conn.scalar(select([arrtable.c.intarr[2]])),
+                5
+            )
+            conn.execute(
+                arrtable.update().values({arrtable.c.intarr[2]: 7})
+            )
+            eq_(
+                conn.scalar(select([arrtable.c.intarr[2]])),
+                7
+            )
+
+    def test_array_getitem_slice_exec(self):
+        with testing.db.connect() as conn:
+            conn.execute(
+                arrtable.insert(),
+                intarr=[4, 5, 6],
+                strarr=[u'abc', u'def']
+            )
+            eq_(
+                conn.scalar(select([arrtable.c.intarr[2:3]])),
+                [5, 6]
+            )
+            conn.execute(
+                arrtable.update().values({arrtable.c.intarr[2:3]: [7, 8]})
+            )
+            eq_(
+                conn.scalar(select([arrtable.c.intarr[2:3]])),
+                [7, 8]
+            )
 
     @testing.provide_metadata
     def test_tuple_flag(self):

@@ -34,6 +34,18 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
     def test_plus(self):
         self._do_operate_test(operators.add)
 
+    def test_no_getitem(self):
+        assert_raises_message(
+            NotImplementedError,
+            "Operator 'getitem' is not supported on this expression",
+            self._do_operate_test, operators.getitem
+        )
+        assert_raises_message(
+            NotImplementedError,
+            "Operator 'getitem' is not supported on this expression",
+            lambda: column('left')[3]
+        )
+
     def test_in(self):
         left = column('left')
         assert left.comparator.operate(operators.in_op, [1, 2, 3]).compare(
@@ -223,4 +235,88 @@ class NewOperatorTest(_CustomComparatorTests, fixtures.TestBase):
 
     def _assert_not_add_override(self, expr):
         assert not hasattr(expr, "foob")
+
+from sqlalchemy import and_, not_, between
+
+class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def test_operator_precedence(self):
+        # TODO: clean up /break up
+        metadata = MetaData()
+        table = Table('op', metadata,
+            Column('field', Integer))
+        self.assert_compile(table.select((table.c.field == 5) == None),
+            "SELECT op.field FROM op WHERE (op.field = :field_1) IS NULL")
+        self.assert_compile(table.select((table.c.field + 5) == table.c.field),
+            "SELECT op.field FROM op WHERE op.field + :field_1 = op.field")
+        self.assert_compile(table.select((table.c.field + 5) * 6),
+            "SELECT op.field FROM op WHERE (op.field + :field_1) * :param_1")
+        self.assert_compile(table.select((table.c.field * 5) + 6),
+            "SELECT op.field FROM op WHERE op.field * :field_1 + :param_1")
+        self.assert_compile(table.select(5 + table.c.field.in_([5, 6])),
+            "SELECT op.field FROM op WHERE :param_1 + "
+                        "(op.field IN (:field_1, :field_2))")
+        self.assert_compile(table.select((5 + table.c.field).in_([5, 6])),
+            "SELECT op.field FROM op WHERE :field_1 + op.field "
+                    "IN (:param_1, :param_2)")
+        self.assert_compile(table.select(not_(and_(table.c.field == 5,
+                        table.c.field == 7))),
+            "SELECT op.field FROM op WHERE NOT "
+                "(op.field = :field_1 AND op.field = :field_2)")
+        self.assert_compile(table.select(not_(table.c.field == 5)),
+            "SELECT op.field FROM op WHERE op.field != :field_1")
+        self.assert_compile(table.select(not_(table.c.field.between(5, 6))),
+            "SELECT op.field FROM op WHERE NOT "
+                    "(op.field BETWEEN :field_1 AND :field_2)")
+        self.assert_compile(table.select(not_(table.c.field) == 5),
+            "SELECT op.field FROM op WHERE (NOT op.field) = :param_1")
+        self.assert_compile(table.select((table.c.field == table.c.field).\
+                            between(False, True)),
+            "SELECT op.field FROM op WHERE (op.field = op.field) "
+                            "BETWEEN :param_1 AND :param_2")
+        self.assert_compile(table.select(
+                        between((table.c.field == table.c.field), False, True)),
+            "SELECT op.field FROM op WHERE (op.field = op.field) "
+                    "BETWEEN :param_1 AND :param_2")
+
+class OperatorAssociativityTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def test_associativity(self):
+        # TODO: clean up /break up
+        f = column('f')
+        self.assert_compile(f - f, "f - f")
+        self.assert_compile(f - f - f, "(f - f) - f")
+
+        self.assert_compile((f - f) - f, "(f - f) - f")
+        self.assert_compile((f - f).label('foo') - f, "(f - f) - f")
+
+        self.assert_compile(f - (f - f), "f - (f - f)")
+        self.assert_compile(f - (f - f).label('foo'), "f - (f - f)")
+
+        # because - less precedent than /
+        self.assert_compile(f / (f - f), "f / (f - f)")
+        self.assert_compile(f / (f - f).label('foo'), "f / (f - f)")
+
+        self.assert_compile(f / f - f, "f / f - f")
+        self.assert_compile((f / f) - f, "f / f - f")
+        self.assert_compile((f / f).label('foo') - f, "f / f - f")
+
+        # because / more precedent than -
+        self.assert_compile(f - (f / f), "f - f / f")
+        self.assert_compile(f - (f / f).label('foo'), "f - f / f")
+        self.assert_compile(f - f / f, "f - f / f")
+        self.assert_compile((f - f) / f, "(f - f) / f")
+
+        self.assert_compile(((f - f) / f) - f, "(f - f) / f - f")
+        self.assert_compile((f - f) / (f - f), "(f - f) / (f - f)")
+
+        # higher precedence
+        self.assert_compile((f / f) - (f / f), "f / f - f / f")
+
+        self.assert_compile((f / f) - (f - f), "f / f - (f - f)")
+        self.assert_compile((f / f) / (f - f), "(f / f) / (f - f)")
+        self.assert_compile(f / (f / (f - f)), "f / (f / (f - f))")
+
 

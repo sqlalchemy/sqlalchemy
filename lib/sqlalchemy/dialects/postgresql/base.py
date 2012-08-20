@@ -192,7 +192,7 @@ import re
 
 from ... import sql, schema, exc, util
 from ...engine import default, reflection
-from ...sql import compiler, expression, util as sql_util
+from ...sql import compiler, expression, util as sql_util, operators
 from ... import types as sqltypes
 
 try:
@@ -339,17 +339,143 @@ class UUID(sqltypes.TypeEngine):
 
 PGUuid = UUID
 
+class _Slice(expression.ColumnElement):
+    __visit_name__ = 'slice'
+    type = sqltypes.NULLTYPE
+    def __init__(self, slice_, source_comparator):
+        self.start = source_comparator._check_literal(
+                            source_comparator.expr,
+                            operators.getitem, slice_.start)
+        self.stop = source_comparator._check_literal(
+                            source_comparator.expr,
+                            operators.getitem, slice_.stop)
+
+class array(expression.Tuple):
+    """A Postgresql ARRAY literal.
+
+    This is used to produce ARRAY literals in SQL expressions, e.g.::
+
+        from sqlalchemy.dialects.postgresql import array
+        from sqlalchemy.dialects import postgresql
+        from sqlalchemy import select, func
+
+        stmt = select([
+                        array([1,2]) + array([3,4,5])
+                    ])
+
+        print stmt.compile(dialect=postgresql.dialect())
+
+    Produces the SQL::
+
+        SELECT ARRAY[%(param_1)s, %(param_2)s] ||
+            ARRAY[%(param_3)s, %(param_4)s, %(param_5)s]) AS anon_1
+
+    An instance of :class:`.array` will always have the datatype
+    :class:`.ARRAY`.  The "inner" type of the array is inferred from
+    the values present, unless the "type_" keyword argument is passed::
+
+        array(['foo', 'bar'], type_=CHAR)
+
+    .. versionadded:: 0.8 Added the :class:`~.postgresql.array` literal type.
+
+    See also:
+
+    :class:`.postgresql.ARRAY`
+
+    """
+    __visit_name__ = 'array'
+
+    def __init__(self, clauses, **kw):
+        super(array, self).__init__(*clauses, **kw)
+        self.type = ARRAY(self.type)
+
+    def _bind_param(self, operator, obj):
+        return array(*[
+            expression.BindParameter(None, o, _compared_to_operator=operator,
+                             _compared_to_type=self.type, unique=True)
+            for o in obj
+        ])
+
+    def self_group(self, against):
+        return self
+
 class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
     """Postgresql ARRAY type.
 
     Represents values as Python lists.
 
-    The ARRAY type may not be supported on all DBAPIs.
+    An :class:`.ARRAY` type is constructed given the "type"
+    of element::
+
+        mytable = Table("mytable", metadata,
+                Column("data", ARRAY(Integer))
+            )
+
+    The above type represents an N-dimensional array,
+    meaning Postgresql will interpret values with any number
+    of dimensions automatically.   To produce an INSERT
+    construct that passes in a 1-dimensional array of integers::
+
+        connection.execute(
+                mytable.insert(),
+                data=[1,2,3]
+        )
+
+    The :class:`.ARRAY` type can be constructed given a fixed number
+    of dimensions::
+
+        mytable = Table("mytable", metadata,
+                Column("data", ARRAY(Integer, dimensions=2))
+            )
+
+    This has the effect of the :class:`.ARRAY` type
+    specifying that number of bracketed blocks when a :class:`.Table`
+    is used in a CREATE TABLE statement, or when the type is used
+    within a :func:`.expression.cast` construct; it also causes
+    the bind parameter and result set processing of the type
+    to optimize itself to expect exactly that number of dimensions.
+    Note that Postgresql itself still allows N dimensions with such a type.
+
+    SQL expressions of type :class:`.ARRAY` have support for "index" and "slice"
+    behavior.  The Python ``[]`` operator works normally here, given
+    integer indexes or slices.  Note that Postgresql arrays default
+    to 1-based indexing.  The operator produces binary expression
+    constructs which will produce the appropriate SQL, both for
+    SELECT statements::
+
+        select([mytable.c.data[5], mytable.c.data[2:7]])
+
+    as well as UPDATE statements when the :meth:`.Update.values` method
+    is used::
+
+        mytable.update().values({mytable.c.data[5]:7,
+                        mytable.c.data[2:7]:[1,2,3]})
+
+    .. versionadded:: 0.8 Added support for index and slice operations
+       to the :class:`.ARRAY` type, including support for UPDATE
+       statements.
+
+    The :class:`.ARRAY` type may not be supported on all DBAPIs.
     It is known to work on psycopg2 and not pg8000.
 
+    See also:
+
+    :class:`.postgresql.array` - produce a literal array value.
 
     """
     __visit_name__ = 'ARRAY'
+
+    class Comparator(sqltypes.Concatenable.Comparator):
+        def __getitem__(self, index):
+            if isinstance(index, slice):
+                index = _Slice(index, self)
+                return_type = self.type
+            else:
+                return_type = self.type.item_type
+            return self._binary_operate(self.expr, operators.getitem, index,
+                            result_type=return_type)
+
+    comparator_factory = Comparator
 
     def __init__(self, item_type, as_tuple=False, dimensions=None):
         """Construct an ARRAY.
@@ -363,8 +489,7 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
         :param item_type: The data type of items of this array. Note that
           dimensionality is irrelevant here, so multi-dimensional arrays like
           ``INTEGER[][]``, are constructed as ``ARRAY(Integer)``, not as
-          ``ARRAY(ARRAY(Integer))`` or such. The type mapping figures out on
-          the fly
+          ``ARRAY(ARRAY(Integer))`` or such.
 
         :param as_tuple=False: Specify whether return results
           should be converted to tuples from lists. DBAPIs such
@@ -619,15 +744,31 @@ ischema_names = {
 
 class PGCompiler(compiler.SQLCompiler):
 
+    def visit_array(self, element, **kw):
+        return "ARRAY[%s]" % self.visit_clauselist(element, **kw)
+
+    def visit_slice(self, element, **kw):
+        return "%s:%s" % (
+                    self.process(element.start, **kw),
+                    self.process(element.stop, **kw),
+                )
+
+    def visit_getitem_binary(self, binary, operator, **kw):
+        return "%s[%s]" % (
+                self.process(binary.left, **kw),
+                self.process(binary.right, **kw)
+            )
+
     def visit_match_op_binary(self, binary, operator, **kw):
         return "%s @@ to_tsquery(%s)" % (
-                        self.process(binary.left),
-                        self.process(binary.right))
+                        self.process(binary.left, **kw),
+                        self.process(binary.right, **kw))
 
     def visit_ilike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
         return '%s ILIKE %s' % \
-                (self.process(binary.left), self.process(binary.right)) \
+                (self.process(binary.left, **kw),
+                    self.process(binary.right, **kw)) \
                 + (escape and
                         (' ESCAPE ' + self.render_literal_value(escape, None))
                         or '')
@@ -635,7 +776,8 @@ class PGCompiler(compiler.SQLCompiler):
     def visit_notilike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
         return '%s NOT ILIKE %s' % \
-                (self.process(binary.left), self.process(binary.right)) \
+                (self.process(binary.left, **kw),
+                    self.process(binary.right, **kw)) \
                 + (escape and
                         (' ESCAPE ' + self.render_literal_value(escape, None))
                         or '')
@@ -653,7 +795,7 @@ class PGCompiler(compiler.SQLCompiler):
     def limit_clause(self, select):
         text = ""
         if select._limit is not None:
-            text +=  " \n LIMIT " + self.process(sql.literal(select._limit))
+            text += " \n LIMIT " + self.process(sql.literal(select._limit))
         if select._offset is not None:
             if select._limit is None:
                 text += " \n LIMIT ALL"

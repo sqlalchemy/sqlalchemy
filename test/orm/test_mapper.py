@@ -1108,8 +1108,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert_col = []
         class extendedproperty(property):
             attribute = 123
-            def __getitem__(self, key):
-                return 'value'
 
         class User(object):
             def _get_name(self):
@@ -1169,7 +1167,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert u in sess.dirty
 
         eq_(User.uname.attribute, 123)
-        eq_(User.uname['key'], 'value')
 
     def test_synonym_of_synonym(self):
         users,  User = (self.tables.users,
@@ -1266,9 +1263,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             def method1(self):
                 return "method1"
 
-            def __getitem__(self, key):
-                return 'value'
-
         from sqlalchemy.orm.properties import ColumnProperty
         class UCComparator(ColumnProperty.Comparator):
             __hash__ = None
@@ -1341,7 +1335,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             assert u2 is u3
 
             eq_(User.uc_name.attribute, 123)
-            eq_(User.uc_name['key'], 'value')
             sess.rollback()
 
     def test_comparable_column(self):

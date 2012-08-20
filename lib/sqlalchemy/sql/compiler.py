@@ -411,7 +411,8 @@ class SQLCompiler(engine.Compiled):
                                     within_columns_clause=False,
                                     **kw)
 
-    def visit_column(self, column, add_to_result_map=None, **kwargs):
+    def visit_column(self, column, add_to_result_map=None,
+                                    include_table=True, **kwargs):
         name = orig_name = column.name
         if name is None:
             raise exc.CompileError("Cannot compile Column object until "
@@ -438,7 +439,7 @@ class SQLCompiler(engine.Compiled):
             name = self.preparer.quote(name, column.quote)
 
         table = column.table
-        if table is None or not table.named_with_column:
+        if table is None or not include_table or not table.named_with_column:
             return name
         else:
             if table.schema:
@@ -1329,16 +1330,13 @@ class SQLCompiler(engine.Compiled):
         text += table_text
 
         text += ' SET '
-        if extra_froms and self.render_table_with_column_in_update_from:
-            text += ', '.join(
-                            self.visit_column(c[0]) +
-                            '=' + c[1] for c in colparams
-                            )
-        else:
-            text += ', '.join(
-                        self.preparer.quote(c[0].name, c[0].quote) +
+        include_table = extra_froms and \
+                        self.render_table_with_column_in_update_from
+        text += ', '.join(
+                        c[0]._compiler_dispatch(self,
+                            include_table=include_table) +
                         '=' + c[1] for c in colparams
-                            )
+                        )
 
         if update_stmt._returning:
             self.returning = update_stmt._returning
@@ -1414,12 +1412,25 @@ class SQLCompiler(engine.Compiled):
                               if not stmt.parameters or
                               key not in stmt.parameters)
 
-        if stmt.parameters is not None:
-            for k, v in stmt.parameters.iteritems():
-                parameters.setdefault(sql._column_as_key(k), v)
-
         # create a list of column assignment clauses as tuples
         values = []
+
+        if stmt.parameters is not None:
+            for k, v in stmt.parameters.iteritems():
+                colkey = sql._column_as_key(k)
+                if colkey is not None:
+                    parameters.setdefault(colkey, v)
+                else:
+                    # a non-Column expression on the left side;
+                    # add it to values() in an "as-is" state,
+                    # coercing right side to bound param
+                    if sql._is_literal(v):
+                        v = self.process(sql.bindparam(None, v, type_=k.type))
+                    else:
+                        v = self.process(v.self_group())
+
+                    values.append((k, v))
+
 
         need_pks = self.isinsert and \
                         not self.inline and \

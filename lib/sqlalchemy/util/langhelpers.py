@@ -404,6 +404,7 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
         dunders = [m for m in dir(from_cls)
                    if (m.startswith('__') and m.endswith('__') and
                        not hasattr(into_cls, m) and m not in skip)]
+
     for method in dunders:
         try:
             fn = getattr(from_cls, method)

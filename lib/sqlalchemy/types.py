@@ -46,6 +46,9 @@ class TypeEngine(AbstractType):
         """Base class for custom comparison operations defined at the
         type level.  See :attr:`.TypeEngine.comparator_factory`.
 
+        The public base class for :class:`.TypeEngine.Comparator`
+        is :class:`.ColumnOperators`.
+
         """
 
         def __init__(self, expr):

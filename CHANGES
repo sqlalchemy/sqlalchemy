@@ -360,6 +360,23 @@ underneath "0.7.xx".
     decryption, usage of Postgis functions, etc.
     [ticket:1534]
 
+  - [feature] The Core oeprator system now includes
+    the `getitem` operator, i.e. the bracket
+    operator in Python.  This is used at first
+    to provide index and slice behavior to the
+    Postgresql ARRAY type, and also provides a hook
+    for end-user definition of custom __getitem__
+    schemes which can be applied at the type
+    level as well as within ORM-level custom
+    operator schemes.
+
+    Note that this change has the effect that
+    descriptor-based __getitem__ schemes used by
+    the ORM in conjunction with synonym() or other
+    "descriptor-wrapped" schemes will need
+    to start using a custom comparator in order
+    to maintain this behavior.
+
   - [feature] Revised the rules used to determine
     the operator precedence for the user-defined
     operator, i.e. that granted using the ``op()``
@@ -501,6 +518,19 @@ underneath "0.7.xx".
     render in DDL as ARRAY[][]..., also improves
     performance of bind/result processing.
     [ticket:2441]
+
+  - [feature] postgresql.ARRAY now supports
+    indexing and slicing.  The Python [] operator
+    is available on all SQL expressions that are
+    of type ARRAY; integer or simple slices can be
+    passed.  The slices can also be used on the
+    assignment side in the SET clause of an UPDATE
+    statement by passing them into Update.values();
+    see the docs for examples.
+
+  - [feature] Added new "array literal" construct
+    postgresql.array().  Basically a "tuple" that
+    renders as ARRAY[1,2,3].
 
   - [feature] Added support for the Postgresql ONLY
     keyword, which can appear corresponding to a
