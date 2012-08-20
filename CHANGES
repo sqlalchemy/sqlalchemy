@@ -142,10 +142,9 @@ underneath "0.7.xx".
     and if the parent table is referenced in the
     WHERE clause, the compiler will call upon
     UPDATE..FROM syntax as allowed by the dialect
-    to satisfy the WHERE clause.  Target columns
-    must still be in the target table i.e.
-    does not support MySQL's multi-table update
-    feature (even though this is in Core).
+    to satisfy the WHERE clause.  MySQL's multi-table
+    update feature is also supported if columns
+    are specified by object in the "values" dicitionary.
     PG's DELETE..USING is also not available
     in Core yet.
 

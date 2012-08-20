@@ -1446,14 +1446,18 @@ class SQLCompiler(engine.Compiled):
         # special logic that only occurs for multi-table UPDATE
         # statements
         if extra_tables and stmt.parameters:
+            normalized_params = dict(
+                (sql._clause_element_as_expr(c), param)
+                for c, param in stmt.parameters.items()
+            )
             assert self.isupdate
             affected_tables = set()
             for t in extra_tables:
                 for c in t.c:
-                    if c in stmt.parameters:
+                    if c in normalized_params:
                         affected_tables.add(t)
                         check_columns[c.key] = c
-                        value = stmt.parameters[c]
+                        value = normalized_params[c]
                         if sql._is_literal(value):
                             value = self._create_crud_bind_param(
                                             c, value, required=value is required)
@@ -1466,7 +1470,7 @@ class SQLCompiler(engine.Compiled):
             # server_onupdate for these
             for t in affected_tables:
                 for c in t.c:
-                    if c in stmt.parameters:
+                    if c in normalized_params:
                         continue
                     elif c.onupdate is not None and not c.onupdate.is_sequence:
                         if c.onupdate.is_clause_element:

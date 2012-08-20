@@ -642,3 +642,16 @@ class InheritTest(fixtures.DeclarativeMappedTest):
             set([('e1', 'e1', ), ('e2', 'e5')])
         )
 
+    @testing.only_on('mysql', 'Multi table update')
+    def test_update_from_multitable(self):
+        Engineer = self.classes.Engineer
+        Person = self.classes.Person
+        s = Session(testing.db)
+        s.query(Engineer).filter(Engineer.id == Person.id).\
+            filter(Person.name == 'e2').update({Person.name: 'e22',
+                                Engineer.engineer_name: 'e55'})
+
+        eq_(
+            set(s.query(Person.name, Engineer.engineer_name)),
+            set([('e1', 'e1', ), ('e22', 'e55')])
+        )
