@@ -116,7 +116,7 @@ class TablesTest(TestBase):
 
     def _teardown_each_tables(self):
         # no need to run deletes if tables are recreated on setup
-        if self.run_define_tables != 'each' and self.run_deletes:
+        if self.run_define_tables != 'each' and self.run_deletes == 'each':
             for table in reversed(self.metadata.sorted_tables):
                 try:
                     table.delete().execute().close()
@@ -303,23 +303,12 @@ class MappedTest(_ORMTest, TablesTest, testing.AssertsExecutionResults):
         pass
 
 class DeclarativeMappedTest(MappedTest):
-    declarative_meta = None
-
     run_setup_classes = 'once'
     run_setup_mappers = 'once'
 
     @classmethod
-    def setup_class(cls):
-        if cls.declarative_meta is None:
-            cls.declarative_meta = sa.MetaData()
-
-        super(DeclarativeMappedTest, cls).setup_class()
-
-    @classmethod
-    def _teardown_once_class(cls):
-        if cls.declarative_meta.tables:
-            cls.declarative_meta.drop_all(testing.db)
-        super(DeclarativeMappedTest, cls)._teardown_once_class()
+    def _setup_once_tables(cls):
+        pass
 
     @classmethod
     def _with_register_classes(cls, fn):
@@ -331,10 +320,10 @@ class DeclarativeMappedTest(MappedTest):
                         cls, classname, bases, dict_)
         class DeclarativeBasic(object):
             __table_cls__ = schema.Table
-        _DeclBase = declarative_base(metadata=cls.declarative_meta,
+        _DeclBase = declarative_base(metadata=cls.metadata,
                             metaclass=FindFixtureDeclarative,
                             cls=DeclarativeBasic)
         cls.DeclarativeBasic = _DeclBase
         fn()
-        if cls.declarative_meta.tables:
-            cls.declarative_meta.create_all(testing.db)
+        if cls.metadata.tables:
+            cls.metadata.create_all(testing.db)

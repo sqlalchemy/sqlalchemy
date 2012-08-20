@@ -224,6 +224,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
     run_setup_classes = 'once'
     run_setup_mappers = 'once'
     run_inserts = 'once'
+    run_deletes = None
     __dialect__ = 'default'
 
     @classmethod

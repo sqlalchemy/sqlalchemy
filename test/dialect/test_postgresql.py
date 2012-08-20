@@ -1,4 +1,7 @@
 # coding: utf-8
+
+from __future__ import with_statement
+
 from test.lib.testing import eq_, assert_raises, assert_raises_message, is_
 from test.lib import  engines
 import datetime

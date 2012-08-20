@@ -806,10 +806,13 @@ class BulkUD(object):
         self.context = context = query._compile_context()
         if len(context.statement.froms) != 1 or \
                     not isinstance(context.statement.froms[0], schema.Table):
-            raise sa_exc.ArgumentError(
-                            "Only update via a single table query is "
-                            "currently supported")
-        self.primary_table = context.statement.froms[0]
+
+            self.primary_table = query._only_entity_zero(
+                    "This operation requires only one Table or "
+                    "entity be specified as the target."
+                ).mapper.local_table
+        else:
+            self.primary_table = context.statement.froms[0]
 
         session = query.session
 

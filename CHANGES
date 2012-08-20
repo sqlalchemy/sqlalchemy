@@ -133,6 +133,22 @@ underneath "0.7.xx".
     None values in collections would be silently ignored.
     [ticket:2229]
 
+  - [feature] The Query.update() method is now
+    more lenient as to the table
+    being updated.  Plain Table objects are better
+    supported now, and additional a joined-inheritance
+    subclass may be used with update(); the subclass
+    table will be the target of the update,
+    and if the parent table is referenced in the
+    WHERE clause, the compiler will call upon
+    UPDATE..FROM syntax as allowed by the dialect
+    to satisfy the WHERE clause.  Target columns
+    must still be in the target table i.e.
+    does not support MySQL's multi-table update
+    feature (even though this is in Core).
+    PG's DELETE..USING is also not available
+    in Core yet.
+
   - [bug] Improvements to joined/subquery eager
     loading dealing with chains of subclass entities
     sharing a common base, with no specific "join depth"
