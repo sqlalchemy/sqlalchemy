@@ -1147,11 +1147,6 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(gen(None), 'SELECT q')
         eq_(gen(True), 'SELECT DISTINCT q')
 
-        assert_raises(
-            exc.SADeprecationWarning,
-            gen, 'DISTINCT'
-        )
-
         eq_(gen(prefixes=['ALL']), 'SELECT ALL q')
         eq_(gen(prefixes=['DISTINCTROW']),
                 'SELECT DISTINCTROW q')

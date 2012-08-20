@@ -153,8 +153,9 @@ Classes
    :show-inheritance:
 
 .. autoclass:: Delete
-   :members: where, prefix_with
+   :members:
    :show-inheritance:
+   :inherited-members:
 
 .. autoclass:: Executable
    :members:
@@ -173,8 +174,9 @@ Classes
    :show-inheritance:
 
 .. autoclass:: Insert
-   :members: prefix_with, values, returning
+   :members:
    :show-inheritance:
+   :inherited-members:
 
 .. autoclass:: Join
    :members:
@@ -187,8 +189,7 @@ Classes
 .. autoclass:: Select
    :members:
    :show-inheritance:
-
-   ..automember:: prefix_with
+   :inherited-members:
 
 .. autoclass:: Selectable
    :members:
@@ -207,7 +208,8 @@ Classes
    :show-inheritance:
 
 .. autoclass:: Update
-  :members: prefix_with, values, where
+  :members:
+  :inherited-members:
   :show-inheritance:
 
 .. autoclass:: UpdateBase
