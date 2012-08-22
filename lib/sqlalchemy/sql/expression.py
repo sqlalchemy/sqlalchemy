@@ -4325,8 +4325,9 @@ class ColumnClause(Immutable, ColumnElement):
         self.is_literal = is_literal
 
     def _compare_name_for_result(self, other):
+        # TODO: this still isn't 100% correct
         if self.table is not None and hasattr(other, 'proxy_set'):
-            return other.proxy_set.intersection(self.proxy_set)
+            return self.proxy_set.intersection(other.proxy_set)
         else:
             return super(ColumnClause, self).\
                     _compare_name_for_result(other)

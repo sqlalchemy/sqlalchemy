@@ -244,7 +244,7 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
     PyObject *processors, *values;
     PyObject *processor, *value, *processed_value;
     PyObject *row, *record, *result, *indexobject;
-    PyObject *exc_module, *exception;
+    PyObject *exc_module, *exception, *cstr_obj;
     char *cstr_key;
     long index;
     int key_fallback = 0;
@@ -301,9 +301,16 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
             if (exception == NULL)
                 return NULL;
 
-            cstr_key = PyString_AsString(key);
-            if (cstr_key == NULL)
+            // wow.  this seems quite excessive.
+            cstr_obj = PyObject_Str(key);
+            if (cstr_obj == NULL)
                 return NULL;
+            cstr_key = PyString_AsString(cstr_obj);
+            if (cstr_key == NULL) {
+                Py_DECREF(cstr_obj);
+                return NULL;
+            }
+            Py_DECREF(cstr_obj);
 
             PyErr_Format(exception,
                     "Ambiguous column name '%.200s' in result set! "

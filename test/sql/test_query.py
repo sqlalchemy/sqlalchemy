@@ -954,11 +954,34 @@ class QueryTest(fixtures.TestBase):
 
     def test_ambiguous_column(self):
         users.insert().execute(user_id=1, user_name='john')
-        r = users.outerjoin(addresses).select().execute().first()
+        result = users.outerjoin(addresses).select().execute()
+        r = result.first()
+
         assert_raises_message(
             exc.InvalidRequestError,
             "Ambiguous column name",
             lambda: r['user_id']
+        )
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name",
+            lambda: r[users.c.user_id]
+        )
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name",
+            lambda: r[addresses.c.user_id]
+        )
+
+        # try to trick it - fake_table isn't in the result!
+        # we get the correct error
+        fake_table = Table('fake', MetaData(), Column('user_id', Integer))
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Could not locate column in row for column 'fake.user_id'",
+            lambda: r[fake_table.c.user_id]
         )
 
         r = util.pickle.loads(util.pickle.dumps(r))
@@ -976,6 +999,41 @@ class QueryTest(fixtures.TestBase):
             exc.InvalidRequestError,
             "Ambiguous column name",
             lambda: r['user_id']
+        )
+
+    def test_ambiguous_column_by_col(self):
+        users.insert().execute(user_id=1, user_name='john')
+        ua = users.alias()
+        u2 = users.alias()
+        result = select([users.c.user_id, ua.c.user_id]).execute()
+        row = result.first()
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name",
+            lambda: row[users.c.user_id]
+        )
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name",
+            lambda: row[ua.c.user_id]
+        )
+
+        # Unfortunately, this fails -
+        # we'd like
+        # "Could not locate column in row"
+        # to be raised here, but the check for
+        # "common column" in _compare_name_for_result()
+        # has other requirements to be more liberal.
+        # Ultimately the
+        # expression system would need a way to determine
+        # if given two columns in a "proxy" relationship, if they
+        # refer to a different parent table
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name",
+            lambda: row[u2.c.user_id]
         )
 
     @testing.requires.subqueries
@@ -1365,8 +1423,12 @@ class KeyTargetingTest(fixtures.TablesTest):
         keyed3 = self.tables.keyed3
 
         row = testing.db.execute(select([keyed1, keyed3])).first()
-        assert 'b' not in row
         eq_(row.q, "c1")
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name 'b'",
+            getattr, row, "b"
+        )
         assert_raises_message(
             exc.InvalidRequestError,
             "Ambiguous column name 'a'",

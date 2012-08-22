@@ -375,7 +375,7 @@ class SQLCompiler(engine.Compiled):
         return "(" + grouping.element._compiler_dispatch(self, **kwargs) + ")"
 
     def visit_label(self, label,
-                            add_to_result_map = None,
+                            add_to_result_map=None,
                             within_label_clause=False,
                             within_columns_clause=False, **kw):
         # only render labels within the columns clause
@@ -388,17 +388,12 @@ class SQLCompiler(engine.Compiled):
                 labelname = label.name
 
             if add_to_result_map is not None:
-                self.result_map[
-                        labelname
-                            if self.dialect.case_sensitive
-                            else labelname.lower()
-                        ] = (
-                            label.name,
-                            (label, label.element, labelname, ) +
-                                label._alt_names +
-                                add_to_result_map,
-                            label.type,
-                        )
+                add_to_result_map(
+                        labelname,
+                        label.name,
+                        (label, label.element, labelname, ) + label._alt_names,
+                        label.type
+                )
 
             return label.element._compiler_dispatch(self,
                                     within_columns_clause=True,
@@ -423,15 +418,12 @@ class SQLCompiler(engine.Compiled):
             name = self._truncated_identifier("colident", name)
 
         if add_to_result_map is not None:
-            self.result_map[
-                        name
-                        if self.dialect.case_sensitive
-                        else name.lower()
-                    ] = (
-                        orig_name,
-                        (column, name, column.key) + add_to_result_map,
-                        column.type
-                    )
+            add_to_result_map(
+                name,
+                orig_name,
+                (column, name, column.key),
+                column.type
+            )
 
         if is_literal:
             name = self.escape_literal_column(name)
@@ -557,11 +549,9 @@ class SQLCompiler(engine.Compiled):
 
     def visit_function(self, func, add_to_result_map=None, **kwargs):
         if add_to_result_map is not None:
-            self.result_map[
-                        func.name
-                        if self.dialect.case_sensitive
-                        else func.name.lower()
-                    ] = (func.name, add_to_result_map, func.type)
+            add_to_result_map(
+                func.name, func.name, (), func.type
+            )
 
         disp = getattr(self, "visit_%s_func" % func.name.lower(), None)
         if disp:
@@ -932,6 +922,20 @@ class SQLCompiler(engine.Compiled):
         else:
             return alias.original._compiler_dispatch(self, **kwargs)
 
+    def _add_to_result_map(self, keyname, name, objects, type_):
+        if not self.dialect.case_sensitive:
+            keyname = keyname.lower()
+
+        if keyname in self.result_map:
+            # conflicting keyname, just double up the list
+            # of objects.  this will cause an "ambiguous name"
+            # error if an attempt is made by the result set to
+            # access.
+            e_name, e_obj, e_type = self.result_map[keyname]
+            self.result_map[keyname] = e_name, e_obj + objects, e_type
+        else:
+            self.result_map[keyname] = name, objects, type_
+
     def _label_select_column(self, select, column, populate_result_map,
                                     asfrom, column_clause_args):
         """produce labeled columns present in a select()."""
@@ -939,13 +943,16 @@ class SQLCompiler(engine.Compiled):
         if column.type._has_column_expression:
             col_expr = column.type.column_expression(column)
             if populate_result_map:
-                add_to_result_map = (column, )
+                add_to_result_map = lambda keyname, name, objects, type_: \
+                                    self._add_to_result_map(
+                                            keyname, name,
+                                            objects + (column,), type_)
             else:
                 add_to_result_map = None
         else:
             col_expr = column
             if populate_result_map:
-                add_to_result_map = ()
+                add_to_result_map = self._add_to_result_map
             else:
                 add_to_result_map = None
 
@@ -992,7 +999,6 @@ class SQLCompiler(engine.Compiled):
                         add_to_result_map=add_to_result_map,
                         **column_clause_args
                     )
-
 
     def format_from_hint_text(self, sqltext, table, hint, iscrud):
         hinttext = self.get_from_hint_text(table, hint)

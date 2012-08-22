@@ -508,12 +508,14 @@ class OracleCompiler(compiler.SQLCompiler):
 
         columnlist = list(expression._select_iterables(returning_cols))
 
-        # within_columns_clause =False so that labels (foo AS bar) don't render
-        columns = [self.process(c, within_columns_clause=False, result_map=self.result_map) for c in columnlist]
+        columns = [
+                self._label_select_column(None, c, True, False, {})
+                for c in columnlist
+            ]
 
         binds = [create_out_param(c, i) for i, c in enumerate(columnlist)]
 
-        return 'RETURNING ' + ', '.join(columns) +  " INTO " + ", ".join(binds)
+        return 'RETURNING ' + ', '.join(columns) + " INTO " + ", ".join(binds)
 
     def _TODO_visit_compound_select(self, select):
         """Need to determine how to get ``LIMIT``/``OFFSET`` into a ``UNION`` for Oracle."""

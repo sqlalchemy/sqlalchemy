@@ -859,15 +859,15 @@ class MSSQLCompiler(compiler.SQLCompiler):
                                         t, column)
 
                 if add_to_result_map is not None:
-                    self.result_map[column.name
-                                if self.dialect.case_sensitive
-                                else column.name.lower()] = \
-                                    (column.name, (column, ) + add_to_result_map,
-                                                    column.type)
+                    add_to_result_map(
+                            column.name,
+                            column.name,
+                            (column, ),
+                            column.type
+                    )
 
                 return super(MSSQLCompiler, self).\
-                                visit_column(converted,
-                                            result_map=None, **kwargs)
+                                visit_column(converted, **kwargs)
 
         return super(MSSQLCompiler, self).visit_column(
                         column, add_to_result_map=add_to_result_map, **kwargs)

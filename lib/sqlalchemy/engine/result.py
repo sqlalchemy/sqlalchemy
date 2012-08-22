@@ -232,7 +232,7 @@ class ResultMetaData(object):
                 # unambiguous.
                 primary_keymap[name
                                 if self.case_sensitive
-                                else name.lower()] = (processor, obj, None)
+                                else name.lower()] = rec = (processor, obj, None)
 
             self.keys.append(colname)
             if obj:

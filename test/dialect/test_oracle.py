@@ -445,6 +445,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'addresses.user_id = :user_id_1 ORDER BY '
                             'addresses.id, address_types.id')
 
+    def test_returning_insert(self):
+        t1 = table('t1', column('c1'), column('c2'), column('c3'))
+        self.assert_compile(
+            t1.insert().values(c1=1).returning(t1.c.c2, t1.c.c3),
+            "INSERT INTO t1 (c1) VALUES (:c1) RETURNING "
+                "t1.c2, t1.c3 INTO :ret_0, :ret_1"
+        )
+
     def test_compound(self):
         t1 = table('t1', column('c1'), column('c2'), column('c3'))
         t2 = table('t2', column('c1'), column('c2'), column('c3'))
