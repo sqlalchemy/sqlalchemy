@@ -64,6 +64,13 @@ CHANGES
     could be incorrect in certain "clone+replace"
     scenarios.  [ticket:2518]
 
+  - [bug] Fixed bug whereby usage of a UNION
+    or similar inside of an embedded subquery
+    would interfere with result-column targeting,
+    in the case that a result-column had the same
+    ultimate name as a name inside the embedded
+    UNION. [ticket:2552]
+
 - engine
   - [bug] Fixed bug whereby
     a disconnect detect + dispose that occurs

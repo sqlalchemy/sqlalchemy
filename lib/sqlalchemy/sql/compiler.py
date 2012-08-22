@@ -547,7 +547,7 @@ class SQLCompiler(engine.Compiled):
         else:
             name = FUNCTIONS.get(func.__class__, func.name + "%(expr)s")
             return ".".join(list(func.packagenames) + [name]) % \
-                            {'expr':self.function_argspec(func, **kwargs)}
+                            {'expr': self.function_argspec(func, **kwargs)}
 
     def visit_next_value_func(self, next_value, **kw):
         return self.visit_sequence(next_value.sequence)
@@ -561,9 +561,10 @@ class SQLCompiler(engine.Compiled):
         return func.clause_expr._compiler_dispatch(self, **kwargs)
 
     def visit_compound_select(self, cs, asfrom=False,
-                            parens=True, compound_index=1, **kwargs):
+                            parens=True, compound_index=0, **kwargs):
         entry = self.stack and self.stack[-1] or {}
-        self.stack.append({'from':entry.get('from', None), 'iswrapper':True})
+        self.stack.append({'from': entry.get('from', None),
+                    'iswrapper': not entry})
 
         keyword = self.compound_keywords.get(cs.keyword)
 
@@ -584,7 +585,7 @@ class SQLCompiler(engine.Compiled):
                         self.limit_clause(cs) or ""
 
         if self.ctes and \
-            compound_index==1 and not entry:
+            compound_index == 0 and not entry:
             text = self._render_cte_clause() + text
 
         self.stack.pop(-1)
@@ -913,7 +914,7 @@ class SQLCompiler(engine.Compiled):
 
     def visit_select(self, select, asfrom=False, parens=True,
                             iswrapper=False, fromhints=None,
-                            compound_index=1,
+                            compound_index=0,
                             positional_names=None, **kwargs):
 
         entry = self.stack and self.stack[-1] or {}
@@ -929,14 +930,18 @@ class SQLCompiler(engine.Compiled):
         # to outermost if existingfroms: correlate_froms =
         # correlate_froms.union(existingfroms)
 
-        self.stack.append({'from': correlate_froms, 'iswrapper'
-                          : iswrapper})
+        populate_result_map = compound_index == 0 and (
+                                not entry or \
+                                entry.get('iswrapper', False)
+                            )
 
-        if compound_index==1 and not entry or entry.get('iswrapper', False):
-            column_clause_args = {'result_map':self.result_map,
-                                    'positional_names':positional_names}
+        self.stack.append({'from': correlate_froms, 'iswrapper': iswrapper})
+
+        if populate_result_map:
+            column_clause_args = {'result_map': self.result_map,
+                                    'positional_names': positional_names}
         else:
-            column_clause_args = {'positional_names':positional_names}
+            column_clause_args = {'positional_names': positional_names}
 
         # the actual list of columns to print in the SELECT column list.
         inner_columns = [
@@ -1012,7 +1017,7 @@ class SQLCompiler(engine.Compiled):
             text += self.for_update_clause(select)
 
         if self.ctes and \
-            compound_index==1 and not entry:
+            compound_index == 0 and not entry:
             text  = self._render_cte_clause() + text
 
         self.stack.pop(-1)

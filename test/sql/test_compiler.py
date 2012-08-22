@@ -1,6 +1,6 @@
 #! coding:utf-8
 
-from test.lib.testing import eq_, assert_raises, assert_raises_message
+from test.lib.testing import eq_, is_, assert_raises, assert_raises_message
 import datetime, re, operator, decimal
 from sqlalchemy import *
 from sqlalchemy import exc, sql, util, types, schema
@@ -3159,3 +3159,54 @@ class CoercionTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(and_(t.c.id == 1, null()),
                             "foo.id = :id_1 AND NULL")
 
+
+class ResultMapTest(fixtures.TestBase):
+    """test the behavior of the 'entry stack' and the determination
+    when the result_map needs to be populated.
+
+    """
+    def test_compound_populates(self):
+        t = Table('t', MetaData(), Column('a', Integer), Column('b', Integer))
+        stmt = select([t]).union(select([t]))
+        comp = stmt.compile()
+        eq_(
+            comp.result_map,
+             {'a': ('a', (t.c.a, 'a', 'a'), t.c.a.type),
+             'b': ('b', (t.c.b, 'b', 'b'), t.c.b.type)}
+        )
+
+    def test_compound_not_toplevel_doesnt_populate(self):
+        t = Table('t', MetaData(), Column('a', Integer), Column('b', Integer))
+        subq = select([t]).union(select([t]))
+        stmt = select([t.c.a]).select_from(t.join(subq, t.c.a == subq.c.a))
+        comp = stmt.compile()
+        eq_(
+            comp.result_map,
+             {'a': ('a', (t.c.a, 'a', 'a'), t.c.a.type)}
+        )
+
+    def test_compound_only_top_populates(self):
+        t = Table('t', MetaData(), Column('a', Integer), Column('b', Integer))
+        stmt = select([t.c.a]).union(select([t.c.b]))
+        comp = stmt.compile()
+        eq_(
+            comp.result_map,
+             {'a': ('a', (t.c.a, 'a', 'a'), t.c.a.type)},
+        )
+
+    def test_label_conflict_union(self):
+        t1 = Table('t1', MetaData(), Column('a', Integer), Column('b', Integer))
+        t2 = Table('t2', MetaData(), Column('t1_a', Integer))
+        union = select([t2]).union(select([t2])).alias()
+
+        t1_alias = t1.alias()
+        stmt = select([t1, t1_alias]).select_from(
+                        t1.join(union, t1.c.a == union.c.t1_a)).apply_labels()
+        comp = stmt.compile()
+        eq_(
+            set(comp.result_map),
+            set(['t1_1_b', 't1_1_a', 't1_a', 't1_b'])
+        )
+        is_(
+            comp.result_map['t1_a'][1][1], t1.c.a
+        )
