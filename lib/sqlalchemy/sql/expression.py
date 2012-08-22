@@ -1225,12 +1225,21 @@ class _FunctionGenerator(object):
     def __call__(self, *c, **kwargs):
         o = self.opts.copy()
         o.update(kwargs)
-        if len(self.__names) == 1:
-            func = getattr(functions, self.__names[-1].lower(), None)
-            if func is not None and \
-                    isinstance(func, type) and \
-                    issubclass(func, Function):
-                return func(*c, **o)
+
+        tokens = len(self.__names)
+
+        if tokens == 2:
+            package, fname = self.__names
+        elif tokens == 1:
+            package, fname = "_default", self.__names[0]
+        else:
+            package = None
+
+        if package is not None and \
+            package in functions._registry and \
+            fname in functions._registry[package]:
+            func = functions._registry[package][fname]
+            return func(*c, **o)
 
         return Function(self.__names[-1],
                         packagenames=self.__names[0:-1], *c, **o)
@@ -3348,7 +3357,19 @@ class Case(ColumnElement):
                     self.get_children()]))
 
 class FunctionElement(Executable, ColumnElement, FromClause):
-    """Base for SQL function-oriented constructs."""
+    """Base for SQL function-oriented constructs.
+
+    See also:
+
+    :class:`.Function` - named SQL function.
+
+    :data:`.func` - namespace which produces registered or ad-hoc
+    :class:`.Function` instances.
+
+    :class:`.GenericFunction` - allows creation of registered function
+    types.
+
+    """
 
     packagenames = ()
 
@@ -3464,6 +3485,16 @@ class Function(FunctionElement):
 
     See the superclass :class:`.FunctionElement` for a description
     of public methods.
+
+    See also:
+
+    See also:
+
+    :data:`.func` - namespace which produces registered or ad-hoc
+    :class:`.Function` instances.
+
+    :class:`.GenericFunction` - allows creation of registered function
+    types.
 
     """
 

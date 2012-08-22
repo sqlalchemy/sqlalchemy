@@ -407,6 +407,12 @@ underneath "0.7.xx".
     used by combining operators.custom_op() with
     UnaryExpression().
 
+  - [feature] Enhanced GenericFunction and func.*
+    to allow for user-defined GenericFunction
+    subclasses to be available via the func.*
+    namespace automatically by classname,
+    optionally using a package name as well.
+
   - [changed] Most classes in expression.sql
     are no longer preceded with an underscore,
     i.e. Label, SelectBase, Generative, CompareMixin.

@@ -173,6 +173,10 @@ Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: sqlalchemy.sql.functions.GenericFunction
+   :members:
+   :show-inheritance:
+
 .. autoclass:: Insert
    :members:
    :show-inheritance:
