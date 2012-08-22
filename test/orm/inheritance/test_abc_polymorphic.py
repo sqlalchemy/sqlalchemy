@@ -74,13 +74,13 @@ class ABCTest(fixtures.MappedTest):
                 C(cdata='c1', bdata='c1', adata='c1'),
                 C(cdata='c2', bdata='c2', adata='c2'),
                 C(cdata='c2', bdata='c2', adata='c2'),
-            ], sess.query(B).all())
+            ], sess.query(B).order_by(A.id).all())
 
             eq_([
                 C(cdata='c1', bdata='c1', adata='c1'),
                 C(cdata='c2', bdata='c2', adata='c2'),
                 C(cdata='c2', bdata='c2', adata='c2'),
-            ], sess.query(C).all())
+            ], sess.query(C).order_by(A.id).all())
 
         test_roundtrip = function_named(
             test_roundtrip, 'test_%s' % fetchtype)
