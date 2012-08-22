@@ -87,6 +87,14 @@ CHANGES
     the absense of which was preventing the new
     GAE dialect from being loaded.  [ticket:2529]
 
+  - [bug] Fixed cextension bug whereby the
+    "ambiguous column error" would fail to
+    function properly if the given index were
+    a Column object and not a string.
+    Note there are still some column-targeting
+    issues here which are fixed in 0.8.
+    [ticket:2553]
+
   - [bug] Fixed the repr() of Enum to include
     the "name" and "native_enum" flags.  Helps
     Alembic autogenerate.

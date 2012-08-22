@@ -954,6 +954,34 @@ class QueryTest(fixtures.TestBase):
             lambda: r['user_id']
         )
 
+    def test_ambiguous_column_by_col(self):
+        users.insert().execute(user_id=1, user_name='john')
+        ua = users.alias()
+        u2 = users.alias()
+        result = select([users.c.user_id, ua.c.user_id]).execute()
+        row = result.first()
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name",
+            lambda: row[users.c.user_id]
+        )
+
+        # this is a bug, should be ambiguous.
+        # Fixed in 0.8
+        eq_(row[ua.c.user_id], 1)
+
+        # this is also a less severe bug - u2.c.user_id
+        # is not in the row at all so is not actually
+        # ambiguous.  Still is like this in 0.8
+        # and is due to overly liberal "this is a derived column"
+        # rules.
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name",
+            lambda: row[u2.c.user_id]
+        )
+
     @testing.requires.subqueries
     def test_column_label_targeting(self):
         users.insert().execute(user_id=7, user_name='ed')
