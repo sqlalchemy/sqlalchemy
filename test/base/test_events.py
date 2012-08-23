@@ -5,7 +5,7 @@ from test.lib.testing import eq_, assert_raises, assert_raises_message, \
 from sqlalchemy import event, exc, util
 from test.lib import fixtures
 
-class TestEvents(fixtures.TestBase):
+class EventsTest(fixtures.TestBase):
     """Test class- and instance-level event registration."""
 
     def setUp(self):
@@ -161,7 +161,7 @@ class TestEvents(fixtures.TestBase):
                 meth
             )
 
-class TestClsLevelListen(fixtures.TestBase):
+class ClsLevelListenTest(fixtures.TestBase):
 
 
     def tearDown(self):
@@ -242,7 +242,7 @@ class TestClsLevelListen(fixtures.TestBase):
         assert handler2 not in s2.dispatch.event_one
 
 
-class TestAcceptTargets(fixtures.TestBase):
+class AcceptTargetsTest(fixtures.TestBase):
     """Test default target acceptance."""
 
     def setUp(self):
@@ -313,7 +313,7 @@ class TestAcceptTargets(fixtures.TestBase):
             [listen_two, listen_four]
         )
 
-class TestCustomTargets(fixtures.TestBase):
+class CustomTargetsTest(fixtures.TestBase):
     """Test custom target acceptance."""
 
     def setUp(self):
@@ -352,7 +352,7 @@ class TestCustomTargets(fixtures.TestBase):
             listen, "event_one", self.Target
         )
 
-class TestListenOverride(fixtures.TestBase):
+class ListenOverrideTest(fixtures.TestBase):
     """Test custom listen functions which change the listener function signature."""
 
     def setUp(self):
@@ -398,7 +398,7 @@ class TestListenOverride(fixtures.TestBase):
             ]
         )
 
-class TestPropagate(fixtures.TestBase):
+class PropagateTest(fixtures.TestBase):
     def setUp(self):
         class TargetEvents(event.Events):
             def event_one(self, arg):
@@ -432,3 +432,217 @@ class TestPropagate(fixtures.TestBase):
         t2.dispatch.event_one(t2, 1)
         t2.dispatch.event_two(t2, 2)
         eq_(result, [(t2, 1)])
+
+class JoinTest(fixtures.TestBase):
+    def setUp(self):
+        class TargetEvents(event.Events):
+            def event_one(self, target, arg):
+                pass
+
+        class BaseTarget(object):
+            dispatch = event.dispatcher(TargetEvents)
+
+        class TargetFactory(BaseTarget):
+            def create(self):
+                return TargetElement(self)
+
+        class TargetElement(BaseTarget):
+            def __init__(self, parent):
+                self.dispatch = self.dispatch._join(parent.dispatch)
+
+            def run_event(self, arg):
+                list(self.dispatch.event_one)
+                self.dispatch.event_one(self, arg)
+
+        self.BaseTarget = BaseTarget
+        self.TargetFactory = TargetFactory
+        self.TargetElement = TargetElement
+
+    def tearDown(self):
+        for cls in (self.TargetElement,
+                self.TargetFactory, self.BaseTarget):
+            if 'dispatch' in cls.__dict__:
+                event._remove_dispatcher(cls.__dict__['dispatch'].events)
+
+    def _listener(self):
+        canary = []
+        def listen(target, arg):
+            canary.append((target, arg))
+        return listen, canary
+
+    def test_neither(self):
+        element = self.TargetFactory().create()
+        element.run_event(1)
+        element.run_event(2)
+        element.run_event(3)
+
+    def test_parent_class_only(self):
+        _listener, canary = self._listener()
+
+        event.listen(self.TargetFactory, "event_one", _listener)
+
+        element = self.TargetFactory().create()
+        element.run_event(1)
+        element.run_event(2)
+        element.run_event(3)
+        eq_(
+            canary,
+            [(element, 1), (element, 2), (element, 3)]
+        )
+
+    def test_parent_class_child_class(self):
+        l1, c1 = self._listener()
+        l2, c2 = self._listener()
+
+        event.listen(self.TargetFactory, "event_one", l1)
+        event.listen(self.TargetElement, "event_one", l2)
+
+        element = self.TargetFactory().create()
+        element.run_event(1)
+        element.run_event(2)
+        element.run_event(3)
+        eq_(
+            c1,
+            [(element, 1), (element, 2), (element, 3)]
+        )
+        eq_(
+            c2,
+            [(element, 1), (element, 2), (element, 3)]
+        )
+
+    def test_parent_class_child_instance_apply_after(self):
+        l1, c1 = self._listener()
+        l2, c2 = self._listener()
+
+        event.listen(self.TargetFactory, "event_one", l1)
+        element = self.TargetFactory().create()
+
+        element.run_event(1)
+
+        event.listen(element, "event_one", l2)
+        element.run_event(2)
+        element.run_event(3)
+
+        eq_(
+            c1,
+            [(element, 1), (element, 2), (element, 3)]
+        )
+        eq_(
+            c2,
+            [(element, 2), (element, 3)]
+        )
+
+    def test_parent_class_child_instance_apply_before(self):
+        l1, c1 = self._listener()
+        l2, c2 = self._listener()
+
+        event.listen(self.TargetFactory, "event_one", l1)
+        element = self.TargetFactory().create()
+
+        event.listen(element, "event_one", l2)
+
+        element.run_event(1)
+        element.run_event(2)
+        element.run_event(3)
+
+        eq_(
+            c1,
+            [(element, 1), (element, 2), (element, 3)]
+        )
+        eq_(
+            c2,
+            [(element, 1), (element, 2), (element, 3)]
+        )
+
+    def test_parent_instance_child_class_apply_before(self):
+        l1, c1 = self._listener()
+        l2, c2 = self._listener()
+
+        event.listen(self.TargetElement, "event_one", l2)
+
+        factory = self.TargetFactory()
+        event.listen(factory, "event_one", l1)
+
+        element = factory.create()
+
+        element.run_event(1)
+        element.run_event(2)
+        element.run_event(3)
+
+        eq_(
+            c1,
+            [(element, 1), (element, 2), (element, 3)]
+        )
+        eq_(
+            c2,
+            [(element, 1), (element, 2), (element, 3)]
+        )
+
+    def test_parent_instance_child_class_apply_after(self):
+        l1, c1 = self._listener()
+        l2, c2 = self._listener()
+
+        event.listen(self.TargetElement, "event_one", l2)
+
+        factory = self.TargetFactory()
+        element = factory.create()
+
+        element.run_event(1)
+
+        event.listen(factory, "event_one", l1)
+
+        element.run_event(2)
+        element.run_event(3)
+
+        # c1 gets no events due to _JoinedListener
+        # fixing the "parent" at construction time.
+        # this can be changed to be "live" at the cost
+        # of performance.
+        eq_(
+            c1,
+            []
+            #(element, 2), (element, 3)]
+        )
+        eq_(
+            c2,
+            [(element, 1), (element, 2), (element, 3)]
+        )
+
+    def test_parent_instance_child_instance_apply_before(self):
+        l1, c1 = self._listener()
+        l2, c2 = self._listener()
+        factory = self.TargetFactory()
+
+        event.listen(factory, "event_one", l1)
+
+        element = factory.create()
+        event.listen(element, "event_one", l2)
+
+        element.run_event(1)
+        element.run_event(2)
+        element.run_event(3)
+
+        eq_(
+            c1,
+            [(element, 1), (element, 2), (element, 3)]
+        )
+        eq_(
+            c2,
+            [(element, 1), (element, 2), (element, 3)]
+        )
+
+    def test_parent_events_child_no_events(self):
+        l1, c1 = self._listener()
+        factory = self.TargetFactory()
+
+        event.listen(self.TargetElement, "event_one", l1)
+        element = factory.create()
+
+        element.run_event(1)
+        element.run_event(2)
+        element.run_event(3)
+
+        eq_(
+            c1,
+            [(element, 1), (element, 2), (element, 3)]
+        )

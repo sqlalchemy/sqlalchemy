@@ -597,7 +597,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         else:
             default_params = {}
 
-        conn._cursor_execute(self.cursor, stmt, default_params)
+        conn._cursor_execute(self.cursor, stmt, default_params, context=self)
         r = self.cursor.fetchone()[0]
         if type_ is not None:
             # apply type post processors to the result

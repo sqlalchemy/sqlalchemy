@@ -303,6 +303,14 @@ underneath "0.7.xx".
     Connection objects, not just Engine
     objects.  [ticket:2511]
 
+  - [feature] The before_cursor_execute event
+    fires off for so-called "_cursor_execute"
+    events, which are usually special-case
+    executions of primary-key bound sequences
+    and default-generation SQL
+    phrases that invoke separately when RETURNING
+    is not used with INSERT.  [ticket:2459]
+
   - [bug] Fixed bug whereby if a database restart
     affected multiple connections, each
     connection would individually invoke a new

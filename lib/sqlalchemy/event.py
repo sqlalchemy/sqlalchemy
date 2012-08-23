@@ -7,6 +7,7 @@
 """Base event API."""
 
 from . import util, exc
+from itertools import chain
 
 CANCEL = util.symbol('CANCEL')
 NO_RETVAL = util.symbol('NO_RETVAL')
@@ -37,7 +38,7 @@ def listen(target, identifier, fn, *args, **kw):
             tgt.dispatch._listen(tgt, identifier, fn, *args, **kw)
             return
     raise exc.InvalidRequestError("No such event '%s' for target '%s'" %
-                                (identifier,target))
+                                (identifier, target))
 
 def listens_for(target, identifier, *args, **kw):
     """Decorate a function as a listener for the given target + identifier.
@@ -69,7 +70,7 @@ def remove(target, identifier, fn):
     """
     for evt_cls in _registrars[identifier]:
         for tgt in evt_cls._accept_with(target):
-            tgt.dispatch._remove(identifier, tgt, fn, *args, **kw)
+            tgt.dispatch._remove(identifier, tgt, fn)
             return
 
 _registrars = util.defaultdict(list)
@@ -111,6 +112,30 @@ class _Dispatch(object):
 
     def __init__(self, _parent_cls):
         self._parent_cls = _parent_cls
+
+    def _join(self, other):
+        """Create a 'join' of this :class:`._Dispatch` and another.
+
+        This new dispatcher will dispatch events to both
+        :class:`._Dispatch` objects.
+
+        Once constructed, the joined dispatch will respond to new events
+        added to this dispatcher, but may not be aware of events
+        added to the other dispatcher after creation of the join.  This is
+        currently for performance reasons so that both dispatchers need
+        not be "evaluated" fully on each call.
+
+        """
+        if '_joined_dispatch_cls' not in self.__class__.__dict__:
+            cls = type(
+                    "Joined%s" % self.__class__.__name__,
+                    (_JoinedDispatcher, self.__class__), {}
+                )
+            for ls in _event_descriptors(self):
+                setattr(cls, ls.name, _JoinedDispatchDescriptor(ls.name))
+
+            self.__class__._joined_dispatch_cls = cls
+        return self._joined_dispatch_cls(self, other)
 
     def __reduce__(self):
         return _UnpickleDispatch(), (self._parent_cls, )
@@ -276,6 +301,7 @@ class _DispatchDescriptor(object):
         obj.__dict__[self.__name__] = ret
         return ret
 
+
 class _EmptyListener(object):
     """Serves as a class-level interface to the events
     served by a _DispatchDescriptor, when there are no
@@ -303,8 +329,9 @@ class _EmptyListener(object):
         and returns it.
 
         """
-        obj.__dict__[self.name] = result = _ListenerCollection(
-                                        self.parent, obj._parent_cls)
+        result = _ListenerCollection(self.parent, obj._parent_cls)
+        if obj.__dict__[self.name] is self:
+            obj.__dict__[self.name] = result
         return result
 
     def _needs_modify(self, *args, **kw):
@@ -324,14 +351,47 @@ class _EmptyListener(object):
     def __iter__(self):
         return iter(self.parent_listeners)
 
-    def __getitem__(self, index):
-        return (self.parent_listeners)[index]
+    def __nonzero__(self):
+        return False
+
+class _CompoundListener(object):
+    _exec_once = False
+
+    def exec_once(self, *args, **kw):
+        """Execute this event, but only if it has not been
+        executed already for this collection."""
+
+        if not self._exec_once:
+            self(*args, **kw)
+            self._exec_once = True
+
+    # I'm not entirely thrilled about the overhead here,
+    # but this allows class-level listeners to be added
+    # at any point.
+    #
+    # In the absense of instance-level listeners,
+    # we stay with the _EmptyListener object when called
+    # at the instance level.
+
+    def __call__(self, *args, **kw):
+        """Execute this event."""
+
+        for fn in self.parent_listeners:
+            fn(*args, **kw)
+        for fn in self.listeners:
+            fn(*args, **kw)
+
+    def __len__(self):
+        return len(self.parent_listeners) + len(self.listeners)
+
+    def __iter__(self):
+        return chain(self.parent_listeners, self.listeners)
 
     def __nonzero__(self):
-        return bool(self.listeners)
+        return bool(self.listeners or self.parent_listeners)
 
 
-class _ListenerCollection(object):
+class _ListenerCollection(_CompoundListener):
     """Instance-level attributes on instances of :class:`._Dispatch`.
 
     Represents a collection of listeners.
@@ -340,8 +400,6 @@ class _ListenerCollection(object):
     created via the _EmptyListener.for_modify() method.
 
     """
-
-    _exec_once = False
 
     def __init__(self, parent, target_cls):
         if target_cls not in parent._clslevel:
@@ -359,42 +417,6 @@ class _ListenerCollection(object):
 
         """
         return self
-
-    def exec_once(self, *args, **kw):
-        """Execute this event, but only if it has not been
-        executed already for this collection."""
-
-        if not self._exec_once:
-            self(*args, **kw)
-            self._exec_once = True
-
-    def __call__(self, *args, **kw):
-        """Execute this event."""
-
-        for fn in self.parent_listeners:
-            fn(*args, **kw)
-        for fn in self.listeners:
-            fn(*args, **kw)
-
-    # I'm not entirely thrilled about the overhead here,
-    # but this allows class-level listeners to be added
-    # at any point.
-    #
-    # In the absense of instance-level listeners,
-    # we stay with the _EmptyListener object when called
-    # at the instance level.
-
-    def __len__(self):
-        return len(self.parent_listeners + self.listeners)
-
-    def __iter__(self):
-        return iter(self.parent_listeners + self.listeners)
-
-    def __getitem__(self, index):
-        return (self.parent_listeners + self.listeners)[index]
-
-    def __nonzero__(self):
-        return bool(self.listeners or self.parent_listeners)
 
     def _update(self, other, only_propagate=True):
         """Populate from the listeners in another :class:`_Dispatch`
@@ -430,6 +452,62 @@ class _ListenerCollection(object):
         self.listeners[:] = []
         self.propagate.clear()
 
+
+class _JoinedDispatcher(object):
+    """Represent a connection between two _Dispatch objects."""
+
+    def __init__(self, local, parent):
+        self.local = local
+        self.parent = parent
+        self._parent_cls = local._parent_cls
+
+
+class _JoinedDispatchDescriptor(object):
+    def __init__(self, name):
+        self.name = name
+
+    def __get__(self, obj, cls):
+        if obj is None:
+            return self
+        else:
+            obj.__dict__[self.name] = ret = _JoinedListener(
+                        obj.parent, self.name,
+                        getattr(obj.local, self.name)
+                    )
+            return ret
+
+class _JoinedListener(_CompoundListener):
+    _exec_once = False
+    def __init__(self, parent, name, local):
+        self.parent = parent
+        self.name = name
+        self.local = local
+        self.parent_listeners = self.local
+
+        # fix .listeners for the parent.  This means
+        # new events added to the parent won't be picked
+        # up here.  Alternatively, the listeners can
+        # be via @property to just return getattr(self.parent, self.name)
+        # each time. less performant.
+        self.listeners = list(getattr(self.parent, self.name))
+
+    def for_modify(self, obj):
+        self.local = self.parent_listeners = self.local.for_modify(obj)
+        return self
+
+    def insert(self, obj, target, propagate):
+        self.local.insert(obj, target, propagate)
+
+    def append(self, obj, target, propagate):
+        self.local.append(obj, target, propagate)
+
+    def remove(self, obj, target):
+        self.local.remove(obj, target)
+
+    def clear(self):
+        raise NotImplementedError()
+
+
 class dispatcher(object):
     """Descriptor used by target classes to
     deliver the _Dispatch class at the class level
@@ -446,3 +524,4 @@ class dispatcher(object):
             return self.dispatch_cls
         obj.__dict__['dispatch'] = disp = self.dispatch_cls(cls)
         return disp
+

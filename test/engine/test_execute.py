@@ -1,4 +1,5 @@
-from test.lib.testing import eq_, assert_raises, assert_raises_message, config
+from test.lib.testing import eq_, assert_raises, assert_raises_message, \
+    config, is_
 import re
 from test.lib.util import picklers
 from sqlalchemy.interfaces import ConnectionProxy
@@ -1251,6 +1252,33 @@ class EngineEventsTest(fixtures.TestBase):
         engine.execute(select([1]))
         eq_(
             canary, ['execute', 'cursor_execute']
+        )
+
+    @testing.requires.sequences
+    @testing.provide_metadata
+    def test_cursor_execute(self):
+        canary = []
+        def tracker(name):
+            def go(conn, cursor, statement, parameters, context, executemany):
+                canary.append((statement, context))
+            return go
+        engine = engines.testing_engine()
+
+
+        t = Table('t', self.metadata,
+                    Column('x', Integer, Sequence('t_id_seq'), primary_key=True),
+                    implicit_returning=False
+                    )
+        self.metadata.create_all(engine)
+        with engine.begin() as conn:
+            event.listen(conn, 'before_cursor_execute', tracker('cursor_execute'))
+            conn.execute(t.insert())
+        # we see the sequence pre-executed in the first call
+        assert "t_id_seq" in canary[0][0]
+        assert "INSERT" in canary[1][0]
+        # same context
+        is_(
+            canary[0][1], canary[1][1]
         )
 
     def test_transactional(self):

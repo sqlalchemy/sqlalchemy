@@ -350,3 +350,4 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             checkpositional=('x', 'y'),
             dialect=dialect
         )
+
