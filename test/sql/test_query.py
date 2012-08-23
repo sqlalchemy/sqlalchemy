@@ -1214,6 +1214,155 @@ class QueryTest(fixtures.TestBase):
         r = s.execute().fetchall()
         assert len(r) == 1
 
+class TableInsertTest(fixtures.TablesTest):
+    """test for consistent insert behavior across dialects
+    regarding the inline=True flag, lower-case 't' tables.
+
+    """
+    run_create_tables = 'each'
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('foo', metadata,
+                Column('id', Integer, Sequence('t_id_seq'), primary_key=True),
+                Column('data', String(50)),
+                Column('x', Integer)
+            )
+
+    def _fixture(self, types=True):
+        if types:
+            t = sql.table('foo', sql.column('id', Integer),
+                        sql.column('data', String),
+                        sql.column('x', Integer))
+        else:
+            t = sql.table('foo', sql.column('id'),
+                        sql.column('data'),
+                        sql.column('x'))
+        return t
+
+    def _test(self, stmt, row, returning=None, inserted_primary_key=False):
+        r = testing.db.execute(stmt)
+
+        if returning:
+            returned = r.first()
+            eq_(returned, returning)
+        elif inserted_primary_key is not False:
+            eq_(r.inserted_primary_key, inserted_primary_key)
+
+        eq_(testing.db.execute(self.tables.foo.select()).first(), row)
+
+    def _test_multi(self, stmt, rows, data):
+        testing.db.execute(stmt, rows)
+        eq_(
+            testing.db.execute(self.tables.foo.select().
+                            order_by(self.tables.foo.c.id)).fetchall(),
+            data)
+
+    @testing.requires.sequences
+    def test_expicit_sequence(self):
+        t = self._fixture()
+        self._test(
+            t.insert().values(
+                        id=func.next_value(Sequence('t_id_seq')),
+                        data='data', x=5
+                    ),
+            (1, 'data', 5)
+        )
+
+    def test_uppercase(self):
+        t = self.tables.foo
+        self._test(
+            t.insert().values(
+                        id=1,
+                        data='data', x=5
+                    ),
+            (1, 'data', 5),
+            inserted_primary_key=[1]
+        )
+
+    def test_uppercase_inline(self):
+        t = self.tables.foo
+        self._test(
+            t.insert(inline=True).values(
+                        id=1,
+                        data='data', x=5
+                    ),
+            (1, 'data', 5),
+            inserted_primary_key=[1]
+        )
+
+    def test_uppercase_inline_implicit(self):
+        t = self.tables.foo
+        self._test(
+            t.insert(inline=True).values(
+                        data='data', x=5
+                    ),
+            (1, 'data', 5),
+            inserted_primary_key=[None]
+        )
+
+    def test_uppercase_implicit(self):
+        t = self.tables.foo
+        self._test(
+            t.insert().values(data='data', x=5),
+            (1, 'data', 5),
+            inserted_primary_key=[1]
+        )
+
+    def test_direct_params(self):
+        t = self._fixture()
+        self._test(
+            t.insert().values(id=1, data='data', x=5),
+            (1, 'data', 5),
+            inserted_primary_key=[]
+        )
+
+    @testing.requires.returning
+    def test_direct_params_returning(self):
+        t = self._fixture()
+        self._test(
+            t.insert().values(
+                        id=1, data='data', x=5).returning(t.c.id, t.c.x),
+            (1, 'data', 5),
+            returning=(1, 5)
+        )
+
+    @testing.requires.dbapi_lastrowid
+    def test_implicit_pk(self):
+        t = self._fixture()
+        self._test(
+            t.insert().values(
+                        data='data', x=5),
+            (1, 'data', 5),
+            inserted_primary_key=[]
+        )
+
+    @testing.requires.dbapi_lastrowid
+    def test_implicit_pk_multi_rows(self):
+        t = self._fixture()
+        self._test_multi(
+            t.insert(),
+            [
+                {'data':'d1', 'x':5},
+                {'data':'d2', 'x':6},
+                {'data':'d3', 'x':7},
+            ],
+            [
+                (1, 'd1', 5),
+                (2, 'd2', 6),
+                (3, 'd3', 7)
+            ],
+        )
+
+    @testing.requires.dbapi_lastrowid
+    def test_implicit_pk_inline(self):
+        t = self._fixture()
+        self._test(
+            t.insert(inline=True).values(data='data', x=5),
+            (1, 'data', 5),
+            inserted_primary_key=[]
+        )
+
 class PercentSchemaNamesTest(fixtures.TestBase):
     """tests using percent signs, spaces in table and column names.
 

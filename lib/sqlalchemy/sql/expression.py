@@ -4455,6 +4455,13 @@ class TableClause(Immutable, FromClause):
 
     named_with_column = True
 
+    implicit_returning = False
+    """:class:`.TableClause` doesn't support having a primary key or column
+    -level defaults, so implicit returning doesn't apply."""
+
+    _autoincrement_column = None
+    """No PK or default support so no autoincrement column."""
+
     def __init__(self, name, *columns):
         super(TableClause, self).__init__()
         self.name = self.fullname = name

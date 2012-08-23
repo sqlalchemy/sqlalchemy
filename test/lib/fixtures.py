@@ -108,6 +108,9 @@ class TablesTest(TestBase):
             if self.run_create_tables == 'each':
                 self.metadata.create_all(self.bind)
             self.tables.update(self.metadata.tables)
+        elif self.run_create_tables == 'each':
+            drop_all_tables(self.metadata, self.bind)
+            self.metadata.create_all(self.bind)
 
     def _setup_each_inserts(self):
         if self.run_inserts == 'each':

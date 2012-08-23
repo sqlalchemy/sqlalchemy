@@ -671,13 +671,13 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     def post_insert(self):
         if not self._is_implicit_returning and \
+            not self.compiled.inline and \
             self.dialect.postfetch_lastrowid and \
             (not self.inserted_primary_key or \
                         None in self.inserted_primary_key):
 
             table = self.compiled.statement.table
             lastrowid = self.get_lastrowid()
-
             autoinc_col = table._autoincrement_column
             if autoinc_col is not None:
                 # apply type post processors to the lastrowid
