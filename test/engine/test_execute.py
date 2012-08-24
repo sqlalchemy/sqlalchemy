@@ -1,3 +1,5 @@
+from __future__ import with_statement
+
 from test.lib.testing import eq_, assert_raises, assert_raises_message, \
     config, is_
 import re
