@@ -6,7 +6,7 @@
 
 from .. import types as sqltypes, schema
 from .expression import (
-    ClauseList, Function, _literal_as_binds, text, _type_from_args
+    ClauseList, Function, _literal_as_binds, literal_column, _type_from_args
     )
 from . import operators
 from .visitors import VisitableType
@@ -87,15 +87,14 @@ class GenericFunction(Function):
     __metaclass__ = _GenericMeta
 
     coerce_arguments = True
-    def __init__(self, type_=None, args=(), **kwargs):
-        args = [_literal_as_binds(c) for c in args]
+    def __init__(self, *args, **kwargs):
         self.packagenames = []
         self._bind = kwargs.get('bind', None)
         self.clause_expr = ClauseList(
                 operator=operators.comma_op,
                 group_contents=True, *args).self_group()
         self.type = sqltypes.to_instance(
-            type_ or getattr(self, 'type', None))
+            kwargs.pop("type_", None) or getattr(self, 'type', None))
 
 
 class next_value(GenericFunction):
@@ -130,7 +129,7 @@ class ReturnTypeFromArgs(GenericFunction):
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('type_', _type_from_args(args))
-        GenericFunction.__init__(self, args=args, **kwargs)
+        GenericFunction.__init__(self, *args, **kwargs)
 
 class coalesce(ReturnTypeFromArgs):
     pass
@@ -150,19 +149,15 @@ class now(GenericFunction):
 
 class concat(GenericFunction):
     type = sqltypes.String
-    def __init__(self, *args, **kwargs):
-        GenericFunction.__init__(self, args=args, **kwargs)
 
 class char_length(GenericFunction):
     type = sqltypes.Integer
 
     def __init__(self, arg, **kwargs):
-        GenericFunction.__init__(self, args=[arg], **kwargs)
+        GenericFunction.__init__(self, arg, **kwargs)
 
 class random(GenericFunction):
-    def __init__(self, *args, **kwargs):
-        kwargs.setdefault('type_', None)
-        GenericFunction.__init__(self, args=args, **kwargs)
+    pass
 
 class count(GenericFunction):
     """The ANSI COUNT aggregate function.  With no arguments, emits COUNT \*."""
@@ -171,8 +166,8 @@ class count(GenericFunction):
 
     def __init__(self, expression=None, **kwargs):
         if expression is None:
-            expression = text('*')
-        GenericFunction.__init__(self, args=(expression,), **kwargs)
+            expression = literal_column('*')
+        GenericFunction.__init__(self, expression, **kwargs)
 
 class current_date(AnsiFunction):
     type = sqltypes.Date

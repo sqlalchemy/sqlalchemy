@@ -38,7 +38,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 __return_type__ = sqltypes.Integer
 
                 def __init__(self, arg, **kwargs):
-                    GenericFunction.__init__(self, args=[arg], **kwargs)
+                    GenericFunction.__init__(self, arg, **kwargs)
 
             self.assert_compile(
                             fake_func('foo'),
@@ -113,6 +113,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert isinstance(func.mypackage.myfunc(), f1)
         assert isinstance(func.myotherpackage.myfunc(), f2)
+
+    def test_custom_args(self):
+        class myfunc(GenericFunction):
+            pass
+
+        self.assert_compile(
+            myfunc(1, 2, 3),
+            "myfunc(:param_1, :param_2, :param_3)"
+        )
 
     def test_namespacing_conflicts(self):
         self.assert_compile(func.text('foo'), 'text(:text_1)')
