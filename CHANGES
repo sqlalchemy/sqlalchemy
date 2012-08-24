@@ -123,6 +123,11 @@ underneath "0.7.xx".
     Both features should be avoided, however.
     [ticket:2372]
 
+  - [feature] Added support for .info dictionary argument to
+    column_property(), relationship(), composite().
+    All MapperProperty classes have an auto-creating .info
+    dict available overall.
+
   - [feature] Adding/removing None from a mapped collection
     now generates attribute events.  Previously, a None
     append would be ignored in some cases.  Related

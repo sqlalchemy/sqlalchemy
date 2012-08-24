@@ -253,7 +253,15 @@ class Connection(Connectable):
 
     @property
     def info(self):
-        """A collection of per-DB-API connection instance properties."""
+        """Info dictionary associated with the underlying DBAPI connection
+        referred to by this :class:`.Connection`, allowing user-defined
+        data to be associated with the connection.
+
+        The data here will follow along with the DBAPI connection including
+        after it is returned to the connection pool and used again
+        in subsequent instances of :class:`.Connection`.
+
+        """
 
         return self.connection.info
 

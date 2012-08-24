@@ -182,7 +182,7 @@ class PoolTest(PoolTestBase):
                     lazy_gc()
                 self.assert_(p.checkedout() == 0)
 
-    def test_properties(self):
+    def test_info(self):
         p = self._queuepool_fixture(pool_size=1, max_overflow=0)
 
         c = p.connect()

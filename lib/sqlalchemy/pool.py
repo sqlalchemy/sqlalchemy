@@ -278,12 +278,15 @@ class _ConnectionRecord(object):
     def __init__(self, pool):
         self.__pool = pool
         self.connection = self.__connect()
-        self.info = {}
 
         pool.dispatch.first_connect.\
                     for_modify(pool.dispatch).\
                     exec_once(self.connection, self)
         pool.dispatch.connect(self.connection, self)
+
+    @util.memoized_property
+    def info(self):
+        return {}
 
     def close(self):
         if self.connection is not None:
@@ -387,10 +390,6 @@ class _ConnectionFairy(object):
     """Proxies a DB-API connection and provides return-on-dereference
     support."""
 
-    __slots__ = '_pool', '__counter', 'connection', \
-                '_connection_record', '__weakref__', \
-                '_detached_info', '_echo'
-
     def __init__(self, pool):
         self._pool = pool
         self.__counter = 0
@@ -400,7 +399,8 @@ class _ConnectionFairy(object):
             conn = self.connection = self._connection_record.get_connection()
             rec.fairy = weakref.ref(
                             self,
-                            lambda ref:_finalize_fairy and _finalize_fairy(conn, rec, pool, ref, _echo)
+                            lambda ref: _finalize_fairy and \
+                                _finalize_fairy(conn, rec, pool, ref, _echo)
                         )
             _refs.add(rec)
         except:
@@ -420,20 +420,21 @@ class _ConnectionFairy(object):
     def is_valid(self):
         return self.connection is not None
 
-    @property
+    @util.memoized_property
     def info(self):
-        """An info collection unique to this DB-API connection."""
+        """Info dictionary associated with the underlying DBAPI connection
+        referred to by this :class:`.ConnectionFairy`, allowing user-defined
+        data to be associated with the connection.
 
+        The data here will follow along with the DBAPI connection including
+        after it is returned to the connection pool and used again
+        in subsequent instances of :class:`.ConnectionFairy`.
+
+        """
         try:
             return self._connection_record.info
         except AttributeError:
-            if self.connection is None:
-                raise exc.InvalidRequestError("This connection is closed")
-            try:
-                return self._detached_info
-            except AttributeError:
-                self._detached_info = value = {}
-                return value
+            raise exc.InvalidRequestError("This connection is closed")
 
     def invalidate(self, e=None):
         """Mark this connection as invalidated.
@@ -500,8 +501,7 @@ class _ConnectionFairy(object):
             self._connection_record.fairy = None
             self._connection_record.connection = None
             self._pool._do_return_conn(self._connection_record)
-            self._detached_info = \
-              self._connection_record.info.copy()
+            self.info = self.info.copy()
             self._connection_record = None
 
     def close(self):

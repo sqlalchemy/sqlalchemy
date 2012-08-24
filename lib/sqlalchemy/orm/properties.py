@@ -63,6 +63,9 @@ class ColumnProperty(StrategizedProperty):
 
         :param extension:
 
+        :param info: Optional data dictionary which will be populated into the
+         :attr:`.info` attribute of this object.
+
         """
         self._orig_columns = [expression._labeled(c) for c in columns]
         self.columns = [expression._labeled(_orm_full_deannotate(c))
@@ -76,6 +79,9 @@ class ColumnProperty(StrategizedProperty):
         self.extension = kwargs.pop('extension', None)
         self.active_history = kwargs.pop('active_history', False)
         self.expire_on_flush = kwargs.pop('expire_on_flush', True)
+
+        if 'info' in kwargs:
+            self.info = kwargs.pop('info')
 
         if 'doc' in kwargs:
             self.doc = kwargs.pop('doc')
@@ -243,7 +249,8 @@ class RelationshipProperty(StrategizedProperty):
         cascade_backrefs=True,
         load_on_pending=False,
         strategy_class=None, _local_remote_pairs=None,
-        query_class=None):
+        query_class=None,
+        info=None):
 
         self.uselist = uselist
         self.argument = argument
@@ -274,6 +281,9 @@ class RelationshipProperty(StrategizedProperty):
                                     RelationshipProperty.Comparator
         self.comparator = self.comparator_factory(self, None)
         util.set_creation_order(self)
+
+        if info is not None:
+            self.info = info
 
         if strategy_class:
             self.strategy_class = strategy_class

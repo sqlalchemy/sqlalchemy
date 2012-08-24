@@ -126,6 +126,22 @@ class MapperProperty(_InspectionAttr):
     def instrument_class(self, mapper):  # pragma: no-coverage
         raise NotImplementedError()
 
+    @util.memoized_property
+    def info(self):
+        """Info dictionary associated with the object, allowing user-defined
+        data to be associated with this :class:`.MapperProperty`.
+
+        The dictionary is generated when first accessed.  Alternatively,
+        it can be specified as a constructor argument to the
+        :func:`.column_property`, :func:`.relationship`, or :func:`.composite`
+        functions.
+
+        .. versionadded:: 0.8  Added support for .info to all
+           :class:`.MapperProperty` subclasses.
+
+        """
+        return {}
+
     _configure_started = False
     _configure_finished = False
 

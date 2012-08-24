@@ -417,6 +417,11 @@ def relationship(argument, secondary=None, **kwargs):
           more specific system of describing which columns in a particular
           ``primaryjoin`` should be considered "foreign".
 
+    :param info: Optional data dictionary which will be populated into the
+        :attr:`.MapperProperty.info` attribute of this object.
+
+        .. versionadded:: 0.8
+
     :param innerjoin=False:
       when ``True``, joined eager loads will use an inner join to join
       against related tables instead of an outer join.  The purpose
@@ -742,6 +747,11 @@ def column_property(*cols, **kw):
 
         .. versionadded:: 0.7.3
 
+    :param info: Optional data dictionary which will be populated into the
+        :attr:`.MapperProperty.info` attribute of this object.
+
+        .. versionadded:: 0.8
+
     :param extension:
         an
         :class:`.AttributeExtension`
@@ -793,6 +803,11 @@ def composite(class_, *cols, **kwargs):
     :param doc:
       optional string that will be applied as the doc on the
       class-bound descriptor.
+
+    :param info: Optional data dictionary which will be populated into the
+        :attr:`.MapperProperty.info` attribute of this object.
+
+        .. versionadded:: 0.8
 
     :param extension:
       an :class:`.AttributeExtension` instance,

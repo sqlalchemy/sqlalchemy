@@ -387,6 +387,27 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                                         })
         assert m.get_property('addresses')
 
+    def test_info(self):
+        users = self.tables.users
+        Address = self.classes.Address
+        class MyComposite(object):
+            pass
+        for constructor, args in [
+            (column_property, (users.c.name,)),
+            (relationship, (Address,)),
+            (composite, (MyComposite, 'id', 'name'))
+        ]:
+            obj = constructor(*args, info={"x": "y"})
+            eq_(obj.info, {"x": "y"})
+            obj.info["q"] = "p"
+            eq_(obj.info, {"x": "y", "q": "p"})
+
+            obj = constructor(*args)
+            eq_(obj.info, {})
+            obj.info["q"] = "p"
+            eq_(obj.info, {"q": "p"})
+
+
     def test_add_property(self):
         users, addresses, Address = (self.tables.users,
                                 self.tables.addresses,

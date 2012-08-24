@@ -71,6 +71,14 @@ class SchemaItem(events.SchemaEventTarget, visitors.Visitable):
 
     @util.memoized_property
     def info(self):
+        """Info dictionary associated with the object, allowing user-defined
+        data to be associated with this :class:`.SchemaItem`.
+
+        The dictionary is automatically generated when first accessed.
+        It can also be specified in the constructor of some objects,
+        such as :class:`.Table` and :class:`.Column`.
+
+        """
         return {}
 
 def _get_table_key(name, schema):
@@ -204,8 +212,8 @@ class Table(SchemaItem, expression.TableClause):
         ``Table`` object. Defaults to ``None`` which indicates all columns
         should be reflected.
 
-    :param info: A dictionary which defaults to ``{}``.  A space to store
-        application specific data. This must be a dictionary.
+    :param info: Optional data dictionary which will be populated into the
+        :attr:`.SchemaItem.info` attribute of this object.
 
     :param keep_existing: When ``True``, indicates that if this Table
         is already present in the given :class:`.MetaData`, ignore
@@ -407,11 +415,6 @@ class Table(SchemaItem, expression.TableClause):
                     bind.dialect.reflecttable,
                     self, include_columns, exclude_columns
                 )
-
-    @util.memoized_property
-    def info(self):
-        """Dictionary provided for storage of additional information."""
-        return {}
 
     @property
     def _sorted_constraints(self):
@@ -797,8 +800,8 @@ class Column(SchemaItem, expression.ColumnClause):
             contain multiple columns, use the :class:`.Index` construct
             instead.
 
-        :param info: A dictionary which defaults to ``{}``. A space to store
-            application specific data. This must be a dictionary.
+        :param info: Optional data dictionary which will be populated into the
+            :attr:`.SchemaItem.info` attribute of this object.
 
         :param nullable: If set to the default of ``True``, indicates the
             column will be rendered as allowing NULL, else it's rendered as
@@ -970,11 +973,6 @@ class Column(SchemaItem, expression.ColumnClause):
                 return self.description
         else:
             return self.description
-
-    @util.memoized_property
-    def info(self):
-        """Dictionary provided for storage of additional information."""
-        return {}
 
     def references(self, column):
         """Return True if this Column references the given column via foreign

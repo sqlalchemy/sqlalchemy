@@ -92,6 +92,9 @@ class CompositeProperty(DescriptorProperty):
         self.group = kwargs.get('group', None)
         self.comparator_factory = kwargs.pop('comparator_factory',
                                             self.__class__.Comparator)
+        if 'info' in kwargs:
+            self.info = kwargs.pop('info')
+
         util.set_creation_order(self)
         self._create_descriptor()
 
