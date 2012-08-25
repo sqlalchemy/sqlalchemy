@@ -501,20 +501,23 @@ class OracleCompiler(compiler.SQLCompiler):
 
     def returning_clause(self, stmt, returning_cols):
 
-        def create_out_param(col, i):
-            bindparam = sql.outparam("ret_%d" % i, type_=col.type)
-            self.binds[bindparam.key] = bindparam
-            return self.bindparam_string(self._truncate_bindparam(bindparam))
-
-        columnlist = list(expression._select_iterables(returning_cols))
-
-        columns = [
-                self._label_select_column(None, c, True, False, {},
-                                            within_columns_clause=False)
-                for c in columnlist
-            ]
-
-        binds = [create_out_param(c, i) for i, c in enumerate(columnlist)]
+        columns = []
+        binds = []
+        for i, column in enumerate(expression._select_iterables(returning_cols)):
+            if column.type._has_column_expression:
+                col_expr = column.type.column_expression(column)
+            else:
+                col_expr = column
+            outparam = sql.outparam("ret_%d" % i, type_=column.type)
+            self.binds[outparam.key] = outparam
+            binds.append(self.bindparam_string(self._truncate_bindparam(outparam)))
+            columns.append(self.process(col_expr, within_columns_clause=False))
+            self.result_map[outparam.key] = (
+                outparam.key,
+                (column, getattr(column, 'name', None),
+                                        getattr(column, 'key', None)),
+                column.type
+            )
 
         return 'RETURNING ' + ', '.join(columns) + " INTO " + ", ".join(binds)
 

@@ -460,8 +460,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         compiled = stmt.compile(dialect=oracle.dialect())
         eq_(
             compiled.result_map,
-            {'c3': ('c3', (t1.c.c3, 'c3', 'c3'), t1.c.c3.type),
-            'lower': ('lower', (), fn.type)}
+            {'ret_1': ('ret_1', (t1.c.c3, 'c3', 'c3'), t1.c.c3.type),
+            'ret_0': ('ret_0', (fn, 'lower', None), fn.type)}
 
         )
         self.assert_compile(

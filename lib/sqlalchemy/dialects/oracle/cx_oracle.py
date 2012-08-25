@@ -354,7 +354,7 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                                     "Cannot create out parameter for parameter "
                                     "%r - it's type %r is not supported by"
                                     " cx_oracle" %
-                                    (bindparam.name, bindparam.type)
+                                    (bindparam.key, bindparam.type)
                                     )
                     name = self.compiled.bind_names[bindparam]
                     self.out_parameters[name] = self.cursor.var(dbtype)
@@ -443,13 +443,10 @@ class ReturningResultProxy(_result.FullyBufferedResultProxy):
     def _cursor_description(self):
         returning = self.context.compiled.returning
 
-        ret = []
-        for c in returning:
-            if hasattr(c, 'name'):
-                ret.append((c.name, c.type))
-            else:
-                ret.append((c.anon_label, c.type))
-        return ret
+        return [
+            ("ret_%d" % i, None)
+            for i, col in enumerate(returning)
+        ]
 
     def _buffer_rows(self):
         return collections.deque([tuple(self._returning_params["ret_%d" % i]
