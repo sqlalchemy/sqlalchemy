@@ -958,7 +958,9 @@ class SQLCompiler(engine.Compiled):
             else:
                 add_to_result_map = None
 
-        if isinstance(column, sql.Label):
+        if not within_columns_clause:
+            result_expr = col_expr
+        elif isinstance(column, sql.Label):
             if col_expr is not column:
                 result_expr = _CompileLabel(
                         col_expr,

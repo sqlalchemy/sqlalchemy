@@ -453,6 +453,23 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 "t1.c2, t1.c3 INTO :ret_0, :ret_1"
         )
 
+    def test_returning_insert_functional(self):
+        t1 = table('t1', column('c1'), column('c2', String()), column('c3', String()))
+        fn = func.lower(t1.c.c2, type_=String())
+        stmt = t1.insert().values(c1=1).returning(fn, t1.c.c3)
+        compiled = stmt.compile(dialect=oracle.dialect())
+        eq_(
+            compiled.result_map,
+            {'c3': ('c3', (t1.c.c3, 'c3', 'c3'), t1.c.c3.type),
+            'lower': ('lower', (), fn.type)}
+
+        )
+        self.assert_compile(
+            stmt,
+            "INSERT INTO t1 (c1) VALUES (:c1) RETURNING "
+                "lower(t1.c2), t1.c3 INTO :ret_0, :ret_1"
+        )
+
     def test_returning_insert_labeled(self):
         t1 = table('t1', column('c1'), column('c2'), column('c3'))
         self.assert_compile(

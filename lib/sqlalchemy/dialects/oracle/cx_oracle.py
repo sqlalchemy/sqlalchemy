@@ -350,11 +350,12 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                     if not hasattr(self, 'out_parameters'):
                         self.out_parameters = {}
                     if dbtype is None:
-                        raise exc.InvalidRequestError("Cannot create out parameter for parameter "
-                                                        "%r - it's type %r is not supported by"
-                                                        " cx_oracle" %
-                                                        (name, bindparam.type)
-                                                        )
+                        raise exc.InvalidRequestError(
+                                    "Cannot create out parameter for parameter "
+                                    "%r - it's type %r is not supported by"
+                                    " cx_oracle" %
+                                    (bindparam.name, bindparam.type)
+                                    )
                     name = self.compiled.bind_names[bindparam]
                     self.out_parameters[name] = self.cursor.var(dbtype)
                     self.parameters[0][quoted_bind_names.get(name, name)] = \
