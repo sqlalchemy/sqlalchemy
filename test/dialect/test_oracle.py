@@ -1329,13 +1329,15 @@ class BufferedColumnTest(fixtures.TestBase, AssertsCompiledSQL):
         meta.drop_all()
 
     def test_fetch(self):
-        result = binary_table.select().execute().fetchall()
+        result = binary_table.select().order_by(binary_table.c.id).\
+                                    execute().fetchall()
         eq_(result, [(i, stream) for i in range(1, 11)])
 
     @testing.fails_on('+zxjdbc', 'FIXME: zxjdbc should support this')
     def test_fetch_single_arraysize(self):
-        eng = testing_engine(options={'arraysize':1})
-        result = eng.execute(binary_table.select()).fetchall()
+        eng = testing_engine(options={'arraysize': 1})
+        result = eng.execute(binary_table.select().
+                            order_by(binary_table.c.id)).fetchall()
         eq_(result, [(i, stream) for i in range(1, 11)])
 
 class UnsupportedIndexReflectTest(fixtures.TestBase):
