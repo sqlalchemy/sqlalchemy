@@ -428,7 +428,8 @@ class SortOnlyOnImportantFKsTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('a', metadata,
-                Column('id', Integer, primary_key=True),
+                Column('id', Integer, primary_key=True,
+                                    test_needs_autoincrement=True),
                 Column('b_id', Integer,
                         ForeignKey('b.id', use_alter=True, name='b'))
             )

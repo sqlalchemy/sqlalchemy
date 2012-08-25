@@ -116,7 +116,7 @@ class _PolymorphicTestBase(object):
             sess.query(Company.company_id).\
                 filter(
                     Company.employees.of_type(wp).any(
-                            wp.Engineer.primary_language=='java')
+                            wp.Engineer.primary_language == 'java')
                 ).all(),
             [(1, )]
         )
@@ -233,27 +233,30 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
         class Job(ComparableEntity, Base):
             __tablename__ = "job"
 
-            id = Column(Integer, primary_key=True)
+            id = Column(Integer, primary_key=True,
+                                        test_needs_autoincrement=True)
             type = Column(String(10))
             container_id = Column(Integer, ForeignKey('data_container.id'))
-            __mapper_args__ = {"polymorphic_on":type}
+            __mapper_args__ = {"polymorphic_on": type}
 
         class SubJob(Job):
             __tablename__ = 'subjob'
             id = Column(Integer, ForeignKey('job.id'), primary_key=True)
             attr = Column(String(10))
-            __mapper_args__ = {"polymorphic_identity":"sub"}
+            __mapper_args__ = {"polymorphic_identity": "sub"}
 
         class ParentThing(ComparableEntity, Base):
             __tablename__ = 'parent'
-            id = Column(Integer, primary_key=True)
+            id = Column(Integer, primary_key=True,
+                                            test_needs_autoincrement=True)
             container_id = Column(Integer, ForeignKey('data_container.id'))
             container = relationship("DataContainer")
 
         class DataContainer(ComparableEntity, Base):
             __tablename__ = "data_container"
 
-            id = Column(Integer, primary_key=True)
+            id = Column(Integer, primary_key=True,
+                                            test_needs_autoincrement=True)
             name = Column(String(10))
             jobs = relationship(Job, order_by=Job.id)
 

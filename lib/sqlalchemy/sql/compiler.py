@@ -938,7 +938,8 @@ class SQLCompiler(engine.Compiled):
             self.result_map[keyname] = name, objects, type_
 
     def _label_select_column(self, select, column, populate_result_map,
-                                    asfrom, column_clause_args):
+                                    asfrom, column_clause_args,
+                                    within_columns_clause=True):
         """produce labeled columns present in a select()."""
 
         if column.type._has_column_expression:
@@ -996,7 +997,7 @@ class SQLCompiler(engine.Compiled):
             result_expr = col_expr
 
         return result_expr._compiler_dispatch(
-                       self, within_columns_clause=True,
+                       self, within_columns_clause=within_columns_clause,
                         add_to_result_map=add_to_result_map,
                         **column_clause_args
                     )

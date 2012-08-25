@@ -509,7 +509,8 @@ class OracleCompiler(compiler.SQLCompiler):
         columnlist = list(expression._select_iterables(returning_cols))
 
         columns = [
-                self._label_select_column(None, c, True, False, {})
+                self._label_select_column(None, c, True, False, {},
+                                            within_columns_clause=False)
                 for c in columnlist
             ]
 
