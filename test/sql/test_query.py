@@ -815,6 +815,8 @@ class QueryTest(fixtures.TestBase):
             lambda: r['foo']
         )
 
+    @testing.fails_if(lambda: util.pypy, "lastrowid not maintained after "
+                            "connection close")
     @testing.requires.dbapi_lastrowid
     def test_native_lastrowid(self):
         r = testing.db.execute(

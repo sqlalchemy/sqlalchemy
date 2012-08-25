@@ -444,7 +444,8 @@ class SortOnlyOnImportantFKsTest(fixtures.MappedTest):
         class A(Base):
             __tablename__ = "a"
 
-            id = Column(Integer, primary_key=True)
+            id = Column(Integer, primary_key=True,
+                                    test_needs_autoincrement=True)
             b_id = Column(Integer, ForeignKey('b.id'))
 
         class B(A):
@@ -471,8 +472,10 @@ class FalseDiscriminatorTest(fixtures.MappedTest):
             Column('type', Boolean, nullable=False))
 
     def test_false_on_sub(self):
-        class Foo(object):pass
-        class Bar(Foo):pass
+        class Foo(object):
+            pass
+        class Bar(Foo):
+            pass
         mapper(Foo, t1, polymorphic_on=t1.c.type, polymorphic_identity=True)
         mapper(Bar, inherits=Foo, polymorphic_identity=False)
         sess = create_session()
@@ -1804,7 +1807,8 @@ class TransientInheritingGCTest(fixtures.TestBase):
 
         class A(Base):
             __tablename__ = 'a'
-            id = Column(Integer, primary_key=True, test_needs_pk=True)
+            id = Column(Integer, primary_key=True,
+                                    test_needs_autoincrement=True)
             data = Column(String(10))
         self.A = A
         return Base
