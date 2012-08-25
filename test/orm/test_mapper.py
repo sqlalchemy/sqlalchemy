@@ -397,7 +397,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             (relationship, (Address,)),
             (composite, (MyComposite, 'id', 'name'))
         ]:
-            obj = constructor(*args, info={"x": "y"})
+            obj = constructor(info={"x": "y"}, *args)
             eq_(obj.info, {"x": "y"})
             obj.info["q"] = "p"
             eq_(obj.info, {"x": "y", "q": "p"})
