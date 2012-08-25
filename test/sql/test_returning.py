@@ -71,12 +71,12 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
         result = table.insert().values(goofy="someOTHERgoofy").\
                             returning(func.lower(table.c.goofy, type_=GoofyType)).execute()
         row = result.first()
-        assert row[0] == "foosomeothergoofyBAR"
+        eq_(row[0], "foosomeothergoofyBAR")
 
         result = table.insert().values(persons=12).\
                             returning(table.c.persons + 18).execute()
         row = result.first()
-        assert row[0] == 30
+        eq_(row[0], 30)
 
     @testing.exclude('firebird', '<', (2, 1), '2.1+ feature')
     @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
