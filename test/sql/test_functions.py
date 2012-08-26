@@ -127,6 +127,35 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "my_func(:param_1, :param_2, :param_3)"
         )
 
+    def test_custom_registered_identifier(self):
+        class GeoBuffer(GenericFunction):
+            type = Integer
+            package = "geo"
+            name = "BufferOne"
+            identifier = "buf1"
+
+        class GeoBuffer2(GenericFunction):
+            type = Integer
+            name = "BufferTwo"
+            identifier = "buf2"
+
+        class BufferThree(GenericFunction):
+            type = Integer
+            identifier = "buf3"
+
+        self.assert_compile(
+            func.geo.buf1(),
+            "BufferOne()"
+        )
+        self.assert_compile(
+            func.buf2(),
+            "BufferTwo()"
+        )
+        self.assert_compile(
+            func.buf3(),
+            "BufferThree()"
+        )
+
     def test_custom_args(self):
         class myfunc(GenericFunction):
             pass

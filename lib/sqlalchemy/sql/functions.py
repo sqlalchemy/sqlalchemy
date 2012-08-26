@@ -17,12 +17,13 @@ _registry = util.defaultdict(dict)
 class _GenericMeta(VisitableType):
     def __init__(cls, clsname, bases, clsdict):
         cls.name = name = clsdict.get('name', clsname)
+        cls.identifier = identifier = clsdict.get('identifier', name)
         package = clsdict.pop('package', '_default')
         # legacy
         if '__return_type__' in clsdict:
             cls.type = clsdict['__return_type__']
         reg = _registry[package]
-        reg[name] = cls
+        reg[identifier] = cls
         super(_GenericMeta, cls).__init__(clsname, bases, clsdict)
 
 class GenericFunction(Function):
@@ -69,9 +70,26 @@ class GenericFunction(Function):
 
         print select([func.time.as_utc()])
 
+    A final option is to allow the function to be accessed
+    from one name in :data:`.func` but to render as a different name.
+    The ``identifier`` attribute will override the name used to
+    access the function as loaded from :data:`.func`, but will retain
+    the usage of ``name`` as the rendered name::
+
+        class GeoBuffer(GenericFunction):
+            type = Geometry
+            package = "geo"
+            name = "ST_Buffer"
+            identifier = "buffer"
+
+    The above function will render as follows::
+
+        >>> print func.geo.buffer()
+        ST_Buffer()
+
     .. versionadded:: 0.8 :class:`.GenericFunction` now supports
        automatic registration of new functions as well as package
-       support.
+       and custom naming support.
 
     .. versionchanged:: 0.8 The attribute name ``type`` is used
        to specify the function's return type at the class level.

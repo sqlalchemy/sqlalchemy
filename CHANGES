@@ -424,7 +424,10 @@ underneath "0.7.xx".
     to allow for user-defined GenericFunction
     subclasses to be available via the func.*
     namespace automatically by classname,
-    optionally using a package name as well.
+    optionally using a package name, as well
+    as with the ability to have the rendered
+    name different from the identified name
+    in func.*.
 
   - [changed] Most classes in expression.sql
     are no longer preceded with an underscore,
