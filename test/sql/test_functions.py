@@ -114,6 +114,19 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         assert isinstance(func.mypackage.myfunc(), f1)
         assert isinstance(func.myotherpackage.myfunc(), f2)
 
+    def test_custom_name(self):
+        class MyFunction(GenericFunction):
+            name = 'my_func'
+
+            def __init__(self, *args):
+                args = args + (3,)
+                super(MyFunction, self).__init__(*args)
+
+        self.assert_compile(
+            func.my_func(1, 2),
+            "my_func(:param_1, :param_2, :param_3)"
+        )
+
     def test_custom_args(self):
         class myfunc(GenericFunction):
             pass

@@ -25,11 +25,6 @@ class _GenericMeta(VisitableType):
         reg[name] = cls
         super(_GenericMeta, cls).__init__(clsname, bases, clsdict)
 
-    def __call__(cls, *args, **kwargs):
-        if cls.coerce_arguments:
-            args = [_literal_as_binds(c) for c in args]
-        return type.__call__(cls, *args, **kwargs)
-
 class GenericFunction(Function):
     """Define a 'generic' function.
 
@@ -88,11 +83,14 @@ class GenericFunction(Function):
 
     coerce_arguments = True
     def __init__(self, *args, **kwargs):
+        parsed_args = kwargs.pop('_parsed_args', None)
+        if parsed_args is None:
+            parsed_args = [_literal_as_binds(c) for c in args]
         self.packagenames = []
         self._bind = kwargs.get('bind', None)
         self.clause_expr = ClauseList(
                 operator=operators.comma_op,
-                group_contents=True, *args).self_group()
+                group_contents=True, *parsed_args).self_group()
         self.type = sqltypes.to_instance(
             kwargs.pop("type_", None) or getattr(self, 'type', None))
 
@@ -108,7 +106,6 @@ class next_value(GenericFunction):
     """
     type = sqltypes.Integer()
     name = "next_value"
-    coerce_arguments = False
 
     def __init__(self, seq, **kw):
         assert isinstance(seq, schema.Sequence), \
@@ -128,7 +125,9 @@ class ReturnTypeFromArgs(GenericFunction):
     """Define a function whose return type is the same as its arguments."""
 
     def __init__(self, *args, **kwargs):
+        args = [_literal_as_binds(c) for c in args]
         kwargs.setdefault('type_', _type_from_args(args))
+        kwargs['_parsed_args'] = args
         GenericFunction.__init__(self, *args, **kwargs)
 
 class coalesce(ReturnTypeFromArgs):
