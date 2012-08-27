@@ -19,7 +19,7 @@ from sqlalchemy.engine.base import Connection, Engine
 from test.lib import fixtures
 import StringIO
 
-users, metadata = None, None
+users, metadata, users_autoinc = None, None, None
 class ExecuteTest(fixtures.TestBase):
     @classmethod
     def setup_class(cls):
@@ -315,11 +315,9 @@ class ExecuteTest(fixtures.TestBase):
     def test_empty_insert(self):
         """test that execute() interprets [] as a list with no params"""
 
-        result = \
-            testing.db.execute(users_autoinc.insert().
-                        values(user_name=bindparam('name')), [])
-        eq_(testing.db.execute(users_autoinc.select()).fetchall(), [(1,
-            None)])
+        testing.db.execute(users_autoinc.insert().
+                    values(user_name=bindparam('name', None)), [])
+        eq_(testing.db.execute(users_autoinc.select()).fetchall(), [(1, None)])
 
     @testing.requires.ad_hoc_engines
     def test_engine_level_options(self):

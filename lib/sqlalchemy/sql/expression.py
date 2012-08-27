@@ -54,6 +54,7 @@ __all__ = [
     'tuple_', 'type_coerce', 'union', 'union_all', 'update', ]
 
 PARSE_AUTOCOMMIT = util.symbol('PARSE_AUTOCOMMIT')
+NO_ARG = util.symbol('NO_ARG')
 
 def nullsfirst(column):
     """Return a NULLS FIRST ``ORDER BY`` clause element.
@@ -990,7 +991,7 @@ def table(name, *columns):
     """
     return TableClause(name, *columns)
 
-def bindparam(key, value=None, type_=None, unique=False, required=False,
+def bindparam(key, value=NO_ARG, type_=None, unique=False, required=NO_ARG,
                         quote=None, callable_=None):
     """Create a bind parameter clause with the given key.
 
@@ -1006,6 +1007,14 @@ def bindparam(key, value=None, type_=None, unique=False, required=False,
           Initial value for this bind param.  This value may be
           overridden by the dictionary of parameters sent to statement
           compilation/execution.
+
+          Defaults to ``None``, however if neither ``value`` nor
+          ``callable`` are passed explicitly, the ``required`` flag will be set to
+          ``True`` which has the effect of requiring a value be present
+          when the statement is actually executed.
+
+          .. versionchanged:: 0.8 The ``required`` flag is set to ``True``
+             automatically if ``value`` or ``callable`` is not passed.
 
         :param callable\_:
           A callable function that takes the place of "value".  The function
@@ -1026,7 +1035,14 @@ def bindparam(key, value=None, type_=None, unique=False, required=False,
           :class:`.ClauseElement`.
 
         :param required:
-          a value is required at execution time.
+          If ``True``, a value is required at execution time.  If not passed,
+          is set to ``True`` or ``False`` based on whether or not
+          one of ``value`` or ``callable`` were passed..
+
+          .. versionchanged:: 0.8 If the ``required`` flag is not specified,
+             it will be set automatically to ``True`` or ``False`` depending
+             on whether or not the ``value`` or ``callable`` parameters
+             were specified.
 
         :param quote:
           True if this parameter name requires quoting and is not
@@ -1037,6 +1053,10 @@ def bindparam(key, value=None, type_=None, unique=False, required=False,
     if isinstance(key, ColumnClause):
         type_ = key.type
         key = key.name
+    if required is NO_ARG:
+        required = (value is NO_ARG and callable_ is None)
+    if value is NO_ARG:
+        value = None
     return BindParameter(key, value, type_=type_,
                             callable_=callable_,
                             unique=unique, required=required,
@@ -1703,6 +1723,7 @@ class ClauseElement(Visitable):
         def visit_bindparam(bind):
             if bind.key in kwargs:
                 bind.value = kwargs[bind.key]
+                bind.required = False
             if unique:
                 bind._convert_to_unique()
         return cloned_traverse(self, {}, {'bindparam': visit_bindparam})

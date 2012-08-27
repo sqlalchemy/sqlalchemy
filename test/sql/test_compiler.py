@@ -1,5 +1,15 @@
 #! coding:utf-8
 
+"""
+compiler tests.
+
+These tests are among the very first that were written when SQLAlchemy
+began in 2005.  As a result the testing style here is very dense;
+it's an ongoing job to break these into much smaller tests with correct pep8
+styling and coherent test organization.
+
+"""
+
 from test.lib.testing import eq_, is_, assert_raises, assert_raises_message
 import datetime, re, operator, decimal
 from sqlalchemy import *
@@ -1446,21 +1456,24 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         # test Text embedded within select_from(), using binds
         generate_series = text(
                             "generate_series(:x, :y, :z) as s(a)",
-                            bindparams=[bindparam('x'), bindparam('y'), bindparam('z')]
+                            bindparams=[bindparam('x', None),
+                                bindparam('y', None), bindparam('z', None)]
                         )
 
-        s =select([
+        s = select([
                     (func.current_date() + literal_column("s.a")).label("dates")
                 ]).select_from(generate_series)
         self.assert_compile(
                     s,
-                    "SELECT CURRENT_DATE + s.a AS dates FROM generate_series(:x, :y, :z) as s(a)",
+                    "SELECT CURRENT_DATE + s.a AS dates FROM "
+                                        "generate_series(:x, :y, :z) as s(a)",
                     checkparams={'y': None, 'x': None, 'z': None}
                 )
 
         self.assert_compile(
                     s.params(x=5, y=6, z=7),
-                    "SELECT CURRENT_DATE + s.a AS dates FROM generate_series(:x, :y, :z) as s(a)",
+                    "SELECT CURRENT_DATE + s.a AS dates FROM "
+                                        "generate_series(:x, :y, :z) as s(a)",
                     checkparams={'y': 6, 'x': 5, 'z': 7}
                 )
 
@@ -1879,7 +1892,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "UNION (SELECT foo, bar FROM bat INTERSECT SELECT foo, bar FROM bat)"
         )
 
-    @testing.uses_deprecated()
     def test_binds(self):
         for (
              stmt,
@@ -1947,13 +1959,15 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                  {'myid_1':5, 'myid_2': 6}, {'myid_1':5, 'myid_2':6}, [5,6]
              ),
              (
-                bindparam('test', type_=String) + text("'hi'"),
+                bindparam('test', type_=String, required=False) + text("'hi'"),
                 ":test || 'hi'",
                 "? || 'hi'",
                 {'test':None}, [None],
                 {}, {'test':None}, [None]
              ),
              (
+                # testing select.params() here - bindparam() objects
+                # must get required flag set to False
                  select([table1], or_(table1.c.myid==bindparam('myid'),
                                     table2.c.otherid==bindparam('myotherid'))).\
                                         params({'myid':8, 'myotherid':7}),

@@ -268,7 +268,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_functions_with_cols(self):
         users = table('users', column('id'), column('name'), column('fullname'))
         calculate = select([column('q'), column('z'), column('r')],
-            from_obj=[func.calculate(bindparam('x'), bindparam('y'))])
+            from_obj=[func.calculate(bindparam('x', None), bindparam('y', None))])
 
         self.assert_compile(select([users], users.c.id > calculate.c.z),
             "SELECT users.id, users.name, users.fullname "

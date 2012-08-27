@@ -947,7 +947,8 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         session = create_session()
 
-        q = session.query(User.id).filter(User.id==bindparam('foo')).params(foo=7).subquery()
+        q = session.query(User.id).filter(User.id == bindparam('foo')).\
+                            params(foo=7).subquery()
 
         q = session.query(User).filter(User.id.in_(q))
 
@@ -957,7 +958,8 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         session = create_session()
-        s = session.query(User.id).join(User.addresses).group_by(User.id).having(func.count(Address.id) > 2)
+        s = session.query(User.id).join(User.addresses).group_by(User.id).\
+                                    having(func.count(Address.id) > 2)
         eq_(
             session.query(User).filter(User.id.in_(s)).all(),
             [User(id=8)]

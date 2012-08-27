@@ -1,4 +1,4 @@
-from test.lib.testing import eq_, assert_raises_message, assert_raises
+from test.lib.testing import eq_, assert_raises_message, assert_raises, is_
 import datetime
 from sqlalchemy import *
 from sqlalchemy import exc, sql, util
@@ -1215,6 +1215,67 @@ class QueryTest(fixtures.TestBase):
         s = users.select(users.c.user_name.in_([]) == None)
         r = s.execute().fetchall()
         assert len(r) == 1
+
+class RequiredBindTest(fixtures.TablesTest):
+    run_create_tables = None
+    run_deletes = None
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('foo', metadata,
+                Column('id', Integer, primary_key=True),
+                Column('data', String(50)),
+                Column('x', Integer)
+            )
+
+    def _assert_raises(self, stmt, params):
+        assert_raises_message(
+            exc.StatementError,
+            "A value is required for bind parameter 'x'",
+            testing.db.execute, stmt, **params)
+
+        assert_raises_message(
+            exc.StatementError,
+            "A value is required for bind parameter 'x'",
+            testing.db.execute, stmt, params)
+
+    def test_insert(self):
+        stmt = self.tables.foo.insert().values(x=bindparam('x'),
+                                    data=bindparam('data'))
+        self._assert_raises(
+            stmt, {'data': 'data'}
+        )
+
+    def test_select_where(self):
+        stmt = select([self.tables.foo]).\
+                    where(self.tables.foo.c.data == bindparam('data')).\
+                    where(self.tables.foo.c.x == bindparam('x'))
+        self._assert_raises(
+            stmt, {'data': 'data'}
+        )
+
+    def test_select_columns(self):
+        stmt = select([bindparam('data'), bindparam('x')])
+        self._assert_raises(
+            stmt, {'data': 'data'}
+        )
+
+    def test_text(self):
+        stmt = text("select * from foo where x=:x and data=:data1")
+        self._assert_raises(
+            stmt, {'data1': 'data'}
+        )
+
+    def test_required_flag(self):
+        is_(bindparam('foo').required, True)
+        is_(bindparam('foo', required=False).required, False)
+        is_(bindparam('foo', 'bar').required, False)
+        is_(bindparam('foo', 'bar', required=True).required, True)
+
+        c = lambda: None
+        is_(bindparam('foo', callable_=c, required=True).required, True)
+        is_(bindparam('foo', callable_=c).required, False)
+        is_(bindparam('foo', callable_=c, required=False).required, False)
 
 class TableInsertTest(fixtures.TablesTest):
     """test for consistent insert behavior across dialects

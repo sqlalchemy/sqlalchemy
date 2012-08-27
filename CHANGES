@@ -328,6 +328,15 @@ underneath "0.7.xx".
     docs for "Registering New Dialects".
     [ticket:2462]
 
+  - [feature] The "required" flag is set to
+    True by default, if not passed explicitly,
+    on bindparam() if the "value" or "callable"
+    parameters are not passed.
+    This will cause statement execution to check
+    for the parameter being present in the final
+    collection of bound parameters, rather than
+    implicitly assigning None. [ticket:2556]
+
   - [bug] The names of the columns on the
     .c. attribute of a select().apply_labels()
     is now based on <tablename>_<colkey> instead
