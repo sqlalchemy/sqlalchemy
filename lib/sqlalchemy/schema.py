@@ -912,7 +912,7 @@ class Column(SchemaItem, expression.ColumnClause):
 
         # check if this Column is proxying another column
         if '_proxies' in kwargs:
-            self.proxies = kwargs.pop('_proxies')
+            self._proxies = kwargs.pop('_proxies')
         # otherwise, add DDL-related events
         elif isinstance(self.type, sqltypes.SchemaType):
             self.type._set_parent_with_dispatch(self)

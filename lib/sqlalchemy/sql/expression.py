@@ -2258,13 +2258,13 @@ class ColumnElement(ClauseElement, ColumnOperators):
     @util.memoized_property
     def base_columns(self):
         return util.column_set(c for c in self.proxy_set
-                                     if not hasattr(c, 'proxies'))
+                                     if not hasattr(c, '_proxies'))
 
     @util.memoized_property
     def proxy_set(self):
         s = util.column_set([self])
-        if hasattr(self, 'proxies'):
-            for c in self.proxies:
+        if hasattr(self, '_proxies'):
+            for c in self._proxies:
                 s.update(c.proxy_set)
         return s
 
@@ -2296,7 +2296,7 @@ class ColumnElement(ClauseElement, ColumnOperators):
                             selectable,
                             type_=getattr(self,
                           'type', None))
-        co.proxies = [self]
+        co._proxies = [self]
         if selectable._is_clone_of is not None:
             co._is_clone_of = \
                 selectable._is_clone_of.columns.get(key)
@@ -4230,7 +4230,7 @@ class Label(ColumnElement):
         self._element = element
         self._type = type_
         self.quote = element.quote
-        self.proxies = [element]
+        self._proxies = [element]
 
     @util.memoized_property
     def type(self):
@@ -4272,7 +4272,7 @@ class Label(ColumnElement):
     def _make_proxy(self, selectable, name=None, **kw):
         e = self.element._make_proxy(selectable,
                                 name=name if name else self.name)
-        e.proxies.append(self)
+        e._proxies.append(self)
         return e
 
 class ColumnClause(Immutable, ColumnElement):
@@ -4432,7 +4432,7 @@ class ColumnClause(Immutable, ColumnElement):
                     type_=self.type,
                     is_literal=is_literal
                 )
-        c.proxies = [self]
+        c._proxies = [self]
         if selectable._is_clone_of is not None:
             c._is_clone_of = \
                 selectable._is_clone_of.columns.get(c.name)
@@ -4943,13 +4943,13 @@ class CompoundSelect(SelectBase):
                     name=cols[0]._label if self.use_labels else None,
                     key=cols[0]._key_label if self.use_labels else None)
 
-            # hand-construct the "proxies" collection to include all
+            # hand-construct the "_proxies" collection to include all
             # derived columns place a 'weight' annotation corresponding
             # to how low in the list of select()s the column occurs, so
             # that the corresponding_column() operation can resolve
             # conflicts
 
-            proxy.proxies = [c._annotate({'weight': i + 1}) for (i,
+            proxy._proxies = [c._annotate({'weight': i + 1}) for (i,
                              c) in enumerate(cols)]
 
     def _refresh_for_new_column(self, column):
