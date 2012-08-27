@@ -1029,61 +1029,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         ]:
             self.assert_compile(expr, check, dialect=dialect)
 
-    def test_composed_string_comparators(self):
-        self.assert_compile(
-            table1.c.name.contains('jo'),
-            "mytable.name LIKE '%%' || :name_1 || '%%'" ,
-            checkparams = {'name_1': u'jo'},
-        )
-        self.assert_compile(
-            table1.c.name.contains('jo'),
-            "mytable.name LIKE concat(concat('%%', %s), '%%')" ,
-            checkparams = {'name_1': u'jo'},
-            dialect=mysql.dialect()
-        )
-        self.assert_compile(
-            table1.c.name.contains('jo', escape='\\'),
-            "mytable.name LIKE '%%' || :name_1 || '%%' ESCAPE '\\'" ,
-            checkparams = {'name_1': u'jo'},
-        )
-        self.assert_compile(
-            table1.c.name.startswith('jo', escape='\\'),
-            "mytable.name LIKE :name_1 || '%%' ESCAPE '\\'" )
-        self.assert_compile(
-            table1.c.name.endswith('jo', escape='\\'),
-            "mytable.name LIKE '%%' || :name_1 ESCAPE '\\'" )
-        self.assert_compile(
-            table1.c.name.endswith('hn'),
-            "mytable.name LIKE '%%' || :name_1",
-            checkparams = {'name_1': u'hn'}, )
-        self.assert_compile(
-            table1.c.name.endswith('hn'),
-            "mytable.name LIKE concat('%%', %s)",
-            checkparams = {'name_1': u'hn'}, dialect=mysql.dialect()
-        )
-        self.assert_compile(
-            table1.c.name.startswith(u"hi \xf6 \xf5"),
-            "mytable.name LIKE :name_1 || '%%'",
-            checkparams = {'name_1': u'hi \xf6 \xf5'},
-        )
-        self.assert_compile(
-                column('name').endswith(text("'foo'")),
-                "name LIKE '%%' || 'foo'"  )
-        self.assert_compile(
-                column('name').endswith(literal_column("'foo'")),
-                "name LIKE '%%' || 'foo'"  )
-        self.assert_compile(
-                column('name').startswith(text("'foo'")),
-                "name LIKE 'foo' || '%%'"  )
-        self.assert_compile(
-                column('name').startswith(text("'foo'")),
-                 "name LIKE concat('foo', '%%')", dialect=mysql.dialect())
-        self.assert_compile(
-                column('name').startswith(literal_column("'foo'")),
-                "name LIKE 'foo' || '%%'"  )
-        self.assert_compile(
-                column('name').startswith(literal_column("'foo'")),
-                "name LIKE concat('foo', '%%')", dialect=mysql.dialect())
 
     def test_multiple_col_binds(self):
         self.assert_compile(

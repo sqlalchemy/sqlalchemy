@@ -24,7 +24,7 @@ To generate user-defined SQL strings, see
 
 import re
 import sys
-from .. import schema, engine, util, exc
+from .. import schema, engine, util, exc, types
 from . import (
     operators, functions, util as sql_util, visitors, expression as sql
 )
@@ -669,6 +669,50 @@ class SQLCompiler(engine.Compiled):
 
     def _generate_generic_unary_modifier(self, unary, opstring, **kw):
         return unary.element._compiler_dispatch(self, **kw) + opstring
+
+    @util.memoized_property
+    def _like_percent_literal(self):
+        return sql.literal_column("'%'", type_=types.String())
+
+    def visit_contains_op_binary(self, binary, operator, **kw):
+        binary = binary._clone()
+        percent = self._like_percent_literal
+        binary.right = percent.__add__(binary.right).__add__(percent)
+        return self.visit_like_op_binary(binary, operator, **kw)
+
+    def visit_notcontains_op_binary(self, binary, operator, **kw):
+        binary = binary._clone()
+        percent = self._like_percent_literal
+        binary.right = percent.__add__(binary.right).__add__(percent)
+        return self.visit_notlike_op_binary(binary, operator, **kw)
+
+    def visit_startswith_op_binary(self, binary, operator, **kw):
+        binary = binary._clone()
+        percent = self._like_percent_literal
+        binary.right = percent.__radd__(
+                    binary.right
+                )
+        return self.visit_like_op_binary(binary, operator, **kw)
+
+    def visit_notstartswith_op_binary(self, binary, operator, **kw):
+        binary = binary._clone()
+        percent = self._like_percent_literal
+        binary.right = percent.__radd__(
+                    binary.right
+                )
+        return self.visit_notlike_op_binary(binary, operator, **kw)
+
+    def visit_endswith_op_binary(self, binary, operator, **kw):
+        binary = binary._clone()
+        percent = self._like_percent_literal
+        binary.right = percent.__add__(binary.right)
+        return self.visit_like_op_binary(binary, operator, **kw)
+
+    def visit_notendswith_op_binary(self, binary, operator, **kw):
+        binary = binary._clone()
+        percent = self._like_percent_literal
+        binary.right = percent.__add__(binary.right)
+        return self.visit_notlike_op_binary(binary, operator, **kw)
 
     def visit_like_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)

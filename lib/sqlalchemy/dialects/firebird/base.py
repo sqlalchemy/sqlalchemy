@@ -200,6 +200,22 @@ class FBTypeCompiler(compiler.GenericTypeCompiler):
 class FBCompiler(sql.compiler.SQLCompiler):
     """Firebird specific idiosyncrasies"""
 
+    #def visit_contains_op_binary(self, binary, operator, **kw):
+        # cant use CONTAINING b.c. it's case insensitive.
+
+    #def visit_notcontains_op_binary(self, binary, operator, **kw):
+        # cant use NOT CONTAINING b.c. it's case insensitive.
+
+    def visit_startswith_op_binary(self, binary, operator, **kw):
+        return '%s STARTING WITH %s' % (
+                            binary.left._compiler_dispatch(self, **kw),
+                            binary.right._compiler_dispatch(self, **kw))
+
+    def visit_notstartswith_op_binary(self, binary, operator, **kw):
+        return '%s NOT STARTING WITH %s' % (
+                            binary.left._compiler_dispatch(self, **kw),
+                            binary.right._compiler_dispatch(self, **kw))
+
     def visit_mod_binary(self, binary, operator, **kw):
         return "mod(%s, %s)" % (
                                 self.process(binary.left, **kw),
@@ -265,9 +281,9 @@ class FBCompiler(sql.compiler.SQLCompiler):
 
         result = ""
         if select._limit:
-            result += "FIRST %s "  % self.process(sql.literal(select._limit))
+            result += "FIRST %s " % self.process(sql.literal(select._limit))
         if select._offset:
-            result +="SKIP %s "  %  self.process(sql.literal(select._offset))
+            result += "SKIP %s " % self.process(sql.literal(select._offset))
         if select._distinct:
             result += "DISTINCT "
         return result

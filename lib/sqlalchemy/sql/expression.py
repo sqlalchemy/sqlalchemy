@@ -2049,37 +2049,6 @@ class _DefaultColumnComparator(operators.ColumnOperators):
         """See :meth:`.ColumnOperators.__neg__`."""
         return UnaryExpression(expr, operator=operators.neg)
 
-    def _startswith_impl(self, expr, op, other, escape=None, **kw):
-        """See :meth:`.ColumnOperators.startswith`."""
-        # use __radd__ to force string concat behavior
-        return self._boolean_compare(
-            expr,
-            operators.like_op,
-            literal_column("'%'", type_=sqltypes.String).__radd__(
-                                self._check_literal(expr,
-                                        operators.like_op, other)
-                            ),
-            escape=escape)
-
-    def _endswith_impl(self, expr, op, other, escape=None, **kw):
-        """See :meth:`.ColumnOperators.endswith`."""
-        return self._boolean_compare(
-            expr,
-            operators.like_op,
-            literal_column("'%'", type_=sqltypes.String) +
-                self._check_literal(expr, operators.like_op, other),
-            escape=escape)
-
-    def _contains_impl(self, expr, op, other, escape=None, **kw):
-        """See :meth:`.ColumnOperators.contains`."""
-        return self._boolean_compare(
-            expr,
-            operators.like_op,
-            literal_column("'%'", type_=sqltypes.String) +
-                self._check_literal(expr, operators.like_op, other) +
-                literal_column("'%'", type_=sqltypes.String),
-            escape=escape)
-
     def _match_impl(self, expr, op, other, **kw):
         """See :meth:`.ColumnOperators.match`."""
         return self._boolean_compare(expr, operators.match_op,
@@ -2124,6 +2093,9 @@ class _DefaultColumnComparator(operators.ColumnOperators):
         "eq": (_boolean_compare, operators.ne),
         "like_op": (_boolean_compare, operators.notlike_op),
         "ilike_op": (_boolean_compare, operators.notilike_op),
+        "contains_op": (_boolean_compare, operators.notcontains_op),
+        "startswith_op": (_boolean_compare, operators.notstartswith_op),
+        "endswith_op": (_boolean_compare, operators.notendswith_op),
         "desc_op": (_scalar, desc),
         "asc_op": (_scalar, asc),
         "nullsfirst_op": (_scalar, nullsfirst),
@@ -2133,9 +2105,6 @@ class _DefaultColumnComparator(operators.ColumnOperators):
         "match_op": (_match_impl,),
         "distinct_op": (_distinct_impl,),
         "between_op": (_between_impl, ),
-        "contains_op": (_contains_impl, ),
-        "startswith_op": (_startswith_impl,),
-        "endswith_op": (_endswith_impl,),
         "neg": (_neg_impl,),
         "getitem": (_unsupported_impl,),
     }

@@ -521,6 +521,13 @@ underneath "0.7.xx".
     name.  The deprecated fold_equivalents() feature is
     removed [ticket:1729].
 
+  - [feature] Reworked the startswith(), endswith(),
+    contains() operators to do a better job with
+    negation (NOT LIKE), and also to assemble them
+    at compilation time so that their rendered SQL
+    can be altered, such as in the case for Firebird
+    STARTING WITH [ticket:2470]
+
   - [bug] Fixes to the interpretation of the
     Column "default" parameter as a callable
     to not pass ExecutionContext into a keyword
@@ -600,6 +607,11 @@ underneath "0.7.xx".
     The phrase is established using with_hint().
     Courtesy Ryan Kelly [ticket:2506]
 
+- firebird
+  - [feature] The "startswith()" operator renders
+    as "STARTING WITH", "~startswith()" renders
+    as "NOT STARTING WITH", using FB's more efficient
+    operator.  [ticket:2470]
 
 - mysql
   - [bug] Dialect no longer emits expensive server

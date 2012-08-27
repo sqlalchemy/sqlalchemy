@@ -558,11 +558,20 @@ def distinct_op(a):
 def startswith_op(a, b, escape=None):
     return a.startswith(b, escape=escape)
 
+def notstartswith_op(a, b, escape=None):
+    return ~a.startswith(b, escape=escape)
+
 def endswith_op(a, b, escape=None):
     return a.endswith(b, escape=escape)
 
+def notendswith_op(a, b, escape=None):
+    return ~a.endswith(b, escape=escape)
+
 def contains_op(a, b, escape=None):
     return a.contains(b, escape=escape)
+
+def notcontains_op(a, b, escape=None):
+    return ~a.contains(b, escape=escape)
 
 def match_op(a, b):
     return a.match(b)

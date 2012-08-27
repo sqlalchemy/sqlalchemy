@@ -2,12 +2,15 @@ from test.lib import fixtures, testing
 from test.lib.testing import assert_raises_message
 from sqlalchemy.sql import column, desc, asc, literal, collate
 from sqlalchemy.sql.expression import BinaryExpression, \
-                ClauseList, Grouping, _DefaultColumnComparator,\
+                ClauseList, Grouping, \
                 UnaryExpression
 from sqlalchemy.sql import operators
 from sqlalchemy import exc
 from sqlalchemy.schema import Column, Table, MetaData
 from sqlalchemy.types import Integer, TypeEngine, TypeDecorator
+from sqlalchemy.dialects import mysql, firebird
+
+from sqlalchemy import text, literal_column
 
 class DefaultColumnComparatorTest(fixtures.TestBase):
 
@@ -319,4 +322,245 @@ class OperatorAssociativityTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile((f / f) / (f - f), "(f / f) / (f - f)")
         self.assert_compile(f / (f / (f - f)), "f / (f / (f - f))")
 
+
+class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def test_contains(self):
+        self.assert_compile(
+            column('x').contains('y'),
+            "x LIKE '%%' || :x_1 || '%%'",
+            checkparams={'x_1': 'y'}
+        )
+
+    def test_contains_escape(self):
+        self.assert_compile(
+            column('x').contains('y', escape='\\'),
+            "x LIKE '%%' || :x_1 || '%%' ESCAPE '\\'",
+            checkparams={'x_1': 'y'}
+        )
+
+    def test_contains_literal(self):
+        self.assert_compile(
+            column('x').contains(literal_column('y')),
+            "x LIKE '%%' || y || '%%'",
+            checkparams={}
+        )
+
+    def test_contains_text(self):
+        self.assert_compile(
+            column('x').contains(text('y')),
+            "x LIKE '%%' || y || '%%'",
+            checkparams={}
+        )
+
+    def test_not_contains(self):
+        self.assert_compile(
+            ~column('x').contains('y'),
+            "x NOT LIKE '%%' || :x_1 || '%%'",
+            checkparams={'x_1': 'y'}
+        )
+
+    def test_not_contains_escape(self):
+        self.assert_compile(
+            ~column('x').contains('y', escape='\\'),
+            "x NOT LIKE '%%' || :x_1 || '%%' ESCAPE '\\'",
+            checkparams={'x_1': 'y'}
+        )
+
+    def test_contains_concat(self):
+        self.assert_compile(
+            column('x').contains('y'),
+            "x LIKE concat(concat('%%', %s), '%%')",
+            checkparams={'x_1': 'y'},
+            dialect=mysql.dialect()
+        )
+
+    def test_not_contains_concat(self):
+        self.assert_compile(
+            ~column('x').contains('y'),
+            "x NOT LIKE concat(concat('%%', %s), '%%')",
+            checkparams={'x_1': 'y'},
+            dialect=mysql.dialect()
+        )
+
+    def test_contains_literal_concat(self):
+        self.assert_compile(
+            column('x').contains(literal_column('y')),
+            "x LIKE concat(concat('%%', y), '%%')",
+            checkparams={},
+            dialect=mysql.dialect()
+        )
+
+    def test_contains_text_concat(self):
+        self.assert_compile(
+            column('x').contains(text('y')),
+            "x LIKE concat(concat('%%', y), '%%')",
+            checkparams={},
+            dialect=mysql.dialect()
+        )
+
+    def test_startswith(self):
+        self.assert_compile(
+            column('x').startswith('y'),
+            "x LIKE :x_1 || '%%'",
+            checkparams={'x_1': 'y'}
+        )
+
+    def test_startswith_escape(self):
+        self.assert_compile(
+            column('x').startswith('y', escape='\\'),
+            "x LIKE :x_1 || '%%' ESCAPE '\\'",
+            checkparams={'x_1': 'y'}
+        )
+
+    def test_not_startswith(self):
+        self.assert_compile(
+            ~column('x').startswith('y'),
+            "x NOT LIKE :x_1 || '%%'",
+            checkparams={'x_1': 'y'}
+        )
+
+    def test_not_startswith_escape(self):
+        self.assert_compile(
+            ~column('x').startswith('y', escape='\\'),
+            "x NOT LIKE :x_1 || '%%' ESCAPE '\\'",
+            checkparams={'x_1': 'y'}
+        )
+
+    def test_startswith_literal(self):
+        self.assert_compile(
+            column('x').startswith(literal_column('y')),
+            "x LIKE y || '%%'",
+            checkparams={}
+        )
+
+    def test_startswith_text(self):
+        self.assert_compile(
+            column('x').startswith(text('y')),
+            "x LIKE y || '%%'",
+            checkparams={}
+        )
+
+    def test_startswith_concat(self):
+        self.assert_compile(
+            column('x').startswith('y'),
+            "x LIKE concat(%s, '%%')",
+            checkparams={'x_1': 'y'},
+            dialect=mysql.dialect()
+        )
+
+    def test_not_startswith_concat(self):
+        self.assert_compile(
+            ~column('x').startswith('y'),
+            "x NOT LIKE concat(%s, '%%')",
+            checkparams={'x_1': 'y'},
+            dialect=mysql.dialect()
+        )
+
+    def test_startswith_firebird(self):
+        self.assert_compile(
+            column('x').startswith('y'),
+            "x STARTING WITH :x_1",
+            checkparams={'x_1': 'y'},
+            dialect=firebird.dialect()
+        )
+
+    def test_not_startswith_firebird(self):
+        self.assert_compile(
+            ~column('x').startswith('y'),
+            "x NOT STARTING WITH :x_1",
+            checkparams={'x_1': 'y'},
+            dialect=firebird.dialect()
+        )
+
+    def test_startswith_literal_mysql(self):
+        self.assert_compile(
+            column('x').startswith(literal_column('y')),
+            "x LIKE concat(y, '%%')",
+            checkparams={},
+            dialect=mysql.dialect()
+        )
+
+    def test_startswith_text_mysql(self):
+        self.assert_compile(
+            column('x').startswith(text('y')),
+            "x LIKE concat(y, '%%')",
+            checkparams={},
+            dialect=mysql.dialect()
+        )
+
+    def test_endswith(self):
+        self.assert_compile(
+            column('x').endswith('y'),
+            "x LIKE '%%' || :x_1",
+            checkparams={'x_1': 'y'}
+        )
+
+    def test_endswith_escape(self):
+        self.assert_compile(
+            column('x').endswith('y', escape='\\'),
+            "x LIKE '%%' || :x_1 ESCAPE '\\'",
+            checkparams={'x_1': 'y'}
+        )
+
+    def test_not_endswith(self):
+        self.assert_compile(
+            ~column('x').endswith('y'),
+            "x NOT LIKE '%%' || :x_1",
+            checkparams={'x_1': 'y'}
+        )
+
+    def test_not_endswith_escape(self):
+        self.assert_compile(
+            ~column('x').endswith('y', escape='\\'),
+            "x NOT LIKE '%%' || :x_1 ESCAPE '\\'",
+            checkparams={'x_1': 'y'}
+        )
+
+    def test_endswith_literal(self):
+        self.assert_compile(
+            column('x').endswith(literal_column('y')),
+            "x LIKE '%%' || y",
+            checkparams={}
+        )
+
+    def test_endswith_text(self):
+        self.assert_compile(
+            column('x').endswith(text('y')),
+            "x LIKE '%%' || y",
+            checkparams={}
+        )
+
+    def test_endswith_mysql(self):
+        self.assert_compile(
+            column('x').endswith('y'),
+            "x LIKE concat('%%', %s)",
+            checkparams={'x_1': 'y'},
+            dialect=mysql.dialect()
+        )
+
+    def test_not_endswith_mysql(self):
+        self.assert_compile(
+            ~column('x').endswith('y'),
+            "x NOT LIKE concat('%%', %s)",
+            checkparams={'x_1': 'y'},
+            dialect=mysql.dialect()
+        )
+
+    def test_endswith_literal_mysql(self):
+        self.assert_compile(
+            column('x').endswith(literal_column('y')),
+            "x LIKE concat('%%', y)",
+            checkparams={},
+            dialect=mysql.dialect()
+        )
+
+    def test_endswith_text_mysql(self):
+        self.assert_compile(
+            column('x').endswith(text('y')),
+            "x LIKE concat('%%', y)",
+            checkparams={},
+            dialect=mysql.dialect()
+        )
 
