@@ -8,7 +8,8 @@
 
 from ...schema import Table, MetaData
 from ...orm import synonym as _orm_synonym, mapper,\
-                                comparable_property
+                                comparable_property,\
+                                interfaces
 from ...orm.util import polymorphic_union, _mapper_or_none
 from ... import exc
 import weakref
@@ -96,7 +97,7 @@ def comparable_using(comparator_factory):
         return comparable_property(comparator_factory, fn)
     return decorate
 
-class declared_attr(property):
+class declared_attr(interfaces._MappedAttribute, property):
     """Mark a class-level method as representing the definition of
     a mapped property or special declarative member name.
 

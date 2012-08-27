@@ -117,7 +117,9 @@ PASSIVE_ONLY_PERSISTENT = util.symbol("PASSIVE_ONLY_PERSISTENT",
 )
 
 
-class QueryableAttribute(interfaces._InspectionAttr, interfaces.PropComparator):
+class QueryableAttribute(interfaces._MappedAttribute,
+                            interfaces._InspectionAttr,
+                            interfaces.PropComparator):
     """Base class for class-bound attributes. """
 
     is_attribute = True

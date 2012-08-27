@@ -65,7 +65,12 @@ class _InspectionAttr(object):
     is_attribute = False
     is_clause_element = False
 
-class MapperProperty(_InspectionAttr):
+class _MappedAttribute(object):
+    """Mixin for attributes which should be replaced by mapper-assigned
+    attributes.
+
+    """
+class MapperProperty(_MappedAttribute, _InspectionAttr):
     """Manage the relationship of a ``Mapper`` to a single class
     attribute, as well as that attribute as it appears on individual
     instances of the class, including attribute instrumentation,

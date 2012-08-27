@@ -897,26 +897,24 @@ class DeclarativeTest(DeclarativeTestBase):
         eq_(sess.query(User).all(), [User(name='u1', address_count=2,
             addresses=[Address(email='one'), Address(email='two')])])
 
-    def test_useless_declared_attr_warns_on_subclass(self):
-        def go():
-            class MyBase(Base):
-                __tablename__ = 'foo'
-                id = Column(Integer, primary_key=True)
-                @declared_attr
-                def somecol(cls):
-                    return Column(Integer)
+    def test_declared_on_base_class(self):
+        class MyBase(Base):
+            __tablename__ = 'foo'
+            id = Column(Integer, primary_key=True)
+            @declared_attr
+            def somecol(cls):
+                return Column(Integer)
 
-            class MyClass(MyBase):
-                __tablename__ = 'bar'
-        assert_raises_message(
-            sa.exc.SAWarning,
-            r"Regular \(i.e. not __special__\) attribute 'MyBase.somecol' "
-            "uses @declared_attr, but owning class "
-            "<class 'test.ext.declarative..*test_basic..*MyBase'> is "
-            "mapped - not applying to subclass <class "
-            "'test.ext.declarative..*test_basic..*MyClass'>.",
-            go
-        )
+        class MyClass(MyBase):
+            __tablename__ = 'bar'
+            id = Column(Integer, ForeignKey('foo.id'), primary_key=True)
+
+        # previously, the 'somecol' declared_attr would be ignored
+        # by the mapping and would remain unused.  now we take
+        # it as part of MyBase.
+
+        assert 'somecol' in MyBase.__table__.c
+        assert 'somecol' not in MyClass.__table__.c
 
     def test_column(self):
 

@@ -23,7 +23,7 @@ from .. import sql, util, log, exc as sa_exc, event, schema, inspection
 from ..sql import expression, visitors, operators, util as sql_util
 from . import instrumentation, attributes, \
                         exc as orm_exc, events, loading
-from .interfaces import MapperProperty, _InspectionAttr
+from .interfaces import MapperProperty, _InspectionAttr, _MappedAttribute
 
 from .util import _INSTRUMENTOR, _class_to_mapper, \
      _state_mapper, class_mapper, \
@@ -1629,8 +1629,7 @@ class Mapper(_InspectionAttr):
         return result
 
     def _is_userland_descriptor(self, obj):
-        if isinstance(obj, (MapperProperty,
-                            attributes.QueryableAttribute,
+        if isinstance(obj, (_MappedAttribute,
                             instrumentation.ClassManager,
                             expression.ColumnElement)):
             return False

@@ -1,5 +1,5 @@
 from test.lib.testing import eq_, assert_raises, \
-    assert_raises_message
+    assert_raises_message, is_
 from sqlalchemy.ext import declarative as decl
 import sqlalchemy as sa
 from test.lib import testing
@@ -12,6 +12,8 @@ from sqlalchemy.orm import relationship, create_session, class_mapper, \
 from sqlalchemy.util import classproperty
 from sqlalchemy.ext.declarative import declared_attr
 from test.lib import fixtures
+
+Base = None
 
 class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
     def setup(self):
@@ -286,6 +288,59 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         assert General.bar.prop.columns[0] is General.__table__.c.bar_newname
         assert len(General.bar.prop.columns) == 1
         assert Specific.bar.prop is General.bar.prop
+
+    def test_columns_single_inheritance_conflict_resolution(self):
+        """Test that a declared_attr can return the existing column and it will
+        be ignored.  this allows conditional columns to be added.
+
+        See [ticket:2472].
+
+        """
+        class Person(Base):
+            __tablename__ = 'person'
+            id = Column(Integer, primary_key=True)
+
+        class Mixin(object):
+            @declared_attr
+            def target_id(cls):
+                return cls.__table__.c.get('target_id',
+                        Column(Integer, ForeignKey('other.id'))
+                    )
+
+            @declared_attr
+            def target(cls):
+                return relationship("Other")
+
+        class Engineer(Mixin, Person):
+            """single table inheritance"""
+
+        class Manager(Mixin, Person):
+            """single table inheritance"""
+
+        class Other(Base):
+            __tablename__ = 'other'
+            id = Column(Integer, primary_key=True)
+
+        is_(
+            Engineer.target_id.property.columns[0],
+            Person.__table__.c.target_id
+        )
+        is_(
+            Manager.target_id.property.columns[0],
+            Person.__table__.c.target_id
+        )
+        # do a brief round trip on this
+        Base.metadata.create_all()
+        session = Session()
+        o1, o2 = Other(), Other()
+        session.add_all([
+            Engineer(target=o1),
+            Manager(target=o2),
+            Manager(target=o1)
+            ])
+        session.commit()
+        eq_(session.query(Engineer).first().target, o1)
+
 
     def test_columns_joined_table_inheritance(self):
         """Test a column on a mixin with an alternate attribute name,

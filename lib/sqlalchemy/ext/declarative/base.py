@@ -254,7 +254,6 @@ def _as_declarative(cls, classname, dict_):
                     "Can't place __table_args__ on an inherited class "
                     "with no table."
                     )
-
             # add any columns declared here to the inherited table.
             for c in declared_columns:
                 if c.primary_key:
@@ -263,6 +262,8 @@ def _as_declarative(cls, classname, dict_):
                         "class with no table."
                         )
                 if c.name in inherited_table.c:
+                    if inherited_table.c[c.name] is c:
+                        continue
                     raise exc.ArgumentError(
                         "Column '%s' on class %s conflicts with "
                         "existing column '%s'" %
@@ -354,7 +355,6 @@ class _MapperConfig(object):
                         # note here we place the subclass column
                         # first.  See [ticket:1892] for background.
                         properties[k] = [col] + p.columns
-
         result_mapper_args = mapper_args.copy()
         result_mapper_args['properties'] = properties
         return result_mapper_args

@@ -447,6 +447,8 @@ only the ``engineers.id`` column, give it a different attribute name::
    column over that of the superclass, such as querying above
    for ``Engineer.id``.  Prior to 0.7 this was the reverse.
 
+.. _declarative_single_table:
+
 Single Table Inheritance
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -484,6 +486,115 @@ The attribute exclusion logic is provided by the
 ``exclude_properties`` mapper argument, and declarative's default
 behavior can be disabled by passing an explicit ``exclude_properties``
 collection (empty or otherwise) to the ``__mapper_args__``.
+
+Resolving Column Conflicts
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Note above that the ``primary_language`` and ``golf_swing`` columns
+are "moved up" to be applied to ``Person.__table__``, as a result of their
+declaration on a subclass that has no table of its own.   A tricky case
+comes up when two subclasses want to specify *the same* column, as below::
+
+    class Person(Base):
+        __tablename__ = 'people'
+        id = Column(Integer, primary_key=True)
+        discriminator = Column('type', String(50))
+        __mapper_args__ = {'polymorphic_on': discriminator}
+
+    class Engineer(Person):
+        __mapper_args__ = {'polymorphic_identity': 'engineer'}
+        start_date = Column(DateTime)
+
+    class Manager(Person):
+        __mapper_args__ = {'polymorphic_identity': 'manager'}
+        start_date = Column(DateTime)
+
+Above, the ``start_date`` column declared on both ``Engineer`` and ``Manager``
+will result in an error::
+
+    sqlalchemy.exc.ArgumentError: Column 'start_date' on class
+    <class '__main__.Manager'> conflicts with existing
+    column 'people.start_date'
+
+In a situation like this, Declarative can't be sure
+of the intent, especially if the ``start_date`` columns had, for example,
+different types.   A situation like this can be resolved by using
+:class:`.declared_attr` to define the :class:`.Column` conditionally, taking
+care to return the **existing column** via the parent ``__table__`` if it already
+exists::
+
+    from sqlalchemy.ext.declarative import declared_attr
+
+    class Person(Base):
+        __tablename__ = 'people'
+        id = Column(Integer, primary_key=True)
+        discriminator = Column('type', String(50))
+        __mapper_args__ = {'polymorphic_on': discriminator}
+
+    class Engineer(Person):
+        __mapper_args__ = {'polymorphic_identity': 'engineer'}
+
+        @declared_attr
+        def start_date(cls):
+            "Start date column, if not present already."
+            return Person.__table__.c.get('start_date', Column(DateTime))
+
+    class Manager(Person):
+        __mapper_args__ = {'polymorphic_identity': 'manager'}
+
+        @declared_attr
+        def start_date(cls):
+            "Start date column, if not present already."
+            return Person.__table__.c.get('start_date', Column(DateTime))
+
+Above, when ``Manager`` is mapped, the ``start_date`` column is
+already present on the ``Person`` class.  Declarative lets us return
+that :class:`.Column` as a result in this case, where it knows to skip
+re-assigning the same column. If the mapping is mis-configured such
+that the ``start_date`` column is accidentally re-assigned to a
+different table (such as, if we changed ``Manager`` to be joined
+inheritance without fixing ``start_date``), an error is raised which
+indicates an existing :class:`.Column` is trying to be re-assigned to
+a different owning :class:`.Table`.
+
+.. versionadded:: 0.8 :class:`.declared_attr` can be used on a non-mixin
+   class, and the returned :class:`.Column` or other mapped attribute
+   will be applied to the mapping as any other attribute.  Previously,
+   the resulting attribute would be ignored, and also result in a warning
+   being emitted when a subclass was created.
+
+.. versionadded:: 0.8 :class:`.declared_attr`, when used either with a
+   mixin or non-mixin declarative class, can return an existing
+   :class:`.Column` already assigned to the parent :class:`.Table`,
+   to indicate that the re-assignment of the :class:`.Column` should be
+   skipped, however should still be mapped on the target class,
+   in order to resolve duplicate column conflicts.
+
+The same concept can be used with mixin classes (see
+:ref:`declarative_mixins`)::
+
+    class Person(Base):
+        __tablename__ = 'people'
+        id = Column(Integer, primary_key=True)
+        discriminator = Column('type', String(50))
+        __mapper_args__ = {'polymorphic_on': discriminator}
+
+    class HasStartDate(object):
+        @declared_attr
+        def start_date(cls):
+            return cls.__table__.c.get('start_date', Column(DateTime))
+
+    class Engineer(HasStartDate, Person):
+        __mapper_args__ = {'polymorphic_identity': 'engineer'}
+
+    class Manager(HasStartDate, Person):
+        __mapper_args__ = {'polymorphic_identity': 'manager'}
+
+The above mixin checks the local ``__table__`` attribute for the column.
+Because we're using single table inheritance, we're sure that in this case,
+``cls.__table__`` refers to ``People.__table__``.  If we were mixing joined-
+and single-table inheritance, we might want our mixin to check more carefully
+if ``cls.__table__`` is really the :class:`.Table` we're looking for.
 
 Concrete Table Inheritance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -708,7 +819,7 @@ keys, as a :class:`.ForeignKey` itself contains references to columns
 which can't be properly recreated at this level.  For columns that
 have foreign keys, as well as for the variety of mapper-level constructs
 that require destination-explicit context, the
-:func:`~.declared_attr` decorator is provided so that
+:class:`~.declared_attr` decorator is provided so that
 patterns common to many classes can be defined as callables::
 
     from sqlalchemy.ext.declarative import declared_attr
@@ -728,9 +839,9 @@ extension can use the resulting :class:`.Column` object as returned by
 the method without the need to copy it.
 
 .. versionchanged:: > 0.6.5
-    Rename 0.6.5 ``sqlalchemy.util.classproperty`` into :func:`~.declared_attr`.
+    Rename 0.6.5 ``sqlalchemy.util.classproperty`` into :class:`~.declared_attr`.
 
-Columns generated by :func:`~.declared_attr` can also be
+Columns generated by :class:`~.declared_attr` can also be
 referenced by ``__mapper_args__`` to a limited degree, currently
 by ``polymorphic_on`` and ``version_id_col``, by specifying the
 classdecorator itself into the dictionary - the declarative extension
@@ -746,6 +857,8 @@ will resolve them at class construction time::
     class MyModel(MyMixin, Base):
         __tablename__='test'
         id =  Column(Integer, primary_key=True)
+
+
 
 Mixing in Relationships
 ~~~~~~~~~~~~~~~~~~~~~~~

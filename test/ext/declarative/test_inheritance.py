@@ -478,6 +478,66 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         eq_(sess.query(Engineer).filter_by(primary_language='cobol'
             ).one(), Engineer(name='vlad', primary_language='cobol'))
 
+    def test_columns_single_inheritance_conflict_resolution(self):
+        """Test that a declared_attr can return the existing column and it will
+        be ignored.  this allows conditional columns to be added.
+
+        See [ticket:2472].
+
+        """
+        class Person(Base):
+            __tablename__ = 'person'
+            id = Column(Integer, primary_key=True)
+
+        class Engineer(Person):
+            """single table inheritance"""
+
+            @declared_attr
+            def target_id(cls):
+                return cls.__table__.c.get('target_id',
+                       Column(Integer, ForeignKey('other.id'))
+                    )
+            @declared_attr
+            def target(cls):
+                return relationship("Other")
+
+        class Manager(Person):
+            """single table inheritance"""
+
+            @declared_attr
+            def target_id(cls):
+                return cls.__table__.c.get('target_id',
+                        Column(Integer, ForeignKey('other.id'))
+                    )
+            @declared_attr
+            def target(cls):
+                return relationship("Other")
+
+        class Other(Base):
+            __tablename__ = 'other'
+            id = Column(Integer, primary_key=True)
+
+        is_(
+            Engineer.target_id.property.columns[0],
+            Person.__table__.c.target_id
+        )
+        is_(
+            Manager.target_id.property.columns[0],
+            Person.__table__.c.target_id
+        )
+        # do a brief round trip on this
+        Base.metadata.create_all()
+        session = Session()
+        o1, o2 = Other(), Other()
+        session.add_all([
+            Engineer(target=o1),
+            Manager(target=o2),
+            Manager(target=o1)
+            ])
+        session.commit()
+        eq_(session.query(Engineer).first().target, o1)
+
+
     def test_joined_from_single(self):
 
         class Company(Base, fixtures.ComparableEntity):

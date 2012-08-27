@@ -236,6 +236,12 @@ underneath "0.7.xx".
     mappers*. See the next note for this ticket.
     [ticket:2526]
 
+  - [feature] Conflicts between columns on
+    single-inheritance declarative subclasses,
+    with or without using a mixin, can be resolved
+    using a new @declared_attr usage described
+    in the documentation.  [ticket:2472]
+
   - [feature] *Very limited* support for
     inheriting mappers to be GC'ed when the
     class itself is deferenced.  The mapper
