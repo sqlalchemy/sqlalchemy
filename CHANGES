@@ -242,6 +242,16 @@ underneath "0.7.xx".
     using a new @declared_attr usage described
     in the documentation.  [ticket:2472]
 
+  - [feature] declared_attr can now be used
+    on non-mixin classes, even though this is generally
+    only useful for single-inheritance subclass
+    column conflict resolution.  [ticket:2472]
+
+  - [feature] declared_attr can now be used with
+    attributes that are not Column or MapperProperty;
+    including any user-defined value as well
+    as association proxy objects.  [ticket:2517]
+
   - [feature] *Very limited* support for
     inheriting mappers to be GC'ed when the
     class itself is deferenced.  The mapper
@@ -287,7 +297,7 @@ underneath "0.7.xx".
     declared on a single-table inheritance subclass
     up to the parent class' table, when the parent
     class is itself mapped to a join() or select()
-    statement, directly or via joined inheritane,
+    statement, directly or via joined inheritance,
     and not just a Table.   [ticket:2549]
 
   - [bug] An error is emitted when uselist=False

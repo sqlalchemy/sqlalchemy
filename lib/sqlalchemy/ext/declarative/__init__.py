@@ -909,14 +909,14 @@ to get it's name::
                 primaryjoin="Target.id==%s.target_id" % cls.__name__
             )
 
-Mixing in deferred(), column_property(), etc.
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Mixing in deferred(), column_property(), and other MapperProperty classes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Like :func:`~sqlalchemy.orm.relationship`, all
 :class:`~sqlalchemy.orm.interfaces.MapperProperty` subclasses such as
 :func:`~sqlalchemy.orm.deferred`, :func:`~sqlalchemy.orm.column_property`,
 etc. ultimately involve references to columns, and therefore, when
-used with declarative mixins, have the :func:`.declared_attr`
+used with declarative mixins, have the :class:`.declared_attr`
 requirement so that no reliance on copying is needed::
 
     class SomethingMixin(object):
@@ -927,6 +927,84 @@ requirement so that no reliance on copying is needed::
 
     class Something(SomethingMixin, Base):
         __tablename__ = "something"
+
+Mixing in Association Proxy and Other Attributes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Mixins can specify user-defined attributes as well as other extension
+units such as :func:`.association_proxy`.   The usage of :class:`.declared_attr`
+is required in those cases where the attribute must be tailored specifically
+to the target subclass.   An example is when constructing multiple
+:func:`.association_proxy` attributes which each target a different type
+of child object.  Below is an :func:`.association_proxy` / mixin example
+which provides a scalar list of string values to an implementing class::
+
+    from sqlalchemy import Column, Integer, ForeignKey, String
+    from sqlalchemy.orm import relationship
+    from sqlalchemy.ext.associationproxy import association_proxy
+    from sqlalchemy.ext.declarative import declarative_base, declared_attr
+
+    Base = declarative_base()
+
+    class HasStringCollection(object):
+        @declared_attr
+        def _strings(cls):
+            class StringAttribute(Base):
+                __tablename__ = cls.string_table_name
+                id = Column(Integer, primary_key=True)
+                value = Column(String(50), nullable=False)
+                parent_id = Column(Integer,
+                                ForeignKey('%s.id' % cls.__tablename__),
+                                nullable=False)
+                def __init__(self, value):
+                    self.value = value
+
+            return relationship(StringAttribute)
+
+        @declared_attr
+        def strings(cls):
+            return association_proxy('_strings', 'value')
+
+    class TypeA(HasStringCollection, Base):
+        __tablename__ = 'type_a'
+        string_table_name = 'type_a_strings'
+        id = Column(Integer(), primary_key=True)
+
+    class TypeB(HasStringCollection, Base):
+        __tablename__ = 'type_b'
+        string_table_name = 'type_b_strings'
+        id = Column(Integer(), primary_key=True)
+
+Above, the ``HasStringCollection`` mixin produces a :func:`.relationship`
+which refers to a newly generated class called ``StringAttribute``.  The
+``StringAttribute`` class is generated with it's own :class:`.Table`
+definition which is local to the parent class making usage of the
+``HasStringCollection`` mixin.  It also produces an :func:`.association_proxy`
+object which proxies references to the ``strings`` attribute onto the ``value``
+attribute of each ``StringAttribute`` instance.
+
+``TypeA`` or ``TypeB`` can be instantiated given the constructor
+argument ``strings``, a list of strings::
+
+    ta = TypeA(strings=['foo', 'bar'])
+    tb = TypeA(strings=['bat', 'bar'])
+
+This list will generate a collection
+of ``StringAttribute`` objects, which are persisted into a table that's
+local to either the ``type_a_strings`` or ``type_b_strings`` table::
+
+    >>> print ta._strings
+    [<__main__.StringAttribute object at 0x10151cd90>,
+        <__main__.StringAttribute object at 0x10151ce10>]
+
+When constructing the :func:`.association_proxy`, the
+:class:`.declared_attr` decorator must be used so that a distinct
+:func:`.association_proxy` object is created for each of the ``TypeA``
+and ``TypeB`` classes.
+
+.. versionadded:: 0.8 :class:`.declared_attr` is usable with non-mapped
+   attributes, including user-defined attributes as well as
+   :func:`.association_proxy`.
 
 
 Controlling table inheritance with mixins

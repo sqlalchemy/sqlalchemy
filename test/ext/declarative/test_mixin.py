@@ -963,6 +963,62 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         assert C().x() == 'hi'
 
+    def test_arbitrary_attrs_one(self):
+        class HasMixin(object):
+            @declared_attr
+            def some_attr(cls):
+                return cls.__name__ + "SOME ATTR"
+
+        class Mapped(HasMixin, Base):
+            __tablename__ = 't'
+            id = Column(Integer, primary_key=True)
+
+        eq_(Mapped.some_attr, "MappedSOME ATTR")
+        eq_(Mapped.__dict__['some_attr'], "MappedSOME ATTR")
+
+    def test_arbitrary_attrs_two(self):
+        from sqlalchemy.ext.associationproxy import association_proxy
+
+        class FilterA(Base):
+            __tablename__ = 'filter_a'
+            id = Column(Integer(), primary_key=True)
+            parent_id = Column(Integer(),
+                    ForeignKey('type_a.id'))
+            filter = Column(String())
+            def __init__(self, filter_, **kw):
+                self.filter = filter_
+
+        class FilterB(Base):
+            __tablename__ = 'filter_b'
+            id = Column(Integer(), primary_key=True)
+            parent_id = Column(Integer(),
+                    ForeignKey('type_b.id'))
+            filter = Column(String())
+            def __init__(self, filter_, **kw):
+                self.filter = filter_
+
+        class FilterMixin(object):
+            @declared_attr
+            def _filters(cls):
+                return relationship(cls.filter_class,
+                        cascade='all,delete,delete-orphan')
+
+            @declared_attr
+            def filters(cls):
+                return association_proxy('_filters', 'filter')
+
+        class TypeA(Base, FilterMixin):
+            __tablename__ = 'type_a'
+            filter_class = FilterA
+            id = Column(Integer(), primary_key=True)
+
+        class TypeB(Base, FilterMixin):
+            __tablename__ = 'type_b'
+            filter_class = FilterB
+            id = Column(Integer(), primary_key=True)
+
+        TypeA(filters=[u'foo'])
+        TypeB(filters=[u'foo'])
 
 class DeclarativeMixinPropertyTest(DeclarativeTestBase):
 

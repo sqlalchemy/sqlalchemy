@@ -101,11 +101,6 @@ class declared_attr(interfaces._MappedAttribute, property):
     """Mark a class-level method as representing the definition of
     a mapped property or special declarative member name.
 
-    .. versionchanged:: 0.6.{2,3,4}
-        ``@declared_attr`` is available as
-        ``sqlalchemy.util.classproperty`` for SQLAlchemy versions
-        0.6.2, 0.6.3, 0.6.4.
-
     @declared_attr turns the attribute into a scalar-like
     property that can be invoked from the uninstantiated class.
     Declarative treats attributes specifically marked with
@@ -145,6 +140,12 @@ class declared_attr(interfaces._MappedAttribute, property):
                     }
                 else:
                     return {"polymorphic_identity":cls.__name__}
+
+    .. versionchanged:: 0.8 :class:`.declared_attr` can be used with
+       non-ORM or extension attributes, such as user-defined attributes
+       or :func:`.association_proxy` objects, which will be assigned
+       to the class at class construction time.
+
 
     """
 

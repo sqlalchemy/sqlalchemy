@@ -136,7 +136,7 @@ def _as_declarative(cls, classname, dict_):
     clsregistry.add_class(classname, cls)
     our_stuff = util.OrderedDict()
 
-    for k in dict_:
+    for k in list(dict_):
 
         # TODO: improve this ?  all dunders ?
         if k in ('__table__', '__tablename__', '__mapper_args__'):
@@ -153,6 +153,9 @@ def _as_declarative(cls, classname, dict_):
                       "left at the end of the line?" % k)
             continue
         if not isinstance(value, (Column, MapperProperty)):
+            if not k.startswith('__'):
+                dict_.pop(k)
+                setattr(cls, k, value)
             continue
         if k == 'metadata':
             raise exc.InvalidRequestError(
