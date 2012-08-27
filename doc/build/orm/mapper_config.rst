@@ -406,6 +406,8 @@ needs to be present inside the hybrid, using the ``if`` statement in Python and 
                 (cls.firstname != None, cls.firstname + " " + cls.lastname),
             ], else_ = cls.lastname)
 
+.. _mapper_column_property_sql_expressions:
+
 Using column_property
 ---------------------
 

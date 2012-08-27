@@ -179,9 +179,16 @@ The ``length(self, value)`` method is now called upon set::
 Working with Relationships
 --------------------------
 
-There's no essential difference when creating hybrids that work with related objects as
-opposed to column-based data. The need for distinct expressions tends to be greater.
-Consider the following declarative mapping which relates a ``User`` to a ``SavingsAccount``::
+There's no essential difference when creating hybrids that work with
+related objects as opposed to column-based data. The need for distinct
+expressions tends to be greater.  Two variants of we'll illustrate
+are the "join-dependent" hybrid, and the "correlated subquery" hybrid.
+
+Join-Dependent Relationship Hybrid
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Consider the following declarative
+mapping which relates a ``User`` to a ``SavingsAccount``::
 
     from sqlalchemy import Column, Integer, ForeignKey, Numeric, String
     from sqlalchemy.orm import relationship
@@ -222,29 +229,87 @@ Consider the following declarative mapping which relates a ``User`` to a ``Savin
         def balance(cls):
             return SavingsAccount.balance
 
-The above hybrid property ``balance`` works with the first ``SavingsAccount`` entry in the list of
-accounts for this user.   The in-Python getter/setter methods can treat ``accounts`` as a Python
+The above hybrid property ``balance`` works with the first
+``SavingsAccount`` entry in the list of accounts for this user.   The
+in-Python getter/setter methods can treat ``accounts`` as a Python
 list available on ``self``.
 
-However, at the expression level, we can't travel along relationships to column attributes
-directly since SQLAlchemy is explicit about joins.   So here, it's expected that the ``User`` class will be
-used in an appropriate context such that an appropriate join to ``SavingsAccount`` will be present::
+However, at the expression level, it's expected that the ``User`` class will be used
+in an appropriate context such that an appropriate join to
+``SavingsAccount`` will be present::
 
-    >>> print Session().query(User, User.balance).join(User.accounts).filter(User.balance > 5000)
-    SELECT "user".id AS user_id, "user".name AS user_name, account.balance AS account_balance
+    >>> print Session().query(User, User.balance).\\
+    ...     join(User.accounts).filter(User.balance > 5000)
+    SELECT "user".id AS user_id, "user".name AS user_name,
+    account.balance AS account_balance
     FROM "user" JOIN account ON "user".id = account.user_id
     WHERE account.balance > :balance_1
 
-Note however, that while the instance level accessors need to worry about whether ``self.accounts``
-is even present, this issue expresses itself differently at the SQL expression level, where we basically
+Note however, that while the instance level accessors need to worry
+about whether ``self.accounts`` is even present, this issue expresses
+itself differently at the SQL expression level, where we basically
 would use an outer join::
 
     >>> from sqlalchemy import or_
     >>> print (Session().query(User, User.balance).outerjoin(User.accounts).
     ...         filter(or_(User.balance < 5000, User.balance == None)))
-    SELECT "user".id AS user_id, "user".name AS user_name, account.balance AS account_balance
+    SELECT "user".id AS user_id, "user".name AS user_name,
+    account.balance AS account_balance
     FROM "user" LEFT OUTER JOIN account ON "user".id = account.user_id
     WHERE account.balance <  :balance_1 OR account.balance IS NULL
+
+Correlated Subquery Relationship Hybrid
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+We can, of course, forego being dependent on the enclosing query's usage
+of joins in favor of the correlated
+subquery, which can portably be packed into a single colunn expression.
+A correlated subquery is more portable, but often performs more poorly
+at the SQL level.
+Using the same technique illustrated at :ref:`mapper_column_property_sql_expressions`,
+we can adjust our ``SavingsAccount`` example to aggregate the balances for
+*all* accounts, and use a correlated subquery for the column expression::
+
+    from sqlalchemy import Column, Integer, ForeignKey, Numeric, String
+    from sqlalchemy.orm import relationship
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.ext.hybrid import hybrid_property
+    from sqlalchemy import select, func
+
+    Base = declarative_base()
+
+    class SavingsAccount(Base):
+        __tablename__ = 'account'
+        id = Column(Integer, primary_key=True)
+        user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
+        balance = Column(Numeric(15, 5))
+
+    class User(Base):
+        __tablename__ = 'user'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(100), nullable=False)
+
+        accounts = relationship("SavingsAccount", backref="owner")
+
+        @hybrid_property
+        def balance(self):
+            return sum(acc.balance for acc in self.accounts)
+
+        @balance.expression
+        def balance(cls):
+            return select([func.sum(SavingsAccount.balance)]).\\
+                    where(SavingsAccount.user_id==cls.id).\\
+                    label('total_balance')
+
+The above recipe will give us the ``balance`` column which renders
+a correlated SELECT::
+
+    >>> print s.query(User).filter(User.balance > 400)
+    SELECT "user".id AS user_id, "user".name AS user_name
+    FROM "user"
+    WHERE (SELECT sum(account.balance) AS sum_1
+    FROM account
+    WHERE account.user_id = "user".id) > :param_1
 
 .. _hybrid_custom_comparators:
 
