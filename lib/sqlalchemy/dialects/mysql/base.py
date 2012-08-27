@@ -601,10 +601,6 @@ class TINYINT(_IntegerType):
     def __init__(self, display_width=None, **kw):
         """Construct a TINYINT.
 
-        Note: following the usual MySQL conventions, TINYINT(1) columns
-        reflected during Table(..., autoload=True) are treated as
-        Boolean columns.
-
         :param display_width: Optional, maximum display width for this number.
 
         :param unsigned: a boolean, optional.
