@@ -21,6 +21,8 @@ def Table(*args, **kw):
         if 'mysql_engine' not in kw and 'mysql_type' not in kw:
             if 'test_needs_fk' in test_opts or 'test_needs_acid' in test_opts:
                 kw['mysql_engine'] = 'InnoDB'
+            else:
+                kw['mysql_engine'] = 'MyISAM'
 
     # Apply some default cascading rules for self-referential foreign keys.
     # MySQL InnoDB has some issues around seleting self-refs too.
