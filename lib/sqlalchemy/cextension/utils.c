@@ -35,8 +35,11 @@ distill_params(PyObject *self, PyObject *args)
 			return NULL;
 		}
 	}
+	else {
+		multiparam_size = 0;
+	}
 
-	if (multiparams == Py_None || multiparam_size == 0) {
+	if (multiparam_size == 0) {
 		if (params != Py_None && PyDict_Size(params) != 0) {
 			enclosing_list = PyList_New(1);
 			if (enclosing_list == NULL) {
@@ -68,10 +71,15 @@ distill_params(PyObject *self, PyObject *args)
 					return NULL;
 				}
 			}
+			else {
+				zero_element_item = NULL;
+			}
 
 			if (zero_element_length == 0 ||
-				PyObject_HasAttrString(zero_element_item, "__iter__") &&
-				!PyObject_HasAttrString(zero_element_item, "strip")
+					(
+						PyObject_HasAttrString(zero_element_item, "__iter__") &&
+						!PyObject_HasAttrString(zero_element_item, "strip")
+					)
 				) {
 				/*
 				 * execute(stmt, [{}, {}, {}, ...])
