@@ -670,6 +670,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
 
 class TableTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_prefixes(self):
+        from sqlalchemy import Table
         table1 = Table("temporary_table_1", MetaData(),
                       Column("col1", Integer),
                       prefixes = ["TEMPORARY"])
