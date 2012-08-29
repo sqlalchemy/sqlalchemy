@@ -2,17 +2,13 @@
 
 from test.lib.testing import eq_, assert_raises, assert_raises_message
 
-# Py2K
-import sets
-# end Py2K
 
 from sqlalchemy import *
-from sqlalchemy import sql, exc, schema, types as sqltypes, event
+from sqlalchemy import sql, exc, schema, types as sqltypes
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.engine.url import make_url
-
-from test.lib.testing import eq_
-from test.lib import *
+from test.lib import fixtures, AssertsCompiledSQL, AssertsExecutionResults
+from test.lib import testing, engines
 from test.lib.engines import utf8_engine
 import datetime
 
