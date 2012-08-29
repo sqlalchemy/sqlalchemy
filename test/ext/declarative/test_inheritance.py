@@ -478,6 +478,8 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         eq_(sess.query(Engineer).filter_by(primary_language='cobol'
             ).one(), Engineer(name='vlad', primary_language='cobol'))
 
+    @testing.skip_if(lambda: testing.against('oracle'),
+                    "Test has an empty insert in it at the moment")
     def test_columns_single_inheritance_conflict_resolution(self):
         """Test that a declared_attr can return the existing column and it will
         be ignored.  this allows conditional columns to be added.
