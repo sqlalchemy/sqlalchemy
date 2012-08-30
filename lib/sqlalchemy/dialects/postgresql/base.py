@@ -1324,7 +1324,7 @@ class PGDialect(default.DefaultDialect):
     def _get_server_version_info(self, connection):
         v = connection.execute("select version()").scalar()
         m = re.match(
-            'PostgreSQL|EnterpriseDB '
+            '(?:PostgreSQL|EnterpriseDB) '
             '(\d+)\.(\d+)(?:\.(\d+))?(?:\.\d+)?(?:devel)?',
             v)
         if not m:
