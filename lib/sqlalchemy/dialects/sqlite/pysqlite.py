@@ -97,12 +97,20 @@ Threading/Pooling Behavior
 ---------------------------
 
 Pysqlite's default behavior is to prohibit the usage of a single connection
-in more than one thread.   This is controlled by the ``check_same_thread``
-Pysqlite flag.   This default is intended to work with older versions
+in more than one thread.   This is originally intended to work with older versions
 of SQLite that did not support multithreaded operation under
 various circumstances.  In particular, older SQLite versions
 did not allow a ``:memory:`` database to be used in multiple threads
 under any circumstances.
+
+Pysqlite does include a now-undocumented flag known as
+``check_same_thread`` which will disable this check, however note that pysqlite
+connections are still not safe to use in concurrently in multiple threads.
+In particular, any statement execution calls would need to be externally
+mutexed, as Pysqlite does not provide for thread-safe propagation of error
+messages among other things.   So while even ``:memory:`` databases can be
+shared among threads in modern SQLite, Pysqlite doesn't provide enough
+thread-safety to make this usage worth it.
 
 SQLAlchemy sets up pooling to work with Pysqlite's default behavior:
 
@@ -123,9 +131,6 @@ SQLAlchemy sets up pooling to work with Pysqlite's default behavior:
       Previous versions select :class:`.SingletonThreadPool` by
       default for all SQLite databases.
 
-Modern versions of SQLite no longer have the threading restrictions, and assuming
-the sqlite3/pysqlite library was built with SQLite's default threading mode
-of "Serialized", even ``:memory:`` databases can be shared among threads.
 
 Using a Memory Database in Multiple Threads
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
