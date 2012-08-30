@@ -133,6 +133,12 @@ class Properties(object):
     def keys(self):
         return self._data.keys()
 
+    def values(self):
+        return self._data.values()
+
+    def items(self):
+        return self._data.items()
+
     def has_key(self, key):
         return key in self._data
 
