@@ -204,6 +204,8 @@ class StatementError(SQLAlchemyError):
         return ' '.join((SQLAlchemyError.__str__(self),
                          repr(self.statement), repr(params_repr)))
 
+    def __unicode__(self):
+        return self.__str__()
 
 class DBAPIError(StatementError):
     """Raised when the execution of a database operation fails.

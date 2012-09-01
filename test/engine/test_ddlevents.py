@@ -469,19 +469,26 @@ class DDLExecutionTest(fixtures.TestBase):
         default_from = testing.db.dialect.statement_compiler(
                             testing.db.dialect, None).default_from()
 
-        eq_(
-            testing.db.execute(
-                text("select 'foo%something'" + default_from)
-            ).scalar(),
-            'foo%something'
-        )
+        # We're abusing the DDL()
+        # construct here by pushing a SELECT through it
+        # so that we can verify the round trip.        
+        # the DDL() will trigger autocommit, which prohibits
+        # some DBAPIs from returning results (pyodbc), so we
+        # run in an explicit transaction.   
+        with testing.db.begin() as conn:
+            eq_(
+                conn.execute(
+                    text("select 'foo%something'" + default_from)
+                ).scalar(),
+                'foo%something'
+            )
 
-        eq_(
-            testing.db.execute(
-                DDL("select 'foo%%something'" + default_from)
-            ).scalar(),
-            'foo%something'
-        )
+            eq_(
+                conn.execute(
+                    DDL("select 'foo%%something'" + default_from)
+                ).scalar(),
+                'foo%something'
+            )
 
 
 
