@@ -4315,12 +4315,15 @@ class ColumnClause(Immutable, ColumnElement):
         self.is_literal = is_literal
 
     def _compare_name_for_result(self, other):
-        # TODO: this still isn't 100% correct
-        if self.table is not None and hasattr(other, 'proxy_set'):
-            return self.proxy_set.intersection(other.proxy_set)
-        else:
+        if self.is_literal or \
+            self.table is None or \
+            not hasattr(other, 'proxy_set') or (
+            isinstance(other, ColumnClause) and other.is_literal
+        ):
             return super(ColumnClause, self).\
                     _compare_name_for_result(other)
+        else:
+            return other.proxy_set.intersection(self.proxy_set)
 
     def _get_table(self):
         return self.__dict__['table']

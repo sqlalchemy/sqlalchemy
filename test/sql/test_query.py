@@ -325,12 +325,16 @@ class QueryTest(fixtures.TestBase):
 
         row = testing.db.execute(select([content.c.type.label("content_type")])).first()
         assert content.c.type in row
+
         assert bar.c.content_type not in row
+
         assert sql.column('content_type') in row
 
         row = testing.db.execute(select([func.now().label("content_type")])).first()
         assert content.c.type not in row
+
         assert bar.c.content_type not in row
+
         assert sql.column('content_type') in row
 
     def test_pickled_rows(self):
@@ -731,7 +735,23 @@ class QueryTest(fixtures.TestBase):
             dict(user_id=1, user_name='john'),
             dict(user_id=2, user_name='jack')
         )
-        r = text("select * from query_users where user_id=2", bind=testing.db).execute().first()
+        r = testing.db.execute(
+                text("select * from query_users where user_id=2")
+            ).first()
+        self.assert_(r.user_id == r['user_id'] == r[users.c.user_id] == 2)
+        self.assert_(r.user_name == r['user_name'] == r[users.c.user_name] == 'jack')
+
+    def test_column_accessor_textual_select(self):
+        users.insert().execute(
+            dict(user_id=1, user_name='john'),
+            dict(user_id=2, user_name='jack')
+        )
+        # this will create column() objects inside
+        # the select(), these need to match on name anyway
+        r = testing.db.execute(
+            select(['user_id', 'user_name']).select_from('query_users').
+                where('user_id=2')
+        ).first()
         self.assert_(r.user_id == r['user_id'] == r[users.c.user_id] == 2)
         self.assert_(r.user_name == r['user_name'] == r[users.c.user_name] == 'jack')
 
@@ -742,9 +762,11 @@ class QueryTest(fixtures.TestBase):
 
         # test a little sqlite weirdness - with the UNION,
         # cols come back as "query_users.user_id" in cursor.description
-        r = text("select query_users.user_id, query_users.user_name from query_users "
-            "UNION select query_users.user_id, query_users.user_name from query_users",
-            bind=testing.db).execute().first()
+        r = testing.db.execute(
+                text("select query_users.user_id, query_users.user_name from query_users "
+                "UNION select query_users.user_id, query_users.user_name from query_users"
+                )
+            ).first()
         eq_(r['user_id'], 1)
         eq_(r['user_name'], "john")
         eq_(r.keys(), ["user_id", "user_name"])
