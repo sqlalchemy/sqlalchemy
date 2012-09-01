@@ -1693,32 +1693,72 @@ class TextTest(QueryTest):
     def test_fulltext(self):
         User = self.classes.User
 
-        assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).from_statement("select * from users order by id").all()
+        eq_(
+            create_session().query(User).
+            from_statement("select * from users order by id").all(),
+            [User(id=7), User(id=8), User(id=9), User(id=10)]
+        )
 
-        assert User(id=7) == create_session().query(User).from_statement("select * from users order by id").first()
-        assert None == create_session().query(User).from_statement("select * from users where name='nonexistent'").first()
+        eq_(
+            create_session().query(User).
+                from_statement("select * from users order by id").first(),
+            User(id=7)
+        )
+        eq_(
+            create_session().query(User).
+                from_statement(
+                    "select * from users where name='nonexistent'").first(),
+            None
+        )
 
     def test_fragment(self):
         User = self.classes.User
 
-        assert [User(id=8), User(id=9)] == create_session().query(User).filter("id in (8, 9)").all()
+        eq_(
+            create_session().query(User).filter("id in (8, 9)").all(),
+            [User(id=8), User(id=9)]
 
-        assert [User(id=9)] == create_session().query(User).filter("name='fred'").filter("id=9").all()
+        )
 
-        assert [User(id=9)] == create_session().query(User).filter("name='fred'").filter(User.id==9).all()
+        eq_(
+            create_session().query(User).filter("name='fred'").
+                filter("id=9").all(),
+            [User(id=9)]
+        )
+        eq_(
+            create_session().query(User).filter("name='fred'").
+                filter(User.id == 9).all(),
+            [User(id=9)]
+        )
 
     def test_binds(self):
         User = self.classes.User
 
-        assert [User(id=8), User(id=9)] == create_session().query(User).filter("id in (:id1, :id2)").params(id1=8, id2=9).all()
+        eq_(
+            create_session().query(User).filter("id in (:id1, :id2)").\
+                params(id1=8, id2=9).all(),
+            [User(id=8), User(id=9)]
+        )
 
     def test_as_column(self):
         User = self.classes.User
 
         s = create_session()
-        assert_raises(sa_exc.InvalidRequestError, s.query, User.id, text("users.name"))
+        assert_raises(sa_exc.InvalidRequestError, s.query,
+                    User.id, text("users.name"))
 
-        eq_(s.query(User.id, "name").order_by(User.id).all(), [(7, u'jack'), (8, u'ed'), (9, u'fred'), (10, u'chuck')])
+        eq_(s.query(User.id, "name").order_by(User.id).all(),
+                [(7, u'jack'), (8, u'ed'), (9, u'fred'), (10, u'chuck')])
+
+    def test_via_select(self):
+        User = self.classes.User
+        s = create_session()
+        eq_(
+            s.query(User).from_statement(
+                select(['id', 'name']).select_from('users').order_by('id'),
+            ).all(),
+            [User(id=7), User(id=8), User(id=9), User(id=10)]
+        )
 
 class ParentTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = 'default'

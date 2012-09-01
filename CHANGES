@@ -71,6 +71,21 @@ CHANGES
     ultimate name as a name inside the embedded
     UNION. [ticket:2552]
 
+  - [bug] Fixed a regression since 0.6 regarding
+    result-row targeting.   It should be possible
+    to use a select() statement with string
+    based columns in it, that is
+    select(['id', 'name']).select_from('mytable'),
+    and have this statement be targetable by
+    Column objects with those names; this is the
+    mechanism by which
+    query(MyClass).from_statement(some_statement)
+    works.  At some point the specific case of
+    using select(['id']), which is equivalent to
+    select([literal_column('id')]), stopped working
+    here, so this has been re-instated and of
+    course tested. [ticket:2558]
+
 - engine
   - [bug] Fixed bug whereby
     a disconnect detect + dispose that occurs
