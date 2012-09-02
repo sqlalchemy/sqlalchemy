@@ -133,6 +133,7 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCom
         )
 
 class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
+    __testing_engine__ = {'execution_options':{'native_odbc_execute':False}}
 
     @testing.requires.update_from
     def test_exec_two_table(self):

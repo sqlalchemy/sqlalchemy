@@ -132,17 +132,6 @@ class NoseSQLAlchemy(Plugin):
         elif cls.__name__.startswith('_'):
             return False
         else:
-            if hasattr(cls, 'setup_class'):
-                existing_setup = cls.setup_class.im_func
-            else:
-                existing_setup = None
-            @classmethod
-            def setup_class(cls):
-                self._do_skips(cls)
-                if existing_setup:
-                    existing_setup(cls)
-            cls.setup_class = setup_class
-
             return True
 
     def _do_skips(self, cls):
@@ -177,7 +166,8 @@ class NoseSQLAlchemy(Plugin):
                     )
 
         for db, op, spec in getattr(cls, '__excluded_on__', ()):
-            testing.exclude(db, op, spec, "'%s' unsupported on DB %s version %s" % (
+            testing.exclude(db, op, spec, 
+                    "'%s' unsupported on DB %s version %s" % (
                     cls.__name__, testing.db.name,
                     testing._server_version()))
 
@@ -189,7 +179,30 @@ class NoseSQLAlchemy(Plugin):
         engines.testing_reaper._after_test_ctx()
         testing.resetwarnings()
 
+    def _setup_cls_engines(self, cls):
+        engine_opts = getattr(cls, '__testing_engine__', None)
+        if engine_opts:
+            self._save_testing_db = testing.db
+            testing.db = engines.testing_engine(options=engine_opts)
+
+    def _teardown_cls_engines(self, cls):
+        engine_opts = getattr(cls, '__testing_engine__', None)
+        if engine_opts:
+            testing.db = self._save_testing_db
+            del self._save_testing_db
+
+    def startContext(self, ctx):
+        if not isinstance(ctx, type) \
+            or not issubclass(ctx, fixtures.TestBase):
+            return
+        self._do_skips(ctx)
+        self._setup_cls_engines(ctx)
+
     def stopContext(self, ctx):
+        if not isinstance(ctx, type) \
+            or not issubclass(ctx, fixtures.TestBase):
+            return
         engines.testing_reaper._stop_test_ctx()
+        self._teardown_cls_engines(ctx)
         if not config.options.low_connections:
             testing.global_cleanup_assertions()

@@ -57,9 +57,27 @@ from ...connectors.mxodbc import MxODBCConnector
 from .pyodbc import MSExecutionContext_pyodbc
 from .base import (MSDialect,
                                             MSSQLStrictCompiler,
-                                            _MSDateTime, _MSDate, TIME)
+                                            _MSDateTime, _MSDate, _MSTime)
 
 
+
+class _MSDate_mxodbc(_MSDate):
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is not None:
+                return "%s-%s-%s" % (value.year, value.month, value.day)
+            else:
+                return None
+        return process
+
+class _MSTime_mxodbc(_MSTime):
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is not None:
+                return "%s:%s:%s" % (value.hour, value.minute, value.second)
+            else:
+                return None
+        return process
 
 class MSExecutionContext_mxodbc(MSExecutionContext_pyodbc):
     """
@@ -80,12 +98,12 @@ class MSDialect_mxodbc(MxODBCConnector, MSDialect):
     colspecs = {
         #sqltypes.Numeric : _MSNumeric,
         sqltypes.DateTime : _MSDateTime,
-        sqltypes.Date : _MSDate,
-        sqltypes.Time : TIME,
+        sqltypes.Date : _MSDate_mxodbc,
+        sqltypes.Time : _MSTime_mxodbc,
     }
 
 
-    def __init__(self, description_encoding='latin-1', **params):
+    def __init__(self, description_encoding=None, **params):
         super(MSDialect_mxodbc, self).__init__(**params)
         self.description_encoding = description_encoding
 

@@ -947,7 +947,9 @@ class Connection(Connectable):
                 ex_text = str(e)
             except TypeError:
                 ex_text = repr(e)
-            self.connection._logger.warn("Error closing cursor: %s", ex_text)
+            if not self.closed:
+                self.connection._logger.warn(
+                            "Error closing cursor: %s", ex_text)
 
             if isinstance(e, (SystemExit, KeyboardInterrupt)):
                 raise

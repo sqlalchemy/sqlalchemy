@@ -58,6 +58,17 @@ def boolean_col_expressions(fn):
         no_support('informix', 'not supported by database'),
     )
 
+def standalone_binds(fn):
+    """target database/driver supports bound parameters as column expressions
+    without being in the context of a typed column.
+
+    """
+    return _chain_decorators_on(
+        fn,
+        no_support('firebird', 'not supported by driver'),
+        no_support('mssql+mxodbc', 'not supported by driver')
+    )
+    
 def identity(fn):
     """Target database must support GENERATED AS IDENTITY or a facsimile.
 
@@ -88,6 +99,16 @@ def reflectable_autoincrement(fn):
         no_support('oracle', 'not supported by database'),
         no_support('sybase', 'not supported by database'),
         )
+
+def binary_comparisons(fn):
+    """target database/driver can allow BLOB/BINARY fields to be compared
+    against a bound parameter value.
+    """
+    return _chain_decorators_on(
+        fn,
+        no_support('oracle', 'not supported by database/driver'),
+        no_support('mssql', 'not supported by database/driver')
+    )
 
 def independent_cursors(fn):
     """Target must support simultaneous, independent database cursors on a single connection."""
@@ -317,7 +338,21 @@ def cextensions(fn):
     )
 
 
+def emulated_lastrowid(fn):
+    """"target dialect retrieves cursor.lastrowid or an equivalent
+    after an insert() construct executes.
+    """
+    return _chain_decorators_on(
+        fn,
+        fails_on_everything_except('mysql+mysqldb', 'mysql+oursql',
+                                   'sqlite+pysqlite', 'mysql+pymysql',
+                                   'mssql+pyodbc', 'mssql+mxodbc'),
+    )
+
 def dbapi_lastrowid(fn):
+    """"target backend includes a 'lastrowid' accessor on the DBAPI
+    cursor object.
+    """
     return _chain_decorators_on(
         fn,
         fails_on_everything_except('mysql+mysqldb', 'mysql+oursql',

@@ -242,7 +242,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
         }
     )
 
-    def __init__(self, description_encoding='latin-1', **params):
+    def __init__(self, description_encoding=None, **params):
         super(MSDialect_pyodbc, self).__init__(**params)
         self.description_encoding = description_encoding
         self.use_scope_identity = self.use_scope_identity and \

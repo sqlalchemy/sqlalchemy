@@ -26,6 +26,11 @@ class TestBase(object):
     # skipped.
     __skip_if__ = None
 
+    # replace testing.db with a testing.engine()
+    # for the duration of this suite, using the given
+    # arguments
+    __testing_engine__ = None
+
     def assert_(self, val, msg=None):
         assert val, msg
 

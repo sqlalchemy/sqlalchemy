@@ -287,6 +287,7 @@ class TIME(sqltypes.TIME):
             else:
                 return value
         return process
+_MSTime = TIME
 
 class _DateTimeBase(object):
     def bind_processor(self, dialect):
@@ -972,10 +973,6 @@ class MSSQLStrictCompiler(MSSQLCompiler):
                                 self.process(binary.left, **kw),
                                 self.process(binary.right, **kw)
             )
-
-    def visit_function(self, func, **kw):
-        kw['literal_binds'] = True
-        return super(MSSQLStrictCompiler, self).visit_function(func, **kw)
 
     def render_literal_value(self, value, type_):
         """

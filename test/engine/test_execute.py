@@ -1144,10 +1144,10 @@ class EngineEventsTest(fixtures.TestBase):
 
         for engine in [
             engines.testing_engine(options=dict(implicit_returning=False)),
-            #engines.testing_engine(options=dict(implicit_returning=False,
-            #                       strategy='threadlocal')),
-            #engines.testing_engine(options=dict(implicit_returning=False)).\
-            #    connect()
+            engines.testing_engine(options=dict(implicit_returning=False,
+                                   strategy='threadlocal')),
+            engines.testing_engine(options=dict(implicit_returning=False)).\
+                connect()
             ]:
             event.listen(engine, 'before_execute', execute)
             event.listen(engine, 'before_cursor_execute', cursor_execute)
@@ -1181,7 +1181,9 @@ class EngineEventsTest(fixtures.TestBase):
                     ('INSERT INTO t1 (c1, c2)', {
                         'c2': 'some data', 'c1': 5},
                         (5, 'some data')),
-                    ('SELECT lower', {'lower_2': 'Foo'}, ('Foo', )),
+                    ('SELECT lower', {'lower_2': 'Foo'}, 
+                        () if testing.against('mssql+mxodbc') else
+                        ('Foo', )),
                     ('INSERT INTO t1 (c1, c2)',
                      {'c2': 'foo', 'c1': 6},
                      (6, 'foo')),
@@ -1446,7 +1448,9 @@ class ProxyConnectionTest(fixtures.TestBase):
                     ('CREATE TABLE t1', {}, ()),
                     ('INSERT INTO t1 (c1, c2)', {'c2': 'some data', 'c1'
                      : 5}, (5, 'some data')),
-                    ('SELECT lower', {'lower_2': 'Foo'}, ('Foo', )),
+                    ('SELECT lower', {'lower_2': 'Foo'}, 
+                        () if testing.against('mssql+mxodbc')
+                        else ('Foo', )),
                     ('INSERT INTO t1 (c1, c2)', {'c2': 'foo', 'c1': 6},
                      (6, 'foo')),
                     ('select * from t1', {}, ()),

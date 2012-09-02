@@ -678,7 +678,8 @@ class UnicodeTest(fixtures.TestBase, AssertsExecutionResults):
         """assert expected values for 'native unicode' mode"""
 
         if \
-	     (testing.against('mssql+pyodbc') and not testing.db.dialect.freetds):
+	     (testing.against('mssql+pyodbc') and not testing.db.dialect.freetds) \
+         or testing.against('mssql+mxodbc'):
             assert testing.db.dialect.returns_unicode_strings == 'conditional'
             return
 
@@ -817,6 +818,8 @@ class UnicodeTest(fixtures.TestBase, AssertsExecutionResults):
     #                    lambda: testing.db_spec("postgresql")(testing.db),
     #                    "pg8000 and psycopg2 both have issues here in py3k"
     #                    )
+    @testing.skip_if(lambda: testing.db_spec('mssql+mxodbc'), 
+        "unsupported behavior")
     def test_ignoring_unicode_error(self):
         """checks String(unicode_error='ignore') is passed to underlying codec."""
 
@@ -1019,8 +1022,8 @@ class EnumTest(fixtures.TestBase):
 class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
     __excluded_on__ = (
         ('mysql', '<', (4, 1, 1)),  # screwy varbinary types
-        )
-
+    )
+    
     @classmethod
     def setup_class(cls):
         global binary_table, MyPickleType, metadata
@@ -1102,8 +1105,7 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
             eq_(testobj3.moredata, l[0]['mypickle'].moredata)
             eq_(l[0]['mypickle'].stuff, 'this is the right stuff')
 
-    @testing.fails_on('oracle+cx_oracle', 'oracle fairly grumpy about binary '
-                                        'data, not really known how to make this work')
+    @testing.requires.binary_comparisons
     def test_comparison(self):
         """test that type coercion occurs on comparison for binary"""
 
@@ -1138,7 +1140,8 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
                     return value / 10
                 return process
             def adapt_operator(self, op):
-                return {operators.add:operators.sub, operators.sub:operators.add}.get(op, op)
+                return {operators.add:operators.sub, 
+                    operators.sub:operators.add}.get(op, op)
 
         class MyTypeDec(types.TypeDecorator):
             impl = String

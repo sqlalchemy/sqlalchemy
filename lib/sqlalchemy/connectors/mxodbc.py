@@ -28,8 +28,8 @@ class MxODBCConnector(Connector):
     driver='mxodbc'
 
     supports_sane_multi_rowcount = False
-    supports_unicode_statements = False
-    supports_unicode_binds = False
+    supports_unicode_statements = True
+    supports_unicode_binds = True
 
     supports_native_decimal = True
 
@@ -130,21 +130,28 @@ class MxODBCConnector(Connector):
                 version.append(n)
         return tuple(version)
 
-    def do_execute(self, cursor, statement, parameters, context=None):
+    def _get_direct(self, context):
+        return True
         if context:
             native_odbc_execute = context.execution_options.\
                                         get('native_odbc_execute', 'auto')
             if native_odbc_execute is True:
                 # user specified native_odbc_execute=True
-                cursor.execute(statement, parameters)
+                return False
             elif native_odbc_execute is False:
                 # user specified native_odbc_execute=False
-                cursor.executedirect(statement, parameters)
+                return True
             elif context.is_crud:
                 # statement is UPDATE, DELETE, INSERT
-                cursor.execute(statement, parameters)
+                return False
             else:
                 # all other statements
-                cursor.executedirect(statement, parameters)
+                return True
         else:
-            cursor.executedirect(statement, parameters)
+            return True
+
+    def do_executemany(self, cursor, statement, parameters, context=None):
+        cursor.executemany(statement, parameters, direct=self._get_direct(context))
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+        cursor.execute(statement, parameters, direct=self._get_direct(context))

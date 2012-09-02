@@ -710,6 +710,8 @@ class QueryTest(fixtures.TestBase):
                               use_labels=labels),
                  [(3, 'a'), (2, 'b'), (1, None)])
 
+    @testing.fails_on('mssql+pyodbc', 
+        "pyodbc result row doesn't support slicing")
     def test_column_slices(self):
         users.insert().execute(user_id=1, user_name='john')
         users.insert().execute(user_id=2, user_name='jack')
@@ -1276,6 +1278,7 @@ class RequiredBindTest(fixtures.TablesTest):
             stmt, {'data': 'data'}
         )
 
+    @testing.requires.standalone_binds
     def test_select_columns(self):
         stmt = select([bindparam('data'), bindparam('x')])
         self._assert_raises(
@@ -1394,6 +1397,26 @@ class TableInsertTest(fixtures.TablesTest):
             inserted_primary_key=[1]
         )
 
+    def test_uppercase_direct_params(self):
+        t = self.tables.foo
+        self._test(
+            t.insert().values(id=1, data='data', x=5),
+            (1, 'data', 5),
+            inserted_primary_key=[1]
+        )
+
+    @testing.requires.returning
+    def test_uppercase_direct_params_returning(self):
+        t = self.tables.foo
+        self._test(
+            t.insert().values(
+                        id=1, data='data', x=5).returning(t.c.id, t.c.x),
+            (1, 'data', 5),
+            returning=(1, 5)
+        )
+
+    @testing.fails_on('mssql', 
+        "lowercase table doesn't support identity insert disable")
     def test_direct_params(self):
         t = self._fixture()
         self._test(
@@ -1402,6 +1425,8 @@ class TableInsertTest(fixtures.TablesTest):
             inserted_primary_key=[]
         )
 
+    @testing.fails_on('mssql', 
+        "lowercase table doesn't support identity insert disable")
     @testing.requires.returning
     def test_direct_params_returning(self):
         t = self._fixture()
@@ -1412,7 +1437,7 @@ class TableInsertTest(fixtures.TablesTest):
             returning=(1, 5)
         )
 
-    @testing.requires.dbapi_lastrowid
+    @testing.requires.emulated_lastrowid
     def test_implicit_pk(self):
         t = self._fixture()
         self._test(
@@ -1422,7 +1447,7 @@ class TableInsertTest(fixtures.TablesTest):
             inserted_primary_key=[]
         )
 
-    @testing.requires.dbapi_lastrowid
+    @testing.requires.emulated_lastrowid
     def test_implicit_pk_multi_rows(self):
         t = self._fixture()
         self._test_multi(
@@ -1439,7 +1464,7 @@ class TableInsertTest(fixtures.TablesTest):
             ],
         )
 
-    @testing.requires.dbapi_lastrowid
+    @testing.requires.emulated_lastrowid
     def test_implicit_pk_inline(self):
         t = self._fixture()
         self._test(
