@@ -1038,7 +1038,11 @@ class SQLCompiler(engine.Compiled):
                         isinstance(column, sql.Function)):
             result_expr = _CompileLabel(col_expr, column.anon_label)
         elif col_expr is not column:
-            result_expr = _CompileLabel(col_expr, column.anon_label)
+            # TODO: are we sure "column" has a .name and .key here ?
+            # assert isinstance(column, sql.ColumnClause)
+            result_expr = _CompileLabel(col_expr,
+                            sql._as_truncated(column.name),
+                            alt_names=(column.key,))
         else:
             result_expr = col_expr
 
@@ -1067,7 +1071,6 @@ class SQLCompiler(engine.Compiled):
                             iswrapper=False, fromhints=None,
                             compound_index=0,
                             positional_names=None, **kwargs):
-
         entry = self.stack and self.stack[-1] or {}
 
         existingfroms = entry.get('from', None)

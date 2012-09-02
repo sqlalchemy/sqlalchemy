@@ -1,4 +1,4 @@
-from sqlalchemy import Table, Column, String, func, MetaData, select, TypeDecorator
+from sqlalchemy import Table, Column, String, func, MetaData, select, TypeDecorator, cast
 from test.lib import fixtures, AssertsCompiledSQL, testing
 from test.lib.testing import eq_
 
@@ -24,7 +24,14 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             select([table]),
-            "SELECT test_table.x, lower(test_table.y) AS y_1 FROM test_table"
+            "SELECT test_table.x, lower(test_table.y) AS y FROM test_table"
+        )
+
+    def test_anonymous_expr(self):
+        table = self._fixture()
+        self.assert_compile(
+            select([cast(table.c.y, String)]),
+            "SELECT CAST(test_table.y AS VARCHAR) AS anon_1 FROM test_table"
         )
 
     def test_select_cols_use_labels(self):
@@ -73,8 +80,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         table = self._fixture()
         self.assert_compile(
             select([table]).where(table.c.y == "hi"),
-            "SELECT test_table.x, lower(test_table.y) AS y_1 FROM "
-            "test_table WHERE test_table.y = lower(:y_2)"
+            "SELECT test_table.x, lower(test_table.y) AS y FROM "
+            "test_table WHERE test_table.y = lower(:y_1)"
         )
 
 class RoundTripTestBase(object):
@@ -118,6 +125,17 @@ class RoundTripTestBase(object):
         row = testing.db.execute(select([self.tables.test_table])).first()
         eq_(
             row[self.tables.test_table.c.y],
+            "Y1"
+        )
+
+    def test_targeting_by_string(self):
+        testing.db.execute(
+            self.tables.test_table.insert(),
+            {"x": "X1", "y": "Y1"},
+        )
+        row = testing.db.execute(select([self.tables.test_table])).first()
+        eq_(
+            row["y"],
             "Y1"
         )
 
