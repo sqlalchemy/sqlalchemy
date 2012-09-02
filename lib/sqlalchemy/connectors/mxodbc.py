@@ -150,8 +150,8 @@ class MxODBCConnector(Connector):
         else:
             return True
 
-    def do_executemany(self, cursor, statement, parameters, context=None):
-        cursor.executemany(statement, parameters, direct=self._get_direct(context))
+    #def do_executemany(self, cursor, statement, parameters, context=None):
+    #    cursor.executemany(statement, parameters, direct=self._get_direct(context))
 
     def do_execute(self, cursor, statement, parameters, context=None):
         cursor.execute(statement, parameters, direct=self._get_direct(context))
