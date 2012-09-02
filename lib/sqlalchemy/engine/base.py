@@ -914,7 +914,9 @@ class Connection(Connectable):
             for fn in self.dispatch.before_cursor_execute:
                 statement, parameters = \
                             fn(self, cursor, statement, parameters,
-                                        context, context.executemany)
+                                        context, 
+                                        context.executemany 
+                                           if context is not None else False)
 
         if self._echo:
             self.engine.logger.info(statement)

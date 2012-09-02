@@ -1144,10 +1144,10 @@ class EngineEventsTest(fixtures.TestBase):
 
         for engine in [
             engines.testing_engine(options=dict(implicit_returning=False)),
-            engines.testing_engine(options=dict(implicit_returning=False,
-                                   strategy='threadlocal')),
-            engines.testing_engine(options=dict(implicit_returning=False)).\
-                connect()
+            #engines.testing_engine(options=dict(implicit_returning=False,
+            #                       strategy='threadlocal')),
+            #engines.testing_engine(options=dict(implicit_returning=False)).\
+            #    connect()
             ]:
             event.listen(engine, 'before_execute', execute)
             event.listen(engine, 'before_cursor_execute', cursor_execute)

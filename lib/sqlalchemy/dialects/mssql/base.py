@@ -671,7 +671,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 self.root_connection._cursor_execute(self.cursor,
                     "SET IDENTITY_INSERT %s ON" %
                     self.dialect.identifier_preparer.format_table(tbl),
-                    ())
+                    (), self)
 
     def post_exec(self):
         """Disable IDENTITY_INSERT if enabled."""
@@ -680,10 +680,10 @@ class MSExecutionContext(default.DefaultExecutionContext):
         if self._select_lastrowid:
             if self.dialect.use_scope_identity:
                 conn._cursor_execute(self.cursor,
-                    "SELECT scope_identity() AS lastrowid", ())
+                    "SELECT scope_identity() AS lastrowid", (), self)
             else:
                 conn._cursor_execute(self.cursor,
-                    "SELECT @@identity AS lastrowid", ())
+                    "SELECT @@identity AS lastrowid", (), self)
             # fetchall() ensures the cursor is consumed without closing it
             row = self.cursor.fetchall()[0]
             self._lastrowid = int(row[0])
@@ -697,8 +697,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
                         "SET IDENTITY_INSERT %s OFF" %
                             self.dialect.identifier_preparer.
                                 format_table(self.compiled.statement.table),
-                        ()
-                        )
+                        (), self)
 
     def get_lastrowid(self):
         return self._lastrowid
