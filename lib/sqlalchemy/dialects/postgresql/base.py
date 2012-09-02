@@ -1323,7 +1323,10 @@ class PGDialect(default.DefaultDialect):
 
     def _get_server_version_info(self, connection):
         v = connection.execute("select version()").scalar()
-        m = re.match('PostgreSQL (\d+)\.(\d+)(?:\.(\d+))?(?:devel)?', v)
+        m = re.match(
+            '(?:PostgreSQL|EnterpriseDB) '
+            '(\d+)\.(\d+)(?:\.(\d+))?(?:\.\d+)?(?:devel)?',
+            v)
         if not m:
             raise AssertionError(
                     "Could not determine version from string '%s'" % v)

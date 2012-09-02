@@ -1751,7 +1751,10 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
              'GCC gcc (GCC) 4.1.2 20070925 (Red Hat 4.1.2-33)', (8, 3,
              8)),
              ('PostgreSQL 8.5devel on x86_64-unknown-linux-gnu, '
-             'compiled by GCC gcc (GCC) 4.4.2, 64-bit', (8, 5))]:
+             'compiled by GCC gcc (GCC) 4.4.2, 64-bit', (8, 5)),
+             ('EnterpriseDB 9.1.2.2 on x86_64-unknown-linux-gnu, '
+             'compiled by gcc (GCC) 4.1.2 20080704 (Red Hat 4.1.2-50), '
+             '64-bit', (9, 1, 2))]:
             eq_(testing.db.dialect._get_server_version_info(MockConn(string)),
                 version)
 
