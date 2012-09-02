@@ -30,7 +30,10 @@ class MockCursor(object):
     def __init__(self, parent):
         self.parent = parent
     def execute(self, *args, **kwargs):
-        self.parent.parent.log.append('execute')
+        if kwargs.get('direct', False):
+            self.executedirect()
+        else:
+            self.parent.parent.log.append('execute')
     def executedirect(self, *args, **kwargs):
         self.parent.parent.log.append('executedirect')
     def close(self):

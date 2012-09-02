@@ -131,7 +131,6 @@ class MxODBCConnector(Connector):
         return tuple(version)
 
     def _get_direct(self, context):
-        return True
         if context:
             native_odbc_execute = context.execution_options.\
                                         get('native_odbc_execute', 'auto')
