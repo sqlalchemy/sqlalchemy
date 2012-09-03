@@ -2,9 +2,7 @@ from sqlalchemy import Table, Column, String, func, MetaData, select, TypeDecora
 from test.lib import fixtures, AssertsCompiledSQL, testing
 from test.lib.testing import eq_
 
-class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = 'default'
-
+class _ExprFixture(object):
     def _fixture(self):
         class MyString(String):
             def bind_expression(self, bindvalue):
@@ -18,6 +16,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 MetaData(), Column('x', String), Column('y', MyString)
         )
         return test_table
+
+class SelectTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     def test_select_cols(self):
         table = self._fixture()
@@ -82,6 +83,41 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             select([table]).where(table.c.y == "hi"),
             "SELECT test_table.x, lower(test_table.y) AS y FROM "
             "test_table WHERE test_table.y = lower(:y_1)"
+        )
+
+class DerivedTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def test_select_from_select(self):
+        table = self._fixture()
+        self.assert_compile(
+            table.select().select(),
+            "SELECT x, lower(y) AS y FROM (SELECT test_table.x "
+                "AS x, test_table.y AS y FROM test_table)"
+        )
+
+    def test_select_from_alias(self):
+        table = self._fixture()
+        self.assert_compile(
+            table.select().alias().select(),
+            "SELECT anon_1.x, lower(anon_1.y) AS y FROM (SELECT "
+                "test_table.x AS x, test_table.y AS y "
+                "FROM test_table) AS anon_1"
+        )
+
+    def test_select_from_aliased_join(self):
+        table = self._fixture()
+        s1 = table.select().alias()
+        s2 = table.select().alias()
+        j = s1.join(s2, s1.c.x == s2.c.x)
+        s3 = j.select()
+        self.assert_compile(s3,
+            "SELECT anon_1.x, lower(anon_1.y) AS y, anon_2.x, "
+            "lower(anon_2.y) AS y "
+            "FROM (SELECT test_table.x AS x, test_table.y AS y "
+            "FROM test_table) AS anon_1 JOIN (SELECT "
+            "test_table.x AS x, test_table.y AS y "
+            "FROM test_table) AS anon_2 ON anon_1.x = anon_2.x"
         )
 
 class RoundTripTestBase(object):

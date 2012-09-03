@@ -986,15 +986,13 @@ class SQLCompiler(engine.Compiled):
                                     within_columns_clause=True):
         """produce labeled columns present in a select()."""
 
-        if column.type._has_column_expression:
+        if column.type._has_column_expression and \
+            populate_result_map:
             col_expr = column.type.column_expression(column)
-            if populate_result_map:
-                add_to_result_map = lambda keyname, name, objects, type_: \
-                                    self._add_to_result_map(
-                                            keyname, name,
-                                            objects + (column,), type_)
-            else:
-                add_to_result_map = None
+            add_to_result_map = lambda keyname, name, objects, type_: \
+                                self._add_to_result_map(
+                                        keyname, name,
+                                        objects + (column,), type_)
         else:
             col_expr = column
             if populate_result_map:
