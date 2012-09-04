@@ -2107,6 +2107,8 @@ class _DefaultColumnComparator(operators.ColumnOperators):
         "between_op": (_between_impl, ),
         "neg": (_neg_impl,),
         "getitem": (_unsupported_impl,),
+        "lshift": (_unsupported_impl,),
+        "rshift": (_unsupported_impl,),
     }
 
 

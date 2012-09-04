@@ -11,7 +11,7 @@
 
 from operator import (
     and_, or_, inv, add, mul, sub, mod, truediv, lt, le, ne, gt, ge, eq, neg,
-    getitem
+    getitem, lshift, rshift
     )
 
 # Py2K
@@ -314,6 +314,24 @@ class ColumnOperators(Operators):
 
         """
         return self.operate(getitem, index)
+
+    def __lshift__(self, other):
+        """implement the << operator.
+
+        Not used by SQLAlchemy core, this is provided
+        for custom operator systems which want to use
+        << as an extension point.
+        """
+        return self.operate(lshift, other)
+
+    def __rshift__(self, other):
+        """implement the >> operator.
+
+        Not used by SQLAlchemy core, this is provided
+        for custom operator systems which want to use
+        >> as an extension point.
+        """
+        return self.operate(rshift, other)
 
     def concat(self, other):
         """Implement the 'concat' operator.

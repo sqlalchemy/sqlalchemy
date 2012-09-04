@@ -421,7 +421,9 @@ underneath "0.7.xx".
     for end-user definition of custom __getitem__
     schemes which can be applied at the type
     level as well as within ORM-level custom
-    operator schemes.
+    operator schemes.   `lshift` (<<)
+    and `rshift` (>>) are also supported as
+    optional operators.
 
     Note that this change has the effect that
     descriptor-based __getitem__ schemes used by

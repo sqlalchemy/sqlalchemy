@@ -7,7 +7,7 @@ from sqlalchemy.sql.expression import BinaryExpression, \
 from sqlalchemy.sql import operators
 from sqlalchemy import exc
 from sqlalchemy.schema import Column, Table, MetaData
-from sqlalchemy.types import Integer, TypeEngine, TypeDecorator
+from sqlalchemy.types import Integer, TypeEngine, TypeDecorator, UserDefinedType
 from sqlalchemy.dialects import mysql, firebird
 
 from sqlalchemy import text, literal_column
@@ -238,6 +238,42 @@ class NewOperatorTest(_CustomComparatorTests, fixtures.TestBase):
 
     def _assert_not_add_override(self, expr):
         assert not hasattr(expr, "foob")
+
+class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def test_getitem(self):
+        class MyType(UserDefinedType):
+            class comparator_factory(UserDefinedType.Comparator):
+                def __getitem__(self, index):
+                    return self.op("->")(index)
+
+        self.assert_compile(
+            Column('x', MyType())[5],
+            "x -> :x_1"
+        )
+
+    def test_lshift(self):
+        class MyType(UserDefinedType):
+            class comparator_factory(UserDefinedType.Comparator):
+                def __lshift__(self, other):
+                    return self.op("->")(other)
+
+        self.assert_compile(
+            Column('x', MyType()) << 5,
+            "x -> :x_1"
+        )
+
+    def test_rshift(self):
+        class MyType(UserDefinedType):
+            class comparator_factory(UserDefinedType.Comparator):
+                def __rshift__(self, other):
+                    return self.op("->")(other)
+
+        self.assert_compile(
+            Column('x', MyType()) >> 5,
+            "x -> :x_1"
+        )
 
 from sqlalchemy import and_, not_, between
 
