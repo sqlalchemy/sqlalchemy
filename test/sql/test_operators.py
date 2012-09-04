@@ -242,6 +242,17 @@ class NewOperatorTest(_CustomComparatorTests, fixtures.TestBase):
 class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
+    def test_contains(self):
+        class MyType(UserDefinedType):
+            class comparator_factory(UserDefinedType.Comparator):
+                def contains(self, other, **kw):
+                    return self.op("->")(other)
+
+        self.assert_compile(
+            Column('x', MyType()).contains(5),
+            "x -> :x_1"
+        )
+
     def test_getitem(self):
         class MyType(UserDefinedType):
             class comparator_factory(UserDefinedType.Comparator):
