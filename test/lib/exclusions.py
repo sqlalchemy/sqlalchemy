@@ -96,7 +96,7 @@ class SpecPredicate(Predicate):
         else:
             dialect, driver = self.db, None
 
-        if engine.name != dialect:
+        if dialect and engine.name != dialect:
             return False
         if driver is not None and engine.driver != driver:
             return False
