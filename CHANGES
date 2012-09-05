@@ -629,6 +629,13 @@ underneath "0.7.xx".
     statements, so that unknown reserved names can
     be fully supported.  [ticket:2437]
 
+  - [feature] The types of columns excluded from the
+    setinputsizes() set can be customized by sending
+    a list of string DBAPI type names to exclude.
+    This list was previously fixed.  The list also
+    now defaults to STRING, UNICODE, removing
+    CLOB, NCLOB from the list.  [ticket:2469]
+
 - extensions
   - [removed] The SQLSoup extension is removed from
     SQLAlchemy, and is now an external project.

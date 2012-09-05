@@ -20,29 +20,43 @@ Connecting
 ----------
 
 Connecting with create_engine() uses the standard URL approach of
-``oracle://user:pass@host:port/dbname[?key=value&key=value...]``.  If dbname is present, the
-host, port, and dbname tokens are converted to a TNS name using the cx_oracle
-:func:`makedsn()` function.  Otherwise, the host token is taken directly as a TNS name.
+``oracle://user:pass@host:port/dbname[?key=value&key=value...]``.  If dbname is
+present, the host, port, and dbname tokens are converted to a TNS name using
+the cx_oracle :func:`makedsn()` function.  Otherwise, the host token is taken
+directly as a TNS name.
 
-Additional arguments which may be specified either as query string arguments on the
-URL, or as keyword arguments to :func:`~sqlalchemy.create_engine()` are:
+Additional arguments which may be specified either as query string arguments
+on the URL, or as keyword arguments to :func:`~sqlalchemy.create_engine()` are:
 
-* *allow_twophase* - enable two-phase transactions.  Defaults to ``True``.
+* allow_twophase - enable two-phase transactions.  Defaults to ``True``.
 
-* *arraysize* - set the cx_oracle.arraysize value on cursors, in SQLAlchemy
+* arraysize - set the cx_oracle.arraysize value on cursors, in SQLAlchemy
   it defaults to 50.  See the section on "LOB Objects" below.
 
-* *auto_convert_lobs* - defaults to True, see the section on LOB objects.
+* auto_convert_lobs - defaults to True, see the section on LOB objects.
 
-* *auto_setinputsizes* - the cx_oracle.setinputsizes() call is issued for all bind parameters.
-  This is required for LOB datatypes but can be disabled to reduce overhead.  Defaults
-  to ``True``.
+* auto_setinputsizes - the cx_oracle.setinputsizes() call is issued for
+  all bind parameters.  This is required for LOB datatypes but can be
+  disabled to reduce overhead.  Defaults to ``True``.  Specific types
+  can be excluded from this process using the ``exclude_setinputsizes``
+  parameter.
 
-* *mode* - This is given the string value of SYSDBA or SYSOPER, or alternatively an
-  integer value.  This value is only available as a URL query string argument.
+* exclude_setinputsizes - a tuple or list of string DBAPI type names to
+  be excluded from the "auto setinputsizes" feature.  The type names here
+  must match DBAPI types that are found in the "cx_Oracle" module namespace,
+  such as cx_Oracle.UNICODE, cx_Oracle.NCLOB, etc.   Defaults to
+  ``(STRING, UNICODE)``.
 
-* *threaded* - enable multithreaded access to cx_oracle connections.  Defaults
-  to ``True``.  Note that this is the opposite default of cx_oracle itself.
+  .. versionadded:: 0.8 specific DBAPI types can be excluded from the
+     auto_setinputsizes feature via the exclude_setinputsizes attribute.
+
+* mode - This is given the string value of SYSDBA or SYSOPER, or alternatively
+  an integer value.  This value is only available as a URL query string
+  argument.
+
+* threaded - enable multithreaded access to cx_oracle connections.  Defaults
+  to ``True``.  Note that this is the opposite default of the cx_Oracle DBAPI
+  itself.
 
 Unicode
 -------
@@ -338,7 +352,7 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
             # on String, including that outparams/RETURNING
             # breaks for varchars
             self.set_input_sizes(quoted_bind_names,
-                                 exclude_types=self.dialect._cx_oracle_string_types
+                                 exclude_types=self.dialect.exclude_setinputsizes
                                 )
 
         # if a single execute, check for outparams
@@ -483,6 +497,7 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     def __init__(self,
                 auto_setinputsizes=True,
+                exclude_setinputsizes=("STRING", "UNICODE"),
                 auto_convert_lobs=True,
                 threaded=True,
                 allow_twophase=True,
@@ -492,21 +507,25 @@ class OracleDialect_cx_oracle(OracleDialect):
         self.threaded = threaded
         self.arraysize = arraysize
         self.allow_twophase = allow_twophase
-        self.supports_timestamp = self.dbapi is None or hasattr(self.dbapi, 'TIMESTAMP' )
+        self.supports_timestamp = self.dbapi is None or \
+                                        hasattr(self.dbapi, 'TIMESTAMP')
         self.auto_setinputsizes = auto_setinputsizes
         self.auto_convert_lobs = auto_convert_lobs
 
         if hasattr(self.dbapi, 'version'):
-            self.cx_oracle_ver = tuple([int(x) for x in self.dbapi.version.split('.')])
+            self.cx_oracle_ver = tuple([int(x) for x in
+                                self.dbapi.version.split('.')])
         else:
             self.cx_oracle_ver = (0, 0, 0)
 
         def types(*names):
-            return set([
-                        getattr(self.dbapi, name, None) for name in names
-                    ]).difference([None])
+            return set(
+                    getattr(self.dbapi, name, None) for name in names
+                    ).difference([None])
 
-        self._cx_oracle_string_types = types("STRING", "UNICODE", "NCLOB", "CLOB")
+        self.exclude_setinputsizes = types(*(exclude_setinputsizes or ()))
+        self._cx_oracle_string_types = types("STRING", "UNICODE",
+                                            "NCLOB", "CLOB")
         self._cx_oracle_unicode_types = types("UNICODE", "NCLOB")
         self._cx_oracle_binary_types = types("BFILE", "CLOB", "NCLOB", "BLOB")
         self.supports_unicode_binds = self.cx_oracle_ver >= (5, 0)

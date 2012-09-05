@@ -47,6 +47,26 @@ create or replace procedure foo(x_in IN number, x_out OUT number, y_out OUT numb
     def teardown_class(cls):
          testing.db.execute("DROP PROCEDURE foo")
 
+class CXOracleArgsTest(fixtures.TestBase):
+    __only_on__ = 'oracle+cx_oracle'
+
+    def test_autosetinputsizes(self):
+        dialect = cx_oracle.dialect()
+        assert dialect.auto_setinputsizes
+
+        dialect = cx_oracle.dialect(auto_setinputsizes=False)
+        assert not dialect.auto_setinputsizes
+
+    def test_exclude_inputsizes_none(self):
+        dialect = cx_oracle.dialect(exclude_setinputsizes=None)
+        eq_(dialect.exclude_setinputsizes, set())
+
+    def test_exclude_inputsizes_custom(self):
+        import cx_Oracle
+        dialect = cx_oracle.dialect(dbapi=cx_Oracle,
+                            exclude_setinputsizes=('NCLOB',))
+        eq_(dialect.exclude_setinputsizes, set([cx_Oracle.NCLOB]))
+
 class QuotedBindRoundTripTest(fixtures.TestBase):
 
     __only_on__ = 'oracle'
