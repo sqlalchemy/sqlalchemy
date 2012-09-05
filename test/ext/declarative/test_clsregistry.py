@@ -19,6 +19,8 @@ class MockProp(object):
 
 
 class ClsRegistryTest(fixtures.TestBase):
+    __requires__ = 'predictable_gc',
+
     def test_same_module_same_name(self):
         base = weakref.WeakValueDictionary()
         f1 = MockClass(base, "foo.bar.Foo")

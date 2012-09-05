@@ -89,6 +89,7 @@ class ParentRemovalTest(fixtures.MappedTest):
 
         self._assert_not_hasparent(a1)
 
+    @testing.requires.predictable_gc
     def test_stale_state_positive_gc(self):
         User = self.classes.User
         s, u1, a1 = self._fixture()
@@ -102,6 +103,7 @@ class ParentRemovalTest(fixtures.MappedTest):
 
         self._assert_not_hasparent(a1)
 
+    @testing.requires.predictable_gc
     def test_stale_state_positive_pk_change(self):
         """Illustrate that we can't easily link a
         stale state to a fresh one if the fresh one has
@@ -168,6 +170,7 @@ class ParentRemovalTest(fixtures.MappedTest):
         self._assert_not_hasparent(a1)
         #self._assert_hasparent(a1)
 
+    @testing.requires.predictable_gc
     def test_stale_state_negative(self):
         User = self.classes.User
         s, u1, a1 = self._fixture()

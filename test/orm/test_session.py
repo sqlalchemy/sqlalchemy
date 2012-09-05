@@ -600,8 +600,8 @@ class SessionTest(_fixtures.FixtureTest):
         assert user not in s
         assert s.query(User).count() == 0
 
-
-    def test_weak_ref(self):
+    @testing.requires.predictable_gc
+    def test_weakref(self):
         """test the weak-referencing identity map, which strongly-
         references modified items."""
 
@@ -636,7 +636,8 @@ class SessionTest(_fixtures.FixtureTest):
         assert user.name == 'fred'
         assert s.identity_map
 
-    def test_weak_ref_pickled(self):
+    @testing.requires.predictable_gc
+    def test_weakref_pickled(self):
         users, User = self.tables.users, pickleable.User
 
         s = create_session()
@@ -689,6 +690,7 @@ class SessionTest(_fixtures.FixtureTest):
                           sa.orm.attributes.instance_state(u2))
 
 
+    @testing.requires.predictable_gc
     def test_weakref_with_cycles_o2m(self):
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
@@ -722,6 +724,7 @@ class SessionTest(_fixtures.FixtureTest):
         user = s.query(User).options(joinedload(User.addresses)).one()
         eq_(user, User(name="ed", addresses=[Address(email_address="ed2")]))
 
+    @testing.requires.predictable_gc
     def test_weakref_with_cycles_o2o(self):
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,

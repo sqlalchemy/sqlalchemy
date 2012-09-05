@@ -268,6 +268,7 @@ class AttributesTest(fixtures.ORMTest):
         self.assert_(o4.mt2[0].a == 'abcde')
         self.assert_(o4.mt2[0].b is None)
 
+    @testing.requires.predictable_gc
     def test_state_gc(self):
         """test that InstanceState always has a dict, even after host
         object gc'ed."""
@@ -279,7 +280,7 @@ class AttributesTest(fixtures.ORMTest):
         f = Foo()
         state = attributes.instance_state(f)
         f.bar = "foo"
-        assert state.dict == {'bar':'foo', state.manager.STATE_ATTR:state}
+        eq_(state.dict, {'bar': 'foo', state.manager.STATE_ATTR: state})
         del f
         gc_collect()
         assert state.obj() is None

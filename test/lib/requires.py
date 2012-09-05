@@ -186,15 +186,17 @@ def savepoints(fn):
                 ], "savepoints not supported")(fn)
 
 def denormalized_names(fn):
-    """Target database must have 'denormalized', i.e. UPPERCASE as case insensitive names."""
+    """Target database must have 'denormalized', i.e.
+    UPPERCASE as case insensitive names."""
 
     return skip_if(
                 lambda: not testing.db.dialect.requires_name_normalize,
-                "Backend does not require denomralized names."
+                "Backend does not require denormalized names."
             )(fn)
 
 def schemas(fn):
-    """Target database must support external schemas, and have one named 'test_schema'."""
+    """Target database must support external schemas, and have one
+    named 'test_schema'."""
 
     return skip_if([
                 "sqlte",
@@ -253,18 +255,19 @@ def two_phase_transactions(fn):
     """Target database must support two-phase transactions."""
 
     return skip_if([
-        no_support('access', 'not supported by database'),
+        no_support('access', 'two-phase xact not supported by database'),
         no_support('firebird', 'no SA implementation'),
-        no_support('maxdb', 'not supported by database'),
-        no_support('mssql', 'FIXME: guessing, needs confirmation'),
-        no_support('oracle', 'no SA implementation'),
-        no_support('drizzle', 'not supported by database'),
-        no_support('sqlite', 'not supported by database'),
-        no_support('sybase', 'FIXME: guessing, needs confirmation'),
+        no_support('maxdb', 'two-phase xact not supported by database'),
+        no_support('mssql', 'two-phase xact not supported by drivers'),
+        no_support('oracle', 'two-phase xact not implemented in SQLA/oracle'),
+        no_support('drizzle', 'two-phase xact not supported by database'),
+        no_support('sqlite', 'two-phase xact not supported by database'),
+        no_support('sybase', 'two-phase xact not supported by drivers/SQLA'),
         no_support('postgresql+zxjdbc',
                 'FIXME: JDBC driver confuses the transaction state, may '
                    'need separate XA implementation'),
-        exclude('mysql', '<', (5, 0, 3), 'not supported by database'),
+        exclude('mysql', '<', (5, 0, 3),
+                    'two-phase xact not supported by database'),
         ])(fn)
 
 def views(fn):

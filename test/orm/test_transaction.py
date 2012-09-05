@@ -544,6 +544,7 @@ class AutoExpireTest(_LocalFixture):
         assert u1 in s
         assert u1 not in s.deleted
 
+    @testing.requires.predictable_gc
     def test_gced_delete_on_rollback(self):
         User, users = self.classes.User, self.tables.users
 

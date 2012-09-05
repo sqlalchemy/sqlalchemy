@@ -426,6 +426,7 @@ class PoolEventsTest(object): #PoolTestBase):
         pool.Pool.dispatch._clear()
 
 class DeprecatedPoolListenerTest(PoolTestBase):
+    @testing.requires.predictable_gc
     @testing.uses_deprecated(r".*Use event.listen")
     def test_listeners(self):
         class InstrumentingListener(object):
@@ -946,6 +947,7 @@ class QueuePoolTest(PoolTestBase):
         still_opened = len([c for c in strong_refs if not c.closed])
         eq_(still_opened, 2)
 
+    @testing.requires.predictable_gc
     def test_weakref_kaboom(self):
         p = self._queuepool_fixture(pool_size=3,
                            max_overflow=-1, use_threadlocal=True)
