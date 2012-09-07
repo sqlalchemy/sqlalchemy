@@ -113,6 +113,10 @@ This flag must be on the command line before the actual install or build command
 
     python setup.py --with-cextensions install
 
+Or with pip::
+
+    pip install --global-option='--with-cextensions' SQLAlchemy
+
 Installing on Python 3
 ----------------------------------
 
