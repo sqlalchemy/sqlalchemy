@@ -449,6 +449,21 @@ class SessionTest(_fixtures.FixtureTest):
                          {'id':7}),
             7)
 
+    def test_parameter_execute(self):
+        users = self.tables.users
+        sess = Session(bind=testing.db)
+        sess.execute(users.insert(), [
+                {"id": 7, "name": "u7"},
+                {"id": 8, "name": "u8"}
+            ]
+        )
+        sess.execute(users.insert(), {"id": 9, "name": "u9"})
+        eq_(
+            sess.execute(sa.select([users.c.id]).\
+                    order_by(users.c.id)).fetchall(),
+            [(7, ), (8, ), (9, )]
+        )
+
 
     @engines.close_open_connections
     def test_bound_connection(self):
