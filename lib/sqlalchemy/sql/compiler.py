@@ -1728,6 +1728,10 @@ class DDLCompiler(engine.Compiled):
     def sql_compiler(self):
         return self.dialect.statement_compiler(self.dialect, None)
 
+    @util.memoized_property
+    def type_compiler(self):
+        return self.dialect.type_compiler
+
     @property
     def preparer(self):
         return self.dialect.identifier_preparer
@@ -1776,21 +1780,16 @@ class DDLCompiler(engine.Compiled):
 
         # if only one primary key, specify it along with the column
         first_pk = False
-        for column in table.columns:
+        for create_column in create.columns:
+            column = create_column.element
             try:
                 text += separator
                 separator = ", \n"
-                text += "\t" + self.get_column_specification(
-                                                column,
-                                                first_pk=column.primary_key and \
-                                                not first_pk
-                                            )
+                text += "\t" + self.process(create_column,
+                                    first_pk=column.primary_key
+                                    and not first_pk)
                 if column.primary_key:
                     first_pk = True
-                const = " ".join(self.process(constraint) \
-                                for constraint in column.constraints)
-                if const:
-                    text += " " + const
             except exc.CompileError, ce:
                 # Py3K
                 #raise exc.CompileError("(in table '%s', column '%s'): %s"
@@ -1813,6 +1812,20 @@ class DDLCompiler(engine.Compiled):
             text += ", \n\t" + const
 
         text += "\n)%s\n\n" % self.post_create_table(table)
+        return text
+
+    def visit_create_column(self, create, first_pk=False):
+        column = create.element
+
+        text = self.get_column_specification(
+                        column,
+                        first_pk=first_pk
+                    )
+        const = " ".join(self.process(constraint) \
+                        for constraint in column.constraints)
+        if const:
+            text += " " + const
+
         return text
 
     def create_table_constraints(self, table):

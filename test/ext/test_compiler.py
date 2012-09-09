@@ -5,7 +5,7 @@ from sqlalchemy.sql.expression import ClauseElement, ColumnClause,\
                                     BindParameter
 
 from sqlalchemy.schema import DDLElement
-from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.ext.compiler import compiles, deregister
 from sqlalchemy import exc
 from sqlalchemy.sql import table, column, visitors
 from test.lib.testing import assert_raises_message
@@ -322,9 +322,7 @@ class DefaultOnExistingTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def teardown(self):
         for cls in (Select, BindParameter):
-            if hasattr(cls, '_compiler_dispatcher'):
-                visitors._generate_dispatch(cls)
-                del cls._compiler_dispatcher
+            deregister(cls)
 
     def test_select(self):
         t1 = table('t1', column('c1'), column('c2'))

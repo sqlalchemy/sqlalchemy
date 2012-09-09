@@ -368,8 +368,12 @@ Example usage::
 
 """
 from .. import exc
+from ..sql import visitors
 
 def compiles(class_, *specs):
+    """Register a function as a compiler for a
+    given :class:`.ClauseElement` type."""
+
     def decorate(fn):
         existing = class_.__dict__.get('_compiler_dispatcher', None)
         existing_dispatch = class_.__dict__.get('_compiler_dispatch')
@@ -391,6 +395,17 @@ def compiles(class_, *specs):
             existing.specs['default'] = fn
         return fn
     return decorate
+
+def deregister(class_):
+    """Remove all custom compilers associated with a given
+    :class:`.ClauseElement` type."""
+
+    if hasattr(class_, '_compiler_dispatcher'):
+        # regenerate default _compiler_dispatch
+        visitors._generate_dispatch(class_)
+        # remove custom directive
+        del class_._compiler_dispatcher
+
 
 class _dispatcher(object):
     def __init__(self):

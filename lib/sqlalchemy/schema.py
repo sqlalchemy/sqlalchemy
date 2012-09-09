@@ -3186,6 +3186,94 @@ class CreateTable(_CreateDropBase):
 
     __visit_name__ = "create_table"
 
+    def __init__(self, element, on=None, bind=None):
+        """Create a :class:`.CreateTable` construct.
+
+        :param element: a :class:`.Table` that's the subject
+         of the CREATE
+        :param on: See the description for 'on' in :class:`.DDL`.
+        :param bind: See the description for 'bind' in :class:`.DDL`.
+
+        """
+        super(CreateTable, self).__init__(element, on=on, bind=bind)
+        self.columns = [CreateColumn(column)
+            for column in element.columns
+        ]
+
+class CreateColumn(visitors.Visitable):
+    """Represent a :class:`.Column` as rendered in a CREATE TABLE statement,
+    via the :class:`.CreateTable` construct.
+
+    This is provided to support custom column DDL within the generation
+    of CREATE TABLE statements, by using the
+    compiler extension documented in :ref:`sqlalchemy.ext.compiler_toplevel`
+    to extend :class:`.CreateColumn`.
+
+    Typical integration is to examine the incoming :class:`.Column`
+    object, and to redirect compilation if a particular flag or condition
+    is found::
+
+        from sqlalchemy import schema
+        from sqlalchemy.ext.compiler import compiles
+
+        @compiles(schema.CreateColumn)
+        def compile(element, compiler, **kw):
+            column = element.element
+
+            if "special" not in column.info:
+                return compiler.visit_create_column(element, **kw)
+
+            text = "%s SPECIAL DIRECTIVE %s" % (
+                    column.name,
+                    compiler.type_compiler.process(column.type)
+                )
+            default = compiler.get_column_default_string(column)
+            if default is not None:
+                text += " DEFAULT " + default
+
+            if not column.nullable:
+                text += " NOT NULL"
+
+            if column.constraints:
+                text += " ".join(
+                            compiler.process(const)
+                            for const in column.constraints)
+            return text
+
+    The above construct can be applied to a :class:`.Table` as follows::
+
+        from sqlalchemy import Table, Metadata, Column, Integer, String
+        from sqlalchemy import schema
+
+        metadata = MetaData()
+
+        table = Table('mytable', MetaData(),
+                Column('x', Integer, info={"special":True}, primary_key=True),
+                Column('y', String(50)),
+                Column('z', String(20), info={"special":True})
+            )
+
+        metadata.create_all(conn)
+
+    Above, the directives we've added to the :attr:`.Column.info` collection
+    will be detected by our custom compilation scheme::
+
+        CREATE TABLE mytable (
+                x SPECIAL DIRECTIVE INTEGER NOT NULL,
+                y VARCHAR(50),
+                z SPECIAL DIRECTIVE VARCHAR(20),
+            PRIMARY KEY (x)
+        )
+
+    .. versionadded:: 0.8 The :class:`.CreateColumn` construct was added
+       to support custom column creation styles.
+
+    """
+    __visit_name__ = 'create_column'
+
+    def __init__(self, element):
+        self.element = element
+
 class DropTable(_CreateDropBase):
     """Represent a DROP TABLE statement."""
 

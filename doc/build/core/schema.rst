@@ -325,6 +325,7 @@ Column, Table, MetaData API
 
 .. autoclass:: Column
     :members:
+    :inherited-members:
     :undoc-members:
     :show-inheritance:
 
@@ -339,6 +340,7 @@ Column, Table, MetaData API
 
 .. autoclass:: Table
     :members:
+    :inherited-members:
     :undoc-members:
     :show-inheritance:
 
@@ -1371,6 +1373,11 @@ DDL Expression Constructs API
     :show-inheritance:
 
 .. autoclass:: DropTable
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. autoclass:: CreateColumn
     :members:
     :undoc-members:
     :show-inheritance:

@@ -1204,6 +1204,48 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
             getattr, select([t1.select().alias()]), 'c'
         )
 
+    def test_custom_create(self):
+        from sqlalchemy.ext.compiler import compiles, deregister
+
+        @compiles(schema.CreateColumn)
+        def compile(element, compiler, **kw):
+            column = element.element
+
+            if "special" not in column.info:
+                return compiler.visit_create_column(element, **kw)
+
+            text = "%s SPECIAL DIRECTIVE %s" % (
+                    column.name,
+                    compiler.type_compiler.process(column.type)
+                )
+            default = compiler.get_column_default_string(column)
+            if default is not None:
+                text += " DEFAULT " + default
+
+            if not column.nullable:
+                text += " NOT NULL"
+
+            if column.constraints:
+                text += " ".join(
+                            compiler.process(const)
+                            for const in column.constraints)
+            return text
+
+        t = Table('mytable', MetaData(),
+                Column('x', Integer, info={"special": True}, primary_key=True),
+                Column('y', String(50)),
+                Column('z', String(20), info={"special": True})
+            )
+
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE mytable (x SPECIAL DIRECTIVE INTEGER "
+                "NOT NULL, y VARCHAR(50), "
+                "z SPECIAL DIRECTIVE VARCHAR(20), PRIMARY KEY (x))"
+        )
+
+        deregister(schema.CreateColumn)
+
 class ColumnDefaultsTest(fixtures.TestBase):
     """test assignment of default fixures to columns"""
 
