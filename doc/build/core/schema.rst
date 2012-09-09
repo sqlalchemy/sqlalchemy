@@ -274,17 +274,6 @@ There are two major migration tools available for SQLAlchemy:
   SQL script generation, ORM class generation, ORM model comparison, and extensive
   support for SQLite migrations.
 
-.. _metadata_binding:
-
-Binding MetaData to an Engine or Connection
---------------------------------------------
-
-The :class:`.MetaData` object can be associated directly with an :class:`.Engine`
-or :class:`.Connection` so that SQL statement objects gain an :meth:`.Executable.execute`
-method, and also provide an alternate means to the ORM :class:`.Session` object
-in order to locate an :class:`.Engine`, given a particular mapping to execute a
-query against.   However, this pattern is **not recommended for general use**.
-For background, see, :ref:`dbengine_implicit`.
 
 Specifying the Schema Name
 ---------------------------
