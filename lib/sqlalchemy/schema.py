@@ -2404,11 +2404,20 @@ class MetaData(SchemaItem):
         return self._bind is not None
 
     def bind(self):
-        """An Engine or Connection to which this MetaData is bound.
+        """An :class:`.Engine` or :class:`.Connection` to which this
+        :class:`.MetaData` is bound.
 
-        This property may be assigned an ``Engine`` or ``Connection``, or
-        assigned a string or URL to automatically create a basic ``Engine``
-        for this bind with ``create_engine()``.
+        Typically, a :class:`.Engine` is assigned to this attribute
+        so that "implicit execution" may be used, or alternatively
+        as a means of providing engine binding information to an
+        ORM :class:`.Session` object::
+
+            engine = create_engine("someurl://")
+            metadata.bind = engine
+
+        .. seealso::
+
+           :ref:`dbengine_implicit` - background on "bound metadata"
 
         """
         return self._bind

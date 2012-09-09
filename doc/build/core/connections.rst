@@ -114,11 +114,12 @@ Using Transactions
   object internally. See :ref:`unitofwork_transaction` for further
   information.
 
-The :class:`~sqlalchemy.engine.base.Connection` object provides a ``begin()``
-method which returns a :class:`~sqlalchemy.engine.base.Transaction` object.
+The :class:`~sqlalchemy.engine.Connection` object provides a :meth:`~.Connection.begin`
+method which returns a :class:`.Transaction` object.
 This object is usually used within a try/except clause so that it is
-guaranteed to ``rollback()`` or ``commit()``::
+guaranteed to invoke :meth:`.Transaction.rollback` or :meth:`.Transaction.commit`::
 
+    connection = engine.connect()
     trans = connection.begin()
     try:
         r1 = connection.execute(table1.select())
@@ -128,15 +129,30 @@ guaranteed to ``rollback()`` or ``commit()``::
         trans.rollback()
         raise
 
+The above block can be created more succinctly using context
+managers, either given an :class:`.Engine`::
+
+    # runs a transaction
+    with engine.begin() as connection:
+        r1 = connection.execute(table1.select())
+        connection.execute(table1.insert(), col1=7, col2='this is some data')
+
+Or from the :class:`.Connection`, in which case the :class:`.Transaction` object
+is available as well::
+
+    with connection.begin() as trans:
+        r1 = connection.execute(table1.select())
+        connection.execute(table1.insert(), col1=7, col2='this is some data')
+
 .. _connections_nested_transactions:
 
 Nesting of Transaction Blocks
 ------------------------------
 
-The :class:`~sqlalchemy.engine.base.Transaction` object also handles "nested"
+The :class:`.Transaction` object also handles "nested"
 behavior by keeping track of the outermost begin/commit pair. In this example,
-two functions both issue a transaction on a Connection, but only the outermost
-Transaction object actually takes effect when it is committed.
+two functions both issue a transaction on a :class:`.Connection`, but only the outermost
+:class:`.Transaction` object actually takes effect when it is committed.
 
 .. sourcecode:: python+sql
 
@@ -230,7 +246,11 @@ Recall from the first section we mentioned executing with and without explicit
 usage of :class:`.Connection`. "Connectionless" execution
 refers to the usage of the ``execute()`` method on an object which is not a
 :class:`.Connection`.  This was illustrated using the :meth:`~.Engine.execute` method
-of :class:`.Engine`.
+of :class:`.Engine`::
+
+    result = engine.execute("select username from users")
+    for row in result:
+        print "username:", row['username']
 
 In addition to "connectionless" execution, it is also possible
 to use the :meth:`~.Executable.execute` method of
@@ -241,6 +261,8 @@ in order to provide so-called "implicit" execution services.
 
 Given a table as below::
 
+    from sqlalchemy import MetaData, Table, Column, Integer
+
     meta = MetaData()
     users_table = Table('users', meta,
         Column('id', Integer, primary_key=True),
@@ -248,7 +270,7 @@ Given a table as below::
     )
 
 Explicit execution delivers the SQL text or constructed SQL expression to the
-``execute()`` method of :class:`~sqlalchemy.engine.base.Connection`:
+:meth:`~.Connection.execute` method of :class:`~sqlalchemy.engine.Connection`:
 
 .. sourcecode:: python+sql
 
@@ -260,7 +282,7 @@ Explicit execution delivers the SQL text or constructed SQL expression to the
     connection.close()
 
 Explicit, connectionless execution delivers the expression to the
-``execute()`` method of :class:`~sqlalchemy.engine.base.Engine`:
+:meth:`~.Engine.execute` method of :class:`~sqlalchemy.engine.Engine`:
 
 .. sourcecode:: python+sql
 
@@ -270,14 +292,17 @@ Explicit, connectionless execution delivers the expression to the
         # ....
     result.close()
 
-Implicit execution is also connectionless, and calls the ``execute()`` method
-on the expression itself, utilizing the fact that either an
-:class:`~sqlalchemy.engine.base.Engine` or
-:class:`~sqlalchemy.engine.base.Connection` has been *bound* to the expression
-object (binding is discussed further in
-:ref:`metadata_toplevel`):
-
-.. sourcecode:: python+sql
+Implicit execution is also connectionless, and makes usage of the :meth:`~.Executable.execute` method
+on the expression itself.   This method is provided as part of the
+:class:`.Executable` class, which refers to a SQL statement that is sufficient
+for being invoked against the database.    The method makes usage of
+the assumption that either an
+:class:`~sqlalchemy.engine.Engine` or
+:class:`~sqlalchemy.engine.Connection` has been **bound** to the expression
+object.   By "bound" we mean that the special attribute :attr:`.MetaData.bind`
+has been used to associate a series of
+:class:`.Table` objects and all SQL constructs derived from them with a specific
+engine::
 
     engine = create_engine('sqlite:///file.db')
     meta.bind = engine
@@ -286,13 +311,44 @@ object (binding is discussed further in
         # ....
     result.close()
 
+Above, we associate an :class:`.Engine` with a :class:`.MetaData` object using
+the special attribute :attr:`.MetaData.bind`.  The :func:`.select` construct produced
+from the :class:`.Table` object has a method :meth:`~.Executable.execute`, which will
+search for an :class:`.Engine` that's "bound" to the :class:`.Table`.
+
+.. note::
+
+    The concepts of "bound metadata" and "implicit execution" are not emphasized in modern SQLAlchemy.
+    In applications
+    where multiple :class:`.Engine` objects are present, each one logically associated
+    with a certain set of tables (i.e. *vertical sharding*), the "bound metadata" technique can be used
+    so that individual :class:`.Table` can refer to the appropriate :class:`.Engine` automatically;
+    in particular this is supported within the ORM via the :class:`.Session` object
+    as a means to associate :class:`.Table` objects with an appropriate :class:`.Engine`,
+    as an alternative to using the bind arguments accepted directly by the :class:`.Session`.
+    However, the "implicit execution" technique is not at all appropriate for use with the
+    ORM, as it bypasses the transactional context maintained by the :class:`.Session`.
+
+    Overall, in the *vast majority* of cases, "bound metadata" and "implicit execution"
+    are **not useful**.   While "bound metadata" has a marginal level of usefulness with regards to
+    ORM configuration, "implicit execution" is a very old usage pattern that in most
+    cases is more confusing than it is helpful, and its usage is discouraged.
+
+    Modern SQLAlchemy usage, especially the ORM, places a heavy stress on working within the context
+    of a transaction at all times; the "implicit execution" concept makes the job of
+    associating statement execution with a particular transaction much more difficult.
+    The :meth:`.Executable.execute` method on a particular SQL statement
+    usually implies that the execution is not part of any particular transaction, which is
+    usually not the desired effect.
+
 In both "connectionless" examples, the
-:class:`~sqlalchemy.engine.base.Connection` is created behind the scenes; the
-:class:`~sqlalchemy.engine.base.ResultProxy` returned by the ``execute()``
-call references the :class:`~sqlalchemy.engine.base.Connection` used to issue
+:class:`~sqlalchemy.engine.Connection` is created behind the scenes; the
+:class:`~sqlalchemy.engine.ResultProxy` returned by the ``execute()``
+call references the :class:`~sqlalchemy.engine.Connection` used to issue
 the SQL statement. When the :class:`.ResultProxy` is closed, the underlying
 :class:`.Connection` is closed for us, resulting in the
 DBAPI connection being returned to the pool with transactional resources removed.
+
 
 .. _threadlocal_strategy:
 
@@ -304,14 +360,18 @@ can be used by non-ORM applications to associate transactions
 with the current thread, such that all parts of the
 application can participate in that transaction implicitly without the need to
 explicitly reference a :class:`.Connection`.
-"threadlocal" is designed for a very specific pattern of use, and is not
-appropriate unless this very specfic pattern, described below, is what's
-desired. It has **no impact** on the "thread safety" of SQLAlchemy components
-or one's application. It also should not be used when using an ORM
-:class:`~sqlalchemy.orm.session.Session` object, as the
-:class:`~sqlalchemy.orm.session.Session` itself represents an ongoing
-transaction and itself handles the job of maintaining connection and
-transactional resources.
+
+.. note::
+
+    The "threadlocal" feature is generally discouraged.   It's
+    designed for a particular pattern of usage which is generally
+    considered as a legacy pattern.  It has **no impact** on the "thread safety"
+    of SQLAlchemy components
+    or one's application. It also should not be used when using an ORM
+    :class:`~sqlalchemy.orm.session.Session` object, as the
+    :class:`~sqlalchemy.orm.session.Session` itself represents an ongoing
+    transaction and itself handles the job of maintaining connection and
+    transactional resources.
 
 Enabling ``threadlocal`` is achieved as follows::
 

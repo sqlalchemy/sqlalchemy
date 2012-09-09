@@ -340,52 +340,6 @@ statement is compiled against the **first** dictionary in the list, and it's
 assumed that all subsequent argument dictionaries are compatible with that
 statement.
 
-Connectionless / Implicit Execution
-====================================
-
-We're executing our :class:`~sqlalchemy.sql.expression.Insert` using a
-:class:`~sqlalchemy.engine.base.Connection`. There's two options that allow
-you to not have to deal with the connection part. You can execute in the
-**connectionless** style, using the engine, which checks out from the
-connection pool a connection for you, performs the execute operation with that
-connection, and then checks the connection back into the pool upon completion
-of the operation:
-
-.. sourcecode:: pycon+sql
-
-    {sql}>>> result = engine.execute(users.insert(), name='fred', fullname="Fred Flintstone")
-    INSERT INTO users (name, fullname) VALUES (?, ?)
-    ('fred', 'Fred Flintstone')
-    COMMIT
-
-and you can save even more steps than that, if you connect the
-:class:`~sqlalchemy.engine.base.Engine` to the
-:class:`~sqlalchemy.schema.MetaData` object we created earlier. When this is
-done, all SQL expressions which involve tables within the
-:class:`~sqlalchemy.schema.MetaData` object will be automatically **bound** to
-the :class:`~sqlalchemy.engine.base.Engine`. In this case, we call it
-**implicit execution**:
-
-.. sourcecode:: pycon+sql
-
-    >>> metadata.bind = engine
-    {sql}>>> result = users.insert().execute(name="mary", fullname="Mary Contrary")
-    INSERT INTO users (name, fullname) VALUES (?, ?)
-    ('mary', 'Mary Contrary')
-    COMMIT
-
-When the :class:`~sqlalchemy.schema.MetaData` is bound, statements will also
-compile against the engine's dialect. Since a lot of the examples here assume
-the default dialect, we'll detach the engine from the metadata which we just
-attached:
-
-.. sourcecode:: pycon+sql
-
-    >>> metadata.bind = None
-
-Detailed examples of connectionless and implicit execution are available in
-the "Engines" chapter: :ref:`dbengine_implicit`.
-
 .. _coretutorial_selecting:
 
 Selecting

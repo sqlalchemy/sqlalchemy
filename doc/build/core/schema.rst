@@ -279,83 +279,12 @@ There are two major migration tools available for SQLAlchemy:
 Binding MetaData to an Engine or Connection
 --------------------------------------------
 
-Notice in the previous section the creator/dropper methods accept an argument
-for the database engine in use. When a schema construct is combined with an
-:class:`~sqlalchemy.engine.base.Engine` object, or an individual
-:class:`~sqlalchemy.engine.base.Connection` object, we call this the *bind*.
-In the above examples the bind is associated with the schema construct only
-for the duration of the operation. However, the option exists to persistently
-associate a bind with a set of schema constructs via the
-:class:`~sqlalchemy.schema.MetaData` object's ``bind`` attribute::
-
-    engine = create_engine('sqlite://')
-
-    # create MetaData
-    meta = MetaData()
-
-    # bind to an engine
-    meta.bind = engine
-
-We can now call methods like :func:`~sqlalchemy.schema.MetaData.create_all`
-without needing to pass the :class:`~sqlalchemy.engine.base.Engine`::
-
-    meta.create_all()
-
-The MetaData's bind is used for anything that requires an active connection,
-such as loading the definition of a table from the database automatically
-(called *reflection*)::
-
-    # describe a table called 'users', query the database for its columns
-    users_table = Table('users', meta, autoload=True)
-
-As well as for executing SQL constructs that are derived from that MetaData's table objects::
-
-    # generate a SELECT statement and execute
-    result = users_table.select().execute()
-
-Binding the MetaData to the Engine is a **completely optional** feature. The
-above operations can be achieved without the persistent bind using
-parameters::
-
-    # describe a table called 'users', query the database for its columns
-    users_table = Table('users', meta, autoload=True, autoload_with=engine)
-
-    # generate a SELECT statement and execute
-    result = engine.execute(users_table.select())
-
-Should you use bind ? It's probably best to start without it, and wait for a
-specific need to arise. Bind is useful if:
-
-* You aren't using the ORM, are usually using "connectionless" execution, and
-  find yourself constantly needing to specify the same
-  :class:`~sqlalchemy.engine.base.Engine` object throughout the entire
-  application. Bind can be used here to provide "implicit" execution.
-* Your application has multiple schemas that correspond to different engines.
-  Using one :class:`~sqlalchemy.schema.MetaData` for each schema, bound to
-  each engine, provides a decent place to delineate between the schemas. The
-  ORM will also integrate with this approach, where the :class:`.Session` will
-  naturally use the engine that is bound to each table via its metadata
-  (provided the :class:`.Session` itself has no ``bind`` configured.).
-
-Alternatively, the ``bind`` attribute of :class:`~sqlalchemy.schema.MetaData`
-is *confusing* if:
-
-* Your application talks to multiple database engines at different times,
-  which use the *same* set of :class:`.Table` objects. It's usually confusing
-  and unnecessary to begin to create "copies" of :class:`.Table` objects just
-  so that different engines can be used for different operations. An example
-  is an application that writes data to a "master" database while performing
-  read-only operations from a "read slave". A global
-  :class:`~sqlalchemy.schema.MetaData` object is *not* appropriate for
-  per-request switching like this, although a
-  :class:`~sqlalchemy.schema.ThreadLocalMetaData` object is.
-* You are using the ORM :class:`.Session` to handle which class/table is bound
-  to which engine, or you are using the :class:`.Session` to manage switching
-  between engines. Its a good idea to keep the "binding of tables to engines"
-  in one place - either using :class:`~sqlalchemy.schema.MetaData` only (the
-  :class:`.Session` can of course be present, it just has no ``bind``
-  configured), or using :class:`.Session` only (the ``bind`` attribute of
-  :class:`~sqlalchemy.schema.MetaData` is left empty).
+The :class:`.MetaData` object can be associated directly with an :class:`.Engine`
+or :class:`.Connection` so that SQL statement objects gain an :meth:`.Executable.execute`
+method, and also provide an alternate means to the ORM :class:`.Session` object
+in order to locate an :class:`.Engine`, given a particular mapping to execute a
+query against.   However, this pattern is **not recommended for general use**.
+For background, see, :ref:`dbengine_implicit`.
 
 Specifying the Schema Name
 ---------------------------
