@@ -143,6 +143,10 @@ pass the flag ``--without-cextensions`` to the ``setup.py`` script::
 
     python setup.py --without-cextensions install
 
+Or with pip::
+
+    pip install --global-option='--without-cextensions' SQLAlchemy
+
 .. note::
 
    The ``--without-cextensions`` flag is available **only** if ``setuptools``
