@@ -775,51 +775,99 @@ class Session(object):
             return engine.contextual_connect(**kwargs)
 
     def execute(self, clause, params=None, mapper=None, bind=None, **kw):
-        """Execute a clause within the current transaction.
+        """Execute a SQL expression construct or string statement within
+        the current transaction.
 
         Returns a :class:`.ResultProxy` representing
         results of the statement execution, in the same manner as that of an
         :class:`.Engine` or
         :class:`.Connection`.
 
+        E.g.::
+
+            result = session.execute(
+                        user_table.select().where(user_table.c.id == 5)
+                    )
+
         :meth:`~.Session.execute` accepts any executable clause construct, such
         as :func:`~.sql.expression.select`,
         :func:`~.sql.expression.insert`,
         :func:`~.sql.expression.update`,
         :func:`~.sql.expression.delete`, and
-        :func:`~.sql.expression.text`, and additionally accepts
-        plain strings that represent SQL statements. If a plain string is
-        passed, it is first converted to a
-        :func:`~.sql.expression.text` construct, which here means
-        that bind parameters should be specified using the format ``:param``.
-        If raw DBAPI statement execution is desired, use :meth:`.Session.connection`
-        to acquire a :class:`.Connection`, then call its :meth:`~.Connection.execute`
-        method.
+        :func:`~.sql.expression.text`.  Plain SQL strings can be passed
+        as well, which in the case of :meth:`.Session.execute` only
+        will be interpreted the same as if it were passed via a :func:`~.expression.text`
+        construct.  That is, the following usage::
+
+            result = session.execute(
+                        "SELECT * FROM user WHERE id=:param",
+                        {"param":5}
+                    )
+
+        is equivalent to::
+
+            from sqlalchemy import text
+            result = session.execute(
+                        text("SELECT * FROM user WHERE id=:param"),
+                        {"param":5}
+                    )
+
+        The second positional argument to :meth:`.Session.execute` is an
+        optional parameter set.  Similar to that of :meth:`.Connection.execute`, whether this
+        is passed as a single dictionary, or a list of dictionaries, determines
+        whether the DBAPI cursor's ``execute()`` or ``executemany()`` is used to execute the
+        statement.   An INSERT construct may be invoked for a single row::
+
+            result = session.execute(users.insert(), {"id": 7, "name": "somename"})
+
+        or for multiple rows::
+
+            result = session.execute(users.insert(), [
+                                    {"id": 7, "name": "somename7"},
+                                    {"id": 8, "name": "somename8"},
+                                    {"id": 9, "name": "somename9"}
+                                ])
 
         The statement is executed within the current transactional context of
-        this :class:`.Session`, using the same behavior as that of
-        the :meth:`.Session.connection` method to determine the active
-        :class:`.Connection`.   The ``close_with_result`` flag is
-        set to ``True`` so that an ``autocommit=True`` :class:`.Session`
-        with no active transaction will produce a result that auto-closes
-        the underlying :class:`.Connection`.
+        this :class:`.Session`.   The :class:`.Connection` which is used
+        to execute the statement can also be acquired directly by
+        calling the :meth:`.Session.connection` method.  Both methods use
+        a rule-based resolution scheme in order to determine the
+        :class:`.Connection`, which in the average case is derived directly
+        from the "bind" of the :class:`.Session` itself, and in other cases
+        can be based on the :func:`.mapper`
+        and :class:`.Table` objects passed to the method; see the documentation
+        for :meth:`.Session.get_bind` for a full description of this scheme.
 
         The :meth:`.Session.execute` method does *not* invoke autoflush.
 
+        The :class:`.ResultProxy` returned by the :meth:`.Session.execute`
+        method is returned with the "close_with_result" flag set to true;
+        the significance of this flag is that if this :class:`.Session` is
+        autocommitting and does not have a transaction-dedicated :class:`.Connection`
+        available, a temporary :class:`.Connection` is established for the
+        statement execution, which is closed (meaning, returned to the connection
+        pool) when the :class:`.ResultProxy` has consumed all available data.
+        This applies *only* when the :class:`.Session` is configured with
+        autocommit=True and no transaction has been started.
+
         :param clause:
-            A :class:`.ClauseElement` (i.e. :func:`~.sql.expression.select`,
-            :func:`~.sql.expression.text`, etc.) or string SQL statement to be executed.  The clause
-            will also be used to locate a bind, if this :class:`.Session`
-            is not bound to a single engine already, and the ``mapper``
-            and ``bind`` arguments are not passed.
+            An executable statement (i.e. an :class:`.Executable` expression
+            such as :func:`.expression.select`) or string SQL statement
+            to be executed.
 
         :param params:
-            Optional dictionary of bind names mapped to values.
+            Optional dictionary, or list of dictionaries, containing
+            bound parameter values.   If a single dictionary, single-row
+            execution occurs; if a list of dictionaries, an
+            "executemany" will be invoked.  The keys in each dictionary
+            must correspond to parameter names present in the statement.
 
         :param mapper:
           Optional :func:`.mapper` or mapped class, used to identify
           the appropriate bind.  This argument takes precedence over
-          ``clause`` when locating a bind.
+          ``clause`` when locating a bind.   See :meth:`.Session.get_bind`
+          for more details.
 
         :param bind:
           Optional :class:`.Engine` to be used as the bind.  If
@@ -829,9 +877,20 @@ class Session(object):
           a bind.
 
         :param \**kw:
-          Additional keyword arguments are sent to :meth:`get_bind()`,
-          allowing additional arguments to be passed to custom
-          implementations of :meth:`get_bind`.
+          Additional keyword arguments are sent to :meth:`.Session.get_bind()`
+          to allow extensibility of "bind" schemes.
+
+        .. seealso::
+
+            :ref:`sqlexpression_toplevel` - Tutorial on using Core SQL
+            constructs.
+
+            :ref:`connections_toplevel` - Further information on direct
+            statement execution.
+
+            :meth:`.Connection.execute` - core level statement execution
+            method, which is :meth:`.Session.execute` ultimately uses
+            in order to execute the statement.
 
         """
         clause = expression._literal_as_text(clause)
