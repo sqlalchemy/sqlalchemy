@@ -2313,8 +2313,6 @@ class MetaData(SchemaItem):
 
     :ref:`metadata_describing` - Introduction to database metadata
 
-    :ref:`metadata_binding` - Information on binding connectables to :class:`.MetaData`
-
     .. index::
       single: thread safety; MetaData
 

@@ -274,7 +274,6 @@ There are two major migration tools available for SQLAlchemy:
   SQL script generation, ORM class generation, ORM model comparison, and extensive
   support for SQLite migrations.
 
-
 Specifying the Schema Name
 ---------------------------
 
