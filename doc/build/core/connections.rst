@@ -316,16 +316,32 @@ the special attribute :attr:`.MetaData.bind`.  The :func:`.select` construct pro
 from the :class:`.Table` object has a method :meth:`~.Executable.execute`, which will
 search for an :class:`.Engine` that's "bound" to the :class:`.Table`.
 
+Overall, the usage of "bound metadata" has three general effects:
+
+* SQL statement objects gain an :meth:`.Executable.execute` method which automatically
+  locates a "bind" with which to execute themselves.
+* The ORM :class:`.Session` object supports using "bound metadata" in order
+  to establish which :class:`.Engine` should be used to invoke SQL statements
+  on behalf of a particular mapped class, though the :class:`.Session`
+  also features its own explicit system of establishing complex :class:`.Engine`/
+  mapped class configurations.
+* The :meth:`.MetaData.create_all`, :meth:`.Metadata.drop_all`, :meth:`.Table.create`,
+  :meth:`.Table.drop`, and "autoload" features all make usage of the bound
+  :class:`.Engine` automatically without the need to pass it explicitly.
+
 .. note::
 
     The concepts of "bound metadata" and "implicit execution" are not emphasized in modern SQLAlchemy.
-    In applications
-    where multiple :class:`.Engine` objects are present, each one logically associated
+    While they offer some convenience, they are no longer required by any API and
+    are never necessary.
+
+    In applications where multiple :class:`.Engine` objects are present, each one logically associated
     with a certain set of tables (i.e. *vertical sharding*), the "bound metadata" technique can be used
     so that individual :class:`.Table` can refer to the appropriate :class:`.Engine` automatically;
     in particular this is supported within the ORM via the :class:`.Session` object
     as a means to associate :class:`.Table` objects with an appropriate :class:`.Engine`,
     as an alternative to using the bind arguments accepted directly by the :class:`.Session`.
+
     However, the "implicit execution" technique is not at all appropriate for use with the
     ORM, as it bypasses the transactional context maintained by the :class:`.Session`.
 
@@ -333,6 +349,8 @@ search for an :class:`.Engine` that's "bound" to the :class:`.Table`.
     are **not useful**.   While "bound metadata" has a marginal level of usefulness with regards to
     ORM configuration, "implicit execution" is a very old usage pattern that in most
     cases is more confusing than it is helpful, and its usage is discouraged.
+    Both patterns seem to encourage the overuse of expedient "short cuts" in application design
+    which lead to problems later on.
 
     Modern SQLAlchemy usage, especially the ORM, places a heavy stress on working within the context
     of a transaction at all times; the "implicit execution" concept makes the job of
