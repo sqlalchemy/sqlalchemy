@@ -456,6 +456,14 @@ underneath "0.7.xx".
     name different from the identified name
     in func.*.
 
+  - [feature] The cast() and extract() constructs
+    will now be produced via the func.* accessor
+    as well, as users naturally try to access these
+    names from func.* they might as well do
+    what's expected, even though the returned
+    object is not a FunctionElement.
+    [ticket:2562]
+
   - [changed] Most classes in expression.sql
     are no longer preceded with an underscore,
     i.e. Label, SelectBase, Generative, CompareMixin.

@@ -1268,7 +1268,7 @@ class _FunctionGenerator(object):
 func = _FunctionGenerator()
 """Generate SQL function expressions.
 
-   ``func`` is a special object instance which generates SQL
+   :data:`.func` is a special object instance which generates SQL
    functions based on name-based attributes, e.g.::
 
         >>> print func.count(1)
@@ -1280,7 +1280,7 @@ func = _FunctionGenerator()
         >>> print select([func.count(table.c.id)])
         SELECT count(sometable.id) FROM sometable
 
-   Any name can be given to ``func``. If the function name is unknown to
+   Any name can be given to :data:`.func`. If the function name is unknown to
    SQLAlchemy, it will be rendered exactly as is. For common SQL functions
    which SQLAlchemy is aware of, the name may be interpreted as a *generic
    function* which will be compiled appropriately to the target database::
@@ -1304,7 +1304,8 @@ func = _FunctionGenerator()
         ... func.my_string(u'there', type_=Unicode)
         my_string(:my_string_1) || :my_string_2 || my_string(:my_string_3)
 
-   The object returned by a ``func`` call is an instance of :class:`.Function`.
+   The object returned by a :data:`.func` call is usually an instance of
+   :class:`.Function`.
    This object meets the "column" interface, including comparison and labeling
    functions.  The object can also be passed the :meth:`~.Connectable.execute`
    method of a :class:`.Connection` or :class:`.Engine`, where it will be
@@ -1312,12 +1313,15 @@ func = _FunctionGenerator()
 
         print connection.execute(func.current_timestamp()).scalar()
 
-   A function can also be "bound" to a :class:`.Engine` or :class:`.Connection`
-   using the ``bind`` keyword argument, providing an execute() as well
-   as a scalar() method::
+   In a few exception cases, the :data:`.func` accessor
+   will redirect a name to a built-in expression such as :func:`.cast`
+   or :func:`.extract`, as these names have well-known meaning
+   but are not exactly the same as "functions" from a SQLAlchemy
+   perspective.
 
-        myfunc = func.current_timestamp(bind=some_engine)
-        print myfunc.scalar()
+   .. versionadded:: 0.8 :data:`.func` can return non-function expression
+      constructs for common quasi-functional names like :func:`.cast`
+      and :func:`.extract`.
 
    Functions which are interpreted as "generic" functions know how to
    calculate their return type automatically. For a listing of known generic

@@ -289,6 +289,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE users.id BETWEEN c1.z AND c2.z",
             checkparams={'y_1': 45, 'x_1': 17, 'y_2': 12, 'x_2': 5})
 
+    def test_non_functions(self):
+        expr = func.cast("foo", Integer)
+        self.assert_compile(expr, "CAST(:param_1 AS INTEGER)")
+
+        expr = func.extract("year", datetime.date(2010, 12, 5))
+        self.assert_compile(expr, "EXTRACT(year FROM :param_1)")
 
 class ExecuteTest(fixtures.TestBase):
     @engines.close_first

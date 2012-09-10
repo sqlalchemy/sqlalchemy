@@ -6,13 +6,27 @@
 
 from .. import types as sqltypes, schema
 from .expression import (
-    ClauseList, Function, _literal_as_binds, literal_column, _type_from_args
+    ClauseList, Function, _literal_as_binds, literal_column, _type_from_args,
+    cast, extract
     )
 from . import operators
 from .visitors import VisitableType
 from .. import util
 
 _registry = util.defaultdict(dict)
+
+def register_function(identifier, fn, package="_default"):
+    """Associate a callable with a particular func. name.
+
+    This is normally called by _GenericMeta, but is also
+    available by itself so that a non-Function construct
+    can be associated with the :data:`.func` accessor (i.e.
+    CAST, EXTRACT).
+
+    """
+    reg = _registry[package]
+    reg[identifier] = fn
+
 
 class _GenericMeta(VisitableType):
     def __init__(cls, clsname, bases, clsdict):
@@ -22,8 +36,7 @@ class _GenericMeta(VisitableType):
         # legacy
         if '__return_type__' in clsdict:
             cls.type = clsdict['__return_type__']
-        reg = _registry[package]
-        reg[identifier] = cls
+        register_function(identifier, cls, package)
         super(_GenericMeta, cls).__init__(clsname, bases, clsdict)
 
 class GenericFunction(Function):
@@ -112,6 +125,9 @@ class GenericFunction(Function):
         self.type = sqltypes.to_instance(
             kwargs.pop("type_", None) or getattr(self, 'type', None))
 
+
+register_function("cast", cast)
+register_function("extract", extract)
 
 class next_value(GenericFunction):
     """Represent the 'next value', given a :class:`.Sequence`
