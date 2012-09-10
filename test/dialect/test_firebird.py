@@ -1,10 +1,15 @@
-from test.lib.testing import eq_, assert_raises
-from sqlalchemy import *
+from test.lib.testing import eq_, assert_raises_message
+from sqlalchemy import exc
 from sqlalchemy.databases import firebird
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.sql import table, column
-from test.lib import *
-
+from sqlalchemy import types as sqltypes
+from test.lib import fixtures, AssertsExecutionResults, AssertsCompiledSQL
+from test.lib import testing, engines
+from sqlalchemy import String, VARCHAR, NVARCHAR, Unicode, Integer,\
+    func, insert, update, MetaData, select, Table, Column, text,\
+    Sequence, Float
+from sqlalchemy import schema
 
 class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     "Test Firebird domains"
@@ -247,6 +252,33 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'SELECT sometable_1.col1, sometable_1.col2 '
                             'FROM sometable sometable_1',
                             dialect=dialect)
+
+    def test_varchar_raise(self):
+        for type_ in (
+            String,
+            VARCHAR,
+            String(),
+            VARCHAR(),
+            Unicode,
+            Unicode(),
+        ):
+            type_ = sqltypes.to_instance(type_)
+            assert_raises_message(
+                exc.CompileError,
+                "VARCHAR requires a length on dialect firebird",
+                type_.compile,
+            dialect=firebird.dialect())
+
+            t1 = Table('sometable', MetaData(),
+                Column('somecolumn', type_)
+            )
+            assert_raises_message(
+                exc.CompileError,
+                r"\(in table 'sometable', column 'somecolumn'\)\: "
+                r"(?:N)?VARCHAR requires a length on dialect firebird",
+                schema.CreateTable(t1).compile,
+                dialect=firebird.dialect()
+            )
 
     def test_function(self):
         self.assert_compile(func.foo(1, 2), 'foo(:foo_1, :foo_2)')

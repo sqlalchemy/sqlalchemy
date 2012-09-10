@@ -192,6 +192,10 @@ class FBTypeCompiler(compiler.GenericTypeCompiler):
         return self._extend_string(type_, basic)
 
     def visit_VARCHAR(self, type_):
+        if not type_.length:
+            raise exc.CompileError(
+                    "VARCHAR requires a length on dialect %s" %
+                    self.dialect.name)
         basic = super(FBTypeCompiler, self).visit_VARCHAR(type_)
         return self._extend_string(type_, basic)
 

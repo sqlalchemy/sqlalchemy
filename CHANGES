@@ -629,6 +629,10 @@ underneath "0.7.xx".
     as "NOT STARTING WITH", using FB's more efficient
     operator.  [ticket:2470]
 
+  - [bug] CompileError is raised when VARCHAR with
+    no length is attempted to be emitted, same
+    way as MySQL. [ticket:2505]
+
 - mysql
   - [bug] Dialect no longer emits expensive server
     collations query, as well as server casing,

@@ -26,6 +26,7 @@ to stay the same in future releases.
 
 """
 
+
 import itertools
 import re
 from operator import attrgetter
@@ -552,7 +553,6 @@ def between(ctest, cleft, cright):
     """
     ctest = _literal_as_binds(ctest)
     return ctest.between(cleft, cright)
-
 
 def case(whens, value=None, else_=None):
     """Produce a ``CASE`` statement.
