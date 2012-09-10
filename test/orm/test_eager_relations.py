@@ -210,8 +210,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         sess = create_session()
 
         for q in [
-            sess.query(Address).filter(Address.id.in_([1, 4, 5])),
-            sess.query(Address).filter(Address.id.in_([1, 4, 5])).limit(3)
+            sess.query(Address).filter(Address.id.in_([1, 4, 5])).order_by(Address.id),
+            sess.query(Address).filter(Address.id.in_([1, 4, 5])).order_by(Address.id).limit(3)
         ]:
             sess.expunge_all()
             eq_(q.all(),
@@ -268,7 +268,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         sa.orm.clear_mappers()
 
         mapper(User, users, properties={
-            'addresses':relationship(Address, lazy='joined')})
+            'addresses':relationship(Address, lazy='joined',
+                            order_by=addresses.c.id)})
         mapper(Address, addresses, properties={
             'user_id':deferred(addresses.c.user_id),
             'dingalings':relationship(Dingaling, lazy='joined')})

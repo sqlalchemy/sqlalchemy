@@ -5,6 +5,7 @@ from sqlalchemy.orm import *
 from test.lib.util import function_named
 from test.lib import fixtures
 from test.orm import _fixtures
+from test.lib.testing import eq_
 from test.lib.schema import Table, Column
 
 class ABCTest(fixtures.MappedTest):
@@ -55,7 +56,8 @@ class ABCTest(fixtures.MappedTest):
 
             #for obj in sess.query(A).all():
             #    print obj
-            assert [
+            eq_(
+                [
                 A(adata='a1'),
                 B(bdata='b1', adata='b1'),
                 B(bdata='b2', adata='b2'),
@@ -63,22 +65,22 @@ class ABCTest(fixtures.MappedTest):
                 C(cdata='c1', bdata='c1', adata='c1'),
                 C(cdata='c2', bdata='c2', adata='c2'),
                 C(cdata='c2', bdata='c2', adata='c2'),
-            ] == sess.query(A).order_by(A.id).all()
+            ], sess.query(A).order_by(A.id).all())
 
-            assert [
+            eq_([
                 B(bdata='b1', adata='b1'),
                 B(bdata='b2', adata='b2'),
                 B(bdata='b3', adata='b3'),
                 C(cdata='c1', bdata='c1', adata='c1'),
                 C(cdata='c2', bdata='c2', adata='c2'),
                 C(cdata='c2', bdata='c2', adata='c2'),
-            ] == sess.query(B).all()
+            ], sess.query(B).order_by(A.id).all())
 
-            assert [
+            eq_([
                 C(cdata='c1', bdata='c1', adata='c1'),
                 C(cdata='c2', bdata='c2', adata='c2'),
                 C(cdata='c2', bdata='c2', adata='c2'),
-            ] == sess.query(C).all()
+            ], sess.query(C).order_by(A.id).all())
 
         test_roundtrip = function_named(
             test_roundtrip, 'test_%s' % fetchtype)

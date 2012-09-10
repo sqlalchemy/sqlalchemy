@@ -445,7 +445,7 @@ class QueryTest(fixtures.TestBase):
                     ), [(3,)]),
             (select([users.c.user_id]).\
                     where(
-                        users.c.user_name.contains('i % t', escape='\\')
+                        users.c.user_name.contains('i % t', escape='&')
                     ), [(5,)]),
         ):
             eq_(expr.execute().fetchall(), result)

@@ -238,8 +238,8 @@ class ExecuteTest(fixtures.TestBase):
     def test_stmt_exception_pickleable_no_dbapi(self):
         self._test_stmt_exception_pickleable(Exception("hello world"))
 
-    @testing.fails_on("postgresql+psycopg2",
-                "Packages the cursor in the exception")
+    @testing.crashes("postgresql+psycopg2",
+                "Older versions dont support cursor pickling, newer ones do")
     @testing.fails_on("mysql+oursql",
                 "Exception doesn't come back exactly the same from pickle")
     @testing.fails_on("oracle+cx_oracle",
