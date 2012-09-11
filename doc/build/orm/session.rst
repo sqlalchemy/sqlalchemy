@@ -1490,6 +1490,9 @@ entire database interaction is rolled back::
             self.trans.rollback()
             self.session.close()
 
+            # return connection to the Engine
+            self.connection.close()
+
 Above, we issue :meth:`.Session.commit` as well as
 :meth:`.Transaction.rollback`. This is an example of where we take advantage
 of the :class:`.Connection` object's ability to maintain *subtransactions*, or
