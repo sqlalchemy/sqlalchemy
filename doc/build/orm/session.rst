@@ -367,32 +367,27 @@ Session Frequently Asked Questions
     **non-concurrent** fashion, which usually means in only one thread at a
     time.
 
-    Nope. It has no thread synchronization of any kind built in, and
-    particularly when you do a flush operation, it definitely is not open to
-    concurrent threads accessing it, because it holds onto a single database
-    connection at that point. If you use a session which is non-transactional
-    (meaning, ``autocommit`` is set to ``True``, not the default setting)
-    for read operations only, it's still not thread-"safe", but you also wont
-    get any catastrophic failures either, since it checks out and returns
-    connections to the connection pool on an as-needed basis; it's just that
-    different threads might load the same objects independently of each other,
-    but only one will wind up in the identity map (however, the other one
-    might still live in a collection somewhere).
+    The :class:`.Session` should be used in such a way that one
+    instance exists for a single series of operations within a single
+    transaction.   One expedient way to get this effect is by associating
+    a :class:`.Session` with the current thread (see :ref:`unitofwork_contextual`
+    for background).  Another is to use a pattern
+    where the :class:`.Session` is passed between functions and is otherwise
+    not shared with other threads.
 
-    But the bigger point here is, you should not *want* to use the session
+    The bigger point is that you should not *want* to use the session
     with multiple concurrent threads. That would be like having everyone at a
     restaurant all eat from the same plate. The session is a local "workspace"
     that you use for a specific set of tasks; you don't want to, or need to,
-    share that session with other threads who are doing some other task. If,
-    on the other hand, there are other threads participating in the same task
-    you are, such as in a desktop graphical application, then you would be
-    sharing the session with those threads, but you also will have implemented
-    a proper locking scheme (or your graphical framework does) so that those
-    threads do not collide.
+    share that session with other threads who are doing some other task.
 
-    A multithreaded application is usually going to want to make usage of
-    :class:`.scoped_session` to transparently manage sessions per thread.
-    More on this at :ref:`unitofwork_contextual`.
+    If there are in fact multiple threads participating
+    in the same task, then you may consider sharing the session between
+    those threads, though this would be an extremely unusual scenario.
+    In this case it would be necessary
+    to implement a proper locking scheme so that the :class:`.Session` is still not
+    exposed to concurrent access.
+
 
 Querying
 --------
