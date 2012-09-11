@@ -24,81 +24,37 @@ from .events import SessionEvents
 statelib = util.importlater("sqlalchemy.orm", "state")
 import sys
 
-__all__ = ['Session', 'SessionTransaction', 'SessionExtension']
+__all__ = ['Session', 'SessionTransaction', 'SessionExtension', 'sessionmaker']
 
 
-def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
-                 expire_on_commit=True, **kwargs):
-    """Generate a custom-configured :class:`.Session` class.
+class _SessionClassMethods(object):
+    """Class-level methods for :class:`.Session`, :class:`.sessionmaker`."""
 
-    The returned object is a subclass of :class:`.Session`, which,
-    when instantiated with no arguments, uses the keyword arguments
-    configured here as its constructor arguments.
+    @classmethod
+    def close_all(cls):
+        """Close *all* sessions in memory."""
 
-    It is intended that the :func:`.sessionmaker()` function be called
-    within the global scope of an application, and the returned class
-    be made available to the rest of the application as the single
-    class used to instantiate sessions.
+        for sess in _sessions.values():
+            sess.close()
 
-    e.g.::
+    @classmethod
+    def identity_key(cls, *args, **kwargs):
+        """Return an identity key.
 
-        # global scope
-        Session = sessionmaker(autoflush=False)
+        This is an alias of :func:`.util.identity_key`.
 
-        # later, in a local scope, create and use a session:
-        sess = Session()
+        """
+        return orm_util.identity_key(*args, **kwargs)
 
-    Any keyword arguments sent to the constructor itself will override the
-    "configured" keywords::
+    @classmethod
+    def object_session(cls, instance):
+        """Return the :class:`.Session` to which an object belongs.
 
-        Session = sessionmaker()
+        This is an alias of :func:`.object_session`.
 
-        # bind an individual session to a connection
-        sess = Session(bind=connection)
+        """
 
-    The class also includes a special classmethod ``configure()``, which
-    allows additional configurational options to take place after the custom
-    ``Session`` class has been generated.  This is useful particularly for
-    defining the specific ``Engine`` (or engines) to which new instances of
-    ``Session`` should be bound::
-
-        Session = sessionmaker()
-        Session.configure(bind=create_engine('sqlite:///foo.db'))
-
-        sess = Session()
-
-    For options, see the constructor options for :class:`.Session`.
-
-    """
-    kwargs['bind'] = bind
-    kwargs['autoflush'] = autoflush
-    kwargs['autocommit'] = autocommit
-    kwargs['expire_on_commit'] = expire_on_commit
-
-    if class_ is None:
-        class_ = Session
-
-    class Sess(object):
-        def __init__(self, **local_kwargs):
-            for k in kwargs:
-                local_kwargs.setdefault(k, kwargs[k])
-            super(Sess, self).__init__(**local_kwargs)
-
-        @classmethod
-        def configure(self, **new_kwargs):
-            """(Re)configure the arguments for this sessionmaker.
-
-            e.g.::
-
-                Session = sessionmaker()
-
-                Session.configure(bind=create_engine('sqlite://'))
-            """
-            kwargs.update(new_kwargs)
-
-
-    return type("SessionMaker", (Sess, class_), {})
-
+        return object_session(instance)
 
 class SessionTransaction(object):
     """A :class:`.Session`-level transaction.
@@ -446,7 +402,7 @@ class SessionTransaction(object):
         else:
             self.rollback()
 
-class Session(object):
+class Session(_SessionClassMethods):
     """Manages persistence operations for ORM-mapped objects.
 
     The Session's usage paradigm is described at :ref:`session_toplevel`.
@@ -921,13 +877,6 @@ class Session(object):
         if self.transaction is not None:
             for transaction in self.transaction._iterate_parents():
                 transaction.close()
-
-    @classmethod
-    def close_all(cls):
-        """Close *all* sessions in memory."""
-
-        for sess in _sessions.values():
-            sess.close()
 
     def expunge_all(self):
         """Remove all object instances from this ``Session``.
@@ -1573,15 +1522,6 @@ class Session(object):
             merged_state.manager.dispatch.load(merged_state, None)
         return merged
 
-    @classmethod
-    def identity_key(cls, *args, **kwargs):
-        return orm_util.identity_key(*args, **kwargs)
-
-    @classmethod
-    def object_session(cls, instance):
-        """Return the ``Session`` to which an object belongs."""
-
-        return object_session(instance)
 
     def _validate_persistent(self, state):
         if not self.identity_map.contains_state(state):
@@ -2070,6 +2010,108 @@ class Session(object):
         "The set of all instances marked as 'new' within this ``Session``."
 
         return util.IdentitySet(self._new.values())
+
+class sessionmaker(_SessionClassMethods):
+    """A configurable :class:`.Session` factory.
+
+    The :class:`.sessionmaker` factory generates new
+    :class:`.Session` objects when called, creating them given
+    the configurational arguments established here.
+
+    e.g.::
+
+        # global scope
+        Session = sessionmaker(autoflush=False)
+
+        # later, in a local scope, create and use a session:
+        sess = Session()
+
+    Any keyword arguments sent to the constructor itself will override the
+    "configured" keywords::
+
+        Session = sessionmaker()
+
+        # bind an individual session to a connection
+        sess = Session(bind=connection)
+
+    The class also includes a method :meth:`.configure`, which can
+    be used to specify additional keyword arguments to the factory, which
+    will take effect for subsequent :class:`.Session` objects generated.
+    This is usually used to associate one or more :class:`.Engine` objects
+    with an existing :class:`.sessionmaker` factory before it is first
+    used::
+
+        Session = sessionmaker()
+        Session.configure(bind=create_engine('sqlite:///foo.db'))
+
+        sess = Session()
+
+    """
+
+    def __init__(self, bind=None, class_=Session, autoflush=True,
+                        autocommit=False,
+                        expire_on_commit=True, **kw):
+        """Construct a new :class:`.sessionmaker`.
+
+        All arguments here except for ``class_`` correspond to arguments
+        accepted by :class:`.Session` directly.  See the
+        :meth:`.Session.__init__` docstring for more details on parameters.
+
+        :param bind: a :class:`.Engine` or other :class:`.Connectable` with
+         which newly created :class:`.Session` objects will be associated.
+        :param class_: class to use in order to create new :class:`.Session`
+         objects.  Defaults to :class:`.Session`.
+        :param autoflush: The autoflush setting to use with newly created
+         :class:`.Session` objects.
+        :param autocommit: The autocommit setting to use with newly created
+         :class:`.Session` objects.
+        :param expire_on_commit=True: the expire_on_commit setting to use
+         with newly created :class:`.Session` objects.
+        :param \**kw: all other keyword arguments are passed to the constructor
+         of newly created :class:`.Session` objects.
+
+        """
+        kw['bind'] = bind
+        kw['autoflush'] = autoflush
+        kw['autocommit'] = autocommit
+        kw['expire_on_commit'] = expire_on_commit
+        self.kw = kw
+        # make our own subclass of the given class, so that
+        # events can be associated with it specifically.
+        self.class_ = type(class_.__name__, (class_,), {})
+
+    def __call__(self, **local_kw):
+        """Produce a new :class:`.Session` object using the configuration
+        established in this :class:`.sessionmaker`.
+
+        In Python, the ``__call__`` method is invoked on an object when
+        it is "called" in the same way as a function::
+
+            Session = sessionmaker()
+            session = Session()  # invokes sessionmaker.__call__()
+
+        """
+        for k, v in self.kw.items():
+            local_kw.setdefault(k, v)
+        return self.class_(**local_kw)
+
+    def configure(self, **new_kw):
+        """(Re)configure the arguments for this sessionmaker.
+
+        e.g.::
+
+            Session = sessionmaker()
+
+            Session.configure(bind=create_engine('sqlite://'))
+        """
+        self.kw.update(new_kw)
+
+    def __repr__(self):
+        return "%s(class_=%r%s)" % (
+                    self.__class__.__name__,
+                    self.class_.__name__,
+                    ", ".join("%s=%r" % (k, v) for k, v in self.kw.items())
+                )
 
 _sessions = weakref.WeakValueDictionary()
 

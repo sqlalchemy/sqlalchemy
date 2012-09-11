@@ -925,16 +925,24 @@ class SessionEvents(event.Events):
 
     @classmethod
     def _accept_with(cls, target):
-        if isinstance(target, orm.ScopedSession):
-            if not isinstance(target.session_factory, type) or \
-                not issubclass(target.session_factory, orm.Session):
+        if isinstance(target, orm.scoped_session):
+
+            target = target.session_factory
+            if not isinstance(target, orm.sessionmaker) and \
+                (
+                    not isinstance(target, type) or
+                    not issubclass(target, orm.Session)
+                ):
                 raise exc.ArgumentError(
-                            "Session event listen on a ScopedSession "
+                            "Session event listen on a scoped_session "
                             "requires that its creation callable "
-                            "is a Session subclass.")
-            return target.session_factory
+                            "is associated with the Session class.")
+
+
+        if isinstance(target, orm.sessionmaker):
+            return target.class_
         elif isinstance(target, type):
-            if issubclass(target, orm.ScopedSession):
+            if issubclass(target, orm.scoped_session):
                 return orm.Session
             elif issubclass(target, orm.Session):
                 return target

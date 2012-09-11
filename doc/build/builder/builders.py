@@ -194,7 +194,7 @@ class PopupLatexFormatter(LatexFormatter):
 
 def autodoc_skip_member(app, what, name, obj, skip, options):
     if what == 'class' and skip and \
-        name in ('__init__', '__eq__', '__ne__', '__lt__', '__le__') and \
+        name in ('__init__', '__eq__', '__ne__', '__lt__', '__le__', '__call__') and \
         obj.__doc__:
         return False
     else:
