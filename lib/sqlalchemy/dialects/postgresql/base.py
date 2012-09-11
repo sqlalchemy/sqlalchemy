@@ -1483,7 +1483,7 @@ class PGDialect(default.DefaultDialect):
         for name, format_type, default, notnull, attnum, table_oid in rows:
             ## strip (5) from character varying(5), timestamp(5)
             # with time zone, etc
-            attype = re.sub(r'\([\d,]+\)', '', format_type)
+            attype = re.sub(r'\(.*\)', '', format_type)
 
             # strip '[]' from integer[], etc.
             attype = re.sub(r'\[\]', '', attype)
@@ -1493,8 +1493,12 @@ class PGDialect(default.DefaultDialect):
             charlen = re.search('\(([\d,]+)\)', format_type)
             if charlen:
                 charlen = charlen.group(1)
+            args = re.search('\((.*)\)', format_type)
+            if args:
+                args = tuple(args.group(1).split(','))
+            else:
+                args = ()
             kwargs = {}
-            args = None
 
             if attype == 'numeric':
                 if charlen:
@@ -1531,8 +1535,6 @@ class PGDialect(default.DefaultDialect):
                 args = ()
             elif charlen:
                 args = (int(charlen),)
-            else:
-                args = ()
 
             while True:
                 if attype in self.ischema_names:
