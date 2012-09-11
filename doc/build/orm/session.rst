@@ -48,6 +48,8 @@ usually, you'd re-associate detached objects another :class:`.Session` when you
 want to work with them again, so that they can resume their normal task of
 representing database state.
 
+.. _session_getting:
+
 Getting a Session
 =================
 
@@ -222,7 +224,7 @@ Session Frequently Asked Questions
     example's sake!  In reality, the :class:`.sessionmaker` would be somewhere
     at the module level.   The calls to instantiate :class:`.Session`
     would then be placed at the point in the application where database
-    conversations begin (see :ref:`session_faq_whentocreate`).
+    conversations begin.
 
 * When do I construct a :class:`.Session`, when do I commit it, and when do I close it ?
 
@@ -237,8 +239,8 @@ Session Frequently Asked Questions
     begin a new transaction if it is used again, subsequent to the previous
     transaction ending; from this it follows that the :class:`.Session`
     is capable of having a lifespan across many transactions, though only
-    one at a time.   We refer to these two concepts as *transaction scope*
-    and *session scope*.
+    one at a time.   We refer to these two concepts as **transaction scope**
+    and **session scope**.
 
     The implication here is that the SQLAlchemy ORM is encouraging the
     developer to establish these two scopes in his or her application,
@@ -282,7 +284,7 @@ Session Frequently Asked Questions
     pattern which establishes one as soon as it is needed.  The request
     then proceeds, with some system in place where application logic can access
     the current :class:`.Session` in a manner associated with how the actual
-    requset object is accessed.  As the request ends, the :class:`.Session`
+    request object is accessed.  As the request ends, the :class:`.Session`
     is torn down as well, usually through the usage of event hooks provided
     by the web framework.   The transaction used by the :class:`.Session`
     may also be committed at this point, or alternatively the application may
@@ -303,8 +305,8 @@ Session Frequently Asked Questions
 
     In those situations where integration libraries are not available,
     SQLAlchemy includes its own "helper" class known as
-    :class:`.scoped_session`.  This object actually is used as the basis
-    of some integration packages, and provides both a quick way
+    :class:`.scoped_session`.   A tutorial on the usage of this object
+    is at :ref:`unitofwork_contextual`.   It provides both a quick way
     to associate a :class:`.Session` with the current thread, as well as
     patterns to associate :class:`.Session` objects with other kinds of
     scopes.
@@ -316,7 +318,7 @@ Session Frequently Asked Questions
     a series of operations for some period of time, which can be committed
     at the end.   Some examples:
 
-    * A background daemon which spawns off child forks for example
+    * A background daemon which spawns off child forks
       would want to create a :class:`.Session` local to each child
       process work with that :class:`.Session` through the life of the "job"
       that the fork is handling, then tear it down when the job is completed.
@@ -1727,7 +1729,7 @@ This simple correspondence of web request and thread means that to associate a
 :class:`.Session` with a thread implies it is also associated with the web request
 running within that thread, and vice versa, provided that the :class:`.Session` is
 created only after the web request begins and torn down just before the web request ends.
-So it is a very common practice to use :class:`.scoped_session` as a quick way
+So it is a common practice to use :class:`.scoped_session` as a quick way
 to integrate the :class:`.Session` with a web application.  The sequence
 diagram below illustrates this flow::
 
@@ -1792,7 +1794,7 @@ one of many options on how to "scope" a :class:`.Session`.   A custom scope can 
 based on any existing system of getting at "the current thing we are working with".
 
 Suppose a web framework defines a library function ``get_current_request()``.  An application
-build on this framework can call this function at any time, and the result will be
+built using this framework can call this function at any time, and the result will be
 some kind of ``Request`` object that represents the current request being processed.
 If the ``Request`` object is hashable, then this function can be easily integrated with
 :class:`.scoped_session` to associate the :class:`.Session` with the request.  Below we illustrate

@@ -42,26 +42,45 @@ class scoped_session(object):
         else:
             self.registry = ThreadLocalRegistry(session_factory)
 
-    def __call__(self, **kwargs):
-        """Return the current :class:`.Session`."""
-        if kwargs:
-            scope = kwargs.pop('scope', False)
+    def __call__(self, **kw):
+        """Return the current :class:`.Session`, creating it
+        using the session factory if not present.
+
+        :param \**kw: Keyword arguments will be passed to the
+         session factory callable, if an existing :class:`.Session`
+         is not present.  If the :class:`.Session` is present and
+         keyword arguments have been passed, :class:`.InvalidRequestError`
+         is raised.
+
+        """
+        if kw:
+            scope = kw.pop('scope', False)
             if scope is not None:
                 if self.registry.has():
                     raise sa_exc.InvalidRequestError(
                             "Scoped session is already present; "
                             "no new arguments may be specified.")
                 else:
-                    sess = self.session_factory(**kwargs)
+                    sess = self.session_factory(**kw)
                     self.registry.set(sess)
                     return sess
             else:
-                return self.session_factory(**kwargs)
+                return self.session_factory(**kw)
         else:
             return self.registry()
 
     def remove(self):
-        """Dispose of the current contextual session."""
+        """Dispose of the current :class:`.Session`, if present.
+
+        This will first call :meth:`.Session.close` method
+        on the current :class:`.Session`, which releases any existing
+        transactional/connection resources still being held; transactions
+        specifically are rolled back.  The :class:`.Session` is then
+        discarded.   Upon next usage within the same scope,
+        the :class:`.scoped_session` will produce a new
+        :class:`.Session` object.
+
+        """
 
         if self.registry.has():
             self.registry().close()

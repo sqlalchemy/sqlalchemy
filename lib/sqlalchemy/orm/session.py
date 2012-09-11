@@ -2041,10 +2041,19 @@ class sessionmaker(_SessionClassMethods):
     with an existing :class:`.sessionmaker` factory before it is first
     used::
 
+        # application starts
         Session = sessionmaker()
-        Session.configure(bind=create_engine('sqlite:///foo.db'))
+
+        # ... later
+        engine = create_engine('sqlite:///foo.db')
+        Session.configure(bind=engine)
 
         sess = Session()
+
+    .. seealso:
+
+        :ref:`session_getting` - introductory text on creating
+        sessions using :class:`.sessionmaker`.
 
     """
 
