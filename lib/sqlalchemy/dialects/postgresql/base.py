@@ -1488,8 +1488,8 @@ class PGDialect(default.DefaultDialect):
 
     def _get_column_info(self, name, format_type, default,
                          notnull, domains, enums, schema):
-        ## strip (5) from character varying(5), timestamp(5)
-        # with time zone, etc
+        ## strip (*) from character varying(5), timestamp(5)
+        # with time zone, geometry(POLYGON), etc.
         attype = re.sub(r'\(.*\)', '', format_type)
 
         # strip '[]' from integer[], etc.
