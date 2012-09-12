@@ -1593,7 +1593,6 @@ class PGDialect(default.DefaultDialect):
                     default = match.group(1) + \
                                 ('"%s"' % sch) + '.' + \
                                 match.group(2) + match.group(3)
-                    print default
 
         column_info = dict(name=name, type=coltype, nullable=nullable,
                            default=default, autoincrement=autoincrement)
