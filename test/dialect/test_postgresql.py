@@ -1713,6 +1713,55 @@ class ReflectionTest(fixtures.TestBase):
         eq_(ind, [{'unique': False, 'column_names': [u'y'], 'name': u'idx1'}])
         conn.close()
 
+class PostGISColumnReflection(fixtures.TestBase):
+    __only_on__ = 'postgresql'
+
+    class Geometry(object):
+        def __init__(self, geometry_type=None, srid=None):
+            self.geometry_type = geometry_type
+            self.srid = srid
+
+    ischema_names = None
+
+    @classmethod
+    def setup_class(cls):
+        ischema_names = postgresql.PGDialect.ischema_names
+        postgresql.PGDialect.ischema_names = ischema_names.copy()
+        postgresql.PGDialect.ischema_names['geometry'] = cls.Geometry
+        cls.ischema_names = ischema_names
+
+    @classmethod
+    def teardown_class(cls):
+        postgresql.PGDialect.ischema_names = cls.ischema_names
+        cls.ischema_names = None
+
+    def test_geometry(self):
+        dialect = postgresql.PGDialect()
+        column_info = dialect._get_column_info(
+                'geom', 'geometry', None, False,
+                {}, {}, 'public')
+        assert isinstance(column_info['type'], self.Geometry)
+        assert column_info['type'].geometry_type is None
+        assert column_info['type'].srid is None
+
+    def test_geometry_with_type(self):
+        dialect = postgresql.PGDialect()
+        column_info = dialect._get_column_info(
+                'geom', 'geometry(POLYGON)', None, False,
+                {}, {}, 'public')
+        assert isinstance(column_info['type'], self.Geometry)
+        assert column_info['type'].geometry_type == 'POLYGON'
+        assert column_info['type'].srid is None
+
+    def test_geometry_with_type_and_srid(self):
+        dialect = postgresql.PGDialect()
+        column_info = dialect._get_column_info(
+                'geom', 'geometry(POLYGON,4326)', None, False,
+                {}, {}, 'public')
+        assert isinstance(column_info['type'], self.Geometry)
+        assert column_info['type'].geometry_type == 'POLYGON'
+        assert column_info['type'].srid == '4326'
+
 class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     __only_on__ = 'postgresql'
