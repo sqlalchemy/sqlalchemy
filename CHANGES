@@ -252,6 +252,16 @@ underneath "0.7.xx".
     including any user-defined value as well
     as association proxy objects.  [ticket:2517]
 
+  - [bug] Fixed a disconnect that slowly evolved
+    between a @declared_attr Column and a
+    directly-defined Column on a mixin. In both
+    cases, the Column will be applied to the
+    declared class' table, but not to that of a
+    joined inheritance subclass.   Previously,
+    the directly-defined Column would be placed
+    on both the base and the sub table, which isn't
+    typically what's desired.  [ticket:2565]
+
   - [feature] *Very limited* support for
     inheriting mappers to be GC'ed when the
     class itself is deferenced.  The mapper

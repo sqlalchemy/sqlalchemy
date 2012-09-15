@@ -98,6 +98,11 @@ def _as_declarative(cls, classname, dict_):
             elif base is not cls:
                 # we're a mixin.
                 if isinstance(obj, Column):
+                    if getattr(cls, name) is not obj:
+                        # if column has been overridden
+                        # (like by the InstrumentedAttribute of the
+                        # superclass), skip
+                        continue
                     if obj.foreign_keys:
                         raise exc.InvalidRequestError(
                         "Columns with foreign keys to other columns "
@@ -127,8 +132,7 @@ def _as_declarative(cls, classname, dict_):
 
     # apply inherited columns as we should
     for k, v in potential_columns.items():
-        if tablename or (v.name or k) not in parent_columns:
-            dict_[k] = v
+        dict_[k] = v
 
     if inherited_table_args and not tablename:
         table_args = None

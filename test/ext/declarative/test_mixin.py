@@ -369,10 +369,9 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         assert General.bar.prop.columns[0] is General.__table__.c.bar_newname
         assert len(General.bar.prop.columns) == 1
-        assert Specific.bar.prop is not General.bar.prop
-        assert len(Specific.bar.prop.columns) == 2
-        assert Specific.bar.prop.columns[0] is Specific.__table__.c.bar_newname
-        assert Specific.bar.prop.columns[1] is General.__table__.c.bar_newname
+        assert Specific.bar.prop is General.bar.prop
+        eq_(len(Specific.bar.prop.columns), 1)
+        assert Specific.bar.prop.columns[0] is General.__table__.c.bar_newname
 
     def test_column_join_checks_superclass_type(self):
         """Test that the logic which joins subclass props to those
@@ -717,7 +716,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(Specific.__table__.name, 'specific')
         eq_(Generic.__table__.c.keys(), ['timestamp', 'id',
             'python_type'])
-        eq_(Specific.__table__.c.keys(), ['timestamp', 'id'])
+        eq_(Specific.__table__.c.keys(), ['id'])
         eq_(Generic.__table__.kwargs, {'mysql_engine': 'InnoDB'})
         eq_(Specific.__table__.kwargs, {'mysql_engine': 'InnoDB'})
 
@@ -755,8 +754,68 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(BaseType.__table__.kwargs, {'mysql_engine': 'InnoDB'})
         assert Single.__table__ is BaseType.__table__
         eq_(Joined.__table__.name, 'joined')
-        eq_(Joined.__table__.c.keys(), ['timestamp', 'id'])
+        eq_(Joined.__table__.c.keys(), ['id'])
         eq_(Joined.__table__.kwargs, {'mysql_engine': 'InnoDB'})
+
+    def test_col_copy_vs_declared_attr_joined_propagation(self):
+        class Mixin(object):
+            a = Column(Integer)
+
+            @declared_attr
+            def b(cls):
+                return Column(Integer)
+
+        class A(Mixin, Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+
+        class B(A):
+            __tablename__ = 'b'
+            id = Column(Integer, ForeignKey('a.id'), primary_key=True)
+
+        assert 'a' in A.__table__.c
+        assert 'b' in A.__table__.c
+        assert 'a' not in B.__table__.c
+        assert 'b' not in B.__table__.c
+
+    def test_col_copy_vs_declared_attr_joined_propagation_newname(self):
+        class Mixin(object):
+            a = Column('a1', Integer)
+
+            @declared_attr
+            def b(cls):
+                return Column('b1', Integer)
+
+        class A(Mixin, Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+
+        class B(A):
+            __tablename__ = 'b'
+            id = Column(Integer, ForeignKey('a.id'), primary_key=True)
+
+        assert 'a1' in A.__table__.c
+        assert 'b1' in A.__table__.c
+        assert 'a1' not in B.__table__.c
+        assert 'b1' not in B.__table__.c
+
+    def test_col_copy_vs_declared_attr_single_propagation(self):
+        class Mixin(object):
+            a = Column(Integer)
+
+            @declared_attr
+            def b(cls):
+                return Column(Integer)
+
+        class A(Mixin, Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+
+        class B(A):
+            pass
+
+        assert 'a' in A.__table__.c
+        assert 'b' in A.__table__.c
 
     def test_non_propagating_mixin(self):
 
