@@ -633,6 +633,30 @@ underneath "0.7.xx".
     The phrase is established using with_hint().
     Courtesy Ryan Kelly [ticket:2506]
 
+  - [feature] The "ischema_names" dictionary of the
+    Postgresql dialect is "unofficially" customizable.
+    Meaning, new types such as PostGIS types can
+    be added into this dictionary, and the PG type
+    reflection code should be able to handle simple
+    types with variable numbers of arguments.
+    The functionality here is "unofficial" for
+    three reasons:
+
+    1. this is not an "official" API.  Ideally
+       an "official" API would allow custom type-handling
+       callables at the dialect or global level
+       in a generic way.
+    2. This is only implemented for the PG dialect,
+       in particular because PG has broad support
+       for custom types vs. other database backends.
+       A real API would be implemented at the
+       default dialect level.
+    3. The reflection code here is only tested against
+       simple types and probably has issues with more
+       compositional types.
+
+    patch courtesy Éric Lemoine.
+
 - firebird
   - [feature] The "startswith()" operator renders
     as "STARTING WITH", "~startswith()" renders

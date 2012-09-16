@@ -1713,54 +1713,49 @@ class ReflectionTest(fixtures.TestBase):
         eq_(ind, [{'unique': False, 'column_names': [u'y'], 'name': u'idx1'}])
         conn.close()
 
-class PostGISColumnReflection(fixtures.TestBase):
-    __only_on__ = 'postgresql'
+class CustomTypeReflectionTest(fixtures.TestBase):
 
-    class Geometry(object):
-        def __init__(self, geometry_type=None, srid=None):
-            self.geometry_type = geometry_type
-            self.srid = srid
+    class CustomType(object):
+        def __init__(self, arg1=None, arg2=None):
+            self.arg1 = arg1
+            self.arg2 = arg2
 
     ischema_names = None
 
-    @classmethod
-    def setup_class(cls):
+    def setup(self):
         ischema_names = postgresql.PGDialect.ischema_names
         postgresql.PGDialect.ischema_names = ischema_names.copy()
-        postgresql.PGDialect.ischema_names['geometry'] = cls.Geometry
-        cls.ischema_names = ischema_names
+        self.ischema_names = ischema_names
 
-    @classmethod
-    def teardown_class(cls):
-        postgresql.PGDialect.ischema_names = cls.ischema_names
-        cls.ischema_names = None
+    def teardown(self):
+        postgresql.PGDialect.ischema_names = self.ischema_names
+        self.ischema_names = None
 
-    def test_geometry(self):
-        dialect = postgresql.PGDialect()
-        column_info = dialect._get_column_info(
-                'geom', 'geometry', None, False,
+    def _assert_reflected(self, dialect):
+        for sch, args in [
+            ('my_custom_type', (None, None)),
+            ('my_custom_type()', (None, None)),
+            ('my_custom_type(ARG1)', ('ARG1', None)),
+            ('my_custom_type(ARG1, ARG2)', ('ARG1', 'ARG2')),
+        ]:
+            column_info = dialect._get_column_info(
+                'colname', sch, None, False,
                 {}, {}, 'public')
-        assert isinstance(column_info['type'], self.Geometry)
-        assert column_info['type'].geometry_type is None
-        assert column_info['type'].srid is None
+            assert isinstance(column_info['type'], self.CustomType)
+            eq_(column_info['type'].arg1, args[0])
+            eq_(column_info['type'].arg2, args[1])
 
-    def test_geometry_with_type(self):
+    def test_clslevel(self):
+        postgresql.PGDialect.ischema_names['my_custom_type'] = self.CustomType
         dialect = postgresql.PGDialect()
-        column_info = dialect._get_column_info(
-                'geom', 'geometry(POLYGON)', None, False,
-                {}, {}, 'public')
-        assert isinstance(column_info['type'], self.Geometry)
-        assert column_info['type'].geometry_type == 'POLYGON'
-        assert column_info['type'].srid is None
+        self._assert_reflected(dialect)
 
-    def test_geometry_with_type_and_srid(self):
+    def test_instancelevel(self):
         dialect = postgresql.PGDialect()
-        column_info = dialect._get_column_info(
-                'geom', 'geometry(POLYGON,4326)', None, False,
-                {}, {}, 'public')
-        assert isinstance(column_info['type'], self.Geometry)
-        assert column_info['type'].geometry_type == 'POLYGON'
-        assert column_info['type'].srid == '4326'
+        dialect.ischema_names = dialect.ischema_names.copy()
+        dialect.ischema_names['my_custom_type'] = self.CustomType
+        self._assert_reflected(dialect)
+
 
 class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 

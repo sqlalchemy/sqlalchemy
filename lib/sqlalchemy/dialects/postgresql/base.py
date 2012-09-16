@@ -1471,7 +1471,7 @@ class PGDialect(default.DefaultDialect):
         """
         s = sql.text(SQL_COLS,
             bindparams=[sql.bindparam('table_oid', type_=sqltypes.Integer)],
-            typemap={'attname':sqltypes.Unicode, 'default':sqltypes.Unicode}
+            typemap={'attname': sqltypes.Unicode, 'default': sqltypes.Unicode}
         )
         c = connection.execute(s, table_oid=table_oid)
         rows = c.fetchall()
@@ -1501,8 +1501,8 @@ class PGDialect(default.DefaultDialect):
         if charlen:
             charlen = charlen.group(1)
         args = re.search('\((.*)\)', format_type)
-        if args:
-            args = tuple(args.group(1).split(','))
+        if args and args.group(1):
+            args = tuple(re.split('\s*,\s*', args.group(1)))
         else:
             args = ()
         kwargs = {}
@@ -1535,7 +1535,7 @@ class PGDialect(default.DefaultDialect):
                 args = (int(charlen),)
             else:
                 args = ()
-        elif attype in ('interval','interval year to month',
+        elif attype in ('interval', 'interval year to month',
                             'interval day to second'):
             if charlen:
                 kwargs['precision'] = int(charlen)
