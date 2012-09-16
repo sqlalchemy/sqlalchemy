@@ -1481,114 +1481,122 @@ class PGDialect(default.DefaultDialect):
         # format columns
         columns = []
         for name, format_type, default, notnull, attnum, table_oid in rows:
-            ## strip (5) from character varying(5), timestamp(5)
-            # with time zone, etc
-            attype = re.sub(r'\([\d,]+\)', '', format_type)
+            column_info = self._get_column_info(name, format_type, default,
+                                                notnull, domains, enums, schema)
+            columns.append(column_info)
+        return columns
 
-            # strip '[]' from integer[], etc.
-            attype = re.sub(r'\[\]', '', attype)
+    def _get_column_info(self, name, format_type, default,
+                         notnull, domains, enums, schema):
+        ## strip (*) from character varying(5), timestamp(5)
+        # with time zone, geometry(POLYGON), etc.
+        attype = re.sub(r'\(.*\)', '', format_type)
 
-            nullable = not notnull
-            is_array = format_type.endswith('[]')
-            charlen = re.search('\(([\d,]+)\)', format_type)
+        # strip '[]' from integer[], etc.
+        attype = re.sub(r'\[\]', '', attype)
+
+        nullable = not notnull
+        is_array = format_type.endswith('[]')
+        charlen = re.search('\(([\d,]+)\)', format_type)
+        if charlen:
+            charlen = charlen.group(1)
+        args = re.search('\((.*)\)', format_type)
+        if args:
+            args = tuple(args.group(1).split(','))
+        else:
+            args = ()
+        kwargs = {}
+
+        if attype == 'numeric':
             if charlen:
-                charlen = charlen.group(1)
-            kwargs = {}
-            args = None
-
-            if attype == 'numeric':
-                if charlen:
-                    prec, scale = charlen.split(',')
-                    args = (int(prec), int(scale))
-                else:
-                    args = ()
-            elif attype == 'double precision':
-                args = (53, )
-            elif attype == 'integer':
+                prec, scale = charlen.split(',')
+                args = (int(prec), int(scale))
+            else:
                 args = ()
-            elif attype in ('timestamp with time zone',
-                            'time with time zone'):
-                kwargs['timezone'] = True
-                if charlen:
-                    kwargs['precision'] = int(charlen)
-                args = ()
-            elif attype in ('timestamp without time zone',
-                            'time without time zone', 'time'):
-                kwargs['timezone'] = False
-                if charlen:
-                    kwargs['precision'] = int(charlen)
-                args = ()
-            elif attype == 'bit varying':
-                kwargs['varying'] = True
-                if charlen:
-                    args = (int(charlen),)
-                else:
-                    args = ()
-            elif attype in ('interval','interval year to month',
-                                'interval day to second'):
-                if charlen:
-                    kwargs['precision'] = int(charlen)
-                args = ()
-            elif charlen:
+        elif attype == 'double precision':
+            args = (53, )
+        elif attype == 'integer':
+            args = ()
+        elif attype in ('timestamp with time zone',
+                        'time with time zone'):
+            kwargs['timezone'] = True
+            if charlen:
+                kwargs['precision'] = int(charlen)
+            args = ()
+        elif attype in ('timestamp without time zone',
+                        'time without time zone', 'time'):
+            kwargs['timezone'] = False
+            if charlen:
+                kwargs['precision'] = int(charlen)
+            args = ()
+        elif attype == 'bit varying':
+            kwargs['varying'] = True
+            if charlen:
                 args = (int(charlen),)
             else:
                 args = ()
+        elif attype in ('interval','interval year to month',
+                            'interval day to second'):
+            if charlen:
+                kwargs['precision'] = int(charlen)
+            args = ()
+        elif charlen:
+            args = (int(charlen),)
 
-            while True:
-                if attype in self.ischema_names:
-                    coltype = self.ischema_names[attype]
-                    break
-                elif attype in enums:
-                    enum = enums[attype]
-                    coltype = ENUM
-                    if "." in attype:
-                        kwargs['schema'], kwargs['name'] = attype.split('.')
-                    else:
-                        kwargs['name'] = attype
-                    args = tuple(enum['labels'])
-                    break
-                elif attype in domains:
-                    domain = domains[attype]
-                    attype = domain['attype']
-                    # A table can't override whether the domain is nullable.
-                    nullable = domain['nullable']
-                    if domain['default'] and not default:
-                        # It can, however, override the default
-                        # value, but can't set it to null.
-                        default = domain['default']
-                    continue
+        while True:
+            if attype in self.ischema_names:
+                coltype = self.ischema_names[attype]
+                break
+            elif attype in enums:
+                enum = enums[attype]
+                coltype = ENUM
+                if "." in attype:
+                    kwargs['schema'], kwargs['name'] = attype.split('.')
                 else:
-                    coltype = None
-                    break
-
-            if coltype:
-                coltype = coltype(*args, **kwargs)
-                if is_array:
-                    coltype = ARRAY(coltype)
+                    kwargs['name'] = attype
+                args = tuple(enum['labels'])
+                break
+            elif attype in domains:
+                domain = domains[attype]
+                attype = domain['attype']
+                # A table can't override whether the domain is nullable.
+                nullable = domain['nullable']
+                if domain['default'] and not default:
+                    # It can, however, override the default
+                    # value, but can't set it to null.
+                    default = domain['default']
+                continue
             else:
-                util.warn("Did not recognize type '%s' of column '%s'" %
-                          (attype, name))
-                coltype = sqltypes.NULLTYPE
-            # adjust the default value
-            autoincrement = False
-            if default is not None:
-                match = re.search(r"""(nextval\(')([^']+)('.*$)""", default)
-                if match is not None:
-                    autoincrement = True
-                    # the default is related to a Sequence
-                    sch = schema
-                    if '.' not in match.group(2) and sch is not None:
-                        # unconditionally quote the schema name.  this could
-                        # later be enhanced to obey quoting rules /
-                        # "quote schema"
-                        default = match.group(1) + \
-                                    ('"%s"' % sch) + '.' + \
-                                    match.group(2) + match.group(3)
+                coltype = None
+                break
 
-            column_info = dict(name=name, type=coltype, nullable=nullable,
-                               default=default, autoincrement=autoincrement)
-            columns.append(column_info)
-        return columns
+        if coltype:
+            coltype = coltype(*args, **kwargs)
+            if is_array:
+                coltype = ARRAY(coltype)
+        else:
+            util.warn("Did not recognize type '%s' of column '%s'" %
+                      (attype, name))
+            coltype = sqltypes.NULLTYPE
+        # adjust the default value
+        autoincrement = False
+        if default is not None:
+            match = re.search(r"""(nextval\(')([^']+)('.*$)""", default)
+            if match is not None:
+                autoincrement = True
+                # the default is related to a Sequence
+                sch = schema
+                if '.' not in match.group(2) and sch is not None:
+                    # unconditionally quote the schema name.  this could
+                    # later be enhanced to obey quoting rules /
+                    # "quote schema"
+                    default = match.group(1) + \
+                                ('"%s"' % sch) + '.' + \
+                                match.group(2) + match.group(3)
+
+        column_info = dict(name=name, type=coltype, nullable=nullable,
+                           default=default, autoincrement=autoincrement)
+        return column_info
 
     @reflection.cache
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
