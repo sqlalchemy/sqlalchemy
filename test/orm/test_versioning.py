@@ -1,6 +1,7 @@
+import datetime
 import sqlalchemy as sa
 from test.lib import engines, testing
-from sqlalchemy import Integer, String, ForeignKey, literal_column, \
+from sqlalchemy import Integer, String, Date, ForeignKey, literal_column, \
     orm, exc, select
 from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, Session, \
@@ -322,6 +323,40 @@ class VersioningTest(fixtures.MappedTest):
             "merging to update the most recent version.",
             s1.merge, f2
         )
+
+class ColumnTypeTest(fixtures.MappedTest):
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('version_table', metadata,
+              Column('id', Date, primary_key=True),
+              Column('version_id', Integer, nullable=False),
+              Column('value', String(40), nullable=False))
+
+    @classmethod
+    def setup_classes(cls):
+        class Foo(cls.Basic):
+            pass
+
+    def _fixture(self):
+        Foo, version_table = self.classes.Foo, self.tables.version_table
+
+        mapper(Foo, version_table,
+                version_id_col=version_table.c.version_id)
+        s1 = Session()
+        return s1
+
+    @engines.close_open_connections
+    def test_update(self):
+        Foo = self.classes.Foo
+
+        s1 = self._fixture()
+        f1 = Foo(id=datetime.date.today(), value='f1')
+        s1.add(f1)
+        s1.commit()
+
+        f1.value='f1rev2'
+        s1.commit()
 
 class RowSwitchTest(fixtures.MappedTest):
     @classmethod

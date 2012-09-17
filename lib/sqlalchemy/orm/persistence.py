@@ -466,7 +466,7 @@ def _emit_update_statements(base_mapper, uowtransaction,
         if needs_version_id:
             clause.clauses.append(mapper.version_id_col ==\
                     sql.bindparam(mapper.version_id_col._label,
-                                    type_=col.type))
+                                    type_=mapper.version_id_col.type))
 
         return table.update(clause)
 
