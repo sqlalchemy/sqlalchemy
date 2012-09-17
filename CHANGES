@@ -29,6 +29,11 @@ CHANGES
     class to the same target.  An informative
     error is raised now.
 
+  - [bug] Fixed bug where incorrect type information
+    would be passed when the ORM would bind the
+    "version" column, when using the "version" feature.
+    Tests courtesy Daniel Miller.  [ticket:2539]
+
 - sql
   - [bug] Fixed CTE bug whereby positional
     bound parameters present in the CTEs themselves
