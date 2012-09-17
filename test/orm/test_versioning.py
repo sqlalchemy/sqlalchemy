@@ -2,7 +2,7 @@ import datetime
 import sqlalchemy as sa
 from test.lib import engines, testing
 from sqlalchemy import Integer, String, Date, ForeignKey, literal_column, \
-    orm, exc, select
+    orm, exc, select, TypeDecorator
 from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, Session, \
     create_session, column_property, sessionmaker,\
@@ -328,8 +328,14 @@ class ColumnTypeTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
+        class SpecialType(TypeDecorator):
+            impl = Date
+            def process_bind_param(self, value, dialect):
+                assert isinstance(value, datetime.date)
+                return value
+
         Table('version_table', metadata,
-              Column('id', Date, primary_key=True),
+              Column('id', SpecialType, primary_key=True),
               Column('version_id', Integer, nullable=False),
               Column('value', String(40), nullable=False))
 
