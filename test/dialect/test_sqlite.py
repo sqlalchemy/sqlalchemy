@@ -300,11 +300,11 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         finally:
             meta.drop_all()
 
-    def test_quoted_identifiers(self):
+    @testing.provide_metadata
+    def test_quoted_identifiers_one(self):
         """Tests autoload of tables created with quoted column names."""
 
-        # This is quirky in sqlite.
-
+        metadata = self.metadata
         testing.db.execute("""CREATE TABLE "django_content_type" (
             "id" integer NOT NULL PRIMARY KEY,
             "django_stuff" text NULL
@@ -320,16 +320,47 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
             "change_message" text NOT NULL
         )
         """)
-        try:
-            meta = MetaData(testing.db)
-            table1 = Table('django_admin_log', meta, autoload=True)
-            table2 = Table('django_content_type', meta, autoload=True)
-            j = table1.join(table2)
-            assert j.onclause.compare(table1.c.content_type_id
-                    == table2.c.id)
-        finally:
-            testing.db.execute('drop table django_admin_log')
-            testing.db.execute('drop table django_content_type')
+        table1 = Table('django_admin_log', metadata, autoload=True)
+        table2 = Table('django_content_type', metadata, autoload=True)
+        j = table1.join(table2)
+        assert j.onclause.compare(table1.c.content_type_id
+                == table2.c.id)
+
+    @testing.provide_metadata
+    def test_quoted_identifiers_two(self):
+        """"test the edgiest of edge cases, quoted table/col names
+        that start and end with quotes.
+
+        SQLite claims to have fixed this in
+        http://www.sqlite.org/src/info/600482d161, however
+        it still fails if the FK points to a table name that actually
+        has quotes as part of its name.
+
+        """
+
+        metadata = self.metadata
+        testing.db.execute(r'''CREATE TABLE """a""" (
+            """id""" integer NOT NULL PRIMARY KEY
+        )
+        ''')
+
+        # unfortunately, still can't do this; sqlite quadruples
+        # up the quotes on the table name here for pragma foreign_key_list
+        #testing.db.execute(r'''
+        #CREATE TABLE """b""" (
+        #    """id""" integer NOT NULL PRIMARY KEY,
+        #    """aid""" integer NULL
+        #           REFERENCES """a""" ("""id""")
+        #)
+        #''')
+
+        table1 = Table(r'"a"', metadata, autoload=True)
+        assert '"id"' in table1.c
+
+        #table2 = Table(r'"b"', metadata, autoload=True)
+        #j = table1.join(table2)
+        #assert j.onclause.compare(table1.c['"id"']
+        #        == table2.c['"aid"'])
 
     def test_attached_as_schema(self):
         cx = testing.db.connect()

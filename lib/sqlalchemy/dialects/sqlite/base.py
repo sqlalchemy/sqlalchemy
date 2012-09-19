@@ -681,7 +681,6 @@ class SQLiteDialect(default.DefaultDialect):
             (name, type_, nullable, default, has_default, primary_key) = \
                 (row[1], row[2].upper(), not row[3],
                 row[4], row[4] is not None, row[5])
-            name = re.sub(r'^\"|\"$', '', name)
             match = re.match(r'(\w+)(\(.*?\))?', type_)
             if match:
                 coltype = match.group(1)
@@ -738,9 +737,12 @@ class SQLiteDialect(default.DefaultDialect):
             # was created with REFERENCES <tablename>, no col
             if rcol is None:
                 rcol = lcol
-            rtbl = re.sub(r'^\"|\"$', '', rtbl)
-            lcol = re.sub(r'^\"|\"$', '', lcol)
-            rcol = re.sub(r'^\"|\"$', '', rcol)
+
+            # see http://www.sqlalchemy.org/trac/ticket/2568
+            # as well as http://www.sqlite.org/src/info/600482d161
+            if self.dbapi.sqlite_version_info < (3, 6, 14):
+                rtbl = re.sub(r'^\"|\"$', '', rtbl)
+
             try:
                 fk = fks[numerical_id]
             except KeyError:

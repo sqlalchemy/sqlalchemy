@@ -126,6 +126,20 @@ CHANGES
     the "name" and "native_enum" flags.  Helps
     Alembic autogenerate.
 
+- sqlite
+  - [bug] Adjusted a very old bugfix which attempted
+    to work around a SQLite issue that itself was
+    "fixed" as of sqlite 3.6.14, regarding quotes
+    surrounding a table name when using
+    the "foreign_key_list" pragma.  The fix has been
+    adjusted to not interfere with quotes that
+    are *actually in the name* of a column or table,
+    to as much a degree as possible; sqlite still
+    doesn't return the correct result for foreign_key_list()
+    if the target table actually has quotes surrounding
+    its name, as *part* of its name (i.e. """mytable""").
+    [ticket:2568]
+
 - mysql
   - [bug] Updated mysqlconnector interface to use
     updated "client flag" and "charset" APIs,
