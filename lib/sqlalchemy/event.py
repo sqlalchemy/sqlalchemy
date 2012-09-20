@@ -352,7 +352,7 @@ class _EmptyListener(object):
         return iter(self.parent_listeners)
 
     def __nonzero__(self):
-        return False
+        return bool(self.parent_listeners)
 
 class _CompoundListener(object):
     _exec_once = False
