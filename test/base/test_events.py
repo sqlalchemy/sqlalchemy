@@ -50,6 +50,13 @@ class TestEvents(fixtures.TestBase):
         eq_(len(self.Target().dispatch.event_two), 0)
         eq_(len(t1.dispatch.event_two), 0)
 
+    def test_bool_clslevel(self):
+        def listen_one(x, y):
+            pass
+        event.listen(self.Target, "event_one", listen_one)
+        t = self.Target()
+        assert t.dispatch.event_one
+
     def test_register_class_instance(self):
         def listen_one(x, y):
             pass

@@ -328,7 +328,7 @@ class _EmptyListener(object):
         return (self.parent_listeners)[index]
 
     def __nonzero__(self):
-        return bool(self.listeners)
+        return bool(self.parent_listeners)
 
 
 class _ListenerCollection(object):
