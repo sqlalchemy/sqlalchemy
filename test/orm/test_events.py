@@ -545,6 +545,8 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         sess = Session(**kw)
 
         for evt in [
+            'after_transaction_create',
+            'after_transaction_end',
             'before_commit',
             'after_commit',
             'after_rollback',
@@ -576,9 +578,10 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         sess.flush()
         eq_(
             canary,
-            [ 'before_attach', 'after_attach', 'before_flush', 'after_begin',
+            [ 'before_attach', 'after_attach', 'before_flush',
+            'after_transaction_create', 'after_begin',
             'after_flush', 'after_flush_postexec',
-            'before_commit', 'after_commit',]
+            'before_commit', 'after_commit','after_transaction_end']
         )
 
     def test_rollback_hook(self):
@@ -597,11 +600,17 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             sess.commit
         )
         sess.rollback()
-        eq_(canary, ['before_attach', 'after_attach', 'before_commit', 'before_flush',
-        'after_begin', 'after_flush', 'after_flush_postexec',
-        'after_commit', 'before_attach', 'after_attach', 'before_commit',
-        'before_flush', 'after_begin', 'after_rollback',
-        'after_soft_rollback', 'after_soft_rollback'])
+        eq_(canary,
+
+        ['before_attach', 'after_attach', 'before_commit', 'before_flush',
+        'after_transaction_create', 'after_begin', 'after_flush',
+        'after_flush_postexec', 'after_transaction_end', 'after_commit',
+        'after_transaction_end', 'after_transaction_create',
+        'before_attach', 'after_attach', 'before_commit',
+        'before_flush', 'after_transaction_create', 'after_begin', 'after_rollback',
+        'after_transaction_end',
+        'after_soft_rollback', 'after_transaction_end','after_transaction_create',
+        'after_soft_rollback'])
 
     def test_can_use_session_in_outer_rollback_hook(self):
         User, users = self.classes.User, self.tables.users
@@ -640,8 +649,10 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         u = User(name='u1')
         sess.add(u)
         sess.flush()
-        eq_(canary, ['before_attach', 'after_attach', 'before_flush', 'after_begin',
-                       'after_flush', 'after_flush_postexec'])
+        eq_(canary, ['before_attach', 'after_attach', 'before_flush',
+            'after_transaction_create', 'after_begin',
+                       'after_flush', 'after_flush_postexec',
+                       'after_transaction_end'])
 
     def test_flush_in_commit_hook(self):
         User, users = self.classes.User, self.tables.users
@@ -656,8 +667,11 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         u.name = 'ed'
         sess.commit()
-        eq_(canary, ['before_commit', 'before_flush', 'after_flush',
-                       'after_flush_postexec', 'after_commit'])
+        eq_(canary, ['before_commit', 'before_flush', 'after_transaction_create', 'after_flush',
+                       'after_flush_postexec',
+                       'after_transaction_end',
+                       'after_commit',
+                       'after_transaction_end', 'after_transaction_create',])
 
     def test_state_before_attach(self):
         User, users = self.classes.User, self.tables.users
@@ -700,7 +714,9 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     def test_standalone_on_commit_hook(self):
         sess, canary = self._listener_fixture()
         sess.commit()
-        eq_(canary, ['before_commit', 'after_commit'])
+        eq_(canary, ['before_commit', 'after_commit',
+                'after_transaction_end',
+                'after_transaction_create'])
 
     def test_on_bulk_update_hook(self):
         User, users = self.classes.User, self.tables.users

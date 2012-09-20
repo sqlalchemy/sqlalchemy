@@ -955,6 +955,26 @@ class SessionEvents(event.Events):
     def _remove(cls, identifier, target, fn):
         raise NotImplementedError("Removal of session events not yet implemented")
 
+    def after_transaction_create(self, session, transaction):
+        """Execute when a new :class:`.SessionTransaction` is created.
+
+        :param session: the target :class:.`Session`.
+        :param transaction: the target :class:`.SessionTransaction`.
+
+        .. versionadded:: 0.8
+
+        """
+
+    def after_transaction_end(self, session, transaction):
+        """Execute when the span of a :class:`.SessionTransaction` ends.
+
+        :param session: the target :class:.`Session`.
+        :param transaction: the target :class:`.SessionTransaction`.
+
+        .. versionadded:: 0.8
+
+        """
+
     def before_commit(self, session):
         """Execute before commit is called.
 

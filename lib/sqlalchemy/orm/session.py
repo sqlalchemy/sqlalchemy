@@ -150,6 +150,9 @@ class SessionTransaction(object):
         if self.session._enable_transaction_accounting:
             self._take_snapshot()
 
+        if self.session.dispatch.after_transaction_create:
+            self.session.dispatch.after_transaction_create(self.session, self)
+
     @property
     def is_active(self):
         return self.session is not None and self._active
@@ -379,9 +382,14 @@ class SessionTransaction(object):
                     connection.close()
                 else:
                     transaction.close()
+
+        self._deactivate()
+        if self.session.dispatch.after_transaction_end:
+            self.session.dispatch.after_transaction_end(self.session, self)
+
+        if self._parent is None:
             if not self.session.autocommit:
                 self.session.begin()
-        self._deactivate()
         self.session = None
         self._connections = None
 

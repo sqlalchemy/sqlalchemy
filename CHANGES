@@ -153,6 +153,13 @@ underneath "0.7.xx".
     PG's DELETE..USING is also not available
     in Core yet.
 
+  - [feature] New session events after_transaction_create
+    and after_transaction_end
+    allows tracking of new SessionTransaction objects.
+    If the object is inspected, can be used to determine
+    when a session first becomes active and when
+    it deactivates.
+
   - [bug] Improvements to joined/subquery eager
     loading dealing with chains of subclass entities
     sharing a common base, with no specific "join depth"
