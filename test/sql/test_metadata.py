@@ -669,6 +669,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             )
 
 class TableTest(fixtures.TestBase, AssertsCompiledSQL):
+    @testing.skip_if('mssql', 'different col format')
     def test_prefixes(self):
         from sqlalchemy import Table
         table1 = Table("temporary_table_1", MetaData(),

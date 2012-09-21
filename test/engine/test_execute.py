@@ -1182,7 +1182,6 @@ class EngineEventsTest(fixtures.TestBase):
                         'c2': 'some data', 'c1': 5},
                         (5, 'some data')),
                     ('SELECT lower', {'lower_2': 'Foo'}, 
-                        () if testing.against('mssql+mxodbc') else
                         ('Foo', )),
                     ('INSERT INTO t1 (c1, c2)',
                      {'c2': 'foo', 'c1': 6},
@@ -1449,8 +1448,7 @@ class ProxyConnectionTest(fixtures.TestBase):
                     ('INSERT INTO t1 (c1, c2)', {'c2': 'some data', 'c1'
                      : 5}, (5, 'some data')),
                     ('SELECT lower', {'lower_2': 'Foo'}, 
-                        () if testing.against('mssql+mxodbc')
-                        else ('Foo', )),
+                        ('Foo', )),
                     ('INSERT INTO t1 (c1, c2)', {'c2': 'foo', 'c1': 6},
                      (6, 'foo')),
                     ('select * from t1', {}, ()),

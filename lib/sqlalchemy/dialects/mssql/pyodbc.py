@@ -119,9 +119,8 @@ from ...util.compat import decimal
 class _MSNumeric_pyodbc(sqltypes.Numeric):
     """Turns Decimals with adjusted() < 0 or > 7 into strings.
 
-    This is the only method that is proven to work with Pyodbc+MSSQL
-    without crashing (floats can be used but seem to cause sporadic
-    crashes).
+    The routines here are needed for older pyodbc versions
+    as well as current mxODBC versions.
 
     """
 

@@ -612,6 +612,10 @@ underneath "0.7.xx".
     needs to be modified to use column.in_(select)
     explicitly.  [ticket:2277]
 
+  - [feature] updated support for the mxodbc 
+    driver; mxodbc 3.2.1 is recommended for full 
+    compatibility.
+
 - postgresql
 
   - [feature] postgresql.ARRAY features an optional

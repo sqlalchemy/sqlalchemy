@@ -134,23 +134,14 @@ class MxODBCConnector(Connector):
         if context:
             native_odbc_execute = context.execution_options.\
                                         get('native_odbc_execute', 'auto')
-            if native_odbc_execute is True:
-                # user specified native_odbc_execute=True
-                return False
-            elif native_odbc_execute is False:
-                # user specified native_odbc_execute=False
-                return True
-            elif context.is_crud:
-                # statement is UPDATE, DELETE, INSERT
-                return False
-            else:
-                # all other statements
-                return True
+            # default to direct=True in all cases, is more generally
+            # compatible especially with SQL Server
+            return False if native_odbc_execute is True else True
         else:
             return True
 
-    #def do_executemany(self, cursor, statement, parameters, context=None):
-    #    cursor.executemany(statement, parameters, direct=self._get_direct(context))
+    def do_executemany(self, cursor, statement, parameters, context=None):
+        cursor.executemany(statement, parameters, direct=self._get_direct(context))
 
     def do_execute(self, cursor, statement, parameters, context=None):
         cursor.execute(statement, parameters, direct=self._get_direct(context))

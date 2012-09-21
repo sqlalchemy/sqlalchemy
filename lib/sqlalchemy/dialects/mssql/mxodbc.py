@@ -54,12 +54,15 @@ of ``False`` will unconditionally use string-escaped parameters.
 
 from ... import types as sqltypes
 from ...connectors.mxodbc import MxODBCConnector
-from .pyodbc import MSExecutionContext_pyodbc
+from .pyodbc import MSExecutionContext_pyodbc, _MSNumeric_pyodbc
 from .base import (MSDialect,
                                             MSSQLStrictCompiler,
                                             _MSDateTime, _MSDate, _MSTime)
 
 
+class _MSNumeric_mxodbc(_MSNumeric_pyodbc):
+    """Include pyodbc's numeric processor.
+    """
 
 class _MSDate_mxodbc(_MSDate):
     def bind_processor(self, dialect):
@@ -91,12 +94,17 @@ class MSExecutionContext_mxodbc(MSExecutionContext_pyodbc):
 
 class MSDialect_mxodbc(MxODBCConnector, MSDialect):
 
-    # TODO: may want to use this only if FreeTDS is not in use,
-    # since FreeTDS doesn't seem to use native binds.
-    statement_compiler = MSSQLStrictCompiler
+    # this is only needed if "native ODBC" mode is used,
+    # which is now disabled by default.
+    #statement_compiler = MSSQLStrictCompiler
+
     execution_ctx_cls = MSExecutionContext_mxodbc
+
+    # flag used by _MSNumeric_mxodbc
+    _need_decimal_fix = True
+
     colspecs = {
-        #sqltypes.Numeric : _MSNumeric,
+        sqltypes.Numeric : _MSNumeric_mxodbc,
         sqltypes.DateTime : _MSDateTime,
         sqltypes.Date : _MSDate_mxodbc,
         sqltypes.Time : _MSTime_mxodbc,

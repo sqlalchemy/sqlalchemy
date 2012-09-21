@@ -1,7 +1,7 @@
 import datetime, os
 from sqlalchemy import *
 from sqlalchemy import event
-from sqlalchemy import sql
+from sqlalchemy import sql, util
 from sqlalchemy.orm import *
 from sqlalchemy.ext.horizontal_shard import ShardedSession
 from sqlalchemy.sql import operators
@@ -13,6 +13,8 @@ from nose import SkipTest
 # TODO: ShardTest can be turned into a base for further subclasses
 
 class ShardTest(fixtures.TestBase):
+    __skip_if__ = (lambda: util.win32,)
+
     def setUp(self):
         global db1, db2, db3, db4, weather_locations, weather_reports
 
