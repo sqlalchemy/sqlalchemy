@@ -388,8 +388,16 @@ class MapperEvents(event.Events):
     def mapper_configured(self, mapper, class_):
         """Called when the mapper for the class is fully configured.
 
-        This event is the latest phase of mapper construction.
-        The mapper should be in its final state.
+        This event is the latest phase of mapper construction, and
+        is invoked when the mapped classes are first used, so that relationships
+        between mappers can be resolved.   When the event is called,
+        the mapper should be in its final state.
+
+        While the configuration event normally occurs automatically,
+        it can be forced to occur ahead of time, in the case where the event
+        is needed before any actual mapper usage,  by using the
+        :func:`.configure_mappers` function.
+
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
