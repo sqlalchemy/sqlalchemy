@@ -21,9 +21,8 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
             compare_to(left)
         )
 
-    def _do_operate_test(self, operator):
+    def _do_operate_test(self, operator, right=column('right')):
         left = column('left')
-        right = column('right')
 
         assert operator(left, right).compare(
             BinaryExpression(left, right, operator)
@@ -37,6 +36,12 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
 
     def test_plus(self):
         self._do_operate_test(operators.add)
+
+    def test_is_null(self):
+        self._do_operate_test(operators.is_, None)
+
+    def test_isnot_null(self):
+        self._do_operate_test(operators.isnot, None)
 
     def test_is(self):
         self._do_operate_test(operators.is_)

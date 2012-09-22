@@ -1846,10 +1846,10 @@ class _CompareMixin(ColumnOperators):
                         **kwargs
         ):
         if obj is None or isinstance(obj, _Null):
-            if op == operators.eq:
+            if op in (operators.eq, operators.is_):
                 return _BinaryExpression(self, null(), operators.is_,
                         negate=operators.isnot)
-            elif op == operators.ne:
+            elif op in (operators.ne, operators.isnot):
                 return _BinaryExpression(self, null(), operators.isnot,
                         negate=operators.is_)
             else:
@@ -2958,6 +2958,10 @@ class _Null(ColumnElement):
     __visit_name__ = 'null'
     def __init__(self):
         self.type = sqltypes.NULLTYPE
+
+    def compare(self, other):
+        return isinstance(other, _Null)
+
 
 class _False(ColumnElement):
     """Represent the ``false`` keyword in a SQL statement.
