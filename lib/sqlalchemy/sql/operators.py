@@ -284,6 +284,36 @@ class ColumnOperators(Operators):
         """
         return self.operate(in_op, other)
 
+    def is_(self, other):
+        """Implement the ``IS`` operator.
+
+        Normally, ``IS`` is generated automatically when comparing to a
+        value of ``None``, which resolves to ``NULL``.  However, explicit
+        usage of ``IS`` may be desirable if comparing to boolean values
+        on certain platforms.
+
+        .. versionadded:: 0.7.9
+
+        .. seealso:: :meth:`.ColumnOperators.isnot`
+
+        """
+        return self.operate(is_, other)
+
+    def isnot(self, other):
+        """Implement the ``IS NOT`` operator.
+
+        Normally, ``IS NOT`` is generated automatically when comparing to a
+        value of ``None``, which resolves to ``NULL``.  However, explicit
+        usage of ``IS NOT`` may be desirable if comparing to boolean values
+        on certain platforms.
+
+        .. versionadded:: 0.7.9
+
+        .. seealso:: :meth:`.ColumnOperators.is_`
+
+        """
+        return self.operate(isnot, other)
+
     def startswith(self, other, **kwargs):
         """Implement the ``startwith`` operator.
 

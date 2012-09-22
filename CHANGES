@@ -102,6 +102,11 @@ CHANGES
     here, so this has been re-instated and of
     course tested. [ticket:2558]
 
+  - [bug] Added missing operators is_(), isnot()
+    to the ColumnOperators base, so that these long-available
+    operators are present as methods like all
+    the other operators.  [ticket:2544]
+
 - engine
   - [bug] Fixed bug whereby
     a disconnect detect + dispose that occurs
