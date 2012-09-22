@@ -612,8 +612,8 @@ underneath "0.7.xx".
     needs to be modified to use column.in_(select)
     explicitly.  [ticket:2277]
 
-  - [feature] updated support for the mxodbc 
-    driver; mxodbc 3.2.1 is recommended for full 
+  - [feature] updated support for the mxodbc
+    driver; mxodbc 3.2.1 is recommended for full
     compatibility.
 
 - postgresql
@@ -742,6 +742,17 @@ are also present in 0.8.
     would be passed when the ORM would bind the
     "version" column, when using the "version" feature.
     Tests courtesy Daniel Miller.  [ticket:2539]
+
+  - [bug] Extra logic has been added to the "flush"
+    that occurs within Session.commit(), such that the
+    extra state added by an after_flush() or
+    after_flush_postexec() hook is also flushed in a
+    subsequent flush, before the "commit" completes.
+    Subsequent calls to flush() will continue until
+    the after_flush hooks stop adding new state.
+    An "overflow" counter of 100 is also in place,
+    in the event of a broken after_flush() hook
+    adding new content each time. [ticket:2566]
 
 - sql
   - [bug] Fixed CTE bug whereby positional
