@@ -1952,10 +1952,10 @@ class _DefaultColumnComparator(operators.ColumnOperators):
                         **kwargs
         ):
         if obj is None or isinstance(obj, Null):
-            if op == operators.eq:
+            if op in (operators.eq, operators.is_):
                 return BinaryExpression(expr, null(), operators.is_,
                         negate=operators.isnot)
-            elif op == operators.ne:
+            elif op in (operators.ne, operators.isnot):
                 return BinaryExpression(expr, null(), operators.isnot,
                         negate=operators.is_)
             else:
@@ -3155,6 +3155,9 @@ class Null(ColumnElement):
 
     def __init__(self):
         self.type = sqltypes.NULLTYPE
+
+    def compare(self, other):
+        return isinstance(other, Null)
 
 class False_(ColumnElement):
     """Represent the ``false`` keyword in a SQL statement.
