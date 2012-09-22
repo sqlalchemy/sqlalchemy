@@ -2105,6 +2105,8 @@ class _DefaultColumnComparator(operators.ColumnOperators):
         "nullsfirst_op": (_scalar, nullsfirst),
         "nullslast_op": (_scalar, nullslast),
         "in_op": (_in_impl, operators.notin_op),
+        "is_": (_boolean_compare, operators.is_),
+        "isnot": (_boolean_compare, operators.isnot),
         "collate": (_collate_impl,),
         "match_op": (_match_impl,),
         "distinct_op": (_distinct_impl,),

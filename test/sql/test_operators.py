@@ -28,6 +28,10 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
             BinaryExpression(left, right, operator)
         )
 
+        assert operator(left, right).compare(
+            BinaryExpression(left, right, operator)
+        )
+
     def test_desc(self):
         self._do_scalar_test(operators.desc_op, desc)
 
@@ -36,6 +40,12 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
 
     def test_plus(self):
         self._do_operate_test(operators.add)
+
+    def test_is(self):
+        self._do_operate_test(operators.is_)
+
+    def test_isnot(self):
+        self._do_operate_test(operators.isnot)
 
     def test_no_getitem(self):
         assert_raises_message(
