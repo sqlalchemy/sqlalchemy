@@ -345,6 +345,10 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "SELECT op.field FROM op WHERE (op.field = op.field) "
                     "BETWEEN :param_1 AND :param_2")
 
+        self.assert_compile(table.select(
+                        table.c.field.match(table.c.field).is_(None)),
+            "SELECT op.field FROM op WHERE (op.field MATCH op.field) IS NULL")
+
 class OperatorAssociativityTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
