@@ -318,6 +318,53 @@ class SessionTransactionTest(FixtureTest):
 
         eq_(len(sess.query(User).all()), 1)
 
+    def test_continue_flushing_on_commit(self):
+        """test that post-flush actions get flushed also if
+        we're in commit()"""
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        sess = Session()
+
+        to_flush = [User(name='ed'), User(name='jack'), User(name='wendy')]
+        @event.listens_for(sess, "after_flush_postexec")
+        def add_another_user(session, ctx):
+            if to_flush:
+                session.add(to_flush.pop(0))
+
+        x = [1]
+        @event.listens_for(sess, "after_commit")
+        def add_another_user(session):
+            x[0] += 1
+
+        sess.add(to_flush.pop())
+        sess.commit()
+        eq_(x, [2])
+        eq_(
+            sess.scalar(select([func.count(users.c.id)])), 3
+        )
+
+    def test_continue_flushing_guard(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        sess = Session()
+
+        @event.listens_for(sess, "after_flush_postexec")
+        def add_another_user(session, ctx):
+            session.add(User(name='x'))
+        sess.add(User(name='x'))
+        assert_raises_message(
+            orm_exc.FlushError,
+            "Over 100 subsequent flushes have occurred",
+            sess.commit
+        )
+
+
+
+
+
+
     def test_error_on_using_inactive_session_commands(self):
         users, User = self.tables.users, self.classes.User
 

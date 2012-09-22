@@ -34,6 +34,17 @@ CHANGES
     "version" column, when using the "version" feature.
     Tests courtesy Daniel Miller.  [ticket:2539]
 
+  - [bug] Extra logic has been added to the "flush"
+    that occurs within Session.commit(), such that the
+    extra state added by an after_flush() or
+    after_flush_postexec() hook is also flushed in a
+    subsequent flush, before the "commit" completes.
+    Subsequent calls to flush() will continue until
+    the after_flush hooks stop adding new state.
+    An "overflow" counter of 100 is also in place,
+    in the event of a broken after_flush() hook
+    adding new content each time. [ticket:2566]
+
 - sql
   - [bug] Fixed CTE bug whereby positional
     bound parameters present in the CTEs themselves

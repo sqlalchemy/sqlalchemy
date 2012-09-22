@@ -334,7 +334,15 @@ class SessionTransaction(object):
                 subtransaction.commit()
 
         if not self.session._flushing:
-            self.session.flush()
+            for _flush_guard in xrange(100):
+                if self.session._is_clean():
+                    break
+                self.session.flush()
+            else:
+                raise exc.FlushError(
+                        "Over 100 subsequent flushes have occurred within "
+                        "session.commit() - is an after_flush() hook "
+                        "creating new objects?")
 
         if self._parent is None and self.session.twophase:
             try:
