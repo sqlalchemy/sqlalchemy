@@ -1492,14 +1492,14 @@ class Mapper(_InspectionAttr):
                 yield c
 
     @util.memoized_property
-    def attr(self):
+    def attrs(self):
         """A namespace of all :class:`.MapperProperty` objects
         associated this mapper.
 
         This is an object that provides each property based on
         its key name.  For instance, the mapper for a
         ``User`` class which has ``User.name`` attribute would
-        provide ``mapper.attr.name``, which would be the
+        provide ``mapper.attrs.name``, which would be the
         :class:`.ColumnProperty` representing the ``name``
         column.   The namespace object can also be iterated,
         which would yield each :class:`.MapperProperty`.
@@ -1522,7 +1522,7 @@ class Mapper(_InspectionAttr):
 
         See also:
 
-        :attr:`.Mapper.attr` - namespace of all :class:`.MapperProperty`
+        :attr:`.Mapper.attrs` - namespace of all :class:`.MapperProperty`
         objects.
 
         """
@@ -1535,7 +1535,7 @@ class Mapper(_InspectionAttr):
 
         See also:
 
-        :attr:`.Mapper.attr` - namespace of all :class:`.MapperProperty`
+        :attr:`.Mapper.attrs` - namespace of all :class:`.MapperProperty`
         objects.
 
         """
@@ -1548,7 +1548,7 @@ class Mapper(_InspectionAttr):
 
         See also:
 
-        :attr:`.Mapper.attr` - namespace of all :class:`.MapperProperty`
+        :attr:`.Mapper.attrs` - namespace of all :class:`.MapperProperty`
         objects.
 
         """
@@ -1561,7 +1561,7 @@ class Mapper(_InspectionAttr):
 
         See also:
 
-        :attr:`.Mapper.attr` - namespace of all :class:`.MapperProperty`
+        :attr:`.Mapper.attrs` - namespace of all :class:`.MapperProperty`
         objects.
 
         """

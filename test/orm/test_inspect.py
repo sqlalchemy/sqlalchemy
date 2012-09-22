@@ -108,7 +108,7 @@ class TestORMInspection(_fixtures.FixtureTest):
     def test_property(self):
         User = self.classes.User
         insp = inspect(User)
-        is_(insp.attr.id, class_mapper(User).get_property('id'))
+        is_(insp.attrs.id, class_mapper(User).get_property('id'))
 
     def test_with_polymorphic(self):
         User = self.classes.User
@@ -119,7 +119,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         User = self.classes.User
         user_table = self.tables.users
         insp = inspect(User)
-        id_prop = insp.attr.id
+        id_prop = insp.attrs.id
 
         eq_(id_prop.columns, [user_table.c.id])
         is_(id_prop.expression, user_table.c.id)
@@ -130,7 +130,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         User = self.classes.User
         insp = inspect(User)
         eq_(
-            set(insp.attr.keys()),
+            set(insp.attrs.keys()),
             set(['addresses', 'orders', 'id', 'name', 'name_syn'])
         )
 
@@ -209,15 +209,15 @@ class TestORMInspection(_fixtures.FixtureTest):
         insp = inspect(u1)
 
         eq_(
-            set(insp.attr.keys()),
+            set(insp.attrs.keys()),
             set(['id', 'name', 'name_syn', 'addresses', 'orders'])
         )
         eq_(
-            insp.attr.name.value,
+            insp.attrs.name.value,
             'ed'
         )
         eq_(
-            insp.attr.name.loaded_value,
+            insp.attrs.name.loaded_value,
             'ed'
         )
 
@@ -227,17 +227,17 @@ class TestORMInspection(_fixtures.FixtureTest):
         insp = inspect(u1)
         # value was not set, NO_VALUE
         eq_(
-            insp.attr.id.loaded_value,
+            insp.attrs.id.loaded_value,
             NO_VALUE
         )
         # regular accessor sets it
         eq_(
-            insp.attr.id.value,
+            insp.attrs.id.value,
             None
         )
         # now the None is there
         eq_(
-            insp.attr.id.loaded_value,
+            insp.attrs.id.loaded_value,
             None
         )
 
@@ -247,17 +247,17 @@ class TestORMInspection(_fixtures.FixtureTest):
         insp = inspect(u1)
         # value was not set, NO_VALUE
         eq_(
-            insp.attr.addresses.loaded_value,
+            insp.attrs.addresses.loaded_value,
             NO_VALUE
         )
         # regular accessor sets it
         eq_(
-            insp.attr.addresses.value,
+            insp.attrs.addresses.value,
             []
         )
         # now the None is there
         eq_(
-            insp.attr.addresses.loaded_value,
+            insp.attrs.addresses.loaded_value,
             []
         )
 
@@ -265,12 +265,12 @@ class TestORMInspection(_fixtures.FixtureTest):
         User = self.classes.User
         u1 = User(name='ed')
         insp = inspect(u1)
-        hist = insp.attr.addresses.history
+        hist = insp.attrs.addresses.history
         eq_(
             hist.unchanged, None
         )
         u1.addresses
-        hist = insp.attr.addresses.history
+        hist = insp.attrs.addresses.history
         eq_(
             hist.unchanged, []
         )

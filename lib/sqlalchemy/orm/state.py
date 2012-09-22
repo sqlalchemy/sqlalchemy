@@ -49,7 +49,7 @@ class InstanceState(interfaces._InspectionAttr):
         self.committed_state = {}
 
     @util.memoized_property
-    def attr(self):
+    def attrs(self):
         """Return a namespace representing each attribute on
         the mapped object, including its current value
         and history.
