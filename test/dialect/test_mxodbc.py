@@ -67,9 +67,9 @@ class MxODBCTest(fixtures.TestBase):
                 execute(t1.insert().values(c1='foo'
                 ))
         eq_(dbapi.log, [
-            'execute',
-            'execute',
-            'execute',
+            'executedirect',
+            'executedirect',
+            'executedirect',
             'executedirect',
             'execute',
             'executedirect',

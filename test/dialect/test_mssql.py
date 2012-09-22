@@ -153,12 +153,13 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     #            ""
     #        )
 
-    # TODO: should this be for *all* MS-SQL dialects ?
-    def test_mxodbc_binds(self):
-        """mxodbc uses MS-SQL native binds, which aren't allowed in
-        various places."""
+    def test_strict_binds(self):
+        """test the 'strict' compiler binds."""
 
+        from sqlalchemy.dialects.mssql.base import MSSQLStrictCompiler
         mxodbc_dialect = mxodbc.dialect()
+        mxodbc_dialect.statement_compiler = MSSQLStrictCompiler
+
         t = table('sometable', column('foo'))
 
         for expr, compile in [
