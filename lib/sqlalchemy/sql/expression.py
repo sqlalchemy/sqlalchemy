@@ -1910,6 +1910,7 @@ class _CompareMixin(ColumnOperators):
         operators.eq : (__compare, operators.ne),
         operators.like_op : (__compare, operators.notlike_op),
         operators.ilike_op : (__compare, operators.notilike_op),
+
     }
 
     def operate(self, op, *other, **kwargs):
