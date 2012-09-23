@@ -85,6 +85,42 @@ For more information on SQLite's lack of concurrency by design, please
 see `Situations Where Another RDBMS May Work Better - High Concurrency <http://www.sqlite.org/whentouse.html>`_
 near the bottom of the page.
 
+.. _sqlite_foreign_keys:
+
+Foreign Key Support
+-------------------
+
+SQLite supports FOREIGN KEY syntax when emitting CREATE statements for tables,
+however by default these constraints have no effect on the operation
+of the table.
+
+Constraint checking on SQLite has three prerequisites:
+
+* At least version 3.6.19 of SQLite must be in use
+* The SQLite libary must be compiled *without* the SQLITE_OMIT_FOREIGN_KEY
+  or SQLITE_OMIT_TRIGGER symbols enabled.
+* The ``PRAGMA foreign_keys = ON`` statement must be emitted on all connections
+  before use.
+
+SQLAlchemy allows for the ``PRAGMA`` statement to be emitted automatically
+for new connections through the usage of events::
+
+    from sqlalchemy.engine import Engine
+    from sqlalchemy import event
+
+    @event.listens_for(Engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+.. seealso::
+
+    `SQLite Foreign Key Support <http://www.sqlite.org/foreignkeys.html>`_ -
+    on the SQLite web site.
+
+    :ref:`event_toplevel` - SQLAlchemy event API.
+
 """
 
 import datetime, re

@@ -49,13 +49,16 @@ been idle for eight hours or more.   To circumvent having this issue, use the
 
     engine = create_engine('mysql+mysqldb://...', pool_recycle=3600)
 
+.. _mysql_storage_engines:
+
 Storage Engines
 ---------------
 
 Most MySQL server installations have a default table type of ``MyISAM``, a
 non-transactional table type.  During a transaction, non-transactional storage
 engines do not participate and continue to store table changes in autocommit
-mode.  For fully atomic transactions, all participating tables must use a
+mode.  For fully atomic transactions as well as support for foreign key
+constraints, all participating tables must use a
 transactional engine such as ``InnoDB``, ``Falcon``, ``SolidDB``, `PBXT`, etc.
 
 Storage engines can be elected when creating tables in SQLAlchemy by supplying
@@ -67,6 +70,10 @@ creation option can be specified in this syntax::
         mysql_engine='InnoDB',
         mysql_charset='utf8'
        )
+
+.. seealso::
+
+    `The InnoDB Storage Engine <http://dev.mysql.com/doc/refman/5.0/en/innodb-storage-engine.html>`_ - on the MySQL website.
 
 Case Sensitivity and Table Reflection
 -------------------------------------
