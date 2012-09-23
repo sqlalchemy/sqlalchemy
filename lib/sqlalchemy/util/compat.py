@@ -19,6 +19,7 @@ py3k_warning = getattr(sys, 'py3kwarning', False) or sys.version_info >= (3, 0)
 jython = sys.platform.startswith('java')
 pypy = hasattr(sys, 'pypy_version_info')
 win32 = sys.platform.startswith('win')
+cpython = not pypy and not jython  # TODO: something better for this ?
 
 if py3k_warning:
     set_types = set
