@@ -13,7 +13,7 @@ import sqlalchemy as tsa
 from test.lib import fixtures
 from test.lib import testing
 from test.lib.testing import ComparesTables, AssertsCompiledSQL
-from test.lib.testing import eq_
+from test.lib.testing import eq_, is_
 
 class MetaDataTest(fixtures.TestBase, ComparesTables):
     def test_metadata_connect(self):
@@ -719,6 +719,21 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
             TypeError,
             assign2
         )
+
+    def test_autoincrement_replace(self):
+        m = MetaData()
+
+        t = Table('t', m,
+            Column('id', Integer, primary_key=True)
+        )
+
+        is_(t._autoincrement_column, t.c.id)
+
+        t = Table('t', m,
+            Column('id', Integer, primary_key=True),
+            extend_existing=True
+        )
+        is_(t._autoincrement_column, t.c.id)
 
 class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
 

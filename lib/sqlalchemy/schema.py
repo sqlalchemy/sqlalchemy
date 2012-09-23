@@ -456,14 +456,13 @@ class Table(SchemaItem, expression.TableClause):
     def _init_collections(self):
         pass
 
-
     @util.memoized_property
     def _autoincrement_column(self):
         for col in self.primary_key:
             if col.autoincrement and \
                 col.type._type_affinity is not None and \
                 issubclass(col.type._type_affinity, sqltypes.Integer) and \
-                (not col.foreign_keys or col.autoincrement=='ignore_fk') and \
+                (not col.foreign_keys or col.autoincrement == 'ignore_fk') and \
                 isinstance(col.default, (type(None), Sequence)) and \
                 (col.server_default is None or col.server_default.reflected):
                 return col
@@ -1029,6 +1028,7 @@ class Column(SchemaItem, expression.ColumnClause):
 
         if self.primary_key:
             table.primary_key._replace(self)
+            Table._autoincrement_column._reset(table)
         elif self.key in table.primary_key:
             raise exc.ArgumentError(
                 "Trying to redefine primary-key column '%s' as a "

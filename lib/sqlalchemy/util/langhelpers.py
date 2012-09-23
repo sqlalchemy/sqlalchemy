@@ -494,6 +494,8 @@ class memoized_property(object):
         obj.__dict__[self.__name__] = result = self.fget(obj)
         return result
 
+    def _reset(self, obj):
+        obj.__dict__.pop(self.__name__, None)
 
 class memoized_instancemethod(object):
     """Decorate a method memoize its return value.

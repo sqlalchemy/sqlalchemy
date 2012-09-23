@@ -390,6 +390,12 @@ CHANGES
     returned by SQLite cursor.description.
     [ticket:2475]
 
+  - [bug] When the primary key column of a Table
+    is replaced, such as via extend_existing,
+    the "auto increment" column used by insert()
+    constructs is reset.  Previously it would
+    remain referring to the previous primary
+    key column.  [ticket:2525]
 
 0.7.6
 =====
