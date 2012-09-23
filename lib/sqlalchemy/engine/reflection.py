@@ -379,7 +379,7 @@ class Inspector(object):
 
             coltype = col_d['type']
             col_kw = {
-                'nullable':col_d['nullable'],
+                'nullable': col_d['nullable'],
             }
             for k in ('autoincrement', 'quote', 'info', 'key'):
                 if k in col_d:

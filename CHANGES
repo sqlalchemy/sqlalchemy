@@ -156,6 +156,11 @@ CHANGES
     its name, as *part* of its name (i.e. """mytable""").
     [ticket:2568]
 
+  - [bug] Adjusted column default reflection code to
+    convert non-string values to string, to accommodate
+    old SQLite versions that don't deliver
+    default info as a string.  [ticket:2265]
+
 - mysql
   - [bug] Updated mysqlconnector interface to use
     updated "client flag" and "charset" APIs,

@@ -261,7 +261,7 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @testing.provide_metadata
     def test_boolean_default(self):
-        t= Table("t", self.metadata,
+        t = Table("t", self.metadata,
                 Column("x", Boolean, server_default=sql.false()))
         t.create(testing.db)
         testing.db.execute(t.insert())
@@ -270,6 +270,19 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
             testing.db.execute(t.select().order_by(t.c.x)).fetchall(),
             [(False,), (True,)]
         )
+
+    def test_old_style_default(self):
+        """test non-quoted integer value on older sqlite pragma"""
+
+        dialect = sqlite.dialect()
+        eq_(
+            dialect._get_column_info("foo", "INTEGER", False, 3, False),
+            {'primary_key': False, 'nullable': False,
+                'default': '3', 'autoincrement': False,
+                'type': INTEGER, 'name': 'foo'}
+        )
+
+
 
 
 class DialectTest(fixtures.TestBase, AssertsExecutionResults):

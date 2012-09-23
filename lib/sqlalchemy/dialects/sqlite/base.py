@@ -672,41 +672,49 @@ class SQLiteDialect(default.DefaultDialect):
         c = _pragma_cursor(
                     connection.execute("%stable_info(%s)" %
                     (pragma, qtable)))
-        found_table = False
-        columns = []
-        while True:
-            row = c.fetchone()
-            if row is None:
-                break
-            (name, type_, nullable, default, has_default, primary_key) = \
-                (row[1], row[2].upper(), not row[3],
-                row[4], row[4] is not None, row[5])
-            match = re.match(r'(\w+)(\(.*?\))?', type_)
-            if match:
-                coltype = match.group(1)
-                args = match.group(2)
-            else:
-                coltype = "VARCHAR"
-                args = ''
-            try:
-                coltype = self.ischema_names[coltype]
-                if args is not None:
-                    args = re.findall(r'(\d+)', args)
-                    coltype = coltype(*[int(a) for a in args])
-            except KeyError:
-                util.warn("Did not recognize type '%s' of column '%s'" %
-                          (coltype, name))
-                coltype = sqltypes.NullType()
 
-            columns.append({
-                'name' : name,
-                'type' : coltype,
-                'nullable' : nullable,
-                'default' : default,
-                'autoincrement':default is None,
-                'primary_key': primary_key
-            })
+        rows = c.fetchall()
+        columns = []
+        for row in rows:
+            (name, type_, nullable, default, primary_key) = \
+                (row[1], row[2].upper(), not row[3],
+                row[4], row[5])
+
+            columns.append(self._get_column_info(name, type_, nullable,
+                                    default, primary_key))
         return columns
+
+    def _get_column_info(self, name, type_, nullable,
+                                    default, primary_key):
+
+        match = re.match(r'(\w+)(\(.*?\))?', type_)
+        if match:
+            coltype = match.group(1)
+            args = match.group(2)
+        else:
+            coltype = "VARCHAR"
+            args = ''
+        try:
+            coltype = self.ischema_names[coltype]
+            if args is not None:
+                args = re.findall(r'(\d+)', args)
+                coltype = coltype(*[int(a) for a in args])
+        except KeyError:
+            util.warn("Did not recognize type '%s' of column '%s'" %
+                      (coltype, name))
+            coltype = sqltypes.NullType()
+
+        if default is not None:
+            default = unicode(default)
+
+        return {
+            'name': name,
+            'type': coltype,
+            'nullable': nullable,
+            'default': default,
+            'autoincrement': default is None,
+            'primary_key': primary_key
+        }
 
     @reflection.cache
     def get_primary_keys(self, connection, table_name, schema=None, **kw):
@@ -747,7 +755,7 @@ class SQLiteDialect(default.DefaultDialect):
                 fk = fks[numerical_id]
             except KeyError:
                 fk = {
-                    'name' : None,
+                    'name': None,
                     'constrained_columns' : [],
                     'referred_schema' : None,
                     'referred_table' : rtbl,
@@ -803,4 +811,5 @@ def _pragma_cursor(cursor):
 
     if cursor.closed:
         cursor.fetchone = lambda: None
+        cursor.fetchall = lambda: []
     return cursor
