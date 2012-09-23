@@ -464,14 +464,13 @@ class Table(SchemaItem, expression.TableClause):
     def _init_collections(self):
         pass
 
-
     @util.memoized_property
     def _autoincrement_column(self):
         for col in self.primary_key:
             if col.autoincrement and \
                 col.type._type_affinity is not None and \
                 issubclass(col.type._type_affinity, sqltypes.Integer) and \
-                (not col.foreign_keys or col.autoincrement=='ignore_fk') and \
+                (not col.foreign_keys or col.autoincrement == 'ignore_fk') and \
                 isinstance(col.default, (type(None), Sequence)) and \
                 (col.server_default is None or col.server_default.reflected):
                 return col
@@ -1038,6 +1037,7 @@ class Column(SchemaItem, expression.ColumnClause):
 
         if self.primary_key:
             table.primary_key._replace(self)
+            Table._autoincrement_column._reset(table)
         elif self.key in table.primary_key:
             raise exc.ArgumentError(
                 "Trying to redefine primary-key column '%s' as a "
@@ -1051,7 +1051,8 @@ class Column(SchemaItem, expression.ColumnClause):
                     "The 'index' keyword argument on Column is boolean only. "
                     "To create indexes with a specific name, create an "
                     "explicit Index object external to the Table.")
-            Index(expression._truncated_label('ix_%s' % self._label), self, unique=self.unique)
+            Index(expression._truncated_label('ix_%s' % self._label),
+                                    self, unique=self.unique)
         elif self.unique:
             if isinstance(self.unique, basestring):
                 raise exc.ArgumentError(
@@ -1082,10 +1083,10 @@ class Column(SchemaItem, expression.ColumnClause):
         c = self._constructor(
                 name=self.name,
                 type_=self.type,
-                key = self.key,
-                primary_key = self.primary_key,
-                nullable = self.nullable,
-                unique = self.unique,
+                key=self.key,
+                primary_key=self.primary_key,
+                nullable=self.nullable,
+                unique=self.unique,
                 quote=self.quote,
                 index=self.index,
                 autoincrement=self.autoincrement,
@@ -1118,10 +1119,11 @@ class Column(SchemaItem, expression.ColumnClause):
             c = self._constructor(
                 expression._as_truncated(name or self.name),
                 self.type,
-                key = key if key else name if name else self.key,
-                primary_key = self.primary_key,
-                nullable = self.nullable,
-                quote=self.quote, _proxies=[self], *fk)
+                key=key if key else name if name else self.key,
+                primary_key=self.primary_key,
+                nullable=self.nullable,
+                quote=self.quote,
+                _proxies=[self], *fk)
         except TypeError, e:
             # Py3K
             #raise TypeError(
