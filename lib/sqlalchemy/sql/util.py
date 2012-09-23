@@ -420,7 +420,7 @@ class Annotated(object):
             element.c
 
         self.__dict__ = element.__dict__.copy()
-        self.__dict__.pop('comparator', None)
+        expression.ColumnElement.comparator._reset(self)
         self.__element = element
         self._annotations = values
 
@@ -432,7 +432,7 @@ class Annotated(object):
     def _with_annotations(self, values):
         clone = self.__class__.__new__(self.__class__)
         clone.__dict__ = self.__dict__.copy()
-        clone.__dict__.pop('comparator', None)
+        expression.ColumnElement.comparator._reset(self)
         clone._annotations = values
         return clone
 

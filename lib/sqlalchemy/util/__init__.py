@@ -22,7 +22,7 @@ from .langhelpers import iterate_attributes, class_hierarchy, \
     getargspec_init, format_argspec_init, format_argspec_plus, \
     get_func_kwargs, get_cls_kwargs, decorator, as_interface, \
     memoized_property, memoized_instancemethod, \
-    reset_memoized, group_expirable_memoized_property, importlater, \
+    group_expirable_memoized_property, importlater, \
     monkeypatch_proxied_specials, asbool, bool_or_str, coerce_kw_type,\
     duck_type_collection, assert_arg_type, symbol, dictlike_iteritems,\
     classproperty, set_creation_order, warn_exception, warn, NoneType,\

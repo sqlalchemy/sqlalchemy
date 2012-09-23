@@ -1604,8 +1604,8 @@ class ClauseElement(Visitable):
         """
         c = self.__class__.__new__(self.__class__)
         c.__dict__ = self.__dict__.copy()
-        c.__dict__.pop('_cloned_set', None)
-        c.__dict__.pop('comparator', None)
+        ClauseElement._cloned_set._reset(c)
+        ColumnElement.comparator._reset(c)
 
         # this is a marker that helps to "equate" clauses to each other
         # when a Select returns its list of FROM clauses.  the cloning
@@ -2410,7 +2410,7 @@ class ColumnCollection(util.OrderedProperties):
             # pop out memoized proxy_set as this
             # operation may very well be occurring
             # in a _make_proxy operation
-            value.__dict__.pop('proxy_set', None)
+            ColumnElement.proxy_set._reset(value)
         self._all_cols.add(value)
         self._data[key] = value
 
@@ -3432,7 +3432,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
     def _copy_internals(self, clone=_clone, **kw):
         self.clause_expr = clone(self.clause_expr, **kw)
         self._reset_exported()
-        util.reset_memoized(self, 'clauses')
+        FunctionElement.clauses._reset(self)
 
     def select(self):
         """Produce a :func:`~.expression.select` construct

@@ -325,12 +325,12 @@ class InstanceState(interfaces._InspectionAttr):
 
         self.committed_state.clear()
 
-        self.__dict__.pop('_pending_mutations', None)
+        InstanceState._pending_mutations._reset(self)
 
         # clear out 'parents' collection.  not
         # entirely clear how we can best determine
         # which to remove, or not.
-        self.__dict__.pop('parents', None)
+        InstanceState.parents._reset(self)
 
         for key in self.manager:
             impl = self.manager[key].impl
@@ -502,7 +502,7 @@ class InstanceState(interfaces._InspectionAttr):
 
         for state, dict_ in iter:
             state.committed_state.clear()
-            state.__dict__.pop('_pending_mutations', None)
+            InstanceState._pending_mutations._reset(state)
 
             callables = state.callables
             for key in list(callables):

@@ -567,9 +567,6 @@ class memoized_instancemethod(object):
         oneshot.__doc__ = self.__doc__
         return oneshot
 
-def reset_memoized(instance, name):
-    instance.__dict__.pop(name, None)
-
 
 class group_expirable_memoized_property(object):
     """A family of @memoized_properties that can be expired in tandem."""
