@@ -1603,20 +1603,33 @@ class PGDialect(default.DefaultDialect):
         table_oid = self.get_table_oid(connection, table_name, schema,
                                        info_cache=kw.get('info_cache'))
 
-        PK_SQL = """
-            SELECT a.attname
+        if self.server_version_info < (8, 4):
+            # unnest() and generate_subscripts() both introduced in
+            # version 8.4
+            PK_SQL = """
+                SELECT a.attname
                 FROM
                     pg_class t
                     join pg_index ix on t.oid = ix.indrelid
                     join pg_attribute a
                         on t.oid=a.attrelid and a.attnum=ANY(ix.indkey)
-          WHERE
-              t.oid = :table_oid and
-              ix.indisprimary = 't'
-          ORDER BY
-            a.attnum
-        """
-        t = sql.text(PK_SQL, typemap={'attname':sqltypes.Unicode})
+                 WHERE
+                  t.oid = :table_oid and ix.indisprimary = 't'
+                ORDER BY a.attnum
+            """
+        else:
+            PK_SQL = """
+                SELECT a.attname
+                FROM pg_attribute a JOIN (
+                    SELECT unnest(ix.indkey) attnum,
+                           generate_subscripts(ix.indkey, 1) ord
+                    FROM pg_index ix
+                    WHERE ix.indrelid = :table_oid AND ix.indisprimary
+                    ) k ON a.attnum=k.attnum
+                WHERE a.attrelid = :table_oid
+                ORDER BY k.ord
+            """
+        t = sql.text(PK_SQL, typemap={'attname': sqltypes.Unicode})
         c = connection.execute(t, table_oid=table_oid)
         cols = [r[0] for r in c.fetchall()]
 
@@ -1626,11 +1639,11 @@ class PGDialect(default.DefaultDialect):
            WHERE r.conrelid = :table_oid AND r.contype = 'p'
            ORDER BY 1
         """
-        t = sql.text(PK_CONS_SQL, typemap={'conname':sqltypes.Unicode})
+        t = sql.text(PK_CONS_SQL, typemap={'conname': sqltypes.Unicode})
         c = connection.execute(t, table_oid=table_oid)
         name = c.scalar()
 
-        return {'constrained_columns':cols, 'name':name}
+        return {'constrained_columns': cols, 'name': name}
 
     @reflection.cache
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):
