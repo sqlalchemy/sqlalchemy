@@ -1391,10 +1391,10 @@ class ForeignKey(SchemaItem):
                 schema = parenttable.metadata.schema
 
             if (len(m) == 1):
-                tname   = m.pop()
+                tname = m.pop()
             else:
                 colname = m.pop()
-                tname   = m.pop()
+                tname = m.pop()
 
             if (len(m) > 0):
                 schema = '.'.join(m)
@@ -1403,10 +1403,23 @@ class ForeignKey(SchemaItem):
                 raise exc.NoReferencedTableError(
                     "Foreign key associated with column '%s' could not find "
                     "table '%s' with which to generate a "
-                    "foreign key to target column '%s'" % (self.parent, tname, colname),
+                    "foreign key to target column '%s'" %
+                    (self.parent, tname, colname),
                     tname)
             table = Table(tname, parenttable.metadata,
                           mustexist=True, schema=schema)
+
+            if not hasattr(self.constraint, '_referred_table'):
+                self.constraint._referred_table = table
+            elif self.constraint._referred_table is not table:
+                raise exc.ArgumentError(
+                    'ForeignKeyConstraint on %s(%s) refers to '
+                    'multiple remote tables: %s and %s' % (
+                    parenttable,
+                    self.constraint._col_description,
+                    self.constraint._referred_table,
+                    table
+                ))
 
             _column = None
             if colname is None:
@@ -2168,6 +2181,10 @@ class ForeignKeyConstraint(Constraint):
 
 
     @property
+    def _col_description(self):
+        return ", ".join(self._elements)
+
+    @property
     def columns(self):
         return self._elements.keys()
 
@@ -2177,6 +2194,7 @@ class ForeignKeyConstraint(Constraint):
 
     def _set_parent(self, table):
         super(ForeignKeyConstraint, self)._set_parent(table)
+
         for col, fk in self._elements.iteritems():
             # string-specified column names now get
             # resolved to Column objects

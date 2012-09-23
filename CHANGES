@@ -587,6 +587,11 @@ underneath "0.7.xx".
     column object itself, consistent with the behavior
     of label(column, None).  [ticket:2168]
 
+  - [feature] An explicit error is raised when
+    a ForeignKeyConstraint() that was
+    constructed to refer to multiple remote tables
+    is first used. [ticket:2455]
+
 - sqlite
   - [feature] the SQLite date and time types
     have been overhauled to support a more open

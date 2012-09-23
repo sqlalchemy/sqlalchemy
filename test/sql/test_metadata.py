@@ -1057,6 +1057,34 @@ class ConstraintTest(fixtures.TestBase):
         assert s1.c.a.references(t1.c.a)
         assert not s1.c.a.references(t1.c.b)
 
+    def test_invalid_composite_fk_check(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('x', Integer), Column('y', Integer),
+            ForeignKeyConstraint(['x', 'y'], ['t2.x', 't3.y'])
+        )
+        t2 = Table('t2', m, Column('x', Integer))
+        t3 = Table('t3', m, Column('y', Integer))
+
+        assert_raises_message(
+            exc.ArgumentError,
+            r"ForeignKeyConstraint on t1\(x, y\) refers to "
+                "multiple remote tables: t2 and t3",
+            t1.join, t2
+        )
+        assert_raises_message(
+            exc.ArgumentError,
+            r"ForeignKeyConstraint on t1\(x, y\) refers to "
+                "multiple remote tables: t2 and t3",
+            t1.join, t3
+        )
+
+        assert_raises_message(
+            exc.ArgumentError,
+            r"ForeignKeyConstraint on t1\(x, y\) refers to "
+                "multiple remote tables: t2 and t3",
+            schema.CreateTable(t1).compile
+        )
+
 class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
     """Test Column() construction."""
 
