@@ -12,7 +12,6 @@ from sqlalchemy import schema, exc
 import sqlalchemy as tsa
 from test.lib import fixtures
 from test.lib import testing
-from test.lib import engines
 from test.lib.testing import ComparesTables, AssertsCompiledSQL
 from test.lib.testing import eq_
 
@@ -96,15 +95,15 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             # that listeners will be re-established from the
             # natural construction of things.
             cx._on_table_attach(write)
-            t = Table('foo%d' % i, m, cx)
+            Table('foo%d' % i, m, cx)
         eq_(msgs, ['attach foo0.foo', 'attach foo1.foo', 'attach foo2.foo'])
 
     def test_schema_collection_add(self):
         metadata = MetaData()
 
-        t1 = Table('t1', metadata, Column('x', Integer), schema='foo')
-        t2 = Table('t2', metadata, Column('x', Integer), schema='bar')
-        t3 = Table('t3', metadata, Column('x', Integer))
+        Table('t1', metadata, Column('x', Integer), schema='foo')
+        Table('t2', metadata, Column('x', Integer), schema='bar')
+        Table('t3', metadata, Column('x', Integer))
 
         eq_(metadata._schemas, set(['foo', 'bar']))
         eq_(len(metadata.tables), 3)
@@ -113,7 +112,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         metadata = MetaData()
 
         t1 = Table('t1', metadata, Column('x', Integer), schema='foo')
-        t2 = Table('t2', metadata, Column('x', Integer), schema='bar')
+        Table('t2', metadata, Column('x', Integer), schema='bar')
         t3 = Table('t3', metadata, Column('x', Integer), schema='bar')
 
         metadata.remove(t3)
@@ -127,8 +126,8 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
     def test_schema_collection_remove_all(self):
         metadata = MetaData()
 
-        t1 = Table('t1', metadata, Column('x', Integer), schema='foo')
-        t2 = Table('t2', metadata, Column('x', Integer), schema='bar')
+        Table('t1', metadata, Column('x', Integer), schema='foo')
+        Table('t2', metadata, Column('x', Integer), schema='bar')
 
         metadata.clear()
         eq_(metadata._schemas, set())
@@ -137,7 +136,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
     def test_metadata_tables_immutable(self):
         metadata = MetaData()
 
-        t1 = Table('t1', metadata, Column('x', Integer))
+        Table('t1', metadata, Column('x', Integer))
         assert 't1' in metadata.tables
 
         assert_raises(
@@ -148,14 +147,14 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
     @testing.provide_metadata
     def test_dupe_tables(self):
         metadata = self.metadata
-        t1 = Table('table1', metadata,
+        Table('table1', metadata,
             Column('col1', Integer, primary_key=True),
             Column('col2', String(20)))
 
         metadata.create_all()
-        t1 = Table('table1', metadata, autoload=True)
+        Table('table1', metadata, autoload=True)
         def go():
-            t2 = Table('table1', metadata,
+            Table('table1', metadata,
                 Column('col1', Integer, primary_key=True),
                 Column('col2', String(20)))
         assert_raises_message(
@@ -194,7 +193,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                             name='name',
                             initially=True,
                             deferrable=True,
-                            _create_rule = r)
+                            _create_rule=r)
         c2 = c.copy()
         eq_(c2.name, 'name')
         eq_(str(c2.sqltext), "foo bar")
@@ -224,7 +223,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
     def test_fk_no_such_parent_col_error(self):
         meta = MetaData()
         a = Table('a', meta, Column('a', Integer))
-        b = Table('b', meta, Column('b', Integer))
+        Table('b', meta, Column('b', Integer))
 
         def go():
             a.append_constraint(
@@ -240,7 +239,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
     def test_fk_no_such_target_col_error(self):
         meta = MetaData()
         a = Table('a', meta, Column('a', Integer))
-        b = Table('b', meta, Column('b', Integer))
+        Table('b', meta, Column('b', Integer))
         a.append_constraint(
             ForeignKeyConstraint(['a'], ['b.x'])
         )
@@ -289,7 +288,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             meta.bind = testing.db
             meta2 = pickle.loads(pickle.dumps(meta))
             assert meta2.bind is None
-            meta3 = pickle.loads(pickle.dumps(meta2))
+            pickle.loads(pickle.dumps(meta2))
             return (meta2.tables['mytable'], meta2.tables['othertable'])
 
         def test_pickle_via_reflect():
@@ -297,7 +296,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             # database reflection
             meta2 = MetaData(bind=testing.db)
             t1 = Table('mytable', meta2, autoload=True)
-            t2 = Table('othertable', meta2, autoload=True)
+            Table('othertable', meta2, autoload=True)
             meta3 = pickle.loads(pickle.dumps(meta2))
             assert meta3.bind is None
             assert meta3.tables['mytable'] is not t1
@@ -352,15 +351,15 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
 
     def test_pickle_metadata_sequence_restated(self):
         m1 = MetaData()
-        Table('a',m1,
-             Column('id',Integer,primary_key=True),
+        Table('a', m1,
+             Column('id', Integer, primary_key=True),
              Column('x', Integer, Sequence("x_seq")))
 
         m2 = pickle.loads(pickle.dumps(m1))
 
         s2 = Sequence("x_seq")
         t2 = Table('a', m2,
-             Column('id',Integer,primary_key=True),
+             Column('id', Integer, primary_key=True),
              Column('x', Integer, s2),
              extend_existing=True)
 
@@ -379,7 +378,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         assert m1._sequences['x_seq'] is s1
 
         s2 = Sequence('x_seq')
-        t2 = Table('a', m1,
+        Table('a', m1,
              Column('x', Integer, s2),
              extend_existing=True
         )
@@ -389,26 +388,26 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
 
     def test_pickle_metadata_sequence_implicit(self):
         m1 = MetaData()
-        Table('a',m1,
-             Column('id',Integer,primary_key=True),
+        Table('a', m1,
+             Column('id', Integer, primary_key=True),
              Column('x', Integer, Sequence("x_seq")))
 
         m2 = pickle.loads(pickle.dumps(m1))
 
         t2 = Table('a', m2, extend_existing=True)
 
-        eq_(m2._sequences, {'x_seq':t2.c.x.default})
+        eq_(m2._sequences, {'x_seq': t2.c.x.default})
 
     def test_pickle_metadata_schema(self):
         m1 = MetaData()
-        Table('a',m1,
-             Column('id',Integer,primary_key=True),
+        Table('a', m1,
+             Column('id', Integer, primary_key=True),
              Column('x', Integer, Sequence("x_seq")),
              schema='y')
 
         m2 = pickle.loads(pickle.dumps(m1))
 
-        t2 = Table('a', m2, schema='y',
+        Table('a', m2, schema='y',
              extend_existing=True)
 
         eq_(m2._schemas, m1._schemas)
@@ -481,7 +480,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         meta2 = MetaData()
         table_c = table.tometadata(meta2)
 
-        eq_(table.kwargs,table_c.kwargs)
+        eq_(table.kwargs, table_c.kwargs)
 
     def test_tometadata_indexes(self):
         meta = MetaData()
@@ -491,13 +490,13 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             Column('data1', Integer, index=True),
             Column('data2', Integer),
         )
-        Index('multi',table.c.data1,table.c.data2),
+        Index('multi', table.c.data1, table.c.data2),
 
         meta2 = MetaData()
         table_c = table.tometadata(meta2)
 
         def _get_key(i):
-            return [i.name,i.unique] + \
+            return [i.name, i.unique] + \
                     sorted(i.kwargs.items()) + \
                     i.columns.keys()
 
@@ -518,8 +517,6 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             Column('yourid', Integer, primary_key=True),
         )
 
-        meta3 = MetaData()
-
         table_c = table1.tometadata(meta2)
         table_d = table2.tometadata(meta2)
 
@@ -532,7 +529,8 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         m3 = MetaData(schema='sch1', quote_schema=False)
         m4 = MetaData()
 
-        for i, (name, metadata, schema, quote_schema, exp_schema, exp_quote_schema) in enumerate([
+        for i, (name, metadata, schema, quote_schema,
+                        exp_schema, exp_quote_schema) in enumerate([
             ('t1', m1, None, None, 'sch1', None),
             ('t2', m1, 'sch2', None, 'sch2', None),
             ('t3', m1, 'sch2', True, 'sch2', True),
@@ -673,7 +671,7 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
         from sqlalchemy import Table
         table1 = Table("temporary_table_1", MetaData(),
                       Column("col1", Integer),
-                      prefixes = ["TEMPORARY"])
+                      prefixes=["TEMPORARY"])
 
         self.assert_compile(
             schema.CreateTable(table1),
@@ -682,7 +680,7 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
 
         table2 = Table("temporary_table_2", MetaData(),
                       Column("col1", Integer),
-                      prefixes = ["VIRTUAL"])
+                      prefixes=["VIRTUAL"])
         self.assert_compile(
           schema.CreateTable(table2),
           "CREATE VIRTUAL TABLE temporary_table_2 (col1 INTEGER)"
@@ -690,10 +688,10 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_table_info(self):
         metadata = MetaData()
-        t1 = Table('foo', metadata, info={'x':'y'})
+        t1 = Table('foo', metadata, info={'x': 'y'})
         t2 = Table('bar', metadata, info={})
         t3 = Table('bat', metadata)
-        assert t1.info == {'x':'y'}
+        assert t1.info == {'x': 'y'}
         assert t2.info == {}
         assert t3.info == {}
         for t in (t1, t2, t3):
@@ -715,11 +713,11 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
             assign
         )
 
-        def assign():
+        def assign2():
             t1.c.z = Column('z', Integer)
         assert_raises(
             TypeError,
-            assign
+            assign2
         )
 
 class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -813,7 +811,7 @@ class UseExistingTest(fixtures.TablesTest):
     def test_exception_no_flags(self):
         meta2 = self._useexisting_fixture()
         def go():
-            users = Table('users', meta2, Column('name',
+            Table('users', meta2, Column('name',
                           Unicode), autoload=True)
         assert_raises_message(
             exc.InvalidRequestError,
@@ -1064,7 +1062,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
     __dialect__ = 'default'
 
     def columns(self):
-        return [ Column(Integer),
+        return [Column(Integer),
                  Column('b', Integer),
                  Column(Integer),
                  Column('d', Integer),
@@ -1072,7 +1070,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
                  Column(type_=Integer),
                  Column(Integer()),
                  Column('h', Integer()),
-                 Column(type_=Integer()) ]
+                 Column(type_=Integer())]
 
     def test_basic(self):
         c = self.columns()
@@ -1107,7 +1105,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
 
     def test_dupe_column(self):
         c = Column('x', Integer)
-        t = Table('t', MetaData(), c)
+        Table('t', MetaData(), c)
 
         assert_raises_message(
             exc.ArgumentError,
@@ -1120,7 +1118,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         assert c.key is None
 
         c.name = 'named'
-        t = Table('t', MetaData(), c)
+        Table('t', MetaData(), c)
 
         assert c.name == 'named'
         assert c.name == c.key
@@ -1307,10 +1305,10 @@ class ColumnOptionsTest(fixtures.TestBase):
 
     def test_column_info(self):
 
-        c1 = Column('foo', String, info={'x':'y'})
+        c1 = Column('foo', String, info={'x': 'y'})
         c2 = Column('bar', String, info={})
         c3 = Column('bat', String)
-        assert c1.info == {'x':'y'}
+        assert c1.info == {'x': 'y'}
         assert c2.info == {}
         assert c3.info == {}
 
@@ -1336,11 +1334,11 @@ class CatchAllEventsTest(fixtures.TestBase):
         event.listen(schema.SchemaItem, "after_parent_attach", after_attach)
 
         m = MetaData()
-        t1 = Table('t1', m,
+        Table('t1', m,
             Column('id', Integer, Sequence('foo_id'), primary_key=True),
             Column('bar', String, ForeignKey('t2.id'))
         )
-        t2 = Table('t2', m,
+        Table('t2', m,
             Column('id', Integer, primary_key=True),
         )
 
@@ -1376,12 +1374,12 @@ class CatchAllEventsTest(fixtures.TestBase):
             evt(target)
 
         m = MetaData()
-        t1 = Table('t1', m,
+        Table('t1', m,
             Column('id', Integer, Sequence('foo_id'), primary_key=True),
             Column('bar', String, ForeignKey('t2.id')),
             Column('bat', Integer, unique=True),
         )
-        t2 = Table('t2', m,
+        Table('t2', m,
             Column('id', Integer, primary_key=True),
             Column('bar', Integer),
             Column('bat', Integer),
