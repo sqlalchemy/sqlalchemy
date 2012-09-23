@@ -234,7 +234,6 @@ class QueryTest(fixtures.TestBase):
             l.append(row)
         self.assert_(len(l) == 3)
 
-    @testing.fails_on('firebird', "kinterbasdb doesn't send full type information")
     @testing.requires.subqueries
     def test_anonymous_rows(self):
         users.insert().execute(
@@ -710,7 +709,7 @@ class QueryTest(fixtures.TestBase):
                               use_labels=labels),
                  [(3, 'a'), (2, 'b'), (1, None)])
 
-    @testing.fails_on('mssql+pyodbc', 
+    @testing.fails_on('mssql+pyodbc',
         "pyodbc result row doesn't support slicing")
     def test_column_slices(self):
         users.insert().execute(user_id=1, user_name='john')
@@ -1203,7 +1202,6 @@ class QueryTest(fixtures.TestBase):
         assert len(r) == 0
 
     @testing.emits_warning('.*empty sequence.*')
-    @testing.fails_on('firebird', 'uses sql-92 bind rules')
     def test_literal_in(self):
         """similar to test_bind_in but use a bind with a value."""
 
@@ -1414,7 +1412,7 @@ class TableInsertTest(fixtures.TablesTest):
             returning=(1, 5)
         )
 
-    @testing.fails_on('mssql', 
+    @testing.fails_on('mssql',
         "lowercase table doesn't support identity insert disable")
     def test_direct_params(self):
         t = self._fixture()
@@ -1424,7 +1422,7 @@ class TableInsertTest(fixtures.TablesTest):
             inserted_primary_key=[]
         )
 
-    @testing.fails_on('mssql', 
+    @testing.fails_on('mssql',
         "lowercase table doesn't support identity insert disable")
     @testing.requires.returning
     def test_direct_params_returning(self):

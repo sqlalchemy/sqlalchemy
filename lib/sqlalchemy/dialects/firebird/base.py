@@ -126,7 +126,7 @@ RESERVED_WORDS = set([
 class _StringType(sqltypes.String):
     """Base for Firebird string types."""
 
-    def __init__(self, charset = None, **kw):
+    def __init__(self, charset=None, **kw):
         self.charset = charset
         super(_StringType, self).__init__(**kw)
 
@@ -134,17 +134,28 @@ class VARCHAR(_StringType, sqltypes.VARCHAR):
     """Firebird VARCHAR type"""
     __visit_name__ = 'VARCHAR'
 
-    def __init__(self, length = None, **kwargs):
+    def __init__(self, length=None, **kwargs):
         super(VARCHAR, self).__init__(length=length, **kwargs)
 
 class CHAR(_StringType, sqltypes.CHAR):
     """Firebird CHAR type"""
     __visit_name__ = 'CHAR'
 
-    def __init__(self, length = None, **kwargs):
+    def __init__(self, length=None, **kwargs):
         super(CHAR, self).__init__(length=length, **kwargs)
 
+
+class _FBDateTime(sqltypes.DateTime):
+    def bind_processor(self, dialect):
+        def process(value):
+            if type(value) == datetime.date:
+                return datetime.datetime(value.year, value.month, value.day)
+            else:
+                return value
+        return process
+
 colspecs = {
+    sqltypes.DateTime: _FBDateTime
 }
 
 ischema_names = {
@@ -204,11 +215,16 @@ class FBTypeCompiler(compiler.GenericTypeCompiler):
 class FBCompiler(sql.compiler.SQLCompiler):
     """Firebird specific idiosyncrasies"""
 
+    ansi_bind_rules = True
+
     #def visit_contains_op_binary(self, binary, operator, **kw):
         # cant use CONTAINING b.c. it's case insensitive.
 
     #def visit_notcontains_op_binary(self, binary, operator, **kw):
         # cant use NOT CONTAINING b.c. it's case insensitive.
+
+    def visit_now_func(self, fn, **kw):
+        return "CURRENT_TIMESTAMP"
 
     def visit_startswith_op_binary(self, binary, operator, **kw):
         return '%s STARTING WITH %s' % (
@@ -261,7 +277,7 @@ class FBCompiler(sql.compiler.SQLCompiler):
 
     visit_char_length_func = visit_length_func
 
-    def function_argspec(self, func, **kw):
+    def _function_argspec(self, func, **kw):
         # TODO: this probably will need to be
         # narrowed to a fixed list, some no-arg functions
         # may require parens - see similar example in the oracle

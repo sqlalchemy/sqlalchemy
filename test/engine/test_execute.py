@@ -47,9 +47,9 @@ class ExecuteTest(fixtures.TestBase):
     @testing.fails_on("postgresql+pg8000",
             "pg8000 still doesn't allow single % without params")
     def test_no_params_option(self):
-        stmt = "SELECT '%'"
-        if testing.against('oracle'):
-            stmt += " FROM DUAL"
+        stmt = "SELECT '%'" + testing.db.dialect.statement_compiler(
+                                    testing.db.dialect, None).default_from()
+
         conn = testing.db.connect()
         result = conn.\
                 execution_options(no_parameters=True).\
@@ -1181,7 +1181,7 @@ class EngineEventsTest(fixtures.TestBase):
                     ('INSERT INTO t1 (c1, c2)', {
                         'c2': 'some data', 'c1': 5},
                         (5, 'some data')),
-                    ('SELECT lower', {'lower_2': 'Foo'}, 
+                    ('SELECT lower', {'lower_2': 'Foo'},
                         ('Foo', )),
                     ('INSERT INTO t1 (c1, c2)',
                      {'c2': 'foo', 'c1': 6},
@@ -1447,7 +1447,7 @@ class ProxyConnectionTest(fixtures.TestBase):
                     ('CREATE TABLE t1', {}, ()),
                     ('INSERT INTO t1 (c1, c2)', {'c2': 'some data', 'c1'
                      : 5}, (5, 'some data')),
-                    ('SELECT lower', {'lower_2': 'Foo'}, 
+                    ('SELECT lower', {'lower_2': 'Foo'},
                         ('Foo', )),
                     ('INSERT INTO t1 (c1, c2)', {'c2': 'foo', 'c1': 6},
                      (6, 'foo')),

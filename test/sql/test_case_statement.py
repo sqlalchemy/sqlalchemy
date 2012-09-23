@@ -98,8 +98,10 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert_raises(exc.ArgumentError, case, [("x", "y")])
 
-        self.assert_compile(case([("x", "y")], value=t.c.col1), "CASE test.col1 WHEN :param_1 THEN :param_2 END")
-        self.assert_compile(case([(t.c.col1==7, "y")], else_="z"), "CASE WHEN (test.col1 = :col1_1) THEN :param_1 ELSE :param_2 END")
+        self.assert_compile(case([("x", "y")], value=t.c.col1),
+                "CASE test.col1 WHEN :param_1 THEN :param_2 END")
+        self.assert_compile(case([(t.c.col1 == 7, "y")], else_="z"),
+                "CASE WHEN (test.col1 = :col1_1) THEN :param_1 ELSE :param_2 END")
 
     def test_text_doesnt_explode(self):
 
@@ -113,10 +115,16 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
                   ))]).order_by(info_table.c.info),
 
         ]:
-            eq_(s.execute().fetchall(), [
-                (u'no', ), (u'no', ), (u'no', ), (u'yes', ),
-                (u'no', ), (u'no', ),
-                ])
+            if testing.against("firebird"):
+                eq_(s.execute().fetchall(), [
+                    ('no ', ), ('no ', ), ('no ', ), ('yes', ),
+                    ('no ', ), ('no ', ),
+                    ])
+            else:
+                eq_(s.execute().fetchall(), [
+                    ('no', ), ('no', ), ('no', ), ('yes', ),
+                    ('no', ), ('no', ),
+                    ])
 
 
 

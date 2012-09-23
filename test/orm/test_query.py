@@ -402,16 +402,6 @@ class GetTest(QueryTest):
         assert u.addresses[0].email_address == 'jack@bean.com'
         assert u.orders[1].items[2].description == 'item 5'
 
-    @testing.fails_on_everything_except('sqlite', '+pyodbc', '+zxjdbc', 'mysql+oursql')
-    def test_query_str(self):
-        User = self.classes.User
-
-        s = create_session()
-        q = s.query(User).filter(User.id==1)
-        eq_(
-            str(q).replace('\n',''),
-            'SELECT users.id AS users_id, users.name AS users_name FROM users WHERE users.id = ?'
-            )
 
 class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
     def test_no_limit_offset(self):
@@ -1499,7 +1489,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
         )
 
 
-    @testing.fails_on('mysql', "mysql doesn't support intersect")
+    @testing.requires.intersect
     def test_intersect(self):
         User = self.classes.User
 

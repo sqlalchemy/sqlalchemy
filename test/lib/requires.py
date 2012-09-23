@@ -433,6 +433,8 @@ def selectone(fn):
     return _chain_decorators_on(
         fn,
         skip_if(lambda: testing.against('oracle'),
+            "non-standard SELECT scalar syntax"),
+        skip_if(lambda: testing.against('firebird'),
             "non-standard SELECT scalar syntax")
     )
 

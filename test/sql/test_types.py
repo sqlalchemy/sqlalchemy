@@ -818,7 +818,7 @@ class UnicodeTest(fixtures.TestBase, AssertsExecutionResults):
     #                    lambda: testing.db_spec("postgresql")(testing.db),
     #                    "pg8000 and psycopg2 both have issues here in py3k"
     #                    )
-    @testing.skip_if(lambda: testing.db_spec('mssql+mxodbc'), 
+    @testing.skip_if(lambda: testing.db_spec('mssql+mxodbc'),
         "unsupported behavior")
     def test_ignoring_unicode_error(self):
         """checks String(unicode_error='ignore') is passed to underlying codec."""
@@ -1023,7 +1023,7 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
     __excluded_on__ = (
         ('mysql', '<', (4, 1, 1)),  # screwy varbinary types
     )
-    
+
     @classmethod
     def setup_class(cls):
         global binary_table, MyPickleType, metadata
@@ -1140,7 +1140,7 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
                     return value / 10
                 return process
             def adapt_operator(self, op):
-                return {operators.add:operators.sub, 
+                return {operators.add:operators.sub,
                     operators.sub:operators.add}.get(op, op)
 
         class MyTypeDec(types.TypeDecorator):
@@ -1498,7 +1498,7 @@ class DateTest(fixtures.TestBase, AssertsExecutionResults):
     def teardown_class(cls):
         users_with_date.drop()
 
-    def testdate(self):
+    def test_date_roundtrip(self):
         global insert_data
 
         l = map(tuple,
@@ -1506,10 +1506,10 @@ class DateTest(fixtures.TestBase, AssertsExecutionResults):
         self.assert_(l == insert_data,
                      'DateTest mismatch: got:%s expected:%s' % (l, insert_data))
 
-    def testtextdate(self):
+    def test_text_date_roundtrip(self):
         x = testing.db.execute(text(
             "select user_datetime from query_users_with_date",
-            typemap={'user_datetime':DateTime})).fetchall()
+            typemap={'user_datetime': DateTime})).fetchall()
 
         self.assert_(isinstance(x[0][0], datetime.datetime))
 
@@ -1518,13 +1518,14 @@ class DateTest(fixtures.TestBase, AssertsExecutionResults):
             bindparams=[bindparam('somedate', type_=types.DateTime)]),
             somedate=datetime.datetime(2005, 11, 10, 11, 52, 35)).fetchall()
 
-    def testdate2(self):
+    def test_date_mixdatetime_roundtrip(self):
         meta = MetaData(testing.db)
         t = Table('testdate', meta,
-                  Column('id', Integer,
+                    Column('id', Integer,
                          Sequence('datetest_id_seq', optional=True),
                          primary_key=True),
-                Column('adate', Date), Column('adatetime', DateTime))
+                    Column('adate', Date),
+                    Column('adatetime', DateTime))
         t.create(checkfirst=True)
         try:
             d1 = datetime.date(2007, 10, 30)
@@ -1540,8 +1541,14 @@ class DateTest(fixtures.TestBase, AssertsExecutionResults):
 
             # test mismatched date/datetime
             t.insert().execute(adate=d2, adatetime=d2)
-            eq_(select([t.c.adate, t.c.adatetime], t.c.adate==d1).execute().fetchall(), [(d1, d2)])
-            eq_(select([t.c.adate, t.c.adatetime], t.c.adate==d1).execute().fetchall(), [(d1, d2)])
+            eq_(
+                select([t.c.adate, t.c.adatetime], t.c.adate == d1)\
+                    .execute().fetchall(),
+                [(d1, d2)])
+            eq_(
+                select([t.c.adate, t.c.adatetime], t.c.adate == d1)\
+                    .execute().fetchall(),
+                [(d1, d2)])
 
         finally:
             t.drop(checkfirst=True)
@@ -1705,6 +1712,9 @@ class NumericTest(fixtures.TestBase):
     )
     @testing.fails_on('postgresql+pg8000',
         "pg-8000 does native decimal but truncates the decimals.")
+    @testing.fails_on("firebird",
+        "database and/or driver truncates decimal places."
+        )
     def test_numeric_no_decimal(self):
         numbers = set([
             decimal.Decimal("1.000")
@@ -1762,7 +1772,7 @@ class NumericRawSQLTest(fixtures.TestBase):
         assert isinstance(val, float)
 
         # some DBAPIs have unusual float handling
-        if testing.against('oracle+cx_oracle', 'mysql+oursql'):
+        if testing.against('oracle+cx_oracle', 'mysql+oursql', 'firebird'):
             eq_(round_decimal(val, 3), 46.583)
         else:
             eq_(val, 46.583)

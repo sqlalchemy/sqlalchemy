@@ -689,6 +689,15 @@ underneath "0.7.xx".
     no length is attempted to be emitted, same
     way as MySQL. [ticket:2505]
 
+  - [bug] Firebird now uses strict "ansi bind rules"
+    so that bound parameters don't render in the
+    columns clause of a statement - they render
+    literally instead.
+
+  - [bug] Support for passing datetime as date when
+    using the DateTime type with Firebird; other
+    dialects support this.
+
 - mysql
   - [bug] Dialect no longer emits expensive server
     collations query, as well as server casing,

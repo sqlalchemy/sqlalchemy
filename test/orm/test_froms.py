@@ -1125,6 +1125,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
     @testing.fails_on('postgresql+zxjdbc',
                       "zxjdbc parses the SQL itself before passing on "
                       "to PG, doesn't parse this")
+    @testing.fails_on("firebird", "unknown")
     def test_values_with_boolean_selects(self):
         """Tests a values clause that works with select boolean
         evaluations"""
@@ -1314,6 +1315,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             eq_(results, [(User(name='jack'), 'jack')])
         self.assert_sql_count(testing.db, go, 1)
 
+    @testing.fails_on("firebird", "unknown")
     @testing.fails_on('postgresql+pg8000', "'type oid 705 not mapped to py type' (due to literal)")
     def test_self_referential(self):
         Order = self.classes.Order
