@@ -114,8 +114,7 @@ Using Passive Deletes
 
 Use ``passive_deletes=True`` to disable child object loading on a DELETE
 operation, in conjunction with "ON DELETE (CASCADE|SET NULL)" on your database
-to automatically cascade deletes to child objects. Note that "ON DELETE" is
-not supported on SQLite, and requires ``InnoDB`` tables when using MySQL::
+to automatically cascade deletes to child objects::
 
     class MyClass(Base):
         __tablename__ = 'mytable'
@@ -130,6 +129,18 @@ not supported on SQLite, and requires ``InnoDB`` tables when using MySQL::
         parent_id = Column(Integer,
                     ForeignKey('mytable.id', ondelete='CASCADE')
                         )
+
+
+.. note::
+
+    To use "ON DELETE CASCADE", the underlying database engine must
+    support foreign keys.
+
+    * When using MySQL, an appropriate storage engine must be
+      selected.  See :ref:`mysql_storage_engines` for details.
+
+    * When using SQLite, foreign key support must be enabled explicitly.
+      See :ref:`sqlite_foreign_keys` for details.
 
 When ``passive_deletes`` is applied, the ``children`` relationship will not be
 loaded into memory when an instance of ``MyClass`` is marked for deletion. The
