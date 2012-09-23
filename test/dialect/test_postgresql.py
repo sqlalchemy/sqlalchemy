@@ -1321,6 +1321,21 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
 class ReflectionTest(fixtures.TestBase):
     __only_on__ = 'postgresql'
 
+    @testing.fails_if(('postgresql', '<', (8, 4)),
+            "newer query is bypassed due to unsupported SQL functions")
+    @testing.provide_metadata
+    def test_reflected_primary_key_order(self):
+        meta1 = self.metadata
+        subject = Table('subject', meta1,
+                        Column('p1', Integer, primary_key=True),
+                        Column('p2', Integer, primary_key=True),
+                        PrimaryKeyConstraint('p2', 'p1')
+                        )
+        meta1.create_all()
+        meta2 = MetaData(testing.db)
+        subject = Table('subject', meta2, autoload=True)
+        eq_(subject.primary_key.columns.keys(), [u'p2', u'p1'])
+
     @testing.provide_metadata
     def test_pg_weirdchar_reflection(self):
         meta1 = self.metadata

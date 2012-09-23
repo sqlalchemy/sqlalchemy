@@ -161,6 +161,13 @@ CHANGES
     old SQLite versions that don't deliver
     default info as a string.  [ticket:2265]
 
+- postgresql
+  - [bug] Columns in reflected primary key constraint
+    are now returned in the order in which the constraint
+    itself defines them, rather than how the table
+    orders them.  Courtesy Gunnlaugur Þór Briem.
+    [ticket:2531].
+
 - mysql
   - [bug] Updated mysqlconnector interface to use
     updated "client flag" and "charset" APIs,
