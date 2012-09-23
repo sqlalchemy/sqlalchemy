@@ -11,3 +11,8 @@ kinterbasdb
 -----------
 
 .. automodule:: sqlalchemy.dialects.firebird.kinterbasdb
+
+fdb
+---
+
+.. automodule:: sqlalchemy.dialects.firebird.fdb

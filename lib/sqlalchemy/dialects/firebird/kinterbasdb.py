@@ -5,11 +5,16 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
-The most common way to connect to a Firebird engine is implemented by
-kinterbasdb__, currently maintained__ directly by the Firebird people.
 
-The connection URL is of the form
-``firebird[+kinterbasdb]://user:password@host:port/path/to/db[?key=value&key=value...]``.
+Connecting
+-----------
+
+Connect string format::
+
+    firebird+kinterbasdb://user:password@host:port/path/to/db[?key=value&key=value...]
+
+Arguments
+----------
 
 Kinterbasedb backend specific keyword arguments are:
 
@@ -45,10 +50,9 @@ __ http://kinterbasdb.sourceforge.net/dist_docs/usage.html#adv_param_conv_dynami
 __ http://kinterbasdb.sourceforge.net/dist_docs/usage.html#special_issue_concurrency
 """
 
-from sqlalchemy.dialects.firebird.base import FBDialect, \
-                                    FBCompiler, FBExecutionContext
-from sqlalchemy import util, types as sqltypes
-from sqlalchemy.util.compat import decimal
+from .base import FBDialect, FBExecutionContext
+from ... import util, types as sqltypes
+from ...util.compat import decimal
 from re import match
 
 
@@ -97,8 +101,7 @@ class FBDialect_kinterbasdb(FBDialect):
 
     @classmethod
     def dbapi(cls):
-        k = __import__('kinterbasdb')
-        return k
+        return __import__('kinterbasdb')
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username='user')

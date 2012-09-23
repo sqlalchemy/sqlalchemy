@@ -698,6 +698,10 @@ underneath "0.7.xx".
     using the DateTime type with Firebird; other
     dialects support this.
 
+  - [feature] An experimental dialect for the fdb
+    driver is added, but is untested as I cannot
+    get the fdb package to build.  [ticket:2504]
+
 - mysql
   - [bug] Dialect no longer emits expensive server
     collations query, as well as server casing,
