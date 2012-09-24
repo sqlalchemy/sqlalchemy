@@ -46,6 +46,10 @@ CHANGES
     adding new content each time. [ticket:2566]
 
 - sql
+  - [bug] Fixed the DropIndex construct to support
+    an Index associated with a Table in a remote
+    schema. [ticket:2571]
+
   - [bug] Fixed CTE bug whereby positional
     bound parameters present in the CTEs themselves
     would corrupt the overall ordering of

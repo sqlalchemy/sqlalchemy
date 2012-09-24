@@ -1647,13 +1647,12 @@ class DDLCompiler(engine.Compiled):
             max = self.dialect.max_index_name_length or \
                         self.dialect.max_identifier_length
             if len(ident) > max:
-                return ident[0:max - 8] + \
+                ident = ident[0:max - 8] + \
                                 "_" + util.md5_hex(ident)[-4:]
-            else:
-                return ident
         else:
             self.dialect.validate_identifier(ident)
-            return ident
+
+        return ident
 
     def visit_create_index(self, create):
         index = create.element
@@ -1671,9 +1670,20 @@ class DDLCompiler(engine.Compiled):
 
     def visit_drop_index(self, drop):
         index = drop.element
-        return "\nDROP INDEX " + \
-                    self.preparer.quote(
-                            self._index_identifier(index.name), index.quote)
+        if index.table is not None and index.table.schema:
+            schema = index.table.schema
+            schema_name = self.preparer.quote_schema(schema,
+                                index.table.quote_schema)
+        else:
+            schema_name = None
+
+        index_name = self.preparer.quote(
+                            self._index_identifier(index.name),
+                                    index.quote)
+
+        if schema_name:
+            index_name = schema_name + "." + index_name
+        return "\nDROP INDEX " + index_name
 
     def visit_add_constraint(self, create):
         preparer = self.preparer
