@@ -9,6 +9,7 @@ from test.lib.assertsql import AllOf, RegexSQL, ExactSQL, CompiledSQL
 from sqlalchemy.dialects.postgresql import base as postgresql
 
 class ConstraintTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     def setup(self):
         global metadata
@@ -283,6 +284,44 @@ class ConstraintTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         assert_raises(
             exc.ArgumentError,
             Index, "foo", SomeClass()
+        )
+
+    def test_create_plain(self):
+        t = Table('t', MetaData(), Column('x', Integer))
+        i = Index("xyz", t.c.x)
+        self.assert_compile(
+            schema.CreateIndex(i),
+            "CREATE INDEX xyz ON t (x)"
+        )
+
+    def test_drop_plain_unattached(self):
+        self.assert_compile(
+            schema.DropIndex(Index(name="xyz")),
+            "DROP INDEX xyz"
+        )
+
+    def test_drop_plain(self):
+        t = Table('t', MetaData(), Column('x', Integer))
+        i = Index("xyz", t.c.x)
+        self.assert_compile(
+            schema.DropIndex(Index(name="xyz")),
+            "DROP INDEX xyz"
+        )
+
+    def test_create_schema(self):
+        t = Table('t', MetaData(), Column('x', Integer), schema="foo")
+        i = Index("xyz", t.c.x)
+        self.assert_compile(
+            schema.CreateIndex(i),
+            "CREATE INDEX xyz ON foo.t (x)"
+        )
+
+    def test_drop_schema(self):
+        t = Table('t', MetaData(), Column('x', Integer), schema="foo")
+        i = Index("xyz", t.c.x)
+        self.assert_compile(
+            schema.DropIndex(i),
+            "DROP INDEX foo.xyz"
         )
 
 class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
