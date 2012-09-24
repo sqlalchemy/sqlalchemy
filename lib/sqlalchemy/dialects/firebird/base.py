@@ -277,13 +277,13 @@ class FBCompiler(sql.compiler.SQLCompiler):
 
     visit_char_length_func = visit_length_func
 
-    def _function_argspec(self, func, **kw):
+    def function_argspec(self, func, **kw):
         # TODO: this probably will need to be
         # narrowed to a fixed list, some no-arg functions
         # may require parens - see similar example in the oracle
         # dialect
         if func.clauses is not None and len(func.clauses):
-            return self.process(func.clause_expr)
+            return self.process(func.clause_expr, **kw)
         else:
             return ""
 
