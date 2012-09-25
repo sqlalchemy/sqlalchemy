@@ -912,6 +912,11 @@ are also present in 0.8.
     orders them.  Courtesy Gunnlaugur Þór Briem.
     [ticket:2531].
 
+  - [bug] Added 'terminating connection' to the list
+    of messages we use to detect a disconnect with PG, which
+    appears to be present in some versions when the server
+    is restarted.  [ticket:2570]
+
 - mysql
   - [bug] Updated mysqlconnector interface to use
     updated "client flag" and "charset" APIs,
