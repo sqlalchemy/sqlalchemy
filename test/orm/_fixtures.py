@@ -275,7 +275,7 @@ class FixtureTest(fixtures.MappedTest):
             ),
 
             nodes = (
-                ('id', 'parent_id', 'data')
+                ('id', 'parent_id', 'data'),
             ),
 
             composite_pk_table = (
