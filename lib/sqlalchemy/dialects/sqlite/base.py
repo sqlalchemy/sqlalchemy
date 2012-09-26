@@ -370,6 +370,9 @@ class SQLiteCompiler(compiler.SQLCompiler):
     def visit_now_func(self, fn, **kw):
         return "CURRENT_TIMESTAMP"
 
+    def visit_localtimestamp_func(self, func, **kw):
+        return 'DATETIME(CURRENT_TIMESTAMP, "localtime")'
+
     def visit_true(self, expr, **kw):
         return '1'
 
