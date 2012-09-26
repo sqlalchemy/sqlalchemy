@@ -157,8 +157,8 @@ def _reverse_topological(options, file_config):
 post_configure.append(_reverse_topological)
 
 def _requirements(options, file_config):
-    from test.lib import testing
-    requirement_cls = file_config.get('requirements', "requirement_cls")
+    from ..lib import testing
+    requirement_cls = file_config.get('sqla_testing', "requirement_cls")
 
     modname, clsname = requirement_cls.split(":")
 
@@ -175,3 +175,10 @@ def _requirements(options, file_config):
 
 post_configure.append(_requirements)
 
+
+def _setup_profiling(options, file_config):
+    from ..lib import profiling
+    profiling._profile_stats = profiling.ProfileStatsFile(
+                file_config.get('sqla_testing', 'profile_file'))
+
+post_configure.append(_setup_profiling)

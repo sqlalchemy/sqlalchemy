@@ -92,12 +92,10 @@ class ProfileStatsFile(object):
     so no json lib :(  need to roll something silly
 
     """
-    def __init__(self):
-        from test.bootstrap.config import options
-        self.write = options is not None and options.write_profiles
-        dirname, fname = os.path.split(__file__)
-        self.short_fname = "profiles.txt"
-        self.fname = os.path.join(dirname, self.short_fname)
+    def __init__(self, filename):
+        self.write = config.options is not None and config.options.write_profiles
+        self.fname = os.path.abspath(filename)
+        self.short_fname = os.path.split(self.fname)[-1]
         self.data = collections.defaultdict(lambda: collections.defaultdict(dict))
         self._read()
         if self.write:
@@ -205,8 +203,6 @@ class ProfileStatsFile(object):
                     )
                 )
         profile_f.close()
-
-_profile_stats = ProfileStatsFile()
 
 from sqlalchemy.util.compat import update_wrapper
 

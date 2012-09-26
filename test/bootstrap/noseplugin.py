@@ -3,9 +3,9 @@ import ConfigParser
 
 from nose.plugins import Plugin
 from nose import SkipTest
-from test.bootstrap import config
+from . import config
 
-from test.bootstrap.config import _log, _list_dbs, _zero_timeout, \
+from .config import _log, _list_dbs, _zero_timeout, \
     _engine_strategy, _server_side_cursors, pre_configure,\
     post_configure
 
