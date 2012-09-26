@@ -1,10 +1,11 @@
-import sys, types, weakref
+from __future__ import absolute_import
+
+import types
+import weakref
 from collections import deque
-from test.bootstrap import config
-from test.lib.util import decorator, gc_collect
-from sqlalchemy.util import callable
+from ..bootstrap import config
+from .util import decorator
 from sqlalchemy import event, pool
-from sqlalchemy.engine import base as engine_base
 import re
 import warnings
 

@@ -1,10 +1,10 @@
-from test.lib import testing
-from test.lib import schema
-from test.lib.testing import adict
-from test.lib.engines import drop_all_tables
+from ..bootstrap import config
+from . import assertions, schema
+from .util import adict
+from .engines import drop_all_tables
+from .entities import BasicEntity, ComparableEntity
 import sys
 import sqlalchemy as sa
-from test.lib.entities import BasicEntity, ComparableEntity
 from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 
 class TestBase(object):
@@ -25,11 +25,6 @@ class TestBase(object):
     # A sequence of no-arg callables. If any are True, the entire testcase is
     # skipped.
     __skip_if__ = None
-
-    # replace testing.db with a testing.engine()
-    # for the duration of this suite, using the given
-    # arguments
-    __testing_engine__ = None
 
     def assert_(self, val, msg=None):
         assert val, msg
@@ -158,7 +153,7 @@ class TablesTest(TestBase):
 
     @classmethod
     def setup_bind(cls):
-        return testing.db
+        return config.db
 
     @classmethod
     def dispose_bind(cls, bind):
@@ -217,7 +212,7 @@ class _ORMTest(object):
 class ORMTest(_ORMTest, TestBase):
     pass
 
-class MappedTest(_ORMTest, TablesTest, testing.AssertsExecutionResults):
+class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
     # 'once', 'each', None
     run_setup_classes = 'once'
 
@@ -336,4 +331,4 @@ class DeclarativeMappedTest(MappedTest):
         cls.DeclarativeBasic = _DeclBase
         fn()
         if cls.metadata.tables:
-            cls.metadata.create_all(testing.db)
+            cls.metadata.create_all(config.db)

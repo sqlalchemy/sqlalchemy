@@ -1,29 +1,25 @@
-import logging
 import os
-import re
-import sys
-import time
-import warnings
 import ConfigParser
-import StringIO
 
-import nose.case
 from nose.plugins import Plugin
 from nose import SkipTest
 from test.bootstrap import config
 
-from test.bootstrap.config import (
-    _create_testing_engine, _engine_pool, _engine_strategy, _engine_uri, _list_dbs, _log,
-    _prep_testing_database, _require, _reverse_topological, _server_side_cursors,
-    _monkeypatch_cdecimal, _zero_timeout,
-    _set_table_options, base_config, db, db_label, db_url, file_config, post_configure,
-    pre_configure)
+from test.bootstrap.config import _log, _list_dbs, _zero_timeout, \
+    _engine_strategy, _server_side_cursors, pre_configure,\
+    post_configure
 
+# late imports
 testing = None
+fixtures = None
 engines = None
+exclusions = None
+warnings = None
+profiling = None
+assertions = None
+requires = None
 util = None
-
-log = logging.getLogger('nose.plugins.sqlalchemy')
+file_config = None
 
 class NoseSQLAlchemy(Plugin):
     """
@@ -33,7 +29,7 @@ class NoseSQLAlchemy(Plugin):
 
     # nose 1.0 will allow us to replace the old "sqlalchemy" plugin,
     # if installed, using the same name, but nose 1.0 isn't released yet...
-    name = '_sqlalchemy'
+    name = 'sqlalchemy'
     score = 100
 
     def options(self, parser, env=os.environ):
@@ -52,8 +48,7 @@ class NoseSQLAlchemy(Plugin):
         opt("--dburi", action="store", dest="dburi",
             help="Database uri (overrides --db)")
         opt("--dropfirst", action="store_true", dest="dropfirst",
-            help="Drop all tables in the target database first (use with caution on Oracle, "
-            "MS-SQL)")
+            help="Drop all tables in the target database first")
         opt("--mockpool", action="store_true", dest="mockpool",
             help="Use mock pool (asserts only one connection used)")
         opt("--zero-timeout", action="callback", callback=_zero_timeout,
@@ -86,8 +81,7 @@ class NoseSQLAlchemy(Plugin):
                 help="Write/update profiling data.")
         global file_config
         file_config = ConfigParser.ConfigParser()
-        file_config.readfp(StringIO.StringIO(base_config))
-        file_config.read(['test.cfg', os.path.expanduser('~/.satest.cfg')])
+        file_config.read(['setup.cfg', 'test.cfg', os.path.expanduser('~/.satest.cfg')])
         config.file_config = file_config
 
     def configure(self, options, conf):
@@ -97,16 +91,17 @@ class NoseSQLAlchemy(Plugin):
             fn(self.options, file_config)
 
     def begin(self):
-        global testing, requires, util, fixtures, engines
-        from test.lib import testing, requires, fixtures, engines
-        from sqlalchemy import util
-
-        testing.db = db
-        testing.requires = requires
-
         # Lazy setup of other options (post coverage)
         for fn in post_configure:
             fn(self.options, file_config)
+
+        # late imports, has to happen after config as well
+        # as nose plugins like coverage
+        global testing, requires, util, fixtures, engines, exclusions, \
+                        assertions, warnings, profiling
+        from test.lib import testing, requires, fixtures, engines, exclusions, \
+                        assertions, warnings, profiling
+        from sqlalchemy import util
 
     def describeTest(self, test):
         return ""
@@ -136,26 +131,27 @@ class NoseSQLAlchemy(Plugin):
 
     def _do_skips(self, cls):
         if hasattr(cls, '__requires__'):
-            def test_suite(): return 'ok'
+            def test_suite():
+                return 'ok'
             test_suite.__name__ = cls.__name__
             for requirement in cls.__requires__:
-                check = getattr(requires, requirement)
+                check = getattr(config.requirements, requirement)
                 check(test_suite)()
 
         if cls.__unsupported_on__:
-            spec = testing.db_spec(*cls.__unsupported_on__)
-            if spec(testing.db):
+            spec = exclusions.db_spec(*cls.__unsupported_on__)
+            if spec(config.db):
                 raise SkipTest(
                     "'%s' unsupported on DB implementation '%s'" % (
-                     cls.__name__, testing.db.name)
+                     cls.__name__, config.db.name)
                     )
 
         if getattr(cls, '__only_on__', None):
-            spec = testing.db_spec(*util.to_list(cls.__only_on__))
-            if not spec(testing.db):
+            spec = exclusions.db_spec(*util.to_list(cls.__only_on__))
+            if not spec(config.db):
                 raise SkipTest(
                     "'%s' unsupported on DB implementation '%s'" % (
-                     cls.__name__, testing.db.name)
+                     cls.__name__, config.db.name)
                     )
 
         if getattr(cls, '__skip_if__', False):
@@ -166,43 +162,29 @@ class NoseSQLAlchemy(Plugin):
                     )
 
         for db, op, spec in getattr(cls, '__excluded_on__', ()):
-            testing.exclude(db, op, spec, 
+            exclusions.exclude(db, op, spec,
                     "'%s' unsupported on DB %s version %s" % (
-                    cls.__name__, testing.db.name,
-                    testing._server_version()))
+                    cls.__name__, config.db.name,
+                    exclusions._server_version()))
 
     def beforeTest(self, test):
-        testing.resetwarnings()
-        testing.current_test = test.id()
+        warnings.resetwarnings()
+        profiling._current_test = test.id()
 
     def afterTest(self, test):
         engines.testing_reaper._after_test_ctx()
-        testing.resetwarnings()
-
-    def _setup_cls_engines(self, cls):
-        engine_opts = getattr(cls, '__testing_engine__', None)
-        if engine_opts:
-            self._save_testing_db = testing.db
-            testing.db = engines.testing_engine(options=engine_opts)
-
-    def _teardown_cls_engines(self, cls):
-        engine_opts = getattr(cls, '__testing_engine__', None)
-        if engine_opts:
-            testing.db = self._save_testing_db
-            del self._save_testing_db
+        warnings.resetwarnings()
 
     def startContext(self, ctx):
         if not isinstance(ctx, type) \
             or not issubclass(ctx, fixtures.TestBase):
             return
         self._do_skips(ctx)
-        self._setup_cls_engines(ctx)
 
     def stopContext(self, ctx):
         if not isinstance(ctx, type) \
             or not issubclass(ctx, fixtures.TestBase):
             return
         engines.testing_reaper._stop_test_ctx()
-        self._teardown_cls_engines(ctx)
         if not config.options.low_connections:
-            testing.global_cleanup_assertions()
+            assertions.global_cleanup_assertions()

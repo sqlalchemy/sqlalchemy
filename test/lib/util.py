@@ -4,9 +4,11 @@ from sqlalchemy.util.compat import decimal
 import gc
 import time
 import random
+import sys
+import types
 
 if jython:
-    def gc_collect(*args):
+    def jython_gc_collect(*args):
         """aggressive gc.collect for tests."""
         gc.collect()
         time.sleep(0.1)
@@ -15,12 +17,12 @@ if jython:
         return 0
 
     # "lazy" gc, for VM's that don't GC on refcount == 0
-    lazy_gc = gc_collect
+    lazy_gc = jython_gc_collect
 elif pypy:
-    def gc_collect(*args):
+    def pypy_gc_collect(*args):
         gc.collect()
         gc.collect()
-    lazy_gc = gc_collect
+    lazy_gc = pypy_gc_collect
 else:
     # assume CPython - straight gc.collect, lazy_gc() is a pass
     gc_collect = gc.collect
@@ -40,9 +42,9 @@ def picklers():
     picklers.add(pickle)
 
     # yes, this thing needs this much testing
-    for pickle in picklers:
+    for pickle_ in picklers:
         for protocol in -1, 0, 1, 2:
-            yield pickle.loads, lambda d:pickle.dumps(d, protocol)
+            yield pickle_.loads, lambda d: pickle_.dumps(d, protocol)
 
 
 def round_decimal(value, prec):
@@ -50,7 +52,8 @@ def round_decimal(value, prec):
         return round(value, prec)
 
     # can also use shift() here but that is 2.6 only
-    return (value * decimal.Decimal("1" + "0" * prec)).to_integral(decimal.ROUND_FLOOR) / \
+    return (value * decimal.Decimal("1" + "0" * prec)
+                    ).to_integral(decimal.ROUND_FLOOR) / \
                         pow(10, prec)
 
 class RandomSet(set):
@@ -126,4 +129,68 @@ def function_named(fn, name):
         fn = types.FunctionType(fn.func_code, fn.func_globals, name,
                           fn.func_defaults, fn.func_closure)
     return fn
+
+
+
+def run_as_contextmanager(ctx, fn, *arg, **kw):
+    """Run the given function under the given contextmanager,
+    simulating the behavior of 'with' to support older
+    Python versions.
+
+    """
+
+    obj = ctx.__enter__()
+    try:
+        result = fn(obj, *arg, **kw)
+        ctx.__exit__(None, None, None)
+        return result
+    except:
+        exc_info = sys.exc_info()
+        raise_ = ctx.__exit__(*exc_info)
+        if raise_ is None:
+            raise
+        else:
+            return raise_
+
+def rowset(results):
+    """Converts the results of sql execution into a plain set of column tuples.
+
+    Useful for asserting the results of an unordered query.
+    """
+
+    return set([tuple(row) for row in results])
+
+
+def fail(msg):
+    assert False, msg
+
+
+@decorator
+def provide_metadata(fn, *args, **kw):
+    """Provide bound MetaData for a single test, dropping afterwards."""
+
+    from ..bootstrap.config import db
+    from sqlalchemy import schema
+
+    metadata = schema.MetaData(db)
+    self = args[0]
+    prev_meta = getattr(self, 'metadata', None)
+    self.metadata = metadata
+    try:
+        return fn(*args, **kw)
+    finally:
+        metadata.drop_all()
+        self.metadata = prev_meta
+
+class adict(dict):
+    """Dict keys available as attributes.  Shadows."""
+    def __getattribute__(self, key):
+        try:
+            return self[key]
+        except KeyError:
+            return dict.__getattribute__(self, key)
+
+    def get_all(self, *keys):
+        return tuple([self[key] for key in keys])
+
 

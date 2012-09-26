@@ -13,7 +13,6 @@ from sqlalchemy.dialects import sqlite
 from test.lib import fixtures
 
 class DefaultTest(fixtures.TestBase):
-    __testing_engine__ = {'execution_options':{'native_odbc_execute':False}}
 
     @classmethod
     def setup_class(cls):
@@ -405,7 +404,6 @@ class DefaultTest(fixtures.TestBase):
 
 class PKDefaultTest(fixtures.TablesTest):
     __requires__ = ('subqueries',)
-    __testing_engine__ = {'execution_options':{'native_odbc_execute':False}}
 
     @classmethod
     def define_tables(cls, metadata):
@@ -441,7 +439,6 @@ class PKDefaultTest(fixtures.TablesTest):
 
 class PKIncrementTest(fixtures.TablesTest):
     run_define_tables = 'each'
-    __testing_engine__ = {'execution_options':{'native_odbc_execute':False}}
 
     @classmethod
     def define_tables(cls, metadata):

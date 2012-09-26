@@ -1,35 +1,18 @@
-import optparse, os, sys, re, ConfigParser, time, warnings
+"""Option and configuration implementations, run by the nose plugin
+on test suite startup."""
 
-# 2to3
-import StringIO
+import time
+import warnings
+import sys
+import re
 
 logging = None
-
-__all__ = 'parser', 'configure', 'options',
-
 db = None
-db_label, db_url, db_opts = None, None, {}
-
+db_label = None
+db_url = None
+db_opts = {}
 options = None
 file_config = None
-
-base_config = """
-[db]
-sqlite=sqlite:///:memory:
-sqlite_file=sqlite:///querytest.db
-postgresql=postgresql://scott:tiger@127.0.0.1:5432/test
-postgres=postgresql://scott:tiger@127.0.0.1:5432/test
-pg8000=postgresql+pg8000://scott:tiger@127.0.0.1:5432/test
-postgresql_jython=postgresql+zxjdbc://scott:tiger@127.0.0.1:5432/test
-mysql_jython=mysql+zxjdbc://scott:tiger@127.0.0.1:5432/test
-mysql=mysql://scott:tiger@127.0.0.1:3306/test
-pymysql=mysql+pymysql://scott:tiger@127.0.0.1:3306/test?use_unicode=0&charset=utf8
-oracle=oracle://scott:tiger@127.0.0.1:1521
-oracle8=oracle://scott:tiger@127.0.0.1:1521/?use_ansi=0
-mssql=mssql://scott:tiger@SQUAWK\\SQLEXPRESS/test
-firebird=firebird://sysdba:masterkey@localhost//tmp/test.fdb
-maxdb=maxdb://MONA:RED@/maxdb1
-"""
 
 def _log(option, opt_str, value, parser):
     global logging
@@ -49,10 +32,8 @@ def _list_dbs(*args):
         print "%20s\t%s" % (macro, file_config.get('db', macro))
     sys.exit(0)
 
-
 def _server_side_cursors(options, opt_str, value, parser):
     db_opts['server_side_cursors'] = True
-
 
 def _zero_timeout(options, opt_str, value, parser):
     warnings.warn("--zero-timeout testing option is now on in all cases")
@@ -171,6 +152,26 @@ def _reverse_topological(options, file_config):
         from sqlalchemy.orm import unitofwork, session, mapper, dependency
         from sqlalchemy.util import topological
         from test.lib.util import RandomSet
-        topological.set = unitofwork.set = session.set = mapper.set = dependency.set = RandomSet
+        topological.set = unitofwork.set = session.set = mapper.set = \
+                dependency.set = RandomSet
 post_configure.append(_reverse_topological)
+
+def _requirements(options, file_config):
+    from test.lib import testing
+    requirement_cls = file_config.get('requirements', "requirement_cls")
+
+    modname, clsname = requirement_cls.split(":")
+
+    # importlib.import_module() only introduced in 2.7, a little
+    # late
+    mod = __import__(modname)
+    for component in modname.split(".")[1:]:
+        mod = getattr(mod, component)
+
+    req_cls = getattr(mod, clsname)
+    global requirements
+    requirements = req_cls(db, sys.modules[__name__])
+    testing.requires = requirements
+
+post_configure.append(_requirements)
 

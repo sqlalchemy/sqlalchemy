@@ -7,8 +7,8 @@ in a more fine-grained way than nose's profiling plugin.
 
 import os
 import sys
-from test.lib.util import gc_collect, decorator
-from test.lib import testing
+from .util import gc_collect, decorator
+from ..bootstrap import config
 from nose import SkipTest
 import pstats
 import time
@@ -20,8 +20,7 @@ except ImportError:
     cProfile = None
 from sqlalchemy.util.compat import jython, pypy, win32
 
-from test.lib.requires import _has_cextensions
-_has_cext = _has_cextensions()
+_current_test = None
 
 def profiled(target=None, **target_opts):
     """Function profiling.
@@ -109,7 +108,7 @@ class ProfileStatsFile(object):
     @util.memoized_property
     def platform_key(self):
 
-        dbapi_key = testing.db.name + "_" + testing.db.driver
+        dbapi_key = config.db.name + "_" + config.db.driver
 
         # keep it at 2.7, 3.1, 3.2, etc. for now.
         py_version = '.'.join([str(v) for v in sys.version_info[0:2]])
@@ -122,15 +121,16 @@ class ProfileStatsFile(object):
             platform_tokens.append("pypy")
         if win32:
             platform_tokens.append("win")
+        _has_cext = config.requirements._has_cextensions()
         platform_tokens.append(_has_cext and "cextensions" or "nocextensions")
         return "_".join(platform_tokens)
 
     def has_stats(self):
-        test_key = testing.current_test
+        test_key = _current_test
         return test_key in self.data and self.platform_key in self.data[test_key]
 
     def result(self, callcount):
-        test_key = testing.current_test
+        test_key = _current_test
         per_fn = self.data[test_key]
         per_platform = per_fn[self.platform_key]
 
