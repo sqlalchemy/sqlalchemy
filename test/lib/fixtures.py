@@ -183,6 +183,8 @@ class TablesTest(TestBase):
         """Insert rows as represented by the fixtures() method."""
         headers, rows = {}, {}
         for table, data in cls.fixtures().iteritems():
+            if len(data) < 2:
+                continue
             if isinstance(table, basestring):
                 table = cls.tables[table]
             headers[table] = data[0]
