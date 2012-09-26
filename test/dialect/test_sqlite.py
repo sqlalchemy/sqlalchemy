@@ -505,6 +505,12 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             "1"
         )
 
+    def test_localtime(self):
+        self.assert_compile(
+            func.localtimestamp(),
+            'DATETIME(CURRENT_TIMESTAMP, "localtime")'
+        )
+
     def test_constraints_with_schemas(self):
         metadata = MetaData()
         t1 = Table('t1', metadata,

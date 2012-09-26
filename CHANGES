@@ -165,6 +165,10 @@ CHANGES
     old SQLite versions that don't deliver
     default info as a string.  [ticket:2265]
 
+  - [feature] Added support for the localtimestamp()
+    SQL function implemented in SQLite, courtesy
+    Richard Mitchell.
+
 - postgresql
   - [bug] Columns in reflected primary key constraint
     are now returned in the order in which the constraint
