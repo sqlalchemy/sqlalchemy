@@ -70,7 +70,8 @@ def _engine_uri(options, file_config):
     if db_url is None:
         if db_label not in file_config.options('db'):
             raise RuntimeError(
-                "Unknown engine.  Specify --dbs for known engines.")
+                "Unknown URI specifier '%s'.  Specify --dbs for known uris."
+                        % db_label)
         db_url = file_config.get('db', db_label)
 post_configure.append(_engine_uri)
 
