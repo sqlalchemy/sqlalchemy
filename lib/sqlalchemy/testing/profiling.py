@@ -13,25 +13,24 @@ from nose import SkipTest
 import pstats
 import time
 import collections
-from sqlalchemy import util
+from .. import util
 try:
     import cProfile
 except ImportError:
     cProfile = None
-from sqlalchemy.util.compat import jython, pypy, win32
+from ..util.compat import jython, pypy, win32
 
 _current_test = None
 
 def profiled(target=None, **target_opts):
     """Function profiling.
 
-    @profiled('label')
+    @profiled()
     or
-    @profiled('label', report=True, sort=('calls',), limit=20)
+    @profiled(report=True, sort=('calls',), limit=20)
 
-    Enables profiling for a function when 'label' is targetted for
-    profiling.  Report options can be supplied, and override the global
-    configuration and command-line options.
+    Outputs profiling info for a decorated function.
+
     """
 
     profile_config = {'targets': set(),

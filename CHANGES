@@ -349,6 +349,21 @@ underneath "0.7.xx".
     phrases that invoke separately when RETURNING
     is not used with INSERT.  [ticket:2459]
 
+  - [feature] The libraries used by the test suite
+    have been moved around a bit so that they are
+    part of the SQLAlchemy install again.  In addition,
+    a new suite of tests is present in the
+    new sqlalchemy.testing.suite package.  This is
+    an under-development system that hopes to provide
+    a universal testing suite for external dialects.
+    Dialects which are maintained outside of SQLAlchemy
+    can use the new test fixture as the framework
+    for their own tests, and will get for free a
+    "compliance" suite of dialect-focused tests,
+    including an improved "requirements" system
+    where specific capabilities and features can
+    be enabled or disabled for testing.
+
   - [bug] Fixed bug whereby if a database restart
     affected multiple connections, each
     connection would individually invoke a new

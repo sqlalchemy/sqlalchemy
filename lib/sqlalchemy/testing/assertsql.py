@@ -1,8 +1,6 @@
 
-from sqlalchemy.interfaces import ConnectionProxy
-from sqlalchemy.engine.default import DefaultDialect
-from sqlalchemy.engine.base import Connection
-from sqlalchemy import util
+from ..engine.default import DefaultDialect
+from .. import util
 import re
 
 class AssertRule(object):
@@ -262,16 +260,16 @@ def _process_assertion_statement(query, context):
     paramstyle = context.dialect.paramstyle
     if paramstyle == 'named':
         pass
-    elif paramstyle =='pyformat':
+    elif paramstyle == 'pyformat':
         query = re.sub(r':([\w_]+)', r"%(\1)s", query)
     else:
         # positional params
         repl = None
-        if paramstyle=='qmark':
+        if paramstyle == 'qmark':
             repl = "?"
-        elif paramstyle=='format':
+        elif paramstyle == 'format':
             repl = r"%s"
-        elif paramstyle=='numeric':
+        elif paramstyle == 'numeric':
             repl = None
         query = re.sub(r':([\w_]+)', repl, query)
 

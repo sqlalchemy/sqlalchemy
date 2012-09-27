@@ -8,6 +8,10 @@ from sqlalchemy import exc, sql
 from sqlalchemy.engine import default, result as _result
 from sqlalchemy.testing.schema import Table, Column
 
+# ongoing - these are old tests.  those which are of general use
+# to test a dialect are being slowly migrated to
+# sqlalhcemy.testing.suite
+
 class QueryTest(fixtures.TestBase):
 
     @classmethod
@@ -44,12 +48,9 @@ class QueryTest(fixtures.TestBase):
     def teardown_class(cls):
         metadata.drop_all()
 
-    def test_insert(self):
-        users.insert().execute(user_id = 7, user_name = 'jack')
-        assert users.count().scalar() == 1
-
     def test_insert_heterogeneous_params(self):
-        """test that executemany parameters are asserted to match the parameter set of the first."""
+        """test that executemany parameters are asserted to match the
+        parameter set of the first."""
 
         assert_raises_message(exc.StatementError,
             r"A value is required for bind parameter 'user_name', in "
@@ -69,13 +70,6 @@ class QueryTest(fixtures.TestBase):
             {'user_id':8, 'user_name':'ed'},
             {'user_id':9}
         )
-
-    def test_update(self):
-        users.insert().execute(user_id = 7, user_name = 'jack')
-        assert users.count().scalar() == 1
-
-        users.update(users.c.user_id == 7).execute(user_name = 'fred')
-        assert users.select(users.c.user_id==7).execute().first()['user_name'] == 'fred'
 
     def test_lastrow_accessor(self):
         """Tests the inserted_primary_key and lastrow_has_id() functions."""
@@ -196,7 +190,8 @@ class QueryTest(fixtures.TestBase):
         )
         t6 = Table("t6", metadata,
             Column('manual_id', Integer, ForeignKey('related.id'), primary_key=True),
-            Column('auto_id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('auto_id', Integer, primary_key=True,
+                                    test_needs_autoincrement=True),
             mysql_engine='MyISAM'
         )
 
@@ -208,21 +203,6 @@ class QueryTest(fixtures.TestBase):
         r = t6.insert().values(manual_id=id).execute()
         eq_(r.inserted_primary_key, [12, 1])
 
-    def test_autoclose_on_insert(self):
-        if testing.against('firebird', 'postgresql', 'oracle', 'mssql'):
-            test_engines = [
-                engines.testing_engine(options={'implicit_returning':False}),
-                engines.testing_engine(options={'implicit_returning':True}),
-            ]
-        else:
-            test_engines = [testing.db]
-
-        for engine in test_engines:
-
-            r = engine.execute(users.insert(),
-                {'user_name':'jack'},
-            )
-            assert r.closed
 
     def test_row_iteration(self):
         users.insert().execute(
@@ -563,16 +543,6 @@ class QueryTest(fixtures.TestBase):
         )
 
 
-    def test_delete(self):
-        users.insert().execute(user_id = 7, user_name = 'jack')
-        users.insert().execute(user_id = 8, user_name = 'fred')
-        print repr(users.select().execute().fetchall())
-
-        users.delete(users.c.user_name == 'fred').execute()
-
-        print repr(users.select().execute().fetchall())
-
-
 
     @testing.exclude('mysql', '<', (5, 0, 37), 'database bug')
     def test_scalar_select(self):
@@ -840,47 +810,7 @@ class QueryTest(fixtures.TestBase):
             lambda: r['foo']
         )
 
-    @testing.fails_if(lambda: util.pypy, "lastrowid not maintained after "
-                            "connection close")
-    @testing.requires.dbapi_lastrowid
-    def test_native_lastrowid(self):
-        r = testing.db.execute(
-            users.insert(),
-            {'user_id':1, 'user_name':'ed'}
-        )
 
-        eq_(r.lastrowid, 1)
-
-    def test_returns_rows_flag_insert(self):
-        r = testing.db.execute(
-            users.insert(),
-            {'user_id':1, 'user_name':'ed'}
-        )
-        assert r.is_insert
-        assert not r.returns_rows
-
-    def test_returns_rows_flag_update(self):
-        r = testing.db.execute(
-            users.update().values(user_name='fred')
-        )
-        assert not r.is_insert
-        assert not r.returns_rows
-
-    def test_returns_rows_flag_select(self):
-        r = testing.db.execute(
-            users.select()
-        )
-        assert not r.is_insert
-        assert r.returns_rows
-
-    @testing.requires.returning
-    def test_returns_rows_flag_insert_returning(self):
-        r = testing.db.execute(
-            users.insert().returning(users.c.user_id),
-            {'user_id':1, 'user_name':'ed'}
-        )
-        assert r.is_insert
-        assert r.returns_rows
 
     def test_graceful_fetch_on_non_rows(self):
         """test that calling fetchone() etc. on a result that doesn't

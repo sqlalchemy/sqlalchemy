@@ -45,4 +45,5 @@ class TableDDLTest(fixtures.TestBase):
             config.db, checkfirst=False
         )
 
-__all__ = ('TableDDLTest',)
+
+__all__ = ('TableDDLTest', )

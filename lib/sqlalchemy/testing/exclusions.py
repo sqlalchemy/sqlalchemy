@@ -1,49 +1,63 @@
 import operator
 from nose import SkipTest
-from sqlalchemy.util import decorator
+from ..util import decorator
 from . import config
-from sqlalchemy import util
+from .. import util
 
 
-def fails_if(predicate, reason=None):
-    predicate = _as_predicate(predicate)
+class fails_if(object):
+    def __init__(self, predicate, reason=None):
+        self.predicate = _as_predicate(predicate)
+        self.reason = reason
 
-    @decorator
-    def decorate(fn, *args, **kw):
-        if not predicate():
-            return fn(*args, **kw)
-        else:
-            try:
-                fn(*args, **kw)
-            except Exception, ex:
-                print ("'%s' failed as expected (%s): %s " % (
-                    fn.__name__, predicate, str(ex)))
-                return True
+    @property
+    def enabled(self):
+        return not self.predicate()
+
+    def __call__(self, fn):
+        @decorator
+        def decorate(fn, *args, **kw):
+            if not self.predicate():
+                return fn(*args, **kw)
             else:
-                raise AssertionError(
-                    "Unexpected success for '%s' (%s)" %
-                    (fn.__name__, predicate))
-    return decorate
+                try:
+                    fn(*args, **kw)
+                except Exception, ex:
+                    print ("'%s' failed as expected (%s): %s " % (
+                        fn.__name__, self.predicate, str(ex)))
+                    return True
+                else:
+                    raise AssertionError(
+                        "Unexpected success for '%s' (%s)" %
+                        (fn.__name__, self.predicate))
+        return decorate(fn)
 
-def skip_if(predicate, reason=None):
-    predicate = _as_predicate(predicate)
+class skip_if(object):
+    def __init__(self, predicate, reason=None):
+        self.predicate = _as_predicate(predicate)
+        self.reason = reason
 
-    @decorator
-    def decorate(fn, *args, **kw):
-        if predicate():
-            if reason:
-                msg = "'%s' : %s" % (
-                        fn.__name__,
-                        reason
-                    )
+    @property
+    def enabled(self):
+        return not self.predicate()
+
+    def __call__(self, fn):
+        @decorator
+        def decorate(fn, *args, **kw):
+            if self.predicate():
+                if self.reason:
+                    msg = "'%s' : %s" % (
+                            fn.__name__,
+                            self.reason
+                        )
+                else:
+                    msg = "'%s': %s" % (
+                            fn.__name__, self.predicate
+                        )
+                raise SkipTest(msg)
             else:
-                msg = "'%s': %s" % (
-                        fn.__name__, predicate
-                    )
-            raise SkipTest(msg)
-        else:
-            return fn(*args, **kw)
-    return decorate
+                return fn(*args, **kw)
+        return decorate(fn)
 
 def only_if(predicate, reason=None):
     predicate = _as_predicate(predicate)
@@ -68,6 +82,23 @@ class Predicate(object):
             return LambdaPredicate(predicate)
         else:
             assert False, "unknown predicate type: %s" % predicate
+
+class BooleanPredicate(Predicate):
+    def __init__(self, value, description=None):
+        self.value = value
+        self.description = description
+
+    def __call__(self):
+        return self.value
+
+    def _as_string(self, negate=False):
+        if negate:
+            return "not " + self.description
+        else:
+            return self.description
+
+    def __str__(self):
+        return self._as_string()
 
 class SpecPredicate(Predicate):
     def __init__(self, db, op=None, spec=None, description=None):
@@ -232,8 +263,11 @@ def db_spec(*dbs):
             Predicate.as_predicate(db) for db in dbs
         )
 
-def open(fn):
-    return fn
+def open():
+    return skip_if(BooleanPredicate(False))
+
+def closed():
+    return skip_if(BooleanPredicate(True))
 
 @decorator
 def future(fn, *args, **kw):

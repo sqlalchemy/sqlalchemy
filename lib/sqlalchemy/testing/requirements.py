@@ -3,32 +3,12 @@
 Provides decorators to mark tests requiring specific feature support from the
 target database.
 
+External dialect test suites should subclass SuiteRequirements
+to provide specific inclusion/exlusions.
+
 """
 
-from .exclusions import \
-     skip, \
-     skip_if,\
-     only_if,\
-     only_on,\
-     fails_on,\
-     fails_on_everything_except,\
-     fails_if,\
-     SpecPredicate,\
-     against
-
-def no_support(db, reason):
-    return SpecPredicate(db, description=reason)
-
-def exclude(db, op, spec, description=None):
-    return SpecPredicate(db, op, spec, description=description)
-
-
-def _chain_decorators_on(*decorators):
-    def decorate(fn):
-        for decorator in reversed(decorators):
-            fn = decorator(fn)
-        return fn
-    return decorate
+from . import exclusions
 
 class Requirements(object):
     def __init__(self, db, config):
@@ -36,3 +16,56 @@ class Requirements(object):
         self.config = config
 
 
+class SuiteRequirements(Requirements):
+
+    @property
+    def create_table(self):
+        """target platform can emit basic CreateTable DDL."""
+
+        return exclusions.open()
+
+    @property
+    def drop_table(self):
+        """target platform can emit basic DropTable DDL."""
+
+        return exclusions.open()
+
+    @property
+    def autoincrement_insert(self):
+        """target platform generates new surrogate integer primary key values
+        when insert() is executed, excluding the pk column."""
+
+        return exclusions.open()
+
+    @property
+    def returning(self):
+        """target platform supports RETURNING."""
+
+        return exclusions.closed()
+
+    @property
+    def dbapi_lastrowid(self):
+        """"target platform includes a 'lastrowid' accessor on the DBAPI
+        cursor object.
+
+        """
+        return exclusions.closed()
+
+    @property
+    def views(self):
+        """Target database must support VIEWs."""
+
+        return exclusions.closed()
+
+    @property
+    def schemas(self):
+        """Target database must support external schemas, and have one
+        named 'test_schema'."""
+
+        return exclusions.closed()
+
+    @property
+    def sequences(self):
+        """Target database must support SEQUENCEs."""
+
+        return self.config.db.dialect.supports_sequences

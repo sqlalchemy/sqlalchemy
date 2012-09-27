@@ -5,7 +5,7 @@
 
 from sqlalchemy import util
 import sys
-from sqlalchemy.testing.suite.requirements import SuiteRequirements
+from sqlalchemy.testing.requirements import SuiteRequirements
 from sqlalchemy.testing.exclusions import \
      skip, \
      skip_if,\

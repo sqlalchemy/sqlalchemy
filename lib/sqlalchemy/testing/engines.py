@@ -5,7 +5,7 @@ import weakref
 from collections import deque
 from . import config
 from .util import decorator
-from sqlalchemy import event, pool
+from .. import event, pool
 import re
 import warnings
 

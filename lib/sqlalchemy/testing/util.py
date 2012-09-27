@@ -1,5 +1,5 @@
-from sqlalchemy.util import jython, pypy, defaultdict, decorator
-from sqlalchemy.util.compat import decimal
+from ..util import jython, pypy, defaultdict, decorator
+from ..util.compat import decimal
 
 import gc
 import time

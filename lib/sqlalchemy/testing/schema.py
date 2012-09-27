@@ -1,9 +1,6 @@
-"""Enhanced versions of schema.Table and schema.Column which establish
-desired state for different backends.
-"""
 
 from . import exclusions
-from sqlalchemy import schema, event
+from .. import schema, event
 from . import config
 
 __all__ = 'Table', 'Column',

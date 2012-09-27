@@ -44,19 +44,26 @@ def _engine_strategy(options, opt_str, value, parser):
 
 pre_configure = []
 post_configure = []
+def pre(fn):
+    pre_configure.append(fn)
+    return fn
+def post(fn):
+    post_configure.append(fn)
+    return fn
 
+@pre
 def _setup_options(opt, file_config):
     global options
     options = opt
-pre_configure.append(_setup_options)
 
+@pre
 def _monkeypatch_cdecimal(options, file_config):
     if options.cdecimal:
         import sys
         import cdecimal
         sys.modules['decimal'] = cdecimal
-pre_configure.append(_monkeypatch_cdecimal)
 
+@post
 def _engine_uri(options, file_config):
     global db_label, db_url
 
@@ -73,8 +80,8 @@ def _engine_uri(options, file_config):
                 "Unknown URI specifier '%s'.  Specify --dbs for known uris."
                         % db_label)
         db_url = file_config.get('db', db_label)
-post_configure.append(_engine_uri)
 
+@post
 def _require(options, file_config):
     if not(options.require or
            (file_config.has_section('require') and
@@ -99,14 +106,14 @@ def _require(options, file_config):
             if seen:
                 continue
             pkg_resources.require(requirement)
-post_configure.append(_require)
 
+@post
 def _engine_pool(options, file_config):
     if options.mockpool:
         from sqlalchemy import pool
         db_opts['poolclass'] = pool.AssertionPool
-post_configure.append(_engine_pool)
 
+@post
 def _create_testing_engine(options, file_config):
     from sqlalchemy.testing import engines, config
     from sqlalchemy import testing
@@ -115,8 +122,8 @@ def _create_testing_engine(options, file_config):
     config.db_opts = db_opts
     config.db_url = db_url
 
-post_configure.append(_create_testing_engine)
 
+@post
 def _prep_testing_database(options, file_config):
     from sqlalchemy.testing import engines
     from sqlalchemy import schema
@@ -137,8 +144,8 @@ def _prep_testing_database(options, file_config):
             md.drop_all()
         e.dispose()
 
-post_configure.append(_prep_testing_database)
 
+@post
 def _set_table_options(options, file_config):
     from sqlalchemy.testing import schema
 
@@ -149,8 +156,8 @@ def _set_table_options(options, file_config):
 
     if options.mysql_engine:
         table_options['mysql_engine'] = options.mysql_engine
-post_configure.append(_set_table_options)
 
+@post
 def _reverse_topological(options, file_config):
     if options.reversetop:
         from sqlalchemy.orm import unitofwork, session, mapper, dependency
@@ -158,8 +165,8 @@ def _reverse_topological(options, file_config):
         from sqlalchemy.testing.util import RandomSet
         topological.set = unitofwork.set = session.set = mapper.set = \
                 dependency.set = RandomSet
-post_configure.append(_reverse_topological)
 
+@post
 def _requirements(options, file_config):
     from sqlalchemy.testing import config
     from sqlalchemy import testing
@@ -175,17 +182,15 @@ def _requirements(options, file_config):
     req_cls = getattr(mod, clsname)
     config.requirements = testing.requires = req_cls(db, config)
 
-post_configure.append(_requirements)
 
+@post
 def _post_setup_options(opt, file_config):
     from sqlalchemy.testing import config
     config.options = options
-post_configure.append(_post_setup_options)
 
+@post
 def _setup_profiling(options, file_config):
     from sqlalchemy.testing import profiling
     profiling._profile_stats = profiling.ProfileStatsFile(
                 file_config.get('sqla_testing', 'profile_file'))
-
-post_configure.append(_setup_profiling)
 

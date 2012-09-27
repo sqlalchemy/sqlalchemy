@@ -1,8 +1,8 @@
 from __future__ import absolute_import
 
 import warnings
-from sqlalchemy import exc as sa_exc
-from sqlalchemy import util
+from .. import exc as sa_exc
+from .. import util
 
 def testing_warn(msg, stacklevel=3):
     """Replaces sqlalchemy.util.warn during tests."""
