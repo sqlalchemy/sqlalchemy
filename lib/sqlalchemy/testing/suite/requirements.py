@@ -1,3 +1,9 @@
+"""Requirement definitions used by the generic dialect suite.
+
+External dialect test suites should subclass SuiteRequirements
+to provide specific inclusion/exlusions.
+
+"""
 from ..requirements import Requirements
 from .. import exclusions
 

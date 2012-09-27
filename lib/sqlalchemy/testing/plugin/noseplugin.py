@@ -1,11 +1,11 @@
 """Enhance nose with extra options and behaviors for running SQLAlchemy tests.
 
-This module is imported relative to the "plugins" package as a top level
-package by the sqla_nose.py runner, so that the plugin can be loaded with
-the rest of nose including the coverage plugin before any of SQLAlchemy itself
-is imported, so that coverage works.
+When running ./sqla_nose.py, this module is imported relative to the
+"plugins" package as a top level package by the sqla_nose.py runner,
+so that the plugin can be loaded with the rest of nose including the coverage
+plugin before any of SQLAlchemy itself is imported, so that coverage works.
 
-When third party libraries use this library, it can be imported
+When third party libraries use this plugin, it can be imported
 normally as "from sqlalchemy.testing.plugin import noseplugin".
 
 """

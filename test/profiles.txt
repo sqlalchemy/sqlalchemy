@@ -1,4 +1,4 @@
-# /Users/classic/dev/sqlalchemy/./test/lib/profiles.txt
+# /Users/classic/dev/sqlalchemy/./test/profiles.txt
 # This file is written out on a per-environment basis.
 # For each test in aaa_profiling, the corresponding function and
 # environment is located within this file.  If it doesn't exist,

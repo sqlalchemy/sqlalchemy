@@ -1,7 +1,5 @@
-"""Global database feature support policy.
+"""Requirements specific to SQLAlchemy's own unit tests.
 
-Provides decorators to mark tests requiring specific feature support from the
-target database.
 
 """
 
