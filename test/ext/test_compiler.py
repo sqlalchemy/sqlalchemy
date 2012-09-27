@@ -8,8 +8,8 @@ from sqlalchemy.schema import DDLElement
 from sqlalchemy.ext.compiler import compiles, deregister
 from sqlalchemy import exc
 from sqlalchemy.sql import table, column, visitors
-from test.lib.testing import assert_raises_message
-from test.lib import *
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 
 class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'

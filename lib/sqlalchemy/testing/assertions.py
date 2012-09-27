@@ -11,7 +11,7 @@ import re
 from .warnings import resetwarnings
 from .exclusions import db_spec, _is_excluded
 from . import assertsql
-from ..bootstrap import config
+from . import config
 import itertools
 from .util import fail
 

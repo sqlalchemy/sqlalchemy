@@ -1,20 +1,20 @@
-from test.lib.testing import eq_, assert_raises, \
+from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message, assert_warnings
-from test.lib.util import gc_collect
-from test.lib import pickleable
+from sqlalchemy.testing.util import gc_collect
+from sqlalchemy.testing import pickleable
 from sqlalchemy.util import pickle
 import inspect
 from sqlalchemy.orm import create_session, sessionmaker, attributes, \
     make_transient, Session
 import sqlalchemy as sa
-from test.lib import engines, testing, config
+from sqlalchemy.testing import engines, testing, config
 from sqlalchemy import Integer, String, Sequence
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, backref, joinedload, \
     exc as orm_exc, object_session
 from sqlalchemy.util import pypy
-from test.lib import fixtures
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 
 class SessionTest(_fixtures.FixtureTest):

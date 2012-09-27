@@ -1,6 +1,6 @@
-from test.lib import fixtures
-from test.lib.util import gc_collect
-from test.lib.testing import assert_raises_message, is_, eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.util import gc_collect
+from sqlalchemy.testing import assert_raises_message, is_, eq_
 from sqlalchemy import exc, MetaData
 from sqlalchemy.ext.declarative import clsregistry
 import weakref

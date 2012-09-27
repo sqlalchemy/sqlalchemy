@@ -2,11 +2,11 @@ from sqlalchemy import *
 from sqlalchemy import util
 from sqlalchemy.orm import *
 
-from test.lib.util import function_named
-from test.lib import fixtures
+from sqlalchemy.testing.util import function_named
+from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
-from test.lib.testing import eq_
-from test.lib.schema import Table, Column
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing.schema import Table, Column
 
 class ABCTest(fixtures.MappedTest):
     @classmethod

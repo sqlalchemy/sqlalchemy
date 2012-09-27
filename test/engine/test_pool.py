@@ -1,11 +1,11 @@
 import threading, time
 from sqlalchemy import pool, interfaces, select, event
 import sqlalchemy as tsa
-from test.lib import testing
-from test.lib.util import gc_collect, lazy_gc
-from test.lib.testing import eq_, assert_raises
-from test.lib.engines import testing_engine
-from test.lib import fixtures
+from sqlalchemy import testing
+from sqlalchemy.testing.util import gc_collect, lazy_gc
+from sqlalchemy.testing import eq_, assert_raises
+from sqlalchemy.testing.engines import testing_engine
+from sqlalchemy.testing import fixtures
 
 mcid = 1
 class MockDBAPI(object):

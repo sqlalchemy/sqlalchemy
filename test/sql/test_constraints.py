@@ -1,11 +1,12 @@
-from test.lib.testing import assert_raises, assert_raises_message
+from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy import *
 from sqlalchemy import exc, schema
-from test.lib import *
-from test.lib import config, engines
+from sqlalchemy.testing import fixtures, AssertsExecutionResults, AssertsCompiledSQL
+from sqlalchemy import testing
+from sqlalchemy.testing import config, engines
 from sqlalchemy.engine import ddl
-from test.lib.testing import eq_
-from test.lib.assertsql import AllOf, RegexSQL, ExactSQL, CompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing.assertsql import AllOf, RegexSQL, ExactSQL, CompiledSQL
 from sqlalchemy.dialects.postgresql import base as postgresql
 
 class ConstraintTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):

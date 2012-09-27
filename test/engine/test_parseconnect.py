@@ -1,4 +1,4 @@
-from test.lib.testing import assert_raises, assert_raises_message, eq_
+from sqlalchemy.testing import assert_raises, assert_raises_message, eq_
 import ConfigParser
 import StringIO
 import sqlalchemy.engine.url as url
@@ -6,7 +6,8 @@ from sqlalchemy import create_engine, engine_from_config, exc, pool
 from sqlalchemy.engine.util import _coerce_config
 from sqlalchemy.engine.default import DefaultDialect
 import sqlalchemy as tsa
-from test.lib import fixtures, testing
+from sqlalchemy.testing import fixtures
+from sqlalchemy import testing
 
 class ParseConnectTest(fixtures.TestBase):
     def test_rfc1738(self):

@@ -1,15 +1,15 @@
-from test.lib.testing import eq_, assert_raises, \
+from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message, ne_
 import sys
 import time
 import threading
-from test.lib.engines import testing_engine
+from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy import create_engine, MetaData, INT, VARCHAR, Sequence, \
     select, Integer, String, func, text, exc
-from test.lib.schema import Table
-from test.lib.schema import Column
-from test.lib import testing
-from test.lib import fixtures
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.schema import Column
+from sqlalchemy import testing
+from sqlalchemy.testing import fixtures
 
 
 users, metadata = None, None

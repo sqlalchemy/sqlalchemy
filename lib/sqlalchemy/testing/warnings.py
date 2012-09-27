@@ -7,7 +7,7 @@ from sqlalchemy import util
 def testing_warn(msg, stacklevel=3):
     """Replaces sqlalchemy.util.warn during tests."""
 
-    filename = "test.lib.testing"
+    filename = "sqlalchemy.testing.warnings"
     lineno = 1
     if isinstance(msg, basestring):
         warnings.warn_explicit(msg, sa_exc.SAWarning, filename, lineno)

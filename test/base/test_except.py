@@ -2,8 +2,8 @@
 
 
 from sqlalchemy import exc as sa_exceptions
-from test.lib import fixtures
-from test.lib.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import eq_
 
 # Py3K
 #StandardError = BaseException

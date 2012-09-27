@@ -1,4 +1,4 @@
-from test.lib.testing import eq_, assert_raises
+from sqlalchemy.testing import eq_, assert_raises
 import copy
 import pickle
 
@@ -7,12 +7,12 @@ from sqlalchemy.orm import *
 from sqlalchemy.orm.collections import collection, attribute_mapped_collection
 from sqlalchemy.ext.associationproxy import *
 from sqlalchemy.ext.associationproxy import _AssociationList
-from test.lib import *
-from test.lib.testing import assert_raises_message
-from test.lib.util import gc_collect
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.sql import not_
-from test.lib import fixtures
-
+from sqlalchemy.testing import fixtures, AssertsCompiledSQL
+from sqlalchemy import testing
+from sqlalchemy.testing.schema import Table, Column
 
 class DictCollection(dict):
     @collection.appender

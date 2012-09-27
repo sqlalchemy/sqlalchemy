@@ -1,15 +1,16 @@
 # coding: utf-8
 
-from test.lib.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 
 
 from sqlalchemy import *
 from sqlalchemy import sql, exc, schema, types as sqltypes
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.engine.url import make_url
-from test.lib import fixtures, AssertsCompiledSQL, AssertsExecutionResults
-from test.lib import testing, engines
-from test.lib.engines import utf8_engine
+from sqlalchemy.testing import fixtures, AssertsCompiledSQL, AssertsExecutionResults
+from sqlalchemy import testing
+from sqlalchemy.testing import engines
+from sqlalchemy.testing.engines import utf8_engine
 import datetime
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):

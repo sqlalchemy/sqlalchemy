@@ -1,5 +1,6 @@
 from sqlalchemy import *
-from test.lib import *
+from sqlalchemy.testing import fixtures, AssertsExecutionResults
+from sqlalchemy import testing
 
 
 class FoundRowsTest(fixtures.TestBase, AssertsExecutionResults):

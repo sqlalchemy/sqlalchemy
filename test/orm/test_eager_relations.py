@@ -1,20 +1,20 @@
 """tests of joined-eager loaded attributes"""
 
-from test.lib.testing import eq_, is_, is_not_
+from sqlalchemy.testing import eq_, is_, is_not_
 import sqlalchemy as sa
-from test.lib import testing
+from sqlalchemy import testing
 from sqlalchemy.orm import joinedload, deferred, undefer, \
     joinedload_all, backref, eagerload, Session, immediateload
 from sqlalchemy import Integer, String, Date, ForeignKey, and_, select, \
     func
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
     lazyload, aliased, column_property
 from sqlalchemy.sql import operators
-from test.lib.testing import eq_, assert_raises, \
+from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message
-from test.lib.assertsql import CompiledSQL
-from test.lib import fixtures
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 from sqlalchemy.util import OrderedDict as odict
 import datetime

@@ -1,22 +1,22 @@
 
-from test.lib.testing import eq_, assert_raises, \
+from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message, is_
 from sqlalchemy.ext import declarative as decl
 from sqlalchemy import exc
 import sqlalchemy as sa
-from test.lib import testing
+from sqlalchemy import testing
 from sqlalchemy import MetaData, Integer, String, ForeignKey, \
     ForeignKeyConstraint, Index
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import relationship, create_session, class_mapper, \
     joinedload, configure_mappers, backref, clear_mappers, \
     deferred, column_property, composite,\
     Session
-from test.lib.testing import eq_
+from sqlalchemy.testing import eq_
 from sqlalchemy.util import classproperty
 from sqlalchemy.ext.declarative import declared_attr, AbstractConcreteBase, ConcreteBase
-from test.lib import fixtures
-from test.lib.util import gc_collect
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.util import gc_collect
 
 Base = None
 

@@ -9,10 +9,11 @@ installs SQLAlchemy's testing plugin into the local environment.
 import sys
 
 from os import path
-for pth in ['.', './lib']:
+for pth in ['.', './lib', './lib/sqlalchemy/testing']:
     sys.path.insert(0, path.join(path.dirname(path.abspath(__file__)), pth))
 
-from test.bootstrap.noseplugin import NoseSQLAlchemy
+
+from plugin.noseplugin import NoseSQLAlchemy
 
 import nose
 

@@ -1,15 +1,15 @@
-from test.lib.testing import eq_, assert_raises, \
+from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm import exc as orm_exc
-from test.lib import *
+from sqlalchemy.testing import *
 import sqlalchemy as sa
-from test.lib import testing
-from test.lib import fixtures
+from sqlalchemy import testing
+from sqlalchemy.testing import fixtures
 from sqlalchemy.orm import attributes
-from test.lib.testing import eq_
-from test.lib.schema import Table, Column
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing.schema import Table, Column
 
 
 class Employee(object):

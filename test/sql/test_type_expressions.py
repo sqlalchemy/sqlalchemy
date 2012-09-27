@@ -1,6 +1,8 @@
 from sqlalchemy import Table, Column, String, func, MetaData, select, TypeDecorator, cast
-from test.lib import fixtures, AssertsCompiledSQL, testing
-from test.lib.testing import eq_
+from sqlalchemy.testing import fixtures, AssertsCompiledSQL
+from sqlalchemy import testing
+from sqlalchemy.testing import eq_
+
 
 class _ExprFixture(object):
     def _fixture(self):

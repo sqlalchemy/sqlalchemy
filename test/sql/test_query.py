@@ -1,10 +1,12 @@
-from test.lib.testing import eq_, assert_raises_message, assert_raises, is_
+from sqlalchemy.testing import eq_, assert_raises_message, assert_raises, is_
+from sqlalchemy import testing
+from sqlalchemy.testing import fixtures, engines
+from sqlalchemy import util
 import datetime
 from sqlalchemy import *
-from sqlalchemy import exc, sql, util
+from sqlalchemy import exc, sql
 from sqlalchemy.engine import default, result as _result
-from test.lib import *
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 
 class QueryTest(fixtures.TestBase):
 

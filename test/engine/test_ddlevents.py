@@ -1,16 +1,17 @@
 from __future__ import with_statement
-from test.lib.testing import assert_raises, assert_raises_message
+from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy.schema import DDL, CheckConstraint, AddConstraint, \
     DropConstraint
 from sqlalchemy import create_engine
 from sqlalchemy import MetaData, Integer, String, event, exc, text
-from test.lib.schema import Table
-from test.lib.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.schema import Column
 import sqlalchemy as tsa
-from test.lib import testing, engines
-from test.lib.testing import AssertsCompiledSQL, eq_
+from sqlalchemy import testing
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import AssertsCompiledSQL, eq_
 from nose import SkipTest
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 
 
 class DDLEventTest(fixtures.TestBase):
@@ -472,10 +473,10 @@ class DDLExecutionTest(fixtures.TestBase):
 
         # We're abusing the DDL()
         # construct here by pushing a SELECT through it
-        # so that we can verify the round trip.        
+        # so that we can verify the round trip.
         # the DDL() will trigger autocommit, which prohibits
         # some DBAPIs from returning results (pyodbc), so we
-        # run in an explicit transaction.   
+        # run in an explicit transaction.
         with testing.db.begin() as conn:
             eq_(
                 conn.execute(

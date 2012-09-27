@@ -3,17 +3,17 @@ These are generally tests derived from specific user issues.
 
 """
 
-from test.lib.testing import eq_
+from sqlalchemy.testing import eq_
 from sqlalchemy import *
 from sqlalchemy import util
 from sqlalchemy.orm import *
 from sqlalchemy.orm.interfaces import MANYTOONE
-from test.lib import AssertsExecutionResults, testing
-from test.lib.util import function_named
-from test.lib import fixtures
+from sqlalchemy.testing import AssertsExecutionResults, testing
+from sqlalchemy.testing.util import function_named
+from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
-from test.lib.testing import eq_
-from test.lib.schema import Table, Column
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing.schema import Table, Column
 
 class AttrSettable(object):
     def __init__(self, **kwargs):

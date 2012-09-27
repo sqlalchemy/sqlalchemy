@@ -1,12 +1,12 @@
 """test the inspection registry system."""
 
-from test.lib.testing import eq_, assert_raises_message, is_
+from sqlalchemy.testing import eq_, assert_raises_message, is_
 from sqlalchemy import exc, util
 from sqlalchemy import inspect
 from test.orm import _fixtures
 from sqlalchemy.orm import class_mapper, synonym, Session, aliased
 from sqlalchemy.orm.attributes import instance_state, NO_VALUE
-from test.lib import testing
+from sqlalchemy import testing
 
 class TestORMInspection(_fixtures.FixtureTest):
     @classmethod

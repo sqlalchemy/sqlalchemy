@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, MetaData, orm
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy import Integer, String
 from sqlalchemy.orm import mapper
-from test.lib import profiling
+from sqlalchemy.testing import profiling
 
 class Object(object):
     pass

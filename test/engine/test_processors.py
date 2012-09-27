@@ -1,5 +1,5 @@
-from test.lib import fixtures
-from test.lib.testing import assert_raises_message, eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import assert_raises_message, eq_
 
 
 class _DateProcessorTest(fixtures.TestBase):

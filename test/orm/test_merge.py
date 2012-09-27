@@ -1,19 +1,19 @@
-from test.lib.testing import assert_raises, assert_raises_message
+from sqlalchemy.testing import assert_raises, assert_raises_message
 import sqlalchemy as sa
 from sqlalchemy import Integer, PickleType, String, ForeignKey
 import operator
-from test.lib import testing
+from sqlalchemy import testing
 from sqlalchemy.util import OrderedSet
 from sqlalchemy.orm import mapper, relationship, create_session, \
     PropComparator, synonym, comparable_property, sessionmaker, \
     attributes, Session, backref, configure_mappers
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.orm.interfaces import MapperOption
-from test.lib.testing import eq_, ne_
-from test.lib import fixtures
+from sqlalchemy.testing import eq_, ne_
+from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 from sqlalchemy import event, and_, case
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 
 class MergeTest(_fixtures.FixtureTest):
     """Session.merge() functionality"""

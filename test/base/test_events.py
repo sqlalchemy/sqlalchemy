@@ -1,9 +1,9 @@
 """Test event registration and listening."""
 
-from test.lib.testing import eq_, assert_raises, assert_raises_message, \
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, \
     is_, is_not_
 from sqlalchemy import event, exc, util
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 
 class EventsTest(fixtures.TestBase):
     """Test class- and instance-level event registration."""

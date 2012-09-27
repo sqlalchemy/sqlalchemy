@@ -1,13 +1,13 @@
-from test.lib.testing import eq_, ne_
+from sqlalchemy.testing import eq_, ne_
 import operator
 from sqlalchemy.orm import dynamic_loader, backref, configure_mappers
-from test.lib import testing
+from sqlalchemy import testing
 from sqlalchemy import Integer, String, ForeignKey, desc, select, func, exc
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, Query, attributes, exc as orm_exc
 from sqlalchemy.orm.dynamic import AppenderMixin
-from test.lib.testing import eq_, AssertsCompiledSQL, assert_raises_message, assert_raises
-from test.lib import fixtures
+from sqlalchemy.testing import eq_, AssertsCompiledSQL, assert_raises_message, assert_raises
+from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 
 

@@ -1,8 +1,8 @@
 import time, resource
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from test.lib import *
-from test.lib.util import gc_collect
+from sqlalchemy.testing import *
+from sqlalchemy.testing.util import gc_collect
 
 
 NUM = 100

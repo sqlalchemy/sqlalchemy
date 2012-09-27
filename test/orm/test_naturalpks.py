@@ -3,16 +3,16 @@ Primary key changing capabilities and passive/non-passive cascading updates.
 
 """
 from __future__ import with_statement
-from test.lib.testing import eq_, ne_, \
+from sqlalchemy.testing import eq_, ne_, \
                         assert_raises, assert_raises_message
 import sqlalchemy as sa
-from test.lib import testing
+from sqlalchemy import testing
 from sqlalchemy import Integer, String, ForeignKey, Unicode
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, backref, Session
 from sqlalchemy.orm.session import make_transient
-from test.lib.testing import eq_
-from test.lib import fixtures
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 
 class NaturalPKTest(fixtures.MappedTest):
@@ -965,7 +965,7 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         sess.add(u2)
         sess.add(a2)
 
-        from test.lib.assertsql import CompiledSQL
+        from sqlalchemy.testing.assertsql import CompiledSQL
 
         # test that the primary key columns of addresses are not
         # being updated as well, since this is a row switch.

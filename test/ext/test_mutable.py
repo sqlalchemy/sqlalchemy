@@ -3,11 +3,11 @@ from sqlalchemy.types import PickleType, TypeDecorator, VARCHAR
 from sqlalchemy.orm import mapper, Session, composite
 from sqlalchemy.orm.mapper import Mapper
 from sqlalchemy.orm.instrumentation import ClassManager
-from test.lib.schema import Table, Column
-from test.lib.testing import eq_, assert_raises_message
-from test.lib.util import picklers
-from test.lib import testing
-from test.lib import fixtures
+from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing import eq_, assert_raises_message
+from sqlalchemy.testing.util import picklers
+from sqlalchemy import testing
+from sqlalchemy.testing import fixtures
 import sys
 import pickle
 

@@ -5,7 +5,10 @@ target database.
 
 """
 
-from .exclusions import \
+from sqlalchemy import util
+import sys
+from sqlalchemy.testing.suite.requirements import SuiteRequirements
+from sqlalchemy.testing.exclusions import \
      skip, \
      skip_if,\
      only_if,\
@@ -22,9 +25,6 @@ def no_support(db, reason):
 def exclude(db, op, spec, description=None):
     return SpecPredicate(db, op, spec, description=description)
 
-from sqlalchemy import util
-from ..bootstrap import config
-import sys
 
 crashes = skip
 
@@ -35,13 +35,7 @@ def _chain_decorators_on(*decorators):
         return fn
     return decorate
 
-class Requirements(object):
-    def __init__(self, db, config):
-        self.db = db
-        self.config = config
-
-
-class DefaultRequirements(Requirements):
+class DefaultRequirements(SuiteRequirements):
     @property
     def deferrable_or_no_constraints(self):
         """Target database must support derferable constraints."""
@@ -451,7 +445,7 @@ class DefaultRequirements(Requirements):
 
         """
         return _chain_decorators_on(
-            skip_if(lambda: config.options.low_connections)
+            skip_if(lambda: self.config.options.low_connections)
         )
 
     @property

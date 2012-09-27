@@ -1,7 +1,8 @@
 from sqlalchemy import *
 from sqlalchemy import sql, schema
 from sqlalchemy.sql import compiler
-from test.lib import *
+from sqlalchemy.testing import fixtures, AssertsCompiledSQL
+from sqlalchemy import testing
 
 class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'

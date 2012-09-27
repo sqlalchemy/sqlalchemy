@@ -2,9 +2,9 @@ from datetime import datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
 
-from test.lib import testing
-from test.lib import fixtures
-from test.lib.schema import Table, Column
+from sqlalchemy import testing
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Table, Column
 
 class InheritTest(fixtures.MappedTest):
     """tests some various inheritance round trips involving a particular set of polymorphic inheritance relationships"""

@@ -3,8 +3,8 @@ from datetime import datetime
 
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from test.lib import *
-from test.lib.profiling import profiled
+from sqlalchemy.testing import *
+from sqlalchemy.testing.profiling import profiled
 
 class Item(object):
     def __repr__(self):

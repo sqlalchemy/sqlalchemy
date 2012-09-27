@@ -1,10 +1,10 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
 
-from test.lib import testing
-from test.lib.util import function_named
-from test.lib import fixtures
-from test.lib.schema import Table, Column
+from sqlalchemy import testing
+from sqlalchemy.testing.util import function_named
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Table, Column
 
 class BaseObject(object):
     def __init__(self, *args, **kwargs):

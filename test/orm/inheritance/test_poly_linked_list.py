@@ -1,9 +1,9 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
 
-from test.lib import fixtures
-from test.lib import testing
-from test.lib.schema import Table, Column
+from sqlalchemy.testing import fixtures
+from sqlalchemy import testing
+from sqlalchemy.testing.schema import Table, Column
 
 
 class PolymorphicCircularTest(fixtures.MappedTest):

@@ -1,14 +1,14 @@
-from test.lib.testing import eq_, assert_raises, assert_raises_message, ne_
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, ne_
 from sqlalchemy import util
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm.attributes import set_attribute, get_attribute, del_attribute
 from sqlalchemy.orm.instrumentation import is_instrumented
 from sqlalchemy.orm import clear_mappers
-from test.lib import *
-from test.lib import fixtures
+from sqlalchemy import testing
+from sqlalchemy.testing import fixtures
 from sqlalchemy.ext import instrumentation
 from sqlalchemy.orm.instrumentation import register_class
-from test.lib.util import decorator
+from sqlalchemy.testing.util import decorator
 from sqlalchemy.orm import events
 from sqlalchemy import event
 

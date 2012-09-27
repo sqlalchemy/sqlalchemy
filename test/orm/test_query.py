@@ -1,4 +1,3 @@
-from test.lib.testing import eq_, assert_raises, assert_raises_message
 import operator
 from sqlalchemy import MetaData, null, exists, text, union, literal, \
     literal_column, func, between, Unicode, desc, and_, bindparam, \
@@ -11,14 +10,14 @@ from sqlalchemy.orm import attributes, mapper, relationship, backref, \
     configure_mappers, create_session, synonym, Session, class_mapper, \
     aliased, column_property, joinedload_all, joinedload, Query,\
     util as orm_util
-from test.lib.assertsql import CompiledSQL
-from test.lib.testing import eq_
-from test.lib.schema import Table, Column
-
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.schema import Table, Column
 import sqlalchemy as sa
-from test.lib import testing, AssertsCompiledSQL, engines
+from sqlalchemy import testing
+from sqlalchemy.testing.assertions import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
 from test.orm import _fixtures
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures, engines
 
 from sqlalchemy.orm.util import join, outerjoin, with_parent
 

@@ -5,9 +5,9 @@ from sqlalchemy.orm import create_session, relationship, mapper, \
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.engine import default
 
-from test.lib import AssertsCompiledSQL, fixtures, testing
-from test.lib.schema import Table, Column
-from test.lib.testing import assert_raises, eq_
+from sqlalchemy.testing import AssertsCompiledSQL, fixtures, testing
+from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing import assert_raises, eq_
 
 class Company(fixtures.ComparableEntity):
     pass

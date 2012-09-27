@@ -1,14 +1,15 @@
-from test.lib.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 import time
 import weakref
 from sqlalchemy import select, MetaData, Integer, String, pool, create_engine
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 import sqlalchemy as tsa
-from test.lib import testing, engines
-from test.lib.util import gc_collect
+from sqlalchemy import testing
+from sqlalchemy.testing import engines
+from sqlalchemy.testing.util import gc_collect
 from sqlalchemy import exc
-from test.lib import fixtures
-from test.lib.engines import testing_engine
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.engines import testing_engine
 
 class MockDisconnect(Exception):
     pass

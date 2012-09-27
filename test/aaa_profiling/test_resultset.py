@@ -1,6 +1,6 @@
 from sqlalchemy import *
-from test.lib import *
-from test.lib.testing import eq_
+from sqlalchemy.testing import *
+from sqlalchemy.testing import eq_
 NUM_FIELDS = 10
 NUM_RECORDS = 1000
 

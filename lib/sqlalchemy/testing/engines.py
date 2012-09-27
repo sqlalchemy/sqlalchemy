@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import types
 import weakref
 from collections import deque
-from ..bootstrap import config
+from . import config
 from .util import decorator
 from sqlalchemy import event, pool
 import re
@@ -60,13 +60,12 @@ class ConnectionKiller(object):
             self._stop_test_ctx_aggressive()
 
     def _stop_test_ctx_minimal(self):
-        from test.lib import testing
         self.close_all()
 
         self.conns = set()
 
         for rec in self.testing_engines.keys():
-            if rec is not testing.db:
+            if rec is not config.db:
                 rec.dispose()
 
     def _stop_test_ctx_aggressive(self):
@@ -185,7 +184,7 @@ def testing_engine(url=None, options=None):
     """Produce an engine configured by --options with optional overrides."""
 
     from sqlalchemy import create_engine
-    from test.lib.assertsql import asserter
+    from .assertsql import asserter
 
     if not options:
         use_reaper = True
@@ -193,7 +192,8 @@ def testing_engine(url=None, options=None):
         use_reaper = options.pop('use_reaper', True)
 
     url = url or config.db_url
-    options = options or config.db_opts
+    if options is None:
+        options = config.db_opts
 
     engine = create_engine(url, **options)
     if isinstance(engine.pool, pool.QueuePool):

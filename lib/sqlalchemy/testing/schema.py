@@ -4,7 +4,7 @@ desired state for different backends.
 
 from . import exclusions
 from sqlalchemy import schema, event
-from ..bootstrap import config
+from . import config
 
 __all__ = 'Table', 'Column',
 

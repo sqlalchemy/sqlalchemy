@@ -6,9 +6,9 @@ from sqlalchemy.orm import interfaces, relationship, mapper, \
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.engine import default
 
-from test.lib import AssertsCompiledSQL, fixtures, testing
-from test.lib.schema import Table, Column
-from test.lib.testing import assert_raises, eq_
+from sqlalchemy.testing import AssertsCompiledSQL, fixtures, testing
+from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing import assert_raises, eq_
 
 from _poly_fixtures import Company, Person, Engineer, Manager, Boss, \
     Machine, Paperwork, _PolymorphicFixtureBase, _Polymorphic,\

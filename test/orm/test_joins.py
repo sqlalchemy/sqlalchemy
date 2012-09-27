@@ -1,4 +1,4 @@
-from test.lib.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 import operator
 from sqlalchemy import *
 from sqlalchemy import exc as sa_exc, util
@@ -7,14 +7,14 @@ from sqlalchemy.engine import default
 from sqlalchemy.orm import *
 from sqlalchemy.orm import attributes
 
-from test.lib.testing import eq_
+from sqlalchemy.testing import eq_
 
 import sqlalchemy as sa
-from test.lib import testing, AssertsCompiledSQL, Column, engines
-
+from sqlalchemy import testing
+from sqlalchemy.testing import AssertsCompiledSQL, Column, engines
 from test.orm import _fixtures
 
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 
 from sqlalchemy.orm.util import join, outerjoin, with_parent
 

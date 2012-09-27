@@ -1,22 +1,23 @@
 from __future__ import with_statement
 
-from test.lib.testing import eq_, assert_raises, assert_raises_message, \
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, \
     config, is_
 import re
-from test.lib.util import picklers
+from sqlalchemy.testing.util import picklers
 from sqlalchemy.interfaces import ConnectionProxy
 from sqlalchemy import MetaData, Integer, String, INT, VARCHAR, func, \
     bindparam, select, event, TypeDecorator, create_engine, Sequence
 from sqlalchemy.sql import column, literal
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 import sqlalchemy as tsa
-from test.lib import testing, engines
-from test.lib.engines import testing_engine
+from sqlalchemy import testing
+from sqlalchemy.testing import engines
+from sqlalchemy.testing.engines import testing_engine
 import logging
 from sqlalchemy.dialects.oracle.zxjdbc import ReturningParam
 from sqlalchemy.engine import result as _result, default
 from sqlalchemy.engine.base import Connection, Engine
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 import StringIO
 
 users, metadata, users_autoinc = None, None, None

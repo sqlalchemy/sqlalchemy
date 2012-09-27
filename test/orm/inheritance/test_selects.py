@@ -1,9 +1,9 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
 
-from test.lib import testing
+from sqlalchemy import testing
 
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 
 class InheritingSelectablesTest(fixtures.MappedTest):
     @classmethod

@@ -1,15 +1,15 @@
-from test.lib.testing import assert_raises_message, assert_raises
+from sqlalchemy.testing import assert_raises_message, assert_raises
 import sqlalchemy as sa
-from test.lib import testing
+from sqlalchemy import testing
 from sqlalchemy import Integer, String
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, \
     create_session, class_mapper, \
     Mapper, column_property, \
     Session, sessionmaker, attributes
 from sqlalchemy.orm.instrumentation import ClassManager
-from test.lib.testing import eq_
-from test.lib import fixtures
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 from sqlalchemy import event
 

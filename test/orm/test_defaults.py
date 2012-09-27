@@ -1,11 +1,10 @@
-
 import sqlalchemy as sa
 from sqlalchemy import Integer, String, ForeignKey, event
-from test.lib import testing
-from test.lib.schema import Table, Column
+from sqlalchemy import testing
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session
-from test.lib import fixtures
-from test.lib.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import eq_
 
 
 class TriggerDefaultsTest(fixtures.MappedTest):

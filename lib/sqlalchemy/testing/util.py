@@ -169,10 +169,10 @@ def fail(msg):
 def provide_metadata(fn, *args, **kw):
     """Provide bound MetaData for a single test, dropping afterwards."""
 
-    from ..bootstrap.config import db
+    from . import config
     from sqlalchemy import schema
 
-    metadata = schema.MetaData(db)
+    metadata = schema.MetaData(config.db)
     self = args[0]
     prev_meta = getattr(self, 'metadata', None)
     self.metadata = metadata

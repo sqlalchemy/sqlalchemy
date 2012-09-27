@@ -1,6 +1,6 @@
-from test.lib.testing import assert_raises, assert_raises_message, eq_, \
+from sqlalchemy.testing import assert_raises, assert_raises_message, eq_, \
     AssertsCompiledSQL, is_
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 from sqlalchemy.orm import relationships, foreign, remote, remote_foreign
 from sqlalchemy import MetaData, Table, Column, ForeignKey, Integer, \
     select, ForeignKeyConstraint, exc, func, and_

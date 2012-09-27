@@ -1,11 +1,12 @@
-from test.lib.testing import eq_, assert_raises, \
+from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message
 from sqlalchemy import exc as sa_exc, util, Integer, String, ForeignKey
 from sqlalchemy.orm import exc as orm_exc, mapper, relationship, \
     sessionmaker, Session
-from test.lib import testing, profiling
-from test.lib import fixtures
-from test.lib.schema import Table, Column
+from sqlalchemy import testing
+from sqlalchemy.testing import profiling
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Table, Column
 import sys
 
 class MergeTest(fixtures.MappedTest):

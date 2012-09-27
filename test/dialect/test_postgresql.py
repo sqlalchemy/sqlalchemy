@@ -2,19 +2,24 @@
 
 from __future__ import with_statement
 
-from test.lib.testing import eq_, assert_raises, assert_raises_message, is_
-from test.lib import  engines
+from sqlalchemy.testing.assertions import eq_, assert_raises, \
+                assert_raises_message, is_, AssertsExecutionResults, \
+                AssertsCompiledSQL, ComparesTables
+from sqlalchemy.testing import engines, fixtures
+from sqlalchemy import testing
 import datetime
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import Table, Column, select, MetaData, text, Integer, \
+            String, Sequence, ForeignKey, join, Numeric, \
+            PrimaryKeyConstraint, DateTime, tuple_, Float, BigInteger, \
+            func, literal_column, literal, bindparam, cast, extract, \
+            SmallInteger, Enum, REAL, update, insert, Index, delete, \
+            and_, Date, TypeDecorator, Time, Unicode, Interval
+from sqlalchemy.orm import Session, mapper, aliased
 from sqlalchemy import exc, schema, types
 from sqlalchemy.dialects.postgresql import base as postgresql
-from sqlalchemy.engine.strategies import MockEngineStrategy
 from sqlalchemy.util.compat import decimal
-from test.lib import *
-from test.lib.util import round_decimal
+from sqlalchemy.testing.util import round_decimal
 from sqlalchemy.sql import table, column
-from test.lib.testing import eq_
 import logging
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):

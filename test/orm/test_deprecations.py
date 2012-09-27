@@ -5,12 +5,12 @@ modern (i.e. not deprecated) alternative to them.  The tests snippets here can
 be migrated directly to the wiki, docs, etc.
 
 """
-from test.lib import testing
+from sqlalchemy import testing
 from sqlalchemy import Integer, String, ForeignKey, func
-from test.lib.schema import Table
-from test.lib.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.schema import Column
 from sqlalchemy.orm import mapper, relationship, relation, create_session, sessionmaker
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 
 
 class QueryAlternativesTest(fixtures.MappedTest):

@@ -1,16 +1,16 @@
 """Attribute/instance expiration, deferral of attributes, etc."""
 
-from test.lib.testing import eq_, assert_raises, assert_raises_message
-from test.lib.util import gc_collect
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing.util import gc_collect
 import sqlalchemy as sa
-from test.lib import testing
+from sqlalchemy import testing
 from sqlalchemy import Integer, String, ForeignKey, exc as sa_exc
-from test.lib.schema import Table
-from test.lib.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
                         attributes, deferred, exc as orm_exc, defer, undefer,\
                         strategies, state, lazyload, backref, Session
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 
 

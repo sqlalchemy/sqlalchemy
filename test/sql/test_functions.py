@@ -1,15 +1,16 @@
-from test.lib.testing import eq_
+from sqlalchemy.testing import eq_
 import datetime
 from sqlalchemy import *
 from sqlalchemy.sql import table, column
 from sqlalchemy import sql, util
 from sqlalchemy.sql.compiler import BIND_TEMPLATES
-from test.lib.engines import all_dialects
+from sqlalchemy.testing.engines import all_dialects
 from sqlalchemy import types as sqltypes
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.functions import GenericFunction
 from sqlalchemy.util.compat import decimal
-from test.lib import testing, fixtures, AssertsCompiledSQL, engines
+from sqlalchemy import testing
+from sqlalchemy.testing import fixtures, AssertsCompiledSQL, engines
 from sqlalchemy.dialects import sqlite, postgresql, mysql, oracle
 
 

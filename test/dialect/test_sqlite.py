@@ -1,6 +1,6 @@
 """SQLite-specific tests."""
 
-from test.lib.testing import eq_, assert_raises, \
+from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message
 import datetime
 from sqlalchemy import *
@@ -8,7 +8,7 @@ from sqlalchemy import exc, sql, schema, pool, types as sqltypes
 from sqlalchemy.dialects.sqlite import base as sqlite, \
     pysqlite as pysqlite_dialect
 from sqlalchemy.engine.url import make_url
-from test.lib import *
+from sqlalchemy.testing import *
 import os
 from sqlalchemy.schema import CreateTable
 

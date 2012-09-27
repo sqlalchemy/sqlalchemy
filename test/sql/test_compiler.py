@@ -10,7 +10,9 @@ styling and coherent test organization.
 
 """
 
-from test.lib.testing import eq_, is_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, is_, assert_raises, assert_raises_message
+from sqlalchemy import testing
+from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 import datetime, re, operator, decimal
 from sqlalchemy import *
 from sqlalchemy import exc, sql, util, types, schema
@@ -18,7 +20,6 @@ from sqlalchemy.sql import table, column, label, compiler
 from sqlalchemy.sql.expression import ClauseList, _literal_as_text, HasPrefixes
 from sqlalchemy.engine import default
 from sqlalchemy.databases import *
-from test.lib import *
 from sqlalchemy.ext.compiler import compiles
 
 table1 = table('mytable',

@@ -1,9 +1,9 @@
-from test.lib.testing import eq_
+from sqlalchemy.testing import eq_
 from sqlalchemy import *
-from test.lib import *
-from test.lib.schema import Table, Column
+from sqlalchemy import testing
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.types import TypeDecorator
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures, AssertsExecutionResults, engines
 
 class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
     __requires__ = 'returning',

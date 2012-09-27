@@ -1,10 +1,10 @@
 """General mapper operations with an emphasis on selecting/loading."""
 
-from test.lib.testing import assert_raises, assert_raises_message
+from sqlalchemy.testing import assert_raises, assert_raises_message
 import sqlalchemy as sa
-from test.lib import testing
+from sqlalchemy import testing
 from sqlalchemy import MetaData, Integer, String, ForeignKey, func, util
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.engine import default
 from sqlalchemy.orm import mapper, relationship, backref, \
     create_session, class_mapper, configure_mappers, reconstructor, \
@@ -12,10 +12,10 @@ from sqlalchemy.orm import mapper, relationship, backref, \
     column_property, composite, dynamic_loader, \
     comparable_property, Session
 from sqlalchemy.orm.persistence import _sort_states
-from test.lib.testing import eq_, AssertsCompiledSQL, is_
-from test.lib import fixtures
+from sqlalchemy.testing import eq_, AssertsCompiledSQL, is_
+from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
-from test.lib.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import CompiledSQL
 import logging
 
 class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):

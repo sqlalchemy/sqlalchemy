@@ -2,8 +2,8 @@
 
 from sqlalchemy import inspect
 from sqlalchemy import Table, Column, Integer, MetaData
-from test.lib import fixtures
-from test.lib.testing import is_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 
 class TestCoreInspection(fixtures.TestBase):
 

@@ -1,17 +1,17 @@
-from test.lib.testing import eq_, assert_raises, \
+from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message, is_
 from sqlalchemy.ext import declarative as decl
 import sqlalchemy as sa
-from test.lib import testing
+from sqlalchemy import testing
 from sqlalchemy import Integer, String, ForeignKey
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import relationship, create_session, class_mapper, \
     configure_mappers, clear_mappers, \
     deferred, column_property, \
     Session
 from sqlalchemy.util import classproperty
 from sqlalchemy.ext.declarative import declared_attr
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 
 Base = None
 

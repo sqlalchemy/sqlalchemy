@@ -5,9 +5,10 @@ from sqlalchemy import sql, util
 from sqlalchemy.orm import *
 from sqlalchemy.ext.horizontal_shard import ShardedSession
 from sqlalchemy.sql import operators
-from test.lib import *
-from test.lib.engines import testing_engine
-from test.lib.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy import testing
+from sqlalchemy.testing.engines import testing_engine
+from sqlalchemy.testing import eq_
 from nose import SkipTest
 
 # TODO: ShardTest can be turned into a base for further subclasses

@@ -1,3 +1,14 @@
+"""Enhance nose with extra options and behaviors for running SQLAlchemy tests.
+
+This module is imported relative to the "plugins" package as a top level
+package by the sqla_nose.py runner, so that the plugin can be loaded with
+the rest of nose including the coverage plugin before any of SQLAlchemy itself
+is imported, so that coverage works.
+
+When third party libraries use this library, it can be imported
+normally as "from sqlalchemy.testing.plugin import noseplugin".
+
+"""
 import os
 import ConfigParser
 
@@ -10,14 +21,13 @@ from .config import _log, _list_dbs, _zero_timeout, \
     post_configure
 
 # late imports
-testing = None
 fixtures = None
 engines = None
 exclusions = None
 warnings = None
 profiling = None
 assertions = None
-requires = None
+requirements = None
 util = None
 file_config = None
 
@@ -27,9 +37,7 @@ class NoseSQLAlchemy(Plugin):
     """
     enabled = True
 
-    # nose 1.0 will allow us to replace the old "sqlalchemy" plugin,
-    # if installed, using the same name, but nose 1.0 isn't released yet...
-    name = 'sqlalchemy'
+    name = 'sqla_testing'
     score = 100
 
     def options(self, parser, env=os.environ):
@@ -97,9 +105,9 @@ class NoseSQLAlchemy(Plugin):
 
         # late imports, has to happen after config as well
         # as nose plugins like coverage
-        global testing, requires, util, fixtures, engines, exclusions, \
+        global util, fixtures, engines, exclusions, \
                         assertions, warnings, profiling
-        from test.lib import testing, requires, fixtures, engines, exclusions, \
+        from sqlalchemy.testing import fixtures, engines, exclusions, \
                         assertions, warnings, profiling
         from sqlalchemy import util
 
@@ -130,6 +138,7 @@ class NoseSQLAlchemy(Plugin):
             return True
 
     def _do_skips(self, cls):
+        from sqlalchemy.testing import config
         if hasattr(cls, '__requires__'):
             def test_suite():
                 return 'ok'
@@ -165,7 +174,7 @@ class NoseSQLAlchemy(Plugin):
             exclusions.exclude(db, op, spec,
                     "'%s' unsupported on DB %s version %s" % (
                     cls.__name__, config.db.name,
-                    exclusions._server_version()))
+                    exclusions._server_version(config.db)))
 
     def beforeTest(self, test):
         warnings.resetwarnings()

@@ -1,7 +1,8 @@
-from test.lib.testing import assert_raises, assert_raises_message, eq_
+from sqlalchemy.testing import assert_raises, assert_raises_message, eq_
 import sys
 from sqlalchemy import *
-from test.lib import *
+from sqlalchemy.testing import fixtures, AssertsCompiledSQL
+from sqlalchemy import testing
 from sqlalchemy import util, exc
 from sqlalchemy.sql import table, column
 

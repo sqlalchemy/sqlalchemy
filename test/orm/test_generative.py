@@ -1,12 +1,12 @@
-from test.lib.testing import eq_
+from sqlalchemy.testing import eq_
 import sqlalchemy as sa
-from test.lib import testing
+from sqlalchemy import testing
 from sqlalchemy import Integer, String, ForeignKey, MetaData, func
-from test.lib.schema import Table
-from test.lib.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session
-from test.lib.testing import eq_
-from test.lib import fixtures
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 
 

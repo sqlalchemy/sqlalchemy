@@ -1,10 +1,10 @@
 from sqlalchemy import func, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, Session, aliased
-from test.lib.schema import Column
+from sqlalchemy.testing.schema import Column
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext import hybrid
-from test.lib.testing import eq_, AssertsCompiledSQL, assert_raises_message
-from test.lib import fixtures
+from sqlalchemy.testing import eq_, AssertsCompiledSQL, assert_raises_message
+from sqlalchemy.testing import fixtures
 
 class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'

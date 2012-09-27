@@ -1,11 +1,12 @@
-from test.lib.testing import assert_raises, assert_raises_message, eq_
-from test.lib.engines import testing_engine
-from test.lib import fixtures, AssertsCompiledSQL, testing
+from sqlalchemy.testing import assert_raises, assert_raises_message, eq_
+from sqlalchemy.testing.engines import testing_engine
+from sqlalchemy.testing import fixtures, AssertsCompiledSQL
+from sqlalchemy import testing
 from sqlalchemy import *
 from sqlalchemy import exc as exceptions
 from sqlalchemy.engine import default
 from sqlalchemy.sql import table, column
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 
 IDENT_LENGTH = 29
 

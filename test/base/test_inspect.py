@@ -1,9 +1,9 @@
 """test the inspection registry system."""
 
-from test.lib.testing import eq_, assert_raises_message
+from sqlalchemy.testing import eq_, assert_raises_message
 from sqlalchemy import exc, util
 from sqlalchemy import inspection, inspect
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 
 class TestFixture(object):
     pass

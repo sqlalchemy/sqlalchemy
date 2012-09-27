@@ -1,23 +1,24 @@
-from test.lib.testing import eq_
+from sqlalchemy.testing import eq_
 from sqlalchemy.orm import mapper, relationship, create_session, \
     clear_mappers, sessionmaker, class_mapper, aliased,\
     Session, subqueryload
 from sqlalchemy.orm.mapper import _mapper_registry
 from sqlalchemy.orm.session import _sessions
 import operator
-from test.lib import testing, engines
+from sqlalchemy import testing
+from sqlalchemy.testing import engines
 from sqlalchemy import MetaData, Integer, String, ForeignKey, \
     PickleType, create_engine, Unicode
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 import sqlalchemy as sa
 from sqlalchemy.sql import column
 from sqlalchemy.processors import to_decimal_processor_factory, \
     to_unicode_processor_factory
-from test.lib.util import gc_collect
+from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.util.compat import decimal
 import gc
 import weakref
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 
 class A(fixtures.ComparableEntity):
     pass

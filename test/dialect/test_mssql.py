@@ -1,5 +1,5 @@
 # -*- encoding: utf-8
-from test.lib.testing import eq_
+from sqlalchemy.testing import eq_
 import datetime
 import os
 import re
@@ -12,8 +12,8 @@ from sqlalchemy.databases import mssql
 from sqlalchemy.dialects.mssql import pyodbc, mxodbc, pymssql
 from sqlalchemy.dialects.mssql.base import TIME
 from sqlalchemy.engine import url
-from test.lib import *
-from test.lib.testing import eq_, emits_warning_on, \
+from sqlalchemy.testing import *
+from sqlalchemy.testing import eq_, emits_warning_on, \
     assert_raises_message
 from sqlalchemy.util.compat import decimal
 from sqlalchemy.engine.reflection import Inspector
@@ -780,7 +780,7 @@ class QueryUnicodeTest(fixtures.TestBase):
         finally:
             meta.drop_all()
 
-from test.lib.assertsql import ExactSQL
+from sqlalchemy.testing.assertsql import ExactSQL
 class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
     __only_on__ = 'mssql'
 

@@ -1,10 +1,10 @@
-from test.lib.testing import assert_raises, assert_raises_message
+from sqlalchemy.testing import assert_raises, assert_raises_message
 import copy, threading
 from sqlalchemy import util, sql, exc
-from test.lib.testing import eq_, is_, ne_, fails_if
-from test.lib.util import gc_collect, picklers
+from sqlalchemy.testing import eq_, is_, ne_, fails_if
+from sqlalchemy.testing.util import gc_collect, picklers
 from sqlalchemy.util import classproperty
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 
 class OrderedDictTest(fixtures.TestBase):
     def test_odict(self):

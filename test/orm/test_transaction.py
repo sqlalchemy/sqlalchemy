@@ -1,15 +1,15 @@
 
-from test.lib.testing import eq_, assert_raises, \
+from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message, assert_warnings
 from sqlalchemy import *
 from sqlalchemy.orm import attributes
 from sqlalchemy import exc as sa_exc, event
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import *
-from test.lib.util import gc_collect
-from test.lib import testing
-from test.lib import fixtures
-from test.lib import engines
+from sqlalchemy.testing.util import gc_collect
+from sqlalchemy import testing
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import engines
 from test.orm._fixtures import FixtureTest
 
 

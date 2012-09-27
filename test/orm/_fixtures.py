@@ -1,10 +1,10 @@
 from sqlalchemy import MetaData, Integer, String, ForeignKey
 from sqlalchemy import util
-from test.lib.schema import Table
-from test.lib.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.schema import Column
 from sqlalchemy.orm import attributes, mapper, relationship, \
     backref, configure_mappers
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 
 __all__ = ()
 

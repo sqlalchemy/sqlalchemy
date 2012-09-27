@@ -5,10 +5,11 @@ from sqlalchemy import types as sql_types
 from sqlalchemy import schema, events, event, inspect
 from sqlalchemy import MetaData, Integer, String
 from sqlalchemy.engine.reflection import Inspector
-from test.lib import ComparesTables, \
-                            testing, engines, AssertsCompiledSQL, fixtures
-from test.lib.schema import Table, Column
-from test.lib.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import ComparesTables, \
+                            engines, AssertsCompiledSQL, fixtures
+from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy import testing
 
 metadata, users = None, None
 

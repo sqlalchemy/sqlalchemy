@@ -1,10 +1,11 @@
 from sqlalchemy import Integer, ForeignKey, String, MetaData
 from sqlalchemy.orm import relationship, mapper, create_session
 from sqlalchemy.ext.orderinglist import ordering_list
-from test.lib.testing import eq_
-from test.lib import fixtures, testing
-from test.lib.schema import Table, Column
-from test.lib.util import picklers
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy import testing
+from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing.util import picklers
 
 
 metadata = None

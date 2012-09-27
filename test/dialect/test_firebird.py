@@ -1,11 +1,12 @@
-from test.lib.testing import eq_, assert_raises_message
+from sqlalchemy.testing import eq_, assert_raises_message
 from sqlalchemy import exc
 from sqlalchemy.databases import firebird
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.sql import table, column
 from sqlalchemy import types as sqltypes
-from test.lib import fixtures, AssertsExecutionResults, AssertsCompiledSQL
-from test.lib import testing, engines
+from sqlalchemy.testing import fixtures, AssertsExecutionResults, AssertsCompiledSQL
+from sqlalchemy import testing
+from sqlalchemy.testing import engines
 from sqlalchemy import String, VARCHAR, NVARCHAR, Unicode, Integer,\
     func, insert, update, MetaData, select, Table, Column, text,\
     Sequence, Float

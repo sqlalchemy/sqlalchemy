@@ -1,9 +1,9 @@
-from test.lib.testing import eq_
+from sqlalchemy.testing import eq_
 from sqlalchemy import *
 from sqlalchemy.orm import *
 
-from test.lib import testing
-from test.lib import fixtures
+from sqlalchemy import testing
+from sqlalchemy.testing import fixtures
 
 
 class InheritTest(fixtures.MappedTest):

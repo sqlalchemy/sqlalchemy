@@ -1,25 +1,25 @@
 # coding: utf-8
 """Tests unitofwork operations."""
 
-from test.lib.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 import datetime
 import operator
 from sqlalchemy.orm import mapper as orm_mapper
 
 import sqlalchemy as sa
 from sqlalchemy import Integer, String, ForeignKey, literal_column, event
-from test.lib import engines, testing, pickleable
-from test.lib.schema import Table
-from test.lib.schema import Column
+from sqlalchemy.testing import engines, testing, pickleable
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
     column_property, attributes, Session, reconstructor, object_session,\
     exc as orm_exc
-from test.lib.testing import eq_, ne_
-from test.lib.util import gc_collect
-from test.lib import fixtures
+from sqlalchemy.testing import eq_, ne_
+from sqlalchemy.testing.util import gc_collect
+from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
-from test.lib import fixtures
-from test.lib.assertsql import AllOf, CompiledSQL
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertsql import AllOf, CompiledSQL
 import gc
 
 class UnitOfWorkTest(object):

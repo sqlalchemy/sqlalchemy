@@ -1,5 +1,6 @@
-from test.lib import fixtures, testing
-from test.lib.testing import assert_raises_message
+from sqlalchemy.testing import fixtures
+from sqlalchemy import testing
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.sql import column, desc, asc, literal, collate
 from sqlalchemy.sql.expression import BinaryExpression, \
                 ClauseList, Grouping, \

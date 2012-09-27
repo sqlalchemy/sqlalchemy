@@ -2,8 +2,8 @@ from sqlalchemy.engine import default
 from sqlalchemy.databases import *
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import Session
-from test.lib import AssertsCompiledSQL
-from test.lib.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import assert_raises_message
 from test.orm import _fixtures
 
 

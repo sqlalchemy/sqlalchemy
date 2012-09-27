@@ -1,4 +1,4 @@
-from ..bootstrap import config
+from . import config
 from . import assertions, schema
 from .util import adict
 from .engines import drop_all_tables

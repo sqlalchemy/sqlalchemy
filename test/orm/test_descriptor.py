@@ -5,8 +5,8 @@ from sqlalchemy.sql import column
 from sqlalchemy import Column, Integer, func, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.util import partial
-from test.lib import fixtures
-from test.lib.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import eq_
 
 class TestDescriptor(descriptor_props.DescriptorProperty):
     def __init__(self, cls, key, descriptor=None, doc=None,

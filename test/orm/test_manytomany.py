@@ -1,13 +1,13 @@
-from test.lib.testing import assert_raises, \
+from sqlalchemy.testing import assert_raises, \
     assert_raises_message, eq_
 import sqlalchemy as sa
-from test.lib import testing
+from sqlalchemy import testing
 from sqlalchemy import Integer, String, ForeignKey
-from test.lib.schema import Table
-from test.lib.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
     exc as orm_exc, sessionmaker
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 
 
 class M2MTest(fixtures.MappedTest):

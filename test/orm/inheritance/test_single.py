@@ -1,11 +1,11 @@
-from test.lib.testing import eq_
+from sqlalchemy.testing import eq_
 from sqlalchemy import *
 from sqlalchemy.orm import *
 
-from test.lib import testing
+from sqlalchemy import testing
 from test.orm import _fixtures
-from test.lib import fixtures
-from test.lib.schema import Table, Column
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Table, Column
 
 
 class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):

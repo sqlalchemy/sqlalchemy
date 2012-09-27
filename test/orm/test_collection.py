@@ -1,4 +1,4 @@
-from test.lib.testing import eq_
+from sqlalchemy.testing import eq_
 import sys
 from operator import and_
 
@@ -6,14 +6,14 @@ import sqlalchemy.orm.collections as collections
 from sqlalchemy.orm.collections import collection
 
 import sqlalchemy as sa
-from test.lib import testing
+from sqlalchemy import testing
 from sqlalchemy import Integer, String, ForeignKey, text
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy import util, exc as sa_exc
 from sqlalchemy.orm import create_session, mapper, relationship, \
     attributes, instrumentation
-from test.lib import fixtures
-from test.lib.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 
 class Canary(sa.orm.interfaces.AttributeExtension):
     def __init__(self):
@@ -1669,7 +1669,7 @@ class ColumnMappedWSerialize(fixtures.MappedTest):
         ])
 
     def _run_test(self, specs):
-        from test.lib.util import picklers
+        from sqlalchemy.testing.util import picklers
         for spec, obj, expected in specs:
             coll = collections.column_mapped_collection(spec)()
             eq_(

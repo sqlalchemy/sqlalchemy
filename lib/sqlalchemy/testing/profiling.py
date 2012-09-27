@@ -8,7 +8,7 @@ in a more fine-grained way than nose's profiling plugin.
 import os
 import sys
 from .util import gc_collect, decorator
-from ..bootstrap import config
+from . import config
 from nose import SkipTest
 import pstats
 import time
@@ -172,7 +172,10 @@ class ProfileStatsFile(object):
         "" % (self.fname)
 
     def _read(self):
-        profile_f = open(self.fname)
+        try:
+            profile_f = open(self.fname)
+        except IOError:
+            return
         for lineno, line in enumerate(profile_f):
             line = line.strip()
             if not line or line.startswith("#"):

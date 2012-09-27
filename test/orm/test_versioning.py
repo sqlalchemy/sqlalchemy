@@ -1,16 +1,16 @@
 import datetime
 import sqlalchemy as sa
-from test.lib import engines, testing
+from sqlalchemy.testing import engines, testing
 from sqlalchemy import Integer, String, Date, ForeignKey, literal_column, \
     orm, exc, select, TypeDecorator
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, Session, \
     create_session, column_property, sessionmaker,\
     exc as orm_exc
-from test.lib.testing import eq_, ne_, assert_raises, assert_raises_message
-from test.lib import fixtures
+from sqlalchemy.testing import eq_, ne_, assert_raises, assert_raises_message
+from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 
 
 _uuids = [

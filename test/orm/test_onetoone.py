@@ -1,9 +1,9 @@
 import sqlalchemy as sa
-from test.lib import testing
+from sqlalchemy import testing
 from sqlalchemy import Integer, String, ForeignKey
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 
 
 class O2OTest(fixtures.MappedTest):

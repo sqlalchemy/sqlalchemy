@@ -4,8 +4,8 @@ from sqlalchemy.orm import interfaces, create_session, joinedload, joinedload_al
     class_mapper
 from sqlalchemy import exc as sa_exc
 
-from test.lib import testing
-from test.lib.testing import assert_raises, eq_
+from sqlalchemy import testing
+from sqlalchemy.testing import assert_raises, eq_
 
 from _poly_fixtures import Company, Person, Engineer, Manager, Boss, \
     Machine, Paperwork, _Polymorphic,\

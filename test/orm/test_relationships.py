@@ -1,17 +1,17 @@
-from test.lib.testing import assert_raises, assert_raises_message
+from sqlalchemy.testing import assert_raises, assert_raises_message
 import datetime
 import sqlalchemy as sa
-from test.lib import testing
+from sqlalchemy import testing
 from sqlalchemy import Integer, String, ForeignKey, MetaData, and_
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, relation, \
                     backref, create_session, configure_mappers, \
                     clear_mappers, sessionmaker, attributes,\
                     Session, composite, column_property, foreign,\
                     remote
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
-from test.lib.testing import eq_, startswith_, AssertsCompiledSQL, is_
-from test.lib import fixtures
+from sqlalchemy.testing import eq_, startswith_, AssertsCompiledSQL, is_
+from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 from sqlalchemy import exc
 

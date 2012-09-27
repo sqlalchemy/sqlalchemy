@@ -1,14 +1,15 @@
-from test.lib.testing import eq_, assert_raises, assert_raises_message
-from test.lib import testing, engines
-from test.lib.schema import Table, Column
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy import testing
+from sqlalchemy.testing import engines
+from sqlalchemy.testing.schema import Table, Column
 from test.orm import _fixtures
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 from sqlalchemy import Integer, String, ForeignKey, func
 from sqlalchemy.orm import mapper, relationship, backref, \
                             create_session, unitofwork, attributes,\
                             Session, class_mapper, sync, exc as orm_exc
 
-from test.lib.assertsql import AllOf, CompiledSQL
+from sqlalchemy.testing.assertsql import AllOf, CompiledSQL
 
 class AssertsUOW(object):
     def _get_test_uow(self, session):

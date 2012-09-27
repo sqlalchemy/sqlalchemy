@@ -1,5 +1,5 @@
 # coding: utf-8
-from test.lib.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 import decimal
 import datetime, os, re
 from sqlalchemy import *
@@ -7,15 +7,17 @@ from sqlalchemy import exc, types, util, schema, dialects
 for name in dialects.__all__:
     __import__("sqlalchemy.dialects.%s" % name)
 from sqlalchemy.sql import operators, column, table
-from test.lib.testing import eq_
+from sqlalchemy.testing import eq_
 import sqlalchemy.engine.url as url
 from sqlalchemy.engine import default
-from test.lib.schema import Table, Column
-from test.lib import *
-from test.lib.util import picklers
+from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy import testing
+from sqlalchemy.testing import AssertsCompiledSQL, AssertsExecutionResults, \
+    engines, pickleable
+from sqlalchemy.testing.util import picklers
 from sqlalchemy.util.compat import decimal
-from test.lib.util import round_decimal
-from test.lib import fixtures
+from sqlalchemy.testing.util import round_decimal
+from sqlalchemy.testing import fixtures
 
 class AdaptTest(fixtures.TestBase):
     def _all_dialect_modules(self):

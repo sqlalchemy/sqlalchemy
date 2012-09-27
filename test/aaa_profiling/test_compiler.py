@@ -1,5 +1,5 @@
 from sqlalchemy import *
-from test.lib import *
+from sqlalchemy.testing import *
 from sqlalchemy.engine import default
 
 class CompileTest(fixtures.TestBase, AssertsExecutionResults):

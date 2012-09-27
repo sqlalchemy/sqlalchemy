@@ -1,19 +1,19 @@
-from test.lib.testing import assert_raises
-from test.lib.testing import assert_raises_message
-from test.lib.testing import emits_warning
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import emits_warning
 
 import pickle
 from sqlalchemy import Integer, String, UniqueConstraint, \
     CheckConstraint, ForeignKey, MetaData, Sequence, \
     ForeignKeyConstraint, ColumnDefault, Index, event,\
     events, Unicode
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy import schema, exc
 import sqlalchemy as tsa
-from test.lib import fixtures
-from test.lib import testing
-from test.lib.testing import ComparesTables, AssertsCompiledSQL
-from test.lib.testing import eq_, is_
+from sqlalchemy.testing import fixtures
+from sqlalchemy import testing
+from sqlalchemy.testing import ComparesTables, AssertsCompiledSQL
+from sqlalchemy.testing import eq_, is_
 
 class MetaDataTest(fixtures.TestBase, ComparesTables):
     def test_metadata_connect(self):

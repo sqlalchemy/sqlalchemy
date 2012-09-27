@@ -1,7 +1,7 @@
 import operator
 from nose import SkipTest
 from sqlalchemy.util import decorator
-from ..bootstrap import config
+from . import config
 from sqlalchemy import util
 
 
@@ -104,7 +104,7 @@ class SpecPredicate(Predicate):
         if self.op is not None:
             assert driver is None, "DBAPI version specs not supported yet"
 
-            version = _server_version()
+            version = _server_version(engine)
             oper = hasattr(self.op, '__call__') and self.op \
                         or self._ops[self.op]
             return oper(version, self.spec)
@@ -218,15 +218,12 @@ _as_predicate = Predicate.as_predicate
 def _is_excluded(db, op, spec):
     return SpecPredicate(db, op, spec)()
 
-def _server_version(bind=None):
+def _server_version(engine):
     """Return a server_version_info tuple."""
 
-    if bind is None:
-        bind = config.db
-
     # force metadata to be retrieved
-    conn = bind.connect()
-    version = getattr(bind.dialect, 'server_version_info', ())
+    conn = engine.connect()
+    version = getattr(engine.dialect, 'server_version_info', ())
     conn.close()
     return version
 
@@ -234,6 +231,9 @@ def db_spec(*dbs):
     return OrPredicate(
             Predicate.as_predicate(db) for db in dbs
         )
+
+def open(fn):
+    return fn
 
 @decorator
 def future(fn, *args, **kw):

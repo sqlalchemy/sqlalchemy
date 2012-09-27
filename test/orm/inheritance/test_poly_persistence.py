@@ -1,14 +1,14 @@
 """tests basic polymorphic mapper loading/saving, minimal relationships"""
 
-from test.lib.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy import exc as sa_exc
-from test.lib import Column, testing
-from test.lib.util import function_named
+from sqlalchemy.testing import Column, testing
+from sqlalchemy.testing.util import function_named
 from test.orm import _fixtures
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 
 class Person(fixtures.ComparableEntity):
     pass

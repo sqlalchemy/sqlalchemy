@@ -1,11 +1,11 @@
-from test.lib.testing import eq_
+from sqlalchemy.testing import eq_
 from sqlalchemy.util import pickle
 import sqlalchemy as sa
-from test.lib import testing
-from test.lib.util import picklers
-from test.lib.testing import assert_raises_message
+from sqlalchemy import testing
+from sqlalchemy.testing.util import picklers
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy import Integer, String, ForeignKey, exc, MetaData
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
                             sessionmaker, attributes, interfaces,\
                             clear_mappers, exc as orm_exc,\
@@ -13,9 +13,9 @@ from sqlalchemy.orm import mapper, relationship, create_session, \
                             lazyload, aliased
 from sqlalchemy.orm.collections import attribute_mapped_collection, \
     column_mapped_collection
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
-from test.lib.pickleable import User, Address, Dingaling, Order, \
+from sqlalchemy.testing.pickleable import User, Address, Dingaling, Order, \
     Child1, Child2, Parent, Screen, EmailUser
 
 
@@ -87,7 +87,7 @@ class PickleTest(fixtures.MappedTest):
 
         assert_raises_message(
             orm_exc.UnmappedInstanceError,
-            "Cannot deserialize object of type <class 'test.lib.pickleable.User'> - no mapper()",
+            "Cannot deserialize object of type <class 'sqlalchemy.testing.pickleable.User'> - no mapper()",
             pickle.loads, u1_pickled)
 
     def test_no_instrumentation(self):

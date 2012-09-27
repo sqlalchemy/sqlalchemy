@@ -2,11 +2,12 @@ from sqlalchemy.orm import Session, aliased, with_polymorphic, \
     contains_eager, joinedload, subqueryload, relationship,\
     subqueryload_all, joinedload_all
 from sqlalchemy import and_
-from test.lib import testing, fixtures
-from test.lib.testing import assert_raises, eq_
-from test.lib.schema import Column
+from sqlalchemy import testing
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import assert_raises, eq_
+from sqlalchemy.testing.schema import Column
 from sqlalchemy.engine import default
-from test.lib.entities import ComparableEntity
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy import Integer, String, ForeignKey
 from .inheritance._poly_fixtures import Company, Person, Engineer, Manager, Boss, \
     Machine, Paperwork, _PolymorphicFixtureBase, _Polymorphic,\

@@ -1,11 +1,14 @@
 from sqlalchemy import *
 from sqlalchemy.sql import table, column, ClauseElement, operators
 from sqlalchemy.sql.expression import  _clone, _from_objects
-from test.lib import *
-from sqlalchemy.sql.visitors import *
+from sqlalchemy.testing import fixtures, AssertsExecutionResults, \
+    AssertsCompiledSQL
+from sqlalchemy import testing
+from sqlalchemy.sql.visitors import ClauseVisitor, CloningVisitor, \
+    cloned_traverse, ReplacingCloningVisitor
 from sqlalchemy import util, exc
 from sqlalchemy.sql import util as sql_util
-from test.lib.testing import eq_, ne_, assert_raises
+from sqlalchemy.testing import eq_, ne_, assert_raises
 
 class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
     """test ClauseVisitor's traversal, particularly its

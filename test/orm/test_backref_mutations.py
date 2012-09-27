@@ -9,16 +9,16 @@ UPDATE in the database.
 
 """
 
-from test.lib.testing import assert_raises, assert_raises_message
+from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy import Integer, String, ForeignKey, Sequence, exc as sa_exc
-from test.lib.schema import Table
-from test.lib.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
     class_mapper, backref, sessionmaker, Session
 from sqlalchemy.orm import attributes, exc as orm_exc
-from test.lib import testing
-from test.lib.testing import eq_
-from test.lib import fixtures
+from sqlalchemy import testing
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 
 class O2MCollectionTest(_fixtures.FixtureTest):

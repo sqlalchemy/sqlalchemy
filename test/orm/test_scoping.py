@@ -1,12 +1,12 @@
-from test.lib.testing import assert_raises, assert_raises_message
+from sqlalchemy.testing import assert_raises, assert_raises_message
 import sqlalchemy as sa
-from test.lib import testing
+from sqlalchemy import testing
 from sqlalchemy.orm import scoped_session
 from sqlalchemy import Integer, String, ForeignKey
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, query
-from test.lib.testing import eq_
-from test.lib import fixtures
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 
 
 

@@ -2,12 +2,12 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 
 from sqlalchemy.ext.declarative import declarative_base
-from test.lib.testing import eq_, AssertsExecutionResults, assert_raises
-from test.lib import testing
-from test.lib import fixtures
+from sqlalchemy.testing import eq_, AssertsExecutionResults, assert_raises
+from sqlalchemy import testing
+from sqlalchemy.testing import fixtures
 from sqlalchemy.orm.attributes import instance_state
 from sqlalchemy.orm.exc import FlushError
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 
 engine = testing.db
 

@@ -1,12 +1,12 @@
-from test.lib.testing import eq_, assert_raises
+from sqlalchemy.testing import eq_, assert_raises
 from sqlalchemy.ext import declarative as decl
-from test.lib import testing
+from sqlalchemy import testing
 from sqlalchemy import MetaData, Integer, String, ForeignKey
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import relationship, create_session, \
     clear_mappers, \
     Session
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 
 class DeclarativeReflectionBase(fixtures.TablesTest):
     __requires__ = 'reflectable_autoincrement',

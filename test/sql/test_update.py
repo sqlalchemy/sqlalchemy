@@ -1,10 +1,11 @@
-from test.lib.testing import eq_, assert_raises_message, assert_raises, AssertsCompiledSQL
+from sqlalchemy.testing import eq_, assert_raises_message, assert_raises, AssertsCompiledSQL
 import datetime
 from sqlalchemy import *
 from sqlalchemy import exc, sql, util
 from sqlalchemy.engine import default, base
-from test.lib import *
-from test.lib.schema import Table, Column
+from sqlalchemy import testing
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.dialects import mysql
 
 class _UpdateFromTestBase(object):

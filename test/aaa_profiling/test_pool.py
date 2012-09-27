@@ -1,5 +1,5 @@
 from sqlalchemy import *
-from test.lib import *
+from sqlalchemy.testing import *
 from sqlalchemy.pool import QueuePool
 from sqlalchemy import pool as pool_module
 

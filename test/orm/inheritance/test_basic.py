@@ -1,18 +1,19 @@
 import warnings
-from test.lib.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import *
 from sqlalchemy import exc as sa_exc, util, event
 from sqlalchemy.orm import *
 from sqlalchemy.orm import exc as orm_exc, attributes
-from test.lib.assertsql import AllOf, CompiledSQL
+from sqlalchemy.testing.assertsql import AllOf, CompiledSQL
 from sqlalchemy.sql import table, column
-from test.lib import testing, engines
-from test.lib import fixtures
+from sqlalchemy import testing
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
-from test.lib.schema import Table, Column
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy import inspect
 from sqlalchemy.ext.declarative import declarative_base
-from test.lib.util import gc_collect
+from sqlalchemy.testing.util import gc_collect
 
 class O2MTest(fixtures.MappedTest):
     """deals with inheritance and one-to-many relationships"""

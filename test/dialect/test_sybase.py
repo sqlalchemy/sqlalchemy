@@ -1,7 +1,7 @@
 from sqlalchemy import *
 from sqlalchemy import sql
 from sqlalchemy.databases import sybase
-from test.lib import *
+from sqlalchemy.testing import *
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):

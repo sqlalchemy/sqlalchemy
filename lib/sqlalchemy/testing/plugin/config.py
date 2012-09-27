@@ -47,7 +47,8 @@ post_configure = []
 
 def _setup_options(opt, file_config):
     global options
-    options = opt
+    from sqlalchemy.testing import config
+    config.options = options = opt
 pre_configure.append(_setup_options)
 
 def _monkeypatch_cdecimal(options, file_config):
@@ -107,14 +108,17 @@ def _engine_pool(options, file_config):
 post_configure.append(_engine_pool)
 
 def _create_testing_engine(options, file_config):
-    from test.lib import engines, testing
+    from sqlalchemy.testing import engines, config
+    from sqlalchemy import testing
     global db
-    db = engines.testing_engine(db_url, db_opts)
-    testing.db = db
+    config.db = testing.db = db = engines.testing_engine(db_url, db_opts)
+    config.db_opts = db_opts
+    config.db_url = db_url
+
 post_configure.append(_create_testing_engine)
 
 def _prep_testing_database(options, file_config):
-    from test.lib import engines
+    from sqlalchemy.testing import engines
     from sqlalchemy import schema
 
     # also create alt schemas etc. here?
@@ -136,7 +140,7 @@ def _prep_testing_database(options, file_config):
 post_configure.append(_prep_testing_database)
 
 def _set_table_options(options, file_config):
-    from test.lib import schema
+    from sqlalchemy.testing import schema
 
     table_options = schema.table_options
     for spec in options.tableopts:
@@ -151,13 +155,14 @@ def _reverse_topological(options, file_config):
     if options.reversetop:
         from sqlalchemy.orm import unitofwork, session, mapper, dependency
         from sqlalchemy.util import topological
-        from test.lib.util import RandomSet
+        from sqlalchemy.testing.util import RandomSet
         topological.set = unitofwork.set = session.set = mapper.set = \
                 dependency.set = RandomSet
 post_configure.append(_reverse_topological)
 
 def _requirements(options, file_config):
-    from ..lib import testing
+    from sqlalchemy.testing import config
+    from sqlalchemy import testing
     requirement_cls = file_config.get('sqla_testing', "requirement_cls")
 
     modname, clsname = requirement_cls.split(":")
@@ -167,18 +172,15 @@ def _requirements(options, file_config):
     mod = __import__(modname)
     for component in modname.split(".")[1:]:
         mod = getattr(mod, component)
-
     req_cls = getattr(mod, clsname)
-    global requirements
-    requirements = req_cls(db, sys.modules[__name__])
-    testing.requires = requirements
+    config.requirements = testing.requires = req_cls(db, config)
 
 post_configure.append(_requirements)
 
-
 def _setup_profiling(options, file_config):
-    from ..lib import profiling
+    from sqlalchemy.testing import profiling
     profiling._profile_stats = profiling.ProfileStatsFile(
                 file_config.get('sqla_testing', 'profile_file'))
 
 post_configure.append(_setup_profiling)
+

@@ -1,14 +1,16 @@
 """Test various algorithmic properties of selectables."""
 
-from test.lib.testing import eq_, assert_raises, \
+from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message, is_
 from sqlalchemy import *
-from test.lib import *
+from sqlalchemy.testing import fixtures, AssertsCompiledSQL, \
+    AssertsExecutionResults
+from sqlalchemy import testing
 from sqlalchemy.sql import util as sql_util, visitors
 from sqlalchemy import exc
 from sqlalchemy.sql import table, column, null
 from sqlalchemy import util
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 
 metadata = MetaData()
 table1 = Table('table1', metadata,

@@ -1,8 +1,8 @@
-from test.lib.testing import eq_, assert_raises, assert_raises_message
-from test.lib import testing
-from test.lib.schema import Table, Column
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy import testing
+from sqlalchemy.testing.schema import Table, Column
 from test.orm import _fixtures
-from test.lib import fixtures
+from sqlalchemy.testing import fixtures
 from sqlalchemy import Integer, String, ForeignKey, func
 from sqlalchemy.orm import mapper, relationship, backref, \
                             create_session, unitofwork, attributes,\

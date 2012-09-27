@@ -1,15 +1,15 @@
 """tests the "bind" attribute/argument across schema and SQL,
 including the deprecated versions of these arguments"""
 
-from test.lib.testing import eq_, assert_raises
+from sqlalchemy.testing import eq_, assert_raises
 from sqlalchemy import engine, exc
 from sqlalchemy import MetaData, ThreadLocalMetaData
 from sqlalchemy import Integer, text
-from test.lib.schema import Table
-from test.lib.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.schema import Column
 import sqlalchemy as sa
-from test.lib import testing
-from test.lib import fixtures
+from sqlalchemy import testing
+from sqlalchemy.testing import fixtures
 
 class BindTest(fixtures.TestBase):
     def test_create_drop_explicit(self):

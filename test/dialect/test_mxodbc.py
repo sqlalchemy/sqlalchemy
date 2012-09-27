@@ -1,7 +1,7 @@
 from sqlalchemy import *
-from test.lib.testing import eq_
-from test.lib import engines
-from test.lib import fixtures
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import fixtures
 
 # TODO: we should probably build mock bases for
 # these to share with test_reconnect, test_parseconnect

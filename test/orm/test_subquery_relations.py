@@ -1,15 +1,15 @@
-from test.lib.testing import eq_, is_, is_not_
-from test.lib import testing
-from test.lib.schema import Table, Column
+from sqlalchemy.testing import eq_, is_, is_not_
+from sqlalchemy import testing
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy import Integer, String, ForeignKey, bindparam, inspect
 from sqlalchemy.orm import backref, subqueryload, subqueryload_all, \
     mapper, relationship, clear_mappers, create_session, lazyload, \
     aliased, joinedload, deferred, undefer, eagerload_all,\
     Session
-from test.lib.testing import eq_, assert_raises, \
+from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message
-from test.lib.assertsql import CompiledSQL
-from test.lib import fixtures
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 import sqlalchemy as sa
 
