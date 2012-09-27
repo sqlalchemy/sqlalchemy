@@ -49,7 +49,7 @@ class NoseSQLAlchemy(Plugin):
             help="turn on debug logging for <LOG> (multiple OK)")
         opt("--require", action="append", dest="require", default=[],
             help="require a particular driver or module version (multiple OK)")
-        opt("--db", action="store", dest="db", default="sqlite",
+        opt("--db", action="store", dest="db", default="default",
             help="Use prefab database uri")
         opt('--dbs', action='callback', callback=_list_dbs,
             help="List available prefab dbs")

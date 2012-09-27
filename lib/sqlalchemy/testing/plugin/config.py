@@ -59,7 +59,7 @@ pre_configure.append(_monkeypatch_cdecimal)
 
 def _engine_uri(options, file_config):
     global db_label, db_url
-    db_label = 'sqlite'
+
     if options.dburi:
         db_url = options.dburi
         db_label = db_url[:db_url.index(':')]
