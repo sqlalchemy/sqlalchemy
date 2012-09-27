@@ -47,8 +47,7 @@ post_configure = []
 
 def _setup_options(opt, file_config):
     global options
-    from sqlalchemy.testing import config
-    config.options = options = opt
+    options = opt
 pre_configure.append(_setup_options)
 
 def _monkeypatch_cdecimal(options, file_config):
@@ -176,6 +175,11 @@ def _requirements(options, file_config):
     config.requirements = testing.requires = req_cls(db, config)
 
 post_configure.append(_requirements)
+
+def _post_setup_options(opt, file_config):
+    from sqlalchemy.testing import config
+    config.options = options
+post_configure.append(_post_setup_options)
 
 def _setup_profiling(options, file_config):
     from sqlalchemy.testing import profiling
