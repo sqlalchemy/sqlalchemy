@@ -7,7 +7,8 @@ from sqlalchemy.orm import mapper, relationship, create_session, \
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing import eq_, ne_
-from sqlalchemy.testing import fixtures, testing
+from sqlalchemy.testing import fixtures
+from sqlalchemy import testing
 
 
 class InitTest(fixtures.ORMTest):

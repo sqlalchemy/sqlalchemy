@@ -5,7 +5,8 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy import exc as sa_exc
-from sqlalchemy.testing import Column, testing
+from sqlalchemy.testing.schema import Column
+from sqlalchemy import testing
 from sqlalchemy.testing.util import function_named
 from test.orm import _fixtures
 from sqlalchemy.testing import fixtures

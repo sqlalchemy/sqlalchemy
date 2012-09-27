@@ -5,7 +5,8 @@ from sqlalchemy.orm import create_session, relationship, mapper, \
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.engine import default
 
-from sqlalchemy.testing import AssertsCompiledSQL, fixtures, testing
+from sqlalchemy.testing import AssertsCompiledSQL, fixtures
+from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.testing import assert_raises, eq_
 

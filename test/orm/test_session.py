@@ -7,13 +7,13 @@ import inspect
 from sqlalchemy.orm import create_session, sessionmaker, attributes, \
     make_transient, Session
 import sqlalchemy as sa
-from sqlalchemy.testing import engines, testing, config
+from sqlalchemy.testing import engines, config
+from sqlalchemy import testing
 from sqlalchemy import Integer, String, Sequence
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, backref, joinedload, \
     exc as orm_exc, object_session
 from sqlalchemy.util import pypy
-from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 

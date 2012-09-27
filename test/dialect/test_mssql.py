@@ -12,7 +12,9 @@ from sqlalchemy.databases import mssql
 from sqlalchemy.dialects.mssql import pyodbc, mxodbc, pymssql
 from sqlalchemy.dialects.mssql.base import TIME
 from sqlalchemy.engine import url
-from sqlalchemy.testing import *
+from sqlalchemy.testing import fixtures, AssertsCompiledSQL, \
+        AssertsExecutionResults, ComparesTables
+from sqlalchemy import testing
 from sqlalchemy.testing import eq_, emits_warning_on, \
     assert_raises_message
 from sqlalchemy.util.compat import decimal

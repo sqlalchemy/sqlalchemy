@@ -11,7 +11,8 @@ from sqlalchemy.testing import eq_
 
 import sqlalchemy as sa
 from sqlalchemy import testing
-from sqlalchemy.testing import AssertsCompiledSQL, Column, engines
+from sqlalchemy.testing import AssertsCompiledSQL, engines
+from sqlalchemy.testing.schema import Column
 
 from test.orm import _fixtures
 

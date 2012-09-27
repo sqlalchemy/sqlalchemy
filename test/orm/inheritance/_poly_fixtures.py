@@ -6,7 +6,8 @@ from sqlalchemy.orm import interfaces, relationship, mapper, \
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.engine import default
 
-from sqlalchemy.testing import AssertsCompiledSQL, fixtures, testing
+from sqlalchemy.testing import AssertsCompiledSQL, fixtures
+from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.testing import assert_raises, eq_
 

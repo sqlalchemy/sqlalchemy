@@ -1,9 +1,9 @@
 from sqlalchemy import *
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import *
-from sqlalchemy.testing import *
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import fixtures
+from sqlalchemy import testing
 
 
 class CompileTest(fixtures.ORMTest):

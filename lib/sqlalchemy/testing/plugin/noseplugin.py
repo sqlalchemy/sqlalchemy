@@ -115,8 +115,7 @@ class NoseSQLAlchemy(Plugin):
         return ""
 
     def wantFunction(self, fn):
-        if fn.__module__.startswith('test.lib') or \
-            fn.__module__.startswith('test.bootstrap'):
+        if fn.__module__.startswith('sqlalchemy.testing'):
             return False
 
     def wantClass(self, cls):

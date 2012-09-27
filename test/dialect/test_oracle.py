@@ -4,7 +4,8 @@ from sqlalchemy.testing import eq_
 from sqlalchemy import *
 from sqlalchemy import types as sqltypes, exc
 from sqlalchemy.sql import table, column
-from sqlalchemy.testing import *
+from sqlalchemy.testing import fixtures, AssertsExecutionResults, AssertsCompiledSQL
+from sqlalchemy import testing
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.dialects.oracle import cx_oracle, base as oracle

@@ -1,7 +1,8 @@
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
-from sqlalchemy.testing import fixtures, testing
+from sqlalchemy.testing import fixtures
 from sqlalchemy import Integer, String, ForeignKey, or_, and_, exc, select, func
 from sqlalchemy.orm import mapper, relationship, backref, Session, joinedload
+from sqlalchemy import testing
 
 from sqlalchemy.testing.schema import Table, Column
 

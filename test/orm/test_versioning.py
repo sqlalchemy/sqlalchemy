@@ -1,6 +1,7 @@
 import datetime
 import sqlalchemy as sa
-from sqlalchemy.testing import engines, testing
+from sqlalchemy.testing import engines
+from sqlalchemy import testing
 from sqlalchemy import Integer, String, Date, ForeignKey, literal_column, \
     orm, exc, select, TypeDecorator
 from sqlalchemy.testing.schema import Table, Column

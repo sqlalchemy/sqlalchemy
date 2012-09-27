@@ -3,24 +3,19 @@
 
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 import datetime
-import operator
 from sqlalchemy.orm import mapper as orm_mapper
 
 import sqlalchemy as sa
 from sqlalchemy import Integer, String, ForeignKey, literal_column, event
-from sqlalchemy.testing import engines, testing, pickleable
+from sqlalchemy.testing import engines
+from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
-    column_property, attributes, Session, reconstructor, object_session,\
-    exc as orm_exc
-from sqlalchemy.testing import eq_, ne_
-from sqlalchemy.testing.util import gc_collect
+    column_property, Session, exc as orm_exc
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
-from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import AllOf, CompiledSQL
-import gc
 
 class UnitOfWorkTest(object):
     pass

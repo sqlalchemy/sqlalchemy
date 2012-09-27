@@ -1,5 +1,6 @@
 from sqlalchemy import *
-from sqlalchemy.testing import *
+from sqlalchemy.testing import fixtures, AssertsExecutionResults, profiling
+from sqlalchemy import testing
 from sqlalchemy.testing import eq_
 NUM_FIELDS = 10
 NUM_RECORDS = 1000

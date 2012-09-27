@@ -8,7 +8,8 @@ from sqlalchemy import *
 from sqlalchemy import util
 from sqlalchemy.orm import *
 from sqlalchemy.orm.interfaces import MANYTOONE
-from sqlalchemy.testing import AssertsExecutionResults, testing
+from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy import testing
 from sqlalchemy.testing.util import function_named
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures

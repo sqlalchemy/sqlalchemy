@@ -8,7 +8,9 @@ from sqlalchemy import exc, sql, schema, pool, types as sqltypes
 from sqlalchemy.dialects.sqlite import base as sqlite, \
     pysqlite as pysqlite_dialect
 from sqlalchemy.engine.url import make_url
-from sqlalchemy.testing import *
+from sqlalchemy.testing import fixtures, AssertsCompiledSQL, \
+    AssertsExecutionResults, engines
+from sqlalchemy import testing
 import os
 from sqlalchemy.schema import CreateTable
 

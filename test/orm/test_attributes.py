@@ -3,13 +3,13 @@ from sqlalchemy.orm import attributes, instrumentation, exc as orm_exc
 from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.interfaces import AttributeExtension
 from sqlalchemy import exc as sa_exc
-from sqlalchemy.testing import *
 from sqlalchemy.testing import eq_, ne_, assert_raises, \
     assert_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.util import gc_collect, all_partial_orderings
 from sqlalchemy.util import jython
 from sqlalchemy import event
+from sqlalchemy import testing
 
 # global for pickling tests
 MyTest = None
