@@ -737,7 +737,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         subq_mapper = orm_util._class_to_mapper(subq_path[0])
 
         # determine attributes of the leftmost mapper
-        if self.parent.isa(subq_mapper) and self.key==subq_path[1]:
+        if self.parent.isa(subq_mapper) and self.key == subq_path[1]:
             leftmost_mapper, leftmost_prop = \
                                     self.parent, self.parent_property
         else:

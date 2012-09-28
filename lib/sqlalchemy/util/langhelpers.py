@@ -862,6 +862,9 @@ class _symbol(int):
     def __reduce__(self):
         return symbol, (self.name, "x", int(self))
 
+    def __str__(self):
+        return repr(self)
+
     def __repr__(self):
         return "<symbol '%s>" % self.name
 

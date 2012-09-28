@@ -170,6 +170,12 @@ class JoinCondition(object):
         log.info('%s local/remote pairs [%s]', self.prop,
                          ','.join('(%s / %s)' % (l, r) for (l, r) in
                          self.local_remote_pairs))
+        log.info('%s remote columns [%s]', self.prop,
+                        ','.join('%s' % col for col in self.remote_columns)
+            )
+        log.info('%s local columns [%s]', self.prop,
+                        ','.join('%s' % col for col in self.local_columns)
+            )
         log.info('%s relationship direction %s', self.prop,
                          self.direction)
 
@@ -265,6 +271,14 @@ class JoinCondition(object):
                         "columns which should be counted as containing a "
                         "foreign key reference to the parent table."
                         % self.prop)
+
+    @property
+    def primaryjoin_minus_local(self):
+        return _deep_deannotate(self.primaryjoin, values=("local", "remote"))
+
+    @property
+    def secondaryjoin_minus_local(self):
+        return _deep_deannotate(self.secondaryjoin, values=("local", "remote"))
 
     @util.memoized_property
     def primaryjoin_reverse_remote(self):
