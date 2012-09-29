@@ -144,7 +144,11 @@ class NoseSQLAlchemy(Plugin):
             test_suite.__name__ = cls.__name__
             for requirement in cls.__requires__:
                 check = getattr(config.requirements, requirement)
-                check(test_suite)()
+                try:
+                    check(test_suite)()
+                except TypeError:
+                    import pdb
+                    pdb.set_trace()
 
         if cls.__unsupported_on__:
             spec = exclusions.db_spec(*cls.__unsupported_on__)

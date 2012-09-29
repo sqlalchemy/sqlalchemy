@@ -68,4 +68,11 @@ class SuiteRequirements(Requirements):
     def sequences(self):
         """Target database must support SEQUENCEs."""
 
-        return self.config.db.dialect.supports_sequences
+        return exclusions.only_if([
+                lambda: self.config.db.dialect.supports_sequences
+            ], "no SEQUENCE support")
+
+    @property
+    def reflects_pk_names(self):
+        return exclusions.closed()
+

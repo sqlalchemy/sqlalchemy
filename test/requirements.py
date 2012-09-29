@@ -220,13 +220,6 @@ class DefaultRequirements(SuiteRequirements):
                     "firebird"
                 ], "no schema support")
 
-    @property
-    def sequences(self):
-        """Target database must support SEQUENCEs."""
-
-        return only_if([
-                "postgresql", "firebird", "oracle"
-            ], "no SEQUENCE support")
 
     @property
     def update_nowait(self):

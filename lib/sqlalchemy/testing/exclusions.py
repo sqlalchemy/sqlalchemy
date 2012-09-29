@@ -86,7 +86,7 @@ class Predicate(object):
 class BooleanPredicate(Predicate):
     def __init__(self, value, description=None):
         self.value = value
-        self.description = description
+        self.description = description or "boolean %s" % value
 
     def __call__(self):
         return self.value
