@@ -8,7 +8,8 @@ import sys
 import time
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy.testing import *
+from sqlalchemy.testing import fixtures, engines, profiling
+from sqlalchemy import testing
 ITERATIONS = 1
 dbapi_session = engines.ReplayableSession()
 metadata = None
