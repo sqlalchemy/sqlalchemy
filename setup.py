@@ -22,8 +22,6 @@ except ImportError:
     except ImportError:  # Python 2
         from distutils.command.build_py import build_py
 
-basedir, fname = os.path.split(__file__)
-
 cmdclass = {}
 pypy = hasattr(sys, 'pypy_version_info')
 jython = sys.platform.startswith('java')
@@ -42,14 +40,11 @@ elif sys.version_info >= (3, 0):
 
 ext_modules = [
     Extension('sqlalchemy.cprocessors',
-           sources=[os.path.join(basedir,
-                        'lib/sqlalchemy/cextension/processors.c')]),
+           sources=['lib/sqlalchemy/cextension/processors.c']),
     Extension('sqlalchemy.cresultproxy',
-           sources=[os.path.join(basedir,
-                        'lib/sqlalchemy/cextension/resultproxy.c')]),
+           sources=['lib/sqlalchemy/cextension/resultproxy.c']),
     Extension('sqlalchemy.cutils',
-           sources=[os.path.join(basedir,
-                        'lib/sqlalchemy/cextension/utils.c')])
+           sources=['lib/sqlalchemy/cextension/utils.c'])
     ]
 
 ext_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
@@ -93,7 +88,6 @@ def status_msgs(*msgs):
 
 def find_packages(location):
     packages = []
-    location = os.path.join(basedir, location)
     for pkg in ['sqlalchemy']:
         for _dir, subdirectories, files in (
                 os.walk(os.path.join(location, pkg))
@@ -133,7 +127,7 @@ def run_setup(with_cext):
           author_email="mike_mp@zzzcomputing.com",
           url="http://www.sqlalchemy.org",
           packages=find_packages('lib'),
-          package_dir={'': os.path.join(basedir, 'lib')},
+          package_dir={'': 'lib'},
           license="MIT License",
           cmdclass=cmdclass,
 
