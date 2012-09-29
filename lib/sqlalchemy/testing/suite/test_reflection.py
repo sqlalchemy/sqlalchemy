@@ -16,7 +16,6 @@ from sqlalchemy import event
 
 metadata, users = None, None
 
-
 class HasTableTest(fixtures.TablesTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -68,7 +67,6 @@ class HasSequenceTest(fixtures.TestBase):
             schema=test_schema), False)
         eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'),
             False)
-
 
 
 class ComponentReflectionTest(fixtures.TablesTest):
