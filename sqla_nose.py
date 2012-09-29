@@ -7,9 +7,11 @@ installs SQLAlchemy's testing plugin into the local environment.
 
 """
 import sys
+import os
+
 
 from os import path
-for pth in ['.', './lib', './lib/sqlalchemy/testing']:
+for pth in ['.', './lib', './test']:
     sys.path.insert(0, path.join(path.dirname(path.abspath(__file__)), pth))
 
 
