@@ -200,15 +200,6 @@ class DefaultRequirements(SuiteRequirements):
                     ("informix", "<", (11, 55, "xC3"))
                     ], "savepoints not supported")
 
-    @property
-    def denormalized_names(self):
-        """Target database must have 'denormalized', i.e.
-        UPPERCASE as case insensitive names."""
-
-        return skip_if(
-                    lambda: not self.db.dialect.requires_name_normalize,
-                    "Backend does not require denormalized names."
-                )
 
     @property
     def schemas(self):
@@ -262,12 +253,6 @@ class DefaultRequirements(SuiteRequirements):
         return only_if([
                     "postgresql", "mssql", "oracle"
                 ], "Backend does not support window functions")
-
-    @property
-    def returning(self):
-        return only_if(["postgresql", "mssql", "oracle", "firebird"],
-                "'returning' not supported by database"
-            )
 
     @property
     def two_phase_transactions(self):

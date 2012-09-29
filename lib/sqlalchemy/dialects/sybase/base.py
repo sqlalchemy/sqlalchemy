@@ -245,10 +245,10 @@ class SybaseExecutionContext(default.DefaultExecutionContext):
 
 
     def post_exec(self):
-       if self.isddl:
+        if self.isddl:
             self.set_ddl_autocommit(self.root_connection, False)
 
-       if self._enable_identity_insert:
+        if self._enable_identity_insert:
             self.cursor.execute(
                         "SET IDENTITY_INSERT %s OFF" %
                             self.dialect.identifier_preparer.

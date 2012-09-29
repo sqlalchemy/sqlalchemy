@@ -41,7 +41,20 @@ class SuiteRequirements(Requirements):
     def returning(self):
         """target platform supports RETURNING."""
 
-        return exclusions.closed()
+        return exclusions.only_if(
+                lambda: self.config.db.dialect.implicit_returning,
+                "'returning' not supported by database"
+            )
+
+    @property
+    def denormalized_names(self):
+        """Target database must have 'denormalized', i.e.
+        UPPERCASE as case insensitive names."""
+
+        return exclusions.skip_if(
+                    lambda: not self.db.dialect.requires_name_normalize,
+                    "Backend does not require denormalized names."
+                )
 
     @property
     def dbapi_lastrowid(self):
@@ -76,3 +89,22 @@ class SuiteRequirements(Requirements):
     def reflects_pk_names(self):
         return exclusions.closed()
 
+    @property
+    def table_reflection(self):
+        return exclusions.open()
+
+    @property
+    def view_reflection(self):
+        return self.views
+
+    @property
+    def schema_reflection(self):
+        return self.schemas
+
+    @property
+    def constraint_reflection(self):
+        return exclusions.open()
+
+    @property
+    def index_reflection(self):
+        return exclusions.open()
