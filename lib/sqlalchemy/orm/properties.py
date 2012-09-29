@@ -1167,8 +1167,10 @@ class RelationshipProperty(StrategizedProperty):
                 # for many to many, just switch primaryjoin/
                 # secondaryjoin.   use the annotated
                 # pj/sj on the _join_condition.
-                pj = kwargs.pop('primaryjoin', self._join_condition.secondaryjoin)
-                sj = kwargs.pop('secondaryjoin', self._join_condition.primaryjoin)
+                pj = kwargs.pop('primaryjoin',
+                                self._join_condition.secondaryjoin_minus_local)
+                sj = kwargs.pop('secondaryjoin',
+                                self._join_condition.primaryjoin_minus_local)
             else:
                 pj = kwargs.pop('primaryjoin',
                         self._join_condition.primaryjoin_reverse_remote)

@@ -2706,9 +2706,9 @@ class InvalidRelationshipEscalationTestM2M(_RelationshipErrors, fixtures.MappedT
         mapper(Foo, foos, properties={
                         'bars': relationship(Bar,
                                 secondary=foobars_with_many_columns,
-                              primaryjoin=foos.c.id==
+                              primaryjoin=foos.c.id ==
                                         foobars_with_many_columns.c.fid,
-                              secondaryjoin=foobars_with_many_columns.c.bid==
+                              secondaryjoin=foobars_with_many_columns.c.bid ==
                                         bars.c.id)})
         mapper(Bar, bars)
         sa.orm.configure_mappers()
@@ -2720,6 +2720,31 @@ class InvalidRelationshipEscalationTestM2M(_RelationshipErrors, fixtures.MappedT
             Foo.bars.property.secondary_synchronize_pairs,
             [(bars.c.id, foobars_with_many_columns.c.bid)]
         )
+
+    def test_local_col_setup(self):
+        foobars_with_fks, bars, Bar, Foo, foos = (
+                                self.tables.foobars_with_fks,
+                                self.tables.bars,
+                                self.classes.Bar,
+                                self.classes.Foo,
+                                self.tables.foos)
+
+        # ensure m2m backref is set up with correct annotations
+        # [ticket:2578]
+        mapper(Foo, foos, properties={
+            'bars': relationship(Bar, secondary=foobars_with_fks, backref="foos")
+            })
+        mapper(Bar, bars)
+        sa.orm.configure_mappers()
+        eq_(
+            Foo.bars.property._join_condition.local_columns,
+            set([foos.c.id])
+        )
+        eq_(
+            Bar.foos.property._join_condition.local_columns,
+            set([bars.c.id])
+        )
+
 
 
     def test_bad_primaryjoin(self):
