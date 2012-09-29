@@ -89,7 +89,7 @@ class NoseSQLAlchemy(Plugin):
                 help="Write/update profiling data.")
         global file_config
         file_config = ConfigParser.ConfigParser()
-        file_config.read(['setup.cfg', 'test.cfg', os.path.expanduser('~/.satest.cfg')])
+        file_config.read(['setup.cfg', 'test.cfg'])
         config.file_config = file_config
 
     def configure(self, options, conf):
