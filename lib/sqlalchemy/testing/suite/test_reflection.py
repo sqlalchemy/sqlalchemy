@@ -11,7 +11,7 @@ from sqlalchemy.testing import eq_, assert_raises_message
 from sqlalchemy import testing
 from .. import config
 
-from sqlalchemy.schema import DDL
+from sqlalchemy.schema import DDL, Index
 from sqlalchemy import event
 
 metadata, users = None, None
@@ -72,63 +72,58 @@ class HasSequenceTest(fixtures.TestBase):
 
 
 class ComponentReflectionTest(fixtures.TablesTest):
+    run_inserts = run_deletes = None
 
     @classmethod
     def define_tables(cls, metadata):
+        cls.define_reflected_tables(metadata, None)
         if testing.requires.schemas.enabled:
-            to_build = [
-               (None, ""),
-                ("test_schema", "test_schema."),
-            ]
+            cls.define_reflected_tables(metadata, "test_schema")
+
+    @classmethod
+    def define_reflected_tables(cls, metadata, schema):
+        if schema:
+            schema_prefix = schema + "."
         else:
-            to_build = [(None, "")]
+            schema_prefix = ""
 
+        users = Table('users', metadata,
+            Column('user_id', sa.INT, primary_key=True),
+            Column('test1', sa.CHAR(5), nullable=False),
+            Column('test2', sa.Float(5), nullable=False),
+            Column('parent_user_id', sa.Integer,
+                        sa.ForeignKey('%susers.user_id' % schema_prefix)),
+            schema=schema,
+            test_needs_fk=True,
+        )
+        Table("dingalings", metadata,
+                  Column('dingaling_id', sa.Integer, primary_key=True),
+                  Column('address_id', sa.Integer,
+                    sa.ForeignKey('%semail_addresses.address_id' %
+                                    schema_prefix)),
+                  Column('data', sa.String(30)),
+                  schema=schema,
+                  test_needs_fk=True,
+            )
+        Table('email_addresses', metadata,
+            Column('address_id', sa.Integer),
+            Column('remote_user_id', sa.Integer,
+                   sa.ForeignKey(users.c.user_id)),
+            Column('email_address', sa.String(20)),
+            sa.PrimaryKeyConstraint('address_id', name='email_ad_pk'),
+            schema=schema,
+            test_needs_fk=True,
+        )
 
-        for schema, schema_prefix in to_build:
-            users = Table('users', metadata,
-                Column('user_id', sa.INT, primary_key=True),
-                Column('test1', sa.CHAR(5), nullable=False),
-                Column('test2', sa.Float(5), nullable=False),
-                Column('parent_user_id', sa.Integer,
-                            sa.ForeignKey('%susers.user_id' % schema_prefix)),
-                schema=schema,
-                test_needs_fk=True,
-            )
-            Table("dingalings", metadata,
-                      Column('dingaling_id', sa.Integer, primary_key=True),
-                      Column('address_id', sa.Integer,
-                        sa.ForeignKey('%semail_addresses.address_id' %
-                                        schema_prefix)),
-                      Column('data', sa.String(30)),
-                      schema=schema,
-                      test_needs_fk=True,
-                )
-            Table('email_addresses', metadata,
-                Column('address_id', sa.Integer),
-                Column('remote_user_id', sa.Integer,
-                       sa.ForeignKey(users.c.user_id)),
-                Column('email_address', sa.String(20)),
-                sa.PrimaryKeyConstraint('address_id', name='email_ad_pk'),
-                schema=schema,
-                test_needs_fk=True,
-            )
-
-            fullname = 'users'
-            if schema:
-                fullname = "%s.%s" % (schema, 'users')
-            event.listen(
-                metadata,
-                "after_create",
-                DDL("CREATE INDEX users_t_idx ON %s (test1, test2)" % fullname)
-            )
+        Index("users_t_idx", users.c.test1, users.c.test2)
 
         for table_name in ('users', 'email_addresses'):
             fullname = table_name
             if schema:
                 fullname = "%s.%s" % (schema, table_name)
             view_name = fullname + '_v'
-            query = "CREATE VIEW %s AS SELECT * FROM %s" % (view_name,
-                                                                       fullname)
+            query = "CREATE VIEW %s AS SELECT * FROM %s" % (
+                                view_name, fullname)
             event.listen(
                 metadata,
                 "after_create",
@@ -139,7 +134,6 @@ class ComponentReflectionTest(fixtures.TablesTest):
                 "before_drop",
                 DDL("DROP VIEW %s" % view_name)
             )
-
 
     @testing.requires.schema_reflection
     def test_get_schema_names(self):
@@ -376,19 +370,15 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.provide_metadata
     def _test_get_view_definition(self, schema=None):
         meta = self.metadata
-        users, addresses, dingalings = createTables(meta, schema)
-        meta.create_all()
-        _create_views(meta.bind, schema)
+        users, addresses, dingalings = self.tables.users, \
+                    self.tables.email_addresses, self.tables.dingalings
         view_name1 = 'users_v'
         view_name2 = 'email_addresses_v'
-        try:
-            insp = inspect(meta.bind)
-            v1 = insp.get_view_definition(view_name1, schema=schema)
-            self.assert_(v1)
-            v2 = insp.get_view_definition(view_name2, schema=schema)
-            self.assert_(v2)
-        finally:
-            _drop_views(meta.bind, schema)
+        insp = inspect(meta.bind)
+        v1 = insp.get_view_definition(view_name1, schema=schema)
+        self.assert_(v1)
+        v2 = insp.get_view_definition(view_name2, schema=schema)
+        self.assert_(v2)
 
     @testing.requires.view_reflection
     def test_get_view_definition(self):
@@ -403,8 +393,8 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.provide_metadata
     def _test_get_table_oid(self, table_name, schema=None):
         meta = self.metadata
-        users, addresses, dingalings = createTables(meta, schema)
-        meta.create_all()
+        users, addresses, dingalings = self.tables.users, \
+                    self.tables.email_addresses, self.tables.dingalings
         insp = inspect(meta.bind)
         oid = insp.get_table_oid(table_name, schema)
         self.assert_(isinstance(oid, (int, long)))
