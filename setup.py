@@ -22,6 +22,8 @@ except ImportError:
     except ImportError:  # Python 2
         from distutils.command.build_py import build_py
 
+basedir, fname = os.path.split(__file__)
+
 cmdclass = {}
 pypy = hasattr(sys, 'pypy_version_info')
 jython = sys.platform.startswith('java')
@@ -40,23 +42,26 @@ elif sys.version_info >= (3, 0):
 
 ext_modules = [
     Extension('sqlalchemy.cprocessors',
-           sources=['lib/sqlalchemy/cextension/processors.c']),
+           sources=[os.path.join(basedir,
+                        'lib/sqlalchemy/cextension/processors.c')]),
     Extension('sqlalchemy.cresultproxy',
-           sources=['lib/sqlalchemy/cextension/resultproxy.c']),
+           sources=[os.path.join(basedir,
+                        'lib/sqlalchemy/cextension/resultproxy.c')]),
     Extension('sqlalchemy.cutils',
-           sources=['lib/sqlalchemy/cextension/utils.c'])
+           sources=[os.path.join(basedir,
+                        'lib/sqlalchemy/cextension/utils.c')])
     ]
 
 ext_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
 if sys.platform == 'win32' and sys.version_info > (2, 6):
-   # 2.6's distutils.msvc9compiler can raise an IOError when failing to
-   # find the compiler
-   ext_errors += (IOError,)
+    # 2.6's distutils.msvc9compiler can raise an IOError when failing to
+    # find the compiler
+    ext_errors += (IOError,)
 
 class BuildFailed(Exception):
 
     def __init__(self):
-        self.cause = sys.exc_info()[1] # work around py 2/3 different syntax
+        self.cause = sys.exc_info()[1]  # work around py 2/3 different syntax
 
 class ve_build_ext(build_ext):
     # This class allows C extension building to fail.
@@ -74,7 +79,7 @@ class ve_build_ext(build_ext):
             raise BuildFailed()
         except ValueError:
             # this can happen on Windows 64 bit, see Python issue 7511
-            if "'path'" in str(sys.exc_info()[1]): # works with both py 2/3
+            if "'path'" in str(sys.exc_info()[1]):  # works with both py 2/3
                 raise BuildFailed()
             raise
 
@@ -86,15 +91,16 @@ def status_msgs(*msgs):
         print(msg)
     print('*' * 75)
 
-def find_packages(dir_):
+def find_packages(location):
     packages = []
+    location = os.path.join(basedir, location)
     for pkg in ['sqlalchemy']:
         for _dir, subdirectories, files in (
-                os.walk(os.path.join(dir_, pkg))
+                os.walk(os.path.join(location, pkg))
             ):
             if '__init__.py' in files:
-                lib, fragment = _dir.split(os.sep, 1)
-                packages.append(fragment.replace(os.sep, '.'))
+                tokens = _dir.split(os.sep)[len(location.split(os.sep)):]
+                packages.append(".".join(tokens))
     return packages
 
 v_file = open(os.path.join(os.path.dirname(__file__),
@@ -127,7 +133,7 @@ def run_setup(with_cext):
           author_email="mike_mp@zzzcomputing.com",
           url="http://www.sqlalchemy.org",
           packages=find_packages('lib'),
-          package_dir={'': 'lib'},
+          package_dir={'': os.path.join(basedir, 'lib')},
           license="MIT License",
           cmdclass=cmdclass,
 
@@ -180,7 +186,7 @@ else:
     try:
         run_setup(True)
     except BuildFailed:
-        exc = sys.exc_info()[1] # work around py 2/3 different syntax
+        exc = sys.exc_info()[1]  # work around py 2/3 different syntax
         status_msgs(
             exc.cause,
             "WARNING: The C extension could not be compiled, " +
