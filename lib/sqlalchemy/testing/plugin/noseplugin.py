@@ -9,16 +9,16 @@ When third party libraries use this plugin, it can be imported
 normally as "from sqlalchemy.testing.plugin import noseplugin".
 
 """
+from __future__ import absolute_import
+
 import os
 import ConfigParser
 
 from nose.plugins import Plugin
 from nose import SkipTest
-from . import config
-
-from .config import _log, _list_dbs, _zero_timeout, \
-    _engine_strategy, _server_side_cursors, pre_configure,\
-    post_configure
+import time
+import sys
+import re
 
 # late imports
 fixtures = None
@@ -30,6 +30,192 @@ assertions = None
 requirements = None
 util = None
 file_config = None
+
+
+logging = None
+db = None
+db_label = None
+db_url = None
+db_opts = {}
+options = None
+
+def _log(option, opt_str, value, parser):
+    global logging
+    if not logging:
+        import logging
+        logging.basicConfig()
+
+    if opt_str.endswith('-info'):
+        logging.getLogger(value).setLevel(logging.INFO)
+    elif opt_str.endswith('-debug'):
+        logging.getLogger(value).setLevel(logging.DEBUG)
+
+
+def _list_dbs(*args):
+    print "Available --db options (use --dburi to override)"
+    for macro in sorted(file_config.options('db')):
+        print "%20s\t%s" % (macro, file_config.get('db', macro))
+    sys.exit(0)
+
+def _server_side_cursors(options, opt_str, value, parser):
+    db_opts['server_side_cursors'] = True
+
+def _engine_strategy(options, opt_str, value, parser):
+    if value:
+        db_opts['strategy'] = value
+
+pre_configure = []
+post_configure = []
+def pre(fn):
+    pre_configure.append(fn)
+    return fn
+def post(fn):
+    post_configure.append(fn)
+    return fn
+
+@pre
+def _setup_options(opt, file_config):
+    global options
+    options = opt
+
+@pre
+def _monkeypatch_cdecimal(options, file_config):
+    if options.cdecimal:
+        import sys
+        import cdecimal
+        sys.modules['decimal'] = cdecimal
+
+@post
+def _engine_uri(options, file_config):
+    global db_label, db_url
+
+    if options.dburi:
+        db_url = options.dburi
+        db_label = db_url[:db_url.index(':')]
+    elif options.db:
+        db_label = options.db
+        db_url = None
+
+    if db_url is None:
+        if db_label not in file_config.options('db'):
+            raise RuntimeError(
+                "Unknown URI specifier '%s'.  Specify --dbs for known uris."
+                        % db_label)
+        db_url = file_config.get('db', db_label)
+
+@post
+def _require(options, file_config):
+    if not(options.require or
+           (file_config.has_section('require') and
+            file_config.items('require'))):
+        return
+
+    try:
+        import pkg_resources
+    except ImportError:
+        raise RuntimeError("setuptools is required for version requirements")
+
+    cmdline = []
+    for requirement in options.require:
+        pkg_resources.require(requirement)
+        cmdline.append(re.split('\s*(<!>=)', requirement, 1)[0])
+
+    if file_config.has_section('require'):
+        for label, requirement in file_config.items('require'):
+            if not label == db_label or label.startswith('%s.' % db_label):
+                continue
+            seen = [c for c in cmdline if requirement.startswith(c)]
+            if seen:
+                continue
+            pkg_resources.require(requirement)
+
+@post
+def _engine_pool(options, file_config):
+    if options.mockpool:
+        from sqlalchemy import pool
+        db_opts['poolclass'] = pool.AssertionPool
+
+@post
+def _create_testing_engine(options, file_config):
+    from sqlalchemy.testing import engines, config
+    from sqlalchemy import testing
+    global db
+    config.db = testing.db = db = engines.testing_engine(db_url, db_opts)
+    config.db_opts = db_opts
+    config.db_url = db_url
+
+
+@post
+def _prep_testing_database(options, file_config):
+    from sqlalchemy.testing import engines
+    from sqlalchemy import schema
+
+    # also create alt schemas etc. here?
+    if options.dropfirst:
+        e = engines.utf8_engine()
+        existing = e.table_names()
+        if existing:
+            print "Dropping existing tables in database: " + db_url
+            try:
+                print "Tables: %s" % ', '.join(existing)
+            except:
+                pass
+            print "Abort within 5 seconds..."
+            time.sleep(5)
+            md = schema.MetaData(e, reflect=True)
+            md.drop_all()
+        e.dispose()
+
+
+@post
+def _set_table_options(options, file_config):
+    from sqlalchemy.testing import schema
+
+    table_options = schema.table_options
+    for spec in options.tableopts:
+        key, value = spec.split('=')
+        table_options[key] = value
+
+    if options.mysql_engine:
+        table_options['mysql_engine'] = options.mysql_engine
+
+@post
+def _reverse_topological(options, file_config):
+    if options.reversetop:
+        from sqlalchemy.orm import unitofwork, session, mapper, dependency
+        from sqlalchemy.util import topological
+        from sqlalchemy.testing.util import RandomSet
+        topological.set = unitofwork.set = session.set = mapper.set = \
+                dependency.set = RandomSet
+
+@post
+def _requirements(options, file_config):
+    from sqlalchemy.testing import config
+    from sqlalchemy import testing
+    requirement_cls = file_config.get('sqla_testing', "requirement_cls")
+
+    modname, clsname = requirement_cls.split(":")
+
+    # importlib.import_module() only introduced in 2.7, a little
+    # late
+    mod = __import__(modname)
+    for component in modname.split(".")[1:]:
+        mod = getattr(mod, component)
+    req_cls = getattr(mod, clsname)
+    config.requirements = testing.requires = req_cls(db, config)
+
+
+@post
+def _post_setup_options(opt, file_config):
+    from sqlalchemy.testing import config
+    config.options = options
+
+@post
+def _setup_profiling(options, file_config):
+    from sqlalchemy.testing import profiling
+    profiling._profile_stats = profiling.ProfileStatsFile(
+                file_config.get('sqla_testing', 'profile_file'))
+
 
 class NoseSQLAlchemy(Plugin):
     """
@@ -59,8 +245,6 @@ class NoseSQLAlchemy(Plugin):
             help="Drop all tables in the target database first")
         opt("--mockpool", action="store_true", dest="mockpool",
             help="Use mock pool (asserts only one connection used)")
-        opt("--zero-timeout", action="callback", callback=_zero_timeout,
-            help="Set pool_timeout to zero, applies to QueuePool only")
         opt("--low-connections", action="store_true", dest="low_connections",
             help="Use a low number of distinct connections - i.e. for Oracle TNS"
         )
@@ -90,7 +274,6 @@ class NoseSQLAlchemy(Plugin):
         global file_config
         file_config = ConfigParser.ConfigParser()
         file_config.read(['setup.cfg', 'test.cfg'])
-        config.file_config = file_config
 
     def configure(self, options, conf):
         Plugin.configure(self, options, conf)
@@ -198,5 +381,5 @@ class NoseSQLAlchemy(Plugin):
             or not issubclass(ctx, fixtures.TestBase):
             return
         engines.testing_reaper._stop_test_ctx()
-        if not config.options.low_connections:
+        if not options.low_connections:
             assertions.global_cleanup_assertions()
