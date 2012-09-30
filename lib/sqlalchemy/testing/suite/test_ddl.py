@@ -1,3 +1,5 @@
+from __future__ import with_statement
+
 from .. import fixtures, config, util
 from ..config import requirements
 from ..assertions import eq_

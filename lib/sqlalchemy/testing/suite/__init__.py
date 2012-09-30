@@ -1,4 +1,5 @@
-from .test_ddl import *
-from .test_insert import *
-from .test_update_delete import *
-from .test_reflection import *
+
+from sqlalchemy.testing.suite.test_ddl import *
+from sqlalchemy.testing.suite.test_insert import *
+from sqlalchemy.testing.suite.test_update_delete import *
+from sqlalchemy.testing.suite.test_reflection import *

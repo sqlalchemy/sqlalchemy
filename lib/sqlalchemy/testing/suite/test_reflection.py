@@ -1,3 +1,5 @@
+from __future__ import with_statement
+
 import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import types as sql_types
