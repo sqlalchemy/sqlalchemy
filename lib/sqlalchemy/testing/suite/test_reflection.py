@@ -115,8 +115,15 @@ class ComponentReflectionTest(fixtures.TablesTest):
             test_needs_fk=True,
         )
 
+        cls.define_index(metadata, users)
+        cls.define_views(metadata, schema=None)
+
+    @classmethod
+    def define_index(cls, metadata, users):
         Index("users_t_idx", users.c.test1, users.c.test2)
 
+    @classmethod
+    def define_views(cls, metadata, schema):
         for table_name in ('users', 'email_addresses'):
             fullname = table_name
             if schema:
