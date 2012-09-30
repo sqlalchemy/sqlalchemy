@@ -631,6 +631,10 @@ class OracleDDLCompiler(compiler.DDLCompiler):
 
         return text
 
+    def visit_create_index(self, create, **kw):
+        return super(OracleDDLCompiler, self).\
+                    visit_create_index(create, include_schema=True)
+
 class OracleIdentifierPreparer(compiler.IdentifierPreparer):
 
     reserved_words = set([x.lower() for x in RESERVED_WORDS])

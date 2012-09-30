@@ -2,7 +2,7 @@
 
 from sqlalchemy.testing import eq_
 from sqlalchemy import *
-from sqlalchemy import types as sqltypes, exc
+from sqlalchemy import types as sqltypes, exc, schema
 from sqlalchemy.sql import table, column
 from sqlalchemy.testing import fixtures, AssertsExecutionResults, AssertsCompiledSQL
 from sqlalchemy import testing
@@ -523,6 +523,16 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         ]:
             self.assert_compile(fn, expected)
 
+    def test_create_index_alt_schema(self):
+        m = MetaData()
+        t1 = Table('foo', m,
+                Column('x', Integer),
+                schema="alt_schema"
+            )
+        self.assert_compile(
+            schema.CreateIndex(Index("bar", t1.c.x)),
+            "CREATE INDEX alt_schema.bar ON alt_schema.foo (x)"
+        )
 class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
 

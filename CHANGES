@@ -738,6 +738,13 @@ underneath "0.7.xx".
     now defaults to STRING, UNICODE, removing
     CLOB, NCLOB from the list.  [ticket:2469]
 
+  - [bug] The CreateIndex construct in Oracle
+    will now schema-qualify the name of the index
+    to be that of the parent table.  Previously this
+    name was omitted which apparently creates the
+    index in the default schema, rather than that
+    of the table.
+
 - extensions
   - [removed] The SQLSoup extension is removed from
     SQLAlchemy, and is now an external project.

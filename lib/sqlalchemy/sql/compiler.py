@@ -1866,15 +1866,16 @@ class DDLCompiler(engine.Compiled):
 
         return ident
 
-    def visit_create_index(self, create):
+    def visit_create_index(self, create, include_schema=False):
         index = create.element
         preparer = self.preparer
         text = "CREATE "
         if index.unique:
             text += "UNIQUE "
         text += "INDEX %s ON %s (%s)" \
-                    % (preparer.quote(self._index_identifier(index.name),
-                        index.quote),
+                    % (
+                        self._prepared_index_name(index,
+                                include_schema=include_schema),
                        preparer.format_table(index.table),
                        ', '.join(preparer.quote(c.name, c.quote)
                                  for c in index.columns))
@@ -1882,7 +1883,11 @@ class DDLCompiler(engine.Compiled):
 
     def visit_drop_index(self, drop):
         index = drop.element
-        if index.table is not None and index.table.schema:
+        return "\nDROP INDEX " + self._prepared_index_name(index,
+                                        include_schema=True)
+
+    def _prepared_index_name(self, index, include_schema=False):
+        if include_schema and index.table is not None and index.table.schema:
             schema = index.table.schema
             schema_name = self.preparer.quote_schema(schema,
                                 index.table.quote_schema)
@@ -1895,7 +1900,8 @@ class DDLCompiler(engine.Compiled):
 
         if schema_name:
             index_name = schema_name + "." + index_name
-        return "\nDROP INDEX " + index_name
+        return index_name
+
 
     def visit_add_constraint(self, create):
         preparer = self.preparer
