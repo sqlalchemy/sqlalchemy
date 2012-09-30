@@ -13,7 +13,7 @@ from sqlalchemy import Table, Column, select, MetaData, text, Integer, \
             PrimaryKeyConstraint, DateTime, tuple_, Float, BigInteger, \
             func, literal_column, literal, bindparam, cast, extract, \
             SmallInteger, Enum, REAL, update, insert, Index, delete, \
-            and_, Date, TypeDecorator, Time, Unicode, Interval
+            and_, Date, TypeDecorator, Time, Unicode, Interval, or_
 from sqlalchemy.orm import Session, mapper, aliased
 from sqlalchemy import exc, schema, types
 from sqlalchemy.dialects.postgresql import base as postgresql

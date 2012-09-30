@@ -12,6 +12,7 @@ from sqlalchemy.dialects.oracle import cx_oracle, base as oracle
 from sqlalchemy.engine import default
 from sqlalchemy.util import jython
 from sqlalchemy.util.compat import decimal
+from sqlalchemy.testing.schema import Table, Column
 import datetime
 import os
 
