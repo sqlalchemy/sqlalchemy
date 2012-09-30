@@ -530,17 +530,17 @@ class SQLCompiler(engine.Compiled):
                     cast.typeclause._compiler_dispatch(self, **kwargs))
 
     def visit_over(self, over, **kwargs):
-         return "%s OVER (%s)" % (
-             over.func._compiler_dispatch(self, **kwargs),
-             ' '.join(
+        return "%s OVER (%s)" % (
+            over.func._compiler_dispatch(self, **kwargs),
+            ' '.join(
                  '%s BY %s' % (word, clause._compiler_dispatch(self, **kwargs))
                  for word, clause in (
                      ('PARTITION', over.partition_by),
                      ('ORDER', over.order_by)
                  )
                  if clause is not None and len(clause)
-             )
-         )
+            )
+        )
 
     def visit_extract(self, extract, **kwargs):
         field = self.extract_map.get(extract.field, extract.field)
