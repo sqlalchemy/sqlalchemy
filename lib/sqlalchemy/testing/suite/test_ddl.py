@@ -11,7 +11,7 @@ class TableDDLTest(fixtures.TestBase):
 
     def _simple_fixture(self):
         return Table('test_table', self.metadata,
-                Column('id', Integer, primary_key=True),
+                Column('id', Integer, primary_key=True, autoincrement=False),
                 Column('data', String(50))
             )
 

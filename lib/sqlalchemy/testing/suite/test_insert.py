@@ -103,7 +103,7 @@ class InsertBehaviorTest(fixtures.TablesTest):
         )
         assert r.closed
         assert r.is_insert
-        assert r.returns_rows
+        assert not r.returns_rows
 
 
 __all__ = ('InsertSequencingTest', 'InsertBehaviorTest')

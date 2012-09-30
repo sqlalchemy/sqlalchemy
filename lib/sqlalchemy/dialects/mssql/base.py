@@ -1419,6 +1419,7 @@ class MSDialect(default.DefaultDialect):
         # Primary key constraints
         s = sql.select([C.c.column_name, TC.c.constraint_type],
             sql.and_(TC.c.constraint_name == C.c.constraint_name,
+                    TC.c.table_schema == C.c.table_schema,
                      C.c.table_name == tablename,
                      C.c.table_schema == owner)
         )

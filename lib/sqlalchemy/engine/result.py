@@ -369,6 +369,7 @@ class ResultProxy(object):
     _process_row = RowProxy
     out_parameters = None
     _can_close_connection = False
+    _metadata = None
 
     def __init__(self, context):
         self.context = context
@@ -382,9 +383,7 @@ class ResultProxy(object):
 
     def _init_metadata(self):
         metadata = self._cursor_description()
-        if metadata is None:
-            self._metadata = None
-        else:
+        if metadata is not None:
             self._metadata = ResultMetaData(self, metadata)
 
     def keys(self):
