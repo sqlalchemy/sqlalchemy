@@ -86,16 +86,6 @@ CREATE statements for all tables::
     engine = create_engine('sqlite://')
     Base.metadata.create_all(engine)
 
-The usual techniques of associating :class:`.MetaData:` with :class:`.Engine`
-apply, such as assigning to the ``bind`` attribute::
-
-    Base.metadata.bind = create_engine('sqlite://')
-
-To associate the engine with the :func:`declarative_base` at time
-of construction, the ``bind`` argument is accepted::
-
-    Base = declarative_base(bind=create_engine('sqlite://'))
-
 :func:`declarative_base` can also receive a pre-existing
 :class:`.MetaData` object, which allows a
 declarative setup to be associated with an already
@@ -722,7 +712,7 @@ Mixing in Relationships
 
 Relationships created by :func:`~sqlalchemy.orm.relationship` are provided
 with declarative mixin classes exclusively using the
-:func:`.declared_attr` approach, eliminating any ambiguity
+:class:`.declared_attr` approach, eliminating any ambiguity
 which could arise when copying a relationship and its possibly column-bound
 contents. Below is an example which combines a foreign key column and a
 relationship so that two classes ``Foo`` and ``Bar`` can both be configured to
@@ -773,7 +763,7 @@ Like :func:`~sqlalchemy.orm.relationship`, all
 :class:`~sqlalchemy.orm.interfaces.MapperProperty` subclasses such as
 :func:`~sqlalchemy.orm.deferred`, :func:`~sqlalchemy.orm.column_property`,
 etc. ultimately involve references to columns, and therefore, when
-used with declarative mixins, have the :func:`.declared_attr`
+used with declarative mixins, have the :class:`.declared_attr`
 requirement so that no reliance on copying is needed::
 
     class SomethingMixin(object):
@@ -888,7 +878,7 @@ In the case of ``__table_args__`` or ``__mapper_args__``
 specified with declarative mixins, you may want to combine
 some parameters from several mixins with those you wish to
 define on the class iteself. The
-:func:`.declared_attr` decorator can be used
+:class:`.declared_attr` decorator can be used
 here to create user-defined collation routines that pull
 from multiple collections::
 
