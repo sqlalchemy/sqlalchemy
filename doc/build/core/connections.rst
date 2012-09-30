@@ -64,7 +64,7 @@ an UPDATE statement (without any returned rows),
 releases cursor resources immediately upon construction.
 
 When the :meth:`~.Connection.close` method is called, the referenced DBAPI
-connection is returned to the connection pool.   From the perspective
+connection is :term:`released` to the connection pool.   From the perspective
 of the database itself, nothing is actually "closed", assuming pooling is
 in use.  The pooling mechanism issues a ``rollback()`` call on the DBAPI
 connection so that any transactional state or locks are removed, and
@@ -441,7 +441,7 @@ call :meth:`.Engine.contextual_connect`::
     call_operation3(conn)
     conn.close()
 
-Calling :meth:`~.Connection.close` on the "contextual" connection does not release
+Calling :meth:`~.Connection.close` on the "contextual" connection does not :term:`release`
 its resources until all other usages of that resource are closed as well, including
 that any ongoing transactions are rolled back or committed.
 

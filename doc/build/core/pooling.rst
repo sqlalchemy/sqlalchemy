@@ -139,6 +139,14 @@ when it is garbage collected,
 though it's not deterministic in Python that this occurs immediately (though
 it is typical with cPython).
 
+The ``close()`` step also performs the important step of calling the
+``rollback()`` method of the DBAPI connection.   This is so that any
+existing transaction on the connection is removed, not only ensuring
+that no existing state remains on next usage, but also so that table
+and row locks are released as well as that any isolated data snapshots
+are removed.   This behavior can be disabled using the ``reset_on_return``
+option of :class:`.Pool`.
+
 A particular pre-created :class:`.Pool` can be shared with one or more
 engines by passing it to the ``pool`` argument of :func:`.create_engine`::
 

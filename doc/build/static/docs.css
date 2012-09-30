@@ -348,6 +348,10 @@ dl.exception > dt
     padding: 0px 10px;
 }
 
+dl.glossary > dt {
+  font-weight:bold;
+  font-size:1.1em;
+}
 
 dt:target, span.highlight {
     background-color:#FBE54E;
