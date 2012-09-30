@@ -1169,8 +1169,8 @@ This behavior can be disabled using the ``cascade_backrefs`` flag::
 
 So above, the assignment of ``i1.order = o1`` will append ``i1`` to the ``items``
 collection of ``o1``, but will not add ``i1`` to the session.   You can, of
-course, :func:`~.Session.add` ``i1`` to the session at a later point.   This option
-may be helpful for situations where an object needs to be kept out of a
+course, :meth:`~.Session.add` ``i1`` to the session at a later point.   This
+option may be helpful for situations where an object needs to be kept out of a
 session until it's construction is completed, but still needs to be given
 associations to objects which are already persistent in the target session.
 
@@ -1344,9 +1344,8 @@ goes back into "autocommit" mode, until :meth:`.Session.begin` is called again::
         session.rollback()
         raise
 
-The :func:`.Session.begin` method also returns a
-transactional token which is compatible with the Python 2.6 ``with``
-statement::
+The :meth:`.Session.begin` method also returns a transactional token which is
+compatible with the Python 2.6 ``with`` statement::
 
     Session = sessionmaker(bind=engine, autocommit=True)
     session = Session()

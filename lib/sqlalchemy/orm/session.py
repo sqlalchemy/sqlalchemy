@@ -442,7 +442,7 @@ class Session(_SessionClassMethods):
                  query_cls=query.Query):
         """Construct a new Session.
 
-        See also the :func:`.sessionmaker` function which is used to
+        See also the :class:`.sessionmaker` function which is used to
         generate a :class:`.Session`-producing callable with a given
         set of arguments.
 
@@ -640,13 +640,13 @@ class Session(_SessionClassMethods):
         """Flush pending changes and commit the current transaction.
 
         If no transaction is in progress, this method raises an
-        InvalidRequestError.
+        :exc:`~sqlalchemy.exc.InvalidRequestError`.
 
         By default, the :class:`.Session` also expires all database
         loaded state on all ORM-managed attributes after transaction commit.
         This so that subsequent operations load the most recent
         data from the database.   This behavior can be disabled using
-        the ``expire_on_commit=False`` option to :func:`.sessionmaker` or
+        the ``expire_on_commit=False`` option to :class:`.sessionmaker` or
         the :class:`.Session` constructor.
 
         If a subtransaction is in effect (which occurs when begin() is called
@@ -671,10 +671,11 @@ class Session(_SessionClassMethods):
         """Prepare the current transaction in progress for two phase commit.
 
         If no transaction is in progress, this method raises an
-        InvalidRequestError.
+        :exc:`~sqlalchemy.exc.InvalidRequestError`.
 
         Only root transactions of two phase sessions can be prepared. If the
-        current transaction is not such, an InvalidRequestError is raised.
+        current transaction is not such, an
+        :exc:`~sqlalchemy.exc.InvalidRequestError` is raised.
 
         """
         if self.transaction is None:
@@ -978,7 +979,7 @@ class Session(_SessionClassMethods):
            linked to the :class:`.MetaData` ultimately
            associated with the :class:`.Table` or other
            selectable to which the mapper is mapped.
-        6. No bind can be found, :class:`.UnboundExecutionError`
+        6. No bind can be found, :exc:`~sqlalchemy.exc.UnboundExecutionError`
            is raised.
 
         :param mapper:
@@ -1599,7 +1600,7 @@ class Session(_SessionClassMethods):
         """Associate an object with this :class:`.Session` for related
         object loading.
 
-        Accesses of attributes mapped with :class:`.relationship`
+        Accesses of attributes mapped with :func:`.relationship`
         will attempt to load a value from the database using this
         :class:`.Session` as the source of connectivity.  The values
         will be loaded based on foreign key values present on this

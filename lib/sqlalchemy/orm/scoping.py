@@ -49,8 +49,8 @@ class scoped_session(object):
         :param \**kw: Keyword arguments will be passed to the
          session factory callable, if an existing :class:`.Session`
          is not present.  If the :class:`.Session` is present and
-         keyword arguments have been passed, :class:`.InvalidRequestError`
-         is raised.
+         keyword arguments have been passed,
+         :exc:`~sqlalchemy.exc.InvalidRequestError` is raised.
 
         """
         if kw:

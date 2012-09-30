@@ -30,8 +30,7 @@ As a simple example::
 
 Above, the :func:`declarative_base` callable returns a new base class from
 which all mapped classes should inherit. When the class definition is
-completed, a new :class:`.Table` and
-:func:`.mapper` will have been generated.
+completed, a new :class:`.Table` and :func:`.mapper` will have been generated.
 
 The resulting table and mapper are accessible via
 ``__table__`` and ``__mapper__`` attributes on the
@@ -60,13 +59,13 @@ just give the column a name.  Below, column "some_table_id" is mapped to the
 
 Attributes may be added to the class after its construction, and they will be
 added to the underlying :class:`.Table` and
-:func:`.mapper()` definitions as appropriate::
+:func:`.mapper` definitions as appropriate::
 
     SomeClass.data = Column('data', Unicode)
     SomeClass.related = relationship(RelatedInfo)
 
 Classes which are constructed using declarative can interact freely
-with classes that are mapped explicitly with :func:`mapper`.
+with classes that are mapped explicitly with :func:`.mapper`.
 
 It is recommended, though not required, that all tables
 share the same underlying :class:`~sqlalchemy.schema.MetaData` object,
@@ -85,16 +84,6 @@ CREATE statements for all tables::
 
     engine = create_engine('sqlite://')
     Base.metadata.create_all(engine)
-
-The usual techniques of associating :class:`.MetaData:` with :class:`.Engine`
-apply, such as assigning to the ``bind`` attribute::
-
-    Base.metadata.bind = create_engine('sqlite://')
-
-To associate the engine with the :func:`declarative_base` at time
-of construction, the ``bind`` argument is accepted::
-
-    Base = declarative_base(bind=create_engine('sqlite://'))
 
 :func:`declarative_base` can also receive a pre-existing
 :class:`.MetaData` object, which allows a
@@ -212,9 +201,9 @@ the :class:`.MetaData` object used by the declarative base::
         id = Column(Integer, primary_key=True)
         keywords = relationship("Keyword", secondary=keywords)
 
-Like other :func:`.relationship` arguments, a string is accepted as well,
-passing the string name of the table as defined in the ``Base.metadata.tables``
-collection::
+Like other :func:`~sqlalchemy.orm.relationship` arguments, a string is accepted
+as well, passing the string name of the table as defined in the
+``Base.metadata.tables`` collection::
 
     class Author(Base):
         __tablename__ = 'authors'
@@ -223,7 +212,7 @@ collection::
 
 As with traditional mapping, its generally not a good idea to use
 a :class:`.Table` as the "secondary" argument which is also mapped to
-a class, unless the :class:`.relationship` is declared with ``viewonly=True``.
+a class, unless the :func:`.relationship` is declared with ``viewonly=True``.
 Otherwise, the unit-of-work system may attempt duplicate INSERT and
 DELETE statements against the underlying table.
 
@@ -865,7 +854,7 @@ Mixing in Relationships
 
 Relationships created by :func:`~sqlalchemy.orm.relationship` are provided
 with declarative mixin classes exclusively using the
-:func:`.declared_attr` approach, eliminating any ambiguity
+:class:`.declared_attr` approach, eliminating any ambiguity
 which could arise when copying a relationship and its possibly column-bound
 contents. Below is an example which combines a foreign key column and a
 relationship so that two classes ``Foo`` and ``Bar`` can both be configured to
@@ -1109,7 +1098,7 @@ In the case of ``__table_args__`` or ``__mapper_args__``
 specified with declarative mixins, you may want to combine
 some parameters from several mixins with those you wish to
 define on the class iteself. The
-:func:`.declared_attr` decorator can be used
+:class:`.declared_attr` decorator can be used
 here to create user-defined collation routines that pull
 from multiple collections::
 
@@ -1231,7 +1220,7 @@ Sessions
 Note that ``declarative`` does nothing special with sessions, and is
 only intended as an easier way to configure mappers and
 :class:`~sqlalchemy.schema.Table` objects.  A typical application
-setup using :func:`~sqlalchemy.orm.scoped_session` might look like::
+setup using :class:`~sqlalchemy.orm.scoped_session` might look like::
 
     engine = create_engine('postgresql://scott:tiger@localhost/test')
     Session = scoped_session(sessionmaker(autocommit=False,
