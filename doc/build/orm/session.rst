@@ -175,7 +175,7 @@ It's helpful to know the states which an instance can have within a session:
   object has to the ORM is that its class has a ``mapper()`` associated with
   it.
 
-* **Pending** - when you :func:`~sqlalchemy.orm.session.Session.add` a transient
+* **Pending** - when you :meth:`~.Session.add` a transient
   instance, it becomes pending. It still wasn't actually flushed to the
   database yet, but it will be when the next flush occurs.
 
@@ -356,7 +356,7 @@ Session Frequently Asked Questions
 
 * How can I get the :class:`~sqlalchemy.orm.session.Session` for a certain object ?
 
-    Use the :func:`~sqlalchemy.orm.session.Session.object_session` classmethod
+    Use the :meth:`~.Session.object_session` classmethod
     available on :class:`~sqlalchemy.orm.session.Session`::
 
         session = Session.object_session(someobject)
@@ -392,7 +392,7 @@ Session Frequently Asked Questions
 Querying
 --------
 
-The :func:`~sqlalchemy.orm.session.Session.query` function takes one or more
+The :meth:`~.Session.query` function takes one or more
 *entities* and returns a new :class:`~sqlalchemy.orm.query.Query` object which
 will issue mapper queries within the context of this Session. An entity is
 defined as a mapped class, a :class:`~sqlalchemy.orm.mapper.Mapper` object, an
@@ -428,7 +428,7 @@ The :class:`.Query` object is introduced in great detail in
 Adding New or Existing Items
 ----------------------------
 
-:func:`~sqlalchemy.orm.session.Session.add` is used to place instances in the
+:meth:`~.Session.add` is used to place instances in the
 session. For *transient* (i.e. brand new) instances, this will have the effect
 of an INSERT taking place for those instances upon the next flush. For
 instances which are *persistent* (i.e. were loaded by this session), they are
@@ -444,11 +444,11 @@ using this method::
     session.commit()     # write changes to the database
 
 To add a list of items to the session at once, use
-:func:`~sqlalchemy.orm.session.Session.add_all`::
+:meth:`~.Session.add_all`::
 
     session.add_all([item1, item2, item3])
 
-The :func:`~sqlalchemy.orm.session.Session.add` operation **cascades** along
+The :meth:`~.Session.add` operation **cascades** along
 the ``save-update`` cascade. For more details see the section
 :ref:`unitofwork_cascades`.
 
@@ -457,7 +457,7 @@ the ``save-update`` cascade. For more details see the section
 Merging
 -------
 
-:func:`~sqlalchemy.orm.session.Session.merge` transfers state from an
+:meth:`~.Session.merge` transfers state from an
 outside object into a new or already existing instance within a session.   It
 also reconciles the incoming data against the state of the
 database, producing a history stream which will be applied towards the next
@@ -745,12 +745,12 @@ When the :class:`~sqlalchemy.orm.session.Session` is used with its default
 configuration, the flush step is nearly always done transparently.
 Specifically, the flush occurs before any individual
 :class:`~sqlalchemy.orm.query.Query` is issued, as well as within the
-:func:`~sqlalchemy.orm.session.Session.commit` call before the transaction is
+:meth:`~.Session.commit` call before the transaction is
 committed. It also occurs before a SAVEPOINT is issued when
-:func:`~sqlalchemy.orm.session.Session.begin_nested` is used.
+:meth:`~.Session.begin_nested` is used.
 
 Regardless of the autoflush setting, a flush can always be forced by issuing
-:func:`~sqlalchemy.orm.session.Session.flush`::
+:meth:`~.Session.flush`::
 
     session.flush()
 
@@ -772,10 +772,10 @@ The flush process *always* occurs within a transaction, even if the
 :class:`~sqlalchemy.orm.session.Session` has been configured with
 ``autocommit=True``, a setting that disables the session's persistent
 transactional state. If no transaction is present,
-:func:`~sqlalchemy.orm.session.Session.flush` creates its own transaction and
+:meth:`~.Session.flush` creates its own transaction and
 commits it. Any failures during flush will always result in a rollback of
 whatever transaction is present. If the Session is not in ``autocommit=True``
-mode, an explicit call to :func:`~sqlalchemy.orm.session.Session.rollback` is
+mode, an explicit call to :meth:`~.Session.rollback` is
 required after a flush fails, even though the underlying transaction will have
 been rolled back already - this is so that the overall nesting pattern of
 so-called "subtransactions" is consistently maintained.
@@ -783,14 +783,14 @@ so-called "subtransactions" is consistently maintained.
 Committing
 ----------
 
-:func:`~sqlalchemy.orm.session.Session.commit` is used to commit the current
-transaction. It always issues :func:`~sqlalchemy.orm.session.Session.flush`
+:meth:`~.Session.commit` is used to commit the current
+transaction. It always issues :meth:`~.Session.flush`
 beforehand to flush any remaining state to the database; this is independent
 of the "autoflush" setting. If no transaction is present, it raises an error.
 Note that the default behavior of the :class:`~sqlalchemy.orm.session.Session`
 is that a "transaction" is always present; this behavior can be disabled by
 setting ``autocommit=True``. In autocommit mode, a transaction can be
-initiated by calling the :func:`~sqlalchemy.orm.session.Session.begin` method.
+initiated by calling the :meth:`~.Session.begin` method.
 
 .. note::
 
@@ -802,7 +802,7 @@ initiated by calling the :func:`~sqlalchemy.orm.session.Session.begin` method.
    "transaction" is completed.  See :ref:`unitofwork_transaction` for
    further detail.
 
-Another behavior of :func:`~sqlalchemy.orm.session.Session.commit` is that by
+Another behavior of :meth:`~.Session.commit` is that by
 default it expires the state of all instances present after the commit is
 complete. This is so that when the instances are next accessed, either through
 attribute access or by them being present in a
@@ -821,7 +821,7 @@ transaction is present.
 Rolling Back
 ------------
 
-:func:`~sqlalchemy.orm.session.Session.rollback` rolls back the current
+:meth:`~.Session.rollback` rolls back the current
 transaction. With a default configured session, the post-rollback state of the
 session is as follows:
 
@@ -842,15 +842,15 @@ session is as follows:
 With that state understood, the :class:`~sqlalchemy.orm.session.Session` may
 safely continue usage after a rollback occurs.
 
-When a :func:`~sqlalchemy.orm.session.Session.flush` fails, typically for
+When a :meth:`~.Session.flush` fails, typically for
 reasons like primary key, foreign key, or "not nullable" constraint
-violations, a :func:`~sqlalchemy.orm.session.Session.rollback` is issued
+violations, a :meth:`~.Session.rollback` is issued
 automatically (it's currently not possible for a flush to continue after a
 partial failure). However, the flush process always uses its own transactional
 demarcator called a *subtransaction*, which is described more fully in the
 docstrings for :class:`~sqlalchemy.orm.session.Session`. What it means here is
 that even though the database transaction has been rolled back, the end user
-must still issue :func:`~sqlalchemy.orm.session.Session.rollback` to fully
+must still issue :meth:`~.Session.rollback` to fully
 reset the state of the :class:`~sqlalchemy.orm.session.Session`.
 
 Expunging
@@ -863,14 +863,14 @@ the detached state, and pending instances to the transient state:
 
     session.expunge(obj1)
 
-To remove all items, call :func:`~sqlalchemy.orm.session.Session.expunge_all`
+To remove all items, call :meth:`~.Session.expunge_all`
 (this method was formerly known as ``clear()``).
 
 Closing
 -------
 
-The :func:`~sqlalchemy.orm.session.Session.close` method issues a
-:func:`~sqlalchemy.orm.session.Session.expunge_all`, and releases any
+The :meth:`~.Session.close` method issues a
+:meth:`~.Session.expunge_all`, and releases any
 transactional/connection resources. When connections are returned to the
 connection pool, transactional state is rolled back as well.
 
@@ -1169,7 +1169,7 @@ This behavior can be disabled using the ``cascade_backrefs`` flag::
 
 So above, the assignment of ``i1.order = o1`` will append ``i1`` to the ``items``
 collection of ``o1``, but will not add ``i1`` to the session.   You can, of
-course, :func:`~.Session.add` ``i1`` to the session at a later point.   This option
+course, :meth:`~.Session.add` ``i1`` to the session at a later point.   This option
 may be helpful for situations where an object needs to be kept out of a
 session until it's construction is completed, but still needs to be given
 associations to objects which are already persistent in the target session.
@@ -1256,7 +1256,7 @@ Using SAVEPOINT
 ---------------
 
 SAVEPOINT transactions, if supported by the underlying engine, may be
-delineated using the :func:`~sqlalchemy.orm.session.Session.begin_nested`
+delineated using the :meth:`~.Session.begin_nested`
 method::
 
     Session = sessionmaker()
@@ -1270,19 +1270,19 @@ method::
 
     session.commit() # commits u1 and u2
 
-:func:`~sqlalchemy.orm.session.Session.begin_nested` may be called any number
+:meth:`~.Session.begin_nested` may be called any number
 of times, which will issue a new SAVEPOINT with a unique identifier for each
-call. For each :func:`~sqlalchemy.orm.session.Session.begin_nested` call, a
-corresponding :func:`~sqlalchemy.orm.session.Session.rollback` or
-:func:`~sqlalchemy.orm.session.Session.commit` must be issued.
+call. For each :meth:`~.Session.begin_nested` call, a
+corresponding :meth:`~.Session.rollback` or
+:meth:`~.Session.commit` must be issued.
 
-When :func:`~sqlalchemy.orm.session.Session.begin_nested` is called, a
-:func:`~sqlalchemy.orm.session.Session.flush` is unconditionally issued
+When :meth:`~.Session.begin_nested` is called, a
+:meth:`~.Session.flush` is unconditionally issued
 (regardless of the ``autoflush`` setting). This is so that when a
-:func:`~sqlalchemy.orm.session.Session.rollback` occurs, the full state of the
+:meth:`~.Session.rollback` occurs, the full state of the
 session is expired, thus causing all subsequent attribute/instance access to
 reference the full state of the :class:`~sqlalchemy.orm.session.Session` right
-before :func:`~sqlalchemy.orm.session.Session.begin_nested` was called.
+before :meth:`~.Session.begin_nested` was called.
 
 :meth:`~.Session.begin_nested`, in the same manner as the less often
 used :meth:`~.Session.begin` method, returns a transactional object
@@ -1344,7 +1344,7 @@ goes back into "autocommit" mode, until :meth:`.Session.begin` is called again::
         session.rollback()
         raise
 
-The :func:`.Session.begin` method also returns a
+The :meth:`~.Session.begin` method also returns a
 transactional token which is compatible with the Python 2.6 ``with``
 statement::
 
@@ -1417,7 +1417,7 @@ For backends which support two-phase operaration (currently MySQL and
 PostgreSQL), the session can be instructed to use two-phase commit semantics.
 This will coordinate the committing of transactions across databases so that
 the transaction is either committed or rolled back in all databases. You can
-also :func:`~sqlalchemy.orm.session.Session.prepare` the session for
+also :meth:`~.Session.prepare` the session for
 interacting with transactions not managed by SQLAlchemy. To use two phase
 transactions set the flag ``twophase=True`` on the session::
 
@@ -1468,7 +1468,7 @@ Using SQL Expressions with Sessions
 SQL expressions and strings can be executed via the
 :class:`~sqlalchemy.orm.session.Session` within its transactional context.
 This is most easily accomplished using the
-:func:`~sqlalchemy.orm.session.Session.execute` method, which returns a
+:meth:`~.Session.execute` method, which returns a
 :class:`~sqlalchemy.engine.base.ResultProxy` in the same manner as an
 :class:`~sqlalchemy.engine.base.Engine` or
 :class:`~sqlalchemy.engine.base.Connection`::
@@ -1484,7 +1484,7 @@ This is most easily accomplished using the
 
 The current :class:`~sqlalchemy.engine.base.Connection` held by the
 :class:`~sqlalchemy.orm.session.Session` is accessible using the
-:func:`~sqlalchemy.orm.session.Session.connection` method::
+:meth:`~.Session.connection` method::
 
     connection = session.connection()
 
@@ -1493,8 +1493,8 @@ bound to a single :class:`~sqlalchemy.engine.base.Engine` or
 :class:`~sqlalchemy.engine.base.Connection`. To execute statements using a
 :class:`~sqlalchemy.orm.session.Session` which is bound either to multiple
 engines, or none at all (i.e. relies upon bound metadata), both
-:func:`~sqlalchemy.orm.session.Session.execute` and
-:func:`~sqlalchemy.orm.session.Session.connection` accept a ``mapper`` keyword
+:meth:`~.Session.execute` and
+:meth:`~.Session.connection` accept a ``mapper`` keyword
 argument, which is passed a mapped class or
 :class:`~sqlalchemy.orm.mapper.Mapper` instance, which is used to locate the
 proper context for the desired engine::
