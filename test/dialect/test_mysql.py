@@ -578,34 +578,35 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         finally:
             meta.drop_all()
 
+    @testing.provide_metadata
     def test_timestamp_nullable(self):
-        meta = MetaData(testing.db)
-        ts_table = Table('mysql_timestamp', meta,
+        ts_table = Table('mysql_timestamp', self.metadata,
                             Column('t1', TIMESTAMP),
                             Column('t2', TIMESTAMP, nullable=False),
                     )
-        meta.create_all()
-        try:
-            # there's a slight assumption here that this test can
-            # complete within the scope of a single second.
-            # if needed, can break out the eq_() just to check for
-            # timestamps that are within a few seconds of "now"
-            # using timedelta.
+        self.metadata.create_all()
 
-            now = testing.db.execute("select now()").scalar()
+        now = testing.db.execute("select now()").scalar()
 
-            # TIMESTAMP without NULL inserts current time when passed
-            # NULL.  when not passed, generates 0000-00-00 quite
-            # annoyingly.
-            ts_table.insert().execute({'t1':now, 't2':None})
-            ts_table.insert().execute({'t1':None, 't2':None})
+        # TIMESTAMP without NULL inserts current time when passed
+        # NULL.  when not passed, generates 0000-00-00 quite
+        # annoyingly.
+        ts_table.insert().execute({'t1': now, 't2': None})
+        ts_table.insert().execute({'t1': None, 't2': None})
 
-            eq_(
-                ts_table.select().execute().fetchall(),
-                [(now, now), (None, now)]
-            )
-        finally:
-            meta.drop_all()
+        # normalize dates that are over the second boundary
+        def normalize(dt):
+            if dt is None:
+                return None
+            elif (dt - now).seconds < 5:
+                return now
+            else:
+                return dt
+        eq_(
+            [tuple([normalize(dt) for dt in row])
+            for row in ts_table.select().execute()],
+            [(now, now), (None, now)]
+        )
 
     def test_year(self):
         """Exercise YEAR."""
