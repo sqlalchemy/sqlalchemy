@@ -187,6 +187,12 @@ CHANGES
     courtesy David McNelis.
 
 - mssql
+  - [bug] Fixed compiler bug whereby using a correlated
+    subquery within an ORDER BY would fail to render correctly
+    if the stament also used LIMIT/OFFSET, due to mis-rendering
+    within the ROW_NUMBER() OVER clause.  Fix courtesy
+    sayap [ticket:2538]
+
   - [bug] Fixed compiler bug whereby a given
     select() would be modified if it had an "offset"
     attribute, causing the construct to not compile

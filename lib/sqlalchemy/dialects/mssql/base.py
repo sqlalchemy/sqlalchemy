@@ -811,18 +811,18 @@ class MSSQLCompiler(compiler.SQLCompiler):
         """
         if select._offset and not getattr(select, '_mssql_visit', None):
             # to use ROW_NUMBER(), an ORDER BY is required.
-            orderby = self.process(select._order_by_clause)
-            if not orderby:
+            if not select._order_by_clause.clauses:
                 raise exc.CompileError('MSSQL requires an order_by when '
                                               'using an offset.')
 
             _offset = select._offset
             _limit = select._limit
+            _order_by_clauses = select._order_by_clause.clauses
             select = select._generate()
             select._mssql_visit = True
             select = select.column(
-                sql.literal_column("ROW_NUMBER() OVER (ORDER BY %s)" \
-                % orderby).label("mssql_rn")
+                 sql.func.ROW_NUMBER().over(order_by=_order_by_clauses)
+                     .label("mssql_rn")
                                    ).order_by(None).alias()
 
             mssql_rn = sql.column('mssql_rn')

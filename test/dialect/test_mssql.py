@@ -455,6 +455,27 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={u'mssql_rn_1': 20, u'mssql_rn_2': 30, u'x_1': 5}
         )
 
+    def test_limit_offset_with_correlated_order_by(self):
+        t1 = table('t1', column('x', Integer), column('y', Integer))
+        t2 = table('t2', column('x', Integer), column('y', Integer))
+
+        order_by = select([t2.c.y]).where(t1.c.x == t2.c.x).as_scalar()
+        s = select([t1]).where(t1.c.x == 5).order_by(order_by) \
+            .limit(10).offset(20)
+
+        self.assert_compile(
+            s,
+            "SELECT anon_1.x, anon_1.y "
+            "FROM (SELECT t1.x AS x, t1.y AS y, "
+            "ROW_NUMBER() OVER (ORDER BY "
+            "(SELECT t2.y FROM t2 WHERE t1.x = t2.x)"
+            ") AS mssql_rn "
+            "FROM t1 "
+            "WHERE t1.x = :x_1) AS anon_1 "
+            "WHERE mssql_rn > :mssql_rn_1 AND mssql_rn <= :mssql_rn_2",
+            checkparams={u'mssql_rn_1': 20, u'mssql_rn_2': 30, u'x_1': 5}
+        )
+
     def test_limit_zero_offset_using_window(self):
         t = table('t', column('x', Integer), column('y', Integer))
 
