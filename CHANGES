@@ -50,6 +50,13 @@ CHANGES
     an Index associated with a Table in a remote
     schema. [ticket:2571]
 
+  - [bug] Fixed bug in over() construct whereby
+    passing an empty list for either partition_by
+    or order_by, as opposed to None, would fail
+    to generate correctly.
+    Courtesy Gunnlaugur Þór Briem.
+    [ticket:2574]
+
   - [bug] Fixed CTE bug whereby positional
     bound parameters present in the CTEs themselves
     would corrupt the overall ordering of

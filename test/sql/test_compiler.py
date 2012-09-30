@@ -2254,6 +2254,10 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_over(self):
         self.assert_compile(
+            func.row_number().over(),
+            "row_number() OVER ()"
+        )
+        self.assert_compile(
             func.row_number().over(
                 order_by=[table1.c.name, table1.c.description]
             ),
@@ -2292,6 +2296,30 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "ORDER BY mytable.name, mytable.description)"
         )
 
+        self.assert_compile(
+            func.row_number().over(
+                partition_by=[],
+                order_by=[table1.c.name, table1.c.description]
+            ),
+            "row_number() OVER (ORDER BY mytable.name, mytable.description)"
+        )
+
+        self.assert_compile(
+            func.row_number().over(
+                partition_by=[table1.c.name, table1.c.description],
+                order_by=[]
+            ),
+            "row_number() OVER (PARTITION BY mytable.name, "
+            "mytable.description)"
+        )
+
+        self.assert_compile(
+            func.row_number().over(
+                partition_by=[],
+                order_by=[]
+            ),
+            "row_number() OVER ()"
+        )
         self.assert_compile(
             select([func.row_number().over(
                 order_by=table1.c.description
