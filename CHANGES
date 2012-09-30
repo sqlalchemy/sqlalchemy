@@ -205,6 +205,10 @@ CHANGES
     attribute, causing the construct to not compile
     correctly a second time.  [ticket:2545]
 
+  - [bug] Fixed bug where reflection of primary key constraint
+    would double up columns if the same constraint/table
+    existed in multiple schemas.
+
 0.7.8
 =====
 - orm
