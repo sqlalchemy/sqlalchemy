@@ -870,7 +870,7 @@ Closing
 -------
 
 The :meth:`~.Session.close` method issues a
-:meth:`~.Session.expunge_all`, and releases any
+:meth:`~.Session.expunge_all`, and :term:`releases` any
 transactional/connection resources. When connections are returned to the
 connection pool, transactional state is rolled back as well.
 
@@ -1211,8 +1211,7 @@ rolled back corresponding to the invocation of the
 also call the :meth:`.TwoPhaseTransaction.prepare` method on all transactions if applicable.
 
 When the transactional state is completed after a rollback or commit, the :class:`.Session`
-releases all :class:`.Transaction` and :class:`.Connection` resources (which has the effect
-of returning DBAPI connections to the connection pool of each :class:`.Engine`),
+:term:`releases` all :class:`.Transaction` and :class:`.Connection` resources,
 and goes back to the "begin" state, which
 will again invoke new :class:`.Connection` and :class:`.Transaction` objects as new
 requests to emit SQL statements are received.
@@ -1328,7 +1327,7 @@ specifically when the "begin" state occurs.  A session which is configured with
 ``autocommit=True`` may be placed into the "begin" state using the
 :meth:`.Session.begin` method.
 After the cycle completes upon :meth:`.Session.commit` or :meth:`.Session.rollback`,
-connection and transaction resources are released and the :class:`.Session`
+connection and transaction resources are :term:`released` and the :class:`.Session`
 goes back into "autocommit" mode, until :meth:`.Session.begin` is called again::
 
     Session = sessionmaker(bind=engine, autocommit=True)
