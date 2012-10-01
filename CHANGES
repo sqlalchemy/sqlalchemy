@@ -607,6 +607,16 @@ underneath "0.7.xx".
     constructed to refer to multiple remote tables
     is first used. [ticket:2455]
 
+- access
+  - [feature] the MS Access dialect has been
+    moved to its own project on Bitbucket,
+    taking advantage of the new SQLAlchemy
+    dialect compliance suite.   The dialect is
+    still in very rough shape and probably not
+    ready for general use yet, however
+    it does have *extremely* rudimental
+    functionality now.
+
 - sqlite
   - [feature] the SQLite date and time types
     have been overhauled to support a more open

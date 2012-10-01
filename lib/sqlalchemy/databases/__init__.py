@@ -18,12 +18,10 @@ from ..dialects.firebird import base as firebird
 from ..dialects.maxdb import base as maxdb
 from ..dialects.informix import base as informix
 from ..dialects.mssql import base as mssql
-from ..dialects.access import base as access
 from ..dialects.sybase import base as sybase
 
 
 __all__ = (
-    'access',
     'drizzle',
     'firebird',
     'informix',

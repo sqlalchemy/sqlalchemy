@@ -46,10 +46,13 @@ Supported Databases
 ====================
 
 SQLAlchemy includes many :class:`~sqlalchemy.engine.base.Dialect` implementations for various
-backends; each is described as its own package in the :ref:`sqlalchemy.dialects_toplevel` package.  A
-SQLAlchemy dialect always requires that an appropriate DBAPI driver is installed.
+backends.   Dialects for the most common databases are included with SQLAlchemy; a handful
+of others require an additional install of a separate dialect.
 
-The table below summarizes the state of DBAPI support in SQLAlchemy 0.7.  The values
+Those dialects which are included with SQLAlchemy are described under the section :ref:`dialect_toplevel`.
+All dialects additionally require that an appropriate DBAPI driver is installed.
+
+The table below summarizes the state of DBAPI support in this version of SQLAlchemy.  The values
 translate as:
 
 * yes / Python platform - The SQLAlchemy dialect is mostly or fully operational on the target platform.
@@ -66,7 +69,7 @@ translate as:
 Driver                                                           Connect string               Py2K         Py3K          Jython       Unix               Windows
 ===============================================================  ===========================  ===========  ===========   ===========  =================  ============
 **DB2/Informix IDS**
-ibm-db_                                                          thirdparty                   thirdparty   thirdparty    thirdparty   thirdparty         thirdparty
+ibm-db_                                                          See `ibm-db`_                unknown      unknown       unknown      unknown            unknown
 **Drizzle** :ref:`(docs) <drizzle_toplevel>`
 mysql-python_                                                    ``drizzle+mysqldb``\*        yes          development   no           yes                yes
 **Firebird / Interbase** :ref:`(docs) <firebird_toplevel>`
@@ -75,8 +78,8 @@ kinterbasdb_                                                     ``firebird+kint
 informixdb_                                                      ``informix+informixdb``\*    yes          development   no           unknown            unknown
 **MaxDB** :ref:`(docs) <maxdb_toplevel>`
 sapdb_                                                           ``maxdb+sapdb``\*            development  development   no           yes                unknown
-**Microsoft Access** :ref:`(docs) <access_toplevel>`
-pyodbc_                                                          ``access+pyodbc``\*          development  development   no           unknown            yes
+**Microsoft Access**
+pyodbc_                                                          See `sqlalchemy-access`_     development  development   no           unknown            yes
 **Microsoft SQL Server** :ref:`(docs) <mssql_toplevel>`
 adodbapi_                                                        ``mssql+adodbapi``           development  development   no           no                 yes
 `jTDS JDBC Driver`_                                              ``mssql+zxjdbc``             no           no            development  yes                yes
@@ -110,6 +113,7 @@ python-sybase_                                                   ``sybase+pysyba
 .. [1] The Sybase dialect currently lacks the ability to reflect tables.
 .. _psycopg2: http://www.initd.org/
 .. _pg8000: http://pybrary.net/pg8000/
+.. _sqlalchemy-access: https://bitbucket.org/zzzeek/sqlalchemy-access
 .. _pypostgresql: http://python.projects.postgresql.org/
 .. _mysql-python: http://sourceforge.net/projects/mysql-python
 .. _MySQL Connector/Python: https://launchpad.net/myconnpy

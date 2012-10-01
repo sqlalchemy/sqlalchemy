@@ -193,7 +193,6 @@ class DefaultRequirements(SuiteRequirements):
         """Target database must support savepoints."""
 
         return skip_if([
-                    "access",
                     "sqlite",
                     "sybase",
                     ("mysql", "<", (5, 0, 3)),
@@ -215,7 +214,7 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def update_nowait(self):
         """Target database must support SELECT...FOR UPDATE NOWAIT"""
-        return skip_if(["access", "firebird", "mssql", "mysql", "sqlite", "sybase"],
+        return skip_if(["firebird", "mssql", "mysql", "sqlite", "sybase"],
                 "no FOR UPDATE NOWAIT support"
             )
 
@@ -259,7 +258,6 @@ class DefaultRequirements(SuiteRequirements):
         """Target database must support two-phase transactions."""
 
         return skip_if([
-            no_support('access', 'two-phase xact not supported by database'),
             no_support('firebird', 'no SA implementation'),
             no_support('maxdb', 'two-phase xact not supported by database'),
             no_support('mssql', 'two-phase xact not supported by drivers'),
