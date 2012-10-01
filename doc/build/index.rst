@@ -109,7 +109,6 @@ usage patterns regarding individual dialects.
 :doc:`dialects/firebird` |
 :doc:`dialects/informix` |
 :doc:`dialects/maxdb` |
-:doc:`dialects/access` |
 :doc:`dialects/mssql` |
 :doc:`dialects/mysql` |
 :doc:`dialects/oracle` |
