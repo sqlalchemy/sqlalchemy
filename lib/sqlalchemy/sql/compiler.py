@@ -1854,6 +1854,9 @@ class DDLCompiler(engine.Compiled):
     def visit_drop_table(self, drop):
         return "\nDROP TABLE " + self.preparer.format_table(drop.element)
 
+    def visit_drop_view(self, drop):
+        return "\nDROP VIEW " + self.preparer.format_table(drop.element)
+
     def _index_identifier(self, ident):
         if isinstance(ident, sql._truncated_label):
             max = self.dialect.max_index_name_length or \

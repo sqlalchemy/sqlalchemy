@@ -151,14 +151,32 @@ class Inspector(object):
         return []
 
     def get_table_names(self, schema=None, order_by=None):
-        """Return all table names in `schema`.
+        """Return all table names in referred to within a particular schema.
 
-        :param schema: Optional, retrieve names from a non-default schema.
+        The names are expected to be real tables only, not views.
+        Views are instead returned using the :meth:`.get_view_names`
+        method.
+
+
+        :param schema: Schema name. If ``schema`` is left at ``None``, the
+         database's default schema is
+         used, else the named schema is searched.  If the database does not
+         support named schemas, behavior is undefined if ``schema`` is not
+         passed as ``None``.
+
         :param order_by: Optional, may be the string "foreign_key" to sort
-                         the result on foreign key dependencies.
+         the result on foreign key dependencies.
 
-        This should probably not return view names or maybe it should return
-        them with an indicator t or v.
+         .. versionchanged:: 0.8 the "foreign_key" sorting sorts tables
+            in order of dependee to dependent; that is, in creation
+            order, rather than in drop order.  This is to maintain
+            consistency with similar features such as
+            :attr:`.MetaData.sorted_tables` and :func:`.util.sort_tables`.
+
+        .. seealso::
+
+            :attr:`.MetaData.sorted_tables`
+
         """
 
         if hasattr(self.dialect, 'get_table_names'):
@@ -167,14 +185,11 @@ class Inspector(object):
         else:
             tnames = self.engine.table_names(schema)
         if order_by == 'foreign_key':
-            import random
-            random.shuffle(tnames)
-
             tuples = []
             for tname in tnames:
                 for fkey in self.get_foreign_keys(tname, schema):
                     if tname != fkey['referred_table']:
-                        tuples.append((tname, fkey['referred_table']))
+                        tuples.append((fkey['referred_table'], tname))
             tnames = list(topological.sort(tuples, tnames))
         return tnames
 

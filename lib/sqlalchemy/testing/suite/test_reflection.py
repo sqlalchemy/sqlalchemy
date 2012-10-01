@@ -116,7 +116,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
         )
 
         cls.define_index(metadata, users)
-        cls.define_views(metadata, schema=None)
+        cls.define_views(metadata, schema)
 
     @classmethod
     def define_index(cls, metadata, users):
@@ -131,6 +131,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
             view_name = fullname + '_v'
             query = "CREATE VIEW %s AS SELECT * FROM %s" % (
                                 view_name, fullname)
+
             event.listen(
                 metadata,
                 "after_create",
@@ -173,7 +174,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
             table_names = insp.get_table_names(schema,
                                                order_by=order_by)
             if order_by == 'foreign_key':
-                answer = ['dingalings', 'email_addresses', 'users']
+                answer = ['users', 'email_addresses', 'dingalings']
                 eq_(table_names, answer)
             else:
                 answer = ['dingalings', 'email_addresses', 'users']

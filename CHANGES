@@ -364,6 +364,11 @@ underneath "0.7.xx".
     where specific capabilities and features can
     be enabled or disabled for testing.
 
+  - [bug] The Inspector.get_table_names()
+    order_by="foreign_key" feature now sorts
+    tables by dependee first, to be consistent
+    with util.sort_tables and metadata.sorted_tables.
+
   - [bug] Fixed bug whereby if a database restart
     affected multiple connections, each
     connection would individually invoke a new

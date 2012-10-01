@@ -148,22 +148,29 @@ def _create_testing_engine(options, file_config):
 @post
 def _prep_testing_database(options, file_config):
     from sqlalchemy.testing import engines
-    from sqlalchemy import schema
+    from sqlalchemy import schema, inspect
 
     # also create alt schemas etc. here?
     if options.dropfirst:
         e = engines.utf8_engine()
-        existing = e.table_names()
-        if existing:
-            print "Dropping existing tables in database: " + db_url
-            try:
-                print "Tables: %s" % ', '.join(existing)
-            except:
-                pass
-            print "Abort within 5 seconds..."
-            time.sleep(5)
-            md = schema.MetaData(e, reflect=True)
-            md.drop_all()
+        inspector = inspect(e)
+
+        for vname in inspector.get_view_names():
+            e.execute(schema._DropView(schema.Table(vname, schema.MetaData())))
+
+        for vname in inspector.get_view_names(schema="test_schema"):
+            e.execute(schema._DropView(
+                        schema.Table(vname,
+                                    schema.MetaData(), schema="test_schema")))
+
+        for tname in reversed(inspector.get_table_names(order_by="foreign_key")):
+            e.execute(schema.DropTable(schema.Table(tname, schema.MetaData())))
+
+        for tname in reversed(inspector.get_table_names(
+                                order_by="foreign_key", schema="test_schema")):
+            e.execute(schema.DropTable(
+                schema.Table(tname, schema.MetaData(), schema="test_schema")))
+
         e.dispose()
 
 

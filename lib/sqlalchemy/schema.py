@@ -2536,8 +2536,18 @@ class MetaData(SchemaItem):
 
     @property
     def sorted_tables(self):
-        """Returns a list of ``Table`` objects sorted in order of
-        dependency.
+        """Returns a list of :class:`.Table` objects sorted in order of
+        foreign key dependency.
+
+        The sorting will place :class:`.Table` objects that have dependencies
+        first, before the dependencies themselves, representing the
+        order in which they can be created.   To get the order in which
+        the tables would be dropped, use the ``reversed()`` Python built-in.
+
+        .. seealso::
+
+            :meth:`.Inspector.sorted_tables`
+
         """
         return sqlutil.sort_tables(self.tables.itervalues())
 
@@ -3219,6 +3229,16 @@ class CreateTable(_CreateDropBase):
         self.columns = [CreateColumn(column)
             for column in element.columns
         ]
+
+
+class _DropView(_CreateDropBase):
+    """Semi-public 'DROP VIEW' construct.
+
+    Used by the test suite for dialect-agnostic drops of views.
+    This object will eventually be part of a public "view" API.
+
+    """
+    __visit_name__ = "drop_view"
 
 class CreateColumn(visitors.Visitable):
     """Represent a :class:`.Column` as rendered in a CREATE TABLE statement,
