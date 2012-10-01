@@ -37,7 +37,7 @@ def listen(target, identifier, fn, *args, **kw):
             tgt.dispatch._listen(tgt, identifier, fn, *args, **kw)
             return
     raise exc.InvalidRequestError("No such event '%s' for target '%s'" %
-                                (identifier,target))
+                                (identifier, target))
 
 def listens_for(target, identifier, *args, **kw):
     """Decorate a function as a listener for the given target + identifier.
@@ -69,7 +69,7 @@ def remove(target, identifier, fn):
     """
     for evt_cls in _registrars[identifier]:
         for tgt in evt_cls._accept_with(target):
-            tgt.dispatch._remove(identifier, tgt, fn, *args, **kw)
+            tgt.dispatch._remove(identifier, tgt, fn)
             return
 
 _registrars = util.defaultdict(list)
