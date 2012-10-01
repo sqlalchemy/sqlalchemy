@@ -3,7 +3,7 @@
 
 recursive-include doc *.html *.css *.txt *.js *.jpg *.png *.py Makefile *.rst *.mako *.sty
 recursive-include examples *.py *.xml
-recursive-include test *.py *.dat
+recursive-include test *.py *.dat *.txt
 
 # include the c extensions, which otherwise
 # don't come in if --with-cextensions isn't specified.
