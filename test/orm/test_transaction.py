@@ -1127,7 +1127,56 @@ class NaturalPKRollbackTest(fixtures.MappedTest):
 
         session.rollback()
 
+    def test_key_replaced_by_update(self):
+        users, User = self.tables.users, self.classes.User
 
+        mapper(User, users)
 
+        u1 = User(name='u1')
+        u2 = User(name='u2')
+
+        s = Session()
+        s.add_all([u1, u2])
+        s.commit()
+
+        s.delete(u1)
+        s.flush()
+
+        u2.name = 'u1'
+        s.flush()
+
+        assert u1 not in s
+        s.rollback()
+
+        assert u1 in s
+        assert u2 in s
+
+        assert s.identity_map[(User, ('u1',))] is u1
+        assert s.identity_map[(User, ('u2',))] is u2
+
+    def test_key_replaced_by_oob_insert(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        u1 = User(name='u1')
+
+        s = Session()
+        s.add(u1)
+        s.commit()
+
+        s.delete(u1)
+        s.flush()
+
+        s.execute(users.insert().values(name='u1'))
+        u2 = s.query(User).get('u1')
+
+        assert u1 not in s
+        s.rollback()
+
+        assert u1 in s
+        assert u2 not in s
+
+        assert s.identity_map[(User, ('u1',))] is u1
 
 

@@ -3,6 +3,18 @@
 =======
 CHANGES
 =======
+0.7.10
+======
+- orm
+  - [bug] Fixed Session accounting bug whereby replacing
+    a deleted object in the identity map with another
+    object of the same primary key would raise a
+    "conflicting state" error on rollback(),
+    if the replaced primary key were established either
+    via non-unitofwork-established INSERT statement
+    or by primary key switch of another instance.
+    [ticket:2583]
+
 0.7.9
 =====
 - orm

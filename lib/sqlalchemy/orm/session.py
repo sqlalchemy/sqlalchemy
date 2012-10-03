@@ -251,6 +251,7 @@ class SessionTransaction(object):
         if not self._is_transaction_boundary:
             self._new = self._parent._new
             self._deleted = self._parent._deleted
+            self._key_switches = self._parent._key_switches
             return
 
         if not self.session._flushing:
@@ -258,6 +259,7 @@ class SessionTransaction(object):
 
         self._new = weakref.WeakKeyDictionary()
         self._deleted = weakref.WeakKeyDictionary()
+        self._key_switches = weakref.WeakKeyDictionary()
 
     def _restore_snapshot(self):
         assert self._is_transaction_boundary
@@ -267,11 +269,16 @@ class SessionTransaction(object):
             if s.key:
                 del s.key
 
+        for s, (oldkey, newkey) in self._key_switches.items():
+            self.session.identity_map.discard(s)
+            s.key = oldkey
+            self.session.identity_map.replace(s)
+
         for s in set(self._deleted).union(self.session._deleted):
             if s.deleted:
                 #assert s in self._deleted
                 del s.deleted
-            self.session._update_impl(s)
+            self.session._update_impl(s, discard_existing=True)
 
         assert not self.session._deleted
 
@@ -1323,6 +1330,11 @@ class Session(object):
                 # state has already replaced this one in the identity
                 # map (see test/orm/test_naturalpks.py ReversePKsTest)
                 self.identity_map.discard(state)
+                if state in self.transaction._key_switches:
+                    orig_key = self.transaction._key_switches[0]
+                else:
+                    orig_key = state.key
+                self.transaction._key_switches[state] = (orig_key, instance_key)
                 state.key = instance_key
 
             self.identity_map.replace(state)
@@ -1601,7 +1613,7 @@ class Session(object):
             self._new[state] = state.obj()
             state.insert_order = len(self._new)
 
-    def _update_impl(self, state):
+    def _update_impl(self, state, discard_existing=False):
         if (self.identity_map.contains_state(state) and
             state not in self._deleted):
             return
@@ -1617,6 +1629,10 @@ class Session(object):
                 "function to send this object back to the transient state." %
                 mapperutil.state_str(state)
             )
+        if discard_existing:
+            existing = self.identity_map.get(state.key)
+            if existing is not None:
+                self.identity_map.discard(attributes.instance_state(existing))
         self._attach(state)
         self._deleted.pop(state, None)
         self.identity_map.add(state)
