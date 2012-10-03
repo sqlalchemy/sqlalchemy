@@ -31,6 +31,18 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def foreign_keys(self):
+        """Target database must support foreign keys."""
+
+        return exclusions.open()
+
+    @property
+    def foreign_key_ddl(self):
+        """Target database must support the DDL phrases for FOREIGN KEY."""
+
+        return exclusions.open()
+
+    @property
     def autoincrement_insert(self):
         """target platform generates new surrogate integer primary key values
         when insert() is executed, excluding the pk column."""
@@ -102,7 +114,11 @@ class SuiteRequirements(Requirements):
         return self.schemas
 
     @property
-    def constraint_reflection(self):
+    def primary_key_constraint_reflection(self):
+        return exclusions.open()
+
+    @property
+    def foreign_key_constraint_reflection(self):
         return exclusions.open()
 
     @property

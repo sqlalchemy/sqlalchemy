@@ -60,6 +60,9 @@ def Column(*args, **kw):
     test_opts = dict([(k, kw.pop(k)) for k in kw.keys()
                       if k.startswith('test_')])
 
+    if not config.requirements.foreign_key_ddl.enabled:
+        args = [arg for arg in args if not isinstance(arg, schema.ForeignKey)]
+
     col = schema.Column(*args, **kw)
     if 'test_needs_autoincrement' in test_opts and \
         kw.get('primary_key', False) and \

@@ -246,6 +246,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
                     ])) > 0, '%s(%s), %s(%s)' % (col.name,
                             col.type, cols[i]['name'], ctype))
 
+    @testing.requires.table_reflection
     def test_get_columns(self):
         self._test_get_columns()
 
@@ -282,6 +283,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
             eq_(addr_cons['name'], 'email_ad_pk')
         go()
 
+    @testing.requires.primary_key_constraint_reflection
     def test_get_pk_constraint(self):
         self._test_get_pk_constraint()
 
@@ -337,11 +339,11 @@ class ComponentReflectionTest(fixtures.TablesTest):
         eq_(fkey1['referred_columns'], ['user_id', ])
         eq_(fkey1['constrained_columns'], ['remote_user_id'])
 
-    @testing.requires.constraint_reflection
+    @testing.requires.foreign_key_constraint_reflection
     def test_get_foreign_keys(self):
         self._test_get_foreign_keys()
 
-    @testing.requires.constraint_reflection
+    @testing.requires.foreign_key_constraint_reflection
     @testing.requires.schemas
     def test_get_foreign_keys_with_schema(self):
         self._test_get_foreign_keys(schema='test_schema')
