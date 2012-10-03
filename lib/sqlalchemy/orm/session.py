@@ -1288,7 +1288,7 @@ class Session(_SessionClassMethods):
                     # map (see test/orm/test_naturalpks.py ReversePKsTest)
                     self.identity_map.discard(state)
                     if state in self.transaction._key_switches:
-                        orig_key = self.transaction._key_switches[0]
+                        orig_key = self.transaction._key_switches[state][0]
                     else:
                         orig_key = state.key
                     self.transaction._key_switches[state] = (orig_key, instance_key)
