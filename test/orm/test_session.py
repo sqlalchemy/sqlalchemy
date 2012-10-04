@@ -16,6 +16,8 @@ from sqlalchemy.orm import mapper, relationship, backref, joinedload, \
 from sqlalchemy.util import pypy
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
+from sqlalchemy import event, ForeignKey
+
 
 class SessionTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -1386,3 +1388,94 @@ class TLTransactionTest(fixtures.MappedTest):
         sess.flush()
         self.bind.commit()
 
+
+
+class FlushWarningsTest(fixtures.MappedTest):
+    run_setup_mappers = 'each'
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('user', metadata,
+                Column('id', Integer, primary_key=True,
+                            test_needs_autoincrement=True),
+                Column('name', String(20))
+            )
+
+        Table('address', metadata,
+                Column('id', Integer, primary_key=True,
+                            test_needs_autoincrement=True),
+                Column('user_id', Integer, ForeignKey('user.id')),
+                Column('email', String(20))
+            )
+
+    @classmethod
+    def setup_classes(cls):
+        class User(cls.Basic):
+            pass
+        class Address(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        user, User = cls.tables.user, cls.classes.User
+        address, Address = cls.tables.address, cls.classes.Address
+        mapper(User, user, properties={
+                'addresses': relationship(Address, backref="user")
+            })
+        mapper(Address, address)
+
+    def test_o2m_cascade_add(self):
+        Address = self.classes.Address
+        def evt(mapper, conn, instance):
+            instance.addresses.append(Address(email='x1'))
+        self._test(evt, "collection append")
+
+    def test_o2m_cascade_remove(self):
+        def evt(mapper, conn, instance):
+            del instance.addresses[0]
+        self._test(evt, "collection remove")
+
+    def test_m2o_cascade_add(self):
+        User = self.classes.User
+        def evt(mapper, conn, instance):
+            instance.addresses[0].user = User(name='u2')
+        self._test(evt, "related attribute set")
+
+    def test_m2o_cascade_remove(self):
+        def evt(mapper, conn, instance):
+            a1 = instance.addresses[0]
+            del a1.user
+        self._test(evt, "related attribute delete")
+
+    def test_plain_add(self):
+        Address = self.classes.Address
+        def evt(mapper, conn, instance):
+            object_session(instance).add(Address(email='x1'))
+        self._test(evt, "Session.add\(\)")
+
+    def test_plain_merge(self):
+        Address = self.classes.Address
+        def evt(mapper, conn, instance):
+            object_session(instance).merge(Address(email='x1'))
+        self._test(evt, "Session.merge\(\)")
+
+    def test_plain_delete(self):
+        Address = self.classes.Address
+        def evt(mapper, conn, instance):
+            object_session(instance).delete(Address(email='x1'))
+        self._test(evt, "Session.delete\(\)")
+
+    def _test(self, fn, method):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        s = Session()
+        event.listen(User, "after_insert", fn)
+
+        u1 = User(name='u1', addresses=[Address(name='a1')])
+        s.add(u1)
+        assert_raises_message(
+            sa.exc.SAWarning,
+            "Usage of the '%s'" % method,
+            s.commit
+        )

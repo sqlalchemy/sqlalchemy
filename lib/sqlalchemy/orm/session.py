@@ -555,6 +555,7 @@ class Session(_SessionClassMethods):
         self.bind = bind
         self.__binds = {}
         self._flushing = False
+        self._warn_on_events = False
         self.transaction = None
         self.hash_key = _new_sessionid()
         self.autoflush = autoflush
@@ -1323,7 +1324,7 @@ class Session(_SessionClassMethods):
             self._deleted.pop(state, None)
             state.deleted = True
 
-    def add(self, instance):
+    def add(self, instance, _warn=True):
         """Place an object in the ``Session``.
 
         Its state will be persisted to the database on the next flush
@@ -1333,6 +1334,9 @@ class Session(_SessionClassMethods):
         is ``expunge()``.
 
         """
+        if _warn and self._warn_on_events:
+            self._flush_warning("Session.add()")
+
         try:
             state = attributes.instance_state(instance)
         except exc.NO_STATE:
@@ -1343,8 +1347,11 @@ class Session(_SessionClassMethods):
     def add_all(self, instances):
         """Add the given collection of instances to this ``Session``."""
 
+        if self._warn_on_events:
+            self._flush_warning("Session.add_all()")
+
         for instance in instances:
-            self.add(instance)
+            self.add(instance, _warn=False)
 
     def _save_or_update_state(self, state):
         self._save_or_update_impl(state)
@@ -1362,6 +1369,9 @@ class Session(_SessionClassMethods):
         The database delete operation occurs upon ``flush()``.
 
         """
+        if self._warn_on_events:
+            self._flush_warning("Session.delete()")
+
         try:
             state = attributes.instance_state(instance)
         except exc.NO_STATE:
@@ -1435,6 +1445,9 @@ class Session(_SessionClassMethods):
          should be "clean" as well, else this suggests a mis-use of the method.
 
         """
+
+        if self._warn_on_events:
+            self._flush_warning("Session.merge()")
 
         _recursive = {}
 
@@ -1744,6 +1757,13 @@ class Session(_SessionClassMethods):
         finally:
             self._flushing = False
 
+    def _flush_warning(self, method):
+        util.warn("Usage of the '%s' operation is not currently supported "
+                    "within the execution stage of the flush process. "
+                    "Results may not be consistent.  Consider using alternative "
+                    "event listeners or connection-level operations instead."
+                    % method)
+
     def _is_clean(self):
         return not self.identity_map.check_modified() and \
                 not self._deleted and \
@@ -1811,7 +1831,11 @@ class Session(_SessionClassMethods):
         flush_context.transaction = transaction = self.begin(
             subtransactions=True)
         try:
-            flush_context.execute()
+            self._warn_on_events = True
+            try:
+                flush_context.execute()
+            finally:
+                self._warn_on_events = False
 
             self.dispatch.after_flush(self, flush_context)
 

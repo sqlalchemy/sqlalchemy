@@ -34,6 +34,9 @@ def track_cascade_events(descriptor, prop):
 
         sess = sessionlib._state_session(state)
         if sess:
+            if sess._warn_on_events:
+                sess._flush_warning("collection append")
+
             prop = state.manager.mapper._props[key]
             item_state = attributes.instance_state(item)
             if prop.cascade.save_update and \
@@ -48,7 +51,15 @@ def track_cascade_events(descriptor, prop):
 
         sess = sessionlib._state_session(state)
         if sess:
+
             prop = state.manager.mapper._props[key]
+
+            if sess._warn_on_events:
+                sess._flush_warning(
+                        "collection remove"
+                        if prop.uselist
+                        else "related attribute delete")
+
             # expunge pending orphans
             item_state = attributes.instance_state(item)
             if prop.cascade.delete_orphan and \
@@ -64,6 +75,10 @@ def track_cascade_events(descriptor, prop):
 
         sess = sessionlib._state_session(state)
         if sess:
+
+            if sess._warn_on_events:
+                sess._flush_warning("related attribute set")
+
             prop = state.manager.mapper._props[key]
             if newvalue is not None:
                 newvalue_state = attributes.instance_state(newvalue)

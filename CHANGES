@@ -228,6 +228,24 @@ underneath "0.7.xx".
     need autoflush w pre-attached object.
     [ticket:2464]
 
+  - [feature] The Session will produce warnings
+    when unsupported methods are used inside the
+    "execute" portion of the flush.   These are
+    the familiar methods add(), delete(), etc.
+    as well as collection and related-object
+    manipulations, as called within mapper-level
+    flush events
+    like after_insert(), after_update(), etc.
+    It's been prominently documented for a long
+    time that  SQLAlchemy cannot guarantee
+    results when the Session is manipulated within
+    the execution of the flush plan,
+    however users are still doing it, so now
+    there's a warning.   Maybe someday the Session
+    will be enhanced to support these operations
+    inside of the flush, but for now, results
+    can't be guaranteed.
+
   - [feature] ORM entities can be passed
     to select() as well as the select_from(),
     correlate(), and correlate_except()
