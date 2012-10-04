@@ -37,8 +37,20 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def self_referential_foreign_keys(self):
+        """Target database must support self-referential foreign keys."""
+
+        return exclusions.open()
+
+    @property
     def foreign_key_ddl(self):
         """Target database must support the DDL phrases for FOREIGN KEY."""
+
+        return exclusions.open()
+
+    @property
+    def named_constraints(self):
+        """target database must support names for constraints."""
 
         return exclusions.open()
 

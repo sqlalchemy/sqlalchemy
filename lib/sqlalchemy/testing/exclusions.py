@@ -3,43 +3,35 @@ from nose import SkipTest
 from ..util import decorator
 from . import config
 from .. import util
+import contextlib
 
-
-class fails_if(object):
-    def __init__(self, predicate, reason=None):
-        self.predicate = _as_predicate(predicate)
-        self.reason = reason
-
-    @property
-    def enabled(self):
-        return not self.predicate()
-
-    def __call__(self, fn):
-        @decorator
-        def decorate(fn, *args, **kw):
-            if not self.predicate():
-                return fn(*args, **kw)
-            else:
-                try:
-                    fn(*args, **kw)
-                except Exception, ex:
-                    print ("'%s' failed as expected (%s): %s " % (
-                        fn.__name__, self.predicate, str(ex)))
-                    return True
-                else:
-                    raise AssertionError(
-                        "Unexpected success for '%s' (%s)" %
-                        (fn.__name__, self.predicate))
-        return decorate(fn)
 
 class skip_if(object):
     def __init__(self, predicate, reason=None):
         self.predicate = _as_predicate(predicate)
         self.reason = reason
 
+    _fails_on = None
+
     @property
     def enabled(self):
         return not self.predicate()
+
+    @contextlib.contextmanager
+    def fail_if(self, name='block'):
+        try:
+            yield
+        except Exception, ex:
+            if self.predicate():
+                print ("%s failed as expected (%s): %s " % (
+                    name, self.predicate, str(ex)))
+            else:
+                raise
+        else:
+            if self.predicate():
+                raise AssertionError(
+                    "Unexpected success for '%s' (%s)" %
+                    (name, self.predicate))
 
     def __call__(self, fn):
         @decorator
@@ -56,6 +48,22 @@ class skip_if(object):
                         )
                 raise SkipTest(msg)
             else:
+                if self._fails_on:
+                    with self._fails_on.fail_if(name=fn.__name__):
+                        return fn(*args, **kw)
+                else:
+                    return fn(*args, **kw)
+        return decorate(fn)
+
+    def fails_on(self, other, reason=None):
+        self._fails_on = skip_if(other, reason)
+        return self
+
+class fails_if(skip_if):
+    def __call__(self, fn):
+        @decorator
+        def decorate(fn, *args, **kw):
+            with self.fail_if(name=fn.__name__):
                 return fn(*args, **kw)
         return decorate(fn)
 
@@ -264,10 +272,10 @@ def db_spec(*dbs):
         )
 
 def open():
-    return skip_if(BooleanPredicate(False))
+    return skip_if(BooleanPredicate(False, "mark as execute"))
 
 def closed():
-    return skip_if(BooleanPredicate(True))
+    return skip_if(BooleanPredicate(True, "marked as skip"))
 
 @decorator
 def future(fn, *args, **kw):

@@ -11,7 +11,6 @@ from sqlalchemy.testing.exclusions import \
      skip_if,\
      only_if,\
      only_on,\
-     fails_on,\
      fails_on_everything_except,\
      fails_if,\
      SpecPredicate,\
@@ -22,16 +21,6 @@ def no_support(db, reason):
 
 def exclude(db, op, spec, description=None):
     return SpecPredicate(db, op, spec, description=description)
-
-
-crashes = skip
-
-def _chain_decorators_on(*decorators):
-    def decorate(fn):
-        for decorator in reversed(decorators):
-            fn = decorator(fn)
-        return fn
-    return decorate
 
 class DefaultRequirements(SuiteRequirements):
     @property
@@ -45,13 +34,20 @@ class DefaultRequirements(SuiteRequirements):
             ])
 
     @property
+    def named_constraints(self):
+        """target database must support names for constraints."""
+
+        return skip_if([
+            no_support('sqlite', 'not supported by database'),
+            ])
+
+    @property
     def foreign_keys(self):
         """Target database must support foreign keys."""
 
         return skip_if(
                 no_support('sqlite', 'not supported by database')
             )
-
 
     @property
     def unbounded_varchar(self):
@@ -151,12 +147,11 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def isolation_level(self):
-        return _chain_decorators_on(
-            only_on(('postgresql', 'sqlite', 'mysql'),
-                        "DBAPI has no isolation level support"),
-            fails_on('postgresql+pypostgresql',
+        return only_on(
+                    ('postgresql', 'sqlite', 'mysql'),
+                    "DBAPI has no isolation level support"
+                ).fails_on('postgresql+pypostgresql',
                           'pypostgresql bombs on multiple isolation level calls')
-        )
 
     @property
     def row_triggers(self):
@@ -340,60 +335,47 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def nullsordering(self):
         """Target backends that support nulls ordering."""
-        return _chain_decorators_on(
-            fails_on_everything_except('postgresql', 'oracle', 'firebird')
-        )
+        return fails_on_everything_except('postgresql', 'oracle', 'firebird')
 
     @property
     def reflects_pk_names(self):
         """Target driver reflects the name of primary key constraints."""
-        return _chain_decorators_on(
-            fails_on_everything_except('postgresql', 'oracle')
-        )
+
+        return fails_on_everything_except('postgresql', 'oracle')
 
     @property
     def python2(self):
-        return _chain_decorators_on(
-            skip_if(
+        return skip_if(
                 lambda: sys.version_info >= (3,),
                 "Python version 2.xx is required."
                 )
-        )
 
     @property
     def python3(self):
-        return _chain_decorators_on(
-            skip_if(
+        return skip_if(
                 lambda: sys.version_info < (3,),
                 "Python version 3.xx is required."
                 )
-        )
 
     @property
     def python26(self):
-        return _chain_decorators_on(
-            skip_if(
+        return skip_if(
                 lambda: sys.version_info < (2, 6),
                 "Python version 2.6 or greater is required"
             )
-        )
 
     @property
     def python25(self):
-        return _chain_decorators_on(
-            skip_if(
+        return skip_if(
                 lambda: sys.version_info < (2, 5),
                 "Python version 2.5 or greater is required"
             )
-        )
 
     @property
     def cpython(self):
-        return _chain_decorators_on(
-             only_if(lambda: util.cpython,
+        return only_if(lambda: util.cpython,
                "cPython interpreter needed"
              )
-        )
 
     @property
     def predictable_gc(self):
@@ -405,9 +387,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def sqlite(self):
-        return _chain_decorators_on(
-            skip_if(lambda: not self._has_sqlite())
-        )
+        return skip_if(lambda: not self._has_sqlite())
 
     @property
     def ad_hoc_engines(self):
@@ -418,36 +398,25 @@ class DefaultRequirements(SuiteRequirements):
         as not present.
 
         """
-        return _chain_decorators_on(
-            skip_if(lambda: self.config.options.low_connections)
-        )
+        return skip_if(lambda: self.config.options.low_connections)
 
     @property
     def skip_mysql_on_windows(self):
         """Catchall for a large variety of MySQL on Windows failures"""
 
-        return _chain_decorators_on(
-            skip_if(self._has_mysql_on_windows,
+        return skip_if(self._has_mysql_on_windows,
                 "Not supported on MySQL + Windows"
             )
-        )
 
     @property
     def english_locale_on_postgresql(self):
-        return _chain_decorators_on(
-            skip_if(lambda: against('postgresql') \
+        return skip_if(lambda: against('postgresql') \
                     and not self.db.scalar('SHOW LC_COLLATE').startswith('en'))
-        )
 
     @property
     def selectone(self):
         """target driver must support the literal statement 'select 1'"""
-        return _chain_decorators_on(
-            skip_if(lambda: against('oracle'),
-                "non-standard SELECT scalar syntax"),
-            skip_if(lambda: against('firebird'),
-                "non-standard SELECT scalar syntax")
-        )
+        return skip_if(["oracle", "firebird"], "non-standard SELECT scalar syntax")
 
     def _has_cextensions(self):
         try:

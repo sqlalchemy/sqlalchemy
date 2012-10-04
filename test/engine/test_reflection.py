@@ -65,7 +65,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
     @testing.provide_metadata
     def test_two_foreign_keys(self):
         meta = self.metadata
-        t1 = Table(
+        Table(
             't1',
             meta,
             Column('id', sa.Integer, primary_key=True),
@@ -73,10 +73,12 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             Column('t3id', sa.Integer, sa.ForeignKey('t3.id')),
             test_needs_fk=True,
             )
-        t2 = Table('t2', meta, Column('id', sa.Integer,
-                   primary_key=True), test_needs_fk=True)
-        t3 = Table('t3', meta, Column('id', sa.Integer,
-                   primary_key=True), test_needs_fk=True)
+        Table('t2', meta,
+                    Column('id', sa.Integer, primary_key=True),
+                    test_needs_fk=True)
+        Table('t3', meta,
+                    Column('id', sa.Integer, primary_key=True),
+                    test_needs_fk=True)
         meta.create_all()
         meta2 = MetaData()
         t1r, t2r, t3r = [Table(x, meta2, autoload=True,

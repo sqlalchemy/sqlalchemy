@@ -87,15 +87,25 @@ class ComponentReflectionTest(fixtures.TablesTest):
         else:
             schema_prefix = ""
 
-        users = Table('users', metadata,
-            Column('user_id', sa.INT, primary_key=True),
-            Column('test1', sa.CHAR(5), nullable=False),
-            Column('test2', sa.Float(5), nullable=False),
-            Column('parent_user_id', sa.Integer,
-                        sa.ForeignKey('%susers.user_id' % schema_prefix)),
-            schema=schema,
-            test_needs_fk=True,
-        )
+        if testing.requires.self_referential_foreign_keys.enabled:
+            users = Table('users', metadata,
+                Column('user_id', sa.INT, primary_key=True),
+                Column('test1', sa.CHAR(5), nullable=False),
+                Column('test2', sa.Float(5), nullable=False),
+                Column('parent_user_id', sa.Integer,
+                            sa.ForeignKey('%susers.user_id' % schema_prefix)),
+                schema=schema,
+                test_needs_fk=True,
+            )
+        else:
+            users = Table('users', metadata,
+                Column('user_id', sa.INT, primary_key=True),
+                Column('test1', sa.CHAR(5), nullable=False),
+                Column('test2', sa.Float(5), nullable=False),
+                schema=schema,
+                test_needs_fk=True,
+            )
+
         Table("dingalings", metadata,
                   Column('dingaling_id', sa.Integer, primary_key=True),
                   Column('address_id', sa.Integer,
@@ -278,17 +288,15 @@ class ComponentReflectionTest(fixtures.TablesTest):
         addr_pkeys = addr_cons['constrained_columns']
         eq_(addr_pkeys,  ['address_id'])
 
-        @testing.requires.reflects_pk_names
-        def go():
+        with testing.requires.reflects_pk_names.fail_if():
             eq_(addr_cons['name'], 'email_ad_pk')
-        go()
 
     @testing.requires.primary_key_constraint_reflection
     def test_get_pk_constraint(self):
         self._test_get_pk_constraint()
 
     @testing.requires.table_reflection
-    @testing.fails_on('sqlite', 'no schemas')
+    @testing.requires.schemas
     def test_get_pk_constraint_with_schema(self):
         self._test_get_pk_constraint(schema='test_schema')
 
@@ -317,23 +325,23 @@ class ComponentReflectionTest(fixtures.TablesTest):
                                             schema=schema)
         fkey1 = users_fkeys[0]
 
-        @testing.fails_on('sqlite', 'no support for constraint names')
-        def go():
+        with testing.requires.named_constraints.fail_if():
             self.assert_(fkey1['name'] is not None)
-        go()
 
         eq_(fkey1['referred_schema'], expected_schema)
         eq_(fkey1['referred_table'], users.name)
         eq_(fkey1['referred_columns'], ['user_id', ])
-        eq_(fkey1['constrained_columns'], ['parent_user_id'])
+        if testing.requires.self_referential_foreign_keys.enabled:
+            eq_(fkey1['constrained_columns'], ['parent_user_id'])
+
         #addresses
         addr_fkeys = insp.get_foreign_keys(addresses.name,
                                            schema=schema)
         fkey1 = addr_fkeys[0]
-        @testing.fails_on('sqlite', 'no support for constraint names')
-        def go():
+
+        with testing.requires.named_constraints.fail_if():
             self.assert_(fkey1['name'] is not None)
-        go()
+
         eq_(fkey1['referred_schema'], expected_schema)
         eq_(fkey1['referred_table'], users.name)
         eq_(fkey1['referred_columns'], ['user_id', ])

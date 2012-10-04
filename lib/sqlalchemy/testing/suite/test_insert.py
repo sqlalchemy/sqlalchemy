@@ -105,7 +105,32 @@ class InsertBehaviorTest(fixtures.TablesTest):
         assert r.is_insert
         assert not r.returns_rows
 
+class ReturningTest(fixtures.TablesTest):
+    run_deletes = 'each'
+    __requires__ = 'returning',
 
-__all__ = ('InsertSequencingTest', 'InsertBehaviorTest')
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('autoinc_pk', metadata,
+                Column('id', Integer, primary_key=True, \
+                                test_needs_autoincrement=True),
+                Column('data', String(50))
+            )
+
+    def test_explicit_returning_pk(self):
+        engine = config.db
+        table = self.tables.autoinc_pk
+        r = engine.execute(
+            table.insert().returning(
+                            table.c.id),
+            data="some data"
+        )
+        pk = r.first()[0]
+        fetched_pk = config.db.scalar(select([table.c.id]))
+        eq_(fetched_pk, pk)
+
+
+
+__all__ = ('InsertSequencingTest', 'InsertBehaviorTest', 'ReturningTest')
 
 
