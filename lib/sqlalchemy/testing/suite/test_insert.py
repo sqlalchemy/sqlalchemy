@@ -8,8 +8,12 @@ from sqlalchemy import Integer, String, select, util
 
 from ..schema import Table, Column
 
-class InsertSequencingTest(fixtures.TablesTest):
+class LastrowidTest(fixtures.TablesTest):
     run_deletes = 'each'
+
+    __requires__ = 'implements_get_lastrowid', 'autoincrement_insert'
+
+    __engine_options__ = {"implicit_returning": False}
 
     @classmethod
     def define_tables(cls, metadata):
@@ -24,23 +28,21 @@ class InsertSequencingTest(fixtures.TablesTest):
                 Column('data', String(50))
             )
 
-    def _assert_round_trip(self, table):
-        row = config.db.execute(table.select()).first()
+    def _assert_round_trip(self, table, conn):
+        row = conn.execute(table.select()).first()
         eq_(
             row,
             (1, "some data")
         )
 
-    @requirements.autoincrement_insert
     def test_autoincrement_on_insert(self):
 
         config.db.execute(
             self.tables.autoinc_pk.insert(),
             data="some data"
         )
-        self._assert_round_trip(self.tables.autoinc_pk)
+        self._assert_round_trip(self.tables.autoinc_pk, config.db)
 
-    @requirements.autoincrement_insert
     def test_last_inserted_id(self):
 
         r = config.db.execute(
@@ -107,7 +109,16 @@ class InsertBehaviorTest(fixtures.TablesTest):
 
 class ReturningTest(fixtures.TablesTest):
     run_deletes = 'each'
-    __requires__ = 'returning',
+    __requires__ = 'returning', 'autoincrement_insert'
+
+    __engine_options__ = {"implicit_returning": True}
+
+    def _assert_round_trip(self, table, conn):
+        row = conn.execute(table.select()).first()
+        eq_(
+            row,
+            (1, "some data")
+        )
 
     @classmethod
     def define_tables(cls, metadata):
@@ -129,8 +140,27 @@ class ReturningTest(fixtures.TablesTest):
         fetched_pk = config.db.scalar(select([table.c.id]))
         eq_(fetched_pk, pk)
 
+    def test_autoincrement_on_insert_implcit_returning(self):
+
+        config.db.execute(
+            self.tables.autoinc_pk.insert(),
+            data="some data"
+        )
+        self._assert_round_trip(self.tables.autoinc_pk, config.db)
+
+    def test_last_inserted_id_implicit_returning(self):
+
+        r = config.db.execute(
+            self.tables.autoinc_pk.insert(),
+            data="some data"
+        )
+        pk = config.db.scalar(select([self.tables.autoinc_pk.c.id]))
+        eq_(
+            r.inserted_primary_key,
+            [pk]
+        )
 
 
-__all__ = ('InsertSequencingTest', 'InsertBehaviorTest', 'ReturningTest')
+__all__ = ('LastrowidTest', 'InsertBehaviorTest', 'ReturningTest')
 
 

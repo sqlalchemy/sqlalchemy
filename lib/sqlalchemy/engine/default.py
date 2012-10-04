@@ -441,9 +441,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.isdelete = compiled.isdelete
 
         if self.isinsert or self.isupdate or self.isdelete:
-            self._is_explicit_returning = compiled.statement._returning
-            self._is_implicit_returning = compiled.returning and \
-                                            not compiled.statement._returning
+            self._is_explicit_returning = bool(compiled.statement._returning)
+            self._is_implicit_returning = bool(compiled.returning and \
+                                            not compiled.statement._returning)
 
         if not parameters:
             self.compiled_parameters = [compiled.construct_params()]

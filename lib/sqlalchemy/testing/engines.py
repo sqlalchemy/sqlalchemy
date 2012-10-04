@@ -180,6 +180,7 @@ def reconnecting_engine(url=None, options=None):
     engine.dispose = dispose
     return engine
 
+
 def testing_engine(url=None, options=None):
     """Produce an engine configured by --options with optional overrides."""
 

@@ -87,6 +87,26 @@ class SuiteRequirements(Requirements):
                 )
 
     @property
+    def implements_get_lastrowid(self):
+        """"target dialect implements the executioncontext.get_lastrowid()
+        method without reliance on RETURNING.
+
+        """
+        return exclusions.open()
+
+    @property
+    def emulated_lastrowid(self):
+        """"target dialect retrieves cursor.lastrowid, or fetches
+        from a database-side function after an insert() construct executes,
+        within the get_lastrowid() method.
+
+        Only dialects that "pre-execute", or need RETURNING to get last
+        inserted id, would return closed/fail/skip for this.
+
+        """
+        return exclusions.closed()
+
+    @property
     def dbapi_lastrowid(self):
         """"target platform includes a 'lastrowid' accessor on the DBAPI
         cursor object.

@@ -28,6 +28,7 @@ warnings = None
 profiling = None
 assertions = None
 requirements = None
+config = None
 util = None
 file_config = None
 
@@ -38,6 +39,7 @@ db_label = None
 db_url = None
 db_opts = {}
 options = None
+_existing_engine = None
 
 def _log(option, opt_str, value, parser):
     global logging
@@ -297,9 +299,10 @@ class NoseSQLAlchemy(Plugin):
         # late imports, has to happen after config as well
         # as nose plugins like coverage
         global util, fixtures, engines, exclusions, \
-                        assertions, warnings, profiling
+                        assertions, warnings, profiling,\
+                        config
         from sqlalchemy.testing import fixtures, engines, exclusions, \
-                        assertions, warnings, profiling
+                        assertions, warnings, profiling, config
         from sqlalchemy import util
 
     def describeTest(self, test):
@@ -335,11 +338,7 @@ class NoseSQLAlchemy(Plugin):
             test_suite.__name__ = cls.__name__
             for requirement in cls.__requires__:
                 check = getattr(config.requirements, requirement)
-                try:
-                    check(test_suite)()
-                except TypeError:
-                    import pdb
-                    pdb.set_trace()
+                check(test_suite)()
 
         if cls.__unsupported_on__:
             spec = exclusions.db_spec(*cls.__unsupported_on__)
@@ -378,11 +377,24 @@ class NoseSQLAlchemy(Plugin):
         engines.testing_reaper._after_test_ctx()
         warnings.resetwarnings()
 
+    def _setup_engine(self, ctx):
+        if getattr(ctx, '__engine_options__', None):
+            global _existing_engine
+            _existing_engine = config.db
+            config.db = engines.testing_engine(options=ctx.__engine_options__)
+
+    def _restore_engine(self, ctx):
+        global _existing_engine
+        if _existing_engine is not None:
+            config.db = _existing_engine
+            _existing_engine = None
+
     def startContext(self, ctx):
         if not isinstance(ctx, type) \
             or not issubclass(ctx, fixtures.TestBase):
             return
         self._do_skips(ctx)
+        self._setup_engine(ctx)
 
     def stopContext(self, ctx):
         if not isinstance(ctx, type) \
@@ -391,3 +403,4 @@ class NoseSQLAlchemy(Plugin):
         engines.testing_reaper._stop_test_ctx()
         if not options.low_connections:
             assertions.global_cleanup_assertions()
+        self._restore_engine(ctx)
