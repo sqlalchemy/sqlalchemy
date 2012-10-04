@@ -71,7 +71,6 @@ class SuiteRequirements(Requirements):
     def returning(self):
         """target platform supports RETURNING."""
 
-        self.config.db.connect()
         return exclusions.only_if(
                 lambda: self.config.db.dialect.implicit_returning,
                 "'returning' not supported by database"

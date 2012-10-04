@@ -141,6 +141,7 @@ def _create_testing_engine(options, file_config):
     from sqlalchemy import testing
     global db
     config.db = testing.db = db = engines.testing_engine(db_url, db_opts)
+    config.db.connect().close()
     config.db_opts = db_opts
     config.db_url = db_url
 
