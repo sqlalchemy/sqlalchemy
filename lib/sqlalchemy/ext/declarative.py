@@ -1337,11 +1337,9 @@ def _as_declarative(cls, classname, dict_):
 
 class DeclarativeMeta(type):
     def __init__(cls, classname, bases, dict_):
-        if '_decl_class_registry' in cls.__dict__:
-            return type.__init__(cls, classname, bases, dict_)
-        else:
+        if '_decl_class_registry' not in cls.__dict__:
             _as_declarative(cls, classname, cls.__dict__)
-        return type.__init__(cls, classname, bases, dict_)
+        type.__init__(cls, classname, bases, dict_)
 
     def __setattr__(cls, key, value):
         if '__mapper__' in cls.__dict__:
