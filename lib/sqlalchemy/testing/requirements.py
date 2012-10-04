@@ -55,6 +55,12 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def subqueries(self):
+        """Target database must support subqueries."""
+
+        return exclusions.open()
+
+    @property
     def autoincrement_insert(self):
         """target platform generates new surrogate integer primary key values
         when insert() is executed, excluding the pk column."""
@@ -65,6 +71,7 @@ class SuiteRequirements(Requirements):
     def returning(self):
         """target platform supports RETURNING."""
 
+        self.config.db.connect()
         return exclusions.only_if(
                 lambda: self.config.db.dialect.implicit_returning,
                 "'returning' not supported by database"

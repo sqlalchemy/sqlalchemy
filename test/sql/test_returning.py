@@ -3,7 +3,9 @@ from sqlalchemy import *
 from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.types import TypeDecorator
-from sqlalchemy.testing import fixtures, AssertsExecutionResults, engines
+from sqlalchemy.testing import fixtures, AssertsExecutionResults, engines, \
+        assert_raises_message
+from sqlalchemy import exc as sa_exc
 
 class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
     __requires__ = 'returning',
@@ -36,8 +38,6 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
     def teardown(self):
         table.drop()
 
-    @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
-    @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     def test_column_targeting(self):
         result = table.insert().returning(table.c.id, table.c.full).execute({'persons': 1, 'full': False})
 
@@ -55,8 +55,6 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(row['goofy'], "FOOsomegoofyBAR")
 
     @testing.fails_on('firebird', "fb can't handle returning x AS y")
-    @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
-    @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     def test_labeling(self):
         result = table.insert().values(persons=6).\
                             returning(table.c.persons.label('lala')).execute()
@@ -65,8 +63,6 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
 
     @testing.fails_on('firebird', "fb/kintersbasdb can't handle the bind params")
     @testing.fails_on('oracle+zxjdbc', "JDBC driver bug")
-    @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
-    @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     def test_anon_expressions(self):
         result = table.insert().values(goofy="someOTHERgoofy").\
                             returning(func.lower(table.c.goofy, type_=GoofyType)).execute()
@@ -78,8 +74,6 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
         row = result.first()
         eq_(row[0], 30)
 
-    @testing.exclude('firebird', '<', (2, 1), '2.1+ feature')
-    @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     def test_update_returning(self):
         table.insert().execute([{'persons': 5, 'full': False}, {'persons': 3, 'full': False}])
 
@@ -87,10 +81,8 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(result.fetchall(), [(1,)])
 
         result2 = select([table.c.id, table.c.full]).order_by(table.c.id).execute()
-        eq_(result2.fetchall(), [(1,True),(2,False)])
+        eq_(result2.fetchall(), [(1, True), (2, False)])
 
-    @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
-    @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     def test_insert_returning(self):
         result = table.insert().returning(table.c.id).execute({'persons': 1, 'full': False})
 
@@ -116,10 +108,17 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
 
         test_executemany()
 
+    def test_no_ipk_on_returning(self):
+        result = testing.db.execute(
+                    table.insert().returning(table.c.id),
+                    {'persons': 1, 'full': False}
+                )
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "Can't call inserted_primary_key when returning\(\) is used.",
+            getattr, result, "inserted_primary_key"
+        )
 
-
-    @testing.exclude('firebird', '<', (2, 1), '2.1+ feature')
-    @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     @testing.fails_on_everything_except('postgresql', 'firebird')
     def test_literal_returning(self):
         if testing.against("postgresql"):
@@ -131,8 +130,6 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
                                         'values (5, 10, %s) returning persons' % literal_true)
         eq_([dict(row) for row in result4], [{'persons': 10}])
 
-    @testing.exclude('firebird', '<', (2, 1), '2.1+ feature')
-    @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     def test_delete_returning(self):
         table.insert().execute([{'persons': 5, 'full': False}, {'persons': 3, 'full': False}])
 
@@ -140,7 +137,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(result.fetchall(), [(1,)])
 
         result2 = select([table.c.id, table.c.full]).order_by(table.c.id).execute()
-        eq_(result2.fetchall(), [(2,False),])
+        eq_(result2.fetchall(), [(2, False),])
 
 class SequenceReturningTest(fixtures.TestBase):
     __requires__ = 'returning', 'sequences'

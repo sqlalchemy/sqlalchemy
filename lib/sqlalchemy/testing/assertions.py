@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 from . import util as testutil
 from sqlalchemy import pool, orm, util
-from sqlalchemy.engine import default
+from sqlalchemy.engine import default, create_engine
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.util import decorator
 from sqlalchemy import types as sqltypes, schema
@@ -183,6 +183,8 @@ class AssertsCompiledSQL(object):
                 dialect = default.DefaultDialect()
             elif dialect is None:
                 dialect = config.db.dialect
+            elif isinstance(dialect, basestring):
+                dialect = create_engine("%s://" % dialect).dialect
 
         kw = {}
         if params is not None:

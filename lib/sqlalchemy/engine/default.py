@@ -671,6 +671,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     def post_insert(self):
         if not self._is_implicit_returning and \
+            not self._is_explicit_returning and \
             not self.compiled.inline and \
             self.dialect.postfetch_lastrowid and \
             (not self.inserted_primary_key or \

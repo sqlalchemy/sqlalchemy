@@ -202,7 +202,6 @@ class TablesTest(TestBase):
 
 
 class _ORMTest(object):
-    __requires__ = ('subqueries',)
 
     @classmethod
     def teardown_class(cls):
