@@ -389,6 +389,8 @@ ischema_names = {
     'TIME': sqltypes.TIME,
     'TIMESTAMP': sqltypes.TIMESTAMP,
     'VARCHAR': sqltypes.VARCHAR,
+    'NVARCHAR': sqltypes.NVARCHAR,
+    'NCHAR': sqltypes.NCHAR,
 }
 
 
