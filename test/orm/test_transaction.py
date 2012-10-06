@@ -361,10 +361,6 @@ class SessionTransactionTest(FixtureTest):
         )
 
 
-
-
-
-
     def test_error_on_using_inactive_session_commands(self):
         users, User = self.tables.users, self.classes.User
 
