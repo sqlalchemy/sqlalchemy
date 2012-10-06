@@ -246,6 +246,21 @@ underneath "0.7.xx".
     inside of the flush, but for now, results
     can't be guaranteed.
 
+  - [bug] Continuing [ticket:2566] regarding extra
+    state post-flush due to event listeners;
+    any states that are marked as "dirty" from an
+    attribute perspective, usually via column-attribute
+    set events within after_insert(), after_update(),
+    etc., will get the "history" flag reset
+    in all cases, instead of only those instances
+    that were part of the flush.  This has the effect
+    that this "dirty" state doesn't carry over
+    after the flush and won't result in UPDATE
+    statements.   A warning is emitted to this
+    effect; the set_committed_state()
+    method can be used to assign attributes on objects
+    without producing history events. [ticket:2582]
+
   - [feature] ORM entities can be passed
     to select() as well as the select_from(),
     correlate(), and correlate_except()

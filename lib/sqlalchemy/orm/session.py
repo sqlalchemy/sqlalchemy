@@ -1841,6 +1841,21 @@ class Session(_SessionClassMethods):
 
             flush_context.finalize_flush_changes()
 
+            if not objects and self.identity_map._modified:
+                len_ = len(self.identity_map._modified)
+
+                statelib.InstanceState._commit_all_states(
+                                [(state, state.dict) for state in
+                                        self.identity_map._modified],
+                                instance_dict=self.identity_map)
+                util.warn("Attribute history events accumulated on %d "
+                        "previously clean instances "
+                        "within inner-flush event handlers have been reset, "
+                        "and will not result in database updates. "
+                        "Consider using set_committed_value() within "
+                        "inner-flush event handlers to avoid this warning."
+                                    % len_)
+
             # useful assertions:
             #if not objects:
             #    assert not self.identity_map._modified

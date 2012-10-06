@@ -740,6 +740,48 @@ class SessionStateTest(_fixtures.FixtureTest):
                 del u3
                 gc_collect()
 
+    def _test_extra_dirty_state(self):
+        users, User = self.tables.users, self.classes.User
+        m = mapper(User, users)
+
+        s = Session()
+
+        @event.listens_for(m, "after_update")
+        def e(mapper, conn, target):
+            sess = object_session(target)
+            for entry in sess.identity_map.values():
+                entry.name = "5"
+
+        a1, a2 = User(name="1"), User(name="2")
+
+        s.add_all([a1, a2])
+        s.commit()
+
+        a1.name = "3"
+        return s, a1, a2
+
+    def test_extra_dirty_state_post_flush_warning(self):
+        s, a1, a2 = self._test_extra_dirty_state()
+        assert_raises_message(
+            sa.exc.SAWarning,
+            "Attribute history events accumulated on 1 previously "
+            "clean instances",
+            s.commit
+        )
+
+    def test_extra_dirty_state_post_flush_state(self):
+        s, a1, a2 = self._test_extra_dirty_state()
+        canary = []
+        @event.listens_for(s, "after_flush_postexec")
+        def e(sess, ctx):
+            canary.append(bool(sess.identity_map._modified))
+
+        @testing.emits_warning("Attribute")
+        def go():
+            s.commit()
+        go()
+        eq_(canary, [False])
+
 class SessionStateWFixtureTest(_fixtures.FixtureTest):
 
     def test_autoflush_rollback(self):
