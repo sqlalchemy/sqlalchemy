@@ -14,6 +14,7 @@ from . import assertsql
 from . import config
 import itertools
 from .util import fail
+import contextlib
 
 def emits_warning(*messages):
     """Mark a test as emitting a warning.
@@ -348,4 +349,14 @@ class AssertsExecutionResults(object):
     def assert_sql_count(self, db, callable_, count):
         self.assert_sql_execution(db, callable_, assertsql.CountStatements(count))
 
+    @contextlib.contextmanager
+    def assert_execution(self, *rules):
+        assertsql.asserter.add_rules(rules)
+        try:
+            yield
+            assertsql.asserter.statement_complete()
+        finally:
+            assertsql.asserter.clear_rules()
 
+    def assert_statement_count(self, count):
+        return self.assert_execution(assertsql.CountStatements(count))
