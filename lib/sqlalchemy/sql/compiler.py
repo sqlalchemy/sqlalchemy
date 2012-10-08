@@ -1068,6 +1068,7 @@ class SQLCompiler(engine.Compiled):
     def visit_select(self, select, asfrom=False, parens=True,
                             iswrapper=False, fromhints=None,
                             compound_index=0,
+                            force_result_map=False,
                             positional_names=None, **kwargs):
         entry = self.stack and self.stack[-1] or {}
 
@@ -1082,9 +1083,11 @@ class SQLCompiler(engine.Compiled):
         # to outermost if existingfroms: correlate_froms =
         # correlate_froms.union(existingfroms)
 
-        populate_result_map = compound_index == 0 and (
-                                not entry or \
-                                entry.get('iswrapper', False)
+        populate_result_map = force_result_map or (
+                                compound_index == 0 and (
+                                    not entry or \
+                                    entry.get('iswrapper', False)
+                                )
                             )
 
         self.stack.append({'from': correlate_froms,

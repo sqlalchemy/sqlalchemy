@@ -625,6 +625,16 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     def post_exec(self):
         pass
 
+    def get_result_processor(self, type_, colname, coltype):
+        """Return a 'result processor' for a given type as present in
+        cursor.description.
+
+        This has a default implementation that dialects can override
+        for context-sensitive result type handling.
+
+        """
+        return type_._cached_result_processor(self.dialect, coltype)
+
     def get_lastrowid(self):
         """return self.cursor.lastrowid, or equivalent, after an INSERT.
 

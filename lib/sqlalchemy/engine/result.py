@@ -210,7 +210,7 @@ class ResultMetaData(object):
                 name, obj, type_ = \
                         colname, None, typemap.get(coltype, types.NULLTYPE)
 
-            processor = type_._cached_result_processor(dialect, coltype)
+            processor = context.get_result_processor(type_, colname, coltype)
 
             processors.append(processor)
             rec = (processor, obj, i)

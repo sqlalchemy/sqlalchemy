@@ -158,13 +158,23 @@ def _prep_testing_database(options, file_config):
         e = engines.utf8_engine()
         inspector = inspect(e)
 
-        for vname in inspector.get_view_names():
-            e.execute(schema._DropView(schema.Table(vname, schema.MetaData())))
+        try:
+            view_names = inspector.get_view_names()
+        except NotImplementedError:
+            pass
+        else:
+            for vname in view_names:
+                e.execute(schema._DropView(schema.Table(vname, schema.MetaData())))
 
-        for vname in inspector.get_view_names(schema="test_schema"):
-            e.execute(schema._DropView(
-                        schema.Table(vname,
-                                    schema.MetaData(), schema="test_schema")))
+        try:
+            view_names = inspector.get_view_names(schema="test_schema")
+        except NotImplementedError:
+            pass
+        else:
+            for vname in view_names:
+                e.execute(schema._DropView(
+                            schema.Table(vname,
+                                        schema.MetaData(), schema="test_schema")))
 
         for tname in reversed(inspector.get_table_names(order_by="foreign_key")):
             e.execute(schema.DropTable(schema.Table(tname, schema.MetaData())))

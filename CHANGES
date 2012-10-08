@@ -423,6 +423,12 @@ underneath "0.7.xx".
     collection of bound parameters, rather than
     implicitly assigning None. [ticket:2556]
 
+  - [feature] Various API tweaks to the "dialect"
+    API to better support highly specialized
+    systems such as the Akiban database, including
+    more hooks to allow an execution context to
+    access type processors.
+
   - [bug] The names of the columns on the
     .c. attribute of a select().apply_labels()
     is now based on <tablename>_<colkey> instead
