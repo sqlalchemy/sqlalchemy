@@ -1,3 +1,5 @@
+from __future__ import with_statement
+
 import operator
 from nose import SkipTest
 from ..util import decorator
