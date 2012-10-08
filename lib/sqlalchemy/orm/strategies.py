@@ -1306,7 +1306,7 @@ class EagerLazyOption(StrategizedOption):
             propagate_to_loaders = False
         super(EagerLazyOption, self).__init__(key)
         self.lazy = lazy
-        self.chained = self.lazy in (False, 'joined', 'subquery') and chained
+        self.chained = chained
         self.propagate_to_loaders = propagate_to_loaders
         self.strategy_cls = factory(lazy)
 
