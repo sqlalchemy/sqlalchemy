@@ -63,6 +63,7 @@ class MySQLDBConnector(Connector):
 
         util.coerce_kw_type(opts, 'compress', bool)
         util.coerce_kw_type(opts, 'connect_timeout', int)
+        util.coerce_kw_type(opts, 'read_timeout', int)
         util.coerce_kw_type(opts, 'client_flag', int)
         util.coerce_kw_type(opts, 'local_infile', int)
         # Note: using either of the below will cause all strings to be returned

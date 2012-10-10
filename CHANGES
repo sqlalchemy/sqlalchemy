@@ -19,6 +19,9 @@ CHANGES
   - [feature] Added "raise_on_warnings" flag to OurSQL
     dialect.  [ticket:2523]
 
+  - [feature] Added "read_timeout" flag to MySQLdb
+    dialect.  [ticket:2554]
+
 0.7.9
 =====
 - orm
