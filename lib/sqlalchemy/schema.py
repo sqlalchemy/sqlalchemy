@@ -2767,10 +2767,17 @@ class ThreadLocalMetaData(MetaData):
 class SchemaVisitor(visitors.ClauseVisitor):
     """Define the visiting for ``SchemaItem`` objects."""
 
-    __traverse_options__ = {'schema_visitor':True}
+    __traverse_options__ = {'schema_visitor': True}
 
 
-class DDLElement(expression.Executable, expression.ClauseElement):
+class _DDLCompiles(expression.ClauseElement):
+    def _compiler(self, dialect, **kw):
+        """Return a compiler appropriate for this ClauseElement, given a
+        Dialect."""
+
+        return dialect.ddl_compiler(dialect, self, **kw)
+
+class DDLElement(expression.Executable, _DDLCompiles):
     """Base class for DDL expression constructs.
 
     This class is the base for the general purpose :class:`.DDL` class,
@@ -3004,11 +3011,6 @@ class DDLElement(expression.Executable, expression.ClauseElement):
         s.__dict__ = self.__dict__.copy()
         return s
 
-    def _compiler(self, dialect, **kw):
-        """Return a compiler appropriate for this ClauseElement, given a
-        Dialect."""
-
-        return dialect.ddl_compiler(dialect, self, **kw)
 
 class DDL(DDLElement):
     """A literal DDL statement.
@@ -3240,7 +3242,7 @@ class _DropView(_CreateDropBase):
     """
     __visit_name__ = "drop_view"
 
-class CreateColumn(visitors.Visitable):
+class CreateColumn(_DDLCompiles):
     """Represent a :class:`.Column` as rendered in a CREATE TABLE statement,
     via the :class:`.CreateTable` construct.
 

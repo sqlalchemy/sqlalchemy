@@ -676,19 +676,49 @@ class BIT(sqltypes.TypeEngine):
             return value
         return process
 
-class _MSTime(sqltypes.Time):
-    """MySQL TIME type."""
+class TIME(sqltypes.TIME):
+    """MySQL TIME type.
+
+    Recent versions of MySQL add support for
+    fractional seconds precision.   While the
+    :class:`.mysql.TIME` type now supports this,
+    note that many DBAPI drivers may not yet
+    include support.
+
+    """
 
     __visit_name__ = 'TIME'
+
+    def __init__(self, timezone=False, fsp=None):
+        """Construct a MySQL TIME type.
+
+        :param timezone: not used by the MySQL dialect.
+        :param fsp: fractional seconds precision value.
+         MySQL 5.6 supports storage of fractional seconds;
+         this parameter will be used when emitting DDL
+         for the TIME type.  Note that many DBAPI drivers
+         may not yet have support for fractional seconds,
+         however.
+
+        .. versionadded:: 0.8 The MySQL-specific TIME
+           type as well as fractional seconds support.
+
+        """
+        super(TIME, self).__init__(timezone=timezone)
+        self.fsp = fsp
 
     def result_processor(self, dialect, coltype):
         time = datetime.time
         def process(value):
             # convert from a timedelta value
             if value is not None:
+                microseconds = value.microseconds
                 seconds = value.seconds
                 minutes = seconds / 60
-                return time(minutes / 60, minutes % 60, seconds - minutes * 60)
+                return time(minutes / 60,
+                            minutes % 60,
+                            seconds - minutes * 60,
+                            microsecond=microseconds)
             else:
                 return None
         return process
@@ -1157,7 +1187,7 @@ class SET(_StringType):
         return process
 
 # old names
-MSTime = _MSTime
+MSTime = TIME
 MSSet = SET
 MSEnum = ENUM
 MSLongBlob = LONGBLOB
@@ -1191,7 +1221,7 @@ MSInteger = INTEGER
 colspecs = {
     sqltypes.Numeric: NUMERIC,
     sqltypes.Float: FLOAT,
-    sqltypes.Time: _MSTime,
+    sqltypes.Time: TIME,
     sqltypes.Enum: ENUM,
 }
 
@@ -1703,7 +1733,10 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         return "DATE"
 
     def visit_TIME(self, type_):
-        return "TIME"
+        if getattr(type_, 'fsp', None):
+            return "TIME(%d)" % type_.fsp
+        else:
+            return "TIME"
 
     def visit_TIMESTAMP(self, type_):
         return 'TIMESTAMP'

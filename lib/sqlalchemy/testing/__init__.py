@@ -6,7 +6,7 @@ from . import config
 
 from .exclusions import db_spec, _is_excluded, fails_if, skip_if, future,\
     fails_on, fails_on_everything_except, skip, only_on, exclude, against,\
-    _server_version
+    _server_version, only_if
 
 from .assertions import emits_warning, emits_warning_on, uses_deprecated, \
         eq_, ne_, is_, is_not_, startswith_, assert_raises, \

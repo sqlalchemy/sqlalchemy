@@ -777,6 +777,15 @@ underneath "0.7.xx".
     on first connect.  These functions are still
     available as semi-private. [ticket:2404]
 
+  - [feature] Added TIME type to mysql dialect,
+    accepts "fst" argument which is the new
+    "fractional seconds" specifier for recent
+    MySQL versions.  The datatype will interpret
+    a microseconds portion received from the driver,
+    however note that at this time most/all MySQL
+    DBAPIs do not support returning this value.
+    [ticket:2534]
+
 - oracle
   - [bug] Quoting information is now passed along
     from a Column with quote=True when generating

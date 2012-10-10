@@ -183,7 +183,7 @@ class BIGINT(sqltypes.BIGINT):
         super(BIGINT, self).__init__(**kw)
 
 
-class _DrizzleTime(mysql_dialect._MSTime):
+class TIME(mysql_dialect.TIME):
     """Drizzle TIME type."""
 
 
@@ -317,7 +317,7 @@ class _DrizzleBoolean(sqltypes.Boolean):
 colspecs = {
     sqltypes.Numeric: NUMERIC,
     sqltypes.Float: FLOAT,
-    sqltypes.Time: _DrizzleTime,
+    sqltypes.Time: TIME,
     sqltypes.Enum: ENUM,
     sqltypes.Boolean: _DrizzleBoolean,
 }
