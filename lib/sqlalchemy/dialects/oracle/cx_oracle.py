@@ -337,7 +337,7 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
             # on String, including that outparams/RETURNING
             # breaks for varchars
             self.set_input_sizes(quoted_bind_names,
-                                 exclude_types=self.dialect._cx_oracle_string_types
+                                 exclude_types=self.dialect._cx_oracle_exclude_setinputsizes
                                 )
 
         # if a single execute, check for outparams
@@ -507,6 +507,7 @@ class OracleDialect_cx_oracle(OracleDialect):
                         getattr(self.dbapi, name, None) for name in names
                     ]).difference([None])
 
+        self._cx_oracle_exclude_setinputsizes = types("STRING", "UNICODE")
         self._cx_oracle_string_types = types("STRING", "UNICODE", "NCLOB", "CLOB")
         self._cx_oracle_unicode_types = types("UNICODE", "NCLOB")
         self._cx_oracle_binary_types = types("BFILE", "CLOB", "NCLOB", "BLOB")

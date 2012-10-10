@@ -15,6 +15,15 @@ CHANGES
     or by primary key switch of another instance.
     [ticket:2583]
 
+- oracle
+  - [bug] changed the list of cx_oracle types that are
+    excluded from the setinputsizes() step to only include
+    STRING and UNICODE; CLOB and NCLOB are removed.  This
+    is to work around cx_oracle behavior which is broken
+    for the executemany() call.  In 0.8, this same change
+    is applied however it is also configurable via the
+    exclude_setinputsizes argument. [ticket:2561]
+
 - mysql
   - [feature] Added "raise_on_warnings" flag to OurSQL
     dialect.  [ticket:2523]
