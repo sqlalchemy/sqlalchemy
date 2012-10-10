@@ -24,6 +24,9 @@ be viewed as the primary target for new dialects, and as it continues
 to grow and mature it should become a more thorough and efficient system
 of testing new dialects.
 
+Dialect Layout
+===============
+
 The file structure of a dialect is typically similar to the following::
 
     sqlalchemy-<dialect>/
@@ -44,10 +47,10 @@ The file structure of a dialect is typically similar to the following::
 An example of this structure can be seen in the Access dialect at
 https://bitbucket.org/zzzeek/sqlalchemy-access/.
 
-Key aspects of this file layout include::
+Key aspects of this file layout include:
 
 * setup.py - should specify setuptools entrypoints, allowing the
-  dialect to be usable from create_engine(), e.g.:
+  dialect to be usable from create_engine(), e.g.::
 
         entry_points={
          'sqlalchemy.dialects': [
@@ -56,8 +59,8 @@ Key aspects of this file layout include::
               ]
         }
 
-Above, the two entrypoints ``access`` and ``access.pyodbc`` allow URLs to be
-used such as::
+  Above, the two entrypoints ``access`` and ``access.pyodbc`` allow URLs to be
+  used such as::
 
     create_engine("access://user:pw@dsn")
 
@@ -184,4 +187,38 @@ used such as::
               # fixture
               return
 
+Going Forward
+==============
+
+The third-party dialect can be distributed like any other Python
+module on Pypi. Links to prominent dialects can be featured within
+SQLAlchemy's own documentation; contact the developers (see AUTHORS)
+for help with this.
+
+While SQLAlchemy includes many dialects built in, it remains to be
+seen if the project as a whole might move towards "plugin" model for
+all dialects, including all those currently built in.  Now that
+SQLAlchemy's dialect API is mature and the test suite is not far
+behind, it may be that a better maintenance experience can be
+delivered by having all dialects separately maintained and released.
+
+As new versions of SQLAlchemy are released, the test suite and
+requirements file will receive new tests and changes.  The dialect
+maintainer would normally keep track of these changes and make
+adjustments as needed.
+
+Continuous Integration
+======================
+
+The most ideal scenario for ongoing dialect testing is continuous
+integration, that is, an automated test runner that runs in response
+to changes not just in the dialect itself but to new pushes to
+SQLAlchemy as well.
+
+The SQLAlchemy project features a Jenkins installation that runs tests
+on Amazon EC2 instances.   It is possible for third-party dialect
+developers to provide the SQLAlchemy project either with AMIs or EC2
+instance keys which feature test environments appropriate to the
+dialect - SQLAlchemy's own Jenkins suite can invoke tests on these
+environments.  Contact the developers for further info.
 
