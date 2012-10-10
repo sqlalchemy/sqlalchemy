@@ -787,10 +787,11 @@ underneath "0.7.xx".
 
   - [feature] The types of columns excluded from the
     setinputsizes() set can be customized by sending
-    a list of string DBAPI type names to exclude.
+    a list of string DBAPI type names to exclude,
+    using the exclude_setinputsizes dialect parameter.
     This list was previously fixed.  The list also
     now defaults to STRING, UNICODE, removing
-    CLOB, NCLOB from the list.  [ticket:2469]
+    CLOB, NCLOB from the list.  [ticket:2561]
 
   - [bug] The CreateIndex construct in Oracle
     will now schema-qualify the name of the index
@@ -823,6 +824,15 @@ are also present in 0.8.
     via non-unitofwork-established INSERT statement
     or by primary key switch of another instance.
     [ticket:2583]
+
+- oracle
+  - [bug] changed the list of cx_oracle types that are
+    excluded from the setinputsizes() step to only include
+    STRING and UNICODE; CLOB and NCLOB are removed.  This
+    is to work around cx_oracle behavior which is broken
+    for the executemany() call.  In 0.8, this same change
+    is applied however it is also configurable via the
+    exclude_setinputsizes argument. [ticket:2561]
 
 - mysql
   - [feature] Added "raise_on_warnings" flag to OurSQL
