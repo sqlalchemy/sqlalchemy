@@ -208,6 +208,7 @@ class MySQLDialect_oursql(MySQLDialect):
         util.coerce_kw_type(opts, 'port', int)
         util.coerce_kw_type(opts, 'compress', bool)
         util.coerce_kw_type(opts, 'autoping', bool)
+        util.coerce_kw_type(opts, 'raise_on_warnings', bool)
 
         util.coerce_kw_type(opts, 'default_charset', bool)
         if opts.pop('default_charset', False):
