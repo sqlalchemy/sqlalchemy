@@ -2,10 +2,10 @@
 SQLALCHEMY UNIT TESTS
 =====================
 
-SQLAlchemy unit tests by default run using Python's built-in sqlite3 
+SQLAlchemy unit tests by default run using Python's built-in sqlite3
 module.  If running on Python 2.4, pysqlite must be installed.
 
-Unit tests are run using nose.  Nose is available at:
+Unit tests are run using nose.  Nose is available at::
 
     http://pypi.python.org/pypi/nose/
 
@@ -13,7 +13,7 @@ SQLAlchemy implements a nose plugin that must be present when tests are run.
 This plugin is invoked when the test runner script provided with
 SQLAlchemy is used.
 
-**NOTE:** - the nose plugin is no longer installed by setuptools as of 
+**NOTE:** - the nose plugin is no longer installed by setuptools as of
 version 0.7 !  Use "python setup.py test" or "./sqla_nose.py".
 
 RUNNING TESTS VIA SETUP.PY
@@ -22,18 +22,18 @@ A plain vanilla run of all tests using sqlite can be run via setup.py:
 
     $ python setup.py test
 
-The -v flag also works here:
+The -v flag also works here::
 
     $ python setup.py test -v
 
-RUNNING ALL TESTS 
+RUNNING ALL TESTS
 ------------------
-To run all tests:
+To run all tests::
 
     $ ./sqla_nose.py
 
 If you're running the tests on Microsoft Windows, then there is an additional
-argument that must be passed to ./sqla_nose.py:
+argument that must be passed to ./sqla_nose.py::
 
     > ./sqla_nose.py --first-package-wins
 
@@ -41,35 +41,35 @@ This is required because nose's importer will normally evict a package from
 sys.modules if it sees a package with the same name in a different location.
 Setting this argument disables that behavior.
 
-Assuming all tests pass, this is a very unexciting output.  To make it more 
-interesting:
+Assuming all tests pass, this is a very unexciting output.  To make it more
+interesting::
 
     $ ./sqla_nose.py -v
 
 RUNNING INDIVIDUAL TESTS
 -------------------------
 Any directory of test modules can be run at once by specifying the directory
-path:
+path::
 
     $ ./sqla_nose.py test/dialect
 
-Any test module can be run directly by specifying its module name:
+Any test module can be run directly by specifying its module name::
 
     $ ./sqla_nose.py test.orm.test_mapper
 
-To run a specific test within the module, specify it as module:ClassName.methodname:
+To run a specific test within the module, specify it as module:ClassName.methodname::
 
     $ ./sqla_nose.py test.orm.test_mapper:MapperTest.test_utils
 
 
 COMMAND LINE OPTIONS
 --------------------
-Help is available via --help:
+Help is available via --help::
 
     $ ./sqla_nose.py --help
 
-The --help screen is a combination of common nose options and options which 
-the SQLAlchemy nose plugin adds.  The most commonly SQLAlchemy-specific 
+The --help screen is a combination of common nose options and options which
+the SQLAlchemy nose plugin adds.  The most commonly SQLAlchemy-specific
 options used are '--db' and '--dburi'.
 
 
@@ -77,7 +77,7 @@ DATABASE TARGETS
 ----------------
 
 Tests will target an in-memory SQLite database by default.  To test against
-another database, use the --dburi option with any standard SQLAlchemy URL:
+another database, use the --dburi option with any standard SQLAlchemy URL::
 
     --dburi=postgresql://user:password@localhost/test
 
@@ -89,18 +89,18 @@ Several tests require alternate usernames or schemas to be present, which
 are used to test dotted-name access scenarios.  On some databases such
 as Oracle or Sybase, these are usernames, and others such as Postgresql
 and MySQL they are schemas.   The requirement applies to all backends
-except SQLite and Firebird.  The names are:
+except SQLite and Firebird.  The names are::
 
     test_schema
     test_schema_2 (only used on Postgresql)
 
-Please refer to your vendor documentation for the proper syntax to create 
+Please refer to your vendor documentation for the proper syntax to create
 these namespaces - the database user must have permission to create and drop
 tables within these schemas.  Its perfectly fine to run the test suite
 without these namespaces present, it only means that a handful of tests which
 expect them to be present will fail.
 
-Additional steps specific to individual databases are as follows:
+Additional steps specific to individual databases are as follows::
 
     MYSQL: Default storage engine should be "MyISAM".   Tests that require
     "InnoDB" as the engine will specify this explicitly.
@@ -116,13 +116,13 @@ Additional steps specific to individual databases are as follows:
         grant dba to scott;
 
     SYBASE: Similar to Oracle, "test_schema" is created as a user, and the
-    primary test user needs to have the "sa_role". 
- 
+    primary test user needs to have the "sa_role".
+
     It's also recommended to turn on "trunc log on chkpt" and to use a
-    separate transaction log device - Sybase basically seizes up when 
+    separate transaction log device - Sybase basically seizes up when
     the transaction log is full otherwise.
 
-    A full series of setup assuming sa/master: 
+    A full series of setup assuming sa/master:
 
         disk init name="translog", physname="/opt/sybase/data/translog.dat", size="10M"
         create database sqlalchemy on default log on translog="10M"
@@ -136,7 +136,7 @@ Additional steps specific to individual databases are as follows:
         sp_role "grant", sa_role, scott
 
     Sybase will still freeze for up to a minute when the log becomes
-    full.  To manually dump the log:
+    full.  To manually dump the log::
 
         dump tran sqlalchemy with truncate_only
 
@@ -155,7 +155,7 @@ Additional steps specific to individual databases are as follows:
     properly pass the URL arguments into the nose test runner.
 
 If you'll be running the tests frequently, database aliases can save a lot of
-typing.  The --dbs option lists the built-in aliases and their matching URLs:
+typing.  The --dbs option lists the built-in aliases and their matching URLs::
 
     $ ./sqla_nose.py --dbs
     Available --db options (use --dburi to override)
@@ -164,13 +164,14 @@ typing.  The --dbs option lists the built-in aliases and their matching URLs:
             postgresql    postgresql://scott:tiger@127.0.0.1:5432/test
     [...]
 
-To run tests against an aliased database:
+To run tests against an aliased database::
 
     $ ./sqla_nose.py --db=postgresql
 
-To customize the URLs with your own users or hostnames, make a simple .ini
-file called `test.cfg` at the top level of the SQLAlchemy source distribution
-or a `.satest.cfg` in your home directory:
+To customize the URLs with your own users or hostnames, create a file
+called `test.cfg` at the top level of the SQLAlchemy source distribution.
+This file is in Python config format, and contains a [db] section which
+lists out additional database configurations::
 
     [db]
     postgresql=postgresql://myuser:mypass@localhost/mydb
@@ -182,7 +183,7 @@ CONFIGURING LOGGING
 -------------------
 SQLAlchemy logs its activity and debugging through Python's logging package.
 Any log target can be directed to the console with command line options, such
-as:
+as::
 
     $ ./sqla_nose.py test.orm.unitofwork --log-info=sqlalchemy.orm.mapper \
       --log-debug=sqlalchemy.pool --log-info=sqlalchemy.engine
@@ -193,8 +194,8 @@ statement execution.
 
 BUILT-IN COVERAGE REPORTING
 ------------------------------
-Coverage is tracked using Nose's coverage plugin.   See the nose 
-documentation for details.  Basic usage is:
+Coverage is tracked using Nose's coverage plugin.   See the nose
+documentation for details.  Basic usage is::
 
     $ ./sqla_nose.py test.sql.test_query --with-coverage
 
@@ -202,38 +203,8 @@ BIG COVERAGE TIP !!!  There is an issue where existing .pyc files may
 store the incorrect filepaths, which will break the coverage system.  If
 coverage numbers are coming out as low/zero, try deleting all .pyc files.
 
-TESTING NEW DIALECTS
---------------------
-You can use the SQLAlchemy test suite to test any new database dialect in
-development.  All possible database features will be exercised by default.
-Test decorators are provided that can exclude unsupported tests for a
-particular dialect.  You'll see them all over the source, feel free to add
-your dialect to them or apply new decorations to existing tests as required.
+DEVELOPING AND TESTING NEW DIALECTS
+-----------------------------------
 
-It's fine to start out with very broad exclusions, e.g. "2-phase commit is not
-supported on this database" and later refine that as needed "2-phase commit is
-not available until server version 8".
-
-To be considered for inclusion in the SQLAlchemy distribution, a dialect must
-be integrated with the standard test suite.  Dialect-specific tests can be
-placed in the 'dialects/' directory.  Comprehensive testing of
-database-specific column types and their proper reflection are a very good
-place to start.
-
-When working through the tests, start with 'engine' and 'sql' tests.  'engine'
-performs a wide range of transaction tests that might deadlock on a brand-new
-dialect- try disabling those if you're having problems and revisit them later.
-
-Once the 'sql' tests are passing, the 'orm' tests should pass as well, modulo
-any adjustments needed for SQL features the ORM uses that might not be
-available in your database.  But if an 'orm' test requires changes to your
-dialect or the SQLAlchemy core to pass, there's a test missing in 'sql'!  Any
-time you can spend boiling down the problem to it's essential sql roots and
-adding a 'sql' test will be much appreciated.
-
-The test suite is very effective at illuminating bugs and inconsistencies in
-an underlying DB-API (or database!) implementation.  Workarounds are almost
-always possible.  If you hit a wall, join us on the mailing list or, better,
-IRC!
-
+See the new file README.dialects.rst for detail on dialects.
 

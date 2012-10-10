@@ -1,0 +1,187 @@
+========================
+Developing new Dialects
+========================
+
+.. note::
+
+   When studying this file, it's probably a good idea to also
+   familiarize with the  README.unittests.rst file, which discusses
+   SQLAlchemy's usage and extension of the Nose test runner.
+
+While SQLAlchemy includes many dialects within the core distribution, the
+trend for new dialects should be that they are published as external
+projects.   SQLAlchemy has since version 0.5 featured a "plugin" system
+which allows external dialects to be integrated into SQLAlchemy using
+standard setuptools entry points.  As of version 0.8, this system has
+been enhanced, so that a dialect can also be "plugged in" at runtime.
+
+On the testing side, SQLAlchemy as of 0.8 also includes a "dialect
+compliance suite" that is usable by third party libraries.  There is no
+longer a strong need for a new dialect to run through SQLAlchemy's full
+testing suite, as a large portion of these tests do not have
+dialect-sensitive functionality.  The "dialect compliance suite" should
+be viewed as the primary target for new dialects, and as it continues
+to grow and mature it should become a more thorough and efficient system
+of testing new dialects.
+
+The file structure of a dialect is typically similar to the following::
+
+    sqlalchemy-<dialect>/
+                         setup.py
+                         setup.cfg
+                         run_tests.py
+                         sqlalchemy_<dialect>/
+                                              __init__.py
+                                              base.py
+                                              <dbapi>.py
+                         test/
+                                              __init__.py
+                                              requirements.py
+                                              test_suite.py
+                                              test_<dialect_specific_test>.py
+                                              ...
+
+An example of this structure can be seen in the Access dialect at
+https://bitbucket.org/zzzeek/sqlalchemy-access/.
+
+Key aspects of this file layout include::
+
+* setup.py - should specify setuptools entrypoints, allowing the
+  dialect to be usable from create_engine(), e.g.:
+
+        entry_points={
+         'sqlalchemy.dialects': [
+              'access = sqlalchemy_access.pyodbc:AccessDialect_pyodbc',
+              'access.pyodbc = sqlalchemy_access.pyodbc:AccessDialect_pyodbc',
+              ]
+        }
+
+Above, the two entrypoints ``access`` and ``access.pyodbc`` allow URLs to be
+used such as::
+
+    create_engine("access://user:pw@dsn")
+
+    create_engine("access+pyodbc://user:pw@dsn")
+
+* setup.cfg - this file contains the traditional contents such as [egg_info]
+  and [nosetests] directives, but also contains new directives that are used
+  by SQLAlchemy's testing framework.  E.g. for Access::
+
+    [egg_info]
+    tag_build = dev
+
+    [nosetests]
+    with-sqla_testing = true
+    where = test
+    cover-package = sqlalchemy-access
+    with-coverage = 1
+    cover-erase = 1
+
+    [sqla_testing]
+    requirement_cls=test.requirements:Requirements
+    profile_file=.profiles.txt
+
+    [db]
+    default=access+pyodbc://admin@access_test
+    sqlite=sqlite:///:memory:
+
+  Above, the ``[sqla_testing]`` section contains configuration used by
+  SQLAlchemy's test plugin.The ``[nosetests]`` section includes the
+  directive ``with-sql_testing = true``, which indicates to Nose that
+  the SQLAlchemy nose plugin should be used.
+
+* run_tests.py - The plugin is provided with SQLAlchemy, however is not
+  plugged into Nose automatically; instead, a ``run_tests.py`` script
+  should be composed as a front end to Nose, such that SQLAlchemy's plugin
+  will be correctly installed.
+
+  run_tests.py has two parts.  One optional, but probably helpful, step
+  is that it installs your third party dialect into SQLAlchemy without
+  using the setuptools entrypoint system; this allows your dialect to
+  be present without any explicit setup.py step needed.  The other
+  step is to import SQLAlchemy's nose runner and invoke it.  An
+  example run_tests.py file looks like the following::
+
+    from sqlalchemy.dialects import registry
+
+    registry.register("access", "sqlalchemy_access.pyodbc", "AccessDialect_pyodbc")
+    registry.register("access.pyodbc", "sqlalchemy_access.pyodbc", "AccessDialect_pyodbc")
+
+    from sqlalchemy.testing import runner
+
+    runner.main()
+
+  Where above, the ``registry`` module, introduced in SQLAlchemy 0.8, provides
+  an in-Python means of installing the dialect entrypoints without the use
+  of setuptools, using the ``registry.register()`` function in a way that
+  is similar to the ``entry_points`` directive we placed in our ``setup.py``.
+  The call to ``runner.main()`` then runs the Nose front end, which installs
+  SQLAlchemy's testing plugins.   Invoking our custom runner looks like the
+  following::
+
+    $ python run_tests.py -v
+
+* requirements.py - The ``requirements.py`` file is where directives
+  regarding database and dialect   capabilities are set up.
+  SQLAlchemy's tests are often annotated with decorators   that mark
+  tests as "skip" or "fail" for particular backends.  Over time, this
+  system   has been refined such that specific database and DBAPI names
+  are mentioned   less and less, in favor of @requires directives which
+  state a particular capability.   The requirement directive is linked
+  to target dialects using a ``Requirements`` subclass.   The custom
+  ``Requirements`` subclass is specified in the ``requirements.py`` file
+  and   is made available to SQLAlchemy's test runner using the
+  ``requirement_cls`` directive   inside the ``[sqla_testing]`` section.
+
+  For a third-party dialect, the custom ``Requirements`` class can
+  usually specify a simple yes/no answer for a particular system. For
+  example, a requirements file that specifies a database that supports
+  the RETURNING construct but does not support reflection of tables
+  might look like this::
+
+      # test/requirements.py
+
+      from sqlalchemy.testing.requirements import SuiteRequirements
+
+      from sqlalchemy.testing import exclusions
+
+      class Requirements(SuiteRequirements):
+          @property
+          def table_reflection(self):
+              return exclusions.closed()
+
+          @property
+          def returning(self):
+              return exclusions.open()
+
+  The ``SuiteRequirements`` class in
+  ``sqlalchemy.testing.requirements`` contains a large number of
+  requirements rules, which attempt to have reasonable defaults. The
+  tests will report on those requirements found as they are run.
+
+* test_suite.py - Finally, the ``test_suite.py`` module represents a
+  Nose test suite, which pulls   in the actual SQLAlchemy test suite.
+  To pull in the suite as a whole, it can   be imported in one step::
+
+      # test/test_suite.py
+
+      from sqlalchemy.testing.suite import *
+
+  That's all that's needed - the ``sqlalchemy.testing.suite`` package
+  contains an ever expanding series of tests, most of which should be
+  annotated with specific requirement decorators so that they can be
+  fully controlled. To specifically modify some of the tests, they can
+  be imported by name and subclassed::
+
+      from sqlalchemy.testing.suite import *
+
+      from sqlalchemy.testing.suite import ComponentReflectionTest as _ComponentReflectionTest
+
+      class ComponentReflectionTest(_ComponentReflectionTest):
+          @classmethod
+          def define_views(cls, metadata, schema):
+              # bypass the "define_views" section of the
+              # fixture
+              return
+
+
