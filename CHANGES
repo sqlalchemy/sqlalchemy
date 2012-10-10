@@ -519,6 +519,16 @@ underneath "0.7.xx".
     also customizable via the "precedence" argument
     on the ``op()`` method.  [ticket:2537]
 
+  - [feature] Added "collation" parameter to all
+    String types.  When present, renders as
+    COLLATE <collation>.  This to support the
+    COLLATE keyword now supported by several
+    databases including MySQL, SQLite, and Postgresql.
+    [ticket:2276]
+
+  - [change] The Text() type renders the length
+    given to it, if a length was specified.
+
   - [feature] Custom unary operators can now be
     used by combining operators.custom_op() with
     UnaryExpression().

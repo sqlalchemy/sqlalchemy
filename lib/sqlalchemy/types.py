@@ -971,7 +971,8 @@ class String(Concatenable, TypeEngine):
 
     __visit_name__ = 'string'
 
-    def __init__(self, length=None, convert_unicode=False,
+    def __init__(self, length=None, collation=None,
+                        convert_unicode=False,
                         assert_unicode=None, unicode_error=None,
                         _warn_on_bytestring=False
                         ):
@@ -979,12 +980,24 @@ class String(Concatenable, TypeEngine):
         Create a string-holding type.
 
         :param length: optional, a length for the column for use in
-          DDL statements.  May be safely omitted if no ``CREATE
+          DDL and CAST expressions.  May be safely omitted if no ``CREATE
           TABLE`` will be issued.  Certain databases may require a
           ``length`` for use in DDL, and will raise an exception when
           the ``CREATE TABLE`` DDL is issued if a ``VARCHAR``
           with no length is included.  Whether the value is
           interpreted as bytes or characters is database specific.
+
+        :param collation: Optional, a column-level collation for
+          use in DDL and CAST expressions.  Renders using the
+          COLLATE keyword supported by SQLite, MySQL, and Postgresql.
+          E.g.::
+
+            >>> from sqlalchemy import cast, select, String
+            >>> print select([cast('some string', String(collation='utf8'))])
+            SELECT CAST(:param_1 AS VARCHAR COLLATE utf8) AS anon_1
+
+          .. versionadded:: 0.8 Added support for COLLATE to all
+             string types.
 
         :param convert_unicode: When set to ``True``, the
           :class:`.String` type will assume that
@@ -1046,6 +1059,7 @@ class String(Concatenable, TypeEngine):
                                  '*not* apply to DBAPIs that coerce '
                                  'Unicode natively.')
         self.length = length
+        self.collation = collation
         self.convert_unicode = convert_unicode
         self.unicode_error = unicode_error
         self._warn_on_bytestring = _warn_on_bytestring

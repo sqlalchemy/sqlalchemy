@@ -306,7 +306,11 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
              'LONGTEXT ASCII'),
 
             (mysql.ENUM, ["foo", "bar"], {'unicode':True},
-             '''ENUM('foo','bar') UNICODE''')
+             '''ENUM('foo','bar') UNICODE'''),
+
+            (String, [20], {"collation":"utf8"}, 'VARCHAR(20) COLLATE utf8')
+
+
            ]
 
         for type_, args, kw, res in columns:

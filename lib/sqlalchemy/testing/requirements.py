@@ -162,3 +162,9 @@ class SuiteRequirements(Requirements):
     @property
     def index_reflection(self):
         return exclusions.open()
+
+    @property
+    def unbounded_varchar(self):
+        """Target database must support VARCHAR with no length"""
+
+        return exclusions.open()

@@ -244,14 +244,13 @@ class PickleMetadataTest(fixtures.TestBase):
                 Column('Lar', LargeBinary()),
                 Column('Pic', PickleType()),
                 Column('Int', Interval()),
-                Column('Enu', Enum('x','y','z', name="somename")),
+                Column('Enu', Enum('x', 'y', 'z', name="somename")),
             ]
             for column_type in column_types:
-                #print column_type
                 meta = MetaData()
                 Table('foo', meta, column_type)
-                ct = loads(dumps(column_type))
-                mt = loads(dumps(meta))
+                loads(dumps(column_type))
+                loads(dumps(meta))
 
 
 class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
@@ -305,7 +304,7 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
                 raw_dialect_impl = raw_impl.dialect_impl(dialect_)
                 dec_dialect_impl = dec_type.dialect_impl(dialect_)
                 eq_(dec_dialect_impl.__class__, MyType)
-                eq_(raw_dialect_impl.__class__ , dec_dialect_impl.impl.__class__)
+                eq_(raw_dialect_impl.__class__, dec_dialect_impl.impl.__class__)
 
                 self.assert_compile(
                     MyType(**kw),
@@ -1394,24 +1393,51 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         assert test_table.c.data.distinct().type == test_table.c.data.type
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
-    def test_default_compile(self):
-        """test that the base dialect of the type object is used
-        for default compilation.
 
-        """
+    @testing.requires.unbounded_varchar
+    def test_string_plain(self):
+        self.assert_compile(String(), "VARCHAR")
 
-        for type_, expected in (
-            (String(), "VARCHAR"),
-            (Integer(), "INTEGER"),
-            (dialects.postgresql.INET(), "INET"),
-            (dialects.postgresql.FLOAT(), "FLOAT"),
-            (dialects.mysql.REAL(precision=8, scale=2), "REAL(8, 2)"),
-            (dialects.postgresql.REAL(), "REAL"),
-            (INTEGER(), "INTEGER"),
-            (dialects.mysql.INTEGER(display_width=5), "INTEGER(5)")
-        ):
-            self.assert_compile(type_, expected,
-                                allow_dialect_select=True)
+    def test_string_length(self):
+        self.assert_compile(String(50), "VARCHAR(50)")
+
+    def test_string_collation(self):
+        self.assert_compile(String(50, collation="FOO"),
+                'VARCHAR(50) COLLATE "FOO"')
+
+    def test_char_plain(self):
+        self.assert_compile(CHAR(), "CHAR")
+
+    def test_char_length(self):
+        self.assert_compile(CHAR(50), "CHAR(50)")
+
+    def test_char_collation(self):
+        self.assert_compile(CHAR(50, collation="FOO"),
+                'CHAR(50) COLLATE "FOO"')
+
+    def test_text_plain(self):
+        self.assert_compile(Text(), "TEXT")
+
+    def test_text_length(self):
+        self.assert_compile(Text(50), "TEXT(50)")
+
+    def test_text_collation(self):
+        self.assert_compile(Text(collation="FOO"),
+                'TEXT COLLATE "FOO"')
+
+    def test_default_compile_pg_inet(self):
+        self.assert_compile(dialects.postgresql.INET(), "INET",
+                allow_dialect_select=True)
+
+    def test_default_compile_pg_float(self):
+        self.assert_compile(dialects.postgresql.FLOAT(), "FLOAT",
+                allow_dialect_select=True)
+
+    def test_default_compile_mysql_integer(self):
+        self.assert_compile(
+                dialects.mysql.INTEGER(display_width=5), "INTEGER(5)",
+                allow_dialect_select=True)
+
 
 class DateTest(fixtures.TestBase, AssertsExecutionResults):
     @classmethod

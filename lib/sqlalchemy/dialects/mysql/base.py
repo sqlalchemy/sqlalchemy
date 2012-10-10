@@ -389,8 +389,10 @@ class _StringType(sqltypes.String):
                  ascii=False, binary=False,
                  national=False, **kw):
         self.charset = charset
+
         # allow collate= or collation=
-        self.collation = kw.pop('collate', collation)
+        kw.setdefault('collation', kw.pop('collate', collation))
+
         self.ascii = ascii
         # We have to munge the 'unicode' param strictly as a dict
         # otherwise 2to3 will turn it into str.
@@ -401,19 +403,6 @@ class _StringType(sqltypes.String):
         self.binary = binary
         self.national = national
         super(_StringType, self).__init__(**kw)
-
-    def __repr__(self):
-        attributes = inspect.getargspec(self.__init__)[0][1:]
-        attributes.extend(inspect.getargspec(_StringType.__init__)[0][1:])
-
-        params = {}
-        for attr in attributes:
-            val = getattr(self, attr)
-            if val is not None and val is not False:
-                params[attr] = val
-
-        return "%s(%s)" % (self.__class__.__name__,
-                           ', '.join(['%s=%r' % (k, params[k]) for k in params]))
 
 
 class NUMERIC(_NumericType, sqltypes.NUMERIC):
@@ -1489,7 +1478,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
         opts = dict(
             (
-                k[len(self.dialect.name)+1:].upper(),
+                k[len(self.dialect.name) + 1:].upper(),
                 v
             )
             for k, v in table.kwargs.items()
@@ -1772,7 +1761,8 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_CHAR(self, type_):
         if type_.length:
-            return self._extend_string(type_, {}, "CHAR(%(length)s)" % {'length' : type_.length})
+            return self._extend_string(type_, {}, "CHAR(%(length)s)" %
+                                        {'length': type_.length})
         else:
             return self._extend_string(type_, {}, "CHAR")
 
@@ -1780,7 +1770,8 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         # We'll actually generate the equiv. "NATIONAL VARCHAR" instead
         # of "NVARCHAR".
         if type_.length:
-            return self._extend_string(type_, {'national':True}, "VARCHAR(%(length)s)" % {'length': type_.length})
+            return self._extend_string(type_, {'national': True},
+                        "VARCHAR(%(length)s)" % {'length': type_.length})
         else:
             raise exc.CompileError(
                     "NVARCHAR requires a length on dialect %s" %
@@ -1789,9 +1780,10 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
     def visit_NCHAR(self, type_):
         # We'll actually generate the equiv. "NATIONAL CHAR" instead of "NCHAR".
         if type_.length:
-            return self._extend_string(type_, {'national':True}, "CHAR(%(length)s)" % {'length': type_.length})
+            return self._extend_string(type_, {'national': True},
+                        "CHAR(%(length)s)" % {'length': type_.length})
         else:
-            return self._extend_string(type_, {'national':True}, "CHAR")
+            return self._extend_string(type_, {'national': True}, "CHAR")
 
     def visit_VARBINARY(self, type_):
         return "VARBINARY(%d)" % type_.length

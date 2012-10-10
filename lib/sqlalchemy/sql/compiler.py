@@ -2055,11 +2055,6 @@ class DDLCompiler(engine.Compiled):
 
 
 class GenericTypeCompiler(engine.TypeCompiler):
-    def visit_CHAR(self, type_):
-        return "CHAR" + (type_.length and "(%d)" % type_.length or "")
-
-    def visit_NCHAR(self, type_):
-        return "NCHAR" + (type_.length and "(%d)" % type_.length or "")
 
     def visit_FLOAT(self, type_):
         return "FLOAT"
@@ -2108,11 +2103,29 @@ class GenericTypeCompiler(engine.TypeCompiler):
     def visit_NCLOB(self, type_):
         return "NCLOB"
 
+    def _render_string_type(self, type_, name):
+
+        text = name
+        if type_.length:
+            text += "(%d)" % type_.length
+        if type_.collation:
+            text += ' COLLATE "%s"' % type_.collation
+        return text
+
+    def visit_CHAR(self, type_):
+        return self._render_string_type(type_, "CHAR")
+
+    def visit_NCHAR(self, type_):
+        return self._render_string_type(type_, "NCHAR")
+
     def visit_VARCHAR(self, type_):
-        return "VARCHAR" + (type_.length and "(%d)" % type_.length or "")
+        return self._render_string_type(type_, "VARCHAR")
 
     def visit_NVARCHAR(self, type_):
-        return "NVARCHAR" + (type_.length and "(%d)" % type_.length or "")
+        return self._render_string_type(type_, "NVARCHAR")
+
+    def visit_TEXT(self, type_):
+        return self._render_string_type(type_, "TEXT")
 
     def visit_BLOB(self, type_):
         return "BLOB"
@@ -2126,8 +2139,6 @@ class GenericTypeCompiler(engine.TypeCompiler):
     def visit_BOOLEAN(self, type_):
         return "BOOLEAN"
 
-    def visit_TEXT(self, type_):
-        return "TEXT"
 
     def visit_large_binary(self, type_):
         return self.visit_BLOB(type_)
