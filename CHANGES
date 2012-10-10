@@ -824,6 +824,10 @@ are also present in 0.8.
     or by primary key switch of another instance.
     [ticket:2583]
 
+- mysql
+  - [feature] Added "raise_on_warnings" flag to OurSQL
+    dialect.  [ticket:2523]
+
 0.7.9
 =====
 - orm
