@@ -107,49 +107,17 @@ class PickleTest(fixtures.MappedTest):
         # compiles the mapper
         eq_(str(u1), "User(name='ed')")
 
-    def test_serialize_path(self):
-        from sqlalchemy.orm.util import PathRegistry
-
-        users, addresses = (self.tables.users,
-                                self.tables.addresses)
-
-        umapper = mapper(User, users, properties={
-            'addresses':relationship(Address, backref="user")
-        })
-        amapper = mapper(Address, addresses)
-
-        # this is a "relationship" path with mapper, key, mapper, key
-        p1 = PathRegistry.coerce((umapper, 'addresses', amapper, 'email_address'))
-        eq_(
-            PathRegistry.deserialize(p1.serialize()),
-            p1
-        )
-
-        # this is a "mapper" path with mapper, key, mapper, no key
-        # at the end.
-        p2 = PathRegistry.coerce((umapper, 'addresses', amapper, ))
-        eq_(
-            PathRegistry.deserialize(p2.serialize()),
-            p2
-        )
-
-        # test a blank path
-        p3 = PathRegistry.root
-        eq_(
-            PathRegistry.deserialize(p3.serialize()),
-            p3
-        )
 
     def test_class_deferred_cols(self):
         addresses, users = (self.tables.addresses,
                                 self.tables.users)
 
         mapper(User, users, properties={
-            'name':sa.orm.deferred(users.c.name),
-            'addresses':relationship(Address, backref="user")
+            'name': sa.orm.deferred(users.c.name),
+            'addresses': relationship(Address, backref="user")
         })
         mapper(Address, addresses, properties={
-            'email_address':sa.orm.deferred(addresses.c.email_address)
+            'email_address': sa.orm.deferred(addresses.c.email_address)
         })
         sess = create_session()
         u1 = User(name='ed')
@@ -178,7 +146,7 @@ class PickleTest(fixtures.MappedTest):
                                 self.tables.addresses)
 
         mapper(User, users, properties={
-            'addresses':relationship(Address, lazy='noload')
+            'addresses': relationship(Address, lazy='noload')
         })
         mapper(Address, addresses)
 

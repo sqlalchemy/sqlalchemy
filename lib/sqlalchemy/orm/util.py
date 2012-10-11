@@ -283,6 +283,9 @@ class PathRegistry(object):
         else:
             return value
 
+    def __len__(self):
+        return len(self.path)
+
     @property
     def length(self):
         return len(self.path)
@@ -352,9 +355,12 @@ class KeyRegistry(PathRegistry):
         self.reduced_path = parent.reduced_path + (key,)
 
     def __getitem__(self, entity):
-        return EntityRegistry(
-            self, entity
-        )
+        if isinstance(entity, (int, slice)):
+            return self.path[entity]
+        else:
+            return EntityRegistry(
+                self, entity
+            )
 
 class EntityRegistry(PathRegistry, dict):
     is_aliased_class = False
@@ -372,6 +378,12 @@ class EntityRegistry(PathRegistry, dict):
 
     def __nonzero__(self):
         return True
+
+    def __getitem__(self, entity):
+        if isinstance(entity, (int, slice)):
+            return self.path[entity]
+        else:
+            return dict.__getitem__(self, entity)
 
     def __missing__(self, key):
         self[key] = item = KeyRegistry(self, key)
