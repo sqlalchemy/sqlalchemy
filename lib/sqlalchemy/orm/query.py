@@ -1816,12 +1816,12 @@ class Query(object):
         # track the path to prevent redundant joins
         if not create_aliases and prop:
             self._update_joinpoint({
-                '_joinpoint_entity':right,
+                '_joinpoint_entity': right,
                 'prev':((left, right, prop.key), self._joinpoint)
             })
         else:
             self._joinpoint = {
-                '_joinpoint_entity':right
+                '_joinpoint_entity': right
             }
 
         self._join_to_left(left, right,
