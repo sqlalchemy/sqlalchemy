@@ -703,8 +703,8 @@ class TIME(sqltypes.TIME):
             if value is not None:
                 microseconds = value.microseconds
                 seconds = value.seconds
-                minutes = seconds / 60
-                return time(minutes / 60,
+                minutes = seconds // 60
+                return time(minutes // 60,
                             minutes % 60,
                             seconds - minutes * 60,
                             microsecond=microseconds)
