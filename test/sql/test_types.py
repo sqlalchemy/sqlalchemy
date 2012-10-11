@@ -767,7 +767,7 @@ class UnicodeTest(fixtures.TestBase):
         utfdata = unicodedata.encode('utf8')
         eq_(
             proc(utfdata),
-            unicodedata.encode('ascii', errors='ignore')
+            unicodedata.encode('ascii', 'ignore').decode()
         )
 
 
@@ -1248,6 +1248,7 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         assert test_table.c.data.distinct().type == test_table.c.data.type
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     @testing.requires.unbounded_varchar
     def test_string_plain(self):
