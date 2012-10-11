@@ -274,6 +274,13 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if("drizzle", "no VIEW support")
 
     @property
+    def empty_strings(self):
+        """target database can persist/return an empty string."""
+
+        return fails_if("oracle", 'oracle converts empty '
+                                'strings to a blank space')
+
+    @property
     def unicode_connections(self):
         """Target driver must support some encoding of Unicode across the wire."""
         # TODO: expand to exclude MySQLdb versions w/ broken unicode

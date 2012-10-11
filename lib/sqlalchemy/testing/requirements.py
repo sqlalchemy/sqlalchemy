@@ -168,3 +168,18 @@ class SuiteRequirements(Requirements):
         """Target database must support VARCHAR with no length"""
 
         return exclusions.open()
+
+    @property
+    def unicode_data(self):
+        """Target database/dialect must support Python unicode objects with
+        non-ASCII characters represented, delivered as bound parameters
+        as well as in result rows.
+
+        """
+        return exclusions.open()
+
+    @property
+    def empty_strings(self):
+        """target database can persist/return an empty string."""
+
+        return exclusions.open()

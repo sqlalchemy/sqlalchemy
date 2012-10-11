@@ -653,156 +653,96 @@ class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
             'fooUTWO'
         )
 
-class UnicodeTest(fixtures.TestBase, AssertsExecutionResults):
-    """tests the Unicode type.  also tests the TypeDecorator with instances in the types package."""
+class UnicodeTest(fixtures.TestBase):
+    """Exercise the Unicode and related types.
 
-    @classmethod
-    def setup_class(cls):
-        global unicode_table, metadata
-        metadata = MetaData(testing.db)
-        unicode_table = Table('unicode_table', metadata,
-            Column('id', Integer, Sequence('uni_id_seq', optional=True), primary_key=True),
-            Column('unicode_varchar', Unicode(250)),
-            Column('unicode_text', UnicodeText),
-            )
-        metadata.create_all()
+    Note:  unicode round trip tests are now in
+    sqlalchemy/testing/suite/test_types.py.
 
-    @classmethod
-    def teardown_class(cls):
-        metadata.drop_all()
-
-    @engines.close_first
-    def teardown(self):
-        unicode_table.delete().execute()
+    """
 
     def test_native_unicode(self):
         """assert expected values for 'native unicode' mode"""
 
-        if \
-	     (testing.against('mssql+pyodbc') and not testing.db.dialect.freetds) \
-         or testing.against('mssql+mxodbc'):
-            assert testing.db.dialect.returns_unicode_strings == 'conditional'
-            return
+        if (testing.against('mssql+pyodbc') and
+                not testing.db.dialect.freetds) \
+            or testing.against('mssql+mxodbc'):
+            eq_(
+                testing.db.dialect.returns_unicode_strings,
+                'conditional'
+            )
 
-        if testing.against('mssql+pymssql'):
-            assert testing.db.dialect.returns_unicode_strings == ('charset' in testing.db.url.query)
-            return
+        elif testing.against('mssql+pymssql'):
+            eq_(
+                testing.db.dialect.returns_unicode_strings,
+                ('charset' in testing.db.url.query)
+            )
 
-        assert testing.db.dialect.returns_unicode_strings == \
-            ((testing.db.name, testing.db.driver) in \
-            (
-                ('postgresql','psycopg2'),
-                ('postgresql','pypostgresql'),
-                ('postgresql','pg8000'),
-                ('postgresql','zxjdbc'),
-                ('mysql','oursql'),
-                ('mysql','zxjdbc'),
-                ('mysql','mysqlconnector'),
-                ('mysql','pymysql'),
-                ('sqlite','pysqlite'),
-                ('oracle','zxjdbc'),
-                ('oracle','cx_oracle'),
-            )), \
-            "name: %s driver %s returns_unicode_strings=%s" % \
-                                        (testing.db.name,
-                                         testing.db.driver,
-                                         testing.db.dialect.returns_unicode_strings)
-
-    def test_round_trip(self):
-        unicodedata = u"Alors vous imaginez ma surprise, au lever du jour, "\
-                    u"quand une drôle de petite voix m’a réveillé. Elle "\
-                    u"disait: « S’il vous plaît… dessine-moi un mouton! »"
-
-        unicode_table.insert().execute(unicode_varchar=unicodedata,unicode_text=unicodedata)
-
-        x = unicode_table.select().execute().first()
-        assert isinstance(x['unicode_varchar'], unicode)
-        assert isinstance(x['unicode_text'], unicode)
-        eq_(x['unicode_varchar'], unicodedata)
-        eq_(x['unicode_text'], unicodedata)
-
-    def test_round_trip_executemany(self):
-        # cx_oracle was producing different behavior for cursor.executemany()
-        # vs. cursor.execute()
-
-        unicodedata = u"Alors vous imaginez ma surprise, au lever du jour, quand "\
-                        u"une drôle de petite voix m’a réveillé. "\
-                        u"Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
-
-        unicode_table.insert().execute(
-                dict(unicode_varchar=unicodedata,unicode_text=unicodedata),
-                dict(unicode_varchar=unicodedata,unicode_text=unicodedata)
-        )
-
-        x = unicode_table.select().execute().first()
-        assert isinstance(x['unicode_varchar'], unicode)
-        eq_(x['unicode_varchar'], unicodedata)
-        assert isinstance(x['unicode_text'], unicode)
-        eq_(x['unicode_text'], unicodedata)
-
-    def test_union(self):
-        """ensure compiler processing works for UNIONs"""
-
-        unicodedata = u"Alors vous imaginez ma surprise, au lever du jour, quand "\
-                        u"une drôle de petite voix m’a réveillé. "\
-                        u"Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
-
-        unicode_table.insert().execute(unicode_varchar=unicodedata,unicode_text=unicodedata)
-
-        x = union(
-                    select([unicode_table.c.unicode_varchar]),
-                    select([unicode_table.c.unicode_varchar])
-                ).execute().first()
-
-        assert isinstance(x['unicode_varchar'], unicode)
-        eq_(x['unicode_varchar'], unicodedata)
-
-    @testing.fails_on('oracle', 'oracle converts empty strings to a blank space')
-    def test_blank_strings(self):
-        unicode_table.insert().execute(unicode_varchar=u'')
-        assert select([unicode_table.c.unicode_varchar]).scalar() == u''
-
-    def test_unicode_warnings(self):
-        """test the warnings raised when SQLA must coerce unicode binds,
-        *and* is using the Unicode type.
-
-        """
-
-        unicodedata = u"Alors vous imaginez ma surprise, au lever du jour, quand "\
-                        u"une drôle de petite voix m’a réveillé. "\
-                        u"Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
-
-        # using Unicode explicly - warning should be emitted
-        u = Unicode()
-        uni = u.dialect_impl(testing.db.dialect).bind_processor(testing.db.dialect)
-        if testing.db.dialect.supports_unicode_binds:
-            # Py3K
-            #assert_raises(exc.SAWarning, uni, b'x')
-            #assert isinstance(uni(unicodedata), str)
-            # Py2K
-            assert_raises(exc.SAWarning, uni, 'x')
-            assert isinstance(uni(unicodedata), unicode)
-            # end Py2K
-
-            eq_(uni(unicodedata), unicodedata)
         else:
-            # Py3K
-            #assert_raises(exc.SAWarning, uni, b'x')
-            #assert isinstance(uni(unicodedata), bytes)
-            # Py2K
-            assert_raises(exc.SAWarning, uni, 'x')
-            assert isinstance(uni(unicodedata), str)
-            # end Py2K
+            expected = (testing.db.name, testing.db.driver) in \
+                (
+                    ('postgresql', 'psycopg2'),
+                    ('postgresql', 'pypostgresql'),
+                    ('postgresql', 'pg8000'),
+                    ('postgresql', 'zxjdbc'),
+                    ('mysql', 'oursql'),
+                    ('mysql', 'zxjdbc'),
+                    ('mysql', 'mysqlconnector'),
+                    ('mysql', 'pymysql'),
+                    ('sqlite', 'pysqlite'),
+                    ('oracle', 'zxjdbc'),
+                    ('oracle', 'cx_oracle'),
+                )
 
-            eq_(uni(unicodedata), unicodedata.encode('utf-8'))
+            eq_(
+                testing.db.dialect.returns_unicode_strings,
+                expected
+            )
 
-        # using convert unicode at engine level -
-        # this should not be raising a warning
-        unicode_engine = engines.utf8_engine(options={'convert_unicode':True,})
-        unicode_engine.dialect.supports_unicode_binds = False
+    data = u"Alors vous imaginez ma surprise, au lever du jour, quand "\
+            u"une drôle de petite voix m’a réveillé. "\
+            u"Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
+
+    def test_unicode_warnings_typelevel_native_unicode(self):
+
+        unicodedata = self.data
+        u = Unicode()
+        dialect = default.DefaultDialect()
+        dialect.supports_unicode_binds = True
+        uni = u.dialect_impl(dialect).bind_processor(dialect)
+        # Py3K
+        #assert_raises(exc.SAWarning, uni, b'x')
+        #assert isinstance(uni(unicodedata), str)
+        # Py2K
+        assert_raises(exc.SAWarning, uni, 'x')
+        assert isinstance(uni(unicodedata), unicode)
+        # end Py2K
+
+    def test_unicode_warnings_typelevel_sqla_unicode(self):
+        unicodedata = self.data
+        u = Unicode()
+        dialect = default.DefaultDialect()
+        dialect.supports_unicode_binds = False
+        uni = u.dialect_impl(dialect).bind_processor(dialect)
+        # Py3K
+        #assert_raises(exc.SAWarning, uni, b'x')
+        #assert isinstance(uni(unicodedata), bytes)
+        # Py2K
+        assert_raises(exc.SAWarning, uni, 'x')
+        assert isinstance(uni(unicodedata), str)
+        # end Py2K
+
+        eq_(uni(unicodedata), unicodedata.encode('utf-8'))
+
+    def test_unicode_warnings_dialectlevel(self):
+
+        unicodedata = self.data
+
+        dialect = default.DefaultDialect(convert_unicode=True)
+        dialect.supports_unicode_binds = False
 
         s = String()
-        uni = s.dialect_impl(unicode_engine.dialect).bind_processor(unicode_engine.dialect)
+        uni = s.dialect_impl(dialect).bind_processor(dialect)
         # this is not the unicode type - no warning
         # Py3K
         #uni(b'x')
@@ -814,105 +754,21 @@ class UnicodeTest(fixtures.TestBase, AssertsExecutionResults):
 
         eq_(uni(unicodedata), unicodedata.encode('utf-8'))
 
-    # Py3K
-    #@testing.skip_if(
-    #                    lambda: testing.db_spec("postgresql")(testing.db),
-    #                    "pg8000 and psycopg2 both have issues here in py3k"
-    #                    )
-    @testing.skip_if(lambda: testing.db_spec('mssql+mxodbc'),
-        "unsupported behavior")
     def test_ignoring_unicode_error(self):
-        """checks String(unicode_error='ignore') is passed to underlying codec."""
+        """checks String(unicode_error='ignore') is passed to
+        underlying codec."""
 
-        unicodedata = u"Alors vous imaginez ma surprise, au lever du jour, quand "\
-                        u"une drôle de petite voix m’a réveillé. "\
-                        u"Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
+        unicodedata = self.data
 
-        asciidata = unicodedata.encode('ascii', 'ignore')
+        type_ = String(248, convert_unicode='force', unicode_error='ignore')
+        dialect = default.DefaultDialect(encoding='ascii')
+        proc = type_.result_processor(dialect, 10)
 
-        m = MetaData()
-        table = Table('unicode_err_table', m,
-            Column('sort', Integer),
-            Column('plain_varchar_no_coding_error', \
-                    String(248, convert_unicode='force', unicode_error='ignore'))
-            )
-
-        m2 = MetaData()
-        utf8_table = Table('unicode_err_table', m2,
-            Column('sort', Integer),
-            Column('plain_varchar_no_coding_error', \
-                    String(248, convert_unicode=True))
-            )
-
-        engine = engines.testing_engine(options={'encoding':'ascii'})
-        m.create_all(engine)
-        try:
-            # insert a row that should be ascii and
-            # coerce from unicode with ignore on the bind side
-            engine.execute(
-                table.insert(),
-                sort=1,
-                plain_varchar_no_coding_error=unicodedata
-            )
-
-            # switch to utf-8
-            engine.dialect.encoding = 'utf-8'
-            from binascii import hexlify
-
-            # the row that we put in was stored as hexlified ascii
-            row = engine.execute(utf8_table.select()).first()
-            x = row['plain_varchar_no_coding_error']
-            connect_opts = engine.dialect.create_connect_args(testing.db.url)[1]
-            if isinstance(x, unicode):
-                x = x.encode('utf-8')
-            a = hexlify(x)
-            b = hexlify(asciidata)
-            eq_(a, b)
-
-            # insert another row which will be stored with
-            # utf-8 only chars
-            engine.execute(
-                utf8_table.insert(),
-                sort=2,
-                plain_varchar_no_coding_error=unicodedata
-            )
-
-            # switch back to ascii
-            engine.dialect.encoding = 'ascii'
-
-            # one row will be ascii with ignores,
-            # the other will be either ascii with the ignores
-            # or just the straight unicode+ utf8 value if the
-            # dialect just returns unicode
-            result = engine.execute(table.select().order_by(table.c.sort))
-            ascii_row = result.fetchone()
-            utf8_row = result.fetchone()
-            result.close()
-
-            x = ascii_row['plain_varchar_no_coding_error']
-            # on python3 "x" comes back as string (i.e. unicode),
-            # hexlify requires bytes
-            a = hexlify(x.encode('utf-8'))
-            b = hexlify(asciidata)
-            eq_(a, b)
-
-            x = utf8_row['plain_varchar_no_coding_error']
-            if testing.against('mssql+pyodbc') and not testing.db.dialect.freetds:
-                # TODO: no clue what this is
-                eq_(
-                      x,
-                      u'Alors vous imaginez ma surprise, au lever du jour, quand une '
-                      u'drle de petite voix ma rveill. Elle disait:  Sil vous plat '
-                      u'dessine-moi un mouton! '
-                )
-            elif engine.dialect.returns_unicode_strings:
-                eq_(x, unicodedata)
-            else:
-                a = hexlify(x)
-                eq_(a, b)
-
-        finally:
-            m.drop_all(engine)
+        utfdata = unicodedata.encode('utf8')
+        eq_(
+            proc(utfdata),
+            unicodedata.encode('ascii', errors='ignore')
+        )
 
 
 class EnumTest(fixtures.TestBase):
@@ -922,12 +778,12 @@ class EnumTest(fixtures.TestBase):
         metadata = MetaData(testing.db)
         enum_table = Table('enum_table', metadata,
             Column("id", Integer, primary_key=True),
-            Column('someenum', Enum('one','two','three', name='myenum'))
+            Column('someenum', Enum('one', 'two', 'three', name='myenum'))
         )
 
         non_native_enum_table = Table('non_native_enum_table', metadata,
             Column("id", Integer, primary_key=True),
-            Column('someenum', Enum('one','two','three', native_enum=False)),
+            Column('someenum', Enum('one', 'two', 'three', native_enum=False)),
         )
 
         metadata.create_all()
@@ -1299,7 +1155,6 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
             testing.db.execute(select([expr.label('foo')])).scalar(),
             "BIND_INfooBIND_IN6BIND_OUT"
         )
-
 
     def test_bind_typing(self):
         from sqlalchemy.sql import column
