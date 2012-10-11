@@ -8,6 +8,7 @@ syntax:regexp
 .so$
 .egg-info
 .*,cover
+^beaker_data/
 .un~
 \.coverage
 \.DS_Store
