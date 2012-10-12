@@ -183,3 +183,24 @@ class SuiteRequirements(Requirements):
         """target database can persist/return an empty string."""
 
         return exclusions.open()
+
+
+    @property
+    def update_from(self):
+        """Target must support UPDATE..FROM syntax"""
+        return exclusions.closed()
+
+    @property
+    def update_where_target_in_subquery(self):
+        """Target must support UPDATE where the same table is present in a
+        subquery in the WHERE clause.
+
+        This is an ANSI-standard syntax that apparently MySQL can't handle,
+        such as:
+
+        UPDATE documents SET flag=1 WHERE documents.title IN
+            (SELECT max(documents.title) AS title
+                FROM documents GROUP BY documents.user_id
+            )
+        """
+        return exclusions.open()

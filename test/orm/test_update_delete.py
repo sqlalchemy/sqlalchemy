@@ -1,7 +1,7 @@
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy import Integer, String, ForeignKey, or_, and_, exc, \
-    select, func, Boolean
+    select, func, Boolean, case
 from sqlalchemy.orm import mapper, relationship, backref, Session, \
     joinedload, aliased
 from sqlalchemy import testing
@@ -541,7 +541,7 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
               Column('id', Integer, primary_key=True),
               Column('user_id', None, ForeignKey('users.id')),
               Column('title', String(32)),
-              Column('flag', Boolean, default=False)
+              Column('flag', Boolean)
         )
 
     @classmethod
@@ -600,13 +600,55 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
         eq_(
             set(s.query(Document.id, Document.flag)),
             set([
+                    (1, True), (2, None),
+                    (3, None), (4, True),
+                    (5, True), (6, None),
+                ])
+        )
+
+    @testing.requires.update_where_target_in_subquery
+    def test_update_using_in(self):
+        Document = self.classes.Document
+        s = Session()
+
+        subq = s.query(func.max(Document.title).label('title')).\
+                group_by(Document.user_id).subquery()
+
+        s.query(Document).filter(Document.title.in_(subq)).\
+                update({'flag': True}, synchronize_session=False)
+
+        eq_(
+            set(s.query(Document.id, Document.flag)),
+            set([
+                    (1, True), (2, None),
+                    (3, None), (4, True),
+                    (5, True), (6, None),
+                ])
+        )
+
+    @testing.requires.update_where_target_in_subquery
+    @testing.requires.standalone_binds
+    def test_update_using_case(self):
+        Document = self.classes.Document
+        s = Session()
+
+
+        subq = s.query(func.max(Document.title).label('title')).\
+                group_by(Document.user_id).subquery()
+
+        # this would work with Firebird if you do literal_column('1')
+        # instead
+        case_stmt = case([(Document.title.in_(subq), True)], else_=False)
+        s.query(Document).update({'flag': case_stmt}, synchronize_session=False)
+
+        eq_(
+            set(s.query(Document.id, Document.flag)),
+            set([
                     (1, True), (2, False),
                     (3, False), (4, True),
                     (5, True), (6, False),
                 ])
         )
-
-
 
 class ExpressionUpdateTest(fixtures.MappedTest):
     @classmethod

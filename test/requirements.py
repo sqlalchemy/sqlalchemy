@@ -184,6 +184,22 @@ class DefaultRequirements(SuiteRequirements):
 
 
     @property
+    def update_where_target_in_subquery(self):
+        """Target must support UPDATE where the same table is present in a
+        subquery in the WHERE clause.
+
+        This is an ANSI-standard syntax that apparently MySQL can't handle,
+        such as:
+
+        UPDATE documents SET flag=1 WHERE documents.title IN
+            (SELECT max(documents.title) AS title
+                FROM documents GROUP BY documents.user_id
+            )
+        """
+        return fails_if('mysql', 'MySQL error 1093 "Cant specify target table '
+                                        'for update in FROM clause"')
+
+    @property
     def savepoints(self):
         """Target database must support savepoints."""
 
