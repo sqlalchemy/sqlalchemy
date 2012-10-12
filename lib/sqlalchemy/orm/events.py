@@ -10,6 +10,8 @@
 from .. import event, exc, util
 orm = util.importlater("sqlalchemy", "orm")
 import inspect
+import weakref
+
 
 class InstrumentationEvents(event.Events):
     """Events related to class instrumentation events.
@@ -17,9 +19,20 @@ class InstrumentationEvents(event.Events):
     The listeners here support being established against
     any new style class, that is any object that is a subclass
     of 'type'.  Events will then be fired off for events
-    against that class as well as all subclasses.
-    'type' itself is also accepted as a target
-    in which case the events fire for all classes.
+    against that class.  If the "propagate=True" flag is passed
+    to event.listen(), the event will fire off for subclasses
+    of that class as well.
+
+    The Python ``type`` builtin is also accepted as a target,
+    which when used has the effect of events being emitted
+    for all classes.
+
+    .. versionchanged:: 0.8 - events here will emit based
+       on comparing the incoming class to the type of class
+       passed to :func:`.event.listen`.  Previously, the
+       event would fire for any class unconditionally regardless
+       of what class was sent for listening, despite
+       documentation which stated the contrary.
 
     """
 
@@ -27,18 +40,37 @@ class InstrumentationEvents(event.Events):
     def _accept_with(cls, target):
         # TODO: there's no coverage for this
         if isinstance(target, type):
-            return orm.instrumentation._instrumentation_factory
+            return _InstrumentationEventsHold(target)
         else:
             return None
 
     @classmethod
     def _listen(cls, target, identifier, fn, propagate=False):
-        event.Events._listen(target, identifier, fn, propagate=propagate)
+
+        def listen(target_cls, *arg):
+            listen_cls = target()
+            if propagate and issubclass(target_cls, listen_cls):
+                return fn(target_cls, *arg)
+            elif not propagate and target_cls is listen_cls:
+                return fn(target_cls, *arg)
+
+        def remove(ref):
+            event.Events._remove(orm.instrumentation._instrumentation_factory,
+                                            identifier, listen)
+
+        target = weakref.ref(target.class_, remove)
+        event.Events._listen(orm.instrumentation._instrumentation_factory,
+                        identifier, listen)
 
     @classmethod
     def _remove(cls, identifier, target, fn):
         raise NotImplementedError("Removal of instrumentation events "
                                     "not yet implemented")
+
+    @classmethod
+    def _clear(cls):
+        super(InstrumentationEvents, cls)._clear()
+        orm.instrumentation._instrumentation_factory.dispatch._clear()
 
     def class_instrument(self, cls):
         """Called after the given class is instrumented.
@@ -59,6 +91,17 @@ class InstrumentationEvents(event.Events):
 
     def attribute_instrument(self, cls, key, inst):
         """Called when an attribute is instrumented."""
+
+class _InstrumentationEventsHold(object):
+    """temporary marker object used to transfer from _accept_with() to _listen()
+    on the InstrumentationEvents class.
+
+    """
+    def __init__(self, class_):
+        self.class_ = class_
+
+    dispatch = event.dispatcher(InstrumentationEvents)
+
 
 class InstanceEvents(event.Events):
     """Define events specific to object lifecycle.
@@ -94,8 +137,8 @@ class InstanceEvents(event.Events):
     available to the :func:`.event.listen` function.
 
     :param propagate=False: When True, the event listener should
-       be applied to all inheriting mappers as well as the
-       mapper which is the target of this listener.
+       be applied to all inheriting classes as well as the
+       class which is the target of this listener.
     :param raw=False: When True, the "target" argument passed
        to applicable event listener functions will be the
        instance's :class:`.InstanceState` management
@@ -117,6 +160,8 @@ class InstanceEvents(event.Events):
                 manager = orm.instrumentation.manager_of_class(target)
                 if manager:
                     return manager
+                else:
+                    return _InstanceEventsHold(target)
         return None
 
     @classmethod
@@ -135,6 +180,11 @@ class InstanceEvents(event.Events):
     @classmethod
     def _remove(cls, identifier, target, fn):
         raise NotImplementedError("Removal of instance events not yet implemented")
+
+    @classmethod
+    def _clear(cls):
+        super(InstanceEvents, cls)._clear()
+        _InstanceEventsHold._clear()
 
     def first_init(self, manager, cls):
         """Called when the first instance of a particular mapping is called.
@@ -258,6 +308,51 @@ class InstanceEvents(event.Events):
 
         """
 
+class _EventsHold(object):
+    """Hold onto listeners against unmapped, uninstrumented classes.
+
+    Establish _listen() for that class' mapper/instrumentation when
+    those objects are created for that class.
+
+    """
+    def __init__(self, class_):
+        self.class_ = class_
+
+    @classmethod
+    def _clear(cls):
+        cls.all_holds.clear()
+
+    class HoldEvents(object):
+        @classmethod
+        def _listen(cls, target, identifier, fn, raw=False, propagate=False):
+            if target.class_ in target.all_holds:
+                collection = target.all_holds[target.class_]
+            else:
+                collection = target.all_holds[target.class_] = []
+
+            collection.append((target.class_, identifier, fn, raw, propagate))
+
+    @classmethod
+    def populate(cls, class_, subject):
+        for subclass in class_.__mro__:
+            if subclass in cls.all_holds:
+                if subclass is class_:
+                    collection = cls.all_holds.pop(subclass)
+                else:
+                    collection = cls.all_holds[subclass]
+                for target, ident, fn, raw, propagate in collection:
+                    if propagate or subclass is class_:
+                        subject.dispatch._listen(subject, ident, fn, raw, propagate)
+
+class _InstanceEventsHold(_EventsHold):
+    all_holds = weakref.WeakKeyDictionary()
+
+    class HoldInstanceEvents(_EventsHold.HoldEvents, InstanceEvents):
+        pass
+
+    dispatch = event.dispatcher(HoldInstanceEvents)
+
+
 class MapperEvents(event.Events):
     """Define events specific to mappings.
 
@@ -307,7 +402,8 @@ class MapperEvents(event.Events):
     available to the :func:`.event.listen` function.
 
     :param propagate=False: When True, the event listener should
-       be applied to all inheriting mappers as well as the
+       be applied to all inheriting mappers and/or the mappers of
+       inheriting classes, as well as any
        mapper which is the target of this listener.
     :param raw=False: When True, the "target" argument passed
        to applicable event listener functions will be the
@@ -337,7 +433,11 @@ class MapperEvents(event.Events):
             if issubclass(target, orm.Mapper):
                 return target
             else:
-                return orm.class_mapper(target, configure=False)
+                mapper = orm.util._mapper_or_none(target)
+                if mapper is not None:
+                    return mapper
+                else:
+                    return _MapperEventsHold(target)
         else:
             return target
 
@@ -370,6 +470,11 @@ class MapperEvents(event.Events):
                 event.Events._listen(mapper, identifier, fn, propagate=True)
         else:
             event.Events._listen(target, identifier, fn)
+
+    @classmethod
+    def _clear(cls):
+        super(MapperEvents, cls)._clear()
+        _MapperEventsHold._clear()
 
     def instrument_class(self, mapper, class_):
         """Receive a class when the mapper is first constructed,
@@ -905,6 +1010,14 @@ class MapperEvents(event.Events):
     @classmethod
     def _remove(cls, identifier, target, fn):
         raise NotImplementedError("Removal of mapper events not yet implemented")
+
+class _MapperEventsHold(_EventsHold):
+    all_holds = weakref.WeakKeyDictionary()
+
+    class HoldMapperEvents(_EventsHold.HoldEvents, MapperEvents):
+        pass
+
+    dispatch = event.dispatcher(HoldMapperEvents)
 
 class SessionEvents(event.Events):
     """Define events specific to :class:`.Session` lifecycle.

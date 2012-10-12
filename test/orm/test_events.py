@@ -8,8 +8,10 @@ from sqlalchemy.orm import mapper, relationship, \
     Mapper, column_property, \
     Session, sessionmaker, attributes
 from sqlalchemy.orm.instrumentation import ClassManager
+from sqlalchemy.orm import instrumentation, events
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.util import gc_collect
 from test.orm import _fixtures
 from sqlalchemy import event
 
@@ -18,9 +20,10 @@ class _RemoveListeners(object):
     def teardown(self):
         # TODO: need to get remove() functionality
         # going
-        Mapper.dispatch._clear()
-        ClassManager.dispatch._clear()
-        Session.dispatch._clear()
+        events.MapperEvents._clear()
+        events.InstanceEvents._clear()
+        events.SessionEvents._clear()
+        events.InstrumentationEvents._clear()
         super(_RemoveListeners, self).teardown()
 
 
@@ -198,6 +201,47 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             'before_update', 'after_update', 'before_delete',
             'after_delete'])
 
+    def test_inheritance_subclass_deferred(self):
+        users, addresses, User = (self.tables.users,
+                                self.tables.addresses,
+                                self.classes.User)
+
+
+        mapper(User, users)
+
+        canary1 = self.listen_all(User, propagate=True)
+        canary2 = self.listen_all(User)
+
+        class AdminUser(User):
+            pass
+        mapper(AdminUser, addresses, inherits=User)
+        canary3 = self.listen_all(AdminUser)
+
+        sess = create_session()
+        am = AdminUser(name='au1', email_address='au1@e1')
+        sess.add(am)
+        sess.flush()
+        am = sess.query(AdminUser).populate_existing().get(am.id)
+        sess.expunge_all()
+        am = sess.query(AdminUser).get(am.id)
+        am.name = 'au1 changed'
+        sess.flush()
+        sess.delete(am)
+        sess.flush()
+        eq_(canary1, ['init', 'before_insert', 'after_insert',
+            'translate_row', 'populate_instance','refresh',
+            'append_result', 'translate_row', 'create_instance'
+            , 'populate_instance', 'load', 'append_result',
+            'before_update', 'after_update', 'before_delete',
+            'after_delete'])
+        eq_(canary2, [])
+        eq_(canary3, ['init', 'before_insert', 'after_insert',
+            'translate_row', 'populate_instance','refresh',
+            'append_result', 'translate_row', 'create_instance'
+            , 'populate_instance', 'load', 'append_result',
+            'before_update', 'after_update', 'before_delete',
+            'after_delete'])
+
     def test_before_after_only_collection(self):
         """before_update is called on parent for collection modifications,
         after_update is called even if no columns were updated.
@@ -276,6 +320,219 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         eq_(canary, [User])
         mapper(Address, addresses)
         eq_(canary, [User, Address])
+
+class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
+    """"test event listeners against unmapped classes.
+
+    This incurs special logic.  Note if we ever do the "remove" case,
+    it has to get all of these, too.
+
+    """
+    run_inserts = None
+
+    def test_deferred_map_event(self):
+        users, User = (self.tables.users,
+                                self.classes.User)
+
+        canary = []
+        def evt(x):
+            canary.append(x)
+        event.listen(User, "before_insert", evt, raw=True)
+
+        m = mapper(User, users)
+        m.dispatch.before_insert(5)
+        eq_(canary, [5])
+
+    def test_deferred_map_event_subclass_propagate(self):
+        users, User = (self.tables.users,
+                                self.classes.User)
+
+        class SubUser(User):
+            pass
+
+        canary = []
+        def evt(x):
+            canary.append(x)
+        event.listen(User, "before_insert", evt, propagate=True, raw=True)
+
+        m = mapper(SubUser, users)
+        m.dispatch.before_insert(5)
+        eq_(canary, [5])
+
+    def test_deferred_map_event_subclass_no_propagate(self):
+        users, User = (self.tables.users,
+                                self.classes.User)
+
+        class SubUser(User):
+            pass
+
+        canary = []
+        def evt(x):
+            canary.append(x)
+        event.listen(User, "before_insert", evt, propagate=False)
+
+        m = mapper(SubUser, users)
+        m.dispatch.before_insert(5)
+        eq_(canary, [])
+
+    def test_deferred_instance_event_plain(self):
+        users, User = (self.tables.users,
+                                self.classes.User)
+
+        canary = []
+        def evt(x):
+            canary.append(x)
+        event.listen(User, "load", evt, raw=True)
+
+        m = mapper(User, users)
+        m.class_manager.dispatch.load(5)
+        eq_(canary, [5])
+
+    def test_deferred_instance_event_subclass_propagate_subclass_only(self):
+        users, User = (self.tables.users,
+                                self.classes.User)
+
+        class SubUser(User):
+            pass
+
+        class SubUser2(User):
+            pass
+
+        canary = []
+        def evt(x):
+            canary.append(x)
+        event.listen(User, "load", evt, propagate=True, raw=True)
+
+        m = mapper(SubUser, users)
+        m2 = mapper(SubUser2, users)
+
+        m.class_manager.dispatch.load(5)
+        eq_(canary, [5])
+
+        m2.class_manager.dispatch.load(5)
+        eq_(canary, [5, 5])
+
+    def test_deferred_instance_event_subclass_propagate_baseclass(self):
+        users, User = (self.tables.users,
+                                self.classes.User)
+
+        class SubUser(User):
+            pass
+
+        class SubUser2(User):
+            pass
+
+        canary = []
+        def evt(x):
+            canary.append(x)
+        event.listen(User, "load", evt, propagate=True, raw=True)
+
+        m = mapper(SubUser, users)
+        m2 = mapper(User, users)
+
+        m.class_manager.dispatch.load(5)
+        eq_(canary, [5])
+
+        m2.class_manager.dispatch.load(5)
+        eq_(canary, [5, 5])
+
+        m3 = mapper(SubUser2, users)
+        m3.class_manager.dispatch.load(5)
+        eq_(canary, [5, 5, 5])
+
+    def test_deferred_instance_event_subclass_no_propagate(self):
+        users, User = (self.tables.users,
+                                self.classes.User)
+
+        class SubUser(User):
+            pass
+
+        canary = []
+        def evt(x):
+            canary.append(x)
+        event.listen(User, "load", evt, propagate=False)
+
+        m = mapper(SubUser, users)
+        m.class_manager.dispatch.load(5)
+        eq_(canary, [])
+
+    def test_deferred_instrument_event(self):
+        users, User = (self.tables.users,
+                                self.classes.User)
+
+        canary = []
+        def evt(x):
+            canary.append(x)
+        event.listen(User, "attribute_instrument", evt)
+
+        instrumentation._instrumentation_factory.dispatch.attribute_instrument(User)
+        eq_(canary, [User])
+
+    def test_isolation_instrument_event(self):
+        users, User = (self.tables.users,
+                                self.classes.User)
+        class Bar(object):
+            pass
+
+        canary = []
+        def evt(x):
+            canary.append(x)
+        event.listen(Bar, "attribute_instrument", evt)
+
+        instrumentation._instrumentation_factory.dispatch.attribute_instrument(User)
+        eq_(canary, [])
+
+    @testing.requires.predictable_gc
+    def test_instrument_event_auto_remove(self):
+        class Bar(object):
+            pass
+
+        listeners = instrumentation._instrumentation_factory.dispatch.\
+                            attribute_instrument.listeners
+        assert not listeners
+
+        canary = []
+        def evt(x):
+            canary.append(x)
+        event.listen(Bar, "attribute_instrument", evt)
+
+        eq_(len(listeners), 1)
+
+        del Bar
+        gc_collect()
+
+        assert not listeners
+
+
+    def test_deferred_instrument_event_subclass_propagate(self):
+        users, User = (self.tables.users,
+                                self.classes.User)
+        class SubUser(User):
+            pass
+
+        canary = []
+        def evt(x):
+            canary.append(x)
+        event.listen(User, "attribute_instrument", evt, propagate=True)
+
+        instrumentation._instrumentation_factory.dispatch.\
+                            attribute_instrument(SubUser)
+        eq_(canary, [SubUser])
+
+    def test_deferred_instrument_event_subclass_no_propagate(self):
+        users, User = (self.tables.users,
+                                self.classes.User)
+        class SubUser(User):
+            pass
+
+        canary = []
+        def evt(x):
+            canary.append(x)
+        event.listen(User, "attribute_instrument", evt, propagate=False)
+
+        mapper(SubUser, users)
+        instrumentation._instrumentation_factory.dispatch.attribute_instrument(5)
+        eq_(canary, [])
 
 
 class LoadTest(_fixtures.FixtureTest):

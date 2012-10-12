@@ -208,6 +208,7 @@ class Mapper(_InspectionAttr):
         # configure_mappers() until construction succeeds)
         _CONFIGURE_MUTEX.acquire()
         try:
+            events._MapperEventsHold.populate(class_, self)
             self._configure_inheritance()
             self._configure_legacy_instrument_class()
             self._configure_class_instrumentation()
@@ -658,10 +659,6 @@ class Mapper(_InspectionAttr):
         for ext in self._deprecated_extensions:
             if ext not in super_extensions:
                 ext._adapt_listener(self, ext)
-
-        if self.inherits:
-            self.class_manager.dispatch._update(
-                        self.inherits.class_manager.dispatch)
 
     def _configure_class_instrumentation(self):
         """If this mapper is to be a primary mapper (i.e. the

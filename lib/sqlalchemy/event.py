@@ -148,6 +148,12 @@ class _Dispatch(object):
             getattr(self, ls.name).\
                 for_modify(self)._update(ls, only_propagate=only_propagate)
 
+    @util.hybridmethod
+    def _clear(self):
+        for attr in dir(self):
+            if _is_event_name(attr):
+                getattr(self, attr).for_modify(self).clear()
+
 def _event_descriptors(target):
     return [getattr(target, k) for k in dir(target) if _is_event_name(k)]
 
@@ -170,7 +176,6 @@ def _create_dispatcher_class(cls, classname, bases, dict_):
     cls.dispatch = dispatch_cls = type("%sDispatch" % classname,
                                         (dispatch_base, ), {})
     dispatch_cls._listen = cls._listen
-    dispatch_cls._clear = cls._clear
 
     for k in dict_:
         if _is_event_name(k):
@@ -218,9 +223,7 @@ class Events(object):
 
     @classmethod
     def _clear(cls):
-        for attr in dir(cls.dispatch):
-            if _is_event_name(attr):
-                getattr(cls.dispatch, attr).clear()
+        cls.dispatch._clear()
 
 class _DispatchDescriptor(object):
     """Class-level attributes on :class:`._Dispatch` classes."""

@@ -81,6 +81,24 @@ underneath "0.7.xx".
     contains_eager()
     [ticket:2438] [ticket:1106]
 
+  - [feature] Improvements to event listening for
+    mapped classes allows that unmapped classes
+    can be specified for instance- and mapper-events.
+    The established events will be automatically
+    set up on subclasses of that class when the
+    propagate=True flag is passed, and the
+    events will be set up for that class itself
+    if and when it is ultimately mapped.
+    [ticket:2585]
+
+  - [bug] The instrumentation events class_instrument(),
+    class_uninstrument(), and attribute_instrument()
+    will now fire off only for descendant classes
+    of the class assigned to listen().  Previously,
+    an event listener would be assigned to listen
+    for all classes in all cases regardless of the
+    "target" argument passed.  [ticket:2590]
+
   - [bug] with_polymorphic() produces JOINs
     in the correct order and with correct inheriting
     tables in the case of sending multi-level

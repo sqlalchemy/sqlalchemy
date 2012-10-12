@@ -63,6 +63,12 @@ class ClassManager(dict):
         for base in self._bases:
             self.update(base)
 
+        events._InstanceEventsHold.populate(class_, self)
+
+        for basecls in class_.__mro__:
+            mgr = manager_of_class(basecls)
+            if mgr is not None:
+                self.dispatch._update(mgr.dispatch)
         self.manage()
         self._instrument_init()
 
