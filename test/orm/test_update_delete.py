@@ -1,7 +1,9 @@
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy.testing import fixtures
-from sqlalchemy import Integer, String, ForeignKey, or_, and_, exc, select, func
-from sqlalchemy.orm import mapper, relationship, backref, Session, joinedload
+from sqlalchemy import Integer, String, ForeignKey, or_, and_, exc, \
+    select, func, Boolean
+from sqlalchemy.orm import mapper, relationship, backref, Session, \
+    joinedload, aliased
 from sqlalchemy import testing
 
 from sqlalchemy.testing.schema import Table, Column
@@ -439,7 +441,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
                             synchronize_session='fetch')
         assert john not in sess
 
-class UpdateDeleteRelatedTest(fixtures.MappedTest):
+class UpdateDeleteIgnoresLoadersTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
@@ -528,6 +530,83 @@ class UpdateDeleteRelatedTest(fixtures.MappedTest):
                     delete(synchronize_session=False)
 
         eq_(sess.query(Document.title).all(), zip(['baz']))
+
+class UpdateDeleteFromTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('users', metadata,
+              Column('id', Integer, primary_key=True),
+            )
+        Table('documents', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('user_id', None, ForeignKey('users.id')),
+              Column('title', String(32)),
+              Column('flag', Boolean, default=False)
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class User(cls.Comparable):
+            pass
+
+        class Document(cls.Comparable):
+            pass
+
+    @classmethod
+    def insert_data(cls):
+        users = cls.tables.users
+
+        users.insert().execute([
+            dict(id=1, ),
+            dict(id=2, ),
+            dict(id=3, ),
+            dict(id=4, ),
+        ])
+
+        documents = cls.tables.documents
+
+        documents.insert().execute([
+            dict(id=1, user_id=1, title='foo'),
+            dict(id=2, user_id=1, title='bar'),
+            dict(id=3, user_id=2, title='baz'),
+            dict(id=4, user_id=2, title='hoho'),
+            dict(id=5, user_id=3, title='lala'),
+            dict(id=6, user_id=3, title='bleh'),
+        ])
+
+    @classmethod
+    def setup_mappers(cls):
+        documents, Document, User, users = (cls.tables.documents,
+                                cls.classes.Document,
+                                cls.classes.User,
+                                cls.tables.users)
+
+        mapper(User, users)
+        mapper(Document, documents, properties={
+            'user': relationship(User, backref='documents')
+        })
+
+    @testing.requires.update_from
+    def test_update_from_joined_subq_test(self):
+        Document = self.classes.Document
+        s = Session()
+
+        subq = s.query(func.max(Document.title).label('title')).\
+                group_by(Document.user_id).subquery()
+
+        s.query(Document).filter(Document.title == subq.c.title).\
+                update({'flag': True}, synchronize_session=False)
+
+        eq_(
+            set(s.query(Document.id, Document.flag)),
+            set([
+                    (1, True), (2, False),
+                    (3, False), (4, True),
+                    (5, True), (6, False),
+                ])
+        )
+
+
 
 class ExpressionUpdateTest(fixtures.MappedTest):
     @classmethod
