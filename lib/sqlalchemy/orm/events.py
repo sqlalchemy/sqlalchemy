@@ -27,6 +27,12 @@ class InstrumentationEvents(event.Events):
     which when used has the effect of events being emitted
     for all classes.
 
+    Note the "propagate" flag here is defaulted to ``True``,
+    unlike the other class level events where it defaults
+    to ``False``.  This means that new subclasses will also
+    be the subject of these events, when a listener
+    is established on a superclass.
+
     .. versionchanged:: 0.8 - events here will emit based
        on comparing the incoming class to the type of class
        passed to :func:`.event.listen`.  Previously, the
@@ -45,7 +51,7 @@ class InstrumentationEvents(event.Events):
             return None
 
     @classmethod
-    def _listen(cls, target, identifier, fn, propagate=False):
+    def _listen(cls, target, identifier, fn, propagate=True):
 
         def listen(target_cls, *arg):
             listen_cls = target()
