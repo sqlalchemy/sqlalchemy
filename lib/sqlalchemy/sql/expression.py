@@ -4839,7 +4839,7 @@ class SelectBase(Executable, FromClause):
         return [self]
 
 
-class ScalarSelect(Grouping):
+class ScalarSelect(Generative, Grouping):
     _from_objects = []
 
     def __init__(self, element):
@@ -4853,12 +4853,16 @@ class ScalarSelect(Grouping):
                 'column-level expression.')
     c = columns
 
+    @_generative
+    def where(self, crit):
+        """Apply a WHERE clause to the SELECT statement referred to
+        by this :class:`.ScalarSelect`.
+
+        """
+        self.element = self.element.where(crit)
+
     def self_group(self, **kwargs):
         return self
-
-    def _make_proxy(self, selectable, name=None, **kw):
-        return list(self.inner_columns)[0]._make_proxy(
-                            selectable, name=name)
 
 class CompoundSelect(SelectBase):
     """Forms the basis of ``UNION``, ``UNION ALL``, and other

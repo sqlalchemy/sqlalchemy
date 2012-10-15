@@ -129,6 +129,26 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
             "SELECT * FROM users"
         )
 
+    def test_where_relationship(self):
+        User = self.classes.User
+
+        self.assert_compile(
+            select([User]).where(User.addresses),
+            "SELECT users.id, users.name FROM users, addresses "
+            "WHERE users.id = addresses.user_id"
+        )
+
+    def test_where_m2m_relationship(self):
+        Item = self.classes.Item
+
+        self.assert_compile(
+            select([Item]).where(Item.keywords),
+            "SELECT items.id, items.description FROM items, "
+            "item_keywords AS item_keywords_1, keywords "
+            "WHERE items.id = item_keywords_1.item_id "
+            "AND keywords.id = item_keywords_1.keyword_id"
+        )
+
     def test_inline_select_from_entity(self):
         User = self.classes.User
 

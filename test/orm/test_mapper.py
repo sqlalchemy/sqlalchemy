@@ -2190,28 +2190,46 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         from sqlalchemy.orm.properties import PropertyLoader
 
+        # NOTE: this API changed in 0.8, previously __clause_element__()
+        # gave the parent selecatable, now it gives the
+        # primaryjoin/secondaryjoin
         class MyFactory(PropertyLoader.Comparator):
             __hash__ = None
             def __eq__(self, other):
-                return func.foobar(self.__clause_element__().c.user_id) == func.foobar(other.id)
+                return func.foobar(self._source_selectable().c.user_id) == \
+                    func.foobar(other.id)
 
         class MyFactory2(PropertyLoader.Comparator):
             __hash__ = None
             def __eq__(self, other):
-                return func.foobar(self.__clause_element__().c.id) == func.foobar(other.user_id)
+                return func.foobar(self._source_selectable().c.id) == \
+                    func.foobar(other.user_id)
 
         mapper(User, users)
         mapper(Address, addresses, properties={
-            'user':relationship(User, comparator_factory=MyFactory,
+            'user': relationship(User, comparator_factory=MyFactory,
                 backref=backref("addresses", comparator_factory=MyFactory2)
             )
             }
         )
-        self.assert_compile(Address.user == User(id=5), "foobar(addresses.user_id) = foobar(:foobar_1)", dialect=default.DefaultDialect())
-        self.assert_compile(User.addresses == Address(id=5, user_id=7), "foobar(users.id) = foobar(:foobar_1)", dialect=default.DefaultDialect())
 
-        self.assert_compile(aliased(Address).user == User(id=5), "foobar(addresses_1.user_id) = foobar(:foobar_1)", dialect=default.DefaultDialect())
-        self.assert_compile(aliased(User).addresses == Address(id=5, user_id=7), "foobar(users_1.id) = foobar(:foobar_1)", dialect=default.DefaultDialect())
+        # these are kind of nonsensical tests.
+        self.assert_compile(Address.user == User(id=5),
+                "foobar(addresses.user_id) = foobar(:foobar_1)",
+                dialect=default.DefaultDialect())
+        self.assert_compile(User.addresses == Address(id=5, user_id=7),
+                "foobar(users.id) = foobar(:foobar_1)",
+                dialect=default.DefaultDialect())
+
+        self.assert_compile(
+                aliased(Address).user == User(id=5),
+                "foobar(addresses_1.user_id) = foobar(:foobar_1)",
+                dialect=default.DefaultDialect())
+
+        self.assert_compile(
+                aliased(User).addresses == Address(id=5, user_id=7),
+                "foobar(users_1.id) = foobar(:foobar_1)",
+                dialect=default.DefaultDialect())
 
 
 class DeferredTest(_fixtures.FixtureTest):

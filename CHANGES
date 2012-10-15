@@ -285,6 +285,18 @@ underneath "0.7.xx".
     methods, where they will be unwrapped
     into selectables. [ticket:2245]
 
+  - [feature] Some support for auto-rendering of a
+    relationship join condition based on the mapped
+    attribute, with usage of core SQL constructs.
+    E.g. select([SomeClass]).where(SomeClass.somerelationship)
+    would render SELECT from "someclass" and use the
+    primaryjoin of "somerelationship" as the WHERE
+    clause.   This changes the previous meaning
+    of "SomeClass.somerelationship" when used in a
+    core SQL context; previously, it would "resolve"
+    to the parent selectable, which wasn't generally
+    useful.  Related to [ticket:2245].
+
   - [feature] The registry of classes
     in declarative_base() is now a
     WeakValueDictionary.  So subclasses of
@@ -653,6 +665,14 @@ underneath "0.7.xx".
     Column individually, by constructing a @compiles
     function against the new schema.CreateColumn
     construct.  [ticket:2463]
+
+  - [feature] "scalar" selects now have a WHERE method
+    to help with generative building.  Also slight adjustment
+    regarding how SS "correlates" columns; the new methodology
+    no longer applies meaning to the underlying
+    Table column being selected.  This improves
+    some fairly esoteric situations, and the logic
+    that was there didn't seem to have any purpose.
 
   - [bug] Fixes to the interpretation of the
     Column "default" parameter as a callable

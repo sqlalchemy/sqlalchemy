@@ -620,6 +620,14 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                             'mytable.description, (SELECT mytable.myid '
                             'FROM mytable) AS anon_1 FROM mytable')
 
+        s = select([table1.c.myid]).as_scalar()
+        s2 = s.where(table1.c.myid == 5)
+        self.assert_compile(
+            s2, "(SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_1)"
+        )
+        self.assert_compile(
+            s, "(SELECT mytable.myid FROM mytable)"
+        )
         # test that aliases use as_scalar() when used in an explicitly
         # scalar context
 
@@ -2018,7 +2026,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             expr,
             "x = :key",
-            {'x':12}
+            {'x': 12}
         )
 
     def test_bind_params_missing(self):
@@ -2114,7 +2122,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(table1.c.myid.in_([literal('a'), table1.c.myid]),
         "mytable.myid IN (:param_1, mytable.myid)")
 
-        self.assert_compile(table1.c.myid.in_([literal('a'), table1.c.myid +'a']),
+        self.assert_compile(table1.c.myid.in_([literal('a'), table1.c.myid + 'a']),
         "mytable.myid IN (:param_1, mytable.myid + :myid_1)")
 
         self.assert_compile(table1.c.myid.in_([literal(1), 'a' + table1.c.myid]),
@@ -2144,11 +2152,13 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             select([table1.c.myid.in_(select([table2.c.otherid]))]),
-            "SELECT mytable.myid IN (SELECT myothertable.otherid FROM myothertable) AS anon_1 FROM mytable"
+            "SELECT mytable.myid IN (SELECT myothertable.otherid "
+                "FROM myothertable) AS anon_1 FROM mytable"
         )
         self.assert_compile(
             select([table1.c.myid.in_(select([table2.c.otherid]).as_scalar())]),
-            "SELECT mytable.myid IN (SELECT myothertable.otherid FROM myothertable) AS anon_1 FROM mytable"
+            "SELECT mytable.myid IN (SELECT myothertable.otherid "
+                "FROM myothertable) AS anon_1 FROM mytable"
         )
 
         self.assert_compile(table1.c.myid.in_(
@@ -2160,17 +2170,24 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         "SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_1 "\
         "UNION SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_2)")
 
-        # test that putting a select in an IN clause does not blow away its ORDER BY clause
+        # test that putting a select in an IN clause does not
+        # blow away its ORDER BY clause
         self.assert_compile(
             select([table1, table2],
                 table2.c.otherid.in_(
-                    select([table2.c.otherid], order_by=[table2.c.othername], limit=10, correlate=False)
+                    select([table2.c.otherid], order_by=[table2.c.othername],
+                                        limit=10, correlate=False)
                 ),
-                from_obj=[table1.join(table2, table1.c.myid==table2.c.otherid)], order_by=[table1.c.myid]
+                from_obj=[table1.join(table2,
+                            table1.c.myid == table2.c.otherid)],
+                order_by=[table1.c.myid]
             ),
-            "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername FROM mytable "\
-            "JOIN myothertable ON mytable.myid = myothertable.otherid WHERE myothertable.otherid IN (SELECT myothertable.otherid "\
-            "FROM myothertable ORDER BY myothertable.othername LIMIT :param_1) ORDER BY mytable.myid",
+            "SELECT mytable.myid, mytable.name, mytable.description, "
+            "myothertable.otherid, myothertable.othername FROM mytable "\
+            "JOIN myothertable ON mytable.myid = myothertable.otherid "
+            "WHERE myothertable.otherid IN (SELECT myothertable.otherid "\
+            "FROM myothertable ORDER BY myothertable.othername "
+            "LIMIT :param_1) ORDER BY mytable.myid",
             {'param_1':10}
         )
 

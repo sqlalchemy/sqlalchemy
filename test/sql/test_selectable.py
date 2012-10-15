@@ -62,11 +62,11 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
 
         eq_(
             s1.c.foo.proxy_set,
-            set([s1.c.foo, scalar_select, scalar_select.element, table1.c.col1])
+            set([s1.c.foo, scalar_select, scalar_select.element])
         )
         eq_(
             s2.c.foo.proxy_set,
-            set([s2.c.foo, scalar_select, scalar_select.element, table1.c.col1])
+            set([s2.c.foo, scalar_select, scalar_select.element])
         )
 
         assert s1.corresponding_column(scalar_select) is s1.c.foo

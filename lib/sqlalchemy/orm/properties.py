@@ -350,6 +350,8 @@ class RelationshipProperty(StrategizedProperty):
 
         """
 
+        _of_type = None
+
         def __init__(self, prop, mapper, of_type=None, adapter=None):
             """Construction of :class:`.RelationshipProperty.Comparator`
             is internal to the ORM's attribute mechanics.
@@ -376,12 +378,29 @@ class RelationshipProperty(StrategizedProperty):
         def parententity(self):
             return self.property.parent
 
-        def __clause_element__(self):
+        def _source_selectable(self):
             elem = self.property.parent._with_polymorphic_selectable
             if self.adapter:
                 return self.adapter(elem)
             else:
                 return elem
+
+        def __clause_element__(self):
+            adapt_from = self._source_selectable()
+            if self._of_type:
+                of_type = inspect(self._of_type).mapper
+            else:
+                of_type = None
+
+            pj, sj, source, dest, \
+            secondary, target_adapter = self.property._create_joins(
+                            source_selectable=adapt_from,
+                            source_polymorphic=True,
+                            of_type=of_type)
+            if sj is not None:
+                return pj & sj
+            else:
+                return pj
 
         def of_type(self, cls):
             """Produce a construct that represents a particular 'subtype' of
@@ -477,7 +496,7 @@ class RelationshipProperty(StrategizedProperty):
                 to_selectable = None
 
             if self.adapter:
-                source_selectable = self.__clause_element__()
+                source_selectable = self._source_selectable()
             else:
                 source_selectable = None
 

@@ -1442,11 +1442,12 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         b_table, a_table = self.tables.b, self.tables.a
         self._fixture({})
         cp = select([func.sum(b_table.c.value)]).\
-                        where(b_table.c.a_id==a_table.c.id).\
+                        where(b_table.c.a_id == a_table.c.id).\
                         correlate(a_table).as_scalar()
-        # note its re-rendering the subquery in the
-        # outermost order by.  usually we want it to address
-        # the column within the subquery.  labelling fixes that.
+
+        # up until 0.8, this was ordering by a new subquery.
+        # the removal of a separate _make_proxy() from ScalarSelect
+        # fixed that.
         self.assert_compile(
             create_session().query(A).options(joinedload_all('bs')).
                             order_by(cp).
@@ -1458,8 +1459,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             "b.a_id = a.id) AS anon_2 FROM a ORDER BY (SELECT "
             "sum(b.value) AS sum_1 FROM b WHERE b.a_id = a.id) "
             "LIMIT :param_1) AS anon_1 LEFT OUTER JOIN b AS b_1 "
-            "ON anon_1.a_id = b_1.a_id ORDER BY "
-            "(SELECT anon_1.anon_2 FROM b WHERE b.a_id = anon_1.a_id)"
+            "ON anon_1.a_id = b_1.a_id ORDER BY anon_1.anon_2"
         )
 
     def test_standalone_subquery_labeled(self):

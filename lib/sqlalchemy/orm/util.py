@@ -796,7 +796,7 @@ class _ORMJoin(expression.Join):
                 prop = left_mapper.get_property(onclause)
             elif isinstance(onclause, attributes.QueryableAttribute):
                 if adapt_from is None:
-                    adapt_from = onclause.__clause_element__()
+                    adapt_from = onclause.comparator._source_selectable()
                 prop = onclause.property
             elif isinstance(onclause, MapperProperty):
                 prop = onclause
