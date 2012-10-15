@@ -1187,14 +1187,7 @@ class Query(object):
 
         """
         for criterion in list(criterion):
-            if isinstance(criterion, basestring):
-                criterion = sql.text(criterion)
-
-            if criterion is not None and \
-                    not isinstance(criterion, sql.ClauseElement):
-                raise sa_exc.ArgumentError(
-                            "filter() argument must be of type "
-                            "sqlalchemy.sql.ClauseElement or string")
+            criterion = expression._literal_as_text(criterion)
 
             criterion = self._adapt_clause(criterion, True, True)
 

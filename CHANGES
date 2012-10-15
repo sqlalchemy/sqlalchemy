@@ -295,7 +295,8 @@ underneath "0.7.xx".
     of "SomeClass.somerelationship" when used in a
     core SQL context; previously, it would "resolve"
     to the parent selectable, which wasn't generally
-    useful.  Related to [ticket:2245].
+    useful.  Also works with query.filter().
+    Related to [ticket:2245].
 
   - [feature] The registry of classes
     in declarative_base() is now a

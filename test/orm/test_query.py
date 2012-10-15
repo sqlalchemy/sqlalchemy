@@ -1130,6 +1130,15 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
 
         #assert [User(id=7), User(id=9), User(id=10)] == sess.query(User).filter(User.addresses!=address).all()
 
+    def test_clause_element_ok(self):
+        User = self.classes.User
+        s = Session()
+        self.assert_compile(
+            s.query(User).filter(User.addresses),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users, addresses WHERE users.id = addresses.user_id"
+        )
+
     def test_unique_binds_join_cond(self):
         """test that binds used when the lazyclause is used in criterion are unique"""
 
