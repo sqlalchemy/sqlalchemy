@@ -7,7 +7,7 @@ from sqlalchemy import Integer, Unicode, UnicodeText, select
 from ..schema import Table, Column
 
 
-class UnicodeTest(fixtures.TablesTest):
+class _UnicodeFixture(object):
     __requires__ = 'unicode_data',
 
     data = u"Alors vous imaginez ma surprise, au lever du jour, "\
@@ -19,8 +19,7 @@ class UnicodeTest(fixtures.TablesTest):
         Table('unicode_table', metadata,
             Column('id', Integer, primary_key=True,
                         test_needs_autoincrement=True),
-            Column('unicode_varchar', Unicode(250)),
-            Column('unicode_text', UnicodeText),
+            Column('unicode_data', cls.datatype),
             )
 
     def test_round_trip(self):
@@ -29,24 +28,21 @@ class UnicodeTest(fixtures.TablesTest):
         config.db.execute(
             unicode_table.insert(),
             {
-                'unicode_varchar': self.data,
-                'unicode_text': self.data
+                'unicode_data': self.data,
             }
         )
 
         row = config.db.execute(
                     select([
-                            unicode_table.c.unicode_varchar,
-                            unicode_table.c.unicode_text
+                            unicode_table.c.unicode_data,
                     ])
                 ).first()
 
         eq_(
             row,
-            (self.data, self.data)
+            (self.data, )
         )
         assert isinstance(row[0], unicode)
-        assert isinstance(row[1], unicode)
 
     def test_round_trip_executemany(self):
         unicode_table = self.tables.unicode_table
@@ -55,8 +51,7 @@ class UnicodeTest(fixtures.TablesTest):
             unicode_table.insert(),
             [
                 {
-                    'unicode_varchar': self.data,
-                    'unicode_text': self.data
+                    'unicode_data': self.data,
                 }
                 for i in xrange(3)
             ]
@@ -64,17 +59,15 @@ class UnicodeTest(fixtures.TablesTest):
 
         rows = config.db.execute(
                     select([
-                            unicode_table.c.unicode_varchar,
-                            unicode_table.c.unicode_text
+                            unicode_table.c.unicode_data,
                     ])
                 ).fetchall()
         eq_(
             rows,
-            [(self.data, self.data) for i in xrange(3)]
+            [(self.data, ) for i in xrange(3)]
         )
         for row in rows:
             assert isinstance(row[0], unicode)
-            assert isinstance(row[1], unicode)
 
 
     @requirements.empty_strings
@@ -83,12 +76,22 @@ class UnicodeTest(fixtures.TablesTest):
 
         config.db.execute(
             unicode_table.insert(),
-            {"unicode_varchar": u''}
+            {"unicode_data": u''}
         )
         row = config.db.execute(
-                    select([unicode_table.c.unicode_varchar])
+                    select([unicode_table.c.unicode_data])
                 ).first()
         eq_(row, (u'',))
 
+class UnicodeVarcharTest(_UnicodeFixture, fixtures.TablesTest):
+    __requires__ = 'unicode_data',
 
-__all__ = ('UnicodeTest',)
+    datatype = Unicode(255)
+
+
+class UnicodeTextTest(_UnicodeFixture, fixtures.TablesTest):
+    __requires__ = 'unicode_data', 'text_type'
+
+    datatype = UnicodeText()
+
+__all__ = ('UnicodeVarcharTest', 'UnicodeTextTest')

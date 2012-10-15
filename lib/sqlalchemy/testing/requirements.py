@@ -179,6 +179,13 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def text_type(self):
+        """Target database must support an unbounded Text() "
+        "type such as TEXT or CLOB"""
+
+        return exclusions.open()
+
+    @property
     def empty_strings(self):
         """target database can persist/return an empty string."""
 
