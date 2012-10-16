@@ -993,6 +993,19 @@ class QueryTest(fixtures.TestBase):
             lambda: row[u2.c.user_id]
         )
 
+    def test_ambiguous_column_by_col_plus_label(self):
+        users.insert().execute(user_id=1, user_name='john')
+        result = select([users.c.user_id,
+                        type_coerce(users.c.user_id, Integer).label('foo')]
+                    ).execute()
+        row = result.first()
+        eq_(
+            row[users.c.user_id], 1
+        )
+        eq_(
+            row[1], 1
+        )
+
     @testing.requires.subqueries
     def test_column_label_targeting(self):
         users.insert().execute(user_id=7, user_name='ed')
@@ -1641,7 +1654,7 @@ class KeyTargetingTest(fixtures.TablesTest):
     def test_column_label_overlap_fallback(self):
         content, bar = self.tables.content, self.tables.bar
         row = testing.db.execute(select([content.c.type.label("content_type")])).first()
-        assert content.c.type in row
+        assert content.c.type not in row
         assert bar.c.content_type not in row
         assert sql.column('content_type') in row
 

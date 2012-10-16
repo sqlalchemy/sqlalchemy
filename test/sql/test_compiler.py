@@ -3245,6 +3245,22 @@ class ResultMapTest(fixtures.TestBase):
              {'a': ('a', (t.c.a, 'a', 'a'), t.c.a.type)},
         )
 
+    def test_label_plus_element(self):
+        t = Table('t', MetaData(), Column('a', Integer))
+        l1 = t.c.a.label('bar')
+        tc = type_coerce(t.c.a, String)
+        stmt = select([t.c.a, l1, tc])
+        comp = stmt.compile()
+        tc_anon_label = comp.result_map['a_1'][1][0]
+        eq_(
+            comp.result_map,
+             {
+                'a': ('a', (t.c.a, 'a', 'a'), t.c.a.type),
+                'bar': ('bar', (l1, 'bar'), l1.type),
+                'a_1': ('%%(%d a)s' % id(tc), (tc_anon_label, 'a_1'), tc.type),
+             },
+        )
+
     def test_label_conflict_union(self):
         t1 = Table('t1', MetaData(), Column('a', Integer), Column('b', Integer))
         t2 = Table('t2', MetaData(), Column('t1_a', Integer))
@@ -3259,5 +3275,5 @@ class ResultMapTest(fixtures.TestBase):
             set(['t1_1_b', 't1_1_a', 't1_a', 't1_b'])
         )
         is_(
-            comp.result_map['t1_a'][1][1], t1.c.a
+            comp.result_map['t1_a'][1][2], t1.c.a
         )

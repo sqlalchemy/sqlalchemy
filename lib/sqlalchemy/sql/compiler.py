@@ -158,7 +158,7 @@ class _CompileLabel(visitors.Visitable):
     def __init__(self, col, name, alt_names=()):
         self.element = col
         self.name = name
-        self._alt_names = alt_names
+        self._alt_names = (col,) + alt_names
 
     @property
     def proxy_set(self):
@@ -391,7 +391,7 @@ class SQLCompiler(engine.Compiled):
                 add_to_result_map(
                         labelname,
                         label.name,
-                        (label, label.element, labelname, ) + label._alt_names,
+                        (label, labelname, ) + label._alt_names,
                         label.type
                 )
 

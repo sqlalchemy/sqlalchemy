@@ -228,16 +228,20 @@ class ResultMetaData(object):
                 # is interpreted later as an AmbiguousColumnError,
                 # but only when actually accessed.   Columns
                 # colliding by name is not a problem if those names
-                # aren't used; integer and ColumnElement access is always
+                # aren't used; integer access is always
                 # unambiguous.
                 primary_keymap[name
                                 if self.case_sensitive
-                                else name.lower()] = rec = (processor, obj, None)
+                                else name.lower()] = rec = (None, obj, None)
 
             self.keys.append(colname)
             if obj:
                 for o in obj:
                     keymap[o] = rec
+                    # technically we should be doing this but we
+                    # are saving on callcounts by not doing so.
+                    # if keymap.setdefault(o, rec) is not rec:
+                    #    keymap[o] = (None, obj, None)
 
             if translate_colname and \
                 untranslated:

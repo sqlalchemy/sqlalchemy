@@ -57,6 +57,12 @@ class TypeEngine(AbstractType):
         def __reduce__(self):
             return _reconstitute_comparator, (self.expr, )
 
+    hashable = True
+    """Flag, if False, means values from this type aren't hashable.
+
+    Used by the ORM when uniquing result lists.
+
+    """
 
     comparator_factory = Comparator
     """A :class:`.TypeEngine.Comparator` class which will apply

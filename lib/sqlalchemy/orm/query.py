@@ -29,7 +29,8 @@ from .util import (
     _is_aliased_class, _is_mapped_class, _orm_columns,
     join as orm_join,with_parent, aliased
     )
-from .. import sql, util, log, exc as sa_exc, inspect, inspection
+from .. import sql, util, log, exc as sa_exc, inspect, inspection, \
+        types as sqltypes
 from ..sql.expression import _interpret_as_from
 from ..sql import (
         util as sql_util,
@@ -2930,11 +2931,19 @@ class _ColumnEntity(_QueryEntity):
             if c is not column:
                 return
 
+
         if not isinstance(column, sql.ColumnElement):
             raise sa_exc.InvalidRequestError(
                 "SQL expression, column, or mapped entity "
                 "expected - got '%r'" % (column, )
             )
+
+        type_ = column.type
+        if type_.hashable:
+            self.filter_fn = lambda item: item
+        else:
+            counter = util.counter()
+            self.filter_fn = lambda item: counter()
 
         # If the Column is unnamed, give it a
         # label() so that mutable column expressions
@@ -2972,6 +2981,7 @@ class _ColumnEntity(_QueryEntity):
         else:
             self.entity_zero = None
 
+
     @property
     def entity_zero_or_selectable(self):
         if self.entity_zero is not None:
@@ -2985,8 +2995,6 @@ class _ColumnEntity(_QueryEntity):
     def type(self):
         return self.column.type
 
-    def filter_fn(self, item):
-        return item
 
     def adapt_to_selectable(self, query, sel):
         c = _ColumnEntity(query, sel.corresponding_column(self.column))

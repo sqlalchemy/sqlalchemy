@@ -56,7 +56,7 @@ class SelectTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
         # the lower() function goes into the result_map, we don't really
         # need this but it's fine
         self.assert_compile(
-            compiled.result_map['test_table_y'][1][1],
+            compiled.result_map['test_table_y'][1][2],
             "lower(test_table.y)"
         )
         # then the original column gets put in there as well.

@@ -178,6 +178,14 @@ underneath "0.7.xx".
     when a session first becomes active and when
     it deactivates.
 
+  - [feature] The Query can now load entity/scalar-mixed
+    "tuple" rows that contain
+    types which aren't hashable, by setting the flag
+    "hashable=False" on the corresponding TypeEngine object
+    in use.  Custom types that return unhashable types
+    (typically lists) can set this flag to False.
+    [ticket:2592]
+
   - [bug] Improvements to joined/subquery eager
     loading dealing with chains of subclass entities
     sharing a common base, with no specific "join depth"
@@ -619,6 +627,24 @@ underneath "0.7.xx".
     The case insensitive comparisons can be re-enabled
     by setting "case_insensitive=False" on
     create_engine().  [ticket:2423]
+
+  - [bug] Applying a column expression to a select
+    statement using a label with or without other
+    modifying constructs will no longer "target" that
+    expression to the underlying Column; this affects
+    ORM operations that rely upon Column targeting
+    in order to retrieve results.  That is, a query
+    like query(User.id, User.id.label('foo')) will now
+    track the value of each "User.id" expression separately
+    instead of munging them together.  It is not expected
+    that any users will be impacted by this; however,
+    a usage that uses select() in conjunction with
+    query.from_statement() and attempts to load fully
+    composed ORM entities may not function as expected
+    if the select() named Column objects with arbitrary
+    .label() names, as these will no longer target to
+    the Column objects mapped by that entity.
+    [ticket:2591]
 
   - [feature] The "unconsumed column names" warning emitted
     when keys are present in insert.values() or update.values()

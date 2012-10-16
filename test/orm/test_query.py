@@ -51,12 +51,12 @@ class RowTupleTest(QueryTest):
         User, users = self.classes.User, self.tables.users
 
         mapper(User, users, properties={
-            'uname':users.c.name
+            'uname': users.c.name
         })
 
         row  = create_session().\
                     query(User.id, User.uname).\
-                    filter(User.id==7).first()
+                    filter(User.id == 7).first()
         assert row.id == 7
         assert row.uname == 'jack'
 
@@ -106,7 +106,7 @@ class RowTupleTest(QueryTest):
                 sess.query(name_label, fn),
                 [
                     {'name':'uname', 'type':users.c.name.type,
-                                        'aliased':False,'expr':name_label},
+                                        'aliased':False, 'expr':name_label},
                     {'name':None, 'type':fn.type, 'aliased':False,
                         'expr':fn
                     },
@@ -117,6 +117,28 @@ class RowTupleTest(QueryTest):
                 q.column_descriptions,
                 asserted
             )
+
+    def test_unhashable_type(self):
+        from sqlalchemy.types import TypeDecorator, Integer
+        from sqlalchemy.sql import type_coerce
+
+        class MyType(TypeDecorator):
+            impl = Integer
+            hashable = False
+            def process_result_value(self, value, dialect):
+                return [value]
+
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        s = Session()
+        row = s.\
+                    query(User, type_coerce(users.c.id, MyType).label('foo')).\
+                    filter(User.id == 7).first()
+        eq_(
+            row, (User(id=7), [7])
+        )
 
 class RawSelectTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = 'default'
