@@ -743,6 +743,14 @@ underneath "0.7.xx".
     ready for general use yet, however
     it does have *extremely* rudimental
     functionality now.
+    https://bitbucket.org/zzzeek/sqlalchemy-access
+
+- maxdb
+  - [moved] The MaxDB dialect, which hasn't been
+    functional for several years, is
+    moved out to a pending bitbucket project,
+    https://bitbucket.org/zzzeek/sqlalchemy-maxdb.
+
 
 - sqlite
   - [feature] the SQLite date and time types

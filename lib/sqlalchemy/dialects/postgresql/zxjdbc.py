@@ -6,10 +6,18 @@
 
 """Support for the PostgreSQL database via the zxjdbc JDBC connector.
 
-JDBC Driver
+DBAPI
 -----------
 
 The official Postgresql JDBC driver is at http://jdbc.postgresql.org/.
+
+Connecting
+----------
+
+Connect string format::
+
+    postgresql+zxjdbc://scott:tiger@localhost/db
+
 
 """
 from ...connectors.zxJDBC import ZxJDBCConnector

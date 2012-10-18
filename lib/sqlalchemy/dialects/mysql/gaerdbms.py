@@ -10,6 +10,11 @@ changes.
 
 .. versionadded:: 0.7.8
 
+DBAPI
+-----
+
+    https://developers.google.com/appengine/docs/python/cloud-sql/developers-guide
+
 Connecting
 ----------
 

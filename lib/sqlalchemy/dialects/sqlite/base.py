@@ -6,9 +6,6 @@
 
 """Support for the SQLite database.
 
-For information on connecting using a specific driver, see the documentation
-section regarding that driver.
-
 Date and Time Types
 -------------------
 

@@ -6,6 +6,9 @@
 
 """Support for the MySQL database via the oursql adapter.
 
+DBAPI
+-----
+
 OurSQL is available at:
 
     http://packages.python.org/oursql/

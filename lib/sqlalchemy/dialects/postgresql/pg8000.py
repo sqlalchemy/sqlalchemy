@@ -6,11 +6,17 @@
 
 """Support for the PostgreSQL database via the pg8000 driver.
 
+DBAPI
+------
+
+    http://pybrary.net/pg8000/
+
 Connecting
 ----------
 
-URLs are of the form
-``postgresql+pg8000://user:password@host:port/dbname[?key=value&key=value...]``.
+Connect string format::
+
+    postgresql+pg8000://user:password@host:port/dbname[?key=value&key=value...]
 
 Unicode
 -------

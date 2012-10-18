@@ -6,6 +6,11 @@
 
 """
 
+DBAPI
+-----
+
+http://firebirdsql.org/index.php?op=devel&sub=python
+
 Connecting
 -----------
 

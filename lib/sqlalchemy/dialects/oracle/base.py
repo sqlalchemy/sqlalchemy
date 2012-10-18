@@ -8,9 +8,6 @@
 
 Oracle version 8 through current (11g at the time of this writing) are supported.
 
-For information on connecting via specific drivers, see the documentation
-for that driver.
-
 Connect Arguments
 -----------------
 

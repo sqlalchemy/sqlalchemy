@@ -6,8 +6,8 @@
 
 """Support for the MySQL database via Jython's zxjdbc JDBC connector.
 
-JDBC Driver
------------
+DBAPI
+-----
 
 The official MySQL JDBC driver is at
 http://dev.mysql.com/downloads/connector/j/.
@@ -15,7 +15,7 @@ http://dev.mysql.com/downloads/connector/j/.
 Connecting
 ----------
 
-Connect string format:
+Connect string::
 
     mysql+zxjdbc://<user>:<password>@<hostname>[:<port>]/<database>
 

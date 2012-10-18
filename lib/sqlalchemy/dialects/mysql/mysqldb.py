@@ -6,11 +6,12 @@
 
 """Support for the MySQL database via the MySQL-python adapter.
 
+DBAPI
+-----
+
 MySQL-Python is available at:
 
     http://sourceforge.net/projects/mysql-python
-
-At least version 1.2.1 or 1.2.2 should be used.
 
 Connecting
 -----------

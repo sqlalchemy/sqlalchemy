@@ -226,13 +226,20 @@ a.headerlink:hover {
 #docs-body h1 {
   /* hide the <h1> for each content section. */
   display:none;
-  font-size:1.8em;
+  font-size:2.0em;
 }
 
 #docs-body h2 {
-  font-size:1.6em;
+  font-size:1.8em;
+  border-top:1px solid;
+  /*border-bottom:1px solid;*/
+  padding-top:20px;
 }
 
+#sqlalchemy-documentation h2 {
+  border-top:none;
+  padding-top:0;
+}
 #docs-body h3 {
   font-size:1.4em;
 }

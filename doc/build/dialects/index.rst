@@ -4,13 +4,13 @@ Dialects
 ========
 
 The **dialect** is the system SQLAlchemy uses to communicate with various types of DBAPIs and databases.
-A compatibility chart of supported backends can be found at :ref:`supported_dbapis`.  The sections that
-follow contain reference documentation and notes specific to the usage of each backend, as well as notes
+The sections that follow contain reference documentation and notes specific to the usage of each backend, as well as notes
 for the various DBAPIs.
 
-Note that not all backends are fully ported and tested with
-current versions of SQLAlchemy. The compatibility chart
-should be consulted to check for current support level.
+All dialects require that an appropriate DBAPI driver is installed.
+
+Included Dialects
+-----------------
 
 .. toctree::
     :maxdepth: 1
@@ -19,7 +19,6 @@ should be consulted to check for current support level.
     drizzle
     firebird
     informix
-    maxdb
     mssql
     mysql
     oracle
@@ -27,5 +26,26 @@ should be consulted to check for current support level.
     sqlite
     sybase
 
+.. _external_toplevel:
+
+External Dialects
+-----------------
+
+.. note::
+
+    As of SQLAlchemy 0.8, several dialects have been moved to external
+    projects, and dialects for new databases will also be published
+    as external projects.   The rationale here is to keep the base
+    SQLAlchemy install and test suite from growing inordinately large.
+
+    The "classic" dialects such as SQLite, MySQL, Postgresql, Oracle,
+    SQL Server, Firebird will remain in the Core for the time being.
+
+Current external dialect projects for SQLAlchemy include:
+
+* `sqlalchemy-access <https://bitbucket.org/zzzeek/sqlalchemy-access>`_ - driver for Microsoft Access.
+* `sqlalchemy-akiban <https://github.com/zzzeek/sqlalchemy_akiban>`_ - driver and ORM extensions for the `Akiban <http://www.akiban.com>`_ database.
+* `sqlalchemy-cubrid <https://bitbucket.org/zzzeek/sqlalchemy-cubrid>`_ - driver for the CUBRID database.
+* `sqlalchemy-maxdb <https://bitbucket.org/zzzeek/sqlalchemy-maxdb>`_ - driver for the MaxDB database.
 
 

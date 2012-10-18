@@ -6,10 +6,17 @@
 
 """Support for the PostgreSQL database via py-postgresql.
 
+DBAPI
+-----
+
+    http://python.projects.pgfoundry.org/
+
 Connecting
 ----------
 
-URLs are of the form ``postgresql+pypostgresql://user:password@host:port/dbname[?key=value&key=value...]``.
+Connect string format::
+
+    postgresql+pypostgresql://user:password@host:port/dbname[?key=value&key=value...]
 
 
 """

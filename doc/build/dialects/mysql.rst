@@ -18,7 +18,7 @@ valid with MySQL are importable from the top level dialect::
             NUMERIC, NVARCHAR, REAL, SET, SMALLINT, TEXT, TIME, TIMESTAMP, \
             TINYBLOB, TINYINT, TINYTEXT, VARBINARY, VARCHAR, YEAR
 
-Types which are specific to MySQL, or have MySQL-specific 
+Types which are specific to MySQL, or have MySQL-specific
 construction arguments, are as follows:
 
 .. currentmodule:: sqlalchemy.dialects.mysql
@@ -155,38 +155,51 @@ construction arguments, are as follows:
     :members: __init__
     :show-inheritance:
 
+.. _mysqldb:
 
-MySQL-Python Notes
+MySQL-Python
 --------------------
 
 .. automodule:: sqlalchemy.dialects.mysql.mysqldb
 
-OurSQL Notes
+.. _oursql:
+
+OurSQL
 --------------
 
 .. automodule:: sqlalchemy.dialects.mysql.oursql
 
-pymysql Notes
+.. _pymysql:
+
+pymysql
 -------------
 
 .. automodule:: sqlalchemy.dialects.mysql.pymysql
 
-MySQL-Connector Notes
+.. _mysqlconnector:
+
+MySQL-Connector
 ----------------------
 
 .. automodule:: sqlalchemy.dialects.mysql.mysqlconnector
 
-Google App Engine Notes
+.. _gaerdbms:
+
+Google App Engine
 -----------------------
 
 .. automodule:: sqlalchemy.dialects.mysql.gaerdbms
 
-pyodbc Notes
+.. _mysql_pyodbc:
+
+pyodbc
 --------------
 
 .. automodule:: sqlalchemy.dialects.mysql.pyodbc
 
-zxjdbc Notes
+.. _mysql_zxjdbc:
+
+zxjdbc
 --------------
 
 .. automodule:: sqlalchemy.dialects.mysql.zxjdbc

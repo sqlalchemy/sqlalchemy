@@ -6,6 +6,9 @@
 
 """Support for the MySQL database via the MySQL Connector/Python adapter.
 
+DBAPI
+-----
+
 MySQL Connector/Python is available at:
 
     https://launchpad.net/myconnpy

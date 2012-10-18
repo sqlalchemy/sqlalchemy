@@ -6,8 +6,18 @@
 
 """Support for the PostgreSQL database.
 
-For information on connecting using specific drivers, see the documentation
-section regarding that driver.
+DBAPI Support
+-------------
+
+The following dialect/driver options are available:
+
+* :ref:`psycopg2`
+
+* :ref:`pg8000`
+
+* :ref:`pypostgresql`
+
+* :ref:`zxjdbc`
 
 Sequences/SERIAL
 ----------------

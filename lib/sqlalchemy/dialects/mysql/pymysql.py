@@ -6,6 +6,9 @@
 
 """Support for the MySQL database via the pymysql adapter.
 
+DBAPI
+-----
+
 pymysql is available at:
 
     http://code.google.com/p/pymysql/

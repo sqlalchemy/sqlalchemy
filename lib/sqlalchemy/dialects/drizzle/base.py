@@ -16,10 +16,14 @@ the `Drizzle Documentation <http://docs.drizzle.org/index.html>`_.
 The SQLAlchemy Drizzle dialect leans heavily on the MySQL dialect, so much of
 the :doc:`SQLAlchemy MySQL <mysql>` documentation is also relevant.
 
-Connecting
-----------
+DBAPI Support
+-------------
 
-See the individual driver sections below for details on connecting.
+The following dialect/driver options are available:
+
+``drizzle://``- uses mysqldb_
+
+``drizzle+mysqldb://`` - uses mysqldb_
 
 """
 

@@ -6,7 +6,7 @@
 
 """Support for the PostgreSQL database via the psycopg2 driver.
 
-Driver
+DBAPI
 ------
 
 The psycopg2 driver is available at http://pypi.python.org/pypi/psycopg2/ .
@@ -18,8 +18,12 @@ Note that psycopg1 is **not** supported.
 Connecting
 ----------
 
-URLs are of the form
-``postgresql+psycopg2://user:password@host:port/dbname[?key=value&key=value...]``.
+Connect string format::
+
+    postgresql+psycopg2://user:password@host:port/dbname[?key=value&key=value...]
+
+psycopg2 Connect Arguments
+-----------------------------------
 
 psycopg2-specific keyword arguments which are accepted by
 :func:`.create_engine()` are:

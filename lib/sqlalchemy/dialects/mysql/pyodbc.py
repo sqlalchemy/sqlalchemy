@@ -6,6 +6,9 @@
 
 """Support for the MySQL database via the pyodbc adapter.
 
+DBAPI
+-----
+
 pyodbc is available at:
 
     http://pypi.python.org/pypi/pyodbc/

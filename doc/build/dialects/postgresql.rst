@@ -69,24 +69,31 @@ construction arguments, are as follows:
     :members: __init__
     :show-inheritance:
 
+.. _psycopg2:
 
-psycopg2 Notes
+psycopg2
 --------------
 
 .. automodule:: sqlalchemy.dialects.postgresql.psycopg2
 
 
-py-postgresql Notes
+.. _pypostgresql:
+
+py-postgresql
 --------------------
 
 .. automodule:: sqlalchemy.dialects.postgresql.pypostgresql
 
-pg8000 Notes
+.. _pg8000:
+
+pg8000
 --------------
 
 .. automodule:: sqlalchemy.dialects.postgresql.pg8000
 
-zxjdbc Notes
+.. _zxjdbc:
+
+zxjdbc
 --------------
 
 .. automodule:: sqlalchemy.dialects.postgresql.zxjdbc

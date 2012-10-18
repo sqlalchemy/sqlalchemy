@@ -102,18 +102,8 @@ are documented here.  In contrast to the ORM's domain-centric mode of usage, the
 Dialect Documentation
 ======================
 
-The **dialect** is the system SQLAlchemy uses to communicate with various types of DBAPIs and databases.  This section describes notes, options, and
-usage patterns regarding individual dialects.
+The **dialect** is the system SQLAlchemy uses to communicate with various types of DBAPIs and databases.
+This section describes notes, options, and usage patterns regarding individual dialects.
 
-:doc:`dialects/drizzle` |
-:doc:`dialects/firebird` |
-:doc:`dialects/informix` |
-:doc:`dialects/maxdb` |
-:doc:`dialects/mssql` |
-:doc:`dialects/mysql` |
-:doc:`dialects/oracle` |
-:doc:`dialects/postgresql` |
-:doc:`dialects/sqlite` |
-:doc:`dialects/sybase`
-
+:doc:`Index of all Dialects <dialects/index>`
 

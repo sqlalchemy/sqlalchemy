@@ -6,6 +6,26 @@
 
 """Support for the MySQL database.
 
+DBAPI Support
+-------------
+
+The following dialect/driver options are available:
+
+* :ref:`mysqldb`
+
+* :ref:`mysqlconnector`
+
+* :ref:`oursql`
+
+* :ref:`gaerdbms`
+
+* :ref:`pymysql`
+
+* :ref:`mysql_pyodbc`
+
+* :ref:`mysql_zxjdbc`
+
+
 Supported Versions and Features
 -------------------------------
 

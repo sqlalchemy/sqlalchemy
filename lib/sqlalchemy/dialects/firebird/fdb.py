@@ -7,15 +7,12 @@
 """
 fdb is a kinterbasdb compatible DBAPI for Firebird.
 
-Usage is currently the same as that of kinterbasdb, with the exception
-of the connect string below.
-
 .. versionadded:: 0.8 - Support for the fdb Firebird driver.
 
-Status
-------
+DBAPI
+-----
 
-The fdb dialect is new and not yet tested (can't get fdb to build).
+http://pypi.python.org/pypi/fdb/
 
 Connecting
 -----------
@@ -23,6 +20,12 @@ Connecting
 Connect string format::
 
     firebird+fdb://user:password@host:port/path/to/db[?key=value&key=value...]
+
+Status
+------
+
+The fdb dialect is new and not yet tested (can't get fdb to build).
+
 
 """
 

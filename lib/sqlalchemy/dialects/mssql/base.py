@@ -6,10 +6,6 @@
 
 """Support for the Microsoft SQL Server database.
 
-Connecting
-----------
-
-See the individual driver sections below for details on connecting.
 
 Auto Increment Behavior
 -----------------------

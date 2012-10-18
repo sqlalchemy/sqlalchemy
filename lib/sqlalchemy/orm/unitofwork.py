@@ -226,6 +226,9 @@ class UOWTransaction(object):
     def register_object(self, state, isdelete=False,
                             listonly=False, cancel_delete=False,
                             operation=None, prop=None):
+        if isdelete:
+            import pdb
+            pdb.set_trace()
         if not self.session._contains_state(state):
             if not state.deleted and operation is not None:
                 util.warn("Object of type %s not in session, %s operation "
