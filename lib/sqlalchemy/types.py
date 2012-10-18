@@ -817,6 +817,9 @@ class TypeDecorator(TypeEngine):
         """
         return self.impl.compare_values(x, y)
 
+    def __repr__(self):
+        return util.generic_repr(self, to_inspect=self.impl)
+
 
 class Variant(TypeDecorator):
     """A wrapping type that selects among a variety of

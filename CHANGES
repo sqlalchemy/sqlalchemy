@@ -716,6 +716,14 @@ underneath "0.7.xx".
     but not ForeignKeyConstraint or CheckConstraint.
     [ticket:2410]
 
+  - [bug] TypeDecorator now includes a generic repr()
+    that works in terms of the "impl" type by default.
+    This is a behavioral change for those TypeDecorator
+    classes that specify a custom __init__ method; those
+    types will need to re-define __repr__() if they need
+    __repr__() to provide a faithful constructor representation.
+    [ticket:2594]
+
   - [bug] column.label(None) now produces an
     anonymous label, instead of returning the
     column object itself, consistent with the behavior
