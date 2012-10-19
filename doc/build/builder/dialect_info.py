@@ -64,7 +64,8 @@ class DialectDirective(Directive):
                     ids=["dialect-%s-%s-url" % (dialect_name, dbapi_name)]
             )
             if "url" in content:
-                text = "%s is available at:\n" % dbapi_name
+                text = "Documentation and download information (if applicable) "\
+                        "for %s is available at:\n" % content["name"]
                 uri = content['url']
                 sec.append(
                     nodes.paragraph('', '',
