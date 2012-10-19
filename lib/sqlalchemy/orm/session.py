@@ -1812,8 +1812,6 @@ class Session(_SessionClassMethods):
         else:
             proc = new.union(dirty).difference(deleted)
 
-        import pdb
-        pdb.set_trace()
         for state in proc:
             is_orphan = _state_mapper(state)._is_orphan(state) and state.has_identity
             flush_context.register_object(state, isdelete=is_orphan)

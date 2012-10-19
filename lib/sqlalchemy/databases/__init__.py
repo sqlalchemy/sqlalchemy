@@ -15,7 +15,6 @@ from ..dialects.mysql import base as mysql
 from ..dialects.drizzle import base as drizzle
 from ..dialects.oracle import base as oracle
 from ..dialects.firebird import base as firebird
-from ..dialects.maxdb import base as maxdb
 from ..dialects.informix import base as informix
 from ..dialects.mssql import base as mssql
 from ..dialects.sybase import base as sybase
@@ -25,7 +24,6 @@ __all__ = (
     'drizzle',
     'firebird',
     'informix',
-    'maxdb',
     'mssql',
     'mysql',
     'postgresql',
