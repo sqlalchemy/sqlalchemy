@@ -18,7 +18,7 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
                 NUMBER, NVARCHAR, NVARCHAR2, RAW, TIMESTAMP, VARCHAR, \
                 VARCHAR2
 
-Types which are specific to Oracle, or have Oracle-specific 
+Types which are specific to Oracle, or have Oracle-specific
 construction arguments, are as follows:
 
 .. currentmodule:: sqlalchemy.dialects.oracle
@@ -51,12 +51,12 @@ construction arguments, are as follows:
   :members: __init__
   :show-inheritance:
 
-cx_Oracle Notes
----------------
+cx_Oracle
+----------
 
 .. automodule:: sqlalchemy.dialects.oracle.cx_oracle
 
-zxjdbc Notes
---------------
+zxjdbc
+-------
 
 .. automodule:: sqlalchemy.dialects.oracle.zxjdbc

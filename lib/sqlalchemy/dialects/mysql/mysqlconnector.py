@@ -4,21 +4,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for the MySQL database via the MySQL Connector/Python adapter.
+"""
+.. dialect:: mysql+mysqlconnector
+    :name: MySQL Connector/Python
+    :dbapi: myconnpy
+    :connectstring: mysql+mysqlconnector://<user>:<password>@<host>[:<port>]/<dbname>
+    :url: https://launchpad.net/myconnpy
 
-DBAPI
------
-
-MySQL Connector/Python is available at:
-
-    https://launchpad.net/myconnpy
-
-Connecting
------------
-
-Connect string format::
-
-    mysql+mysqlconnector://<user>:<password>@<host>[:<port>]/<dbname>
 
 """
 

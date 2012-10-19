@@ -6,7 +6,10 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-"""Support for the Drizzle database.
+"""
+
+.. dialect:: drizzle
+    :name: Drizzle
 
 Drizzle is a variant of MySQL. Unlike MySQL, Drizzle's default storage engine
 is InnoDB (transactions, foreign-keys) rather than MyISAM. For more
@@ -16,14 +19,6 @@ the `Drizzle Documentation <http://docs.drizzle.org/index.html>`_.
 The SQLAlchemy Drizzle dialect leans heavily on the MySQL dialect, so much of
 the :doc:`SQLAlchemy MySQL <mysql>` documentation is also relevant.
 
-DBAPI Support
--------------
-
-The following dialect/driver options are available:
-
-``drizzle://``- uses mysqldb_
-
-``drizzle+mysqldb://`` - uses mysqldb_
 
 """
 

@@ -290,8 +290,16 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if("drizzle", "no VIEW support")
 
     @property
-    def empty_strings(self):
-        """target database can persist/return an empty string."""
+    def empty_strings_varchar(self):
+        """target database can persist/return an empty string with a varchar."""
+
+        return fails_if("oracle", 'oracle converts empty '
+                                'strings to a blank space')
+
+    @property
+    def empty_strings_text(self):
+        """target database can persist/return an empty string with an
+        unbounded text."""
 
         return fails_if("oracle", 'oracle converts empty '
                                 'strings to a blank space')

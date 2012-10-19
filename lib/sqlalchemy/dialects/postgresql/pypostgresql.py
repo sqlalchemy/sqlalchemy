@@ -4,19 +4,12 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for the PostgreSQL database via py-postgresql.
-
-DBAPI
------
-
-    http://python.projects.pgfoundry.org/
-
-Connecting
-----------
-
-Connect string format::
-
-    postgresql+pypostgresql://user:password@host:port/dbname[?key=value&key=value...]
+"""
+.. dialect:: postgresql+pypostgresql
+    :name: py-postgresql
+    :dbapi: pypostgresql
+    :connectstring: postgresql+pypostgresql://user:password@host:port/dbname[?key=value&key=value...]
+    :url: http://python.projects.pgfoundry.org/
 
 
 """

@@ -5,18 +5,11 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
-
-DBAPI
------
-
-http://firebirdsql.org/index.php?op=devel&sub=python
-
-Connecting
------------
-
-Connect string format::
-
-    firebird+kinterbasdb://user:password@host:port/path/to/db[?key=value&key=value...]
+.. dialect:: firebird+kinterbasdb
+    :name: kinterbasdb
+    :dbapi: kinterbasdb
+    :connectstring: firebird+kinterbasdb://user:password@host:port/path/to/db[?key=value&key=value...]
+    :url: http://firebirdsql.org/index.php?op=devel&sub=python
 
 Arguments
 ----------

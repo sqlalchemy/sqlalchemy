@@ -30,10 +30,10 @@ import sqlalchemy
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 #extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode',
-#                'sphinx.ext.doctest', 'builder.builders']
+#                'sphinx.ext.doctest', 'builder']
 
 extensions = ['sphinx.ext.autodoc',
-                'sphinx.ext.doctest', 'builder.builders']
+                'sphinx.ext.doctest', 'builder']
 
 # Add any paths that contain templates here, relative to this directory.
 # not sure why abspath() is needed here, some users
@@ -45,7 +45,6 @@ nitpicky = True
 # The suffix of source filenames.
 source_suffix = '.rst'
 
-template_bridge = "builder.builders.MakoBridge"
 
 # The encoding of source files.
 #source_encoding = 'utf-8-sig'

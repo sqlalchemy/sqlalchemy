@@ -4,13 +4,12 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for the Oracle database via the zxjdbc JDBC connector.
-
-JDBC Driver
------------
-
-The official Oracle JDBC driver is at
-http://www.oracle.com/technology/software/tech/java/sqlj_jdbc/index.html.
+"""
+.. dialect:: oracle+zxjdbc
+    :name: zxJDBC for Jython
+    :dbapi: zxjdbc
+    :connectstring: oracle+zxjdbc://user:pass@host/dbname
+    :driverurl: http://www.oracle.com/technology/software/tech/java/sqlj_jdbc/index.html.
 
 """
 import decimal

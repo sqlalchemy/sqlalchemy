@@ -8,7 +8,10 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for Sybase Adaptive Server Enterprise (ASE).
+"""
+
+.. dialect:: sybase
+    :name: Sybase
 
 .. note::
 

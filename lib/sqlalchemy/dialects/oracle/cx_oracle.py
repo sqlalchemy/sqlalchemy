@@ -4,24 +4,19 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for the Oracle database via the cx_oracle driver.
+"""
 
-Driver
-------
+.. dialect:: oracle+cx_oracle
+    :name: cx-Oracle
+    :dbapi: cx_oracle
+    :connectstring: oracle+cx_oracle://user:pass@host:port/dbname[?key=value&key=value...]
+    :url: http://cx-oracle.sourceforge.net/
 
-The Oracle dialect uses the cx_oracle driver, available at
-http://cx-oracle.sourceforge.net/ .   The dialect has several behaviors
-which are specifically tailored towards compatibility with this module.
-Version 5.0 or greater is **strongly** recommended, as SQLAlchemy makes
-extensive use of the cx_oracle output converters for numeric and
-string conversions.
+Additional Connect Arguments
+----------------------------
 
-Connecting
-----------
-
-Connecting with create_engine() uses the standard URL approach of
-``oracle://user:pass@host:port/dbname[?key=value&key=value...]``.  If dbname is
-present, the host, port, and dbname tokens are converted to a TNS name using
+When connecting with ``dbname`` present, the host, port, and dbname tokens are
+converted to a TNS name using
 the cx_oracle :func:`makedsn()` function.  Otherwise, the host token is taken
 directly as a TNS name.
 

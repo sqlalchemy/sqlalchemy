@@ -5,28 +5,14 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
-Support for the pymssql dialect.
-
-This dialect supports pymssql 1.0 and greater.
-
-pymssql is available at:
-
-    http://pymssql.sourceforge.net/
-
-Connecting
-^^^^^^^^^^
-
-Sample connect string::
-
-    mssql+pymssql://<username>:<password>@<freetds_name>
-
-Adding "?charset=utf8" or similar will cause pymssql to return
-strings as Python unicode objects.   This can potentially improve
-performance in some scenarios as decoding of strings is
-handled natively.
+.. dialect:: mssql+pymssql
+    :name: pymssql
+    :dbapi: pymssql
+    :connectstring: mssql+pymssql://<username>:<password>@<freetds_name>?charset=utf8
+    :url: http://pymssql.sourceforge.net/
 
 Limitations
-^^^^^^^^^^^
+-----------
 
 pymssql inherits a lot of limitations from FreeTDS, including:
 

@@ -4,20 +4,10 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for the PostgreSQL database.
+"""
+.. dialect:: postgresql
+    :name: PostgreSQL
 
-DBAPI Support
--------------
-
-The following dialect/driver options are available:
-
-* :ref:`psycopg2`
-
-* :ref:`pg8000`
-
-* :ref:`pypostgresql`
-
-* :ref:`zxjdbc`
 
 Sequences/SERIAL
 ----------------

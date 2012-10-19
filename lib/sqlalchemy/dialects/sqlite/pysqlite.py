@@ -4,10 +4,15 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for the SQLite database via pysqlite.
+"""
+.. dialect:: sqlite+pysqlite
+    :name: pysqlite
+    :dbapi: sqlite3
+    :connectstring: sqlite+pysqlite:///file_path
+    :url: http://docs.python.org/library/sqlite3.html
 
-Note that pysqlite is the same driver as the ``sqlite3``
-module included with the Python distribution.
+    Note that ``pysqlite`` is the same driver as the ``sqlite3``
+    module included with the Python distribution.
 
 Driver
 ------
@@ -26,14 +31,12 @@ this explicitly::
     from sqlite3 import dbapi2 as sqlite
     e = create_engine('sqlite+pysqlite:///file.db', module=sqlite)
 
-Full documentation on pysqlite is available at:
-`<http://www.initd.org/pub/software/pysqlite/doc/usage-guide.html>`_
 
 Connect Strings
 ---------------
 
 The file specification for the SQLite database is taken as the "database" portion of
-the URL.  Note that the format of a url is::
+the URL.  Note that the format of a SQLAlchemy url is::
 
     driver://user:pass@host/database
 

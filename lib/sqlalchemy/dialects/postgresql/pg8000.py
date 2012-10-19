@@ -4,19 +4,12 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for the PostgreSQL database via the pg8000 driver.
-
-DBAPI
-------
-
-    http://pybrary.net/pg8000/
-
-Connecting
-----------
-
-Connect string format::
-
-    postgresql+pg8000://user:password@host:port/dbname[?key=value&key=value...]
+"""
+.. dialect:: postgresql+pg8000
+    :name: pg8000
+    :dbapi: pg8000
+    :connectstring: postgresql+pg8000://user:password@host:port/dbname[?key=value&key=value...]
+    :url: http://pybrary.net/pg8000/
 
 Unicode
 -------

@@ -1,15 +1,10 @@
-"""Support for the Drizzle database via the mysql-python adapter.
+"""
+.. dialect:: drizzle+mysqldb
+    :name: MySQL-Python
+    :dbapi: mysqldb
+    :connectstring: drizzle+mysqldb://<user>:<password>@<host>[:<port>]/<dbname>
+    :url: http://sourceforge.net/projects/mysql-python
 
-MySQL-Python is available at:
-
-    http://sourceforge.net/projects/mysql-python
-
-Connecting
------------
-
-Connect string format::
-
-    drizzle+mysqldb://<user>:<password>@<host>[:<port>]/<dbname>
 
 """
 

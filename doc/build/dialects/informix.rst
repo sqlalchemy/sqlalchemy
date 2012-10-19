@@ -5,7 +5,7 @@ Informix
 
 .. automodule:: sqlalchemy.dialects.informix.base
 
-informixdb Notes
---------------------
+informixdb
+----------
 
 .. automodule:: sqlalchemy.dialects.informix.informixdb

@@ -5,18 +5,12 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
-Support for the informixdb DBAPI.
 
-informixdb is available at:
-
-    http://informixdb.sourceforge.net/
-
-Connecting
-^^^^^^^^^^
-
-Sample informix connection::
-
-    engine = create_engine('informix+informixdb://user:password@host/dbname')
+.. dialect:: informix+informixdb
+    :name: informixdb
+    :dbapi: informixdb
+    :connectstring: informix+informixdb://user:password@host/dbname
+    :url: http://informixdb.sourceforge.net/
 
 """
 

@@ -4,19 +4,12 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for the PostgreSQL database via the zxjdbc JDBC connector.
-
-DBAPI
------------
-
-The official Postgresql JDBC driver is at http://jdbc.postgresql.org/.
-
-Connecting
-----------
-
-Connect string format::
-
-    postgresql+zxjdbc://scott:tiger@localhost/db
+"""
+.. dialect:: postgresql+zxjdbc
+    :name: zxJDBC for Jython
+    :dbapi: zxjdbc
+    :connectstring: postgresql+zxjdbc://scott:tiger@localhost/db
+    :driverurl: http://jdbc.postgresql.org/
 
 
 """

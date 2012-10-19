@@ -3,29 +3,18 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-"""Support for Google Cloud SQL on Google App Engine.
+"""
+.. dialect:: mysql+gaerdbms
+    :name: Google Cloud SQL
+    :dbapi: rdbms
+    :connectstring: mysql+gaerdbms:///<dbname>?instance=instancename
+    :url: https://developers.google.com/appengine/docs/python/cloud-sql/developers-guide
 
-This dialect is based primarily on the :mod:`.mysql.mysqldb` dialect with minimal
-changes.
+    This dialect is based primarily on the :mod:`.mysql.mysqldb` dialect with minimal
+    changes.
 
-.. versionadded:: 0.7.8
+    .. versionadded:: 0.7.8
 
-DBAPI
------
-
-    https://developers.google.com/appengine/docs/python/cloud-sql/developers-guide
-
-Connecting
-----------
-
-Connect string format::
-
-    mysql+gaerdbms:///<dbname>
-
-E.g.::
-
-  create_engine('mysql+gaerdbms:///mydb',
-                 connect_args={"instance":"instancename"})
 
 Pooling
 -------

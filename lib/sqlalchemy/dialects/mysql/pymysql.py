@@ -4,21 +4,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for the MySQL database via the pymysql adapter.
+"""
 
-DBAPI
------
-
-pymysql is available at:
-
-    http://code.google.com/p/pymysql/
-
-Connecting
-----------
-
-Connect string::
-
-    mysql+pymysql://<username>:<password>@<host>/<dbname>[?<options>]
+.. dialect:: mysql+pymysql
+    :name: PyMySQL
+    :dbapi: pymysql
+    :connectstring: mysql+pymysql://<username>:<password>@<host>/<dbname>[?<options>]
+    :url: http://code.google.com/p/pymysql/
 
 MySQL-Python Compatibility
 --------------------------

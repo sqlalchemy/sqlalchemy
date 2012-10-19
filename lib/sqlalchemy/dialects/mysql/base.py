@@ -4,27 +4,10 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for the MySQL database.
+"""
 
-DBAPI Support
--------------
-
-The following dialect/driver options are available:
-
-* :ref:`mysqldb`
-
-* :ref:`mysqlconnector`
-
-* :ref:`oursql`
-
-* :ref:`gaerdbms`
-
-* :ref:`pymysql`
-
-* :ref:`mysql_pyodbc`
-
-* :ref:`mysql_zxjdbc`
-
+.. dialect:: mysql
+    :name: MySQL
 
 Supported Versions and Features
 -------------------------------
@@ -54,11 +37,6 @@ Nested Transactions                    5.0.3
 
 See the official MySQL documentation for detailed information about features
 supported in any given server release.
-
-Connecting
-----------
-
-See the API documentation on individual drivers for details on connecting.
 
 Connection Timeouts
 -------------------

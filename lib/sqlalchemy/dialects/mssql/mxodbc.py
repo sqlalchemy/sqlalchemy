@@ -5,24 +5,14 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
-Support for MS-SQL via mxODBC.
-
-mxODBC is available at:
-
-    http://www.egenix.com/
-
-This was tested with mxODBC 3.1.2 and the SQL Server Native
-Client connected to MSSQL 2005 and 2008 Express Editions.
-
-Connecting
-~~~~~~~~~~
-
-Connection is via DSN::
-
-    mssql+mxodbc://<username>:<password>@<dsnname>
+.. dialect:: mssql+mxodbc
+    :name: mxODBC
+    :dbapi: mxodbc
+    :connectstring: mssql+mxodbc://<username>:<password>@<dsnname>
+    :url: http://www.egenix.com/
 
 Execution Modes
-~~~~~~~~~~~~~~~
+---------------
 
 mxODBC features two styles of statement execution, using the
 ``cursor.execute()`` and ``cursor.executedirect()`` methods (the second being

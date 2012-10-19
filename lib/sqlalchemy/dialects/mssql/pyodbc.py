@@ -5,14 +5,14 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
-Support for MS-SQL via pyodbc.
+.. dialect:: mssql+pyodbc
+    :name: PyODBC
+    :dbapi: pyodbc
+    :connectstring: mssql+pyodbc://<username>:<password>@<dsnname>
+    :url: http://pypi.python.org/pypi/pyodbc/
 
-pyodbc is available at:
-
-    http://pypi.python.org/pypi/pyodbc/
-
-Connecting
-^^^^^^^^^^
+Additional Connection Examples
+-------------------------------
 
 Examples of pyodbc connection string URLs:
 
@@ -81,7 +81,7 @@ the python shell. For example::
     'dsn%3Dmydsn%3BDatabase%3Ddb'
 
 Unicode Binds
-^^^^^^^^^^^^^
+-------------
 
 The current state of PyODBC on a unix backend with FreeTDS and/or
 EasySoft is poor regarding unicode; different OS platforms and versions of UnixODBC

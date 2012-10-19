@@ -70,9 +70,7 @@ construction arguments, are as follows:
     :show-inheritance:
 
 
-.. _drizzle_mysqldb:
-
-MySQL-Python Notes
---------------------
+MySQL-Python
+------------
 
 .. automodule:: sqlalchemy.dialects.drizzle.mysqldb

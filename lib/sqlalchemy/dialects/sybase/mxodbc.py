@@ -3,11 +3,17 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-
 """
-Support for Sybase via mxodbc.
 
-This dialect is a stub only and is likely non functional at this time.
+.. dialect:: sybase+mxodbc
+    :name: mxODBC
+    :dbapi: mxodbc
+    :connectstring: sybase+mxodbc://<username>:<password>@<dsnname>
+    :url: http://www.egenix.com/
+
+.. note::
+
+    This dialect is a stub only and is likely non functional at this time.
 
 
 """

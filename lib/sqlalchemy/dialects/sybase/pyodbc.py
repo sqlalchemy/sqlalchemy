@@ -5,14 +5,12 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
-Support for Sybase via pyodbc.
+.. dialect:: sybase+pyodbc
+    :name: PyODBC
+    :dbapi: pyodbc
+    :connectstring: sybase+pyodbc://<username>:<password>@<dsnname>[/<database>]
+    :url: http://pypi.python.org/pypi/pyodbc/
 
-http://pypi.python.org/pypi/pyodbc/
-
-Connect strings are of the form::
-
-    sybase+pyodbc://<username>:<password>@<dsn>/
-    sybase+pyodbc://<username>:<password>@<host>/<database>
 
 Unicode Support
 ---------------

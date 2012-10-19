@@ -4,9 +4,11 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for the Oracle database.
+"""
+.. dialect:: oracle
+    :name: Oracle
 
-Oracle version 8 through current (11g at the time of this writing) are supported.
+    Oracle version 8 through current (11g at the time of this writing) are supported.
 
 Connect Arguments
 -----------------

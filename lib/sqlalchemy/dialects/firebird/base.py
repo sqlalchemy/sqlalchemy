@@ -5,18 +5,9 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
-Support for the Firebird database.
 
-DBAPI Support
--------------
-
-The following dialect/driver options are available:
-
-``firebird://``- uses kinterbasdb_
-
-``firebird+kinterbasdb://`` - uses kinterbasdb_
-
-``firebird+fdb://`` - uses fdb_
+.. dialect:: firebird
+    :name: Firebird
 
 Firebird Dialects
 -----------------

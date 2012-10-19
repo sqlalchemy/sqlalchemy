@@ -4,21 +4,15 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for the MySQL database via the pyodbc adapter.
+"""
 
-DBAPI
------
 
-pyodbc is available at:
+.. dialect:: mysql+pyodbc
+    :name: PyODBC
+    :dbapi: pyodbc
+    :connectstring: mysql+pyodbc://<username>:<password>@<dsnname>
+    :url: http://pypi.python.org/pypi/pyodbc/
 
-    http://pypi.python.org/pypi/pyodbc/
-
-Connecting
-----------
-
-Connect string::
-
-    mysql+pyodbc://<username>:<password>@<dsnname>
 
 Limitations
 -----------

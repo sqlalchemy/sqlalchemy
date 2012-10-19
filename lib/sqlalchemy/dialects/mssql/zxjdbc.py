@@ -4,24 +4,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for the Microsoft SQL Server database via the zxjdbc JDBC
-connector.
+"""
+.. dialect:: mssql+zxjdbc
+    :name: zxJDBC for Jython
+    :dbapi: zxjdbc
+    :connectstring: mssql+zxjdbc://user:pass@host:port/dbname[?key=value&key=value...]
+    :driverurl: http://jtds.sourceforge.net/
 
-JDBC Driver
------------
-
-Requires the jTDS driver, available from: http://jtds.sourceforge.net/
-
-Connecting
-----------
-
-URLs are of the standard form of
-``mssql+zxjdbc://user:pass@host:port/dbname[?key=value&key=value...]``.
-
-Additional arguments which may be specified either as query string
-arguments on the URL, or as keyword arguments to
-:func:`~sqlalchemy.create_engine()` will be passed as Connection
-properties to the underlying JDBC driver.
 
 """
 from ...connectors.zxJDBC import ZxJDBCConnector

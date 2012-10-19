@@ -4,21 +4,14 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for the MySQL database via the MySQL-python adapter.
+"""
 
-DBAPI
------
+.. dialect:: mysql+mysqldb
+    :name: MySQL-Python
+    :dbapi: mysqldb
+    :connectstring: mysql+mysqldb://<user>:<password>@<host>[:<port>]/<dbname>
+    :url: http://sourceforge.net/projects/mysql-python
 
-MySQL-Python is available at:
-
-    http://sourceforge.net/projects/mysql-python
-
-Connecting
------------
-
-Connect string format::
-
-    mysql+mysqldb://<user>:<password>@<host>[:<port>]/<dbname>
 
 Unicode
 -------

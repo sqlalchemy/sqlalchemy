@@ -5,17 +5,17 @@ Sybase
 
 .. automodule:: sqlalchemy.dialects.sybase.base
 
-python-sybase notes
+python-sybase
 -------------------
 
 .. automodule:: sqlalchemy.dialects.sybase.pysybase
 
-pyodbc notes
+pyodbc
 ------------
 
 .. automodule:: sqlalchemy.dialects.sybase.pyodbc
 
-mxodbc notes
+mxodbc
 ------------
 
 .. automodule:: sqlalchemy.dialects.sybase.mxodbc

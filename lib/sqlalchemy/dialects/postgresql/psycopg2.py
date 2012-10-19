@@ -4,23 +4,12 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for the PostgreSQL database via the psycopg2 driver.
-
-DBAPI
-------
-
-The psycopg2 driver is available at http://pypi.python.org/pypi/psycopg2/ .
-The dialect has several behaviors  which are specifically tailored towards compatibility
-with this module.
-
-Note that psycopg1 is **not** supported.
-
-Connecting
-----------
-
-Connect string format::
-
-    postgresql+psycopg2://user:password@host:port/dbname[?key=value&key=value...]
+"""
+.. dialect:: postgresql+psycopg2
+    :name: psycopg2
+    :dbapi: psycopg2
+    :connectstring: postgresql+psycopg2://user:password@host:port/dbname[?key=value&key=value...]
+    :url: http://pypi.python.org/pypi/psycopg2/
 
 psycopg2 Connect Arguments
 -----------------------------------

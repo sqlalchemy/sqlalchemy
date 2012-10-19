@@ -288,9 +288,10 @@ underneath "0.7.xx".
     without producing history events. [ticket:2582]
 
   - [feature] ORM entities can be passed
-    to select() as well as the select_from(),
+    to the core select() construct as well
+    as to the select_from(),
     correlate(), and correlate_except()
-    methods, where they will be unwrapped
+    methods of select(), where they will be unwrapped
     into selectables. [ticket:2245]
 
   - [feature] Some support for auto-rendering of a

@@ -5,13 +5,11 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
-Support for Sybase via the python-sybase driver.
-
-http://python-sybase.sourceforge.net/
-
-Connect strings are of the form::
-
-    sybase+pysybase://<username>:<password>@<dsn>/[database name]
+.. dialect:: sybase+pysybase
+    :name: Python-Sybase
+    :dbapi: Sybase
+    :connectstring: sybase+pysybase://<username>:<password>@<dsn>/[database name]
+    :url: http://python-sybase.sourceforge.net/
 
 Unicode Support
 ---------------

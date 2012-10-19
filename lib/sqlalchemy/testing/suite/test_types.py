@@ -70,8 +70,7 @@ class _UnicodeFixture(object):
             assert isinstance(row[0], unicode)
 
 
-    @requirements.empty_strings
-    def test_empty_strings(self):
+    def _test_empty_strings(self):
         unicode_table = self.tables.unicode_table
 
         config.db.execute(
@@ -89,9 +88,17 @@ class UnicodeVarcharTest(_UnicodeFixture, fixtures.TablesTest):
     datatype = Unicode(255)
 
 
+    @requirements.empty_strings_varchar
+    def test_empty_strings(self):
+        self._test_empty_strings()
+
 class UnicodeTextTest(_UnicodeFixture, fixtures.TablesTest):
     __requires__ = 'unicode_data', 'text_type'
 
     datatype = UnicodeText()
+
+    @requirements.empty_strings_text
+    def test_empty_strings(self):
+        self._test_empty_strings()
 
 __all__ = ('UnicodeVarcharTest', 'UnicodeTextTest')

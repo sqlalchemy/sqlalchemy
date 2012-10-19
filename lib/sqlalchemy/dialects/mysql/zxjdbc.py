@@ -4,20 +4,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for the MySQL database via Jython's zxjdbc JDBC connector.
+"""
 
-DBAPI
------
-
-The official MySQL JDBC driver is at
-http://dev.mysql.com/downloads/connector/j/.
-
-Connecting
-----------
-
-Connect string::
-
-    mysql+zxjdbc://<user>:<password>@<hostname>[:<port>]/<database>
+.. dialect:: mysql+zxjdbc
+    :name: zxjdbc for Jython
+    :dbapi: zxjdbc
+    :connectstring: mysql+zxjdbc://<user>:<password>@<hostname>[:<port>]/<database>
+    :driverurl: http://dev.mysql.com/downloads/connector/j/
 
 Character Sets
 --------------

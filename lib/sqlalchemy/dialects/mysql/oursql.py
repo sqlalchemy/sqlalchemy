@@ -4,21 +4,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for the MySQL database via the oursql adapter.
+"""
 
-DBAPI
------
-
-OurSQL is available at:
-
-    http://packages.python.org/oursql/
-
-Connecting
------------
-
-Connect string format::
-
-    mysql+oursql://<user>:<password>@<host>[:<port>]/<dbname>
+.. dialect:: mysql+oursql
+    :name: OurSQL
+    :dbapi: oursql
+    :connectstring: mysql+oursql://<user>:<password>@<host>[:<port>]/<dbname>
+    :url: http://packages.python.org/oursql/
 
 Unicode
 -------

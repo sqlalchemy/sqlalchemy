@@ -5,7 +5,16 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
-The adodbapi dialect is not implemented for 0.6 at this time.
+.. dialect:: mssql+adodbapi
+    :name: adodbapi
+    :dbapi: adodbapi
+    :connectstring: mssql+adodbapi://<username>:<password>@<dsnname>
+    :url: http://adodbapi.sourceforge.net/
+
+.. note::
+
+    The adodbapi dialect is not implemented SQLAlchemy versions 0.6 and
+    above at this time.
 
 """
 import datetime

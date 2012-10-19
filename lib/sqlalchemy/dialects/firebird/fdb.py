@@ -5,21 +5,15 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
-fdb is a kinterbasdb compatible DBAPI for Firebird.
+.. dialect:: firebird+fdb
+    :name: fdb
+    :dbapi: pyodbc
+    :connectstring: firebird+fdb://user:password@host:port/path/to/db[?key=value&key=value...]
+    :url: http://pypi.python.org/pypi/fdb/
 
-.. versionadded:: 0.8 - Support for the fdb Firebird driver.
+    fdb is a kinterbasdb compatible DBAPI for Firebird.
 
-DBAPI
------
-
-http://pypi.python.org/pypi/fdb/
-
-Connecting
------------
-
-Connect string format::
-
-    firebird+fdb://user:password@host:port/path/to/db[?key=value&key=value...]
+    .. versionadded:: 0.8 - Support for the fdb Firebird driver.
 
 Status
 ------

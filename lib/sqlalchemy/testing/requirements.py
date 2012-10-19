@@ -186,8 +186,15 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
-    def empty_strings(self):
-        """target database can persist/return an empty string."""
+    def empty_strings_varchar(self):
+        """target database can persist/return an empty string with a varchar."""
+
+        return exclusions.open()
+
+    @property
+    def empty_strings_text(self):
+        """target database can persist/return an empty string with an
+        unbounded text."""
 
         return exclusions.open()
 
