@@ -3246,7 +3246,7 @@
       added BFILE to reflected type names
 
 .. changelog::
-    :version: 0.5beta3
+    :version: 0.5.0beta3
     :released: Mon Aug 04 2008
 
     .. change::
@@ -3405,7 +3405,7 @@
       always optional for use with existing tables.)
 
 .. changelog::
-    :version: 0.5beta2
+    :version: 0.5.0beta2
     :released: Mon Jul 14 2008
 
     .. change::
@@ -3554,7 +3554,7 @@
       to be passed to the Table constructor.
 
 .. changelog::
-    :version: 0.5beta1
+    :version: 0.5.0beta1
     :released: Thu Jun 12 2008
 
     .. change::

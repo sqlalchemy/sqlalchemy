@@ -1288,11 +1288,3 @@
       name was omitted which apparently creates the
       index in the default schema, rather than that
       of the table.
-
-    .. change::
-        :tags: removed, extensions
-        :tickets: 2262
-
-      The SQLSoup extension is removed from
-      SQLAlchemy, and is now an external project.
-      See http://pypi.python.org/pypi/sqlsoup .

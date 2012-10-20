@@ -215,17 +215,6 @@
       the other operators.
 
     .. change::
-        :tags: bug, sql
-        :tickets: 2525
-
-      When the primary key column of a Table
-      is replaced, such as via extend_existing,
-      the "auto increment" column used by insert()
-      constructs is reset.  Previously it would
-      remain referring to the previous primary
-      key column.
-
-    .. change::
         :tags: engine, bug
         :tickets: 2522
 
@@ -235,7 +224,7 @@
       for connections would leave those
       threads waiting for the duration of
       the timeout on the old pool (or indefinitely
-      if timeout was disabled).   The fix
+      if timeout was disabled).  The fix
       now notifies those waiters with a special
       exception case and has them move onto
       the new pool.
@@ -696,6 +685,17 @@
       attempts to remove "." from column names
       returned by SQLite cursor.description.
 
+    .. change::
+        :tags: sqlite, bug
+        :tickets: 2525
+
+      When the primary key column of a Table
+      is replaced, such as via extend_existing,
+      the "auto increment" column used by insert()
+      constructs is reset.  Previously it would
+      remain referring to the previous primary
+      key column.
+
 .. changelog::
     :version: 0.7.6
     :released: Wed Mar 14 2012
@@ -1039,6 +1039,10 @@
       to get everything including subqueries in the
       columns clause, etc.
 
+.. changelog::
+    :version: 0.7.5
+    :released: Sat Jan 28 2012
+
     .. change::
         :tags: orm, bug
         :tickets: 2389
@@ -1352,7 +1356,7 @@
       weakref callback was invoked.
 
     .. change::
-        :tags: bug, Py3K
+        :tags: bug, py3k
         :tickets: 2348
 
       Fixed inappropriate usage of util.py3k
@@ -1375,6 +1379,10 @@
 
       Fixed large_collection.py to close the
       session before dropping tables.
+
+.. changelog::
+    :version: 0.7.4
+    :released: Fri Dec 09 2011
 
     .. change::
         :tags: orm, bug
@@ -2751,7 +2759,7 @@
       added CURRENT to reserved word list. Also in 0.6.9.
 
     .. change::
-        :tags: ext
+        :tags: oracle
         :tickets: 
 
       Fixed bug in the mutable extension whereby
@@ -2760,7 +2768,7 @@
       would not get instrumented.
 
     .. change::
-        :tags: ext
+        :tags: oracle
         :tickets: 
 
       Fixed bug in the mutable extension whereby
@@ -2950,7 +2958,7 @@
     :released: Fri May 20 2011
 
     .. change::
-        :tags: mysql
+        :tags: 
         :tickets: 
 
       This section documents those changes from 0.7b4
@@ -3856,7 +3864,7 @@
     :released: Sat Feb 12 2011
 
     .. change::
-        :tags: examples
+        :tags: 
         :tickets: 
 
       Detailed descriptions of each change below are
@@ -4426,10 +4434,3 @@
       FB/Interbase version idents are parsed into a structure
       such as (8, 1, 1, 'interbase') or (2, 1, 588, 'firebird')
       so they can be distinguished.
-
-    .. change::
-        :tags: drizzle
-        :tickets: 2003
-
-      New dialect for Drizzle, a MySQL variant.  Uses MySQL-python
-      for the DBAPI.
