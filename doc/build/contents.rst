@@ -13,6 +13,7 @@ documentation, see :ref:`index_toplevel`.
     orm/index
     core/index
     dialects/index
+    changelog/index
 
 Indices and tables
 ------------------

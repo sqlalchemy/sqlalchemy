@@ -11,7 +11,8 @@ A high level view and getting set up.
 
 :ref:`Overview <overview>` |
 :ref:`Installation Guide <installation>` |
-:ref:`Migration from 0.7 <migration>`
+:ref:`Migration from 0.7 <migration>` |
+:ref:`Changelog catalog <changelog/index>`
 
 SQLAlchemy ORM
 ==============

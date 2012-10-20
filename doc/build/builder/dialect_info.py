@@ -91,8 +91,6 @@ class DialectDirective(Directive):
 
 
         if "connectstring" in content:
-            # TODO: wish I knew how to just embed RST here and parse it into
-            # nodes
             sec = nodes.section(
                     '',
                     nodes.title("Connecting", "Connecting"),
