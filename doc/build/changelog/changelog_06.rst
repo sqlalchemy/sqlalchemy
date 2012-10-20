@@ -5,6 +5,661 @@
 
                 
 .. changelog::
+    :version: 0.6.9
+    :released: Sat May 05 2012
+
+    .. change::
+        :tags: general
+        :tickets: 2279
+
+      Adjusted the "importlater" mechanism, which is
+      used internally to resolve import cycles,
+      such that the usage of __import__ is completed
+      when the import of sqlalchemy or sqlalchemy.orm
+      is done, thereby avoiding any usage of __import__
+      after the application starts new threads,
+      fixes.
+
+    .. change::
+        :tags: orm
+        :tickets: 2197
+
+      Fixed bug whereby the source clause
+      used by query.join() would be inconsistent
+      if against a column expression that combined
+      multiple entities together.
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 2310
+
+      fixed inappropriate evaluation of user-mapped
+      object in a boolean context within query.get().
+
+    .. change::
+        :tags: orm
+        :tickets: 2228
+
+      Fixed bug apparent only in Python 3 whereby
+      sorting of persistent + pending objects during
+      flush would produce an illegal comparison,
+      if the persistent object primary key
+      is not a single integer.
+
+    .. change::
+        :tags: orm
+        :tickets: 2234
+
+      Fixed bug where query.join() + aliased=True
+      from a joined-inh structure to itself on
+      relationship() with join condition on the child
+      table would convert the lead entity into the
+      joined one inappropriately.
+
+    .. change::
+        :tags: orm
+        :tickets: 2287
+
+      Fixed bug whereby mapper.order_by attribute would
+      be ignored in the "inner" query within a
+      subquery eager load. .
+
+    .. change::
+        :tags: orm
+        :tickets: 2215
+
+      Fixed bug whereby if a mapped class
+      redefined __hash__() or __eq__() to something
+      non-standard, which is a supported use case
+      as SQLA should never consult these,
+      the methods would be consulted if the class
+      was part of a "composite" (i.e. non-single-entity)
+      result set.
+
+    .. change::
+        :tags: orm
+        :tickets: 2188
+
+      Fixed subtle bug that caused SQL to blow
+      up if: column_property() against subquery +
+      joinedload + LIMIT + order by the column
+      property() occurred. .
+
+    .. change::
+        :tags: orm
+        :tickets: 2207
+
+      The join condition produced by with_parent
+      as well as when using a "dynamic" relationship
+      against a parent will generate unique
+      bindparams, rather than incorrectly repeating
+      the same bindparam. .
+
+    .. change::
+        :tags: orm
+        :tickets: 2199
+
+      Repaired the "no statement condition"
+      assertion in Query which would attempt
+      to raise if a generative method were called
+      after from_statement() were called..
+
+    .. change::
+        :tags: orm
+        :tickets: 1776
+
+      Cls.column.collate("some collation") now
+      works.
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 2297
+
+      Fixed the error formatting raised when
+      a tuple is inadvertently passed to session.query().
+
+    .. change::
+        :tags: engine
+        :tickets: 2317
+
+      Backported the fix for introduced
+      in 0.7.4, which ensures that the connection
+      is in a valid state before attempting to call
+      rollback()/prepare()/release() on savepoint
+      and two-phase transactions.
+
+    .. change::
+        :tags: sql
+        :tickets: 2188
+
+      Fixed two subtle bugs involving column
+      correspondence in a selectable,
+      one with the same labeled subquery repeated, the other
+      when the label has been "grouped" and
+      loses itself.  Affects.
+
+    .. change::
+        :tags: sql
+        :tickets: 
+
+      Fixed bug whereby "warn on unicode" flag
+      would get set for the String type
+      when used with certain dialects.  This
+      bug is not in 0.7.
+
+    .. change::
+        :tags: sql
+        :tickets: 2270
+
+      Fixed bug whereby with_only_columns() method of
+      Select would fail if a selectable were passed..   However, the FROM behavior is
+      still incorrect here, so you need 0.7 in
+      any case for this use case to be usable.
+
+    .. change::
+        :tags: schema
+        :tickets: 
+
+      Added an informative error message when
+      ForeignKeyConstraint refers to a column name in
+      the parent that is not found.
+
+    .. change::
+        :tags: postgresql
+        :tickets: 2291, 2141
+
+      Fixed bug related to whereby the
+      same modified index behavior in PG 9 affected
+      primary key reflection on a renamed column..
+
+    .. change::
+        :tags: mysql
+        :tickets: 2186
+
+      Fixed OurSQL dialect to use ansi-neutral
+      quote symbol "'" for XA commands instead
+      of '"'. .
+
+    .. change::
+        :tags: mysql
+        :tickets: 2225
+
+      a CREATE TABLE will put the COLLATE option
+      after CHARSET, which appears to be part of
+      MySQL's arbitrary rules regarding if it will actually
+      work or not.
+
+    .. change::
+        :tags: mssql, bug
+        :tickets: 2269
+
+      Decode incoming values when retrieving
+      list of index names and the names of columns
+      within those indexes.
+
+    .. change::
+        :tags: oracle
+        :tickets: 2200
+
+      Added ORA-00028 to disconnect codes, use
+      cx_oracle _Error.code to get at the code,.
+
+    .. change::
+        :tags: oracle
+        :tickets: 2220
+
+      repaired the oracle.RAW type which did not
+      generate the correct DDL.
+
+    .. change::
+        :tags: oracle
+        :tickets: 2212
+
+      added CURRENT to reserved word list.
+
+    .. change::
+        :tags: examples
+        :tickets: 2266
+
+      Adjusted dictlike-polymorphic.py example
+      to apply the CAST such that it works on
+      PG, other databases.
+
+.. changelog::
+    :version: 0.6.8
+    :released: Sun Jun 05 2011
+
+    .. change::
+        :tags: orm
+        :tickets: 2144
+
+      Calling query.get() against a column-based entity is
+      invalid, this condition now raises a deprecation warning.
+
+    .. change::
+        :tags: orm
+        :tickets: 2151
+
+      a non_primary mapper will inherit the _identity_class
+      of the primary mapper.  This so that a non_primary
+      established against a class that's normally in an
+      inheritance mapping will produce results that are
+      identity-map compatible with that of the primary
+      mapper
+
+    .. change::
+        :tags: orm
+        :tickets: 2148
+
+      Backported 0.7's identity map implementation, which
+      does not use a mutex around removal.  This as some users
+      were still getting deadlocks despite the adjustments
+      in 0.6.7; the 0.7 approach that doesn't use a mutex
+      does not appear to produce "dictionary changed size"
+      issues, the original rationale for the mutex.
+
+    .. change::
+        :tags: orm
+        :tickets: 2163
+
+      Fixed the error message emitted for "can't
+      execute syncrule for destination column 'q';
+      mapper 'X' does not map this column" to
+      reference the correct mapper. .
+
+    .. change::
+        :tags: orm
+        :tickets: 2149
+
+      Fixed bug where determination of "self referential"
+      relationship would fail with no workaround
+      for joined-inh subclass related to itself,
+      or joined-inh subclass related to a subclass
+      of that with no cols in the sub-sub class
+      in the join condition.
+
+    .. change::
+        :tags: orm
+        :tickets: 2153
+
+      mapper() will ignore non-configured foreign keys
+      to unrelated tables when determining inherit
+      condition between parent and child class.
+      This is equivalent to behavior already
+      applied to declarative.  Note that 0.7 has a
+      more comprehensive solution to this, altering
+      how join() itself determines an FK error.
+
+    .. change::
+        :tags: orm
+        :tickets: 2171
+
+      Fixed bug whereby mapper mapped to an anonymous
+      alias would fail if logging were used, due to
+      unescaped % sign in the alias name.
+
+    .. change::
+        :tags: orm
+        :tickets: 2170
+
+      Modify the text of the message which occurs
+      when the "identity" key isn't detected on
+      flush, to include the common cause that
+      the Column isn't set up to detect
+      auto-increment correctly;.
+
+    .. change::
+        :tags: orm
+        :tickets: 2182
+
+      Fixed bug where transaction-level "deleted"
+      collection wouldn't be cleared of expunged
+      states, raising an error if they later
+      became transient.
+
+    .. change::
+        :tags: sql
+        :tickets: 2147
+
+      Fixed bug whereby if FetchedValue was passed
+      to column server_onupdate, it would not
+      have its parent "column" assigned, added
+      test coverage for all column default assignment
+      patterns.
+
+    .. change::
+        :tags: sql
+        :tickets: 2167
+
+      Fixed bug whereby nesting a label of a select()
+      with another label in it would produce incorrect
+      exported columns.   Among other things this would
+      break an ORM column_property() mapping against
+      another column_property(). .
+
+    .. change::
+        :tags: engine
+        :tickets: 2178
+
+      Adjusted the __contains__() method of
+      a RowProxy result row such that no exception
+      throw is generated internally;
+      NoSuchColumnError() also will generate its
+      message regardless of whether or not the column
+      construct can be coerced to a string..
+
+    .. change::
+        :tags: postgresql
+        :tickets: 2141
+
+      Fixed bug affecting PG 9 whereby index reflection
+      would fail if against a column whose name
+      had changed. .
+
+    .. change::
+        :tags: postgresql
+        :tickets: 2175
+
+      Some unit test fixes regarding numeric arrays,
+      MATCH operator.   A potential floating-point
+      inaccuracy issue was fixed, and certain tests
+      of the MATCH operator only execute within an
+      EN-oriented locale for now. .
+
+    .. change::
+        :tags: mssql
+        :tickets: 2169
+
+      Fixed bug in MSSQL dialect whereby the aliasing
+      applied to a schema-qualified table would leak
+      into enclosing select statements.
+
+    .. change::
+        :tags: mssql
+        :tickets: 2159
+
+      Fixed bug whereby DATETIME2 type would fail on
+      the "adapt" step when used in result sets or
+      bound parameters.  This issue is not in 0.7.
+
+.. changelog::
+    :version: 0.6.7
+    :released: Wed Apr 13 2011
+
+    .. change::
+        :tags: orm
+        :tickets: 2087
+
+      Tightened the iterate vs. remove mutex around the
+      identity map iteration, attempting to reduce the
+      chance of an (extremely rare) reentrant gc operation
+      causing a deadlock.  Might remove the mutex in
+      0.7.
+
+    .. change::
+        :tags: orm
+        :tickets: 2030
+
+      Added a `name` argument to `Query.subquery()`, to allow
+      a fixed name to be assigned to the alias object.
+
+    .. change::
+        :tags: orm
+        :tickets: 2019
+
+      A warning is emitted when a joined-table inheriting mapper
+      has no primary keys on the locally mapped table
+      (but has pks on the superclass table).
+
+    .. change::
+        :tags: orm
+        :tickets: 2038
+
+      Fixed bug where "middle" class in a polymorphic hierarchy
+      would have no 'polymorphic_on' column if it didn't also
+      specify a 'polymorphic_identity', leading to strange
+      errors upon refresh, wrong class loaded when querying
+      from that target. Also emits the correct WHERE criterion
+      when using single table inheritance.
+
+    .. change::
+        :tags: orm
+        :tickets: 1995
+
+      Fixed bug where a column with a SQL or server side default
+      that was excluded from a mapping with include_properties
+      or exclude_properties would result in UnmappedColumnError.
+
+    .. change::
+        :tags: orm
+        :tickets: 2046
+
+      A warning is emitted in the unusual case that an
+      append or similar event on a collection occurs after
+      the parent object has been dereferenced, which
+      prevents the parent from being marked as "dirty"
+      in the session.  This will be an exception in 0.7.
+
+    .. change::
+        :tags: orm
+        :tickets: 2098
+
+      Fixed bug in query.options() whereby a path
+      applied to a lazyload using string keys could
+      overlap a same named attribute on the wrong
+      entity.  Note 0.7 has an updated version of this
+      fix.
+
+    .. change::
+        :tags: orm
+        :tickets: 2063
+
+      Reworded the exception raised when a flush
+      is attempted of a subclass that is not polymorphic
+      against the supertype.
+
+    .. change::
+        :tags: orm
+        :tickets: 2123
+
+      Some fixes to the state handling regarding
+      backrefs, typically when autoflush=False, where
+      the back-referenced collection wouldn't
+      properly handle add/removes with no net
+      change.  Thanks to Richard Murri for the
+      test case + patch.
+
+    .. change::
+        :tags: orm
+        :tickets: 2130
+
+      a "having" clause would be copied from the
+      inside to the outside query if from_self()
+      were used..
+
+    .. change::
+        :tags: sql
+        :tickets: 2028
+
+      Column.copy(), as used in table.tometadata(), copies the
+      'doc' attribute.
+
+    .. change::
+        :tags: sql
+        :tickets: 2023
+
+      Added some defs to the resultproxy.c extension so that
+      the extension compiles and runs on Python 2.4.
+
+    .. change::
+        :tags: sql
+        :tickets: 2042
+
+      The compiler extension now supports overriding the default
+      compilation of expression._BindParamClause including that
+      the auto-generated binds within the VALUES/SET clause
+      of an insert()/update() statement will also use the new
+      compilation rules.
+
+    .. change::
+        :tags: sql
+        :tickets: 2089
+
+      Added accessors to ResultProxy "returns_rows", "is_insert"
+
+    .. change::
+        :tags: sql
+        :tickets: 2116
+
+      The limit/offset keywords to select() as well
+      as the value passed to select.limit()/offset()
+      will be coerced to integer.
+
+    .. change::
+        :tags: engine
+        :tickets: 2102
+
+      Fixed bug in QueuePool, SingletonThreadPool whereby
+      connections that were discarded via overflow or periodic
+      cleanup() were not explicitly closed, leaving garbage
+      collection to the task instead.   This generally only
+      affects non-reference-counting backends like Jython
+      and Pypy.  Thanks to Jaimy Azle for spotting
+      this.
+
+    .. change::
+        :tags: sqlite
+        :tickets: 2115
+
+      Fixed bug where reflection of foreign key
+      created as "REFERENCES <tablename>" without
+      col name would fail.
+
+    .. change::
+        :tags: postgresql
+        :tickets: 1083
+
+      When explicit sequence execution derives the name
+      of the auto-generated sequence of a SERIAL column,
+      which currently only occurs if implicit_returning=False,
+      now accommodates if the table + column name is greater
+      than 63 characters using the same logic Postgresql uses.
+
+    .. change::
+        :tags: postgresql
+        :tickets: 2044
+
+      Added an additional libpq message to the list of "disconnect"
+      exceptions, "could not receive data from server"
+
+    .. change::
+        :tags: postgresql
+        :tickets: 2092
+
+      Added RESERVED_WORDS for postgresql dialect.
+
+    .. change::
+        :tags: postgresql
+        :tickets: 2073
+
+      Fixed the BIT type to allow a "length" parameter, "varying"
+      parameter.  Reflection also fixed.
+
+    .. change::
+        :tags: informix
+        :tickets: 2092
+
+      Added RESERVED_WORDS informix dialect.
+
+    .. change::
+        :tags: mssql
+        :tickets: 2071
+
+      Rewrote the query used to get the definition of a view,
+      typically when using the Inspector interface, to
+      use sys.sql_modules instead of the information schema,
+      thereby allowing views definitions longer than 4000
+      characters to be fully returned.
+
+    .. change::
+        :tags: mysql
+        :tickets: 2047
+
+      oursql dialect accepts the same "ssl" arguments in
+      create_engine() as that of MySQLdb.
+
+    .. change::
+        :tags: firebird
+        :tickets: 2083
+
+      The "implicit_returning" flag on create_engine() is
+      honored if set to False.
+
+    .. change::
+        :tags: oracle
+        :tickets: 2100
+
+      Using column names that would require quotes
+      for the column itself or for a name-generated
+      bind parameter, such as names with special
+      characters, underscores, non-ascii characters,
+      now properly translate bind parameter keys when
+      talking to cx_oracle.
+
+    .. change::
+        :tags: oracle
+        :tickets: 2116
+
+      Oracle dialect adds use_binds_for_limits=False
+      create_engine() flag, will render the LIMIT/OFFSET
+      values inline instead of as binds, reported to
+      modify the execution plan used by Oracle.
+
+    .. change::
+        :tags: ext
+        :tickets: 2090
+
+      The horizontal_shard ShardedSession class accepts the common
+      Session argument "query_cls" as a constructor argument,
+      to enable further subclassing of ShardedQuery.
+
+    .. change::
+        :tags: declarative
+        :tickets: 2050
+
+      Added an explicit check for the case that the name
+      'metadata' is used for a column attribute on a
+      declarative class.
+
+    .. change::
+        :tags: declarative
+        :tickets: 2061
+
+      Fix error message referencing old @classproperty
+      name to reference @declared_attr
+
+    .. change::
+        :tags: declarative
+        :tickets: 2091
+
+      Arguments in __mapper_args__ that aren't "hashable"
+      aren't mistaken for always-hashable, possibly-column
+      arguments.
+
+    .. change::
+        :tags: documentation
+        :tickets: 2029
+
+      Documented SQLite DATE/TIME/DATETIME types.
+
+    .. change::
+        :tags: examples
+        :tickets: 2090
+
+      The Beaker caching example allows a "query_cls" argument
+      to the query_callable() function.
+
+.. changelog::
     :version: 0.6.6
     :released: Sat Jan 08 2011
 
@@ -2960,7 +3615,7 @@
         :tickets: 
 
       The visit_pool() method of Dialect is removed, and replaced with
-      connect().  This method returns a callable which receives
+      on_connect().  This method returns a callable which receives
       the raw DBAPI connection after each one is created.   The callable
       is assembled into a first_connect/connect pool listener by the
       connection strategy if non-None.   Provides a simpler interface
@@ -3186,7 +3841,7 @@
     :released: Wed Feb 03 2010
 
     .. change::
-        :tags: Release, Major
+        :tags: release, major
         :tickets: 
 
       For the full set of feature descriptions, see
@@ -3194,14 +3849,14 @@
       This document is a work in progress.
 
     .. change::
-        :tags: Release, Major
+        :tags: release, major
         :tickets: 
 
       All bug fixes and feature enhancements from the most
       recent 0.5 version and below are also included within 0.6.
 
     .. change::
-        :tags: Release, Major
+        :tags: release, major
         :tickets: 
 
       Platforms targeted now include Python 2.4/2.5/2.6, Python
@@ -3971,7 +4626,7 @@
       copy() all their public keyword arguments.
 
     .. change::
-        :tags: Reflection/Inspection
+        :tags: reflection/inspection
         :tickets: 
 
       Table reflection has been expanded and generalized into
@@ -3982,7 +4637,7 @@
       indexes, etc.
 
     .. change::
-        :tags: Reflection/Inspection
+        :tags: reflection/inspection
         :tickets: 
 
       Views are now reflectable as ordinary Table objects.  The same
@@ -3991,7 +4646,7 @@
       results; these have to be specified explicitly if desired.
 
     .. change::
-        :tags: Reflection/Inspection
+        :tags: reflection/inspection
         :tickets: 
 
       The existing autoload=True system now uses Inspector underneath
@@ -4000,7 +4655,7 @@
       is compiled into Table objects so that consistency is at a maximum.
 
     .. change::
-        :tags: DDL
+        :tags: ddl
         :tickets: 
 
       the DDL system has been greatly expanded.  the DDL() class
@@ -4021,7 +4676,7 @@
        linked to a compiler using the sqlalchemy.ext.compiler extension.
 
     .. change::
-        :tags: DDL
+        :tags: ddl
         :tickets: 
 
       The signature of the "on" callable passed to DDL() and
@@ -4749,14 +5404,3 @@
 
       association_proxy now has basic comparator methods .any(),
       .has(), .contains(), ==, !=, thanks to Scott Torborg.
-
-    .. change::
-        :tags: examples
-        :tickets: 
-
-      The "query_cache" examples have been removed, and are replaced
-      with a fully comprehensive approach that combines the usage of
-      Beaker with SQLAlchemy.  New query options are used to indicate
-      the caching characteristics of a particular Query, which
-      can also be invoked deep within an object graph when lazily
-      loading related objects.  See /examples/beaker_caching/README.
