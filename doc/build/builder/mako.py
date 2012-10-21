@@ -76,4 +76,7 @@ class MakoBridge(TemplateBridge):
 
 def setup(app):
     app.config['template_bridge'] = "builder.mako.MakoBridge"
+    app.add_config_value('release_date', "", True)
+    app.add_config_value('site_base', "", True)
+    app.add_config_value('build_number', "", 1)
 

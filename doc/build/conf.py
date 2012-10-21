@@ -11,7 +11,8 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+import sys
+import os
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -29,11 +30,15 @@ import sqlalchemy
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-#extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode',
-#                'sphinx.ext.doctest', 'builder']
 
 extensions = ['sphinx.ext.autodoc',
-                'sphinx.ext.doctest', 'builder']
+                'sphinx.ext.doctest',
+                'builder.autodoc_mods',
+                'builder.changelog',
+                'builder.dialect_info',
+                'builder.mako',
+                'builder.sqlformatter',
+            ]
 
 # Add any paths that contain templates here, relative to this directory.
 # not sure why abspath() is needed here, some users
@@ -44,6 +49,20 @@ nitpicky = True
 
 # The suffix of source filenames.
 source_suffix = '.rst'
+
+
+# section names used by the changelog extension.
+changelog_sections = ["general", "orm", "orm declarative", "orm querying", \
+                "orm configuration", "engine", "sql", \
+                "schema", \
+                "postgresql", "mysql", "sqlite", "mssql", \
+                "oracle", "firebird"]
+# tags to sort on inside of sections
+changelog_inner_tag_sort = ["feature", "bug", "moved", "changed", "removed"]
+
+# how to render a ticket link
+def changelog_render_ticket(ticket):
+    return "http://www.sqlalchemy.org/trac/ticket/%s" % ticket
 
 
 # The encoding of source files.

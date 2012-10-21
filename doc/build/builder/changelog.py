@@ -24,8 +24,6 @@ def _parse_content(content):
     d["text"] = content[idx:]
     return d
 
-def _ticketurl(ticket):
-    return "http://www.sqlalchemy.org/trac/ticket/%s" % ticket
 
 class EnvDirective(object):
     @property
@@ -37,44 +35,44 @@ class ChangeLogDirective(EnvDirective, Directive):
 
     type_ = "change"
 
-    sections = _comma_list("general, orm, orm declarative, orm querying, \
-                orm configuration, engine, sql, \
-                schema, \
-                postgresql, mysql, sqlite, mssql, oracle, firebird, misc")
-
-    subsections = ["feature", "bug", "moved", "changed", "removed", ""]
-
+    default_section = 'misc'
 
     def _organize_by_section(self, changes):
         compound_sections = [(s, s.split(" ")) for s in
                                 self.sections if " " in s]
 
         bysection = collections.defaultdict(list)
+        all_sections = set()
         for rec in changes:
-            subsection = rec['tags'].intersection(self.subsections)
-            if subsection:
-                subsection = subsection.pop()
+            inner_tag = rec['tags'].intersection(self.inner_tag_sort)
+            if inner_tag:
+                inner_tag = inner_tag.pop()
             else:
-                subsection = ""
+                inner_tag = ""
 
             for compound, comp_words in compound_sections:
                 if rec['tags'].issuperset(comp_words):
-                    bysection[(compound, subsection)].append(rec)
+                    bysection[(compound, inner_tag)].append(rec)
+                    all_sections.add(compound)
                     break
 
             intersect = rec['tags'].intersection(self.sections)
             if intersect:
-                bysection[(intersect.pop(), subsection)].append(rec)
+                sec = intersect.pop()
+                bysection[(sec, inner_tag)].append(rec)
+                all_sections.add(sec)
                 continue
 
-            bysection[('misc', subsection)].append(rec)
-        return bysection
+            bysection[(self.default_section, inner_tag)].append(rec)
+        return bysection, all_sections
 
     @classmethod
     def changes(cls, env):
         return env.temp_data['ChangeLogDirective_%s_changes' % cls.type_]
 
     def _setup_run(self):
+        self.sections = self.env.config.changelog_sections
+        self.inner_tag_sort = self.env.config.changelog_inner_tag_sort + [""]
         self.env.temp_data['ChangeLogDirective_%s_changes' % self.type_] = []
         self._parsed_content = _parse_content(self.content)
 
@@ -91,32 +89,45 @@ class ChangeLogDirective(EnvDirective, Directive):
         topsection = self._run_top(id_prefix)
         output.append(topsection)
 
-        bysection = self._organize_by_section(changes)
+        bysection, all_sections = self._organize_by_section(changes)
 
         counter = itertools.count()
 
-        for section in self.sections:
-            sec, append_sec = self._section(section, id_prefix)
+        sections_to_render = [s for s in self.sections if s in all_sections]
+        if not sections_to_render:
+            for cat in self.inner_tag_sort:
+                append_sec = self._append_node()
 
-            for cat in self.subsections:
-                for rec in bysection[(section, cat)]:
+                for rec in bysection[(self.default_section, cat)]:
                     rec["id"] = "%s-%s" % (id_prefix, next(counter))
 
-                    self._render_rec(rec, section, cat, append_sec)
+                    self._render_rec(rec, None, cat, append_sec)
 
-            if append_sec.children:
-                topsection.append(sec)
+                if append_sec.children:
+                    topsection.append(append_sec)
+        else:
+            for section in sections_to_render + [self.default_section]:
+                sec = nodes.section('',
+                        nodes.title(section, section),
+                        ids=["%s-%s" % (id_prefix, section.replace(" ", "-"))]
+                )
+
+                append_sec = self._append_node()
+                sec.append(append_sec)
+
+                for cat in self.inner_tag_sort:
+                    for rec in bysection[(section, cat)]:
+                        rec["id"] = "%s-%s" % (id_prefix, next(counter))
+
+                        self._render_rec(rec, section, cat, append_sec)
+
+                if append_sec.children:
+                    topsection.append(sec)
 
         return output
 
-    def _section(self, section, id_prefix):
-        bullets = nodes.bullet_list()
-        sec = nodes.section('',
-                nodes.title(section, section),
-                bullets,
-                ids=["%s-%s" % (id_prefix, section.replace(" ", "-"))]
-        )
-        return sec, bullets
+    def _append_node(self):
+        return nodes.bullet_list()
 
     def _run_top(self, id_prefix):
         version = self._parsed_content.get('version', '')
@@ -126,7 +137,8 @@ class ChangeLogDirective(EnvDirective, Directive):
             )
 
         if self._parsed_content.get("released"):
-            topsection.append(nodes.Text("Released: %s" % self._parsed_content['released']))
+            topsection.append(nodes.Text("Released: %s" %
+                        self._parsed_content['released']))
         else:
             topsection.append(nodes.Text("no release date"))
         return topsection
@@ -144,20 +156,18 @@ class ChangeLogDirective(EnvDirective, Directive):
             insert_ticket.append(
                 nodes.reference('', '',
                     nodes.Text("#%s" % ticket, "#%s" % ticket),
-                    refuri=_ticketurl(ticket)
+                    refuri=self.env.config.changelog_render_ticket(ticket)
                 )
             )
 
-        if cat or rec['tags']:
-            #tag_node = nodes.strong('',
-            #            "[" + cat + "] "
-            #        )
+        if rec['tags']:
             tag_node = nodes.strong('',
                         " ".join("[%s]" % t for t
                             in
-                                [cat] +
-                                list(rec['tags'].difference([cat]))
-                            if t
+                                [t1 for t1 in [section, cat]
+                                    if t1 in rec['tags']] +
+
+                                list(rec['tags'].difference([section, cat]))
                         ) + " "
                     )
             para.children[0].insert(0, tag_node)
@@ -168,61 +178,6 @@ class ChangeLogDirective(EnvDirective, Directive):
                 para
             )
         )
-
-
-class MigrationLogDirective(ChangeLogDirective):
-    type_ = "migration"
-
-    sections = _comma_list("New Features, Behavioral Changes, Removed")
-
-    subsections = _comma_list("general, orm, orm declarative, orm querying, \
-                orm configuration, engine, sql, \
-                postgresql, mysql, sqlite")
-
-    def _run_top(self, id_prefix):
-        version = self._parsed_content.get('version', '')
-        title = "What's new in %s?" % version
-        topsection = nodes.section('',
-                nodes.title(title, title),
-                ids=[id_prefix]
-            )
-        if "released" in self._parsed_content:
-            topsection.append(nodes.Text("Released: %s" % self._parsed_content['released']))
-        return topsection
-
-    def _section(self, section, id_prefix):
-        sec = nodes.section('',
-                nodes.title(section, section),
-                ids=["%s-%s" % (id_prefix, section.replace(" ", "-"))]
-        )
-        return sec, sec
-
-    def _render_rec(self, rec, section, cat, append_sec):
-        para = rec['node'].deepcopy()
-
-        insert_ticket = nodes.paragraph('')
-        para.append(insert_ticket)
-
-        for i, ticket in enumerate(rec['tickets']):
-            if i > 0:
-                insert_ticket.append(nodes.Text(", ", ", "))
-            else:
-                insert_ticket.append(nodes.Text(" ", " "))
-            insert_ticket.append(
-                nodes.reference('', '',
-                    nodes.Text("#%s" % ticket, "#%s" % ticket),
-                    refuri=_ticketurl(ticket)
-                )
-            )
-
-        append_sec.append(
-            nodes.section('',
-                nodes.title(rec['title'], rec['title']),
-                para,
-                ids=[rec['id']]
-            )
-        )
-
 
 
 class ChangeDirective(EnvDirective, Directive):
@@ -250,10 +205,6 @@ class ChangeDirective(EnvDirective, Directive):
 
         return []
 
-class MigrationDirective(ChangeDirective):
-    type_ = "migration"
-    parent_cls = MigrationLogDirective
-
 
 def _rst2sphinx(text):
     return StringList(
@@ -262,7 +213,9 @@ def _rst2sphinx(text):
 
 def setup(app):
     app.add_directive('changelog', ChangeLogDirective)
-    app.add_directive('migrationlog', MigrationLogDirective)
-    app.add_directive('migration', MigrationDirective)
     app.add_directive('change', ChangeDirective)
-
+    app.add_config_value("changelog_sections", [], 'env')
+    app.add_config_value("changelog_inner_tag_sort", [], 'env')
+    app.add_config_value("changelog_render_ticket",
+            lambda ticket: ticket, 'env'
+        )
