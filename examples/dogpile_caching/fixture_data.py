@@ -16,8 +16,10 @@ def install():
         ('Chicago', 'United States', ('60601', '60602', '60603', '60604')),
         ('Montreal', 'Canada', ('H2S 3K9', 'H2B 1V4', 'H7G 2T8')),
         ('Edmonton', 'Canada', ('T5J 1R9', 'T5J 1Z4', 'T5H 1P6')),
-        ('New York', 'United States', ('10001', '10002', '10003', '10004', '10005', '10006')),
-        ('San Francisco', 'United States', ('94102', '94103', '94104', '94105', '94107', '94108'))
+        ('New York', 'United States',
+                        ('10001', '10002', '10003', '10004', '10005', '10006')),
+        ('San Francisco', 'United States',
+                        ('94102', '94103', '94104', '94105', '94107', '94108'))
     ]
 
     countries = {}
@@ -38,7 +40,8 @@ def install():
                     "person %.2d" % i,
                     Address(
                         street="street %.2d" % i,
-                        postal_code=all_post_codes[random.randint(0, len(all_post_codes) - 1)]
+                        postal_code=all_post_codes[
+                                random.randint(0, len(all_post_codes) - 1)]
                     )
                 )
         Session.add(person)

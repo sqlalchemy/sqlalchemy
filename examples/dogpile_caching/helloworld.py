@@ -10,7 +10,7 @@ from caching_query import FromCache
 
 # load Person objects.  cache the result under the namespace "all_people".
 print "loading people...."
-people = Session.query(Person).options(FromCache("default", "all_people")).all()
+people = Session.query(Person).options(FromCache("default")).all()
 
 # remove the Session.  next query starts from scratch.
 Session.remove()
@@ -18,13 +18,13 @@ Session.remove()
 # load again, using the same FromCache option. now they're cached
 # under "all_people", no SQL is emitted.
 print "loading people....again!"
-people = Session.query(Person).options(FromCache("default", "all_people")).all()
+people = Session.query(Person).options(FromCache("default")).all()
 
 # want to load on some different kind of query ?  change the namespace
 # you send to FromCache
 print "loading people two through twelve"
 people_two_through_twelve = Session.query(Person).\
-                            options(FromCache("default", "people_on_range")).\
+                            options(FromCache("default")).\
                             filter(Person.name.between("person 02", "person 12")).\
                             all()
 
@@ -34,7 +34,7 @@ people_two_through_twelve = Session.query(Person).\
 # previous one, issues new SQL...
 print "loading people five through fifteen"
 people_five_through_fifteen = Session.query(Person).\
-                            options(FromCache("default", "people_on_range")).\
+                            options(FromCache("default")).\
                             filter(Person.name.between("person 05", "person 15")).\
                             all()
 
@@ -42,7 +42,7 @@ people_five_through_fifteen = Session.query(Person).\
 # ... but using the same params as are already cached, no SQL
 print "loading people two through twelve...again!"
 people_two_through_twelve = Session.query(Person).\
-                            options(FromCache("default", "people_on_range")).\
+                            options(FromCache("default")).\
                             filter(Person.name.between("person 02", "person 12")).\
                             all()
 
@@ -52,9 +52,9 @@ people_two_through_twelve = Session.query(Person).\
 # same list of objects to be loaded, and the same parameters in the
 # same order, then call invalidate().
 print "invalidating everything"
-Session.query(Person).options(FromCache("default", "all_people")).invalidate()
+Session.query(Person).options(FromCache("default")).invalidate()
 Session.query(Person).\
-            options(FromCache("default", "people_on_range")).\
+            options(FromCache("default")).\
             filter(Person.name.between("person 02", "person 12")).invalidate()
 Session.query(Person).\
             options(FromCache("default", "people_on_range")).\

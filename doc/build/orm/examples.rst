@@ -37,12 +37,12 @@ Location: /examples/custom_attributes/
 
 .. _examples_caching:
 
-Beaker Caching
---------------
+Dogpile Caching
+---------------
 
-Location: /examples/beaker_caching/
+Location: /examples/dogpile_caching/
 
-.. automodule:: beaker_caching
+.. automodule:: dogpile_caching
 
 Directed Graphs
 ---------------

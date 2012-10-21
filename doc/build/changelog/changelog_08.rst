@@ -3,14 +3,28 @@
 0.8 Changelog
 ==============
 
-                
+
 .. changelog::
     :version: 0.8.0b1
-    :released: 
+    :released:
+
+    .. change::
+        :tags: examples
+        :tickets: 2589
+
+      The Beaker caching example has been converted
+      to use `dogpile.cache <http://dogpilecache.readthedocs.org/>`_.
+      This is a new caching library written by the same
+      creator of Beaker's caching internals, and represents a
+      vastly improved, simplified, and modernized system of caching.
+
+      .. seealso::
+
+          :ref:`examples_caching`
 
     .. change::
         :tags: general
-        :tickets: 
+        :tickets:
 
       SQLAlchemy 0.8 now targets Python 2.5 and
       above.  Python 2.4 is no longer supported.
@@ -42,7 +56,7 @@
 
     .. change::
         :tags: orm, moved
-        :tickets: 
+        :tickets:
 
       The InstrumentationManager interface
       and the entire related system of alternate
@@ -193,7 +207,7 @@
 
     .. change::
         :tags: orm, feature
-        :tickets: 
+        :tickets:
 
       Added support for .info dictionary argument to
       column_property(), relationship(), composite().
@@ -219,7 +233,7 @@
 
     .. change::
         :tags: orm, feature
-        :tickets: 
+        :tickets:
 
       The Query.update() method is now
       more lenient as to the table
@@ -238,7 +252,7 @@
 
     .. change::
         :tags: orm, feature
-        :tickets: 
+        :tickets:
 
       New session events after_transaction_create
       and after_transaction_end
@@ -350,7 +364,7 @@
 
     .. change::
         :tags: orm, feature
-        :tickets: 
+        :tickets:
 
       The Session will produce warnings
       when unsupported methods are used inside the
@@ -542,7 +556,7 @@
 
     .. change::
         :tags: orm, bug
-        :tickets: 
+        :tickets:
 
       An error is emitted when uselist=False
       is combined with a "dynamic" loader.
@@ -550,19 +564,19 @@
 
     .. change::
         :tags: removed, orm
-        :tickets: 
+        :tickets:
 
       Deprecated identifiers removed:
-      
+
       * allow_null_pks mapper() argument
         (use allow_partial_pks)
-      
+
       * _get_col_to_prop() mapper method
         (use get_property_by_column())
-      
+
       * dont_load argument to Session.merge()
         (use load=True)
-      
+
       * sqlalchemy.orm.shard module
         (use sqlalchemy.ext.horizontal_shard)
 
@@ -589,7 +603,7 @@
 
     .. change::
         :tags: engine, feature
-        :tickets: 
+        :tickets:
 
       The libraries used by the test suite
       have been moved around a bit so that they are
@@ -608,7 +622,7 @@
 
     .. change::
         :tags: engine, bug
-        :tickets: 
+        :tickets:
 
       The Inspector.get_table_names()
       order_by="foreign_key" feature now sorts
@@ -649,7 +663,7 @@
 
     .. change::
         :tags: engine, feature
-        :tickets: 
+        :tickets:
 
       Various API tweaks to the "dialect"
       API to better support highly specialized
@@ -677,7 +691,7 @@
 
     .. change::
         :tags: engine, bug
-        :tickets: 
+        :tickets:
 
       The autoload_replace flag on Table,
       when False, will cause any reflected foreign key
@@ -701,7 +715,7 @@
 
     .. change::
         :tags: engine, feature
-        :tickets: 
+        :tickets:
 
       New C extension module "utils" has
       been added for additional function speedups
@@ -709,7 +723,7 @@
 
     .. change::
         :tags: engine
-        :tickets: 
+        :tickets:
 
       ResultProxy.last_inserted_ids is removed,
       replaced by inserted_primary_key.
@@ -748,7 +762,7 @@
 
     .. change::
         :tags: feature, sql
-        :tickets: 
+        :tickets:
 
       The Core oeprator system now includes
       the `getitem` operator, i.e. the bracket
@@ -761,7 +775,7 @@
       operator schemes.   `lshift` (<<)
       and `rshift` (>>) are also supported as
       optional operators.
-      
+
       Note that this change has the effect that
       descriptor-based __getitem__ schemes used by
       the ORM in conjunction with synonym() or other
@@ -796,14 +810,14 @@
 
     .. change::
         :tags: change, sql
-        :tickets: 
+        :tickets:
 
       The Text() type renders the length
       given to it, if a length was specified.
 
     .. change::
         :tags: feature, sql
-        :tickets: 
+        :tickets:
 
       Custom unary operators can now be
       used by combining operators.custom_op() with
@@ -821,7 +835,7 @@
 
     .. change::
         :tags: feature, sql
-        :tickets: 
+        :tickets:
 
       Enhanced GenericFunction and func.*
       to allow for user-defined GenericFunction
@@ -845,7 +859,7 @@
 
     .. change::
         :tags: changed, sql
-        :tickets: 
+        :tickets:
 
       Most classes in expression.sql
       are no longer preceded with an underscore,
@@ -938,7 +952,7 @@
 
     .. change::
         :tags: feature, sql
-        :tickets: 
+        :tickets:
 
       select() features a correlate_except()
       method, auto correlates all selectables except those
@@ -990,7 +1004,7 @@
 
     .. change::
         :tags: feature, sql
-        :tickets: 
+        :tickets:
 
       "scalar" selects now have a WHERE method
       to help with generative building.  Also slight adjustment
@@ -1053,7 +1067,7 @@
 
     .. change::
         :tags: access, feature
-        :tickets: 
+        :tickets:
 
       the MS Access dialect has been
       moved to its own project on Bitbucket,
@@ -1067,7 +1081,7 @@
 
     .. change::
         :tags: maxdb, moved
-        :tickets: 
+        :tickets:
 
       The MaxDB dialect, which hasn't been
       functional for several years, is
@@ -1090,7 +1104,7 @@
 
     .. change::
         :tags: mssql, feature
-        :tickets: 
+        :tickets:
 
       SQL Server dialect can be given
       database-qualified schema names,
@@ -1117,7 +1131,7 @@
 
     .. change::
         :tags: mssql, feature
-        :tickets: 
+        :tickets:
 
       updated support for the mxodbc
       driver; mxodbc 3.2.1 is recommended for full
@@ -1135,7 +1149,7 @@
 
     .. change::
         :tags: postgresql, feature
-        :tickets: 
+        :tickets:
 
       postgresql.ARRAY now supports
       indexing and slicing.  The Python [] operator
@@ -1148,7 +1162,7 @@
 
     .. change::
         :tags: postgresql, feature
-        :tickets: 
+        :tickets:
 
       Added new "array literal" construct
       postgresql.array().  Basically a "tuple" that
@@ -1166,7 +1180,7 @@
 
     .. change::
         :tags: postgresql, feature
-        :tickets: 
+        :tickets:
 
       The "ischema_names" dictionary of the
       Postgresql dialect is "unofficially" customizable.
@@ -1176,7 +1190,7 @@
       types with variable numbers of arguments.
       The functionality here is "unofficial" for
       three reasons:
-      
+
       1. this is not an "official" API.  Ideally
          an "official" API would allow custom type-handling
          callables at the dialect or global level
@@ -1189,7 +1203,7 @@
       3. The reflection code here is only tested against
          simple types and probably has issues with more
          compositional types.
-      
+
       patch courtesy Éric Lemoine.
 
     .. change::
@@ -1211,7 +1225,7 @@
 
     .. change::
         :tags: firebird, bug
-        :tickets: 
+        :tickets:
 
       Firebird now uses strict "ansi bind rules"
       so that bound parameters don't render in the
@@ -1220,7 +1234,7 @@
 
     .. change::
         :tags: firebird, bug
-        :tickets: 
+        :tickets:
 
       Support for passing datetime as date when
       using the DateTime type with Firebird; other
@@ -1280,7 +1294,7 @@
 
     .. change::
         :tags: oracle, bug
-        :tickets: 
+        :tickets:
 
       The CreateIndex construct in Oracle
       will now schema-qualify the name of the index

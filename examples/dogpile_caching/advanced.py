@@ -35,7 +35,7 @@ def load_name_range(start, end, invalidate=False):
 
     # have the "addresses" collection cached separately
     # each lazyload of Person.addresses loads from cache.
-    q = q.options(RelationshipCache("default", "by_person", Person.addresses))
+    q = q.options(RelationshipCache(Person.addresses, "default"))
 
     # alternatively, eagerly load the "addresses" collection, so that they'd
     # be cached together.   This issues a bigger SQL statement and caches
