@@ -60,8 +60,10 @@ changelog_sections = ["general", "orm", "orm declarative", "orm querying", \
 # tags to sort on inside of sections
 changelog_inner_tag_sort = ["feature", "bug", "moved", "changed", "removed"]
 
-# how to render a ticket link
+# how to render changelog links
 changelog_render_ticket = "http://www.sqlalchemy.org/trac/ticket/%s"
+changelog_render_pullreq = "https://bitbucket.org/sqlalchemy/sqlalchemy/pull-request/%s"
+changelog_render_changeset = "http://www.sqlalchemy.org/trac/changeset/%s"
 
 
 # The encoding of source files.

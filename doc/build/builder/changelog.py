@@ -143,29 +143,39 @@ class ChangeLogDirective(EnvDirective, Directive):
             topsection.append(nodes.Text("no release date"))
         return topsection
 
+
     def _render_rec(self, rec, section, cat, append_sec):
         para = rec['node'].deepcopy()
+
+        #targetid = "%s-%d" % (self.type_, self.env.new_serialno(self.type_))
+        #targetnode = nodes.target('', '', ids=[targetid])
+        #para.insert(0, targetnode)
+
         insert_ticket = nodes.paragraph('')
         para.append(insert_ticket)
 
-        for i, ticket in enumerate(rec['tickets']):
-            if i > 0:
-                insert_ticket.append(nodes.Text(", ", ", "))
-            else:
-                insert_ticket.append(nodes.Text(" ", " "))
-            refuri = self.env.config.changelog_render_ticket
-            if refuri is not None:
-                refuri = refuri % ticket
-                insert_ticket.append(
-                    nodes.reference('', '',
-                        nodes.Text("#%s" % ticket, "#%s" % ticket),
-                        refuri=refuri
-                    )
-                )
-            else:
-                insert_ticket.append(
-                    nodes.Text("#%s" % ticket, "#%s" % ticket)
-                )
+        i = 0
+        for collection, render, prefix in (
+                (rec['tickets'], self.env.config.changelog_render_ticket, "#%s"),
+                (rec['pullreq'], self.env.config.changelog_render_pullreq,
+                                            "pull request %s"),
+                (rec['changeset'], self.env.config.changelog_render_changeset, "r%s"),
+            ):
+            for refname in collection:
+                if i > 0:
+                    insert_ticket.append(nodes.Text(", ", ", "))
+                else:
+                    insert_ticket.append(nodes.Text(" ", " "))
+                i += 1
+                if render is not None:
+                    refuri = render % refname
+                    node = nodes.reference('', '',
+                            nodes.Text(prefix % refname, prefix % refname),
+                            refuri=refuri
+                        )
+                else:
+                    node = nodes.Text(prefix % refname, prefix % refname)
+                insert_ticket.append(node)
 
         if rec['tags']:
             tag_node = nodes.strong('',
@@ -199,6 +209,8 @@ class ChangeDirective(EnvDirective, Directive):
         rec = {
             'tags': set(_comma_list(content.get('tags', ''))).difference(['']),
             'tickets': set(_comma_list(content.get('tickets', ''))).difference(['']),
+            'pullreq': set(_comma_list(content.get('pullreq', ''))).difference(['']),
+            'changeset': set(_comma_list(content.get('changeset', ''))).difference(['']),
             'node': p,
             'type': self.type_,
             "title": content.get("title", None)
@@ -224,6 +236,14 @@ def setup(app):
     app.add_config_value("changelog_sections", [], 'env')
     app.add_config_value("changelog_inner_tag_sort", [], 'env')
     app.add_config_value("changelog_render_ticket",
+            None,
+            'env'
+        )
+    app.add_config_value("changelog_render_pullreq",
+            None,
+            'env'
+        )
+    app.add_config_value("changelog_render_changeset",
             None,
             'env'
         )
