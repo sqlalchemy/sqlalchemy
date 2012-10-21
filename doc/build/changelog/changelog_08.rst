@@ -9,6 +9,16 @@
     :released:
 
     .. change::
+        :tags: sqlite
+        :pullreq: 23
+        :changeset: c3addcc9ffad
+
+      Added :class:`.types.NCHAR`, :class:`.types.NVARCHAR`
+      to the SQLite dialect's list of recognized type names
+      for reflection.   SQLite returns the name given
+      to a type as the name returned.
+
+    .. change::
         :tags: examples
         :tickets: 2589
 
