@@ -61,8 +61,7 @@ changelog_sections = ["general", "orm", "orm declarative", "orm querying", \
 changelog_inner_tag_sort = ["feature", "bug", "moved", "changed", "removed"]
 
 # how to render a ticket link
-def changelog_render_ticket(ticket):
-    return "http://www.sqlalchemy.org/trac/ticket/%s" % ticket
+changelog_render_ticket = "http://www.sqlalchemy.org/trac/ticket/%s"
 
 
 # The encoding of source files.

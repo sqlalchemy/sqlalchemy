@@ -153,12 +153,19 @@ class ChangeLogDirective(EnvDirective, Directive):
                 insert_ticket.append(nodes.Text(", ", ", "))
             else:
                 insert_ticket.append(nodes.Text(" ", " "))
-            insert_ticket.append(
-                nodes.reference('', '',
-                    nodes.Text("#%s" % ticket, "#%s" % ticket),
-                    refuri=self.env.config.changelog_render_ticket(ticket)
+            refuri = self.env.config.changelog_render_ticket
+            if refuri is not None:
+                refuri = refuri % ticket
+                insert_ticket.append(
+                    nodes.reference('', '',
+                        nodes.Text("#%s" % ticket, "#%s" % ticket),
+                        refuri=refuri
+                    )
                 )
-            )
+            else:
+                insert_ticket.append(
+                    nodes.Text("#%s" % ticket, "#%s" % ticket)
+                )
 
         if rec['tags']:
             tag_node = nodes.strong('',
@@ -217,5 +224,6 @@ def setup(app):
     app.add_config_value("changelog_sections", [], 'env')
     app.add_config_value("changelog_inner_tag_sort", [], 'env')
     app.add_config_value("changelog_render_ticket",
-            lambda ticket: ticket, 'env'
+            None,
+            'env'
         )
