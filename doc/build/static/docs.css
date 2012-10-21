@@ -305,6 +305,14 @@ a.headerlink:hover {
     background-color: #900;
 }
 
+/* changeset stuff */
+
+#docs-container a.changeset-link {
+    font-size: 0.8em;
+    padding: 0 4px 0 4px;
+    text-decoration: none;
+}
+
 /* docutils-specific elements */
 
 th.field-name {

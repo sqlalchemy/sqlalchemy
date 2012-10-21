@@ -5,6 +5,7 @@ from docutils import nodes
 import textwrap
 import itertools
 import collections
+import md5
 
 def _comma_list(text):
     return re.split(r"\s*,\s*", text.strip())
@@ -147,9 +148,19 @@ class ChangeLogDirective(EnvDirective, Directive):
     def _render_rec(self, rec, section, cat, append_sec):
         para = rec['node'].deepcopy()
 
-        #targetid = "%s-%d" % (self.type_, self.env.new_serialno(self.type_))
-        #targetnode = nodes.target('', '', ids=[targetid])
-        #para.insert(0, targetnode)
+        text = _text_rawsource_from_node(para)
+        if len(text) > 50:
+            targetid = "%s-%s" % (self.type_,
+                            md5.md5(text[0:100].encode('ascii', 'ignore')
+                                ).hexdigest())
+            targetnode = nodes.target('', '', ids=[targetid])
+            para.insert(0, targetnode)
+            permalink = nodes.reference('', '',
+                            nodes.Text("(link)", "(link)"),
+                            refid=targetid,
+                            classes=['changeset-link']
+                        )
+            para.append(permalink)
 
         insert_ticket = nodes.paragraph('')
         para.append(insert_ticket)
@@ -224,6 +235,15 @@ class ChangeDirective(EnvDirective, Directive):
 
         return []
 
+def _text_rawsource_from_node(node):
+    src = []
+    stack = [node]
+    while stack:
+        n = stack.pop(0)
+        if isinstance(n, nodes.Text):
+            src.append(n.rawsource)
+        stack.extend(n.children)
+    return "".join(src)
 
 def _rst2sphinx(text):
     return StringList(
