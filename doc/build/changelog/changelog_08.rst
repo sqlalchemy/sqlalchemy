@@ -9,7 +9,7 @@
     :released:
 
     .. change::
-        :tags: sql
+        :tags: sql, orm, bug
         :tickets: 2595
 
       The auto-correlation feature of :func:`.select`, and

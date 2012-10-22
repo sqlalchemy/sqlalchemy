@@ -56,15 +56,16 @@ class ChangeLogDirective(EnvDirective, Directive):
                     bysection[(compound, inner_tag)].append(rec)
                     all_sections.add(compound)
                     break
-
-            intersect = rec['tags'].intersection(self.sections)
-            if intersect:
-                sec = intersect.pop()
-                bysection[(sec, inner_tag)].append(rec)
-                all_sections.add(sec)
-                continue
-
-            bysection[(self.default_section, inner_tag)].append(rec)
+            else:
+                intersect = rec['tags'].intersection(self.sections)
+                if intersect:
+                    for sec in rec['sorted_tags']:
+                        if sec in intersect:
+                            bysection[(sec, inner_tag)].append(rec)
+                            all_sections.add(sec)
+                            break
+                else:
+                    bysection[(self.default_section, inner_tag)].append(rec)
         return bysection, all_sections
 
     @classmethod
@@ -85,7 +86,7 @@ class ChangeLogDirective(EnvDirective, Directive):
         changes = self.changes(self.env)
         output = []
 
-        version = self._parsed_content.get('version', '')
+        self.version = version = self._parsed_content.get('version', '')
         id_prefix = "%s-%s" % (self.type_, version)
         topsection = self._run_top(id_prefix)
         output.append(topsection)
@@ -119,7 +120,6 @@ class ChangeLogDirective(EnvDirective, Directive):
                 for cat in self.inner_tag_sort:
                     for rec in bysection[(section, cat)]:
                         rec["id"] = "%s-%s" % (id_prefix, next(counter))
-
                         self._render_rec(rec, section, cat, append_sec)
 
                 if append_sec.children:
@@ -149,18 +149,19 @@ class ChangeLogDirective(EnvDirective, Directive):
         para = rec['node'].deepcopy()
 
         text = _text_rawsource_from_node(para)
-        if len(text) > 50:
-            targetid = "%s-%s" % (self.type_,
-                            md5.md5(text[0:100].encode('ascii', 'ignore')
-                                ).hexdigest())
-            targetnode = nodes.target('', '', ids=[targetid])
-            para.insert(0, targetnode)
-            permalink = nodes.reference('', '',
-                            nodes.Text("(link)", "(link)"),
-                            refid=targetid,
-                            classes=['changeset-link']
-                        )
-            para.append(permalink)
+
+        to_hash = "%s %s" % (self.version, text[0:100])
+        targetid = "%s-%s" % (self.type_,
+                        md5.md5(to_hash.encode('ascii', 'ignore')
+                            ).hexdigest())
+        targetnode = nodes.target('', '', ids=[targetid])
+        para.insert(0, targetnode)
+        permalink = nodes.reference('', '',
+                        nodes.Text("(link)", "(link)"),
+                        refid=targetid,
+                        classes=['changeset-link']
+                    )
+        para.append(permalink)
 
         insert_ticket = nodes.paragraph('')
         para.append(insert_ticket)
@@ -217,14 +218,16 @@ class ChangeDirective(EnvDirective, Directive):
     def run(self):
         content = _parse_content(self.content)
         p = nodes.paragraph('', '',)
+        sorted_tags = _comma_list(content.get('tags', ''))
         rec = {
-            'tags': set(_comma_list(content.get('tags', ''))).difference(['']),
+            'tags': set(sorted_tags).difference(['']),
             'tickets': set(_comma_list(content.get('tickets', ''))).difference(['']),
             'pullreq': set(_comma_list(content.get('pullreq', ''))).difference(['']),
             'changeset': set(_comma_list(content.get('changeset', ''))).difference(['']),
             'node': p,
             'type': self.type_,
-            "title": content.get("title", None)
+            "title": content.get("title", None),
+            'sorted_tags': sorted_tags
         }
 
         if "declarative" in rec['tags']:
