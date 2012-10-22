@@ -1216,6 +1216,10 @@ class History(History):
     @classmethod
     def from_collection(cls, attribute, state, current):
         original = state.committed_state.get(attribute.key, _NO_HISTORY)
+
+        if current is NO_VALUE or current is NEVER_SET:
+            return cls((), (), ())
+
         current = getattr(current, '_sa_adapter')
         if original is NO_VALUE:
             return cls(list(current), (), ())
