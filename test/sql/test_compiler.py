@@ -516,11 +516,13 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_where_subquery(self):
         s = select([addresses.c.street], addresses.c.user_id
                    == users.c.user_id, correlate=True).alias('s')
+
+        # don't correlate in a FROM list
         self.assert_compile(select([users, s.c.street], from_obj=s),
                             "SELECT users.user_id, users.user_name, "
                             "users.password, s.street FROM users, "
                             "(SELECT addresses.street AS street FROM "
-                            "addresses WHERE addresses.user_id = "
+                            "addresses, users WHERE addresses.user_id = "
                             "users.user_id) AS s")
         self.assert_compile(table1.select(table1.c.myid
                             == select([table1.c.myid], table1.c.name
@@ -556,14 +558,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                             'mytable AS ta WHERE EXISTS (SELECT 1 FROM '
                             'myothertable WHERE myothertable.otherid = '
                             'ta.myid)) AS sq2, mytable')
-        s = select([addresses.c.street], addresses.c.user_id
-                   == users.c.user_id, correlate=True).alias('s')
-        self.assert_compile(select([users, s.c.street], from_obj=s),
-                            "SELECT users.user_id, users.user_name, "
-                            "users.password, s.street FROM users, "
-                            "(SELECT addresses.street AS street FROM "
-                            "addresses WHERE addresses.user_id = "
-                            "users.user_id) AS s")
+
 
         # test constructing the outer query via append_column(), which
         # occurs in the ORM's Query object

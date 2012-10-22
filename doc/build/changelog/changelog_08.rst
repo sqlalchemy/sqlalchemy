@@ -9,6 +9,18 @@
     :released:
 
     .. change::
+        :tags: sql
+        :tickets: 2595
+
+      The auto-correlation feature of :func:`.select`, and
+      by proxy that of :class:`.orm.Query`, will not
+      take effect for a SELECT statement that is being
+      rendered directly in the FROM list of the enclosing
+      SELECT.  Correlation in SQL only applies to column
+      expressions such as those in the WHERE, ORDER BY,
+      columns clause.
+
+    .. change::
         :tags: sqlite
         :pullreq: 23
         :changeset: c3addcc9ffad

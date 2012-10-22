@@ -1139,30 +1139,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             column("col3"),
             )
 
-    def test_select(self):
-        self.assert_compile(t1.select().where(t1.c.col1
-                            == 5).order_by(t1.c.col3),
-                            'SELECT table1.col1, table1.col2, '
-                            'table1.col3 FROM table1 WHERE table1.col1 '
-                            '= :col1_1 ORDER BY table1.col3')
-        self.assert_compile(t1.select().select_from(select([t2],
-                            t2.c.col1
-                            == t1.c.col1)).order_by(t1.c.col3),
-                            'SELECT table1.col1, table1.col2, '
-                            'table1.col3 FROM table1, (SELECT '
-                            'table2.col1 AS col1, table2.col2 AS col2, '
-                            'table2.col3 AS col3 FROM table2 WHERE '
-                            'table2.col1 = table1.col1) ORDER BY '
-                            'table1.col3')
-        s = select([t2], t2.c.col1 == t1.c.col1, correlate=False)
-        s = s.correlate(t1).order_by(t2.c.col3)
-        self.assert_compile(t1.select().select_from(s).order_by(t1.c.col3),
-                            'SELECT table1.col1, table1.col2, '
-                            'table1.col3 FROM table1, (SELECT '
-                            'table2.col1 AS col1, table2.col2 AS col2, '
-                            'table2.col3 AS col3 FROM table2 WHERE '
-                            'table2.col1 = table1.col1 ORDER BY '
-                            'table2.col3) ORDER BY table1.col3')
 
     def test_columns(self):
         s = t1.select()
@@ -1201,11 +1177,12 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                             'table2.col3 FROM table2, table1 WHERE '
                             'table1.col1 = table2.col1')
         s2 = select([t1], t1.c.col2 == s.c.col2)
+        # dont correlate in a FROM entry
         self.assert_compile(s2,
                             'SELECT table1.col1, table1.col2, '
                             'table1.col3 FROM table1, (SELECT '
                             'table2.col1 AS col1, table2.col2 AS col2, '
-                            'table2.col3 AS col3 FROM table2 WHERE '
+                            'table2.col3 AS col3 FROM table2, table1 WHERE '
                             'table1.col1 = table2.col1) WHERE '
                             'table1.col2 = col2')
         s3 = s.correlate(None)
@@ -1216,13 +1193,25 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                             'table2.col3 AS col3 FROM table2, table1 '
                             'WHERE table1.col1 = table2.col1) WHERE '
                             'table1.col2 = col2')
+        # dont correlate in a FROM entry
         self.assert_compile(select([t1], t1.c.col2 == s.c.col2),
                             'SELECT table1.col1, table1.col2, '
                             'table1.col3 FROM table1, (SELECT '
                             'table2.col1 AS col1, table2.col2 AS col2, '
-                            'table2.col3 AS col3 FROM table2 WHERE '
+                            'table2.col3 AS col3 FROM table2, table1 WHERE '
                             'table1.col1 = table2.col1) WHERE '
                             'table1.col2 = col2')
+
+        # but correlate in a WHERE entry
+        s_w = select([t2.c.col1]).where(t1.c.col1 == t2.c.col1)
+        self.assert_compile(select([t1], t1.c.col2 == s_w),
+                            'SELECT table1.col1, table1.col2, table1.col3 '
+                            'FROM table1 WHERE table1.col2 = '
+                            '(SELECT table2.col1 FROM table2 '
+                            'WHERE table1.col1 = table2.col1)'
+                            )
+
+
         s4 = s3.correlate(t1)
         self.assert_compile(select([t1], t1.c.col2 == s4.c.col2),
                             'SELECT table1.col1, table1.col2, '
@@ -1231,6 +1220,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                             'table2.col3 AS col3 FROM table2 WHERE '
                             'table1.col1 = table2.col1) WHERE '
                             'table1.col2 = col2')
+
         self.assert_compile(select([t1], t1.c.col2 == s3.c.col2),
                             'SELECT table1.col1, table1.col2, '
                             'table1.col3 FROM table1, (SELECT '
@@ -1238,6 +1228,35 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                             'table2.col3 AS col3 FROM table2, table1 '
                             'WHERE table1.col1 = table2.col1) WHERE '
                             'table1.col2 = col2')
+
+        self.assert_compile(t1.select().where(t1.c.col1
+                            == 5).order_by(t1.c.col3),
+                            'SELECT table1.col1, table1.col2, '
+                            'table1.col3 FROM table1 WHERE table1.col1 '
+                            '= :col1_1 ORDER BY table1.col3')
+
+        # dont correlate in FROM
+        self.assert_compile(t1.select().select_from(select([t2],
+                            t2.c.col1
+                            == t1.c.col1)).order_by(t1.c.col3),
+                            'SELECT table1.col1, table1.col2, '
+                            'table1.col3 FROM table1, (SELECT '
+                            'table2.col1 AS col1, table2.col2 AS col2, '
+                            'table2.col3 AS col3 FROM table2, table1 WHERE '
+                            'table2.col1 = table1.col1) ORDER BY '
+                            'table1.col3')
+
+        # still works if you actually add that table to correlate()
+        s = select([t2], t2.c.col1 == t1.c.col1)
+        s = s.correlate(t1).order_by(t2.c.col3)
+
+        self.assert_compile(t1.select().select_from(s).order_by(t1.c.col3),
+                            'SELECT table1.col1, table1.col2, '
+                            'table1.col3 FROM table1, (SELECT '
+                            'table2.col1 AS col1, table2.col2 AS col2, '
+                            'table2.col3 AS col3 FROM table2 WHERE '
+                            'table2.col1 = table1.col1 ORDER BY '
+                            'table2.col3) ORDER BY table1.col3')
 
     def test_prefixes(self):
         s = t1.select()

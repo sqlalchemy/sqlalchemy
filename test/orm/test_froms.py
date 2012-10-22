@@ -147,46 +147,59 @@ class QueryCorrelatesLikeSelect(QueryTest, AssertsCompiledSQL):
 
 
 class RawSelectTest(QueryTest, AssertsCompiledSQL):
-    """compare a bunch of select() tests with the equivalent Query using straight table/columns.
+    """compare a bunch of select() tests with the equivalent Query using
+    straight table/columns.
 
-    Results should be the same as Query should act as a select() pass-thru for ClauseElement entities.
+    Results should be the same as Query should act as a select() pass-
+    thru for ClauseElement entities.
 
     """
+    __dialect__ = 'default'
+
     def test_select(self):
         addresses, users = self.tables.addresses, self.tables.users
 
         sess = create_session()
 
-        self.assert_compile(sess.query(users).select_from(users.select()).with_labels().statement,
+        self.assert_compile(sess.query(users).select_from(
+                    users.select()).with_labels().statement,
             "SELECT users.id AS users_id, users.name AS users_name FROM users, "
             "(SELECT users.id AS id, users.name AS name FROM users) AS anon_1",
-            dialect=default.DefaultDialect()
             )
 
-        self.assert_compile(sess.query(users, exists([1], from_obj=addresses)).with_labels().statement,
+        self.assert_compile(sess.query(users, exists([1], from_obj=addresses)
+                ).with_labels().statement,
             "SELECT users.id AS users_id, users.name AS users_name, EXISTS "
             "(SELECT 1 FROM addresses) AS anon_1 FROM users",
-            dialect=default.DefaultDialect()
             )
 
-        # a little tedious here, adding labels to work around Query's auto-labelling.
-        # TODO: can we detect only one table in the "froms" and then turn off use_labels ?
-        s = sess.query(addresses.c.id.label('id'), addresses.c.email_address.label('email')).\
-            filter(addresses.c.user_id==users.c.id).statement.alias()
+        # a little tedious here, adding labels to work around Query's
+        # auto-labelling. TODO: can we detect only one table in the
+        # "froms" and then turn off use_labels ? note: this query is
+        # incorrect SQL with the correlate of users in the FROM list.
+        s = sess.query(addresses.c.id.label('id'),
+                            addresses.c.email_address.label('email')).\
+            filter(addresses.c.user_id == users.c.id).correlate(users).\
+                        statement.alias()
 
-        self.assert_compile(sess.query(users, s.c.email).select_from(users.join(s, s.c.id==users.c.id)).with_labels().statement,
-                "SELECT users.id AS users_id, users.name AS users_name, anon_1.email AS anon_1_email "
-                "FROM users JOIN (SELECT addresses.id AS id, addresses.email_address AS email FROM addresses "
-                "WHERE addresses.user_id = users.id) AS anon_1 ON anon_1.id = users.id",
-                dialect=default.DefaultDialect()
+        self.assert_compile(sess.query(users, s.c.email).select_from(
+                    users.join(s, s.c.id == users.c.id)
+                ).with_labels().statement,
+                "SELECT users.id AS users_id, users.name AS users_name, "
+                "anon_1.email AS anon_1_email "
+                "FROM users JOIN (SELECT addresses.id AS id, "
+                "addresses.email_address AS email FROM addresses "
+                "WHERE addresses.user_id = users.id) AS anon_1 "
+                "ON anon_1.id = users.id",
             )
 
         x = func.lala(users.c.id).label('foo')
-        self.assert_compile(sess.query(x).filter(x==5).statement,
-            "SELECT lala(users.id) AS foo FROM users WHERE lala(users.id) = :param_1", dialect=default.DefaultDialect())
+        self.assert_compile(sess.query(x).filter(x == 5).statement,
+            "SELECT lala(users.id) AS foo FROM users WHERE "
+            "lala(users.id) = :param_1")
 
         self.assert_compile(sess.query(func.sum(x).label('bar')).statement,
-            "SELECT sum(lala(users.id)) AS bar FROM users", dialect=default.DefaultDialect())
+            "SELECT sum(lala(users.id)) AS bar FROM users")
 
 
 class FromSelfTest(QueryTest, AssertsCompiledSQL):
