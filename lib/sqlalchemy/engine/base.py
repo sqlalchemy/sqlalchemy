@@ -1396,7 +1396,7 @@ class Engine(Connectable, log.Identified):
                 current_shard = conn.info.get("current_shard", None)
 
                 if current_shard != shard_id:
-                    cursor.execute("use %%s" %% shards[shard_id])
+                    cursor.execute("use %s" % shards[shard_id])
                     conn.info["current_shard"] = shard_id
 
         .. seealso::
