@@ -9,6 +9,23 @@
     :released:
 
     .. change::
+        :tags: sql, feature
+
+      Added a new method :meth:`.Engine.execution_options`
+      to :class:`.Engine`.  This method works similarly to
+      :class:`.Connection.execution_options` in that it creates
+      a copy of the parent object which will refer to the new
+      set of options.   The method can be used to build
+      sharding schemes where each engine shares the same
+      underlying pool of connections.   The method
+      has been tested against the horizontal shard
+      recipe in the ORM as well.
+
+      .. seealso::
+
+          :meth:`.Engine.execution_options`
+
+    .. change::
         :tags: sql, orm, bug
         :tickets: 2595
 

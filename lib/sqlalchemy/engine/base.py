@@ -112,16 +112,20 @@ class Connection(Connectable):
         the same underlying DBAPI connection, but also defines the given
         execution options which will take effect for a call to
         :meth:`execute`. As the new :class:`.Connection` references the same
-        underlying resource, it is probably best to ensure that the copies
+        underlying resource, it's usually a good idea to ensure that the copies
         would be discarded immediately, which is implicit if used as in::
 
             result = connection.execution_options(stream_results=True).\\
                                 execute(stmt)
 
-        :meth:`.Connection.execution_options` accepts all options as those
-        accepted by :meth:`.Executable.execution_options`.  Additionally,
-        it includes options that are applicable only to
-        :class:`.Connection`.
+        Note that any key/value can be passed to :meth:`.Connection.execution_options`,
+        and it will be stored in the ``_execution_options`` dictionary of
+        the :class:`.Connnection`.   It is suitable for usage by end-user
+        schemes to communicate with event listeners, for example.
+
+        The keywords that are currently recognized by SQLAlchemy itself
+        include all those listed under :meth:`.Executable.execution_options`,
+        as well as others that are specific to :class:`.Connection`.
 
         :param autocommit: Available on: Connection, statement.
           When True, a COMMIT will be invoked after execution
@@ -416,7 +420,7 @@ class Connection(Connectable):
                 "Cannot start a two phase transaction when a transaction "
                 "is already in progress.")
         if xid is None:
-            xid = self.engine.dialect.create_xid();
+            xid = self.engine.dialect.create_xid()
         self.__transaction = TwoPhaseTransaction(self, xid)
         return self.__transaction
 
@@ -1313,13 +1317,6 @@ class Engine(Connectable, log.Identified):
         if proxy:
             interfaces.ConnectionProxy._adapt_listener(self, proxy)
         if execution_options:
-            if 'isolation_level' in execution_options:
-                raise exc.ArgumentError(
-                    "'isolation_level' execution option may "
-                    "only be specified on Connection.execution_options(). "
-                    "To set engine-wide isolation level, "
-                    "use the isolation_level argument to create_engine()."
-                )
             self.update_execution_options(**execution_options)
 
     def update_execution_options(self, **opt):
@@ -1332,12 +1329,86 @@ class Engine(Connectable, log.Identified):
         can be sent via the ``execution_options`` parameter
         to :func:`.create_engine`.
 
-        See :meth:`.Connection.execution_options` for more
-        details on execution options.
+        .. seealso::
+
+            :meth:`.Connection.execution_options`
+
+            :meth:`.Engine.execution_options`
 
         """
+        if 'isolation_level' in opt:
+            raise exc.ArgumentError(
+                "'isolation_level' execution option may "
+                "only be specified on Connection.execution_options(). "
+                "To set engine-wide isolation level, "
+                "use the isolation_level argument to create_engine()."
+            )
         self._execution_options = \
                 self._execution_options.union(opt)
+
+    def execution_options(self, **opt):
+        """Return a new :class:`.Engine` that will provide
+        :class:`.Connection` objects with the given execution options.
+
+        The returned :class:`.Engine` remains related to the original
+        :class:`.Engine` in that it shares the same connection pool and
+        other state:
+
+        * The :class:`.Pool` used by the new :class:`.Engine` is the
+          same instance.  The :meth:`.Engine.dispose` method will replace
+          the connection pool instance for the parent engine as well
+          as this one.
+        * Event listeners are "cascaded" - meaning, the new :class:`.Engine`
+          inherits the events of the parent, and new events can be associated
+          with the new :class:`.Engine` individually.
+        * The logging configuration and logging_name is copied from the parent
+          :class:`.Engine`.
+
+        The intent of the :meth:`.Engine.execution_options` method is
+        to implement "sharding" schemes where multiple :class:`.Engine`
+        objects refer to the same connection pool, but are differentiated
+        by options that would be consumed by a custom event::
+
+            primary_engine = create_engine("mysql://")
+            shard1 = primary_engine.execution_options(shard_id="shard1")
+            shard2 = primary_engine.execution_options(shard_id="shard2")
+
+        Above, the ``shard1`` engine serves as a factory for :class:`.Connection`
+        objects that will contain the execution option ``shard_id=shard1``,
+        and ``shard2`` will produce :class:`.Connection` objects that contain
+        the execution option ``shard_id=shard2``.
+
+        An event handler can consume the above execution option to perform
+        a schema switch or other operation, given a connection.  Below
+        we emit a MySQL ``use`` statement to switch databases, at the same
+        time keeping track of which database we've established using the
+        :attr:`.Connection.info` dictionary, which gives us a persistent
+        storage space that follows the DBAPI connection::
+
+            from sqlalchemy import event
+            from sqlalchemy.engine import Engine
+
+            shards = {"default": "base", shard_1": "db1", "shard_2": "db2"}
+
+            @event.listens_for(Engine, "before_cursor_execute")
+            def _switch_shard(conn, cursor, stmt, params, context, executemany):
+                shard_id = conn._execution_options.get('shard_id', "default")
+                current_shard = conn.info.get("current_shard", None)
+
+                if current_shard != shard_id:
+                    cursor.execute("use %%s" %% shards[shard_id])
+                    conn.info["current_shard"] = shard_id
+
+        .. seealso::
+
+            :meth:`.Connection.execution_options` - update execution options
+             on a :class:`.Connection` object.
+
+            :meth:`.Engine.update_execution_options` - update the execution
+             options for a given :class:.`Engine` in place.
+
+        """
+        return OptionEngine(self, opt)
 
     @property
     def name(self):
@@ -1605,7 +1676,7 @@ class Engine(Connectable, log.Identified):
         else:
             conn = connection
         if not schema:
-            schema =  self.dialect.default_schema_name
+            schema = self.dialect.default_schema_name
         try:
             return self.dialect.get_table_names(conn, schema)
         finally:
@@ -1634,4 +1705,31 @@ class Engine(Connectable, log.Identified):
 
         return self.pool.unique_connection()
 
+class OptionEngine(Engine):
+    def __init__(self, proxied, execution_options):
+        self._proxied = proxied
+        self.url = proxied.url
+        self.dialect = proxied.dialect
+        self.logging_name = proxied.logging_name
+        self.echo = proxied.echo
+        log.instance_logger(self, echoflag=self.echo)
+        self.dispatch = self.dispatch._join(proxied.dispatch)
+        self._execution_options = proxied._execution_options
+        self.update_execution_options(**execution_options)
 
+    def _get_pool(self):
+        return self._proxied.pool
+
+    def _set_pool(self, pool):
+        self._proxied.pool = pool
+
+    pool = property(_get_pool, _set_pool)
+
+    def _get_has_events(self):
+        return self._proxied._has_events or \
+            self.__dict__.get('_has_events', False)
+
+    def _set_has_events(self, value):
+        self.__dict__['_has_events'] = value
+
+    _has_events = property(_get_has_events, _set_has_events)
