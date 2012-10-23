@@ -1388,7 +1388,7 @@ class Engine(Connectable, log.Identified):
             from sqlalchemy import event
             from sqlalchemy.engine import Engine
 
-            shards = {"default": "base", shard_1": "db1", "shard_2": "db2"}
+            shards = {"default": "base", shard_1: "db1", "shard_2": "db2"}
 
             @event.listens_for(Engine, "before_cursor_execute")
             def _switch_shard(conn, cursor, stmt, params, context, executemany):
