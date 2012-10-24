@@ -686,6 +686,9 @@ class Compiled(object):
 
         :param compile_kwargs: additional kwargs that will be
          passed to the initial call to :meth:`.Compiled.process`.
+
+         .. versionadded:: 0.8
+
         """
 
         self.dialect = dialect
