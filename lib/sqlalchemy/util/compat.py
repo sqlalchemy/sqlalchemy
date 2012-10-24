@@ -15,6 +15,7 @@ except ImportError:
 
 py32 = sys.version_info >= (3, 2)
 py3k_warning = getattr(sys, 'py3kwarning', False) or sys.version_info >= (3, 0)
+py3k = sys.version_info >= (3, 0)
 jython = sys.platform.startswith('java')
 pypy = hasattr(sys, 'pypy_version_info')
 win32 = sys.platform.startswith('win')
