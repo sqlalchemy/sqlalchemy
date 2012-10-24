@@ -1044,9 +1044,12 @@ class SQLCompiler(engine.Compiled):
         else:
             result_expr = col_expr
 
+        column_clause_args.update(
+                    within_columns_clause=within_columns_clause,
+                    add_to_result_map=add_to_result_map
+                )
         return result_expr._compiler_dispatch(
-                       self, within_columns_clause=within_columns_clause,
-                        add_to_result_map=add_to_result_map,
+                       self,
                         **column_clause_args
                     )
 
@@ -1098,7 +1101,12 @@ class SQLCompiler(engine.Compiled):
         self.stack.append({'from': correlate_froms,
                             'iswrapper': iswrapper})
 
-        column_clause_args = {'positional_names': positional_names}
+        column_clause_args = kwargs.copy()
+        column_clause_args.update({
+                'positional_names': positional_names,
+                'within_label_clause': False,
+                'within_columns_clause': False
+            })
 
         # the actual list of columns to print in the SELECT column list.
         inner_columns = [

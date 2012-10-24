@@ -18,7 +18,7 @@ from sqlalchemy import Integer, String, MetaData, Table, Column, select, \
     insert, literal, and_, null, type_coerce, alias, or_, literal_column,\
     Float, TIMESTAMP, Numeric, Date, Text, collate, union, except_,\
     intersect, union_all, Boolean, distinct, join, outerjoin, asc, desc,\
-    over, subquery
+    over, subquery, case
 import decimal
 from sqlalchemy import exc, sql, util, types, schema
 from sqlalchemy.sql import table, column, label
@@ -2436,6 +2436,53 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             and_, ("a",), ("b",)
         )
 
+
+class KwargPropagationTest(fixtures.TestBase):
+
+    @classmethod
+    def setup_class(cls):
+        from sqlalchemy.sql.expression import ColumnClause, TableClause
+        class CatchCol(ColumnClause):
+            pass
+
+        class CatchTable(TableClause):
+            pass
+
+        cls.column = CatchCol("x")
+        cls.table = CatchTable("y")
+        cls.criterion = cls.column == CatchCol('y')
+
+        @compiles(CatchCol)
+        def compile_col(element, compiler, **kw):
+            assert "canary" in kw
+            return compiler.visit_column(element)
+
+        @compiles(CatchTable)
+        def compile_table(element, compiler, **kw):
+            assert "canary" in kw
+            return compiler.visit_table(element)
+
+    def _do_test(self, element):
+        d = default.DefaultDialect()
+        d.statement_compiler(d, element,
+                        compile_kwargs={"canary": True})
+
+    def test_binary(self):
+        self._do_test(self.column == 5)
+
+    def test_select(self):
+        s = select([self.column]).select_from(self.table).\
+                where(self.column == self.criterion).\
+                order_by(self.column)
+        self._do_test(s)
+
+    def test_case(self):
+        c = case([(self.criterion, self.column)], else_=self.column)
+        self._do_test(c)
+
+    def test_cast(self):
+        c = cast(self.column, Integer)
+        self._do_test(c)
 
 class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'

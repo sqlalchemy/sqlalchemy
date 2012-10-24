@@ -9,6 +9,17 @@
     :released:
 
     .. change::
+        :tags: sql, bug
+        :tickets: 2593
+
+        Fixed bug where keyword arguments passed to
+        :meth:`.Compiler.process` wouldn't get propagated
+        to the column expressions present in the columns
+        clause of a SELECT statement.  In particular this would
+        come up when used by custom compilation schemes that
+        relied upon special flags.
+
+    .. change::
         :tags: sql, feature
 
       Added a new method :meth:`.Engine.execution_options`

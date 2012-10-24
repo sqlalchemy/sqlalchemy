@@ -673,7 +673,8 @@ class Compiled(object):
     defaults.
     """
 
-    def __init__(self, dialect, statement, bind=None):
+    def __init__(self, dialect, statement, bind=None,
+                compile_kwargs=util.immutabledict()):
         """Construct a new ``Compiled`` object.
 
         :param dialect: ``Dialect`` to compile against.
@@ -682,6 +683,9 @@ class Compiled(object):
 
         :param bind: Optional Engine or Connection to compile this
           statement against.
+
+        :param compile_kwargs: additional kwargs that will be
+         passed to the initial call to :meth:`.Compiled.process`.
         """
 
         self.dialect = dialect
@@ -689,7 +693,7 @@ class Compiled(object):
         if statement is not None:
             self.statement = statement
             self.can_execute = statement.supports_execution
-            self.string = self.process(self.statement)
+            self.string = self.process(self.statement, **compile_kwargs)
 
     @util.deprecated("0.7", ":class:`.Compiled` objects now compile "
                         "within the constructor.")
