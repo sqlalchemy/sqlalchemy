@@ -4,11 +4,12 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.sql import column, desc, asc, literal, collate
 from sqlalchemy.sql.expression import BinaryExpression, \
                 ClauseList, Grouping, \
-                UnaryExpression
-from sqlalchemy.sql import operators
+                UnaryExpression, select, union
+from sqlalchemy.sql import operators, table
+from sqlalchemy import String, Integer
 from sqlalchemy import exc
 from sqlalchemy.schema import Column, Table, MetaData
-from sqlalchemy.types import Integer, TypeEngine, TypeDecorator, UserDefinedType
+from sqlalchemy.types import TypeEngine, TypeDecorator, UserDefinedType
 from sqlalchemy.dialects import mysql, firebird
 
 from sqlalchemy import text, literal_column
@@ -307,87 +308,338 @@ from sqlalchemy import and_, not_, between
 class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
-    def test_operator_precedence(self):
-        # TODO: clean up /break up
-        metadata = MetaData()
-        table = Table('op', metadata,
-            Column('field', Integer))
-        self.assert_compile(table.select((table.c.field == 5) == None),
+    table = table('op', column('field'))
+
+    def test_operator_precedence_1(self):
+        self.assert_compile(
+                    self.table.select((self.table.c.field == 5) == None),
             "SELECT op.field FROM op WHERE (op.field = :field_1) IS NULL")
-        self.assert_compile(table.select((table.c.field + 5) == table.c.field),
+
+    def test_operator_precedence_2(self):
+        self.assert_compile(
+                self.table.select(
+                        (self.table.c.field + 5) == self.table.c.field),
             "SELECT op.field FROM op WHERE op.field + :field_1 = op.field")
-        self.assert_compile(table.select((table.c.field + 5) * 6),
+
+    def test_operator_precedence_3(self):
+        self.assert_compile(
+                    self.table.select((self.table.c.field + 5) * 6),
             "SELECT op.field FROM op WHERE (op.field + :field_1) * :param_1")
-        self.assert_compile(table.select((table.c.field * 5) + 6),
+
+    def test_operator_precedence_4(self):
+        self.assert_compile(self.table.select((self.table.c.field * 5) + 6),
             "SELECT op.field FROM op WHERE op.field * :field_1 + :param_1")
-        self.assert_compile(table.select(5 + table.c.field.in_([5, 6])),
+
+    def test_operator_precedence_5(self):
+        self.assert_compile(self.table.select(
+                            5 + self.table.c.field.in_([5, 6])),
             "SELECT op.field FROM op WHERE :param_1 + "
                         "(op.field IN (:field_1, :field_2))")
-        self.assert_compile(table.select((5 + table.c.field).in_([5, 6])),
+
+    def test_operator_precedence_6(self):
+        self.assert_compile(self.table.select(
+                        (5 + self.table.c.field).in_([5, 6])),
             "SELECT op.field FROM op WHERE :field_1 + op.field "
                     "IN (:param_1, :param_2)")
-        self.assert_compile(table.select(not_(and_(table.c.field == 5,
-                        table.c.field == 7))),
+
+    def test_operator_precedence_7(self):
+        self.assert_compile(self.table.select(
+                    not_(and_(self.table.c.field == 5,
+                        self.table.c.field == 7))),
             "SELECT op.field FROM op WHERE NOT "
                 "(op.field = :field_1 AND op.field = :field_2)")
-        self.assert_compile(table.select(not_(table.c.field == 5)),
+
+    def test_operator_precedence_8(self):
+        self.assert_compile(self.table.select(not_(self.table.c.field == 5)),
             "SELECT op.field FROM op WHERE op.field != :field_1")
-        self.assert_compile(table.select(not_(table.c.field.between(5, 6))),
+
+    def test_operator_precedence_9(self):
+        self.assert_compile(self.table.select(
+                        not_(self.table.c.field.between(5, 6))),
             "SELECT op.field FROM op WHERE NOT "
                     "(op.field BETWEEN :field_1 AND :field_2)")
-        self.assert_compile(table.select(not_(table.c.field) == 5),
+
+    def test_operator_precedence_10(self):
+        self.assert_compile(self.table.select(not_(self.table.c.field) == 5),
             "SELECT op.field FROM op WHERE (NOT op.field) = :param_1")
-        self.assert_compile(table.select((table.c.field == table.c.field).\
+
+    def test_operator_precedence_11(self):
+        self.assert_compile(self.table.select(
+                        (self.table.c.field == self.table.c.field).\
                             between(False, True)),
             "SELECT op.field FROM op WHERE (op.field = op.field) "
                             "BETWEEN :param_1 AND :param_2")
-        self.assert_compile(table.select(
-                        between((table.c.field == table.c.field), False, True)),
+
+    def test_operator_precedence_12(self):
+        self.assert_compile(self.table.select(
+                        between((self.table.c.field == self.table.c.field),
+                                    False, True)),
             "SELECT op.field FROM op WHERE (op.field = op.field) "
                     "BETWEEN :param_1 AND :param_2")
 
-        self.assert_compile(table.select(
-                        table.c.field.match(table.c.field).is_(None)),
+    def test_operator_precedence_13(self):
+        self.assert_compile(self.table.select(
+                        self.table.c.field.match(
+                                self.table.c.field).is_(None)),
             "SELECT op.field FROM op WHERE (op.field MATCH op.field) IS NULL")
 
 class OperatorAssociativityTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
-    def test_associativity(self):
-        # TODO: clean up /break up
+    def test_associativity_1(self):
         f = column('f')
         self.assert_compile(f - f, "f - f")
+
+    def test_associativity_2(self):
+        f = column('f')
         self.assert_compile(f - f - f, "(f - f) - f")
 
+    def test_associativity_3(self):
+        f = column('f')
         self.assert_compile((f - f) - f, "(f - f) - f")
+
+    def test_associativity_4(self):
+        f = column('f')
         self.assert_compile((f - f).label('foo') - f, "(f - f) - f")
 
+
+    def test_associativity_5(self):
+        f = column('f')
         self.assert_compile(f - (f - f), "f - (f - f)")
+
+    def test_associativity_6(self):
+        f = column('f')
         self.assert_compile(f - (f - f).label('foo'), "f - (f - f)")
 
+    def test_associativity_7(self):
+        f = column('f')
         # because - less precedent than /
         self.assert_compile(f / (f - f), "f / (f - f)")
+
+    def test_associativity_8(self):
+        f = column('f')
         self.assert_compile(f / (f - f).label('foo'), "f / (f - f)")
 
+    def test_associativity_9(self):
+        f = column('f')
         self.assert_compile(f / f - f, "f / f - f")
+
+    def test_associativity_10(self):
+        f = column('f')
         self.assert_compile((f / f) - f, "f / f - f")
+
+    def test_associativity_11(self):
+        f = column('f')
         self.assert_compile((f / f).label('foo') - f, "f / f - f")
 
+    def test_associativity_12(self):
+        f = column('f')
         # because / more precedent than -
         self.assert_compile(f - (f / f), "f - f / f")
+
+    def test_associativity_13(self):
+        f = column('f')
         self.assert_compile(f - (f / f).label('foo'), "f - f / f")
+
+    def test_associativity_14(self):
+        f = column('f')
         self.assert_compile(f - f / f, "f - f / f")
+
+    def test_associativity_15(self):
+        f = column('f')
         self.assert_compile((f - f) / f, "(f - f) / f")
 
+    def test_associativity_16(self):
+        f = column('f')
         self.assert_compile(((f - f) / f) - f, "(f - f) / f - f")
+
+    def test_associativity_17(self):
+        f = column('f')
         self.assert_compile((f - f) / (f - f), "(f - f) / (f - f)")
 
+    def test_associativity_18(self):
+        f = column('f')
         # higher precedence
         self.assert_compile((f / f) - (f / f), "f / f - f / f")
 
+    def test_associativity_19(self):
+        f = column('f')
         self.assert_compile((f / f) - (f - f), "f / f - (f - f)")
+
+    def test_associativity_20(self):
+        f = column('f')
         self.assert_compile((f / f) / (f - f), "(f / f) / (f - f)")
+
+    def test_associativity_21(self):
+        f = column('f')
         self.assert_compile(f / (f / (f - f)), "f / (f / (f - f))")
+
+class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    table1 = table('mytable',
+        column('myid', Integer),
+        column('name', String),
+        column('description', String),
+    )
+    table2 = table(
+        'myothertable',
+        column('otherid', Integer),
+        column('othername', String),
+    )
+
+    def test_in_1(self):
+        self.assert_compile(self.table1.c.myid.in_(['a']),
+        "mytable.myid IN (:myid_1)")
+
+    def test_in_2(self):
+        self.assert_compile(~self.table1.c.myid.in_(['a']),
+        "mytable.myid NOT IN (:myid_1)")
+
+    def test_in_3(self):
+        self.assert_compile(self.table1.c.myid.in_(['a', 'b']),
+        "mytable.myid IN (:myid_1, :myid_2)")
+
+    def test_in_4(self):
+        self.assert_compile(self.table1.c.myid.in_(iter(['a', 'b'])),
+        "mytable.myid IN (:myid_1, :myid_2)")
+
+    def test_in_5(self):
+        self.assert_compile(self.table1.c.myid.in_([literal('a')]),
+        "mytable.myid IN (:param_1)")
+
+    def test_in_6(self):
+        self.assert_compile(self.table1.c.myid.in_([literal('a'), 'b']),
+        "mytable.myid IN (:param_1, :myid_1)")
+
+    def test_in_7(self):
+        self.assert_compile(
+                self.table1.c.myid.in_([literal('a'), literal('b')]),
+        "mytable.myid IN (:param_1, :param_2)")
+
+    def test_in_8(self):
+        self.assert_compile(self.table1.c.myid.in_(['a', literal('b')]),
+        "mytable.myid IN (:myid_1, :param_1)")
+
+    def test_in_9(self):
+        self.assert_compile(self.table1.c.myid.in_([literal(1) + 'a']),
+        "mytable.myid IN (:param_1 + :param_2)")
+
+    def test_in_10(self):
+        self.assert_compile(self.table1.c.myid.in_([literal('a') + 'a', 'b']),
+        "mytable.myid IN (:param_1 || :param_2, :myid_1)")
+
+    def test_in_11(self):
+        self.assert_compile(self.table1.c.myid.in_([literal('a') + \
+                                            literal('a'), literal('b')]),
+        "mytable.myid IN (:param_1 || :param_2, :param_3)")
+
+    def test_in_12(self):
+        self.assert_compile(self.table1.c.myid.in_([1, literal(3) + 4]),
+        "mytable.myid IN (:myid_1, :param_1 + :param_2)")
+
+    def test_in_13(self):
+        self.assert_compile(self.table1.c.myid.in_([literal('a') < 'b']),
+        "mytable.myid IN (:param_1 < :param_2)")
+
+    def test_in_14(self):
+        self.assert_compile(self.table1.c.myid.in_([self.table1.c.myid]),
+        "mytable.myid IN (mytable.myid)")
+
+    def test_in_15(self):
+        self.assert_compile(self.table1.c.myid.in_(['a', self.table1.c.myid]),
+        "mytable.myid IN (:myid_1, mytable.myid)")
+
+    def test_in_16(self):
+        self.assert_compile(self.table1.c.myid.in_([literal('a'),
+                                    self.table1.c.myid]),
+        "mytable.myid IN (:param_1, mytable.myid)")
+
+    def test_in_17(self):
+        self.assert_compile(self.table1.c.myid.in_([literal('a'), \
+                                    self.table1.c.myid + 'a']),
+        "mytable.myid IN (:param_1, mytable.myid + :myid_1)")
+
+    def test_in_18(self):
+        self.assert_compile(self.table1.c.myid.in_([literal(1), 'a' + \
+                            self.table1.c.myid]),
+        "mytable.myid IN (:param_1, :myid_1 + mytable.myid)")
+
+    def test_in_19(self):
+        self.assert_compile(self.table1.c.myid.in_([1, 2, 3]),
+        "mytable.myid IN (:myid_1, :myid_2, :myid_3)")
+
+    def test_in_20(self):
+        self.assert_compile(self.table1.c.myid.in_(
+                                select([self.table2.c.otherid])),
+        "mytable.myid IN (SELECT myothertable.otherid FROM myothertable)")
+
+    def test_in_21(self):
+        self.assert_compile(~self.table1.c.myid.in_(
+                            select([self.table2.c.otherid])),
+        "mytable.myid NOT IN (SELECT myothertable.otherid FROM myothertable)")
+
+    def test_in_22(self):
+        self.assert_compile(
+                self.table1.c.myid.in_(
+                        text("SELECT myothertable.otherid FROM myothertable")
+                    ),
+                    "mytable.myid IN (SELECT myothertable.otherid "
+                    "FROM myothertable)"
+        )
+
+    @testing.emits_warning('.*empty sequence.*')
+    def test_in_23(self):
+        self.assert_compile(self.table1.c.myid.in_([]),
+        "mytable.myid != mytable.myid")
+
+    def test_in_24(self):
+        self.assert_compile(
+            select([self.table1.c.myid.in_(select([self.table2.c.otherid]))]),
+            "SELECT mytable.myid IN (SELECT myothertable.otherid "
+                "FROM myothertable) AS anon_1 FROM mytable"
+        )
+
+    def test_in_25(self):
+        self.assert_compile(
+            select([self.table1.c.myid.in_(
+                        select([self.table2.c.otherid]).as_scalar())]),
+            "SELECT mytable.myid IN (SELECT myothertable.otherid "
+                "FROM myothertable) AS anon_1 FROM mytable"
+        )
+
+    def test_in_26(self):
+        self.assert_compile(self.table1.c.myid.in_(
+            union(
+                  select([self.table1.c.myid], self.table1.c.myid == 5),
+                  select([self.table1.c.myid], self.table1.c.myid == 12),
+            )
+        ), "mytable.myid IN ("\
+        "SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_1 "\
+        "UNION SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_2)")
+
+    def test_in_27(self):
+        # test that putting a select in an IN clause does not
+        # blow away its ORDER BY clause
+        self.assert_compile(
+            select([self.table1, self.table2],
+                self.table2.c.otherid.in_(
+                    select([self.table2.c.otherid],
+                                    order_by=[self.table2.c.othername],
+                                    limit=10, correlate=False)
+                ),
+                from_obj=[self.table1.join(self.table2,
+                            self.table1.c.myid == self.table2.c.otherid)],
+                order_by=[self.table1.c.myid]
+            ),
+            "SELECT mytable.myid, mytable.name, mytable.description, "
+            "myothertable.otherid, myothertable.othername FROM mytable "\
+            "JOIN myothertable ON mytable.myid = myothertable.otherid "
+            "WHERE myothertable.otherid IN (SELECT myothertable.otherid "\
+            "FROM myothertable ORDER BY myothertable.othername "
+            "LIMIT :param_1) ORDER BY mytable.myid",
+            {'param_1': 10}
+        )
 
 
 class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
