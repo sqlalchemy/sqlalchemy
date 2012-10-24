@@ -1,4 +1,4 @@
-from sqlalchemy.testing import fixtures, eq_
+from sqlalchemy.testing import fixtures, eq_, is_
 from sqlalchemy import testing
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.sql import column, desc, asc, literal, collate
@@ -18,6 +18,10 @@ import datetime
 
 from sqlalchemy import text, literal_column
 
+class LoopOperate(operators.ColumnOperators):
+    def operate(self, op, *other, **kwargs):
+        return op
+
 class DefaultColumnComparatorTest(fixtures.TestBase):
 
     def _do_scalar_test(self, operator, compare_to):
@@ -25,6 +29,7 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         assert left.comparator.operate(operator).compare(
             compare_to(left)
         )
+        self._loop_test(operator)
 
     def _do_operate_test(self, operator, right=column('right')):
         left = column('left')
@@ -35,6 +40,15 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
 
         assert operator(left, right).compare(
             BinaryExpression(left, right, operator)
+        )
+
+        self._loop_test(operator, right)
+
+    def _loop_test(self, operator, *arg):
+        l = LoopOperate()
+        is_(
+            operator(l, *arg),
+            operator
         )
 
     def test_desc(self):
@@ -51,6 +65,18 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
 
     def test_isnot_null(self):
         self._do_operate_test(operators.isnot, None)
+
+    def test_like(self):
+        self._do_operate_test(operators.like_op)
+
+    def test_notlike(self):
+        self._do_operate_test(operators.notlike_op)
+
+    def test_ilike(self):
+        self._do_operate_test(operators.ilike_op)
+
+    def test_notilike(self):
+        self._do_operate_test(operators.notilike_op)
 
     def test_is(self):
         self._do_operate_test(operators.is_)
@@ -81,6 +107,20 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
                     operators.in_op
                 )
             )
+        self._loop_test(operators.in_op, [1, 2, 3])
+
+    def test_notin(self):
+        left = column('left')
+        assert left.comparator.operate(operators.notin_op, [1, 2, 3]).compare(
+                BinaryExpression(
+                    left,
+                    Grouping(ClauseList(
+                        literal(1), literal(2), literal(3)
+                    )),
+                    operators.notin_op
+                )
+            )
+        self._loop_test(operators.notin_op, [1, 2, 3])
 
     def test_collate(self):
         left = column('left')

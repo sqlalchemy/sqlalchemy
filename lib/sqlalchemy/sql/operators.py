@@ -368,6 +368,51 @@ class ColumnOperators(Operators):
         """
         return self.operate(in_op, other)
 
+    def notin_(self, other):
+        """implement the ``NOT IN`` operator.
+
+        This is equivalent to using negation with :meth:`.ColumnOperators.in_`,
+        i.e. ``~x.in_(y)``.
+
+        .. versionadded:: 0.8
+
+        .. seealso::
+
+            :meth:`.ColumnOperators.in_`
+
+        """
+        return self.operate(notin_op, other)
+
+    def notlike(self, other, escape=None):
+        """implement the ``NOT LIKE`` operator.
+
+        This is equivalent to using negation with :meth:`.ColumnOperators.like`,
+        i.e. ``~x.like(y)``.
+
+        .. versionadded:: 0.8
+
+        .. seealso::
+
+            :meth:`.ColumnOperators.like`
+
+        """
+        return self.operate(notlike_op, other, escape=escape)
+
+    def notilike(self, other, escape=None):
+        """implement the ``NOT ILIKE`` operator.
+
+        This is equivalent to using negation with :meth:`.ColumnOperators.ilike`,
+        i.e. ``~x.ilike(y)``.
+
+        .. versionadded:: 0.8
+
+        .. seealso::
+
+            :meth:`.ColumnOperators.ilike`
+
+        """
+        return self.operate(notilike_op, other, escape=escape)
+
     def is_(self, other):
         """Implement the ``IS`` operator.
 
@@ -583,13 +628,13 @@ def like_op(a, b, escape=None):
     return a.like(b, escape=escape)
 
 def notlike_op(a, b, escape=None):
-    return ~a.like(b, escape=escape)
+    return a.notlike(b, escape=escape)
 
 def ilike_op(a, b, escape=None):
     return a.ilike(b, escape=escape)
 
 def notilike_op(a, b, escape=None):
-    return ~a.ilike(b, escape=escape)
+    return a.notilike(b, escape=escape)
 
 def between_op(a, b, c):
     return a.between(b, c)
@@ -598,7 +643,7 @@ def in_op(a, b):
     return a.in_(b)
 
 def notin_op(a, b):
-    return ~a.in_(b)
+    return a.notin_(b)
 
 def distinct_op(a):
     return a.distinct()

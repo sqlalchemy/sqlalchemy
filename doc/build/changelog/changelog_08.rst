@@ -1352,3 +1352,12 @@
       name was omitted which apparently creates the
       index in the default schema, rather than that
       of the table.
+
+    .. change::
+        :tags: sql, feature
+        :tickets: 2580
+
+        Added :meth:`.ColumnOperators.notin_`,
+        :meth:`.ColumnOperators.notlike`,
+        :meth:`.ColumnOperators.notilike` to :class:`.ColumnOperators`.
+
