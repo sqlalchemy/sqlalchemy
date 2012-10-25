@@ -138,6 +138,10 @@
       approach can be upgraded to this new
       approach.
 
+      .. seealso::
+
+          :ref:`feature_relationship_08`
+
     .. change::
         :tags: orm, bug
         :tickets: 2527

@@ -32,8 +32,6 @@ Platform Support
 Targeting Python 2.5 and Up Now
 -------------------------------
 
-Status: ongoing
-
 SQLAlchemy 0.8 will target Python 2.5 and forward;
 compatibility for Python 2.4 is being dropped.
 
@@ -54,17 +52,17 @@ Python 2 and 3 at the same time.
 New Features
 ============
 
-Rewritten ``relationship()`` mechanics
---------------------------------------
+.. _feature_relationship_08:
 
-Status: completed, needs docs
+Rewritten :func:`.relationship` mechanics
+-----------------------------------------
 
 0.8 features a much improved and capable system regarding
-how ``relationship()`` determines how to join between two
+how :func:`.relationship` determines how to join between two
 entities.  The new system includes these features:
 
 * The ``primaryjoin`` argument is **no longer needed** when
-  constructing a ``relationship()``   against a class that
+  constructing a :func:`.relationship`   against a class that
   has multiple foreign key paths to the target.  Only the
   ``foreign_keys``   argument is needed to specify those
   columns which should be included:
@@ -118,7 +116,7 @@ entities.  The new system includes these features:
   the internal relationship mechanics were totally rewritten
   to support an entirely different system whereby two copies
   of ``account_id`` are generated, each containing different
-  *annotations*' to determine their role within the
+  *annotations* to determine their role within the
   statement.  Note the join condition within a basic eager
   load:
 
@@ -142,12 +140,13 @@ entities.  The new system includes these features:
         WHERE folder.folder_id = ? AND folder.account_id = ?
 
 * Thanks to the new relationship mechanics, new
-  **annotation** functions are provided   which can be used
+  **annotation** functions :func:`.foreign` and :func:`.remote`
+  are provided   which can be used
   to create ``primaryjoin`` conditions involving any kind of
-  SQL function, CAST,   or other construct that wraps the
+  SQL function, CAST,  or other construct that wraps the
   target column.  Previously, a semi-public argument
   ``_local_remote_pairs`` would be used to tell
-  ``relationship()`` unambiguously what columns   should be
+  :func:`.relationship` unambiguously what columns   should be
   considered as corresponding to the mapping - the
   annotations make the point   more directly, such as below
   where ``Parent`` joins to ``Child`` by matching the
@@ -170,12 +169,18 @@ entities.  The new system includes these features:
             id = Column(Integer, primary_key=True)
             name_upper = Column(String)
 
+.. seealso::
+
+    :func:`.foreign`
+
+    :func:`.remote`
+
+    :func:`.relationship`
+
 :ticket:`1401` :ticket:`610`
 
 New Class Inspection System
 ---------------------------
-
-Status: completed, needs docs
 
 Lots of SQLAlchemy users are writing systems that require
 the ability to inspect the attributes of a mapped class,
@@ -185,7 +190,7 @@ typically for the purpose of building data-marshalling
 systems, like JSON/XML conversion schemes and of course form
 libraries galore.
 
-Originally, the ``Table`` and ``Column`` model were the
+Originally, the :class:`.Table` and :class:`.Column` model were the
 original inspection points, which have a well-documented
 system.  While SQLAlchemy ORM models are also fully
 introspectable, this has never been a fully stable and
@@ -198,7 +203,7 @@ inspection system that works on classes, instances, and
 possibly other things as well.   While many elements of this
 system are already available, the plan is to lock down the
 API including various accessors available from such objects
-as ``Mapper``, ``InstanceState``, and ``MapperProperty``:
+as :class:`.Mapper`, :class:`.InstanceState`, and :class:`.MapperProperty`:
 
 ::
 
@@ -328,22 +333,23 @@ as ``Mapper``, ``InstanceState``, and ``MapperProperty``:
     >>> b.session
     <session>
 
+.. seealso::
+
+    :ref:`core_inspection_toplevel`
 
 :ticket:`2208`
 
 Fully extensible, type-level operator support in Core
 -----------------------------------------------------
 
-Status: completed, needs more docs
-
 The Core has to date never had any system of adding support
 for new SQL operators to Column and other expression
-constructs, other than the ``op(<somestring>)`` function
+constructs, other than the :meth:`.ColumnOperators.op` method
 which is "just enough" to make things work. There has also
 never been any system in place for Core which allows the
 behavior of existing operators to be overridden.   Up until
 now, the only way operators could be flexibly redefined was
-in the ORM layer, using ``column_property()`` given a
+in the ORM layer, using :func:`.column_property` given a
 ``comparator_factory`` argument.   Third party libraries
 like GeoAlchemy therefore were forced to be ORM-centric and
 rely upon an array of hacks to apply new opertions as well
@@ -356,15 +362,15 @@ not really a column, CAST operator, or SQL function that
 really drives what kinds of operations are present, it's the
 *type* of the expression.   The implementation details are
 minimal - only a few extra methods are added to the core
-``ColumnElement`` type so that it consults it's
-``TypeEngine`` object for an optional set of operators.
+:class:`.ColumnElement` type so that it consults it's
+:class:`.TypeEngine` object for an optional set of operators.
 New or revised operations can be associated with any type,
 either via subclassing of an existing type, by using
-``TypeDecorator``, or "globally across-the-board" by
-attaching a new ``Comparator`` object to an existing type
+:class:`.TypeDecorator`, or "globally across-the-board" by
+attaching a new :class:`.TypeEngine.Comparator` object to an existing type
 class.
 
-For example, to add logarithm support to ``Numeric`` types:
+For example, to add logarithm support to :class:`.Numeric` types:
 
 ::
 
@@ -400,21 +406,23 @@ type.    It also paves the way for existing types to acquire
 lots more operators that are specific to those types, such
 as more string, integer and date operators.
 
+    .. seealso::
+
+        `Postgresql HSTORE <https://bitbucket.org/audriusk/hstore>`_ - support for HSTORE in SQLAlchemy
+
 :ticket:`2547`
 
 New with_polymorphic() feature, can be used anywhere
 ----------------------------------------------------
 
-Status: completed
-
-The ``Query.with_polymorphic()`` method allows the user to
+The :meth:`.Query.with_polymorphic` method allows the user to
 specify which tables should be present when querying against
 a joined-table entity.   Unfortunately the method is awkward
 and only applies to the first entity in the list, and
 otherwise has awkward behaviors both in usage as well as
 within the internals.  A new enhancement to the
-``aliased()`` construct has been added called
-``with_polymorphic()`` which allows any entity to be
+:func:`.aliased` construct has been added called
+:func:`.with_polymorphic` which allows any entity to be
 "aliased" into a "polymorphic" version of itself, freely
 usable anywhere:
 
@@ -426,17 +434,20 @@ usable anywhere:
                 join(palias, Company.employees).\
                 filter(or_(Engineer.language=='java', Manager.hair=='pointy'))
 
+.. seealso::
+
+    :ref:`with_polymorphic` - newly updated documentation for polymorphic
+    loading control.
+
 :ticket:`2333`
 
 of_type() works with alias(), with_polymorphic(), any(), has(), joinedload(), subqueryload(), contains_eager()
 --------------------------------------------------------------------------------------------------------------
 
-Status: completed
-
-You can use ``of_type()`` with aliases and polymorphic
+You can use :meth:`.PropComparator.of_type` with aliases and polymorphic
 constructs; also works with most relationship functions like
-``joinedload()``, ``subqueryload()``, ``contains_eager()``,
-``any()``, and ``has()``:
+:func:`.joinedload`, :func:`.subqueryload`, :func:`.contains_eager`,
+:meth:`.PropComparator.any`, and :meth:`.PropComparator.has`:
 
 ::
 
@@ -505,8 +516,6 @@ in one step:
 New, configurable DATE, TIME types for SQLite
 ---------------------------------------------
 
-Status: completed
-
 SQLite has no built-in DATE, TIME, or DATETIME types, and
 instead provides some support for storage of date and time
 values either as strings or integers.   The date and time
@@ -540,8 +549,6 @@ Huge thanks to Nate Dub for the sprinting on this at Pycon
 
 Query.update() will support UPDATE..FROM
 ----------------------------------------
-
-Status: not implemented
 
 Not 100% sure if this will make it in, the new UPDATE..FROM
 mechanics should work in query.update():
@@ -578,8 +585,6 @@ would produce:
 Enhanced Postgresql ARRAY type
 ------------------------------
 
-status: completed
-
 The ``postgresql.ARRAY`` type will accept an optional
 "dimension" argument, pinning it to a fixed number of
 dimensions and greatly improving efficiency when retrieving
@@ -599,8 +604,6 @@ results:
 
 rollback() will only roll back "dirty" objects from a begin_nested()
 --------------------------------------------------------------------
-
-Status: completed
 
 A behavioral change that should improve efficiency for those
 users using SAVEPOINT via ``Session.begin_nested()`` - upon
@@ -648,8 +651,6 @@ use cases should use the new "before_attach" event:
 Query now auto-correlates like a select() does
 ----------------------------------------------
 
-Status: Completed
-
 Previously it was necessary to call ``Query.correlate`` in
 order to have a column- or WHERE-subquery correlate to the
 parent:
@@ -682,8 +683,6 @@ entity, ``query.correlate(someentity)``.
 No more magic coercion of "=" to IN when comparing to subquery in MS-SQL
 ------------------------------------------------------------------------
 
-Status: Completed
-
 We found a very old behavior in the MSSQL dialect which
 would attempt to rescue the user from his or herself when
 doing something like this:
@@ -705,8 +704,6 @@ usual scope so the behavior is removed.
 Fixed the behavior of Session.is_modified()
 -------------------------------------------
 
-Status: completed
-
 The ``Session.is_modified()`` method accepts an argument
 ``passive`` which basically should not be necessary, the
 argument in all cases should be the value ``True`` - when
@@ -721,8 +718,6 @@ be no pending state change on an unloaded attribute.
 
 ``column.key`` is honored in the ``.c.`` attribute of ``select()`` with ``apply_labels()``
 ------------------------------------------------------------------------------------------
-
-Status: completed
 
 Users of the expression system know that ``apply_labels()``
 prepends the table name to each column name, affecting the
@@ -780,9 +775,7 @@ special/ non-ascii characters used in the ``key``.
 single_parent warning is now an error
 -------------------------------------
 
-Status: completed
-
-A ``relationship()`` that is many-to-one or many-to-many and
+A :func:`.relationship` that is many-to-one or many-to-many and
 specifies "cascade='all, delete-orphan'", which is an
 awkward but nonetheless supported use case (with
 restrictions) will now raise an error if the relationship
@@ -795,8 +788,6 @@ case.
 
 Adding the ``inspector`` argument to the ``column_reflect`` event
 -----------------------------------------------------------------
-
-Status: completed
 
 0.7 added a new event called ``column_reflect``, provided so
 that the reflection of columns could be augmented as each
@@ -819,8 +810,6 @@ directly:
 Disabling auto-detect of collations, casing for MySQL
 -----------------------------------------------------
 
-Status: completed
-
 The MySQL dialect does two calls, one very expensive, to
 load all possible collations from the database as well as
 information on casing, the first time an ``Engine``
@@ -836,8 +825,6 @@ have relied on these collections being present on
 "Unconsumed column names" warning becomes an exception
 ------------------------------------------------------
 
-Status: completed
-
 Referring to a non-existent column in an ``insert()`` or
 ``update()`` construct will raise an error instead of a
 warning:
@@ -851,8 +838,6 @@ warning:
 
 Inspector.get_primary_keys() is deprecated, use Inspector.get_pk_constraint
 ---------------------------------------------------------------------------
-
-Status: completed
 
 These two methods on ``Inspector`` were redundant, where
 ``get_primary_keys()`` would return the same information as
@@ -870,8 +855,6 @@ These two methods on ``Inspector`` were redundant, where
 
 Case-insensitive result row names will be disabled in most cases
 ----------------------------------------------------------------
-
-Status: completed
 
 A very old behavior, the column names in ``RowProxy`` were
 always compared case-insensitively:
@@ -917,8 +900,6 @@ Removed
 SQLSoup
 -------
 
-Status: completed
-
 SQLSoup is a handy package that presents an alternative
 interface on top of the SQLAlchemy ORM.   SQLSoup is now
 moved into its own project and documented/released
@@ -931,8 +912,6 @@ contributors who are interested in its style of usage.
 
 MutableType
 -----------
-
-Status: completed
 
 The older "mutable" system within the SQLAlchemy ORM has
 been removed.   This refers to the ``MutableType`` interface
@@ -957,8 +936,6 @@ inefficiency.
 
 sqlalchemy.exceptions (has been sqlalchemy.exc for years)
 ---------------------------------------------------------
-
-Status: completed
 
 We had left in an alias ``sqlalchemy.exceptions`` to attempt
 to make it slightly easier for some very old libraries that
