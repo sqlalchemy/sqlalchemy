@@ -6,15 +6,16 @@ Changes and Migration
 Migration Guides
 ----------------
 
-SQLAlchemy migration guides are currently available on the wiki.
+SQLAlchemy migration guides are now available within the main documentation.
 
-* `Version 0.8 <http://www.sqlalchemy.org/trac/wiki/08Migration>`_
+.. toctree::
+	:maxdepth: 1
 
-* `Version 0.7 <http://www.sqlalchemy.org/trac/wiki/07Migration>`_
-
-* `Version 0.6 <http://www.sqlalchemy.org/trac/wiki/06Migration>`_
-
-* `Version 0.5 <http://www.sqlalchemy.org/trac/wiki/05Migration>`_
+	migration_08
+	migration_07
+	migration_06
+	migration_05
+	migration_04
 
 Change logs
 -----------
