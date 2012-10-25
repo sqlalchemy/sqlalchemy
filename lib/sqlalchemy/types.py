@@ -982,7 +982,7 @@ class String(Concatenable, TypeEngine):
 
     def __init__(self, length=None, collation=None,
                         convert_unicode=False,
-                        assert_unicode=None, unicode_error=None,
+                        unicode_error=None,
                         _warn_on_bytestring=False
                         ):
         """
@@ -1035,13 +1035,6 @@ class String(Concatenable, TypeEngine):
           cause SQLAlchemy's encode/decode services to be
           used unconditionally.
 
-        :param assert_unicode: Deprecated.  A warning is emitted
-          when a non-``unicode`` object is passed to the
-          :class:`.Unicode` subtype of :class:`.String`,
-          or the :class:`.UnicodeText` subtype of :class:`.Text`.
-          See :class:`.Unicode` for information on how to
-          control this warning.
-
         :param unicode_error: Optional, a method to use to handle Unicode
           conversion errors. Behaves like the ``errors`` keyword argument to
           the standard library's ``string.decode()`` functions.   This flag
@@ -1058,15 +1051,6 @@ class String(Concatenable, TypeEngine):
             raise exc.ArgumentError("convert_unicode must be 'force' "
                                         "when unicode_error is set.")
 
-        if assert_unicode:
-            util.warn_deprecated('assert_unicode is deprecated. '
-                                 'SQLAlchemy emits a warning in all '
-                                 'cases where it would otherwise like '
-                                 'to encode a Python unicode object '
-                                 'into a specific encoding but a plain '
-                                 'bytestring is received. This does '
-                                 '*not* apply to DBAPIs that coerce '
-                                 'Unicode natively.')
         self.length = length
         self.collation = collation
         self.convert_unicode = convert_unicode

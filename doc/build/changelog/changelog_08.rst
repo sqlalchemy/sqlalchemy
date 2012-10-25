@@ -1361,3 +1361,8 @@
         :meth:`.ColumnOperators.notlike`,
         :meth:`.ColumnOperators.notilike` to :class:`.ColumnOperators`.
 
+    .. change::
+        :tags: sql, removed
+
+        The long-deprecated and non-functional ``assert_unicode`` flag on
+        :func:`.create_engine` as well as :class:`.String` is removed.

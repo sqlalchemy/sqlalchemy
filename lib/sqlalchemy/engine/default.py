@@ -99,7 +99,7 @@ class DefaultDialect(interfaces.Dialect):
 
     reflection_options = ()
 
-    def __init__(self, convert_unicode=False, assert_unicode=False,
+    def __init__(self, convert_unicode=False,
                  encoding='utf-8', paramstyle=None, dbapi=None,
                  implicit_returning=None,
                  case_sensitive=True,
@@ -111,16 +111,6 @@ class DefaultDialect(interfaces.Dialect):
                 self.name)
 
         self.convert_unicode = convert_unicode
-        if assert_unicode:
-            util.warn_deprecated(
-                "assert_unicode is deprecated. "
-                "SQLAlchemy emits a warning in all cases where it "
-                "would otherwise like to encode a Python unicode object "
-                "into a specific encoding but a plain bytestring is "
-                "received. "
-                "This does *not* apply to DBAPIs that coerce Unicode "
-                "natively.")
-
         self.encoding = encoding
         self.positional = False
         self._ischema = None

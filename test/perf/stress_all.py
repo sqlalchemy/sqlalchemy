@@ -129,7 +129,7 @@ typedecoratortest = (MyIntType, genmyintvalue,
 # Unicode
 def genunicodevalue(rnum, fnum):
     return (rnum % 4) and (u"value%d" % fnum) or None
-unicodetest = (Unicode(20, assert_unicode=False), genunicodevalue,
+unicodetest = (Unicode(20, ), genunicodevalue,
                dict(num_records=100000))
 #               dict(engineurl='mysql:///test', freshdata=False))
 
@@ -159,7 +159,7 @@ if test_methods:
     for engineurl in ('postgresql://scott:tiger@localhost/test',
                        'sqlite://', 'mysql://scott:tiger@localhost/test'):
         print "\n%s\n" % engineurl
-        test_table = prepare(Unicode(20, assert_unicode=False),
+        test_table = prepare(Unicode(20,),
                              genunicodevalue,
                              num_fields=10, num_records=100000,
                              verbose=verbose, engineurl=engineurl)

@@ -126,12 +126,6 @@ def create_engine(*args, **kwargs):
 
     :ref:`connections_toplevel`
 
-    :param assert_unicode:  Deprecated.  This flag
-        sets an engine-wide default value for
-        the ``assert_unicode`` flag on the
-        :class:`.String` type - see that
-        type for further details.
-
     :param case_sensitive=True: if False, result column names
        will match in a case-insensitive fashion, that is,
        ``row['SomeColumn']``.
