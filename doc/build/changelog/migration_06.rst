@@ -1,5 +1,5 @@
 ==============================
-What's New in SQLAlchemy 0.6 ?
+What's New in SQLAlchemy 0.6?
 ==============================
 
 .. admonition:: About this Document
