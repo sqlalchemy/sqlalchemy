@@ -1399,13 +1399,15 @@ class Engine(Connectable, log.Identified):
                     cursor.execute("use %s" % shards[shard_id])
                     conn.info["current_shard"] = shard_id
 
+        .. versionadded:: 0.8
+
         .. seealso::
 
             :meth:`.Connection.execution_options` - update execution options
-             on a :class:`.Connection` object.
+            on a :class:`.Connection` object.
 
             :meth:`.Engine.update_execution_options` - update the execution
-             options for a given :class:.`Engine` in place.
+            options for a given :class:`.Engine` in place.
 
         """
         return OptionEngine(self, opt)
