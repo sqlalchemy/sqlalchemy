@@ -11,7 +11,8 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+import sys
+import os
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -33,7 +34,14 @@ import sqlalchemy
 #                'sphinx.ext.doctest', 'builder.builders']
 
 extensions = ['sphinx.ext.autodoc',
-                'sphinx.ext.doctest', 'builder.builders']
+                'sphinx.ext.doctest',
+                'sphinx.ext.doctest',
+                'builder.autodoc_mods',
+                'builder.changelog',
+                'builder.dialect_info',
+                'builder.mako',
+                'builder.sqlformatter',
+                ]
 
 # Add any paths that contain templates here, relative to this directory.
 # not sure why abspath() is needed here, some users
@@ -45,7 +53,19 @@ nitpicky = True
 # The suffix of source filenames.
 source_suffix = '.rst'
 
-template_bridge = "builder.builders.MakoBridge"
+# section names used by the changelog extension.
+changelog_sections = ["general", "orm", "orm declarative", "orm querying", \
+                "orm configuration", "engine", "sql", \
+                "schema", \
+                "postgresql", "mysql", "sqlite", "mssql", \
+                "oracle", "firebird"]
+# tags to sort on inside of sections
+changelog_inner_tag_sort = ["feature", "bug", "moved", "changed", "removed"]
+
+# how to render changelog links
+changelog_render_ticket = "http://www.sqlalchemy.org/trac/ticket/%s"
+changelog_render_pullreq = "https://bitbucket.org/sqlalchemy/sqlalchemy/pull-request/%s"
+changelog_render_changeset = "http://www.sqlalchemy.org/trac/changeset/%s"
 
 # The encoding of source files.
 #source_encoding = 'utf-8-sig'

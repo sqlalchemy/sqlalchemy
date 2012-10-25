@@ -5,6 +5,12 @@ CHANGES
 =======
 0.7.10
 ======
+- changelog
+  - The changelog has been moved to the documentation.
+    This file will be maintained throughout remaining
+    0.7 maintenance for backwards compabitility, but
+    is removed in 0.8.
+
 - orm
   - [bug] Fixed Session accounting bug whereby replacing
     a deleted object in the identity map with another

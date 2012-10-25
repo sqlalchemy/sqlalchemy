@@ -1429,10 +1429,10 @@ class HistoryTest(fixtures.TestBase):
                 useobject=True)
         return Foo, Bar
 
-    def _someattr_history(self, f):
+    def _someattr_history(self, f, **kw):
         return attributes.get_state_history(
                     attributes.instance_state(f),
-                    'someattr')
+                    'someattr', **kw)
 
     def _commit_someattr(self, f):
         attributes.instance_state(f).commit(attributes.instance_dict(f),
@@ -1599,6 +1599,12 @@ class HistoryTest(fixtures.TestBase):
         # no side effects
         assert 'someattr' not in f.__dict__
         assert 'someattr' not in attributes.instance_state(f).committed_state
+
+    def test_collection_never_set(self):
+        Foo = self._fixture(uselist=True, useobject=True,
+                                active_history=True)
+        f = Foo()
+        eq_(self._someattr_history(f, passive=True), ((), [], ()))
 
     def test_scalar_active_set(self):
         Foo = self._fixture(uselist=False, useobject=False,

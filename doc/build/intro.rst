@@ -189,5 +189,4 @@ Python prompt like this:
 0.6 to 0.7 Migration
 =====================
 
-Notes on what's changed from 0.6 to 0.7 is available on the SQLAlchemy wiki at
-`07Migration <http://www.sqlalchemy.org/trac/wiki/07Migration>`_.
+Notes on what's changed from 0.6 to 0.7 is available at :doc:`changelog/migration_07`.
