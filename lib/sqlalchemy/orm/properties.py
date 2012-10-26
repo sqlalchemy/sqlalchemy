@@ -386,20 +386,8 @@ class RelationshipProperty(StrategizedProperty):
             return self.property.mapper
 
         @util.memoized_property
-        def parent(self):
-            """The parent :class:`.Mapper` or :class:`.AliasedClass`
-            referred to by this
-            :class:`.RelationshipProperty.Comparator.
-
-            This is the "parent" or "local" side of the
-            :func:`.relationship`.
-
-            """
-            return self.property.parent
-
-        @util.memoized_property
         def _parententity(self):
-            return self.parent
+            return self.property.parent
 
         def _source_selectable(self):
             elem = self.property.parent._with_polymorphic_selectable

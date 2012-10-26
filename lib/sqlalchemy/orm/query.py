@@ -1751,7 +1751,6 @@ class Query(object):
                         right_entity = onclause.property.mapper
 
                 left_entity = onclause._parententity
-                assert left_entity is onclause.parent
 
                 prop = onclause.property
                 if not isinstance(onclause,  attributes.QueryableAttribute):

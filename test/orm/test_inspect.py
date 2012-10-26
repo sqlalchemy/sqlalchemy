@@ -191,9 +191,10 @@ class TestORMInspection(_fixtures.FixtureTest):
         prop = inspect(ua.addresses)
         is_(prop, ua.addresses)
 
-        is_(prop.property.parent, class_mapper(User))
+        is_(prop.property.parent.mapper, class_mapper(User))
         is_(prop.property.mapper, class_mapper(Address))
-        is_(prop.parent, ua)
+        is_(prop.parent.entity, ua)
+        is_(prop.parent.class_, User)
         is_(prop._parentmapper, class_mapper(User))
         is_(prop.mapper, class_mapper(Address))
 
@@ -213,9 +214,10 @@ class TestORMInspection(_fixtures.FixtureTest):
         prop = inspect(ua.name)
         is_(prop, ua.name)
 
-        is_(prop.property.parent, class_mapper(User))
+        is_(prop.property.parent.mapper, class_mapper(User))
         assert not hasattr(prop.property, "mapper")
-        is_(prop.parent, ua)
+        is_(prop.parent.entity, ua)
+        is_(prop.parent.class_, User)
         is_(prop._parentmapper, class_mapper(User))
 
         assert not hasattr(prop, "mapper")

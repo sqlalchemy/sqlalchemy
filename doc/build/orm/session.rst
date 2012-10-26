@@ -1971,7 +1971,7 @@ those described in :ref:`events_orm_toplevel`.
     as they each emit an informative exception
     if the given object is not mapped.
 
-.. autofunction:: is_instrumented
+.. autofunction:: sqlalchemy.orm.instrumentation.is_instrumented
 
 .. autofunction:: set_attribute
 

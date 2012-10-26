@@ -753,8 +753,6 @@ Base Type API
    :members:
    :show-inheritance:
 
-   .. autoclass:: TypeEngine.Comparator
-   .. automethod:: _adapt_expression
 
 .. autoclass:: Concatenable
    :members:

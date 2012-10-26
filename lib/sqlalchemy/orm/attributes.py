@@ -158,9 +158,17 @@ class QueryableAttribute(interfaces._MappedAttribute,
         # TODO: conditionally attach this method based on clause_element ?
         return self
 
-    @property
+    @util.memoized_property
     def parent(self):
-        return self._parententity
+        """Return an inspection instance representing the parent.
+
+        This will be either an instance of :class:`.Mapper`
+        or :class:`.AliasedInsp`, depending upon the nature
+        of the parent entity which this attribute is associated
+        with.
+
+        """
+        return inspection.inspect(self._parententity)
 
     @property
     def expression(self):
@@ -208,6 +216,15 @@ class QueryableAttribute(interfaces._MappedAttribute,
 
     @util.memoized_property
     def property(self):
+        """Return the :class:`.MapperProperty` associated with this
+        :class:`.QueryableAttribute`.
+
+
+        Return values here will commonly be instances of
+        :class:`.ColumnProperty` or :class:`.RelationshipProperty`.
+
+
+        """
         return self.comparator.property
 
 inspection._self_inspects(QueryableAttribute)

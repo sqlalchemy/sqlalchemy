@@ -330,6 +330,8 @@ what's specified in the :meth:`.Session.query`, :meth:`.Query.filter`, or
     session.query(engineer.c.id).\
             filter(engineer.c.engineer_info==manager.c.manager_data)
 
+.. _of_type:
+
 Creating Joins to Specific Subtypes
 +++++++++++++++++++++++++++++++++++
 

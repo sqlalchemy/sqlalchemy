@@ -5535,6 +5535,12 @@ class Select(HasPrefixes, SelectBase):
         If the fromclause is None, correlation is disabled for the returned
         select().
 
+        .. seealso::
+
+            :meth:`.Select.correlate_except`
+
+            :ref:`correlated_subqueries`
+
         """
         self._should_correlate = False
         if fromclauses and fromclauses[0] is None:
@@ -5545,6 +5551,17 @@ class Select(HasPrefixes, SelectBase):
 
     @_generative
     def correlate_except(self, *fromclauses):
+        """"Return a new select() construct which will auto-correlate
+        on FROM clauses of enclosing selectables, except for those FROM
+        clauses specified here.
+
+        .. seealso::
+
+            :meth:`.Select.correlate`
+
+            :ref:`correlated_subqueries`
+
+        """
         self._should_correlate = False
         if fromclauses and fromclauses[0] is None:
             self._correlate_except = ()

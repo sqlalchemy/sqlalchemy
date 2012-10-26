@@ -28,6 +28,10 @@ sections, are listed here.
     :members:
     :show-inheritance:
 
+.. autoclass:: sqlalchemy.orm.attributes.InstrumentedAttribute
+    :members:
+    :show-inheritance:
+
 .. autoclass:: sqlalchemy.orm.interfaces.MapperProperty
     :members:
     :show-inheritance:
@@ -45,5 +49,9 @@ sections, are listed here.
     :show-inheritance:
 
 .. autoclass:: sqlalchemy.orm.query.QueryContext
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sqlalchemy.orm.attributes.QueryableAttribute
     :members:
     :show-inheritance:

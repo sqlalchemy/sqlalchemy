@@ -1310,6 +1310,8 @@ well:
     ()
     {stop}[(u'jack', 2), (u'wendy', 2), (u'fred', 0), (u'mary', 0)]
 
+.. _correlated_subqueries:
+
 Correlated Subqueries
 ---------------------
 

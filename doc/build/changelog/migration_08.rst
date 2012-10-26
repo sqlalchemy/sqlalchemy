@@ -49,8 +49,8 @@ SQLAlchemy will eventually drop 2.5 support as well - when
 ``2to3`` tool and maintaining a source base that works with
 Python 2 and 3 at the same time.
 
-New Features
-============
+New ORM Features
+================
 
 .. _feature_relationship_08:
 
@@ -179,8 +179,10 @@ entities.  The new system includes these features:
 
 :ticket:`1401` :ticket:`610`
 
-New Class Inspection System
----------------------------
+.. _feature_orminspection_08:
+
+New Class/Object Inspection System
+----------------------------------
 
 Lots of SQLAlchemy users are writing systems that require
 the ability to inspect the attributes of a mapped class,
@@ -207,137 +209,312 @@ as :class:`.Mapper`, :class:`.InstanceState`, and :class:`.MapperProperty`:
 
 ::
 
-    class User(Base):
-        __tablename__ = 'user'
+    >>> class User(Base):
+    ...     __tablename__ = 'user'
+    ...     id = Column(Integer, primary_key=True)
+    ...     name = Column(String)
+    ...     name_syn = synonym(name)
+    ...     addresses = relationship("Address")
+    ...
 
-        id = Column(Integer, primary_key=True)
-        name = Column(String)
-        name_syn = synonym(name)
-        addresses = relationship(Address)
-
-    # universal entry point is inspect()
+    >>> # universal entry point is inspect()
     >>> b = inspect(User)
 
-    # column collection
-    >>> b.columns
-    [<id column>, <name column>]
+    >>> # b in this case is the Mapper
+    >>> b
+    <Mapper at 0x101521950; User>
 
-    # its a ColumnCollection
+    >>> # Column namespace
     >>> b.columns.id
-    <id column>
+    Column('id', Integer(), table=<user>, primary_key=True, nullable=False)
 
-    # i.e. from mapper
+    >>> # mapper's perspective of the primary key
     >>> b.primary_key
-    (<id column>, )
+    (Column('id', Integer(), table=<user>, primary_key=True, nullable=False),)
 
-    # ColumnProperty
-    >>> b.attr.id.columns
-    [<id column>]
+    >>> # MapperProperties available from .attrs
+    >>> b.attrs.keys()
+    ['name_syn', 'addresses', 'id', 'name']
 
-    # get only column attributes
-    >>> b.column_attrs
-    [<id prop>, <name prop>]
+    >>> # .column_attrs, .relationships, etc. filter this collection
+    >>> b.column_attrs.keys()
+    ['id', 'name']
 
-    # its a namespace
+    >>> list(b.relationships)
+    [<sqlalchemy.orm.properties.RelationshipProperty object at 0x1015212d0>]
+
+    >>> # they are also namespaces
     >>> b.column_attrs.id
-    <id prop>
+    <sqlalchemy.orm.properties.ColumnProperty object at 0x101525090>
 
-    # get only relationships
-    >>> b.relationships
-    [<addresses prop>]
-
-    # its a namespace
     >>> b.relationships.addresses
-    <addresses prop>
+    <sqlalchemy.orm.properties.RelationshipProperty object at 0x1015212d0>
 
-    # point inspect() at a class level attribute,
-    # basically returns ".property"
+    >>> # point inspect() at a mapped, class level attribute,
+    >>> # returns the attribute itself
     >>> b = inspect(User.addresses)
     >>> b
-    <addresses prop>
+    <sqlalchemy.orm.attributes.InstrumentedAttribute object at 0x101521fd0>
 
-    # mapper
+    >>> # From here we can get the mapper:
     >>> b.mapper
-    <Address mapper>
+    <Mapper at 0x101525810; Address>
 
-    # None columns collection, just like columnprop has empty mapper
-    >>> b.columns
-    None
-
-    # the parent
+    >>> # the parent inspector, in this case a mapper
     >>> b.parent
-    <User mapper>
+    <Mapper at 0x101521950; User>
 
-    # __clause_element__()
-    >>> b.expression
-    User.id==Address.user_id
+    >>> # an expression
+    >>> print b.expression
+    "user".id = address.user_id
 
-    >>> inspect(User.id).expression
-    <id column with ORM annotations>
-
-    # inspect works on instances !
+    >>> # inspect works on instances
     >>> u1 = User(id=3, name='x')
     >>> b = inspect(u1)
 
-    # what's b here ?  probably InstanceState
+    >>> # it returns the InstanceState
     >>> b
-    <InstanceState>
+    <sqlalchemy.orm.state.InstanceState object at 0x10152bed0>
 
-    >>> b.attr.keys()
-    ['id', 'name', 'name_syn', 'addresses']
+    >>> # similar attrs accessor refers to the
+    >>> b.attrs.keys()
+    ['id', 'name_syn', 'addresses', 'name']
 
-    # attribute interface
-    >>> b.attr.id
-    <magic attribute inspect thing>
+    >>> # attribute interface - from attrs, you get a state object
+    >>> b.attrs.id
+    <sqlalchemy.orm.state.AttributeState object at 0x10152bf90>
 
-    # value
-    >>> b.attr.id.value
+    >>> # this object can give you, current value...
+    >>> b.attrs.id.value
     3
 
-    # history
-    >>> b.attr.id.history
-    <history object>
+    >>> # ... current history
+    >>> b.attrs.id.history
+    History(added=[3], unchanged=(), deleted=())
 
-    >>> b.attr.id.history.unchanged
-    3
-
-    >>> b.attr.id.history.deleted
-    None
-
-    # lets assume the object is persistent
+    >>> # InstanceState can also provide session state information
+    >>> # lets assume the object is persistent
     >>> s = Session()
     >>> s.add(u1)
     >>> s.commit()
 
-    # big one - the primary key identity !  always
-    # works in query.get()
+    >>> # now we can get primary key identity, always
+    >>> # works in query.get()
     >>> b.identity
-    [3]
+    (3,)
 
-    # the mapper level key
+    >>> # the mapper level key
     >>> b.identity_key
-    (User, [3])
+    (<class '__main__.User'>, (3,))
 
-    >>> b.persistent
-    True
+    >>> # state within the session
+    >>> b.persistent, b.transient, b.deleted, b.detached
+    (True, False, False, False)
 
-    >>> b.transient
-    False
-
-    >>> b.deleted
-    False
-
-    >>> b.detached
-    False
-
+    >>> # owning session
     >>> b.session
-    <session>
+    <sqlalchemy.orm.session.Session object at 0x101701150>
 
 .. seealso::
 
     :ref:`core_inspection_toplevel`
 
 :ticket:`2208`
+
+New with_polymorphic() feature, can be used anywhere
+----------------------------------------------------
+
+The :meth:`.Query.with_polymorphic` method allows the user to
+specify which tables should be present when querying against
+a joined-table entity.   Unfortunately the method is awkward
+and only applies to the first entity in the list, and
+otherwise has awkward behaviors both in usage as well as
+within the internals.  A new enhancement to the
+:func:`.aliased` construct has been added called
+:func:`.with_polymorphic` which allows any entity to be
+"aliased" into a "polymorphic" version of itself, freely
+usable anywhere:
+
+::
+
+    from sqlalchemy.orm import with_polymorphic
+    palias = with_polymorphic(Person, [Engineer, Manager])
+    session.query(Company).\
+                join(palias, Company.employees).\
+                filter(or_(Engineer.language=='java', Manager.hair=='pointy'))
+
+.. seealso::
+
+    :ref:`with_polymorphic` - newly updated documentation for polymorphic
+    loading control.
+
+:ticket:`2333`
+
+of_type() works with alias(), with_polymorphic(), any(), has(), joinedload(), subqueryload(), contains_eager()
+--------------------------------------------------------------------------------------------------------------
+
+You can use :meth:`.PropComparator.of_type` with aliases and polymorphic
+constructs; also works with most relationship functions like
+:func:`.joinedload`, :func:`.subqueryload`, :func:`.contains_eager`,
+:meth:`.PropComparator.any`, and :meth:`.PropComparator.has`:
+
+::
+
+    # use eager loading in conjunction with with_polymorphic targets
+    Job_P = with_polymorphic(Job, SubJob, aliased=True)
+    q = s.query(DataContainer).\
+                join(DataContainer.jobs.of_type(Job_P)).\
+                    options(contains_eager(DataContainer.jobs.of_type(Job_P)))
+
+    # pass subclasses to eager loads (implicitly applies with_polymorphic)
+    q = s.query(ParentThing).\
+                    options(
+                        joinedload_all(
+                            ParentThing.container,
+                            DataContainer.jobs.of_type(SubJob)
+                    ))
+
+    # control self-referential aliasing with any()/has()
+    Job_A = aliased(Job)
+    q = s.query(Job).join(DataContainer.jobs).\
+                    filter(
+                        DataContainer.jobs.of_type(Job_A).\
+                            any(and_(Job_A.id < Job.id, Job_A.type=='fred')
+                        )
+                    )
+
+.. seealso::
+
+    :ref:`of_type`
+
+:ticket:`2438` :ticket:`1106`
+
+New DeferredReflection Feature in Declarative
+---------------------------------------------
+
+The "deferred reflection" example has been moved to a
+supported feature within Declarative.  This feature allows
+the construction of declarative mapped classes with only
+placeholder ``Table`` metadata, until a ``prepare()`` step
+is called, given an ``Engine`` with which to reflect fully
+all tables and establish actual mappings.   The system
+supports overriding of columns, single and joined
+inheritance, as well as distinct bases-per-engine. A full
+declarative configuration can now be created against an
+existing table that is assembled upon engine creation time
+in one step:
+
+::
+
+    class ReflectedOne(DeferredReflection, Base):
+        __abstract__ = True
+
+    class ReflectedTwo(DeferredReflection, Base):
+        __abstract__ = True
+
+    class MyClass(ReflectedOne):
+        __tablename__ = 'mytable'
+
+    class MyOtherClass(ReflectedOne):
+        __tablename__ = 'myothertable'
+
+    class YetAnotherClass(ReflectedTwo):
+        __tablename__ = 'yetanothertable'
+
+    ReflectedOne.prepare(engine_one)
+    ReflectedTwo.prepare(engine_two)
+
+.. seealso::
+
+    :class:`.DeferredReflection`
+
+:ticket:`2485`
+
+ORM Classes Now Accepted by Core Constructs
+-------------------------------------------
+
+While the SQL expressions used with :class:`.Query.filter`,
+such as ``User.id == 5``, have always been compatible for
+use with core constructs such as :func:`.select`, the mapped
+class itself would not be recognized when passed to :func:`.select`,
+:meth:`.Select.select_from`, or :meth:`.Select.correlate`.
+A new SQL registration system allows a mapped class to be
+accepted as a FROM clause within the core::
+
+    from sqlalchemy import select
+
+    stmt = select([User]).where(User.id == 5)
+
+Above, the mapped ``User`` class will expand into
+:class:`.Table` to which :class:`.User` is mapped.
+
+:ticket:`2245`
+
+Query.update() supports UPDATE..FROM
+-------------------------------------
+
+The new UPDATE..FROM mechanics work in query.update().
+Below, we emit an UPDATE against ``SomeEntity``, adding
+a FROM clause (or equivalent, depending on backend)
+against ``SomeOtherEntity``::
+
+    query(SomeEntity).\
+        filter(SomeEntity.id==SomeOtherEntity.id).\
+        filter(SomeOtherEntity.foo=='bar').\
+        update({"data":"x"})
+
+In particular, updates to joined-inheritance
+entities are supported, provided the target of the UPDATE is local to the
+table being filtered on, or if the parent and child tables
+are mixed, they are joined explicitly in the query.  Below,
+given ``Engineer`` as a joined subclass of ``Person``:
+
+::
+
+    query(Engineer).\
+            filter(Person.id==Engineer.id).\
+            filter(Person.name=='dilbert').\
+            update({"engineer_data":"java"})
+
+would produce:
+
+::
+
+    UPDATE engineer SET engineer_data='java' FROM person
+    WHERE person.id=engineer.id AND person.name='dilbert'
+
+:ticket:`2365`
+
+rollback() will only roll back "dirty" objects from a begin_nested()
+--------------------------------------------------------------------
+
+A behavioral change that should improve efficiency for those
+users using SAVEPOINT via ``Session.begin_nested()`` - upon
+``rollback()``, only those objects that were made dirty
+since the last flush will be expired, the rest of the
+``Session`` remains intact.  This because a ROLLBACK to a
+SAVEPOINT does not terminate the containing transaction's
+isolation, so no expiry is needed except for those changes
+that were not flushed in the current transaction.
+
+:ticket:`2452`
+
+Caching Example now uses dogpile.cache
+---------------------------------------
+
+The caching example now uses `dogpile.cache <http://dogpilecache.readthedocs.org/>`_.
+Dogpile.cache is a rewrite of the caching portion
+of Beaker, featuring vastly simpler and faster operation,
+as well as support for distributed locking.
+
+.. seealso::
+
+    :mod:`dogpile_caching`
+
+:ticket:`2589`
+
+New Core Features
+==================
 
 Fully extensible, type-level operator support in Core
 -----------------------------------------------------
@@ -406,112 +583,77 @@ type.    It also paves the way for existing types to acquire
 lots more operators that are specific to those types, such
 as more string, integer and date operators.
 
-    .. seealso::
+.. seealso::
 
-        `Postgresql HSTORE <https://bitbucket.org/audriusk/hstore>`_ - support for HSTORE in SQLAlchemy
+    :ref:`types_operators`
+
+    `Postgresql HSTORE <https://bitbucket.org/audriusk/hstore>`_ - support for HSTORE in SQLAlchemy
 
 :ticket:`2547`
 
-New with_polymorphic() feature, can be used anywhere
-----------------------------------------------------
+Type Expressions
+-----------------
 
-The :meth:`.Query.with_polymorphic` method allows the user to
-specify which tables should be present when querying against
-a joined-table entity.   Unfortunately the method is awkward
-and only applies to the first entity in the list, and
-otherwise has awkward behaviors both in usage as well as
-within the internals.  A new enhancement to the
-:func:`.aliased` construct has been added called
-:func:`.with_polymorphic` which allows any entity to be
-"aliased" into a "polymorphic" version of itself, freely
-usable anywhere:
+SQL expressions can now be associated with types.  Historically,
+:class:`.TypeEngine` has always allowed Python-side functions which
+receive both bound parameters as well as result row values, passing
+them through a Python side conversion function on the way to/back from
+the database.   The new feature allows similar
+functionality, except on the database side::
 
-::
+    from sqlalchemy.types import String
+    from sqlalchemy import func, Table, Column, MetaData
 
-    from sqlalchemy.orm import with_polymorphic
-    palias = with_polymorphic(Person, [Engineer, Manager])
-    session.query(Company).\
-                join(palias, Company.employees).\
-                filter(or_(Engineer.language=='java', Manager.hair=='pointy'))
+    class LowerString(String):
+        def bind_expression(self, bindvalue):
+            return func.lower(bindvalue)
+
+        def column_expression(self, col):
+            return func.lower(col)
+
+    metadata = MetaData()
+    test_table = Table(
+            'test_table',
+            metadata,
+            Column('data', LowerString)
+    )
+
+Above, the ``LowerString`` type defines a SQL expression that will be emitted
+whenever the ``test_table.c.data`` column is rendered in the columns
+clause of a SELECT statement::
+
+    >>> print select([test_table]).where(test_table.c.data == 'HI')
+    SELECT lower(test_table.data) AS data
+    FROM test_table
+    WHERE test_table.data = lower(:data_1)
+
+This feature is also used heavily by the new release of GeoAlchemy,
+to embed PostGIS expressions inline in SQL based on type rules.
 
 .. seealso::
 
-    :ref:`with_polymorphic` - newly updated documentation for polymorphic
-    loading control.
+    :ref:`types_sql_value_processing`
 
-:ticket:`2333`
+:ticket:`1534`
 
-of_type() works with alias(), with_polymorphic(), any(), has(), joinedload(), subqueryload(), contains_eager()
---------------------------------------------------------------------------------------------------------------
+Core Inspection System
+-----------------------
 
-You can use :meth:`.PropComparator.of_type` with aliases and polymorphic
-constructs; also works with most relationship functions like
-:func:`.joinedload`, :func:`.subqueryload`, :func:`.contains_eager`,
-:meth:`.PropComparator.any`, and :meth:`.PropComparator.has`:
+The :func:`.inspect` function introduced in :ref:`feature_orminspection_08`
+also applies to the core.  Applied to an :class:`.Engine` it produces
+an :class:`.Inspector` object::
 
-::
+    from sqlalchemy import inspect
+    from sqlalchemy import create_engine
 
+    engine = create_engine("postgresql://scott:tiger@localhost/test")
+    insp = inspect(engine)
+    print insp.get_table_names()
 
-    # use eager loading in conjunction with with_polymorphic targets
-    Job_P = with_polymorphic(Job, SubJob, aliased=True)
-    q = s.query(DataContainer).\
-                join(DataContainer.jobs.of_type(Job_P)).\
-                    options(contains_eager(DataContainer.jobs.of_type(Job_P)))
-
-    # pass subclasses to eager loads (implicitly applies with_polymorphic)
-    q = s.query(ParentThing).\
-                    options(
-                        joinedload_all(
-                            ParentThing.container,
-                            DataContainer.jobs.of_type(SubJob)
-                    ))
-
-    # control self-referential aliasing with any()/has()
-    Job_A = aliased(Job)
-    q = s.query(Job).join(DataContainer.jobs).\
-                    filter(
-                        DataContainer.jobs.of_type(Job_A).\
-                            any(and_(Job_A.id < Job.id, Job_A.type=='fred'))
-
-
-:ticket:`2438` :ticket:`1106`
-
-New DeferredReflection Feature in Declarative
----------------------------------------------
-
-The "deferred reflection" example has been moved to a
-supported feature within Declarative.  This feature allows
-the construction of declarative mapped classes with only
-placeholder ``Table`` metadata, until a ``prepare()`` step
-is called, given an ``Engine`` with which to reflect fully
-all tables and establish actual mappings.   The system
-supports overriding of columns, single and joined
-inheritance, as well as distinct bases-per-engine. A full
-declarative configuration can now be created against an
-existing table that is assembled upon engine creation time
-in one step:
-
-::
-
-    class ReflectedOne(DeferredReflection, Base):
-        __abstract__ = True
-
-    class ReflectedTwo(DeferredReflection, Base):
-        __abstract__ = True
-
-    class MyClass(ReflectedOne):
-        __tablename__ = 'mytable'
-
-    class MyOtherClass(ReflectedOne):
-        __tablename__ = 'myothertable'
-
-    class YetAnotherClass(ReflectedTwo):
-        __tablename__ = 'yetanothertable'
-
-    ReflectedOne.prepare(engine_one)
-    ReflectedTwo.prepare(engine_two)
-
-:ticket:`2485`
+It can also be applied to any :class:`.ClauseElement`, which returns
+the :class:`.ClauseElement` itself, such as :class:`.Table`, :class:`.Column`,
+:class:`.Select`, etc.   This allows it to work fluently between Core
+and ORM constructs.
 
 New, configurable DATE, TIME types for SQLite
 ---------------------------------------------
@@ -541,46 +683,49 @@ everything else.
                     )
                 )
 
+Huge thanks to Nate Dub for the sprinting on this at Pycon 2012.
 
-Huge thanks to Nate Dub for the sprinting on this at Pycon
-'12.
+.. seealso::
+
+    :class:`.sqlite.DATETIME`
+
+    :class:`.sqlite.DATE`
+
+    :class:`.sqlite.TIME`
 
 :ticket:`2363`
 
-Query.update() will support UPDATE..FROM
-----------------------------------------
+New Method :meth:`.Select.correlate_except`
+-------------------------------------------
 
-Not 100% sure if this will make it in, the new UPDATE..FROM
-mechanics should work in query.update():
+:func:`.select` now has a method :meth:`.Select.correlate_except`
+which specifies "correlate on all FROM clauses except those
+specified".  It can be used for mapping scenarios where
+a related subquery should correlate normally, except
+against a particular target selectable::
 
-::
+    class SnortEvent(Base):
+        __tablename__ = "event"
 
-    query(SomeEntity).\
-        filter(SomeEntity.id==SomeOtherEntity.id).\
-        filter(SomeOtherEntity.foo=='bar').\
-        update({"data":"x"})
+        id = Column(Integer, primary_key=True)
+        signature = Column(Integer, ForeignKey("signature.id"))
 
-Should also work when used against a joined-inheritance
-entity, provided the target of the UPDATE is local to the
-table being filtered on, or if the parent and child tables
-are mixed, they are joined explicitly in the query.  Below,
-given ``Engineer`` as a joined subclass of ``Person``:
+        signatures = relationship("Signature", lazy=False)
 
-::
+    class Signature(Base):
+        __tablename__ = "signature"
 
-    query(Engineer).\
-            filter(Person.id==Engineer.id).\
-            filter(Person.name=='dilbert').\
-            update({"engineer_data":"java"})
+        id = Column(Integer, primary_key=True)
 
-would produce:
+        sig_count = column_property(
+                        select([func.count('*')]).\
+                            where(SnortEvent.signature == id).
+                            correlate_except(SnortEvent)
+                    )
 
-::
+.. seealso::
 
-    UPDATE engineer SET engineer_data='java' FROM person
-    WHERE person.id=engineer.id AND person.name='dilbert'
-
-:ticket:`2365`
+    :meth:`.Select.correlate_except`
 
 Enhanced Postgresql ARRAY type
 ------------------------------
@@ -600,21 +745,53 @@ results:
     # to guess how many levels deep to go
     Column("my_array", postgresql.ARRAY(Integer, dimensions=2))
 
+.. seealso::
+
+    :class:`.postgresql.ARRAY`
+
 :ticket:`2441`
 
-rollback() will only roll back "dirty" objects from a begin_nested()
---------------------------------------------------------------------
+"COLLATE" supported across all dialects; in particular MySQL, Postgresql, SQLite
+--------------------------------------------------------------------------------
 
-A behavioral change that should improve efficiency for those
-users using SAVEPOINT via ``Session.begin_nested()`` - upon
-``rollback()``, only those objects that were made dirty
-since the last flush will be expired, the rest of the
-``Session`` remains intact.  This because a ROLLBACK to a
-SAVEPOINT does not terminate the containing transaction's
-isolation, so no expiry is needed except for those changes
-that were not flushed in the current transaction.
+The "collate" keyword, long accepted by the MySQL dialect, is now established
+on all :class:`.String` types and will render on any backend, including
+when features such as :meth:`.MetaData.create_all` and :func:`.cast` is used::
 
-:ticket:`2452`
+    >>> stmt = select([cast(sometable.c.somechar, String(20, collation='utf8'))])
+    >>> print stmt
+    SELECT CAST(sometable.somechar AS VARCHAR(20) COLLATE "utf8") AS anon_1
+    FROM sometable
+
+.. seealso::
+
+    :class:`.String`
+
+:ticket:`2276`
+
+"Prefixes" now supported for :func:`.insert`, :func:`.update`, :func:`.delete`
+-------------------------------------------------------------------------------
+
+Geared towards MySQL, a "prefix" can be rendered within any of these
+statements::
+
+    stmt = table.insert().prefix_with("LOW_PRIORITY", dialect="mysql")
+
+
+    stmt = table.update().prefix_with("LOW_PRIORITY", dialect="mysql")
+
+.. seealso::
+
+    :meth:`.Insert.prefix_with`
+
+    :meth:`.Update.prefix_with`
+
+    :meth:`.Delete.prefix_with`
+
+    :meth:`.Select.prefix_with`
+
+:ticket:`2431`
+
 
 Behavioral Changes
 ==================

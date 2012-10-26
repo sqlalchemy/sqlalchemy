@@ -1,4 +1,5 @@
 .. _core_inspection_toplevel:
+.. _inspection_toplevel:
 
 Runtime Inpection API
 =====================
@@ -25,8 +26,11 @@ Following is a listing of all inspection targets.
 * ``type`` (i.e. a class) - a class given will be checked by the ORM for a
   mapping - if so, a :class:`.Mapper` for that class is returned.
 * mapped attribute - passing a mapped attribute to :func:`.inspect`, such
-  as ``inspect(MyClass.some_attribute)``, returns a :class:`.MapperProperty`
-  object, which usually is an instance of :class:`.ColumnProperty`
-  or :class:`.RelationshipProperty`.
+  as ``inspect(MyClass.some_attribute)``, returns a :class:`.QueryableAttribute`
+  object, which is the :term:`descriptor` associated with a mapped class.
+  This descriptor refers to a :class:`.MapperProperty`, which is usually
+  an instance of :class:`.ColumnProperty`
+  or :class:`.RelationshipProperty`, via its :attr:`.QueryableAttribute.property`
+  attribute.
 * :class:`.AliasedClass` - returns an :class:`.AliasedInsp` object.
 

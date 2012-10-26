@@ -581,11 +581,20 @@ class AliasedInsp(_InspectionAttr, AliasedInsp):
     * ``polymorphic_on`` - an alternate column or SQL expression which
       will be used as the "discriminator" for a polymorphic load.
 
+    .. seealso::
+
+        :ref:`inspection_toplevel`
+
     """
 
     is_aliased_class = True
     "always returns True"
 
+    @property
+    def class_(self):
+        """Return the mapped class ultimately represented by this
+        :class:`.AliasedInsp`."""
+        return self.mapper.class_
 
 inspection._inspects(AliasedClass)(lambda target: target._aliased_insp)
 
