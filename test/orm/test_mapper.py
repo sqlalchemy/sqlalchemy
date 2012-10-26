@@ -1331,7 +1331,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             assert_raises_message(
                 AttributeError,
                 "Neither 'extendedproperty' object nor 'UCComparator' "
-                "object has an attribute 'nonexistent'",
+                "object associated with User.uc_name has an attribute 'nonexistent'",
                 getattr, User.uc_name, 'nonexistent')
 
             # test compile
@@ -1350,8 +1350,8 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             sess.expunge_all()
 
             q = sess.query(User)
-            u2 = q.filter(User.name=='some user name').one()
-            u3 = q.filter(User.uc_name=='SOME USER NAME').one()
+            u2 = q.filter(User.name == 'some user name').one()
+            u3 = q.filter(User.uc_name == 'SOME USER NAME').one()
 
             assert u2 is u3
 
@@ -1365,23 +1365,33 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             __hash__ = None
             def __eq__(self, other):
                 # lower case comparison
-                return func.lower(self.__clause_element__()) == func.lower(other)
+                return func.lower(self.__clause_element__()
+                                ) == func.lower(other)
 
             def intersects(self, other):
                 # non-standard comparator
                 return self.__clause_element__().op('&=')(other)
 
         mapper(User, users, properties={
-            'name':sa.orm.column_property(users.c.name, comparator_factory=MyComparator)
+            'name': sa.orm.column_property(users.c.name,
+                        comparator_factory=MyComparator)
         })
 
         assert_raises_message(
             AttributeError,
-            "Neither 'InstrumentedAttribute' object nor 'MyComparator' object has an attribute 'nonexistent'",
+            "Neither 'InstrumentedAttribute' object nor "
+            "'MyComparator' object associated with User.name has "
+            "an attribute 'nonexistent'",
             getattr, User.name, "nonexistent")
 
-        eq_(str((User.name == 'ed').compile(dialect=sa.engine.default.DefaultDialect())) , "lower(users.name) = lower(:lower_1)")
-        eq_(str((User.name.intersects('ed')).compile(dialect=sa.engine.default.DefaultDialect())), "users.name &= :name_1")
+        eq_(
+            str((User.name == 'ed').compile(
+                            dialect=sa.engine.default.DefaultDialect())),
+            "lower(users.name) = lower(:lower_1)")
+        eq_(
+            str((User.name.intersects('ed')).compile(
+                            dialect=sa.engine.default.DefaultDialect())),
+            "users.name &= :name_1")
 
 
     def test_reentrant_compile(self):

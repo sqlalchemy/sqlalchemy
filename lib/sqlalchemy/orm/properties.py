@@ -189,8 +189,8 @@ class ColumnProperty(StrategizedProperty):
                 return self.adapter(self.prop.columns[0])
             else:
                 return self.prop.columns[0]._annotate({
-                                                "parententity": self.mapper,
-                                                "parentmapper": self.mapper})
+                                                "parententity": self._parentmapper,
+                                                "parentmapper": self._parentmapper})
 
         def __getattr__(self, key):
             """proxy attribute access down to the mapped column.
@@ -352,13 +352,13 @@ class RelationshipProperty(StrategizedProperty):
 
         _of_type = None
 
-        def __init__(self, prop, mapper, of_type=None, adapter=None):
+        def __init__(self, prop, parentmapper, of_type=None, adapter=None):
             """Construction of :class:`.RelationshipProperty.Comparator`
             is internal to the ORM's attribute mechanics.
 
             """
             self.prop = prop
-            self.mapper = mapper
+            self._parentmapper = parentmapper
             self.adapter = adapter
             if of_type:
                 self._of_type = of_type
@@ -370,13 +370,36 @@ class RelationshipProperty(StrategizedProperty):
 
             """
 
-            return self.__class__(self.property, self.mapper,
+            return self.__class__(self.property, self._parentmapper,
                                   getattr(self, '_of_type', None),
                                   adapter)
 
         @util.memoized_property
-        def parententity(self):
+        def mapper(self):
+            """The target :class:`.Mapper` referred to by this
+            :class:`.RelationshipProperty.Comparator.
+
+            This is the "target" or "remote" side of the
+            :func:`.relationship`.
+
+            """
+            return self.property.mapper
+
+        @util.memoized_property
+        def parent(self):
+            """The parent :class:`.Mapper` or :class:`.AliasedClass`
+            referred to by this
+            :class:`.RelationshipProperty.Comparator.
+
+            This is the "parent" or "local" side of the
+            :func:`.relationship`.
+
+            """
             return self.property.parent
+
+        @util.memoized_property
+        def _parententity(self):
+            return self.parent
 
         def _source_selectable(self):
             elem = self.property.parent._with_polymorphic_selectable
@@ -412,7 +435,7 @@ class RelationshipProperty(StrategizedProperty):
             """
             return RelationshipProperty.Comparator(
                                         self.property,
-                                        self.mapper,
+                                        self._parentmapper,
                                         cls, adapter=self.adapter)
 
         def in_(self, other):

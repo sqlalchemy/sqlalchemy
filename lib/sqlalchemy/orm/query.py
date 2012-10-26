@@ -1727,7 +1727,7 @@ class Query(object):
             # and Class is that of the current joinpoint
             elif from_joinpoint and \
                         isinstance(onclause, interfaces.PropComparator):
-                left_entity = onclause.parententity
+                left_entity = onclause._parententity
 
                 info = inspect(self._joinpoint_zero())
                 left_mapper, left_selectable, left_is_aliased = \
@@ -1750,7 +1750,8 @@ class Query(object):
                     else:
                         right_entity = onclause.property.mapper
 
-                left_entity = onclause.parententity
+                left_entity = onclause._parententity
+                assert left_entity is onclause.parent
 
                 prop = onclause.property
                 if not isinstance(onclause,  attributes.QueryableAttribute):

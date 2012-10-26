@@ -131,7 +131,7 @@ class QueryableAttribute(interfaces._MappedAttribute,
         self.key = key
         self.impl = impl
         self.comparator = comparator
-        self.parententity = parententity
+        self._parententity = parententity
         self._of_type = of_type
 
         manager = manager_of_class(class_)
@@ -159,6 +159,10 @@ class QueryableAttribute(interfaces._MappedAttribute,
         return self
 
     @property
+    def parent(self):
+        return self._parententity
+
+    @property
     def expression(self):
         return self.comparator.__clause_element__()
 
@@ -171,7 +175,7 @@ class QueryableAttribute(interfaces._MappedAttribute,
                     self.key,
                     self.impl,
                     self.comparator.of_type(cls),
-                    self.parententity,
+                    self._parententity,
                     of_type=cls)
 
     def label(self, name):
@@ -191,9 +195,11 @@ class QueryableAttribute(interfaces._MappedAttribute,
             return getattr(self.comparator, key)
         except AttributeError:
             raise AttributeError(
-                    'Neither %r object nor %r object has an attribute %r' % (
+                    'Neither %r object nor %r object associated with %s '
+                    'has an attribute %r' % (
                     type(self).__name__,
                     type(self.comparator).__name__,
+                    self,
                     key)
             )
 
@@ -281,7 +287,7 @@ def create_proxied_attribute(descriptor):
                 return self.descriptor.__get__(instance, owner)
 
         def __str__(self):
-            return self.key
+            return "%s.%s" % (self.class_.__name__, self.key)
 
         def __getattr__(self, attribute):
             """Delegate __getattr__ to the original descriptor and/or
@@ -294,11 +300,14 @@ def create_proxied_attribute(descriptor):
                     return getattr(self.comparator, attribute)
                 except AttributeError:
                     raise AttributeError(
-                    'Neither %r object nor %r object has an attribute %r' % (
+                    'Neither %r object nor %r object associated with %s '
+                    'has an attribute %r' % (
                     type(descriptor).__name__,
                     type(self.comparator).__name__,
+                    self,
                     attribute)
                     )
+
 
     Proxy.__name__ = type(descriptor).__name__ + 'Proxy'
 

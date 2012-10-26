@@ -175,16 +175,52 @@ class TestORMInspection(_fixtures.FixtureTest):
             set(['orders', 'addresses'])
         )
 
-    def test_insp_prop(self):
+    def test_insp_relationship_prop(self):
         User = self.classes.User
+        Address = self.classes.Address
         prop = inspect(User.addresses)
         is_(prop, User.addresses)
+        is_(prop.parent, class_mapper(User))
+        is_(prop._parentmapper, class_mapper(User))
+        is_(prop.mapper, class_mapper(Address))
 
-    def test_insp_aliased_prop(self):
+    def test_insp_aliased_relationship_prop(self):
         User = self.classes.User
+        Address = self.classes.Address
         ua = aliased(User)
         prop = inspect(ua.addresses)
         is_(prop, ua.addresses)
+
+        is_(prop.property.parent, class_mapper(User))
+        is_(prop.property.mapper, class_mapper(Address))
+        is_(prop.parent, ua)
+        is_(prop._parentmapper, class_mapper(User))
+        is_(prop.mapper, class_mapper(Address))
+
+        is_(prop._parententity, ua)
+
+    def test_insp_column_prop(self):
+        User = self.classes.User
+        prop = inspect(User.name)
+        is_(prop, User.name)
+
+        is_(prop.parent, class_mapper(User))
+        assert not hasattr(prop, "mapper")
+
+    def test_insp_aliased_column_prop(self):
+        User = self.classes.User
+        ua = aliased(User)
+        prop = inspect(ua.name)
+        is_(prop, ua.name)
+
+        is_(prop.property.parent, class_mapper(User))
+        assert not hasattr(prop.property, "mapper")
+        is_(prop.parent, ua)
+        is_(prop._parentmapper, class_mapper(User))
+
+        assert not hasattr(prop, "mapper")
+
+        is_(prop._parententity, ua)
 
     def test_rel_accessors(self):
         User = self.classes.User
@@ -192,6 +228,8 @@ class TestORMInspection(_fixtures.FixtureTest):
         prop = inspect(User.addresses)
         is_(prop.property.parent, class_mapper(User))
         is_(prop.property.mapper, class_mapper(Address))
+        is_(prop.parent, class_mapper(User))
+        is_(prop.mapper, class_mapper(Address))
 
         assert not hasattr(prop, 'columns')
         assert hasattr(prop, 'expression')

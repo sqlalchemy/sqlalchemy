@@ -464,7 +464,7 @@ class AliasedClass(object):
         # used to assign a name to the RowTuple object
         # returned by Query.
         self._sa_label_name = aliased_insp.name
-        self.__name__ = 'AliasedClass_' + str(self.__target)
+        self.__name__ = 'AliasedClass_%s' % self.__target.__name__
 
     @util.memoized_property
     def _sa_path_registry(self):

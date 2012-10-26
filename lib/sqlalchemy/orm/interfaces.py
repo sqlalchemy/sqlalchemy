@@ -305,10 +305,11 @@ class PropComparator(operators.ColumnOperators):
 
     """
 
-    def __init__(self, prop, mapper, adapter=None):
+    def __init__(self, prop, parentmapper, adapter=None):
         self.prop = self.property = prop
-        self.mapper = mapper
+        self._parentmapper = parentmapper
         self.adapter = adapter
+
 
     def __clause_element__(self):
         raise NotImplementedError("%r" % self)
@@ -319,7 +320,7 @@ class PropComparator(operators.ColumnOperators):
 
         """
 
-        return self.__class__(self.prop, self.mapper, adapter)
+        return self.__class__(self.prop, self._parentmapper, adapter)
 
     @staticmethod
     def any_op(a, b, **kwargs):
@@ -503,7 +504,7 @@ class PropertyOption(MapperOption):
         d['key'] = ret = []
         for token in util.to_list(self.key):
             if isinstance(token, PropComparator):
-                ret.append((token.mapper.class_, token.key))
+                ret.append((token._parentmapper.class_, token.key))
             else:
                 ret.append(token)
         return d
@@ -628,7 +629,7 @@ class PropertyOption(MapperOption):
                 # matching tokens to entities
                 if current_path:
                     if current_path[0:2] == \
-                            [token.parententity, prop.key]:
+                            [token._parententity, prop.key]:
                         current_path = current_path[2:]
                         continue
                     else:
@@ -638,7 +639,7 @@ class PropertyOption(MapperOption):
                     entity = self._find_entity_prop_comparator(
                                             query,
                                             prop.key,
-                                            token.parententity,
+                                            token._parententity,
                                             raiseerr)
                     if not entity:
                         return no_result
