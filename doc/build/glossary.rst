@@ -12,6 +12,7 @@ Glossary
 
 .. glossary::
 
+
     descriptor
         In Python, a descriptor is an object attribute with “binding behavior”, one whose attribute access has been overridden by methods in the `descriptor protocol <http://docs.python.org/howto/descriptor.html>`_.
         Those methods are __get__(), __set__(), and __delete__(). If any of those methods are defined
@@ -50,6 +51,16 @@ Glossary
             >>> inspect(m1).attrs.data.history.added
             "some data"
 
+    discriminator
+        A result-set column which is used during :term:`polymorphic` loading
+        to determine what kind of mapped class should be applied to a particular
+        incoming result row.   In SQLAlchemy, the classes are always part
+        of a hierarchy mapping using inheritance mapping.
+
+        .. seealso::
+
+            :ref:`inheritance_toplevel`
+
     instrumentation
     instrumented
         Instrumentation refers to the process of augmenting the functionality
@@ -62,6 +73,26 @@ Glossary
         class which each represent a particular database column
         or relationship to a related class.
 
+    lazy load
+        In object relational mapping, a "lazy load" refers to an
+        attribute that does not contain its database-side value
+        for some period of time, typically when the object is
+        first loaded.  Instead, the attribute receives a
+        *memoization* that causes it to go out to the database
+        and load its data when it's first used.   Using this pattern,
+        the complexity and time spent within object fetches can
+        sometimes be reduced, in that
+        attributes for related tables don't need to be addressed
+        immediately.
+
+        .. seealso::
+
+            `Lazy Load (on Martin Fowler) <http://martinfowler.com/eaaCatalog/lazyLoad.html>`_
+
+            :term:`N plus one problem`
+
+            :doc:`orm/loading`
+
     mapping
     mapped
         We say a class is "mapped" when it has been passed through the
@@ -70,6 +101,40 @@ Glossary
         construct, so that instances of it can be persisted
         using a :class:`.Session` as well as loaded using a
         :class:`.Query`.
+
+    N plus one problem
+        The N plus one problem is a common side effect of the
+        :term:`lazy load` pattern, whereby an application wishes
+        to iterate through a related attribute or collection on
+        each member of a result set of objects, where that
+        attribute or collection is set to be loaded via the lazy
+        load pattern.   The net result is that a SELECT statement
+        is emitted to load the initial result set of parent objects;
+        then, as the application iterates through each member,
+        an additional SELECT statement is emitted for each member
+        in order to load the related attribute or collection for
+        that member.  The end result is that for a result set of
+        N parent objects, there will be N + 1 SELECT statements emitted.
+
+        The N plus one problem is alleviated using :term:`eager loading`.
+
+        .. seealso::
+
+            :doc:`orm/loading`
+
+    polymorphic
+    polymorphically
+        Refers to a function that handles several types at once.  In SQLAlchemy,
+        the term is usually applied to the concept of an ORM mapped class
+        whereby a query operation will return different subclasses
+        based on information in the result set, typically by checking the
+        value of a particular column in the result known as the :term:`discriminator`.
+
+        Polymorphic loading in SQLAlchemy implies that a one or a
+        combination of three different schemes are used to map a hierarchy
+        of classes; "joined", "single", and "concrete".   The section
+        :ref:`inheritance_toplevel` describes inheritance mapping fully.
+
 
     release
     releases
@@ -95,3 +160,16 @@ Glossary
 
         	:ref:`pooling_toplevel`
 
+
+    unit of work
+        This pattern is where the system transparently keeps
+        track of changes to objects and periodically flushes all those
+        pending changes out to the database. SQLAlchemy's Session
+        implements this pattern fully in a manner similar to that of
+        Hibernate.
+
+        .. seealso::
+
+            `Unit of Work by Martin Fowler <http://martinfowler.com/eaaCatalog/unitOfWork.html>`_
+
+            :doc:`orm/session`

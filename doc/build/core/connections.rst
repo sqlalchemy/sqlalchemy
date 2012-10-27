@@ -18,7 +18,7 @@ higher level management services, the :class:`.Engine` and
 Basic Usage
 ===========
 
-Recall from :ref:`engines_toplevel` that an :class:`.Engine` is created via
+Recall from :doc:`/core/engines` that an :class:`.Engine` is created via
 the :func:`.create_engine` call::
 
     engine = create_engine('mysql://scott:tiger@localhost/test')

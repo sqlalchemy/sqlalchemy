@@ -698,7 +698,7 @@ def with_polymorphic(base, classes, selectable=False,
 
     :param base: Base class to be aliased.
 
-    :param cls_or_mappers: a single class or mapper, or list of
+    :param classes: a single class or mapper, or list of
         class/mappers, which inherit from the base class.
         Alternatively, it may also be the string ``'*'``, in which case
         all descending mapped classes will be added to the FROM clause.

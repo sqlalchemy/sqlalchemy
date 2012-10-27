@@ -122,7 +122,7 @@ def create_engine(*args, **kwargs):
 
     See also:
 
-    :ref:`engines_toplevel`
+    :doc:`/core/engines`
 
     :ref:`connections_toplevel`
 

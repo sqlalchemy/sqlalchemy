@@ -128,6 +128,10 @@ class Operators(object):
 
          .. versionadded:: 0.8 - added the 'precedence' argument.
 
+        .. seealso::
+
+            :ref:`types_operators`
+
         """
         operator = custom_op(opstring, precedence)
 
@@ -505,7 +509,7 @@ class ColumnOperators(Operators):
     def __radd__(self, other):
         """Implement the ``+`` operator in reverse.
 
-        See :meth:`__add__`.
+        See :meth:`.ColumnOperators.__add__`.
 
         """
         return self.reverse_operate(add, other)
@@ -513,7 +517,7 @@ class ColumnOperators(Operators):
     def __rsub__(self, other):
         """Implement the ``-`` operator in reverse.
 
-        See :meth:`__sub__`.
+        See :meth:`.ColumnOperators.__sub__`.
 
         """
         return self.reverse_operate(sub, other)
@@ -521,7 +525,7 @@ class ColumnOperators(Operators):
     def __rmul__(self, other):
         """Implement the ``*`` operator in reverse.
 
-        See :meth:`__mul__`.
+        See :meth:`.ColumnOperators.__mul__`.
 
         """
         return self.reverse_operate(mul, other)
@@ -529,7 +533,7 @@ class ColumnOperators(Operators):
     def __rdiv__(self, other):
         """Implement the ``/`` operator in reverse.
 
-        See :meth:`__div__`.
+        See :meth:`.ColumnOperators.__div__`.
 
         """
         return self.reverse_operate(div, other)
@@ -550,7 +554,7 @@ class ColumnOperators(Operators):
         if the parent object has non-string affinity.
         If the parent object has a string affinity,
         produces the concatenation operator, ``a || b`` -
-        see :meth:`concat`.
+        see :meth:`.ColumnOperators.concat`.
 
         """
         return self.operate(add, other)
@@ -598,7 +602,7 @@ class ColumnOperators(Operators):
     def __rtruediv__(self, other):
         """Implement the ``//`` operator in reverse.
 
-        See :meth:`__truediv__`.
+        See :meth:`.ColumnOperators.__truediv__`.
 
         """
         return self.reverse_operate(truediv, other)

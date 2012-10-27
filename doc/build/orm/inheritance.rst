@@ -15,7 +15,7 @@ The most common forms of inheritance are single and joined table, while
 concrete inheritance presents more configurational challenges.
 
 When mappers are configured in an inheritance relationship, SQLAlchemy has the
-ability to load elements "polymorphically", meaning that a single query can
+ability to load elements :term:`polymorphically`, meaning that a single query can
 return objects of multiple types.
 
 Joined Table Inheritance

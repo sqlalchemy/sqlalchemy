@@ -105,6 +105,19 @@ class _PolymorphicTestBase(object):
                 sess.query(Company).join(
                     Company.employees.of_type(wp)
                 ).order_by(Company.company_id, wp.person_id).\
+                options(contains_eager(Company.employees.of_type(wp))).all(),
+                [self.c1, self.c2]
+            )
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_with_polymorphic_join_exec_contains_eager_two(self):
+        sess = Session()
+        def go():
+            wp = with_polymorphic(Person, [Engineer, Manager], aliased=True)
+            eq_(
+                sess.query(Company).join(
+                    Company.employees.of_type(wp)
+                ).order_by(Company.company_id, wp.person_id).\
                 options(contains_eager(Company.employees, alias=wp)).all(),
                 [self.c1, self.c2]
             )

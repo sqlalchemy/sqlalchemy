@@ -199,15 +199,20 @@ introspectable, this has never been a fully stable and
 supported feature, and users tended to not have a clear idea
 how to get at this information.
 
-0.8 has a plan to produce a consistent, stable and fully
-documented API for this purpose, which would provide an
-inspection system that works on classes, instances, and
-possibly other things as well.   While many elements of this
-system are already available, the plan is to lock down the
-API including various accessors available from such objects
-as :class:`.Mapper`, :class:`.InstanceState`, and :class:`.MapperProperty`:
+0.8 now provides a consistent, stable and fully
+documented API for this purpose, including an inspection
+system which works on mapped classes, instances, attributes,
+and other Core and ORM constructs.  The entrypoint to this
+system is the core-level :func:`.inspect` function.
+In most cases, the object being inspected
+is one already part of SQLAlchemy's system,
+such as :class:`.Mapper`, :class:`.InstanceState`,
+:class:`.Inspector`.  In some cases, new objects have been
+added with the job of providing the inspection API in
+certain contexts, such as :class:`.AliasedInsp` and
+:class:`.AttributeState`.
 
-::
+A walkthrough of some key capabilities follows::
 
     >>> class User(Base):
     ...     __tablename__ = 'user'
@@ -353,15 +358,26 @@ usable anywhere:
 of_type() works with alias(), with_polymorphic(), any(), has(), joinedload(), subqueryload(), contains_eager()
 --------------------------------------------------------------------------------------------------------------
 
-You can use :meth:`.PropComparator.of_type` with aliases and polymorphic
-constructs; also works with most relationship functions like
-:func:`.joinedload`, :func:`.subqueryload`, :func:`.contains_eager`,
-:meth:`.PropComparator.any`, and :meth:`.PropComparator.has`:
-
-::
+The :meth:`.PropComparator.of_type` method is used to specify
+a specific subtype to use when constructing SQL expressions along
+a :func:`.relationship` that has a :term:`polymorphic` mapping as its target.
+This method can now be used to target *any number* of target subtypes,
+by combining it with the new :func:`.with_polymorphic` function::
 
     # use eager loading in conjunction with with_polymorphic targets
-    Job_P = with_polymorphic(Job, SubJob, aliased=True)
+    Job_P = with_polymorphic(Job, [SubJob, ExtraJob], aliased=True)
+    q = s.query(DataContainer).\
+                join(DataContainer.jobs.of_type(Job_P)).\
+                    options(contains_eager(DataContainer.jobs.of_type(Job_P)))
+
+The method now works equally well in most places a regular relationship
+attribute is accepted, including with loader functions like
+:func:`.joinedload`, :func:`.subqueryload`, :func:`.contains_eager`,
+and comparison methods like :meth:`.PropComparator.any`
+and :meth:`.PropComparator.has`::
+
+    # use eager loading in conjunction with with_polymorphic targets
+    Job_P = with_polymorphic(Job, [SubJob, ExtraJob], aliased=True)
     q = s.query(DataContainer).\
                 join(DataContainer.jobs.of_type(Job_P)).\
                     options(contains_eager(DataContainer.jobs.of_type(Job_P)))
@@ -433,7 +449,7 @@ in one step:
 ORM Classes Now Accepted by Core Constructs
 -------------------------------------------
 
-While the SQL expressions used with :class:`.Query.filter`,
+While the SQL expressions used with :meth:`.Query.filter`,
 such as ``User.id == 5``, have always been compatible for
 use with core constructs such as :func:`.select`, the mapped
 class itself would not be recognized when passed to :func:`.select`,
@@ -769,26 +785,31 @@ when features such as :meth:`.MetaData.create_all` and :func:`.cast` is used::
 
 :ticket:`2276`
 
-"Prefixes" now supported for :func:`.insert`, :func:`.update`, :func:`.delete`
--------------------------------------------------------------------------------
+"Prefixes" now supported for :func:`.update`, :func:`.delete`
+-------------------------------------------------------------
 
-Geared towards MySQL, a "prefix" can be rendered within any of these
-statements::
+Geared towards MySQL, a "prefix" can be rendered within any of
+these constructs.   E.g.::
 
-    stmt = table.insert().prefix_with("LOW_PRIORITY", dialect="mysql")
+    stmt = table.delete().prefix_with("LOW_PRIORITY", dialect="mysql")
 
 
     stmt = table.update().prefix_with("LOW_PRIORITY", dialect="mysql")
 
-.. seealso::
+The method is new in addition to those which already existed
+on :func:`.insert`, :func:`.select` and :class:`.Query`.
 
-    :meth:`.Insert.prefix_with`
+.. seealso::
 
     :meth:`.Update.prefix_with`
 
     :meth:`.Delete.prefix_with`
 
+    :meth:`.Insert.prefix_with`
+
     :meth:`.Select.prefix_with`
+
+    :meth:`.Query.prefix_with`
 
 :ticket:`2431`
 
@@ -828,7 +849,7 @@ use cases should use the new "before_attach" event:
 Query now auto-correlates like a select() does
 ----------------------------------------------
 
-Previously it was necessary to call ``Query.correlate`` in
+Previously it was necessary to call :meth:`.Query.correlate` in
 order to have a column- or WHERE-subquery correlate to the
 parent:
 
@@ -878,10 +899,10 @@ usual scope so the behavior is removed.
 
 :ticket:`2277`
 
-Fixed the behavior of Session.is_modified()
+Fixed the behavior of :meth:`.Session.is_modified`
 -------------------------------------------
 
-The ``Session.is_modified()`` method accepts an argument
+The :meth:`.Session.is_modified` method accepts an argument
 ``passive`` which basically should not be necessary, the
 argument in all cases should be the value ``True`` - when
 left at its default of ``False`` it would have the effect of
@@ -891,14 +912,18 @@ argument will have no effect, and unloaded attributes will
 never be checked for history since by definition there can
 be no pending state change on an unloaded attribute.
 
+.. seealso::
+
+    :meth:`.Session.is_modified`
+
 :ticket:`2320`
 
-``column.key`` is honored in the ``.c.`` attribute of ``select()`` with ``apply_labels()``
-------------------------------------------------------------------------------------------
+:attr:`.Column.key` is honored in the :attr:`.Select.c` attribute of :func:`.select` with :meth:`.Select.apply_labels`
+-----------------------------------------------------------------------------------------------------------------------
 
-Users of the expression system know that ``apply_labels()``
+Users of the expression system know that :meth:`.Select.apply_labels`
 prepends the table name to each column name, affecting the
-names that are available from ``.c.``:
+names that are available from :attr:`.Select.c`:
 
 ::
 
@@ -906,9 +931,9 @@ names that are available from ``.c.``:
     s.c.table1_col1
     s.c.table1_col2
 
-Before 0.8, if the ``Column`` had a different ``key``, this
+Before 0.8, if the :class:`.Column` had a different :attr:`.Column.key`, this
 key would be ignored, inconsistently versus when
-``apply_labels()`` were not used:
+:meth:`.Select.apply_labels` were not used:
 
 ::
 
@@ -924,7 +949,7 @@ key would be ignored, inconsistently versus when
     s.c.table1_column_one # would raise AttributeError
     s.c.table1_col1 # would be accessible like this
 
-In 0.8, ``key`` is honored in both cases:
+In 0.8, :attr:`.Column.key` is honored in both cases:
 
 ::
 
@@ -943,9 +968,9 @@ In 0.8, ``key`` is honored in both cases:
 All other behavior regarding "name" and "key" are the same,
 including that the rendered SQL will still use the form
 ``<tablename>_<colname>`` - the emphasis here was on
-preventing the ``key`` contents from being rendered into the
+preventing the :attr:`.Column.key` contents from being rendered into the
 ``SELECT`` statement so that there are no issues with
-special/ non-ascii characters used in the ``key``.
+special/ non-ascii characters used in the :attr:`.Column.key`.
 
 :ticket:`2397`
 

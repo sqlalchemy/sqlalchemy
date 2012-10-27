@@ -10,7 +10,7 @@ Runtime Inpection API
 Available Inspection Targets
 ----------------------------
 
-Following is a listing of all inspection targets.
+Below is a listing of many of the most common inspection targets.
 
 * :class:`.Connectable` (i.e. :class:`.Engine`,
   :class:`.Connection`) - returns an :class:`.Inspector` object.

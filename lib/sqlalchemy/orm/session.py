@@ -428,7 +428,7 @@ class SessionTransaction(object):
 class Session(_SessionClassMethods):
     """Manages persistence operations for ORM-mapped objects.
 
-    The Session's usage paradigm is described at :ref:`session_toplevel`.
+    The Session's usage paradigm is described at :doc:`/orm/session`.
 
 
     """

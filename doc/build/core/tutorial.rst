@@ -1554,7 +1554,7 @@ Expression Language Reference: :ref:`expression_api_toplevel`
 
 Database Metadata Reference: :ref:`metadata_toplevel`
 
-Engine Reference: :ref:`engines_toplevel`
+Engine Reference: :doc:`/core/engines`
 
 Connection Reference: :ref:`connections_toplevel`
 

@@ -170,9 +170,6 @@ def create_session(bind=None, **kwargs):
 def relationship(argument, secondary=None, **kwargs):
     """Provide a relationship of a primary Mapper to a secondary Mapper.
 
-    .. versionchanged:: 0.6
-        :func:`relationship` is historically known as :func:`relation`.
-
     This corresponds to a parent-child or associative table relationship.  The
     constructed class is an instance of :class:`.RelationshipProperty`.
 
@@ -450,7 +447,7 @@ def relationship(argument, secondary=None, **kwargs):
 
       * None - a synonym for 'noload'
 
-      Detailed discussion of loader strategies is at :ref:`loading_toplevel`.
+      Detailed discussion of loader strategies is at :doc:`/orm/loading`.
 
     :param load_on_pending=False:
       Indicates loading behavior for transient or pending parent objects.
@@ -624,6 +621,9 @@ def relationship(argument, secondary=None, **kwargs):
       relationship has its limits - complicated join conditions may
       not compile into eager or lazy loaders properly. If this is the
       case, use an alternative method.
+
+    .. versionchanged:: 0.6
+        :func:`relationship` was renamed from its previous name :func:`relation`.
 
     """
     return RelationshipProperty(argument, secondary=secondary, **kwargs)

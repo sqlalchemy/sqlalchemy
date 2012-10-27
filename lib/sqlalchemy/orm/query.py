@@ -747,7 +747,7 @@ class Query(object):
         foreign-key-to-primary-key criterion, will also use an
         operation equivalent to :meth:`~.Query.get` in order to retrieve
         the target value from the local identity map
-        before querying the database.  See :ref:`loading_toplevel`
+        before querying the database.  See :doc:`/orm/loading`
         for further details on relationship loading.
 
         :param ident: A scalar or tuple value representing
@@ -1039,7 +1039,7 @@ class Query(object):
 
         Most supplied options regard changing how column- and
         relationship-mapped attributes are loaded. See the sections
-        :ref:`deferred` and :ref:`loading_toplevel` for reference
+        :ref:`deferred` and :doc:`/orm/loading` for reference
         documentation.
 
         """

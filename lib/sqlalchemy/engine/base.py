@@ -1292,7 +1292,7 @@ class Engine(Connectable, log.Identified):
 
     See also:
 
-    :ref:`engines_toplevel`
+    :doc:`/core/engines`
 
     :ref:`connections_toplevel`
 
