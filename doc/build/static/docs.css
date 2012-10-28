@@ -374,6 +374,7 @@ dl.exception > dt
 dl.glossary > dt {
   font-weight:bold;
   font-size:1.1em;
+  padding-top:10px;
 }
 
 

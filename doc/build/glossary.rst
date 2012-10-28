@@ -11,7 +11,7 @@ Glossary
 	terms soon!
 
 .. glossary::
-
+    :sorted:
 
     descriptor
         In Python, a descriptor is an object attribute with “binding behavior”, one whose attribute access has been overridden by methods in the `descriptor protocol <http://docs.python.org/howto/descriptor.html>`_.
@@ -74,6 +74,7 @@ Glossary
         or relationship to a related class.
 
     lazy load
+    lazy loads
         In object relational mapping, a "lazy load" refers to an
         attribute that does not contain its database-side value
         for some period of time, typically when the object is
@@ -139,26 +140,61 @@ Glossary
     release
     releases
     released
-        This term refers to when an operation terminates some state which
-        corresponds to a service of some kind.  Specifically within
-        SQLAlchemy, it usually refers to a reference to a database connection,
-        and typically a transaction associated with that connection.
-        When we say "the operation releases transactional resources",
-        it means basically that we have a :class:`.Connection` object
-        and we are calling the :meth:`.Connection.close` method, which has
-        the effect of the underlying DBAPI connection being returned
-        to the connection pool.   The connection pool, when it receives
-        a connection for return, unconditionally calls the ``rollback()``
-        method of the DBAPI connection, so that any locks or data snapshots within
-        that connection are removed.    Then, the connection is either
-        stored locally in memory, still connected but not in a transaction,
-        for subsequent reuse by another operation, or it is closed
-        immediately, depending on the configuration and current
-        state of the connection pool.
+        In the context of SQLAlchemy, the term "released"
+        refers to the process of ending the usage of a particular
+        database connection.    SQLAlchemy features the usage
+        of connection pools, which allows configurability as to
+        the lifespan of database connections.   When using a pooled
+        connection, the process of "closing" it, i.e. invoking
+        a statement like ``connection.close()``, may have the effect
+        of the connection being returned to an existing pool,
+        or it may have the effect of actually shutting down the
+        underlying TCP/IP connection referred to by that connection -
+        which one takes place depends on configuration as well
+        as the current state of the pool.  So we used the term
+        *released* instead, to mean "do whatever it is you do
+        with connections when we're done using them".
+
+        The term will sometimes be used in the phrase, "release
+        transactional resources", to indicate more explicitly that
+        what we are actually "releasing" is any transactional
+        state which as accumulated upon the connection.  In most
+        situations, the proces of selecting from tables, emitting
+        updates, etc. acquires :term:`isolated` state upon
+        that connection as well as potential row or table locks.
+        This state is all local to a particular transaction
+        on the connection, and is released when we emit a rollback.
+        An important feature of the connection pool is that when
+        we return a connection to the pool, the ``connection.rollback()``
+        method of the DBAPI is called as well, so that as the
+        connection is set up to be used again, it's in a "clean"
+        state with no references held to the previous series
+        of operations.
 
         .. seealso::
 
         	:ref:`pooling_toplevel`
+
+    DBAPI
+        DBAPI is shorthand for the phrase "Python Database API
+        Specification".  This is a widely used specification
+        within Python to define common usage patterns for all
+        database connection packages.   The DBAPI is a "low level"
+        API which is typically the lowest level system used
+        in a Python application to talk to a database.  SQLAlchemy's
+        :term:`dialect` system is constructed around the
+        operation of the DBAPI, providing individual dialect
+        classes which service a specific DBAPI on top of a
+        specific database engine; for example, the :func:`.create_engine`
+        URL ``postgresql+psycopg2://@localhost/test``
+        refers to the :mod:`psycopg2 <.postgresql.psycopg2>`
+        DBAPI/dialect combination, whereas the URL ``mysql+mysqldb://@localhost/test``
+        refers to the :mod:`MySQL for Python <.mysql.mysqldb>`
+        DBAPI DBAPI/dialect combination.
+
+        .. seealso::
+
+            `PEP 249 - Python Database API Specification v2.0 <http://www.python.org/dev/peps/pep-0249/>`_
 
 
     unit of work

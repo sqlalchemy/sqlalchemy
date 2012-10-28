@@ -69,8 +69,6 @@ construction arguments, are as follows:
     :members: __init__
     :show-inheritance:
 
-.. _psycopg2:
-
 psycopg2
 --------------
 
