@@ -12,6 +12,7 @@ def autodoc_skip_member(app, what, name, obj, skip, options):
 # im sure this is in the app somewhere, but I don't really
 # know where, so we're doing it here.
 _track_autodoced = {}
+_inherited_names = set()
 def autodoc_process_docstring(app, what, name, obj, options, lines):
     if what == "class":
         _track_autodoced[name] = obj
@@ -26,22 +27,33 @@ def autodoc_process_docstring(app, what, name, obj, options, lines):
                     if attrname in supercls.__dict__:
                         break
                 if supercls is not cls:
+                    _inherited_names.add("%s.%s" % (supercls.__module__, supercls.__name__))
+                    _inherited_names.add("%s.%s.%s" % (supercls.__module__, supercls.__name__, attrname))
                     lines[:0] = [
                         ".. container:: inherited_member",
                         "",
-                        "    *inherited from the* :%s:`.%s.%s` *%s of* :class:`.%s`" % (
+                        "    *inherited from the* :%s:`~%s.%s.%s` *%s of* :class:`~%s.%s`" % (
                                     "attr" if what == "attribute"
                                     else "meth",
-                                    supercls.__name__,
+                                    supercls.__module__, supercls.__name__,
                                     attrname,
                                     what,
-                                    supercls.__name__
+                                    supercls.__module__, supercls.__name__
                                 ),
                         ""
                     ]
+
+from docutils import nodes
+def missing_reference(app, env, node, contnode):
+    if node.attributes['reftarget'] in _inherited_names:
+        return node.children[0]
+    else:
+        return None
+
 
 
 def setup(app):
     app.connect('autodoc-skip-member', autodoc_skip_member)
     app.connect('autodoc-process-docstring', autodoc_process_docstring)
 
+    app.connect('missing-reference', missing_reference)
