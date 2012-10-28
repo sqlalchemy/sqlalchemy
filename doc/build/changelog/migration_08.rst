@@ -405,6 +405,54 @@ and :meth:`.PropComparator.has`::
 
 :ticket:`2438` :ticket:`1106`
 
+Events Can Be Applied to Unmapped Superclasses
+----------------------------------------------
+
+Mapper and instance events can now be associated with an unmapped
+superclass, where those events will be propagated to subclasses
+as those subclasses are mapped.   The ``propagate=True`` flag
+should be used.  This feature allows events to be associated
+with a declarative base class::
+
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+    @event.listens_for("load", Base, propagate=True)
+    def on_load(target, context):
+        print "New instance loaded:", target
+
+    # on_load() will be applied to SomeClass
+    class SomeClass(Base):
+        __tablename__ = 'sometable'
+
+        # ...
+
+:ticket:`2585`
+
+Declarative Distinguishes Between Modules/Packages
+--------------------------------------------------
+
+A key feature of Declarative is the ability to refer
+to other mapped classes using their string name.   The
+registry of class names is now sensitive to the owning
+module and package of a given class.   The classes
+can be referred to via dotted name in expressions::
+
+    class Snack(Base):
+        # ...
+
+        "peanuts":relationship("nuts.Peanut",
+                primaryjoin="nuts.Peanut.snack_id == Snack.id")
+
+The resolution allows that any full or partial
+disambiguating package name can be used.   If the
+path to a particular class is still ambiguous,
+an error is raised.
+
+:ticket:`2338`
+
+
 New DeferredReflection Feature in Declarative
 ---------------------------------------------
 
@@ -878,6 +926,21 @@ entity, ``query.correlate(someentity)``.
 
 :ticket:`2179`
 
+Repaired the Event Targeting of :class:`.InstrumentationEvents`
+----------------------------------------------------------------
+
+The :class:`.InstrumentationEvents` series of event targets have
+documented that the events will only be fired off according to
+the actual class passed as a target.  Through 0.7, this wasn't the
+case, and any event listener applied to :class:`.InstrumentationEvents`
+would be invoked for all classes mapped.  In 0.8, additional
+logic has been added so that the events will only invoke for those
+classes sent in.  The ``propagate`` flag here is set to ``True``
+by default as class instrumentation events are typically used to
+intercept classes that aren't yet created.
+
+:ticket:`2590`
+
 No more magic coercion of "=" to IN when comparing to subquery in MS-SQL
 ------------------------------------------------------------------------
 
@@ -900,7 +963,7 @@ usual scope so the behavior is removed.
 :ticket:`2277`
 
 Fixed the behavior of :meth:`.Session.is_modified`
--------------------------------------------
+--------------------------------------------------
 
 The :meth:`.Session.is_modified` method accepts an argument
 ``passive`` which basically should not be necessary, the
