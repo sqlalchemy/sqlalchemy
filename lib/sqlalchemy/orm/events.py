@@ -336,32 +336,36 @@ class _EventsHold(object):
             else:
                 collection = target.all_holds[target.class_] = []
 
-            collection.append((target.class_, identifier, fn, raw, propagate))
+            collection.append((identifier, fn, raw, propagate))
 
             if propagate:
-                for subject_dispatch, (subclass, subject) in \
-                                target.established.items():
-                    if issubclass(subclass, target.class_):
-                        subject_dispatch._listen(subject, identifier, fn,
+                stack = list(target.class_.__subclasses__())
+                while stack:
+                    subclass = stack.pop(0)
+                    stack.extend(subclass.__subclasses__())
+                    subject = target.resolve(subclass)
+                    if subject is not None:
+                        subject.dispatch._listen(subject, identifier, fn,
                                         raw=raw, propagate=propagate)
 
     @classmethod
     def populate(cls, class_, subject):
-        cls.established[subject.dispatch] = (class_, subject)
         for subclass in class_.__mro__:
             if subclass in cls.all_holds:
                 if subclass is class_:
                     collection = cls.all_holds.pop(subclass)
                 else:
                     collection = cls.all_holds[subclass]
-                for target, ident, fn, raw, propagate in collection:
+                for ident, fn, raw, propagate in collection:
                     if propagate or subclass is class_:
                         subject.dispatch._listen(subject, ident,
                                                         fn, raw, propagate)
 
 class _InstanceEventsHold(_EventsHold):
     all_holds = weakref.WeakKeyDictionary()
-    established = weakref.WeakKeyDictionary()
+
+    def resolve(self, class_):
+        return orm.instrumentation.manager_of_class(class_)
 
     class HoldInstanceEvents(_EventsHold.HoldEvents, InstanceEvents):
         pass
@@ -1029,7 +1033,9 @@ class MapperEvents(event.Events):
 
 class _MapperEventsHold(_EventsHold):
     all_holds = weakref.WeakKeyDictionary()
-    established = weakref.WeakKeyDictionary()
+
+    def resolve(self, class_):
+        return orm.util._mapper_or_none(class_)
 
     class HoldMapperEvents(_EventsHold.HoldEvents, MapperEvents):
         pass

@@ -932,7 +932,6 @@ def _attr_as_key(attr):
     else:
         return expression._column_as_key(attr)
 
-
 _state_mapper = util.dottedgetter('manager.mapper')
 
 @inspection._inspects(object)
@@ -950,6 +949,8 @@ def _inspect_mapped_object(instance):
 def _inspect_mapped_class(class_, configure=False):
     try:
         class_manager = attributes.manager_of_class(class_)
+        if not class_manager.is_mapped:
+            return None
         mapper = class_manager.mapper
         if configure and mapperlib.module._new_mappers:
             mapperlib.configure_mappers()
