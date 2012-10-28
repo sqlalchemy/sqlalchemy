@@ -222,7 +222,7 @@ There are several possibilities here:
   "secondary" table as referencing rows in "child" are deleted.   SQLAlchemy
   can be instructed to forego actively loading in the ``Child.parents``
   collection in this case using the ``passive_deletes=True`` directive
-  on :meth:`.relationship`; see :ref:`passive_deletes` for more details
+  on :func:`.relationship`; see :ref:`passive_deletes` for more details
   on this.
 
 Note again, these behaviors are *only* relevant to the ``secondary`` option
@@ -319,6 +319,8 @@ associated object, and a second to a target attribute.
   on the related attribute as well as the associated
   object.
 
+.. _self_referential:
+
 Adjacency List Relationships
 -----------------------------
 
@@ -398,6 +400,46 @@ There are several examples included with SQLAlchemy illustrating
 self-referential strategies; these include :ref:`examples_adjacencylist` and
 :ref:`examples_xmlpersistence`.
 
+Composite Adjacency Lists
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A sub-category of the adjacency list relationship is the rare
+case where a particular column is present on both the "local" and
+"remote" side of the join condition.  An example is the ``Folder``
+class below; using a composite primary key, the ``account_id``
+column refers to itself, to indicate sub folders which are within
+the same account as that of the parent; while ``folder_id`` refers
+to a specific folder within that account::
+
+    class Folder(Base):
+        __tablename__ = 'folder'
+        __table_args__ = (
+          ForeignKeyConstraint(
+              ['account_id', 'parent_id'],
+              ['folder.account_id', 'folder.folder_id']),
+        )
+
+        account_id = Column(Integer, primary_key=True)
+        folder_id = Column(Integer, primary_key=True)
+        parent_id = Column(Integer)
+        name = Column(String)
+
+        parent_folder = relationship("Folder",
+                            backref="child_folders",
+                            remote_side=[account_id, folder_id]
+                      )
+
+Above, we pass ``account_id`` into the ``remote_side`` list.
+:func:`.relationship` recognizes that the ``account_id`` column here
+is on both sides, and aligns the "remote" column along with the
+``folder_id`` column, which it recognizes as uniquely present on
+the "remote" side.
+
+.. versionadded:: 0.8
+
+    Support for self-referential composite keys in :func:`.relationship`
+    where a column points to itself.
+
 Self-Referential Query Strategies
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -412,7 +454,7 @@ a join from a table to itself requires that at least one side of the
 expression be "aliased" so that it can be unambiguously referred to.
 
 Recall from :ref:`ormtutorial_aliases` in the ORM tutorial that the
-:class:`.orm.aliased` construct is normally used to provide an "alias" of
+:func:`.orm.aliased` construct is normally used to provide an "alias" of
 an ORM entity.  Joining from ``Node`` to itself using this technique
 looks like:
 
@@ -796,14 +838,23 @@ to cross the line of duplicating too much SQL behavior in Python.  The backref b
 itself is only a slight transgression of this philosophy - SQLAlchemy tries to keep
 these to a minimum overall.
 
-.. _relationship_primaryjoin:
+.. _relationship_configure_joins:
 
-Setting the primaryjoin and secondaryjoin
------------------------------------------
+Configuring how Relationship Joins
+------------------------------------
 
-A common scenario arises when we attempt to relate two
-classes together, where there exist multiple ways to join the
-two tables.
+:func:`.relationship` will normally create a join between two tables
+by examining the foreign key relationship between the two tables
+to determine which columns should be compared.  There are a variety
+of situations where this behavior needs to be customized.
+
+.. _relationship_foreign_keys:
+
+Handling Multiple Join Paths
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+One of the most common situations to deal with is when
+there are more than one foreign key path between two tables.
 
 Consider a ``Customer`` class that contains two foreign keys to an ``Address``
 class::
@@ -835,25 +886,20 @@ class::
 
 The above mapping, when we attempt to use it, will produce the error::
 
-    sqlalchemy.exc.ArgumentError: Could not determine join condition between
-    parent/child tables on relationship Customer.billing_address. Specify a
-    'primaryjoin' expression. If 'secondary' is present, 'secondaryjoin' is
-    needed as well.
+    sqlalchemy.exc.AmbiguousForeignKeysError: Could not determine join
+    condition between parent/child tables on relationship
+    Customer.billing_address - there are multiple foreign key
+    paths linking the tables.  Specify the 'foreign_keys' argument,
+    providing a list of those columns which should be
+    counted as containing a foreign key reference to the parent table.
 
-What this error means is that if you have a ``Customer`` object, and wish
-to load in an associated ``Address``, there is the choice of retrieving
-the ``Address`` referred to by the ``billing_address_id`` column or the one
-referred to by the ``shipping_address_id`` column.  The :func:`.relationship`,
-as it is, cannot determine its full configuration.   The examples at
-:ref:`relationship_patterns` didn't have this issue, because in each of those examples
-there was only **one** way to refer to the related table.
+The above message is pretty long - the confgurational messages returned
+by :func:`.relationship` all share that they exist to diagnose
+common configurational issues as well as the suggested solution.
 
-To resolve this issue, :func:`.relationship` accepts an argument named
-``primaryjoin`` which accepts a Python-based SQL expression, using the system described
-at :ref:`sqlexpression_toplevel`, that describes how the two tables should be joined
-together.  When using the declarative system, we often will specify this Python
-expression within a string, which is late-evaluated by the mapping configuration
-system so that it has access to the full namespace of available classes::
+In this case, the message wants us to qualify each :func:`.relationship`
+by instructing for each one which foreign key column should be considered, and
+the appropriate form is as follows::
 
     class Customer(Base):
         __tablename__ = 'customer'
@@ -863,12 +909,13 @@ system so that it has access to the full namespace of available classes::
         billing_address_id = Column(Integer, ForeignKey("address.id"))
         shipping_address_id = Column(Integer, ForeignKey("address.id"))
 
-        billing_address = relationship("Address",
-                        primaryjoin="Address.id==Customer.billing_address_id")
-        shipping_address = relationship("Address",
-                        primaryjoin="Address.id==Customer.shipping_address_id")
+        billing_address = relationship("Address", foreign_keys=[billing_address_id])
+        shipping_address = relationship("Address", foreign_keys=[shipping_address_id])
 
-Above, loading the ``Customer.billing_address`` relationship from a ``Customer``
+Above, we specify the ``foreign_keys`` argument, which is a :class:`.Column` or list
+of :class:`.Column` objects which indicate those columns to be considered "foreign",
+or in other words, the columns that contain a value referring to a parent table.
+Loading the ``Customer.billing_address`` relationship from a ``Customer``
 object will use the value present in ``billing_address_id`` in order to
 identify the row in ``Address`` to be loaded; similarly, ``shipping_address_id``
 is used for the ``shipping_address`` relationship.   The linkage of the two
@@ -876,11 +923,36 @@ columns also plays a role during persistence; the newly generated primary key
 of a just-inserted ``Address`` object will be copied into the appropriate
 foreign key column of an associated ``Customer`` object during a flush.
 
+When specifying ``foreign_keys`` with Declarative, we can also use string
+names to specify, however it is important that if using a list, the **list
+is part of the string**::
+
+        billing_address = relationship("Address", foreign_keys="[Customer.billing_address_id]")
+
+In this specific example, the list is not necessary in any case as there's only
+one :class:`.Column` we need::
+
+        billing_address = relationship("Address", foreign_keys="Customer.billing_address_id")
+
+..versionchanged:: 0.8
+
+    :func:`.relationship` can resolve ambiguity between foreign key targets on the
+    basis of the ``foreign_keys`` argument alone; the ``primaryjoin`` argument is no
+    longer needed in this situation.
+
+.. _relationship_primaryjoin:
+
 Specifying Alternate Join Conditions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The open-ended nature of ``primaryjoin`` also allows us to customize how
-related items are loaded.   In the example below, using the ``User`` class
+The examples with :func:`.relationship` thus far all involve a simple
+join between two tables by equating the value of primary key columns
+on one side to that of foreign key referring columns on the other.
+We can change this criterion to be anything we'd like using the ``primaryjoin``
+argument, as well as the ``secondaryjoin`` argument in the case when
+a "secondary" table is used.
+
+In the example below, using the ``User`` class
 as well as an ``Address`` class which stores a street address,  we
 create a relationship ``boston_addresses`` which will only
 load those ``Address`` objects which specify a city of "Boston"::
@@ -916,25 +988,7 @@ to just ``city='Boston'``.   When using Declarative, rudimentary SQL functions l
 :func:`.and_` are automatically available in the evaluated namespace of a string
 :func:`.relationship` argument.
 
-When using classical mappings, we have the advantage of the :class:`.Table` objects
-already being present when the mapping is defined, so that the SQL expression
-can be created immediately::
-
-    from sqlalchemy.orm import relationship, mapper
-
-    class User(object):
-        pass
-    class Address(object):
-        pass
-
-    mapper(Address, addresses_table)
-    mapper(User, users_table, properties={
-        'boston_addresses': relationship(Address, primaryjoin=
-                    and_(users_table.c.id==addresses_table.c.user_id,
-                    addresses_table.c.city=='Boston'))
-    })
-
-Note that the custom criteria we use in a ``primaryjoin`` is generally only significant
+The custom criteria we use in a ``primaryjoin`` is generally only significant
 when SQLAlchemy is rendering SQL in order to load or represent this relationship.
 That is, it's  used
 in the SQL statement that's emitted in order to perform a per-attribute lazy load, or when a join is
@@ -947,6 +1001,79 @@ a flush occurs, the objects inside of ``boston_addresses`` will be flushed uncon
 value of the primary key ``user.id`` column onto the foreign-key-holding ``address.user_id`` column
 for each row.  The ``city`` criteria has no effect here, as the flush process only cares about synchronizing primary
 key values into referencing foreign key values.
+
+.. _relationship_custom_foreign:
+
+Creating Custom Foreign Conditions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The examples we've seen so far involve :class:`.Column` objects
+where at least one of them specifies :class:`.ForeignKey`, or is otherwise
+part of a :class:`.ForeignKeyConstraint` that's relevant to the join condition.
+:func:`.relationship` looks to this foreign key status as it decides
+how it should load and persist data for this relationship.   However, the
+``primaryjoin`` argument can be used to create a join condition that
+doesn't involve any "schema" level foreign keys.  We can combine ``primaryjoin``
+along with ``foreign_keys`` and ``remote_side`` explicitly in order to
+establish such a join.
+
+Below, a class ``HostEntry`` joins to itself, equating the string ``content``
+column to the ``ip_address`` column, which is a Postgresql type called ``INET``.
+We need to use :func:`.cast` in order to cast one side of the join to the
+type of the other::
+
+    from sqlalchemy import cast, String, Column, Integer
+    from sqlalchemy.orm import relationship
+    from sqlalchemy.dialects.postgresql import INET
+
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+    class HostEntry(Base):
+        __tablename__ = 'host_entry'
+
+        id = Column(Integer, primary_key=True)
+        ip_address = Column(INET)
+        content = Column(String(50))
+
+        # relationship() using explicit foreign_keys, remote_side
+        parent_host = relationship("HostEntry",
+                            primaryjoin=ip_address == cast(content, INET),
+                            foreign_keys=content,
+                            remote_side=ip_address
+                        )
+
+The above relationship will produce a join like::
+
+    SELECT host_entry.id, host_entry.ip_address, host_entry.content
+    FROM host_entry JOIN host_entry AS host_entry_1
+    ON host_entry_1.ip_address = CAST(host_entry.content AS INET)
+
+An alternative syntax to the above is to use the :func:`.foreign` and
+:func:`.remote` :term:`annotations`, inline within the ``primaryjoin`` expression.
+This syntax represents the annotations that :func:`.relationship` normally
+applies by itself to the join condition given the ``foreign_keys`` and
+``remote_side`` arguments; the functions are provided in the API in the
+rare case that :func:`.relationship` can't determine the exact location
+of these features on its own::
+
+    from sqlalchemy.orm import foreign, remote
+
+    class HostEntry(Base):
+        __tablename__ = 'host_entry'
+
+        id = Column(Integer, primary_key=True)
+        ip_address = Column(INET)
+        content = Column(String(50))
+
+        # relationship() using explicit foreign() and remote() annotations
+        # in lieu of separate arguments
+        parent_host = relationship("HostEntry",
+                            primaryjoin=remote(ip_address) == \
+                                    cast(foreign(content), INET),
+                        )
+
 
 .. _self_referential_many_to_many:
 
@@ -1021,30 +1148,6 @@ Note that in both examples, the ``backref`` keyword specifies a ``left_nodes``
 backref - when :func:`.relationship` creates the second relationship in the reverse
 direction, it's smart enough to reverse the ``primaryjoin`` and ``secondaryjoin`` arguments.
 
-Specifying Foreign Keys
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-When using ``primaryjoin`` and ``secondaryjoin``, SQLAlchemy also needs to be
-aware of which columns in the relationship reference the other. In most cases,
-a :class:`~sqlalchemy.schema.Table` construct will have
-:class:`~sqlalchemy.schema.ForeignKey` constructs which take care of this;
-however, in the case of reflected tables on a database that does not report
-FKs (like MySQL ISAM) or when using join conditions on columns that don't have
-foreign keys, the :func:`~sqlalchemy.orm.relationship` needs to be told
-specifically which columns are "foreign" using the ``foreign_keys``
-collection:
-
-.. sourcecode:: python+sql
-
-    class Address(Base):
-        __table__ = addresses_table
-
-    class User(Base):
-        __table__ = users_table
-        addresses = relationship(Address,
-                        primaryjoin=
-                        users_table.c.user_id==addresses_table.c.user_id,
-                        foreign_keys=[addresses_table.c.user_id])
 
 Building Query-Enabled Properties
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1310,8 +1413,6 @@ Relationships API
 .. autofunction:: foreign
 
 .. autofunction:: remote
-
-.. autofunction:: remote_foreign
 
 
 

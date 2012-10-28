@@ -3,7 +3,7 @@
 Dialects
 ========
 
-The **dialect** is the system SQLAlchemy uses to communicate with various types of DBAPIs and databases.
+The **dialect** is the system SQLAlchemy uses to communicate with various types of :term:`DBAPI` implementations and databases.
 The sections that follow contain reference documentation and notes specific to the usage of each backend, as well as notes
 for the various DBAPIs.
 
@@ -31,15 +31,14 @@ Included Dialects
 External Dialects
 -----------------
 
-.. note::
+.. versionchanged:: 0.8
+   As of SQLAlchemy 0.8, several dialects have been moved to external
+   projects, and dialects for new databases will also be published
+   as external projects.   The rationale here is to keep the base
+   SQLAlchemy install and test suite from growing inordinately large.
 
-    As of SQLAlchemy 0.8, several dialects have been moved to external
-    projects, and dialects for new databases will also be published
-    as external projects.   The rationale here is to keep the base
-    SQLAlchemy install and test suite from growing inordinately large.
-
-    The "classic" dialects such as SQLite, MySQL, Postgresql, Oracle,
-    SQL Server, Firebird will remain in the Core for the time being.
+   The "classic" dialects such as SQLite, MySQL, Postgresql, Oracle,
+   SQL Server, Firebird will remain in the Core for the time being.
 
 Current external dialect projects for SQLAlchemy include:
 
