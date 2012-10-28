@@ -1,7 +1,7 @@
 from sqlalchemy.testing import assert_raises, assert_raises_message, eq_, \
     AssertsCompiledSQL, is_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.orm import relationships, foreign, remote, remote_foreign
+from sqlalchemy.orm import relationships, foreign, remote
 from sqlalchemy import MetaData, Table, Column, ForeignKey, Integer, \
     select, ForeignKeyConstraint, exc, func, and_
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
@@ -245,9 +245,9 @@ class _JoinFixtures(object):
             self.left,
             self.right,
             primaryjoin=(self.left.c.x + self.left.c.y) == \
-                            relationships.remote_foreign(
+                            relationships.remote(relationships.foreign(
                                 self.right.c.x * self.right.c.y
-                            ),
+                            )),
             **kw
         )
 

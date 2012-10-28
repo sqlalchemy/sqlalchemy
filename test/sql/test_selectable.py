@@ -1277,6 +1277,13 @@ class AnnotationsTest(fixtures.TestBase):
         assert x_p.compare(x_p_a)
         assert not x_p_a.compare(x_a)
 
+    def test_late_name_add(self):
+        from sqlalchemy.schema import Column
+        c1 = Column(Integer)
+        c1_a = c1._annotate({"foo": "bar"})
+        c1.name = 'somename'
+        eq_(c1_a.name, 'somename')
+
     def test_custom_constructions(self):
         from sqlalchemy.schema import Column
         class MyColumn(Column):

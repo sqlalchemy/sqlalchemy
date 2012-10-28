@@ -49,7 +49,6 @@ from .properties import (
 from .relationships import (
     foreign,
     remote,
-    remote_foreign
 )
 from .session import (
     Session,
@@ -118,7 +117,6 @@ __all__ = (
     'relationship',
     'relation',
     'remote',
-    'remote_foreign',
     'scoped_session',
     'sessionmaker',
     'subqueryload',
@@ -452,9 +450,9 @@ def relationship(argument, secondary=None, **kwargs):
     :param load_on_pending=False:
       Indicates loading behavior for transient or pending parent objects.
 
-      .. note::
-
-      load_on_pending is superseded by :meth:`.Session.enable_relationship_loading`.
+      .. versionchanged:: 0.8
+          load_on_pending is superseded by
+          :meth:`.Session.enable_relationship_loading`.
 
       When set to ``True``, causes the lazy-loader to
       issue a query for a parent object that is not persistent, meaning it has

@@ -90,7 +90,7 @@ class SessionTransaction(object):
     :meth:`.Session.begin` method is called.
 
     Another detail of :class:`.SessionTransaction` behavior is that it is
-    capable of "nesting".  This means that the :meth:`.begin` method can
+    capable of "nesting".  This means that the :meth:`.Session.begin` method can
     be called while an existing :class:`.SessionTransaction` is already present,
     producing a new :class:`.SessionTransaction` that temporarily replaces
     the parent :class:`.SessionTransaction`.   When a :class:`.SessionTransaction`
@@ -101,8 +101,8 @@ class SessionTransaction(object):
     behavior is effectively a stack, where :attr:`.Session.transaction` refers
     to the current head of the stack.
 
-    The purpose of this stack is to allow nesting of :meth:`.rollback` or
-    :meth:`.commit` calls in context with various flavors of :meth:`.begin`.
+    The purpose of this stack is to allow nesting of :meth:`.Session.rollback` or
+    :meth:`.Session.commit` calls in context with various flavors of :meth:`.Session.begin`.
     This nesting behavior applies to when :meth:`.Session.begin_nested`
     is used to emit a SAVEPOINT transaction, and is also used to produce
     a so-called "subtransaction" which allows a block of code to use a
@@ -1628,6 +1628,11 @@ class Session(_SessionClassMethods):
         """Associate an object with this :class:`.Session` for related
         object loading.
 
+        .. warning::
+
+            :meth:`.enable_relationship_loading` exists to serve special
+            use cases and is not recommended for general use.
+
         Accesses of attributes mapped with :func:`.relationship`
         will attempt to load a value from the database using this
         :class:`.Session` as the source of connectivity.  The values
@@ -1636,7 +1641,7 @@ class Session(_SessionClassMethods):
         generally only works for many-to-one-relationships.
 
         The object will be attached to this session, but will
-        ''not'' participate in any persistence operations; its state
+        **not** participate in any persistence operations; its state
         for almost all purposes will remain either "transient" or
         "detached", except for the case of relationship loading.
 
@@ -1988,18 +1993,18 @@ class Session(_SessionClassMethods):
         The "partial rollback" state refers to when an "inner" transaction,
         typically used during a flush, encounters an error and emits
         a rollback of the DBAPI connection.  At this point, the :class:`.Session`
-        is in "partial rollback" and awaits for the user to call :meth:`.rollback`,
+        is in "partial rollback" and awaits for the user to call :meth:`.Session.rollback`,
         in order to close out the transaction stack.  It is in this "partial
         rollback" period that the :attr:`.is_active` flag returns False.  After
-        the call to :meth:`.rollback`, the :class:`.SessionTransaction` is replaced
+        the call to :meth:`.Session.rollback`, the :class:`.SessionTransaction` is replaced
         with a new one and :attr:`.is_active` returns ``True`` again.
 
         When a :class:`.Session` is used in ``autocommit=True`` mode, the
         :class:`.SessionTransaction` is only instantiated within the scope
         of a flush call, or when :meth:`.Session.begin` is called.  So
         :attr:`.is_active` will always be ``False`` outside of a flush or
-        :meth:`.begin` block in this mode, and will be ``True`` within the
-        :meth:`.begin` block as long as it doesn't enter "partial rollback"
+        :meth:`.Session.begin` block in this mode, and will be ``True`` within the
+        :meth:`.Session.begin` block as long as it doesn't enter "partial rollback"
         state.
 
         From all the above, it follows that the only purpose to this flag is

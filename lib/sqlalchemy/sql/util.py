@@ -411,7 +411,7 @@ class Annotated(object):
             except KeyError:
                 cls = annotated_classes[element.__class__] = type.__new__(type,
                         "Annotated%s" % element.__class__.__name__,
-                        (Annotated, element.__class__), {})
+                        (cls, element.__class__), {})
             return object.__new__(cls)
 
     def __init__(self, element, values):
@@ -462,7 +462,7 @@ class Annotated(object):
             # update the clone with any changes that have occurred
             # to this object's __dict__.
             clone.__dict__.update(self.__dict__)
-            return Annotated(clone, self._annotations)
+            return self.__class__(clone, self._annotations)
 
     def __hash__(self):
         return hash(self.__element)
@@ -473,6 +473,23 @@ class Annotated(object):
         else:
             return hash(other) == hash(self)
 
+class AnnotatedColumnElement(Annotated):
+    def __init__(self, element, values):
+        Annotated.__init__(self, element, values)
+        for attr in ('name', 'key'):
+            if self.__dict__.get(attr, False) is None:
+                self.__dict__.pop(attr)
+
+    @util.memoized_property
+    def name(self):
+        """pull 'name' from parent, if not present"""
+        return self._Annotated__element.name
+
+    @util.memoized_property
+    def key(self):
+        """pull 'key' from parent, if not present"""
+        return self._Annotated__element.key
+
 
 # hard-generate Annotated subclasses.  this technique
 # is used instead of on-the-fly types (i.e. type.__new__())
@@ -481,9 +498,13 @@ annotated_classes = {}
 
 for cls in expression.__dict__.values() + [schema.Column, schema.Table]:
     if isinstance(cls, type) and issubclass(cls, expression.ClauseElement):
-        exec "class Annotated%s(Annotated, cls):\n" \
-             "    pass" % (cls.__name__, ) in locals()
-        exec "annotated_classes[cls] = Annotated%s" % (cls.__name__)
+        if issubclass(cls, expression.ColumnElement):
+            annotation_cls = "AnnotatedColumnElement"
+        else:
+            annotation_cls = "Annotated"
+        exec "class Annotated%s(%s, cls):\n" \
+             "    pass" % (cls.__name__, annotation_cls) in locals()
+        exec "annotated_classes[cls] = Annotated%s" % (cls.__name__,)
 
 def _deep_annotate(element, annotations, exclude=None):
     """Deep copy the given ClauseElement, annotating each element
