@@ -10,7 +10,7 @@ class MockClass(object):
         self._decl_class_registry = base
         tokens = name.split(".")
         self.__module__ = ".".join(tokens[0:-1])
-        self.name = tokens[-1]
+        self.name = self.__name__ = tokens[-1]
         self.metadata = MetaData()
 
 
@@ -30,7 +30,9 @@ class ClsRegistryTest(fixtures.TestBase):
 
         assert_raises_message(
             exc.SAWarning,
-            "This declarative base already contains a class ",
+            "This declarative base already contains a class with the "
+            "same class name and module name as foo.bar.Foo, and "
+            "will be replaced in the string-lookup table.",
             clsregistry.add_class, "Foo", f2
         )
 
@@ -47,6 +49,41 @@ class ClsRegistryTest(fixtures.TestBase):
         is_(resolver("foo.bar.Foo")(), f1)
         is_(resolver("foo.alt.Foo")(), f2)
 
+    def test_fragment_resolve(self):
+        base = weakref.WeakValueDictionary()
+        f1 = MockClass(base, "foo.bar.Foo")
+        f2 = MockClass(base, "foo.alt.Foo")
+        f3 = MockClass(base, "bat.alt.Hoho")
+        clsregistry.add_class("Foo", f1)
+        clsregistry.add_class("Foo", f2)
+        clsregistry.add_class("HoHo", f3)
+        resolver = clsregistry._resolver(f1, MockProp())
+
+        gc_collect()
+
+        is_(resolver("bar.Foo")(), f1)
+        is_(resolver("alt.Foo")(), f2)
+
+    def test_fragment_ambiguous(self):
+        base = weakref.WeakValueDictionary()
+        f1 = MockClass(base, "foo.bar.Foo")
+        f2 = MockClass(base, "foo.alt.Foo")
+        f3 = MockClass(base, "bat.alt.Foo")
+        clsregistry.add_class("Foo", f1)
+        clsregistry.add_class("Foo", f2)
+        clsregistry.add_class("Foo", f3)
+        resolver = clsregistry._resolver(f1, MockProp())
+
+        gc_collect()
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            'Multiple classes found for path "alt.Foo" in the registry '
+            'of this declarative base. Please use a fully '
+            'module-qualified path.',
+            resolver("alt.Foo")
+        )
+
     def test_resolve_dupe_by_name(self):
         base = weakref.WeakValueDictionary()
         f1 = MockClass(base, "foo.bar.Foo")
@@ -60,9 +97,9 @@ class ClsRegistryTest(fixtures.TestBase):
         resolver = resolver("Foo")
         assert_raises_message(
             exc.InvalidRequestError,
-            "Multiple classes with the classname 'Foo' "
-            "are in the registry of this declarative "
-            "base. Please use a fully module-qualified path.",
+            'Multiple classes found for path "Foo" in the '
+            'registry of this declarative base. Please use a '
+            'fully module-qualified path.',
             resolver
         )
 
@@ -93,7 +130,7 @@ class ClsRegistryTest(fixtures.TestBase):
             clsregistry.add_class("Foo", f1)
             clsregistry.add_class("Foo", f2)
 
-            eq_(len(clsregistry._registries), 5)
+            eq_(len(clsregistry._registries), 11)
 
             del f1
             del f2
@@ -133,7 +170,7 @@ class ClsRegistryTest(fixtures.TestBase):
         mod_entry = reg['foo']['bar']
         resolver = clsregistry._resolver(f1, MockProp())
         resolver = resolver("foo")
-        mod_entry.contents.update({"Foo": lambda: None})
+        del mod_entry.contents["Foo"]
         assert_raises_message(
             AttributeError,
             "Module 'bar' has no mapped classes registered "

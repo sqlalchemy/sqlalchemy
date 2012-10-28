@@ -146,7 +146,7 @@ expression functions like :func:`~sqlalchemy.sql.expression.desc` and
                              primaryjoin="Address.user_id==User.id")
 
 For the case where more than one module contains a class of the same name,
-string class names can also be specified as fully module-qualified paths
+string class names can also be specified as module-qualified paths
 within any of these string expressions::
 
     class User(Base):
@@ -156,9 +156,21 @@ within any of these string expressions::
                              primaryjoin="myapp.model.address.Address.user_id=="
                                             "myapp.model.user.User.id")
 
+The qualified path can be any partial path that removes ambiguity between
+the names.  For example, to disambiguate between
+``myapp.model.address.Address`` and ``myapp.model.lookup.Address``,
+we can specify ``address.Address`` or ``lookup.Address``::
+
+    class User(Base):
+        # ....
+        addresses = relationship("address.Address",
+                             order_by="desc(address.Address.email)",
+                             primaryjoin="address.Address.user_id=="
+                                            "User.id")
+
 .. versionadded:: 0.8
-   Fully module-qualified paths can be used when specifying string arguments
-   with Declarative.
+   module-qualified paths can be used when specifying string arguments
+   with Declarative, in order to specify specific modules.
 
 Two alternatives also exist to using string-based attributes.  A lambda
 can also be used, which will be evaluated after all mappers have been
