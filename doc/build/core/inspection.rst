@@ -1,8 +1,8 @@
 .. _core_inspection_toplevel:
 .. _inspection_toplevel:
 
-Runtime Inpection API
-=====================
+Runtime Inspection API
+======================
 
 .. automodule:: sqlalchemy.inspection
     :members:
