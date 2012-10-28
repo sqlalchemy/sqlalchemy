@@ -67,13 +67,13 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         event.listen(A, 'init', init_e, propagate=True)
 
         a = A()
-        eq_(canary, [('init_a', a),('init_b', a),
-                        ('init_c', a),('init_d', a),('init_e', a)])
+        eq_(canary, [('init_a', a), ('init_b', a),
+                        ('init_c', a), ('init_d', a), ('init_e', a)])
 
         # test propagate flag
         canary[:] = []
         b = B()
-        eq_(canary, [('init_a', b), ('init_b', b),('init_e', b)])
+        eq_(canary, [('init_a', b), ('init_b', b), ('init_e', b)])
 
 
     def listen_all(self, mapper, **kw):
@@ -106,9 +106,9 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     def test_listen_doesnt_force_compile(self):
         User, users = self.classes.User, self.tables.users
         m = mapper(User, users, properties={
-            'addresses':relationship(lambda: ImNotAClass)
+            'addresses': relationship(lambda: ImNotAClass)
         })
-        event.listen(User, "before_insert", lambda *a, **kw:None)
+        event.listen(User, "before_insert", lambda *a, **kw: None)
         assert not m.configured
 
     def test_basic(self):
@@ -144,7 +144,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         mapper(User, users)
 
-        canary =[]
+        canary = []
         def load(obj, ctx):
             canary.append('load')
         event.listen(mapper, 'load', load)
@@ -159,7 +159,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         u2 = s.merge(User(name='u2'))
         s.commit()
         s.query(User).first()
-        eq_(canary,['load', 'load', 'load'])
+        eq_(canary, ['load', 'load', 'load'])
 
     def test_inheritance(self):
         users, addresses, User = (self.tables.users,
@@ -331,6 +331,12 @@ class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     run_inserts = None
 
     def test_deferred_map_event(self):
+        """
+        1. mapper event listen on class
+        2. map class
+        3. event fire should receive event
+
+        """
         users, User = (self.tables.users,
                                 self.classes.User)
 
@@ -344,6 +350,12 @@ class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         eq_(canary, [5])
 
     def test_deferred_map_event_subclass_propagate(self):
+        """
+        1. mapper event listen on class, w propagate
+        2. map only subclass of class
+        3. event fire should receive event
+
+        """
         users, User = (self.tables.users,
                                 self.classes.User)
 
@@ -360,6 +372,12 @@ class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         eq_(canary, [5])
 
     def test_deferred_map_event_subclass_no_propagate(self):
+        """
+        1. mapper event listen on class, w/o propagate
+        2. map only subclass of class
+        3. event fire should not receive event
+
+        """
         users, User = (self.tables.users,
                                 self.classes.User)
 
@@ -375,7 +393,60 @@ class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         m.dispatch.before_insert(5)
         eq_(canary, [])
 
+    def test_deferred_map_event_subclass_post_mapping_propagate(self):
+        """
+        1. map only subclass of class
+        2. mapper event listen on class, w propagate
+        3. event fire should receive event
+
+        """
+        users, User = (self.tables.users,
+                                self.classes.User)
+
+        class SubUser(User):
+            pass
+
+        m = mapper(SubUser, users)
+
+        canary = []
+        def evt(x):
+            canary.append(x)
+        event.listen(User, "before_insert", evt, propagate=True, raw=True)
+
+        m.dispatch.before_insert(5)
+        eq_(canary, [5])
+
+    def test_deferred_instance_event_subclass_post_mapping_propagate(self):
+        """
+        1. map only subclass of class
+        2. instance event listen on class, w propagate
+        3. event fire should receive event
+
+        """
+        users, User = (self.tables.users,
+                                self.classes.User)
+
+        class SubUser(User):
+            pass
+
+        m = mapper(SubUser, users)
+
+        canary = []
+        def evt(x):
+            canary.append(x)
+        event.listen(User, "load", evt, propagate=True, raw=True)
+
+        m.class_manager.dispatch.load(5)
+        eq_(canary, [5])
+
+
     def test_deferred_instance_event_plain(self):
+        """
+        1. instance event listen on class, w/o propagate
+        2. map class
+        3. event fire should receive event
+
+        """
         users, User = (self.tables.users,
                                 self.classes.User)
 
@@ -389,6 +460,12 @@ class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         eq_(canary, [5])
 
     def test_deferred_instance_event_subclass_propagate_subclass_only(self):
+        """
+        1. instance event listen on class, w propagate
+        2. map two subclasses of class
+        3. event fire on each class should receive one and only one event
+
+        """
         users, User = (self.tables.users,
                                 self.classes.User)
 
@@ -413,6 +490,14 @@ class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         eq_(canary, [5, 5])
 
     def test_deferred_instance_event_subclass_propagate_baseclass(self):
+        """
+        1. instance event listen on class, w propagate
+        2. map one subclass of class, map base class, leave 2nd subclass unmapped
+        3. event fire on sub should receive one and only one event
+        4. event fire on base should receive one and only one event
+        5. map 2nd subclass
+        6. event fire on 2nd subclass should receive one and only one event
+        """
         users, User = (self.tables.users,
                                 self.classes.User)
 
@@ -441,6 +526,11 @@ class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         eq_(canary, [5, 5, 5])
 
     def test_deferred_instance_event_subclass_no_propagate(self):
+        """
+        1. instance event listen on class, w/o propagate
+        2. map subclass
+        3. event fire on subclass should not receive event
+        """
         users, User = (self.tables.users,
                                 self.classes.User)
 

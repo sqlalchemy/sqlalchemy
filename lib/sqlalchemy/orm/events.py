@@ -338,8 +338,16 @@ class _EventsHold(object):
 
             collection.append((target.class_, identifier, fn, raw, propagate))
 
+            if propagate:
+                for subject_dispatch, (subclass, subject) in \
+                                target.established.items():
+                    if issubclass(subclass, target.class_):
+                        subject_dispatch._listen(subject, identifier, fn,
+                                        raw=raw, propagate=propagate)
+
     @classmethod
     def populate(cls, class_, subject):
+        cls.established[subject.dispatch] = (class_, subject)
         for subclass in class_.__mro__:
             if subclass in cls.all_holds:
                 if subclass is class_:
@@ -348,10 +356,12 @@ class _EventsHold(object):
                     collection = cls.all_holds[subclass]
                 for target, ident, fn, raw, propagate in collection:
                     if propagate or subclass is class_:
-                        subject.dispatch._listen(subject, ident, fn, raw, propagate)
+                        subject.dispatch._listen(subject, ident,
+                                                        fn, raw, propagate)
 
 class _InstanceEventsHold(_EventsHold):
     all_holds = weakref.WeakKeyDictionary()
+    established = weakref.WeakKeyDictionary()
 
     class HoldInstanceEvents(_EventsHold.HoldEvents, InstanceEvents):
         pass
@@ -1019,6 +1029,7 @@ class MapperEvents(event.Events):
 
 class _MapperEventsHold(_EventsHold):
     all_holds = weakref.WeakKeyDictionary()
+    established = weakref.WeakKeyDictionary()
 
     class HoldMapperEvents(_EventsHold.HoldEvents, MapperEvents):
         pass
