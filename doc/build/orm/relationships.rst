@@ -893,9 +893,11 @@ The above mapping, when we attempt to use it, will produce the error::
     providing a list of those columns which should be
     counted as containing a foreign key reference to the parent table.
 
-The above message is pretty long - the confgurational messages returned
-by :func:`.relationship` all share that they exist to diagnose
-common configurational issues as well as the suggested solution.
+The above message is pretty long.  There are many potential messages
+that :func:`.relationship` can return, which have been carefully tailored
+to detect a variety of common configurational issues; most will suggest
+the additional configuration that's needed to resolve the ambiguity
+or other missing information.
 
 In this case, the message wants us to qualify each :func:`.relationship`
 by instructing for each one which foreign key column should be considered, and
@@ -934,7 +936,7 @@ one :class:`.Column` we need::
 
         billing_address = relationship("Address", foreign_keys="Customer.billing_address_id")
 
-..versionchanged:: 0.8
+.. versionchanged:: 0.8
 
     :func:`.relationship` can resolve ambiguity between foreign key targets on the
     basis of the ``foreign_keys`` argument alone; the ``primaryjoin`` argument is no
@@ -945,9 +947,9 @@ one :class:`.Column` we need::
 Specifying Alternate Join Conditions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The examples with :func:`.relationship` thus far all involve a simple
-join between two tables by equating the value of primary key columns
-on one side to that of foreign key referring columns on the other.
+The default behavior of :func:`.relationship` when constructing a join
+is that it equates the value of primary key columns
+on one side to that of foreign-key-referring columns on the other.
 We can change this criterion to be anything we'd like using the ``primaryjoin``
 argument, as well as the ``secondaryjoin`` argument in the case when
 a "secondary" table is used.
@@ -1007,9 +1009,10 @@ key values into referencing foreign key values.
 Creating Custom Foreign Conditions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The examples we've seen so far involve :class:`.Column` objects
-where at least one of them specifies :class:`.ForeignKey`, or is otherwise
-part of a :class:`.ForeignKeyConstraint` that's relevant to the join condition.
+Another element of the primary join condition is how those columns
+considered "foreign" are determined.  Usually, some subset
+of :class:`.Column` objects will specify :class:`.ForeignKey`, or otherwise
+be part of a :class:`.ForeignKeyConstraint` that's relevant to the join condition.
 :func:`.relationship` looks to this foreign key status as it decides
 how it should load and persist data for this relationship.   However, the
 ``primaryjoin`` argument can be used to create a join condition that
