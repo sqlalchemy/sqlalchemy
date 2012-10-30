@@ -293,16 +293,22 @@ class DefaultRequirements(SuiteRequirements):
     def empty_strings_varchar(self):
         """target database can persist/return an empty string with a varchar."""
 
-        return fails_if("oracle", 'oracle converts empty '
-                                'strings to a blank space')
+        return fails_if(["oracle"],
+                        'oracle converts empty strings to a blank space')
 
     @property
     def empty_strings_text(self):
         """target database can persist/return an empty string with an
         unbounded text."""
 
-        return fails_if("oracle", 'oracle converts empty '
-                                'strings to a blank space')
+        return fails_if(["oracle"],
+                        'oracle converts empty strings to a blank space')
+
+    @property
+    def unicode_data(self):
+        return skip_if([
+            no_support("sybase", "no unicode driver support")
+            ])
 
     @property
     def unicode_connections(self):
@@ -337,7 +343,6 @@ class DefaultRequirements(SuiteRequirements):
                 lambda: not self._has_cextensions(), "C extensions not installed"
                 )
 
-
     @property
     def emulated_lastrowid(self):
         """"target dialect retrieves cursor.lastrowid or an equivalent
@@ -346,6 +351,12 @@ class DefaultRequirements(SuiteRequirements):
         return fails_on_everything_except('mysql+mysqldb', 'mysql+oursql',
                                        'sqlite+pysqlite', 'mysql+pymysql',
                                        'mssql+pyodbc', 'mssql+mxodbc')
+
+    @property
+    def implements_get_lastrowid(self):
+        return skip_if([
+            no_support('sybase', 'not supported by database'),
+            ])
 
     @property
     def dbapi_lastrowid(self):
@@ -372,7 +383,7 @@ class DefaultRequirements(SuiteRequirements):
     def reflects_pk_names(self):
         """Target driver reflects the name of primary key constraints."""
 
-        return fails_on_everything_except('postgresql', 'oracle')
+        return fails_on_everything_except('postgresql', 'oracle', 'sybase')
 
     @property
     def python2(self):
