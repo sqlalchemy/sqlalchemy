@@ -105,14 +105,17 @@ Classes
 .. autoclass:: Alias
    :members:
    :show-inheritance:
+   :inherited-members:
 
 .. autoclass:: BinaryExpression
    :members:
    :show-inheritance:
+   :inherited-members:
 
 .. autoclass:: BindParameter
    :members:
    :show-inheritance:
+   :inherited-members:
 
 .. autoclass:: ClauseElement
    :members:
@@ -125,6 +128,7 @@ Classes
 .. autoclass:: ColumnClause
    :members:
    :show-inheritance:
+   :inherited-members:
 
 .. autoclass:: ColumnCollection
    :members:
@@ -133,6 +137,7 @@ Classes
 .. autoclass:: ColumnElement
    :members:
    :show-inheritance:
+   :inherited-members:
 
 .. autoclass:: sqlalchemy.sql.operators.ColumnOperators
    :members:
@@ -144,6 +149,7 @@ Classes
 .. autoclass:: CompoundSelect
    :members:
    :show-inheritance:
+   :inherited-members:
 
 .. autoclass:: sqlalchemy.sql.operators.custom_op
    :members:
@@ -151,6 +157,7 @@ Classes
 .. autoclass:: CTE
    :members:
    :show-inheritance:
+   :inherited-members:
 
 .. autoclass:: Delete
    :members:
@@ -164,10 +171,12 @@ Classes
 .. autoclass:: FunctionElement
    :members:
    :show-inheritance:
+   :inherited-members:
 
 .. autoclass:: Function
    :members:
    :show-inheritance:
+   :inherited-members:
 
 .. autoclass:: FromClause
    :members:
@@ -181,6 +190,7 @@ Classes
 .. autoclass:: Join
    :members:
    :show-inheritance:
+   :inherited-members:
 
 .. autoclass:: sqlalchemy.sql.operators.Operators
    :members:
@@ -202,6 +212,7 @@ Classes
 .. autoclass:: TableClause
    :members:
    :show-inheritance:
+   :inherited-members:
 
 .. autoclass:: UnaryExpression
    :members:

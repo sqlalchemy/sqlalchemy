@@ -11,14 +11,17 @@ sections, are listed here.
 .. autoclass:: sqlalchemy.orm.state.AttributeState
     :members:
     :show-inheritance:
+    :inherited-members:
 
 .. autoclass:: sqlalchemy.orm.instrumentation.ClassManager
     :members:
     :show-inheritance:
+    :inherited-members:
 
 .. autoclass:: sqlalchemy.orm.properties.ColumnProperty
     :members:
     :show-inheritance:
+    :inherited-members:
 
 .. autoclass:: sqlalchemy.orm.descriptor_props.CompositeProperty
     :members:
@@ -31,6 +34,7 @@ sections, are listed here.
 .. autoclass:: sqlalchemy.orm.attributes.InstrumentedAttribute
     :members:
     :show-inheritance:
+    :inherited-members:
 
 .. autoclass:: sqlalchemy.orm.interfaces.MapperProperty
     :members:
@@ -39,14 +43,17 @@ sections, are listed here.
 .. autoclass:: sqlalchemy.orm.interfaces.PropComparator
     :members:
     :show-inheritance:
+    :inherited-members:
 
 .. autoclass:: sqlalchemy.orm.properties.RelationshipProperty
     :members:
     :show-inheritance:
+    :inherited-members:
 
 .. autoclass:: sqlalchemy.orm.descriptor_props.SynonymProperty
     :members:
     :show-inheritance:
+    :inherited-members:
 
 .. autoclass:: sqlalchemy.orm.query.QueryContext
     :members:
@@ -55,3 +62,4 @@ sections, are listed here.
 .. autoclass:: sqlalchemy.orm.attributes.QueryableAttribute
     :members:
     :show-inheritance:
+    :inherited-members:

@@ -15,16 +15,19 @@ Some key internal constructs are listed here.
 .. autoclass:: sqlalchemy.sql.compiler.DDLCompiler
     :members:
     :show-inheritance:
+    :inherited-members:
 
 .. autoclass:: sqlalchemy.engine.default.DefaultDialect
     :members:
     :undoc-members:
     :show-inheritance:
+    :inherited-members:
 
 .. autoclass:: sqlalchemy.engine.Dialect
     :members:
     :undoc-members:
     :show-inheritance:
+    :inherited-members:
 
 .. autoclass:: sqlalchemy.engine.default.DefaultExecutionContext
     :members:
