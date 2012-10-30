@@ -6,7 +6,7 @@
 
 .. changelog::
     :version: 0.8.0b1
-    :released:
+    :released: October 30, 2012
 
     .. change::
         :tags: sql, bug
