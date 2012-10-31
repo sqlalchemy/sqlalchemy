@@ -2,17 +2,17 @@
 Engine Configuration
 ====================
 
-The **Engine** is the starting point for any SQLAlchemy application. It's
+The :class:`.Engine` is the starting point for any SQLAlchemy application. It's
 "home base" for the actual database and its :term:`DBAPI`, delivered to the SQLAlchemy
-application through a connection pool and a **Dialect**, which describes how
+application through a connection pool and a :class:`.Dialect`, which describes how
 to talk to a specific kind of database/DBAPI combination.
 
 The general structure can be illustrated as follows:
 
 .. image:: sqla_engine_arch.png
 
-Where above, an :class:`~sqlalchemy.engine.Engine` references both a
-:class:`~sqlalchemy.engine.base.Dialect` and a :class:`~sqlalchemy.pool.Pool`,
+Where above, an :class:`.Engine` references both a
+:class:`.Dialect` and a :class:`.Pool`,
 which together interpret the DBAPI's module functions as well as the behavior
 of the database.
 
@@ -43,7 +43,7 @@ applications.
 Supported Databases
 ====================
 
-SQLAlchemy includes many :class:`~sqlalchemy.engine.base.Dialect` implementations for various
+SQLAlchemy includes many :class:`.Dialect` implementations for various
 backends.   Dialects for the most common databases are included with SQLAlchemy; a handful
 of others require an additional install of a separate dialect.
 

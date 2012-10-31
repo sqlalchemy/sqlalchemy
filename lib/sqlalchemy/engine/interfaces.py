@@ -43,10 +43,10 @@ class Dialect(object):
       'utf-8'.
 
     statement_compiler
-      a :class:`~Compiled` class used to compile SQL statements
+      a :class:`.Compiled` class used to compile SQL statements
 
     ddl_compiler
-      a :class:`~Compiled` class used to compile DDL statements
+      a :class:`.Compiled` class used to compile DDL statements
 
     server_version_info
       a tuple containing a version number for the DB backend in use.
@@ -163,8 +163,8 @@ class Dialect(object):
         """Transform a generic type to a dialect-specific type.
 
         Dialect classes will usually use the
-        :func:`~sqlalchemy.types.adapt_type` function in the types module to
-        make this job easy.
+        :func:`.types.adapt_type` function in the types module to
+        accomplish this.
 
         The returned result is cached *per dialect class* so can
         contain no dialect-instance state.
@@ -244,7 +244,7 @@ class Dialect(object):
 
 
         Deprecated.  This method is only called by the default
-        implementation of :meth:`get_pk_constraint()`.  Dialects should
+        implementation of :meth:`.Dialect.get_pk_constraint`.  Dialects should
         instead implement this method directly.
 
         """

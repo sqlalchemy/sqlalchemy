@@ -8,17 +8,17 @@
 
 Classes provided include:
 
-:class:`~sqlalchemy.sql.compiler.SQLCompiler` - renders SQL
+:class:`.compiler.SQLCompiler` - renders SQL
 strings
 
-:class:`~sqlalchemy.sql.compiler.DDLCompiler` - renders DDL
+:class:`.compiler.DDLCompiler` - renders DDL
 (data definition language) strings
 
-:class:`~sqlalchemy.sql.compiler.GenericTypeCompiler` - renders
+:class:`.compiler.GenericTypeCompiler` - renders
 type specification strings.
 
 To generate user-defined SQL strings, see
-:module:`~sqlalchemy.ext.compiler`.
+:doc:`/ext/compiler`.
 
 """
 

@@ -243,12 +243,12 @@ class DefaultDialect(interfaces.Dialect):
             return unicode_for_varchar
 
     def type_descriptor(self, typeobj):
-        """Provide a database-specific ``TypeEngine`` object, given
+        """Provide a database-specific :class:`.TypeEngine` object, given
         the generic object which comes from the types module.
 
         This method looks for a dictionary called
         ``colspecs`` as a class or instance-level variable,
-        and passes on to ``types.adapt_type()``.
+        and passes on to :func:`.types.adapt_type`.
 
         """
         return sqltypes.adapt_type(typeobj, self.colspecs)
