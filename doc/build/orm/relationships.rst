@@ -937,7 +937,6 @@ one :class:`.Column` we need::
         billing_address = relationship("Address", foreign_keys="Customer.billing_address_id")
 
 .. versionchanged:: 0.8
-
     :func:`.relationship` can resolve ambiguity between foreign key targets on the
     basis of the ``foreign_keys`` argument alone; the ``primaryjoin`` argument is no
     longer needed in this situation.
