@@ -17,8 +17,7 @@
 
     The Sybase dialect functions on current SQLAlchemy versions
     but is not regularly tested, and may have many issues and
-    caveats not currently handled.   In particular, the table
-    and database reflection features are not implemented.
+    caveats not currently handled.
 
 """
 import operator
@@ -341,6 +340,9 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
         field = self.extract_map.get(extract.field, extract.field)
         return 'DATEPART("%s", %s)' % (
                             field, self.process(extract.expr, **kw))
+
+    def visit_now_func(self, fn, **kw):
+        return "GETDATE()"
 
     def for_update_clause(self, select):
         # "FOR UPDATE" is only allowed on "DECLARE CURSOR"

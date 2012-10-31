@@ -349,8 +349,8 @@ class DefaultRequirements(SuiteRequirements):
         after an insert() construct executes.
         """
         return fails_on_everything_except('mysql+mysqldb', 'mysql+oursql',
-                                       'sqlite+pysqlite', 'mysql+pymysql',
-                                       'mssql+pyodbc', 'mssql+mxodbc')
+                                      'sqlite+pysqlite', 'mysql+pymysql',
+                                      'sybase', 'mssql+pyodbc', 'mssql+mxodbc')
 
     @property
     def implements_get_lastrowid(self):
