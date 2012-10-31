@@ -4418,10 +4418,12 @@ class ColumnClause(Immutable, ColumnElement):
                     type_=self.type,
                     is_literal=is_literal
                 )
+        if name is None:
+            c.key = self.key
         c._proxies = [self]
         if selectable._is_clone_of is not None:
             c._is_clone_of = \
-                selectable._is_clone_of.columns.get(c.name)
+                selectable._is_clone_of.columns.get(c.key)
 
         if attach:
             selectable._columns[c.key] = c
@@ -4490,7 +4492,7 @@ class TableClause(Immutable, FromClause):
         # end Py2K
 
     def append_column(self, c):
-        self._columns[c.name] = c
+        self._columns[c.key] = c
         c.table = self
 
     def get_children(self, column_collections=True, **kwargs):

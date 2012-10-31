@@ -125,6 +125,30 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         assert sel2.corresponding_column(keyed.c.coly) is sel2.c.keyed_coly
         assert sel2.corresponding_column(keyed.c.z) is sel2.c.keyed_z
 
+    def test_keyed_c_collection_upper(self):
+        c = Column('foo', Integer, key='bar')
+        t = Table('t', MetaData(), c)
+        is_(t.c.bar, c)
+
+    def test_keyed_c_collection_lower(self):
+        c = column('foo')
+        c.key = 'bar'
+        t = table('t', c)
+        is_(t.c.bar, c)
+
+    def test_clone_c_proxy_key_upper(self):
+        c = Column('foo', Integer, key='bar')
+        t = Table('t', MetaData(), c)
+        s = select([t])._clone()
+        assert c in s.c.bar.proxy_set
+
+    def test_clone_c_proxy_key_lower(self):
+        c = column('foo')
+        c.key = 'bar'
+        t = table('t', c)
+        s = select([t])._clone()
+        assert c in s.c.bar.proxy_set
+
     def test_distance_on_aliases(self):
         a1 = table1.alias('a1')
         for s in (select([a1, table1], use_labels=True),
@@ -151,6 +175,7 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
 
     def test_clone_append_column(self):
         sel = select([literal_column('1').label('a')])
+        eq_(sel.c.keys(), ['a'])
         cloned = visitors.ReplacingCloningVisitor().traverse(sel)
         cloned.append_column(literal_column('2').label('b'))
         cloned.append_column(func.foo())

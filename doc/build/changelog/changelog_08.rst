@@ -3,6 +3,18 @@
 0.8 Changelog
 ==============
 
+.. changelog::
+    :version: 0.8.0b2
+
+    .. change::
+        :tags: sql, bug
+        :tickets: 2597
+
+        Fixed bug whereby the ".key" of a Column wasn't being
+        used when producing a "proxy" of the column against
+        a selectable.   This probably didn't occur in 0.7
+        since 0.7 doesn't respect the ".key" in a wider
+        range of scenarios.
 
 .. changelog::
     :version: 0.8.0b1
