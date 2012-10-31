@@ -139,43 +139,54 @@ entities.  The new system includes these features:
 
         WHERE folder.folder_id = ? AND folder.account_id = ?
 
-* Thanks to the new relationship mechanics, new
-  **annotation** functions :func:`.foreign` and :func:`.remote`
-  are provided   which can be used
-  to create ``primaryjoin`` conditions involving any kind of
-  SQL function, CAST,  or other construct that wraps the
-  target column.  Previously, a semi-public argument
-  ``_local_remote_pairs`` would be used to tell
-  :func:`.relationship` unambiguously what columns   should be
-  considered as corresponding to the mapping - the
-  annotations make the point   more directly, such as below
-  where ``Parent`` joins to ``Child`` by matching the
-  ``Parent.name`` column converted to lower case to that of
-  the ``Child.name_upper`` column:
+* Previously difficult custom join conditions, like those involving
+  functions and/or CASTing of types, will now function as
+  expected in most cases::
 
-  ::
+    class HostEntry(Base):
+        __tablename__ = 'host_entry'
 
+        id = Column(Integer, primary_key=True)
+        ip_address = Column(INET)
+        content = Column(String(50))
 
-        class Parent(Base):
-            __tablename__ = 'parent'
-            id = Column(Integer, primary_key=True)
-            name = Column(String)
-            children = relationship("Child",
-                    primaryjoin="Parent.name==foreign(func.lower(Child.name_upper))"
-                )
+        # relationship() using explicit foreign_keys, remote_side
+        parent_host = relationship("HostEntry",
+                            primaryjoin=ip_address == cast(content, INET),
+                            foreign_keys=content,
+                            remote_side=ip_address
+                        )
 
-        class Child(Base):
-            __tablename__ = 'child'
-            id = Column(Integer, primary_key=True)
-            name_upper = Column(String)
+  The new :func:`.relationship` mechanics make use of a
+  SQLAlchemy concept known as :term:`annotations`.  These annotations
+  are also available to application code explicitly via
+  the :func:`.foreign` and :func:`.remote` functions, either
+  as a means to improve readability for advanced configurations
+  or to directly inject an exact configuration, bypassing
+  the usual join-inspection heuristics::
+
+    from sqlalchemy.orm import foreign, remote
+
+    class HostEntry(Base):
+        __tablename__ = 'host_entry'
+
+        id = Column(Integer, primary_key=True)
+        ip_address = Column(INET)
+        content = Column(String(50))
+
+        # relationship() using explicit foreign() and remote() annotations
+        # in lieu of separate arguments
+        parent_host = relationship("HostEntry",
+                            primaryjoin=remote(ip_address) == \
+                                    cast(foreign(content), INET),
+                        )
+
 
 .. seealso::
 
-    :func:`.foreign`
-
-    :func:`.remote`
-
-    :func:`.relationship`
+    :ref:`relationship_configure_joins` - a newly revised section on :func:`.relationship`
+    detailing the latest techniques for customizing related attributes and collection
+    access.
 
 :ticket:`1401` :ticket:`610`
 
@@ -442,7 +453,7 @@ can be referred to via dotted name in expressions::
     class Snack(Base):
         # ...
 
-        "peanuts":relationship("nuts.Peanut",
+        peanuts = relationship("nuts.Peanut",
                 primaryjoin="nuts.Peanut.snack_id == Snack.id")
 
 The resolution allows that any full or partial
@@ -639,10 +650,10 @@ The new type is usable like any other type:
     print conn.execute(stmt).fetchall()
 
 
-New features which should come from this immediately are
+New features which have come from this immediately include
 support for Postgresql's HSTORE type, which is ready to go
-in a separate library which may be merged, as well as all
-the special operations associated with Postgresql's ARRAY
+in a separate library which may be merged, as well as new
+operations associated with Postgresql's ARRAY
 type.    It also paves the way for existing types to acquire
 lots more operators that are specific to those types, such
 as more string, integer and date operators.
@@ -719,45 +730,6 @@ the :class:`.ClauseElement` itself, such as :class:`.Table`, :class:`.Column`,
 :class:`.Select`, etc.   This allows it to work fluently between Core
 and ORM constructs.
 
-New, configurable DATE, TIME types for SQLite
----------------------------------------------
-
-SQLite has no built-in DATE, TIME, or DATETIME types, and
-instead provides some support for storage of date and time
-values either as strings or integers.   The date and time
-types for SQLite are enhanced in 0.8 to be much more
-configurable as to the specific format, including that the
-"microseconds" portion is optional, as well as pretty much
-everything else.
-
-::
-
-    Column('sometimestamp', sqlite.DATETIME(truncate_microseconds=True))
-    Column('sometimestamp', sqlite.DATETIME(
-                        storage_format=(
-                                    "%(year)04d%(month)02d%(day)02d"
-                                    "%(hour)02d%(minute)02d%(second)02d%(microsecond)06d"
-                        ),
-                        regexp="(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{6})"
-                        )
-                )
-    Column('somedate', sqlite.DATE(
-                        storage_format="%(month)02d/%(day)02d/%(year)04d",
-                        regexp="(?P<month>\d+)/(?P<day>\d+)/(?P<year>\d+)",
-                    )
-                )
-
-Huge thanks to Nate Dub for the sprinting on this at Pycon 2012.
-
-.. seealso::
-
-    :class:`.sqlite.DATETIME`
-
-    :class:`.sqlite.DATE`
-
-    :class:`.sqlite.TIME`
-
-:ticket:`2363`
 
 New Method :meth:`.Select.correlate_except`
 -------------------------------------------
@@ -809,11 +781,86 @@ results:
     # to guess how many levels deep to go
     Column("my_array", postgresql.ARRAY(Integer, dimensions=2))
 
+The type also introduces new operators, using the new type-specific
+operator framework.  New operations include indexed access::
+
+    result = conn.execute(
+        select([mytable.c.arraycol[2]])
+    )
+
+slice access in SELECT::
+
+    result = conn.execute(
+        select([mytable.c.arraycol[2:4]])
+    )
+
+slice updates in UPDATE::
+
+    conn.execute(
+        mytable.update().values({mytable.c.arraycol[2:3]: [7, 8]})
+    )
+
+freestanding array literals::
+
+    >>> from sqlalchemy.dialects import postgresql
+    >>> conn.scalar(
+    ...    select([
+    ...        postgresql.array([1, 2]) + postgresql.array([3, 4, 5])
+    ...    ])
+    ...  )
+    [1, 2, 3, 4, 5]
+
+array concatenation, where below, the right side ``[4, 5, 6]`` is coerced into an array literal::
+
+    select([mytable.c.arraycol + [4, 5, 6]])
+
 .. seealso::
 
     :class:`.postgresql.ARRAY`
 
+    :class:`.postgresql.array`
+
 :ticket:`2441`
+
+New, configurable DATE, TIME types for SQLite
+---------------------------------------------
+
+SQLite has no built-in DATE, TIME, or DATETIME types, and
+instead provides some support for storage of date and time
+values either as strings or integers.   The date and time
+types for SQLite are enhanced in 0.8 to be much more
+configurable as to the specific format, including that the
+"microseconds" portion is optional, as well as pretty much
+everything else.
+
+::
+
+    Column('sometimestamp', sqlite.DATETIME(truncate_microseconds=True))
+    Column('sometimestamp', sqlite.DATETIME(
+                        storage_format=(
+                                    "%(year)04d%(month)02d%(day)02d"
+                                    "%(hour)02d%(minute)02d%(second)02d%(microsecond)06d"
+                        ),
+                        regexp="(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{6})"
+                        )
+                )
+    Column('somedate', sqlite.DATE(
+                        storage_format="%(month)02d/%(day)02d/%(year)04d",
+                        regexp="(?P<month>\d+)/(?P<day>\d+)/(?P<year>\d+)",
+                    )
+                )
+
+Huge thanks to Nate Dub for the sprinting on this at Pycon 2012.
+
+.. seealso::
+
+    :class:`.sqlite.DATETIME`
+
+    :class:`.sqlite.DATE`
+
+    :class:`.sqlite.TIME`
+
+:ticket:`2363`
 
 "COLLATE" supported across all dialects; in particular MySQL, Postgresql, SQLite
 --------------------------------------------------------------------------------
