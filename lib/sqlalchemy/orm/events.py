@@ -1102,7 +1102,7 @@ class SessionEvents(event.Events):
     def after_transaction_create(self, session, transaction):
         """Execute when a new :class:`.SessionTransaction` is created.
 
-        :param session: the target :class:.`Session`.
+        :param session: the target :class:`.Session`.
         :param transaction: the target :class:`.SessionTransaction`.
 
         .. versionadded:: 0.8
@@ -1112,7 +1112,7 @@ class SessionEvents(event.Events):
     def after_transaction_end(self, session, transaction):
         """Execute when the span of a :class:`.SessionTransaction` ends.
 
-        :param session: the target :class:.`Session`.
+        :param session: the target :class:`.Session`.
         :param transaction: the target :class:`.SessionTransaction`.
 
         .. versionadded:: 0.8
