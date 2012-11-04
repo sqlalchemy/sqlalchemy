@@ -442,7 +442,6 @@ class SybaseDialect(default.DefaultDialect):
         else:
             self.max_identifier_length = 255
 
-    @reflection.cache
     def get_table_id(self, connection, table_name, schema=None, **kw):
         """Fetch the id for schema.table_name.
 
