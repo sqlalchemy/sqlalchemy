@@ -986,6 +986,7 @@ class BulkUpdateFetch(BulkFetch, BulkUpdate):
                                                         list(primary_key))
                 for primary_key in self.matched_rows
             ]
+            if identity_key in session.identity_map
         ])
         attrib = [_attr_as_key(k) for k in self.values]
         for state in states:
