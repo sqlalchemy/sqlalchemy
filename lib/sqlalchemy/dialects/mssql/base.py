@@ -1415,17 +1415,20 @@ class MSDialect(default.DefaultDialect):
         C = ischema.key_constraints.alias('C')
 
         # Primary key constraints
-        s = sql.select([C.c.column_name, TC.c.constraint_type],
+        s = sql.select([C.c.column_name, TC.c.constraint_type, C.c.constraint_name],
             sql.and_(TC.c.constraint_name == C.c.constraint_name,
                     TC.c.table_schema == C.c.table_schema,
                      C.c.table_name == tablename,
                      C.c.table_schema == owner)
         )
         c = connection.execute(s)
+        constraint_name = None
         for row in c:
             if 'PRIMARY' in row[TC.c.constraint_type.name]:
                 pkeys.append(row[0])
-        return {'constrained_columns': pkeys, 'name': None}
+                if constraint_name is None:
+                    constraint_name = row[C.c.constraint_name.name]
+        return {'constrained_columns': pkeys, 'name': constraint_name}
 
     @reflection.cache
     @_db_plus_owner

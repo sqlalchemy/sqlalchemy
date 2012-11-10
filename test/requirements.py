@@ -372,7 +372,7 @@ class DefaultRequirements(SuiteRequirements):
     def reflects_pk_names(self):
         """Target driver reflects the name of primary key constraints."""
 
-        return fails_on_everything_except('postgresql', 'oracle')
+        return fails_on_everything_except('postgresql', 'oracle', 'mssql')
 
     @property
     def python2(self):

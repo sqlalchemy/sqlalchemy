@@ -16,6 +16,13 @@
         since 0.7 doesn't respect the ".key" in a wider
         range of scenarios.
 
+    .. change::
+        :tags: mssql, feature
+        :tickets: 2600
+
+        Support for reflection of the "name" of primary key
+        constraints added, courtesy Dave Moore.
+
 .. changelog::
     :version: 0.8.0b1
     :released: October 30, 2012
