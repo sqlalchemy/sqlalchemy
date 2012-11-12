@@ -178,6 +178,56 @@ class SuiteRequirements(Requirements):
         """
         return exclusions.open()
 
+
+    @property
+    def datetime(self):
+        """target dialect supports representation of Python
+        datetime.datetime() objects."""
+
+        return exclusions.open()
+
+    @property
+    def datetime_microseconds(self):
+        """target dialect supports representation of Python
+        datetime.datetime() with microsecond objects."""
+
+        return exclusions.open()
+
+    @property
+    def datetime_historic(self):
+        """target dialect supports representation of Python
+        datetime.datetime() objects with historic (pre 1970) values."""
+
+        return exclusions.closed()
+
+    @property
+    def date(self):
+        """target dialect supports representation of Python
+        datetime.date() objects."""
+
+        return exclusions.open()
+
+    @property
+    def date_historic(self):
+        """target dialect supports representation of Python
+        datetime.datetime() objects with historic (pre 1970) values."""
+
+        return exclusions.closed()
+
+    @property
+    def time(self):
+        """target dialect supports representation of Python
+        datetime.time() objects."""
+
+        return exclusions.open()
+
+    @property
+    def time_microseconds(self):
+        """target dialect supports representation of Python
+        datetime.time() with microsecond objects."""
+
+        return exclusions.open()
+
     @property
     def text_type(self):
         """Target database must support an unbounded Text() "

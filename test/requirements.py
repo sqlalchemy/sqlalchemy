@@ -6,6 +6,7 @@
 from sqlalchemy import util
 import sys
 from sqlalchemy.testing.requirements import SuiteRequirements
+from sqlalchemy.testing import exclusions
 from sqlalchemy.testing.exclusions import \
      skip, \
      skip_if,\
@@ -13,6 +14,7 @@ from sqlalchemy.testing.exclusions import \
      only_on,\
      fails_on_everything_except,\
      fails_if,\
+     succeeds_if,\
      SpecPredicate,\
      against
 
@@ -373,6 +375,55 @@ class DefaultRequirements(SuiteRequirements):
         """Target driver reflects the name of primary key constraints."""
 
         return fails_on_everything_except('postgresql', 'oracle', 'mssql')
+
+    @property
+    def datetime(self):
+        """target dialect supports representation of Python
+        datetime.datetime() objects."""
+
+        return exclusions.open()
+
+    @property
+    def datetime_microseconds(self):
+        """target dialect supports representation of Python
+        datetime.datetime() with microsecond objects."""
+
+        return skip_if(['mssql', 'mysql', 'firebird', '+zxjdbc'])
+
+    @property
+    def datetime_historic(self):
+        """target dialect supports representation of Python
+        datetime.datetime() objects with historic (pre 1900) values."""
+
+        return succeeds_if(['sqlite', 'postgresql', 'firebird'])
+
+    @property
+    def date(self):
+        """target dialect supports representation of Python
+        datetime.date() objects."""
+
+        return exclusions.open()
+
+    @property
+    def date_historic(self):
+        """target dialect supports representation of Python
+        datetime.datetime() objects with historic (pre 1900) values."""
+
+        return succeeds_if(['sqlite', 'postgresql', 'firebird'])
+
+    @property
+    def time(self):
+        """target dialect supports representation of Python
+        datetime.time() objects."""
+
+        return exclusions.open()
+
+    @property
+    def time_microseconds(self):
+        """target dialect supports representation of Python
+        datetime.time() with microsecond objects."""
+
+        return skip_if(['mssql', 'mysql', 'firebird', '+zxjdbc'])
 
     @property
     def python2(self):
