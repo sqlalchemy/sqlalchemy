@@ -233,7 +233,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         sess.query(User).filter(User.id == 3).\
                 update({'age': 44}, synchronize_session='fetch')
-        eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,44,27]))
+        eq_(sess.query(User.age).order_by(User.id).all(), zip([25,47,44,37]))
 
     def test_update_changes_resets_dirty(self):
         User = self.classes.User

@@ -7,6 +7,15 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: orm, bug
+        :tickets: 2602
+
+        Fixed regression where query.update() would produce
+        an error if an object matched by the "fetch"
+        synchronization strategy wasn't locally present.
+        Courtesy Scott Torborg.
+
+    .. change::
         :tags: sql, bug
         :tickets: 2597
 
