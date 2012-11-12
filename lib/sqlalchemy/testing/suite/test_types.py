@@ -90,7 +90,7 @@ class UnicodeVarcharTest(_UnicodeFixture, fixtures.TablesTest):
 
 
     @requirements.empty_strings_varchar
-    def test_empty_strings(self):
+    def test_empty_strings_varchar(self):
         self._test_empty_strings()
 
 class UnicodeTextTest(_UnicodeFixture, fixtures.TablesTest):
@@ -99,7 +99,7 @@ class UnicodeTextTest(_UnicodeFixture, fixtures.TablesTest):
     datatype = UnicodeText()
 
     @requirements.empty_strings_text
-    def test_empty_strings(self):
+    def test_empty_strings_text(self):
         self._test_empty_strings()
 
 

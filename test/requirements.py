@@ -303,8 +303,7 @@ class DefaultRequirements(SuiteRequirements):
         """target database can persist/return an empty string with an
         unbounded text."""
 
-        return fails_if("oracle", 'oracle converts empty '
-                                'strings to a blank space')
+        return exclusions.open()
 
     @property
     def unicode_connections(self):
