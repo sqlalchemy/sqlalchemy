@@ -228,6 +228,15 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
             "table1.col3, table1.colx FROM table1) AS anon_1"
         )
 
+    def test_type_coerce_preserve_subq(self):
+        class MyType(TypeDecorator):
+            impl = Integer
+
+        stmt = select([type_coerce(column('x'), MyType).label('foo')])
+        stmt2 = stmt.select()
+        assert isinstance(stmt._raw_columns[0].type, MyType)
+        assert isinstance(stmt.c.foo.type, MyType)
+        assert isinstance(stmt2.c.foo.type, MyType)
 
     def test_select_on_table(self):
         sel = select([table1, table2], use_labels=True)

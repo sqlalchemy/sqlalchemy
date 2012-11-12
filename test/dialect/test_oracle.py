@@ -206,9 +206,18 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             ':ROWNUM_1) WHERE ora_rn > :ora_rn_1 FOR '
                             'UPDATE')
 
+    def test_limit_preserves_typing_information(self):
+        class MyType(TypeDecorator):
+            impl = Integer
+
+        stmt = select([type_coerce(column('x'), MyType).label('foo')]).limit(1)
+        dialect = oracle.dialect()
+        compiled = stmt.compile(dialect=dialect)
+        assert isinstance(compiled.result_map['foo'][-1], MyType)
+
     def test_use_binds_for_limits_disabled(self):
         t = table('sometable', column('col1'), column('col2'))
-        dialect = oracle.OracleDialect(use_binds_for_limits = False)
+        dialect = oracle.OracleDialect(use_binds_for_limits=False)
 
         self.assert_compile(select([t]).limit(10),
                 "SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, "

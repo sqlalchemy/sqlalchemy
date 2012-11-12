@@ -7,6 +7,17 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: sql, bug
+        :tickets: 2603
+
+        Fixed bug in type_coerce() whereby typing information
+        could be lost if the statement were used as a subquery
+        inside of another statement, as well as other similar
+        situations.  Among other things, would cause
+        typing information to be lost when the Oracle/mssql dialects
+        would apply limit/offset wrappings.
+
+    .. change::
         :tags: orm, bug
         :tickets: 2602
 

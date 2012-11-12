@@ -4256,6 +4256,8 @@ class Label(ColumnElement):
         e = self.element._make_proxy(selectable,
                                 name=name if name else self.name)
         e._proxies.append(self)
+        if self._type is not None:
+            e.type = self._type
         return e
 
 class ColumnClause(Immutable, ColumnElement):

@@ -586,7 +586,7 @@ class OracleCompiler(compiler.SQLCompiler):
                     limitselect._is_wrapper = True
 
                     offsetselect = sql.select(
-                             [c for c in limitselect.c if c.key!='ora_rn'])
+                             [c for c in limitselect.c if c.key != 'ora_rn'])
                     offsetselect._oracle_visit = True
                     offsetselect._is_wrapper = True
 
@@ -594,7 +594,7 @@ class OracleCompiler(compiler.SQLCompiler):
                     if not self.dialect.use_binds_for_limits:
                         offset_value = sql.literal_column("%d" % offset_value)
                     offsetselect.append_whereclause(
-                             sql.literal_column("ora_rn")>offset_value)
+                             sql.literal_column("ora_rn") > offset_value)
 
                     offsetselect.for_update = select.for_update
                     select = offsetselect

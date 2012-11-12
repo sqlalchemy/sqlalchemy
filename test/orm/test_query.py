@@ -133,9 +133,10 @@ class RowTupleTest(QueryTest):
         mapper(User, users)
 
         s = Session()
-        row = s.\
+        q = s.\
                     query(User, type_coerce(users.c.id, MyType).label('foo')).\
-                    filter(User.id == 7).first()
+                    filter(User.id == 7)
+        row = q.first()
         eq_(
             row, (User(id=7), [7])
         )

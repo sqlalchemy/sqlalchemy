@@ -12,7 +12,7 @@ from sqlalchemy.dialects.oracle.base import \
     VARCHAR, NVARCHAR, CHAR, DATE, DATETIME, NUMBER,\
     BLOB, BFILE, CLOB, NCLOB, TIMESTAMP, RAW,\
     FLOAT, DOUBLE_PRECISION, LONG, dialect, INTERVAL,\
-    VARCHAR2, NVARCHAR2, ROWID
+    VARCHAR2, NVARCHAR2, ROWID, dialect
 
 
 __all__ = (

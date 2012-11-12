@@ -408,7 +408,7 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
         t = Table('t', metadata, Column('data', String(50)))
         metadata.create_all()
 
-        t.insert().values(data=type_coerce('d1BIND_OUT',MyType)).execute()
+        t.insert().values(data=type_coerce('d1BIND_OUT', MyType)).execute()
 
         eq_(
             select([type_coerce(t.c.data, MyType)]).execute().fetchall(),
@@ -417,6 +417,11 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
 
         eq_(
             select([t.c.data, type_coerce(t.c.data, MyType)]).execute().fetchall(),
+            [('d1', 'd1BIND_OUT')]
+        )
+
+        eq_(
+            select([t.c.data, type_coerce(t.c.data, MyType)]).select().execute().fetchall(),
             [('d1', 'd1BIND_OUT')]
         )
 
