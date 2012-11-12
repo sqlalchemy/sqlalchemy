@@ -1821,6 +1821,10 @@ class FetchedValue(_NotAColumnExpr, events.SchemaEventTarget):
     will create a new value for the ``foo`` column during an
     INSERT.
 
+    .. seealso::
+
+        :ref:`triggered_columns`
+
     """
     is_server_default = True
     reflected = False

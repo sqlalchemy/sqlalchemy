@@ -698,11 +698,13 @@ have a way to "postfetch" the ID, and the statement is not "inlined", the SQL
 expression is pre-executed; otherwise, SQLAlchemy lets the default fire off on
 the database side normally.
 
+.. _triggered_columns:
+
 Triggered Columns
 ------------------
 
 Columns with values set by a database trigger or other external process may be
-called out with a marker::
+called out using :class:`.FetchedValue` as a marker::
 
     t = Table('test', meta,
         Column('abc', String(20), server_default=FetchedValue()),
@@ -713,6 +715,36 @@ These markers do not emit a "default" clause when the table is created,
 however they do set the same internal flags as a static ``server_default``
 clause, providing hints to higher-level tools that a "post-fetch" of these
 rows should be performed after an insert or update.
+
+.. note::
+
+    It's generally not appropriate to use :class:`.FetchedValue` in
+    conjunction with a primary key column, particularly when using the
+    ORM or any other scenario where the :attr:`.ResultProxy.inserted_primary_key`
+    attribute is required.  This is becaue the "post-fetch" operation requires
+    that the primary key value already be available, so that the
+    row can be selected on its primary key.
+
+    For a server-generated primary key value, all databases provide special
+    accessors or other techniques in order to acquire the "last inserted
+    primary key" column of a table.  These mechanisms aren't affected by the presence
+    of :class:`.FetchedValue`.  For special situations where triggers are
+    used to generate primary key values, and the database in use does not
+    support the ``RETURNING`` clause, it may be necessary to forego the usage
+    of the trigger and instead apply the SQL expression or function as a
+    "pre execute" expression::
+
+        t = Table('test', meta,
+                Column('abc', MyType, default=func.generate_new_value(), primary_key=True)
+        )
+
+    Where above, when :meth:`.Table.insert` is used,
+    the ``func.generate_new_value()`` expression will be pre-executed
+    in the context of a scalar ``SELECT`` statement, and the new value will
+    be applied to the subsequent ``INSERT``, while at the same time being
+    made available to the :attr:`.ResultProxy.inserted_primary_key`
+    attribute.
+
 
 Defining Sequences
 -------------------
