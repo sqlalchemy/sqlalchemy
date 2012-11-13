@@ -1,10 +1,10 @@
-from sqlalchemy.testing import assert_raises, assert_raises_message
-import copy, threading
+import copy
+
 from sqlalchemy import util, sql, exc
+from sqlalchemy.testing import assert_raises, assert_raises_message, fixtures
 from sqlalchemy.testing import eq_, is_, ne_, fails_if
-from sqlalchemy.testing.util import gc_collect, picklers
+from sqlalchemy.testing.util import picklers
 from sqlalchemy.util import classproperty
-from sqlalchemy.testing import fixtures
 
 class OrderedDictTest(fixtures.TestBase):
     def test_odict(self):
@@ -254,6 +254,7 @@ class HashEqOverride(object):
 
 
 class IdentitySetTest(fixtures.TestBase):
+
     def assert_eq(self, identityset, expected_iterable):
         expected = sorted([id(o) for o in expected_iterable])
         found = sorted([id(o) for o in identityset])
@@ -290,7 +291,7 @@ class IdentitySetTest(fixtures.TestBase):
                 ids.add(data[i])
             self.assert_eq(ids, data)
 
-    def test_dunder_sub(self):
+    def test_dunder_sub2(self):
         IdentitySet = util.IdentitySet
         o1, o2, o3 = object(), object(), object()
         ids1 = IdentitySet([o1])
@@ -302,6 +303,414 @@ class IdentitySetTest(fixtures.TestBase):
 
         ids2 -= ids1
         eq_(ids2, IdentitySet([o2, o3]))
+
+    def test_dunder_eq(self):
+        _, _, twin1, twin2, unique1, unique2 = self._create_sets()
+
+        # basic set math
+        eq_(twin1 == twin2, True)
+        eq_(unique1 == unique2, False)
+
+        # not an IdentitySet
+        not_an_identity_set = object()
+        eq_(unique1 == not_an_identity_set, False)
+
+    def test_dunder_ne(self):
+        _, _, twin1, twin2, unique1, unique2 = self._create_sets()
+
+        # basic set math
+        eq_(twin1 != twin2, False)
+        eq_(unique1 != unique2, True)
+
+        # not an IdentitySet
+        not_an_identity_set = object()
+        eq_(unique1 != not_an_identity_set, True)
+
+    def test_dunder_le(self):
+        super_, sub_, twin1, twin2, unique1, unique2 = self._create_sets()
+
+        # basic set math
+        eq_(sub_ <= super_, True)
+        eq_(super_ <= sub_, False)
+
+        # the same sets
+        eq_(twin1 <= twin2, True)
+        eq_(twin2 <= twin1, True)
+
+        # totally different sets
+        eq_(unique1 <= unique2, False)
+        eq_(unique2 <= unique1, False)
+
+        # not an IdentitySet
+        def should_raise():
+            not_an_identity_set = object()
+            return unique1 <= not_an_identity_set
+        assert_raises_message(
+            TypeError, 'cannot compare sets using cmp()', should_raise)
+
+    def test_dunder_lt(self):
+        super_, sub_, twin1, twin2, unique1, unique2 = self._create_sets()
+
+        # basic set math
+        eq_(sub_ < super_, True)
+        eq_(super_ < sub_, False)
+
+        # the same sets
+        eq_(twin1 < twin2, False)
+        eq_(twin2 < twin1, False)
+
+        # totally different sets
+        eq_(unique1 < unique2, False)
+        eq_(unique2 < unique1, False)
+
+        # not an IdentitySet
+        def should_raise():
+            not_an_identity_set = object()
+            return unique1 < not_an_identity_set
+        assert_raises_message(
+            TypeError, 'cannot compare sets using cmp()', should_raise)
+
+    def test_dunder_ge(self):
+        super_, sub_, twin1, twin2, unique1, unique2 = self._create_sets()
+
+        # basic set math
+        eq_(sub_ >= super_, False)
+        eq_(super_ >= sub_, True)
+
+        # the same sets
+        eq_(twin1 >= twin2, True)
+        eq_(twin2 >= twin1, True)
+
+        # totally different sets
+        eq_(unique1 >= unique2, False)
+        eq_(unique2 >= unique1, False)
+
+        # not an IdentitySet
+        def should_raise():
+            not_an_identity_set = object()
+            return unique1 >= not_an_identity_set
+        assert_raises_message(
+            TypeError, 'cannot compare sets using cmp()', should_raise)
+
+    def test_dunder_gt(self):
+        super_, sub_, twin1, twin2, unique1, unique2 = self._create_sets()
+
+        # basic set math
+        eq_(sub_ > super_, False)
+        eq_(super_ > sub_, True)
+
+        # the same sets
+        eq_(twin1 > twin2, False)
+        eq_(twin2 > twin1, False)
+
+        # totally different sets
+        eq_(unique1 > unique2, False)
+        eq_(unique2 > unique1, False)
+
+        # not an IdentitySet
+        def should_raise():
+            not_an_identity_set = object()
+            return unique1 > not_an_identity_set
+        assert_raises_message(
+            TypeError, 'cannot compare sets using cmp()', should_raise)
+
+    def test_issubset(self):
+        super_, sub_, twin1, twin2, unique1, unique2 = self._create_sets()
+
+        # basic set math
+        eq_(sub_.issubset(super_), True)
+        eq_(super_.issubset(sub_), False)
+
+        # the same sets
+        eq_(twin1.issubset(twin2), True)
+        eq_(twin2.issubset(twin1), True)
+
+        # totally different sets
+        eq_(unique1.issubset(unique2), False)
+        eq_(unique2.issubset(unique1), False)
+
+        # not an IdentitySet
+        not_an_identity_set = object()
+        assert_raises(TypeError, unique1.issubset, not_an_identity_set)
+
+    def test_issuperset(self):
+        super_, sub_, twin1, twin2, unique1, unique2 = self._create_sets()
+
+        # basic set math
+        eq_(sub_.issuperset(super_), False)
+        eq_(super_.issuperset(sub_), True)
+
+        # the same sets
+        eq_(twin1.issuperset(twin2), True)
+        eq_(twin2.issuperset(twin1), True)
+
+        # totally different sets
+        eq_(unique1.issuperset(unique2), False)
+        eq_(unique2.issuperset(unique1), False)
+
+        # not an IdentitySet
+        not_an_identity_set = object()
+        assert_raises(TypeError, unique1.issuperset, not_an_identity_set)
+
+    def test_union(self):
+        super_, sub_, twin1, twin2, _, _ = self._create_sets()
+
+        # basic set math
+        eq_(sub_.union(super_), super_)
+        eq_(super_.union(sub_), super_)
+
+        # the same sets
+        eq_(twin1.union(twin2), twin1)
+        eq_(twin2.union(twin1), twin1)
+
+        # empty sets
+        empty = util.IdentitySet([])
+        eq_(empty.union(empty), empty)
+
+        # totally different sets
+        unique1 = util.IdentitySet([1])
+        unique2 = util.IdentitySet([2])
+        eq_(unique1.union(unique2), util.IdentitySet([1, 2]))
+
+        # not an IdentitySet
+        not_an_identity_set = object()
+        assert_raises(TypeError, unique1.union, not_an_identity_set)
+
+    def test_dunder_or(self):
+        super_, sub_, twin1, twin2, _, _ = self._create_sets()
+
+        # basic set math
+        eq_(sub_ | super_, super_)
+        eq_(super_ | sub_, super_)
+
+        # the same sets
+        eq_(twin1 | twin2, twin1)
+        eq_(twin2 | twin1, twin1)
+
+        # empty sets
+        empty = util.IdentitySet([])
+        eq_(empty | empty, empty)
+
+        # totally different sets
+        unique1 = util.IdentitySet([1])
+        unique2 = util.IdentitySet([2])
+        eq_(unique1 | unique2, util.IdentitySet([1, 2]))
+
+        # not an IdentitySet
+        def should_raise():
+            not_an_identity_set = object()
+            return unique1 | not_an_identity_set
+        assert_raises(TypeError, should_raise)
+
+    def test_update(self):
+        pass # TODO
+
+    def test_dunder_ior(self):
+        super_, sub_, _, _, _, _ = self._create_sets()
+
+        # basic set math
+        sub_ |= super_
+        eq_(sub_, super_)
+        super_ |= sub_
+        eq_(super_, super_)
+
+        # totally different sets
+        unique1 = util.IdentitySet([1])
+        unique2 = util.IdentitySet([2])
+        unique1 |= unique2
+        eq_(unique1, util.IdentitySet([1, 2]))
+        eq_(unique2, util.IdentitySet([2]))
+
+        # not an IdentitySet
+        def should_raise():
+            unique = util.IdentitySet([1])
+            not_an_identity_set = object()
+            unique |= not_an_identity_set
+        assert_raises(TypeError, should_raise)
+
+    def test_difference(self):
+        _, _, twin1, twin2, _, _ = self._create_sets()
+
+        # basic set math
+        set1 = util.IdentitySet([1, 2, 3])
+        set2 = util.IdentitySet([2, 3, 4])
+        eq_(set1.difference(set2), util.IdentitySet([1]))
+        eq_(set2.difference(set1), util.IdentitySet([4]))
+
+        # empty sets
+        empty = util.IdentitySet([])
+        eq_(empty.difference(empty), empty)
+
+        # the same sets
+        eq_(twin1.difference(twin2), empty)
+        eq_(twin2.difference(twin1), empty)
+
+        # totally different sets
+        unique1 = util.IdentitySet([1])
+        unique2 = util.IdentitySet([2])
+        eq_(unique1.difference(unique2), util.IdentitySet([1]))
+        eq_(unique2.difference(unique1), util.IdentitySet([2]))
+
+        # not an IdentitySet
+        not_an_identity_set = object()
+        assert_raises(TypeError, unique1.difference, not_an_identity_set)
+
+    def test_dunder_sub(self):
+        _, _, twin1, twin2, _, _ = self._create_sets()
+
+        # basic set math
+        set1 = util.IdentitySet([1, 2, 3])
+        set2 = util.IdentitySet([2, 3, 4])
+        eq_(set1 - set2, util.IdentitySet([1]))
+        eq_(set2 - set1, util.IdentitySet([4]))
+
+        # empty sets
+        empty = util.IdentitySet([])
+        eq_(empty - empty, empty)
+
+        # the same sets
+        eq_(twin1 - twin2, empty)
+        eq_(twin2 - twin1, empty)
+
+        # totally different sets
+        unique1 = util.IdentitySet([1])
+        unique2 = util.IdentitySet([2])
+        eq_(unique1 - unique2, util.IdentitySet([1]))
+        eq_(unique2 - unique1, util.IdentitySet([2]))
+
+        # not an IdentitySet
+        def should_raise():
+            not_an_identity_set = object()
+            unique1 - not_an_identity_set
+        assert_raises(TypeError, should_raise)
+
+    def test_difference_update(self):
+        pass # TODO
+
+    def test_dunder_isub(self):
+        pass # TODO
+
+    def test_intersection(self):
+        super_, sub_, twin1, twin2, unique1, unique2 = self._create_sets()
+
+        # basic set math
+        eq_(sub_.intersection(super_), sub_)
+        eq_(super_.intersection(sub_), sub_)
+
+        # the same sets
+        eq_(twin1.intersection(twin2), twin1)
+        eq_(twin2.intersection(twin1), twin1)
+
+        # empty sets
+        empty = util.IdentitySet([])
+        eq_(empty.intersection(empty), empty)
+
+        # totally different sets
+        eq_(unique1.intersection(unique2), empty)
+
+        # not an IdentitySet
+        not_an_identity_set = object()
+        assert_raises(TypeError, unique1.intersection, not_an_identity_set)
+
+    def test_dunder_and(self):
+        super_, sub_, twin1, twin2, unique1, unique2 = self._create_sets()
+
+        # basic set math
+        eq_(sub_ & super_, sub_)
+        eq_(super_ & sub_, sub_)
+
+        # the same sets
+        eq_(twin1 & twin2, twin1)
+        eq_(twin2 & twin1, twin1)
+
+        # empty sets
+        empty = util.IdentitySet([])
+        eq_(empty & empty, empty)
+
+        # totally different sets
+        eq_(unique1 & unique2, empty)
+
+        # not an IdentitySet
+        def should_raise():
+            not_an_identity_set = object()
+            return unique1 & not_an_identity_set
+        assert_raises(TypeError, should_raise)
+
+    def test_intersection_update(self):
+        pass # TODO
+
+    def test_dunder_iand(self):
+        pass # TODO
+
+    def test_symmetric_difference(self):
+        _, _, twin1, twin2, _, _ = self._create_sets()
+
+        # basic set math
+        set1 = util.IdentitySet([1, 2, 3])
+        set2 = util.IdentitySet([2, 3, 4])
+        eq_(set1.symmetric_difference(set2), util.IdentitySet([1, 4]))
+        eq_(set2.symmetric_difference(set1), util.IdentitySet([1, 4]))
+
+        # empty sets
+        empty = util.IdentitySet([])
+        eq_(empty.symmetric_difference(empty), empty)
+
+        # the same sets
+        eq_(twin1.symmetric_difference(twin2), empty)
+        eq_(twin2.symmetric_difference(twin1), empty)
+
+        # totally different sets
+        unique1 = util.IdentitySet([1])
+        unique2 = util.IdentitySet([2])
+        eq_(unique1.symmetric_difference(unique2), util.IdentitySet([1, 2]))
+        eq_(unique2.symmetric_difference(unique1), util.IdentitySet([1, 2]))
+
+        # not an IdentitySet
+        not_an_identity_set = object()
+        assert_raises(
+            TypeError, unique1.symmetric_difference, not_an_identity_set)
+
+    def test_dunder_xor(self):
+        _, _, twin1, twin2, _, _ = self._create_sets()
+
+        # basic set math
+        set1 = util.IdentitySet([1, 2, 3])
+        set2 = util.IdentitySet([2, 3, 4])
+        eq_(set1 ^ set2, util.IdentitySet([1, 4]))
+        eq_(set2 ^ set1, util.IdentitySet([1, 4]))
+
+        # empty sets
+        empty = util.IdentitySet([])
+        eq_(empty ^ empty, empty)
+
+        # the same sets
+        eq_(twin1 ^ twin2, empty)
+        eq_(twin2 ^ twin1, empty)
+
+        # totally different sets
+        unique1 = util.IdentitySet([1])
+        unique2 = util.IdentitySet([2])
+        eq_(unique1 ^ unique2, util.IdentitySet([1, 2]))
+        eq_(unique2 ^ unique1, util.IdentitySet([1, 2]))
+
+        # not an IdentitySet
+        def should_raise():
+            not_an_identity_set = object()
+            return unique1 ^ not_an_identity_set
+        assert_raises(TypeError, should_raise)
+
+    def test_symmetric_difference_update(self):
+        pass # TODO
+
+    def _create_sets(self):
+        o1, o2, o3, o4, o5 = object(), object(), object(), object(), object()
+        super_ = util.IdentitySet([o1, o2, o3])
+        sub_ = util.IdentitySet([o2])
+        twin1 = util.IdentitySet([o3])
+        twin2 = util.IdentitySet([o3])
+        unique1 = util.IdentitySet([o4])
+        unique2 = util.IdentitySet([o5])
+        return super_, sub_, twin1, twin2, unique1, unique2
 
     def test_basic_sanity(self):
         IdentitySet = util.IdentitySet
@@ -370,18 +779,6 @@ class IdentitySetTest(fixtures.TestBase):
         assert_raises(TypeError, util.cmp, ids)
         assert_raises(TypeError, hash, ids)
 
-    def test_difference(self):
-        os1 = util.IdentitySet([1,2,3])
-        os2 = util.IdentitySet([3,4,5])
-        s1 = set([1,2,3])
-        s2 = set([3,4,5])
-
-        eq_(os1 - os2, util.IdentitySet([1, 2]))
-        eq_(os2 - os1, util.IdentitySet([4, 5]))
-        assert_raises(TypeError, lambda: os1 - s2)
-        assert_raises(TypeError, lambda: os1 - [3, 4, 5])
-        assert_raises(TypeError, lambda: s1 - os2)
-        assert_raises(TypeError, lambda: s1 - [3, 4, 5])
 
 class OrderedIdentitySetTest(fixtures.TestBase):
 
