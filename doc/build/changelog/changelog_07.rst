@@ -9,6 +9,15 @@
     :released:
 
     .. change::
+        :tags: engine, bug
+        :tickets: 2604
+
+      Fixed :meth:`.MetaData.reflect` to correctly use
+      the given :class:`.Connection`, if given, without
+      opening a second connection from that connection's
+      :class:`.Engine`.
+
+    .. change::
         :tags: mssql, bug
         :tickets:2607
 

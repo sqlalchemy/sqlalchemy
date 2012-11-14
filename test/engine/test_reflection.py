@@ -701,6 +701,31 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         table_c2 = Table('is', meta2, autoload=True)
 
     @testing.provide_metadata
+    def _test_reflect_uses_bind(self, fn):
+        from sqlalchemy.pool import AssertionPool
+        e = engines.testing_engine(options={"poolclass": AssertionPool})
+        fn(e)
+
+    def test_reflect_uses_bind_constructor_conn(self):
+        self._test_reflect_uses_bind(lambda e: MetaData(e.connect(),
+                    reflect=True))
+
+    def test_reflect_uses_bind_constructor_engine(self):
+        self._test_reflect_uses_bind(lambda e: MetaData(e, reflect=True))
+
+    def test_reflect_uses_bind_constructor_conn_reflect(self):
+        self._test_reflect_uses_bind(lambda e: MetaData(e.connect()).reflect())
+
+    def test_reflect_uses_bind_constructor_engine_reflect(self):
+        self._test_reflect_uses_bind(lambda e: MetaData(e).reflect())
+
+    def test_reflect_uses_bind_conn_reflect(self):
+        self._test_reflect_uses_bind(lambda e: MetaData().reflect(e.connect()))
+
+    def test_reflect_uses_bind_engine_reflect(self):
+        self._test_reflect_uses_bind(lambda e: MetaData().reflect(e))
+
+    @testing.provide_metadata
     def test_reflect_all(self):
         existing = testing.db.table_names()
 

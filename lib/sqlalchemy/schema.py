@@ -2485,13 +2485,20 @@ class MetaData(SchemaItem):
           arguments and should return a true value for any table to reflect.
 
         """
-        reflect_opts = {'autoload': True}
         if bind is None:
             bind = _bind_or_error(self)
-            conn = None
+
+        if bind.engine is not bind:
+            conn = bind
+            close = False
         else:
-            reflect_opts['autoload_with'] = bind
             conn = bind.contextual_connect()
+            close = True
+
+        reflect_opts = {
+            'autoload': True,
+            'autoload_with': bind
+        }
 
         if schema is None:
             schema = self.schema
@@ -2504,7 +2511,7 @@ class MetaData(SchemaItem):
                                                             connection=conn))
             if views:
                 available.update(
-                    bind.dialect.get_view_names(conn or bind, schema)
+                    bind.dialect.get_view_names(conn, schema)
                 )
 
             current = set(self.tables.iterkeys())
@@ -2527,8 +2534,7 @@ class MetaData(SchemaItem):
             for name in load:
                 Table(name, self, **reflect_opts)
         finally:
-            if conn is not None and \
-                conn is not bind:
+            if close:
                 conn.close()
 
     def append_ddl_listener(self, event_name, listener):
