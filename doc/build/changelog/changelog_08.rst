@@ -7,6 +7,17 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: mssql, bug
+        :tickets:2607
+
+      Fixed bug whereby using "key" with Column
+      in conjunction with "schema" for the owning
+      Table would fail to locate result rows due
+      to the MSSQL dialect's "schema rendering"
+      logic's failure to take .key into account.
+      Also in 0.7.10.
+
+    .. change::
         :tags: sql, bug
         :tickets: 2603
 

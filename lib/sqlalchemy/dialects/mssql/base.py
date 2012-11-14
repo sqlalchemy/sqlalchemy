@@ -855,12 +855,11 @@ class MSSQLCompiler(compiler.SQLCompiler):
             if t is not None:
                 converted = expression._corresponding_column_or_error(
                                         t, column)
-
                 if add_to_result_map is not None:
                     add_to_result_map(
                             column.name,
                             column.name,
-                            (column, ),
+                            (column, column.name, column.key),
                             column.type
                     )
 
