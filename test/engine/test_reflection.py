@@ -751,6 +751,33 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         table_c2 = Table('is', meta2, autoload=True)
 
     @testing.provide_metadata
+    def _test_reflect_uses_bind(self, fn):
+        from sqlalchemy.pool import AssertionPool
+        e = engines.testing_engine(options={"poolclass": AssertionPool})
+        fn(e)
+
+    @testing.uses_deprecated
+    def test_reflect_uses_bind_constructor_conn(self):
+        self._test_reflect_uses_bind(lambda e: MetaData(e.connect(),
+                    reflect=True))
+
+    @testing.uses_deprecated
+    def test_reflect_uses_bind_constructor_engine(self):
+        self._test_reflect_uses_bind(lambda e: MetaData(e, reflect=True))
+
+    def test_reflect_uses_bind_constructor_conn_reflect(self):
+        self._test_reflect_uses_bind(lambda e: MetaData(e.connect()).reflect())
+
+    def test_reflect_uses_bind_constructor_engine_reflect(self):
+        self._test_reflect_uses_bind(lambda e: MetaData(e).reflect())
+
+    def test_reflect_uses_bind_conn_reflect(self):
+        self._test_reflect_uses_bind(lambda e: MetaData().reflect(e.connect()))
+
+    def test_reflect_uses_bind_engine_reflect(self):
+        self._test_reflect_uses_bind(lambda e: MetaData().reflect(e))
+
+    @testing.provide_metadata
     def test_reflect_all(self):
         existing = testing.db.table_names()
 
@@ -795,16 +822,15 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         m6.reflect(only=lambda n, m: False)
         self.assert_(not m6.tables)
 
-        m7 = MetaData(testing.db, reflect=True)
+        m7 = MetaData(testing.db)
+        m7.reflect()
         self.assert_(nameset.issubset(set(m7.tables.keys())))
 
-        try:
-            m8 = MetaData(reflect=True)
-            self.assert_(False)
-        except sa.exc.ArgumentError, e:
-            self.assert_(e.args[0]
-                         == 'A bind must be supplied in '
-                         'conjunction with reflect=True')
+        m8 = MetaData()
+        assert_raises(
+            sa.exc.UnboundExecutionError,
+            m8.reflect
+        )
 
         if existing:
             print "Other tables present in database, skipping some checks."
@@ -1081,7 +1107,7 @@ class UnicodeReflectionTest(fixtures.TestBase):
 
         # Jython 2.5 on Java 5 lacks unicodedata.normalize
 
-        if not names.issubset(reflected) and hasattr(unicodedata,'normalize'):
+        if not names.issubset(reflected) and hasattr(unicodedata, 'normalize'):
 
             # Python source files in the utf-8 coding seem to
             # normalize literals as NFC (and the above are
@@ -1094,7 +1120,8 @@ class UnicodeReflectionTest(fixtures.TestBase):
             # Yep.  But still ensure that bulk reflection and
             # create/drop work with either normalization.
 
-        r = MetaData(bind, reflect=True)
+        r = MetaData(bind)
+        r.reflect()
         r.drop_all(checkfirst=False)
         r.create_all(checkfirst=False)
 

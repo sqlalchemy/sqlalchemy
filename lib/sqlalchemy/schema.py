@@ -2428,8 +2428,9 @@ class MetaData(SchemaItem):
         :param reflect:
           Optional, automatically load all tables from the bound database.
           Defaults to False. ``bind`` is required when this option is set.
-          For finer control over loaded tables, use the ``reflect`` method of
-          ``MetaData``.
+
+          .. deprecated:: 0.8
+                Please use the :meth:`.MetaData.reflect` method.
 
         :param schema:
            The default schema to use for the :class:`.Table`, :class:`.Sequence`, and other
@@ -2451,6 +2452,8 @@ class MetaData(SchemaItem):
         self._sequences = {}
         self.bind = bind
         if reflect:
+            util.warn("reflect=True is deprecate; please "
+                            "use the reflect() method.")
             if not bind:
                 raise exc.ArgumentError(
                     "A bind must be supplied in conjunction "
@@ -2592,13 +2595,20 @@ class MetaData(SchemaItem):
           arguments and should return a true value for any table to reflect.
 
         """
-        reflect_opts = {'autoload': True}
         if bind is None:
             bind = _bind_or_error(self)
-            conn = None
+
+        if bind.engine is not bind:
+            conn = bind
+            close = False
         else:
-            reflect_opts['autoload_with'] = bind
             conn = bind.contextual_connect()
+            close = True
+
+        reflect_opts = {
+            'autoload': True,
+            'autoload_with': bind
+        }
 
         if schema is None:
             schema = self.schema
@@ -2611,7 +2621,7 @@ class MetaData(SchemaItem):
                                                             connection=conn))
             if views:
                 available.update(
-                    bind.dialect.get_view_names(conn or bind, schema)
+                    bind.dialect.get_view_names(conn, schema)
                 )
 
             current = set(self.tables.iterkeys())
@@ -2634,8 +2644,7 @@ class MetaData(SchemaItem):
             for name in load:
                 Table(name, self, **reflect_opts)
         finally:
-            if conn is not None and \
-                conn is not bind:
+            if close:
                 conn.close()
 
     def append_ddl_listener(self, event_name, listener):

@@ -7,8 +7,23 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: engine
+
+      The "reflect=True" argument to :class:`MetaData` is deprecated.
+      Please use the :meth:`.MetaData.reflect` method.
+
+    .. change::
+        :tags: engine, bug
+        :tickets: 2604
+
+      Fixed :meth:`.MetaData.reflect` to correctly use
+      the given :class:`.Connection`, if given, without
+      opening a second connection from that connection's
+      :class:`.Engine`.  Also in 0.7.10.
+
+    .. change::
         :tags: mssql, bug
-        :tickets:2607
+        :tickets: 2607
 
       Fixed bug whereby using "key" with Column
       in conjunction with "schema" for the owning
