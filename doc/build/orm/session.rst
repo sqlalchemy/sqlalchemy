@@ -42,7 +42,7 @@ held by the :class:`.Session` - there are a variety of events that will cause
 objects to re-access the database in order to keep synchronized.   It is
 possible to "detach" objects from a :class:`.Session`, and to continue using
 them, though this practice has its caveats.  It's intended that
-usually, you'd re-associate detached objects another :class:`.Session` when you
+usually, you'd re-associate detached objects with another :class:`.Session` when you
 want to work with them again, so that they can resume their normal task of
 representing database state.
 
