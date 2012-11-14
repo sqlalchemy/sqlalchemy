@@ -9,13 +9,13 @@
 
 """
 
-
+from __future__ import with_statement
 import sys
-from itertools import chain
 from .. import exc, schema, util, log, interfaces
 from ..sql import expression, util as sql_util
 from .interfaces import Connectable, Compiled
 from .util import _distill_params
+import contextlib
 
 class Connection(Connectable):
     """Provides high-level functionality for a wrapped DB-API connection.
@@ -270,24 +270,34 @@ class Connection(Connectable):
         return self.connection.info
 
     def connect(self):
-        """Returns self.
+        """Returns a branched version of this :class:`.Connection`.
 
-        This ``Connectable`` interface method returns self, allowing
-        Connections to be used interchangeably with Engines in most
-        situations that require a bind.
+        The :meth:`.Connection.close` method on the returned
+        :class:`.Connection` can be called and this
+        :class:`.Connection` will remain open.
+
+        This method provides usage symmetry with
+        :meth:`.Engine.connect`, including for usage
+        with context managers.
+
         """
 
-        return self
+        return self._branch()
 
     def contextual_connect(self, **kwargs):
-        """Returns self.
+        """Returns a branched version of this :class:`.Connection`.
 
-        This ``Connectable`` interface method returns self, allowing
-        Connections to be used interchangeably with Engines in most
-        situations that require a bind.
+        The :meth:`.Connection.close` method on the returned
+        :class:`.Connection` can be called and this
+        :class:`.Connection` will remain open.
+
+        This method provides usage symmetry with
+        :meth:`.Engine.contextual_connect`, including for usage
+        with context managers.
+
         """
 
-        return self
+        return self._branch()
 
     def invalidate(self, exception=None):
         """Invalidate the underlying DBAPI connection associated with
@@ -1459,24 +1469,21 @@ class Engine(Connectable, log.Identified):
 
 
     def _execute_default(self, default):
-        connection = self.contextual_connect()
-        try:
-            return connection._execute_default(default, (), {})
-        finally:
-            connection.close()
+        with self.contextual_connect() as conn:
+            return conn._execute_default(default, (), {})
 
+    @contextlib.contextmanager
+    def _optional_conn_ctx_manager(self, connection=None):
+        if connection is None:
+            with self.contextual_connect() as conn:
+                yield conn
+        else:
+            yield connection
 
     def _run_visitor(self, visitorcallable, element,
                                     connection=None, **kwargs):
-        if connection is None:
-            conn = self.contextual_connect(close_with_result=False)
-        else:
-            conn = connection
-        try:
+        with self._optional_conn_ctx_manager(connection) as conn:
             conn._run_visitor(visitorcallable, element, **kwargs)
-        finally:
-            if connection is None:
-                conn.close()
 
     class _trans_ctx(object):
         def __init__(self, conn, transaction, close_with_result):
@@ -1494,6 +1501,7 @@ class Engine(Connectable, log.Identified):
                 self.transaction.commit()
             if not self.close_with_result:
                 self.conn.close()
+
 
     def begin(self, close_with_result=False):
         """Return a context manager delivering a :class:`.Connection`
@@ -1575,11 +1583,8 @@ class Engine(Connectable, log.Identified):
 
         """
 
-        conn = self.contextual_connect()
-        try:
+        with self.contextual_connect() as conn:
             return conn.transaction(callable_, *args, **kwargs)
-        finally:
-            conn.close()
 
     def run_callable(self, callable_, *args, **kwargs):
         """Given a callable object or function, execute it, passing
@@ -1594,11 +1599,8 @@ class Engine(Connectable, log.Identified):
         which one is being dealt with.
 
         """
-        conn = self.contextual_connect()
-        try:
+        with self.contextual_connect() as conn:
             return conn.run_callable(callable_, *args, **kwargs)
-        finally:
-            conn.close()
 
     def execute(self, statement, *multiparams, **params):
         """Executes the given construct and returns a :class:`.ResultProxy`.
@@ -1673,17 +1675,10 @@ class Engine(Connectable, log.Identified):
           the ``contextual_connect`` for this ``Engine``.
         """
 
-        if connection is None:
-            conn = self.contextual_connect()
-        else:
-            conn = connection
-        if not schema:
-            schema = self.dialect.default_schema_name
-        try:
+        with self._optional_conn_ctx_manager(connection) as conn:
+            if not schema:
+                schema = self.dialect.default_schema_name
             return self.dialect.get_table_names(conn, schema)
-        finally:
-            if connection is None:
-                conn.close()
 
     def has_table(self, table_name, schema=None):
         return self.run_callable(self.dialect.has_table, table_name, schema)

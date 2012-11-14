@@ -7,6 +7,21 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: engine, feature
+
+      The :meth:`.Connection.connect` and :meth:`.Connection.contextual_connect`
+      methods now return a "branched" version so that the :meth:`.Connection.close`
+      method can be called on the returned connection without affecting the
+      original.   Allows symmetry when using :class:`.Engine` and
+      :class:`.Connection` objects as context managers::
+
+        with conn.connect() as c: # leaves the Connection open
+          c.execute("...")
+
+        with engine.connect() as c:  # closes the Connection
+          c.execute("...")
+
+    .. change::
         :tags: engine
 
       The "reflect=True" argument to :class:`MetaData` is deprecated.

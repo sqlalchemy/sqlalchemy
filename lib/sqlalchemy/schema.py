@@ -27,6 +27,7 @@ Since these objects are part of the SQL expression language, they are usable
 as components in SQL expressions.
 
 """
+from __future__ import with_statement
 import re
 import inspect
 from . import exc, util, dialects, event, events, inspection
@@ -2598,25 +2599,19 @@ class MetaData(SchemaItem):
         if bind is None:
             bind = _bind_or_error(self)
 
-        if bind.engine is not bind:
-            conn = bind
-            close = False
-        else:
-            conn = bind.contextual_connect()
-            close = True
+        with bind.connect() as conn:
 
-        reflect_opts = {
-            'autoload': True,
-            'autoload_with': bind
-        }
+            reflect_opts = {
+                'autoload': True,
+                'autoload_with': conn
+            }
 
-        if schema is None:
-            schema = self.schema
+            if schema is None:
+                schema = self.schema
 
-        if schema is not None:
-            reflect_opts['schema'] = schema
+            if schema is not None:
+                reflect_opts['schema'] = schema
 
-        try:
             available = util.OrderedSet(bind.engine.table_names(schema,
                                                             connection=conn))
             if views:
@@ -2643,9 +2638,6 @@ class MetaData(SchemaItem):
 
             for name in load:
                 Table(name, self, **reflect_opts)
-        finally:
-            if close:
-                conn.close()
 
     def append_ddl_listener(self, event_name, listener):
         """Append a DDL event listener to this ``MetaData``.
