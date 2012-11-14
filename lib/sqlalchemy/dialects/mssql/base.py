@@ -882,7 +882,8 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
                 if result_map is not None:
                     result_map[column.name.lower()] = \
-                                    (column.name, (column, ),
+                                    (column.name, (column, column.name,
+                                                        column.key),
                                                     column.type)
 
                 return super(MSSQLCompiler, self).\

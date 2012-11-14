@@ -199,9 +199,9 @@ def schemas(fn):
     named 'test_schema'."""
 
     return skip_if([
-                "sqlte",
+                "sqlite",
                 "firebird"
-            ], "no schema support")
+            ], "no schema support")(fn)
 
 def sequences(fn):
     """Target database must support SEQUENCEs."""
@@ -209,6 +209,7 @@ def sequences(fn):
     return only_if([
             "postgresql", "firebird", "oracle"
         ], "no SEQUENCE support")(fn)
+
 
 def update_nowait(fn):
     """Target database must support SELECT...FOR UPDATE NOWAIT"""

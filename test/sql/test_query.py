@@ -1344,6 +1344,7 @@ class KeyTargetingTest(fixtures.TablesTest):
             Column('ctype', String(30), key="content_type")
         )
 
+
     @classmethod
     def insert_data(cls):
         cls.tables.keyed1.insert().execute(dict(b="a1", q="c1"))
@@ -1351,6 +1352,26 @@ class KeyTargetingTest(fixtures.TablesTest):
         cls.tables.keyed3.insert().execute(dict(a="a3", d="d3"))
         cls.tables.keyed4.insert().execute(dict(b="b4", q="q4"))
         cls.tables.content.insert().execute(type="t1")
+
+
+    @testing.requires.schemas
+    @testing.provide_metadata
+    def test_keyed_accessor_wschema(self):
+        keyed1 = Table('wschema', self.metadata,
+            Column("a", CHAR(2), key="b"),
+            Column("c", CHAR(2), key="q"),
+            schema="test_schema"
+        )
+        keyed1.create(checkfirst=True)
+        keyed1.insert().execute(dict(b="a1", q="c1"))
+
+        row = testing.db.execute(keyed1.select()).first()
+
+        eq_(row.b, "a1")
+        eq_(row.q, "c1")
+        eq_(row.a, "a1")
+        eq_(row.c, "c1")
+
 
     def test_keyed_accessor_single(self):
         keyed1 = self.tables.keyed1

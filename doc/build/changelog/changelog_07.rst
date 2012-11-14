@@ -3,10 +3,20 @@
 0.7 Changelog
 ==============
 
-                
+
 .. changelog::
     :version: 0.7.10
-    :released: 
+    :released:
+
+    .. change::
+        :tags: mssql, bug
+        :tickets:2607
+
+      Fixed bug whereby using "key" with Column
+      in conjunction with "schema" for the owning
+      Table would fail to locate result rows due
+      to the MSSQL dialect's "schema rendering"
+      logic's failure to take .key into account.
 
     .. change::
         :tags: orm, bug
@@ -52,7 +62,7 @@
 
     .. change::
         :tags: orm, bug
-        :tickets: 
+        :tickets:
 
       Fixed bug mostly local to new
       AbstractConcreteBase helper where the "type"
@@ -68,7 +78,7 @@
 
     .. change::
         :tags: orm, bug
-        :tickets: 
+        :tickets:
 
       A warning is emitted when lazy='dynamic'
       is combined with uselist=False.  This is an
@@ -76,7 +86,7 @@
 
     .. change::
         :tags: orm, bug
-        :tickets: 
+        :tickets:
 
       Fixed bug whereby user error in related-object
       assignment could cause recursion overflow if the
@@ -140,7 +150,7 @@
 
     .. change::
         :tags: bug, sql
-        :tickets: 
+        :tickets:
 
       Fixed more un-intuitivenesses in CTEs
       which prevented referring to a CTE in a union
@@ -261,7 +271,7 @@
 
     .. change::
         :tags: engine, bug
-        :tickets: 
+        :tickets:
 
       Fixed the repr() of Enum to include
       the "name" and "native_enum" flags.  Helps
@@ -294,7 +304,7 @@
 
     .. change::
         :tags: sqlite, feature
-        :tickets: 
+        :tickets:
 
       Added support for the localtimestamp()
       SQL function implemented in SQLite, courtesy
@@ -320,7 +330,7 @@
 
     .. change::
         :tags: bug, mysql
-        :tickets: 
+        :tickets:
 
       Updated mysqlconnector interface to use
       updated "client flag" and "charset" APIs,
@@ -347,7 +357,7 @@
 
     .. change::
         :tags: mssql, bug
-        :tickets: 
+        :tickets:
 
       Fixed bug where reflection of primary key constraint
       would double up columns if the same constraint/table
@@ -385,7 +395,7 @@
 
     .. change::
         :tags: orm, feature
-        :tickets: 
+        :tickets:
 
       The 'objects' argument to
       flush() is no longer deprecated, as some
@@ -511,7 +521,7 @@
 
     .. change::
         :tags: orm, feature
-        :tickets: 
+        :tickets:
 
       Added new flag to @validates
       include_removes.  When True, collection
@@ -548,7 +558,7 @@
 
     .. change::
         :tags: orm, bug
-        :tickets: 
+        :tickets:
 
       Fixed bug in relationship comparisons
       whereby calling unimplemented methods like
@@ -558,7 +568,7 @@
 
     .. change::
         :tags: bug, sql
-        :tickets: 
+        :tickets:
 
       Removed warning when Index is created
       with no columns; while this might not be what
@@ -568,7 +578,7 @@
 
     .. change::
         :tags: feature, sql
-        :tickets: 
+        :tickets:
 
       Added new connection event
       dbapi_error(). Is called for all DBAPI-level
@@ -578,7 +588,7 @@
 
     .. change::
         :tags: bug, sql
-        :tickets: 
+        :tickets:
 
       If conn.begin() fails when calling
       "with engine.begin()", the newly acquired
@@ -593,7 +603,7 @@
 
     .. change::
         :tags: mssql, feature
-        :tickets: 
+        :tickets:
 
       Added interim create_engine flag
       supports_unicode_binds to PyODBC dialect,
@@ -603,7 +613,7 @@
 
     .. change::
         :tags: mssql, bug
-        :tickets: 
+        :tickets:
 
       Repaired the use_scope_identity
       create_engine() flag when using the pyodbc
@@ -657,7 +667,7 @@
 
     .. change::
         :tags: bug, mysql
-        :tickets: 
+        :tickets:
 
       Fixed bug whereby get_view_names() for
       "information_schema" schema would fail
@@ -724,7 +734,7 @@
 
     .. change::
         :tags: orm, feature
-        :tickets: 
+        :tickets:
 
       Added "no_autoflush" context
       manager to Session, used with with:
@@ -797,7 +807,7 @@
 
     .. change::
         :tags: orm, bug
-        :tickets: 
+        :tickets:
 
       Improved the "declarative reflection"
       example to support single-table inheritance,
@@ -932,7 +942,7 @@
 
     .. change::
         :tags: engine, bug
-        :tickets: 
+        :tickets:
 
       Added execution_options() call to
       MockConnection (i.e., that used with
@@ -952,19 +962,19 @@
 
     .. change::
         :tags: engine, feature
-        :tickets: 
+        :tickets:
 
       Added some decent context managers
       to Engine, Connection:
-      
+
           with engine.begin() as conn:
               <work with conn in a transaction>
-      
+
       and:
-      
+
           with engine.connect() as conn:
               <work with conn>
-      
+
       Both close out the connection when done,
       commit or rollback transaction with errors
       on engine.begin().
@@ -1031,7 +1041,7 @@
 
     .. change::
         :tags: examples, bug
-        :tickets: 
+        :tickets:
 
       Altered _params_from_query() function
       in Beaker example to pull bindparams from the
@@ -1076,7 +1086,7 @@
 
     .. change::
         :tags: orm, feature
-        :tickets: 
+        :tickets:
 
       Added "class_registry" argument to
       declarative_base().  Allows two or more declarative
@@ -1084,7 +1094,7 @@
 
     .. change::
         :tags: orm, feature
-        :tickets: 
+        :tickets:
 
       query.filter() accepts multiple
       criteria which will join via AND, i.e.
@@ -1115,14 +1125,14 @@
 
     .. change::
         :tags: orm, bug
-        :tickets: 
+        :tickets:
 
       Fixed bug whereby hybrid_property didn't
       work as a kw arg in any(), has().
 
     .. change::
         :tags: orm
-        :tickets: 
+        :tickets:
 
       Fixed regression from 0.6 whereby if
       "load_on_pending" relationship() flag were used
@@ -1200,7 +1210,7 @@
 
     .. change::
         :tags: feature, sql
-        :tickets: 
+        :tickets:
 
       Added "false()" and "true()" expression
       constructs to sqlalchemy.sql namespace, though
@@ -1283,7 +1293,7 @@
 
     .. change::
         :tags: sqlite, bug
-        :tickets: 
+        :tickets:
 
       removed an erroneous "raise" in the
       SQLite dialect when getting table names
@@ -1544,17 +1554,17 @@
 
       polymorphic_on now accepts many
       new kinds of values:
-      
+
         - standalone expressions that aren't
           otherwise mapped
         - column_property() objects
         - string names of any column_property()
           or attribute name of a mapped Column
-      
+
       The docs include an example using
       the case() construct, which is likely to be
       a common constructed used here. and part of
-      
+
       Standalone expressions in polymorphic_on
       propagate to single-table inheritance
       subclasses so that they are used in the
@@ -1571,7 +1581,7 @@
 
     .. change::
         :tags: orm, feature
-        :tickets: 
+        :tickets:
 
       Added new value for Column autoincrement
       called "ignore_fk", can be used to force autoincrement
@@ -1581,7 +1591,7 @@
 
     .. change::
         :tags: orm, bug
-        :tickets: 
+        :tickets:
 
       Fixed bug in get_history() when referring
       to a composite attribute that has no value;
@@ -1662,13 +1672,13 @@
 
     .. change::
         :tags: feature, schema
-        :tickets: 
+        :tickets:
 
       Added new support for remote "schemas":
 
     .. change::
         :tags: schema
-        :tickets: 
+        :tickets:
 
       MetaData() accepts "schema" and "quote_schema"
       arguments, which will be applied to the same-named
@@ -1678,13 +1688,13 @@
 
     .. change::
         :tags: schema
-        :tickets: 
+        :tickets:
 
       Sequence accepts "quote_schema" argument
 
     .. change::
         :tags: schema
-        :tickets: 
+        :tickets:
 
       tometadata() for Table will use the "schema"
       of the incoming MetaData for the new Table
@@ -1692,7 +1702,7 @@
 
     .. change::
         :tags: schema
-        :tickets: 
+        :tickets:
 
       Added CreateSchema and DropSchema DDL
       constructs - these accept just the string
@@ -1700,7 +1710,7 @@
 
     .. change::
         :tags: schema
-        :tickets: 
+        :tickets:
 
       When using default "schema" with MetaData,
       ForeignKey will also assume the "default" schema
@@ -1734,7 +1744,7 @@
 
     .. change::
         :tags: bug, schema
-        :tickets: 
+        :tickets:
 
       Fixed bug whereby TypeDecorator would
       return a stale value for _type_affinity, when
@@ -1743,7 +1753,7 @@
 
     .. change::
         :tags: bug, schema
-        :tickets: 
+        :tickets:
 
       Fixed bug whereby "order_by='foreign_key'"
       option to Inspector.get_table_names
@@ -1781,7 +1791,7 @@
 
     .. change::
         :tags: postgresql, feature
-        :tickets: 
+        :tickets:
 
       Added create_type constructor argument
       to pg.ENUM.  When False, no CREATE/DROP or
@@ -1836,14 +1846,14 @@
 
     .. change::
         :tags: bug, mysql
-        :tickets: 
+        :tickets:
 
       Unicode adjustments allow latest pymysql
       (post 0.4) to pass 100% on Python 2.
 
     .. change::
         :tags: ext, feature
-        :tickets: 
+        :tickets:
 
       Added an example to the hybrid docs
       of a "transformer" - a hybrid that returns a
@@ -1855,7 +1865,7 @@
 
     .. change::
         :tags: ext, bug
-        :tickets: 
+        :tickets:
 
       the @compiles decorator raises an
       informative error message when no "default"
@@ -1864,7 +1874,7 @@
 
     .. change::
         :tags: examples, bug
-        :tickets: 
+        :tickets:
 
       Fixed bug in history_meta.py example where
       the "unique" flag was not removed from a
@@ -1916,7 +1926,7 @@
 
     .. change::
         :tags: orm
-        :tickets: 
+        :tickets:
 
       added "adapt_on_names" boolean flag to orm.aliased()
       construct.  Allows an aliased() construct
@@ -1927,7 +1937,7 @@
 
     .. change::
         :tags: orm
-        :tickets: 
+        :tickets:
 
       Added new flag expire_on_flush=False to column_property(),
       marks those properties that would otherwise be considered
@@ -1959,7 +1969,7 @@
 
     .. change::
         :tags: orm
-        :tickets: 
+        :tickets:
 
       Fixed a variety of synonym()-related regressions
       from 0.6:
@@ -2013,7 +2023,7 @@
 
     .. change::
         :tags: orm
-        :tickets: 
+        :tickets:
 
       Query will convert an OFFSET of zero when
       slicing into None, so that needless OFFSET
@@ -2021,7 +2031,7 @@
 
     .. change::
         :tags: orm
-        :tickets: 
+        :tickets:
 
       Repaired edge case where mapper would fail
       to fully update internal state when a relationship
@@ -2034,7 +2044,7 @@
 
       Fixed bug whereby if __eq__() was
       redefined, a relationship many-to-one lazyload
-      would hit the __eq__() and fail. 
+      would hit the __eq__() and fail.
       Does not apply to 0.6.9.
 
     .. change::
@@ -2048,7 +2058,7 @@
 
     .. change::
         :tags: orm
-        :tickets: 
+        :tickets:
 
       New event hook, MapperEvents.after_configured().
       Called after a configure() step has completed and
@@ -2183,7 +2193,7 @@
 
     .. change::
         :tags: engine
-        :tickets: 
+        :tickets:
 
       Added optional "sa_pool_key" argument to
       pool.manage(dbapi).connect() so that serialization
@@ -2222,7 +2232,7 @@
 
     .. change::
         :tags: sqlite
-        :tickets: 
+        :tickets:
 
       Ensured that the same ValueError is raised for
       illegal date/time/datetime string parsed from
@@ -2265,7 +2275,7 @@
 
     .. change::
         :tags: postgresql
-        :tickets: 
+        :tickets:
 
       Use an atomic counter as the "random number"
       source for server side cursor names;
@@ -2395,7 +2405,7 @@
 
       Adjusted dictlike-polymorphic.py example
       to apply the CAST such that it works on
-      PG, other databases. 
+      PG, other databases.
       Also in 0.6.9.
 
 .. changelog::
@@ -2450,7 +2460,7 @@
       from a joined-inh structure to itself on
       relationship() with join condition on the child
       table would convert the lead entity into the
-      joined one inappropriately. 
+      joined one inappropriately.
       Also in 0.6.9.
 
     .. change::
@@ -2495,7 +2505,7 @@
       sorting of persistent + pending objects during
       flush would produce an illegal comparison,
       if the persistent object primary key
-      is not a single integer. 
+      is not a single integer.
       Also in 0.6.9
 
     .. change::
@@ -2505,7 +2515,7 @@
       Fixed bug whereby the source clause
       used by query.join() would be inconsistent
       if against a column expression that combined
-      multiple entities together. 
+      multiple entities together.
       Also in 0.6.9
 
     .. change::
@@ -2518,7 +2528,7 @@
       as SQLA should never consult these,
       the methods would be consulted if the class
       was part of a "composite" (i.e. non-single-entity)
-      result set. 
+      result set.
       Also in 0.6.9.
 
     .. change::
@@ -2553,7 +2563,7 @@
 
     .. change::
         :tags: orm
-        :tickets: 
+        :tickets:
 
       Added the same "columns-only" check to
       mapper.polymorphic_on as used when
@@ -2612,7 +2622,7 @@
 
     .. change::
         :tags: schema
-        :tickets: 
+        :tickets:
 
       Added an informative error message when
       ForeignKeyConstraint refers to a column name in
@@ -2630,7 +2640,7 @@
 
     .. change::
         :tags: schema
-        :tickets: 
+        :tickets:
 
       Fixed bug where "autoincrement" detection on
       Table would fail if the type had no "affinity"
@@ -2649,7 +2659,7 @@
 
     .. change::
         :tags: engine
-        :tickets: 
+        :tickets:
 
       Context manager provided by Connection.begin()
       will issue rollback() if the commit() fails,
@@ -2664,7 +2674,7 @@
 
     .. change::
         :tags: engine
-        :tickets: 
+        :tickets:
 
       Added mixin class sqlalchemy.ext.DontWrapMixin.
       User-defined exceptions of this type are never
@@ -2674,7 +2684,7 @@
 
     .. change::
         :tags: engine
-        :tickets: 
+        :tickets:
 
       StatementException wrapping will display the
       original exception class in the message.
@@ -2719,7 +2729,7 @@
 
     .. change::
         :tags: mssql
-        :tickets: 
+        :tickets:
 
       Adjusted the pyodbc dialect such that bound
       values are passed as bytes and not unicode
@@ -2749,7 +2759,7 @@
         :tickets: 2220
 
       repaired the oracle.RAW type which did not
-      generate the correct DDL. 
+      generate the correct DDL.
       Also in 0.6.9.
 
     .. change::
@@ -2760,7 +2770,7 @@
 
     .. change::
         :tags: oracle
-        :tickets: 
+        :tickets:
 
       Fixed bug in the mutable extension whereby
       if the same type were used twice in one
@@ -2769,7 +2779,7 @@
 
     .. change::
         :tags: oracle
-        :tickets: 
+        :tickets:
 
       Fixed bug in the mutable extension whereby
       if None or a non-corresponding type were set,
@@ -2779,7 +2789,7 @@
 
     .. change::
         :tags: examples
-        :tickets: 
+        :tickets:
 
       Repaired the examples/versioning test runner
       to not rely upon SQLAlchemy test libs,
@@ -2789,7 +2799,7 @@
 
     .. change::
         :tags: examples
-        :tickets: 
+        :tickets:
 
       Tweak to examples/versioning to pick the
       correct foreign key in a multi-level
@@ -2797,7 +2807,7 @@
 
     .. change::
         :tags: examples
-        :tickets: 
+        :tickets:
 
       Fixed the attribute shard example to check
       for bind param callable correctly in 0.7
@@ -2859,7 +2869,7 @@
 
     .. change::
         :tags: sql
-        :tickets: 
+        :tickets:
 
       Fixed bug whereby metadata.reflect(bind)
       would close a Connection passed as a
@@ -2867,7 +2877,7 @@
 
     .. change::
         :tags: sql
-        :tickets: 
+        :tickets:
 
       Streamlined the process by which a Select
       determines what's in it's '.c' collection.
@@ -2879,7 +2889,7 @@
 
     .. change::
         :tags: engine
-        :tickets: 
+        :tickets:
 
       Deprecate schema/SQL-oriented methods on
       Connection/Engine that were never well known
@@ -2921,7 +2931,7 @@
 
     .. change::
         :tags: mysql
-        :tickets: 
+        :tickets:
 
       Unit tests pass 100% on MySQL installed
       on windows.
@@ -2947,7 +2957,7 @@
 
     .. change::
         :tags: mysql
-        :tickets: 
+        :tickets:
 
       supports_sane_rowcount will be set to False
       if using MySQLdb and the DBAPI doesn't provide
@@ -2958,8 +2968,8 @@
     :released: Fri May 20 2011
 
     .. change::
-        :tags: 
-        :tickets: 
+        :tags:
+        :tickets:
 
       This section documents those changes from 0.7b4
       to 0.7.0.  For an overview of what's new in
@@ -3007,7 +3017,7 @@
       for joined-inh subclass related to itself,
       or joined-inh subclass related to a subclass
       of that with no cols in the sub-sub class
-      in the join condition. 
+      in the join condition.
       Also in 0.6.8.
 
     .. change::
@@ -3045,7 +3055,7 @@
 
     .. change::
         :tags: orm
-        :tickets: 
+        :tickets:
 
       added Query.with_session() method, switches
       Query to use a different session.
@@ -3088,7 +3098,7 @@
 
     .. change::
         :tags: orm
-        :tickets: 
+        :tickets:
 
       polymorphic_union() renders the columns in their
       original table order, as according to the first
@@ -3102,7 +3112,7 @@
 
       Fixed bug whereby mapper mapped to an anonymous
       alias would fail if logging were used, due to
-      unescaped % sign in the alias name. 
+      unescaped % sign in the alias name.
       Also in 0.6.8.
 
     .. change::
@@ -3118,7 +3128,7 @@
 
     .. change::
         :tags: sql
-        :tickets: 
+        :tickets:
 
       Changed the handling in determination of join
       conditions such that foreign key errors are
@@ -3131,7 +3141,7 @@
 
     .. change::
         :tags: sql
-        :tickets: 
+        :tickets:
 
       Some improvements to error handling inside
       of the execute procedure to ensure auto-close
@@ -3140,7 +3150,7 @@
 
     .. change::
         :tags: sql
-        :tickets: 
+        :tickets:
 
       metadata.reflect() and reflection.Inspector()
       had some reliance on GC to close connections
@@ -3165,7 +3175,7 @@
 
     .. change::
         :tags: postgresql
-        :tickets: 
+        :tickets:
 
       Fixed the psycopg2_version parsing in the
       psycopg2 dialect.
@@ -3198,7 +3208,7 @@
 
     .. change::
         :tags: examples
-        :tickets: 
+        :tickets:
 
       removed the ancient "polymorphic association"
       examples and replaced with an updated set of
@@ -3220,7 +3230,7 @@
 
     .. change::
         :tags: general
-        :tickets: 
+        :tickets:
 
       Changes to the format of CHANGES, this file.
       The format changes have been applied to
@@ -3228,7 +3238,7 @@
 
     .. change::
         :tags: general
-        :tickets: 
+        :tickets:
 
       The "-declarative" changes will now be listed
       directly under the "-orm" section, as these
@@ -3236,7 +3246,7 @@
 
     .. change::
         :tags: general
-        :tickets: 
+        :tickets:
 
       The 0.5 series changes have been moved to
       the file CHANGES_PRE_06 which replaces
@@ -3244,7 +3254,7 @@
 
     .. change::
         :tags: general
-        :tickets: 
+        :tickets:
 
       The changelog for 0.6.7 and subsequent within
       the 0.6 series is now listed only in the
@@ -3279,7 +3289,7 @@
 
     .. change::
         :tags: orm
-        :tickets: 
+        :tickets:
 
       Still more wording adjustments when a query option
       can't find the target entity.  Explain that the
@@ -3294,7 +3304,7 @@
       the back-referenced collection wouldn't
       properly handle add/removes with no net
       change.  Thanks to Richard Murri for the
-      test case + patch. 
+      test case + patch.
       (also in 0.6.7).
 
     .. change::
@@ -3352,7 +3362,7 @@
 
     .. change::
         :tags: sql
-        :tickets: 
+        :tickets:
 
       Restored the "catchall" constructor on the base
       TypeEngine class, with a deprecation warning.
@@ -3375,12 +3385,12 @@
 
       The limit/offset keywords to select() as well
       as the value passed to select.limit()/offset()
-      will be coerced to integer. 
+      will be coerced to integer.
       (also in 0.6.7)
 
     .. change::
         :tags: sql
-        :tickets: 
+        :tickets:
 
       fixed bug where "from" clause gathering from an
       over() clause would be an itertools.chain() and
@@ -3465,7 +3475,7 @@
 
     .. change::
         :tags: pool
-        :tickets: 
+        :tickets:
 
       The "pool.manage" feature doesn't use pickle
       anymore to hash the arguments for each pool.
@@ -3476,12 +3486,12 @@
 
       Fixed bug where reflection of foreign key
       created as "REFERENCES <tablename>" without
-      col name would fail. 
+      col name would fail.
       (also in 0.6.7)
 
     .. change::
         :tags: postgresql
-        :tickets: 
+        :tickets:
 
       Psycopg2 for Python 3 is now supported.
 
@@ -3532,7 +3542,7 @@
 
     .. change::
         :tags: general
-        :tickets: 
+        :tickets:
 
       Lots of fixes to unit tests when run under Pypy
       (courtesy Alex Gaynor).
@@ -3543,11 +3553,11 @@
 
       Changed the underlying approach to query.count().
       query.count() is now in all cases exactly:
-      
+
           query.
               from_self(func.count(literal_column('1'))).
               scalar()
-      
+
       That is, "select count(1) from (<full query>)".
       This produces a subquery in all cases, but
       vastly simplifies all the guessing count()
@@ -3619,7 +3629,7 @@
 
     .. change::
         :tags: sql
-        :tickets: 
+        :tickets:
 
       Added a fully descriptive error message for the
       case where Column is subclassed and _make_proxy()
@@ -3640,7 +3650,7 @@
 
     .. change::
         :tags: sql
-        :tickets: 
+        :tickets:
 
       To help with the "column_reflect" event being used
       with specific Table objects instead of all instances
@@ -3703,7 +3713,7 @@
         :tickets: 2073
 
       Fixed the BIT type to allow a "length" parameter, "varying"
-      parameter.  Reflection also fixed. 
+      parameter.  Reflection also fixed.
       (also in 0.6.7)
 
     .. change::
@@ -3714,7 +3724,7 @@
       typically when using the Inspector interface, to
       use sys.sql_modules instead of the information schema,
       thereby allowing views definitions longer than 4000
-      characters to be fully returned. 
+      characters to be fully returned.
       (also in 0.6.7)
 
     .. change::
@@ -3741,7 +3751,7 @@
 
     .. change::
         :tags: examples
-        :tickets: 
+        :tickets:
 
       Updated the association, association proxy examples
       to use declarative, added a new example
@@ -3753,7 +3763,7 @@
         :tickets: 2090
 
       The Beaker caching example allows a "query_cls" argument
-      to the query_callable() function. 
+      to the query_callable() function.
       (also in 0.6.7)
 
 .. changelog::
@@ -3852,7 +3862,7 @@
 
     .. change::
         :tags: examples
-        :tickets: 
+        :tickets:
 
       Beaker example now takes into account 'limit'
       and 'offset', bind params within embedded
@@ -3864,8 +3874,8 @@
     :released: Sat Feb 12 2011
 
     .. change::
-        :tags: 
-        :tickets: 
+        :tags:
+        :tickets:
 
       Detailed descriptions of each change below are
       described at:
@@ -3892,7 +3902,7 @@
 
     .. change::
         :tags: general
-        :tickets: 
+        :tickets:
 
       The "sqlalchemy.exceptions" alias in sys.modules
       has been removed.   Base SQLA exceptions are
@@ -3921,7 +3931,7 @@
 
     .. change::
         :tags: orm
-        :tickets: 
+        :tickets:
 
       Mutation Event Extension, supercedes "mutable=True"
 
@@ -4029,7 +4039,7 @@
 
     .. change::
         :tags: orm
-        :tickets: 
+        :tickets:
 
       Query.join(), Query.outerjoin(), eagerload(),
       eagerload_all(), others no longer allow lists
@@ -4038,7 +4048,7 @@
 
     .. change::
         :tags: orm
-        :tickets: 
+        :tickets:
 
       ScopedSession.mapper is removed (deprecated since 0.5).
 
@@ -4062,7 +4072,7 @@
 
     .. change::
         :tags: orm
-        :tickets: 
+        :tickets:
 
       The "name" field used in orm.aliased() now renders
       in the resulting SQL statement.
@@ -4106,7 +4116,7 @@
 
     .. change::
         :tags: orm
-        :tickets: 
+        :tickets:
 
       the value of "passive" as passed to
       attributes.get_history() should be one of the
@@ -4126,7 +4136,7 @@
 
       A warning is emitted when a joined-table inheriting mapper
       has no primary keys on the locally mapped table
-      (but has pks on the superclass table). 
+      (but has pks on the superclass table).
       (also in 0.6.7)
 
     .. change::
@@ -4195,7 +4205,7 @@
 
     .. change::
         :tags: sql
-        :tickets: 
+        :tickets:
 
       select.prefix_with() accepts multiple expressions
       (i.e. *expr), 'prefix' keyword argument to select()
@@ -4203,7 +4213,7 @@
 
     .. change::
         :tags: sql
-        :tickets: 
+        :tickets:
 
       Passing a string to the `distinct` keyword argument
       of `select()` for the purpose of emitting special
@@ -4257,7 +4267,7 @@
 
     .. change::
         :tags: sql
-        :tickets: 
+        :tickets:
 
       The Index() construct can be created inline with a Table
       definition, using strings as column names, as an alternative
@@ -4306,7 +4316,7 @@
 
     .. change::
         :tags: sql
-        :tickets: 
+        :tickets:
 
       Bind parameters present in the "columns clause" of a select
       are now auto-labeled like other "anonymous" clauses,
@@ -4315,7 +4325,7 @@
 
     .. change::
         :tags: sql
-        :tickets: 
+        :tickets:
 
       TypeDecorator is present in the "sqlalchemy" import space.
 
@@ -4406,7 +4416,7 @@
       specified, so that the default length, normally '1'
       as per SQL server documentation, is instead
       'unbounded'.  This also occurs for the VARBINARY type..
-      
+
       This behavior makes these types more closely compatible
       with Postgresql's VARCHAR type which is similarly unbounded
       when no length is specified.
@@ -4423,7 +4433,7 @@
         :tickets: 2047
 
       oursql dialect accepts the same "ssl" arguments in
-      create_engine() as that of MySQLdb. 
+      create_engine() as that of MySQLdb.
       (also in 0.6.7)
 
     .. change::
