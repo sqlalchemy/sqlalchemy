@@ -421,7 +421,8 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
         )
 
         eq_(
-            select([t.c.data, type_coerce(t.c.data, MyType)]).select().execute().fetchall(),
+            select([t.c.data, type_coerce(t.c.data, MyType)]).
+                    alias().select().execute().fetchall(),
             [('d1', 'd1BIND_OUT')]
         )
 
