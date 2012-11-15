@@ -345,8 +345,7 @@ class IdentitySetTest(fixtures.TestBase):
         def should_raise():
             not_an_identity_set = object()
             return unique1 <= not_an_identity_set
-        assert_raises_message(
-            TypeError, 'cannot compare sets using cmp()', should_raise)
+        self._assert_unorderable_types(should_raise)
 
     def test_dunder_lt(self):
         super_, sub_, twin1, twin2, unique1, unique2 = self._create_sets()
@@ -367,8 +366,7 @@ class IdentitySetTest(fixtures.TestBase):
         def should_raise():
             not_an_identity_set = object()
             return unique1 < not_an_identity_set
-        assert_raises_message(
-            TypeError, 'cannot compare sets using cmp()', should_raise)
+        self._assert_unorderable_types(should_raise)
 
     def test_dunder_ge(self):
         super_, sub_, twin1, twin2, unique1, unique2 = self._create_sets()
@@ -389,8 +387,7 @@ class IdentitySetTest(fixtures.TestBase):
         def should_raise():
             not_an_identity_set = object()
             return unique1 >= not_an_identity_set
-        assert_raises_message(
-            TypeError, 'cannot compare sets using cmp()', should_raise)
+        self._assert_unorderable_types(should_raise)
 
     def test_dunder_gt(self):
         super_, sub_, twin1, twin2, unique1, unique2 = self._create_sets()
@@ -411,8 +408,7 @@ class IdentitySetTest(fixtures.TestBase):
         def should_raise():
             not_an_identity_set = object()
             return unique1 > not_an_identity_set
-        assert_raises_message(
-            TypeError, 'cannot compare sets using cmp()', should_raise)
+        self._assert_unorderable_types(should_raise)
 
     def test_issubset(self):
         super_, sub_, twin1, twin2, unique1, unique2 = self._create_sets()
@@ -711,6 +707,15 @@ class IdentitySetTest(fixtures.TestBase):
         unique1 = util.IdentitySet([o4])
         unique2 = util.IdentitySet([o5])
         return super_, sub_, twin1, twin2, unique1, unique2
+
+    def _assert_unorderable_types(self, callable_):
+        # Py3K
+        #assert_raises_message(
+        #    TypeError, 'unorderable types', callable_)
+        # Py2K
+        assert_raises_message(
+            TypeError, 'cannot compare sets using cmp()', callable_)
+        # end Py2K
 
     def test_basic_sanity(self):
         IdentitySet = util.IdentitySet
