@@ -15,8 +15,16 @@ class KeyedTupleTest():
         eq_(str(keyed_tuple), '()')
         eq_(keyed_tuple.__dict__, {})
 
-        # consider returning an empty [] rather than raising
+        # TODO: consider returning an empty [] rather than raising
         assert_raises(AttributeError, keyed_tuple.keys)
+
+        # TODO: consider returning an empty {} rather than raising
+        assert_raises(AttributeError, keyed_tuple._asdict)
+
+        # TODO: consider returning an empty () rather than raising
+        def should_raise():
+            keyed_tuple._fields
+        assert_raises(AttributeError, should_raise)
 
     def test_values_but_no_labels(self):
         keyed_tuple = util.KeyedTuple([1, 2])
@@ -24,12 +32,26 @@ class KeyedTupleTest():
         eq_(str(keyed_tuple), '(1, 2)')
         eq_(keyed_tuple.__dict__, {})
 
-        # consider returning an empty [] rather than raising
+        # TODO: consider returning an empty [] rather than raising
         assert_raises(AttributeError, keyed_tuple.keys)
+
+        # TODO: consider returning an empty {} rather than raising
+        assert_raises(AttributeError, keyed_tuple._asdict)
+
+        # TODO: consider returning an empty () rather than raising
+        def should_raise():
+            keyed_tuple._fields
+        assert_raises(AttributeError, should_raise)
+
+    def test_basic_creation(self):
+        keyed_tuple = util.KeyedTuple([1, 2], ['a', 'b'])
+        eq_(str(keyed_tuple), '(1, 2)')
+        eq_(keyed_tuple.keys(), ['a', 'b'])
+        eq_(keyed_tuple._fields, ('a', 'b'))
+        eq_(keyed_tuple._asdict(), {'a': 1, 'b': 2})
 
     def test_basic_index_access(self):
         keyed_tuple = util.KeyedTuple([1, 2], ['a', 'b'])
-        eq_(str(keyed_tuple), '(1, 2)')
         eq_(keyed_tuple[0], 1)
         eq_(keyed_tuple[1], 2)
 
@@ -39,7 +61,6 @@ class KeyedTupleTest():
 
     def test_basic_attribute_access(self):
         keyed_tuple = util.KeyedTuple([1, 2], ['a', 'b'])
-        eq_(str(keyed_tuple), '(1, 2)')
         eq_(keyed_tuple.a, 1)
         eq_(keyed_tuple.b, 2)
 
@@ -50,9 +71,13 @@ class KeyedTupleTest():
     def test_none_label(self):
         keyed_tuple = util.KeyedTuple([1, 2, 3], ['a', None, 'b'])
         eq_(str(keyed_tuple), '(1, 2, 3)')
+
+        # TODO: consider not allowing None labels
         expected = {'a': 1, None: 2, 'b': 3, '_labels': ['a', None, 'b']}
         eq_(keyed_tuple.__dict__, expected)
         eq_(keyed_tuple.keys(), ['a', 'b'])
+        eq_(keyed_tuple._fields, ('a', 'b'))
+        eq_(keyed_tuple._asdict(), {'a': 1, 'b': 3})
 
         # attribute access: can't get at value 2
         eq_(keyed_tuple.a, 1)
@@ -66,9 +91,13 @@ class KeyedTupleTest():
     def test_duplicate_labels(self):
         keyed_tuple = util.KeyedTuple([1, 2, 3], ['a', 'b', 'b'])
         eq_(str(keyed_tuple), '(1, 2, 3)')
+
+        # TODO: consider not allowing duplicate labels
         expected = {'a': 1, 'b': 3, '_labels': ['a', 'b', 'b']}
         eq_(keyed_tuple.__dict__, expected)
         eq_(keyed_tuple.keys(), ['a', 'b', 'b'])
+        eq_(keyed_tuple._fields, ('a', 'b', 'b'))
+        eq_(keyed_tuple._asdict(), {'a': 1, 'b': 3})
 
         # attribute access: can't get at value 2
         eq_(keyed_tuple.a, 1)

@@ -41,6 +41,13 @@ class KeyedTuple(tuple):
     def keys(self):
         return [l for l in self._labels if l is not None]
 
+    @property
+    def _fields(self):
+        return tuple(self.keys())
+
+    def _asdict(self):
+        return dict((key, self.__dict__[key]) for key in self.keys())
+
 class ImmutableContainer(object):
     def _immutable(self, *arg, **kw):
         raise TypeError("%s object is immutable" % self.__class__.__name__)
