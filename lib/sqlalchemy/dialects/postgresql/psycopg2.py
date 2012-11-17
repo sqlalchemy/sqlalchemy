@@ -147,6 +147,7 @@ from .base import PGDialect, PGCompiler, \
                                 PGIdentifierPreparer, PGExecutionContext, \
                                 ENUM, ARRAY, _DECIMAL_TYPES, _FLOAT_TYPES,\
                                 _INT_TYPES
+from .hstore import HSTORE
 
 
 logger = logging.getLogger('sqlalchemy.dialects.postgresql')
@@ -194,6 +195,13 @@ class _PGArray(ARRAY):
                     self.item_type.convert_unicode:
             self.item_type.convert_unicode = "force"
         # end Py2K
+
+class _PGHStore(HSTORE):
+    def bind_processor(self, dialect):
+        return None
+
+    def result_processor(self, dialect, coltype):
+        return None
 
 # When we're handed literal SQL, ensure it's a SELECT-query. Since
 # 8.3, combining cursors and "FOR UPDATE" has been fine.
@@ -282,6 +290,7 @@ class PGDialect_psycopg2(PGDialect):
             ENUM : _PGEnum, # needs force_unicode
             sqltypes.Enum : _PGEnum, # needs force_unicode
             ARRAY : _PGArray, # needs force_unicode
+            HSTORE : _PGHStore,
         }
     )
 
@@ -300,6 +309,16 @@ class PGDialect_psycopg2(PGDialect):
                                             int(x)
                                             for x in m.group(1, 2, 3)
                                             if x is not None)
+        self._hstore_oids = None
+
+    def initialize(self, connection):
+        super(PGDialect_psycopg2, self).initialize(connection)
+
+        if self.psycopg2_version >= (2, 4):
+            extras = __import__('psycopg2.extras').extras
+            oids = extras.HstoreAdapter.get_oids(connection.connection)
+            if oids is not None and oids[0]:
+                self._hstore_oids = oids[0], oids[1]
 
     @classmethod
     def dbapi(cls):
@@ -345,6 +364,13 @@ class PGDialect_psycopg2(PGDialect):
             def on_connect(conn):
                 extensions.register_type(extensions.UNICODE, conn)
             fns.append(on_connect)
+
+        extras = __import__('psycopg2.extras').extras
+        def on_connect(conn):
+            if self._hstore_oids is not None:
+                oid, array_oid = self._hstore_oids
+                extras.register_hstore(conn, oid=oid, array_oid=array_oid)
+        fns.append(on_connect)
 
         if fns:
             def on_connect(conn):
