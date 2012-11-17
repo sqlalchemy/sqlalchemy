@@ -7,6 +7,14 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: sybase, feature
+        :tickets: 1753
+
+      Reflection support has been added to the Sybase dialect.
+      Big thanks to Ben Trofatter for all the work developing and
+      testing this.
+
+    .. change::
         :tags: engine, feature
 
       The :meth:`.Connection.connect` and :meth:`.Connection.contextual_connect`
