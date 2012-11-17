@@ -6,7 +6,98 @@ from sqlalchemy.testing import eq_, is_, ne_, fails_if
 from sqlalchemy.testing.util import picklers
 from sqlalchemy.util import classproperty
 
+
+class KeyedTupleTest():
+
+    def test_empty(self):
+        keyed_tuple = util.KeyedTuple([])
+        eq_(type(keyed_tuple), util.KeyedTuple)
+        eq_(str(keyed_tuple), '()')
+        eq_(keyed_tuple.__dict__, {})
+
+        # consider returning an empty [] rather than raising
+        assert_raises(AttributeError, keyed_tuple.keys)
+
+    def test_values_but_no_labels(self):
+        keyed_tuple = util.KeyedTuple([1, 2])
+        eq_(type(keyed_tuple), util.KeyedTuple)
+        eq_(str(keyed_tuple), '(1, 2)')
+        eq_(keyed_tuple.__dict__, {})
+
+        # consider returning an empty [] rather than raising
+        assert_raises(AttributeError, keyed_tuple.keys)
+
+    def test_basic_index_access(self):
+        keyed_tuple = util.KeyedTuple([1, 2], ['a', 'b'])
+        eq_(str(keyed_tuple), '(1, 2)')
+        eq_(keyed_tuple[0], 1)
+        eq_(keyed_tuple[1], 2)
+
+        def should_raise():
+            keyed_tuple[2]
+        assert_raises(IndexError, should_raise)
+
+    def test_basic_attribute_access(self):
+        keyed_tuple = util.KeyedTuple([1, 2], ['a', 'b'])
+        eq_(str(keyed_tuple), '(1, 2)')
+        eq_(keyed_tuple.a, 1)
+        eq_(keyed_tuple.b, 2)
+
+        def should_raise():
+            keyed_tuple.c
+        assert_raises(AttributeError, should_raise)
+
+    def test_none_label(self):
+        keyed_tuple = util.KeyedTuple([1, 2, 3], ['a', None, 'b'])
+        eq_(str(keyed_tuple), '(1, 2, 3)')
+        expected = {'a': 1, None: 2, 'b': 3, '_labels': ['a', None, 'b']}
+        eq_(keyed_tuple.__dict__, expected)
+        eq_(keyed_tuple.keys(), ['a', 'b'])
+
+        # attribute access: can't get at value 2
+        eq_(keyed_tuple.a, 1)
+        eq_(keyed_tuple.b, 3)
+
+        # index access: can get at value 2
+        eq_(keyed_tuple[0], 1)
+        eq_(keyed_tuple[1], 2)
+        eq_(keyed_tuple[2], 3)
+
+    def test_duplicate_labels(self):
+        keyed_tuple = util.KeyedTuple([1, 2, 3], ['a', 'b', 'b'])
+        eq_(str(keyed_tuple), '(1, 2, 3)')
+        expected = {'a': 1, 'b': 3, '_labels': ['a', 'b', 'b']}
+        eq_(keyed_tuple.__dict__, expected)
+        eq_(keyed_tuple.keys(), ['a', 'b', 'b'])
+
+        # attribute access: can't get at value 2
+        eq_(keyed_tuple.a, 1)
+        eq_(keyed_tuple.b, 3)
+
+        # index access: can get at value 2
+        eq_(keyed_tuple[0], 1)
+        eq_(keyed_tuple[1], 2)
+        eq_(keyed_tuple[2], 3)
+
+    def test_immutable(self):
+        keyed_tuple = util.KeyedTuple([1, 2], ['a', 'b'])
+        eq_(str(keyed_tuple), '(1, 2)')
+
+        # attribute access: mutable
+        eq_(keyed_tuple.a, 1)
+        keyed_tuple.a = 100
+        eq_(keyed_tuple.a, 100)
+        keyed_tuple.c = 300
+        eq_(keyed_tuple.c, 300)
+
+        # index access: immutable
+        def should_raise():
+            keyed_tuple[0] = 100
+        assert_raises(TypeError, should_raise)
+
+
 class OrderedDictTest(fixtures.TestBase):
+
     def test_odict(self):
         o = util.OrderedDict()
         o['a'] = 1
@@ -70,25 +161,31 @@ class OrderedDictTest(fixtures.TestBase):
         o3 = copy.copy(o)
         eq_(o3.keys(), o.keys())
 
+
 class OrderedSetTest(fixtures.TestBase):
+
     def test_mutators_against_iter(self):
         # testing a set modified against an iterator
-        o = util.OrderedSet([3,2, 4, 5])
+        o = util.OrderedSet([3, 2, 4, 5])
 
-        eq_(o.difference(iter([3,4])), util.OrderedSet([2,5]))
-        eq_(o.intersection(iter([3,4, 6])), util.OrderedSet([3, 4]))
-        eq_(o.union(iter([3,4, 6])), util.OrderedSet([2, 3, 4, 5, 6]))
+        eq_(o.difference(iter([3, 4])), util.OrderedSet([2, 5]))
+        eq_(o.intersection(iter([3, 4, 6])), util.OrderedSet([3, 4]))
+        eq_(o.union(iter([3, 4, 6])), util.OrderedSet([2, 3, 4, 5, 6]))
+
 
 class FrozenDictTest(fixtures.TestBase):
+
     def test_serialize(self):
-        d = util.immutabledict({1:2, 3:4})
+        d = util.immutabledict({1: 2, 3: 4})
         for loads, dumps in picklers():
             print loads(dumps(d))
 
 
 class MemoizedAttrTest(fixtures.TestBase):
+
     def test_memoized_property(self):
         val = [20]
+
         class Foo(object):
             @util.memoized_property
             def bar(self):
@@ -102,10 +199,11 @@ class MemoizedAttrTest(fixtures.TestBase):
         eq_(f1.bar, 20)
         eq_(f1.bar, 20)
         eq_(val[0], 21)
-        eq_(f1.__dict__['bar'] , 20)
+        eq_(f1.__dict__['bar'], 20)
 
     def test_memoized_instancemethod(self):
         val = [20]
+
         class Foo(object):
             @util.memoized_instancemethod
             def bar(self):
@@ -120,7 +218,9 @@ class MemoizedAttrTest(fixtures.TestBase):
         eq_(f1.bar(), 20)
         eq_(val[0], 21)
 
+
 class ColumnCollectionTest(fixtures.TestBase):
+
     def test_in(self):
         cc = sql.ColumnCollection()
         cc.add(sql.column('col1'))
@@ -145,8 +245,9 @@ class ColumnCollectionTest(fixtures.TestBase):
         cc1.add(c1)
         cc2.add(c2)
         cc3.add(c3)
-        assert (cc1==cc2).compare(c1 == c2)
-        assert not (cc1==cc3).compare(c2 == c3)
+        assert (cc1 == cc2).compare(c1 == c2)
+        assert not (cc1 == cc3).compare(c2 == c3)
+
 
 class LRUTest(fixtures.TestBase):
 
@@ -160,7 +261,7 @@ class LRUTest(fixtures.TestBase):
 
         l = util.LRUCache(10, threshold=.2)
 
-        for id in range(1,20):
+        for id in range(1, 20):
             l[id] = item(id)
 
         # first couple of items should be gone
@@ -168,7 +269,7 @@ class LRUTest(fixtures.TestBase):
         assert 2 not in l
 
         # next batch over the threshold of 10 should be present
-        for id_ in range(11,20):
+        for id_ in range(11, 20):
             assert id_ in l
 
         l[12]
@@ -195,6 +296,7 @@ class LRUTest(fixtures.TestBase):
 class ImmutableSubclass(str):
     pass
 
+
 class FlattenIteratorTest(fixtures.TestBase):
 
     def test_flatten(self):
@@ -215,37 +317,49 @@ class FlattenIteratorTest(fixtures.TestBase):
                     [IterString('x'), IterString('y')]])) == ['asdf',
                 'x', 'y']
 
+
 class HashOverride(object):
+
     def __init__(self, value=None):
         self.value = value
+
     def __hash__(self):
         return hash(self.value)
 
+
 class EqOverride(object):
+
     def __init__(self, value=None):
         self.value = value
     __hash__ = object.__hash__
+
     def __eq__(self, other):
         if isinstance(other, EqOverride):
             return self.value == other.value
         else:
             return False
+
     def __ne__(self, other):
         if isinstance(other, EqOverride):
             return self.value != other.value
         else:
             return True
 
+
 class HashEqOverride(object):
+
     def __init__(self, value=None):
         self.value = value
+
     def __hash__(self):
         return hash(self.value)
+
     def __eq__(self, other):
         if isinstance(other, EqOverride):
             return self.value == other.value
         else:
             return False
+
     def __ne__(self, other):
         if isinstance(other, EqOverride):
             return self.value != other.value
@@ -261,11 +375,11 @@ class IdentitySetTest(fixtures.TestBase):
         eq_(found, expected)
 
     def test_init(self):
-        ids = util.IdentitySet([1,2,3,2,1])
-        self.assert_eq(ids, [1,2,3])
+        ids = util.IdentitySet([1, 2, 3, 2, 1])
+        self.assert_eq(ids, [1, 2, 3])
 
         ids = util.IdentitySet(ids)
-        self.assert_eq(ids, [1,2,3])
+        self.assert_eq(ids, [1, 2, 3])
 
         ids = util.IdentitySet()
         self.assert_eq(ids, [])
@@ -499,7 +613,7 @@ class IdentitySetTest(fixtures.TestBase):
         assert_raises(TypeError, should_raise)
 
     def test_update(self):
-        pass # TODO
+        pass  # TODO
 
     def test_dunder_ior(self):
         super_, sub_, _, _, _, _ = self._create_sets()
@@ -581,10 +695,10 @@ class IdentitySetTest(fixtures.TestBase):
         assert_raises(TypeError, should_raise)
 
     def test_difference_update(self):
-        pass # TODO
+        pass  # TODO
 
     def test_dunder_isub(self):
-        pass # TODO
+        pass  # TODO
 
     def test_intersection(self):
         super_, sub_, twin1, twin2, unique1, unique2 = self._create_sets()
@@ -633,10 +747,10 @@ class IdentitySetTest(fixtures.TestBase):
         assert_raises(TypeError, should_raise)
 
     def test_intersection_update(self):
-        pass # TODO
+        pass  # TODO
 
     def test_dunder_iand(self):
-        pass # TODO
+        pass  # TODO
 
     def test_symmetric_difference(self):
         _, _, twin1, twin2, _, _ = self._create_sets()
@@ -696,7 +810,7 @@ class IdentitySetTest(fixtures.TestBase):
         assert_raises(TypeError, should_raise)
 
     def test_symmetric_difference_update(self):
-        pass # TODO
+        pass  # TODO
 
     def _create_sets(self):
         o1, o2, o3, o4, o5 = object(), object(), object(), object(), object()
@@ -734,7 +848,7 @@ class IdentitySetTest(fixtures.TestBase):
         assert ids != None
         assert not(ids == None)
 
-        ne_(ids, IdentitySet([o1,o2,o3]))
+        ne_(ids, IdentitySet([o1, o2, o3]))
         ids.clear()
         assert o1 not in ids
         ids.add(o2)
@@ -743,7 +857,7 @@ class IdentitySetTest(fixtures.TestBase):
         ids.add(o1)
         eq_(len(ids), 1)
 
-        isuper = IdentitySet([o1,o2])
+        isuper = IdentitySet([o1, o2])
         assert ids < isuper
         assert ids.issubset(isuper)
         assert isuper.issuperset(ids)
@@ -775,7 +889,7 @@ class IdentitySetTest(fixtures.TestBase):
             assert True
 
         try:
-            s = set([o1,o2])
+            s = set([o1, o2])
             s |= ids
             assert False
         except TypeError:
@@ -826,19 +940,19 @@ class DictlikeIteritemsTest(fixtures.TestBase):
                           instance)
 
     def test_dict(self):
-        d = dict(a=1,b=2,c=3)
+        d = dict(a=1, b=2, c=3)
         self._ok(d)
 
     def test_subdict(self):
         class subdict(dict):
             pass
-        d = subdict(a=1,b=2,c=3)
+        d = subdict(a=1, b=2, c=3)
         self._ok(d)
 
     # Py2K
     def test_UserDict(self):
         import UserDict
-        d = UserDict.UserDict(a=1,b=2,c=3)
+        d = UserDict.UserDict(a=1, b=2, c=3)
         self._ok(d)
     # end Py2K
 
@@ -864,8 +978,9 @@ class DictlikeIteritemsTest(fixtures.TestBase):
         class duck3(object):
             def iterkeys(duck):
                 return iter(['a', 'b', 'c'])
+
             def __getitem__(duck, key):
-                return dict(a=1,b=2,c=3).get(key)
+                return dict(a=1, b=2, c=3).get(key)
         self._ok(duck3())
     # end Py2K
 
@@ -879,8 +994,9 @@ class DictlikeIteritemsTest(fixtures.TestBase):
         class duck5(object):
             def keys(duck):
                 return ['a', 'b', 'c']
+
             def get(duck, key):
-                return dict(a=1,b=2,c=3).get(key)
+                return dict(a=1, b=2, c=3).get(key)
         self._ok(duck5())
 
     def test_duck_6(self):
@@ -891,10 +1007,12 @@ class DictlikeIteritemsTest(fixtures.TestBase):
 
 
 class DuckTypeCollectionTest(fixtures.TestBase):
+
     def test_sets(self):
         # Py2K
         import sets
         # end Py2K
+
         class SetLike(object):
             def add(self):
                 pass
@@ -921,39 +1039,54 @@ class DuckTypeCollectionTest(fixtures.TestBase):
             instance = type_()
             is_(util.duck_type_collection(instance), None)
 
+
 class ArgInspectionTest(fixtures.TestBase):
+
     def test_get_cls_kwargs(self):
+
         class A(object):
             def __init__(self, a):
                 pass
+
         class A1(A):
             def __init__(self, a1):
                 pass
+
         class A11(A1):
             def __init__(self, a11, **kw):
                 pass
+
         class B(object):
             def __init__(self, b, **kw):
                 pass
+
         class B1(B):
             def __init__(self, b1, **kw):
                 pass
+
         class AB(A, B):
             def __init__(self, ab):
                 pass
+
         class BA(B, A):
             def __init__(self, ba, **kwargs):
                 pass
+
         class BA1(BA):
             pass
+
         class CAB(A, B):
             pass
+
         class CBA(B, A):
             pass
+
         class CAB1(A, B1):
             pass
+
         class CB1A(B1, A):
             pass
+
         class D(object):
             pass
 
@@ -975,10 +1108,18 @@ class ArgInspectionTest(fixtures.TestBase):
         test(D)
 
     def test_get_func_kwargs(self):
-        def f1(): pass
-        def f2(foo): pass
-        def f3(*foo): pass
-        def f4(**foo): pass
+
+        def f1():
+            pass
+
+        def f2(foo):
+            pass
+
+        def f3(*foo):
+            pass
+
+        def f4(**foo):
+            pass
 
         def test(fn, *expected):
             eq_(set(util.get_func_kwargs(fn)), set(expected))
@@ -988,7 +1129,9 @@ class ArgInspectionTest(fixtures.TestBase):
         test(f3)
         test(f4)
 
+
 class SymbolTest(fixtures.TestBase):
+
     def test_basic(self):
         sym1 = util.symbol('foo')
         assert sym1.name == 'foo'
@@ -1039,9 +1182,8 @@ class SymbolTest(fixtures.TestBase):
         assert (sym1 | sym2) & (sym2 | sym4)
 
 
-
-
 class TestFormatArgspec(fixtures.TestBase):
+
     def test_specs(self):
         def test(fn, wanted, grouped=None):
             if grouped is None:
@@ -1052,57 +1194,57 @@ class TestFormatArgspec(fixtures.TestBase):
 
         test(lambda: None,
            {'args': '()', 'self_arg': None,
-            'apply_kw': '()', 'apply_pos': '()' })
+            'apply_kw': '()', 'apply_pos': '()'})
 
         test(lambda: None,
            {'args': '', 'self_arg': None,
-            'apply_kw': '', 'apply_pos': '' },
+            'apply_kw': '', 'apply_pos': ''},
            grouped=False)
 
         test(lambda self: None,
            {'args': '(self)', 'self_arg': 'self',
-            'apply_kw': '(self)', 'apply_pos': '(self)' })
+            'apply_kw': '(self)', 'apply_pos': '(self)'})
 
         test(lambda self: None,
            {'args': 'self', 'self_arg': 'self',
-            'apply_kw': 'self', 'apply_pos': 'self' },
+            'apply_kw': 'self', 'apply_pos': 'self'},
            grouped=False)
 
         test(lambda *a: None,
            {'args': '(*a)', 'self_arg': 'a[0]',
-            'apply_kw': '(*a)', 'apply_pos': '(*a)' })
+            'apply_kw': '(*a)', 'apply_pos': '(*a)'})
 
         test(lambda **kw: None,
            {'args': '(**kw)', 'self_arg': None,
-            'apply_kw': '(**kw)', 'apply_pos': '(**kw)' })
+            'apply_kw': '(**kw)', 'apply_pos': '(**kw)'})
 
         test(lambda *a, **kw: None,
            {'args': '(*a, **kw)', 'self_arg': 'a[0]',
-            'apply_kw': '(*a, **kw)', 'apply_pos': '(*a, **kw)' })
+            'apply_kw': '(*a, **kw)', 'apply_pos': '(*a, **kw)'})
 
         test(lambda a, *b: None,
            {'args': '(a, *b)', 'self_arg': 'a',
-            'apply_kw': '(a, *b)', 'apply_pos': '(a, *b)' })
+            'apply_kw': '(a, *b)', 'apply_pos': '(a, *b)'})
 
         test(lambda a, **b: None,
            {'args': '(a, **b)', 'self_arg': 'a',
-            'apply_kw': '(a, **b)', 'apply_pos': '(a, **b)' })
+            'apply_kw': '(a, **b)', 'apply_pos': '(a, **b)'})
 
         test(lambda a, *b, **c: None,
            {'args': '(a, *b, **c)', 'self_arg': 'a',
-            'apply_kw': '(a, *b, **c)', 'apply_pos': '(a, *b, **c)' })
+            'apply_kw': '(a, *b, **c)', 'apply_pos': '(a, *b, **c)'})
 
         test(lambda a, b=1, **c: None,
            {'args': '(a, b=1, **c)', 'self_arg': 'a',
-            'apply_kw': '(a, b=b, **c)', 'apply_pos': '(a, b, **c)' })
+            'apply_kw': '(a, b=b, **c)', 'apply_pos': '(a, b, **c)'})
 
         test(lambda a=1, b=2: None,
            {'args': '(a=1, b=2)', 'self_arg': 'a',
-            'apply_kw': '(a=a, b=b)', 'apply_pos': '(a, b)' })
+            'apply_kw': '(a=a, b=b)', 'apply_pos': '(a, b)'})
 
         test(lambda a=1, b=2: None,
            {'args': 'a=1, b=2', 'self_arg': 'a',
-            'apply_kw': 'a=a, b=b', 'apply_pos': 'a, b' },
+            'apply_kw': 'a=a, b=b', 'apply_pos': 'a, b'},
            grouped=False)
 
     @fails_if(lambda: util.pypy, "object.__init__ is introspectable")
@@ -1115,7 +1257,7 @@ class TestFormatArgspec(fixtures.TestBase):
             'apply_pos': '(self, *args, **kwargs)',
             'apply_kw': '(self, *args, **kwargs)'}
         custom_spec = {
-            'args': '(slef, a=123)', 'self_arg': 'slef', # yes, slef
+            'args': '(slef, a=123)', 'self_arg': 'slef',  # yes, slef
             'apply_pos': '(slef, a)', 'apply_kw': '(slef, a=a)'}
 
         self._test_init(None, object_spec, wrapper_spec, custom_spec)
@@ -1131,7 +1273,7 @@ class TestFormatArgspec(fixtures.TestBase):
             'apply_pos': 'self, *args, **kwargs',
             'apply_kw': 'self, *args, **kwargs'}
         custom_spec = {
-            'args': 'slef, a=123', 'self_arg': 'slef', # yes, slef
+            'args': 'slef, a=123', 'self_arg': 'slef',  # yes, slef
             'apply_pos': 'slef, a', 'apply_kw': 'slef, a=a'}
 
         self._test_init(False, object_spec, wrapper_spec, custom_spec)
@@ -1144,7 +1286,8 @@ class TestFormatArgspec(fixtures.TestBase):
                 parsed = util.format_argspec_init(fn, grouped=grouped)
             eq_(parsed, wanted)
 
-        class O(object): pass
+        class O(object):
+            pass
 
         test(O.__init__, object_spec)
 
@@ -1160,7 +1303,8 @@ class TestFormatArgspec(fixtures.TestBase):
 
         test(O.__init__, custom_spec)
 
-        class O(list): pass
+        class O(list):
+            pass
 
         test(O.__init__, wrapper_spec)
 
@@ -1184,6 +1328,7 @@ class TestFormatArgspec(fixtures.TestBase):
 
 
 class GenericReprTest(fixtures.TestBase):
+
     def test_all_positional(self):
         class Foo(object):
             def __init__(self, a, b, c):
@@ -1269,17 +1414,27 @@ class GenericReprTest(fixtures.TestBase):
             "Foo()"
         )
 
+
 class AsInterfaceTest(fixtures.TestBase):
 
     class Something(object):
-        def _ignoreme(self): pass
-        def foo(self): pass
-        def bar(self): pass
+
+        def _ignoreme(self):
+            pass
+
+        def foo(self):
+            pass
+
+        def bar(self):
+            pass
 
     class Partial(object):
-        def bar(self): pass
 
-    class Object(object): pass
+        def bar(self):
+            pass
+
+    class Object(object):
+        pass
 
     def test_instance(self):
         obj = object()
@@ -1339,26 +1494,23 @@ class AsInterfaceTest(fixtures.TestBase):
         res = util.as_interface(obj, cls=self.Something,
                                 required=self.Something)
         assertAdapted(res, 'foo', 'bar')
-        res = util.as_interface(obj, cls=self.Something, required=('foo'
-                                , ))
+        res = util.as_interface(obj, cls=self.Something, required=('foo',))
         assertAdapted(res, 'foo', 'bar')
         res = util.as_interface(obj, methods=('foo', 'bar'))
         assertAdapted(res, 'foo', 'bar')
         res = util.as_interface(obj, methods=('foo', 'bar', 'baz'))
         assertAdapted(res, 'foo', 'bar')
-        res = util.as_interface(obj, methods=('foo', 'bar'),
-                                required=('foo', ))
+        res = util.as_interface(obj, methods=('foo', 'bar'), required=('foo',))
         assertAdapted(res, 'foo', 'bar')
-        assert_raises(TypeError, util.as_interface, obj, methods=('foo'
-                      , ))
-        assert_raises(TypeError, util.as_interface, obj, methods=('foo'
-                      , 'bar', 'baz'), required=('baz', ))
-        obj = {'foo': 123}
+        assert_raises(TypeError, util.as_interface, obj, methods=('foo',))
         assert_raises(TypeError, util.as_interface, obj,
-                      cls=self.Something)
+                      methods=('foo', 'bar', 'baz'), required=('baz', ))
+        obj = {'foo': 123}
+        assert_raises(TypeError, util.as_interface, obj, cls=self.Something)
 
 
 class TestClassHierarchy(fixtures.TestBase):
+
     def test_object(self):
         eq_(set(util.class_hierarchy(object)), set((object,)))
 
@@ -1399,17 +1551,14 @@ class TestClassProperty(fixtures.TestBase):
 
     def test_simple(self):
         class A(object):
-            something = {'foo':1}
+            something = {'foo': 1}
 
         class B(A):
 
             @classproperty
             def something(cls):
-                d = dict(super(B,cls).something)
-                d.update({'bazz':2})
+                d = dict(super(B, cls).something)
+                d.update({'bazz': 2})
                 return d
 
-        eq_(B.something,{
-                'foo':1,
-                'bazz':2,
-                })
+        eq_(B.something, {'foo': 1, 'bazz': 2})
