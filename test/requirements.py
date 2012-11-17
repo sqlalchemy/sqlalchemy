@@ -399,7 +399,8 @@ class DefaultRequirements(SuiteRequirements):
         """target dialect supports representation of Python
         datetime.datetime() with microsecond objects."""
 
-        return skip_if(['mssql', 'mysql', 'firebird', '+zxjdbc', 'oracle'])
+        return skip_if(['mssql', 'mysql', 'firebird', '+zxjdbc',
+                    'oracle', 'sybase'])
 
     @property
     def datetime_historic(self):
@@ -434,7 +435,8 @@ class DefaultRequirements(SuiteRequirements):
         """target dialect supports representation of Python
         datetime.time() with microsecond objects."""
 
-        return skip_if(['mssql', 'mysql', 'firebird', '+zxjdbc', 'oracle'])
+        return skip_if(['mssql', 'mysql', 'firebird', '+zxjdbc',
+                    'oracle', 'sybase'])
 
     @property
     def python2(self):
