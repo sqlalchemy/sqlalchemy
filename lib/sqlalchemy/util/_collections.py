@@ -33,6 +33,7 @@ class KeyedTuple(tuple):
 
     def __new__(cls, vals, labels=None):
         t = tuple.__new__(cls, vals)
+        t._labels = []
         if labels:
             t.__dict__.update(zip(labels, vals))
             t._labels = labels

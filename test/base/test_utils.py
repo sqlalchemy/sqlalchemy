@@ -13,35 +13,26 @@ class KeyedTupleTest():
         keyed_tuple = util.KeyedTuple([])
         eq_(type(keyed_tuple), util.KeyedTuple)
         eq_(str(keyed_tuple), '()')
-        eq_(keyed_tuple.__dict__, {})
+        eq_(len(keyed_tuple), 0)
 
-        # TODO: consider returning an empty [] rather than raising
-        assert_raises(AttributeError, keyed_tuple.keys)
-
-        # TODO: consider returning an empty {} rather than raising
-        assert_raises(AttributeError, keyed_tuple._asdict)
-
-        # TODO: consider returning an empty () rather than raising
-        def should_raise():
-            keyed_tuple._fields
-        assert_raises(AttributeError, should_raise)
+        eq_(keyed_tuple.__dict__, {'_labels': []})
+        eq_(keyed_tuple.keys(), [])
+        eq_(keyed_tuple._fields, ())
+        eq_(keyed_tuple._asdict(), {})
 
     def test_values_but_no_labels(self):
         keyed_tuple = util.KeyedTuple([1, 2])
         eq_(type(keyed_tuple), util.KeyedTuple)
         eq_(str(keyed_tuple), '(1, 2)')
-        eq_(keyed_tuple.__dict__, {})
+        eq_(len(keyed_tuple), 2)
 
-        # TODO: consider returning an empty [] rather than raising
-        assert_raises(AttributeError, keyed_tuple.keys)
+        eq_(keyed_tuple.__dict__, {'_labels': []})
+        eq_(keyed_tuple.keys(), [])
+        eq_(keyed_tuple._fields, ())
+        eq_(keyed_tuple._asdict(), {})
 
-        # TODO: consider returning an empty {} rather than raising
-        assert_raises(AttributeError, keyed_tuple._asdict)
-
-        # TODO: consider returning an empty () rather than raising
-        def should_raise():
-            keyed_tuple._fields
-        assert_raises(AttributeError, should_raise)
+        eq_(keyed_tuple[0], 1)
+        eq_(keyed_tuple[1], 2)
 
     def test_basic_creation(self):
         keyed_tuple = util.KeyedTuple([1, 2], ['a', 'b'])
