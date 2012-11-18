@@ -651,8 +651,7 @@ The new type is usable like any other type:
 
 
 New features which have come from this immediately include
-support for Postgresql's HSTORE type, which is ready to go
-in a separate library which may be merged, as well as new
+support for Postgresql's HSTORE type, as well as new
 operations associated with Postgresql's ARRAY
 type.    It also paves the way for existing types to acquire
 lots more operators that are specific to those types, such
@@ -662,7 +661,7 @@ as more string, integer and date operators.
 
     :ref:`types_operators`
 
-    `Postgresql HSTORE <https://bitbucket.org/audriusk/hstore>`_ - support for HSTORE in SQLAlchemy
+    :class:`.HSTORE`
 
 :ticket:`2547`
 
