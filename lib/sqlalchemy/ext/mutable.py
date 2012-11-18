@@ -49,21 +49,21 @@ with any type whose target Python type may be mutable, including
 :class:`.PickleType`, :class:`.postgresql.ARRAY`, etc.
 
 When using the :mod:`sqlalchemy.ext.mutable` extension, the value itself
-tracks all parents which reference it.  Here we will replace the usage
-of plain Python dictionaries with a dict subclass that implements
-the :class:`.Mutable` mixin::
+tracks all parents which reference it.  Below, we illustrate the a simple
+version of the :class:`.MutableDict` dictionary object, which applies
+the :class:`.Mutable` mixin to a plain Python dictionary::
 
     import collections
     from sqlalchemy.ext.mutable import Mutable
 
-    class MutationDict(Mutable, dict):
+    class MutableDict(Mutable, dict):
         @classmethod
         def coerce(cls, key, value):
-            "Convert plain dictionaries to MutationDict."
+            "Convert plain dictionaries to MutableDict."
 
-            if not isinstance(value, MutationDict):
+            if not isinstance(value, MutableDict):
                 if isinstance(value, dict):
-                    return MutationDict(value)
+                    return MutableDict(value)
 
                 # this call will raise ValueError
                 return Mutable.coerce(key, value)
@@ -84,23 +84,23 @@ the :class:`.Mutable` mixin::
 
 The above dictionary class takes the approach of subclassing the Python
 built-in ``dict`` to produce a dict
-subclass which routes all mutation events through ``__setitem__``. There are
-many variants on this approach, such as subclassing ``UserDict.UserDict``,
-the newer ``collections.MutableMapping``,  etc. The part that's important to this
+subclass which routes all mutation events through ``__setitem__``.  There are
+variants on this approach, such as subclassing ``UserDict.UserDict`` or
+``collections.MutableMapping``; the part that's important to this
 example is that the :meth:`.Mutable.changed` method is called whenever an in-place change to the
 datastructure takes place.
 
 We also redefine the :meth:`.Mutable.coerce` method which will be used to
-convert any values that are not instances of ``MutationDict``, such
+convert any values that are not instances of ``MutableDict``, such
 as the plain dictionaries returned by the ``json`` module, into the
 appropriate type.  Defining this method is optional; we could just as well created our
-``JSONEncodedDict`` such that it always returns an instance of ``MutationDict``,
-and additionally ensured that all calling code uses ``MutationDict``
+``JSONEncodedDict`` such that it always returns an instance of ``MutableDict``,
+and additionally ensured that all calling code uses ``MutableDict``
 explicitly.  When :meth:`.Mutable.coerce` is not overridden, any values
 applied to a parent object which are not instances of the mutable type
 will raise a ``ValueError``.
 
-Our new ``MutationDict`` type offers a class method
+Our new ``MutableDict`` type offers a class method
 :meth:`~.Mutable.as_mutable` which we can use within column metadata
 to associate with types. This method grabs the given type object or
 class and associates a listener that will detect all future mappings
@@ -111,7 +111,7 @@ attribute. Such as, with classical table metadata::
 
     my_data = Table('my_data', metadata,
         Column('id', Integer, primary_key=True),
-        Column('data', MutationDict.as_mutable(JSONEncodedDict))
+        Column('data', MutableDict.as_mutable(JSONEncodedDict))
     )
 
 Above, :meth:`~.Mutable.as_mutable` returns an instance of ``JSONEncodedDict``
@@ -139,7 +139,7 @@ There's no difference in usage when using declarative::
     class MyDataClass(Base):
         __tablename__ = 'my_data'
         id = Column(Integer, primary_key=True)
-        data = Column(MutationDict.as_mutable(JSONEncodedDict))
+        data = Column(MutableDict.as_mutable(JSONEncodedDict))
 
 Any in-place changes to the ``MyDataClass.data`` member
 will flag the attribute as "dirty" on the parent object::
@@ -155,13 +155,13 @@ will flag the attribute as "dirty" on the parent object::
     >>> assert m1 in sess.dirty
     True
 
-The ``MutationDict`` can be associated with all future instances
+The ``MutableDict`` can be associated with all future instances
 of ``JSONEncodedDict`` in one step, using :meth:`~.Mutable.associate_with`.  This
 is similar to :meth:`~.Mutable.as_mutable` except it will intercept
-all occurrences of ``MutationDict`` in all mappings unconditionally, without
+all occurrences of ``MutableDict`` in all mappings unconditionally, without
 the need to declare it individually::
 
-    MutationDict.associate_with(JSONEncodedDict)
+    MutableDict.associate_with(JSONEncodedDict)
 
     class MyDataClass(Base):
         __tablename__ = 'my_data'
@@ -193,7 +193,7 @@ stream::
 With our dictionary example, we need to return the contents of the dict itself
 (and also restore them on __setstate__)::
 
-    class MutationDict(Mutable, dict):
+    class MutableDict(Mutable, dict):
         # ....
 
         def __getstate__(self):
@@ -330,6 +330,7 @@ from ..orm.attributes import flag_modified
 from .. import event, types
 from ..orm import mapper, object_mapper
 from ..util import memoized_property
+from .. import exc
 import weakref
 
 class MutableBase(object):
@@ -459,6 +460,9 @@ class Mutable(MutableBase):
 
         """
 
+        if not isinstance(sqltype, types.TypeEngine):
+            raise exc.ArgumentError("Type instance expected, got %s" % sqltype)
+
         def listen_for_type(mapper, class_):
             for prop in mapper.iterate_properties:
                 if hasattr(prop, 'columns'):
@@ -562,3 +566,37 @@ class MutableComposite(MutableBase):
 
         event.listen(mapper, 'mapper_configured', listen_for_type)
 
+
+
+class MutableDict(Mutable, dict):
+    """A dictionary type that implements :class:`.Mutable`.
+
+    .. versionadded:: 0.8
+
+    """
+
+    def __setitem__(self, key, value):
+        """Detect dictionary set events and emit change events."""
+        dict.__setitem__(self, key, value)
+        self.changed()
+
+    def __delitem__(self, key, value):
+        """Detect dictionary del events and emit change events."""
+        dict.__delitem__(self, key, value)
+        self.changed()
+
+    @classmethod
+    def coerce(cls, key, value):
+        """Convert plain dictionary to MutableDict."""
+        if not isinstance(value, MutableDict):
+            if isinstance(value, dict):
+                return MutableDict(value)
+            return Mutable.coerce(key, value)
+        else:
+            return value
+
+    def __getstate__(self):
+        return dict(self)
+
+    def __setstate__(self, state):
+        self.update(state)

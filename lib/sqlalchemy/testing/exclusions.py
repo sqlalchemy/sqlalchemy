@@ -283,7 +283,7 @@ def closed():
 def future(fn, *args, **kw):
     return fails_if(LambdaPredicate(fn, *args, **kw), "Future feature")
 
-def fails_on(db, reason):
+def fails_on(db, reason=None):
     return fails_if(SpecPredicate(db), reason)
 
 def fails_on_everything_except(*dbs):
@@ -293,16 +293,16 @@ def fails_on_everything_except(*dbs):
                     ])
             )
 
-def skip(db, reason):
+def skip(db, reason=None):
     return skip_if(SpecPredicate(db), reason)
 
-def only_on(dbs, reason):
+def only_on(dbs, reason=None):
     return only_if(
             OrPredicate([SpecPredicate(db) for db in util.to_list(dbs)])
     )
 
 
-def exclude(db, op, spec, reason):
+def exclude(db, op, spec, reason=None):
     return skip_if(SpecPredicate(db, op, spec), reason)
 
 

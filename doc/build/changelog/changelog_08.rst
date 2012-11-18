@@ -7,6 +7,14 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: postgresql, hstore
+        :tickets: 2606
+
+      :class:`.HSTORE` is now available in the Postgresql dialect.
+      Will also use psycopg2's extensions if available.  Courtesy
+      Audrius Kažukauskas.
+
+    .. change::
         :tags: sybase, feature
         :tickets: 1753
 

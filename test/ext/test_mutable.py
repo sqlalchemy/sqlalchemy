@@ -28,40 +28,14 @@ class FooWithEq(object):
     def __eq__(self, other):
         return self.id == other.id
 
+from sqlalchemy.ext.mutable import MutableDict
+
 class _MutableDictTestBase(object):
     run_define_tables = 'each'
 
     @classmethod
     def _type_fixture(cls):
-        from sqlalchemy.ext.mutable import Mutable
-
-        # needed for pickle support
-        global MutationDict
-
-        class MutationDict(Mutable, dict):
-            @classmethod
-            def coerce(cls, key, value):
-                if not isinstance(value, MutationDict):
-                    if isinstance(value, dict):
-                        return MutationDict(value)
-                    return Mutable.coerce(key, value)
-                else:
-                    return value
-
-            def __getstate__(self):
-                return dict(self)
-
-            def __setstate__(self, state):
-                self.update(state)
-
-            def __setitem__(self, key, value):
-                dict.__setitem__(self, key, value)
-                self.changed()
-
-            def __delitem__(self, key):
-                dict.__delitem__(self, key)
-                self.changed()
-        return MutationDict
+        return MutableDict
 
     def setup_mappers(cls):
         foo = cls.tables.foo
@@ -152,9 +126,9 @@ class _MutableDictTestBase(object):
 class MutableWithScalarPickleTest(_MutableDictTestBase, fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        MutationDict = cls._type_fixture()
+        MutableDict = cls._type_fixture()
 
-        mutable_pickle = MutationDict.as_mutable(PickleType)
+        mutable_pickle = MutableDict.as_mutable(PickleType)
         Table('foo', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('skip', mutable_pickle),
@@ -188,11 +162,11 @@ class MutableWithScalarJSONTest(_MutableDictTestBase, fixtures.MappedTest):
                     value = json.loads(value)
                 return value
 
-        MutationDict = cls._type_fixture()
+        MutableDict = cls._type_fixture()
 
         Table('foo', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('data', MutationDict.as_mutable(JSONEncodedDict)),
+            Column('data', MutableDict.as_mutable(JSONEncodedDict)),
             Column('non_mutable_data', JSONEncodedDict),
             Column('unrelated_data', String(50))
         )
@@ -203,7 +177,7 @@ class MutableWithScalarJSONTest(_MutableDictTestBase, fixtures.MappedTest):
 class MutableAssocWithAttrInheritTest(_MutableDictTestBase, fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        MutationDict = cls._type_fixture()
+        MutableDict = cls._type_fixture()
 
         Table('foo', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
@@ -222,7 +196,7 @@ class MutableAssocWithAttrInheritTest(_MutableDictTestBase, fixtures.MappedTest)
 
         mapper(Foo, foo)
         mapper(SubFoo, subfoo, inherits=Foo)
-        MutationDict.associate_with_attribute(Foo.data)
+        MutableDict.associate_with_attribute(Foo.data)
 
     def test_in_place_mutation(self):
         sess = Session()
@@ -249,8 +223,8 @@ class MutableAssocWithAttrInheritTest(_MutableDictTestBase, fixtures.MappedTest)
 class MutableAssociationScalarPickleTest(_MutableDictTestBase, fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        MutationDict = cls._type_fixture()
-        MutationDict.associate_with(PickleType)
+        MutableDict = cls._type_fixture()
+        MutableDict.associate_with(PickleType)
 
         Table('foo', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
@@ -281,8 +255,8 @@ class MutableAssociationScalarJSONTest(_MutableDictTestBase, fixtures.MappedTest
                     value = json.loads(value)
                 return value
 
-        MutationDict = cls._type_fixture()
-        MutationDict.associate_with(JSONEncodedDict)
+        MutableDict = cls._type_fixture()
+        MutableDict.associate_with(JSONEncodedDict)
 
         Table('foo', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),

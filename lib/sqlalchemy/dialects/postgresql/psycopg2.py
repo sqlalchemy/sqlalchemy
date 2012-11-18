@@ -131,9 +131,16 @@ The psycopg2 dialect will log Postgresql NOTICE messages via the
     import logging
     logging.getLogger('sqlalchemy.dialects.postgresql').setLevel(logging.INFO)
 
+HSTORE type
+------------
+
+The psycopg2 dialect will make use of the
+``psycopg2.extensions.register_hstore()`` extension when using the HSTORE
+type.  This replaces SQLAlchemy's pure-Python HSTORE coercion which takes
+effect for other DBAPIs.
 
 """
-
+from __future__ import absolute_import
 import re
 import logging
 
@@ -198,10 +205,16 @@ class _PGArray(ARRAY):
 
 class _PGHStore(HSTORE):
     def bind_processor(self, dialect):
-        return None
+        if dialect._has_native_hstore:
+            return None
+        else:
+            return super(_PGHStore, self).bind_processor(dialect)
 
     def result_processor(self, dialect, coltype):
-        return None
+        if dialect._has_native_hstore:
+            return None
+        else:
+            return super(_PGHStore, self).result_processor(dialect, coltype)
 
 # When we're handed literal SQL, ensure it's a SELECT-query. Since
 # 8.3, combining cursors and "FOR UPDATE" has been fine.
@@ -283,6 +296,8 @@ class PGDialect_psycopg2(PGDialect):
     preparer = PGIdentifierPreparer_psycopg2
     psycopg2_version = (0, 0)
 
+    _has_native_hstore = False
+
     colspecs = util.update_copy(
         PGDialect.colspecs,
         {
@@ -295,10 +310,13 @@ class PGDialect_psycopg2(PGDialect):
     )
 
     def __init__(self, server_side_cursors=False, use_native_unicode=True,
-                        client_encoding=None, **kwargs):
+                        client_encoding=None,
+                        use_native_hstore=True,
+                        **kwargs):
         PGDialect.__init__(self, **kwargs)
         self.server_side_cursors = server_side_cursors
         self.use_native_unicode = use_native_unicode
+        self.use_native_hstore = use_native_hstore
         self.supports_unicode_binds = use_native_unicode
         self.client_encoding = client_encoding
         if self.dbapi and hasattr(self.dbapi, '__version__'):
@@ -309,21 +327,18 @@ class PGDialect_psycopg2(PGDialect):
                                             int(x)
                                             for x in m.group(1, 2, 3)
                                             if x is not None)
-        self._hstore_oids = None
+
 
     def initialize(self, connection):
         super(PGDialect_psycopg2, self).initialize(connection)
-
-        if self.psycopg2_version >= (2, 4):
-            extras = __import__('psycopg2.extras').extras
-            oids = extras.HstoreAdapter.get_oids(connection.connection)
-            if oids is not None and oids[0]:
-                self._hstore_oids = oids[0], oids[1]
+        self._has_native_hstore = self.use_native_hstore and \
+                        self._hstore_oids(connection.connection) \
+                            is not None
 
     @classmethod
     def dbapi(cls):
-        psycopg = __import__('psycopg2')
-        return psycopg
+        import psycopg2
+        return psycopg2
 
     @util.memoized_property
     def _isolation_lookup(self):
@@ -348,6 +363,8 @@ class PGDialect_psycopg2(PGDialect):
         connection.set_isolation_level(level)
 
     def on_connect(self):
+        from psycopg2 import extras, extensions
+
         fns = []
         if self.client_encoding is not None:
             def on_connect(conn):
@@ -360,17 +377,17 @@ class PGDialect_psycopg2(PGDialect):
             fns.append(on_connect)
 
         if self.dbapi and self.use_native_unicode:
-            extensions = __import__('psycopg2.extensions').extensions
             def on_connect(conn):
                 extensions.register_type(extensions.UNICODE, conn)
             fns.append(on_connect)
 
-        extras = __import__('psycopg2.extras').extras
-        def on_connect(conn):
-            if self._hstore_oids is not None:
-                oid, array_oid = self._hstore_oids
-                extras.register_hstore(conn, oid=oid, array_oid=array_oid)
-        fns.append(on_connect)
+        if self.dbapi and self.use_native_hstore:
+            def on_connect(conn):
+                hstore_oids = self._hstore_oids(conn)
+                if hstore_oids is not None:
+                    oid, array_oid = hstore_oids
+                    extras.register_hstore(conn, oid=oid, array_oid=array_oid)
+            fns.append(on_connect)
 
         if fns:
             def on_connect(conn):
@@ -379,6 +396,15 @@ class PGDialect_psycopg2(PGDialect):
             return on_connect
         else:
             return None
+
+    @util.memoized_instancemethod
+    def _hstore_oids(self, conn):
+        if self.psycopg2_version >= (2, 4):
+            from psycopg2 import extras
+            oids = extras.HstoreAdapter.get_oids(conn)
+            if oids is not None and oids[0]:
+                return oids[0:2]
+        return None
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username='user')

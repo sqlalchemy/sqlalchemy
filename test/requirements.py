@@ -481,6 +481,19 @@ class DefaultRequirements(SuiteRequirements):
         return self.cpython
 
     @property
+    def hstore(self):
+        def check_hstore():
+            if not against("postgresql"):
+                return False
+            try:
+                self.db.execute("SELECT 'a=>1,a=>2'::hstore;")
+                return True
+            except:
+                return False
+
+        return only_if(check_hstore)
+
+    @property
     def sqlite(self):
         return skip_if(lambda: not self._has_sqlite())
 

@@ -19,6 +19,9 @@ API Reference
     :show-inheritance:
     :members:
 
+.. autoclass:: MutableDict
+	:show-inheritance:
+	:members:
 
 
 

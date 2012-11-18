@@ -968,6 +968,9 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_BIGINT(self, type_):
         return "BIGINT"
 
+    def visit_HSTORE(self, type_):
+        return "HSTORE"
+
     def visit_datetime(self, type_):
         return self.visit_TIMESTAMP(type_)
 

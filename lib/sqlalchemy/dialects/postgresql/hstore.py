@@ -11,7 +11,6 @@ from ... import types as sqltypes
 from ...sql import functions as sqlfunc
 from ...sql.operators import custom_op
 from ...exc import SQLAlchemyError
-from ...ext.mutable import Mutable
 
 __all__ = ('HStoreSyntaxError', 'HSTORE', 'hstore')
 
@@ -114,41 +113,56 @@ def _serialize_hstore(val):
                      for k, v in val.iteritems())
 
 
-class MutationDict(Mutable, dict):
-    def __setitem__(self, key, value):
-        """Detect dictionary set events and emit change events."""
-        dict.__setitem__(self, key, value)
-        self.changed()
+class HSTORE(sqltypes.Concatenable, sqltypes.TypeEngine):
+    """Represent the Postgresql HSTORE type.
 
-    def __delitem__(self, key, value):
-        """Detect dictionary del events and emit change events."""
-        dict.__delitem__(self, key, value)
-        self.changed()
+    The :class:`.HSTORE` type stores dictionaries containing strings, e.g.::
 
-    @classmethod
-    def coerce(cls, key, value):
-        """Convert plain dictionary to MutationDict."""
-        if not isinstance(value, MutationDict):
-            if isinstance(value, dict):
-                return MutationDict(value)
-            return Mutable.coerce(key, value)
-        else:
-            return value
+        data_table = Table('data_table', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', HSTORE)
+        )
 
-    def __getstate__(self):
-        return dict(self)
+        with engine.connect() as conn:
+            conn.execute(
+                data_table.insert(),
+                data = {"key1": "value1", "key2": "value2"}
+            )
 
-    def __setstate__(self, state):
-        self.update(state)
+    :class:`.HSTORE` provides for a wide range of operations, including:
 
+    * :meth:`.HSTORE.comparatopr_factory.has_key`
 
-class HSTORE(sqltypes.Concatenable, sqltypes.UserDefinedType):
-    """The column type for representing PostgreSQL's contrib/hstore type.  This
-    type is a miniature key-value store in a column.  It supports query
-    operators for all the usual operations on a map-like data structure.
+    * :meth:`.HSTORE.comparatopr_factory.has_all`
+
+    * :meth:`.HSTORE.comparatopr_factory.defined`
+
+    For usage with the SQLAlchemy ORM, it may be desirable to combine
+    the usage of :class:`.HSTORE` with the :mod:`sqlalchemy.ext.mutable`
+    extension.  This extension will allow in-place changes to dictionary
+    values to be detected by the unit of work::
+
+        from sqlalchemy.ext.mutable import Mutable
+
+        class MyClass(Base):
+            __tablename__ = 'data_table'
+
+            id = Column(Integer, primary_key=True)
+            data = Column(Mutable.as_mutable(HSTORE))
+
+        my_object = session.query(MyClass).one()
+
+        # in-place mutation, requires Mutable extension
+        # in order for the ORM to detect
+        my_object.data['some_key'] = 'some value'
+
+        session.commit()
 
     """
-    class comparator_factory(sqltypes.UserDefinedType.Comparator):
+
+    __visit_name__ = 'HSTORE'
+
+    class comparator_factory(sqltypes.TypeEngine.Comparator):
         def has_key(self, other):
             """Boolean expression.  Test for presence of a key.  Note that the
             key may be a SQLA expression.
@@ -237,6 +251,15 @@ class HSTORE(sqltypes.Concatenable, sqltypes.UserDefinedType):
                     return op, sqltypes.Text
             return op, other_comparator.type
 
+    #@util.memoized_property
+    #@property
+    #def _expression_adaptations(self):
+    #    return {
+    #        operators.getitem: {
+    #           sqltypes.String: sqltypes.String
+    #        },
+    #    }
+
     def bind_processor(self, dialect):
         def process(value):
             if isinstance(value, dict):
@@ -245,9 +268,6 @@ class HSTORE(sqltypes.Concatenable, sqltypes.UserDefinedType):
                 return value
         return process
 
-    def get_col_spec(self):
-        return 'HSTORE'
-
     def result_processor(self, dialect, coltype):
         def process(value):
             if value is not None:
@@ -255,8 +275,6 @@ class HSTORE(sqltypes.Concatenable, sqltypes.UserDefinedType):
             else:
                 return value
         return process
-
-MutationDict.associate_with(HSTORE)
 
 
 class hstore(sqlfunc.GenericFunction):
