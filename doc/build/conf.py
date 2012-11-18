@@ -31,8 +31,14 @@ import sqlalchemy
 #extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode',
 #                'sphinx.ext.doctest', 'builder.builders']
 
-extensions = ['sphinx.ext.autodoc',
-                'sphinx.ext.doctest', 'builder.builders']
+extensions = [
+            'sphinx.ext.autodoc',
+                'builder.autodoc_mods',
+                'builder.changelog',
+                'builder.dialect_info',
+                'builder.mako',
+                'builder.sqlformatter',
+            ]
 
 # Add any paths that contain templates here, relative to this directory.
 # not sure why abspath() is needed here, some users
@@ -43,8 +49,6 @@ nitpicky = True
 
 # The suffix of source filenames.
 source_suffix = '.rst'
-
-template_bridge = "builder.builders.MakoBridge"
 
 # The encoding of source files.
 #source_encoding = 'utf-8-sig'
