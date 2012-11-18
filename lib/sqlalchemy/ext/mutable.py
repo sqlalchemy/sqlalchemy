@@ -461,10 +461,9 @@ class Mutable(MutableBase):
         """
 
         def listen_for_type(mapper, class_):
-            for prop in mapper.iterate_properties:
-                if hasattr(prop, 'columns'):
-                    if isinstance(prop.columns[0].type, sqltype):
-                        cls.associate_with_attribute(getattr(class_, prop.key))
+            for prop in mapper.column_attrs:
+                if isinstance(prop.columns[0].type, sqltype):
+                    cls.associate_with_attribute(getattr(class_, prop.key))
 
         event.listen(mapper, 'mapper_configured', listen_for_type)
 
@@ -504,10 +503,9 @@ class Mutable(MutableBase):
         sqltype = types.to_instance(sqltype)
 
         def listen_for_type(mapper, class_):
-            for prop in mapper.iterate_properties:
-                if hasattr(prop, 'columns'):
-                    if prop.columns[0].type is sqltype:
-                        cls.associate_with_attribute(getattr(class_, prop.key))
+            for prop in mapper.column_attrs:
+                if prop.columns[0].type is sqltype:
+                    cls.associate_with_attribute(getattr(class_, prop.key))
 
         event.listen(mapper, 'mapper_configured', listen_for_type)
 
