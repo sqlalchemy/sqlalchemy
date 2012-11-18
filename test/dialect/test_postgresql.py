@@ -2816,7 +2816,8 @@ class HStoreTest(fixtures.TestBase):
 
     def test_where_has_key(self):
         self._test_where(
-            self.hashcol.has_key('foo'),
+            # hide from 2to3
+            getattr(self.hashcol, 'has_key')('foo'),
             "test_table.hash ? %(hash_1)s"
         )
 
