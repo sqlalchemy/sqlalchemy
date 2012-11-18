@@ -49,6 +49,9 @@ construction arguments, are as follows:
     :members: __init__, create, drop
     :show-inheritance:
 
+.. autoclass:: HSTORE
+    :show-inheritance:
+
 .. autoclass:: INET
     :members: __init__
     :show-inheritance:

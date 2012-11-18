@@ -460,9 +460,6 @@ class Mutable(MutableBase):
 
         """
 
-        if not isinstance(sqltype, types.TypeEngine):
-            raise exc.ArgumentError("Type instance expected, got %s" % sqltype)
-
         def listen_for_type(mapper, class_):
             for prop in mapper.iterate_properties:
                 if hasattr(prop, 'columns'):
