@@ -753,7 +753,6 @@ Base Type API
    :members:
    :show-inheritance:
 
-
 .. autoclass:: Concatenable
    :members:
    :inherited-members:

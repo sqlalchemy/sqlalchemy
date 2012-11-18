@@ -762,10 +762,46 @@ against a particular target selectable::
 
     :meth:`.Select.correlate_except`
 
+Postgresql HSTORE type
+----------------------
+
+Support for Postgresql's ``HSTORE`` type is now available as
+:class:`.postgresql.HSTORE`.   This type makes great usage
+of the new operator system to provide a full range of operators
+for HSTORE types, including index access, concatenation,
+and containment methods such as
+:meth:`~.HSTORE.comparator_factory.has_key`,
+:meth:`~.HSTORE.comparator_factory.has_any`, and
+:meth:`~.HSTORE.comparator_factory.matrix`::
+
+    from sqlalchemy.dialects.postgresql import HSTORE
+
+    data = Table('data_table', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('hstore_data', HSTORE)
+        )
+
+    engine.execute(
+        select([data.c.hstore_data['some_key']])
+    ).scalar()
+
+    engine.execute(
+        select([data.c.hstore_data.matrix()])
+    ).scalar()
+
+
+.. seealso::
+
+    :class:`.postgresql.HSTORE`
+
+    :class:`.postgresql.hstore`
+
+:ticket:`2606`
+
 Enhanced Postgresql ARRAY type
 ------------------------------
 
-The ``postgresql.ARRAY`` type will accept an optional
+The :class:`.postgresql.ARRAY` type will accept an optional
 "dimension" argument, pinning it to a fixed number of
 dimensions and greatly improving efficiency when retrieving
 results:

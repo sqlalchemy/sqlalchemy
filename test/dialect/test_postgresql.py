@@ -17,7 +17,7 @@ from sqlalchemy import Table, Column, select, MetaData, text, Integer, \
 from sqlalchemy.orm import Session, mapper, aliased
 from sqlalchemy import exc, schema, types
 from sqlalchemy.dialects.postgresql import base as postgresql
-from sqlalchemy.dialects.postgresql import HSTORE, hstore
+from sqlalchemy.dialects.postgresql import HSTORE, hstore, array, ARRAY
 from sqlalchemy.util.compat import decimal
 from sqlalchemy.testing.util import round_decimal
 from sqlalchemy.sql import table, column
@@ -2755,6 +2755,20 @@ class HStoreTest(fixtures.TestBase):
             '"key2"=>"value2", "key1"=>"value1"'
         )
 
+    def test_parse_error(self):
+        from sqlalchemy.engine import default
+
+        dialect = default.DefaultDialect()
+        proc = self.test_table.c.hash.type._cached_result_processor(
+                    dialect, None)
+        assert_raises_message(
+            ValueError,
+            r'''After '\[\.\.\.\], "key1"=>"value1", ', could not parse '''
+            '''residual at position 36: 'crapcrapcrap, "key3"\[\.\.\.\]''',
+            proc,
+            '"key2"=>"value2", "key1"=>"value1", '
+                        'crapcrapcrap, "key3"=>"value3"'
+        )
     def test_result_deserialize_default(self):
         from sqlalchemy.engine import default
 
@@ -2954,9 +2968,8 @@ class HStoreTest(fixtures.TestBase):
         )
 
 class HStoreRoundTripTest(fixtures.TablesTest):
-    #__only_on__ = 'postgresql'
     __requires__ = 'hstore',
-    __dialect__ = postgresql.dialect()
+    __dialect__ = 'postgresql'
 
     @classmethod
     def define_tables(cls, metadata):
@@ -3025,3 +3038,24 @@ class HStoreRoundTripTest(fixtures.TablesTest):
             select([data_table.c.data]).where(data_table.c.data['k1'] == 'r3v1')
         ).first()
         eq_(result, ({'k1': 'r3v1', 'k2': 'r3v2'},))
+
+    def _test_fixed_round_trip(self, engine):
+        s = select([
+                hstore(
+                    array(['key1', 'key2', 'key3']),
+                    array(['value1', 'value2', 'value3'])
+                )
+            ])
+        eq_(
+            engine.scalar(s),
+            {"key1": "value1", "key2": "value2", "key3": "value3"}
+        )
+
+    def test_fixed_round_trip_python(self):
+        engine = self._non_native_engine()
+        self._test_fixed_round_trip(engine)
+
+    @testing.only_on("postgresql+psycopg2")
+    def test_fixed_round_trip_native(self):
+        engine = testing.db
+        self._test_fixed_round_trip(engine)

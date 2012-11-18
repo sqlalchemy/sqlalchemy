@@ -10,9 +10,8 @@ from .base import ARRAY
 from ... import types as sqltypes
 from ...sql import functions as sqlfunc
 from ...sql.operators import custom_op
-from ...exc import SQLAlchemyError
 
-__all__ = ('HStoreSyntaxError', 'HSTORE', 'hstore')
+__all__ = ('HSTORE', 'hstore')
 
 # My best guess at the parsing rules of hstore literals, since no formal
 # grammar is given.  This is mostly reverse engineered from PG's input parser
@@ -33,28 +32,23 @@ HSTORE_DELIMITER_RE = re.compile(r"""
 """, re.VERBOSE)
 
 
-class HStoreSyntaxError(SQLAlchemyError):
-    """Indicates an error unmarshalling an hstore value."""
 
-    def __init__(self, hstore_str, pos):
-        self.hstore_str = hstore_str
-        self.pos = pos
+def _parse_error(hstore_str, pos):
+    """format an unmarshalling error."""
 
-        ctx = 20
-        hslen = len(hstore_str)
+    ctx = 20
+    hslen = len(hstore_str)
 
-        parsed_tail = hstore_str[max(pos - ctx - 1, 0):min(pos, hslen)]
-        residual = hstore_str[min(pos, hslen):min(pos + ctx + 1, hslen)]
+    parsed_tail = hstore_str[max(pos - ctx - 1, 0):min(pos, hslen)]
+    residual = hstore_str[min(pos, hslen):min(pos + ctx + 1, hslen)]
 
-        if len(parsed_tail) > ctx:
-            parsed_tail = '[...]' + parsed_tail[1:]
-        if len(residual) > ctx:
-            residual = residual[:-1] + '[...]'
+    if len(parsed_tail) > ctx:
+        parsed_tail = '[...]' + parsed_tail[1:]
+    if len(residual) > ctx:
+        residual = residual[:-1] + '[...]'
 
-        super(HStoreSyntaxError, self).__init__(
-            "After %r, could not parse residual at position %d: %r" %
-            (parsed_tail, pos, residual)
-        )
+    return "After %r, could not parse residual at position %d: %r" % (
+                    parsed_tail, pos, residual)
 
 
 def _parse_hstore(hstore_str):
@@ -66,7 +60,7 @@ def _parse_hstore(hstore_str):
     accepts as input, the documentation makes no guarantees that will always
     be the case.
 
-    Throws HStoreSyntaxError if parsing fails.
+
 
     """
     result = {}
@@ -90,7 +84,7 @@ def _parse_hstore(hstore_str):
         pair_match = HSTORE_PAIR_RE.match(hstore_str[pos:])
 
     if pos != len(hstore_str):
-        raise HStoreSyntaxError(hstore_str, pos)
+        raise ValueError(_parse_error(hstore_str, pos))
 
     return result
 
@@ -131,11 +125,21 @@ class HSTORE(sqltypes.Concatenable, sqltypes.TypeEngine):
 
     :class:`.HSTORE` provides for a wide range of operations, including:
 
-    * :meth:`.HSTORE.comparatopr_factory.has_key`
+    * Index operations::
 
-    * :meth:`.HSTORE.comparatopr_factory.has_all`
+        data_table.c.data['some key'] == 'some value'
 
-    * :meth:`.HSTORE.comparatopr_factory.defined`
+    * Containment operations::
+
+        data_table.c.data.has_key('some key')
+
+        data_table.c.data.has_all(['one', 'two', 'three'])
+
+    * Concatenation::
+
+        data_table.c.data + {"k1": "v1"}
+
+    For a full list of special methods see :class:`.HSTORE.comparator_factory`.
 
     For usage with the SQLAlchemy ORM, it may be desirable to combine
     the usage of :class:`.HSTORE` with the :mod:`sqlalchemy.ext.mutable`
@@ -158,11 +162,20 @@ class HSTORE(sqltypes.Concatenable, sqltypes.TypeEngine):
 
         session.commit()
 
+    .. versionadded:: 0.8
+
+    .. seealso::
+
+        :class:`.hstore` - render the Postgresql ``hstore()`` function.
+
+
     """
 
     __visit_name__ = 'HSTORE'
 
     class comparator_factory(sqltypes.TypeEngine.Comparator):
+        """Define comparison operations for :class:`.HSTORE`."""
+
         def has_key(self, other):
             """Boolean expression.  Test for presence of a key.  Note that the
             key may be a SQLA expression.
@@ -251,15 +264,6 @@ class HSTORE(sqltypes.Concatenable, sqltypes.TypeEngine):
                     return op, sqltypes.Text
             return op, other_comparator.type
 
-    #@util.memoized_property
-    #@property
-    #def _expression_adaptations(self):
-    #    return {
-    #        operators.getitem: {
-    #           sqltypes.String: sqltypes.String
-    #        },
-    #    }
-
     def bind_processor(self, dialect):
         def process(value):
             if isinstance(value, dict):
@@ -278,11 +282,30 @@ class HSTORE(sqltypes.Concatenable, sqltypes.TypeEngine):
 
 
 class hstore(sqlfunc.GenericFunction):
-    """Construct an hstore on the server side using the hstore function.
+    """Construct an hstore value within a SQL expression using the
+    Postgresql ``hstore()`` function.
 
-    The single argument or a pair of arguments are evaluated as SQLAlchemy
-    expressions, so both may contain columns, function calls, or any other
-    valid SQL expressions which evaluate to text or array.
+    The :class:`.hstore` function accepts one or two arguments as described
+    in the Postgresql documentation.
+
+    E.g.::
+
+        from sqlalchemy.dialects.postgresql import array, hstore
+
+        select([hstore('key1', 'value1')])
+
+        select([
+                hstore(
+                    array(['key1', 'key2', 'key3']),
+                    array(['value1', 'value2', 'value3'])
+                )
+            ])
+
+    .. versionadded:: 0.8
+
+    .. seealso::
+
+        :class:`.HSTORE` - the Postgresql ``HSTORE`` datatype.
 
     """
     type = HSTORE

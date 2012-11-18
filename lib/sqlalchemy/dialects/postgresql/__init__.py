@@ -12,12 +12,11 @@ from .base import \
     INTEGER, BIGINT, SMALLINT, VARCHAR, CHAR, TEXT, NUMERIC, FLOAT, REAL, \
     INET, CIDR, UUID, BIT, MACADDR, DOUBLE_PRECISION, TIMESTAMP, TIME, \
     DATE, BYTEA, BOOLEAN, INTERVAL, ARRAY, ENUM, dialect, array
-from .hstore import HSTORE, hstore, HStoreSyntaxError
+from .hstore import HSTORE, hstore
 
 __all__ = (
     'INTEGER', 'BIGINT', 'SMALLINT', 'VARCHAR', 'CHAR', 'TEXT', 'NUMERIC',
     'FLOAT', 'REAL', 'INET', 'CIDR', 'UUID', 'BIT', 'MACADDR',
     'DOUBLE_PRECISION', 'TIMESTAMP', 'TIME', 'DATE', 'BYTEA', 'BOOLEAN',
-    'INTERVAL', 'ARRAY', 'ENUM', 'dialect', 'array', 'HSTORE', 'hstore',
-    'HStoreSyntaxError'
+    'INTERVAL', 'ARRAY', 'ENUM', 'dialect', 'array', 'HSTORE', 'hstore'
 )

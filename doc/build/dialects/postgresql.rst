@@ -50,6 +50,11 @@ construction arguments, are as follows:
     :show-inheritance:
 
 .. autoclass:: HSTORE
+    :members:
+    :show-inheritance:
+
+.. autoclass:: hstore
+    :members:
     :show-inheritance:
 
 .. autoclass:: INET
