@@ -142,17 +142,18 @@ class HSTORE(sqltypes.Concatenable, sqltypes.TypeEngine):
     For a full list of special methods see :class:`.HSTORE.comparator_factory`.
 
     For usage with the SQLAlchemy ORM, it may be desirable to combine
-    the usage of :class:`.HSTORE` with the :mod:`sqlalchemy.ext.mutable`
+    the usage of :class:`.HSTORE` with :class:`.MutableDict` dictionary
+    now part of the :mod:`sqlalchemy.ext.mutable`
     extension.  This extension will allow in-place changes to dictionary
     values to be detected by the unit of work::
 
-        from sqlalchemy.ext.mutable import Mutable
+        from sqlalchemy.ext.mutable import MutableDict
 
         class MyClass(Base):
             __tablename__ = 'data_table'
 
             id = Column(Integer, primary_key=True)
-            data = Column(Mutable.as_mutable(HSTORE))
+            data = Column(MutableDict.as_mutable(HSTORE))
 
         my_object = session.query(MyClass).one()
 
