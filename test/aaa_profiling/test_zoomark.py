@@ -34,7 +34,8 @@ class ZooMarkTest(fixtures.TestBase):
         global metadata
         creator = testing.db.pool._creator
         recorder = lambda : dbapi_session.recorder(creator())
-        engine = engines.testing_engine(options={'creator': recorder, 'use_reaper':False})
+        engine = engines.testing_engine(options={'creator': recorder,
+                            'use_reaper':False})
         metadata = MetaData(engine)
         engine.connect()
 
@@ -362,7 +363,8 @@ class ZooMarkTest(fixtures.TestBase):
     def test_profile_0(self):
         global metadata
         player = lambda : dbapi_session.player()
-        engine = create_engine('postgresql:///', creator=player)
+        engine = create_engine('postgresql:///', creator=player,
+                        use_native_hstore=False)
         metadata = MetaData(engine)
         engine.connect()
 

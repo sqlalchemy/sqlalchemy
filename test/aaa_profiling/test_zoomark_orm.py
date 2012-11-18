@@ -327,7 +327,8 @@ class ZooMarkTest(fixtures.TestBase):
     def test_profile_0(self):
         global metadata, session
         player = lambda : dbapi_session.player()
-        engine = create_engine('postgresql:///', creator=player)
+        engine = create_engine('postgresql:///', creator=player,
+                    use_native_hstore=False)
         metadata = MetaData(engine)
         session = sessionmaker(engine)()
         engine.connect()
