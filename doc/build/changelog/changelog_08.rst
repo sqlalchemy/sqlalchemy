@@ -7,6 +7,12 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: orm, extensions
+
+      The :mod:`sqlalchemy.ext.mutable` extension now includes the
+      example :class:`.MutableDict` class as part of the extension.
+
+    .. change::
         :tags: postgresql, hstore
         :tickets: 2606
 
