@@ -53,12 +53,14 @@ class MakoBridge(TemplateBridge):
             context['toolbar'] = True
             context['layout'] = "rtd_layout.mako"
             context['base'] = "rtd_base.mako"
-            context['pdf_url'] = "%spdf/%s/%s/%s.pdf" % (
-                    context['MEDIA_URL'],
-                    context['slug'],
-                    context['current_version'],
-                    context['slug']
-            )
+
+            # pdf gen is just broken on RTD
+            #context['pdf_url'] = "%spdf/%s/%s/%s.pdf" % (
+            #        context['MEDIA_URL'],
+            #        context['slug'],
+            #        context['current_version'],
+            #        context['slug']
+            #)
         # local docs layout
         else:
             context['rtd'] = False
