@@ -7,13 +7,21 @@
     :version: 0.8.0b2
 
     .. change::
-        :tags: orm, extensions
+        :tags: sql, bug
+
+      Fixed a gotcha where inadvertently calling list() on a
+      :class:`.ColumnElement` would go into an endless loop, if
+      :meth:`.ColumnOperators.__getitem__` were implemented.
+      A new NotImplementedError is emitted via ``__iter__()``.
+
+    .. change::
+        :tags: orm, extensions, feature
 
       The :mod:`sqlalchemy.ext.mutable` extension now includes the
       example :class:`.MutableDict` class as part of the extension.
 
     .. change::
-        :tags: postgresql, hstore
+        :tags: postgresql, feature
         :tickets: 2606
 
       :class:`.HSTORE` is now available in the Postgresql dialect.

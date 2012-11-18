@@ -325,6 +325,18 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "x -> :x_1"
         )
 
+    def test_no_endless_list_call(self):
+        class MyType(UserDefinedType):
+            class comparator_factory(UserDefinedType.Comparator):
+                def __getitem__(self, index):
+                    return self.op("->")(index)
+
+        assert_raises_message(
+            NotImplementedError,
+            "Class <class 'sqlalchemy.schema.Column'> is not iterable",
+            list, Column('x', MyType())
+        )
+
     def test_lshift(self):
         class MyType(UserDefinedType):
             class comparator_factory(UserDefinedType.Comparator):

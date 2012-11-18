@@ -2941,7 +2941,8 @@ class HStoreTest(fixtures.TestBase):
 
     def test_cols_keys(self):
         self._test_cols(
-            self.hashcol.keys(),
+            # hide from 2to3
+            getattr(self.hashcol, 'keys')(),
             "akeys(test_table.hash) AS akeys_1",
             True
         )
