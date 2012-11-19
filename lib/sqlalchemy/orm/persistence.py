@@ -20,6 +20,7 @@ from . import attributes, sync, exc as orm_exc, evaluator
 from .util import _state_mapper, state_str, _attr_as_key
 from ..sql import expression
 
+
 def save_obj(base_mapper, states, uowtransaction, single=False):
     """Issue ``INSERT`` and/or ``UPDATE`` statements for a list
     of objects.
@@ -64,6 +65,7 @@ def save_obj(base_mapper, states, uowtransaction, single=False):
     _finalize_insert_update_commands(base_mapper, uowtransaction,
                                     states_to_insert, states_to_update)
 
+
 def post_update(base_mapper, states, uowtransaction, post_update_cols):
     """Issue UPDATE statements on behalf of a relationship() which
     specifies post_update.
@@ -75,7 +77,6 @@ def post_update(base_mapper, states, uowtransaction, post_update_cols):
                                     base_mapper,
                                     states, uowtransaction)
 
-
     for table, mapper in base_mapper._sorted_tables.iteritems():
         update = _collect_post_update_commands(base_mapper, uowtransaction,
                                             table, states_to_update,
@@ -85,6 +86,7 @@ def post_update(base_mapper, states, uowtransaction, post_update_cols):
             _emit_post_update_statements(base_mapper, uowtransaction,
                                     cached_connections,
                                     mapper, table, update)
+
 
 def delete_obj(base_mapper, states, uowtransaction):
     """Issue ``DELETE`` statements for a list of objects.
@@ -115,6 +117,7 @@ def delete_obj(base_mapper, states, uowtransaction):
     for state, state_dict, mapper, has_identity, connection \
                         in states_to_delete:
         mapper.dispatch.after_delete(mapper, connection, state)
+
 
 def _organize_states_for_save(base_mapper, states, uowtransaction):
     """Make an initial pass across a set of states for INSERT or
@@ -185,6 +188,7 @@ def _organize_states_for_save(base_mapper, states, uowtransaction):
 
     return states_to_insert, states_to_update
 
+
 def _organize_states_for_post_update(base_mapper, states,
                                                 uowtransaction):
     """Make an initial pass across a set of states for UPDATE
@@ -197,6 +201,7 @@ def _organize_states_for_post_update(base_mapper, states,
     """
     return list(_connections_for_states(base_mapper, uowtransaction,
                                             states))
+
 
 def _organize_states_for_delete(base_mapper, states, uowtransaction):
     """Make an initial pass across a set of states for DELETE.
@@ -217,6 +222,7 @@ def _organize_states_for_delete(base_mapper, states, uowtransaction):
         states_to_delete.append((state, dict_, mapper,
                 bool(state.key), connection))
     return states_to_delete
+
 
 def _collect_insert_commands(base_mapper, uowtransaction, table,
                                                 states_to_insert):
@@ -260,6 +266,7 @@ def _collect_insert_commands(base_mapper, uowtransaction, table,
         insert.append((state, state_dict, params, mapper,
                         connection, value_params, has_all_pks))
     return insert
+
 
 def _collect_update_commands(base_mapper, uowtransaction,
                                 table, states_to_update):
@@ -412,6 +419,7 @@ def _collect_post_update_commands(base_mapper, uowtransaction, table,
                             connection))
     return update
 
+
 def _collect_delete_commands(base_mapper, uowtransaction, table,
                                 states_to_delete):
     """Identify values to use in DELETE statements for a list of
@@ -507,6 +515,7 @@ def _emit_update_statements(base_mapper, uowtransaction,
                 c.dialect.dialect_description,
                 stacklevel=12)
 
+
 def _emit_insert_statements(base_mapper, uowtransaction,
                         cached_connections, table, insert):
     """Emit INSERT statements corresponding to value lists collected
@@ -580,7 +589,6 @@ def _emit_insert_statements(base_mapper, uowtransaction,
                         result.context.postfetch_cols,
                         result.context.compiled_parameters[0],
                         value_params)
-
 
 
 def _emit_post_update_statements(base_mapper, uowtransaction,
@@ -703,6 +711,7 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction,
         else:
             mapper.dispatch.after_update(mapper, connection, state)
 
+
 def _postfetch(mapper, uowtransaction, table,
                 state, dict_, prefetch_cols, postfetch_cols,
                             params, value_params):
@@ -733,6 +742,7 @@ def _postfetch(mapper, uowtransaction, table,
                                         uowtransaction,
                                         mapper.passive_updates)
 
+
 def _connections_for_states(base_mapper, uowtransaction, states):
     """Return an iterator of (state, state.dict, mapper, connection).
 
@@ -762,6 +772,7 @@ def _connections_for_states(base_mapper, uowtransaction, states):
 
         yield state, state.dict, mapper, connection
 
+
 def _cached_connection_dict(base_mapper):
     # dictionary of connection->connection_with_cache_options.
     return util.PopulateDict(
@@ -769,12 +780,14 @@ def _cached_connection_dict(base_mapper):
         compiled_cache=base_mapper._compiled_cache
     ))
 
+
 def _sort_states(states):
     pending = set(states)
     persistent = set(s for s in pending if s.key is not None)
     pending.difference_update(persistent)
     return sorted(pending, key=operator.attrgetter("insert_order")) + \
                 sorted(persistent, key=lambda q: q.key[1])
+
 
 class BulkUD(object):
     """Handle bulk update and deletes via a :class:`.Query`."""
@@ -825,6 +838,7 @@ class BulkUD(object):
     def _do_post_synchronize(self):
         pass
 
+
 class BulkEvaluate(BulkUD):
     """BulkUD which does the 'evaluate' method of session state resolution."""
 
@@ -858,6 +872,7 @@ class BulkEvaluate(BulkUD):
                             if issubclass(cls, target_cls) and
                             eval_condition(obj)]
 
+
 class BulkFetch(BulkUD):
     """BulkUD which does the 'fetch' method of session state resolution."""
 
@@ -869,6 +884,7 @@ class BulkFetch(BulkUD):
         self.matched_rows = session.execute(
                                     select_stmt,
                                     params=query._params).fetchall()
+
 
 class BulkUpdate(BulkUD):
     """BulkUD which handles UPDATEs."""
@@ -899,6 +915,7 @@ class BulkUpdate(BulkUD):
         session.dispatch.after_bulk_update(session, self.query,
                                 self.context, self.result)
 
+
 class BulkDelete(BulkUD):
     """BulkUD which handles DELETEs."""
 
@@ -926,6 +943,7 @@ class BulkDelete(BulkUD):
         session = self.query.session
         session.dispatch.after_bulk_delete(session, self.query,
                         self.context, self.result)
+
 
 class BulkUpdateEvaluate(BulkEvaluate, BulkUpdate):
     """BulkUD which handles UPDATEs using the "evaluate"
@@ -962,6 +980,7 @@ class BulkUpdateEvaluate(BulkEvaluate, BulkUpdate):
             states.add(state)
         session._register_altered(states)
 
+
 class BulkDeleteEvaluate(BulkEvaluate, BulkDelete):
     """BulkUD which handles DELETEs using the "evaluate"
     method of session resolution."""
@@ -970,6 +989,7 @@ class BulkDeleteEvaluate(BulkEvaluate, BulkDelete):
         self.query.session._remove_newly_deleted(
                 [attributes.instance_state(obj)
                     for obj in self.matched_objects])
+
 
 class BulkUpdateFetch(BulkFetch, BulkUpdate):
     """BulkUD which handles UPDATEs using the "fetch"
@@ -993,6 +1013,7 @@ class BulkUpdateFetch(BulkFetch, BulkUpdate):
             session._expire_state(state, attrib)
         session._register_altered(states)
 
+
 class BulkDeleteFetch(BulkFetch, BulkDelete):
     """BulkUD which handles DELETEs using the "fetch"
     method of session resolution."""
@@ -1011,4 +1032,3 @@ class BulkDeleteFetch(BulkFetch, BulkDelete):
                         session.identity_map[identity_key]
                     )]
                 )
-

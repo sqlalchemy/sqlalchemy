@@ -23,6 +23,7 @@ sessionlib = util.importlater("sqlalchemy.orm", "session")
 
 _new_runid = util.counter()
 
+
 def instances(query, cursor, context):
     """Return an ORM result as an iterator."""
     session = query.session
@@ -96,6 +97,7 @@ def instances(query, cursor, context):
         if not query._yield_per:
             break
 
+
 def merge_result(query, iterator, load=True):
     """Merge a result into this :class:`.Query` object's Session."""
 
@@ -137,6 +139,7 @@ def merge_result(query, iterator, load=True):
     finally:
         session.autoflush = autoflush
 
+
 def get_from_identity(session, key, passive):
     """Look up the given key in the given session's identity map,
     check the object for expired state if found.
@@ -164,6 +167,7 @@ def get_from_identity(session, key, passive):
         return instance
     else:
         return None
+
 
 def load_on_ident(query, key,
                     refresh_state=None, lockmode=None,
@@ -221,6 +225,7 @@ def load_on_ident(query, key,
         return q.one()
     except orm_exc.NoResultFound:
         return None
+
 
 def instance_processor(mapper, context, path, adapter,
                             polymorphic_from=None,
@@ -475,7 +480,6 @@ def instance_processor(mapper, context, path, adapter,
             if isnew:
                 state.manager.dispatch.refresh(state, context, attrs)
 
-
         if result is not None:
             if append_result:
                 for fn in append_result:
@@ -490,6 +494,7 @@ def instance_processor(mapper, context, path, adapter,
 
         return instance
     return _instance
+
 
 def _populators(mapper, context, path, row, adapter,
         new_populators, existing_populators, eager_populators):
@@ -508,6 +513,7 @@ def _populators(mapper, context, path, row, adapter,
 
     if delayed_populators:
         new_populators.extend(delayed_populators)
+
 
 def _configure_subclass_mapper(mapper, context, path, adapter):
     """Produce a mapper level row processor callable factory for mappers
@@ -537,6 +543,7 @@ def _configure_subclass_mapper(mapper, context, path, adapter):
                             adapter,
                             polymorphic_from=mapper)
     return configure_subclass_mapper
+
 
 def load_scalar_attributes(mapper, state, attribute_names):
     """initiate a column-based attribute refresh operation."""
@@ -599,4 +606,3 @@ def load_scalar_attributes(mapper, state, attribute_names):
     # may not complete (even if PK attributes are assigned)
     if has_key and result is None:
         raise orm_exc.ObjectDeletedError(state)
-

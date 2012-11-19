@@ -44,7 +44,8 @@ class ColumnProperty(StrategizedProperty):
     def __init__(self, *columns, **kwargs):
         """Construct a ColumnProperty.
 
-        Note the public constructor is the :func:`.orm.column_property` function.
+        Note the public constructor is the :func:`.orm.column_property`
+        function.
 
         :param \*columns: The list of `columns` describes a single
           object property. If there are multiple tables joined
@@ -108,7 +109,6 @@ class ColumnProperty(StrategizedProperty):
         else:
             self.strategy_class = strategies.ColumnLoader
 
-
     @property
     def expression(self):
         """Return the primary column or expression for this ColumnProperty.
@@ -170,7 +170,8 @@ class ColumnProperty(StrategizedProperty):
         """Produce boolean, comparison, and other operators for
         :class:`.ColumnProperty` attributes.
 
-        See the documentation for :class:`.PropComparator` for a brief overview.
+        See the documentation for :class:`.PropComparator` for a brief
+        overview.
 
         See also:
 
@@ -189,8 +190,8 @@ class ColumnProperty(StrategizedProperty):
                 return self.adapter(self.prop.columns[0])
             else:
                 return self.prop.columns[0]._annotate({
-                                                "parententity": self._parentmapper,
-                                                "parentmapper": self._parentmapper})
+                    "parententity": self._parentmapper,
+                    "parentmapper": self._parentmapper})
 
         def __getattr__(self, key):
             """proxy attribute access down to the mapped column.
@@ -213,6 +214,7 @@ class ColumnProperty(StrategizedProperty):
         return str(self.parent.class_.__name__) + "." + self.key
 
 log.class_logger(ColumnProperty)
+
 
 class RelationshipProperty(StrategizedProperty):
     """Describes an object property that holds a single item or list
@@ -541,7 +543,8 @@ class RelationshipProperty(StrategizedProperty):
             # should not correlate or otherwise reach out
             # to anything in the enclosing query.
             if criterion is not None:
-                criterion = criterion._annotate({'no_replacement_traverse': True})
+                criterion = criterion._annotate(
+                    {'no_replacement_traverse': True})
 
             crit = j & criterion
 
@@ -582,7 +585,8 @@ class RelationshipProperty(StrategizedProperty):
             will produce::
 
                 SELECT * FROM my_table WHERE
-                NOT EXISTS (SELECT 1 FROM related WHERE related.my_id=my_table.id)
+                NOT EXISTS (SELECT 1 FROM related WHERE
+                related.my_id=my_table.id)
 
             :meth:`~.RelationshipProperty.Comparator.any` is only
             valid for collections, i.e. a :func:`.relationship`
@@ -612,8 +616,8 @@ class RelationshipProperty(StrategizedProperty):
             Will produce a query like::
 
                 SELECT * FROM my_table WHERE
-                EXISTS (SELECT 1 FROM related WHERE related.id==my_table.related_id
-                AND related.x=2)
+                EXISTS (SELECT 1 FROM related WHERE
+                related.id==my_table.related_id AND related.x=2)
 
             Because :meth:`~.RelationshipProperty.Comparator.has` uses
             a correlated subquery, its performance is not nearly as
@@ -706,10 +710,9 @@ class RelationshipProperty(StrategizedProperty):
                 state = attributes.instance_state(other)
 
                 def state_bindparam(x, state, col):
-                    o = state.obj() # strong ref
-                    return sql.bindparam(x, unique=True, callable_=lambda : \
-                        self.property.mapper._get_committed_attr_by_column(o,
-                            col))
+                    o = state.obj()  # strong ref
+                    return sql.bindparam(x, unique=True, callable_=lambda: \
+                        self.property.mapper._get_committed_attr_by_column(o, col))
 
                 def adapt(col):
                     if self.adapter:
@@ -724,7 +727,7 @@ class RelationshipProperty(StrategizedProperty):
                         adapt(x) == None)
                         for (x, y) in self.property.local_remote_pairs])
 
-            criterion = sql.and_(*[x==y for (x, y) in
+            criterion = sql.and_(*[x == y for (x, y) in
                                 zip(
                                     self.property.mapper.primary_key,
                                     self.property.\
@@ -835,7 +838,6 @@ class RelationshipProperty(StrategizedProperty):
                 if (source_state, r) in _recursive:
                     return
 
-
         if not "merge" in self.cascade:
             return
 
@@ -912,8 +914,8 @@ class RelationshipProperty(StrategizedProperty):
         else:
             return [(attributes.instance_state(x), x)]
 
-
-    def cascade_iterator(self, type_, state, dict_, visited_states, halt_on=None):
+    def cascade_iterator(self, type_, state, dict_,
+                         visited_states, halt_on=None):
         #assert type_ in self.cascade
 
         # only actively lazy load on the 'delete' cascade
@@ -966,7 +968,6 @@ class RelationshipProperty(StrategizedProperty):
             visited_states.add(instance_state)
 
             yield c, instance_mapper, instance_state, instance_dict
-
 
     def _add_reverse_property(self, key):
         other = self.mapper.get_property(key, _configure_mappers=False)
@@ -1140,7 +1141,6 @@ class RelationshipProperty(StrategizedProperty):
                               "cause dependency issues during flush"
                               % (self.key, self.parent, inheriting))
 
-
     def _check_cascade_settings(self):
         if self.cascade.delete_orphan and not self.single_parent \
             and (self.direction is MANYTOMANY or self.direction
@@ -1288,4 +1288,3 @@ class RelationshipProperty(StrategizedProperty):
 
 PropertyLoader = RelationProperty = RelationshipProperty
 log.class_logger(RelationshipProperty)
-
