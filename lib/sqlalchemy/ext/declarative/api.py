@@ -33,6 +33,7 @@ def instrument_declarative(cls, registry, metadata):
     cls.metadata = metadata
     _as_declarative(cls, cls.__name__, cls.__dict__)
 
+
 def has_inherited_table(cls):
     """Given a class, return True if any of the classes it inherits from has a
     mapped table, otherwise return False.
@@ -42,6 +43,7 @@ def has_inherited_table(cls):
             return True
     return False
 
+
 class DeclarativeMeta(type):
     def __init__(cls, classname, bases, dict_):
         if '_decl_class_registry' not in cls.__dict__:
@@ -50,6 +52,7 @@ class DeclarativeMeta(type):
 
     def __setattr__(cls, key, value):
         _add_attribute(cls, key, value)
+
 
 def synonym_for(name, map_column=False):
     """Decorator, make a Python @property a query synonym for a column.
@@ -73,6 +76,7 @@ def synonym_for(name, map_column=False):
         return _orm_synonym(name, map_column=map_column, descriptor=fn)
     return decorate
 
+
 def comparable_using(comparator_factory):
     """Decorator, allow a Python @property to be used in query criteria.
 
@@ -94,6 +98,7 @@ def comparable_using(comparator_factory):
     def decorate(fn):
         return comparable_property(comparator_factory, fn)
     return decorate
+
 
 class declared_attr(interfaces._MappedAttribute, property):
     """Mark a class-level method as representing the definition of
@@ -153,6 +158,7 @@ class declared_attr(interfaces._MappedAttribute, property):
 
     def __get__(desc, self, cls):
         return desc.fget(cls)
+
 
 def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
                      name='Base', constructor=_declarative_constructor,
@@ -231,6 +237,7 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
 
     return metaclass(name, bases, class_dict)
 
+
 class ConcreteBase(object):
     """A helper class for 'concrete' declarative mappings.
 
@@ -284,6 +291,7 @@ class ConcreteBase(object):
         pjoin = cls._create_polymorphic_union(mappers)
         m._set_with_polymorphic(("*", pjoin))
         m._set_polymorphic_on(pjoin.c.type)
+
 
 class AbstractConcreteBase(ConcreteBase):
     """A helper class for 'concrete' declarative mappings.
@@ -362,7 +370,8 @@ class DeferredReflection(object):
     method is called which first reflects all :class:`.Table`
     objects created so far.   Classes can define it as such::
 
-        from sqlalchemy.ext.declarative import declarative_base, DeferredReflection
+        from sqlalchemy.ext.declarative import declarative_base
+        from sqlalchemy.ext.declarative import DeferredReflection
         Base = declarative_base()
 
         class MyClass(DeferredReflection, Base):
@@ -370,7 +379,8 @@ class DeferredReflection(object):
 
     Above, ``MyClass`` is not yet mapped.   After a series of
     classes have been defined in the above fashion, all tables
-    can be reflected and mappings created using :meth:`.DeferredReflection.prepare`::
+    can be reflected and mappings created using
+    :meth:`.DeferredReflection.prepare`::
 
         engine = create_engine("someengine://...")
         DeferredReflection.prepare(engine)
