@@ -12,12 +12,14 @@ from collections import deque
 
 """Utility functions that build upon SQL and Schema constructs."""
 
+
 def sort_tables(tables, skip_fn=None):
     """sort a collection of Table objects in order of
                 their foreign-key dependency."""
 
     tables = list(tables)
     tuples = []
+
     def visit_foreign_key(fkey):
         if fkey.use_alter:
             return
@@ -39,6 +41,7 @@ def sort_tables(tables, skip_fn=None):
         )
 
     return list(topological.sort(tuples, tables))
+
 
 def find_join_source(clauses, join_to):
     """Given a list of FROM clauses and a selectable,
@@ -102,6 +105,7 @@ def visit_binary_product(fn, expr):
 
     """
     stack = []
+
     def visit(element):
         if isinstance(element, (expression.ScalarSelect)):
             # we dont want to dig into correlated subqueries,
@@ -124,6 +128,7 @@ def visit_binary_product(fn, expr):
                     yield e
     list(visit(expr))
 
+
 def find_tables(clause, check_columns=False,
                 include_aliases=False, include_joins=False,
                 include_selects=False, include_crud=False):
@@ -139,7 +144,7 @@ def find_tables(clause, check_columns=False,
         _visitors['join'] = tables.append
 
     if include_aliases:
-        _visitors['alias']  = tables.append
+        _visitors['alias'] = tables.append
 
     if include_crud:
         _visitors['insert'] = _visitors['update'] = \
@@ -152,15 +157,17 @@ def find_tables(clause, check_columns=False,
 
     _visitors['table'] = tables.append
 
-    visitors.traverse(clause, {'column_collections':False}, _visitors)
+    visitors.traverse(clause, {'column_collections': False}, _visitors)
     return tables
+
 
 def find_columns(clause):
     """locate Column objects within the given expression."""
 
     cols = util.column_set()
-    visitors.traverse(clause, {}, {'column':cols.add})
+    visitors.traverse(clause, {}, {'column': cols.add})
     return cols
+
 
 def unwrap_order_by(clause):
     """Break up an 'order by' expression into individual column-expressions,
@@ -180,6 +187,7 @@ def unwrap_order_by(clause):
             for c in t.get_children():
                 stack.append(c)
     return cols
+
 
 def clause_is_present(clause, search):
     """Given a target clause and a second to search within, return True
@@ -213,11 +221,13 @@ def bind_values(clause):
     """
 
     v = []
+
     def visit_bindparam(bind):
         v.append(bind.effective_value)
 
-    visitors.traverse(clause, {}, {'bindparam':visit_bindparam})
+    visitors.traverse(clause, {}, {'bindparam': visit_bindparam})
     return v
+
 
 def _quote_ddl_expr(element):
     if isinstance(element, basestring):
@@ -225,6 +235,7 @@ def _quote_ddl_expr(element):
         return "'%s'" % element
     else:
         return repr(element)
+
 
 class _repr_params(object):
     """A string view of bound parameters, truncating
@@ -239,9 +250,10 @@ class _repr_params(object):
         if isinstance(self.params, (list, tuple)) and \
             len(self.params) > self.batches and \
             isinstance(self.params[0], (list, dict, tuple)):
+            msg = " ... displaying %i of %i total bound parameter sets ... "
             return ' '.join((
                         repr(self.params[:self.batches - 2])[0:-1],
-                        " ... displaying %i of %i total bound parameter sets ... " % (self.batches, len(self.params)),
+                        msg % (self.batches, len(self.params)),
                         repr(self.params[-2:])[1:]
                     ))
         else:
@@ -268,8 +280,12 @@ def expression_as_ddl(clause):
 
     return visitors.replacement_traverse(clause, {}, repl)
 
+
 def adapt_criterion_to_null(crit, nulls):
-    """given criterion containing bind params, convert selected elements to IS NULL."""
+    """given criterion containing bind params, convert selected elements
+    to IS NULL.
+
+    """
 
     def visit_binary(binary):
         if isinstance(binary.left, expression.BindParameter) \
@@ -285,7 +301,7 @@ def adapt_criterion_to_null(crit, nulls):
             binary.operator = operators.is_
             binary.negate = operators.isnot
 
-    return visitors.cloned_traverse(crit, {}, {'binary':visit_binary})
+    return visitors.cloned_traverse(crit, {}, {'binary': visit_binary})
 
 
 def join_condition(a, b, ignore_nonexistent_tables=False,
@@ -325,7 +341,7 @@ def join_condition(a, b, ignore_nonexistent_tables=False,
             continue
         for fk in sorted(
                     b.foreign_keys,
-                    key=lambda fk:fk.parent._creation_order):
+                    key=lambda fk: fk.parent._creation_order):
             if consider_as_foreign_keys is not None and \
                 fk.parent not in consider_as_foreign_keys:
                 continue
@@ -343,7 +359,7 @@ def join_condition(a, b, ignore_nonexistent_tables=False,
         if left is not b:
             for fk in sorted(
                         left.foreign_keys,
-                        key=lambda fk:fk.parent._creation_order):
+                        key=lambda fk: fk.parent._creation_order):
                 if consider_as_foreign_keys is not None and \
                     fk.parent not in consider_as_foreign_keys:
                     continue
@@ -473,6 +489,7 @@ class Annotated(object):
         else:
             return hash(other) == hash(self)
 
+
 class AnnotatedColumnElement(Annotated):
     def __init__(self, element, values):
         Annotated.__init__(self, element, values)
@@ -506,6 +523,7 @@ for cls in expression.__dict__.values() + [schema.Column, schema.Table]:
              "    pass" % (cls.__name__, annotation_cls) in locals()
         exec "annotated_classes[cls] = Annotated%s" % (cls.__name__,)
 
+
 def _deep_annotate(element, annotations, exclude=None):
     """Deep copy the given ClauseElement, annotating each element
     with the given annotations dictionary.
@@ -528,6 +546,7 @@ def _deep_annotate(element, annotations, exclude=None):
     if element is not None:
         element = clone(element)
     return element
+
 
 def _deep_deannotate(element, values=None):
     """Deep copy the given element, removing annotations."""
@@ -554,6 +573,7 @@ def _deep_deannotate(element, values=None):
         element = clone(element)
     return element
 
+
 def _shallow_annotate(element, annotations):
     """Annotate the given ClauseElement and copy its internals so that
     internal objects refer to the new annotated object.
@@ -565,6 +585,7 @@ def _shallow_annotate(element, annotations):
     element = element._annotate(annotations)
     element._copy_internals()
     return element
+
 
 def splice_joins(left, right, stop_on=None):
     if left is None:
@@ -590,12 +611,15 @@ def splice_joins(left, right, stop_on=None):
 
     return ret
 
+
 def reduce_columns(columns, *clauses, **kw):
-    """given a list of columns, return a 'reduced' set based on natural equivalents.
+    """given a list of columns, return a 'reduced' set based on natural
+    equivalents.
 
     the set is reduced to the smallest list of columns which have no natural
-    equivalent present in the list.  A "natural equivalent" means that two columns
-    will ultimately represent the same value because they are related by a foreign key.
+    equivalent present in the list.  A "natural equivalent" means that two
+    columns will ultimately represent the same value because they are related
+    by a foreign key.
 
     \*clauses is an optional list of join clauses which will be traversed
     to further identify columns that are "equivalent".
@@ -659,6 +683,7 @@ def reduce_columns(columns, *clauses, **kw):
 
     return expression.ColumnSet(columns.difference(omit))
 
+
 def criterion_as_pairs(expression, consider_as_foreign_keys=None,
                         consider_as_referenced_keys=None, any_operator=False):
     """traverse an expression and locate binary criterion pairs."""
@@ -705,7 +730,7 @@ def criterion_as_pairs(expression, consider_as_foreign_keys=None,
                 elif binary.right.references(binary.left):
                     pairs.append((binary.left, binary.right))
     pairs = []
-    visitors.traverse(expression, {}, {'binary':visit_binary})
+    visitors.traverse(expression, {}, {'binary': visit_binary})
     return pairs
 
 
@@ -768,7 +793,7 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
                         include=None, exclude=None,
                         include_fn=None, exclude_fn=None,
                         adapt_on_names=False):
-        self.__traverse_options__ = {'stop_on':[selectable]}
+        self.__traverse_options__ = {'stop_on': [selectable]}
         self.selectable = selectable
         if include:
             assert not include_fn
@@ -783,7 +808,8 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
         self.equivalents = util.column_dict(equivalents or {})
         self.adapt_on_names = adapt_on_names
 
-    def _corresponding_column(self, col, require_embedded, _seen=util.EMPTY_SET):
+    def _corresponding_column(self, col, require_embedded,
+                              _seen=util.EMPTY_SET):
         newcol = self.selectable.corresponding_column(
                                     col,
                                     require_embedded=require_embedded)
@@ -810,6 +836,7 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
             return None
         else:
             return self._corresponding_column(col, True)
+
 
 class ColumnAdapter(ClauseAdapter):
     """Extends ClauseAdapter with extra utility functions.
