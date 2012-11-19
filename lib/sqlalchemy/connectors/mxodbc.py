@@ -24,8 +24,9 @@ import warnings
 
 from . import Connector
 
+
 class MxODBCConnector(Connector):
-    driver='mxodbc'
+    driver = 'mxodbc'
 
     supports_sane_multi_rowcount = False
     supports_unicode_statements = True
@@ -47,7 +48,7 @@ class MxODBCConnector(Connector):
         elif platform == 'darwin':
             from mx.ODBC import iODBC as module
         else:
-            raise ImportError, "Unrecognized platform for mxODBC import"
+            raise ImportError("Unrecognized platform for mxODBC import")
         return module
 
     @classmethod
@@ -73,8 +74,8 @@ class MxODBCConnector(Connector):
         emit Python standard warnings.
         """
         from mx.ODBC.Error import Warning as MxOdbcWarning
-        def error_handler(connection, cursor, errorclass, errorvalue):
 
+        def error_handler(connection, cursor, errorclass, errorvalue):
             if issubclass(errorclass, MxOdbcWarning):
                 errorclass.__bases__ = (Warning,)
                 warnings.warn(message=str(errorvalue),
@@ -141,7 +142,8 @@ class MxODBCConnector(Connector):
             return True
 
     def do_executemany(self, cursor, statement, parameters, context=None):
-        cursor.executemany(statement, parameters, direct=self._get_direct(context))
+        cursor.executemany(
+            statement, parameters, direct=self._get_direct(context))
 
     def do_execute(self, cursor, statement, parameters, context=None):
         cursor.execute(statement, parameters, direct=self._get_direct(context))

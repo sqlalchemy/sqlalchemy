@@ -7,6 +7,7 @@
 import sys
 from . import Connector
 
+
 class ZxJDBCConnector(Connector):
     driver = 'zxjdbc'
 
