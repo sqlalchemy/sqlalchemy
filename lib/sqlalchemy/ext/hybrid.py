@@ -240,8 +240,8 @@ The above hybrid property ``balance`` works with the first
 in-Python getter/setter methods can treat ``accounts`` as a Python
 list available on ``self``.
 
-However, at the expression level, it's expected that the ``User`` class will be used
-in an appropriate context such that an appropriate join to
+However, at the expression level, it's expected that the ``User`` class will
+be used in an appropriate context such that an appropriate join to
 ``SavingsAccount`` will be present::
 
     >>> print Session().query(User, User.balance).\\
@@ -268,11 +268,10 @@ Correlated Subquery Relationship Hybrid
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 We can, of course, forego being dependent on the enclosing query's usage
-of joins in favor of the correlated
-subquery, which can portably be packed into a single colunn expression.
-A correlated subquery is more portable, but often performs more poorly
-at the SQL level.
-Using the same technique illustrated at :ref:`mapper_column_property_sql_expressions`,
+of joins in favor of the correlated subquery, which can portably be packed
+into a single colunn expression. A correlated subquery is more portable, but
+often performs more poorly at the SQL level. Using the same technique
+illustrated at :ref:`mapper_column_property_sql_expressions`,
 we can adjust our ``SavingsAccount`` example to aggregate the balances for
 *all* accounts, and use a correlated subquery for the column expression::
 
@@ -629,6 +628,7 @@ there's probably a whole lot of amazing things it can be used for.
 from .. import util
 from ..orm import attributes, interfaces
 
+
 class hybrid_method(object):
     """A decorator which allows definition of a Python object method with both
     instance-level and class-level behavior.
@@ -667,6 +667,7 @@ class hybrid_method(object):
 
         self.expr = expr
         return self
+
 
 class hybrid_property(object):
     """A decorator which allows definition of a Python descriptor with both
@@ -749,6 +750,7 @@ class hybrid_property(object):
             return proxy_attr(owner, self.__name__, self, comparator(owner))
         self.expr = expr
         return self
+
 
 class Comparator(interfaces.PropComparator):
     """A helper class that allows easy construction of custom
