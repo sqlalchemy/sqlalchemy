@@ -49,11 +49,13 @@ class KeyedTuple(tuple):
     def _asdict(self):
         return dict((key, self.__dict__[key]) for key in self.keys())
 
+
 class ImmutableContainer(object):
     def _immutable(self, *arg, **kw):
         raise TypeError("%s object is immutable" % self.__class__.__name__)
 
     __delitem__ = __setitem__ = __setattr__ = _immutable
+
 
 class immutabledict(ImmutableContainer, dict):
 
@@ -81,6 +83,7 @@ class immutabledict(ImmutableContainer, dict):
 
     def __repr__(self):
         return "immutabledict(%s)" % dict.__repr__(self)
+
 
 class Properties(object):
     """Provide a __getattr__/__setattr__ interface over a dict."""
@@ -152,6 +155,7 @@ class Properties(object):
 
     def clear(self):
         self._data.clear()
+
 
 class OrderedProperties(Properties):
     """Provide a __getattr__/__setattr__ interface with an OrderedDict
@@ -253,6 +257,7 @@ class OrderedDict(dict):
         self._list.remove(item[0])
         return item
 
+
 class OrderedSet(set):
     def __init__(self, d=None):
         set.__init__(self)
@@ -336,22 +341,22 @@ class OrderedSet(set):
     def intersection_update(self, other):
         other = set(other)
         set.intersection_update(self, other)
-        self._list = [ a for a in self._list if a in other]
+        self._list = [a for a in self._list if a in other]
         return self
 
     __iand__ = intersection_update
 
     def symmetric_difference_update(self, other):
         set.symmetric_difference_update(self, other)
-        self._list =  [ a for a in self._list if a in self]
-        self._list += [ a for a in other._list if a in self]
+        self._list = [a for a in self._list if a in self]
+        self._list += [a for a in other._list if a in self]
         return self
 
     __ixor__ = symmetric_difference_update
 
     def difference_update(self, other):
         set.difference_update(self, other)
-        self._list = [ a for a in self._list if a in self]
+        self._list = [a for a in self._list if a in self]
         return self
 
     __isub__ = difference_update
@@ -457,8 +462,9 @@ class IdentitySet(object):
     def union(self, iterable):
         result = type(self)()
         # testlib.pragma exempt:__hash__
-        result._members.update(
-            self._working_set(self._member_id_tuples()).union(_iter_id(iterable)))
+        members = self._member_id_tuples()
+        other = _iter_id(iterable)
+        result._members.update(self._working_set(members).union(other))
         return result
 
     def __or__(self, other):
@@ -478,8 +484,9 @@ class IdentitySet(object):
     def difference(self, iterable):
         result = type(self)()
         # testlib.pragma exempt:__hash__
-        result._members.update(
-            self._working_set(self._member_id_tuples()).difference(_iter_id(iterable)))
+        members = self._member_id_tuples()
+        other = _iter_id(iterable)
+        result._members.update(self._working_set(members).difference(other))
         return result
 
     def __sub__(self, other):
@@ -499,8 +506,9 @@ class IdentitySet(object):
     def intersection(self, iterable):
         result = type(self)()
         # testlib.pragma exempt:__hash__
-        result._members.update(
-            self._working_set(self._member_id_tuples()).intersection(_iter_id(iterable)))
+        members = self._member_id_tuples()
+        other = _iter_id(iterable)
+        result._members.update(self._working_set(members).intersection(other))
         return result
 
     def __and__(self, other):
@@ -520,8 +528,10 @@ class IdentitySet(object):
     def symmetric_difference(self, iterable):
         result = type(self)()
         # testlib.pragma exempt:__hash__
+        members = self._member_id_tuples()
+        other = _iter_id(iterable)
         result._members.update(
-            self._working_set(self._member_id_tuples()).symmetric_difference(_iter_id(iterable)))
+            self._working_set(members).symmetric_difference(other))
         return result
 
     def _member_id_tuples(self):
@@ -558,6 +568,7 @@ class IdentitySet(object):
     def __repr__(self):
         return '%s(%r)' % (type(self).__name__, self._members.values())
 
+
 class WeakSequence(object):
     def __init__(self, elements):
         self._storage = weakref.WeakValueDictionary(
@@ -572,6 +583,7 @@ class WeakSequence(object):
             return self._storage[index]
         except KeyError:
             raise IndexError("Index %s out of range" % index)
+
 
 class OrderedIdentitySet(IdentitySet):
     class _working_set(OrderedSet):
@@ -625,6 +637,7 @@ column_dict = dict
 ordered_column_set = OrderedSet
 populate_column_dict = PopulateDict
 
+
 def unique_list(seq, hashfunc=None):
     seen = {}
     if not hashfunc:
@@ -635,6 +648,7 @@ def unique_list(seq, hashfunc=None):
         return [x for x in seq
                 if hashfunc(x) not in seen
                 and not seen.__setitem__(hashfunc(x), True)]
+
 
 class UniqueAppender(object):
     """Appends items to a collection ensuring uniqueness.
@@ -662,6 +676,7 @@ class UniqueAppender(object):
     def __iter__(self):
         return iter(self.data)
 
+
 def to_list(x, default=None):
     if x is None:
         return default
@@ -669,6 +684,7 @@ def to_list(x, default=None):
         return [x]
     else:
         return x
+
 
 def to_set(x):
     if x is None:
@@ -678,6 +694,7 @@ def to_set(x):
     else:
         return x
 
+
 def to_column_set(x):
     if x is None:
         return column_set()
@@ -685,6 +702,7 @@ def to_column_set(x):
         return column_set(to_list(x))
     else:
         return x
+
 
 def update_copy(d, _new=None, **kw):
     """Copy the given dict and update with the given values."""
@@ -694,6 +712,7 @@ def update_copy(d, _new=None, **kw):
         d.update(_new)
     d.update(**kw)
     return d
+
 
 def flatten_iterator(x):
     """Given an iterator of which further sub-elements may also be
@@ -706,7 +725,6 @@ def flatten_iterator(x):
                 yield y
         else:
             yield elem
-
 
 
 class LRUCache(dict):
@@ -817,6 +835,7 @@ class ScopedRegistry(object):
         except KeyError:
             pass
 
+
 class ThreadLocalRegistry(ScopedRegistry):
     """A :class:`.ScopedRegistry` that uses a ``threading.local()``
     variable for storage.
@@ -845,9 +864,9 @@ class ThreadLocalRegistry(ScopedRegistry):
         except AttributeError:
             pass
 
+
 def _iter_id(iterable):
     """Generator: ((id(o), o) for o in iterable)."""
 
     for item in iterable:
         yield id(item), item
-
