@@ -11,6 +11,7 @@ from .. import util
 
 __all__ = ['sort', 'sort_as_subsets', 'find_cycles']
 
+
 def sort_as_subsets(tuples, allitems):
 
     edges = util.defaultdict(set)
@@ -35,6 +36,7 @@ def sort_as_subsets(tuples, allitems):
         todo.difference_update(output)
         yield output
 
+
 def sort(tuples, allitems):
     """sort the given list of items by dependency.
 
@@ -44,6 +46,7 @@ def sort(tuples, allitems):
     for set_ in sort_as_subsets(tuples, allitems):
         for s in set_:
             yield s
+
 
 def find_cycles(tuples, allitems):
     # straight from gvr with some mods
@@ -82,6 +85,7 @@ def find_cycles(tuples, allitems):
             else:
                 node = stack.pop()
     return output
+
 
 def _gen_edges(edges):
     return set([

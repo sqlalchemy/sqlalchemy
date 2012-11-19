@@ -42,15 +42,18 @@ class Empty(Exception):
 
     pass
 
+
 class Full(Exception):
     "Exception raised by Queue.put(block=0)/put_nowait()."
 
     pass
 
+
 class SAAbort(Exception):
     "Special SQLA exception to abort waiting"
     def __init__(self, context):
         self.context = context
+
 
 class Queue:
     def __init__(self, maxsize=0):

@@ -5,9 +5,9 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from .compat import callable, cmp, reduce, defaultdict, py25_dict, \
-    threading, py3k, py3k_warning, jython, pypy, cpython, win32, set_types, buffer, \
-    pickle, update_wrapper, partial, md5_hex, decode_slice, dottedgetter,\
-    parse_qsl, any, contextmanager, namedtuple, next, WeakSet
+    threading, py3k, py3k_warning, jython, pypy, cpython, win32, set_types, \
+    buffer, pickle, update_wrapper, partial, md5_hex, decode_slice, \
+    dottedgetter, parse_qsl, any, contextmanager, namedtuple, next, WeakSet
 
 from ._collections import KeyedTuple, ImmutableContainer, immutabledict, \
     Properties, OrderedProperties, ImmutableProperties, OrderedDict, \
@@ -31,4 +31,3 @@ from .langhelpers import iterate_attributes, class_hierarchy, \
 
 from .deprecations import warn_deprecated, warn_pending_deprecation, \
     deprecated, pending_deprecation
-

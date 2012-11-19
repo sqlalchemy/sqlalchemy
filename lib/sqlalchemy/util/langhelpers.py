@@ -19,6 +19,7 @@ from .compat import update_wrapper, set_types, threading, \
     callable, inspect_getfullargspec
 from .. import exc
 
+
 def _unique_symbols(used, *bases):
     used = set(used)
     for base in bases:
@@ -32,6 +33,7 @@ def _unique_symbols(used, *bases):
                 break
         else:
             raise NameError("exhausted namespace for symbol base %s" % base)
+
 
 def decorator(target):
     """A signature-matching decorator factory."""
@@ -48,12 +50,14 @@ def decorator(target):
 
         code = 'lambda %(args)s: %(target)s(%(fn)s, %(apply_kw)s)' % (
                 metadata)
-        decorated = eval(code, {targ_name:target, fn_name:fn})
+        decorated = eval(code, {targ_name: target, fn_name: fn})
         decorated.func_defaults = getattr(fn, 'im_func', fn).func_defaults
         return update_wrapper(decorated, fn)
     return update_wrapper(decorate, target)
 
+
 class PluginLoader(object):
+
     def __init__(self, group, auto_fn=None):
         self.group = group
         self.impls = {}
@@ -61,7 +65,7 @@ class PluginLoader(object):
 
     def load(self, name):
         if name in self.impls:
-             return self.impls[name]()
+            return self.impls[name]()
 
         if self.auto_fn:
             loader = self.auto_fn(name)
@@ -135,6 +139,7 @@ def get_cls_kwargs(cls):
 
 try:
     from inspect import CO_VARKEYWORDS
+
     def inspect_func_args(fn):
         co = fn.func_code
         nargs = co.co_argcount
@@ -142,10 +147,12 @@ try:
         args = list(names[:nargs])
         has_kw = bool(co.co_flags & CO_VARKEYWORDS)
         return args, has_kw
+
 except ImportError:
     def inspect_func_args(fn):
         names, _, has_kw, _ = inspect.getargspec(fn)
         return names, bool(has_kw)
+
 
 def get_func_kwargs(func):
     """Return the set of legal kwargs for the given `func`.
@@ -156,6 +163,7 @@ def get_func_kwargs(func):
     """
 
     return inspect.getargspec(func)[0]
+
 
 def format_argspec_plus(fn, grouped=True):
     """Returns a dictionary of formatted, introspected function arguments.
@@ -234,6 +242,7 @@ def format_argspec_plus(fn, grouped=True):
         return dict(args=args[1:-1], self_arg=self_arg,
                     apply_pos=apply_pos[1:-1], apply_kw=apply_kw[1:-1])
 
+
 def format_argspec_init(method, grouped=True):
     """format_argspec_plus with considerations for typical __init__ methods
 
@@ -255,6 +264,7 @@ def format_argspec_init(method, grouped=True):
                             or 'self, *args, **kwargs')
         return dict(self_arg='self', args=args, apply_pos=args, apply_kw=args)
 
+
 def getargspec_init(method):
     """inspect.getargspec with considerations for typical __init__ methods
 
@@ -274,12 +284,16 @@ def getargspec_init(method):
 
 
 def unbound_method_to_callable(func_or_cls):
-    """Adjust the incoming callable such that a 'self' argument is not required."""
+    """Adjust the incoming callable such that a 'self' argument is not
+    required.
+
+    """
 
     if isinstance(func_or_cls, types.MethodType) and not func_or_cls.im_self:
         return func_or_cls.im_func
     else:
         return func_or_cls
+
 
 def generic_repr(obj, additional_kw=(), to_inspect=None):
     """Produce a __repr__() based on direct association of the __init__()
@@ -288,9 +302,11 @@ def generic_repr(obj, additional_kw=(), to_inspect=None):
     """
     if to_inspect is None:
         to_inspect = obj
+
     def genargs():
         try:
-            (args, vargs, vkw, defaults) = inspect.getargspec(to_inspect.__init__)
+            (args, vargs, vkw, defaults) = \
+                inspect.getargspec(to_inspect.__init__)
         except TypeError:
             return
 
@@ -322,6 +338,7 @@ def generic_repr(obj, additional_kw=(), to_inspect=None):
 
     return "%s(%s)" % (obj.__class__.__name__, ", ".join(genargs()))
 
+
 class portable_instancemethod(object):
     """Turn an instancemethod into a (parent, name) pair
     to produce a serializable callable.
@@ -333,6 +350,7 @@ class portable_instancemethod(object):
 
     def __call__(self, *arg, **kw):
         return getattr(self.target, self.name)(*arg, **kw)
+
 
 def class_hierarchy(cls):
     """Return an unordered sequence of all classes related to cls.
@@ -378,6 +396,7 @@ def class_hierarchy(cls):
             hier.add(s)
     return list(hier)
 
+
 def iterate_attributes(cls):
     """iterate all the keys and attributes associated
        with a class, without using getattr().
@@ -392,6 +411,7 @@ def iterate_attributes(cls):
             if key in c.__dict__:
                 yield (key, c.__dict__[key])
                 break
+
 
 def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
                                  name='self.proxy', from_instance=None):
@@ -443,6 +463,7 @@ def methods_equivalent(meth1, meth2):
     # Py2K
     return getattr(meth1, 'im_func', meth1) is getattr(meth2, 'im_func', meth2)
     # end Py2K
+
 
 def as_interface(obj, cls=None, methods=None, required=None):
     """Ensure basic interface compliance for an instance or dict of callables.
@@ -542,6 +563,7 @@ class memoized_property(object):
     def _reset(self, obj):
         obj.__dict__.pop(self.__name__, None)
 
+
 class memoized_instancemethod(object):
     """Decorate a method memoize its return value.
 
@@ -558,6 +580,7 @@ class memoized_instancemethod(object):
     def __get__(self, obj, cls):
         if obj is None:
             return self
+
         def oneshot(*args, **kw):
             result = self.fget(obj, *args, **kw)
             memo = lambda *a, **kw: result
@@ -565,6 +588,7 @@ class memoized_instancemethod(object):
             memo.__doc__ = self.__doc__
             obj.__dict__[self.__name__] = memo
             return result
+
         oneshot.__name__ = self.__name__
         oneshot.__doc__ = self.__doc__
         return oneshot
@@ -591,6 +615,7 @@ class group_expirable_memoized_property(object):
     def method(self, fn):
         self.attributes.append(fn.__name__)
         return memoized_instancemethod(fn)
+
 
 class importlater(object):
     """Deferred import object.
@@ -671,6 +696,7 @@ class importlater(object):
         self.__dict__[key] = attr
         return attr
 
+
 # from paste.deploy.converters
 def asbool(obj):
     if isinstance(obj, (str, unicode)):
@@ -683,6 +709,7 @@ def asbool(obj):
             raise ValueError("String is not true/false: %r" % obj)
     return bool(obj)
 
+
 def bool_or_str(*text):
     """Return a callable that will evaulate a string as
     boolean, or one of a set of "alternate" string values.
@@ -694,6 +721,7 @@ def bool_or_str(*text):
         else:
             return asbool(obj)
     return bool_or_value
+
 
 def asint(value):
     """Coerce to integer."""
@@ -744,6 +772,7 @@ def counter():
 
     return _next
 
+
 def duck_type_collection(specimen, default=None):
     """Given an instance or class, guess if it is or is acting as one of
     the basic collection types: list, set and dict.  If the __emulates__
@@ -775,18 +804,19 @@ def duck_type_collection(specimen, default=None):
     else:
         return default
 
+
 def assert_arg_type(arg, argtype, name):
     if isinstance(arg, argtype):
         return arg
     else:
         if isinstance(argtype, tuple):
             raise exc.ArgumentError(
-                            "Argument '%s' is expected to be one of type %s, got '%s'" %
-                            (name, ' or '.join("'%s'" % a for a in argtype), type(arg)))
+                "Argument '%s' is expected to be one of type %s, got '%s'" %
+                (name, ' or '.join("'%s'" % a for a in argtype), type(arg)))
         else:
             raise exc.ArgumentError(
-                            "Argument '%s' is expected to be of type '%s', got '%s'" %
-                            (name, argtype, type(arg)))
+                "Argument '%s' is expected to be of type '%s', got '%s'" %
+                (name, argtype, type(arg)))
 
 
 def dictlike_iteritems(dictlike):
@@ -836,6 +866,7 @@ class classproperty(property):
 
     def __get__(desc, self, cls):
         return desc.fget(cls)
+
 
 class hybridmethod(object):
     """Decorate a function as cls- or instance- level."""
@@ -909,6 +940,8 @@ class symbol(object):
 
 
 _creation_order = 1
+
+
 def set_creation_order(instance):
     """Assign a '_creation_order' sequence to the given instance.
 
@@ -919,10 +952,14 @@ def set_creation_order(instance):
     """
     global _creation_order
     instance._creation_order = _creation_order
-    _creation_order +=1
+    _creation_order += 1
+
 
 def warn_exception(func, *args, **kwargs):
-    """executes the given function, catches all exceptions and converts to a warning."""
+    """executes the given function, catches all exceptions and converts to
+    a warning.
+
+    """
     try:
         return func(*args, **kwargs)
     except:
@@ -948,8 +985,11 @@ def warn(msg, stacklevel=3):
     else:
         warnings.warn(msg, stacklevel=stacklevel)
 
+
 _SQLA_RE = re.compile(r'sqlalchemy/([a-z_]+/){0,2}[a-z_]+\.py')
 _UNITTEST_RE = re.compile(r'unit(?:2|test2?/)')
+
+
 def chop_traceback(tb, exclude_prefix=_UNITTEST_RE, exclude_suffix=_SQLA_RE):
     """Chop extraneous lines off beginning and end of a traceback.
 
@@ -968,6 +1008,6 @@ def chop_traceback(tb, exclude_prefix=_UNITTEST_RE, exclude_suffix=_SQLA_RE):
         start += 1
     while start <= end and exclude_suffix.search(tb[end]):
         end -= 1
-    return tb[start:end+1]
+    return tb[start:end + 1]
 
 NoneType = type(None)
