@@ -7,6 +7,7 @@
 import operator
 from ..sql import operators
 
+
 class UnevaluatableError(Exception):
     pass
 
@@ -23,6 +24,7 @@ _notimplemented_ops = set(getattr(operators, op)
                       for op in ('like_op', 'notlike_op', 'ilike_op',
                                  'notilike_op', 'between_op', 'in_op',
                                  'notin_op', 'endswith_op', 'concat_op'))
+
 
 class EvaluatorCompiler(object):
     def process(self, clause):
@@ -77,7 +79,7 @@ class EvaluatorCompiler(object):
         return evaluate
 
     def visit_binary(self, clause):
-        eval_left,eval_right = map(self.process,
+        eval_left, eval_right = map(self.process,
                                 [clause.left, clause.right])
         operator = clause.operator
         if operator is operators.is_:

@@ -19,14 +19,15 @@ from . import (
     )
 from .query import Query
 
+
 class DynaLoader(strategies.AbstractRelationshipLoader):
     def init_class_attribute(self, mapper):
         self.is_class_level = True
         if not self.uselist:
             raise exc.InvalidRequestError(
-                    "On relationship %s, 'dynamic' loaders cannot be used with "
-                    "many-to-one/one-to-one relationships and/or "
-                    "uselist=False." % self.parent_property)
+                "On relationship %s, 'dynamic' loaders cannot be used with "
+                "many-to-one/one-to-one relationships and/or "
+                "uselist=False." % self.parent_property)
         strategies._register_attribute(self,
             mapper,
             useobject=True,
@@ -37,6 +38,7 @@ class DynaLoader(strategies.AbstractRelationshipLoader):
         )
 
 log.class_logger(DynaLoader)
+
 
 class DynamicAttributeImpl(attributes.AttributeImpl):
     uses_objects = True
@@ -118,7 +120,6 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             return
         self._set_iterable(state, dict_, value)
 
-
     def _set_iterable(self, state, dict_, iterable, adapter=None):
         collection_history = self._modified_event(state, dict_)
         new_values = list(iterable)
@@ -144,7 +145,8 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
                                   c.deleted_items)
 
     def get_all_pending(self, state, dict_):
-        c = self._get_collection_history(state, attributes.PASSIVE_NO_INITIALIZE)
+        c = self._get_collection_history(
+            state, attributes.PASSIVE_NO_INITIALIZE)
         return [
                 (attributes.instance_state(x), x)
                 for x in
@@ -174,6 +176,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         if initiator is not self:
             self.fire_remove_event(state, dict_, value, initiator)
 
+
 class DynCollectionAdapter(object):
     """the dynamic analogue to orm.collections.CollectionAdapter"""
 
@@ -196,6 +199,7 @@ class DynCollectionAdapter(object):
 
     def remove_without_event(self, item):
         pass
+
 
 class AppenderMixin(object):
     query_class = None
@@ -228,7 +232,7 @@ class AppenderMixin(object):
 
     def session(self):
         return self.__session()
-    session = property(session, lambda s, x:None)
+    session = property(session, lambda s, x: None)
 
     def __iter__(self):
         sess = self.__session()
@@ -302,6 +306,7 @@ def mixin_user_query(cls):
     name = 'Appender' + cls.__name__
     return type(name, (AppenderMixin, cls), {'query_class': cls})
 
+
 class CollectionHistory(object):
     """Overrides AttributeHistory to receive append/remove events directly."""
 
@@ -318,4 +323,3 @@ class CollectionHistory(object):
             self.deleted_items = []
             self.added_items = []
             self.unchanged_items = []
-

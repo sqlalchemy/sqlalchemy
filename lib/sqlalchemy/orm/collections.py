@@ -153,6 +153,7 @@ class _PlainColumnGetter(object):
         else:
             return key[0]
 
+
 class _SerializableColumnGetter(object):
     """Column-based getter used in version 0.7.6 only.
 
@@ -177,6 +178,7 @@ class _SerializableColumnGetter(object):
             return tuple(key)
         else:
             return key[0]
+
 
 class _SerializableColumnGetterV2(_PlainColumnGetter):
     """Updated serializable getter which deals with
@@ -239,6 +241,7 @@ def column_mapped_collection(mapping_spec):
     keyfunc = _PlainColumnGetter(cols)
     return lambda: MappedCollection(keyfunc)
 
+
 class _SerializableAttrGetter(object):
     def __init__(self, name):
         self.name = name
@@ -249,6 +252,7 @@ class _SerializableAttrGetter(object):
 
     def __reduce__(self):
         return _SerializableAttrGetter, (self.name, )
+
 
 def attribute_mapped_collection(attr_name):
     """A dictionary-based collection type with attribute-based keying.
@@ -281,6 +285,7 @@ def mapped_collection(keyfunc):
 
     """
     return lambda: MappedCollection(keyfunc)
+
 
 class collection(object):
     """Decorators for entity collection classes.
@@ -551,6 +556,7 @@ def collection_adapter(collection):
 
     return getattr(collection, '_sa_adapter', None)
 
+
 def collection_iter(collection):
     """Iterate over an object supporting the @iterator or __iter__ protocols.
 
@@ -803,6 +809,7 @@ def bulk_replace(values, existing_adapter, new_adapter):
         for member in removals:
             existing_adapter.remove_with_event(member)
 
+
 def prepare_instrumentation(factory):
     """Prepare a callable for future use as a collection class factory.
 
@@ -837,6 +844,7 @@ def prepare_instrumentation(factory):
 
     return factory
 
+
 def __converting_factory(original_factory):
     """Convert the type returned by collection factories on the fly.
 
@@ -863,6 +871,7 @@ def __converting_factory(original_factory):
     except:
         pass
     return wrapper
+
 
 def _instrument_class(cls):
     """Modify methods in a class and install instrumentation."""
@@ -973,6 +982,7 @@ def _instrument_class(cls):
 
     setattr(cls, '_sa_instrumented', id(cls))
 
+
 def _instrument_membership_mutator(method, before, argument, after):
     """Route method args and/or return value through the collection adapter."""
     # This isn't smart enough to handle @adds(1) for 'def fn(self, (a, b))'
@@ -1029,6 +1039,7 @@ def _instrument_membership_mutator(method, before, argument, after):
         pass
     return wrapper
 
+
 def __set(collection, item, _sa_initiator=None):
     """Run set events, may eventually be inlined into decorators."""
 
@@ -1038,6 +1049,7 @@ def __set(collection, item, _sa_initiator=None):
             item = getattr(executor, 'fire_append_event')(item, _sa_initiator)
     return item
 
+
 def __del(collection, item, _sa_initiator=None):
     """Run del events, may eventually be inlined into decorators."""
     if _sa_initiator is not False:
@@ -1045,11 +1057,13 @@ def __del(collection, item, _sa_initiator=None):
         if executor:
             getattr(executor, 'fire_remove_event')(item, _sa_initiator)
 
+
 def __before_delete(collection, _sa_initiator=None):
     """Special method to run 'commit existing value' methods"""
     executor = getattr(collection, '_sa_adapter', None)
     if executor:
         getattr(executor, 'fire_pre_remove_event')(_sa_initiator)
+
 
 def _list_decorators():
     """Tailored instrumentation wrappers for any list-like class."""
@@ -1188,6 +1202,7 @@ def _list_decorators():
     l.pop('_tidy')
     return l
 
+
 def _dict_decorators():
     """Tailored instrumentation wrappers for any dict-like mapping class."""
 
@@ -1281,10 +1296,12 @@ else:
     import sets
     _set_binop_bases = (set, frozenset, sets.BaseSet)
 
+
 def _set_binops_check_strict(self, obj):
     """Allow only set, frozenset and self.__class__-derived
     objects in binops."""
     return isinstance(obj, _set_binop_bases + (self.__class__,))
+
 
 def _set_binops_check_loose(self, obj):
     """Allow anything set-like to participate in set binops."""
@@ -1448,6 +1465,7 @@ class InstrumentedList(list):
        'remover': 'remove',
        'iterator': '__iter__', }
 
+
 class InstrumentedSet(set):
     """An instrumented version of the built-in set."""
 
@@ -1455,6 +1473,7 @@ class InstrumentedSet(set):
        'appender': 'add',
        'remover': 'remove',
        'iterator': '__iter__', }
+
 
 class InstrumentedDict(dict):
     """An instrumented version of the built-in dict."""
@@ -1493,6 +1512,7 @@ __interfaces = {
     # < 0.4 compatible naming, deprecated- use decorators instead.
     None: {}
     }
+
 
 class MappedCollection(dict):
     """A basic dictionary-based collection class.
@@ -1577,4 +1597,3 @@ class MappedCollection(dict):
 _instrument_class(MappedCollection)
 _instrument_class(InstrumentedList)
 _instrument_class(InstrumentedSet)
-

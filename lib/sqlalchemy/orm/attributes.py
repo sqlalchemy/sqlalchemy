@@ -85,8 +85,8 @@ canonical=16
 )
 
 LOAD_AGAINST_COMMITTED = util.symbol("LOAD_AGAINST_COMMITTED",
-"""callables should use committed values as primary/foreign keys during a load""",
-canonical=32
+"""callables should use committed values as primary/foreign keys during a load
+""", canonical=32
 )
 
 # pre-packaged sets of flags used as inputs
@@ -229,6 +229,7 @@ class QueryableAttribute(interfaces._MappedAttribute,
 
 inspection._self_inspects(QueryableAttribute)
 
+
 class InstrumentedAttribute(QueryableAttribute):
     """Class bound instrumented attribute which adds descriptor methods."""
 
@@ -247,7 +248,8 @@ class InstrumentedAttribute(QueryableAttribute):
         if self._supports_population and self.key in dict_:
             return dict_[self.key]
         else:
-            return self.impl.get(instance_state(instance),dict_)
+            return self.impl.get(instance_state(instance), dict_)
+
 
 def create_proxied_attribute(descriptor):
     """Create an QueryableAttribute / user descriptor hybrid.
@@ -291,8 +293,10 @@ def create_proxied_attribute(descriptor):
             return self._comparator
 
         def adapted(self, adapter):
-            """Proxy adapted() for the use case of AliasedClass calling adapted."""
+            """Proxy adapted() for the use case of AliasedClass calling
+            adapted.
 
+            """
             return self.__class__(self.class_, self.key, self.descriptor,
                                        self._comparator,
                                        adapter)
@@ -325,13 +329,13 @@ def create_proxied_attribute(descriptor):
                     attribute)
                     )
 
-
     Proxy.__name__ = type(descriptor).__name__ + 'Proxy'
 
     util.monkeypatch_proxied_specials(Proxy, type(descriptor),
                                       name='descriptor',
                                       from_instance=descriptor)
     return Proxy
+
 
 class AttributeImpl(object):
     """internal implementation for instrumented attributes."""
@@ -417,7 +421,6 @@ class AttributeImpl(object):
 
     active_history = property(_get_active_history, _set_active_history)
 
-
     def hasparent(self, state, optimistic=False):
         """Return the boolean value of a `hasparent` flag attached to
         the given state.
@@ -434,7 +437,8 @@ class AttributeImpl(object):
         will also not have a `hasparent` flag.
 
         """
-        assert self.trackparent, "This AttributeImpl is not configured to track parents."
+        msg = "This AttributeImpl is not configured to track parents."
+        assert self.trackparent, msg
 
         return state.parents.get(id(self.parent_token), optimistic) \
                 is not False
@@ -445,7 +449,8 @@ class AttributeImpl(object):
         attribute represented by this ``InstrumentedAttribute``.
 
         """
-        assert self.trackparent, "This AttributeImpl is not configured to track parents."
+        msg = "This AttributeImpl is not configured to track parents."
+        assert self.trackparent, msg
 
         id_ = id(self.parent_token)
         if value:
@@ -471,7 +476,6 @@ class AttributeImpl(object):
                     return
 
             state.parents[id_] = False
-
 
     def set_callable(self, state, callable_):
         """Set a callable function for this attribute on the given object.
@@ -596,6 +600,7 @@ class AttributeImpl(object):
         state._commit(dict_, [self.key])
         return value
 
+
 class ScalarAttributeImpl(AttributeImpl):
     """represents a scalar value-holding InstrumentedAttribute."""
 
@@ -649,8 +654,6 @@ class ScalarAttributeImpl(AttributeImpl):
     @property
     def type(self):
         self.property.columns[0].type
-
-
 
 
 class ScalarObjectAttributeImpl(ScalarAttributeImpl):
@@ -834,7 +837,6 @@ class CollectionAttributeImpl(AttributeImpl):
 
         return [(instance_state(o), o) for o in current]
 
-
     def fire_append_event(self, state, dict_, value, initiator):
         for fn in self.dispatch.append:
             value = fn(state, value, initiator or self)
@@ -1011,6 +1013,7 @@ class CollectionAttributeImpl(AttributeImpl):
 
         return getattr(user_data, '_sa_adapter')
 
+
 def backref_listeners(attribute, key, uselist):
     """Apply listeners to synchronize a two-way relationship."""
 
@@ -1109,6 +1112,7 @@ _NO_STATE_SYMBOLS = frozenset([
 History = util.namedtuple("History", [
         "added", "unchanged", "deleted"
     ])
+
 
 class History(History):
     """A 3-tuple of added, unchanged and deleted values,
@@ -1273,6 +1277,7 @@ class History(History):
 
 HISTORY_BLANK = History(None, None, None)
 
+
 def get_history(obj, key, passive=PASSIVE_OFF):
     """Return a :class:`.History` record for the given object
     and attribute key.
@@ -1300,6 +1305,7 @@ def get_history(obj, key, passive=PASSIVE_OFF):
 
     return get_state_history(instance_state(obj), key, passive)
 
+
 def get_state_history(state, key, passive=PASSIVE_OFF):
     return state.get_history(key, passive)
 
@@ -1310,6 +1316,7 @@ def has_parent(cls, obj, key, optimistic=False):
     state = instance_state(obj)
     return manager.has_parent(state, key, optimistic)
 
+
 def register_attribute(class_, key, **kw):
     comparator = kw.pop('comparator', None)
     parententity = kw.pop('parententity', None)
@@ -1318,6 +1325,7 @@ def register_attribute(class_, key, **kw):
                             comparator, parententity, doc=doc)
     register_attribute_impl(class_, key, **kw)
     return desc
+
 
 def register_attribute_impl(class_, key,
         uselist=False, callable_=None,
@@ -1341,7 +1349,7 @@ def register_attribute_impl(class_, key,
                                        typecallable=typecallable, **kw)
     elif useobject:
         impl = ScalarObjectAttributeImpl(class_, key, callable_,
-                                        dispatch,**kw)
+                                        dispatch, **kw)
     else:
         impl = ScalarAttributeImpl(class_, key, callable_, dispatch, **kw)
 
@@ -1352,6 +1360,7 @@ def register_attribute_impl(class_, key,
 
     manager.post_configure_attribute(key)
     return manager[key]
+
 
 def register_descriptor(class_, key, comparator=None,
                                 parententity=None, doc=None):
@@ -1365,8 +1374,10 @@ def register_descriptor(class_, key, comparator=None,
     manager.instrument_attribute(key, descriptor)
     return descriptor
 
+
 def unregister_attribute(class_, key):
     manager_of_class(class_).uninstrument_attribute(key)
+
 
 def init_collection(obj, key):
     """Initialize a collection attribute and return the collection adapter.
@@ -1390,12 +1401,14 @@ def init_collection(obj, key):
     dict_ = state.dict
     return init_state_collection(state, dict_, key)
 
+
 def init_state_collection(state, dict_, key):
     """Initialize a collection attribute and return the collection adapter."""
 
     attr = state.manager[key].impl
     user_data = attr.initialize(state, dict_)
     return attr.get_collection(state, dict_, user_data)
+
 
 def set_committed_value(instance, key, value):
     """Set the value of an attribute with no history events.
@@ -1415,6 +1428,7 @@ def set_committed_value(instance, key, value):
     state, dict_ = instance_state(instance), instance_dict(instance)
     state.manager[key].impl.set_committed_value(state, dict_, value)
 
+
 def set_attribute(instance, key, value):
     """Set the value of an attribute, firing history events.
 
@@ -1427,6 +1441,7 @@ def set_attribute(instance, key, value):
     """
     state, dict_ = instance_state(instance), instance_dict(instance)
     state.manager[key].impl.set(state, dict_, value, None)
+
 
 def get_attribute(instance, key):
     """Get the value of an attribute, firing any callables required.
@@ -1441,6 +1456,7 @@ def get_attribute(instance, key):
     state, dict_ = instance_state(instance), instance_dict(instance)
     return state.manager[key].impl.get(state, dict_)
 
+
 def del_attribute(instance, key):
     """Delete the value of an attribute, firing history events.
 
@@ -1454,6 +1470,7 @@ def del_attribute(instance, key):
     state, dict_ = instance_state(instance), instance_dict(instance)
     state.manager[key].impl.delete(state, dict_)
 
+
 def flag_modified(instance, key):
     """Mark an attribute on an instance as 'modified'.
 
@@ -1464,4 +1481,3 @@ def flag_modified(instance, key):
     state, dict_ = instance_state(instance), instance_dict(instance)
     impl = state.manager[key].impl
     state._modified_event(dict_, impl, NO_VALUE)
-
