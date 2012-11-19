@@ -214,7 +214,7 @@ class InstanceState(interfaces._InspectionAttr):
         return self._pending_mutations[key]
 
     def __getstate__(self):
-        d = {'instance':self.obj()}
+        d = {'instance': self.obj()}
         d.update(
             (k, self.__dict__[k]) for k in (
                 'committed_state', '_pending_mutations', 'modified', 'expired',
@@ -396,7 +396,6 @@ class InstanceState(interfaces._InspectionAttr):
         return set(keys).intersection(self.manager).\
                     difference(self.committed_state)
 
-
     @property
     def unloaded(self):
         """Return the set of keys which do not have a loaded value.
@@ -515,6 +514,7 @@ class InstanceState(interfaces._InspectionAttr):
             state.modified = state.expired = False
             state._strong_obj = None
 
+
 class AttributeState(object):
     """Provide an inspection interface corresponding
     to a particular attribute on a particular mapped object.
@@ -589,4 +589,3 @@ class PendingCollection(object):
             self.added_items.remove(value)
         else:
             self.deleted_items.add(value)
-

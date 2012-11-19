@@ -382,13 +382,13 @@ class LazyLoader(AbstractRelationshipLoader):
         # in that case.  otherwise we don't need the
         # "old" value during backref operations.
         _register_attribute(self,
-                mapper,
-                useobject=True,
-                callable_=self._load_for_state,
-                uselist=self.parent_property.uselist,
-                backref=self.parent_property.back_populates,
-                typecallable=self.parent_property.collection_class,
-                active_history=active_history
+            mapper,
+            useobject=True,
+            callable_=self._load_for_state,
+            uselist=self.parent_property.uselist,
+            backref=self.parent_property.back_populates,
+            typecallable=self.parent_property.collection_class,
+            active_history=active_history
         )
 
     def lazy_clause(self, state, reverse_direction=False,
