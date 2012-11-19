@@ -18,6 +18,7 @@ from . import attributes, persistence, util as orm_util
 
 sessionlib = util.importlater("sqlalchemy.orm", "session")
 
+
 def track_cascade_events(descriptor, prop):
     """Establish event listeners on object attributes which handle
     cascade-on-set/append.
@@ -370,7 +371,6 @@ class UOWTransaction(object):
                                     postsort_actions):
                 rec.execute(self)
 
-
     def finalize_flush_changes(self):
         """mark processed objects as clean / deleted after a successful
         flush().
@@ -388,6 +388,7 @@ class UOWTransaction(object):
         self.session._remove_newly_deleted(isdel)
         self.session._register_newly_persistent(other)
 
+
 class IterateMappersMixin(object):
     def _mappers(self, uow):
         if self.fromparent:
@@ -398,6 +399,7 @@ class IterateMappersMixin(object):
             )
         else:
             return self.dependency_processor.mapper.self_and_descendants
+
 
 class Preprocess(IterateMappersMixin):
     def __init__(self, dependency_processor, fromparent):
@@ -439,6 +441,7 @@ class Preprocess(IterateMappersMixin):
         else:
             return False
 
+
 class PostSortRec(object):
     disabled = False
 
@@ -460,6 +463,7 @@ class PostSortRec(object):
             self.__class__.__name__,
             ",".join(str(x) for x in self.__dict__.values())
         )
+
 
 class ProcessAll(IterateMappersMixin, PostSortRec):
     def __init__(self, uow, dependency_processor, delete, fromparent):
@@ -497,6 +501,7 @@ class ProcessAll(IterateMappersMixin, PostSortRec):
                 if isdelete == self.delete and not listonly:
                     yield state
 
+
 class IssuePostUpdate(PostSortRec):
     def __init__(self, uow, mapper, isdelete):
         self.mapper = mapper
@@ -508,6 +513,7 @@ class IssuePostUpdate(PostSortRec):
 
         persistence.post_update(self.mapper, states, uow, cols)
 
+
 class SaveUpdateAll(PostSortRec):
     def __init__(self, uow, mapper):
         self.mapper = mapper
@@ -518,7 +524,6 @@ class SaveUpdateAll(PostSortRec):
             uow.states_for_mapper_hierarchy(self.mapper, False, False),
             uow
         )
-
 
     def per_state_flush_actions(self, uow):
         states = list(uow.states_for_mapper_hierarchy(
@@ -535,6 +540,7 @@ class SaveUpdateAll(PostSortRec):
         for dep in uow.deps[self.mapper]:
             states_for_prop = uow.filter_states_for_dep(dep, states)
             dep.per_state_flush_actions(uow, states_for_prop, False)
+
 
 class DeleteAll(PostSortRec):
     def __init__(self, uow, mapper):
@@ -562,6 +568,7 @@ class DeleteAll(PostSortRec):
         for dep in uow.deps[self.mapper]:
             states_for_prop = uow.filter_states_for_dep(dep, states)
             dep.per_state_flush_actions(uow, states_for_prop, True)
+
 
 class ProcessState(PostSortRec):
     def __init__(self, uow, dependency_processor, delete, state):
@@ -592,6 +599,7 @@ class ProcessState(PostSortRec):
             self.delete
         )
 
+
 class SaveUpdateState(PostSortRec):
     def __init__(self, uow, state, mapper):
         self.state = state
@@ -615,6 +623,7 @@ class SaveUpdateState(PostSortRec):
             orm_util.state_str(self.state)
         )
 
+
 class DeleteState(PostSortRec):
     def __init__(self, uow, state, mapper):
         self.state = state
@@ -637,4 +646,3 @@ class DeleteState(PostSortRec):
             self.__class__.__name__,
             orm_util.state_str(self.state)
         )
-

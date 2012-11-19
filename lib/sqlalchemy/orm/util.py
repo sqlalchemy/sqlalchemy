@@ -22,6 +22,7 @@ _INSTRUMENTOR = ('mapper', 'instrumentor')
 
 _none_set = frozenset([None])
 
+
 class CascadeOptions(frozenset):
     """Keeps track of the options sent to relationship().cascade"""
 
@@ -69,6 +70,7 @@ class CascadeOptions(frozenset):
             ",".join([x for x in sorted(self)])
         )
 
+
 def _validator_events(desc, key, validator, include_removes):
     """Runs a validation method on an attribute value to be set or appended."""
 
@@ -92,6 +94,7 @@ def _validator_events(desc, key, validator, include_removes):
     event.listen(desc, 'set', set_, raw=True, retval=True)
     if include_removes:
         event.listen(desc, "remove", remove, raw=True, retval=True)
+
 
 def polymorphic_union(table_map, typecolname,
                         aliasname='p_union', cast_nulls=True):
@@ -155,6 +158,7 @@ def polymorphic_union(table_map, typecolname,
                                      from_obj=[table]))
     return sql.union_all(*result).alias(aliasname)
 
+
 def identity_key(*args, **kwargs):
     """Get an identity key.
 
@@ -211,6 +215,7 @@ def identity_key(*args, **kwargs):
     mapper = object_mapper(instance)
     return mapper.identity_key_from_instance(instance)
 
+
 class ORMAdapter(sql_util.ColumnAdapter):
     """Extends ColumnAdapter to accept ORM entities.
 
@@ -239,6 +244,7 @@ class ORMAdapter(sql_util.ColumnAdapter):
             return sql_util.ColumnAdapter.replace(self, elem)
         else:
             return None
+
 
 class PathRegistry(object):
     """Represent query load paths and registry functions.
@@ -335,6 +341,7 @@ class PathRegistry(object):
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.path, )
 
+
 class RootRegistry(PathRegistry):
     """Root registry, defers to mappers so that
     paths are maintained per-root-mapper.
@@ -346,6 +353,7 @@ class RootRegistry(PathRegistry):
     def __getitem__(self, mapper):
         return mapper._sa_path_registry
 PathRegistry.root = RootRegistry()
+
 
 class KeyRegistry(PathRegistry):
     def __init__(self, parent, key):
@@ -361,6 +369,7 @@ class KeyRegistry(PathRegistry):
             return EntityRegistry(
                 self, entity
             )
+
 
 class EntityRegistry(PathRegistry, dict):
     is_aliased_class = False
@@ -542,6 +551,7 @@ class AliasedClass(object):
         return '<AliasedClass at 0x%x; %s>' % (
             id(self), self.__target.__name__)
 
+
 AliasedInsp = util.namedtuple("AliasedInsp", [
         "entity",
         "mapper",
@@ -550,6 +560,7 @@ AliasedInsp = util.namedtuple("AliasedInsp", [
         "with_polymorphic_mappers",
         "polymorphic_on"
     ])
+
 
 class AliasedInsp(_InspectionAttr, AliasedInsp):
     """Provide an inspection interface for an
@@ -596,7 +607,9 @@ class AliasedInsp(_InspectionAttr, AliasedInsp):
         :class:`.AliasedInsp`."""
         return self.mapper.class_
 
+
 inspection._inspects(AliasedClass)(lambda target: target._aliased_insp)
+
 
 def aliased(element, alias=None, name=None, adapt_on_names=False):
     """Produce an alias of the given element, usually an :class:`.AliasedClass`
@@ -677,6 +690,7 @@ def aliased(element, alias=None, name=None, adapt_on_names=False):
         return AliasedClass(element, alias=alias,
                     name=name, adapt_on_names=adapt_on_names)
 
+
 def with_polymorphic(base, classes, selectable=False,
                         polymorphic_on=None, aliased=False,
                         innerjoin=False):
@@ -750,6 +764,7 @@ def _orm_annotate(element, exclude=None):
     """
     return sql_util._deep_annotate(element, {'_orm_adapt': True}, exclude)
 
+
 def _orm_deannotate(element):
     """Remove annotations that link a column to a particular mapping.
 
@@ -763,8 +778,10 @@ def _orm_deannotate(element):
                 values=("_orm_adapt", "parententity")
             )
 
+
 def _orm_full_deannotate(element):
     return sql_util._deep_deannotate(element)
+
 
 class _ORMJoin(expression.Join):
     """Extend Join to support ORM constructs as input."""
@@ -836,6 +853,7 @@ class _ORMJoin(expression.Join):
     def outerjoin(self, right, onclause=None, join_to_left=True):
         return _ORMJoin(self, right, onclause, True, join_to_left)
 
+
 def join(left, right, onclause=None, isouter=False, join_to_left=True):
     """Produce an inner join between left and right clauses.
 
@@ -878,6 +896,7 @@ def join(left, right, onclause=None, isouter=False, join_to_left=True):
     """
     return _ORMJoin(left, right, onclause, isouter, join_to_left)
 
+
 def outerjoin(left, right, onclause=None, join_to_left=True):
     """Produce a left outer join between left and right clauses.
 
@@ -887,6 +906,7 @@ def outerjoin(left, right, onclause=None, join_to_left=True):
 
     """
     return _ORMJoin(left, right, onclause, True, join_to_left)
+
 
 def with_parent(instance, prop):
     """Create filtering criterion that relates this query's primary entity
@@ -932,7 +952,9 @@ def _attr_as_key(attr):
     else:
         return expression._column_as_key(attr)
 
+
 _state_mapper = util.dottedgetter('manager.mapper')
+
 
 @inspection._inspects(object)
 def _inspect_mapped_object(instance):
@@ -944,6 +966,7 @@ def _inspect_mapped_object(instance):
         return None
     except exc.NO_STATE:
         return None
+
 
 @inspection._inspects(type)
 def _inspect_mapped_class(class_, configure=False):
@@ -978,6 +1001,7 @@ def object_mapper(instance):
     """
     return object_state(instance).mapper
 
+
 def object_state(instance):
     """Given an object, return the :class:`.InstanceState`
     associated with the object.
@@ -1000,6 +1024,7 @@ def object_state(instance):
         raise exc.UnmappedInstanceError(instance)
     else:
         return state
+
 
 def class_mapper(class_, configure=True):
     """Given a class, return the primary :class:`.Mapper` associated
@@ -1027,12 +1052,14 @@ def class_mapper(class_, configure=True):
     else:
         return mapper
 
+
 def _class_to_mapper(class_or_mapper):
     insp = inspection.inspect(class_or_mapper, False)
     if insp is not None:
         return insp.mapper
     else:
         raise exc.UnmappedClassError(class_or_mapper)
+
 
 def _mapper_or_none(entity):
     """Return the :class:`.Mapper` for the given class or None if the
@@ -1043,6 +1070,7 @@ def _mapper_or_none(entity):
         return insp.mapper
     else:
         return None
+
 
 def _is_mapped_class(entity):
     """Return True if the given object is a mapped class,
@@ -1089,6 +1117,7 @@ def _entity_descriptor(entity, key):
                     (description, key)
                 )
 
+
 def _orm_columns(entity):
     insp = inspection.inspect(entity, False)
     if hasattr(insp, 'selectable'):
@@ -1096,14 +1125,17 @@ def _orm_columns(entity):
     else:
         return [entity]
 
+
 def has_identity(object):
     state = attributes.instance_state(object)
     return state.has_identity
+
 
 def instance_str(instance):
     """Return a string describing an instance."""
 
     return state_str(attributes.instance_state(instance))
+
 
 def state_str(state):
     """Return a string describing an instance via its InstanceState."""
@@ -1113,6 +1145,7 @@ def state_str(state):
     else:
         return '<%s at 0x%x>' % (state.class_.__name__, id(state.obj()))
 
+
 def state_class_str(state):
     """Return a string describing an instance's class via its InstanceState."""
 
@@ -1121,9 +1154,10 @@ def state_class_str(state):
     else:
         return '<%s>' % (state.class_.__name__, )
 
+
 def attribute_str(instance, attribute):
     return instance_str(instance) + "." + attribute
 
+
 def state_attribute_str(state, attribute):
     return state_str(state) + "." + attribute
-
