@@ -8,6 +8,7 @@
 
 from .. import util, event, events
 
+
 class Dialect(object):
     """Define the behavior of a specific database and DB-API combination.
 
@@ -485,7 +486,8 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_execute_no_params(self, cursor, statement, parameters, context=None):
+    def do_execute_no_params(self, cursor, statement, parameters,
+                             context=None):
         """Provide an implementation of ``cursor.execute(statement)``.
 
         The parameter collection should not be sent.
@@ -767,8 +769,8 @@ class TypeCompiler(object):
 class Connectable(object):
     """Interface for an object which supports execution of SQL constructs.
 
-    The two implementations of :class:`.Connectable` are :class:`.Connection` and
-    :class:`.Engine`.
+    The two implementations of :class:`.Connectable` are
+    :class:`.Connection` and :class:`.Engine`.
 
     Connectable must also implement the 'dialect' member which references a
     :class:`.Dialect` instance.
@@ -776,7 +778,6 @@ class Connectable(object):
     """
 
     dispatch = event.dispatcher(events.ConnectionEvents)
-
 
     def connect(self, **kwargs):
         """Return a :class:`.Connection` object.
@@ -801,17 +802,19 @@ class Connectable(object):
 
         raise NotImplementedError()
 
-    @util.deprecated("0.7", "Use the create() method on the given schema "
-                            "object directly, i.e. :meth:`.Table.create`, "
-                            ":meth:`.Index.create`, :meth:`.MetaData.create_all`")
+    @util.deprecated("0.7",
+                     "Use the create() method on the given schema "
+                     "object directly, i.e. :meth:`.Table.create`, "
+                     ":meth:`.Index.create`, :meth:`.MetaData.create_all`")
     def create(self, entity, **kwargs):
         """Emit CREATE statements for the given schema entity."""
 
         raise NotImplementedError()
 
-    @util.deprecated("0.7", "Use the drop() method on the given schema "
-                            "object directly, i.e. :meth:`.Table.drop`, "
-                            ":meth:`.Index.drop`, :meth:`.MetaData.drop_all`")
+    @util.deprecated("0.7",
+                     "Use the drop() method on the given schema "
+                     "object directly, i.e. :meth:`.Table.drop`, "
+                     ":meth:`.Index.drop`, :meth:`.MetaData.drop_all`")
     def drop(self, entity, **kwargs):
         """Emit DROP statements for the given schema entity."""
 
@@ -834,4 +837,3 @@ class Connectable(object):
 
     def _execute_clauseelement(self, elem, multiparams=None, params=None):
         raise NotImplementedError()
-

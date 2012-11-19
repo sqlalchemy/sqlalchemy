@@ -831,6 +831,7 @@ class ResultProxy(object):
         else:
             return None
 
+
 class BufferedRowResultProxy(ResultProxy):
     """A ResultProxy with row buffering behavior.
 
@@ -933,6 +934,7 @@ class FullyBufferedResultProxy(ResultProxy):
         ret = self.__rowbuffer
         self.__rowbuffer = collections.deque()
         return ret
+
 
 class BufferedColumnRow(RowProxy):
     def __init__(self, parent, row, processors, keymap):
