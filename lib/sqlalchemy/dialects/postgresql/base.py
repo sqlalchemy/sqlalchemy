@@ -154,9 +154,10 @@ Operator Classes
 ^^^^^^^^^^^^^^^^^
 
 PostgreSQL allows the specification of an *operator class* for each column of
-an index (see http://www.postgresql.org/docs/8.3/interactive/indexes-opclass.html).
-The :class:`.Index` construct allows these to be specified via the ``postgresql_ops``
-keyword argument::
+an index (see
+http://www.postgresql.org/docs/8.3/interactive/indexes-opclass.html).
+The :class:`.Index` construct allows these to be specified via the
+``postgresql_ops`` keyword argument::
 
     Index('my_index', my_table.c.id, my_table.c.data,
                             postgresql_ops={
@@ -168,15 +169,15 @@ keyword argument::
     ``postgresql_ops`` keyword argument to :class:`.Index` construct.
 
 Note that the keys in the ``postgresql_ops`` dictionary are the "key" name of
-the :class:`.Column`, i.e. the name used to access it from the ``.c`` collection
-of :class:`.Table`, which can be configured to be different than the actual
-name of the column as expressed in the database.
+the :class:`.Column`, i.e. the name used to access it from the ``.c``
+collection of :class:`.Table`, which can be configured to be different than
+the actual name of the column as expressed in the database.
 
 Index Types
 ^^^^^^^^^^^^
 
-PostgreSQL provides several index types: B-Tree, Hash, GiST, and GIN, as well as
-the ability for users to create their own (see
+PostgreSQL provides several index types: B-Tree, Hash, GiST, and GIN, as well
+as the ability for users to create their own (see
 http://www.postgresql.org/docs/8.3/static/indexes-types.html). These can be
 specified on :class:`.Index` using the ``postgresql_using`` keyword argument::
 
@@ -226,23 +227,29 @@ _DECIMAL_TYPES = (1231, 1700)
 _FLOAT_TYPES = (700, 701, 1021, 1022)
 _INT_TYPES = (20, 21, 23, 26, 1005, 1007, 1016)
 
+
 class BYTEA(sqltypes.LargeBinary):
     __visit_name__ = 'BYTEA'
 
+
 class DOUBLE_PRECISION(sqltypes.Float):
     __visit_name__ = 'DOUBLE_PRECISION'
+
 
 class INET(sqltypes.TypeEngine):
     __visit_name__ = "INET"
 PGInet = INET
 
+
 class CIDR(sqltypes.TypeEngine):
     __visit_name__ = "CIDR"
 PGCidr = CIDR
 
+
 class MACADDR(sqltypes.TypeEngine):
     __visit_name__ = "MACADDR"
 PGMacAddr = MACADDR
+
 
 class TIMESTAMP(sqltypes.TIMESTAMP):
     def __init__(self, timezone=False, precision=None):
@@ -255,6 +262,7 @@ class TIME(sqltypes.TIME):
         super(TIME, self).__init__(timezone=timezone)
         self.precision = precision
 
+
 class INTERVAL(sqltypes.TypeEngine):
     """Postgresql INTERVAL type.
 
@@ -263,6 +271,7 @@ class INTERVAL(sqltypes.TypeEngine):
 
     """
     __visit_name__ = 'INTERVAL'
+
     def __init__(self, precision=None):
         self.precision = precision
 
@@ -276,8 +285,10 @@ class INTERVAL(sqltypes.TypeEngine):
 
 PGInterval = INTERVAL
 
+
 class BIT(sqltypes.TypeEngine):
     __visit_name__ = 'BIT'
+
     def __init__(self, length=None, varying=False):
         if not varying:
             # BIT without VARYING defaults to length 1
@@ -288,6 +299,7 @@ class BIT(sqltypes.TypeEngine):
         self.varying = varying
 
 PGBit = BIT
+
 
 class UUID(sqltypes.TypeEngine):
     """Postgresql UUID type.
@@ -313,8 +325,8 @@ class UUID(sqltypes.TypeEngine):
          """
         if as_uuid and _python_UUID is None:
             raise NotImplementedError(
-                    "This version of Python does not support the native UUID type."
-                )
+                "This version of Python does not support the native UUID type."
+            )
         self.as_uuid = as_uuid
 
     def bind_processor(self, dialect):
@@ -339,9 +351,11 @@ class UUID(sqltypes.TypeEngine):
 
 PGUuid = UUID
 
+
 class _Slice(expression.ColumnElement):
     __visit_name__ = 'slice'
     type = sqltypes.NULLTYPE
+
     def __init__(self, slice_, source_comparator):
         self.start = source_comparator._check_literal(
                             source_comparator.expr,
@@ -349,6 +363,7 @@ class _Slice(expression.ColumnElement):
         self.stop = source_comparator._check_literal(
                             source_comparator.expr,
                             operators.getitem, slice_.stop)
+
 
 class array(expression.Tuple):
     """A Postgresql ARRAY literal.
@@ -399,6 +414,7 @@ class array(expression.Tuple):
     def self_group(self, against):
         return self
 
+
 class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
     """Postgresql ARRAY type.
 
@@ -436,8 +452,8 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
     to optimize itself to expect exactly that number of dimensions.
     Note that Postgresql itself still allows N dimensions with such a type.
 
-    SQL expressions of type :class:`.ARRAY` have support for "index" and "slice"
-    behavior.  The Python ``[]`` operator works normally here, given
+    SQL expressions of type :class:`.ARRAY` have support for "index" and
+    "slice" behavior.  The Python ``[]`` operator works normally here, given
     integer indexes or slices.  Note that Postgresql arrays default
     to 1-based indexing.  The operator produces binary expression
     constructs which will produce the appropriate SQL, both for
@@ -539,6 +555,7 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
         item_proc = self.item_type.\
                         dialect_impl(dialect).\
                         bind_processor(dialect)
+
         def process(value):
             if value is None:
                 return value
@@ -554,6 +571,7 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
         item_proc = self.item_type.\
                         dialect_impl(dialect).\
                         result_processor(dialect, coltype)
+
         def process(value):
             if value is None:
                 return value
@@ -566,6 +584,7 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
         return process
 
 PGArray = ARRAY
+
 
 class ENUM(sqltypes.Enum):
     """Postgresql ENUM type.
@@ -703,43 +722,42 @@ class ENUM(sqltypes.Enum):
             self.drop(bind=bind, checkfirst=checkfirst)
 
 colspecs = {
-    sqltypes.Interval:INTERVAL,
-    sqltypes.Enum:ENUM,
+    sqltypes.Interval: INTERVAL,
+    sqltypes.Enum: ENUM,
 }
 
 ischema_names = {
-    'integer' : INTEGER,
-    'bigint' : BIGINT,
-    'smallint' : SMALLINT,
-    'character varying' : VARCHAR,
-    'character' : CHAR,
-    '"char"' : sqltypes.String,
-    'name' : sqltypes.String,
-    'text' : TEXT,
-    'numeric' : NUMERIC,
-    'float' : FLOAT,
-    'real' : REAL,
+    'integer': INTEGER,
+    'bigint': BIGINT,
+    'smallint': SMALLINT,
+    'character varying': VARCHAR,
+    'character': CHAR,
+    '"char"': sqltypes.String,
+    'name': sqltypes.String,
+    'text': TEXT,
+    'numeric': NUMERIC,
+    'float': FLOAT,
+    'real': REAL,
     'inet': INET,
     'cidr': CIDR,
     'uuid': UUID,
     'bit': BIT,
     'bit varying': BIT,
     'macaddr': MACADDR,
-    'double precision' : DOUBLE_PRECISION,
-    'timestamp' : TIMESTAMP,
-    'timestamp with time zone' : TIMESTAMP,
-    'timestamp without time zone' : TIMESTAMP,
-    'time with time zone' : TIME,
-    'time without time zone' : TIME,
-    'date' : DATE,
+    'double precision': DOUBLE_PRECISION,
+    'timestamp': TIMESTAMP,
+    'timestamp with time zone': TIMESTAMP,
+    'timestamp without time zone': TIMESTAMP,
+    'time with time zone': TIME,
+    'time without time zone': TIME,
+    'date': DATE,
     'time': TIME,
-    'bytea' : BYTEA,
-    'boolean' : BOOLEAN,
-    'interval':INTERVAL,
-    'interval year to month':INTERVAL,
-    'interval day to second':INTERVAL,
+    'bytea': BYTEA,
+    'boolean': BOOLEAN,
+    'interval': INTERVAL,
+    'interval year to month': INTERVAL,
+    'interval day to second': INTERVAL,
 }
-
 
 
 class PGCompiler(compiler.SQLCompiler):
@@ -814,7 +832,7 @@ class PGCompiler(compiler.SQLCompiler):
             elif isinstance(select._distinct, (list, tuple)):
                 return "DISTINCT ON (" + ', '.join(
                     [self.process(col) for col in select._distinct]
-                )+ ") "
+                ) + ") "
             else:
                 return "DISTINCT ON (" + self.process(select._distinct) + ") "
         else:
@@ -860,6 +878,7 @@ class PGCompiler(compiler.SQLCompiler):
             expr = extract.expr
         return "EXTRACT(%s FROM %s)" % (
             field, self.process(expr))
+
 
 class PGDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
@@ -1046,6 +1065,7 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
             name = self.quote_schema(type_.schema, type_.quote) + "." + name
         return name
 
+
 class PGInspector(reflection.Inspector):
 
     def __init__(self, conn):
@@ -1057,11 +1077,14 @@ class PGInspector(reflection.Inspector):
         return self.dialect.get_table_oid(self.bind, table_name, schema,
                                           info_cache=self.info_cache)
 
+
 class CreateEnumType(schema._CreateDropBase):
-  __visit_name__ = "create_enum_type"
+    __visit_name__ = "create_enum_type"
+
 
 class DropEnumType(schema._CreateDropBase):
-  __visit_name__ = "drop_enum_type"
+    __visit_name__ = "drop_enum_type"
+
 
 class PGExecutionContext(default.DefaultExecutionContext):
     def fire_sequence(self, seq, type_):
@@ -1091,7 +1114,8 @@ class PGExecutionContext(default.DefaultExecutionContext):
                     col = column.name
                     tab = tab[0:29 + max(0, (29 - len(col)))]
                     col = col[0:29 + max(0, (29 - len(tab)))]
-                    column._postgresql_seq_name = seq_name = "%s_%s_seq" % (tab, col)
+                    name = "%s_%s_seq" % (tab, col)
+                    column._postgresql_seq_name = seq_name = name
 
                 sch = column.table.schema
                 if sch is not None:
@@ -1104,6 +1128,7 @@ class PGExecutionContext(default.DefaultExecutionContext):
                 return self._execute_scalar(exc, column.type)
 
         return super(PGExecutionContext, self).get_insert_default(column)
+
 
 class PGDialect(default.DefaultDialect):
     name = 'postgresql'
@@ -1226,9 +1251,10 @@ class PGDialect(default.DefaultDialect):
         return connection.scalar("select current_schema()")
 
     def has_schema(self, connection, schema):
+        query = "select nspname from pg_namespace where lower(nspname)=:schema"
         cursor = connection.execute(
             sql.text(
-                "select nspname from pg_namespace where lower(nspname)=:schema",
+                query,
                 bindparams=[
                     sql.bindparam(
                         'schema', unicode(schema.lower()),
@@ -1365,7 +1391,7 @@ class PGDialect(default.DefaultDialect):
             sql.bindparam('table_name', type_=sqltypes.Unicode),
             sql.bindparam('schema', type_=sqltypes.Unicode)
             ],
-            typemap={'oid':sqltypes.Integer}
+            typemap={'oid': sqltypes.Integer}
         )
         c = connection.execute(s, table_name=table_name, schema=schema)
         table_oid = c.scalar()
@@ -1404,11 +1430,10 @@ class PGDialect(default.DefaultDialect):
                 "AND '%s' = (select nspname from pg_namespace n "
                 "where n.oid = c.relnamespace) " %
                 current_schema,
-                typemap = {'relname':sqltypes.Unicode}
+                typemap={'relname': sqltypes.Unicode}
             )
         )
         return [row[0] for row in result]
-
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
@@ -1484,8 +1509,8 @@ class PGDialect(default.DefaultDialect):
         # format columns
         columns = []
         for name, format_type, default, notnull, attnum, table_oid in rows:
-            column_info = self._get_column_info(name, format_type, default,
-                                                notnull, domains, enums, schema)
+            column_info = self._get_column_info(
+                name, format_type, default, notnull, domains, enums, schema)
             columns.append(column_info)
         return columns
 
@@ -1670,8 +1695,8 @@ class PGDialect(default.DefaultDialect):
         """
 
         t = sql.text(FK_SQL, typemap={
-                                'conname':sqltypes.Unicode,
-                                'condef':sqltypes.Unicode})
+                                'conname': sqltypes.Unicode,
+                                'condef': sqltypes.Unicode})
         c = connection.execute(t, table=table_oid)
         fkeys = []
         for conname, condef, conschema in c.fetchall():
@@ -1697,11 +1722,11 @@ class PGDialect(default.DefaultDialect):
             referred_columns = [preparer._unquote_identifier(x)
                         for x in re.split(r'\s*,\s', referred_columns)]
             fkey_d = {
-                'name' : conname,
-                'constrained_columns' : constrained_columns,
-                'referred_schema' : referred_schema,
-                'referred_table' : referred_table,
-                'referred_columns' : referred_columns
+                'name': conname,
+                'constrained_columns': constrained_columns,
+                'referred_schema': referred_schema,
+                'referred_table': referred_table,
+                'referred_columns': referred_columns
             }
             fkeys.append(fkey_d)
         return fkeys
@@ -1732,7 +1757,7 @@ class PGDialect(default.DefaultDialect):
               i.relname
         """
 
-        t = sql.text(IDX_SQL, typemap={'attname':sqltypes.Unicode})
+        t = sql.text(IDX_SQL, typemap={'attname': sqltypes.Unicode})
         c = connection.execute(t, table_oid=table_oid)
 
         index_names = {}
@@ -1756,7 +1781,7 @@ class PGDialect(default.DefaultDialect):
             if idx_name in index_names:
                 index_d = index_names[idx_name]
             else:
-                index_d = {'column_names':[]}
+                index_d = {'column_names': []}
                 indexes.append(index_d)
                 index_names[idx_name] = index_d
             index_d['name'] = idx_name
@@ -1785,8 +1810,8 @@ class PGDialect(default.DefaultDialect):
         """
 
         s = sql.text(SQL_ENUMS, typemap={
-                                'attname':sqltypes.Unicode,
-                                'label':sqltypes.Unicode})
+                                'attname': sqltypes.Unicode,
+                                'label': sqltypes.Unicode})
         c = connection.execute(s)
 
         enums = {}
@@ -1823,7 +1848,7 @@ class PGDialect(default.DefaultDialect):
             WHERE t.typtype = 'd'
         """
 
-        s = sql.text(SQL_DOMAINS, typemap={'attname':sqltypes.Unicode})
+        s = sql.text(SQL_DOMAINS, typemap={'attname': sqltypes.Unicode})
         c = connection.execute(s)
 
         domains = {}
@@ -1840,10 +1865,9 @@ class PGDialect(default.DefaultDialect):
                 name = "%s.%s" % (domain['schema'], domain['name'])
 
             domains[name] = {
-                    'attype':attype,
+                    'attype': attype,
                     'nullable': domain['nullable'],
                     'default': domain['default']
                 }
 
         return domains
-

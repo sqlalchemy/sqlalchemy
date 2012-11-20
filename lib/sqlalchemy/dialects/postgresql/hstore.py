@@ -32,7 +32,6 @@ HSTORE_DELIMITER_RE = re.compile(r"""
 """, re.VERBOSE)
 
 
-
 def _parse_error(hstore_str, pos):
     """format an unmarshalling error."""
 

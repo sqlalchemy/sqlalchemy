@@ -16,6 +16,7 @@
 from ...connectors.zxJDBC import ZxJDBCConnector
 from .base import PGDialect, PGExecutionContext
 
+
 class PGExecutionContext_zxjdbc(PGExecutionContext):
 
     def create_cursor(self):
@@ -38,6 +39,7 @@ class PGDialect_zxjdbc(ZxJDBCConnector, PGDialect):
         self.DataHandler = PostgresqlDataHandler
 
     def _get_server_version_info(self, connection):
-        return tuple(int(x) for x in connection.connection.dbversion.split('.'))
+        parts = connection.connection.dbversion.split('.')
+        return tuple(int(x) for x in parts)
 
 dialect = PGDialect_zxjdbc

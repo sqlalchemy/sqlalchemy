@@ -59,11 +59,12 @@ The following DBAPI-specific options are respected when used with
 :meth:`.Query.execution_options`, in addition to those not specific to DBAPIs:
 
 * isolation_level - Set the transaction isolation level for the lifespan of a
-  :class:`.Connection` (can only be set on a connection, not a statement or query).
-  This includes the options ``SERIALIZABLE``, ``READ COMMITTED``,
+  :class:`.Connection` (can only be set on a connection, not a statement
+  or query). This includes the options ``SERIALIZABLE``, ``READ COMMITTED``,
   ``READ UNCOMMITTED`` and ``REPEATABLE READ``.
 * stream_results - Enable or disable usage of server side cursors.
-  If ``None`` or not set, the ``server_side_cursors`` option of the :class:`.Engine` is used.
+  If ``None`` or not set, the ``server_side_cursors`` option of the
+  :class:`.Engine` is used.
 
 Unicode
 -------
@@ -91,13 +92,14 @@ on all new connections based on the value passed to
 This overrides the encoding specified in the Postgresql client configuration.
 
 .. versionadded:: 0.7.3
-    The psycopg2-specific ``client_encoding`` parameter to :func:`.create_engine`.
+    The psycopg2-specific ``client_encoding`` parameter to
+    :func:`.create_engine`.
 
 SQLAlchemy can also be instructed to skip the usage of the psycopg2
 ``UNICODE`` extension and to instead utilize it's own unicode encode/decode
 services, which are normally reserved only for those DBAPIs that don't
-fully support unicode directly.  Passing ``use_native_unicode=False``
-to :func:`.create_engine` will disable usage of ``psycopg2.extensions.UNICODE``.
+fully support unicode directly.  Passing ``use_native_unicode=False`` to
+:func:`.create_engine` will disable usage of ``psycopg2.extensions.UNICODE``.
 SQLAlchemy will instead encode data itself into Python bytestrings on the way
 in and coerce from bytes on the way back,
 using the value of the :func:`.create_engine` ``encoding`` parameter, which
@@ -184,6 +186,7 @@ class _PGNumeric(sqltypes.Numeric):
                 raise exc.InvalidRequestError(
                             "Unknown PG numeric type: %d" % coltype)
 
+
 class _PGEnum(ENUM):
     def __init__(self, *arg, **kw):
         super(_PGEnum, self).__init__(*arg, **kw)
@@ -191,6 +194,7 @@ class _PGEnum(ENUM):
         if self.convert_unicode:
             self.convert_unicode = "force"
         # end Py2K
+
 
 class _PGArray(ARRAY):
     def __init__(self, *arg, **kw):
@@ -202,6 +206,7 @@ class _PGArray(ARRAY):
                     self.item_type.convert_unicode:
             self.item_type.convert_unicode = "force"
         # end Py2K
+
 
 class _PGHStore(HSTORE):
     def bind_processor(self, dialect):
@@ -224,6 +229,7 @@ SERVER_SIDE_CURSOR_RE = re.compile(
 
 _server_side_id = util.counter()
 
+
 class PGExecutionContext_psycopg2(PGExecutionContext):
     def create_cursor(self):
         # TODO: coverage for server side cursors + select.for_update()
@@ -240,7 +246,8 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
                     )
                 )
         else:
-            is_server_side = self.execution_options.get('stream_results', False)
+            is_server_side = \
+                self.execution_options.get('stream_results', False)
 
         self.__is_server_side = is_server_side
         if is_server_side:
@@ -284,6 +291,7 @@ class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
         value = value.replace(self.escape_quote, self.escape_to_quote)
         return value.replace('%', '%%')
 
+
 class PGDialect_psycopg2(PGDialect):
     driver = 'psycopg2'
     # Py2K
@@ -301,11 +309,11 @@ class PGDialect_psycopg2(PGDialect):
     colspecs = util.update_copy(
         PGDialect.colspecs,
         {
-            sqltypes.Numeric : _PGNumeric,
-            ENUM : _PGEnum, # needs force_unicode
-            sqltypes.Enum : _PGEnum, # needs force_unicode
-            ARRAY : _PGArray, # needs force_unicode
-            HSTORE : _PGHStore,
+            sqltypes.Numeric: _PGNumeric,
+            ENUM: _PGEnum,  # needs force_unicode
+            sqltypes.Enum: _PGEnum,  # needs force_unicode
+            ARRAY: _PGArray,  # needs force_unicode
+            HSTORE: _PGHStore,
         }
     )
 
@@ -328,7 +336,6 @@ class PGDialect_psycopg2(PGDialect):
                                             for x in m.group(1, 2, 3)
                                             if x is not None)
 
-
     def initialize(self, connection):
         super(PGDialect_psycopg2, self).initialize(connection)
         self._has_native_hstore = self.use_native_hstore and \
@@ -344,10 +351,10 @@ class PGDialect_psycopg2(PGDialect):
     def _isolation_lookup(self):
         extensions = __import__('psycopg2.extensions').extensions
         return {
-            'READ COMMITTED':extensions.ISOLATION_LEVEL_READ_COMMITTED,
-            'READ UNCOMMITTED':extensions.ISOLATION_LEVEL_READ_UNCOMMITTED,
-            'REPEATABLE READ':extensions.ISOLATION_LEVEL_REPEATABLE_READ,
-            'SERIALIZABLE':extensions.ISOLATION_LEVEL_SERIALIZABLE
+            'READ COMMITTED': extensions.ISOLATION_LEVEL_READ_COMMITTED,
+            'READ UNCOMMITTED': extensions.ISOLATION_LEVEL_READ_UNCOMMITTED,
+            'REPEATABLE READ': extensions.ISOLATION_LEVEL_REPEATABLE_READ,
+            'SERIALIZABLE': extensions.ISOLATION_LEVEL_SERIALIZABLE
         }
 
     def set_isolation_level(self, connection, level):
@@ -434,4 +441,3 @@ class PGDialect_psycopg2(PGDialect):
             return False
 
 dialect = PGDialect_psycopg2
-
