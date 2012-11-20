@@ -35,31 +35,32 @@ this explicitly::
 Connect Strings
 ---------------
 
-The file specification for the SQLite database is taken as the "database" portion of
-the URL.  Note that the format of a SQLAlchemy url is::
+The file specification for the SQLite database is taken as the "database"
+portion of the URL.  Note that the format of a SQLAlchemy url is::
 
     driver://user:pass@host/database
 
-This means that the actual filename to be used starts with the characters to the
-**right** of the third slash.   So connecting to a relative filepath looks like::
+This means that the actual filename to be used starts with the characters to
+the **right** of the third slash.   So connecting to a relative filepath
+looks like::
 
     # relative path
     e = create_engine('sqlite:///path/to/database.db')
 
-An absolute path, which is denoted by starting with a slash, means you need **four**
-slashes::
+An absolute path, which is denoted by starting with a slash, means you
+need **four** slashes::
 
     # absolute path
     e = create_engine('sqlite:////path/to/database.db')
 
-To use a Windows path, regular drive specifications and backslashes can be used.
-Double backslashes are probably needed::
+To use a Windows path, regular drive specifications and backslashes can be
+used. Double backslashes are probably needed::
 
     # absolute path on Windows
     e = create_engine('sqlite:///C:\\\\path\\\\to\\\\database.db')
 
-The sqlite ``:memory:`` identifier is the default if no filepath is present.  Specify
-``sqlite://`` and nothing else::
+The sqlite ``:memory:`` identifier is the default if no filepath is
+present.  Specify ``sqlite://`` and nothing else::
 
     # in-memory database
     e = create_engine('sqlite://')
@@ -86,13 +87,13 @@ nor should be necessary, for use with SQLAlchemy, usage of PARSE_DECLTYPES
 can be forced if one configures "native_datetime=True" on create_engine()::
 
     engine = create_engine('sqlite://',
-                    connect_args={'detect_types': sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES},
-                    native_datetime=True
-                    )
+        connect_args={'detect_types': sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES},
+        native_datetime=True
+    )
 
-With this flag enabled, the DATE and TIMESTAMP types (but note - not the DATETIME
-or TIME types...confused yet ?) will not perform any bind parameter or result
-processing. Execution of "func.current_date()" will return a string.
+With this flag enabled, the DATE and TIMESTAMP types (but note - not the
+DATETIME or TIME types...confused yet ?) will not perform any bind parameter
+or result processing. Execution of "func.current_date()" will return a string.
 "func.current_timestamp()" is registered as returning a DATETIME type in
 SQLAlchemy, so this function still receives SQLAlchemy-level result processing.
 
@@ -100,8 +101,8 @@ Threading/Pooling Behavior
 ---------------------------
 
 Pysqlite's default behavior is to prohibit the usage of a single connection
-in more than one thread.   This is originally intended to work with older versions
-of SQLite that did not support multithreaded operation under
+in more than one thread.   This is originally intended to work with older
+versions of SQLite that did not support multithreaded operation under
 various circumstances.  In particular, older SQLite versions
 did not allow a ``:memory:`` database to be used in multiple threads
 under any circumstances.
@@ -117,17 +118,17 @@ thread-safety to make this usage worth it.
 
 SQLAlchemy sets up pooling to work with Pysqlite's default behavior:
 
-* When a ``:memory:`` SQLite database is specified, the dialect by default will use
-  :class:`.SingletonThreadPool`. This pool maintains a single connection per
-  thread, so that all access to the engine within the current thread use the
-  same ``:memory:`` database - other threads would access a different
-  ``:memory:`` database.
-* When a file-based database is specified, the dialect will use :class:`.NullPool`
-  as the source of connections. This pool closes and discards connections
-  which are returned to the pool immediately. SQLite file-based connections
-  have extremely low overhead, so pooling is not necessary. The scheme also
-  prevents a connection from being used again in a different thread and works
-  best with SQLite's coarse-grained file locking.
+* When a ``:memory:`` SQLite database is specified, the dialect by default
+  will use :class:`.SingletonThreadPool`. This pool maintains a single
+  connection per thread, so that all access to the engine within the current
+  thread use the same ``:memory:`` database - other threads would access a
+  different ``:memory:`` database.
+* When a file-based database is specified, the dialect will use
+  :class:`.NullPool` as the source of connections. This pool closes and
+  discards connections which are returned to the pool immediately. SQLite
+  file-based connections have extremely low overhead, so pooling is not
+  necessary. The scheme also prevents a connection from being used again in
+  a different thread and works best with SQLite's coarse-grained file locking.
 
   .. versionchanged:: 0.7
       Default selection of :class:`.NullPool` for SQLite file-based databases.
@@ -140,9 +141,10 @@ Using a Memory Database in Multiple Threads
 
 To use a ``:memory:`` database in a multithreaded scenario, the same connection
 object must be shared among threads, since the database exists
-only within the scope of that connection.   The :class:`.StaticPool` implementation
-will maintain a single connection globally, and the ``check_same_thread`` flag
-can be passed to Pysqlite as ``False``::
+only within the scope of that connection.   The
+:class:`.StaticPool` implementation will maintain a single connection
+globally, and the ``check_same_thread`` flag can be passed to Pysqlite
+as ``False``::
 
     from sqlalchemy.pool import StaticPool
     engine = create_engine('sqlite://',
@@ -155,13 +157,14 @@ version of SQLite.
 Using Temporary Tables with SQLite
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Due to the way SQLite deals with temporary tables, if you wish to use a temporary table
-in a file-based SQLite database across multiple checkouts from the connection pool, such
-as when using an ORM :class:`.Session` where the temporary table should continue to remain
-after :meth:`.commit` or :meth:`.rollback` is called,
-a pool which maintains a single connection must be used.   Use :class:`.SingletonThreadPool`
-if the scope is only needed within the current thread, or :class:`.StaticPool` is scope is
-needed within multiple threads for this case::
+Due to the way SQLite deals with temporary tables, if you wish to use a
+temporary table in a file-based SQLite database across multiple checkouts
+from the connection pool, such as when using an ORM :class:`.Session` where
+the temporary table should continue to remain after :meth:`.commit` or
+:meth:`.rollback` is called, a pool which maintains a single connection must
+be used.   Use :class:`.SingletonThreadPool` if the scope is only needed
+within the current thread, or :class:`.StaticPool` is scope is needed within
+multiple threads for this case::
 
     # maintain the same connection per thread
     from sqlalchemy.pool import SingletonThreadPool
@@ -174,17 +177,17 @@ needed within multiple threads for this case::
     engine = create_engine('sqlite:///mydb.db',
                         poolclass=StaticPool)
 
-Note that :class:`.SingletonThreadPool` should be configured for the number of threads
-that are to be used; beyond that number, connections will be closed out in a non deterministic
-way.
+Note that :class:`.SingletonThreadPool` should be configured for the number
+of threads that are to be used; beyond that number, connections will be
+closed out in a non deterministic way.
 
 Unicode
 -------
 
-The pysqlite driver only returns Python ``unicode`` objects in result sets, never
-plain strings, and accommodates ``unicode`` objects within bound parameter
-values in all cases.   Regardless of the SQLAlchemy string type in use,
-string-based result values will by Python ``unicode`` in Python 2.
+The pysqlite driver only returns Python ``unicode`` objects in result sets,
+never plain strings, and accommodates ``unicode`` objects within bound
+parameter values in all cases.   Regardless of the SQLAlchemy string type in
+use, string-based result values will by Python ``unicode`` in Python 2.
 The :class:`.Unicode` type should still be used to indicate those columns that
 require unicode, however, so that non-``unicode`` values passed inadvertently
 will emit a warning.  Pysqlite will emit an error if a non-``unicode`` string
@@ -224,6 +227,7 @@ from sqlalchemy import util
 
 import os
 
+
 class _SQLite_pysqliteTimeStamp(DATETIME):
     def bind_processor(self, dialect):
         if dialect.native_datetime:
@@ -236,6 +240,7 @@ class _SQLite_pysqliteTimeStamp(DATETIME):
             return None
         else:
             return DATETIME.result_processor(self, dialect, coltype)
+
 
 class _SQLite_pysqliteDate(DATE):
     def bind_processor(self, dialect):
@@ -250,14 +255,15 @@ class _SQLite_pysqliteDate(DATE):
         else:
             return DATE.result_processor(self, dialect, coltype)
 
+
 class SQLiteDialect_pysqlite(SQLiteDialect):
     default_paramstyle = 'qmark'
 
     colspecs = util.update_copy(
         SQLiteDialect.colspecs,
         {
-            sqltypes.Date:_SQLite_pysqliteDate,
-            sqltypes.TIMESTAMP:_SQLite_pysqliteTimeStamp,
+            sqltypes.Date: _SQLite_pysqliteDate,
+            sqltypes.TIMESTAMP: _SQLite_pysqliteTimeStamp,
         }
     )
 
@@ -284,7 +290,7 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
             from pysqlite2 import dbapi2 as sqlite
         except ImportError, e:
             try:
-                from sqlite3 import dbapi2 as sqlite #try the 2.5+ stdlib name.
+                from sqlite3 import dbapi2 as sqlite  # try 2.5+ stdlib name.
             except ImportError:
                 raise e
         return sqlite
