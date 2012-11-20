@@ -2826,6 +2826,7 @@ class HStoreTest(fixtures.TestBase):
             '"key2"=>"value2", "key1"=>"value1", '
                         'crapcrapcrap, "key3"=>"value3"'
         )
+
     def test_result_deserialize_default(self):
         from sqlalchemy.engine import default
 
@@ -2986,8 +2987,8 @@ class HStoreTest(fixtures.TestBase):
 
     def test_cols_concat_op(self):
         self._test_cols(
-            self.hashcol + self.hashcol,
-            "test_table.hash || test_table.hash AS anon_1",
+            hstore('foo', 'bar') + self.hashcol,
+            "hstore(%(param_1)s, %(param_2)s) || test_table.hash AS anon_1",
             True
         )
 
@@ -3025,6 +3026,7 @@ class HStoreTest(fixtures.TestBase):
             "hstore_to_matrix(test_table.hash) AS hstore_to_matrix_1",
             True
         )
+
 
 class HStoreRoundTripTest(fixtures.TablesTest):
     __requires__ = 'hstore',

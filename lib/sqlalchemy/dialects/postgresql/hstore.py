@@ -47,7 +47,7 @@ def _parse_error(hstore_str, pos):
         residual = residual[:-1] + '[...]'
 
     return "After %r, could not parse residual at position %d: %r" % (
-                    parsed_tail, pos, residual)
+        parsed_tail, pos, residual)
 
 
 def _parse_hstore(hstore_str):
@@ -173,7 +173,7 @@ class HSTORE(sqltypes.Concatenable, sqltypes.TypeEngine):
 
     __visit_name__ = 'HSTORE'
 
-    class comparator_factory(sqltypes.TypeEngine.Comparator):
+    class comparator_factory(sqltypes.Concatenable.Comparator):
         """Define comparison operations for :class:`.HSTORE`."""
 
         def has_key(self, other):
@@ -218,12 +218,6 @@ class HSTORE(sqltypes.Concatenable, sqltypes.TypeEngine):
             """
             return self.expr.op('->', precedence=5)(other)
 
-        def __add__(self, other):
-            """HStore expression.  Merge the left and right hstore expressions,
-            with duplicate keys taking the value from the right expression.
-            """
-            return self.expr.concat(other)
-
         def delete(self, key):
             """HStore expression.  Returns the contents of this hstore with the
             given key deleted.  Note that the key may be a SQLA expression.
@@ -262,7 +256,8 @@ class HSTORE(sqltypes.Concatenable, sqltypes.TypeEngine):
                     return op, sqltypes.Boolean
                 elif op.opstring == '->':
                     return op, sqltypes.Text
-            return op, other_comparator.type
+            return sqltypes.Concatenable.Comparator.\
+                _adapt_expression(self, op, other_comparator)
 
     def bind_processor(self, dialect):
         def process(value):
