@@ -518,6 +518,8 @@ class Connection(Connectable):
         self.__transaction = context
 
     def _begin_twophase_impl(self, xid):
+        if self._echo:
+            self.engine.logger.info("BEGIN TWOPHASE (implicit)")
         if self._has_events:
             self.dispatch.begin_twophase(self, xid)
 
