@@ -182,26 +182,26 @@ colspecs = {
 
 
 ischema_names = {
-    0   : sqltypes.CHAR,       # CHAR
-    1   : sqltypes.SMALLINT, # SMALLINT
-    2   : sqltypes.INTEGER,      # INT
-    3   : sqltypes.FLOAT,      # Float
-    3   : sqltypes.Float,      # SmallFloat
-    5   : sqltypes.DECIMAL,      # DECIMAL
-    6   : sqltypes.Integer,      # Serial
-    7   : sqltypes.DATE,         # DATE
-    8   : sqltypes.Numeric,      # MONEY
-    10  : sqltypes.DATETIME,     # DATETIME
-    11  : sqltypes.LargeBinary,       # BYTE
-    12  : sqltypes.TEXT,         # TEXT
-    13  : sqltypes.VARCHAR,       # VARCHAR
-    15  : sqltypes.NCHAR,       # NCHAR
-    16  : sqltypes.NVARCHAR,       # NVARCHAR
-    17  : sqltypes.Integer,      # INT8
-    18  : sqltypes.Integer,      # Serial8
-    43  : sqltypes.String,       # LVARCHAR
-    -1  : sqltypes.BLOB,       # BLOB
-    -1  : sqltypes.CLOB,         # CLOB
+    0: sqltypes.CHAR,           # CHAR
+    1: sqltypes.SMALLINT,       # SMALLINT
+    2: sqltypes.INTEGER,        # INT
+    3: sqltypes.FLOAT,          # Float
+    3: sqltypes.Float,          # SmallFloat
+    5: sqltypes.DECIMAL,        # DECIMAL
+    6: sqltypes.Integer,        # Serial
+    7: sqltypes.DATE,           # DATE
+    8: sqltypes.Numeric,        # MONEY
+    10: sqltypes.DATETIME,      # DATETIME
+    11: sqltypes.LargeBinary,   # BYTE
+    12: sqltypes.TEXT,          # TEXT
+    13: sqltypes.VARCHAR,       # VARCHAR
+    15: sqltypes.NCHAR,         # NCHAR
+    16: sqltypes.NVARCHAR,      # NVARCHAR
+    17: sqltypes.Integer,       # INT8
+    18: sqltypes.Integer,       # Serial8
+    43: sqltypes.String,        # LVARCHAR
+    -1: sqltypes.BLOB,          # BLOB
+    -1: sqltypes.CLOB,          # CLOB
 }
 
 
@@ -494,7 +494,6 @@ class InformixDialect(default.DefaultDialect):
              t8.idxname
              and t7.tabid = t5.ptabid""", table_name, schema_sel)
 
-
         def fkey_rec():
             return {
                  'name' : None,
@@ -543,15 +542,15 @@ class InformixDialect(default.DefaultDialect):
         colpositions = set()
 
         for row in data:
-            colpos = set([getattr(row, 'part%d' % x) for x in range(1,16)])
+            colpos = set([getattr(row, 'part%d' % x) for x in range(1, 16)])
             colpositions |= colpos
 
         if not len(colpositions):
-            return {'constrained_columns':[], 'name':None}
+            return {'constrained_columns': [], 'name': None}
 
         # Select the column names using the columnpositions
         # TODO: Maybe cache a bit of those col infos (eg select all colnames for one table)
-        place_holder = ','.join('?'*len(colpositions))
+        place_holder = ','.join('?' * len(colpositions))
         c = connection.execute(
             """select t1.colname
             from syscolumns as t1, systables as t2
@@ -560,8 +559,8 @@ class InformixDialect(default.DefaultDialect):
             table_name, *colpositions
         ).fetchall()
 
-        cols = reduce(lambda x,y: list(x)+list(y), c, [])
-        return {'constrained_columns':cols, 'name':None}
+        cols = reduce(lambda x, y: list(x) + list(y), c, [])
+        return {'constrained_columns': cols, 'name': None}
 
     @reflection.cache
     def get_indexes(self, connection, table_name, schema, **kw):
@@ -574,9 +573,9 @@ class InformixDialect(default.DefaultDialect):
 
         indexes = []
         for row in c.fetchall():
-            colnames = [getattr(row, 'part%d' % x) for x in range(1,16)]
+            colnames = [getattr(row, 'part%d' % x) for x in range(1, 16)]
             colnames = [x for x in colnames if x]
-            place_holder = ','.join('?'*len(colnames))
+            place_holder = ','.join('?' * len(colnames))
             c = connection.execute(
                 """select t1.colname
                 from syscolumns as t1, systables as t2
@@ -584,7 +583,7 @@ class InformixDialect(default.DefaultDialect):
                 t1.colno in (%s)""" % place_holder,
                 table_name, *colnames
             ).fetchall()
-            c = reduce(lambda x,y: list(x)+list(y), c, [])
+            c = reduce(lambda x, y: list(x) + list(y), c, [])
             indexes.append({
                 'name': row.idxname,
                 'unique': row.idxtype.lower() == 'u',

@@ -504,7 +504,6 @@ class OracleDialect_cx_oracle(OracleDialect):
         oracle.ROWID: _OracleRowid,
     }
 
-
     execute_sequence_format = list
 
     def __init__(self,
@@ -585,7 +584,7 @@ class OracleDialect_cx_oracle(OracleDialect):
             # expect encoded strings or unicodes, etc.
             self.dbapi_type_map = {
                 self.dbapi.CLOB: oracle.CLOB(),
-                self.dbapi.NCLOB:oracle.NCLOB(),
+                self.dbapi.NCLOB: oracle.NCLOB(),
                 self.dbapi.BLOB: oracle.BLOB(),
                 self.dbapi.BINARY: oracle.RAW(),
             }

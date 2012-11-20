@@ -39,7 +39,6 @@ from .base import (BIT, MySQLDialect, MySQLExecutionContext)
 from ... import types as sqltypes, util
 
 
-
 class _oursqlBIT(BIT):
     def result_processor(self, dialect, coltype):
         """oursql already converts mysql bits, so."""
@@ -140,7 +139,6 @@ class MySQLDialect_oursql(MySQLDialect):
                                             schema = schema,
                                             **kw
         )
-
 
     def get_columns(self, connection, table_name, schema=None, **kw):
         return MySQLDialect.get_columns(self,

@@ -164,7 +164,7 @@ class _MSNumeric_pyodbc(sqltypes.Numeric):
             result = "%s%s%s" % (
                     (value < 0 and '-' or ''),
                     "".join([str(s) for s in _int]),
-                    "0" * (value.adjusted() - (len(_int)-1)))
+                    "0" * (value.adjusted() - (len(_int) - 1)))
         else:
             if (len(_int) - 1) > value.adjusted():
                 result = "%s%s.%s" % (
@@ -238,7 +238,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
     colspecs = util.update_copy(
         MSDialect.colspecs,
         {
-            sqltypes.Numeric:_MSNumeric_pyodbc
+            sqltypes.Numeric: _MSNumeric_pyodbc
         }
     )
 

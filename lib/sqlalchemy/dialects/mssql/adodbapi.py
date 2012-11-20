@@ -50,7 +50,7 @@ class MSDialect_adodbapi(MSDialect):
     colspecs = util.update_copy(
         MSDialect.colspecs,
         {
-            sqltypes.DateTime:MSDateTime_adodbapi
+            sqltypes.DateTime: MSDateTime_adodbapi
         }
     )
 

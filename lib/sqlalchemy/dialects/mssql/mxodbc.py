@@ -104,7 +104,6 @@ class MSDialect_mxodbc(MxODBCConnector, MSDialect):
         sqltypes.Time : _MSTime_mxodbc,
     }
 
-
     def __init__(self, description_encoding=None, **params):
         super(MSDialect_mxodbc, self).__init__(**params)
         self.description_encoding = description_encoding

@@ -44,8 +44,8 @@ class MSDialect_pymssql(MSDialect):
     colspecs = util.update_copy(
         MSDialect.colspecs,
         {
-            sqltypes.Numeric:_MSNumeric_pymssql,
-            sqltypes.Float:sqltypes.Float,
+            sqltypes.Numeric: _MSNumeric_pymssql,
+            sqltypes.Float: sqltypes.Float,
         }
     )
     @classmethod

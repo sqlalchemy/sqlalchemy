@@ -85,7 +85,7 @@ class FBDialect_kinterbasdb(FBDialect):
     colspecs = util.update_copy(
         FBDialect.colspecs,
         {
-            sqltypes.Numeric:_FBNumeric_kinterbasdb,
+            sqltypes.Numeric: _FBNumeric_kinterbasdb,
         }
 
     )

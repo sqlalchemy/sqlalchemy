@@ -213,7 +213,6 @@ class FBTypeCompiler(compiler.GenericTypeCompiler):
         return self._extend_string(type_, basic)
 
 
-
 class FBCompiler(sql.compiler.SQLCompiler):
     """Firebird specific idiosyncrasies"""
 
@@ -518,7 +517,7 @@ class FBDialect(default.DefaultDialect):
         # get primary key fields
         c = connection.execute(keyqry, ["PRIMARY KEY", tablename])
         pkfields = [self.normalize_name(r['fname']) for r in c.fetchall()]
-        return {'constrained_columns':pkfields, 'name':None}
+        return {'constrained_columns': pkfields, 'name': None}
 
     @reflection.cache
     def get_column_sequence(self, connection,
@@ -626,11 +625,11 @@ class FBDialect(default.DefaultDialect):
                     # Redundant
                     defvalue = None
             col_d = {
-                'name' : name,
-                'type' : coltype,
-                'nullable' :  not bool(row['null_flag']),
-                'default' : defvalue,
-                'autoincrement':defvalue is None
+                'name': name,
+                'type': coltype,
+                'nullable': not bool(row['null_flag']),
+                'default': defvalue,
+                'autoincrement': defvalue is None
             }
 
             if orig_colname.lower() == orig_colname:
@@ -638,7 +637,7 @@ class FBDialect(default.DefaultDialect):
 
             # if the PK is a single field, try to see if its linked to
             # a sequence thru a trigger
-            if len(pkey_cols)==1 and name==pkey_cols[0]:
+            if len(pkey_cols) == 1 and name == pkey_cols[0]:
                 seq_d = self.get_column_sequence(connection, tablename, name)
                 if seq_d is not None:
                     col_d['sequence'] = seq_d
@@ -668,12 +667,12 @@ class FBDialect(default.DefaultDialect):
         tablename = self.denormalize_name(table_name)
 
         c = connection.execute(fkqry, ["FOREIGN KEY", tablename])
-        fks = util.defaultdict(lambda:{
-            'name' : None,
-            'constrained_columns' : [],
-            'referred_schema' : None,
-            'referred_table' : None,
-            'referred_columns' : []
+        fks = util.defaultdict(lambda: {
+            'name': None,
+            'constrained_columns': [],
+            'referred_schema': None,
+            'referred_table': None,
+            'referred_columns': []
         })
 
         for row in c:

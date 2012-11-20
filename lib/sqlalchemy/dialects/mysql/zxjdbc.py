@@ -97,7 +97,7 @@ class MySQLDialect_zxjdbc(ZxJDBCConnector, MySQLDialect):
         if c:
             return int(c)
 
-    def _get_server_version_info(self,connection):
+    def _get_server_version_info(self, connection):
         dbapi_con = connection.connection
         version = []
         r = re.compile('[.\-]')

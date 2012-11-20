@@ -1469,7 +1469,6 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
         return constraint_string
 
-
     def get_column_specification(self, column, **kw):
         """Builds column DDL."""
 
@@ -1528,7 +1527,6 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
             table_opts.append(joiner.join((opt, arg)))
         return ' '.join(table_opts)
-
 
     def visit_create_index(self, create):
         index = create.element
@@ -2018,7 +2016,6 @@ class MySQLDialect(default.DefaultDialect):
     def _get_default_schema_name(self, connection):
         return connection.execute('SELECT DATABASE()').scalar()
 
-
     def has_table(self, connection, table_name, schema=None):
         # SHOW TABLE STATUS LIKE and SHOW TABLES LIKE do not function properly
         # on macosx (and maybe win?) with multibyte table names.
@@ -2029,7 +2026,6 @@ class MySQLDialect(default.DefaultDialect):
         # [ticket:726]
         # full_name = self.identifier_preparer.format_table(table,
         #                                                   use_schema=True)
-
 
         full_name = '.'.join(self.identifier_preparer._quote_free_identifiers(
             schema, table_name))
@@ -2122,8 +2118,8 @@ class MySQLDialect(default.DefaultDialect):
             if key['type'] == 'PRIMARY':
                 # There can be only one.
                 cols = [s[0] for s in key['columns']]
-                return {'constrained_columns':cols, 'name':None}
-        return {'constrained_columns':[], 'name':None}
+                return {'constrained_columns': cols, 'name': None}
+        return {'constrained_columns': [], 'name': None}
 
     @reflection.cache
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):
@@ -2639,7 +2635,6 @@ class MySQLTableDefinitionParser(object):
         # 123 or 123,456
         self._re_csv_int = _re_compile(r'\d+')
 
-
         # `colname` <type> [type opts]
         #  (NOT NULL | NULL)
         #   DEFAULT ('value' | CURRENT_TIMESTAMP...)
@@ -2748,7 +2743,7 @@ class MySQLTableDefinitionParser(object):
                  r"'(?P<val>(?:[^']|'')*?)'(?!')" %
                  (re.escape(directive), self._optional_equals))
         self._pr_options.append(
-            _pr_compile(regex, lambda v: v.replace("\\\\","\\").replace("''", "'")))
+            _pr_compile(regex, lambda v: v.replace("\\\\", "\\").replace("''", "'")))
 
     def _add_option_word(self, directive):
         regex = (r'(?P<directive>%s)%s'

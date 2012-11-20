@@ -111,7 +111,7 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
 
     def is_disconnect(self, e, connection, cursor):
         errnos = (2006, 2013, 2014, 2045, 2055, 2048)
-        exceptions = (self.dbapi.OperationalError,self.dbapi.InterfaceError)
+        exceptions = (self.dbapi.OperationalError, self.dbapi.InterfaceError)
         if isinstance(e, exceptions):
             return e.errno in errnos
         else:

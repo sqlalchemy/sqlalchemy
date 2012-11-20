@@ -1393,7 +1393,7 @@ class MSDialect(default.DefaultDialect):
                 'type' : coltype,
                 'nullable' : nullable,
                 'default' : default,
-                'autoincrement':False,
+                'autoincrement': False,
             }
             cols.append(cdict)
         # autoincrement and identity
@@ -1479,7 +1479,6 @@ class MSDialect(default.DefaultDialect):
                        order_by= [
                                     RR.c.constraint_name,
                                     R.c.ordinal_position])
-
 
         # group rows by constraint ID, to handle multi-column FKs
         fkeys = []
