@@ -464,12 +464,21 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
     as well as UPDATE statements when the :meth:`.Update.values` method
     is used::
 
-        mytable.update().values({mytable.c.data[5]:7,
-                        mytable.c.data[2:7]:[1,2,3]})
+        mytable.update().values({
+            mytable.c.data[5]: 7,
+            mytable.c.data[2:7]: [1, 2, 3]
+        })
+
+    :class:`.ARRAY` provides special methods for containment operations,
+    e.g.::
+
+        mytable.c.data.contains([1, 2])
+
+    For a full list of special methods see :class:`.ARRAY.Comparator`.
 
     .. versionadded:: 0.8 Added support for index and slice operations
        to the :class:`.ARRAY` type, including support for UPDATE
-       statements.
+       statements, and special array containment operations.
 
     The :class:`.ARRAY` type may not be supported on all DBAPIs.
     It is known to work on psycopg2 and not pg8000.
@@ -482,6 +491,8 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
     __visit_name__ = 'ARRAY'
 
     class Comparator(sqltypes.Concatenable.Comparator):
+        """Define comparison operations for :class:`.ARRAY`."""
+
         def __getitem__(self, index):
             if isinstance(index, slice):
                 index = _Slice(index, self)
@@ -490,6 +501,31 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
                 return_type = self.type.item_type
             return self._binary_operate(self.expr, operators.getitem, index,
                             result_type=return_type)
+
+        def contains(self, other, **kwargs):
+            """Boolean expression.  Test if elements are a superset of the
+            elements of the argument array expression.
+            """
+            return self.expr.op('@>')(other)
+
+        def contained_by(self, other):
+            """Boolean expression.  Test if elements are a proper subset of the
+            elements of the argument array expression.
+            """
+            return self.expr.op('<@')(other)
+
+        def overlap(self, other):
+            """Boolean expression.  Test if array has elements in common with
+            an argument array expression.
+            """
+            return self.expr.op('&&')(other)
+
+        def _adapt_expression(self, op, other_comparator):
+            if isinstance(op, operators.custom_op):
+                if op.opstring in ['@>', '<@', '&&']:
+                    return op, sqltypes.Boolean
+            return sqltypes.Concatenable.Comparator.\
+                _adapt_expression(self, op, other_comparator)
 
     comparator_factory = Comparator
 
