@@ -14,6 +14,7 @@ event system.
 
 from . import event, util
 
+
 class PoolListener(object):
     """Hooks into the lifecycle of connections in a :class:`.Pool`.
 
@@ -89,7 +90,6 @@ class PoolListener(object):
         if hasattr(listener, 'checkin'):
             event.listen(self, 'checkin', listener.checkin)
 
-
     def connect(self, dbapi_con, con_record):
         """Called once for each new DB-API connection or Pool's ``creator()``.
 
@@ -148,6 +148,7 @@ class PoolListener(object):
 
         """
 
+
 class ConnectionProxy(object):
     """Allows interception of statement execution by Connections.
 
@@ -161,11 +162,13 @@ class ConnectionProxy(object):
     cursor level executions, e.g.::
 
         class MyProxy(ConnectionProxy):
-            def execute(self, conn, execute, clauseelement, *multiparams, **params):
+            def execute(self, conn, execute, clauseelement,
+                        *multiparams, **params):
                 print "compiled statement:", clauseelement
                 return execute(clauseelement, *multiparams, **params)
 
-            def cursor_execute(self, execute, cursor, statement, parameters, context, executemany):
+            def cursor_execute(self, execute, cursor, statement,
+                               parameters, context, executemany):
                 print "raw statement:", statement
                 return execute(cursor, statement, parameters, context)
 
@@ -195,7 +198,7 @@ class ConnectionProxy(object):
         event.listen(self, 'before_execute', adapt_execute)
 
         def adapt_cursor_execute(conn, cursor, statement,
-                                parameters,context, executemany, ):
+                                 parameters, context, executemany):
 
             def execute_wrapper(
                 cursor,
@@ -245,14 +248,13 @@ class ConnectionProxy(object):
         event.listen(self, 'commit_twophase',
                      adapt_listener(listener.commit_twophase))
 
-
     def execute(self, conn, execute, clauseelement, *multiparams, **params):
         """Intercept high level execute() events."""
 
-
         return execute(clauseelement, *multiparams, **params)
 
-    def cursor_execute(self, execute, cursor, statement, parameters, context, executemany):
+    def cursor_execute(self, execute, cursor, statement, parameters,
+                       context, executemany):
         """Intercept low-level cursor execute() events."""
 
         return execute(cursor, statement, parameters, context)
@@ -306,4 +308,3 @@ class ConnectionProxy(object):
         """Intercept commit_twophase() events."""
 
         return commit_twophase(xid, is_prepared)
-

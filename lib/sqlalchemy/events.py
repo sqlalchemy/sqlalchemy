@@ -216,6 +216,7 @@ class DDLEvents(event.Events):
 
         """
 
+
 class SchemaEventTarget(object):
     """Base class for elements that are the targets of :class:`.DDLEvents`
     events.
@@ -234,6 +235,7 @@ class SchemaEventTarget(object):
         self.dispatch.before_parent_attach(self, parent)
         self._set_parent(parent)
         self.dispatch.after_parent_attach(self, parent)
+
 
 class PoolEvents(event.Events):
     """Available events for :class:`.Pool`.
@@ -333,6 +335,7 @@ class PoolEvents(event.Events):
           The ``_ConnectionRecord`` that persistently manages the connection
 
         """
+
 
 class ConnectionEvents(event.Events):
     """Available events for :class:`.Connectable`, which includes
@@ -661,4 +664,3 @@ class ConnectionEvents(event.Events):
          :meth:`.TwoPhaseTransaction.prepare` was called.
 
         """
-
