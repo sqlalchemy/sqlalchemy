@@ -2,7 +2,10 @@ import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc
 
 _repr_stack = set()
+
+
 class BasicEntity(object):
+
     def __init__(self, **kw):
         for key, value in kw.iteritems():
             setattr(self, key, value)
@@ -21,7 +24,10 @@ class BasicEntity(object):
             _repr_stack.remove(id(self))
 
 _recursion_stack = set()
+
+
 class ComparableEntity(BasicEntity):
+
     def __hash__(self):
         return hash(self.__class__)
 

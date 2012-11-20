@@ -25,7 +25,6 @@ class TableDDLTest(fixtures.TestBase):
                 (1, 'some data')
             )
 
-
     @requirements.create_table
     @util.provide_metadata
     def test_create_table(self):
@@ -34,7 +33,6 @@ class TableDDLTest(fixtures.TestBase):
             config.db, checkfirst=False
         )
         self._simple_roundtrip()
-
 
     @requirements.drop_table
     @util.provide_metadata

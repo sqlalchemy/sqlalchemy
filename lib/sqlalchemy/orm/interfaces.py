@@ -16,7 +16,6 @@ classes within should be considered mostly private.
 
 """
 from __future__ import absolute_import
-from itertools import chain
 
 from .. import exc as sa_exc, util, inspect
 from ..sql import operators
@@ -53,6 +52,7 @@ from .deprecated_interfaces import AttributeExtension, \
     SessionExtension, \
     MapperExtension
 
+
 class _InspectionAttr(object):
     """Define a series of attributes that all ORM inspection
     targets need to have."""
@@ -65,11 +65,14 @@ class _InspectionAttr(object):
     is_attribute = False
     is_clause_element = False
 
+
 class _MappedAttribute(object):
     """Mixin for attributes which should be replaced by mapper-assigned
     attributes.
 
     """
+
+
 class MapperProperty(_MappedAttribute, _InspectionAttr):
     """Manage the relationship of a ``Mapper`` to a single class
     attribute, as well as that attribute as it appears on individual
@@ -80,7 +83,8 @@ class MapperProperty(_MappedAttribute, _InspectionAttr):
     mapped :class:`.Column`, which is represented in a mapping as
     an instance of :class:`.ColumnProperty`,
     and a reference to another class produced by :func:`.relationship`,
-    represented in the mapping as an instance of :class:`.RelationshipProperty`.
+    represented in the mapping as an instance of
+    :class:`.RelationshipProperty`.
 
     """
 
@@ -185,7 +189,6 @@ class MapperProperty(_MappedAttribute, _InspectionAttr):
         """
         pass
 
-
     def is_primary(self):
         """Return True if this ``MapperProperty``'s mapper is the
         primary mapper for its class.
@@ -216,6 +219,7 @@ class MapperProperty(_MappedAttribute, _InspectionAttr):
 
         return operator(self.comparator, value)
 
+
 class PropComparator(operators.ColumnOperators):
     """Defines boolean, comparison, and other operators for
     :class:`.MapperProperty` objects.
@@ -223,8 +227,8 @@ class PropComparator(operators.ColumnOperators):
     SQLAlchemy allows for operators to
     be redefined at both the Core and ORM level.  :class:`.PropComparator`
     is the base class of operator redefinition for ORM-level operations,
-    including those of :class:`.ColumnProperty`, :class:`.RelationshipProperty`,
-    and :class:`.CompositeProperty`.
+    including those of :class:`.ColumnProperty`,
+    :class:`.RelationshipProperty`, and :class:`.CompositeProperty`.
 
     .. note:: With the advent of Hybrid properties introduced in SQLAlchemy
        0.7, as well as Core-level operator redefinition in
@@ -274,10 +278,10 @@ class PropComparator(operators.ColumnOperators):
 
         class SomeMappedClass(Base):
             some_column = column_property(Column("some_column", String),
-                                    comparator_factory=MyColumnComparator)
+                                comparator_factory=MyColumnComparator)
 
             some_relationship = relationship(SomeOtherClass,
-                                    comparator_factory=MyRelationshipComparator)
+                                comparator_factory=MyRelationshipComparator)
 
             some_composite = composite(
                     Column("a", String), Column("b", String),
@@ -309,7 +313,6 @@ class PropComparator(operators.ColumnOperators):
         self.prop = self.property = prop
         self._parentmapper = parentmapper
         self.adapter = adapter
-
 
     def __clause_element__(self):
         raise NotImplementedError("%r" % self)
@@ -345,8 +348,8 @@ class PropComparator(operators.ColumnOperators):
             query.join(Company.employees.of_type(Engineer)).\\
                filter(Engineer.name=='foo')
 
-        :param \class_: a class or mapper indicating that criterion will be against
-            this specific subclass.
+        :param \class_: a class or mapper indicating that criterion will be
+            against this specific subclass.
 
 
         """
@@ -363,9 +366,9 @@ class PropComparator(operators.ColumnOperators):
         :param criterion: an optional ClauseElement formulated against the
           member class' table or attributes.
 
-        :param \**kwargs: key/value pairs corresponding to member class attribute
-          names which will be compared via equality to the corresponding
-          values.
+        :param \**kwargs: key/value pairs corresponding to member class
+          attribute names which will be compared via equality to the
+          corresponding values.
 
         """
 
@@ -381,9 +384,9 @@ class PropComparator(operators.ColumnOperators):
         :param criterion: an optional ClauseElement formulated against the
           member class' table or attributes.
 
-        :param \**kwargs: key/value pairs corresponding to member class attribute
-          names which will be compared via equality to the corresponding
-          values.
+        :param \**kwargs: key/value pairs corresponding to member class
+          attribute names which will be compared via equality to the
+          corresponding values.
 
         """
 
@@ -456,6 +459,7 @@ class StrategizedProperty(MapperProperty):
             not mapper.class_manager._attr_has_impl(self.key):
             self.strategy.init_class_attribute(mapper)
 
+
 class MapperOption(object):
     """Describe a modification to a Query."""
 
@@ -475,6 +479,7 @@ class MapperOption(object):
         Query."""
 
         self.process_query(query)
+
 
 class PropertyOption(MapperOption):
     """A MapperOption that is applied to a property off the mapper or
@@ -685,6 +690,7 @@ class PropertyOption(MapperOption):
 
         return paths
 
+
 class StrategizedOption(PropertyOption):
     """A MapperOption that affects which LoaderStrategy will be used
     for an operation by a StrategizedProperty.
@@ -710,6 +716,7 @@ class StrategizedOption(PropertyOption):
 
     def get_strategy_class(self):
         raise NotImplementedError()
+
 
 class LoaderStrategy(object):
     """Describe the loading behavior of a StrategizedProperty object.
@@ -758,5 +765,3 @@ class LoaderStrategy(object):
 
     def __str__(self):
         return str(self.parent_property)
-
-

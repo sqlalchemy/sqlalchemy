@@ -15,6 +15,7 @@ from ...sql import expression
 from ... import event
 from . import clsregistry
 
+
 def _declared_mapping_info(cls):
     # deferred mapping
     if cls in _MapperConfig.configs:
@@ -192,7 +193,8 @@ def _as_declarative(cls, classname, dict_):
             # in multi-column ColumnProperties.
             if key == c.key:
                 del our_stuff[key]
-    declared_columns = sorted(declared_columns, key=lambda c: c._creation_order)
+    declared_columns = sorted(
+        declared_columns, key=lambda c: c._creation_order)
     table = None
 
     if hasattr(cls, '__table_cls__'):
@@ -217,9 +219,10 @@ def _as_declarative(cls, classname, dict_):
             if autoload:
                 table_kw['autoload'] = True
 
-            cls.__table__ = table = table_cls(tablename, cls.metadata,
-                                          *(tuple(declared_columns) + tuple(args)),
-                                           **table_kw)
+            cls.__table__ = table = table_cls(
+                tablename, cls.metadata,
+                *(tuple(declared_columns) + tuple(args)),
+                **table_kw)
     else:
         table = cls.__table__
         if declared_columns:
@@ -290,6 +293,7 @@ def _as_declarative(cls, classname, dict_):
                        mapper_args_fn)
     if not hasattr(cls, '_sa_decl_prepare'):
         mt.map()
+
 
 class _MapperConfig(object):
     configs = util.OrderedDict()
@@ -375,6 +379,7 @@ class _MapperConfig(object):
             **mapper_args
         )
 
+
 def _add_attribute(cls, key, value):
     """add an attribute to an existing declarative class.
 
@@ -395,13 +400,14 @@ def _add_attribute(cls, key, value):
             cls.__mapper__.add_property(key, value)
         elif isinstance(value, MapperProperty):
             cls.__mapper__.add_property(
-                                    key,
-                                    clsregistry._deferred_relationship(cls, value)
-                            )
+                key,
+                clsregistry._deferred_relationship(cls, value)
+            )
         else:
             type.__setattr__(cls, key, value)
     else:
         type.__setattr__(cls, key, value)
+
 
 def _declarative_constructor(self, **kwargs):
     """A simple constructor that allows initialization from kwargs.

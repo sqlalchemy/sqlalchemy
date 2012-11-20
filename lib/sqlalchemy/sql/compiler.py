@@ -57,59 +57,59 @@ BIND_PARAMS = re.compile(r'(?<![:\w\$\x5c]):([\w\$]+)(?![:\w\$])', re.UNICODE)
 BIND_PARAMS_ESC = re.compile(r'\x5c(:[\w\$]+)(?![:\w\$])', re.UNICODE)
 
 BIND_TEMPLATES = {
-    'pyformat':"%%(%(name)s)s",
-    'qmark':"?",
-    'format':"%%s",
-    'numeric':":[_POSITION]",
-    'named':":%(name)s"
+    'pyformat': "%%(%(name)s)s",
+    'qmark': "?",
+    'format': "%%s",
+    'numeric': ":[_POSITION]",
+    'named': ":%(name)s"
 }
 
 
 OPERATORS = {
     # binary
-    operators.and_ : ' AND ',
-    operators.or_ : ' OR ',
-    operators.add : ' + ',
-    operators.mul : ' * ',
-    operators.sub : ' - ',
+    operators.and_: ' AND ',
+    operators.or_: ' OR ',
+    operators.add: ' + ',
+    operators.mul: ' * ',
+    operators.sub: ' - ',
     # Py2K
-    operators.div : ' / ',
+    operators.div: ' / ',
     # end Py2K
-    operators.mod : ' % ',
-    operators.truediv : ' / ',
-    operators.neg : '-',
-    operators.lt : ' < ',
-    operators.le : ' <= ',
-    operators.ne : ' != ',
-    operators.gt : ' > ',
-    operators.ge : ' >= ',
-    operators.eq : ' = ',
-    operators.concat_op : ' || ',
-    operators.between_op : ' BETWEEN ',
-    operators.match_op : ' MATCH ',
-    operators.in_op : ' IN ',
-    operators.notin_op : ' NOT IN ',
-    operators.comma_op : ', ',
-    operators.from_ : ' FROM ',
-    operators.as_ : ' AS ',
-    operators.is_ : ' IS ',
-    operators.isnot : ' IS NOT ',
-    operators.collate : ' COLLATE ',
+    operators.mod: ' % ',
+    operators.truediv: ' / ',
+    operators.neg: '-',
+    operators.lt: ' < ',
+    operators.le: ' <= ',
+    operators.ne: ' != ',
+    operators.gt: ' > ',
+    operators.ge: ' >= ',
+    operators.eq: ' = ',
+    operators.concat_op: ' || ',
+    operators.between_op: ' BETWEEN ',
+    operators.match_op: ' MATCH ',
+    operators.in_op: ' IN ',
+    operators.notin_op: ' NOT IN ',
+    operators.comma_op: ', ',
+    operators.from_: ' FROM ',
+    operators.as_: ' AS ',
+    operators.is_: ' IS ',
+    operators.isnot: ' IS NOT ',
+    operators.collate: ' COLLATE ',
 
     # unary
-    operators.exists : 'EXISTS ',
-    operators.distinct_op : 'DISTINCT ',
-    operators.inv : 'NOT ',
+    operators.exists: 'EXISTS ',
+    operators.distinct_op: 'DISTINCT ',
+    operators.inv: 'NOT ',
 
     # modifiers
-    operators.desc_op : ' DESC',
-    operators.asc_op : ' ASC',
-    operators.nullsfirst_op : ' NULLS FIRST',
-    operators.nullslast_op : ' NULLS LAST',
+    operators.desc_op: ' DESC',
+    operators.asc_op: ' ASC',
+    operators.nullsfirst_op: ' NULLS FIRST',
+    operators.nullslast_op: ' NULLS LAST',
 }
 
 FUNCTIONS = {
-    functions.coalesce : 'coalesce%(expr)s',
+    functions.coalesce: 'coalesce%(expr)s',
     functions.current_date: 'CURRENT_DATE',
     functions.current_time: 'CURRENT_TIME',
     functions.current_timestamp: 'CURRENT_TIMESTAMP',
@@ -118,7 +118,7 @@ FUNCTIONS = {
     functions.localtimestamp: 'LOCALTIMESTAMP',
     functions.random: 'random%(expr)s',
     functions.sysdate: 'sysdate',
-    functions.session_user :'SESSION_USER',
+    functions.session_user: 'SESSION_USER',
     functions.user: 'USER'
 }
 
@@ -141,13 +141,14 @@ EXTRACT_MAP = {
 }
 
 COMPOUND_KEYWORDS = {
-    sql.CompoundSelect.UNION : 'UNION',
-    sql.CompoundSelect.UNION_ALL : 'UNION ALL',
-    sql.CompoundSelect.EXCEPT : 'EXCEPT',
-    sql.CompoundSelect.EXCEPT_ALL : 'EXCEPT ALL',
-    sql.CompoundSelect.INTERSECT : 'INTERSECT',
-    sql.CompoundSelect.INTERSECT_ALL : 'INTERSECT ALL'
+    sql.CompoundSelect.UNION: 'UNION',
+    sql.CompoundSelect.UNION_ALL: 'UNION ALL',
+    sql.CompoundSelect.EXCEPT: 'EXCEPT',
+    sql.CompoundSelect.EXCEPT_ALL: 'EXCEPT ALL',
+    sql.CompoundSelect.INTERSECT: 'INTERSECT',
+    sql.CompoundSelect.INTERSECT_ALL: 'INTERSECT ALL'
 }
+
 
 class _CompileLabel(visitors.Visitable):
     """lightweight label object which acts as an expression.Label."""
@@ -297,16 +298,16 @@ class SQLCompiler(engine.Compiled):
         poscount = itertools.count(1)
         self.string = re.sub(
                         r'\[_POSITION\]',
-                        lambda m:str(util.next(poscount)),
+                        lambda m: str(util.next(poscount)),
                         self.string)
 
     @util.memoized_property
     def _bind_processors(self):
         return dict(
                 (key, value) for key, value in
-                ( (self.bind_names[bindparam],
+                ((self.bind_names[bindparam],
                    bindparam.type._cached_bind_processor(self.dialect))
-                  for bindparam in self.bind_names )
+                  for bindparam in self.bind_names)
                  if value is not None
             )
 
@@ -750,7 +751,6 @@ class SQLCompiler(engine.Compiled):
                     (' ESCAPE ' + self.render_literal_value(escape, None))
                     or '')
 
-
     def visit_bindparam(self, bindparam, within_columns_clause=False,
                                             literal_binds=False,
                                             skip_bind_expression=False,
@@ -873,7 +873,7 @@ class SQLCompiler(engine.Compiled):
                 positional_names.append(name)
             else:
                 self.positiontup.append(name)
-        return self.bindtemplate % {'name':name}
+        return self.bindtemplate % {'name': name}
 
     def visit_cte(self, cte, asfrom=False, ashint=False,
                                 fromhints=None,
@@ -1240,7 +1240,7 @@ class SQLCompiler(engine.Compiled):
     def limit_clause(self, select):
         text = ""
         if select._limit is not None:
-            text +=  "\n LIMIT " + self.process(sql.literal(select._limit))
+            text += "\n LIMIT " + self.process(sql.literal(select._limit))
         if select._offset is not None:
             if select._limit is None:
                 text += "\n LIMIT -1"
@@ -1449,7 +1449,6 @@ class SQLCompiler(engine.Compiled):
         bindparam._is_crud = True
         return bindparam._compiler_dispatch(self)
 
-
     def _get_colparams(self, stmt, extra_tables=None):
         """create a set of tuples representing column/string pairs for use
         in an INSERT or UPDATE statement.
@@ -1505,7 +1504,6 @@ class SQLCompiler(engine.Compiled):
 
                     values.append((k, v))
 
-
         need_pks = self.isinsert and \
                         not self.inline and \
                         not stmt._returning
@@ -1534,7 +1532,7 @@ class SQLCompiler(engine.Compiled):
                         value = normalized_params[c]
                         if sql._is_literal(value):
                             value = self._create_crud_bind_param(
-                                            c, value, required=value is required)
+                                c, value, required=value is required)
                         else:
                             self.postfetch.append(c)
                             value = self.process(value.self_group())
@@ -1775,10 +1773,12 @@ class DDLCompiler(engine.Compiled):
         return self.sql_compiler.post_process_text(ddl.statement % context)
 
     def visit_create_schema(self, create):
-        return "CREATE SCHEMA " + self.preparer.format_schema(create.element, create.quote)
+        schema = self.preparer.format_schema(create.element, create.quote)
+        return "CREATE SCHEMA " + schema
 
     def visit_drop_schema(self, drop):
-        text = "DROP SCHEMA " + self.preparer.format_schema(drop.element, drop.quote)
+        schema = self.preparer.format_schema(drop.element, drop.quote)
+        text = "DROP SCHEMA " + schema
         if drop.cascade:
             text += " CASCADE"
         return text
@@ -1921,9 +1921,7 @@ class DDLCompiler(engine.Compiled):
             index_name = schema_name + "." + index_name
         return index_name
 
-
     def visit_add_constraint(self, create):
-        preparer = self.preparer
         return "ALTER TABLE %s ADD %s" % (
             self.preparer.format_table(create.element.table),
             self.process(create.element)
@@ -1943,7 +1941,6 @@ class DDLCompiler(engine.Compiled):
                 self.preparer.format_sequence(drop.element)
 
     def visit_drop_constraint(self, drop):
-        preparer = self.preparer
         return "ALTER TABLE %s DROP CONSTRAINT %s%s" % (
             self.preparer.format_table(drop.element.table),
             self.preparer.format_constraint(drop.element),
@@ -2084,7 +2081,7 @@ class GenericTypeCompiler(engine.TypeCompiler):
         else:
             return "NUMERIC(%(precision)s, %(scale)s)" % \
                         {'precision': type_.precision,
-                        'scale' : type_.scale}
+                        'scale': type_.scale}
 
     def visit_DECIMAL(self, type_):
         return "DECIMAL"
@@ -2152,7 +2149,6 @@ class GenericTypeCompiler(engine.TypeCompiler):
     def visit_BOOLEAN(self, type_):
         return "BOOLEAN"
 
-
     def visit_large_binary(self, type_):
         return self.visit_BLOB(type_)
 
@@ -2209,6 +2205,7 @@ class GenericTypeCompiler(engine.TypeCompiler):
 
     def visit_user_defined(self, type_):
         return type_.get_col_spec()
+
 
 class IdentifierPreparer(object):
     """Handle quoting and case-folding of identifiers based on options."""
@@ -2388,9 +2385,9 @@ class IdentifierPreparer(object):
             r'(?:'
             r'(?:%(initial)s((?:%(escaped)s|[^%(final)s])+)%(final)s'
             r'|([^\.]+))(?=\.|$))+' %
-            { 'initial': initial,
-              'final': final,
-              'escaped': escaped_final })
+            {'initial': initial,
+             'final': final,
+             'escaped': escaped_final})
         return r
 
     def unformat_identifiers(self, identifiers):

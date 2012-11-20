@@ -28,12 +28,14 @@ from .base import MSDialect
 from ... import types as sqltypes, util, processors
 import re
 
+
 class _MSNumeric_pymssql(sqltypes.Numeric):
     def result_processor(self, dialect, type_):
         if not self.asdecimal:
             return processors.to_float
         else:
             return sqltypes.Numeric.result_processor(self, dialect, type_)
+
 
 class MSDialect_pymssql(MSDialect):
     supports_sane_rowcount = False
@@ -42,10 +44,11 @@ class MSDialect_pymssql(MSDialect):
     colspecs = util.update_copy(
         MSDialect.colspecs,
         {
-            sqltypes.Numeric:_MSNumeric_pymssql,
-            sqltypes.Float:sqltypes.Float,
+            sqltypes.Numeric: _MSNumeric_pymssql,
+            sqltypes.Float: sqltypes.Float,
         }
     )
+
     @classmethod
     def dbapi(cls):
         module = __import__('pymssql')

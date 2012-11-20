@@ -87,6 +87,7 @@ from . import util, strategies
 
 default_strategy = 'plain'
 
+
 def create_engine(*args, **kwargs):
     """Create a new :class:`.Engine` instance.
 
@@ -253,13 +254,13 @@ def create_engine(*args, **kwargs):
         opened above and beyond the pool_size setting, which defaults
         to five. this is only used with :class:`~sqlalchemy.pool.QueuePool`.
 
-    :param module=None: reference to a Python module object (the module itself, not
-        its string name).  Specifies an alternate DBAPI module to be used
-        by the engine's dialect.  Each sub-dialect references a specific DBAPI which
-        will be imported before first connect.  This parameter causes the
-        import to be bypassed, and the given module to be used instead.
-        Can be used for testing of DBAPIs as well as to inject "mock"
-        DBAPI implementations into the :class:`.Engine`.
+    :param module=None: reference to a Python module object (the module
+        itself, not its string name).  Specifies an alternate DBAPI module to
+        be used by the engine's dialect.  Each sub-dialect references a
+        specific DBAPI which will be imported before first connect.  This
+        parameter causes the import to be bypassed, and the given module to
+        be used instead. Can be used for testing of DBAPIs as well as to
+        inject "mock" DBAPI implementations into the :class:`.Engine`.
 
     :param pool=None: an already-constructed instance of
         :class:`~sqlalchemy.pool.Pool`, such as a
@@ -353,5 +354,3 @@ __all__ = (
     'create_engine',
     'engine_from_config',
     )
-
-

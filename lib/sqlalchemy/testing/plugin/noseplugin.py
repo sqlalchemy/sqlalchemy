@@ -41,6 +41,7 @@ db_opts = {}
 options = None
 _existing_engine = None
 
+
 def _log(option, opt_str, value, parser):
     global logging
     if not logging:
@@ -59,8 +60,10 @@ def _list_dbs(*args):
         print "%20s\t%s" % (macro, file_config.get('db', macro))
     sys.exit(0)
 
+
 def _server_side_cursors(options, opt_str, value, parser):
     db_opts['server_side_cursors'] = True
+
 
 def _engine_strategy(options, opt_str, value, parser):
     if value:
@@ -68,24 +71,30 @@ def _engine_strategy(options, opt_str, value, parser):
 
 pre_configure = []
 post_configure = []
+
+
 def pre(fn):
     pre_configure.append(fn)
     return fn
+
+
 def post(fn):
     post_configure.append(fn)
     return fn
+
 
 @pre
 def _setup_options(opt, file_config):
     global options
     options = opt
 
+
 @pre
 def _monkeypatch_cdecimal(options, file_config):
     if options.cdecimal:
-        import sys
         import cdecimal
         sys.modules['decimal'] = cdecimal
+
 
 @post
 def _engine_uri(options, file_config):
@@ -104,6 +113,7 @@ def _engine_uri(options, file_config):
                 "Unknown URI specifier '%s'.  Specify --dbs for known uris."
                         % db_label)
         db_url = file_config.get('db', db_label)
+
 
 @post
 def _require(options, file_config):
@@ -131,11 +141,13 @@ def _require(options, file_config):
                 continue
             pkg_resources.require(requirement)
 
+
 @post
 def _engine_pool(options, file_config):
     if options.mockpool:
         from sqlalchemy import pool
         db_opts['poolclass'] = pool.AssertionPool
+
 
 @post
 def _create_testing_engine(options, file_config):
@@ -199,6 +211,7 @@ def _set_table_options(options, file_config):
     if options.mysql_engine:
         table_options['mysql_engine'] = options.mysql_engine
 
+
 @post
 def _reverse_topological(options, file_config):
     if options.reversetop:
@@ -207,6 +220,7 @@ def _reverse_topological(options, file_config):
         from sqlalchemy.testing.util import RandomSet
         topological.set = unitofwork.set = session.set = mapper.set = \
                 dependency.set = RandomSet
+
 
 @post
 def _requirements(options, file_config):
@@ -229,6 +243,7 @@ def _requirements(options, file_config):
 def _post_setup_options(opt, file_config):
     from sqlalchemy.testing import config
     config.options = options
+
 
 @post
 def _setup_profiling(options, file_config):

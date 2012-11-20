@@ -33,6 +33,7 @@ from ..util import topological
 from .. import inspection
 from .base import Connectable
 
+
 @util.decorator
 def cache(fn, self, con, *args, **kw):
     info_cache = kw.get('info_cache', None)
@@ -107,17 +108,19 @@ class Inspector(object):
 
     @classmethod
     def from_engine(cls, bind):
-        """Construct a new dialect-specific Inspector object from the given engine or connection.
+        """Construct a new dialect-specific Inspector object from the given
+        engine or connection.
 
         :param bind: a :class:`~sqlalchemy.engine.base.Connectable`,
           which is typically an instance of
           :class:`~sqlalchemy.engine.Engine` or
           :class:`~sqlalchemy.engine.Connection`.
 
-        This method differs from direct a direct constructor call of :class:`.Inspector`
-        in that the :class:`~sqlalchemy.engine.base.Dialect` is given a chance to provide
-        a dialect-specific :class:`.Inspector` instance, which may provide additional
-        methods.
+        This method differs from direct a direct constructor call of
+        :class:`.Inspector` in that the
+        :class:`~sqlalchemy.engine.base.Dialect` is given a chance to provide
+        a dialect-specific :class:`.Inspector` instance, which may provide
+        additional methods.
 
         See the example at :class:`.Inspector`.
 
@@ -194,15 +197,16 @@ class Inspector(object):
         return tnames
 
     def get_table_options(self, table_name, schema=None, **kw):
-        """Return a dictionary of options specified when the table of the given name was created.
+        """Return a dictionary of options specified when the table of the
+        given name was created.
 
         This currently includes some options that apply to MySQL tables.
 
         """
         if hasattr(self.dialect, 'get_table_options'):
-            return self.dialect.get_table_options(self.bind, table_name, schema,
-                                                  info_cache=self.info_cache,
-                                                  **kw)
+            return self.dialect.get_table_options(
+                self.bind, table_name, schema,
+                info_cache=self.info_cache, **kw)
         return {}
 
     def get_view_names(self, schema=None):
@@ -285,7 +289,6 @@ class Inspector(object):
                                               info_cache=self.info_cache,
                                               **kw)
 
-
     def get_foreign_keys(self, table_name, schema=None, **kw):
         """Return information about foreign_keys in `table_name`.
 
@@ -341,7 +344,8 @@ class Inspector(object):
                                             info_cache=self.info_cache, **kw)
 
     def reflecttable(self, table, include_columns, exclude_columns=()):
-        """Given a Table object, load its internal constructs based on introspection.
+        """Given a Table object, load its internal constructs based on
+        introspection.
 
         This is the underlying method used by most dialects to produce
         table reflection.  Direct usage is like::
@@ -410,8 +414,9 @@ class Inspector(object):
 
             colargs = []
             if col_d.get('default') is not None:
-                # the "default" value is assumed to be a literal SQL expression,
-                # so is wrapped in text() so that no quoting occurs on re-issuance.
+                # the "default" value is assumed to be a literal SQL
+                # expression, so is wrapped in text() so that no quoting
+                # occurs on re-issuance.
                 colargs.append(
                     sa_schema.DefaultClause(
                         sql.text(col_d['default']), _reflected=True
@@ -437,11 +442,18 @@ class Inspector(object):
         # Primary keys
         pk_cons = self.get_pk_constraint(table_name, schema, **tblkw)
         if pk_cons:
-            pk_cols = [table.c[pk]
-                        for pk in pk_cons['constrained_columns']
-                        if pk in table.c and pk not in exclude_columns
-                    ] + [pk for pk in table.primary_key if pk.key in exclude_columns]
-            primary_key_constraint = sa_schema.PrimaryKeyConstraint(name=pk_cons.get('name'),
+            pk_cols = [
+                table.c[pk]
+                for pk in pk_cons['constrained_columns']
+                if pk in table.c and pk not in exclude_columns
+            ]
+            pk_cols += [
+                pk
+                for pk in table.primary_key
+                if pk.key in exclude_columns
+            ]
+            primary_key_constraint = sa_schema.PrimaryKeyConstraint(
+                name=pk_cons.get('name'),
                 *pk_cols
             )
 

@@ -16,11 +16,13 @@ import codecs
 import re
 import datetime
 
+
 def str_to_datetime_processor_factory(regexp, type_):
     rmatch = regexp.match
     # Even on python2.6 datetime.strptime is both slower than this code
     # and it does not support microseconds.
     has_named_groups = bool(regexp.groupindex)
+
     def process(value):
         if value is None:
             return None
@@ -42,11 +44,13 @@ def str_to_datetime_processor_factory(regexp, type_):
                 return type_(*map(int, m.groups(0)))
     return process
 
+
 def boolean_to_int(value):
     if value is None:
         return None
     else:
         return int(value)
+
 
 def py_fallback():
     def to_unicode_processor_factory(encoding, errors=None):
@@ -125,4 +129,3 @@ try:
 
 except ImportError:
     globals().update(py_fallback())
-

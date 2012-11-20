@@ -12,6 +12,7 @@ attributes = util.importlater('sqlalchemy.orm', 'attributes')
 NO_STATE = (AttributeError, KeyError)
 """Exception types that may be raised by instrumentation implementations."""
 
+
 class StaleDataError(sa_exc.SQLAlchemyError):
     """An operation encountered database state that is unaccounted for.
 
@@ -48,12 +49,18 @@ class FlushError(sa_exc.SQLAlchemyError):
 class UnmappedError(sa_exc.InvalidRequestError):
     """Base for exceptions that involve expected mappings not present."""
 
+
 class ObjectDereferencedError(sa_exc.SQLAlchemyError):
-    """An operation cannot complete due to an object being garbage collected."""
+    """An operation cannot complete due to an object being garbage
+    collected.
+
+    """
+
 
 class DetachedInstanceError(sa_exc.SQLAlchemyError):
     """An attempt to access unloaded attributes on a
     mapped instance that is detached."""
+
 
 class UnmappedInstanceError(UnmappedError):
     """An mapping operation was requested for an unknown instance."""
@@ -64,8 +71,9 @@ class UnmappedInstanceError(UnmappedError):
                 mapper = orm_util.class_mapper(type(obj))
                 name = _safe_cls_name(type(obj))
                 msg = ("Class %r is mapped, but this instance lacks "
-                       "instrumentation.  This occurs when the instance is created "
-                       "before sqlalchemy.orm.mapper(%s) was called." % (name, name))
+                       "instrumentation.  This occurs when the instance"
+                       "is created before sqlalchemy.orm.mapper(%s) "
+                       "was called." % (name, name))
             except UnmappedClassError:
                 msg = _default_unmapped(type(obj))
                 if isinstance(obj, type):
@@ -77,6 +85,7 @@ class UnmappedInstanceError(UnmappedError):
     def __reduce__(self):
         return self.__class__, (None, self.args[0])
 
+
 class UnmappedClassError(UnmappedError):
     """An mapping operation was requested for an unknown class."""
 
@@ -87,6 +96,7 @@ class UnmappedClassError(UnmappedError):
 
     def __reduce__(self):
         return self.__class__, (None, self.args[0])
+
 
 class ObjectDeletedError(sa_exc.InvalidRequestError):
     """A refresh operation failed to retrieve the database
@@ -117,6 +127,7 @@ class ObjectDeletedError(sa_exc.InvalidRequestError):
     def __reduce__(self):
         return self.__class__, (None, self.args[0])
 
+
 class UnmappedColumnError(sa_exc.InvalidRequestError):
     """Mapping operation was requested on an unknown column."""
 
@@ -137,6 +148,7 @@ def _safe_cls_name(cls):
         if cls_name is None:
             cls_name = repr(cls)
     return cls_name
+
 
 def _default_unmapped(cls):
     try:

@@ -23,10 +23,12 @@ the pymysql driver as well.
 
 from .mysqldb import MySQLDialect_mysqldb
 
+
 class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     driver = 'pymysql'
 
     description_encoding = None
+
     @classmethod
     def dbapi(cls):
         return __import__('pymysql')

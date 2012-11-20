@@ -14,8 +14,11 @@ class DDLBase(schema.SchemaVisitor):
     def __init__(self, connection):
         self.connection = connection
 
+
 class SchemaGenerator(DDLBase):
-    def __init__(self, dialect, connection, checkfirst=False, tables=None, **kwargs):
+
+    def __init__(self, dialect, connection, checkfirst=False,
+                 tables=None, **kwargs):
         super(SchemaGenerator, self).__init__(connection, **kwargs)
         self.checkfirst = checkfirst
         self.tables = tables and set(tables) or None
@@ -103,7 +106,9 @@ class SchemaGenerator(DDLBase):
 
 
 class SchemaDropper(DDLBase):
-    def __init__(self, dialect, connection, checkfirst=False, tables=None, **kwargs):
+
+    def __init__(self, dialect, connection, checkfirst=False,
+                 tables=None, **kwargs):
         super(SchemaDropper, self).__init__(connection, **kwargs)
         self.checkfirst = checkfirst
         self.tables = tables
@@ -116,15 +121,22 @@ class SchemaDropper(DDLBase):
             tables = self.tables
         else:
             tables = metadata.tables.values()
-        collection = [t for t in reversed(sql_util.sort_tables(tables))
-                                if self._can_drop_table(t)]
-        seq_coll = [s for s in metadata._sequences.values()
-                                if s.column is None and self._can_drop_sequence(s)]
 
-        metadata.dispatch.before_drop(metadata, self.connection,
-                                            tables=collection,
-                                            checkfirst=self.checkfirst,
-                                            _ddl_runner=self)
+        collection = [
+            t
+            for t in reversed(sql_util.sort_tables(tables))
+            if self._can_drop_table(t)
+        ]
+
+        seq_coll = [
+            s
+            for s in metadata._sequences.values()
+            if s.column is None and self._can_drop_sequence(s)
+        ]
+
+        metadata.dispatch.before_drop(
+            metadata, self.connection, tables=collection,
+            checkfirst=self.checkfirst, _ddl_runner=self)
 
         for table in collection:
             self.traverse_single(table, drop_ok=True)
@@ -132,10 +144,9 @@ class SchemaDropper(DDLBase):
         for seq in seq_coll:
             self.traverse_single(seq, drop_ok=True)
 
-        metadata.dispatch.after_drop(metadata, self.connection,
-                                            tables=collection,
-                                            checkfirst=self.checkfirst,
-                                            _ddl_runner=self)
+        metadata.dispatch.after_drop(
+            metadata, self.connection, tables=collection,
+            checkfirst=self.checkfirst, _ddl_runner=self)
 
     def _can_drop_table(self, table):
         self.dialect.validate_identifier(table.name)

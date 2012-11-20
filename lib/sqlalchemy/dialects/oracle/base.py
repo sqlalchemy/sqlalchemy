@@ -139,10 +139,9 @@ is not in use this flag should be left off.
 
 """
 
-import random, re
+import re
 
-from sqlalchemy import schema as sa_schema
-from sqlalchemy import util, sql, log
+from sqlalchemy import util, sql
 from sqlalchemy.engine import default, base, reflection
 from sqlalchemy.sql import compiler, visitors, expression
 from sqlalchemy.sql import operators as sql_operators, functions as sql_functions
@@ -164,17 +163,21 @@ RESERVED_WORDS = \
 NO_ARG_FNS = set('UID CURRENT_DATE SYSDATE USER '
                 'CURRENT_TIME CURRENT_TIMESTAMP'.split())
 
+
 class RAW(sqltypes._Binary):
     __visit_name__ = 'RAW'
 OracleRaw = RAW
 
+
 class NCLOB(sqltypes.Text):
     __visit_name__ = 'NCLOB'
+
 
 class VARCHAR2(VARCHAR):
     __visit_name__ = 'VARCHAR2'
 
 NVARCHAR2 = NVARCHAR
+
 
 class NUMBER(sqltypes.Numeric, sqltypes.Integer):
     __visit_name__ = 'NUMBER'
@@ -201,17 +204,21 @@ class NUMBER(sqltypes.Numeric, sqltypes.Integer):
 
 class DOUBLE_PRECISION(sqltypes.Numeric):
     __visit_name__ = 'DOUBLE_PRECISION'
+
     def __init__(self, precision=None, scale=None, asdecimal=None):
         if asdecimal is None:
             asdecimal = False
 
         super(DOUBLE_PRECISION, self).__init__(precision=precision, scale=scale, asdecimal=asdecimal)
 
+
 class BFILE(sqltypes.LargeBinary):
     __visit_name__ = 'BFILE'
 
+
 class LONG(sqltypes.Text):
     __visit_name__ = 'LONG'
+
 
 class INTERVAL(sqltypes.TypeEngine):
     __visit_name__ = 'INTERVAL'
@@ -243,6 +250,7 @@ class INTERVAL(sqltypes.TypeEngine):
     def _type_affinity(self):
         return sqltypes.Interval
 
+
 class ROWID(sqltypes.TypeEngine):
     """Oracle ROWID type.
 
@@ -252,33 +260,32 @@ class ROWID(sqltypes.TypeEngine):
     __visit_name__ = 'ROWID'
 
 
-
 class _OracleBoolean(sqltypes.Boolean):
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
 
 colspecs = {
-    sqltypes.Boolean : _OracleBoolean,
-    sqltypes.Interval : INTERVAL,
+    sqltypes.Boolean: _OracleBoolean,
+    sqltypes.Interval: INTERVAL,
 }
 
 ischema_names = {
-    'VARCHAR2' : VARCHAR,
-    'NVARCHAR2' : NVARCHAR,
-    'CHAR' : CHAR,
-    'DATE' : DATE,
-    'NUMBER' : NUMBER,
-    'BLOB' : BLOB,
-    'BFILE' : BFILE,
-    'CLOB' : CLOB,
-    'NCLOB' : NCLOB,
-    'TIMESTAMP' : TIMESTAMP,
-    'TIMESTAMP WITH TIME ZONE' : TIMESTAMP,
-    'INTERVAL DAY TO SECOND' : INTERVAL,
-    'RAW' : RAW,
-    'FLOAT' : FLOAT,
-    'DOUBLE PRECISION' : DOUBLE_PRECISION,
-    'LONG' : LONG,
+    'VARCHAR2': VARCHAR,
+    'NVARCHAR2': NVARCHAR,
+    'CHAR': CHAR,
+    'DATE': DATE,
+    'NUMBER': NUMBER,
+    'BLOB': BLOB,
+    'BFILE': BFILE,
+    'CLOB': CLOB,
+    'NCLOB': NCLOB,
+    'TIMESTAMP': TIMESTAMP,
+    'TIMESTAMP WITH TIME ZONE': TIMESTAMP,
+    'INTERVAL DAY TO SECOND': INTERVAL,
+    'RAW': RAW,
+    'FLOAT': FLOAT,
+    'DOUBLE PRECISION': DOUBLE_PRECISION,
+    'LONG': LONG,
 }
 
 
@@ -335,9 +342,11 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         if precision is None:
             return name
         elif scale is None:
-            return "%(name)s(%(precision)s)" % {'name':name,'precision': precision}
+            n = "%(name)s(%(precision)s)"
+            return n % {'name': name, 'precision': precision}
         else:
-            return "%(name)s(%(precision)s, %(scale)s)" % {'name':name,'precision': precision, 'scale' : scale}
+            n = "%(name)s(%(precision)s, %(scale)s)"
+            return n % {'name': name, 'precision': precision, 'scale': scale}
 
     def visit_string(self, type_):
         return self.visit_VARCHAR2(type_)
@@ -354,12 +363,11 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
 
     def _visit_varchar(self, type_, n, num):
         if not n and self.dialect._supports_char_length:
-            return "VARCHAR%(two)s(%(length)s CHAR)" % {
-                                                    'length' : type_.length,
-                                                    'two':num}
+            varchar = "VARCHAR%(two)s(%(length)s CHAR)"
+            return varchar % {'length': type_.length, 'two': num}
         else:
-            return "%(n)sVARCHAR%(two)s(%(length)s)" % {'length' : type_.length,
-                                                        'two':num, 'n':n}
+            varchar = "%(n)sVARCHAR%(two)s(%(length)s)"
+            return varchar % {'length': type_.length, 'two': num, 'n': n}
 
     def visit_text(self, type_):
         return self.visit_CLOB(type_)
@@ -381,12 +389,13 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_RAW(self, type_):
         if type_.length:
-            return "RAW(%(length)s)" % {'length' : type_.length}
+            return "RAW(%(length)s)" % {'length': type_.length}
         else:
             return "RAW"
 
     def visit_ROWID(self, type_):
         return "ROWID"
+
 
 class OracleCompiler(compiler.SQLCompiler):
     """Oracle compiler modifies the lexical structure of Select
@@ -460,7 +469,7 @@ class OracleCompiler(compiler.SQLCompiler):
                         elif binary.right.table is join.right:
                             binary.right = _OuterJoinColumn(binary.right)
                 clauses.append(visitors.cloned_traverse(join.onclause, {},
-                                {'binary':visit_binary}))
+                                {'binary': visit_binary}))
             else:
                 clauses.append(join.onclause)
 
@@ -613,6 +622,7 @@ class OracleCompiler(compiler.SQLCompiler):
         else:
             return super(OracleCompiler, self).for_update_clause(select)
 
+
 class OracleDDLCompiler(compiler.DDLCompiler):
 
     def define_constraint_cascades(self, constraint):
@@ -633,6 +643,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
     def visit_create_index(self, create, **kw):
         return super(OracleDDLCompiler, self).\
                     visit_create_index(create, include_schema=True)
+
 
 class OracleIdentifierPreparer(compiler.IdentifierPreparer):
 
@@ -657,6 +668,7 @@ class OracleExecutionContext(default.DefaultExecutionContext):
         return self._execute_scalar("SELECT " +
                     self.dialect.identifier_preparer.format_sequence(seq) +
                     ".nextval FROM DUAL", type_)
+
 
 class OracleDialect(default.DefaultDialect):
     name = 'oracle'
@@ -854,7 +866,6 @@ class OracleDialect(default.DefaultDialect):
         cursor = connection.execute(s, owner=schema)
         return [self.normalize_name(row[0]) for row in cursor]
 
-
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
         schema = self.denormalize_name(schema or self.default_schema_name)
@@ -892,14 +903,14 @@ class OracleDialect(default.DefaultDialect):
                 "SELECT column_name, data_type, %(char_length_col)s, data_precision, data_scale, "
                 "nullable, data_default FROM ALL_TAB_COLUMNS%(dblink)s "
                 "WHERE table_name = :table_name AND owner = :owner "
-                "ORDER BY column_id" % {'dblink': dblink, 'char_length_col':char_length_col}),
+                "ORDER BY column_id" % {'dblink': dblink, 'char_length_col': char_length_col}),
                                table_name=table_name, owner=schema)
 
         for row in c:
             (colname, orig_colname, coltype, length, precision, scale, nullable, default) = \
-                (self.normalize_name(row[0]), row[0], row[1], row[2], row[3], row[4], row[5]=='Y', row[6])
+                (self.normalize_name(row[0]), row[0], row[1], row[2], row[3], row[4], row[5] == 'Y', row[6])
 
-            if coltype == 'NUMBER' :
+            if coltype == 'NUMBER':
                 coltype = NUMBER(precision, scale)
             elif coltype in ('VARCHAR2', 'NVARCHAR2', 'CHAR'):
                 coltype = self.ischema_names.get(coltype)(length)
@@ -919,7 +930,7 @@ class OracleDialect(default.DefaultDialect):
                 'type': coltype,
                 'nullable': nullable,
                 'default': default,
-                'autoincrement':default is None
+                'autoincrement': default is None
             }
             if orig_colname.lower() == orig_colname:
                 cdict['quote'] = True
@@ -930,7 +941,6 @@ class OracleDialect(default.DefaultDialect):
     @reflection.cache
     def get_indexes(self, connection, table_name, schema=None,
                     resolve_synonyms=False, dblink='', **kw):
-
 
         info_cache = kw.get('info_cache')
         (table_name, schema, dblink, synonym) = \
@@ -1042,7 +1052,7 @@ class OracleDialect(default.DefaultDialect):
                 if constraint_name is None:
                     constraint_name = self.normalize_name(cons_name)
                 pkeys.append(local_column)
-        return {'constrained_columns':pkeys, 'name':constraint_name}
+        return {'constrained_columns': pkeys, 'name': constraint_name}
 
     @reflection.cache
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):
@@ -1056,7 +1066,7 @@ class OracleDialect(default.DefaultDialect):
 
         """
 
-        requested_schema = schema # to check later on
+        requested_schema = schema  # to check later on
         resolve_synonyms = kw.get('oracle_resolve_synonyms', False)
         dblink = kw.get('dblink', '')
         info_cache = kw.get('info_cache')
@@ -1072,11 +1082,11 @@ class OracleDialect(default.DefaultDialect):
 
         def fkey_rec():
             return {
-                'name' : None,
-                'constrained_columns' : [],
-                'referred_schema' : None,
-                'referred_table' : None,
-                'referred_columns' : []
+                'name': None,
+                'constrained_columns': [],
+                'referred_schema': None,
+                'referred_table': None,
+                'referred_columns': []
             }
 
         fkeys = util.defaultdict(fkey_rec)
@@ -1091,7 +1101,7 @@ class OracleDialect(default.DefaultDialect):
                     util.warn(
                         ("Got 'None' querying 'table_name' from "
                          "all_cons_columns%(dblink)s - does the user have "
-                         "proper rights to the table?") % {'dblink':dblink})
+                         "proper rights to the table?") % {'dblink': dblink})
                     continue
 
                 rec = fkeys[cons_name]
@@ -1141,12 +1151,8 @@ class OracleDialect(default.DefaultDialect):
             return None
 
 
-
 class _OuterJoinColumn(sql.ClauseElement):
     __visit_name__ = 'outer_join_column'
 
     def __init__(self, column):
         self.column = column
-
-
-

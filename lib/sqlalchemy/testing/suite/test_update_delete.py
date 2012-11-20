@@ -1,9 +1,7 @@
 from .. import fixtures, config
-from ..config import requirements
 from ..assertions import eq_
-from .. import engines
 
-from sqlalchemy import Integer, String, select
+from sqlalchemy import Integer, String
 from ..schema import Table, Column
 
 

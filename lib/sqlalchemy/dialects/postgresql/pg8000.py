@@ -34,6 +34,7 @@ from .base import PGDialect, \
                 PGCompiler, PGIdentifierPreparer, PGExecutionContext,\
                 _DECIMAL_TYPES, _FLOAT_TYPES, _INT_TYPES
 
+
 class _PGNumeric(sqltypes.Numeric):
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
@@ -60,6 +61,7 @@ class _PGNumericNoBind(_PGNumeric):
     def bind_processor(self, dialect):
         return None
 
+
 class PGExecutionContext_pg8000(PGExecutionContext):
     pass
 
@@ -71,7 +73,8 @@ class PGCompiler_pg8000(PGCompiler):
 
     def post_process_text(self, text):
         if '%%' in text:
-            util.warn("The SQLAlchemy postgresql dialect now automatically escapes '%' in text() "
+            util.warn("The SQLAlchemy postgresql dialect "
+                      "now automatically escapes '%' in text() "
                       "expressions to '%%'.")
         return text.replace('%', '%%')
 
@@ -99,8 +102,8 @@ class PGDialect_pg8000(PGDialect):
     colspecs = util.update_copy(
         PGDialect.colspecs,
         {
-            sqltypes.Numeric : _PGNumericNoBind,
-            sqltypes.Float : _PGNumeric
+            sqltypes.Numeric: _PGNumericNoBind,
+            sqltypes.Float: _PGNumeric
         }
     )
 

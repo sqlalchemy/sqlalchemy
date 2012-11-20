@@ -33,6 +33,7 @@ in a forwards-compatible way.
 from . import util, exc
 _registrars = util.defaultdict(list)
 
+
 def inspect(subject, raiseerr=True):
     """Produce an inspection object for the given target.
 
@@ -73,6 +74,7 @@ def inspect(subject, raiseerr=True):
             type_)
     return ret
 
+
 def _inspects(*types):
     def decorate(fn_or_cls):
         for type_ in types:
@@ -83,6 +85,7 @@ def _inspects(*types):
             _registrars[type_] = fn_or_cls
         return fn_or_cls
     return decorate
+
 
 def _self_inspects(*types):
     _inspects(*types)(True)

@@ -12,6 +12,7 @@ from itertools import chain
 CANCEL = util.symbol('CANCEL')
 NO_RETVAL = util.symbol('NO_RETVAL')
 
+
 def listen(target, identifier, fn, *args, **kw):
     """Register a listener function for the given target.
 
@@ -40,6 +41,7 @@ def listen(target, identifier, fn, *args, **kw):
     raise exc.InvalidRequestError("No such event '%s' for target '%s'" %
                                 (identifier, target))
 
+
 def listens_for(target, identifier, *args, **kw):
     """Decorate a function as a listener for the given target + identifier.
 
@@ -60,6 +62,7 @@ def listens_for(target, identifier, *args, **kw):
         return fn
     return decorate
 
+
 def remove(target, identifier, fn):
     """Remove an event listener.
 
@@ -75,12 +78,14 @@ def remove(target, identifier, fn):
 
 _registrars = util.defaultdict(list)
 
+
 def _is_event_name(name):
     return not name.startswith('_') and name != 'dispatch'
 
+
 class _UnpickleDispatch(object):
-    """Serializable callable that re-generates an instance of :class:`_Dispatch`
-    given a particular :class:`.Events` subclass.
+    """Serializable callable that re-generates an instance of
+    :class:`_Dispatch` given a particular :class:`.Events` subclass.
 
     """
     def __call__(self, _parent_cls):
@@ -89,6 +94,7 @@ class _UnpickleDispatch(object):
                 return cls.__dict__['dispatch'].dispatch_cls(_parent_cls)
         else:
             raise AttributeError("No class with a 'dispatch' member present.")
+
 
 class _Dispatch(object):
     """Mirror the event listening definitions of an Events class with
@@ -154,8 +160,10 @@ class _Dispatch(object):
             if _is_event_name(attr):
                 getattr(self, attr).for_modify(self).clear()
 
+
 def _event_descriptors(target):
     return [getattr(target, k) for k in dir(target) if _is_event_name(k)]
+
 
 class _EventMeta(type):
     """Intercept new Event subclasses and create
@@ -164,6 +172,7 @@ class _EventMeta(type):
     def __init__(cls, classname, bases, dict_):
         _create_dispatcher_class(cls, classname, bases, dict_)
         return type.__init__(cls, classname, bases, dict_)
+
 
 def _create_dispatcher_class(cls, classname, bases, dict_):
     """Create a :class:`._Dispatch` class corresponding to an
@@ -182,6 +191,7 @@ def _create_dispatcher_class(cls, classname, bases, dict_):
             setattr(dispatch_cls, k, _DispatchDescriptor(dict_[k]))
             _registrars[k].append(cls)
 
+
 def _remove_dispatcher(cls):
     for k in dir(cls):
         if _is_event_name(k):
@@ -189,9 +199,9 @@ def _remove_dispatcher(cls):
             if not _registrars[k]:
                 del _registrars[k]
 
+
 class Events(object):
     """Define event listening functions for a particular target type."""
-
 
     __metaclass__ = _EventMeta
 
@@ -224,6 +234,7 @@ class Events(object):
     @classmethod
     def _clear(cls):
         cls.dispatch._clear()
+
 
 class _DispatchDescriptor(object):
     """Class-level attributes on :class:`._Dispatch` classes."""
@@ -357,6 +368,7 @@ class _EmptyListener(object):
     def __nonzero__(self):
         return bool(self.parent_listeners)
 
+
 class _CompoundListener(object):
     _exec_once = False
 
@@ -479,8 +491,10 @@ class _JoinedDispatchDescriptor(object):
                     )
             return ret
 
+
 class _JoinedListener(_CompoundListener):
     _exec_once = False
+
     def __init__(self, parent, name, local):
         self.parent = parent
         self.name = name
@@ -527,4 +541,3 @@ class dispatcher(object):
             return self.dispatch_cls
         obj.__dict__['dispatch'] = disp = self.dispatch_cls(cls)
         return disp
-

@@ -28,5 +28,6 @@ from sqlalchemy.testing.plugin.noseplugin import NoseSQLAlchemy
 
 import nose
 
+
 def main():
     nose.main(addplugins=[NoseSQLAlchemy()])

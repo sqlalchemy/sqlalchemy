@@ -54,6 +54,7 @@ NO_ATTRIBUTE = util.symbol('NO_ATTRIBUTE')
 # lock used to synchronize the "mapper configure" step
 _CONFIGURE_MUTEX = util.threading.RLock()
 
+
 class Mapper(_InspectionAttr):
     """Define the correlation of class attributes to database table
     columns.
@@ -629,7 +630,6 @@ class Mapper(_InspectionAttr):
                                         column=None):
                 self._adapt_inherited_property(key, prop, False)
 
-
     def _set_polymorphic_on(self, polymorphic_on):
         self.polymorphic_on = polymorphic_on
         self._configure_polymorphic_setter(True)
@@ -744,7 +744,6 @@ class Mapper(_InspectionAttr):
         """
         configure_mappers()
         return self
-
 
     @property
     @util.deprecated("0.7", message=":attr:`.Mapper.compiled` "
@@ -1050,8 +1049,6 @@ class Mapper(_InspectionAttr):
             self._set_polymorphic_identity = _set_polymorphic_identity
         else:
             self._set_polymorphic_identity = None
-
-
 
     def _adapt_inherited_property(self, key, prop, init):
         if not self.concrete:
@@ -1408,7 +1405,6 @@ class Mapper(_InspectionAttr):
         if not self.with_polymorphic:
             return [self]
         return self._mappers_from_spec(*self.with_polymorphic)
-
 
     @_memoized_configured_property
     def _with_polymorphic_selectable(self):
@@ -1822,7 +1818,6 @@ class Mapper(_InspectionAttr):
         return state.manager[prop.key].impl.\
                     get_committed_value(state, dict_, passive=passive)
 
-
     def _optimized_get_statement(self, state, attribute_names):
         """assemble a WHERE clause which retrieves a given state by primary
         key, using a minimized set of tables.
@@ -2008,6 +2003,7 @@ class Mapper(_InspectionAttr):
 inspection._self_inspects(Mapper)
 log.class_logger(Mapper)
 
+
 def configure_mappers():
     """Initialize the inter-mapper relationships of all mappers that
     have been constructed thus far.
@@ -2068,6 +2064,7 @@ def configure_mappers():
     if _call_configured is not None:
         _call_configured.dispatch.after_configured()
 
+
 def reconstructor(fn):
     """Decorate a method as the 'reconstructor' hook.
 
@@ -2086,6 +2083,7 @@ def reconstructor(fn):
     """
     fn.__sa_reconstructor__ = True
     return fn
+
 
 def validates(*names, **kw):
     """Decorate a method as a 'validator' for one or more named properties.
@@ -2120,10 +2118,12 @@ def validates(*names, **kw):
         return fn
     return wrap
 
+
 def _event_on_load(state, ctx):
     instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
     if instrumenting_mapper._reconstructor:
         instrumenting_mapper._reconstructor(state.obj())
+
 
 def _event_on_first_init(manager, cls):
     """Initial mapper compilation trigger.
@@ -2137,6 +2137,7 @@ def _event_on_first_init(manager, cls):
     if instrumenting_mapper:
         if _new_mappers:
             configure_mappers()
+
 
 def _event_on_init(state, args, kwargs):
     """Run init_instance hooks.
@@ -2153,6 +2154,7 @@ def _event_on_init(state, args, kwargs):
             configure_mappers()
         if instrumenting_mapper._set_polymorphic_identity:
             instrumenting_mapper._set_polymorphic_identity(state)
+
 
 def _event_on_resurrect(state):
     # re-populate the primary key elements

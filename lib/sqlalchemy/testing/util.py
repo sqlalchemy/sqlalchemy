@@ -26,8 +26,10 @@ elif pypy:
 else:
     # assume CPython - straight gc.collect, lazy_gc() is a pass
     gc_collect = gc.collect
+
     def lazy_gc():
         pass
+
 
 def picklers():
     picklers = set()
@@ -56,6 +58,7 @@ def round_decimal(value, prec):
                     ).to_integral(decimal.ROUND_FLOOR) / \
                         pow(10, prec)
 
+
 class RandomSet(set):
     def __iter__(self):
         l = list(set.__iter__(self))
@@ -80,6 +83,7 @@ class RandomSet(set):
     def copy(self):
         return RandomSet(self)
 
+
 def conforms_partial_ordering(tuples, sorted_elements):
     """True if the given sorting conforms to the given partial ordering."""
 
@@ -92,6 +96,7 @@ def conforms_partial_ordering(tuples, sorted_elements):
                 return False
     else:
         return True
+
 
 def all_partial_orderings(tuples, elements):
     edges = defaultdict(set)
@@ -131,7 +136,6 @@ def function_named(fn, name):
     return fn
 
 
-
 def run_as_contextmanager(ctx, fn, *arg, **kw):
     """Run the given function under the given contextmanager,
     simulating the behavior of 'with' to support older
@@ -151,6 +155,7 @@ def run_as_contextmanager(ctx, fn, *arg, **kw):
             raise
         else:
             return raise_
+
 
 def rowset(results):
     """Converts the results of sql execution into a plain set of column tuples.
@@ -182,6 +187,7 @@ def provide_metadata(fn, *args, **kw):
         metadata.drop_all()
         self.metadata = prev_meta
 
+
 class adict(dict):
     """Dict keys available as attributes.  Shadows."""
     def __getattribute__(self, key):
@@ -192,5 +198,3 @@ class adict(dict):
 
     def get_all(self, *keys):
         return tuple([self[key] for key in keys])
-
-

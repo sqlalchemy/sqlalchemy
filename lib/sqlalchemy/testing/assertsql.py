@@ -3,6 +3,7 @@ from ..engine.default import DefaultDialect
 from .. import util
 import re
 
+
 class AssertRule(object):
 
     def process_execute(self, clauseelement, *multiparams, **params):
@@ -40,6 +41,7 @@ class AssertRule(object):
             assert False, 'Rule has not been consumed'
         return self.is_consumed()
 
+
 class SQLMatchRule(AssertRule):
     def __init__(self):
         self._result = None
@@ -55,6 +57,7 @@ class SQLMatchRule(AssertRule):
         assert self._result, self._errmsg
 
         return True
+
 
 class ExactSQL(SQLMatchRule):
 
@@ -138,6 +141,7 @@ class RegexSQL(SQLMatchRule):
                                     _received_statement,
                                     _received_parameters)
 
+
 class CompiledSQL(SQLMatchRule):
 
     def __init__(self, statement, params):
@@ -217,6 +221,7 @@ class CountStatements(AssertRule):
             % (self.count, self._statement_count)
         return True
 
+
 class AllOf(AssertRule):
 
     def __init__(self, *rules):
@@ -244,6 +249,7 @@ class AllOf(AssertRule):
     def consume_final(self):
         return len(self.rules) == 0
 
+
 def _process_engine_statement(query, context):
     if util.jython:
 
@@ -255,6 +261,7 @@ def _process_engine_statement(query, context):
         query = query[:-25]
     query = re.sub(r'\n', '', query)
     return query
+
 
 def _process_assertion_statement(query, context):
     paramstyle = context.dialect.paramstyle
@@ -274,6 +281,7 @@ def _process_assertion_statement(query, context):
         query = re.sub(r':([\w_]+)', repl, query)
 
     return query
+
 
 class SQLAssert(object):
 
@@ -311,4 +319,3 @@ class SQLAssert(object):
                     executemany)
 
 asserter = SQLAssert()
-

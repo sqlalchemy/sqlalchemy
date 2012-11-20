@@ -165,6 +165,7 @@ def create_session(bind=None, **kwargs):
     kwargs.setdefault('expire_on_commit', False)
     return Session(bind=bind, **kwargs)
 
+
 def relationship(argument, secondary=None, **kwargs):
     """Provide a relationship of a primary Mapper to a secondary Mapper.
 
@@ -179,10 +180,10 @@ def relationship(argument, secondary=None, **kwargs):
 
     Some arguments accepted by :func:`.relationship` optionally accept a
     callable function, which when called produces the desired value.
-    The callable is invoked by the parent :class:`.Mapper` at "mapper initialization"
-    time, which happens only when mappers are first used, and is assumed
-    to be after all mappings have been constructed.  This can be used
-    to resolve order-of-declaration and other dependency issues, such as
+    The callable is invoked by the parent :class:`.Mapper` at "mapper
+    initialization" time, which happens only when mappers are first used, and
+    is assumed to be after all mappings have been constructed.  This can be
+    used to resolve order-of-declaration and other dependency issues, such as
     if ``Child`` is declared below ``Parent`` in the same file::
 
         mapper(Parent, properties={
@@ -195,8 +196,8 @@ def relationship(argument, secondary=None, **kwargs):
     These string arguments are converted into callables that evaluate
     the string as Python code, using the Declarative
     class-registry as a namespace.  This allows the lookup of related
-    classes to be automatic via their string name, and removes the need to import
-    related classes at all into the local module space::
+    classes to be automatic via their string name, and removes the need to
+    import related classes at all into the local module space::
 
         from sqlalchemy.ext.declarative import declarative_base
 
@@ -211,8 +212,8 @@ def relationship(argument, secondary=None, **kwargs):
     :func:`.relationship` is at :ref:`relationship_config_toplevel`.
 
     :param argument:
-      a mapped class, or actual :class:`.Mapper` instance, representing the target of
-      the relationship.
+      a mapped class, or actual :class:`.Mapper` instance, representing the
+      target of the relationship.
 
       ``argument`` may also be passed as a callable function
       which is evaluated at mapper initialization time, and may be passed as a
@@ -362,8 +363,8 @@ def relationship(argument, secondary=None, **kwargs):
 
       There are only two use cases for ``foreign_keys`` - one, when it is not
       convenient for :class:`.Table` metadata to contain its own foreign key
-      metadata (which should be almost never, unless reflecting a large amount of
-      tables from a MySQL MyISAM schema, or a schema that doesn't actually
+      metadata (which should be almost never, unless reflecting a large amount
+      of tables from a MySQL MyISAM schema, or a schema that doesn't actually
       have foreign keys on it). The other is for extremely
       rare and exotic composite foreign key setups where some columns
       should artificially not be considered as foreign.
@@ -621,15 +622,18 @@ def relationship(argument, secondary=None, **kwargs):
       case, use an alternative method.
 
     .. versionchanged:: 0.6
-        :func:`relationship` was renamed from its previous name :func:`relation`.
+        :func:`relationship` was renamed from its previous name
+        :func:`relation`.
 
     """
     return RelationshipProperty(argument, secondary=secondary, **kwargs)
+
 
 def relation(*arg, **kw):
     """A synonym for :func:`relationship`."""
 
     return relationship(*arg, **kw)
+
 
 def dynamic_loader(argument, **kw):
     """Construct a dynamically-loading mapper property.
@@ -649,6 +653,7 @@ def dynamic_loader(argument, **kw):
     """
     kw['lazy'] = 'dynamic'
     return relationship(argument, **kw)
+
 
 def column_property(*cols, **kw):
     """Provide a column-level property for use with a Mapper.
@@ -728,6 +733,7 @@ def column_property(*cols, **kw):
 
     return ColumnProperty(*cols, **kw)
 
+
 def composite(class_, *cols, **kwargs):
     """Return a composite column-based property for use with a Mapper.
 
@@ -784,8 +790,8 @@ def composite(class_, *cols, **kwargs):
 
 
 def backref(name, **kwargs):
-    """Create a back reference with explicit keyword arguments, which are the same
-    arguments one can send to :func:`relationship`.
+    """Create a back reference with explicit keyword arguments, which are the
+    same arguments one can send to :func:`relationship`.
 
     Used with the ``backref`` keyword argument to :func:`relationship` in
     place of a string argument, e.g.::
@@ -794,6 +800,7 @@ def backref(name, **kwargs):
 
     """
     return (name, kwargs)
+
 
 def deferred(*columns, **kwargs):
     """Return a :class:`.DeferredColumnProperty`, which indicates this
@@ -808,6 +815,7 @@ def deferred(*columns, **kwargs):
 
     """
     return ColumnProperty(deferred=True, *columns, **kwargs)
+
 
 def mapper(class_, local_table=None, *args, **params):
     """Return a new :class:`~.Mapper` object.
@@ -864,9 +872,9 @@ def mapper(class_, local_table=None, *args, **params):
            this mapper inherits from another mapper using single-table
            inheritance.   When using Declarative, this argument is
            automatically passed by the extension, based on what
-           is configured via the ``__table__`` argument or via the :class:`.Table`
-           produced as a result of the ``__tablename__`` and :class:`.Column`
-           arguments present.
+           is configured via the ``__table__`` argument or via the
+           :class:`.Table` produced as a result of the ``__tablename__``
+           and :class:`.Column` arguments present.
 
         :param always_refresh: If True, all query operations for this mapped
            class will overwrite all data within object instances that already
@@ -910,9 +918,9 @@ def mapper(class_, local_table=None, *args, **params):
           See :ref:`include_exclude_cols` for an example.
 
         :param extension: A :class:`.MapperExtension` instance or
-           list of :class:`.MapperExtension`
-           instances which will be applied to all operations by this
-           :class:`.Mapper`.  **Deprecated.**  Please see :class:`.MapperEvents`.
+           list of :class:`.MapperExtension` instances which will be applied
+           to all operations by this :class:`.Mapper`.  **Deprecated.**
+           Please see :class:`.MapperEvents`.
 
         :param include_properties: An inclusive list or set of string column
           names to map.
@@ -921,8 +929,8 @@ def mapper(class_, local_table=None, *args, **params):
 
         :param inherits: A mapped class or the corresponding :class:`.Mapper`
           of one indicating a superclass to which this :class:`.Mapper`
-          should *inherit* from.   The mapped class here must be a subclass of the
-          other mapper's class.   When using Declarative, this argument
+          should *inherit* from.   The mapped class here must be a subclass
+          of the other mapper's class.   When using Declarative, this argument
           is passed automatically as a result of the natural class
           hierarchy of the declared classes.
 
@@ -955,8 +963,8 @@ def mapper(class_, local_table=None, *args, **params):
            ordering.
 
         :param passive_updates: Indicates UPDATE behavior of foreign key
-           columns when a primary key column changes on a joined-table inheritance
-           mapping.   Defaults to ``True``.
+           columns when a primary key column changes on a joined-table
+           inheritance mapping.   Defaults to ``True``.
 
            When True, it is assumed that ON UPDATE CASCADE is configured on
            the foreign key in the database, and that the database will handle
@@ -1092,8 +1100,8 @@ def mapper(class_, local_table=None, *args, **params):
            that will be used to keep a running version id of mapped entities
            in the database.  This is used during save operations to ensure that
            no other thread or process has updated the instance during the
-           lifetime of the entity, else a :class:`~sqlalchemy.orm.exc.StaleDataError`
-           exception is
+           lifetime of the entity, else a
+           :class:`~sqlalchemy.orm.exc.StaleDataError` exception is
            thrown.  By default the column must be of :class:`.Integer` type,
            unless ``version_id_generator`` specifies a new generation
            algorithm.
@@ -1139,6 +1147,7 @@ def mapper(class_, local_table=None, *args, **params):
     """
     return Mapper(class_, local_table, *args, **params)
 
+
 def synonym(name, map_column=False, descriptor=None,
                         comparator_factory=None, doc=None):
     """Denote an attribute name as a synonym to a mapped property.
@@ -1182,6 +1191,7 @@ def synonym(name, map_column=False, descriptor=None,
                             comparator_factory=comparator_factory,
                             doc=doc)
 
+
 def comparable_property(comparator_factory, descriptor=None):
     """Provides a method of applying a :class:`.PropComparator`
     to any Python descriptor attribute.
@@ -1222,8 +1232,8 @@ def comparable_property(comparator_factory, descriptor=None):
             id = Column(Integer, primary_key=True)
             word = Column(String)
             word_insensitive = comparable_property(lambda prop, mapper:
-                                    CaseInsensitiveComparator(mapper.c.word, mapper)
-                                )
+                            CaseInsensitiveComparator(mapper.c.word, mapper)
+                        )
 
 
     A mapping like the above allows the ``word_insensitive`` attribute
@@ -1246,12 +1256,16 @@ def comparable_property(comparator_factory, descriptor=None):
     """
     return ComparableProperty(comparator_factory, descriptor)
 
+
 @sa_util.deprecated("0.7", message=":func:`.compile_mappers` "
                             "is renamed to :func:`.configure_mappers`")
 def compile_mappers():
-    """Initialize the inter-mapper relationships of all mappers that have been defined."""
+    """Initialize the inter-mapper relationships of all mappers that have
+    been defined.
 
+    """
     configure_mappers()
+
 
 def clear_mappers():
     """Remove all mappers from all classes.
@@ -1284,6 +1298,7 @@ def clear_mappers():
                 pass
     finally:
         mapperlib._CONFIGURE_MUTEX.release()
+
 
 def joinedload(*keys, **kw):
     """Return a ``MapperOption`` that will convert the property of the given
@@ -1324,12 +1339,13 @@ def joinedload(*keys, **kw):
        it **does not affect the query results**.   An :meth:`.Query.order_by`
        or :meth:`.Query.filter` call **cannot** reference these aliased
        tables - so-called "user space" joins are constructed using
-       :meth:`.Query.join`.   The rationale for this is that :func:`joinedload` is only
-       applied in order to affect how related objects or collections are loaded
-       as an optimizing detail - it can be added or removed with no impact
-       on actual results.   See the section :ref:`zen_of_eager_loading` for
-       a detailed description of how this is used, including how to use a single
-       explicit JOIN for filtering/ordering and eager loading simultaneously.
+       :meth:`.Query.join`.   The rationale for this is that
+       :func:`joinedload` is only applied in order to affect how related
+       objects or collections are loaded as an optimizing detail - it can be
+       added or removed with no impact on actual results.   See the section
+       :ref:`zen_of_eager_loading` for a detailed description of how this is
+       used, including how to use a single explicit JOIN for
+       filtering/ordering and eager loading simultaneously.
 
     See also:  :func:`subqueryload`, :func:`lazyload`
 
@@ -1342,6 +1358,7 @@ def joinedload(*keys, **kw):
          )
     else:
         return strategies.EagerLazyOption(keys, lazy='joined')
+
 
 def joinedload_all(*keys, **kw):
     """Return a ``MapperOption`` that will convert all properties along the
@@ -1360,8 +1377,8 @@ def joinedload_all(*keys, **kw):
 
         query.options(joinedload_all('orders.items.keywords'))...
 
-    will set all of ``orders``, ``orders.items``, and ``orders.items.keywords`` to
-    load in one joined eager load.
+    will set all of ``orders``, ``orders.items``, and
+    ``orders.items.keywords`` to load in one joined eager load.
 
     Individual descriptors are accepted as arguments as well::
 
@@ -1388,9 +1405,11 @@ def eagerload(*args, **kwargs):
     """A synonym for :func:`joinedload()`."""
     return joinedload(*args, **kwargs)
 
+
 def eagerload_all(*args, **kwargs):
     """A synonym for :func:`joinedload_all()`"""
     return joinedload_all(*args, **kwargs)
+
 
 def subqueryload(*keys):
     """Return a ``MapperOption`` that will convert the property
@@ -1420,6 +1439,7 @@ def subqueryload(*keys):
     """
     return strategies.EagerLazyOption(keys, lazy="subquery")
 
+
 def subqueryload_all(*keys):
     """Return a ``MapperOption`` that will convert all properties along the
     given dot-separated path or series of mapped attributes
@@ -1431,8 +1451,8 @@ def subqueryload_all(*keys):
 
         query.options(subqueryload_all('orders.items.keywords'))...
 
-    will set all of ``orders``, ``orders.items``, and ``orders.items.keywords`` to
-    load in one subquery eager load.
+    will set all of ``orders``, ``orders.items``, and
+    ``orders.items.keywords`` to load in one subquery eager load.
 
     Individual descriptors are accepted as arguments as well::
 
@@ -1444,6 +1464,7 @@ def subqueryload_all(*keys):
     """
     return strategies.EagerLazyOption(keys, lazy="subquery", chained=True)
 
+
 def lazyload(*keys):
     """Return a ``MapperOption`` that will convert the property of the given
     name or series of mapped attributes into a lazy load.
@@ -1454,6 +1475,7 @@ def lazyload(*keys):
 
     """
     return strategies.EagerLazyOption(keys, lazy=True)
+
 
 def lazyload_all(*keys):
     """Return a ``MapperOption`` that will convert all the properties
@@ -1467,6 +1489,7 @@ def lazyload_all(*keys):
     """
     return strategies.EagerLazyOption(keys, lazy=True, chained=True)
 
+
 def noload(*keys):
     """Return a ``MapperOption`` that will convert the property of the
     given name or series of mapped attributes into a non-load.
@@ -1478,6 +1501,7 @@ def noload(*keys):
 
     """
     return strategies.EagerLazyOption(keys, lazy=None)
+
 
 def immediateload(*keys):
     """Return a ``MapperOption`` that will convert the property of the given
@@ -1502,6 +1526,7 @@ def immediateload(*keys):
 
     """
     return strategies.EagerLazyOption(keys, lazy='immediate')
+
 
 def contains_alias(alias):
     """Return a :class:`.MapperOption` that will indicate to the query that
@@ -1536,6 +1561,7 @@ def contains_alias(alias):
 
     """
     return AliasOption(alias)
+
 
 def contains_eager(*keys, **kwargs):
     """Return a ``MapperOption`` that will indicate to the query that
@@ -1579,6 +1605,7 @@ def contains_eager(*keys, **kwargs):
     return strategies.EagerLazyOption(keys, lazy='joined',
             propagate_to_loaders=False, chained=True), \
         strategies.LoadEagerFromAliasOption(keys, alias=alias, chained=True)
+
 
 def defer(*key):
     """Return a :class:`.MapperOption` that will convert the column property
@@ -1624,6 +1651,7 @@ def defer(*key):
     """
     return strategies.DeferredOption(key, defer=True)
 
+
 def undefer(*key):
     """Return a :class:`.MapperOption` that will convert the column property
     of the given name into a non-deferred (regular column) load.
@@ -1634,28 +1662,29 @@ def undefer(*key):
 
         from sqlalchemy.orm import undefer
 
-        query(MyClass).options(undefer("attribute_one"),
-                                undefer("attribute_two"))
+        query(MyClass).options(
+                    undefer("attribute_one"),
+                    undefer("attribute_two"))
 
     A class bound descriptor is also accepted::
 
         query(MyClass).options(
-                            undefer(MyClass.attribute_one),
-                            undefer(MyClass.attribute_two))
+                    undefer(MyClass.attribute_one),
+                    undefer(MyClass.attribute_two))
 
     A "path" can be specified onto a related or collection object using a
     dotted name. The :func:`.orm.undefer` option will be applied to that
     object when loaded::
 
         query(MyClass).options(
-                            undefer("related.attribute_one"),
-                            undefer("related.attribute_two"))
+                    undefer("related.attribute_one"),
+                    undefer("related.attribute_two"))
 
     To specify a path via class, send multiple arguments::
 
         query(MyClass).options(
-                            undefer(MyClass.related, MyOtherClass.attribute_one),
-                            undefer(MyClass.related, MyOtherClass.attribute_two))
+                    undefer(MyClass.related, MyOtherClass.attribute_one),
+                    undefer(MyClass.related, MyOtherClass.attribute_two))
 
     See also:
 
@@ -1671,9 +1700,10 @@ def undefer(*key):
     """
     return strategies.DeferredOption(key, defer=False)
 
+
 def undefer_group(name):
-    """Return a :class:`.MapperOption` that will convert the given group of deferred
-    column properties into a non-deferred (regular column) load.
+    """Return a :class:`.MapperOption` that will convert the given group of
+    deferred column properties into a non-deferred (regular column) load.
 
     Used with :meth:`.Query.options`.
 

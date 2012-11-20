@@ -79,19 +79,18 @@ class DefaultEngineStrategy(EngineStrategy):
                 try:
                     return dialect.connect(*cargs, **cparams)
                 except Exception, e:
+                    invalidated = dialect.is_disconnect(e, None, None)
                     # Py3K
                     #raise exc.DBAPIError.instance(None, None,
-                    #                   e, dialect.dbapi.Error,
-                    #                   connection_invalidated=
-                    #                       dialect.is_disconnect(e, None, None)
-                    #                       ) from e
+                    #    e, dialect.dbapi.Error,
+                    #    connection_invalidated=invalidated
+                    #) from e
                     # Py2K
                     import sys
                     raise exc.DBAPIError.instance(
-                                None, None, e, dialect.dbapi.Error,
-                                connection_invalidated=
-                                        dialect.is_disconnect(e, None, None)), \
-                                None, sys.exc_info()[2]
+                        None, None, e, dialect.dbapi.Error,
+                        connection_invalidated=invalidated
+                    ), None, sys.exc_info()[2]
                     # end Py2K
 
             creator = kwargs.pop('creator', connect)
@@ -107,9 +106,9 @@ class DefaultEngineStrategy(EngineStrategy):
                          'echo': 'echo_pool',
                          'timeout': 'pool_timeout',
                          'recycle': 'pool_recycle',
-                         'events':'pool_events',
-                         'use_threadlocal':'pool_threadlocal',
-                         'reset_on_return':'pool_reset_on_return'}
+                         'events': 'pool_events',
+                         'use_threadlocal': 'pool_threadlocal',
+                         'reset_on_return': 'pool_reset_on_return'}
             for k in util.get_cls_kwargs(poolclass):
                 tk = translate.get(k, k)
                 if tk in kwargs:
@@ -147,7 +146,8 @@ class DefaultEngineStrategy(EngineStrategy):
             do_on_connect = dialect.on_connect()
             if do_on_connect:
                 def on_connect(dbapi_connection, connection_record):
-                    conn = getattr(dbapi_connection, '_sqla_unwrap', dbapi_connection)
+                    conn = getattr(
+                        dbapi_connection, '_sqla_unwrap', dbapi_connection)
                     if conn is None:
                         return
                     do_on_connect(conn)
@@ -238,12 +238,14 @@ class MockEngineStrategy(EngineStrategy):
             kwargs['checkfirst'] = False
             from sqlalchemy.engine import ddl
 
-            ddl.SchemaGenerator(self.dialect, self, **kwargs).traverse_single(entity)
+            ddl.SchemaGenerator(
+                self.dialect, self, **kwargs).traverse_single(entity)
 
         def drop(self, entity, **kwargs):
             kwargs['checkfirst'] = False
             from sqlalchemy.engine import ddl
-            ddl.SchemaDropper(self.dialect, self, **kwargs).traverse_single(entity)
+            ddl.SchemaDropper(
+                self.dialect, self, **kwargs).traverse_single(entity)
 
         def _run_visitor(self, visitorcallable, element,
                                         connection=None,

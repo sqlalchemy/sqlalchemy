@@ -5,8 +5,8 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """defines genericized SQL types, each represented by a subclass of
-:class:`~sqlalchemy.types.AbstractType`.  Dialects define further subclasses of these
-types.
+:class:`~sqlalchemy.types.AbstractType`.  Dialects define further subclasses
+of these types.
 
 For more information see the SQLAlchemy documentation on types.
 
@@ -14,11 +14,11 @@ For more information see the SQLAlchemy documentation on types.
 __all__ = ['TypeEngine', 'TypeDecorator', 'AbstractType', 'UserDefinedType',
             'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'NVARCHAR', 'TEXT', 'Text',
             'FLOAT', 'NUMERIC', 'REAL', 'DECIMAL', 'TIMESTAMP', 'DATETIME',
-            'CLOB', 'BLOB', 'BINARY', 'VARBINARY', 'BOOLEAN', 'BIGINT', 'SMALLINT',
-            'INTEGER', 'DATE', 'TIME', 'String', 'Integer', 'SmallInteger',
-            'BigInteger', 'Numeric', 'Float', 'DateTime', 'Date', 'Time',
-            'LargeBinary', 'Binary', 'Boolean', 'Unicode', 'Concatenable',
-            'UnicodeText', 'PickleType', 'Interval', 'Enum']
+            'CLOB', 'BLOB', 'BINARY', 'VARBINARY', 'BOOLEAN', 'BIGINT',
+            'SMALLINT', 'INTEGER', 'DATE', 'TIME', 'String', 'Integer',
+            'SmallInteger', 'BigInteger', 'Numeric', 'Float', 'DateTime',
+            'Date', 'Time', 'LargeBinary', 'Binary', 'Boolean', 'Unicode',
+            'Concatenable', 'UnicodeText', 'PickleType', 'Interval', 'Enum']
 
 import datetime as dt
 import codecs
@@ -35,9 +35,11 @@ NoneType = type(None)
 if util.jython:
     import array
 
+
 class AbstractType(Visitable):
     """Base for all types - not needed except for backwards
     compatibility."""
+
 
 class TypeEngine(AbstractType):
     """Base for built-in types."""
@@ -158,8 +160,8 @@ class TypeEngine(AbstractType):
         parameter within the statement.  It is used for special data types
         that require literals being wrapped in some special database function
         in order to coerce an application-level value into a database-specific
-        format.  It is the SQL analogue of the :meth:`.TypeEngine.bind_processor`
-        method.
+        format.  It is the SQL analogue of the
+        :meth:`.TypeEngine.bind_processor` method.
 
         The method is evaluated at statement compile time, as opposed
         to statement construction time.
@@ -230,8 +232,8 @@ class TypeEngine(AbstractType):
         The construction of :meth:`.TypeEngine.with_variant` is always
         from the "fallback" type to that which is dialect specific.
         The returned type is an instance of :class:`.Variant`, which
-        itself provides a :meth:`~sqlalchemy.types.Variant.with_variant` that can
-        be called repeatedly.
+        itself provides a :meth:`~sqlalchemy.types.Variant.with_variant`
+        that can be called repeatedly.
 
         :param type_: a :class:`.TypeEngine` that will be selected
          as a variant from the originating type, when a dialect
@@ -259,8 +261,10 @@ class TypeEngine(AbstractType):
             return self.__class__
 
     def dialect_impl(self, dialect):
-        """Return a dialect-specific implementation for this :class:`.TypeEngine`."""
+        """Return a dialect-specific implementation for this
+        :class:`.TypeEngine`.
 
+        """
         try:
             return dialect._type_memos[self]['impl']
         except KeyError:
@@ -390,8 +394,10 @@ class TypeEngine(AbstractType):
     def __repr__(self):
         return util.generic_repr(self)
 
+
 def _reconstitute_comparator(expression):
     return expression.comparator
+
 
 class UserDefinedType(TypeEngine):
     """Base for user defined types.
@@ -450,12 +456,13 @@ class UserDefinedType(TypeEngine):
         Default behavior for :class:`.UserDefinedType` is the
         same as that of :class:`.TypeDecorator`; by default it returns
         ``self``, assuming the compared value should be coerced into
-        the same type as this one.  See :meth:`.TypeDecorator.coerce_compared_value`
-        for more detail.
+        the same type as this one.  See
+        :meth:`.TypeDecorator.coerce_compared_value` for more detail.
 
         .. versionchanged:: 0.8 :meth:`.UserDefinedType.coerce_compared_value`
            now returns ``self`` by default, rather than falling onto the
-           more fundamental behavior of :meth:`.TypeEngine.coerce_compared_value`.
+           more fundamental behavior of
+           :meth:`.TypeEngine.coerce_compared_value`.
 
         """
 
@@ -610,7 +617,8 @@ class TypeDecorator(TypeEngine):
         the :class:`.TypeEngine` type represented by ``self.impl``.
         Makes usage of :meth:`dialect_impl` but also traverses
         into wrapped :class:`.TypeDecorator` instances.
-        Behavior can be customized here by overriding :meth:`load_dialect_impl`.
+        Behavior can be customized here by overriding
+        :meth:`load_dialect_impl`.
 
         """
         adapted = dialect.type_descriptor(self)
@@ -727,7 +735,8 @@ class TypeDecorator(TypeEngine):
             return self.impl.bind_processor(dialect)
 
     def result_processor(self, dialect, coltype):
-        """Provide a result value processing function for the given :class:`.Dialect`.
+        """Provide a result value processing function for the given
+        :class:`.Dialect`.
 
         This is the method that fulfills the :class:`.TypeEngine`
         contract for result value conversion.   :class:`.TypeDecorator`
@@ -795,7 +804,8 @@ class TypeDecorator(TypeEngine):
         return instance
 
     def get_dbapi_type(self, dbapi):
-        """Return the DBAPI type object represented by this :class:`.TypeDecorator`.
+        """Return the DBAPI type object represented by this
+        :class:`.TypeDecorator`.
 
         By default this calls upon :meth:`.TypeEngine.get_dbapi_type` of the
         underlying "impl".
@@ -836,8 +846,8 @@ class Variant(TypeDecorator):
         """Construct a new :class:`.Variant`.
 
         :param base: the base 'fallback' type
-        :param mapping: dictionary of string dialect names to :class:`.TypeEngine`
-         instances.
+        :param mapping: dictionary of string dialect names to
+          :class:`.TypeEngine` instances.
 
         """
         self.impl = base
@@ -879,6 +889,7 @@ def to_instance(typeobj, *arg, **kw):
         return typeobj(*arg, **kw)
     else:
         return typeobj
+
 
 def adapt_type(typeobj, colspecs):
     if isinstance(typeobj, type):
@@ -928,6 +939,7 @@ class NullType(TypeEngine):
 
 NullTypeEngine = NullType
 
+
 class Concatenable(object):
     """A mixin that marks a type as supporting 'concatenation',
     typically strings."""
@@ -958,12 +970,14 @@ class _DateAffinity(object):
 
     class Comparator(TypeEngine.Comparator):
         _blank_dict = util.immutabledict()
+
         def _adapt_expression(self, op, other_comparator):
             othertype = other_comparator.type._type_affinity
             return op, \
                     self.type._expression_adaptations.get(op, self._blank_dict).\
                     get(othertype, NULLTYPE)
     comparator_factory = Comparator
+
 
 class String(Concatenable, TypeEngine):
     """The base for all string and character types.
@@ -1077,6 +1091,7 @@ class String(Concatenable, TypeEngine):
             else:
                 encoder = codecs.getencoder(dialect.encoding)
                 warn_on_bytestring = self._warn_on_bytestring
+
                 def process(value):
                     if isinstance(value, unicode):
                         return encoder(value, self.unicode_error)[0]
@@ -1126,6 +1141,7 @@ class String(Concatenable, TypeEngine):
     def get_dbapi_type(self, dbapi):
         return dbapi.STRING
 
+
 class Text(String):
     """A variably sized string type.
 
@@ -1135,6 +1151,7 @@ class Text(String):
 
     """
     __visit_name__ = 'text'
+
 
 class Unicode(String):
     """A variable length Unicode string type.
@@ -1206,6 +1223,7 @@ class Unicode(String):
         kwargs.setdefault('_warn_on_bytestring', True)
         super(Unicode, self).__init__(length=length, **kwargs)
 
+
 class UnicodeText(Text):
     """An unbounded-length Unicode string type.
 
@@ -1251,31 +1269,32 @@ class Integer(_DateAffinity, TypeEngine):
         # TODO: need a dictionary object that will
         # handle operators generically here, this is incomplete
         return {
-            operators.add:{
-                Date:Date,
-                Integer:self.__class__,
-                Numeric:Numeric,
+            operators.add: {
+                Date: Date,
+                Integer: self.__class__,
+                Numeric: Numeric,
             },
-            operators.mul:{
-                Interval:Interval,
-                Integer:self.__class__,
-                Numeric:Numeric,
+            operators.mul: {
+                Interval: Interval,
+                Integer: self.__class__,
+                Numeric: Numeric,
             },
             # Py2K
-            operators.div:{
-                Integer:self.__class__,
-                Numeric:Numeric,
+            operators.div: {
+                Integer: self.__class__,
+                Numeric: Numeric,
             },
             # end Py2K
-            operators.truediv:{
-                Integer:self.__class__,
-                Numeric:Numeric,
+            operators.truediv: {
+                Integer: self.__class__,
+                Numeric: Numeric,
             },
-            operators.sub:{
-                Integer:self.__class__,
-                Numeric:Numeric,
+            operators.sub: {
+                Integer: self.__class__,
+                Numeric: Numeric,
             },
         }
+
 
 class SmallInteger(Integer):
     """A type for smaller ``int`` integers.
@@ -1426,30 +1445,31 @@ class Numeric(_DateAffinity, TypeEngine):
     @util.memoized_property
     def _expression_adaptations(self):
         return {
-            operators.mul:{
-                Interval:Interval,
-                Numeric:self.__class__,
-                Integer:self.__class__,
+            operators.mul: {
+                Interval: Interval,
+                Numeric: self.__class__,
+                Integer: self.__class__,
             },
             # Py2K
-            operators.div:{
-                Numeric:self.__class__,
-                Integer:self.__class__,
+            operators.div: {
+                Numeric: self.__class__,
+                Integer: self.__class__,
             },
             # end Py2K
-            operators.truediv:{
-                Numeric:self.__class__,
-                Integer:self.__class__,
+            operators.truediv: {
+                Numeric: self.__class__,
+                Integer: self.__class__,
             },
-            operators.add:{
-                Numeric:self.__class__,
-                Integer:self.__class__,
+            operators.add: {
+                Numeric: self.__class__,
+                Integer: self.__class__,
             },
-            operators.sub:{
-                Numeric:self.__class__,
-                Integer:self.__class__,
+            operators.sub: {
+                Numeric: self.__class__,
+                Integer: self.__class__,
             }
         }
+
 
 class Float(Numeric):
     """A type for ``float`` numbers.
@@ -1477,7 +1497,8 @@ class Float(Numeric):
         :param \**kwargs: deprecated.  Additional arguments here are ignored
          by the default :class:`.Float` type.  For database specific
          floats that support additional arguments, see that dialect's
-         documentation for details, such as :class:`sqlalchemy.dialects.mysql.FLOAT`.
+         documentation for details, such as
+         :class:`sqlalchemy.dialects.mysql.FLOAT`.
 
         """
         self.precision = precision
@@ -1495,23 +1516,23 @@ class Float(Numeric):
     @util.memoized_property
     def _expression_adaptations(self):
         return {
-            operators.mul:{
-                Interval:Interval,
-                Numeric:self.__class__,
+            operators.mul: {
+                Interval: Interval,
+                Numeric: self.__class__,
             },
             # Py2K
-            operators.div:{
-                Numeric:self.__class__,
+            operators.div: {
+                Numeric: self.__class__,
             },
             # end Py2K
-            operators.truediv:{
-                Numeric:self.__class__,
+            operators.truediv: {
+                Numeric: self.__class__,
             },
-            operators.add:{
-                Numeric:self.__class__,
+            operators.add: {
+                Numeric: self.__class__,
             },
-            operators.sub:{
-                Numeric:self.__class__,
+            operators.sub: {
+                Numeric: self.__class__,
             }
         }
 
@@ -1550,17 +1571,17 @@ class DateTime(_DateAffinity, TypeEngine):
     @util.memoized_property
     def _expression_adaptations(self):
         return {
-            operators.add:{
-                Interval:self.__class__,
+            operators.add: {
+                Interval: self.__class__,
             },
-            operators.sub:{
-                Interval:self.__class__,
-                DateTime:Interval,
+            operators.sub: {
+                Interval: self.__class__,
+                DateTime: Interval,
             },
         }
 
 
-class Date(_DateAffinity,TypeEngine):
+class Date(_DateAffinity, TypeEngine):
     """A type for ``datetime.date()`` objects."""
 
     __visit_name__ = 'date'
@@ -1575,29 +1596,29 @@ class Date(_DateAffinity,TypeEngine):
     @util.memoized_property
     def _expression_adaptations(self):
         return {
-            operators.add:{
-                Integer:self.__class__,
-                Interval:DateTime,
-                Time:DateTime,
+            operators.add: {
+                Integer: self.__class__,
+                Interval: DateTime,
+                Time: DateTime,
             },
-            operators.sub:{
+            operators.sub: {
                 # date - integer = date
-                Integer:self.__class__,
+                Integer: self.__class__,
 
                 # date - date = integer.
-                Date:Integer,
+                Date: Integer,
 
-                Interval:DateTime,
+                Interval: DateTime,
 
                 # date - datetime = interval,
                 # this one is not in the PG docs
                 # but works
-                DateTime:Interval,
+                DateTime: Interval,
             },
         }
 
 
-class Time(_DateAffinity,TypeEngine):
+class Time(_DateAffinity, TypeEngine):
     """A type for ``datetime.time()`` objects."""
 
     __visit_name__ = 'time'
@@ -1615,13 +1636,13 @@ class Time(_DateAffinity,TypeEngine):
     @util.memoized_property
     def _expression_adaptations(self):
         return {
-            operators.add:{
-                Date:DateTime,
-                Interval:self.__class__
+            operators.add: {
+                Date: DateTime,
+                Interval: self.__class__
             },
-            operators.sub:{
-                Time:Interval,
-                Interval:self.__class__,
+            operators.sub: {
+                Time: Interval,
+                Interval: self.__class__,
             },
         }
 
@@ -1644,6 +1665,7 @@ class _Binary(TypeEngine):
     # here, though pg8000 does to indicate "bytea"
     def bind_processor(self, dialect):
         DBAPIBinary = dialect.dbapi.Binary
+
         def process(value):
             x = self
             if value is not None:
@@ -1681,6 +1703,7 @@ class _Binary(TypeEngine):
     def get_dbapi_type(self, dbapi):
         return dbapi.BINARY
 
+
 class LargeBinary(_Binary):
     """A type for large binary byte data.
 
@@ -1708,6 +1731,7 @@ class LargeBinary(_Binary):
         """
         _Binary.__init__(self, length=length)
 
+
 class Binary(LargeBinary):
     """Deprecated.  Renamed to LargeBinary."""
 
@@ -1715,6 +1739,7 @@ class Binary(LargeBinary):
         util.warn_deprecated('The Binary type has been renamed to '
                              'LargeBinary.')
         LargeBinary.__init__(self, *arg, **kw)
+
 
 class SchemaType(events.SchemaEventTarget):
     """Mark a type as possibly requiring schema-level DDL for usage.
@@ -1724,9 +1749,10 @@ class SchemaType(events.SchemaEventTarget):
     constraints, triggers, and other rules.
 
     :class:`.SchemaType` classes can also be targets for the
-    :meth:`.DDLEvents.before_parent_attach` and :meth:`.DDLEvents.after_parent_attach`
-    events, where the events fire off surrounding the association of
-    the type object with a parent :class:`.Column`.
+    :meth:`.DDLEvents.before_parent_attach` and
+    :meth:`.DDLEvents.after_parent_attach` events, where the events fire off
+    surrounding the association of the type object with a parent
+    :class:`.Column`.
 
     """
 
@@ -1817,6 +1843,7 @@ class SchemaType(events.SchemaEventTarget):
         t = self.dialect_impl(bind.dialect)
         if t.__class__ is not self.__class__ and isinstance(t, SchemaType):
             t._on_metadata_drop(target, bind, **kw)
+
 
 class Enum(String, SchemaType):
     """Generic Enum Type.
@@ -1915,7 +1942,6 @@ class Enum(String, SchemaType):
         if self.native_enum:
             SchemaType._set_table(self, column, table)
 
-
         e = schema.CheckConstraint(
                         column.in_(self.enums),
                         name=self.name,
@@ -1937,6 +1963,7 @@ class Enum(String, SchemaType):
                         )
         else:
             return super(Enum, self).adapt(impltype, **kw)
+
 
 class PickleType(TypeDecorator):
     """Holds Python objects, which are serialized using pickle.
@@ -2073,6 +2100,7 @@ class Boolean(TypeEngine, SchemaType):
         else:
             return processors.int_to_boolean
 
+
 class Interval(_DateAffinity, TypeDecorator):
     """A type for ``datetime.timedelta()`` objects.
 
@@ -2165,24 +2193,24 @@ class Interval(_DateAffinity, TypeDecorator):
     @util.memoized_property
     def _expression_adaptations(self):
         return {
-            operators.add:{
-                Date:DateTime,
-                Interval:self.__class__,
-                DateTime:DateTime,
-                Time:Time,
+            operators.add: {
+                Date: DateTime,
+                Interval: self.__class__,
+                DateTime: DateTime,
+                Time: Time,
             },
-            operators.sub:{
-                Interval:self.__class__
+            operators.sub: {
+                Interval: self.__class__
             },
-            operators.mul:{
-                Numeric:self.__class__
+            operators.mul: {
+                Numeric: self.__class__
             },
             operators.truediv: {
-                Numeric:self.__class__
+                Numeric: self.__class__
             },
             # Py2K
             operators.div: {
-                Numeric:self.__class__
+                Numeric: self.__class__
             }
             # end Py2K
         }
@@ -2202,10 +2230,12 @@ class REAL(Float):
 
     __visit_name__ = 'REAL'
 
+
 class FLOAT(Float):
     """The SQL FLOAT type."""
 
     __visit_name__ = 'FLOAT'
+
 
 class NUMERIC(Numeric):
     """The SQL NUMERIC type."""
@@ -2237,6 +2267,7 @@ class BIGINT(BigInteger):
 
     __visit_name__ = 'BIGINT'
 
+
 class TIMESTAMP(DateTime):
     """The SQL TIMESTAMP type."""
 
@@ -2244,6 +2275,7 @@ class TIMESTAMP(DateTime):
 
     def get_dbapi_type(self, dbapi):
         return dbapi.TIMESTAMP
+
 
 class DATETIME(DateTime):
     """The SQL DATETIME type."""
@@ -2262,10 +2294,12 @@ class TIME(Time):
 
     __visit_name__ = 'TIME'
 
+
 class TEXT(Text):
     """The SQL TEXT type."""
 
     __visit_name__ = 'TEXT'
+
 
 class CLOB(Text):
     """The CLOB type.
@@ -2275,15 +2309,18 @@ class CLOB(Text):
 
     __visit_name__ = 'CLOB'
 
+
 class VARCHAR(String):
     """The SQL VARCHAR type."""
 
     __visit_name__ = 'VARCHAR'
 
+
 class NVARCHAR(Unicode):
     """The SQL NVARCHAR type."""
 
     __visit_name__ = 'NVARCHAR'
+
 
 class CHAR(String):
     """The SQL CHAR type."""
@@ -2302,10 +2339,12 @@ class BLOB(LargeBinary):
 
     __visit_name__ = 'BLOB'
 
+
 class BINARY(_Binary):
     """The SQL BINARY type."""
 
     __visit_name__ = 'BINARY'
+
 
 class VARBINARY(_Binary):
     """The SQL VARBINARY type."""
@@ -2325,18 +2364,17 @@ STRINGTYPE = String()
 _type_map = {
     str: String(),
     # Py3K
-    #bytes : LargeBinary(),
+    #bytes: LargeBinary(),
     # Py2K
-    unicode : Unicode(),
+    unicode: Unicode(),
     # end Py2K
-    int : Integer(),
-    float : Numeric(),
+    int: Integer(),
+    float: Numeric(),
     bool: BOOLEANTYPE,
-    decimal.Decimal : Numeric(),
-    dt.date : Date(),
-    dt.datetime : DateTime(),
-    dt.time : Time(),
-    dt.timedelta : Interval(),
+    decimal.Decimal: Numeric(),
+    dt.date: Date(),
+    dt.datetime: DateTime(),
+    dt.time: Time(),
+    dt.timedelta: Interval(),
     NoneType: NULLTYPE
 }
-

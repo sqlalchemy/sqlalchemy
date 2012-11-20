@@ -8,6 +8,7 @@ from sqlalchemy import Integer, String, select, util
 
 from ..schema import Table, Column
 
+
 class LastrowidTest(fixtures.TablesTest):
     run_deletes = 'each'
 
@@ -88,7 +89,6 @@ class InsertBehaviorTest(fixtures.TablesTest):
         else:
             engine = config.db
 
-
         r = engine.execute(
             self.tables.autoinc_pk.insert(),
             data="some data"
@@ -106,6 +106,7 @@ class InsertBehaviorTest(fixtures.TablesTest):
         assert r.closed
         assert r.is_insert
         assert not r.returns_rows
+
 
 class ReturningTest(fixtures.TablesTest):
     run_deletes = 'each'
@@ -162,5 +163,3 @@ class ReturningTest(fixtures.TablesTest):
 
 
 __all__ = ('LastrowidTest', 'InsertBehaviorTest', 'ReturningTest')
-
-

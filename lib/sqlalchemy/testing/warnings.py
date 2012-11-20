@@ -4,6 +4,7 @@ import warnings
 from .. import exc as sa_exc
 from .. import util
 
+
 def testing_warn(msg, stacklevel=3):
     """Replaces sqlalchemy.util.warn during tests."""
 
@@ -13,6 +14,7 @@ def testing_warn(msg, stacklevel=3):
         warnings.warn_explicit(msg, sa_exc.SAWarning, filename, lineno)
     else:
         warnings.warn_explicit(msg, filename, lineno)
+
 
 def resetwarnings():
     """Reset warning behavior to testing defaults."""
@@ -24,6 +26,7 @@ def resetwarnings():
     warnings.filterwarnings('error', category=sa_exc.SADeprecationWarning)
     warnings.filterwarnings('error', category=sa_exc.SAWarning)
 
+
 def assert_warnings(fn, warnings):
     """Assert that each of the given warnings are emitted by fn."""
 
@@ -31,6 +34,7 @@ def assert_warnings(fn, warnings):
 
     canary = []
     orig_warn = util.warn
+
     def capture_warnings(*args, **kw):
         orig_warn(*args, **kw)
         popwarn = warnings.pop(0)

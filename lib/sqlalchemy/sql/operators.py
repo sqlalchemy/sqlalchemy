@@ -395,8 +395,8 @@ class ColumnOperators(Operators):
     def notlike(self, other, escape=None):
         """implement the ``NOT LIKE`` operator.
 
-        This is equivalent to using negation with :meth:`.ColumnOperators.like`,
-        i.e. ``~x.like(y)``.
+        This is equivalent to using negation with
+        :meth:`.ColumnOperators.like`, i.e. ``~x.like(y)``.
 
         .. versionadded:: 0.8
 
@@ -410,8 +410,8 @@ class ColumnOperators(Operators):
     def notilike(self, other, escape=None):
         """implement the ``NOT ILIKE`` operator.
 
-        This is equivalent to using negation with :meth:`.ColumnOperators.ilike`,
-        i.e. ``~x.ilike(y)``.
+        This is equivalent to using negation with
+        :meth:`.ColumnOperators.ilike`, i.e. ``~x.ilike(y)``.
 
         .. versionadded:: 0.8
 
@@ -549,7 +549,10 @@ class ColumnOperators(Operators):
         return self.operate(between_op, cleft, cright)
 
     def distinct(self):
-        """Produce a :func:`~.expression.distinct` clause against the parent object."""
+        """Produce a :func:`~.expression.distinct` clause against the
+        parent object.
+
+        """
         return self.operate(distinct_op)
 
     def __add__(self, other):
@@ -612,99 +615,131 @@ class ColumnOperators(Operators):
         """
         return self.reverse_operate(truediv, other)
 
+
 def from_():
     raise NotImplementedError()
+
 
 def as_():
     raise NotImplementedError()
 
+
 def exists():
     raise NotImplementedError()
+
 
 def is_(a, b):
     return a.is_(b)
 
+
 def isnot(a, b):
     return a.isnot(b)
+
 
 def collate(a, b):
     return a.collate(b)
 
+
 def op(a, opstring, b):
     return a.op(opstring)(b)
+
 
 def like_op(a, b, escape=None):
     return a.like(b, escape=escape)
 
+
 def notlike_op(a, b, escape=None):
     return a.notlike(b, escape=escape)
+
 
 def ilike_op(a, b, escape=None):
     return a.ilike(b, escape=escape)
 
+
 def notilike_op(a, b, escape=None):
     return a.notilike(b, escape=escape)
+
 
 def between_op(a, b, c):
     return a.between(b, c)
 
+
 def in_op(a, b):
     return a.in_(b)
+
 
 def notin_op(a, b):
     return a.notin_(b)
 
+
 def distinct_op(a):
     return a.distinct()
+
 
 def startswith_op(a, b, escape=None):
     return a.startswith(b, escape=escape)
 
+
 def notstartswith_op(a, b, escape=None):
     return ~a.startswith(b, escape=escape)
+
 
 def endswith_op(a, b, escape=None):
     return a.endswith(b, escape=escape)
 
+
 def notendswith_op(a, b, escape=None):
     return ~a.endswith(b, escape=escape)
+
 
 def contains_op(a, b, escape=None):
     return a.contains(b, escape=escape)
 
+
 def notcontains_op(a, b, escape=None):
     return ~a.contains(b, escape=escape)
+
 
 def match_op(a, b):
     return a.match(b)
 
+
 def comma_op(a, b):
     raise NotImplementedError()
+
 
 def concat_op(a, b):
     return a.concat(b)
 
+
 def desc_op(a):
     return a.desc()
+
 
 def asc_op(a):
     return a.asc()
 
+
 def nullsfirst_op(a):
     return a.nullsfirst()
 
+
 def nullslast_op(a):
     return a.nullslast()
+
 
 _commutative = set([eq, ne, add, mul])
 
 _comparison = set([eq, ne, lt, gt, ge, le])
 
+
 def is_comparison(op):
     return op in _comparison
 
+
 def is_commutative(op):
     return op in _commutative
+
 
 def is_ordering_modifier(op):
     return op in (asc_op, desc_op,

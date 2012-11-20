@@ -18,6 +18,7 @@ from ... import types as sqltypes
 from .base import PGDialect, PGExecutionContext
 from ... import processors
 
+
 class PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
         return processors.to_str
@@ -28,8 +29,10 @@ class PGNumeric(sqltypes.Numeric):
         else:
             return processors.to_float
 
+
 class PGExecutionContext_pypostgresql(PGExecutionContext):
     pass
+
 
 class PGDialect_pypostgresql(PGDialect):
     driver = 'pypostgresql'
@@ -48,8 +51,10 @@ class PGDialect_pypostgresql(PGDialect):
     colspecs = util.update_copy(
         PGDialect.colspecs,
         {
-            sqltypes.Numeric : PGNumeric,
-            sqltypes.Float: sqltypes.Float,  # prevents PGNumeric from being used
+            sqltypes.Numeric: PGNumeric,
+
+            # prevents PGNumeric from being used
+            sqltypes.Float: sqltypes.Float,
         }
     )
 

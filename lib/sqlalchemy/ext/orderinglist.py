@@ -8,10 +8,11 @@
 
 :author: Jason Kirtland
 
-``orderinglist`` is a helper for mutable ordered relationships.  It will intercept
-list operations performed on a relationship collection and automatically
-synchronize changes in list position with an attribute on the related objects.
-(See :ref:`advdatamapping_entitycollections` for more information on the general pattern.)
+``orderinglist`` is a helper for mutable ordered relationships.  It will
+intercept list operations performed on a relationship collection and
+automatically synchronize changes in list position with an attribute on the
+related objects. (See :ref:`advdatamapping_entitycollections` for more
+information on the general pattern.)
 
 Example: Two tables that store slides in a presentation.  Each slide
 has a number of bullet points, displayed in order by the 'position'
@@ -41,15 +42,15 @@ affected rows when changes are made.
      })
      mapper(Bullet, bullets_table)
 
-The standard relationship mapping will produce a list-like attribute on each Slide
-containing all related Bullets, but coping with changes in ordering is totally
-your responsibility.  If you insert a Bullet into that list, there is no
-magic- it won't have a position attribute unless you assign it it one, and
+The standard relationship mapping will produce a list-like attribute on each
+Slide containing all related Bullets, but coping with changes in ordering is
+totally your responsibility.  If you insert a Bullet into that list, there is
+no magic - it won't have a position attribute unless you assign it it one, and
 you'll need to manually renumber all the subsequent Bullets in the list to
 accommodate the insert.
 
-An ``orderinglist`` can automate this and manage the 'position' attribute on all
-related bullets for you.
+An ``orderinglist`` can automate this and manage the 'position' attribute on
+all related bullets for you.
 
 .. sourcecode:: python+sql
 
@@ -69,18 +70,20 @@ related bullets for you.
     s.bullets[2].position
     >>> 2
 
-Use the ``ordering_list`` function to set up the ``collection_class`` on relationships
-(as in the mapper example above).  This implementation depends on the list
-starting in the proper order, so be SURE to put an order_by on your relationship.
+Use the ``ordering_list`` function to set up the ``collection_class`` on
+relationships (as in the mapper example above).  This implementation depends
+on the list starting in the proper order, so be SURE to put an order_by on
+your relationship.
 
 .. warning::
 
   ``ordering_list`` only provides limited functionality when a primary
-  key column or unique column is the target of the sort.  Since changing the order of
-  entries often means that two rows must trade values, this is not possible when
-  the value is constrained by a primary key or unique constraint, since one of the rows
-  would temporarily have to point to a third available value so that the other row
-  could take its old value.   ``ordering_list`` doesn't do any of this for you,
+  key column or unique column is the target of the sort.  Since changing the
+  order of entries often means that two rows must trade values, this is not
+  possible when the value is constrained by a primary key or unique
+  constraint, since one of the rows would temporarily have to point to a
+  third available value so that the other row could take its old
+  value.   ``ordering_list`` doesn't do any of this for you,
   nor does SQLAlchemy itself.
 
 ``ordering_list`` takes the name of the related object's ordering attribute as
@@ -100,14 +103,14 @@ index to any value you require.
 from ..orm.collections import collection
 from .. import util
 
-__all__ = [ 'ordering_list' ]
+__all__ = ['ordering_list']
 
 
 def ordering_list(attr, count_from=None, **kw):
     """Prepares an OrderingList factory for use in mapper definitions.
 
-    Returns an object suitable for use as an argument to a Mapper relationship's
-    ``collection_class`` option.  Arguments are:
+    Returns an object suitable for use as an argument to a Mapper
+    relationship's ``collection_class`` option.  Arguments are:
 
     attr
       Name of the mapped attribute to use for storage and retrieval of
@@ -125,16 +128,21 @@ def ordering_list(attr, count_from=None, **kw):
     kw = _unsugar_count_from(count_from=count_from, **kw)
     return lambda: OrderingList(attr, **kw)
 
+
 # Ordering utility functions
+
+
 def count_from_0(index, collection):
     """Numbering function: consecutive integers starting at 0."""
 
     return index
 
+
 def count_from_1(index, collection):
     """Numbering function: consecutive integers starting at 1."""
 
     return index + 1
+
 
 def count_from_n_factory(start):
     """Numbering function: consecutive integers starting at arbitrary start."""
@@ -146,6 +154,7 @@ def count_from_n_factory(start):
     except TypeError:
         pass
     return f
+
 
 def _unsugar_count_from(**kw):
     """Builds counting functions from keyword arguments.
@@ -163,6 +172,7 @@ def _unsugar_count_from(**kw):
         else:
             kw['ordering_func'] = count_from_n_factory(count_from)
     return kw
+
 
 class OrderingList(list):
     """A custom list that manages position information for its children.
@@ -188,9 +198,10 @@ class OrderingList(list):
           Name of the attribute that stores the object's order in the
           relationship.
 
-        :param ordering_func: Optional.  A function that maps the position in the Python list to a
-          value to store in the ``ordering_attr``.  Values returned are
-          usually (but need not be!) integers.
+        :param ordering_func: Optional.  A function that maps the position in
+          the Python list to a value to store in the
+          ``ordering_attr``.  Values returned are usually (but need not be!)
+          integers.
 
           An ``ordering_func`` is called with two positional parameters: the
           index of the element in the list, and the list itself.
@@ -322,6 +333,7 @@ class OrderingList(list):
             not func.__doc__ and hasattr(list, func_name)):
             func.__doc__ = getattr(list, func_name).__doc__
     del func_name, func
+
 
 def _reconstitute(cls, dict_, items):
     """ Reconstitute an ``OrderingList``.

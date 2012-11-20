@@ -32,8 +32,8 @@ alternate instrumentation forms.
 from . import exc, collections, events
 from operator import attrgetter
 from .. import event, util
-import weakref
 state = util.importlater("sqlalchemy.orm", "state")
+
 
 class ClassManager(dict):
     """tracks state information at the class level."""
@@ -308,6 +308,7 @@ class ClassManager(dict):
         return '<%s of %r at %x>' % (
             self.__class__.__name__, self.class_, id(self))
 
+
 class InstrumentationFactory(object):
     """Factory for new ClassManager instances."""
 
@@ -352,6 +353,7 @@ class InstrumentationFactory(object):
 # when importred.
 _instrumentation_factory = InstrumentationFactory()
 
+
 def register_class(class_):
     """Register class instrumentation.
 
@@ -363,6 +365,7 @@ def register_class(class_):
     if manager is None:
         manager = _instrumentation_factory.create_manager_for_cls(class_)
     return manager
+
 
 def unregister_class(class_):
     """Unregister class instrumentation."""
@@ -389,6 +392,7 @@ instance_state = _default_state_getter = ClassManager.state_getter()
 instance_dict = _default_dict_getter = ClassManager.dict_getter()
 
 manager_of_class = _default_manager_getter = ClassManager.manager_getter()
+
 
 def _generate_init(class_, class_manager):
     """Build an __init__ decorator that triggers ClassManager events."""
@@ -433,4 +437,3 @@ def __init__(%(apply_pos)s):
     #if func_kw_defaults:
     #    __init__.__kwdefaults__ = func_kw_defaults
     return __init__
-

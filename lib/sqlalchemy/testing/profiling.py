@@ -22,6 +22,7 @@ from ..util.compat import jython, pypy, win32
 
 _current_test = None
 
+
 def profiled(target=None, **target_opts):
     """Function profiling.
 
@@ -69,13 +70,13 @@ def profiled(target=None, **target_opts):
                 else:
                     stats.print_stats()
 
-                print_callers = target_opts.get('print_callers',
-                                                profile_config['print_callers'])
+                print_callers = target_opts.get(
+                    'print_callers', profile_config['print_callers'])
                 if print_callers:
                     stats.print_callers()
 
-                print_callees = target_opts.get('print_callees',
-                                                profile_config['print_callees'])
+                print_callees = target_opts.get(
+                    'print_callees', profile_config['print_callees'])
                 if print_callees:
                     stats.print_callees()
 
@@ -92,10 +93,14 @@ class ProfileStatsFile(object):
 
     """
     def __init__(self, filename):
-        self.write = config.options is not None and config.options.write_profiles
+        self.write = (
+            config.options is not None and
+            config.options.write_profiles
+        )
         self.fname = os.path.abspath(filename)
         self.short_fname = os.path.split(self.fname)[-1]
-        self.data = collections.defaultdict(lambda: collections.defaultdict(dict))
+        self.data = collections.defaultdict(
+            lambda: collections.defaultdict(dict))
         self._read()
         if self.write:
             # rewrite for the case where features changed,
@@ -124,7 +129,10 @@ class ProfileStatsFile(object):
 
     def has_stats(self):
         test_key = _current_test
-        return test_key in self.data and self.platform_key in self.data[test_key]
+        return (
+            test_key in self.data and
+            self.platform_key in self.data[test_key]
+        )
 
     def result(self, callcount):
         test_key = _current_test
@@ -153,7 +161,6 @@ class ProfileStatsFile(object):
         per_platform['current_count'] += 1
         return result
 
-
     def _header(self):
         return \
         "# %s\n"\
@@ -165,8 +172,8 @@ class ProfileStatsFile(object):
         "# assertions are raised if the counts do not match.\n"\
         "# \n"\
         "# To add a new callcount test, apply the function_call_count \n"\
-        "# decorator and re-run the tests using the --write-profiles option - \n"\
-        "# this file will be rewritten including the new count.\n"\
+        "# decorator and re-run the tests using the --write-profiles \n"\
+        "# option - this file will be rewritten including the new count.\n"\
         "# \n"\
         "" % (self.fname)
 
@@ -183,7 +190,8 @@ class ProfileStatsFile(object):
             test_key, platform_key, counts = line.split()
             per_fn = self.data[test_key]
             per_platform = per_fn[platform_key]
-            per_platform['counts'] = [int(count) for count in counts.split(",")]
+            c = [int(count) for count in counts.split(",")]
+            per_platform['counts'] = c
             per_platform['lineno'] = lineno + 1
             per_platform['current_count'] = 0
         profile_f.close()
@@ -198,15 +206,12 @@ class ProfileStatsFile(object):
             profile_f.write("\n# TEST: %s\n\n" % test_key)
             for platform_key in sorted(per_fn):
                 per_platform = per_fn[platform_key]
-                profile_f.write(
-                    "%s %s %s\n" % (
-                        test_key,
-                        platform_key, ",".join(str(count) for count in per_platform['counts'])
-                    )
-                )
+                c = ",".join(str(count) for count in per_platform['counts'])
+                profile_f.write("%s %s %s\n" % (test_key, platform_key, c))
         profile_f.close()
 
 from sqlalchemy.util.compat import update_wrapper
+
 
 def function_call_count(variance=0.05):
     """Assert a target for a test case's function call count.
@@ -222,7 +227,6 @@ def function_call_count(variance=0.05):
     def decorate(fn):
         def wrap(*args, **kw):
 
-
             if cProfile is None:
                 raise SkipTest("cProfile is not installed")
 
@@ -236,7 +240,6 @@ def function_call_count(variance=0.05):
                             "this platform." % _profile_stats.short_fname)
 
             gc_collect()
-
 
             timespent, load_stats, fn_result = _profile(
                 fn, *args, **kw
@@ -263,8 +266,9 @@ def function_call_count(variance=0.05):
                 if abs(callcount - expected_count) > deviance:
                     raise AssertionError(
                         "Adjusted function call count %s not within %s%% "
-                        "of expected %s. (Delete line %d of file %s to regenerate "
-                            "this callcount, when tests are run with --write-profiles.)"
+                        "of expected %s. (Delete line %d of file %s to "
+                        "regenerate this callcount, when tests are run "
+                        "with --write-profiles.)"
                         % (
                         callcount, (variance * 100),
                         expected_count, line_no,
@@ -288,4 +292,3 @@ def _profile(fn, *args, **kw):
     ended = time.time()
 
     return ended - began, load_stats, locals()['result']
-

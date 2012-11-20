@@ -39,18 +39,19 @@ The serializer module is only appropriate for query structures.  It is not
 needed for:
 
 * instances of user-defined classes.   These contain no references to engines,
-  sessions or expression constructs in the typical case and can be serialized directly.
+  sessions or expression constructs in the typical case and can be serialized
+  directly.
 
-* Table metadata that is to be loaded entirely from the serialized structure (i.e. is
-  not already declared in the application).   Regular pickle.loads()/dumps() can
-  be used to fully dump any ``MetaData`` object, typically one which was reflected
-  from an existing database at some previous point in time.  The serializer module
-  is specifically for the opposite case, where the Table metadata is already present
-  in memory.
+* Table metadata that is to be loaded entirely from the serialized structure
+  (i.e. is not already declared in the application).   Regular
+  pickle.loads()/dumps() can be used to fully dump any ``MetaData`` object,
+  typically one which was reflected from an existing database at some previous
+  point in time.  The serializer module is specifically for the opposite case,
+  where the Table metadata is already present in memory.
 
 """
 
-from ..orm import class_mapper, Query
+from ..orm import class_mapper
 from ..orm.session import Session
 from ..orm.mapper import Mapper
 from ..orm.attributes import QueryableAttribute
@@ -76,7 +77,6 @@ b64decode = base64.b64decode
 # end Py2K
 
 __all__ = ['Serializer', 'Deserializer', 'dumps', 'loads']
-
 
 
 def Serializer(*args, **kw):
@@ -106,6 +106,7 @@ def Serializer(*args, **kw):
     return pickler
 
 our_ids = re.compile(r'(mapper|table|column|session|attribute|engine):(.*)')
+
 
 def Deserializer(file, metadata=None, scoped_session=None, engine=None):
     unpickler = pickle.Unpickler(file)
@@ -147,15 +148,15 @@ def Deserializer(file, metadata=None, scoped_session=None, engine=None):
     unpickler.persistent_load = persistent_load
     return unpickler
 
+
 def dumps(obj, protocol=0):
     buf = byte_buffer()
     pickler = Serializer(buf, protocol)
     pickler.dump(obj)
     return buf.getvalue()
 
+
 def loads(data, metadata=None, scoped_session=None, engine=None):
     buf = byte_buffer(data)
     unpickler = Deserializer(buf, metadata, scoped_session, engine)
     return unpickler.load()
-
-

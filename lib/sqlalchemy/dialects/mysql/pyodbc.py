@@ -29,6 +29,7 @@ from ...connectors.pyodbc import PyODBCConnector
 from ... import util
 import re
 
+
 class MySQLExecutionContext_pyodbc(MySQLExecutionContext):
 
     def get_lastrowid(self):
@@ -37,6 +38,7 @@ class MySQLExecutionContext_pyodbc(MySQLExecutionContext):
         lastrowid = cursor.fetchone()[0]
         cursor.close()
         return lastrowid
+
 
 class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
     supports_unicode_statements = False

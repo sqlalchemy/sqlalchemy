@@ -6,6 +6,7 @@
 
 from .. import util
 
+
 def _coerce_config(configuration, prefix):
     """Convert configuration values to expected types."""
 
@@ -26,6 +27,7 @@ def _coerce_config(configuration, prefix):
         util.coerce_kw_type(options, option, type_)
     return options
 
+
 def connection_memoize(key):
     """Decorator, memoize a function in a connection.info stash.
 
@@ -43,6 +45,7 @@ def connection_memoize(key):
             return val
 
     return decorated
+
 
 def py_fallback():
     def _distill_params(multiparams, params):
@@ -89,5 +92,3 @@ try:
     from sqlalchemy.cutils import _distill_params
 except ImportError:
     globals().update(py_fallback())
-
-

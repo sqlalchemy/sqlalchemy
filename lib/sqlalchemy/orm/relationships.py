@@ -22,6 +22,7 @@ from ..sql.util import (
 from ..sql import operators, expression, visitors
 from .interfaces import MANYTOMANY, MANYTOONE, ONETOMANY
 
+
 def remote(expr):
     """Annotate a portion of a primaryjoin expression
     with a 'remote' annotation.
@@ -40,6 +41,7 @@ def remote(expr):
     """
     return _annotate_columns(expression._clause_element_as_expr(expr),
                     {"remote": True})
+
 
 def foreign(expr):
     """Annotate a portion of a primaryjoin expression
@@ -72,6 +74,7 @@ def _annotate_columns(element, annotations):
     if element is not None:
         element = clone(element)
     return element
+
 
 class JoinCondition(object):
     def __init__(self,
@@ -166,35 +169,33 @@ class JoinCondition(object):
         # general mapped table, which in the case of inheritance is
         # a join.
         try:
+            consider_as_foreign_keys = self.consider_as_foreign_keys or None
             if self.secondary is not None:
                 if self.secondaryjoin is None:
                     self.secondaryjoin = \
                         join_condition(
-                                self.child_selectable,
-                                self.secondary,
-                                a_subset=self.child_local_selectable,
-                                consider_as_foreign_keys=\
-                                    self.consider_as_foreign_keys or None
-                                )
+                            self.child_selectable,
+                            self.secondary,
+                            a_subset=self.child_local_selectable,
+                            consider_as_foreign_keys=consider_as_foreign_keys
+                        )
                 if self.primaryjoin is None:
                     self.primaryjoin = \
                         join_condition(
-                                self.parent_selectable,
-                                self.secondary,
-                                a_subset=self.parent_local_selectable,
-                                consider_as_foreign_keys=\
-                                    self.consider_as_foreign_keys or None
-                                )
+                            self.parent_selectable,
+                            self.secondary,
+                            a_subset=self.parent_local_selectable,
+                            consider_as_foreign_keys=consider_as_foreign_keys
+                        )
             else:
                 if self.primaryjoin is None:
                     self.primaryjoin = \
                         join_condition(
-                                self.parent_selectable,
-                                self.child_selectable,
-                                a_subset=self.parent_local_selectable,
-                                consider_as_foreign_keys=\
-                                    self.consider_as_foreign_keys or None
-                                )
+                            self.parent_selectable,
+                            self.child_selectable,
+                            a_subset=self.parent_local_selectable,
+                            consider_as_foreign_keys=consider_as_foreign_keys
+                        )
         except sa_exc.NoForeignKeysError:
             if self.secondary is not None:
                 raise sa_exc.NoForeignKeysError("Could not determine join "
@@ -312,7 +313,7 @@ class JoinCondition(object):
     def _annotate_from_fk_list(self):
         def check_fk(col):
             if col in self.consider_as_foreign_keys:
-                return col._annotate({"foreign":True})
+                return col._annotate({"foreign": True})
         self.primaryjoin = visitors.replacement_traverse(
             self.primaryjoin,
             {},
@@ -330,6 +331,7 @@ class JoinCondition(object):
             secondarycols = util.column_set(self.secondary.c)
         else:
             secondarycols = set()
+
         def is_foreign(a, b):
             if isinstance(a, schema.Column) and \
                         isinstance(b, schema.Column):
@@ -355,21 +357,21 @@ class JoinCondition(object):
                 if col is not None:
                     if col.compare(binary.left):
                         binary.left = binary.left._annotate(
-                                            {"foreign":True})
+                                            {"foreign": True})
                     elif col.compare(binary.right):
                         binary.right = binary.right._annotate(
-                                            {"foreign":True})
+                                            {"foreign": True})
 
         self.primaryjoin = visitors.cloned_traverse(
             self.primaryjoin,
             {},
-            {"binary":visit_binary}
+            {"binary": visit_binary}
         )
         if self.secondaryjoin is not None:
             self.secondaryjoin = visitors.cloned_traverse(
                 self.secondaryjoin,
                 {},
-                {"binary":visit_binary}
+                {"binary": visit_binary}
             )
 
     def _refers_to_parent_table(self):
@@ -380,6 +382,7 @@ class JoinCondition(object):
         pt = self.parent_selectable
         mt = self.child_selectable
         result = [False]
+
         def visit_binary(binary):
             c, f = binary.left, binary.right
             if (
@@ -394,7 +397,7 @@ class JoinCondition(object):
         visitors.traverse(
                     self.primaryjoin,
                     {},
-                    {"binary":visit_binary}
+                    {"binary": visit_binary}
                 )
         return result[0]
 
@@ -421,7 +424,7 @@ class JoinCondition(object):
         elif self._local_remote_pairs or self._remote_side:
             self._annotate_remote_from_args()
         elif self._refers_to_parent_table():
-            self._annotate_selfref(lambda col:"foreign" in col._annotations)
+            self._annotate_selfref(lambda col: "foreign" in col._annotations)
         elif self._tables_overlap():
             self._annotate_remote_with_overlap()
         else:
@@ -434,7 +437,7 @@ class JoinCondition(object):
         """
         def repl(element):
             if self.secondary.c.contains_column(element):
-                return element._annotate({"remote":True})
+                return element._annotate({"remote": True})
         self.primaryjoin = visitors.replacement_traverse(
                                     self.primaryjoin, {},  repl)
         self.secondaryjoin = visitors.replacement_traverse(
@@ -451,17 +454,17 @@ class JoinCondition(object):
                 isinstance(binary.right, expression.ColumnClause):
                 # assume one to many - FKs are "remote"
                 if fn(binary.left):
-                    binary.left = binary.left._annotate({"remote":True})
+                    binary.left = binary.left._annotate({"remote": True})
                 if fn(binary.right) and \
                     not equated:
                     binary.right = binary.right._annotate(
-                                        {"remote":True})
+                                        {"remote": True})
             else:
                 self._warn_non_column_elements()
 
         self.primaryjoin = visitors.cloned_traverse(
                                 self.primaryjoin, {},
-                                {"binary":visit_binary})
+                                {"binary": visit_binary})
 
     def _annotate_remote_from_args(self):
         """annotate 'remote' in primaryjoin, secondaryjoin
@@ -481,11 +484,11 @@ class JoinCondition(object):
             remote_side = self._remote_side
 
         if self._refers_to_parent_table():
-            self._annotate_selfref(lambda col:col in remote_side)
+            self._annotate_selfref(lambda col: col in remote_side)
         else:
             def repl(element):
                 if element in remote_side:
-                    return element._annotate({"remote":True})
+                    return element._annotate({"remote": True})
             self.primaryjoin = visitors.replacement_traverse(
                                         self.primaryjoin, {},  repl)
 
@@ -501,20 +504,21 @@ class JoinCondition(object):
                                             binary.right)
             binary.right, binary.left = proc_left_right(binary.right,
                                             binary.left)
+
         def proc_left_right(left, right):
             if isinstance(left, expression.ColumnClause) and \
                 isinstance(right, expression.ColumnClause):
                 if self.child_selectable.c.contains_column(right) and \
                     self.parent_selectable.c.contains_column(left):
-                    right = right._annotate({"remote":True})
+                    right = right._annotate({"remote": True})
             else:
-               self._warn_non_column_elements()
+                self._warn_non_column_elements()
 
             return left, right
 
         self.primaryjoin = visitors.cloned_traverse(
                                     self.primaryjoin, {},
-                                    {"binary":visit_binary})
+                                    {"binary": visit_binary})
 
     def _annotate_remote_distinct_selectables(self):
         """annotate 'remote' in primaryjoin, secondaryjoin
@@ -530,7 +534,7 @@ class JoinCondition(object):
                     or self.child_local_selectable.c.\
                             contains_column(element)
                 ):
-                return element._annotate({"remote":True})
+                return element._annotate({"remote": True})
         self.primaryjoin = visitors.replacement_traverse(
                                     self.primaryjoin, {},  repl)
 
@@ -565,7 +569,7 @@ class JoinCondition(object):
         def locals_(elem):
             if "remote" not in elem._annotations and \
                 elem in local_side:
-                return elem._annotate({"local":True})
+                return elem._annotate({"local": True})
         self.primaryjoin = visitors.replacement_traverse(
                 self.primaryjoin, {}, locals_
             )
@@ -736,7 +740,8 @@ class JoinCondition(object):
 
         self.local_remote_pairs = self._deannotate_pairs(lrp)
         self.synchronize_pairs = self._deannotate_pairs(sync_pairs)
-        self.secondary_synchronize_pairs = self._deannotate_pairs(secondary_sync_pairs)
+        self.secondary_synchronize_pairs = \
+            self._deannotate_pairs(secondary_sync_pairs)
 
     @util.memoized_property
     def remote_columns(self):
@@ -780,7 +785,6 @@ class JoinCondition(object):
             if annotation.issubset(col._annotations)
         ])
 
-
     def join_targets(self, source_selectable,
                             dest_selectable,
                             aliased,
@@ -801,7 +805,7 @@ class JoinCondition(object):
         # regardless of context.
         dest_selectable = _shallow_annotate(
                                 dest_selectable,
-                                {'no_replacement_traverse':True})
+                                {'no_replacement_traverse': True})
 
         primaryjoin, secondaryjoin, secondary = self.primaryjoin, \
             self.secondaryjoin, self.secondary
@@ -894,6 +898,3 @@ class JoinCondition(object):
         bind_to_col = dict((binds[col].key, col) for col in binds)
 
         return lazywhere, bind_to_col, equated_columns
-
-
-

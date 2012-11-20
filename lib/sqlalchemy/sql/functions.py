@@ -15,6 +15,7 @@ from .. import util
 
 _registry = util.defaultdict(dict)
 
+
 def register_function(identifier, fn, package="_default"):
     """Associate a callable with a particular func. name.
 
@@ -38,6 +39,7 @@ class _GenericMeta(VisitableType):
             cls.type = clsdict['__return_type__']
         register_function(identifier, cls, package)
         super(_GenericMeta, cls).__init__(clsname, bases, clsdict)
+
 
 class GenericFunction(Function):
     """Define a 'generic' function.
@@ -113,6 +115,7 @@ class GenericFunction(Function):
     __metaclass__ = _GenericMeta
 
     coerce_arguments = True
+
     def __init__(self, *args, **kwargs):
         parsed_args = kwargs.pop('_parsed_args', None)
         if parsed_args is None:
@@ -128,6 +131,7 @@ class GenericFunction(Function):
 
 register_function("cast", cast)
 register_function("extract", extract)
+
 
 class next_value(GenericFunction):
     """Represent the 'next value', given a :class:`.Sequence`
@@ -151,9 +155,11 @@ class next_value(GenericFunction):
     def _from_objects(self):
         return []
 
+
 class AnsiFunction(GenericFunction):
     def __init__(self, **kwargs):
         GenericFunction.__init__(self, **kwargs)
+
 
 class ReturnTypeFromArgs(GenericFunction):
     """Define a function whose return type is the same as its arguments."""
@@ -164,14 +170,18 @@ class ReturnTypeFromArgs(GenericFunction):
         kwargs['_parsed_args'] = args
         GenericFunction.__init__(self, *args, **kwargs)
 
+
 class coalesce(ReturnTypeFromArgs):
     pass
+
 
 class max(ReturnTypeFromArgs):
     pass
 
+
 class min(ReturnTypeFromArgs):
     pass
+
 
 class sum(ReturnTypeFromArgs):
     pass
@@ -180,8 +190,10 @@ class sum(ReturnTypeFromArgs):
 class now(GenericFunction):
     type = sqltypes.DateTime
 
+
 class concat(GenericFunction):
     type = sqltypes.String
+
 
 class char_length(GenericFunction):
     type = sqltypes.Integer
@@ -189,12 +201,16 @@ class char_length(GenericFunction):
     def __init__(self, arg, **kwargs):
         GenericFunction.__init__(self, arg, **kwargs)
 
+
 class random(GenericFunction):
     pass
 
-class count(GenericFunction):
-    """The ANSI COUNT aggregate function.  With no arguments, emits COUNT \*."""
 
+class count(GenericFunction):
+    """The ANSI COUNT aggregate function.  With no arguments,
+    emits COUNT \*.
+
+    """
     type = sqltypes.Integer
 
     def __init__(self, expression=None, **kwargs):
@@ -202,30 +218,38 @@ class count(GenericFunction):
             expression = literal_column('*')
         GenericFunction.__init__(self, expression, **kwargs)
 
+
 class current_date(AnsiFunction):
     type = sqltypes.Date
+
 
 class current_time(AnsiFunction):
     type = sqltypes.Time
 
+
 class current_timestamp(AnsiFunction):
     type = sqltypes.DateTime
+
 
 class current_user(AnsiFunction):
     type = sqltypes.String
 
+
 class localtime(AnsiFunction):
     type = sqltypes.DateTime
+
 
 class localtimestamp(AnsiFunction):
     type = sqltypes.DateTime
 
+
 class session_user(AnsiFunction):
     type = sqltypes.String
+
 
 class sysdate(AnsiFunction):
     type = sqltypes.DateTime
 
+
 class user(AnsiFunction):
     type = sqltypes.String
-

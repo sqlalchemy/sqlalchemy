@@ -54,6 +54,7 @@ class _MSNumeric_mxodbc(_MSNumeric_pyodbc):
     """Include pyodbc's numeric processor.
     """
 
+
 class _MSDate_mxodbc(_MSDate):
     def bind_processor(self, dialect):
         def process(value):
@@ -62,6 +63,7 @@ class _MSDate_mxodbc(_MSDate):
             else:
                 return None
         return process
+
 
 class _MSTime_mxodbc(_MSTime):
     def bind_processor(self, dialect):
@@ -72,6 +74,7 @@ class _MSTime_mxodbc(_MSTime):
                 return None
         return process
 
+
 class MSExecutionContext_mxodbc(MSExecutionContext_pyodbc):
     """
     The pyodbc execution context is useful for enabling
@@ -81,6 +84,7 @@ class MSExecutionContext_mxodbc(MSExecutionContext_pyodbc):
     #todo - investigate whether the pyodbc execution context
     #       is really only being used in cases where OUTPUT
     #       won't work.
+
 
 class MSDialect_mxodbc(MxODBCConnector, MSDialect):
 
@@ -94,16 +98,14 @@ class MSDialect_mxodbc(MxODBCConnector, MSDialect):
     _need_decimal_fix = True
 
     colspecs = {
-        sqltypes.Numeric : _MSNumeric_mxodbc,
-        sqltypes.DateTime : _MSDateTime,
-        sqltypes.Date : _MSDate_mxodbc,
-        sqltypes.Time : _MSTime_mxodbc,
+        sqltypes.Numeric: _MSNumeric_mxodbc,
+        sqltypes.DateTime: _MSDateTime,
+        sqltypes.Date: _MSDate_mxodbc,
+        sqltypes.Time: _MSTime_mxodbc,
     }
-
 
     def __init__(self, description_encoding=None, **params):
         super(MSDialect_mxodbc, self).__init__(**params)
         self.description_encoding = description_encoding
 
 dialect = MSDialect_mxodbc
-

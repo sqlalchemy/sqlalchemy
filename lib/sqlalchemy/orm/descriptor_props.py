@@ -17,6 +17,7 @@ from .. import util, sql, exc as sa_exc, event, schema
 from ..sql import expression
 properties = util.importlater('sqlalchemy.orm', 'properties')
 
+
 class DescriptorProperty(MapperProperty):
     """:class:`.MapperProperty` which proxies access to a
         user-defined descriptor."""
@@ -47,8 +48,10 @@ class DescriptorProperty(MapperProperty):
         if self.descriptor is None:
             def fset(obj, value):
                 setattr(obj, self.name, value)
+
             def fdel(obj):
                 delattr(obj, self.name)
+
             def fget(obj):
                 return getattr(obj, self.name)
 
@@ -124,7 +127,10 @@ class CompositeProperty(DescriptorProperty):
                 # key not present.  Iterate through related
                 # attributes, retrieve their values.  This
                 # ensures they all load.
-                values = [getattr(instance, key) for key in self._attribute_keys]
+                values = [
+                    getattr(instance, key)
+                    for key in self._attribute_keys
+                ]
 
                 # current expected behavior here is that the composite is
                 # created on access if the object is persistent or if
@@ -239,12 +245,15 @@ class CompositeProperty(DescriptorProperty):
             state.dict.pop(self.key, None)
 
         event.listen(self.parent, 'after_insert',
-                                    insert_update_handler, raw=True)
+            insert_update_handler, raw=True)
         event.listen(self.parent, 'after_update',
-                                    insert_update_handler, raw=True)
-        event.listen(self.parent, 'load', load_handler, raw=True, propagate=True)
-        event.listen(self.parent, 'refresh', load_handler, raw=True, propagate=True)
-        event.listen(self.parent, "expire", expire_handler, raw=True, propagate=True)
+            insert_update_handler, raw=True)
+        event.listen(self.parent, 'load',
+            load_handler, raw=True, propagate=True)
+        event.listen(self.parent, 'refresh',
+            load_handler, raw=True, propagate=True)
+        event.listen(self.parent, 'expire',
+            expire_handler, raw=True, propagate=True)
 
         # TODO: need a deserialize hook here
 
@@ -285,7 +294,7 @@ class CompositeProperty(DescriptorProperty):
             )
         else:
             return attributes.History(
-                (),[self.composite_class(*added)], ()
+                (), [self.composite_class(*added)], ()
             )
 
     def _comparator_factory(self, mapper):
@@ -317,7 +326,7 @@ class CompositeProperty(DescriptorProperty):
             if self.adapter:
                 # TODO: test coverage for adapted composite comparison
                 return expression.ClauseList(
-                            *[self.adapter(x) for x in self.prop._comparable_elements])
+                    *[self.adapter(x) for x in self.prop._comparable_elements])
             else:
                 return expression.ClauseList(*self.prop._comparable_elements)
 
@@ -329,13 +338,16 @@ class CompositeProperty(DescriptorProperty):
             else:
                 values = other.__composite_values__()
             return sql.and_(
-                    *[a==b for a, b in zip(self.prop._comparable_elements, values)])
+                    *[a == b
+                      for a, b in zip(self.prop._comparable_elements, values)]
+                )
 
         def __ne__(self, other):
             return sql.not_(self.__eq__(other))
 
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key
+
 
 class ConcreteInheritedProperty(DescriptorProperty):
     """A 'do nothing' :class:`.MapperProperty` that disables
@@ -374,8 +386,10 @@ class ConcreteInheritedProperty(DescriptorProperty):
         class NoninheritedConcreteProp(object):
             def __set__(s, obj, value):
                 warn()
+
             def __delete__(s, obj):
                 warn()
+
             def __get__(s, obj, owner):
                 if obj is None:
                     return self.descriptor
@@ -439,6 +453,7 @@ class SynonymProperty(DescriptorProperty):
             p._mapped_by_synonym = self.key
 
         self.parent = parent
+
 
 class ComparableProperty(DescriptorProperty):
     """Instruments a Python property for use in query expressions."""

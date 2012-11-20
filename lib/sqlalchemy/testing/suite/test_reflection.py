@@ -18,6 +18,7 @@ from sqlalchemy import event
 
 metadata, users = None, None
 
+
 class HasTableTest(fixtures.TablesTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -30,6 +31,7 @@ class HasTableTest(fixtures.TablesTest):
         with config.db.begin() as conn:
             assert config.db.dialect.has_table(conn, "test_table")
             assert not config.db.dialect.has_table(conn, "nonexistent_table")
+
 
 class HasSequenceTest(fixtures.TestBase):
     __requires__ = 'sequences',

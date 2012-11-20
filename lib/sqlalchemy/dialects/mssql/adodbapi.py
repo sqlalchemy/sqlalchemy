@@ -22,6 +22,7 @@ from sqlalchemy import types as sqltypes, util
 from sqlalchemy.dialects.mssql.base import MSDateTime, MSDialect
 import sys
 
+
 class MSDateTime_adodbapi(MSDateTime):
     def result_processor(self, dialect, coltype):
         def process(value):
@@ -49,7 +50,7 @@ class MSDialect_adodbapi(MSDialect):
     colspecs = util.update_copy(
         MSDialect.colspecs,
         {
-            sqltypes.DateTime:MSDateTime_adodbapi
+            sqltypes.DateTime: MSDateTime_adodbapi
         }
     )
 
@@ -58,18 +59,18 @@ class MSDialect_adodbapi(MSDialect):
 
         connectors = ["Provider=SQLOLEDB"]
         if 'port' in keys:
-            connectors.append ("Data Source=%s, %s" %
+            connectors.append("Data Source=%s, %s" %
                                 (keys.get("host"), keys.get("port")))
         else:
-            connectors.append ("Data Source=%s" % keys.get("host"))
-        connectors.append ("Initial Catalog=%s" % keys.get("database"))
+            connectors.append("Data Source=%s" % keys.get("host"))
+        connectors.append("Initial Catalog=%s" % keys.get("database"))
         user = keys.get("user")
         if user:
             connectors.append("User Id=%s" % user)
             connectors.append("Password=%s" % keys.get("password", ""))
         else:
             connectors.append("Integrated Security=SSPI")
-        return [[";".join (connectors)], {}]
+        return [[";".join(connectors)], {}]
 
     def is_disconnect(self, e, connection, cursor):
         return isinstance(e, self.dbapi.adodbapi.DatabaseError) and \

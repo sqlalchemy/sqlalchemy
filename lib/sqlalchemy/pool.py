@@ -16,13 +16,17 @@ regular DB-API connect() methods to be transparently managed by a
 SQLAlchemy connection pool.
 """
 
-import weakref, time, traceback
+import time
+import traceback
+import weakref
 
 from . import exc, log, event, events, interfaces, util
 from .util import queue as sqla_queue
 from .util import threading, memoized_property, \
     chop_traceback
+
 proxies = {}
+
 
 def manage(module, **params):
     """Return a proxy for a DB-API module that automatically
@@ -45,6 +49,7 @@ def manage(module, **params):
         return proxies[module]
     except KeyError:
         return proxies.setdefault(module, _DBProxy(module, **params))
+
 
 def clear_managers():
     """Remove all current DB-API 2.0 managers.
@@ -159,7 +164,8 @@ class Pool(log.Identified):
 
     dispatch = event.dispatcher(events.PoolEvents)
 
-    @util.deprecated(2.7, "Pool.add_listener is deprecated.  Use event.listen()")
+    @util.deprecated(
+        2.7, "Pool.add_listener is deprecated.  Use event.listen()")
     def add_listener(self, listener):
         """Add a :class:`.PoolListener`-like object to this pool.
 
@@ -384,7 +390,9 @@ def _finalize_fairy(connection, connection_record, pool, ref, echo):
             pool.dispatch.checkin(connection, connection_record)
         pool._return_conn(connection_record)
 
+
 _refs = set()
+
 
 class _ConnectionFairy(object):
     """Proxies a DB-API connection and provides return-on-dereference
@@ -515,6 +523,7 @@ class _ConnectionFairy(object):
         self.connection = None
         self._connection_record = None
 
+
 class SingletonThreadPool(Pool):
     """A Pool that maintains one connection per thread.
 
@@ -590,11 +599,15 @@ class SingletonThreadPool(Pool):
             self._cleanup()
         return c
 
+
 class DummyLock(object):
+
     def acquire(self, wait=True):
         return True
+
     def release(self):
         pass
+
 
 class QueuePool(Pool):
     """A :class:`.Pool` that imposes a limit on the number of open connections.
@@ -794,6 +807,7 @@ class QueuePool(Pool):
     def checkedout(self):
         return self._pool.maxsize - self._pool.qsize() + self._overflow
 
+
 class NullPool(Pool):
     """A Pool which does not pool connections.
 
@@ -878,9 +892,10 @@ class StaticPool(Pool):
     def _do_get(self):
         return self.connection
 
+
 class AssertionPool(Pool):
-    """A :class:`.Pool` that allows at most one checked out connection at any given
-    time.
+    """A :class:`.Pool` that allows at most one checked out connection at
+    any given time.
 
     This will raise an exception if more than one connection is checked out
     at a time.  Useful for debugging code that is using more connections
@@ -935,6 +950,7 @@ class AssertionPool(Pool):
         if self._store_traceback:
             self._checkout_traceback = traceback.format_stack()
         return self._conn
+
 
 class _DBProxy(object):
     """Layers connection pooling behavior on top of a standard DB-API module.

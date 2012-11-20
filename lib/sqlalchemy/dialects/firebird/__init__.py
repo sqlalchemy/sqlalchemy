@@ -18,5 +18,3 @@ __all__ = (
     'TEXT', 'NUMERIC', 'FLOAT', 'TIMESTAMP', 'VARCHAR', 'CHAR', 'BLOB',
     'dialect'
 )
-
-

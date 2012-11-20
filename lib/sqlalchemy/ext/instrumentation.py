@@ -61,6 +61,7 @@ attribute.
 
 """
 
+
 def find_native_user_instrumentation_hook(cls):
     """Find user-specified instrumentation management for a class."""
     return getattr(cls, INSTRUMENTATION_MANAGER, None)
@@ -80,6 +81,7 @@ searches for INSTRUMENTATION_MANAGER.  If all finders return None, standard
 ClassManager instrumentation is used.
 
 """
+
 
 class ExtendedInstrumentationRegistry(InstrumentationFactory):
     """Extends :class:`.InstrumentationFactory` with additional
@@ -169,16 +171,20 @@ class ExtendedInstrumentationRegistry(InstrumentationFactory):
     def state_of(self, instance):
         if instance is None:
             raise AttributeError("None has no persistent state.")
-        return self._state_finders.get(instance.__class__, _default_state_getter)(instance)
+        return self._state_finders.get(
+            instance.__class__, _default_state_getter)(instance)
 
     def dict_of(self, instance):
         if instance is None:
             raise AttributeError("None has no persistent state.")
-        return self._dict_finders.get(instance.__class__, _default_dict_getter)(instance)
+        return self._dict_finders.get(
+            instance.__class__, _default_dict_getter)(instance)
+
 
 orm_instrumentation._instrumentation_factory = \
         _instrumentation_factory = ExtendedInstrumentationRegistry()
 orm_instrumentation.instrumentation_finders = instrumentation_finders
+
 
 class InstrumentationManager(object):
     """User-defined class instrumentation extension.
@@ -258,6 +264,7 @@ class InstrumentationManager(object):
 
     def dict_getter(self, class_):
         return lambda inst: self.get_instance_dict(class_, inst)
+
 
 class _ClassInstrumentationAdapter(ClassManager):
     """Adapts a user-defined InstrumentationManager to a ClassManager."""
@@ -353,6 +360,7 @@ class _ClassInstrumentationAdapter(ClassManager):
     def dict_getter(self):
         return self._get_dict
 
+
 def _install_instrumented_lookups():
     """Replace global class/object management functions
     with ExtendedInstrumentationRegistry implementations, which
@@ -368,21 +376,23 @@ def _install_instrumented_lookups():
     """
     _install_lookups(
         dict(
-            instance_state = _instrumentation_factory.state_of,
-            instance_dict = _instrumentation_factory.dict_of,
-            manager_of_class = _instrumentation_factory.manager_of_class
+            instance_state=_instrumentation_factory.state_of,
+            instance_dict=_instrumentation_factory.dict_of,
+            manager_of_class=_instrumentation_factory.manager_of_class
         )
     )
+
 
 def _reinstall_default_lookups():
     """Restore simplified lookups."""
     _install_lookups(
         dict(
-            instance_state = _default_state_getter,
-            instance_dict = _default_dict_getter,
-            manager_of_class = _default_manager_getter
+            instance_state=_default_state_getter,
+            instance_dict=_default_dict_getter,
+            manager_of_class=_default_manager_getter
         )
     )
+
 
 def _install_lookups(lookups):
     global instance_state, instance_dict, manager_of_class

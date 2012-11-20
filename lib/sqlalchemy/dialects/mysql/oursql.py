@@ -39,7 +39,6 @@ from .base import (BIT, MySQLDialect, MySQLExecutionContext)
 from ... import types as sqltypes, util
 
 
-
 class _oursqlBIT(BIT):
     def result_processor(self, dialect, coltype):
         """oursql already converts mysql bits, so."""
@@ -52,6 +51,7 @@ class MySQLExecutionContext_oursql(MySQLExecutionContext):
     @property
     def plain_query(self):
         return self.execution_options.get('_oursql_plain_query', False)
+
 
 class MySQLDialect_oursql(MySQLDialect):
     driver = 'oursql'
@@ -126,64 +126,67 @@ class MySQLDialect_oursql(MySQLDialect):
     # Q: why didn't we need all these "plain_query" overrides earlier ?
     # am i on a newer/older version of OurSQL ?
     def has_table(self, connection, table_name, schema=None):
-        return MySQLDialect.has_table(self,
-                                        connection.connect().\
-                                            execution_options(_oursql_plain_query=True),
-                                        table_name, schema)
-
-    def get_table_options(self, connection, table_name, schema=None, **kw):
-        return MySQLDialect.get_table_options(self,
-                                            connection.connect().\
-                                                execution_options(_oursql_plain_query=True),
-                                            table_name,
-                                            schema = schema,
-                                            **kw
+        return MySQLDialect.has_table(
+          self,
+          connection.connect().execution_options(_oursql_plain_query=True),
+          table_name,
+          schema
         )
 
+    def get_table_options(self, connection, table_name, schema=None, **kw):
+        return MySQLDialect.get_table_options(
+            self,
+            connection.connect().execution_options(_oursql_plain_query=True),
+            table_name,
+            schema=schema,
+            **kw
+        )
 
     def get_columns(self, connection, table_name, schema=None, **kw):
-        return MySQLDialect.get_columns(self,
-                                        connection.connect().\
-                                                    execution_options(_oursql_plain_query=True),
-                                        table_name,
-                                        schema=schema,
-                                        **kw
+        return MySQLDialect.get_columns(
+            self,
+            connection.connect().execution_options(_oursql_plain_query=True),
+            table_name,
+            schema=schema,
+            **kw
         )
 
     def get_view_names(self, connection, schema=None, **kw):
-        return MySQLDialect.get_view_names(self,
-                                            connection.connect().\
-                                                    execution_options(_oursql_plain_query=True),
-                                            schema=schema,
-                                            **kw
+        return MySQLDialect.get_view_names(
+            self,
+            connection.connect().execution_options(_oursql_plain_query=True),
+            schema=schema,
+            **kw
         )
 
     def get_table_names(self, connection, schema=None, **kw):
-        return MySQLDialect.get_table_names(self,
-                            connection.connect().\
-                                        execution_options(_oursql_plain_query=True),
-                            schema
+        return MySQLDialect.get_table_names(
+            self,
+            connection.connect().execution_options(_oursql_plain_query=True),
+            schema
         )
 
     def get_schema_names(self, connection, **kw):
-        return MySQLDialect.get_schema_names(self,
-                                    connection.connect().\
-                                                execution_options(_oursql_plain_query=True),
-                                    **kw
+        return MySQLDialect.get_schema_names(
+            self,
+            connection.connect().execution_options(_oursql_plain_query=True),
+            **kw
         )
 
     def initialize(self, connection):
         return MySQLDialect.initialize(
-                            self,
-                            connection.execution_options(_oursql_plain_query=True)
-                            )
+            self,
+            connection.execution_options(_oursql_plain_query=True)
+        )
 
     def _show_create_table(self, connection, table, charset=None,
                            full_name=None):
-        return MySQLDialect._show_create_table(self,
-                                connection.contextual_connect(close_with_result=True).
-                                execution_options(_oursql_plain_query=True),
-                                table, charset, full_name)
+        return MySQLDialect._show_create_table(
+            self,
+            connection.contextual_connect(close_with_result=True).
+            execution_options(_oursql_plain_query=True),
+            table, charset, full_name
+        )
 
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.ProgrammingError):
