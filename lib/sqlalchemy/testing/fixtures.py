@@ -7,6 +7,7 @@ import sys
 import sqlalchemy as sa
 from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 
+
 class TestBase(object):
     # A sequence of database names to always run, regardless of the
     # constraints below.
@@ -28,6 +29,7 @@ class TestBase(object):
 
     def assert_(self, val, msg=None):
         assert val, msg
+
 
 class TablesTest(TestBase):
 
@@ -208,8 +210,10 @@ class _ORMTest(object):
         sa.orm.session.Session.close_all()
         sa.orm.clear_mappers()
 
+
 class ORMTest(_ORMTest, TestBase):
     pass
+
 
 class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
     # 'once', 'each', None
@@ -252,7 +256,6 @@ class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
         cls.classes.clear()
         _ORMTest.teardown_class()
 
-
     @classmethod
     def _setup_once_classes(cls):
         if cls.run_setup_classes == 'once':
@@ -275,18 +278,21 @@ class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
 
         """
         cls_registry = cls.classes
+
         class FindFixture(type):
             def __init__(cls, classname, bases, dict_):
                 cls_registry[classname] = cls
                 return type.__init__(cls, classname, bases, dict_)
 
-
         class _Base(object):
             __metaclass__ = FindFixture
+
         class Basic(BasicEntity, _Base):
             pass
+
         class Comparable(ComparableEntity, _Base):
             pass
+
         cls.Basic = Basic
         cls.Comparable = Comparable
         fn()
@@ -306,6 +312,7 @@ class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
     def setup_mappers(cls):
         pass
 
+
 class DeclarativeMappedTest(MappedTest):
     run_setup_classes = 'once'
     run_setup_mappers = 'once'
@@ -317,17 +324,21 @@ class DeclarativeMappedTest(MappedTest):
     @classmethod
     def _with_register_classes(cls, fn):
         cls_registry = cls.classes
+
         class FindFixtureDeclarative(DeclarativeMeta):
             def __init__(cls, classname, bases, dict_):
                 cls_registry[classname] = cls
                 return DeclarativeMeta.__init__(
                         cls, classname, bases, dict_)
+
         class DeclarativeBasic(object):
             __table_cls__ = schema.Table
+
         _DeclBase = declarative_base(metadata=cls.metadata,
                             metaclass=FindFixtureDeclarative,
                             cls=DeclarativeBasic)
         cls.DeclarativeBasic = _DeclBase
         fn()
+
         if cls.metadata.tables:
             cls.metadata.create_all(config.db)
