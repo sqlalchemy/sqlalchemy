@@ -7,6 +7,7 @@ __all__ = 'Table', 'Column',
 
 table_options = {}
 
+
 def Table(*args, **kw):
     """A schema.Table wrapper/hook for dialect-specific tweaks."""
 
@@ -76,10 +77,10 @@ def Column(*args, **kw):
         event.listen(col, 'after_parent_attach', add_seq, propagate=True)
     return col
 
+
 def _truncate_name(dialect, name):
     if len(name) > dialect.max_identifier_length:
         return name[0:max(dialect.max_identifier_length - 6, 0)] + \
                 "_" + hex(hash(name) % 64)[2:]
     else:
         return name
-
