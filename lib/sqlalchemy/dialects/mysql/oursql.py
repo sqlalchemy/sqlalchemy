@@ -53,6 +53,7 @@ class MySQLExecutionContext_oursql(MySQLExecutionContext):
     def plain_query(self):
         return self.execution_options.get('_oursql_plain_query', False)
 
+
 class MySQLDialect_oursql(MySQLDialect):
     driver = 'oursql'
 # Py2K

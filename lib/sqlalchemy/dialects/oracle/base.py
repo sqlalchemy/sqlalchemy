@@ -164,17 +164,21 @@ RESERVED_WORDS = \
 NO_ARG_FNS = set('UID CURRENT_DATE SYSDATE USER '
                 'CURRENT_TIME CURRENT_TIMESTAMP'.split())
 
+
 class RAW(sqltypes._Binary):
     __visit_name__ = 'RAW'
 OracleRaw = RAW
 
+
 class NCLOB(sqltypes.Text):
     __visit_name__ = 'NCLOB'
+
 
 class VARCHAR2(VARCHAR):
     __visit_name__ = 'VARCHAR2'
 
 NVARCHAR2 = NVARCHAR
+
 
 class NUMBER(sqltypes.Numeric, sqltypes.Integer):
     __visit_name__ = 'NUMBER'
@@ -207,11 +211,14 @@ class DOUBLE_PRECISION(sqltypes.Numeric):
 
         super(DOUBLE_PRECISION, self).__init__(precision=precision, scale=scale, asdecimal=asdecimal)
 
+
 class BFILE(sqltypes.LargeBinary):
     __visit_name__ = 'BFILE'
 
+
 class LONG(sqltypes.Text):
     __visit_name__ = 'LONG'
+
 
 class INTERVAL(sqltypes.TypeEngine):
     __visit_name__ = 'INTERVAL'
@@ -242,6 +249,7 @@ class INTERVAL(sqltypes.TypeEngine):
     @property
     def _type_affinity(self):
         return sqltypes.Interval
+
 
 class ROWID(sqltypes.TypeEngine):
     """Oracle ROWID type.
@@ -387,6 +395,7 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_ROWID(self, type_):
         return "ROWID"
+
 
 class OracleCompiler(compiler.SQLCompiler):
     """Oracle compiler modifies the lexical structure of Select
@@ -613,6 +622,7 @@ class OracleCompiler(compiler.SQLCompiler):
         else:
             return super(OracleCompiler, self).for_update_clause(select)
 
+
 class OracleDDLCompiler(compiler.DDLCompiler):
 
     def define_constraint_cascades(self, constraint):
@@ -633,6 +643,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
     def visit_create_index(self, create, **kw):
         return super(OracleDDLCompiler, self).\
                     visit_create_index(create, include_schema=True)
+
 
 class OracleIdentifierPreparer(compiler.IdentifierPreparer):
 
@@ -657,6 +668,7 @@ class OracleExecutionContext(default.DefaultExecutionContext):
         return self._execute_scalar("SELECT " +
                     self.dialect.identifier_preparer.format_sequence(seq) +
                     ".nextval FROM DUAL", type_)
+
 
 class OracleDialect(default.DefaultDialect):
     name = 'oracle'

@@ -57,6 +57,7 @@ from ...connectors.mysqldb import (
                         MySQLDBConnector
                     )
 
+
 class MySQLExecutionContext_mysqldb(MySQLDBExecutionContext, MySQLExecutionContext):
     pass
 
@@ -67,6 +68,7 @@ class MySQLCompiler_mysqldb(MySQLDBCompiler, MySQLCompiler):
 
 class MySQLIdentifierPreparer_mysqldb(MySQLDBIdentifierPreparer, MySQLIdentifierPreparer):
     pass
+
 
 class MySQLDialect_mysqldb(MySQLDBConnector, MySQLDialect):
     execution_ctx_cls = MySQLExecutionContext_mysqldb

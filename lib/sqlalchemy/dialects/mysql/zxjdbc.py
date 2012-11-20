@@ -28,6 +28,7 @@ from ... import types as sqltypes, util
 from ...connectors.zxJDBC import ZxJDBCConnector
 from .base import BIT, MySQLDialect, MySQLExecutionContext
 
+
 class _ZxJDBCBit(BIT):
     def result_processor(self, dialect, coltype):
         """Converts boolean or byte arrays from MySQL Connector/J to longs."""

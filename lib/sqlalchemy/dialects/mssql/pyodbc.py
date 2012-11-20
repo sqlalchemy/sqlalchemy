@@ -116,6 +116,7 @@ from ...connectors.pyodbc import PyODBCConnector
 from ... import types as sqltypes, util
 from ...util.compat import decimal
 
+
 class _MSNumeric_pyodbc(sqltypes.Numeric):
     """Turns Decimals with adjusted() < 0 or > 7 into strings.
 

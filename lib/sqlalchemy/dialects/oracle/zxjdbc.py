@@ -24,6 +24,7 @@ import collections
 
 SQLException = zxJDBC = None
 
+
 class _ZxJDBCDate(sqltypes.Date):
 
     def result_processor(self, dialect, coltype):

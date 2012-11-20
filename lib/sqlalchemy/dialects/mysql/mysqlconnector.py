@@ -20,6 +20,7 @@ from .base import (MySQLDialect,
 
 from ... import util
 
+
 class MySQLExecutionContext_mysqlconnector(MySQLExecutionContext):
 
     def get_lastrowid(self):
@@ -34,17 +35,20 @@ class MySQLCompiler_mysqlconnector(MySQLCompiler):
     def post_process_text(self, text):
         return text.replace('%', '%%')
 
+
 class MySQLIdentifierPreparer_mysqlconnector(MySQLIdentifierPreparer):
 
     def _escape_identifier(self, value):
         value = value.replace(self.escape_quote, self.escape_to_quote)
         return value.replace("%", "%%")
 
+
 class _myconnpyBIT(BIT):
     def result_processor(self, dialect, coltype):
         """MySQL-connector already converts mysql bits, so."""
 
         return None
+
 
 class MySQLDialect_mysqlconnector(MySQLDialect):
     driver = 'mysqlconnector'

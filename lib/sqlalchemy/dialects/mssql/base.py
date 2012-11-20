@@ -216,6 +216,7 @@ RESERVED_WORDS = set(
      'writetext',
     ])
 
+
 class REAL(sqltypes.REAL):
     __visit_name__ = 'REAL'
 
@@ -223,6 +224,7 @@ class REAL(sqltypes.REAL):
         # REAL is a synonym for FLOAT(24) on SQL server
         kw['precision'] = 24
         super(REAL, self).__init__(**kw)
+
 
 class TINYINT(sqltypes.Integer):
     __visit_name__ = 'TINYINT'
@@ -256,6 +258,7 @@ class _MSDate(sqltypes.Date):
                 return value
         return process
 
+
 class TIME(sqltypes.TIME):
     def __init__(self, precision=None, **kwargs):
         self.precision = precision
@@ -287,6 +290,7 @@ class TIME(sqltypes.TIME):
         return process
 _MSTime = TIME
 
+
 class _DateTimeBase(object):
     def bind_processor(self, dialect):
         def process(value):
@@ -296,11 +300,14 @@ class _DateTimeBase(object):
                 return value
         return process
 
+
 class _MSDateTime(_DateTimeBase, sqltypes.DateTime):
     pass
 
+
 class SMALLDATETIME(_DateTimeBase, sqltypes.DateTime):
     __visit_name__ = 'SMALLDATETIME'
+
 
 class DATETIME2(_DateTimeBase, sqltypes.DateTime):
     __visit_name__ = 'DATETIME2'
@@ -317,11 +324,13 @@ class DATETIMEOFFSET(sqltypes.TypeEngine):
     def __init__(self, precision=None, **kwargs):
         self.precision = precision
 
+
 class _StringType(object):
     """Base for MSSQL string types."""
 
     def __init__(self, collation=None):
         self.collation = collation
+
 
 class TEXT(_StringType, sqltypes.TEXT):
     """MSSQL TEXT type, for variable-length text up to 2^31 characters."""
@@ -335,6 +344,7 @@ class TEXT(_StringType, sqltypes.TEXT):
         """
         _StringType.__init__(self, collation)
         sqltypes.Text.__init__(self, length, **kw)
+
 
 class NTEXT(_StringType, sqltypes.UnicodeText):
     """MSSQL NTEXT type, for variable-length unicode text up to 2^30
@@ -381,6 +391,7 @@ class VARCHAR(_StringType, sqltypes.VARCHAR):
         _StringType.__init__(self, collation)
         sqltypes.VARCHAR.__init__(self, length, **kw)
 
+
 class NVARCHAR(_StringType, sqltypes.NVARCHAR):
     """MSSQL NVARCHAR type.
 
@@ -397,6 +408,7 @@ class NVARCHAR(_StringType, sqltypes.NVARCHAR):
         """
         _StringType.__init__(self, collation)
         sqltypes.NVARCHAR.__init__(self, length, **kw)
+
 
 class CHAR(_StringType, sqltypes.CHAR):
     """MSSQL CHAR type, for fixed-length non-Unicode data with a maximum
@@ -426,6 +438,7 @@ class CHAR(_StringType, sqltypes.CHAR):
         _StringType.__init__(self, collation)
         sqltypes.CHAR.__init__(self, length, **kw)
 
+
 class NCHAR(_StringType, sqltypes.NCHAR):
     """MSSQL NCHAR type.
 
@@ -443,8 +456,10 @@ class NCHAR(_StringType, sqltypes.NCHAR):
         _StringType.__init__(self, collation)
         sqltypes.NCHAR.__init__(self, length, **kw)
 
+
 class IMAGE(sqltypes.LargeBinary):
     __visit_name__ = 'IMAGE'
+
 
 class BIT(sqltypes.TypeEngine):
     __visit_name__ = 'BIT'
@@ -453,11 +468,14 @@ class BIT(sqltypes.TypeEngine):
 class MONEY(sqltypes.TypeEngine):
     __visit_name__ = 'MONEY'
 
+
 class SMALLMONEY(sqltypes.TypeEngine):
     __visit_name__ = 'SMALLMONEY'
 
+
 class UNIQUEIDENTIFIER(sqltypes.TypeEngine):
     __visit_name__ = "UNIQUEIDENTIFIER"
+
 
 class SQL_VARIANT(sqltypes.TypeEngine):
     __visit_name__ = 'SQL_VARIANT'
@@ -641,6 +659,7 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
     def visit_SQL_VARIANT(self, type_):
         return 'SQL_VARIANT'
 
+
 class MSExecutionContext(default.DefaultExecutionContext):
     _enable_identity_insert = False
     _select_lastrowid = False
@@ -717,6 +736,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
             return self._result_proxy
         else:
             return engine.ResultProxy(self)
+
 
 class MSSQLCompiler(compiler.SQLCompiler):
     returning_precedes_values = True
@@ -947,6 +967,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
                                     fromhints=from_hints, **kw)
                     for t in [from_table] + extra_froms)
 
+
 class MSSQLStrictCompiler(MSSQLCompiler):
     """A subclass of MSSQLCompiler which disables the usage of bind
     parameters where not allowed natively by MS-SQL.
@@ -989,6 +1010,7 @@ class MSSQLStrictCompiler(MSSQLCompiler):
         else:
             return super(MSSQLStrictCompiler, self).\
                                 render_literal_value(value, type_)
+
 
 class MSDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
@@ -1049,6 +1071,7 @@ class MSIdentifierPreparer(compiler.IdentifierPreparer):
         result = '.'.join([self.quote(x, force) for x in schema.split('.')])
         return result
 
+
 def _db_plus_owner_listing(fn):
     def wrap(dialect, connection, schema=None, **kw):
         dbname, owner = _owner_plus_db(dialect, schema)
@@ -1056,12 +1079,14 @@ def _db_plus_owner_listing(fn):
                             dbname, owner, schema, **kw)
     return update_wrapper(wrap, fn)
 
+
 def _db_plus_owner(fn):
     def wrap(dialect, connection, tablename, schema=None, **kw):
         dbname, owner = _owner_plus_db(dialect, schema)
         return _switch_db(dbname, connection, fn, dialect, connection,
                             tablename, dbname, owner, schema, **kw)
     return update_wrapper(wrap, fn)
+
 
 def _switch_db(dbname, connection, fn, *arg, **kw):
     if dbname:
@@ -1073,6 +1098,7 @@ def _switch_db(dbname, connection, fn, *arg, **kw):
         if dbname:
             connection.execute("use %s" % current_db)
 
+
 def _owner_plus_db(dialect, schema):
     if not schema:
         return None, dialect.default_schema_name
@@ -1080,6 +1106,7 @@ def _owner_plus_db(dialect, schema):
         return schema.split(".", 1)
     else:
         return None, schema
+
 
 class MSDialect(default.DefaultDialect):
     name = 'mssql'

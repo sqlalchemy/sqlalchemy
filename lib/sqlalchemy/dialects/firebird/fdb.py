@@ -26,6 +26,7 @@ The fdb dialect is new and not yet tested (can't get fdb to build).
 from .kinterbasdb import FBDialect_kinterbasdb
 from ... import util
 
+
 class FBDialect_fdb(FBDialect_kinterbasdb):
 
     @classmethod

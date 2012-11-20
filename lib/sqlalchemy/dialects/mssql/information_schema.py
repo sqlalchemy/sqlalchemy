@@ -11,6 +11,7 @@ from ...types import String, Unicode, Integer, TypeDecorator
 
 ischema = MetaData()
 
+
 class CoerceUnicode(TypeDecorator):
     impl = Unicode
 

@@ -361,6 +361,7 @@ class _NumericType(object):
         self.zerofill = zerofill
         super(_NumericType, self).__init__(**kw)
 
+
 class _FloatType(_NumericType, sqltypes.Float):
     def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
         if isinstance(self, (REAL, DOUBLE)) and \
@@ -375,10 +376,12 @@ class _FloatType(_NumericType, sqltypes.Float):
         super(_FloatType, self).__init__(precision=precision, asdecimal=asdecimal, **kw)
         self.scale = scale
 
+
 class _IntegerType(_NumericType, sqltypes.Integer):
     def __init__(self, display_width=None, **kw):
         self.display_width = display_width
         super(_IntegerType, self).__init__(**kw)
+
 
 class _StringType(sqltypes.String):
     """Base for MySQL string types."""
@@ -476,6 +479,7 @@ class DOUBLE(_FloatType):
         super(DOUBLE, self).__init__(precision=precision, scale=scale,
                                      asdecimal=asdecimal, **kw)
 
+
 class REAL(_FloatType, sqltypes.REAL):
     """MySQL REAL type."""
 
@@ -499,6 +503,7 @@ class REAL(_FloatType, sqltypes.REAL):
         """
         super(REAL, self).__init__(precision=precision, scale=scale,
                                    asdecimal=asdecimal, **kw)
+
 
 class FLOAT(_FloatType, sqltypes.FLOAT):
     """MySQL FLOAT type."""
@@ -527,6 +532,7 @@ class FLOAT(_FloatType, sqltypes.FLOAT):
     def bind_processor(self, dialect):
         return None
 
+
 class INTEGER(_IntegerType, sqltypes.INTEGER):
     """MySQL INTEGER type."""
 
@@ -546,6 +552,7 @@ class INTEGER(_IntegerType, sqltypes.INTEGER):
 
         """
         super(INTEGER, self).__init__(display_width=display_width, **kw)
+
 
 class BIGINT(_IntegerType, sqltypes.BIGINT):
     """MySQL BIGINTEGER type."""
@@ -567,6 +574,7 @@ class BIGINT(_IntegerType, sqltypes.BIGINT):
         """
         super(BIGINT, self).__init__(display_width=display_width, **kw)
 
+
 class MEDIUMINT(_IntegerType):
     """MySQL MEDIUMINTEGER type."""
 
@@ -586,6 +594,7 @@ class MEDIUMINT(_IntegerType):
 
         """
         super(MEDIUMINT, self).__init__(display_width=display_width, **kw)
+
 
 class TINYINT(_IntegerType):
     """MySQL TINYINT type."""
@@ -607,6 +616,7 @@ class TINYINT(_IntegerType):
         """
         super(TINYINT, self).__init__(display_width=display_width, **kw)
 
+
 class SMALLINT(_IntegerType, sqltypes.SMALLINT):
     """MySQL SMALLINTEGER type."""
 
@@ -626,6 +636,7 @@ class SMALLINT(_IntegerType, sqltypes.SMALLINT):
 
         """
         super(SMALLINT, self).__init__(display_width=display_width, **kw)
+
 
 class BIT(sqltypes.TypeEngine):
     """MySQL BIT type.
@@ -662,6 +673,7 @@ class BIT(sqltypes.TypeEngine):
                 return v
             return value
         return process
+
 
 class TIME(sqltypes.TIME):
     """MySQL TIME type.
@@ -710,9 +722,11 @@ class TIME(sqltypes.TIME):
                 return None
         return process
 
+
 class TIMESTAMP(sqltypes.TIMESTAMP):
     """MySQL TIMESTAMP type."""
     __visit_name__ = 'TIMESTAMP'
+
 
 class YEAR(sqltypes.TypeEngine):
     """MySQL YEAR type, for single byte storage of years 1901-2155."""
@@ -721,6 +735,7 @@ class YEAR(sqltypes.TypeEngine):
 
     def __init__(self, display_width=None):
         self.display_width = display_width
+
 
 class TEXT(_StringType, sqltypes.TEXT):
     """MySQL TEXT type, for text up to 2^16 characters."""
@@ -757,6 +772,7 @@ class TEXT(_StringType, sqltypes.TEXT):
         """
         super(TEXT, self).__init__(length=length, **kw)
 
+
 class TINYTEXT(_StringType):
     """MySQL TINYTEXT type, for text up to 2^8 characters."""
 
@@ -788,6 +804,7 @@ class TINYTEXT(_StringType):
         """
         super(TINYTEXT, self).__init__(**kwargs)
 
+
 class MEDIUMTEXT(_StringType):
     """MySQL MEDIUMTEXT type, for text up to 2^24 characters."""
 
@@ -818,6 +835,7 @@ class MEDIUMTEXT(_StringType):
 
         """
         super(MEDIUMTEXT, self).__init__(**kwargs)
+
 
 class LONGTEXT(_StringType):
     """MySQL LONGTEXT type, for text up to 2^32 characters."""
@@ -882,6 +900,7 @@ class VARCHAR(_StringType, sqltypes.VARCHAR):
         """
         super(VARCHAR, self).__init__(length=length, **kwargs)
 
+
 class CHAR(_StringType, sqltypes.CHAR):
     """MySQL CHAR type, for fixed-length character data."""
 
@@ -901,6 +920,7 @@ class CHAR(_StringType, sqltypes.CHAR):
 
         """
         super(CHAR, self).__init__(length=length, **kwargs)
+
 
 class NVARCHAR(_StringType, sqltypes.NVARCHAR):
     """MySQL NVARCHAR type.
@@ -954,22 +974,23 @@ class NCHAR(_StringType, sqltypes.NCHAR):
         super(NCHAR, self).__init__(length=length, **kwargs)
 
 
-
-
 class TINYBLOB(sqltypes._Binary):
     """MySQL TINYBLOB type, for binary data up to 2^8 bytes."""
 
     __visit_name__ = 'TINYBLOB'
+
 
 class MEDIUMBLOB(sqltypes._Binary):
     """MySQL MEDIUMBLOB type, for binary data up to 2^24 bytes."""
 
     __visit_name__ = 'MEDIUMBLOB'
 
+
 class LONGBLOB(sqltypes._Binary):
     """MySQL LONGBLOB type, for binary data up to 2^32 bytes."""
 
     __visit_name__ = 'LONGBLOB'
+
 
 class ENUM(sqltypes.Enum, _StringType):
     """MySQL ENUM type."""
@@ -1085,6 +1106,7 @@ class ENUM(sqltypes.Enum, _StringType):
     def adapt(self, impltype, **kw):
         kw['strict'] = self.strict
         return sqltypes.Enum.adapt(self, impltype, **kw)
+
 
 class SET(_StringType):
     """MySQL SET type."""
@@ -1250,10 +1272,12 @@ ischema_names = {
     'year': YEAR,
 }
 
+
 class MySQLExecutionContext(default.DefaultExecutionContext):
 
     def should_autocommit_text(self, statement):
         return AUTOCOMMIT_RE.match(statement)
+
 
 class MySQLCompiler(compiler.SQLCompiler):
 
@@ -1569,6 +1593,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
                     (self.preparer.format_table(constraint.table),
                     qual, const)
 
+
 class MySQLTypeCompiler(compiler.GenericTypeCompiler):
     def _extend_numeric(self, type_, spec):
         "Extend a numeric-type declaration with MySQL specific extensions."
@@ -1842,6 +1867,7 @@ class MySQLIdentifierPreparer(compiler.IdentifierPreparer):
         """Unilaterally identifier-quote any number of strings."""
 
         return tuple([self.quote_identifier(i) for i in ids if i is not None])
+
 
 class MySQLDialect(default.DefaultDialect):
     """Details of the MySQL dialect.  Not used directly in application code."""
@@ -2325,6 +2351,7 @@ class MySQLDialect(default.DefaultDialect):
                 rp.close()
         return rows
 
+
 class ReflectedState(object):
     """Stores raw information about a SHOW CREATE TABLE statement."""
 
@@ -2334,6 +2361,7 @@ class ReflectedState(object):
         self.table_name = None
         self.keys = []
         self.constraints = []
+
 
 class MySQLTableDefinitionParser(object):
     """Parses the results of a SHOW CREATE TABLE statement."""
@@ -2789,6 +2817,7 @@ def _pr_compile(regex, cleanup=None):
     """Prepare a 2-tuple of compiled regex and callable."""
 
     return (_re_compile(regex), cleanup)
+
 
 def _re_compile(regex):
     """Compile a string to regex, I and UNICODE."""

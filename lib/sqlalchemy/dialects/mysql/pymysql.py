@@ -23,6 +23,7 @@ the pymysql driver as well.
 
 from .mysqldb import MySQLDialect_mysqldb
 
+
 class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     driver = 'pymysql'
 

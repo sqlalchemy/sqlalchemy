@@ -155,11 +155,11 @@ from .base import OracleCompiler, OracleDialect, \
 from . import base as oracle
 from ...engine import result as _result
 from sqlalchemy import types as sqltypes, util, exc, processors
-from datetime import datetime
 import random
 import collections
 from sqlalchemy.util.compat import decimal
 import re
+
 
 class _OracleNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
@@ -204,6 +204,7 @@ class _OracleNumeric(sqltypes.Numeric):
             return super(_OracleNumeric, self).\
                             result_processor(dialect, coltype)
 
+
 class _OracleDate(sqltypes.Date):
     def bind_processor(self, dialect):
         return None
@@ -215,6 +216,7 @@ class _OracleDate(sqltypes.Date):
             else:
                 return value
         return process
+
 
 class _LOBMixin(object):
     def result_processor(self, dialect, coltype):
@@ -228,6 +230,7 @@ class _LOBMixin(object):
             else:
                 return value
         return process
+
 
 class _NativeUnicodeMixin(object):
     # Py3K
@@ -249,20 +252,25 @@ class _NativeUnicodeMixin(object):
     # unicode in all cases, so the "native_unicode" flag
     # will be set for the default String.result_processor.
 
+
 class _OracleChar(_NativeUnicodeMixin, sqltypes.CHAR):
     def get_dbapi_type(self, dbapi):
         return dbapi.FIXED_CHAR
+
 
 class _OracleNVarChar(_NativeUnicodeMixin, sqltypes.NVARCHAR):
     def get_dbapi_type(self, dbapi):
         return getattr(dbapi, 'UNICODE', dbapi.STRING)
 
+
 class _OracleText(_LOBMixin, sqltypes.Text):
     def get_dbapi_type(self, dbapi):
         return dbapi.CLOB
 
+
 class _OracleString(_NativeUnicodeMixin, sqltypes.String):
     pass
+
 
 class _OracleUnicodeText(_LOBMixin, _NativeUnicodeMixin, sqltypes.UnicodeText):
     def get_dbapi_type(self, dbapi):
@@ -282,6 +290,7 @@ class _OracleUnicodeText(_LOBMixin, _NativeUnicodeMixin, sqltypes.UnicodeText):
                 return string_processor(lob_processor(value))
             return process
 
+
 class _OracleInteger(sqltypes.Integer):
     def result_processor(self, dialect, coltype):
         def to_int(val):
@@ -290,6 +299,7 @@ class _OracleInteger(sqltypes.Integer):
             return val
         return to_int
 
+
 class _OracleBinary(_LOBMixin, sqltypes.LargeBinary):
     def get_dbapi_type(self, dbapi):
         return dbapi.BLOB
@@ -297,16 +307,20 @@ class _OracleBinary(_LOBMixin, sqltypes.LargeBinary):
     def bind_processor(self, dialect):
         return None
 
+
 class _OracleInterval(oracle.INTERVAL):
     def get_dbapi_type(self, dbapi):
         return dbapi.INTERVAL
 
+
 class _OracleRaw(oracle.RAW):
     pass
+
 
 class _OracleRowid(oracle.ROWID):
     def get_dbapi_type(self, dbapi):
         return dbapi.ROWID
+
 
 class OracleCompiler_cx_oracle(OracleCompiler):
     def bindparam_string(self, name, quote=None, **kw):
@@ -421,6 +435,7 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
 
         return result
 
+
 class OracleExecutionContext_cx_oracle_with_unicode(OracleExecutionContext_cx_oracle):
     """Support WITH_UNICODE in Python 2.xx.
 
@@ -442,6 +457,7 @@ class OracleExecutionContext_cx_oracle_with_unicode(OracleExecutionContext_cx_or
         return super(OracleExecutionContext_cx_oracle_with_unicode, self).\
                             _execute_scalar(unicode(stmt))
 
+
 class ReturningResultProxy(_result.FullyBufferedResultProxy):
     """Result proxy which stuffs the _returning clause + outparams into the fetch."""
 
@@ -460,6 +476,7 @@ class ReturningResultProxy(_result.FullyBufferedResultProxy):
     def _buffer_rows(self):
         return collections.deque([tuple(self._returning_params["ret_%d" % i]
                     for i, c in enumerate(self._returning_params))])
+
 
 class OracleDialect_cx_oracle(OracleDialect):
     execution_ctx_cls = OracleExecutionContext_cx_oracle

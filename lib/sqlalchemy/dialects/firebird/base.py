@@ -130,12 +130,14 @@ class _StringType(sqltypes.String):
         self.charset = charset
         super(_StringType, self).__init__(**kw)
 
+
 class VARCHAR(_StringType, sqltypes.VARCHAR):
     """Firebird VARCHAR type"""
     __visit_name__ = 'VARCHAR'
 
     def __init__(self, length=None, **kwargs):
         super(VARCHAR, self).__init__(length=length, **kwargs)
+
 
 class CHAR(_StringType, sqltypes.CHAR):
     """Firebird CHAR type"""

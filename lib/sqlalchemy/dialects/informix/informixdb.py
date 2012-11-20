@@ -21,7 +21,9 @@ from sqlalchemy.engine import default
 
 VERSION_RE = re.compile(r'(\d+)\.(\d+)(.+\d+)')
 
+
 class InformixExecutionContext_informixdb(default.DefaultExecutionContext):
+
     def post_exec(self):
         if self.isinsert:
             self._lastrowid = self.cursor.sqlerrd[1]

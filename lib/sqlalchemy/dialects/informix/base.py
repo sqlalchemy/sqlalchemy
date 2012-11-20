@@ -144,7 +144,9 @@ RESERVED_WORDS = set(
     "xadatasource", "xid", "xload", "xunload", "year"
     ])
 
+
 class InfoDateTime(sqltypes.DateTime):
+
     def bind_processor(self, dialect):
         def process(value):
             if value is not None:
@@ -153,7 +155,9 @@ class InfoDateTime(sqltypes.DateTime):
             return value
         return process
 
+
 class InfoTime(sqltypes.Time):
+
     def bind_processor(self, dialect):
         def process(value):
             if value is not None:
@@ -217,7 +221,9 @@ class InfoTypeCompiler(compiler.GenericTypeCompiler):
     def visit_boolean(self, type_):
         return "SMALLINT"
 
+
 class InfoSQLCompiler(compiler.SQLCompiler):
+
     def default_from(self):
         return " from systables where tabname = 'systables' "
 
@@ -336,6 +342,7 @@ class InfoDDLCompiler(compiler.DDLCompiler):
         if constraint.name is not None:
             text += "CONSTRAINT %s " % self.preparer.format_constraint(constraint)
         return text
+
 
 class InformixIdentifierPreparer(compiler.IdentifierPreparer):
 
