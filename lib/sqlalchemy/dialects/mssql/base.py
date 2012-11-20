@@ -245,6 +245,7 @@ class _MSDate(sqltypes.Date):
         return process
 
     _reg = re.compile(r"(\d+)-(\d+)-(\d+)")
+
     def result_processor(self, dialect, coltype):
         def process(value):
             if isinstance(value, datetime.datetime):
@@ -277,6 +278,7 @@ class TIME(sqltypes.TIME):
         return process
 
     _reg = re.compile(r"(\d+):(\d+):(\d+)(?:\.(\d{0,6}))?")
+
     def result_processor(self, dialect, coltype):
         def process(value):
             if isinstance(value, datetime.datetime):
@@ -505,30 +507,30 @@ MSUniqueIdentifier = UNIQUEIDENTIFIER
 MSVariant = SQL_VARIANT
 
 ischema_names = {
-    'int' : INTEGER,
+    'int': INTEGER,
     'bigint': BIGINT,
-    'smallint' : SMALLINT,
-    'tinyint' : TINYINT,
-    'varchar' : VARCHAR,
-    'nvarchar' : NVARCHAR,
-    'char' : CHAR,
-    'nchar' : NCHAR,
-    'text' : TEXT,
-    'ntext' : NTEXT,
-    'decimal' : DECIMAL,
-    'numeric' : NUMERIC,
-    'float' : FLOAT,
-    'datetime' : DATETIME,
-    'datetime2' : DATETIME2,
-    'datetimeoffset' : DATETIMEOFFSET,
+    'smallint': SMALLINT,
+    'tinyint': TINYINT,
+    'varchar': VARCHAR,
+    'nvarchar': NVARCHAR,
+    'char': CHAR,
+    'nchar': NCHAR,
+    'text': TEXT,
+    'ntext': NTEXT,
+    'decimal': DECIMAL,
+    'numeric': NUMERIC,
+    'float': FLOAT,
+    'datetime': DATETIME,
+    'datetime2': DATETIME2,
+    'datetimeoffset': DATETIMEOFFSET,
     'date': DATE,
     'time': TIME,
-    'smalldatetime' : SMALLDATETIME,
-    'binary' : BINARY,
-    'varbinary' : VARBINARY,
+    'smalldatetime': SMALLDATETIME,
+    'binary': BINARY,
+    'varbinary': VARBINARY,
     'bit': BIT,
-    'real' : REAL,
-    'image' : IMAGE,
+    'real': REAL,
+    'image': IMAGE,
     'timestamp': TIMESTAMP,
     'money': MONEY,
     'smallmoney': SMALLMONEY,
@@ -604,8 +606,7 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
         return self._extend("TEXT", type_)
 
     def visit_VARCHAR(self, type_):
-        return self._extend("VARCHAR", type_,
-                    length = type_.length or 'max')
+        return self._extend("VARCHAR", type_, length=type_.length or 'max')
 
     def visit_CHAR(self, type_):
         return self._extend("CHAR", type_)
@@ -614,8 +615,7 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
         return self._extend("NCHAR", type_)
 
     def visit_NVARCHAR(self, type_):
-        return self._extend("NVARCHAR", type_,
-                    length = type_.length or 'max')
+        return self._extend("NVARCHAR", type_, length=type_.length or 'max')
 
     def visit_date(self, type_):
         if self.dialect.server_version_info < MS_2008_VERSION:
@@ -1118,9 +1118,9 @@ class MSDialect(default.DefaultDialect):
     schema_name = "dbo"
 
     colspecs = {
-        sqltypes.DateTime : _MSDateTime,
-        sqltypes.Date : _MSDate,
-        sqltypes.Time : TIME,
+        sqltypes.DateTime: _MSDateTime,
+        sqltypes.Date: _MSDate,
+        sqltypes.Time: TIME,
     }
 
     ischema_names = ischema_names
@@ -1169,7 +1169,7 @@ class MSDialect(default.DefaultDialect):
                 "behaviors may not function properly.   If using ODBC "
                 "with FreeTDS, ensure server version 7.0 or 8.0, not 4.2, "
                 "is configured in the FreeTDS configuration." %
-                ".".join(str(x) for x in self.server_version_info) )
+                ".".join(str(x) for x in self.server_version_info))
         if self.server_version_info >= MS_2005_VERSION and \
                     'implicit_returning' not in self.__dict__:
             self.implicit_returning = True
@@ -1268,7 +1268,7 @@ class MSDialect(default.DefaultDialect):
                     sql.bindparam('schname', owner,
                                     sqltypes.String(convert_unicode=True))
                 ],
-                typemap = {
+                typemap={
                     'name': sqltypes.Unicode()
                 }
             )
@@ -1297,9 +1297,7 @@ class MSDialect(default.DefaultDialect):
                             sql.bindparam('schname', owner,
                                     sqltypes.String(convert_unicode=True))
                         ],
-                        typemap = {
-                            'name': sqltypes.Unicode()
-                        }
+                        typemap={'name': sqltypes.Unicode()}
                         ),
             )
         for row in rp:
@@ -1389,10 +1387,10 @@ class MSDialect(default.DefaultDialect):
 
                 coltype = coltype(**kwargs)
             cdict = {
-                'name' : name,
-                'type' : coltype,
-                'nullable' : nullable,
-                'default' : default,
+                'name': name,
+                'type': coltype,
+                'nullable': nullable,
+                'default': default,
                 'autoincrement': False,
             }
             cols.append(cdict)
@@ -1476,9 +1474,8 @@ class MSDialect(default.DefaultDialect):
                                                 RR.c.unique_constraint_name,
                                 C.c.ordinal_position == R.c.ordinal_position
                                 ),
-                       order_by= [
-                                    RR.c.constraint_name,
-                                    R.c.ordinal_position])
+                       order_by=[RR.c.constraint_name, R.c.ordinal_position]
+        )
 
         # group rows by constraint ID, to handle multi-column FKs
         fkeys = []
@@ -1515,4 +1512,3 @@ class MSDialect(default.DefaultDialect):
             remote_cols.append(rcol)
 
         return fkeys.values()
-

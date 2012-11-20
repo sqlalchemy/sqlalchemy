@@ -339,10 +339,10 @@ RESERVED_WORDS = set(
      'union', 'unique', 'unlock', 'unsigned', 'update', 'usage', 'use',
      'using', 'utc_date', 'utc_time', 'utc_timestamp', 'values', 'varbinary',
      'varchar', 'varcharacter', 'varying', 'when', 'where', 'while', 'with',
-     'write', 'x509', 'xor', 'year_month', 'zerofill', # 5.0
-     'columns', 'fields', 'privileges', 'soname', 'tables', # 4.1
+     'write', 'x509', 'xor', 'year_month', 'zerofill',  # 5.0
+     'columns', 'fields', 'privileges', 'soname', 'tables',  # 4.1
      'accessible', 'linear', 'master_ssl_verify_server_cert', 'range',
-     'read_only', 'read_write', # 5.1
+     'read_only', 'read_write',  # 5.1
      ])
 
 AUTOCOMMIT_RE = re.compile(
@@ -708,6 +708,7 @@ class TIME(sqltypes.TIME):
 
     def result_processor(self, dialect, coltype):
         time = datetime.time
+
         def process(value):
             # convert from a timedelta value
             if value is not None:
@@ -1093,6 +1094,7 @@ class ENUM(sqltypes.Enum, _StringType):
 
     def bind_processor(self, dialect):
         super_convert = super(ENUM, self).bind_processor(dialect)
+
         def process(value):
             if self.strict and value is not None and value not in self.enums:
                 raise exc.InvalidRequestError('"%s" not a valid value for '
@@ -1180,6 +1182,7 @@ class SET(_StringType):
 
     def bind_processor(self, dialect):
         super_convert = super(SET, self).bind_processor(dialect)
+
         def process(value):
             if value is None or isinstance(value, (int, long, basestring)):
                 pass
@@ -1285,9 +1288,7 @@ class MySQLCompiler(compiler.SQLCompiler):
     """Overridden from base SQLCompiler value"""
 
     extract_map = compiler.SQLCompiler.extract_map.copy()
-    extract_map.update ({
-        'milliseconds': 'millisecond',
-    })
+    extract_map.update({'milliseconds': 'millisecond'})
 
     def visit_random_func(self, fn, **kw):
         return "rand%s" % self.function_argspec(fn)
@@ -1650,7 +1651,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         else:
             return self._extend_numeric(type_,
                             "NUMERIC(%(precision)s, %(scale)s)" %
-                            {'precision': type_.precision, 'scale' : type_.scale})
+                            {'precision': type_.precision, 'scale': type_.scale})
 
     def visit_DECIMAL(self, type_):
         if type_.precision is None:
@@ -1662,13 +1663,13 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         else:
             return self._extend_numeric(type_,
                             "DECIMAL(%(precision)s, %(scale)s)" %
-                            {'precision': type_.precision, 'scale' : type_.scale})
+                            {'precision': type_.precision, 'scale': type_.scale})
 
     def visit_DOUBLE(self, type_):
         if type_.precision is not None and type_.scale is not None:
             return self._extend_numeric(type_, "DOUBLE(%(precision)s, %(scale)s)" %
                                 {'precision': type_.precision,
-                                 'scale' : type_.scale})
+                                 'scale': type_.scale})
         else:
             return self._extend_numeric(type_, 'DOUBLE')
 
@@ -1676,7 +1677,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         if type_.precision is not None and type_.scale is not None:
             return self._extend_numeric(type_, "REAL(%(precision)s, %(scale)s)" %
                                 {'precision': type_.precision,
-                                 'scale' : type_.scale})
+                                 'scale': type_.scale})
         else:
             return self._extend_numeric(type_, 'REAL')
 
@@ -2150,12 +2151,12 @@ class MySQLDialect(default.DefaultDialect):
                     con_kw[opt] = spec[opt]
 
             fkey_d = {
-                'name' : spec['name'],
-                'constrained_columns' : loc_names,
-                'referred_schema' : ref_schema,
-                'referred_table' : ref_name,
-                'referred_columns' : ref_names,
-                'options' : con_kw
+                'name': spec['name'],
+                'constrained_columns': loc_names,
+                'referred_schema': ref_schema,
+                'referred_table': ref_name,
+                'referred_columns': ref_names,
+                'options': con_kw
             }
             fkeys.append(fkey_d)
         return fkeys
@@ -2818,4 +2819,3 @@ def _re_compile(regex):
     """Compile a string to regex, I and UNICODE."""
 
     return re.compile(regex, re.I | re.UNICODE)
-

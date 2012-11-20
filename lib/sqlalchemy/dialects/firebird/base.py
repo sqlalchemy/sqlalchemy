@@ -69,7 +69,7 @@ the SQLAlchemy ``returning()`` method, such as::
 
 """
 
-import datetime, re
+import datetime
 
 from sqlalchemy import schema as sa_schema
 from sqlalchemy import exc, types as sqltypes, sql, util

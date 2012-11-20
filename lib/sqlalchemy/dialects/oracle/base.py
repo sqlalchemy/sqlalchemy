@@ -139,10 +139,9 @@ is not in use this flag should be left off.
 
 """
 
-import random, re
+import re
 
-from sqlalchemy import schema as sa_schema
-from sqlalchemy import util, sql, log
+from sqlalchemy import util, sql
 from sqlalchemy.engine import default, base, reflection
 from sqlalchemy.sql import compiler, visitors, expression
 from sqlalchemy.sql import operators as sql_operators, functions as sql_functions
@@ -205,6 +204,7 @@ class NUMBER(sqltypes.Numeric, sqltypes.Integer):
 
 class DOUBLE_PRECISION(sqltypes.Numeric):
     __visit_name__ = 'DOUBLE_PRECISION'
+
     def __init__(self, precision=None, scale=None, asdecimal=None):
         if asdecimal is None:
             asdecimal = False
@@ -265,27 +265,27 @@ class _OracleBoolean(sqltypes.Boolean):
         return dbapi.NUMBER
 
 colspecs = {
-    sqltypes.Boolean : _OracleBoolean,
-    sqltypes.Interval : INTERVAL,
+    sqltypes.Boolean: _OracleBoolean,
+    sqltypes.Interval: INTERVAL,
 }
 
 ischema_names = {
-    'VARCHAR2' : VARCHAR,
-    'NVARCHAR2' : NVARCHAR,
-    'CHAR' : CHAR,
-    'DATE' : DATE,
-    'NUMBER' : NUMBER,
-    'BLOB' : BLOB,
-    'BFILE' : BFILE,
-    'CLOB' : CLOB,
-    'NCLOB' : NCLOB,
-    'TIMESTAMP' : TIMESTAMP,
-    'TIMESTAMP WITH TIME ZONE' : TIMESTAMP,
-    'INTERVAL DAY TO SECOND' : INTERVAL,
-    'RAW' : RAW,
-    'FLOAT' : FLOAT,
-    'DOUBLE PRECISION' : DOUBLE_PRECISION,
-    'LONG' : LONG,
+    'VARCHAR2': VARCHAR,
+    'NVARCHAR2': NVARCHAR,
+    'CHAR': CHAR,
+    'DATE': DATE,
+    'NUMBER': NUMBER,
+    'BLOB': BLOB,
+    'BFILE': BFILE,
+    'CLOB': CLOB,
+    'NCLOB': NCLOB,
+    'TIMESTAMP': TIMESTAMP,
+    'TIMESTAMP WITH TIME ZONE': TIMESTAMP,
+    'INTERVAL DAY TO SECOND': INTERVAL,
+    'RAW': RAW,
+    'FLOAT': FLOAT,
+    'DOUBLE PRECISION': DOUBLE_PRECISION,
+    'LONG': LONG,
 }
 
 
@@ -389,7 +389,7 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_RAW(self, type_):
         if type_.length:
-            return "RAW(%(length)s)" % {'length' : type_.length}
+            return "RAW(%(length)s)" % {'length': type_.length}
         else:
             return "RAW"
 
@@ -910,7 +910,7 @@ class OracleDialect(default.DefaultDialect):
             (colname, orig_colname, coltype, length, precision, scale, nullable, default) = \
                 (self.normalize_name(row[0]), row[0], row[1], row[2], row[3], row[4], row[5] == 'Y', row[6])
 
-            if coltype == 'NUMBER' :
+            if coltype == 'NUMBER':
                 coltype = NUMBER(precision, scale)
             elif coltype in ('VARCHAR2', 'NVARCHAR2', 'CHAR'):
                 coltype = self.ischema_names.get(coltype)(length)
@@ -1066,7 +1066,7 @@ class OracleDialect(default.DefaultDialect):
 
         """
 
-        requested_schema = schema # to check later on
+        requested_schema = schema  # to check later on
         resolve_synonyms = kw.get('oracle_resolve_synonyms', False)
         dblink = kw.get('dblink', '')
         info_cache = kw.get('info_cache')
@@ -1082,11 +1082,11 @@ class OracleDialect(default.DefaultDialect):
 
         def fkey_rec():
             return {
-                'name' : None,
-                'constrained_columns' : [],
-                'referred_schema' : None,
-                'referred_table' : None,
-                'referred_columns' : []
+                'name': None,
+                'constrained_columns': [],
+                'referred_schema': None,
+                'referred_table': None,
+                'referred_columns': []
             }
 
         fkeys = util.defaultdict(fkey_rec)

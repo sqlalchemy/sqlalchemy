@@ -48,6 +48,7 @@ class MSDialect_pymssql(MSDialect):
             sqltypes.Float: sqltypes.Float,
         }
     )
+
     @classmethod
     def dbapi(cls):
         module = __import__('pymssql')

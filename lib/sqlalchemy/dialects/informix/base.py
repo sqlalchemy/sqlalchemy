@@ -175,7 +175,7 @@ class InfoTime(sqltypes.Time):
         return process
 
 colspecs = {
-    sqltypes.DateTime : InfoDateTime,
+    sqltypes.DateTime: InfoDateTime,
     sqltypes.TIMESTAMP: InfoDateTime,
     sqltypes.Time: InfoTime,
 }
@@ -352,7 +352,7 @@ class InformixIdentifierPreparer(compiler.IdentifierPreparer):
 class InformixDialect(default.DefaultDialect):
     name = 'informix'
 
-    max_identifier_length = 128 # adjusts at runtime based on server version
+    max_identifier_length = 128  # adjusts at runtime based on server version
 
     type_compiler = InfoTypeCompiler
     statement_compiler = InfoSQLCompiler
@@ -445,14 +445,14 @@ class InformixDialect(default.DefaultDialect):
             if coltype not in (0, 13) and default:
                 default = default.split()[-1]
 
-            if coltype == 6: # Serial, mark as autoincrement
+            if coltype == 6:  # Serial, mark as autoincrement
                 autoincrement = True
 
-            if coltype == 0 or coltype == 13: # char, varchar
+            if coltype == 0 or coltype == 13:  # char, varchar
                 coltype = ischema_names[coltype](collength)
                 if default:
                     default = "'%s'" % default
-            elif coltype == 5: # decimal
+            elif coltype == 5:  # decimal
                 precision, scale = (collength & 0xFF00) >> 8, collength & 0xFF
                 if scale == 255:
                     scale = 0
@@ -496,11 +496,11 @@ class InformixDialect(default.DefaultDialect):
 
         def fkey_rec():
             return {
-                 'name' : None,
-                 'constrained_columns' : [],
-                 'referred_schema' : None,
-                 'referred_table' : None,
-                 'referred_columns' : []
+                 'name': None,
+                 'constrained_columns': [],
+                 'referred_schema': None,
+                 'referred_table': None,
+                 'referred_columns': []
              }
 
         fkeys = util.defaultdict(fkey_rec)

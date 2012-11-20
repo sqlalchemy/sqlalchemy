@@ -98,10 +98,10 @@ class MSDialect_mxodbc(MxODBCConnector, MSDialect):
     _need_decimal_fix = True
 
     colspecs = {
-        sqltypes.Numeric : _MSNumeric_mxodbc,
-        sqltypes.DateTime : _MSDateTime,
-        sqltypes.Date : _MSDate_mxodbc,
-        sqltypes.Time : _MSTime_mxodbc,
+        sqltypes.Numeric: _MSNumeric_mxodbc,
+        sqltypes.DateTime: _MSDateTime,
+        sqltypes.Date: _MSDate_mxodbc,
+        sqltypes.Time: _MSTime_mxodbc,
     }
 
     def __init__(self, description_encoding=None, **params):
@@ -109,4 +109,3 @@ class MSDialect_mxodbc(MxODBCConnector, MSDialect):
         self.description_encoding = description_encoding
 
 dialect = MSDialect_mxodbc
-

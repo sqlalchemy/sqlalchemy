@@ -28,6 +28,7 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     driver = 'pymysql'
 
     description_encoding = None
+
     @classmethod
     def dbapi(cls):
         return __import__('pymysql')

@@ -182,6 +182,7 @@ class _OracleNumeric(sqltypes.Numeric):
                     fstring = "%.10f"
                 else:
                     fstring = "%%.%df" % self.scale
+
                 def to_decimal(value):
                     if value is None:
                         return None
@@ -189,6 +190,7 @@ class _OracleNumeric(sqltypes.Numeric):
                         return value
                     else:
                         return decimal.Decimal(fstring % value)
+
                 return to_decimal
             else:
                 if self.precision is None and self.scale is None:
@@ -486,21 +488,24 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     colspecs = colspecs = {
         sqltypes.Numeric: _OracleNumeric,
-        sqltypes.Date : _OracleDate, # generic type, assume datetime.date is desired
+        sqltypes.Date: _OracleDate,  # generic type, assume datetime.date is desired
         oracle.DATE: oracle.DATE,  # non generic type - passthru
-        sqltypes.LargeBinary : _OracleBinary,
-        sqltypes.Boolean : oracle._OracleBoolean,
-        sqltypes.Interval : _OracleInterval,
-        oracle.INTERVAL : _OracleInterval,
-        sqltypes.Text : _OracleText,
-        sqltypes.String : _OracleString,
-        sqltypes.UnicodeText : _OracleUnicodeText,
-        sqltypes.CHAR : _OracleChar,
-        sqltypes.Integer : _OracleInteger,  # this is only needed for OUT parameters.
-                                            # it would be nice if we could not use it otherwise.
+        sqltypes.LargeBinary: _OracleBinary,
+        sqltypes.Boolean: oracle._OracleBoolean,
+        sqltypes.Interval: _OracleInterval,
+        oracle.INTERVAL: _OracleInterval,
+        sqltypes.Text: _OracleText,
+        sqltypes.String: _OracleString,
+        sqltypes.UnicodeText: _OracleUnicodeText,
+        sqltypes.CHAR: _OracleChar,
+
+        # this is only needed for OUT parameters.
+        # it would be nice if we could not use it otherwise.
+        sqltypes.Integer: _OracleInteger,
+
         oracle.RAW: _OracleRaw,
         sqltypes.Unicode: _OracleNVarChar,
-        sqltypes.NVARCHAR : _OracleNVarChar,
+        sqltypes.NVARCHAR: _OracleNVarChar,
         oracle.ROWID: _OracleRowid,
     }
 
@@ -588,6 +593,7 @@ class OracleDialect_cx_oracle(OracleDialect):
                 self.dbapi.BLOB: oracle.BLOB(),
                 self.dbapi.BINARY: oracle.RAW(),
             }
+
     @classmethod
     def dbapi(cls):
         import cx_Oracle
@@ -653,6 +659,7 @@ class OracleDialect_cx_oracle(OracleDialect):
             return
 
         cx_Oracle = self.dbapi
+
         def output_type_handler(cursor, name, defaultType,
                                     size, precision, scale):
             # convert all NUMBER with precision + positive scale to Decimal
