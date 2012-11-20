@@ -31,6 +31,7 @@ class _SybNumeric(sqltypes.Numeric):
         else:
             return sqltypes.Numeric.result_processor(self, dialect, type_)
 
+
 class SybaseExecutionContext_pysybase(SybaseExecutionContext):
 
     def set_ddl_autocommit(self, dbapi_connection, value):
@@ -53,14 +54,15 @@ class SybaseSQLCompiler_pysybase(SybaseSQLCompiler):
     def bindparam_string(self, name, **kw):
         return "@" + name
 
+
 class SybaseDialect_pysybase(SybaseDialect):
     driver = 'pysybase'
     execution_ctx_cls = SybaseExecutionContext_pysybase
     statement_compiler = SybaseSQLCompiler_pysybase
 
-    colspecs={
-       sqltypes.Numeric:_SybNumeric,
-       sqltypes.Float:sqltypes.Float
+    colspecs = {
+       sqltypes.Numeric: _SybNumeric,
+       sqltypes.Float: sqltypes.Float
     }
 
     @classmethod
