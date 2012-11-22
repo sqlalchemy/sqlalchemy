@@ -425,10 +425,9 @@ def relationship(argument, secondary=None, **kwargs):
         the join is "outer" or not is determined by the ``innerjoin``
         parameter.
 
-      * ``subquery`` - items should be loaded "eagerly" within the same
-        query as that of the parent, using a second SQL statement
-        which issues a JOIN to a subquery of the original
-        statement.
+      * ``subquery`` - items should be loaded "eagerly" as the parents are
+        loaded, using one additional SQL statement, which issues a JOIN to a
+        subquery of the original statement, for each collection requested.
 
       * ``noload`` - no loading should occur at any time.  This is to
         support "write-only" attributes, or attributes which are
