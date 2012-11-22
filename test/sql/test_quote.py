@@ -137,7 +137,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.requires.subqueries
-    def test_labels(self):
+    def test_labels3(self):
         """test the quoting of labels.
 
         if labels arent quoted, a query in postgresql in particular will fail since it produces:
