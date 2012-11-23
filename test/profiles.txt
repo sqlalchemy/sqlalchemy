@@ -7,8 +7,8 @@
 # assertions are raised if the counts do not match.
 # 
 # To add a new callcount test, apply the function_call_count 
-# decorator and re-run the tests using the --write-profiles option - 
-# this file will be rewritten including the new count.
+# decorator and re-run the tests using the --write-profiles 
+# option - this file will be rewritten including the new count.
 # 
 
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_insert
@@ -94,7 +94,7 @@ test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.5_sqlite_pysqlite_nocext
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.6_sqlite_pysqlite_nocextensions 1174
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_mysql_mysqldb_cextensions 1341
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_mysql_mysqldb_nocextensions 1366
-test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_postgresql_psycopg2_cextensions 1200
+test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_postgresql_psycopg2_cextensions 1275
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_postgresql_psycopg2_nocextensions 1225
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_sqlite_pysqlite_cextensions 1149
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_sqlite_pysqlite_nocextensions 1174
@@ -180,7 +180,7 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7
 
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.5_sqlite_pysqlite_nocextensions 14413
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.6_sqlite_pysqlite_nocextensions 14414
-test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_mysqldb_cextensions 452
+test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_mysqldb_cextensions 476
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_mysqldb_nocextensions 14472
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_postgresql_psycopg2_cextensions 20438
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_postgresql_psycopg2_nocextensions 34458
@@ -191,7 +191,7 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_sqlite_pysqlite_
 
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.5_sqlite_pysqlite_nocextensions 14413
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.6_sqlite_pysqlite_nocextensions 14414
-test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_mysqldb_cextensions 452
+test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_mysqldb_cextensions 476
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_mysqldb_nocextensions 44472
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_postgresql_psycopg2_cextensions 20438
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_postgresql_psycopg2_nocextensions 34458

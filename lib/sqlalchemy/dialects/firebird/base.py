@@ -723,10 +723,10 @@ class FBDialect(default.DefaultDialect):
         # when there are no arguments.
         cursor.execute(statement, parameters or [])
 
-    def do_rollback(self, connection):
+    def do_rollback(self, dbapi_connection):
         # Use the retaining feature, that keeps the transaction going
-        connection.rollback(True)
+        dbapi_connection.rollback(True)
 
-    def do_commit(self, connection):
+    def do_commit(self, dbapi_connection):
         # Use the retaining feature, that keeps the transaction going
-        connection.commit(True)
+        dbapi_connection.commit(True)

@@ -282,26 +282,17 @@ class DefaultDialect(interfaces.Dialect):
         opts.update(url.query)
         return [[], opts]
 
-    def do_begin(self, connection):
-        """Implementations might want to put logic here for turning
-        autocommit on/off, etc.
-        """
-
+    def do_begin(self, dbapi_connection):
         pass
 
-    def do_rollback(self, connection):
-        """Implementations might want to put logic here for turning
-        autocommit on/off, etc.
-        """
+    def do_rollback(self, dbapi_connection):
+        dbapi_connection.rollback()
 
-        connection.rollback()
+    def do_commit(self, dbapi_connection):
+        dbapi_connection.commit()
 
-    def do_commit(self, connection):
-        """Implementations might want to put logic here for turning
-        autocommit on/off, etc.
-        """
-
-        connection.commit()
+    def do_close(self, dbapi_connection):
+        dbapi_connection.close()
 
     def create_xid(self):
         """Create a random two-phase transaction ID.

@@ -1933,7 +1933,7 @@ class MySQLDialect(default.DefaultDialect):
         cursor.close()
         return val.upper().replace("-", " ")
 
-    def do_commit(self, connection):
+    def do_commit(self, dbapi_connection):
         """Execute a COMMIT."""
 
         # COMMIT/ROLLBACK were introduced in 3.23.15.
@@ -1942,7 +1942,7 @@ class MySQLDialect(default.DefaultDialect):
         # Ignore commit/rollback if support isn't present, otherwise even basic
         # operations via autocommit fail.
         try:
-            connection.commit()
+            dbapi_connection.commit()
         except:
             if self.server_version_info < (3, 23, 15):
                 args = sys.exc_info()[1].args
@@ -1950,11 +1950,11 @@ class MySQLDialect(default.DefaultDialect):
                     return
             raise
 
-    def do_rollback(self, connection):
+    def do_rollback(self, dbapi_connection):
         """Execute a ROLLBACK."""
 
         try:
-            connection.rollback()
+            dbapi_connection.rollback()
         except:
             if self.server_version_info < (3, 23, 15):
                 args = sys.exc_info()[1].args

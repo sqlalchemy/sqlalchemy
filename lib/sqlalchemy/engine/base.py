@@ -479,7 +479,7 @@ class Connection(Connectable):
         else:
             self.__transaction = None
 
-    def _commit_impl(self):
+    def _commit_impl(self, autocommit=False):
         if self._has_events:
             self.dispatch.commit(self)
 
@@ -910,7 +910,7 @@ class Connection(Connectable):
             result.close(_autoclose_connection=False)
 
         if self.__transaction is None and context.should_autocommit:
-            self._commit_impl()
+            self._commit_impl(autocommit=True)
 
         if result.closed and self.should_close_with_result:
             self.close()
@@ -1320,6 +1320,7 @@ class Engine(Connectable, log.Identified):
         self.pool = pool
         self.url = url
         self.dialect = dialect
+        self.pool._dialect = dialect
         if logging_name:
             self.logging_name = logging_name
         self.echo = echo

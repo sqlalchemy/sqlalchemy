@@ -362,10 +362,6 @@ class InformixDialect(default.DefaultDialect):
     preparer = InformixIdentifierPreparer
     default_paramstyle = 'qmark'
 
-    def __init__(self, has_transactions=True, *args, **kwargs):
-        self.has_transactions = has_transactions
-        default.DefaultDialect.__init__(self, *args, **kwargs)
-
     def initialize(self, connection):
         super(InformixDialect, self).initialize(connection)
 
@@ -374,20 +370,6 @@ class InformixDialect(default.DefaultDialect):
             self.max_identifier_length = 18
         else:
             self.max_identifier_length = 128
-
-    def do_begin(self, connection):
-        cu = connection.cursor()
-        cu.execute('SET LOCK MODE TO WAIT')
-        if self.has_transactions:
-            cu.execute('SET ISOLATION TO REPEATABLE READ')
-
-    def do_commit(self, connection):
-        if self.has_transactions:
-            connection.commit()
-
-    def do_rollback(self, connection):
-        if self.has_transactions:
-            connection.rollback()
 
     def _get_table_names(self, connection, schema, type, **kw):
         schema = schema or self.default_schema_name

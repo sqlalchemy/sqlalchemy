@@ -446,16 +446,6 @@ class DrizzleDialect(mysql_dialect.MySQLDialect):
             conn.autocommit(False)
         return connect
 
-    def do_commit(self, connection):
-        """Execute a COMMIT."""
-
-        connection.commit()
-
-    def do_rollback(self, connection):
-        """Execute a ROLLBACK."""
-
-        connection.rollback()
-
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
         """Return a Unicode SHOW TABLES from a given schema."""

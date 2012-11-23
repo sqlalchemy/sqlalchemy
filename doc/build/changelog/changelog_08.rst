@@ -114,6 +114,46 @@
         Support for reflection of the "name" of primary key
         constraints added, courtesy Dave Moore.
 
+    .. change::
+        :tags: informix
+
+        Some cruft regarding informix transaction handling has been
+        removed, including a feature that would skip calling
+        commit()/rollback() as well as some hardcoded isolation level
+        assumptions on begin()..   The status of this dialect is not
+        well understood as we don't have any users working with it,
+        nor any access to an Informix database.   If someone with
+        access to Informix wants to help test this dialect, please
+        let us know.
+
+    .. change::
+        :tags: pool, feature
+
+        The :class:`.Pool` will now log all connection.close()
+        operations equally, including closes which occur for
+        invalidated connections, detached connections, and connections
+        beyond the pool capacity.
+
+    .. change::
+        :tags: pool, feature
+        :tickets: 2611
+
+        The :class:`.Pool` now consults the :class:`.Dialect` for
+        functionality regarding how the connection should be
+        "auto rolled back", as well as closed.   This grants more
+        control of transaction scope to the dialect, so that we
+        will be better able to implement transactional workarounds
+        like those potentially needed for pysqlite and cx_oracle.
+
+    .. change::
+        :tags: pool, feature
+
+        Added new :meth:`.PoolEvents.reset` hook to capture
+        the event before a connection is auto-rolled back, upon
+        return to the pool.   Together with
+        :meth:`.ConnectionEvents.rollback` this allows all rollback
+        events to be intercepted.
+
 .. changelog::
     :version: 0.8.0b1
     :released: October 30, 2012

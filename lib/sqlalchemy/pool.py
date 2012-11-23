@@ -65,9 +65,28 @@ reset_rollback = util.symbol('reset_rollback')
 reset_commit = util.symbol('reset_commit')
 reset_none = util.symbol('reset_none')
 
+class _ConnDialect(object):
+    """partial implementation of :class:`.Dialect`
+    which provides DBAPI connection methods.
+
+    When a :class:`.Pool` is combined with an :class:`.Engine`,
+    the :class:`.Engine` replaces this with its own
+    :class:`.Dialect`.
+
+    """
+    def do_rollback(self, dbapi_connection):
+        dbapi_connection.rollback()
+
+    def do_commit(self, dbapi_connection):
+        dbapi_connection.commit()
+
+    def do_close(self, dbapi_connection):
+        dbapi_connection.close()
 
 class Pool(log.Identified):
     """Abstract base class for connection pools."""
+
+    _dialect = _ConnDialect()
 
     def __init__(self,
                     creator, recycle=-1, echo=None,
@@ -76,7 +95,8 @@ class Pool(log.Identified):
                     reset_on_return=True,
                     listeners=None,
                     events=None,
-                    _dispatch=None):
+                    _dispatch=None,
+                    _dialect=None):
         """
         Construct a Pool.
 
@@ -152,6 +172,8 @@ class Pool(log.Identified):
         self.echo = echo
         if _dispatch:
             self.dispatch._update(_dispatch, only_propagate=False)
+        if _dialect:
+            self._dialect = _dialect
         if events:
             for fn, target in events:
                 event.listen(self, target, fn)
@@ -163,6 +185,16 @@ class Pool(log.Identified):
                 self.add_listener(l)
 
     dispatch = event.dispatcher(events.PoolEvents)
+
+    def _close_connection(self, connection):
+        self.logger.debug("Closing connection %r", connection)
+        try:
+            self._dialect.do_close(connection)
+        except (SystemExit, KeyboardInterrupt):
+            raise
+        except:
+            self.logger.debug("Exception closing connection %r",
+                            connection)
 
     @util.deprecated(
         2.7, "Pool.add_listener is deprecated.  Use event.listen()")
@@ -296,14 +328,7 @@ class _ConnectionRecord(object):
 
     def close(self):
         if self.connection is not None:
-            self.__pool.logger.debug("Closing connection %r", self.connection)
-            try:
-                self.connection.close()
-            except (SystemExit, KeyboardInterrupt):
-                raise
-            except:
-                self.__pool.logger.debug("Exception closing connection %r",
-                                self.connection)
+            self.__pool._close_connection(self.connection)
 
     def invalidate(self, e=None):
         if e is not None:
@@ -335,15 +360,7 @@ class _ConnectionRecord(object):
         return self.connection
 
     def __close(self):
-        try:
-            self.__pool.logger.debug("Closing connection %r", self.connection)
-            self.connection.close()
-        except (SystemExit, KeyboardInterrupt):
-            raise
-        except Exception, e:
-            self.__pool.logger.debug(
-                        "Connection %r threw an error on close: %s",
-                        self.connection, e)
+        self.__pool._close_connection(self.connection)
 
     def __connect(self):
         try:
@@ -365,13 +382,15 @@ def _finalize_fairy(connection, connection_record, pool, ref, echo):
 
     if connection is not None:
         try:
+            if pool.dispatch.reset:
+                pool.dispatch.reset(connection, connection_record)
             if pool._reset_on_return is reset_rollback:
-                connection.rollback()
+                pool._dialect.do_rollback(connection)
             elif pool._reset_on_return is reset_commit:
-                connection.commit()
+                pool._dialect.do_commit(connection)
             # Immediately close detached instances
             if connection_record is None:
-                connection.close()
+                pool._close_connection(connection)
         except Exception, e:
             if connection_record is not None:
                 connection_record.invalidate(e=e)
@@ -556,7 +575,8 @@ class SingletonThreadPool(Pool):
             echo=self.echo,
             logging_name=self._orig_logging_name,
             use_threadlocal=self._use_threadlocal,
-            _dispatch=self.dispatch)
+            _dispatch=self.dispatch,
+            _dialect=self._dialect)
 
     def dispose(self):
         """Dispose of this pool."""
@@ -768,7 +788,8 @@ class QueuePool(Pool):
                           recycle=self._recycle, echo=self.echo,
                           logging_name=self._orig_logging_name,
                           use_threadlocal=self._use_threadlocal,
-                          _dispatch=self.dispatch)
+                          _dispatch=self.dispatch,
+                          _dialect=self._dialect)
 
     def dispose(self):
         while True:
@@ -841,7 +862,8 @@ class NullPool(Pool):
             echo=self.echo,
             logging_name=self._orig_logging_name,
             use_threadlocal=self._use_threadlocal,
-            _dispatch=self.dispatch)
+            _dispatch=self.dispatch,
+            _dialect=self._dialect)
 
     def dispose(self):
         pass
@@ -881,7 +903,8 @@ class StaticPool(Pool):
                               reset_on_return=self._reset_on_return,
                               echo=self.echo,
                               logging_name=self._orig_logging_name,
-                              _dispatch=self.dispatch)
+                              _dispatch=self.dispatch,
+                              _dialect=self._dialect)
 
     def _create_connection(self):
         return self._conn
@@ -932,7 +955,8 @@ class AssertionPool(Pool):
         self.logger.info("Pool recreating")
         return self.__class__(self._creator, echo=self.echo,
                             logging_name=self._orig_logging_name,
-                            _dispatch=self.dispatch)
+                            _dispatch=self.dispatch,
+                            _dialect=self._dialect)
 
     def _do_get(self):
         if self._checked_out:
