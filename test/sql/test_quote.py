@@ -74,7 +74,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         result = select(columns).execute().fetchall()
         assert(result == [(1, 2, 3), (2, 2, 3), (4, 3, 2)])
 
-    def test_basic_use_labels(self):
+    def test_use_labels(self):
         table1.insert().execute(
             {'lowercase': 1, 'UPPERCASE': 2, 'MixedCase': 3, 'a123': 4},
             {'lowercase': 2, 'UPPERCASE': 2, 'MixedCase': 3, 'a123': 4},
