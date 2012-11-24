@@ -290,25 +290,41 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CAST(x AS INTEGER[])"
         )
         self.assert_compile(
-                c[5],
-                "x[%(x_1)s]",
-                checkparams={'x_1': 5}
+            c[5],
+            "x[%(x_1)s]",
+            checkparams={'x_1': 5}
         )
 
         self.assert_compile(
-                c[5:7],
-                "x[%(x_1)s:%(x_2)s]",
-                checkparams={'x_2': 7, 'x_1': 5}
+            c[5:7],
+            "x[%(x_1)s:%(x_2)s]",
+            checkparams={'x_2': 7, 'x_1': 5}
         )
         self.assert_compile(
-                c[5:7][2:3],
-                "x[%(x_1)s:%(x_2)s][%(param_1)s:%(param_2)s]",
-                checkparams={'x_2': 7, 'x_1': 5, 'param_1':2, 'param_2':3}
+            c[5:7][2:3],
+            "x[%(x_1)s:%(x_2)s][%(param_1)s:%(param_2)s]",
+            checkparams={'x_2': 7, 'x_1': 5, 'param_1':2, 'param_2':3}
         )
         self.assert_compile(
-                c[5:7][3],
-                "x[%(x_1)s:%(x_2)s][%(param_1)s]",
-                checkparams={'x_2': 7, 'x_1': 5, 'param_1':3}
+            c[5:7][3],
+            "x[%(x_1)s:%(x_2)s][%(param_1)s]",
+            checkparams={'x_2': 7, 'x_1': 5, 'param_1':3}
+        )
+
+        self.assert_compile(
+            c.contains([1]),
+            'x @> %(x_1)s',
+            checkparams={'x_1': [1]}
+        )
+        self.assert_compile(
+            c.contained_by([2]),
+            'x <@ %(x_1)s',
+            checkparams={'x_1': [2]}
+        )
+        self.assert_compile(
+            c.overlap([3]),
+            'x && %(x_1)s',
+            checkparams={'x_1': [3]}
         )
 
     def test_array_literal_type(self):
@@ -2244,6 +2260,47 @@ class ArrayTest(fixtures.TestBase, AssertsExecutionResults):
                 [7, 8]
             )
 
+    def test_array_contains_exec(self):
+        with testing.db.connect() as conn:
+            conn.execute(
+                arrtable.insert(),
+                intarr=[4, 5, 6]
+            )
+            eq_(
+                conn.scalar(
+                    select([arrtable.c.intarr]).
+                        where(arrtable.c.intarr.contains([4, 5]))
+                ),
+                [4, 5, 6]
+            )
+
+    def test_array_contained_by_exec(self):
+        with testing.db.connect() as conn:
+            conn.execute(
+                arrtable.insert(),
+                intarr=[6, 5, 4]
+            )
+            eq_(
+                conn.scalar(
+                    select([arrtable.c.intarr.contained_by([4, 5, 6, 7])])
+                ),
+                True
+            )
+
+    def test_array_overlap_exec(self):
+        with testing.db.connect() as conn:
+            conn.execute(
+                arrtable.insert(),
+                intarr=[4, 5, 6]
+            )
+            eq_(
+                conn.scalar(
+                    select([arrtable.c.intarr]).
+                        where(arrtable.c.intarr.overlap([7, 6]))
+                ),
+                [4, 5, 6]
+            )
+
     @testing.provide_metadata
     def test_tuple_flag(self):
         metadata = self.metadata
@@ -2769,6 +2826,7 @@ class HStoreTest(fixtures.TestBase):
             '"key2"=>"value2", "key1"=>"value1", '
                         'crapcrapcrap, "key3"=>"value3"'
         )
+
     def test_result_deserialize_default(self):
         from sqlalchemy.engine import default
 
@@ -2929,8 +2987,8 @@ class HStoreTest(fixtures.TestBase):
 
     def test_cols_concat_op(self):
         self._test_cols(
-            self.hashcol + self.hashcol,
-            "test_table.hash || test_table.hash AS anon_1",
+            hstore('foo', 'bar') + self.hashcol,
+            "hstore(%(param_1)s, %(param_2)s) || test_table.hash AS anon_1",
             True
         )
 
@@ -2968,6 +3026,7 @@ class HStoreTest(fixtures.TestBase):
             "hstore_to_matrix(test_table.hash) AS hstore_to_matrix_1",
             True
         )
+
 
 class HStoreRoundTripTest(fixtures.TablesTest):
     __requires__ = 'hstore',
