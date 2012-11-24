@@ -43,9 +43,23 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         meta2 = MetaData(testing.db)
         t2 = Table('WorstCase1', meta2, autoload=True, quote=True)
         assert 'lowercase' in t2.c
-        assert 'UPPERCASE' in t2.c
-        assert 'MixedCase' in t2.c
+
+        # indicates the DB returns unquoted names as
+        # UPPERCASE, which we then assume are unquoted and go to
+        # lower case.  So we cannot accurately reflect quoted UPPERCASE
+        # names from a "name normalize" backend, as they cannot be
+        # distinguished from case-insensitive/unquoted names.
+        if testing.db.dialect.requires_name_normalize:
+            assert 'uppercase' in t2.c
+        else:
+            assert 'UPPERCASE' in t2.c
+
+        # ASC OTOH is a reserved word, which is always quoted, so
+        # with that name we keep the quotes on and it stays uppercase
+        # regardless.  Seems a little weird, though.
         assert 'ASC' in t2.c
+
+        assert 'MixedCase' in t2.c
 
     def test_basic(self):
         table1.insert().execute(
