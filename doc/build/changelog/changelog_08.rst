@@ -7,6 +7,20 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: orm, bug
+        :ticket: 2614
+
+      Added a new exception to detect the case where two
+      subclasses are being loaded using with_polymorphic(),
+      each subclass contains a relationship attribute of the same
+      name, and eager loading is being applied to one or both.
+      This is an ongoing bug which can't be immediately fixed,
+      so since the results are usually wrong in any case it raises an
+      exception for now.   0.7 has the same issue, so an exception
+      raise here probably means the code was returning the wrong
+      data in 0.7.
+
+    .. change::
         :tags: sql, bug
 
       Fixed a gotcha where inadvertently calling list() on a

@@ -303,6 +303,17 @@ class AbstractRelationshipLoader(LoaderStrategy):
         self.uselist = self.parent_property.uselist
 
 
+    def _warn_existing_path(self):
+        raise sa_exc.InvalidRequestError(
+            "Eager loading cannot currently function correctly when two or "
+            "more "
+            "same-named attributes associated with multiple polymorphic "
+            "classes "
+            "of the same base are present.   Encountered more than one "
+            r"eager path for attribute '%s' on mapper '%s'." %
+            (self.key, self.parent.base_mapper, ))
+
+
 class NoLoader(AbstractRelationshipLoader):
     """Provide loading behavior for a :class:`.RelationshipProperty`
     with "lazy=None".
@@ -746,7 +757,9 @@ class SubqueryLoader(AbstractRelationshipLoader):
 
         # add new query to attributes to be picked up
         # by create_row_processor
-        path.set(context, "subquery", q)
+        existing = path.replace(context, "subquery", q)
+        if existing:
+            self._warn_existing_path()
 
     def _get_leftmost(self, subq_path):
         subq_path = subq_path.path
@@ -1091,7 +1104,9 @@ class JoinedLoader(AbstractRelationshipLoader):
         )
 
         add_to_collection = context.secondary_columns
-        path.set(context, "eager_row_processor", clauses)
+        existing = path.replace(context, "eager_row_processor", clauses)
+        if existing:
+            self._warn_existing_path()
         return clauses, adapter, add_to_collection, allow_innerjoin
 
     def _create_eager_join(self, context, entity,

@@ -2660,3 +2660,130 @@ class CyclicalInheritingEagerTestTwo(fixtures.DeclarativeMappedTest,
         session.close_all()
         d = session.query(Director).options(joinedload('*')).first()
         assert len(list(session)) == 3
+
+
+
+class WarnFor2614TestBase(object):
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('a', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('type', String(50)),
+        )
+        Table('b', metadata,
+            Column('id', Integer, ForeignKey('a.id'), primary_key=True),
+        )
+        Table('c', metadata,
+            Column('id', Integer, ForeignKey('a.id'), primary_key=True),
+        )
+        Table('d', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('bid', Integer, ForeignKey('b.id')),
+            Column('cid', Integer, ForeignKey('c.id')),
+        )
+
+    def _mapping(self, lazy_b=True, lazy_c=True):
+        class A(object):
+            pass
+
+        class B(A):
+            pass
+
+        class C(A):
+            pass
+
+        class D(object):
+            pass
+
+        mapper(A, self.tables.a, polymorphic_on=self.tables.a.c.type)
+        mapper(B, self.tables.b, inherits=A, polymorphic_identity='b',
+                    properties={
+                        'ds': relationship(D, lazy=lazy_b)
+                    })
+        mapper(C, self.tables.c, inherits=A, polymorphic_identity='c',
+                    properties={
+                        'ds': relationship(D, lazy=lazy_c)
+                    })
+        mapper(D, self.tables.d)
+
+
+        return  A, B, C, D
+
+    def _assert_raises(self, fn):
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Eager loading cannot currently function correctly when two or more "
+            r"same\-named attributes associated with multiple polymorphic classes "
+            "of the same base are present.   Encountered more than one "
+            r"eager path for attribute 'ds' on mapper 'Mapper\|A\|a'.",
+            fn
+        )
+
+    def test_poly_both_eager(self):
+        A, B, C, D = self._mapping(lazy_b=self.eager_name,
+                                    lazy_c=self.eager_name)
+
+        session = Session()
+        self._assert_raises(
+            session.query(A).with_polymorphic('*').all
+        )
+
+    def test_poly_one_eager(self):
+        A, B, C, D = self._mapping(lazy_b=self.eager_name, lazy_c=True)
+
+        session = Session()
+        session.query(A).with_polymorphic('*').all()
+
+    def test_poly_both_option(self):
+        A, B, C, D = self._mapping()
+
+        session = Session()
+        self._assert_raises(
+            session.query(A).with_polymorphic('*').options(
+                        self.eager_option(B.ds), self.eager_option(C.ds)).all
+        )
+
+    def test_poly_one_option_bs(self):
+        A, B, C, D = self._mapping()
+
+        session = Session()
+
+        # sucks, can't even do eager() on just one of them, as B.ds
+        # hits for both
+        self._assert_raises(
+            session.query(A).with_polymorphic('*').\
+                options(self.eager_option(B.ds)).all
+        )
+
+    def test_poly_one_option_cs(self):
+        A, B, C, D = self._mapping()
+
+        session = Session()
+
+        # sucks, can't even do eager() on just one of them, as B.ds
+        # hits for both
+        self._assert_raises(
+            session.query(A).with_polymorphic('*').\
+                options(self.eager_option(C.ds)).all
+        )
+
+    def test_single_poly_one_option_bs(self):
+        A, B, C, D = self._mapping()
+
+        session = Session()
+
+        session.query(A).with_polymorphic(B).\
+            options(self.eager_option(B.ds)).all()
+
+    def test_lazy_True(self):
+        A, B, C, D = self._mapping()
+
+        session = Session()
+        session.query(A).with_polymorphic('*').all()
+
+class WarnFor2614Test(WarnFor2614TestBase, fixtures.MappedTest):
+    eager_name = "joined"
+
+    def eager_option(self, arg):
+        return joinedload(arg)

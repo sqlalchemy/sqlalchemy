@@ -1383,3 +1383,11 @@ class CyclicalInheritingEagerTestTwo(fixtures.DeclarativeMappedTest,
         session.close_all()
         d = session.query(Director).options(subqueryload('*')).first()
         assert len(list(session)) == 3
+
+from . import test_eager_relations
+
+class WarnFor2614Test(test_eager_relations.WarnFor2614TestBase, fixtures.MappedTest):
+    eager_name = "subquery"
+
+    def eager_option(self, arg):
+        return subqueryload(arg)

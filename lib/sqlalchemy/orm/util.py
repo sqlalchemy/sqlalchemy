@@ -279,6 +279,12 @@ class PathRegistry(object):
     def set(self, reg, key, value):
         reg._attributes[(key, self.reduced_path)] = value
 
+    def replace(self, reg, key, value):
+        path_key = (key, self.reduced_path)
+        existing = reg._attributes.get(path_key, None)
+        reg._attributes[path_key] = value
+        return existing
+
     def setdefault(self, reg, key, value):
         reg._attributes.setdefault((key, self.reduced_path), value)
 
