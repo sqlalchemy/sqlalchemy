@@ -8,7 +8,7 @@ from sqlalchemy.orm import mapper, relationship, relation, \
                     backref, create_session, configure_mappers, \
                     clear_mappers, sessionmaker, attributes,\
                     Session, composite, column_property, foreign,\
-                    remote
+                    remote, synonym
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
 from sqlalchemy.testing import eq_, startswith_, AssertsCompiledSQL, is_
 from sqlalchemy.testing import fixtures
@@ -512,6 +512,62 @@ class CompositeJoinPartialFK(fixtures.MappedTest, AssertsCompiledSQL):
             Parent.children.property.strategy._lazywhere,
             ":param_1 = child.x AND :param_2 = child.y AND :param_3 = child.z"
         )
+
+
+class SynonymsAsFKsTest(fixtures.MappedTest):
+    """Syncrules on foreign keys that are also primary"""
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("tableA", metadata,
+              Column("id",Integer,primary_key=True,
+                            test_needs_autoincrement=True),
+              Column("foo",Integer,),
+              test_needs_fk=True)
+
+        Table("tableB",metadata,
+              Column("id",Integer,primary_key=True,
+                            test_needs_autoincrement=True),
+              Column("_a_id", Integer, key='a_id', primary_key=True),
+              test_needs_fk=True)
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Basic):
+            pass
+
+        class B(cls.Basic):
+            @property
+            def a_id(self):
+                return self._a_id
+
+    def test_synonym_fk(self):
+        """test that active history is enabled on a
+        one-to-many/one that has use_get==True"""
+
+        tableB, A, B, tableA = (self.tables.tableB,
+                                self.classes.A,
+                                self.classes.B,
+                                self.tables.tableA)
+
+        mapper(B, tableB, properties={
+            'a_id': synonym('_a_id', map_column=True)})
+        mapper(A, tableA, properties={
+            'b': relationship(B, primaryjoin=(tableA.c.id == foreign(B.a_id)),
+                              uselist=False)})
+
+        sess = create_session()
+
+        b = B(id=0)
+        a = A(id=0, b=b)
+        sess.add(a)
+        sess.add(b)
+        sess.flush()
+        sess.expunge_all()
+
+        assert a.b == b
+        assert a.id == b.a_id
+        assert a.id == b._a_id
 
 
 class FKsAsPksTest(fixtures.MappedTest):

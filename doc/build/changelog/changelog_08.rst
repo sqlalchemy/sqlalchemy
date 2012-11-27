@@ -7,6 +7,12 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: orm, feature
+
+      Allow synonyms to be used when defining primary and secondary
+      joins for relationships.
+
+    .. change::
         :tags: orm, bug
         :ticket: 2614
 

@@ -9,7 +9,8 @@ This system allows specification of classes and expressions used in
 :func:`.relationship` using strings.
 
 """
-from ...orm.properties import ColumnProperty, RelationshipProperty
+from ...orm.properties import ColumnProperty, RelationshipProperty, \
+                            SynonymProperty
 from ...schema import _get_table_key
 from ...orm import class_mapper
 from ... import util
@@ -195,7 +196,9 @@ class _GetColumns(object):
                             % (self.cls, key))
 
             prop = mp.get_property(key)
-            if not isinstance(prop, ColumnProperty):
+            if isinstance(prop, SynonymProperty):
+                key = prop.name
+            elif not isinstance(prop, ColumnProperty):
                 raise exc.InvalidRequestError(
                             "Property %r is not an instance of"
                             " ColumnProperty (i.e. does not correspond"
