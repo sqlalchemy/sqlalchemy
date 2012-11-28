@@ -457,22 +457,29 @@ class Session(_SessionClassMethods):
         generate a :class:`.Session`-producing callable with a given
         set of arguments.
 
-        :param autocommit: Defaults to ``False``. When ``True``, the
-          ``Session`` does not keep a persistent transaction running, and
+        :param autocommit:
+
+          .. warning::
+
+             The autocommit flag is **not for general use**, and if it is used,
+             queries should only be invoked within the span of a
+             :meth:`.Session.begin` / :meth:`.Session.commit` pair.   Executing
+             queries outside of a demarcated transaction is a legacy mode
+             of usage, and can in some cases lead to concurrent connection
+             checkouts.
+
+          Defaults to ``False``. When ``True``, the
+          :class:`.Session` does not keep a persistent transaction running, and
           will acquire connections from the engine on an as-needed basis,
           returning them immediately after their use. Flushes will begin and
           commit (or possibly rollback) their own transaction if no
           transaction is present. When using this mode, the
-          `session.begin()` method may be used to begin a transaction
-          explicitly.
+          :meth:`.Session.begin` method is used to explicitly start
+          transactions.
 
-          Leaving it on its default value of ``False`` means that the
-          ``Session`` will acquire a connection and begin a transaction the
-          first time it is used, which it will maintain persistently until
-          ``rollback()``, ``commit()``, or ``close()`` is called. When the
-          transaction is released by any of these methods, the ``Session``
-          is ready for the next usage, which will again acquire and maintain
-          a new connection/transaction.
+          .. seealso::
+
+            :ref:`session_autocommit`
 
         :param autoflush: When ``True``, all query operations will issue a
            ``flush()`` call to this ``Session`` before proceeding. This is a
