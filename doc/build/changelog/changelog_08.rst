@@ -7,6 +7,13 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: firebird, bug
+        :ticket: 2622
+
+      Added missing import for "fdb" to the experimental
+      "firebird+fdb" dialect.
+
+    .. change::
         :tags: orm, feature
 
       Allow synonyms to be used when defining primary and secondary
