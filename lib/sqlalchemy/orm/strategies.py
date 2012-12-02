@@ -22,6 +22,7 @@ from .interfaces import (
 from .session import _state_session
 import itertools
 
+
 def _register_attribute(strategy, mapper, useobject,
         compare_function=None,
         typecallable=None,
@@ -86,6 +87,7 @@ def _register_attribute(strategy, mapper, useobject,
             for hook in listen_hooks:
                 hook(desc, prop)
 
+
 class UninstrumentedColumnLoader(LoaderStrategy):
     """Represent the a non-instrumented MapperProperty.
 
@@ -106,6 +108,7 @@ class UninstrumentedColumnLoader(LoaderStrategy):
 
     def create_row_processor(self, context, path, mapper, row, adapter):
         return None, None, None
+
 
 class ColumnLoader(LoaderStrategy):
     """Provide loading behavior for a :class:`.ColumnProperty`."""
@@ -131,7 +134,7 @@ class ColumnLoader(LoaderStrategy):
 
         _register_attribute(self, mapper, useobject=False,
             compare_function=coltype.compare_values,
-            active_history = active_history
+            active_history=active_history
        )
 
     def create_row_processor(self, context, path,
@@ -151,7 +154,9 @@ class ColumnLoader(LoaderStrategy):
                 state._expire_attribute_pre_commit(dict_, key)
             return expire_for_non_present_col, None, None
 
+
 log.class_logger(ColumnLoader)
+
 
 class DeferredColumnLoader(LoaderStrategy):
     """Provide loading behavior for a deferred :class:`.ColumnProperty`."""
@@ -177,7 +182,8 @@ class DeferredColumnLoader(LoaderStrategy):
 
         elif not self.is_class_level:
             def set_deferred_for_local_state(state, dict_, row):
-                state._set_callable(dict_, key, LoadDeferredColumns(state, key))
+                state._set_callable(
+                    dict_, key, LoadDeferredColumns(state, key))
             return set_deferred_for_local_state, None, None
         else:
             def reset_col_for_deferred(state, dict_, row):
@@ -220,7 +226,7 @@ class DeferredColumnLoader(LoaderStrategy):
                     localparent.iterate_properties
                     if isinstance(p, StrategizedProperty) and
                       isinstance(p.strategy, DeferredColumnLoader) and
-                      p.group==self.group
+                      p.group == self.group
                     ]
         else:
             toload = [self.key]
@@ -243,7 +249,9 @@ class DeferredColumnLoader(LoaderStrategy):
 
         return attributes.ATTR_WAS_SET
 
+
 log.class_logger(DeferredColumnLoader)
+
 
 class LoadDeferredColumns(object):
     """serializable loader object used by DeferredColumnLoader"""
@@ -260,6 +268,7 @@ class LoadDeferredColumns(object):
         strategy = prop._strategies[DeferredColumnLoader]
         return strategy._load_for_state(state, passive)
 
+
 class DeferredOption(StrategizedOption):
     propagate_to_loaders = True
 
@@ -273,6 +282,7 @@ class DeferredOption(StrategizedOption):
         else:
             return ColumnLoader
 
+
 class UndeferGroupOption(MapperOption):
     propagate_to_loaders = True
 
@@ -282,6 +292,7 @@ class UndeferGroupOption(MapperOption):
     def process_query(self, query):
         query._attributes[("undefer", self.group)] = True
 
+
 class AbstractRelationshipLoader(LoaderStrategy):
     """LoaderStratgies which deal with related objects."""
 
@@ -290,6 +301,8 @@ class AbstractRelationshipLoader(LoaderStrategy):
         self.mapper = self.parent_property.mapper
         self.target = self.parent_property.target
         self.uselist = self.parent_property.uselist
+
+
 
 class NoLoader(AbstractRelationshipLoader):
     """Provide loading behavior for a :class:`.RelationshipProperty`
@@ -303,7 +316,7 @@ class NoLoader(AbstractRelationshipLoader):
         _register_attribute(self, mapper,
             useobject=True,
             uselist=self.parent_property.uselist,
-            typecallable = self.parent_property.collection_class,
+            typecallable=self.parent_property.collection_class,
         )
 
     def create_row_processor(self, context, path, mapper, row, adapter):
@@ -311,7 +324,9 @@ class NoLoader(AbstractRelationshipLoader):
             state._initialize(self.key)
         return invoke_no_load, None, None
 
+
 log.class_logger(NoLoader)
+
 
 class LazyLoader(AbstractRelationshipLoader):
     """Provide loading behavior for a :class:`.RelationshipProperty`
@@ -355,6 +370,12 @@ class LazyLoader(AbstractRelationshipLoader):
     def init_class_attribute(self, mapper):
         self.is_class_level = True
 
+        active_history = (
+            self.parent_property.active_history or
+            self.parent_property.direction is not interfaces.MANYTOONE or
+            not self.use_get
+        )
+
         # MANYTOONE currently only needs the
         # "old" value for delete-orphan
         # cascades.  the required _SingleParentValidator
@@ -362,18 +383,14 @@ class LazyLoader(AbstractRelationshipLoader):
         # in that case.  otherwise we don't need the
         # "old" value during backref operations.
         _register_attribute(self,
-                mapper,
-                useobject=True,
-                callable_=self._load_for_state,
-                uselist = self.parent_property.uselist,
-                backref = self.parent_property.back_populates,
-                typecallable = self.parent_property.collection_class,
-                active_history = \
-                    self.parent_property.active_history or \
-                    self.parent_property.direction is not \
-                        interfaces.MANYTOONE or \
-                    not self.use_get,
-                )
+            mapper,
+            useobject=True,
+            callable_=self._load_for_state,
+            uselist=self.parent_property.uselist,
+            backref=self.parent_property.back_populates,
+            typecallable=self.parent_property.collection_class,
+            active_history=active_history
+        )
 
     def lazy_clause(self, state, reverse_direction=False,
                                 alias_secondary=False,
@@ -420,7 +437,6 @@ class LazyLoader(AbstractRelationshipLoader):
                             lambda: mapper._get_state_attr_by_column(
                                     state, dict_,
                                     bind_to_col[bindparam._identifying_key])
-
 
         if self.parent_property.secondary is not None and alias_secondary:
             criterion = sql_util.ClauseAdapter(
@@ -538,7 +554,7 @@ class LazyLoader(AbstractRelationshipLoader):
             q = q.autoflush(False)
 
         if state.load_path:
-            q = q._with_current_path(state.load_path[self.key])
+            q = q._with_current_path(state.load_path[self.parent_property])
 
         if state.load_options:
             q = q._conditional_options(*state.load_options)
@@ -582,7 +598,6 @@ class LazyLoader(AbstractRelationshipLoader):
             else:
                 return None
 
-
     def create_row_processor(self, context, path,
                                     mapper, row, adapter):
         key = self.key
@@ -614,6 +629,7 @@ class LazyLoader(AbstractRelationshipLoader):
 
 
 log.class_logger(LazyLoader)
+
 
 class LoadLazyAttribute(object):
     """serializable loader object used by LazyLoader"""
@@ -649,6 +665,7 @@ class ImmediateLoader(AbstractRelationshipLoader):
 
         return None, None, load_immediate
 
+
 class SubqueryLoader(AbstractRelationshipLoader):
     def __init__(self, parent):
         super(SubqueryLoader, self).__init__(parent)
@@ -667,7 +684,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         if not context.query._enable_eagerloads:
             return
 
-        path = path[self.key]
+        path = path[self.parent_property]
 
         # build up a path indicating the path from the leftmost
         # entity to the thing we're subquery loading.
@@ -713,7 +730,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         q = orig_query.session.query(effective_entity)
         q._attributes = {
             ("orig_query", SubqueryLoader): orig_query,
-            ('subquery_path', None) : subq_path
+            ('subquery_path', None): subq_path
         }
         q = q._enable_single_crit(False)
 
@@ -737,13 +754,13 @@ class SubqueryLoader(AbstractRelationshipLoader):
         subq_mapper = orm_util._class_to_mapper(subq_path[0])
 
         # determine attributes of the leftmost mapper
-        if self.parent.isa(subq_mapper) and self.key == subq_path[1]:
+        if self.parent.isa(subq_mapper) and self.parent_property is subq_path[1]:
             leftmost_mapper, leftmost_prop = \
                                     self.parent, self.parent_property
         else:
             leftmost_mapper, leftmost_prop = \
                                     subq_mapper, \
-                                    subq_mapper._props[subq_path[1]]
+                                    subq_path[1]
 
         leftmost_cols = leftmost_prop.local_columns
 
@@ -776,24 +793,35 @@ class SubqueryLoader(AbstractRelationshipLoader):
         # the original query now becomes a subquery
         # which we'll join onto.
         embed_q = q.with_labels().subquery()
-        left_alias = orm_util.AliasedClass(leftmost_mapper, embed_q)
+        left_alias = orm_util.AliasedClass(leftmost_mapper, embed_q,
+                            use_mapper_path=True)
         return left_alias
 
-
     def _prep_for_joins(self, left_alias, subq_path):
-        subq_path = subq_path.path
-
         # figure out what's being joined.  a.k.a. the fun part
-        to_join = [
-                    (subq_path[i], subq_path[i+1])
-                    for i in xrange(0, len(subq_path), 2)
-                ]
+        to_join = []
+        pairs = list(subq_path.pairs())
+
+        for i, (mapper, prop) in enumerate(pairs):
+            if i > 0:
+                # look at the previous mapper in the chain -
+                # if it is as or more specific than this prop's
+                # mapper, use that instead.
+                # note we have an assumption here that
+                # the non-first element is always going to be a mapper,
+                # not an AliasedClass
+
+                prev_mapper = pairs[i - 1][1].mapper
+                to_append = prev_mapper if prev_mapper.isa(mapper) else mapper
+            else:
+                to_append = mapper
+
+            to_join.append((to_append, prop.key))
 
         # determine the immediate parent class we are joining from,
         # which needs to be aliased.
-
         if len(to_join) > 1:
-            info = inspect(subq_path[-2])
+            info = inspect(to_join[-1][0])
 
         if len(to_join) < 2:
             # in the case of a one level eager load, this is the
@@ -805,11 +833,13 @@ class SubqueryLoader(AbstractRelationshipLoader):
             # in the vast majority of cases, and [ticket:2014]
             # illustrates a case where sub_path[-2] is a subclass
             # of self.parent
-            parent_alias = orm_util.AliasedClass(subq_path[-2])
+            parent_alias = orm_util.AliasedClass(to_join[-1][0],
+                                use_mapper_path=True)
         else:
             # if of_type() were used leading to this relationship,
             # self.parent is more specific than subq_path[-2]
-            parent_alias = orm_util.AliasedClass(self.parent)
+            parent_alias = orm_util.AliasedClass(self.parent,
+                                use_mapper_path=True)
 
         local_cols = self.parent_property.local_columns
 
@@ -888,9 +918,10 @@ class SubqueryLoader(AbstractRelationshipLoader):
                         "population - eager loading cannot be applied." %
                         self)
 
-        path = path[self.key]
+        path = path[self.parent_property]
 
         subq = path.get(context, 'subquery')
+
         if subq is None:
             return None, None, None
 
@@ -905,7 +936,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
                     (k, [v[0] for v in v])
                     for k, v in itertools.groupby(
                         subq,
-                        lambda x:x[1:]
+                        lambda x: x[1:]
                     ))
             path.set(context, 'collections', collections)
 
@@ -946,7 +977,9 @@ class SubqueryLoader(AbstractRelationshipLoader):
 
         return load_scalar_from_subq, None, None
 
+
 log.class_logger(SubqueryLoader)
+
 
 class JoinedLoader(AbstractRelationshipLoader):
     """Provide loading behavior for a :class:`.RelationshipProperty`
@@ -970,7 +1003,7 @@ class JoinedLoader(AbstractRelationshipLoader):
         if not context.query._enable_eagerloads:
             return
 
-        path = path[self.key]
+        path = path[self.parent_property]
 
         with_polymorphic = None
 
@@ -1010,6 +1043,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             with_polymorphic = None
 
         path = path[self.mapper]
+
         for value in self.mapper._iterate_polymorphic_properties(
                                 mappers=with_polymorphic):
             value.setup(
@@ -1049,7 +1083,8 @@ class JoinedLoader(AbstractRelationshipLoader):
         if with_poly_info:
             to_adapt = with_poly_info.entity
         else:
-            to_adapt = orm_util.AliasedClass(self.mapper)
+            to_adapt = orm_util.AliasedClass(self.mapper,
+                                use_mapper_path=True)
         clauses = orm_util.ORMAdapter(
                     to_adapt,
                     equivalents=self.mapper._equivalent_columns,
@@ -1075,6 +1110,7 @@ class JoinedLoader(AbstractRelationshipLoader):
 
         add_to_collection = context.secondary_columns
         path.set(context, "eager_row_processor", clauses)
+
         return clauses, adapter, add_to_collection, allow_innerjoin
 
     def _create_eager_join(self, context, entity,
@@ -1122,7 +1158,8 @@ class JoinedLoader(AbstractRelationshipLoader):
                 onclause = getattr(
                                 orm_util.AliasedClass(
                                         self.parent,
-                                        adapter.selectable
+                                        adapter.selectable,
+                                        use_mapper_path=True
                                 ),
                                 self.key, self.parent_property
                             )
@@ -1173,7 +1210,6 @@ class JoinedLoader(AbstractRelationshipLoader):
                                     )
                                 )
 
-
     def _create_eager_adapter(self, context, row, adapter, path):
         user_defined_adapter = path.get(context,
                                 "user_defined_eager_row_processor",
@@ -1207,7 +1243,7 @@ class JoinedLoader(AbstractRelationshipLoader):
                         "population - eager loading cannot be applied." %
                         self)
 
-        our_path = path[self.key]
+        our_path = path[self.parent_property]
 
         eager_adapter = self._create_eager_adapter(
                                                 context,
@@ -1291,7 +1327,9 @@ class JoinedLoader(AbstractRelationshipLoader):
                 load_scalar_from_joined_existing_row, \
                 None, load_scalar_from_joined_exec
 
+
 log.class_logger(JoinedLoader)
+
 
 class EagerLazyOption(StrategizedOption):
     def __init__(self, key, lazy=True, chained=False,
@@ -1314,17 +1352,20 @@ class EagerLazyOption(StrategizedOption):
         return self.strategy_cls
 
 _factory = {
-    False:JoinedLoader,
-    "joined":JoinedLoader,
-    None:NoLoader,
-    "noload":NoLoader,
-    "select":LazyLoader,
-    True:LazyLoader,
-    "subquery":SubqueryLoader,
-    "immediate":ImmediateLoader
+    False: JoinedLoader,
+    "joined": JoinedLoader,
+    None: NoLoader,
+    "noload": NoLoader,
+    "select": LazyLoader,
+    True: LazyLoader,
+    "subquery": SubqueryLoader,
+    "immediate": ImmediateLoader
 }
+
+
 def factory(identifier):
     return _factory.get(identifier, LazyLoader)
+
 
 class EagerJoinOption(PropertyOption):
 
@@ -1340,6 +1381,7 @@ class EagerJoinOption(PropertyOption):
         else:
             paths[-1].set(query, "eager_join_type", self.innerjoin)
 
+
 class LoadEagerFromAliasOption(PropertyOption):
 
     def __init__(self, key, alias=None, chained=False):
@@ -1354,15 +1396,13 @@ class LoadEagerFromAliasOption(PropertyOption):
     def process_query_property(self, query, paths):
         if self.chained:
             for path in paths[0:-1]:
-                (root_mapper, propname) = path.path[-2:]
-                prop = root_mapper._props[propname]
+                (root_mapper, prop) = path.path[-2:]
                 adapter = query._polymorphic_adapters.get(prop.mapper, None)
                 path.setdefault(query,
                             "user_defined_eager_row_processor",
                             adapter)
 
-        root_mapper, propname = paths[-1].path[-2:]
-        prop = root_mapper._props[propname]
+        root_mapper, prop = paths[-1].path[-2:]
         if self.alias is not None:
             if isinstance(self.alias, basestring):
                 self.alias = prop.target.alias(self.alias)
@@ -1381,6 +1421,7 @@ class LoadEagerFromAliasOption(PropertyOption):
                 adapter = query._polymorphic_adapters.get(prop.mapper, None)
             paths[-1].set(query, "user_defined_eager_row_processor",
                                     adapter)
+
 
 def single_parent_validator(desc, prop):
     def _do_check(state, value, oldvalue, initiator):
@@ -1405,4 +1446,3 @@ def single_parent_validator(desc, prop):
                             active_history=True)
     event.listen(desc, 'set', set_, raw=True, retval=True,
                             active_history=True)
-

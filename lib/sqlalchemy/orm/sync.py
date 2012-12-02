@@ -11,6 +11,7 @@ between instances based on join conditions.
 
 from . import exc, util as orm_util, attributes
 
+
 def populate(source, source_mapper, dest, dest_mapper,
                         synchronize_pairs, uowcommit, flag_cascaded_pks):
     source_dict = source.dict
@@ -42,37 +43,44 @@ def populate(source, source_mapper, dest, dest_mapper,
                     r.references(l):
             uowcommit.attributes[("pk_cascaded", dest, r)] = True
 
+
 def clear(dest, dest_mapper, synchronize_pairs):
     for l, r in synchronize_pairs:
         if r.primary_key:
             raise AssertionError(
-                                "Dependency rule tried to blank-out primary key "
-                                "column '%s' on instance '%s'" %
-                                (r, orm_util.state_str(dest))
-                            )
+                "Dependency rule tried to blank-out primary key "
+                "column '%s' on instance '%s'" %
+                (r, orm_util.state_str(dest))
+            )
         try:
             dest_mapper._set_state_attr_by_column(dest, dest.dict, r, None)
         except exc.UnmappedColumnError:
             _raise_col_to_prop(True, None, l, dest_mapper, r)
 
+
 def update(source, source_mapper, dest, old_prefix, synchronize_pairs):
     for l, r in synchronize_pairs:
         try:
-            oldvalue = source_mapper._get_committed_attr_by_column(source.obj(), l)
-            value = source_mapper._get_state_attr_by_column(source, source.dict, l)
+            oldvalue = source_mapper._get_committed_attr_by_column(
+                source.obj(), l)
+            value = source_mapper._get_state_attr_by_column(
+                source, source.dict, l)
         except exc.UnmappedColumnError:
             _raise_col_to_prop(False, source_mapper, l, None, r)
         dest[r.key] = value
         dest[old_prefix + r.key] = oldvalue
 
+
 def populate_dict(source, source_mapper, dict_, synchronize_pairs):
     for l, r in synchronize_pairs:
         try:
-            value = source_mapper._get_state_attr_by_column(source, source.dict, l)
+            value = source_mapper._get_state_attr_by_column(
+                source, source.dict, l)
         except exc.UnmappedColumnError:
             _raise_col_to_prop(False, source_mapper, l, None, r)
 
         dict_[r.key] = value
+
 
 def source_modified(uowcommit, source, source_mapper, synchronize_pairs):
     """return true if the source object has changes from an old to a
@@ -89,6 +97,7 @@ def source_modified(uowcommit, source, source_mapper, synchronize_pairs):
         return bool(history.deleted)
     else:
         return False
+
 
 def _raise_col_to_prop(isdest, source_mapper, source_column,
                        dest_mapper, dest_column):

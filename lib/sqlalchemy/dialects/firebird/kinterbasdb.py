@@ -63,6 +63,7 @@ class _FBNumeric_kinterbasdb(sqltypes.Numeric):
                 return value
         return process
 
+
 class FBExecutionContext_kinterbasdb(FBExecutionContext):
     @property
     def rowcount(self):
@@ -71,6 +72,7 @@ class FBExecutionContext_kinterbasdb(FBExecutionContext):
             return self.cursor.rowcount
         else:
             return -1
+
 
 class FBDialect_kinterbasdb(FBDialect):
     driver = 'kinterbasdb'
@@ -83,7 +85,7 @@ class FBDialect_kinterbasdb(FBDialect):
     colspecs = util.update_copy(
         FBDialect.colspecs,
         {
-            sqltypes.Numeric:_FBNumeric_kinterbasdb,
+            sqltypes.Numeric: _FBNumeric_kinterbasdb,
         }
 
     )

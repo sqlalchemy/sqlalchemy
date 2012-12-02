@@ -17,11 +17,14 @@
 
 
 """
-from sqlalchemy.dialects.sybase.base import SybaseDialect, SybaseExecutionContext
+from sqlalchemy.dialects.sybase.base import SybaseDialect
+from sqlalchemy.dialects.sybase.base import SybaseExecutionContext
 from sqlalchemy.connectors.mxodbc import MxODBCConnector
+
 
 class SybaseExecutionContext_mxodbc(SybaseExecutionContext):
     pass
+
 
 class SybaseDialect_mxodbc(MxODBCConnector, SybaseDialect):
     execution_ctx_cls = SybaseExecutionContext_mxodbc

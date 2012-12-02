@@ -14,7 +14,8 @@ from sqlalchemy.orm import relationship, create_session, class_mapper, \
     Session
 from sqlalchemy.testing import eq_
 from sqlalchemy.util import classproperty
-from sqlalchemy.ext.declarative import declared_attr, AbstractConcreteBase, ConcreteBase
+from sqlalchemy.ext.declarative import declared_attr, AbstractConcreteBase, \
+    ConcreteBase, synonym_for
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.util import gc_collect
 
@@ -250,6 +251,44 @@ class DeclarativeTest(DeclarativeTestBase):
         assert_raises_message(exc.InvalidRequestError,
                               "'addresses' is not an instance of "
                               "ColumnProperty", configure_mappers)
+
+    def test_string_dependency_resolution_synonym(self):
+        from sqlalchemy.sql import desc
+
+        class User(Base, fixtures.ComparableEntity):
+
+            __tablename__ = 'users'
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+            name = Column(String(50))
+
+        Base.metadata.create_all()
+        sess = create_session()
+        u1 = User(name='ed')
+        sess.add(u1)
+        sess.flush()
+        sess.expunge_all()
+        eq_(sess.query(User).filter(User.name == 'ed').one(),
+            User(name='ed'))
+
+        class Foo(Base, fixtures.ComparableEntity):
+
+            __tablename__ = 'foo'
+            id = Column(Integer, primary_key=True)
+            _user_id = Column(Integer) 
+            rel = relationship('User',
+                               uselist=False,
+                               foreign_keys=[User.id],
+                               primaryjoin='Foo.user_id==User.id')
+
+            @synonym_for('_user_id')
+            @property
+            def user_id(self):
+                return self._user_id
+
+        foo = Foo()
+        foo.rel = u1
+        assert foo.rel == u1
 
     def test_string_dependency_resolution_two(self):
 

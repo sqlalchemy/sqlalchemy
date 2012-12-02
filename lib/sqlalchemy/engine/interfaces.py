@@ -8,6 +8,7 @@
 
 from .. import util, event, events
 
+
 class Dialect(object):
     """Define the behavior of a specific database and DB-API combination.
 
@@ -401,15 +402,63 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_begin(self, connection):
-        """Provide an implementation of *connection.begin()*, given a
-        DB-API connection."""
+    def do_begin(self, dbapi_connection):
+        """Provide an implementation of ``connection.begin()``, given a
+        DB-API connection.
+
+        The DBAPI has no dedicated "begin" method and it is expected
+        that transactions are implicit.  This hook is provided for those
+        DBAPIs that might need additional help in this area.
+
+        Note that :meth:`.Dialect.do_begin` is not called unless a
+        :class:`.Transaction` object is in use.  The
+        :meth:`.Dialect.do_autocommit`
+        hook is provided for DBAPIs that need some extra commands emitted
+        after a commit in order to enter the next transaction, when the
+        SQLAlchemy :class:`.Connection` is used in it's default "autocommit"
+        mode.
+
+        :param dbapi_connection: a DBAPI connection, typically
+         proxied within a :class:`.ConnectionFairy`.
+
+         """
 
         raise NotImplementedError()
 
-    def do_rollback(self, connection):
-        """Provide an implementation of *connection.rollback()*, given
-        a DB-API connection."""
+    def do_rollback(self, dbapi_connection):
+        """Provide an implementation of ``connection.rollback()``, given
+        a DB-API connection.
+
+        :param dbapi_connection: a DBAPI connection, typically
+         proxied within a :class:`.ConnectionFairy`.
+
+         """
+
+        raise NotImplementedError()
+
+
+    def do_commit(self, dbapi_connection):
+        """Provide an implementation of ``connection.commit()``, given a
+        DB-API connection.
+
+        :param dbapi_connection: a DBAPI connection, typically
+         proxied within a :class:`.ConnectionFairy`.
+
+        """
+
+        raise NotImplementedError()
+
+    def do_close(self, dbapi_connection):
+        """Provide an implementation of ``connection.close()``, given a DBAPI
+        connection.
+
+        This hook is called by the :class:`.Pool` when a connection has been
+        detached from the pool, or is being returned beyond the normal
+        capacity of the pool.
+
+        .. versionadded:: 0.8
+
+        """
 
         raise NotImplementedError()
 
@@ -423,53 +472,91 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_commit(self, connection):
-        """Provide an implementation of *connection.commit()*, given a
-        DB-API connection."""
-
-        raise NotImplementedError()
-
     def do_savepoint(self, connection, name):
-        """Create a savepoint with the given name on a SQLAlchemy
-        connection."""
+        """Create a savepoint with the given name.
+
+        :param connection: a :class:`.Connection`.
+        :param name: savepoint name.
+
+        """
 
         raise NotImplementedError()
 
     def do_rollback_to_savepoint(self, connection, name):
-        """Rollback a SQL Alchemy connection to the named savepoint."""
+        """Rollback a connection to the named savepoint.
+
+        :param connection: a :class:`.Connection`.
+        :param name: savepoint name.
+
+        """
 
         raise NotImplementedError()
 
     def do_release_savepoint(self, connection, name):
-        """Release the named savepoint on a SQL Alchemy connection."""
+        """Release the named savepoint on a connection.
+
+        :param connection: a :class:`.Connection`.
+        :param name: savepoint name.
+        """
 
         raise NotImplementedError()
 
     def do_begin_twophase(self, connection, xid):
-        """Begin a two phase transaction on the given connection."""
+        """Begin a two phase transaction on the given connection.
+
+        :param connection: a :class:`.Connection`.
+        :param xid: xid
+
+        """
 
         raise NotImplementedError()
 
     def do_prepare_twophase(self, connection, xid):
-        """Prepare a two phase transaction on the given connection."""
+        """Prepare a two phase transaction on the given connection.
+
+        :param connection: a :class:`.Connection`.
+        :param xid: xid
+
+        """
 
         raise NotImplementedError()
 
     def do_rollback_twophase(self, connection, xid, is_prepared=True,
                             recover=False):
-        """Rollback a two phase transaction on the given connection."""
+        """Rollback a two phase transaction on the given connection.
+
+        :param connection: a :class:`.Connection`.
+        :param xid: xid
+        :param is_prepared: whether or not
+         :meth:`.TwoPhaseTransaction.prepare` was called.
+        :param recover: if the recover flag was passed.
+
+        """
 
         raise NotImplementedError()
 
     def do_commit_twophase(self, connection, xid, is_prepared=True,
                             recover=False):
-        """Commit a two phase transaction on the given connection."""
+        """Commit a two phase transaction on the given connection.
+
+
+        :param connection: a :class:`.Connection`.
+        :param xid: xid
+        :param is_prepared: whether or not
+         :meth:`.TwoPhaseTransaction.prepare` was called.
+        :param recover: if the recover flag was passed.
+
+        """
 
         raise NotImplementedError()
 
     def do_recover_twophase(self, connection):
         """Recover list of uncommited prepared two phase transaction
-        identifiers on the given connection."""
+        identifiers on the given connection.
+
+        :param connection: a :class:`.Connection`.
+
+        """
 
         raise NotImplementedError()
 
@@ -485,7 +572,8 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_execute_no_params(self, cursor, statement, parameters, context=None):
+    def do_execute_no_params(self, cursor, statement, parameters,
+                             context=None):
         """Provide an implementation of ``cursor.execute(statement)``.
 
         The parameter collection should not be sent.
@@ -767,8 +855,8 @@ class TypeCompiler(object):
 class Connectable(object):
     """Interface for an object which supports execution of SQL constructs.
 
-    The two implementations of :class:`.Connectable` are :class:`.Connection` and
-    :class:`.Engine`.
+    The two implementations of :class:`.Connectable` are
+    :class:`.Connection` and :class:`.Engine`.
 
     Connectable must also implement the 'dialect' member which references a
     :class:`.Dialect` instance.
@@ -776,7 +864,6 @@ class Connectable(object):
     """
 
     dispatch = event.dispatcher(events.ConnectionEvents)
-
 
     def connect(self, **kwargs):
         """Return a :class:`.Connection` object.
@@ -801,17 +888,19 @@ class Connectable(object):
 
         raise NotImplementedError()
 
-    @util.deprecated("0.7", "Use the create() method on the given schema "
-                            "object directly, i.e. :meth:`.Table.create`, "
-                            ":meth:`.Index.create`, :meth:`.MetaData.create_all`")
+    @util.deprecated("0.7",
+                     "Use the create() method on the given schema "
+                     "object directly, i.e. :meth:`.Table.create`, "
+                     ":meth:`.Index.create`, :meth:`.MetaData.create_all`")
     def create(self, entity, **kwargs):
         """Emit CREATE statements for the given schema entity."""
 
         raise NotImplementedError()
 
-    @util.deprecated("0.7", "Use the drop() method on the given schema "
-                            "object directly, i.e. :meth:`.Table.drop`, "
-                            ":meth:`.Index.drop`, :meth:`.MetaData.drop_all`")
+    @util.deprecated("0.7",
+                     "Use the drop() method on the given schema "
+                     "object directly, i.e. :meth:`.Table.drop`, "
+                     ":meth:`.Index.drop`, :meth:`.MetaData.drop_all`")
     def drop(self, entity, **kwargs):
         """Emit DROP statements for the given schema entity."""
 
@@ -834,4 +923,3 @@ class Connectable(object):
 
     def _execute_clauseelement(self, elem, multiparams=None, params=None):
         raise NotImplementedError()
-

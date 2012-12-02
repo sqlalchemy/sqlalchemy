@@ -11,6 +11,7 @@ from ...types import String, Unicode, Integer, TypeDecorator
 
 ischema = MetaData()
 
+
 class CoerceUnicode(TypeDecorator):
     impl = Unicode
 
@@ -93,4 +94,3 @@ views = Table("VIEWS", ischema,
     Column("CHECK_OPTION", String, key="check_option"),
     Column("IS_UPDATABLE", String, key="is_updatable"),
     schema="INFORMATION_SCHEMA")
-

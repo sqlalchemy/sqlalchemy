@@ -9,7 +9,8 @@ This system allows specification of classes and expressions used in
 :func:`.relationship` using strings.
 
 """
-from ...orm.properties import ColumnProperty, RelationshipProperty
+from ...orm.properties import ColumnProperty, RelationshipProperty, \
+                            SynonymProperty
 from ...schema import _get_table_key
 from ...orm import class_mapper
 from ... import util
@@ -21,6 +22,7 @@ import weakref
 # the internal registries here link to classes with weakrefs and remove
 # themselves when all references to contained classes are removed.
 _registries = set()
+
 
 def add_class(classname, cls):
     """Add a class to the _decl_class_registry associated with the
@@ -111,6 +113,7 @@ class _MultipleClassMarker(object):
             )
         self.contents.add(weakref.ref(item, self._remove_item))
 
+
 class _ModuleMarker(object):
     """"refers to a module name within
     _decl_class_registry.
@@ -160,7 +163,6 @@ class _ModuleMarker(object):
                         on_remove=lambda: self._remove_item(name))
 
 
-
 class _ModNS(object):
     def __init__(self, parent):
         self.__parent = parent
@@ -180,6 +182,7 @@ class _ModNS(object):
         raise AttributeError("Module %r has no mapped classes "
                     "registered under the name %r" % (self.__parent.name, key))
 
+
 class _GetColumns(object):
     def __init__(self, cls):
         self.cls = cls
@@ -193,12 +196,15 @@ class _GetColumns(object):
                             % (self.cls, key))
 
             prop = mp.get_property(key)
-            if not isinstance(prop, ColumnProperty):
+            if isinstance(prop, SynonymProperty):
+                key = prop.name
+            elif not isinstance(prop, ColumnProperty):
                 raise exc.InvalidRequestError(
                             "Property %r is not an instance of"
                             " ColumnProperty (i.e. does not correspond"
                             " directly to a Column)." % key)
         return getattr(self.cls, key)
+
 
 class _GetTable(object):
     def __init__(self, key, metadata):
@@ -210,10 +216,12 @@ class _GetTable(object):
                 _get_table_key(key, self.key)
             ]
 
+
 def _determine_container(key, value):
     if isinstance(value, _MultipleClassMarker):
         value = value.attempt_get([], key)
     return _GetColumns(value)
+
 
 def _resolver(cls, prop):
     def resolve_arg(arg):
@@ -232,11 +240,13 @@ def _resolver(cls, prop):
                 return _GetTable(key, cls.metadata)
             elif '_sa_module_registry' in cls._decl_class_registry and \
                 key in cls._decl_class_registry['_sa_module_registry']:
-                return cls._decl_class_registry['_sa_module_registry'].resolve_attr(key)
+                registry = cls._decl_class_registry['_sa_module_registry']
+                return registry.resolve_attr(key)
             else:
                 return fallback[key]
 
         d = util.PopulateDict(access_cls)
+
         def return_cls():
             try:
                 x = eval(arg, globals(), d)
@@ -255,6 +265,7 @@ def _resolver(cls, prop):
                 )
         return return_cls
     return resolve_arg
+
 
 def _deferred_relationship(cls, prop):
 

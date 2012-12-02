@@ -39,8 +39,10 @@ class IdentityMap(dict):
         return self._modified
 
     def check_modified(self):
-        """return True if any InstanceStates present have been marked as 'modified'."""
+        """return True if any InstanceStates present have been marked
+        as 'modified'.
 
+        """
         return bool(self._modified)
 
     def has_key(self, key):
@@ -63,6 +65,7 @@ class IdentityMap(dict):
 
     def __delitem__(self, key):
         raise NotImplementedError("IdentityMap uses remove() to remove data")
+
 
 class WeakInstanceDict(IdentityMap):
     def __init__(self):
@@ -110,9 +113,10 @@ class WeakInstanceDict(IdentityMap):
                 if existing_state is not state:
                     o = existing_state.obj()
                     if o is not None:
-                        raise AssertionError("A conflicting state is already "
-                                        "present in the identity map for key %r"
-                                        % (key, ))
+                        raise AssertionError(
+                            "A conflicting state is already "
+                            "present in the identity map for key %r"
+                            % (key, ))
                 else:
                     return
             except KeyError:
@@ -156,10 +160,12 @@ class WeakInstanceDict(IdentityMap):
     #    return iter(self._values())
     # Py2K
     items = _items
+
     def iteritems(self):
         return iter(self.items())
 
     values = _values
+
     def itervalues(self):
         return iter(self.values())
     # end Py2K
@@ -180,12 +186,15 @@ class WeakInstanceDict(IdentityMap):
     def prune(self):
         return 0
 
+
 class StrongInstanceDict(IdentityMap):
     def all_states(self):
         return [attributes.instance_state(o) for o in self.itervalues()]
 
     def contains_state(self, state):
-        return state.key in self and attributes.instance_state(self[state.key]) is state
+        return (
+            state.key in self and
+            attributes.instance_state(self[state.key]) is state)
 
     def replace(self, state):
         if dict.__contains__(self, state.key):
@@ -232,4 +241,3 @@ class StrongInstanceDict(IdentityMap):
         dict.update(self, keepers)
         self.modified = bool(dirty)
         return ref_count - len(self)
-

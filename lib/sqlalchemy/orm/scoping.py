@@ -87,7 +87,8 @@ class scoped_session(object):
         self.registry.clear()
 
     def configure(self, **kwargs):
-        """reconfigure the :class:`.sessionmaker` used by this :class:`.scoped_session`.
+        """reconfigure the :class:`.sessionmaker` used by this
+        :class:`.scoped_session`.
 
         See :meth:`.sessionmaker.configure`.
 
@@ -142,27 +143,34 @@ class scoped_session(object):
 ScopedSession = scoped_session
 """Old name for backwards compatibility."""
 
+
 def instrument(name):
     def do(self, *args, **kwargs):
         return getattr(self.registry(), name)(*args, **kwargs)
     return do
+
 for meth in Session.public_methods:
     setattr(scoped_session, meth, instrument(meth))
+
 
 def makeprop(name):
     def set(self, attr):
         setattr(self.registry(), name, attr)
+
     def get(self):
         return getattr(self.registry(), name)
+
     return property(get, set)
+
 for prop in ('bind', 'dirty', 'deleted', 'new', 'identity_map',
-                'is_active', 'autoflush', 'no_autoflush'):
+             'is_active', 'autoflush', 'no_autoflush'):
     setattr(scoped_session, prop, makeprop(prop))
+
 
 def clslevel(name):
     def do(cls, *args, **kwargs):
         return getattr(Session, name)(*args, **kwargs)
     return classmethod(do)
+
 for prop in ('close_all', 'object_session', 'identity_key'):
     setattr(scoped_session, prop, clslevel(prop))
-

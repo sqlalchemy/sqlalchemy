@@ -61,6 +61,7 @@ class skip_if(object):
         self._fails_on = skip_if(other, reason)
         return self
 
+
 class fails_if(skip_if):
     def __call__(self, fn):
         @decorator
@@ -69,13 +70,16 @@ class fails_if(skip_if):
                 return fn(*args, **kw)
         return decorate(fn)
 
+
 def only_if(predicate, reason=None):
     predicate = _as_predicate(predicate)
     return skip_if(NotPredicate(predicate), reason)
 
+
 def succeeds_if(predicate, reason=None):
     predicate = _as_predicate(predicate)
     return fails_if(NotPredicate(predicate), reason)
+
 
 class Predicate(object):
     @classmethod
@@ -93,6 +97,7 @@ class Predicate(object):
         else:
             assert False, "unknown predicate type: %s" % predicate
 
+
 class BooleanPredicate(Predicate):
     def __init__(self, value, description=None):
         self.value = value
@@ -109,6 +114,7 @@ class BooleanPredicate(Predicate):
 
     def __str__(self):
         return self._as_string()
+
 
 class SpecPredicate(Predicate):
     def __init__(self, db, op=None, spec=None, description=None):
@@ -177,6 +183,7 @@ class SpecPredicate(Predicate):
     def __str__(self):
         return self._as_string()
 
+
 class LambdaPredicate(Predicate):
     def __init__(self, lambda_, description=None, args=None, kw=None):
         self.lambda_ = lambda_
@@ -201,6 +208,7 @@ class LambdaPredicate(Predicate):
     def __str__(self):
         return self._as_string()
 
+
 class NotPredicate(Predicate):
     def __init__(self, predicate):
         self.predicate = predicate
@@ -210,6 +218,7 @@ class NotPredicate(Predicate):
 
     def __str__(self):
         return self.predicate._as_string(True)
+
 
 class OrPredicate(Predicate):
     def __init__(self, predicates, description=None):
@@ -256,8 +265,10 @@ class OrPredicate(Predicate):
 
 _as_predicate = Predicate.as_predicate
 
+
 def _is_excluded(db, op, spec):
     return SpecPredicate(db, op, spec)()
+
 
 def _server_version(engine):
     """Return a server_version_info tuple."""
@@ -268,23 +279,29 @@ def _server_version(engine):
     conn.close()
     return version
 
+
 def db_spec(*dbs):
     return OrPredicate(
             Predicate.as_predicate(db) for db in dbs
         )
 
+
 def open():
     return skip_if(BooleanPredicate(False, "mark as execute"))
 
+
 def closed():
     return skip_if(BooleanPredicate(True, "marked as skip"))
+
 
 @decorator
 def future(fn, *args, **kw):
     return fails_if(LambdaPredicate(fn, *args, **kw), "Future feature")
 
+
 def fails_on(db, reason=None):
     return fails_if(SpecPredicate(db), reason)
+
 
 def fails_on_everything_except(*dbs):
     return succeeds_if(
@@ -293,8 +310,10 @@ def fails_on_everything_except(*dbs):
                     ])
             )
 
+
 def skip(db, reason=None):
     return skip_if(SpecPredicate(db), reason)
+
 
 def only_on(dbs, reason=None):
     return only_if(

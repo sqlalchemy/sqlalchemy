@@ -16,6 +16,7 @@ import itertools
 from .util import fail
 import contextlib
 
+
 def emits_warning(*messages):
     """Mark a test as emitting a warning.
 
@@ -49,6 +50,7 @@ def emits_warning(*messages):
         finally:
             resetwarnings()
     return decorate
+
 
 def emits_warning_on(db, *warnings):
     """Mark a test as emitting a warning on a specific dialect.
@@ -115,7 +117,6 @@ def uses_deprecated(*messages):
     return decorate
 
 
-
 def global_cleanup_assertions():
     """Check things that have to be finalized at the end of a test suite.
 
@@ -129,27 +130,31 @@ def global_cleanup_assertions():
     assert not pool._refs, str(pool._refs)
 
 
-
 def eq_(a, b, msg=None):
     """Assert a == b, with repr messaging on failure."""
     assert a == b, msg or "%r != %r" % (a, b)
+
 
 def ne_(a, b, msg=None):
     """Assert a != b, with repr messaging on failure."""
     assert a != b, msg or "%r == %r" % (a, b)
 
+
 def is_(a, b, msg=None):
     """Assert a is b, with repr messaging on failure."""
     assert a is b, msg or "%r is not %r" % (a, b)
+
 
 def is_not_(a, b, msg=None):
     """Assert a is not b, with repr messaging on failure."""
     assert a is not b, msg or "%r is %r" % (a, b)
 
+
 def startswith_(a, fragment, msg=None):
     """Assert a.startswith(fragment), with repr messaging on failure."""
     assert a.startswith(fragment), msg or "%r does not start with %r" % (
         a, fragment)
+
 
 def assert_raises(except_cls, callable_, *args, **kw):
     try:
@@ -160,6 +165,7 @@ def assert_raises(except_cls, callable_, *args, **kw):
 
     # assert outside the block so it works for AssertionError too !
     assert success, "Callable did not raise an exception"
+
 
 def assert_raises_message(except_cls, msg, callable_, *args, **kwargs):
     try:
@@ -214,7 +220,9 @@ class AssertsCompiledSQL(object):
             p = c.construct_params(params)
             eq_(tuple([p[x] for x in c.positiontup]), checkpositional)
 
+
 class ComparesTables(object):
+
     def assert_tables_equal(self, table, reflected_table, strict_types=False):
         assert len(table.c) == len(reflected_table.c)
         for c, reflected_c in zip(table.c, reflected_table.c):
@@ -224,15 +232,19 @@ class ComparesTables(object):
             eq_(c.nullable, reflected_c.nullable)
 
             if strict_types:
+                msg = "Type '%s' doesn't correspond to type '%s'"
                 assert type(reflected_c.type) is type(c.type), \
-                    "Type '%s' doesn't correspond to type '%s'" % (reflected_c.type, c.type)
+                    msg % (reflected_c.type, c.type)
             else:
                 self.assert_types_base(reflected_c, c)
 
             if isinstance(c.type, sqltypes.String):
                 eq_(c.type.length, reflected_c.type.length)
 
-            eq_(set([f.column.name for f in c.foreign_keys]), set([f.column.name for f in reflected_c.foreign_keys]))
+            eq_(
+                set([f.column.name for f in c.foreign_keys]),
+                set([f.column.name for f in reflected_c.foreign_keys])
+            )
             if c.server_default:
                 assert isinstance(reflected_c.server_default,
                                   schema.FetchedValue)
@@ -245,6 +257,7 @@ class ComparesTables(object):
         assert c1.type._compare_type_affinity(c2.type),\
                 "On column %r, type '%s' doesn't correspond to type '%s'" % \
                 (c1.name, c1.type, c2.type)
+
 
 class AssertsExecutionResults(object):
     def assert_result(self, result, class_, *objects):
@@ -296,6 +309,7 @@ class AssertsExecutionResults(object):
                 len(found), len(expected)))
 
         NOVALUE = object()
+
         def _compare_item(obj, spec):
             for key, value in spec.iteritems():
                 if isinstance(value, tuple):
@@ -347,7 +361,8 @@ class AssertsExecutionResults(object):
         self.assert_sql_execution(db, callable_, *newrules)
 
     def assert_sql_count(self, db, callable_, count):
-        self.assert_sql_execution(db, callable_, assertsql.CountStatements(count))
+        self.assert_sql_execution(
+            db, callable_, assertsql.CountStatements(count))
 
     @contextlib.contextmanager
     def assert_execution(self, *rules):

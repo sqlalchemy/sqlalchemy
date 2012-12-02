@@ -14,12 +14,12 @@ the source distribution.
 
 """
 
-from .. import exc as sa_exc
 from .. import util
 from ..orm.session import Session
 from ..orm.query import Query
 
 __all__ = ['ShardedSession', 'ShardedQuery']
+
 
 class ShardedQuery(Query):
     def __init__(self, *args, **kwargs):
@@ -72,28 +72,29 @@ class ShardedQuery(Query):
             else:
                 return None
 
+
 class ShardedSession(Session):
     def __init__(self, shard_chooser, id_chooser, query_chooser, shards=None,
                  query_cls=ShardedQuery, **kwargs):
         """Construct a ShardedSession.
 
-        :param shard_chooser: A callable which, passed a Mapper, a mapped instance, and possibly a
-          SQL clause, returns a shard ID.  This id may be based off of the
-          attributes present within the object, or on some round-robin
-          scheme. If the scheme is based on a selection, it should set
-          whatever state on the instance to mark it in the future as
+        :param shard_chooser: A callable which, passed a Mapper, a mapped
+          instance, and possibly a SQL clause, returns a shard ID.  This id
+          may be based off of the attributes present within the object, or on
+          some round-robin scheme. If the scheme is based on a selection, it
+          should set whatever state on the instance to mark it in the future as
           participating in that shard.
 
-        :param id_chooser: A callable, passed a query and a tuple of identity values, which
-          should return a list of shard ids where the ID might reside.  The
-          databases will be queried in the order of this listing.
+        :param id_chooser: A callable, passed a query and a tuple of identity
+          values, which should return a list of shard ids where the ID might
+          reside.  The databases will be queried in the order of this listing.
 
-        :param query_chooser: For a given Query, returns the list of shard_ids where the query
-          should be issued.  Results from all shards returned will be combined
-          together into a single listing.
+        :param query_chooser: For a given Query, returns the list of shard_ids
+          where the query should be issued.  Results from all shards returned
+          will be combined together into a single listing.
 
-        :param shards: A dictionary of string shard names to :class:`~sqlalchemy.engine.Engine`
-          objects.
+        :param shards: A dictionary of string shard names
+          to :class:`~sqlalchemy.engine.Engine` objects.
 
         """
         super(ShardedSession, self).__init__(query_cls=query_cls, **kwargs)
@@ -117,12 +118,11 @@ class ShardedSession(Session):
                                 shard_id=shard_id,
                                 instance=instance).contextual_connect(**kwargs)
 
-    def get_bind(self, mapper, shard_id=None, instance=None, clause=None, **kw):
+    def get_bind(self, mapper, shard_id=None,
+                 instance=None, clause=None, **kw):
         if shard_id is None:
             shard_id = self.shard_chooser(mapper, instance, clause=clause)
         return self.__binds[shard_id]
 
     def bind_shard(self, shard_id, bind):
         self.__binds[shard_id] = bind
-
-

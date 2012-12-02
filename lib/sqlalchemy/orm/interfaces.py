@@ -16,7 +16,6 @@ classes within should be considered mostly private.
 
 """
 from __future__ import absolute_import
-from itertools import chain
 
 from .. import exc as sa_exc, util, inspect
 from ..sql import operators
@@ -53,6 +52,7 @@ from .deprecated_interfaces import AttributeExtension, \
     SessionExtension, \
     MapperExtension
 
+
 class _InspectionAttr(object):
     """Define a series of attributes that all ORM inspection
     targets need to have."""
@@ -65,11 +65,14 @@ class _InspectionAttr(object):
     is_attribute = False
     is_clause_element = False
 
+
 class _MappedAttribute(object):
     """Mixin for attributes which should be replaced by mapper-assigned
     attributes.
 
     """
+
+
 class MapperProperty(_MappedAttribute, _InspectionAttr):
     """Manage the relationship of a ``Mapper`` to a single class
     attribute, as well as that attribute as it appears on individual
@@ -80,7 +83,8 @@ class MapperProperty(_MappedAttribute, _InspectionAttr):
     mapped :class:`.Column`, which is represented in a mapping as
     an instance of :class:`.ColumnProperty`,
     and a reference to another class produced by :func:`.relationship`,
-    represented in the mapping as an instance of :class:`.RelationshipProperty`.
+    represented in the mapping as an instance of
+    :class:`.RelationshipProperty`.
 
     """
 
@@ -185,7 +189,6 @@ class MapperProperty(_MappedAttribute, _InspectionAttr):
         """
         pass
 
-
     def is_primary(self):
         """Return True if this ``MapperProperty``'s mapper is the
         primary mapper for its class.
@@ -216,6 +219,11 @@ class MapperProperty(_MappedAttribute, _InspectionAttr):
 
         return operator(self.comparator, value)
 
+    def __repr__(self):
+        return '<%s at 0x%x; %s>' % (
+            self.__class__.__name__,
+            id(self), self.key)
+
 class PropComparator(operators.ColumnOperators):
     """Defines boolean, comparison, and other operators for
     :class:`.MapperProperty` objects.
@@ -223,8 +231,8 @@ class PropComparator(operators.ColumnOperators):
     SQLAlchemy allows for operators to
     be redefined at both the Core and ORM level.  :class:`.PropComparator`
     is the base class of operator redefinition for ORM-level operations,
-    including those of :class:`.ColumnProperty`, :class:`.RelationshipProperty`,
-    and :class:`.CompositeProperty`.
+    including those of :class:`.ColumnProperty`,
+    :class:`.RelationshipProperty`, and :class:`.CompositeProperty`.
 
     .. note:: With the advent of Hybrid properties introduced in SQLAlchemy
        0.7, as well as Core-level operator redefinition in
@@ -274,10 +282,10 @@ class PropComparator(operators.ColumnOperators):
 
         class SomeMappedClass(Base):
             some_column = column_property(Column("some_column", String),
-                                    comparator_factory=MyColumnComparator)
+                                comparator_factory=MyColumnComparator)
 
             some_relationship = relationship(SomeOtherClass,
-                                    comparator_factory=MyRelationshipComparator)
+                                comparator_factory=MyRelationshipComparator)
 
             some_composite = composite(
                     Column("a", String), Column("b", String),
@@ -309,7 +317,6 @@ class PropComparator(operators.ColumnOperators):
         self.prop = self.property = prop
         self._parentmapper = parentmapper
         self.adapter = adapter
-
 
     def __clause_element__(self):
         raise NotImplementedError("%r" % self)
@@ -345,8 +352,8 @@ class PropComparator(operators.ColumnOperators):
             query.join(Company.employees.of_type(Engineer)).\\
                filter(Engineer.name=='foo')
 
-        :param \class_: a class or mapper indicating that criterion will be against
-            this specific subclass.
+        :param \class_: a class or mapper indicating that criterion will be
+            against this specific subclass.
 
 
         """
@@ -363,9 +370,9 @@ class PropComparator(operators.ColumnOperators):
         :param criterion: an optional ClauseElement formulated against the
           member class' table or attributes.
 
-        :param \**kwargs: key/value pairs corresponding to member class attribute
-          names which will be compared via equality to the corresponding
-          values.
+        :param \**kwargs: key/value pairs corresponding to member class
+          attribute names which will be compared via equality to the
+          corresponding values.
 
         """
 
@@ -381,9 +388,9 @@ class PropComparator(operators.ColumnOperators):
         :param criterion: an optional ClauseElement formulated against the
           member class' table or attributes.
 
-        :param \**kwargs: key/value pairs corresponding to member class attribute
-          names which will be compared via equality to the corresponding
-          values.
+        :param \**kwargs: key/value pairs corresponding to member class
+          attribute names which will be compared via equality to the
+          corresponding values.
 
         """
 
@@ -410,21 +417,18 @@ class StrategizedProperty(MapperProperty):
             return None
 
     def _get_context_strategy(self, context, path):
-        # this is essentially performance inlining.
-        key = ('loaderstrategy', path.reduced_path + (self.key,))
-        cls = None
-        if key in context.attributes:
-            cls = context.attributes[key]
-        else:
+        strategy_cls = path._inlined_get_for(self, context, 'loaderstrategy')
+
+        if not strategy_cls:
             wc_key = self._wildcard_path
             if wc_key and wc_key in context.attributes:
-                cls = context.attributes[wc_key]
+                strategy_cls = context.attributes[wc_key]
 
-        if cls:
+        if strategy_cls:
             try:
-                return self._strategies[cls]
+                return self._strategies[strategy_cls]
             except KeyError:
-                return self.__init_strategy(cls)
+                return self.__init_strategy(strategy_cls)
         return self.strategy
 
     def _get_strategy(self, cls):
@@ -456,6 +460,7 @@ class StrategizedProperty(MapperProperty):
             not mapper.class_manager._attr_has_impl(self.key):
             self.strategy.init_class_attribute(mapper)
 
+
 class MapperOption(object):
     """Describe a modification to a Query."""
 
@@ -475,6 +480,7 @@ class MapperOption(object):
         Query."""
 
         self.process_query(query)
+
 
 class PropertyOption(MapperOption):
     """A MapperOption that is applied to a property off the mapper or
@@ -523,10 +529,8 @@ class PropertyOption(MapperOption):
     def _find_entity_prop_comparator(self, query, token, mapper, raiseerr):
         if orm_util._is_aliased_class(mapper):
             searchfor = mapper
-            isa = False
         else:
             searchfor = orm_util._class_to_mapper(mapper)
-            isa = True
         for ent in query._mapper_entities:
             if ent.corresponds_to(searchfor):
                 return ent
@@ -595,7 +599,7 @@ class PropertyOption(MapperOption):
                 # exhaust current_path before
                 # matching tokens to entities
                 if current_path:
-                    if current_path[1] == token:
+                    if current_path[1].key == token:
                         current_path = current_path[2:]
                         continue
                     else:
@@ -629,7 +633,7 @@ class PropertyOption(MapperOption):
                 # matching tokens to entities
                 if current_path:
                     if current_path[0:2] == \
-                            [token._parententity, prop.key]:
+                            [token._parententity, prop]:
                         current_path = current_path[2:]
                         continue
                     else:
@@ -643,6 +647,7 @@ class PropertyOption(MapperOption):
                                             raiseerr)
                     if not entity:
                         return no_result
+
                     path_element = entity.entity_zero
                     mapper = entity.mapper
             else:
@@ -654,7 +659,7 @@ class PropertyOption(MapperOption):
                 raise sa_exc.ArgumentError("Attribute '%s' does not "
                             "link from element '%s'" % (token, path_element))
 
-            path = path[path_element][prop.key]
+            path = path[path_element][prop]
 
             paths.append(path)
 
@@ -665,7 +670,8 @@ class PropertyOption(MapperOption):
                 if not ext_info.is_aliased_class:
                     ac = orm_util.with_polymorphic(
                                 ext_info.mapper.base_mapper,
-                                ext_info.mapper, aliased=True)
+                                ext_info.mapper, aliased=True,
+                                _use_mapper_path=True)
                     ext_info = inspect(ac)
                 path.set(query, "path_with_polymorphic", ext_info)
             else:
@@ -684,6 +690,7 @@ class PropertyOption(MapperOption):
             return no_result
 
         return paths
+
 
 class StrategizedOption(PropertyOption):
     """A MapperOption that affects which LoaderStrategy will be used
@@ -710,6 +717,7 @@ class StrategizedOption(PropertyOption):
 
     def get_strategy_class(self):
         raise NotImplementedError()
+
 
 class LoaderStrategy(object):
     """Describe the loading behavior of a StrategizedProperty object.
@@ -758,5 +766,3 @@ class LoaderStrategy(object):
 
     def __str__(self):
         return str(self.parent_property)
-
-

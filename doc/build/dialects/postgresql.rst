@@ -26,7 +26,7 @@ construction arguments, are as follows:
 .. autoclass:: array
 
 .. autoclass:: ARRAY
-    :members: __init__
+    :members: __init__, Comparator
     :show-inheritance:
 
 .. autoclass:: BIT

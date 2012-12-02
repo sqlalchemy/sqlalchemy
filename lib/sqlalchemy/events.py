@@ -216,6 +216,7 @@ class DDLEvents(event.Events):
 
         """
 
+
 class SchemaEventTarget(object):
     """Base class for elements that are the targets of :class:`.DDLEvents`
     events.
@@ -234,6 +235,7 @@ class SchemaEventTarget(object):
         self.dispatch.before_parent_attach(self, parent)
         self._set_parent(parent)
         self.dispatch.after_parent_attach(self, parent)
+
 
 class PoolEvents(event.Events):
     """Available events for :class:`.Pool`.
@@ -333,6 +335,38 @@ class PoolEvents(event.Events):
           The ``_ConnectionRecord`` that persistently manages the connection
 
         """
+
+    def reset(self, dbapi_con, con_record):
+        """Called before the "reset" action occurs for a pooled connection.
+
+        This event represents
+        when the ``rollback()`` method is called on the DBAPI connection
+        before it is returned to the pool.  The behavior of "reset" can
+        be controlled, including disabled, using the ``reset_on_return``
+        pool argument.
+
+
+        The :meth:`.PoolEvents.reset` event is usually followed by the
+        the :meth:`.PoolEvents.checkin` event is called, except in those
+        cases where the connection is discarded immediately after reset.
+
+        :param dbapi_con:
+          A raw DB-API connection
+
+        :param con_record:
+          The ``_ConnectionRecord`` that persistently manages the connection
+
+        .. versionadded:: 0.8
+
+        .. seealso::
+
+            :meth:`.ConnectionEvents.rollback`
+
+            :meth:`.ConnectionEvents.commit`
+
+        """
+
+
 
 class ConnectionEvents(event.Events):
     """Available events for :class:`.Connectable`, which includes
@@ -589,14 +623,31 @@ class ConnectionEvents(event.Events):
         """
 
     def rollback(self, conn):
-        """Intercept rollback() events.
+        """Intercept rollback() events, as initiated by a
+        :class:`.Transaction`.
+
+        Note that the :class:`.Pool` also "auto-rolls back"
+        a DBAPI connection upon checkin, if the ``reset_on_return``
+        flag is set to its default value of ``'rollback'``.
+        To intercept this
+        rollback, use the :meth:`.PoolEvents.reset` hook.
 
         :param conn: :class:`.Connection` object
+
+        .. seealso::
+
+            :meth:`.PoolEvents.reset`
 
         """
 
     def commit(self, conn):
-        """Intercept commit() events.
+        """Intercept commit() events, as initiated by a
+        :class:`.Transaction`.
+
+        Note that the :class:`.Pool` may also "auto-commit"
+        a DBAPI connection upon checkin, if the ``reset_on_return``
+        flag is set to the value ``'commit'``.  To intercept this
+        commit, use the :meth:`.PoolEvents.reset` hook.
 
         :param conn: :class:`.Connection` object
         """
@@ -661,4 +712,3 @@ class ConnectionEvents(event.Events):
          :meth:`.TwoPhaseTransaction.prepare` was called.
 
         """
-

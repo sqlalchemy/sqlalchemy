@@ -10,6 +10,7 @@ to provide specific inclusion/exlusions.
 
 from . import exclusions
 
+
 class Requirements(object):
     def __init__(self, db, config):
         self.db = db
@@ -178,7 +179,6 @@ class SuiteRequirements(Requirements):
         """
         return exclusions.open()
 
-
     @property
     def datetime(self):
         """target dialect supports representation of Python
@@ -237,8 +237,10 @@ class SuiteRequirements(Requirements):
 
     @property
     def empty_strings_varchar(self):
-        """target database can persist/return an empty string with a varchar."""
+        """target database can persist/return an empty string with a
+        varchar.
 
+        """
         return exclusions.open()
 
     @property
@@ -247,7 +249,6 @@ class SuiteRequirements(Requirements):
         unbounded text."""
 
         return exclusions.open()
-
 
     @property
     def update_from(self):

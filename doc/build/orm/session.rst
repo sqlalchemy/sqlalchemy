@@ -1295,6 +1295,7 @@ things like unique constraint exceptions::
             print "Skipped record %s" % record
     session.commit()
 
+.. _session_autocommit:
 
 Autocommit Mode
 ---------------
@@ -1309,16 +1310,21 @@ results have been iterated.   The :meth:`.Session.flush` operation
 still occurs within the scope of a single transaction, though this transaction
 is closed out after the :meth:`.Session.flush` operation completes.
 
-"autocommit" mode should **not be considered for general use**.   While
-very old versions of SQLAlchemy standardized on this mode, the modern
-:class:`.Session` benefits highly from being given a clear point of transaction
-demarcation via :meth:`.Session.rollback` and :meth:`.Session.commit`.
-The autoflush action can safely emit SQL to the database as needed without
-implicitly producing permanent effects, the contents of attributes
-are expired only when a logical series of steps has completed.   If the
-:class:`.Session` were to be used in pure "autocommit" mode without
-an ongoing transaction, these features should be disabled, that is,
-``autoflush=False, expire_on_commit=False``.
+.. warning::
+
+    "autocommit" mode should **not be considered for general use**.
+    If used, it should always be combined with the usage of
+    :meth:`.Session.begin` and :meth:`.Session.commit`, to ensure
+    a transaction demarcation.
+
+    Executing queries outside of a demarcated transaction is a legacy mode
+    of usage, and can in some cases lead to concurrent connection
+    checkouts.
+
+    In the absense of a demarcated transaction, the :class:`.Session`
+    cannot make appropriate decisions as to when autoflush should
+    occur nor when auto-expiration should occur, so these features
+    should be disabled with ``autoflush=False, expire_on_commit=False``.
 
 Modern usage of "autocommit" is for framework integrations that need to control
 specifically when the "begin" state occurs.  A session which is configured with

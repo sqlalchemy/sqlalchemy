@@ -144,7 +144,9 @@ RESERVED_WORDS = set(
     "xadatasource", "xid", "xload", "xunload", "year"
     ])
 
+
 class InfoDateTime(sqltypes.DateTime):
+
     def bind_processor(self, dialect):
         def process(value):
             if value is not None:
@@ -153,7 +155,9 @@ class InfoDateTime(sqltypes.DateTime):
             return value
         return process
 
+
 class InfoTime(sqltypes.Time):
+
     def bind_processor(self, dialect):
         def process(value):
             if value is not None:
@@ -171,33 +175,33 @@ class InfoTime(sqltypes.Time):
         return process
 
 colspecs = {
-    sqltypes.DateTime : InfoDateTime,
+    sqltypes.DateTime: InfoDateTime,
     sqltypes.TIMESTAMP: InfoDateTime,
     sqltypes.Time: InfoTime,
 }
 
 
 ischema_names = {
-    0   : sqltypes.CHAR,       # CHAR
-    1   : sqltypes.SMALLINT, # SMALLINT
-    2   : sqltypes.INTEGER,      # INT
-    3   : sqltypes.FLOAT,      # Float
-    3   : sqltypes.Float,      # SmallFloat
-    5   : sqltypes.DECIMAL,      # DECIMAL
-    6   : sqltypes.Integer,      # Serial
-    7   : sqltypes.DATE,         # DATE
-    8   : sqltypes.Numeric,      # MONEY
-    10  : sqltypes.DATETIME,     # DATETIME
-    11  : sqltypes.LargeBinary,       # BYTE
-    12  : sqltypes.TEXT,         # TEXT
-    13  : sqltypes.VARCHAR,       # VARCHAR
-    15  : sqltypes.NCHAR,       # NCHAR
-    16  : sqltypes.NVARCHAR,       # NVARCHAR
-    17  : sqltypes.Integer,      # INT8
-    18  : sqltypes.Integer,      # Serial8
-    43  : sqltypes.String,       # LVARCHAR
-    -1  : sqltypes.BLOB,       # BLOB
-    -1  : sqltypes.CLOB,         # CLOB
+    0: sqltypes.CHAR,           # CHAR
+    1: sqltypes.SMALLINT,       # SMALLINT
+    2: sqltypes.INTEGER,        # INT
+    3: sqltypes.FLOAT,          # Float
+    3: sqltypes.Float,          # SmallFloat
+    5: sqltypes.DECIMAL,        # DECIMAL
+    6: sqltypes.Integer,        # Serial
+    7: sqltypes.DATE,           # DATE
+    8: sqltypes.Numeric,        # MONEY
+    10: sqltypes.DATETIME,      # DATETIME
+    11: sqltypes.LargeBinary,   # BYTE
+    12: sqltypes.TEXT,          # TEXT
+    13: sqltypes.VARCHAR,       # VARCHAR
+    15: sqltypes.NCHAR,         # NCHAR
+    16: sqltypes.NVARCHAR,      # NVARCHAR
+    17: sqltypes.Integer,       # INT8
+    18: sqltypes.Integer,       # Serial8
+    43: sqltypes.String,        # LVARCHAR
+    -1: sqltypes.BLOB,          # BLOB
+    -1: sqltypes.CLOB,          # CLOB
 }
 
 
@@ -217,7 +221,9 @@ class InfoTypeCompiler(compiler.GenericTypeCompiler):
     def visit_boolean(self, type_):
         return "SMALLINT"
 
+
 class InfoSQLCompiler(compiler.SQLCompiler):
+
     def default_from(self):
         return " from systables where tabname = 'systables' "
 
@@ -337,6 +343,7 @@ class InfoDDLCompiler(compiler.DDLCompiler):
             text += "CONSTRAINT %s " % self.preparer.format_constraint(constraint)
         return text
 
+
 class InformixIdentifierPreparer(compiler.IdentifierPreparer):
 
     reserved_words = RESERVED_WORDS
@@ -345,7 +352,7 @@ class InformixIdentifierPreparer(compiler.IdentifierPreparer):
 class InformixDialect(default.DefaultDialect):
     name = 'informix'
 
-    max_identifier_length = 128 # adjusts at runtime based on server version
+    max_identifier_length = 128  # adjusts at runtime based on server version
 
     type_compiler = InfoTypeCompiler
     statement_compiler = InfoSQLCompiler
@@ -355,10 +362,6 @@ class InformixDialect(default.DefaultDialect):
     preparer = InformixIdentifierPreparer
     default_paramstyle = 'qmark'
 
-    def __init__(self, has_transactions=True, *args, **kwargs):
-        self.has_transactions = has_transactions
-        default.DefaultDialect.__init__(self, *args, **kwargs)
-
     def initialize(self, connection):
         super(InformixDialect, self).initialize(connection)
 
@@ -367,20 +370,6 @@ class InformixDialect(default.DefaultDialect):
             self.max_identifier_length = 18
         else:
             self.max_identifier_length = 128
-
-    def do_begin(self, connection):
-        cu = connection.cursor()
-        cu.execute('SET LOCK MODE TO WAIT')
-        if self.has_transactions:
-            cu.execute('SET ISOLATION TO REPEATABLE READ')
-
-    def do_commit(self, connection):
-        if self.has_transactions:
-            connection.commit()
-
-    def do_rollback(self, connection):
-        if self.has_transactions:
-            connection.rollback()
 
     def _get_table_names(self, connection, schema, type, **kw):
         schema = schema or self.default_schema_name
@@ -438,14 +427,14 @@ class InformixDialect(default.DefaultDialect):
             if coltype not in (0, 13) and default:
                 default = default.split()[-1]
 
-            if coltype == 6: # Serial, mark as autoincrement
+            if coltype == 6:  # Serial, mark as autoincrement
                 autoincrement = True
 
-            if coltype == 0 or coltype == 13: # char, varchar
+            if coltype == 0 or coltype == 13:  # char, varchar
                 coltype = ischema_names[coltype](collength)
                 if default:
                     default = "'%s'" % default
-            elif coltype == 5: # decimal
+            elif coltype == 5:  # decimal
                 precision, scale = (collength & 0xFF00) >> 8, collength & 0xFF
                 if scale == 255:
                     scale = 0
@@ -487,14 +476,13 @@ class InformixDialect(default.DefaultDialect):
              t8.idxname
              and t7.tabid = t5.ptabid""", table_name, schema_sel)
 
-
         def fkey_rec():
             return {
-                 'name' : None,
-                 'constrained_columns' : [],
-                 'referred_schema' : None,
-                 'referred_table' : None,
-                 'referred_columns' : []
+                 'name': None,
+                 'constrained_columns': [],
+                 'referred_schema': None,
+                 'referred_table': None,
+                 'referred_columns': []
              }
 
         fkeys = util.defaultdict(fkey_rec)
@@ -536,15 +524,15 @@ class InformixDialect(default.DefaultDialect):
         colpositions = set()
 
         for row in data:
-            colpos = set([getattr(row, 'part%d' % x) for x in range(1,16)])
+            colpos = set([getattr(row, 'part%d' % x) for x in range(1, 16)])
             colpositions |= colpos
 
         if not len(colpositions):
-            return {'constrained_columns':[], 'name':None}
+            return {'constrained_columns': [], 'name': None}
 
         # Select the column names using the columnpositions
         # TODO: Maybe cache a bit of those col infos (eg select all colnames for one table)
-        place_holder = ','.join('?'*len(colpositions))
+        place_holder = ','.join('?' * len(colpositions))
         c = connection.execute(
             """select t1.colname
             from syscolumns as t1, systables as t2
@@ -553,8 +541,8 @@ class InformixDialect(default.DefaultDialect):
             table_name, *colpositions
         ).fetchall()
 
-        cols = reduce(lambda x,y: list(x)+list(y), c, [])
-        return {'constrained_columns':cols, 'name':None}
+        cols = reduce(lambda x, y: list(x) + list(y), c, [])
+        return {'constrained_columns': cols, 'name': None}
 
     @reflection.cache
     def get_indexes(self, connection, table_name, schema, **kw):
@@ -567,9 +555,9 @@ class InformixDialect(default.DefaultDialect):
 
         indexes = []
         for row in c.fetchall():
-            colnames = [getattr(row, 'part%d' % x) for x in range(1,16)]
+            colnames = [getattr(row, 'part%d' % x) for x in range(1, 16)]
             colnames = [x for x in colnames if x]
-            place_holder = ','.join('?'*len(colnames))
+            place_holder = ','.join('?' * len(colnames))
             c = connection.execute(
                 """select t1.colname
                 from syscolumns as t1, systables as t2
@@ -577,7 +565,7 @@ class InformixDialect(default.DefaultDialect):
                 t1.colno in (%s)""" % place_holder,
                 table_name, *colnames
             ).fetchall()
-            c = reduce(lambda x,y: list(x)+list(y), c, [])
+            c = reduce(lambda x, y: list(x) + list(y), c, [])
             indexes.append({
                 'name': row.idxname,
                 'unique': row.idxtype.lower() == 'u',

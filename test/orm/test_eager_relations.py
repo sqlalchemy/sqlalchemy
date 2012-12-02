@@ -311,6 +311,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         })
         mapper(Keyword, keywords)
 
+
+
         for opt, count in [
             ((
                 joinedload(User.orders, Order.items),
@@ -2660,3 +2662,5 @@ class CyclicalInheritingEagerTestTwo(fixtures.DeclarativeMappedTest,
         session.close_all()
         d = session.query(Director).options(joinedload('*')).first()
         assert len(list(session)) == 3
+
+

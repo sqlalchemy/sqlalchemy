@@ -7,8 +7,9 @@
 """Provides the :class:`~sqlalchemy.engine.url.URL` class which encapsulates
 information about a database connection specification.
 
-The URL object is created automatically when :func:`~sqlalchemy.engine.create_engine` is called
-with a string argument; alternatively, the URL is a public-facing construct which can
+The URL object is created automatically when
+:func:`~sqlalchemy.engine.create_engine` is called with a string
+argument; alternatively, the URL is a public-facing construct which can
 be used directly and is also accepted directly by ``create_engine()``.
 """
 
@@ -124,8 +125,8 @@ class URL(object):
 
         :param \**kw: Optional, alternate key names for url attributes.
 
-        :param names: Deprecated.  Same purpose as the keyword-based alternate names,
-            but correlates the name to the original positionally.
+        :param names: Deprecated.  Same purpose as the keyword-based alternate
+            names, but correlates the name to the original positionally.
         """
 
         translated = {}
@@ -141,6 +142,7 @@ class URL(object):
                 translated[name] = getattr(self, sname)
         return translated
 
+
 def make_url(name_or_url):
     """Given a string or unicode instance, produce a new URL instance.
 
@@ -152,6 +154,7 @@ def make_url(name_or_url):
         return _parse_rfc1738_args(name_or_url)
     else:
         return name_or_url
+
 
 def _parse_rfc1738_args(name):
     pattern = re.compile(r'''
@@ -165,8 +168,7 @@ def _parse_rfc1738_args(name):
                 (?::(?P<port>[^/]*))?
             )?
             (?:/(?P<database>.*))?
-            '''
-            , re.X)
+            ''', re.X)
 
     m = pattern.match(name)
     if m is not None:
@@ -184,7 +186,8 @@ def _parse_rfc1738_args(name):
         components['query'] = query
 
         if components['password'] is not None:
-            components['password'] = urllib.unquote_plus(components['password'])
+            components['password'] = \
+                urllib.unquote_plus(components['password'])
 
         name = components.pop('name')
         return URL(name, **components)
@@ -192,11 +195,12 @@ def _parse_rfc1738_args(name):
         raise exc.ArgumentError(
             "Could not parse rfc1738 URL from string '%s'" % name)
 
+
 def _parse_keyvalue_args(name):
-    m = re.match( r'(\w+)://(.*)', name)
+    m = re.match(r'(\w+)://(.*)', name)
     if m is not None:
         (name, args) = m.group(1, 2)
-        opts = dict( util.parse_qsl( args ) )
+        opts = dict(util.parse_qsl(args))
         return URL(name, *opts)
     else:
         return None

@@ -69,7 +69,7 @@ the SQLAlchemy ``returning()`` method, such as::
 
 """
 
-import datetime, re
+import datetime
 
 from sqlalchemy import schema as sa_schema
 from sqlalchemy import exc, types as sqltypes, sql, util
@@ -130,12 +130,14 @@ class _StringType(sqltypes.String):
         self.charset = charset
         super(_StringType, self).__init__(**kw)
 
+
 class VARCHAR(_StringType, sqltypes.VARCHAR):
     """Firebird VARCHAR type"""
     __visit_name__ = 'VARCHAR'
 
     def __init__(self, length=None, **kwargs):
         super(VARCHAR, self).__init__(length=length, **kwargs)
+
 
 class CHAR(_StringType, sqltypes.CHAR):
     """Firebird CHAR type"""
@@ -209,7 +211,6 @@ class FBTypeCompiler(compiler.GenericTypeCompiler):
                     self.dialect.name)
         basic = super(FBTypeCompiler, self).visit_VARCHAR(type_)
         return self._extend_string(type_, basic)
-
 
 
 class FBCompiler(sql.compiler.SQLCompiler):
@@ -516,7 +517,7 @@ class FBDialect(default.DefaultDialect):
         # get primary key fields
         c = connection.execute(keyqry, ["PRIMARY KEY", tablename])
         pkfields = [self.normalize_name(r['fname']) for r in c.fetchall()]
-        return {'constrained_columns':pkfields, 'name':None}
+        return {'constrained_columns': pkfields, 'name': None}
 
     @reflection.cache
     def get_column_sequence(self, connection,
@@ -624,11 +625,11 @@ class FBDialect(default.DefaultDialect):
                     # Redundant
                     defvalue = None
             col_d = {
-                'name' : name,
-                'type' : coltype,
-                'nullable' :  not bool(row['null_flag']),
-                'default' : defvalue,
-                'autoincrement':defvalue is None
+                'name': name,
+                'type': coltype,
+                'nullable': not bool(row['null_flag']),
+                'default': defvalue,
+                'autoincrement': defvalue is None
             }
 
             if orig_colname.lower() == orig_colname:
@@ -636,7 +637,7 @@ class FBDialect(default.DefaultDialect):
 
             # if the PK is a single field, try to see if its linked to
             # a sequence thru a trigger
-            if len(pkey_cols)==1 and name==pkey_cols[0]:
+            if len(pkey_cols) == 1 and name == pkey_cols[0]:
                 seq_d = self.get_column_sequence(connection, tablename, name)
                 if seq_d is not None:
                     col_d['sequence'] = seq_d
@@ -666,12 +667,12 @@ class FBDialect(default.DefaultDialect):
         tablename = self.denormalize_name(table_name)
 
         c = connection.execute(fkqry, ["FOREIGN KEY", tablename])
-        fks = util.defaultdict(lambda:{
-            'name' : None,
-            'constrained_columns' : [],
-            'referred_schema' : None,
-            'referred_table' : None,
-            'referred_columns' : []
+        fks = util.defaultdict(lambda: {
+            'name': None,
+            'constrained_columns': [],
+            'referred_schema': None,
+            'referred_table': None,
+            'referred_columns': []
         })
 
         for row in c:
@@ -722,10 +723,10 @@ class FBDialect(default.DefaultDialect):
         # when there are no arguments.
         cursor.execute(statement, parameters or [])
 
-    def do_rollback(self, connection):
+    def do_rollback(self, dbapi_connection):
         # Use the retaining feature, that keeps the transaction going
-        connection.rollback(True)
+        dbapi_connection.rollback(True)
 
-    def do_commit(self, connection):
+    def do_commit(self, dbapi_connection):
         # Use the retaining feature, that keeps the transaction going
-        connection.commit(True)
+        dbapi_connection.commit(True)

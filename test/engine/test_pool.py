@@ -41,15 +41,16 @@ class PoolTestBase(fixtures.TestBase):
 
     @classmethod
     def teardown_class(cls):
-       pool.clear_managers()
+        pool.clear_managers()
 
     def _queuepool_fixture(self, **kw):
-        dbapi = MockDBAPI()
-        return pool.QueuePool(creator=lambda: dbapi.connect('foo.db'), **kw)
+        dbapi, pool = self._queuepool_dbapi_fixture(**kw)
+        return pool
 
     def _queuepool_dbapi_fixture(self, **kw):
         dbapi = MockDBAPI()
-        return dbapi, pool.QueuePool(creator=lambda: dbapi.connect('foo.db'), **kw)
+        return dbapi, pool.QueuePool(creator=lambda: dbapi.connect('foo.db'),
+                        **kw)
 
 class PoolTest(PoolTestBase):
     def test_manager(self):
@@ -83,6 +84,9 @@ class PoolTest(PoolTestBase):
         assert c1 is not c2
         assert c1 is  c3
 
+
+
+
     def test_bad_args(self):
         manager = pool.manage(MockDBAPI())
         connection = manager.connect(None)
@@ -105,6 +109,7 @@ class PoolTest(PoolTestBase):
         expected = [(1, )]
         for row in cursor:
             eq_(row, expected.pop(0))
+
 
     def test_no_connect_on_recreate(self):
         def creator():
@@ -210,8 +215,54 @@ class PoolTest(PoolTestBase):
         self.assert_('foo2' in c.info)
 
 
+class PoolDialectTest(PoolTestBase):
+    def _dialect(self):
+        canary = []
+        class PoolDialect(object):
+            def do_rollback(self, dbapi_connection):
+                canary.append('R')
+                dbapi_connection.rollback()
 
-class PoolEventsTest(object): #PoolTestBase):
+            def do_commit(self, dbapi_connection):
+                canary.append('C')
+                dbapi_connection.commit()
+
+            def do_close(self, dbapi_connection):
+                canary.append('CL')
+                dbapi_connection.close()
+        return PoolDialect(), canary
+
+    def _do_test(self, pool_cls, assertion):
+        mock_dbapi = MockDBAPI()
+        dialect, canary = self._dialect()
+
+        p = pool_cls(creator=mock_dbapi.connect)
+        p._dialect = dialect
+        conn = p.connect()
+        conn.close()
+        p.dispose()
+        p.recreate()
+        conn = p.connect()
+        conn.close()
+        eq_(canary, assertion)
+
+    def test_queue_pool(self):
+        self._do_test(pool.QueuePool, ['R', 'CL', 'R'])
+
+    def test_assertion_pool(self):
+        self._do_test(pool.AssertionPool, ['R', 'CL', 'R'])
+
+    def test_singleton_pool(self):
+        self._do_test(pool.SingletonThreadPool, ['R', 'CL', 'R'])
+
+    def test_null_pool(self):
+        self._do_test(pool.NullPool, ['R', 'CL', 'R', 'CL'])
+
+    def test_static_pool(self):
+        self._do_test(pool.StaticPool, ['R', 'R'])
+
+
+class PoolEventsTest(PoolTestBase):
     def _first_connect_event_fixture(self):
         p = self._queuepool_fixture()
         canary = []
@@ -246,6 +297,15 @@ class PoolEventsTest(object): #PoolTestBase):
         def checkin(*arg, **kw):
             canary.append('checkin')
         event.listen(p, 'checkin', checkin)
+
+        return p, canary
+
+    def _reset_event_fixture(self):
+        p = self._queuepool_fixture()
+        canary = []
+        def reset(*arg, **kw):
+            canary.append('reset')
+        event.listen(p, 'reset', reset)
 
         return p, canary
 
@@ -343,6 +403,14 @@ class PoolEventsTest(object): #PoolTestBase):
         eq_(canary, [])
         c1.close()
         eq_(canary, ['checkin'])
+
+    def test_reset_event(self):
+        p, canary = self._reset_event_fixture()
+
+        c1 = p.connect()
+        eq_(canary, [])
+        c1.close()
+        eq_(canary, ['reset'])
 
     def test_checkin_event_gc(self):
         p, canary = self._checkin_event_fixture()

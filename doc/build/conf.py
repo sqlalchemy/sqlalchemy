@@ -33,7 +33,6 @@ import sqlalchemy
 
 extensions = [
             'sphinx.ext.autodoc',
-            #    'sphinx.ext.doctest',
                 'builder.autodoc_mods',
                 'builder.changelog',
                 'builder.dialect_info',

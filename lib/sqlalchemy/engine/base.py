@@ -17,6 +17,7 @@ from .interfaces import Connectable, Compiled
 from .util import _distill_params
 import contextlib
 
+
 class Connection(Connectable):
     """Provides high-level functionality for a wrapped DB-API connection.
 
@@ -118,10 +119,11 @@ class Connection(Connectable):
             result = connection.execution_options(stream_results=True).\\
                                 execute(stmt)
 
-        Note that any key/value can be passed to :meth:`.Connection.execution_options`,
-        and it will be stored in the ``_execution_options`` dictionary of
-        the :class:`.Connnection`.   It is suitable for usage by end-user
-        schemes to communicate with event listeners, for example.
+        Note that any key/value can be passed to
+        :meth:`.Connection.execution_options`, and it will be stored in the
+        ``_execution_options`` dictionary of the :class:`.Connnection`.   It
+        is suitable for usage by end-user schemes to communicate with
+        event listeners, for example.
 
         The keywords that are currently recognized by SQLAlchemy itself
         include all those listed under :meth:`.Executable.execution_options`,
@@ -328,7 +330,6 @@ class Connection(Connectable):
         del self.__connection
         self.__invalid = True
 
-
     def detach(self):
         """Detach the underlying DB-API connection from its connection pool.
 
@@ -377,7 +378,8 @@ class Connection(Connectable):
 
         :meth:`.Connection.begin_twophase` - use a two phase /XID transaction
 
-        :meth:`.Engine.begin` - context manager available from :class:`.Engine`.
+        :meth:`.Engine.begin` - context manager available from
+        :class:`.Engine`.
 
         """
 
@@ -414,8 +416,8 @@ class Connection(Connectable):
 
         The returned object is an instance of :class:`.TwoPhaseTransaction`,
         which in addition to the methods provided by
-        :class:`.Transaction`, also provides a :meth:`~.TwoPhaseTransaction.prepare`
-        method.
+        :class:`.Transaction`, also provides a
+        :meth:`~.TwoPhaseTransaction.prepare` method.
 
         :param xid: the two phase transaction id.  If not supplied, a
           random id will be generated.
@@ -477,7 +479,7 @@ class Connection(Connectable):
         else:
             self.__transaction = None
 
-    def _commit_impl(self):
+    def _commit_impl(self, autocommit=False):
         if self._has_events:
             self.dispatch.commit(self)
 
@@ -518,6 +520,8 @@ class Connection(Connectable):
         self.__transaction = context
 
     def _begin_twophase_impl(self, xid):
+        if self._echo:
+            self.engine.logger.info("BEGIN TWOPHASE (implicit)")
         if self._has_events:
             self.dispatch.begin_twophase(self, xid)
 
@@ -593,7 +597,8 @@ class Connection(Connectable):
         return self.execute(object, *multiparams, **params).scalar()
 
     def execute(self, object, *multiparams, **params):
-        """Executes the a SQL statement construct and returns a :class:`.ResultProxy`.
+        """Executes the a SQL statement construct and returns a
+        :class:`.ResultProxy`.
 
         :param object: The statement to be executed.  May be
          one of:
@@ -661,7 +666,6 @@ class Connection(Connectable):
             raise exc.InvalidRequestError(
                                 "Unexecutable object type: %s" %
                                 type(object))
-
 
     def _execute_function(self, func, multiparams, params):
         """Execute a sql.FunctionElement object."""
@@ -751,7 +755,6 @@ class Connection(Connectable):
             compiled_sql = elem.compile(
                             dialect=dialect, column_keys=keys,
                             inline=len(distilled_params) > 1)
-
 
         ret = self._execute_context(
             dialect,
@@ -875,7 +878,6 @@ class Connection(Connectable):
                                 context)
             raise
 
-
         if self._has_events:
             self.dispatch.after_cursor_execute(self, cursor,
                                                 statement,
@@ -908,7 +910,7 @@ class Connection(Connectable):
             result.close(_autoclose_connection=False)
 
         if self.__transaction is None and context.should_autocommit:
-            self._commit_impl()
+            self._commit_impl(autocommit=True)
 
         if result.closed and self.should_close_with_result:
             self.close()
@@ -1005,8 +1007,7 @@ class Connection(Connectable):
                 context.handle_dbapi_exception(e)
 
             is_disconnect = isinstance(e, self.dialect.dbapi.Error) and \
-                                self.dialect.is_disconnect(e, self.__connection, cursor)
-
+                self.dialect.is_disconnect(e, self.__connection, cursor)
 
             if is_disconnect:
                 dbapi_conn_wrapper = self.connection
@@ -1054,7 +1055,6 @@ class Connection(Connectable):
         schema.DDLElement: _execute_ddl,
         basestring: _execute_text
     }
-
 
     def default_schema_name(self):
         return self.engine.dialect.get_default_schema_name(self)
@@ -1219,6 +1219,7 @@ class Transaction(object):
         else:
             self.rollback()
 
+
 class RootTransaction(Transaction):
     def __init__(self, connection):
         super(RootTransaction, self).__init__(connection, None)
@@ -1319,6 +1320,7 @@ class Engine(Connectable, log.Identified):
         self.pool = pool
         self.url = url
         self.dialect = dialect
+        self.pool._dialect = dialect
         if logging_name:
             self.logging_name = logging_name
         self.echo = echo
@@ -1383,10 +1385,10 @@ class Engine(Connectable, log.Identified):
             shard1 = primary_engine.execution_options(shard_id="shard1")
             shard2 = primary_engine.execution_options(shard_id="shard2")
 
-        Above, the ``shard1`` engine serves as a factory for :class:`.Connection`
-        objects that will contain the execution option ``shard_id=shard1``,
-        and ``shard2`` will produce :class:`.Connection` objects that contain
-        the execution option ``shard_id=shard2``.
+        Above, the ``shard1`` engine serves as a factory for
+        :class:`.Connection` objects that will contain the execution option
+        ``shard_id=shard1``, and ``shard2`` will produce :class:`.Connection`
+        objects that contain the execution option ``shard_id=shard2``.
 
         An event handler can consume the above execution option to perform
         a schema switch or other operation, given a connection.  Below
@@ -1467,7 +1469,6 @@ class Engine(Connectable, log.Identified):
         """
         self.pool = self.pool._replace()
 
-
     def _execute_default(self, default):
         with self.contextual_connect() as conn:
             return conn._execute_default(default, (), {})
@@ -1502,7 +1503,6 @@ class Engine(Connectable, log.Identified):
             if not self.close_with_result:
                 self.conn.close()
 
-
     def begin(self, close_with_result=False):
         """Return a context manager delivering a :class:`.Connection`
         with a :class:`.Transaction` established.
@@ -1519,11 +1519,11 @@ class Engine(Connectable, log.Identified):
 
         The ``close_with_result`` flag is normally ``False``, and indicates
         that the :class:`.Connection` will be closed when the operation
-        is complete.   When set to ``True``, it indicates the :class:`.Connection`
-        is in "single use" mode, where the :class:`.ResultProxy`
-        returned by the first call to :meth:`.Connection.execute` will
-        close the :class:`.Connection` when that :class:`.ResultProxy`
-        has exhausted all result rows.
+        is complete.   When set to ``True``, it indicates the
+        :class:`.Connection` is in "single use" mode, where the
+        :class:`.ResultProxy` returned by the first call to
+        :meth:`.Connection.execute` will close the :class:`.Connection` when
+        that :class:`.ResultProxy` has exhausted all result rows.
 
         .. versionadded:: 0.7.6
 
@@ -1635,29 +1635,33 @@ class Engine(Connectable, log.Identified):
     def connect(self, **kwargs):
         """Return a new :class:`.Connection` object.
 
-        The :class:`.Connection` object is a facade that uses a DBAPI connection internally
-        in order to communicate with the database.  This connection is procured
-        from the connection-holding :class:`.Pool` referenced by this :class:`.Engine`.
-        When the :meth:`~.Connection.close` method of the :class:`.Connection` object is called,
-        the underlying DBAPI connection is then returned to the connection pool,
-        where it may be used again in a subsequent call to :meth:`~.Engine.connect`.
+        The :class:`.Connection` object is a facade that uses a DBAPI
+        connection internally in order to communicate with the database.  This
+        connection is procured from the connection-holding :class:`.Pool`
+        referenced by this :class:`.Engine`. When the
+        :meth:`~.Connection.close` method of the :class:`.Connection` object
+        is called, the underlying DBAPI connection is then returned to the
+        connection pool, where it may be used again in a subsequent call to
+        :meth:`~.Engine.connect`.
 
         """
 
         return self._connection_cls(self, **kwargs)
 
     def contextual_connect(self, close_with_result=False, **kwargs):
-        """Return a :class:`.Connection` object which may be part of some ongoing context.
+        """Return a :class:`.Connection` object which may be part of some
+        ongoing context.
 
         By default, this method does the same thing as :meth:`.Engine.connect`.
         Subclasses of :class:`.Engine` may override this method
         to provide contextual behavior.
 
-        :param close_with_result: When True, the first :class:`.ResultProxy` created
-          by the :class:`.Connection` will call the :meth:`.Connection.close` method
-          of that connection as soon as any pending result rows are exhausted.
-          This is used to supply the "connectionless execution" behavior provided
-          by the :meth:`.Engine.execute` method.
+        :param close_with_result: When True, the first :class:`.ResultProxy`
+          created by the :class:`.Connection` will call the
+          :meth:`.Connection.close` method of that connection as soon as any
+          pending result rows are exhausted. This is used to supply the
+          "connectionless execution" behavior provided by the
+          :meth:`.Engine.execute` method.
 
         """
 
@@ -1701,6 +1705,7 @@ class Engine(Connectable, log.Identified):
         """
 
         return self.pool.unique_connection()
+
 
 class OptionEngine(Engine):
     def __init__(self, proxied, execution_options):

@@ -17,6 +17,7 @@ from ...connectors.zxJDBC import ZxJDBCConnector
 from .base import MSDialect, MSExecutionContext
 from ... import engine
 
+
 class MSExecutionContext_zxjdbc(MSExecutionContext):
 
     _embedded_scope_identity = False
