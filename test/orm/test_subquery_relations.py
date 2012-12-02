@@ -1226,24 +1226,24 @@ class InheritanceToRelatedTest(fixtures.MappedTest):
     @classmethod
     def fixtures(cls):
         return dict(
-            foo = [
+            foo=[
                 ('id', 'type', 'related_id'),
                 (1, 'bar', 1),
                 (2, 'bar', 2),
                 (3, 'baz', 1),
                 (4, 'baz', 2),
             ],
-            bar = [
+            bar=[
                 ('id', ),
                 (1,),
                 (2,)
             ],
-            baz = [
+            baz=[
                 ('id', ),
                 (3,),
                 (4,)
             ],
-            related = [
+            related=[
                 ('id', ),
                 (1,),
                 (2,)
@@ -1252,7 +1252,7 @@ class InheritanceToRelatedTest(fixtures.MappedTest):
     @classmethod
     def setup_mappers(cls):
         mapper(cls.classes.Foo, cls.tables.foo, properties={
-            'related':relationship(cls.classes.Related)
+            'related': relationship(cls.classes.Related)
         }, polymorphic_on=cls.tables.foo.c.type)
         mapper(cls.classes.Bar, cls.tables.bar, polymorphic_identity='bar',
                     inherits=cls.classes.Foo)
@@ -1260,21 +1260,42 @@ class InheritanceToRelatedTest(fixtures.MappedTest):
                     inherits=cls.classes.Foo)
         mapper(cls.classes.Related, cls.tables.related)
 
-    def test_caches_query_per_base(self):
+    def test_caches_query_per_base_subq(self):
         Foo, Bar, Baz, Related = self.classes.Foo, self.classes.Bar, \
                         self.classes.Baz, self.classes.Related
         s = Session(testing.db)
         def go():
             eq_(
-                s.query(Foo).with_polymorphic([Bar, Baz]).order_by(Foo.id).options(subqueryload(Foo.related)).all(),
+                s.query(Foo).with_polymorphic([Bar, Baz]).\
+                            order_by(Foo.id).\
+                            options(subqueryload(Foo.related)).all(),
                 [
-                    Bar(id=1,related=Related(id=1)),
-                    Bar(id=2,related=Related(id=2)),
-                    Baz(id=3,related=Related(id=1)),
-                    Baz(id=4,related=Related(id=2))
+                    Bar(id=1, related=Related(id=1)),
+                    Bar(id=2, related=Related(id=2)),
+                    Baz(id=3, related=Related(id=1)),
+                    Baz(id=4, related=Related(id=2))
                 ]
             )
         self.assert_sql_count(testing.db, go, 2)
+
+    def test_caches_query_per_base_joined(self):
+        # technically this should be in test_eager_relations
+        Foo, Bar, Baz, Related = self.classes.Foo, self.classes.Bar, \
+                        self.classes.Baz, self.classes.Related
+        s = Session(testing.db)
+        def go():
+            eq_(
+                s.query(Foo).with_polymorphic([Bar, Baz]).\
+                            order_by(Foo.id).\
+                            options(joinedload(Foo.related)).all(),
+                [
+                    Bar(id=1, related=Related(id=1)),
+                    Bar(id=2, related=Related(id=2)),
+                    Baz(id=3, related=Related(id=1)),
+                    Baz(id=4, related=Related(id=2))
+                ]
+            )
+        self.assert_sql_count(testing.db, go, 1)
 
 class CyclicalInheritingEagerTestOne(fixtures.MappedTest):
 
@@ -1344,14 +1365,13 @@ class CyclicalInheritingEagerTestTwo(fixtures.DeclarativeMappedTest,
 
     def test_from_subclass(self):
         Director = self.classes.Director
-        PersistentObject = self.classes.PersistentObject
-
 
         s = create_session()
 
         ctx = s.query(Director).options(subqueryload('*'))._compile_context()
 
-        q = ctx.attributes[('subquery', (inspect(PersistentObject), 'movies'))]
+        q = ctx.attributes[('subquery',
+                        (inspect(Director), inspect(Director).attrs.movies))]
         self.assert_compile(q,
             "SELECT anon_1.movie_id AS anon_1_movie_id, "
             "anon_1.persistent_id AS anon_1_persistent_id, "
@@ -1384,10 +1404,3 @@ class CyclicalInheritingEagerTestTwo(fixtures.DeclarativeMappedTest,
         d = session.query(Director).options(subqueryload('*')).first()
         assert len(list(session)) == 3
 
-from . import test_eager_relations
-
-class WarnFor2614Test(test_eager_relations.WarnFor2614TestBase, fixtures.MappedTest):
-    eager_name = "subquery"
-
-    def eager_option(self, arg):
-        return subqueryload(arg)

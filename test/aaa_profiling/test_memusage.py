@@ -426,12 +426,14 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData()
         a = Table("a", metadata,
             Column('id', Integer, primary_key=True),
+            Column('foo', Integer),
+            Column('bar', Integer)
         )
         m1 = mapper(A, a)
         @profile_memory()
         def go():
-            ma = aliased(A)
-            m1._sa_path_registry['foo'][ma]['bar']
+            ma = sa.inspect(aliased(A))
+            m1._path_registry[m1.attrs.foo][ma][m1.attrs.bar]
         go()
         clear_mappers()
 

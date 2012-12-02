@@ -54,6 +54,7 @@ needed for:
 from ..orm import class_mapper
 from ..orm.session import Session
 from ..orm.mapper import Mapper
+from ..orm.interfaces import MapperProperty
 from ..orm.attributes import QueryableAttribute
 from .. import Table, Column
 from ..engine import Engine
@@ -90,6 +91,9 @@ def Serializer(*args, **kw):
             id = "attribute:" + key + ":" + b64encode(pickle.dumps(cls))
         elif isinstance(obj, Mapper) and not obj.non_primary:
             id = "mapper:" + b64encode(pickle.dumps(obj.class_))
+        elif isinstance(obj, MapperProperty) and not obj.parent.non_primary:
+            id = "mapperprop:" + b64encode(pickle.dumps(obj.parent.class_)) + \
+                                    ":" + obj.key
         elif isinstance(obj, Table):
             id = "table:" + str(obj)
         elif isinstance(obj, Column) and isinstance(obj.table, Table):
@@ -134,6 +138,10 @@ def Deserializer(file, metadata=None, scoped_session=None, engine=None):
             elif type_ == "mapper":
                 cls = pickle.loads(b64decode(args))
                 return class_mapper(cls)
+            elif type_ == "mapperprop":
+                mapper, keyname = args.split(':')
+                cls = pickle.loads(b64decode(args))
+                return class_mapper(cls).attrs[keyname]
             elif type_ == "table":
                 return metadata.tables[args]
             elif type_ == "column":

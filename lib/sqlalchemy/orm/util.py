@@ -245,6 +245,8 @@ class ORMAdapter(sql_util.ColumnAdapter):
         else:
             return None
 
+def _unreduce_path(path):
+    return PathRegistry.deserialize(path)
 
 class PathRegistry(object):
     """Represent query load paths and registry functions.
@@ -277,19 +279,13 @@ class PathRegistry(object):
             self.path == other.path
 
     def set(self, reg, key, value):
-        reg._attributes[(key, self.reduced_path)] = value
-
-    def replace(self, reg, key, value):
-        path_key = (key, self.reduced_path)
-        existing = reg._attributes.get(path_key, None)
-        reg._attributes[path_key] = value
-        return existing
+        reg._attributes[(key, self.path)] = value
 
     def setdefault(self, reg, key, value):
-        reg._attributes.setdefault((key, self.reduced_path), value)
+        reg._attributes.setdefault((key, self.path), value)
 
     def get(self, reg, key, value=None):
-        key = (key, self.reduced_path)
+        key = (key, self.path)
         if key in reg._attributes:
             return reg._attributes[key]
         else:
@@ -302,17 +298,25 @@ class PathRegistry(object):
     def length(self):
         return len(self.path)
 
+    def pairs(self):
+        path = self.path
+        for i in xrange(0, len(path), 2):
+            yield path[i], path[i + 1]
+
     def contains_mapper(self, mapper):
         return mapper in self.path
 
     def contains(self, reg, key):
-        return (key, self.reduced_path) in reg._attributes
+        return (key, self.path) in reg._attributes
+
+    def __reduce__(self):
+        return _unreduce_path, (self.serialize(), )
 
     def serialize(self):
         path = self.path
         return zip(
             [m.class_ for m in [path[i] for i in range(0, len(path), 2)]],
-            [path[i] for i in range(1, len(path), 2)] + [None]
+            [path[i].key for i in range(1, len(path), 2)] + [None]
         )
 
     @classmethod
@@ -320,7 +324,10 @@ class PathRegistry(object):
         if path is None:
             return None
 
-        p = tuple(chain(*[(class_mapper(mcls), key) for mcls, key in path]))
+        p = tuple(chain(*[(class_mapper(mcls),
+                            class_mapper(mcls).attrs[key]
+                                if key is not None else None)
+                            for mcls, key in path]))
         if p and p[-1] is None:
             p = p[0:-1]
         return cls.coerce(p)
@@ -337,7 +344,7 @@ class PathRegistry(object):
 
     @classmethod
     def token(cls, token):
-        return KeyRegistry(cls.root, token)
+        return TokenRegistry(cls.root, token)
 
     def __add__(self, other):
         return util.reduce(
@@ -354,19 +361,36 @@ class RootRegistry(PathRegistry):
 
     """
     path = ()
-    reduced_path = ()
 
-    def __getitem__(self, mapper):
-        return mapper._sa_path_registry
+    def __getitem__(self, entity):
+        return entity._path_registry
 PathRegistry.root = RootRegistry()
 
-
-class KeyRegistry(PathRegistry):
-    def __init__(self, parent, key):
-        self.key = key
+class TokenRegistry(PathRegistry):
+    def __init__(self, parent, token):
+        self.token = token
         self.parent = parent
-        self.path = parent.path + (key,)
-        self.reduced_path = parent.reduced_path + (key,)
+        self.path = parent.path + (token,)
+
+    def __getitem__(self, entity):
+        raise NotImplementedError()
+
+class PropRegistry(PathRegistry):
+    def __init__(self, parent, prop):
+        # restate this path in terms of the
+        # given MapperProperty's parent.
+        insp = inspection.inspect(parent[-1])
+        if not insp.is_aliased_class or insp._use_mapper_path:
+            parent = parent.parent[prop.parent]
+        elif insp.is_aliased_class and insp.with_polymorphic_mappers:
+            if prop.parent is not insp.mapper and \
+                prop.parent in insp.with_polymorphic_mappers:
+                subclass_entity = parent[-1]._entity_for_mapper(prop.parent)
+                parent = parent.parent[subclass_entity]
+
+        self.prop = prop
+        self.parent = parent
+        self.path = parent.path + (prop,)
 
     def __getitem__(self, entity):
         if isinstance(entity, (int, slice)):
@@ -381,15 +405,11 @@ class EntityRegistry(PathRegistry, dict):
     is_aliased_class = False
 
     def __init__(self, parent, entity):
-        self.key = reduced_key = entity
+        self.key = entity
         self.parent = parent
-        if hasattr(entity, 'base_mapper'):
-            reduced_key = entity.base_mapper
-        else:
-            self.is_aliased_class = True
+        self.is_aliased_class = entity.is_aliased_class
 
         self.path = parent.path + (entity,)
-        self.reduced_path = parent.reduced_path + (reduced_key,)
 
     def __nonzero__(self):
         return True
@@ -400,8 +420,26 @@ class EntityRegistry(PathRegistry, dict):
         else:
             return dict.__getitem__(self, entity)
 
+    def _inlined_get_for(self, prop, context, key):
+        """an inlined version of:
+
+        cls = path[mapperproperty].get(context, key)
+
+        Skips the isinstance() check in __getitem__
+        and the extra method call for get().
+        Used by StrategizedProperty for its
+        very frequent lookup.
+
+        """
+        path = dict.__getitem__(self, prop)
+        path_key = (key, path.path)
+        if path_key in context._attributes:
+            return context._attributes[path_key]
+        else:
+            return None
+
     def __missing__(self, key):
-        self[key] = item = KeyRegistry(self, key)
+        self[key] = item = PropRegistry(self, key)
         return item
 
 
@@ -448,8 +486,11 @@ class AliasedClass(object):
     def __init__(self, cls, alias=None,
                             name=None,
                             adapt_on_names=False,
+                            #  TODO: None for default here?
                             with_polymorphic_mappers=(),
-                            with_polymorphic_discriminator=None):
+                            with_polymorphic_discriminator=None,
+                            base_alias=None,
+                            use_mapper_path=False):
         mapper = _class_to_mapper(cls)
         if alias is None:
             alias = mapper._with_polymorphic_selectable.alias(name=name)
@@ -458,10 +499,18 @@ class AliasedClass(object):
             mapper,
             alias,
             name,
-            with_polymorphic_mappers,
+            with_polymorphic_mappers
+                if with_polymorphic_mappers
+                else mapper.with_polymorphic_mappers,
             with_polymorphic_discriminator
+                if with_polymorphic_discriminator is not None
+                else mapper.polymorphic_on,
+            base_alias,
+            use_mapper_path
         )
+
         self._setup(self._aliased_insp, adapt_on_names)
+
 
     def _setup(self, aliased_insp, adapt_on_names):
         self.__adapt_on_names = adapt_on_names
@@ -473,17 +522,12 @@ class AliasedClass(object):
                             equivalents=mapper._equivalent_columns,
                             adapt_on_names=self.__adapt_on_names)
         for poly in aliased_insp.with_polymorphic_mappers:
-            setattr(self, poly.class_.__name__,
-                    AliasedClass(poly.class_, alias))
+            if poly is not mapper:
+                setattr(self, poly.class_.__name__,
+                    AliasedClass(poly.class_, alias, base_alias=self,
+                            use_mapper_path=self._aliased_insp._use_mapper_path))
 
-        # used to assign a name to the RowTuple object
-        # returned by Query.
-        self._sa_label_name = aliased_insp.name
         self.__name__ = 'AliasedClass_%s' % self.__target.__name__
-
-    @util.memoized_property
-    def _sa_path_registry(self):
-        return PathRegistry.per_mapper(self)
 
     def __getstate__(self):
         return {
@@ -494,7 +538,9 @@ class AliasedClass(object):
             'with_polymorphic_mappers':
                 self._aliased_insp.with_polymorphic_mappers,
             'with_polymorphic_discriminator':
-                self._aliased_insp.polymorphic_on
+                self._aliased_insp.polymorphic_on,
+            'base_alias': self._aliased_insp._base_alias.entity,
+            'use_mapper_path': self._aliased_insp._use_mapper_path
         }
 
     def __setstate__(self, state):
@@ -503,8 +549,10 @@ class AliasedClass(object):
             state['mapper'],
             state['alias'],
             state['name'],
-            state.get('with_polymorphic_mappers'),
-            state.get('with_polymorphic_discriminator')
+            state['with_polymorphic_mappers'],
+            state['with_polymorphic_discriminator'],
+            state['base_alias'],
+            state['use_mapper_path']
         )
         self._setup(self._aliased_insp, state['adapt_on_names'])
 
@@ -521,7 +569,7 @@ class AliasedClass(object):
         queryattr = attributes.QueryableAttribute(
                                 self, key,
                                 impl=existing.impl,
-                                parententity=self,
+                                parententity=self._aliased_insp,
                                 comparator=comparator)
         setattr(self, key, queryattr)
         return queryattr
@@ -558,17 +606,7 @@ class AliasedClass(object):
             id(self), self.__target.__name__)
 
 
-AliasedInsp = util.namedtuple("AliasedInsp", [
-        "entity",
-        "mapper",
-        "selectable",
-        "name",
-        "with_polymorphic_mappers",
-        "polymorphic_on"
-    ])
-
-
-class AliasedInsp(_InspectionAttr, AliasedInsp):
+class AliasedInsp(_InspectionAttr):
     """Provide an inspection interface for an
     :class:`.AliasedClass` object.
 
@@ -604,6 +642,22 @@ class AliasedInsp(_InspectionAttr, AliasedInsp):
 
     """
 
+    def __init__(self, entity, mapper, selectable, name,
+                    with_polymorphic_mappers, polymorphic_on,
+                    _base_alias, _use_mapper_path):
+        self.entity = entity
+        self.mapper = mapper
+        self.selectable = selectable
+        self.name = name
+        self.with_polymorphic_mappers = with_polymorphic_mappers
+        self.polymorphic_on = polymorphic_on
+
+        # a little dance to get serialization to work
+        self._base_alias = _base_alias._aliased_insp if _base_alias \
+                            and _base_alias is not entity else self
+        self._use_mapper_path = _use_mapper_path
+
+
     is_aliased_class = True
     "always returns True"
 
@@ -613,8 +667,29 @@ class AliasedInsp(_InspectionAttr, AliasedInsp):
         :class:`.AliasedInsp`."""
         return self.mapper.class_
 
+    @util.memoized_property
+    def _path_registry(self):
+        if self._use_mapper_path:
+            return self.mapper._path_registry
+        else:
+            return PathRegistry.per_mapper(self)
+
+    def _entity_for_mapper(self, mapper):
+        self_poly = self.with_polymorphic_mappers
+        if mapper in self_poly:
+            return getattr(self.entity, mapper.class_.__name__)._aliased_insp
+        elif mapper.isa(self.mapper):
+            return self
+        else:
+            assert False, "mapper %s doesn't correspond to %s" % (mapper, self)
+
+    def __repr__(self):
+        return '<AliasedInsp at 0x%x; %s>' % (
+            id(self), self.class_.__name__)
+
 
 inspection._inspects(AliasedClass)(lambda target: target._aliased_insp)
+inspection._inspects(AliasedInsp)(lambda target: target)
 
 
 def aliased(element, alias=None, name=None, adapt_on_names=False):
@@ -699,7 +774,7 @@ def aliased(element, alias=None, name=None, adapt_on_names=False):
 
 def with_polymorphic(base, classes, selectable=False,
                         polymorphic_on=None, aliased=False,
-                        innerjoin=False):
+                        innerjoin=False, _use_mapper_path=False):
     """Produce an :class:`.AliasedClass` construct which specifies
     columns for descendant mappers of the given base.
 
@@ -758,7 +833,8 @@ def with_polymorphic(base, classes, selectable=False,
     return AliasedClass(base,
                 selectable,
                 with_polymorphic_mappers=mappers,
-                with_polymorphic_discriminator=polymorphic_on)
+                with_polymorphic_discriminator=polymorphic_on,
+                use_mapper_path=_use_mapper_path)
 
 
 def _orm_annotate(element, exclude=None):
@@ -1109,6 +1185,7 @@ def _entity_descriptor(entity, key):
         description = entity
         entity = insp.c
     elif insp.is_aliased_class:
+        entity = insp.entity
         description = entity
     elif hasattr(insp, "mapper"):
         description = entity = insp.mapper.class_

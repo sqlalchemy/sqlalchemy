@@ -113,7 +113,7 @@ class TestORMInspection(_fixtures.FixtureTest):
     def test_with_polymorphic(self):
         User = self.classes.User
         insp = inspect(User)
-        eq_(insp.with_polymorphic_mappers, [insp])
+        eq_(insp.with_polymorphic_mappers, [])
 
     def test_col_property(self):
         User = self.classes.User
@@ -198,7 +198,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         is_(prop._parentmapper, class_mapper(User))
         is_(prop.mapper, class_mapper(Address))
 
-        is_(prop._parententity, ua)
+        is_(prop._parententity, inspect(ua))
 
     def test_insp_column_prop(self):
         User = self.classes.User
@@ -222,7 +222,7 @@ class TestORMInspection(_fixtures.FixtureTest):
 
         assert not hasattr(prop, "mapper")
 
-        is_(prop._parententity, ua)
+        is_(prop._parententity, inspect(ua))
 
     def test_rel_accessors(self):
         User = self.classes.User

@@ -8,7 +8,7 @@
 
     .. change::
         :tags: firebird, bug
-        :ticket: 2622
+        :tickets: 2622
 
       Added missing import for "fdb" to the experimental
       "firebird+fdb" dialect.
@@ -21,17 +21,22 @@
 
     .. change::
         :tags: orm, bug
-        :ticket: 2614
+        :tickets: 2614
 
-      Added a new exception to detect the case where two
-      subclasses are being loaded using with_polymorphic(),
-      each subclass contains a relationship attribute of the same
-      name, and eager loading is being applied to one or both.
-      This is an ongoing bug which can't be immediately fixed,
-      so since the results are usually wrong in any case it raises an
-      exception for now.   0.7 has the same issue, so an exception
-      raise here probably means the code was returning the wrong
-      data in 0.7.
+      A second overhaul of aliasing/internal pathing mechanics
+      now allows two subclasses to have different relationships
+      of the same name, supported with subquery or joined eager
+      loading on both simultaneously when a full polymorphic
+      load is used.
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 2617
+
+      Fixed bug whereby a multi-hop subqueryload within
+      a particular with_polymorphic load would produce a KeyError.
+      Takes advantage of the same internal pathing overhaul
+      as :ticket:`2614`.
 
     .. change::
         :tags: sql, bug

@@ -219,6 +219,10 @@ class MapperProperty(_MappedAttribute, _InspectionAttr):
 
         return operator(self.comparator, value)
 
+    def __repr__(self):
+        return '<%s at 0x%x; %s>' % (
+            self.__class__.__name__,
+            id(self), self.key)
 
 class PropComparator(operators.ColumnOperators):
     """Defines boolean, comparison, and other operators for
@@ -413,21 +417,18 @@ class StrategizedProperty(MapperProperty):
             return None
 
     def _get_context_strategy(self, context, path):
-        # this is essentially performance inlining.
-        key = ('loaderstrategy', path.reduced_path + (self.key,))
-        cls = None
-        if key in context.attributes:
-            cls = context.attributes[key]
-        else:
+        strategy_cls = path._inlined_get_for(self, context, 'loaderstrategy')
+
+        if not strategy_cls:
             wc_key = self._wildcard_path
             if wc_key and wc_key in context.attributes:
-                cls = context.attributes[wc_key]
+                strategy_cls = context.attributes[wc_key]
 
-        if cls:
+        if strategy_cls:
             try:
-                return self._strategies[cls]
+                return self._strategies[strategy_cls]
             except KeyError:
-                return self.__init_strategy(cls)
+                return self.__init_strategy(strategy_cls)
         return self.strategy
 
     def _get_strategy(self, cls):
@@ -528,10 +529,8 @@ class PropertyOption(MapperOption):
     def _find_entity_prop_comparator(self, query, token, mapper, raiseerr):
         if orm_util._is_aliased_class(mapper):
             searchfor = mapper
-            isa = False
         else:
             searchfor = orm_util._class_to_mapper(mapper)
-            isa = True
         for ent in query._mapper_entities:
             if ent.corresponds_to(searchfor):
                 return ent
@@ -600,7 +599,7 @@ class PropertyOption(MapperOption):
                 # exhaust current_path before
                 # matching tokens to entities
                 if current_path:
-                    if current_path[1] == token:
+                    if current_path[1].key == token:
                         current_path = current_path[2:]
                         continue
                     else:
@@ -634,7 +633,7 @@ class PropertyOption(MapperOption):
                 # matching tokens to entities
                 if current_path:
                     if current_path[0:2] == \
-                            [token._parententity, prop.key]:
+                            [token._parententity, prop]:
                         current_path = current_path[2:]
                         continue
                     else:
@@ -648,6 +647,7 @@ class PropertyOption(MapperOption):
                                             raiseerr)
                     if not entity:
                         return no_result
+
                     path_element = entity.entity_zero
                     mapper = entity.mapper
             else:
@@ -659,7 +659,7 @@ class PropertyOption(MapperOption):
                 raise sa_exc.ArgumentError("Attribute '%s' does not "
                             "link from element '%s'" % (token, path_element))
 
-            path = path[path_element][prop.key]
+            path = path[path_element][prop]
 
             paths.append(path)
 
@@ -670,7 +670,8 @@ class PropertyOption(MapperOption):
                 if not ext_info.is_aliased_class:
                     ac = orm_util.with_polymorphic(
                                 ext_info.mapper.base_mapper,
-                                ext_info.mapper, aliased=True)
+                                ext_info.mapper, aliased=True,
+                                _use_mapper_path=True)
                     ext_info = inspect(ac)
                 path.set(query, "path_with_polymorphic", ext_info)
             else:

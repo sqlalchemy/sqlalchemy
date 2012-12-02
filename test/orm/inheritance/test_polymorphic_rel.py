@@ -496,41 +496,10 @@ class _PolymorphicTestBase(object):
                 .all(),
             expected)
 
-    # TODO: this fails due to the change
-    # in _configure_subclass_mapper.  however we might not
-    # need it anymore.
-    def test_polymorphic_option(self):
-        """
-        Test that polymorphic loading sets state.load_path with its
-        actual mapper on a subclass, and not the superclass mapper.
-
-        This only works for non-aliased mappers.
-        """
-        paths = []
-        class MyOption(interfaces.MapperOption):
-            propagate_to_loaders = True
-            def process_query_conditionally(self, query):
-                paths.append(query._current_path.path)
-
-        sess = create_session()
-        names = ['dilbert', 'pointy haired boss']
-        dilbert, boss = (
-            sess.query(Person)
-                .options(MyOption())
-                .filter(Person.name.in_(names))
-                .order_by(Person.name).all())
-
-        dilbert.machines
-        boss.paperwork
-
-        eq_(paths,
-            [(class_mapper(Engineer), 'machines'),
-            (class_mapper(Boss), 'paperwork')])
 
     def test_subclass_option_pathing(self):
         from sqlalchemy.orm import defer
         sess = create_session()
-        names = ['dilbert', 'pointy haired boss']
         dilbert = sess.query(Person).\
                 options(defer(Engineer.machines, Machine.name)).\
                 filter(Person.name == 'dilbert').first()
@@ -963,7 +932,7 @@ class _PolymorphicTestBase(object):
                 .filter(palias.name.in_(['dilbert', 'wally'])).all(),
             [e1, e2])
 
-    def test_self_referential(self):
+    def test_self_referential_one(self):
         sess = create_session()
         palias = aliased(Person)
         expected = [(m1, e1), (m1, e2), (m1, b1)]
@@ -974,6 +943,11 @@ class _PolymorphicTestBase(object):
                 .filter(Person.person_id > palias.person_id)
                 .order_by(Person.person_id, palias.person_id).all(),
             expected)
+
+    def test_self_referential_two(self):
+        sess = create_session()
+        palias = aliased(Person)
+        expected = [(m1, e1), (m1, e2), (m1, b1)]
 
         eq_(sess.query(Person, palias)
                 .filter(Person.company_id == palias.company_id)
