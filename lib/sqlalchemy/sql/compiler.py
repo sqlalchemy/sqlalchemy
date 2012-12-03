@@ -2084,7 +2084,15 @@ class GenericTypeCompiler(engine.TypeCompiler):
                         'scale': type_.scale}
 
     def visit_DECIMAL(self, type_):
-        return "DECIMAL"
+        if type_.precision is None:
+            return "DECIMAL"
+        elif type_.scale is None:
+            return "DECIMAL(%(precision)s)" % \
+                        {'precision': type_.precision}
+        else:
+            return "DECIMAL(%(precision)s, %(scale)s)" % \
+                        {'precision': type_.precision,
+                        'scale': type_.scale}
 
     def visit_INTEGER(self, type_):
         return "INTEGER"
