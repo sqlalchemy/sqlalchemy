@@ -59,35 +59,35 @@ class _MutableDictTestBase(object):
         assert_raises_message(
             ValueError,
             "Attribute 'data' does not accept objects of type",
-            Foo, data=set([1,2,3])
+            Foo, data=set([1, 2, 3])
         )
 
     def test_in_place_mutation(self):
         sess = Session()
 
-        f1 = Foo(data={'a':'b'})
+        f1 = Foo(data={'a': 'b'})
         sess.add(f1)
         sess.commit()
 
         f1.data['a'] = 'c'
         sess.commit()
 
-        eq_(f1.data, {'a':'c'})
+        eq_(f1.data, {'a': 'c'})
 
     def test_replace(self):
         sess = Session()
-        f1 = Foo(data={'a':'b'})
+        f1 = Foo(data={'a': 'b'})
         sess.add(f1)
         sess.flush()
 
-        f1.data = {'b':'c'}
+        f1.data = {'b': 'c'}
         sess.commit()
-        eq_(f1.data, {'b':'c'})
+        eq_(f1.data, {'b': 'c'})
 
     def test_pickle_parent(self):
         sess = Session()
 
-        f1 = Foo(data={'a':'b'})
+        f1 = Foo(data={'a': 'b'})
         sess.add(f1)
         sess.commit()
         f1.data
@@ -102,7 +102,7 @@ class _MutableDictTestBase(object):
 
     def test_unrelated_flush(self):
         sess = Session()
-        f1 = Foo(data={"a":"b"}, unrelated_data="unrelated")
+        f1 = Foo(data={"a": "b"}, unrelated_data="unrelated")
         sess.add(f1)
         sess.flush()
         f1.unrelated_data = "unrelated 2"
@@ -114,14 +114,14 @@ class _MutableDictTestBase(object):
     def _test_non_mutable(self):
         sess = Session()
 
-        f1 = Foo(non_mutable_data={'a':'b'})
+        f1 = Foo(non_mutable_data={'a': 'b'})
         sess.add(f1)
         sess.commit()
 
         f1.non_mutable_data['a'] = 'c'
         sess.commit()
 
-        eq_(f1.non_mutable_data, {'a':'b'})
+        eq_(f1.non_mutable_data, {'a': 'b'})
 
 class MutableWithScalarPickleTest(_MutableDictTestBase, fixtures.MappedTest):
     @classmethod
@@ -142,7 +142,7 @@ class MutableWithScalarPickleTest(_MutableDictTestBase, fixtures.MappedTest):
 
 class MutableWithScalarJSONTest(_MutableDictTestBase, fixtures.MappedTest):
     # json introduced in 2.6
-    __skip_if__ = lambda : sys.version_info < (2, 6),
+    __skip_if__ = lambda: sys.version_info < (2, 6),
 
     @classmethod
     def define_tables(cls, metadata):
@@ -177,7 +177,6 @@ class MutableWithScalarJSONTest(_MutableDictTestBase, fixtures.MappedTest):
 class MutableAssocWithAttrInheritTest(_MutableDictTestBase, fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        MutableDict = cls._type_fixture()
 
         Table('foo', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
@@ -201,24 +200,24 @@ class MutableAssocWithAttrInheritTest(_MutableDictTestBase, fixtures.MappedTest)
     def test_in_place_mutation(self):
         sess = Session()
 
-        f1 = SubFoo(data={'a':'b'})
+        f1 = SubFoo(data={'a': 'b'})
         sess.add(f1)
         sess.commit()
 
         f1.data['a'] = 'c'
         sess.commit()
 
-        eq_(f1.data, {'a':'c'})
+        eq_(f1.data, {'a': 'c'})
 
     def test_replace(self):
         sess = Session()
-        f1 = SubFoo(data={'a':'b'})
+        f1 = SubFoo(data={'a': 'b'})
         sess.add(f1)
         sess.flush()
 
-        f1.data = {'b':'c'}
+        f1.data = {'b': 'c'}
         sess.commit()
-        eq_(f1.data, {'b':'c'})
+        eq_(f1.data, {'b': 'c'})
 
 class MutableAssociationScalarPickleTest(_MutableDictTestBase, fixtures.MappedTest):
     @classmethod
@@ -235,7 +234,7 @@ class MutableAssociationScalarPickleTest(_MutableDictTestBase, fixtures.MappedTe
 
 class MutableAssociationScalarJSONTest(_MutableDictTestBase, fixtures.MappedTest):
     # json introduced in 2.6
-    __skip_if__ = lambda : sys.version_info < (2, 6),
+    __skip_if__ = lambda: sys.version_info < (2, 6),
 
     @classmethod
     def define_tables(cls, metadata):
@@ -259,7 +258,8 @@ class MutableAssociationScalarJSONTest(_MutableDictTestBase, fixtures.MappedTest
         MutableDict.associate_with(JSONEncodedDict)
 
         Table('foo', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('id', Integer, primary_key=True,
+                            test_needs_autoincrement=True),
             Column('data', JSONEncodedDict),
             Column('unrelated_data', String(50))
         )
@@ -269,7 +269,8 @@ class _CompositeTestBase(object):
     @classmethod
     def define_tables(cls, metadata):
         Table('foo', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('id', Integer, primary_key=True,
+                            test_needs_autoincrement=True),
             Column('x', Integer),
             Column('y', Integer),
             Column('unrelated_data', String(50))
@@ -284,7 +285,6 @@ class _CompositeTestBase(object):
     @classmethod
     def _type_fixture(cls):
 
-        from sqlalchemy.ext.mutable import Mutable
         from sqlalchemy.ext.mutable import MutableComposite
 
         global Point
@@ -322,7 +322,7 @@ class MutableCompositesUnpickleTest(_CompositeTestBase, fixtures.MappedTest):
         cls.Point = cls._type_fixture()
 
         mapper(FooWithEq, foo, properties={
-            'data':composite(cls.Point, foo.c.x, foo.c.y)
+            'data': composite(cls.Point, foo.c.x, foo.c.y)
         })
 
     def test_unpickle_modified_eq(self):
@@ -339,7 +339,7 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
         Point = cls._type_fixture()
 
         mapper(Foo, foo, properties={
-            'data':composite(Point, foo.c.x, foo.c.y)
+            'data': composite(Point, foo.c.x, foo.c.y)
         })
 
     def test_in_place_mutation(self):
@@ -423,7 +423,7 @@ class MutableInheritedCompositesTest(_CompositeTestBase, fixtures.MappedTest):
         Point = cls._type_fixture()
 
         mapper(Foo, foo, properties={
-            'data':composite(Point, foo.c.x, foo.c.y)
+            'data': composite(Point, foo.c.x, foo.c.y)
         })
         mapper(SubFoo, subfoo, inherits=Foo)
 
