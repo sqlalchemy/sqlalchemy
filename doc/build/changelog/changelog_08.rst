@@ -7,6 +7,13 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: sql, bug
+        :tickets: 2618
+
+      The :class:`.DECIMAL` type now honors the "precision" and
+      "scale" arguments when rendering DDL.
+
+    .. change::
         :tags: orm, bug
         :tickets: 2624
 
