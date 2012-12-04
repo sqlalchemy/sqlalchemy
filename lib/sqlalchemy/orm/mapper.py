@@ -472,7 +472,7 @@ class Mapper(_InspectionAttr):
     dispatch = event.dispatcher(events.MapperEvents)
 
     @util.memoized_property
-    def _sa_path_registry(self):
+    def _path_registry(self):
         return PathRegistry.per_mapper(self)
 
     def _configure_inheritance(self):
@@ -1403,7 +1403,7 @@ class Mapper(_InspectionAttr):
         if _new_mappers:
             configure_mappers()
         if not self.with_polymorphic:
-            return [self]
+            return []
         return self._mappers_from_spec(*self.with_polymorphic)
 
     @_memoized_configured_property
@@ -1458,10 +1458,10 @@ class Mapper(_InspectionAttr):
         return list(self._iterate_polymorphic_properties(
             self._with_polymorphic_mappers))
 
+
     def _iterate_polymorphic_properties(self, mappers=None):
         """Return an iterator of MapperProperty objects which will render into
         a SELECT."""
-
         if mappers is None:
             mappers = self._with_polymorphic_mappers
 

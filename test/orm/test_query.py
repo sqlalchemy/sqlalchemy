@@ -2,6 +2,7 @@ import operator
 from sqlalchemy import MetaData, null, exists, text, union, literal, \
     literal_column, func, between, Unicode, desc, and_, bindparam, \
     select, distinct, or_, collate
+from sqlalchemy import inspect
 from sqlalchemy import exc as sa_exc, util
 from sqlalchemy.sql import compiler, table, column
 from sqlalchemy.sql import expression
@@ -2309,6 +2310,9 @@ class OptionsTest(QueryTest):
             if i % 2 == 0:
                 if isinstance(item, type):
                     item = class_mapper(item)
+            else:
+                if isinstance(item, basestring):
+                    item = inspect(r[-1]).mapper.attrs[item]
             r.append(item)
         return tuple(r)
 
@@ -2351,7 +2355,8 @@ class OptionsTest(QueryTest):
         q = sess.query(User)
         opt = self._option_fixture('email_address', 'id')
         q = sess.query(Address)._with_current_path(
-                orm_util.PathRegistry.coerce([class_mapper(User), 'addresses'])
+                orm_util.PathRegistry.coerce([inspect(User),
+                        inspect(User).attrs.addresses])
             )
         self._assert_path_result(opt, q, [])
 
@@ -2462,13 +2467,13 @@ class OptionsTest(QueryTest):
         class SubAddr(Address):
             pass
         mapper(SubAddr, inherits=Address, properties={
-            'flub':relationship(Dingaling)
+            'flub': relationship(Dingaling)
         })
 
         q = sess.query(Address)
         opt = self._option_fixture(SubAddr.flub)
 
-        self._assert_path_result(opt, q, [(Address, 'flub')])
+        self._assert_path_result(opt, q, [(SubAddr, 'flub')])
 
     def test_from_subclass_to_subclass_attr(self):
         Dingaling, Address = self.classes.Dingaling, self.classes.Address
@@ -2477,7 +2482,7 @@ class OptionsTest(QueryTest):
         class SubAddr(Address):
             pass
         mapper(SubAddr, inherits=Address, properties={
-            'flub':relationship(Dingaling)
+            'flub': relationship(Dingaling)
         })
 
         q = sess.query(SubAddr)
@@ -2492,13 +2497,14 @@ class OptionsTest(QueryTest):
         class SubAddr(Address):
             pass
         mapper(SubAddr, inherits=Address, properties={
-            'flub':relationship(Dingaling)
+            'flub': relationship(Dingaling)
         })
 
         q = sess.query(Address)
         opt = self._option_fixture(SubAddr.user)
 
-        self._assert_path_result(opt, q, [(Address, 'user')])
+        self._assert_path_result(opt, q,
+                [(Address, inspect(Address).attrs.user)])
 
     def test_of_type(self):
         User, Address = self.classes.User, self.classes.Address
@@ -2511,9 +2517,11 @@ class OptionsTest(QueryTest):
         q = sess.query(User)
         opt = self._option_fixture(User.addresses.of_type(SubAddr), SubAddr.user)
 
+        u_mapper = inspect(User)
+        a_mapper = inspect(Address)
         self._assert_path_result(opt, q, [
-            (User, 'addresses'),
-            (User, 'addresses', SubAddr, 'user')
+            (u_mapper, u_mapper.attrs.addresses),
+            (u_mapper, u_mapper.attrs.addresses, a_mapper, a_mapper.attrs.user)
         ])
 
     def test_of_type_plus_level(self):
@@ -2525,15 +2533,17 @@ class OptionsTest(QueryTest):
         class SubAddr(Address):
             pass
         mapper(SubAddr, inherits=Address, properties={
-            'flub':relationship(Dingaling)
+            'flub': relationship(Dingaling)
         })
 
         q = sess.query(User)
         opt = self._option_fixture(User.addresses.of_type(SubAddr), SubAddr.flub)
 
+        u_mapper = inspect(User)
+        sa_mapper = inspect(SubAddr)
         self._assert_path_result(opt, q, [
-            (User, 'addresses'),
-            (User, 'addresses', SubAddr, 'flub')
+            (u_mapper, u_mapper.attrs.addresses),
+            (u_mapper, u_mapper.attrs.addresses, sa_mapper, sa_mapper.attrs.flub)
         ])
 
     def test_aliased_single(self):
@@ -2543,7 +2553,7 @@ class OptionsTest(QueryTest):
         ualias = aliased(User)
         q = sess.query(ualias)
         opt = self._option_fixture(ualias.addresses)
-        self._assert_path_result(opt, q, [(ualias, 'addresses')])
+        self._assert_path_result(opt, q, [(inspect(ualias), 'addresses')])
 
     def test_with_current_aliased_single(self):
         User, Address = self.classes.User, self.classes.Address
@@ -2554,7 +2564,7 @@ class OptionsTest(QueryTest):
                         self._make_path_registry([Address, 'user'])
                 )
         opt = self._option_fixture(Address.user, ualias.addresses)
-        self._assert_path_result(opt, q, [(ualias, 'addresses')])
+        self._assert_path_result(opt, q, [(inspect(ualias), 'addresses')])
 
     def test_with_current_aliased_single_nonmatching_option(self):
         User, Address = self.classes.User, self.classes.Address
@@ -2828,8 +2838,8 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
                     cls.tables.addresses, cls.classes.Address,
                     cls.tables.orders, cls.classes.Order)
         mapper(User, users, properties={
-            'addresses':relationship(Address),
-            'orders':relationship(Order)
+            'addresses': relationship(Address),
+            'orders': relationship(Order)
         })
         mapper(Address, addresses)
         mapper(Order, orders)
@@ -2839,7 +2849,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
                                 cls.classes.Keyword,
                                 cls.classes.Item)
         mapper(Keyword, keywords, properties={
-            "keywords":column_property(keywords.c.name + "some keyword")
+            "keywords": column_property(keywords.c.name + "some keyword")
         })
         mapper(Item, items,
                properties=dict(keywords=relationship(Keyword,
@@ -2850,7 +2860,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
 
         q = create_session().query(*entity_list).\
                             options(joinedload(option))
-        key = ('loaderstrategy', (class_mapper(Item), 'keywords'))
+        key = ('loaderstrategy', (inspect(Item), inspect(Item).attrs.keywords))
         assert key in q._attributes
 
     def _assert_eager_with_entity_exception(self, entity_list, options,
@@ -2865,3 +2875,4 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         assert_raises_message(sa.exc.ArgumentError, message,
                               create_session().query(column).options,
                               joinedload(eager_option))
+

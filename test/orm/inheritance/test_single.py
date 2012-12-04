@@ -278,7 +278,8 @@ class RelationshipFromSingleTest(testing.AssertsCompiledSQL, fixtures.MappedTest
 
         sess = create_session()
         context = sess.query(Manager).options(subqueryload('stuff'))._compile_context()
-        subq = context.attributes[('subquery', (class_mapper(Employee), 'stuff'))]
+        subq = context.attributes[('subquery',
+                (class_mapper(Manager), class_mapper(Manager).attrs.stuff))]
 
         self.assert_compile(subq,
                             'SELECT employee_stuff.id AS '

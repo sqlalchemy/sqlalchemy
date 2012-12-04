@@ -303,16 +303,6 @@ class AbstractRelationshipLoader(LoaderStrategy):
         self.uselist = self.parent_property.uselist
 
 
-    def _warn_existing_path(self):
-        raise sa_exc.InvalidRequestError(
-            "Eager loading cannot currently function correctly when two or "
-            "more "
-            "same-named attributes associated with multiple polymorphic "
-            "classes "
-            "of the same base are present.   Encountered more than one "
-            r"eager path for attribute '%s' on mapper '%s'." %
-            (self.key, self.parent.base_mapper, ))
-
 
 class NoLoader(AbstractRelationshipLoader):
     """Provide loading behavior for a :class:`.RelationshipProperty`
@@ -564,7 +554,7 @@ class LazyLoader(AbstractRelationshipLoader):
             q = q.autoflush(False)
 
         if state.load_path:
-            q = q._with_current_path(state.load_path[self.key])
+            q = q._with_current_path(state.load_path[self.parent_property])
 
         if state.load_options:
             q = q._conditional_options(*state.load_options)
@@ -694,7 +684,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         if not context.query._enable_eagerloads:
             return
 
-        path = path[self.key]
+        path = path[self.parent_property]
 
         # build up a path indicating the path from the leftmost
         # entity to the thing we're subquery loading.
@@ -757,22 +747,20 @@ class SubqueryLoader(AbstractRelationshipLoader):
 
         # add new query to attributes to be picked up
         # by create_row_processor
-        existing = path.replace(context, "subquery", q)
-        if existing:
-            self._warn_existing_path()
+        path.set(context, "subquery", q)
 
     def _get_leftmost(self, subq_path):
         subq_path = subq_path.path
         subq_mapper = orm_util._class_to_mapper(subq_path[0])
 
         # determine attributes of the leftmost mapper
-        if self.parent.isa(subq_mapper) and self.key == subq_path[1]:
+        if self.parent.isa(subq_mapper) and self.parent_property is subq_path[1]:
             leftmost_mapper, leftmost_prop = \
                                     self.parent, self.parent_property
         else:
             leftmost_mapper, leftmost_prop = \
                                     subq_mapper, \
-                                    subq_mapper._props[subq_path[1]]
+                                    subq_path[1]
 
         leftmost_cols = leftmost_prop.local_columns
 
@@ -805,23 +793,35 @@ class SubqueryLoader(AbstractRelationshipLoader):
         # the original query now becomes a subquery
         # which we'll join onto.
         embed_q = q.with_labels().subquery()
-        left_alias = orm_util.AliasedClass(leftmost_mapper, embed_q)
+        left_alias = orm_util.AliasedClass(leftmost_mapper, embed_q,
+                            use_mapper_path=True)
         return left_alias
 
     def _prep_for_joins(self, left_alias, subq_path):
-        subq_path = subq_path.path
-
         # figure out what's being joined.  a.k.a. the fun part
-        to_join = [
-                    (subq_path[i], subq_path[i + 1])
-                    for i in xrange(0, len(subq_path), 2)
-                ]
+        to_join = []
+        pairs = list(subq_path.pairs())
+
+        for i, (mapper, prop) in enumerate(pairs):
+            if i > 0:
+                # look at the previous mapper in the chain -
+                # if it is as or more specific than this prop's
+                # mapper, use that instead.
+                # note we have an assumption here that
+                # the non-first element is always going to be a mapper,
+                # not an AliasedClass
+
+                prev_mapper = pairs[i - 1][1].mapper
+                to_append = prev_mapper if prev_mapper.isa(mapper) else mapper
+            else:
+                to_append = mapper
+
+            to_join.append((to_append, prop.key))
 
         # determine the immediate parent class we are joining from,
         # which needs to be aliased.
-
         if len(to_join) > 1:
-            info = inspect(subq_path[-2])
+            info = inspect(to_join[-1][0])
 
         if len(to_join) < 2:
             # in the case of a one level eager load, this is the
@@ -833,11 +833,13 @@ class SubqueryLoader(AbstractRelationshipLoader):
             # in the vast majority of cases, and [ticket:2014]
             # illustrates a case where sub_path[-2] is a subclass
             # of self.parent
-            parent_alias = orm_util.AliasedClass(subq_path[-2])
+            parent_alias = orm_util.AliasedClass(to_join[-1][0],
+                                use_mapper_path=True)
         else:
             # if of_type() were used leading to this relationship,
             # self.parent is more specific than subq_path[-2]
-            parent_alias = orm_util.AliasedClass(self.parent)
+            parent_alias = orm_util.AliasedClass(self.parent,
+                                use_mapper_path=True)
 
         local_cols = self.parent_property.local_columns
 
@@ -916,9 +918,10 @@ class SubqueryLoader(AbstractRelationshipLoader):
                         "population - eager loading cannot be applied." %
                         self)
 
-        path = path[self.key]
+        path = path[self.parent_property]
 
         subq = path.get(context, 'subquery')
+
         if subq is None:
             return None, None, None
 
@@ -1000,7 +1003,7 @@ class JoinedLoader(AbstractRelationshipLoader):
         if not context.query._enable_eagerloads:
             return
 
-        path = path[self.key]
+        path = path[self.parent_property]
 
         with_polymorphic = None
 
@@ -1040,6 +1043,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             with_polymorphic = None
 
         path = path[self.mapper]
+
         for value in self.mapper._iterate_polymorphic_properties(
                                 mappers=with_polymorphic):
             value.setup(
@@ -1079,7 +1083,8 @@ class JoinedLoader(AbstractRelationshipLoader):
         if with_poly_info:
             to_adapt = with_poly_info.entity
         else:
-            to_adapt = orm_util.AliasedClass(self.mapper)
+            to_adapt = orm_util.AliasedClass(self.mapper,
+                                use_mapper_path=True)
         clauses = orm_util.ORMAdapter(
                     to_adapt,
                     equivalents=self.mapper._equivalent_columns,
@@ -1104,9 +1109,8 @@ class JoinedLoader(AbstractRelationshipLoader):
         )
 
         add_to_collection = context.secondary_columns
-        existing = path.replace(context, "eager_row_processor", clauses)
-        if existing:
-            self._warn_existing_path()
+        path.set(context, "eager_row_processor", clauses)
+
         return clauses, adapter, add_to_collection, allow_innerjoin
 
     def _create_eager_join(self, context, entity,
@@ -1154,7 +1158,8 @@ class JoinedLoader(AbstractRelationshipLoader):
                 onclause = getattr(
                                 orm_util.AliasedClass(
                                         self.parent,
-                                        adapter.selectable
+                                        adapter.selectable,
+                                        use_mapper_path=True
                                 ),
                                 self.key, self.parent_property
                             )
@@ -1238,7 +1243,7 @@ class JoinedLoader(AbstractRelationshipLoader):
                         "population - eager loading cannot be applied." %
                         self)
 
-        our_path = path[self.key]
+        our_path = path[self.parent_property]
 
         eager_adapter = self._create_eager_adapter(
                                                 context,
@@ -1391,15 +1396,13 @@ class LoadEagerFromAliasOption(PropertyOption):
     def process_query_property(self, query, paths):
         if self.chained:
             for path in paths[0:-1]:
-                (root_mapper, propname) = path.path[-2:]
-                prop = root_mapper._props[propname]
+                (root_mapper, prop) = path.path[-2:]
                 adapter = query._polymorphic_adapters.get(prop.mapper, None)
                 path.setdefault(query,
                             "user_defined_eager_row_processor",
                             adapter)
 
-        root_mapper, propname = paths[-1].path[-2:]
-        prop = root_mapper._props[propname]
+        root_mapper, prop = paths[-1].path[-2:]
         if self.alias is not None:
             if isinstance(self.alias, basestring):
                 self.alias = prop.target.alias(self.alias)

@@ -3723,6 +3723,7 @@ class BinaryExpression(ColumnElement):
         # refer to BinaryExpression directly and pass strings
         if isinstance(operator, basestring):
             operator = operators.custom_op(operator)
+        self._orig = (left, right)
         self.left = _literal_as_text(left).self_group(against=operator)
         self.right = _literal_as_text(right).self_group(against=operator)
         self.operator = operator
@@ -3735,9 +3736,9 @@ class BinaryExpression(ColumnElement):
             self.modifiers = modifiers
 
     def __nonzero__(self):
-        try:
-            return self.operator(hash(self.left), hash(self.right))
-        except:
+        if self.operator in (operator.eq, operator.ne):
+            return self.operator(hash(self._orig[0]), hash(self._orig[1]))
+        else:
             raise TypeError("Boolean value of this clause is not defined")
 
     @property

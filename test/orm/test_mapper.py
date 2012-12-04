@@ -3278,4 +3278,3 @@ class MagicNamesTest(fixtures.MappedTest):
                   reserved: maps.c.state})
 
 
-

@@ -271,6 +271,7 @@ def instance_processor(mapper, context, path, adapter,
     new_populators = []
     existing_populators = []
     eager_populators = []
+
     load_path = context.query._current_path + path \
                 if context.query._current_path.path \
                 else path
@@ -504,9 +505,12 @@ def _populators(mapper, context, path, row, adapter,
     delayed_populators = []
     pops = (new_populators, existing_populators, delayed_populators,
                         eager_populators)
+
     for prop in mapper._props.itervalues():
+
         for i, pop in enumerate(prop.create_row_processor(
-                                    context, path,
+                                    context,
+                                    path,
                                     mapper, row, adapter)):
             if pop is not None:
                 pops[i].append((prop.key, pop))
@@ -529,17 +533,10 @@ def _configure_subclass_mapper(mapper, context, path, adapter):
         if sub_mapper is mapper:
             return None
 
-        # replace the tip of the path info with the subclass mapper
-        # being used, that way accurate "load_path" info is available
-        # for options invoked during deferred loads, e.g.
-        # query(Person).options(defer(Engineer.machines, Machine.name)).
-        # for AliasedClass paths, disregard this step (new in 0.8).
         return instance_processor(
                             sub_mapper,
                             context,
-                            path.parent[sub_mapper]
-                                if not path.is_aliased_class
-                                else path,
+                            path,
                             adapter,
                             polymorphic_from=mapper)
     return configure_subclass_mapper

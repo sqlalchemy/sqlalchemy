@@ -1922,7 +1922,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
 
-    def test_multiple_explicit_entities(self):
+    def test_multiple_explicit_entities_one(self):
         Node = self.classes.Node
 
         sess = create_session()
@@ -1938,6 +1938,13 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             (Node(data='n122'), Node(data='n12'), Node(data='n1'))
         )
 
+    def test_multiple_explicit_entities_two(self):
+        Node = self.classes.Node
+
+        sess = create_session()
+
+        parent = aliased(Node)
+        grandparent = aliased(Node)
         eq_(
             sess.query(Node, parent, grandparent).\
                 join(parent, Node.parent).\
@@ -1947,6 +1954,13 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             (Node(data='n122'), Node(data='n12'), Node(data='n1'))
         )
 
+    def test_multiple_explicit_entities_three(self):
+        Node = self.classes.Node
+
+        sess = create_session()
+
+        parent = aliased(Node)
+        grandparent = aliased(Node)
         # same, change order around
         eq_(
             sess.query(parent, grandparent, Node).\
@@ -1957,6 +1971,13 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             (Node(data='n12'), Node(data='n1'), Node(data='n122'))
         )
 
+    def test_multiple_explicit_entities_four(self):
+        Node = self.classes.Node
+
+        sess = create_session()
+
+        parent = aliased(Node)
+        grandparent = aliased(Node)
         eq_(
             sess.query(Node, parent, grandparent).\
                 join(parent, Node.parent).\
@@ -1967,6 +1988,13 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             (Node(data='n122'), Node(data='n12'), Node(data='n1'))
         )
 
+    def test_multiple_explicit_entities_five(self):
+        Node = self.classes.Node
+
+        sess = create_session()
+
+        parent = aliased(Node)
+        grandparent = aliased(Node)
         eq_(
             sess.query(Node, parent, grandparent).\
                 join(parent, Node.parent).\
