@@ -1018,7 +1018,8 @@ class MSDDLCompiler(compiler.DDLCompiler):
                    + self.dialect.type_compiler.process(column.type))
 
         if column.nullable is not None:
-            if not column.nullable or column.primary_key:
+            if not column.nullable or column.primary_key or \
+                    isinstance(column.default, sa_schema.Sequence):
                 colspec += " NOT NULL"
             else:
                 colspec += " NULL"
