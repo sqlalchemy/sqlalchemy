@@ -1306,6 +1306,23 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 dialects.mysql.INTEGER(display_width=5), "INTEGER(5)",
                 allow_dialect_select=True)
 
+    def test_numeric_plain(self):
+        self.assert_compile(types.NUMERIC(), 'NUMERIC')
+
+    def test_numeric_precision(self):
+        self.assert_compile(types.NUMERIC(2), 'NUMERIC(2)')
+
+    def test_numeric_scale(self):
+        self.assert_compile(types.NUMERIC(2, 4), 'NUMERIC(2, 4)')
+
+    def test_decimal_plain(self):
+        self.assert_compile(types.DECIMAL(), 'DECIMAL')
+
+    def test_decimal_precision(self):
+        self.assert_compile(types.DECIMAL(2), 'DECIMAL(2)')
+
+    def test_decimal_scale(self):
+        self.assert_compile(types.DECIMAL(2, 4), 'DECIMAL(2, 4)')
 
 
 
