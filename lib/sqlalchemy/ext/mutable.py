@@ -301,6 +301,31 @@ will flag the attribute as "dirty" on the parent object::
     >>> assert v1 in sess.dirty
     True
 
+Coercing Mutable Composites
+---------------------------
+
+The :meth:`.MutableBase.coerce` method is also supported on composite types.
+In the case of :class:`.MutableComposite`, the :meth:`.MutableBase.coerce`
+method is only called for attribute set operations, not load operations.
+Overriding the :meth:`.MutableBase.coerce` method is essentially equivalent
+to using a :func:`.validates` validation routine for all attributes which
+make use of the custom composite type::
+
+    class Point(MutableComposite):
+        # other Point methods
+        # ...
+
+        def coerce(cls, key, value):
+            if isinstance(value, tuple):
+                value = Point(*value)
+            elif not isinstance(value, Point):
+                raise ValueError("tuple or Point expected")
+            return value
+
+.. versionadded:: 0.7.10,0.8.0b2
+    Support for the :meth:`.MutableBase.coerce` method in conjunction with
+    objects of type :class:`.MutableComposite`.
+
 Supporting Pickling
 --------------------
 
@@ -328,7 +353,7 @@ pickling process of the parent's object-relational state so that the
 """
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import event, types
-from sqlalchemy.orm import mapper, object_mapper
+from sqlalchemy.orm import mapper, object_mapper, Mapper
 from sqlalchemy.util import memoized_property
 import weakref
 
@@ -349,9 +374,27 @@ class MutableBase(object):
 
     @classmethod
     def coerce(cls, key, value):
-        """Given a value, coerce it into this type.
+        """Given a value, coerce it into the target type.
 
-        By default raises ValueError.
+        Can be overridden by custom subclasses to coerce incoming
+        data into a particular type.
+
+        By default, raises ``ValueError``.
+
+        This method is called in different scenarios depending on if
+        the parent class is of type :class:`.Mutable` or of type
+        :class:`.MutableComposite`.  In the case of the former, it is called
+        for both attribute-set operations as well as during ORM loading
+        operations.  For the latter, it is only called during attribute-set
+        operations; the mechanics of the :func:`.composite` construct
+        handle coercion during load operations.
+
+
+        :param key: string name of the ORM-mapped attribute being set.
+        :param value: the incoming value.
+        :return: the method should return the coerced value, or raise
+         ``ValueError`` if the coercion cannot be completed.
+
         """
         if value is None:
             return None
@@ -512,11 +555,6 @@ class Mutable(MutableBase):
 
         return sqltype
 
-class _MutableCompositeMeta(type):
-    def __init__(cls, classname, bases, dict_):
-        cls._setup_listeners()
-        return type.__init__(cls, classname, bases, dict_)
-
 class MutableComposite(MutableBase):
     """Mixin that defines transparent propagation of change
     events on a SQLAlchemy "composite" object to its
@@ -533,7 +571,6 @@ class MutableComposite(MutableBase):
        in memory usage.
 
     """
-    __metaclass__ = _MutableCompositeMeta
 
     def changed(self):
         """Subclasses should call this method whenever change events occur."""
@@ -546,19 +583,14 @@ class MutableComposite(MutableBase):
                                     prop._attribute_keys):
                 setattr(parent, attr_name, value)
 
-    @classmethod
-    def _setup_listeners(cls):
-        """Associate this wrapper with all future mapped composites
-        of the given type.
 
-        This is a convenience method that calls ``associate_with_attribute`` automatically.
-
-        """
-
-        def listen_for_type(mapper, class_):
-            for prop in mapper.iterate_properties:
-                if hasattr(prop, 'composite_class') and issubclass(prop.composite_class, cls):
-                    cls._listen_on_attribute(getattr(class_, prop.key), False, class_)
-
-        event.listen(mapper, 'mapper_configured', listen_for_type)
-
+def _setup_composite_listener():
+    def _listen_for_type(mapper, class_):
+        for prop in mapper.iterate_properties:
+            if (hasattr(prop, 'composite_class') and
+                issubclass(prop.composite_class, MutableComposite)):
+                prop.composite_class._listen_on_attribute(
+                    getattr(class_, prop.key), False, class_)
+    if not Mapper.dispatch.mapper_configured._contains(Mapper, _listen_for_type):
+        event.listen(Mapper, 'mapper_configured', _listen_for_type)
+_setup_composite_listener()

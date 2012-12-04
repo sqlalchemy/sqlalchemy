@@ -29,6 +29,18 @@
 
     .. change::
         :tags: orm, bug
+        :tickets: 2624
+
+      The :class:`.MutableComposite` type did not allow for the
+      :meth:`.MutableBase.coerce` method to be used, even though
+      the code seemed to indicate this intent, so this now works
+      and a brief example is added.  As a side-effect,
+      the mechanics of this event handler have been changed so that
+      new :class:`.MutableComposite` types no longer add per-type
+      global event handlers.  Also in 0.8.0b2.
+
+    .. change::
+        :tags: orm, bug
         :tickets: 2583
 
       Fixed Session accounting bug whereby replacing

@@ -301,6 +301,12 @@ class _CompositeTestBase(object):
             Column('unrelated_data', String(50))
         )
 
+    def setup(self):
+        from sqlalchemy.ext import mutable
+        mutable._setup_composite_listener()
+        super(_CompositeTestBase, self).setup()
+
+
     def teardown(self):
         # clear out mapper events
         Mapper.dispatch._clear()
@@ -428,6 +434,71 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
         sess.commit()
 
         eq_(f1.data.x, 5)
+
+class MutableCompositeCustomCoerceTest(_CompositeTestBase, fixtures.MappedTest):
+    @classmethod
+    def _type_fixture(cls):
+
+        from sqlalchemy.ext.mutable import MutableComposite
+
+        global Point
+
+        class Point(MutableComposite):
+            def __init__(self, x, y):
+                self.x = x
+                self.y = y
+
+            @classmethod
+            def coerce(cls, key, value):
+                if isinstance(value, tuple):
+                    value = Point(*value)
+                return value
+
+            def __setattr__(self, key, value):
+                object.__setattr__(self, key, value)
+                self.changed()
+
+            def __composite_values__(self):
+                return self.x, self.y
+
+            def __getstate__(self):
+                return self.x, self.y
+
+            def __setstate__(self, state):
+                self.x, self.y = state
+
+            def __eq__(self, other):
+                return isinstance(other, Point) and \
+                    other.x == self.x and \
+                    other.y == self.y
+        return Point
+
+
+    @classmethod
+    def setup_mappers(cls):
+        foo = cls.tables.foo
+
+        Point = cls._type_fixture()
+
+        mapper(Foo, foo, properties={
+            'data': composite(Point, foo.c.x, foo.c.y)
+        })
+
+    def test_custom_coerce(self):
+        f = Foo()
+        f.data = (3, 4)
+        eq_(f.data, Point(3, 4))
+
+    def test_round_trip_ok(self):
+        sess = Session()
+        f = Foo()
+        f.data = (3, 4)
+
+        sess.add(f)
+        sess.commit()
+
+        eq_(f.data, Point(3, 4))
+
 
 class MutableInheritedCompositesTest(_CompositeTestBase, fixtures.MappedTest):
     @classmethod

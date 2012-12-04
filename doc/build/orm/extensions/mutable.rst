@@ -9,7 +9,7 @@ API Reference
 -------------
 
 .. autoclass:: MutableBase
-    :members: _parents
+    :members: _parents, coerce
 
 .. autoclass:: Mutable
     :show-inheritance:

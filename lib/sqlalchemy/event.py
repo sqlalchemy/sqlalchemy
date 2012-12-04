@@ -206,6 +206,9 @@ class _DispatchDescriptor(object):
         self._clslevel = util.defaultdict(list)
         self._empty_listeners = {}
 
+    def _contains(self, cls, evt):
+        return evt in self._clslevel[cls]
+
     def insert(self, obj, target, propagate):
         assert isinstance(target, type), \
                 "Class-level Event targets must be classes."
