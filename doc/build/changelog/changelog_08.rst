@@ -7,6 +7,46 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: sql, bug
+        :tickets: 2618
+
+      The :class:`.DECIMAL` type now honors the "precision" and
+      "scale" arguments when rendering DDL.
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 2624
+
+      The :class:`.MutableComposite` type did not allow for the
+      :meth:`.MutableBase.coerce` method to be used, even though
+      the code seemed to indicate this intent, so this now works
+      and a brief example is added.  As a side-effect,
+      the mechanics of this event handler have been changed so that
+      new :class:`.MutableComposite` types no longer add per-type
+      global event handlers.  Also in 0.7.10.
+
+    .. change::
+        :tags: sql, bug
+        :tickets: 2621
+
+      Made an adjustment to the "boolean", (i.e. ``__nonzero__``)
+      evaluation of binary expressions, i.e. ``x1 == x2``, such
+      that the "auto-grouping" applied by :class:`.BinaryExpression`
+      in some cases won't get in the way of this comparison.
+      Previously, an expression like::
+
+        expr1 = mycolumn > 2
+        bool(expr1 == expr1)
+
+      Would evaulate as ``False``, even though this is an identity
+      comparison, because ``mycolumn > 2`` would be "grouped" before
+      being placed into the :class:`.BinaryExpression`, thus changing
+      its identity.   :class:`.BinaryExpression` now keeps track
+      of the "original" objects passed in.
+      Additionally the ``__nonzero__`` method now only returns if
+      the operator is ``==`` or ``!=`` - all others raise ``TypeError``.
+
+    .. change::
         :tags: firebird, bug
         :tickets: 2622
 
