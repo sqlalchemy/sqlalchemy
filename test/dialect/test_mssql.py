@@ -483,6 +483,30 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={u'x_1': 5}
         )
 
+    def test_sequence_start_0(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('id', Integer, Sequence('', 0), primary_key=True))
+        self.assert_compile(schema.CreateTable(tbl),
+                            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(0,1), "
+                            "PRIMARY KEY (id))"
+                            )
+
+    def test_sequence_non_primary_key(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('id', Integer, Sequence(''), primary_key=False))
+        self.assert_compile(schema.CreateTable(tbl),
+                            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,1))"
+                            )
+
+    def test_sequence_ignore_nullability(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('id', Integer, Sequence(''), nullable=True))
+        self.assert_compile(schema.CreateTable(tbl),
+                            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,1))"
+                            )
 
 class SchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
     """SQL server cannot reference schema-qualified tables in a SELECT statement, they
