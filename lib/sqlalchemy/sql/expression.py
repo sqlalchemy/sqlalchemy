@@ -5833,13 +5833,21 @@ class UpdateBase(HasPrefixes, Executable, ClauseElement):
     _prefixes = ()
 
     def _process_colparams(self, parameters):
-        if isinstance(parameters, (list, tuple)):
-            pp = {}
-            for i, c in enumerate(self.table.c):
-                pp[c.key] = parameters[i]
-            return pp
+        def process_single(p):
+            if isinstance(p, (list, tuple)):
+                pp = {}
+                for i, c in enumerate(self.table.c):
+                    pp[c.key] = p[i]
+                return pp
+            else:
+                return p
+
+        if isinstance(parameters, (list, tuple)) and \
+              isinstance(parameters[0], (list, tuple, dict)):
+            return process_single(parameters[0]), \
+                   [process_single(p) for p in parameters[1:]]
         else:
-            return parameters
+            return process_single(parameters), []
 
     def params(self, *arg, **kw):
         """Set the parameters for the statement.
@@ -5960,7 +5968,7 @@ class ValuesBase(UpdateBase):
 
     def __init__(self, table, values, prefixes):
         self.table = table
-        self.parameters = self._process_colparams(values)
+        self.parameters, self.multi_parameters = self._process_colparams(values)
         if prefixes:
             self._setup_prefixes(prefixes)
 
@@ -5996,17 +6004,22 @@ class ValuesBase(UpdateBase):
             :func:`~.expression.update` - produce an ``UPDATE`` statement
 
         """
+        if self.multi_parameters and kwargs:
+            assert False
         if args:
             v = args[0]
         else:
             v = {}
 
         if self.parameters is None:
-            self.parameters = self._process_colparams(v)
+            self.parameters, self.multi_parameters = self._process_colparams(v)
             self.parameters.update(kwargs)
         else:
             self.parameters = self.parameters.copy()
-            self.parameters.update(self._process_colparams(v))
+            p, mp = self._process_colparams(v)
+            self.parameters.update(p)
+            for p in mp:
+                self.multi_parameters.update(p)
             self.parameters.update(kwargs)
 
 
