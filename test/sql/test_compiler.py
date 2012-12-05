@@ -2552,6 +2552,21 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
                     table.insert(inline=True),
                     "INSERT INTO sometable (foo) VALUES (foobar())", params={})
 
+    def test_multirow_insert(self):
+        data = [(1, 'a', 'b'), (2, 'a', 'b')]
+        result = "INSERT INTO mytable (myid, name, description) VALUES " \
+                 "(%(myid)s, %(name)s, %(description)s), " \
+                 "(%(myid0)s, %(name0)s, %(description0)s)"
+
+        stmt = insert(table1, data, dialect='postgresql')
+        self.assert_compile(stmt, result, dialect=postgresql.dialect())
+
+        stmt = table1.insert(values=data, dialect='postgresql')
+        self.assert_compile(stmt, result, dialect=postgresql.dialect())
+
+        stmt = table1.insert(dialect='postgresql').values(data)
+        self.assert_compile(stmt, result, dialect=postgresql.dialect())
+
     def test_update(self):
         self.assert_compile(
                 update(table1, table1.c.myid == 7),

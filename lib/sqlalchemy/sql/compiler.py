@@ -1284,6 +1284,11 @@ class SQLCompiler(engine.Compiled):
                                     "not support empty inserts." %
                                     self.dialect.name)
 
+        if insert_stmt.multi_parameters and not self.dialect.supports_multirow_insert:
+            raise exc.CompileError("The version of %s you are using does "
+                                    "not support multirow inserts." %
+                                    self.dialect.name)
+
         preparer = self.preparer
         supports_default_values = self.dialect.supports_default_values
 
@@ -1328,8 +1333,11 @@ class SQLCompiler(engine.Compiled):
         if not cols and supports_default_values:
             text += " DEFAULT VALUES"
         else:
-            text += " VALUES (%s)" % \
-                     ', '.join(params[0])
+            values = []
+            for row in params:
+                values.append('(%s)' % ', '.join(row))
+            text += " VALUES %s" % \
+                     ', '.join(values)
 
         if self.returning and not self.returning_precedes_values:
             text += " " + returning_clause
@@ -1445,8 +1453,10 @@ class SQLCompiler(engine.Compiled):
 
         return text
 
-    def _create_crud_bind_param(self, col, value, required=False):
-        bindparam = sql.bindparam(col.key, value,
+    def _create_crud_bind_param(self, col, value, required=False, name=None):
+        if name is None:
+            name = col.key
+        bindparam = sql.bindparam(name, value,
                             type_=col.type, required=required,
                             quote=col.quote)
         bindparam._is_crud = True
@@ -1668,6 +1678,13 @@ class SQLCompiler(engine.Compiled):
 
         if values:
             values = [values]
+
+        for i, row in enumerate(stmt.multi_parameters):
+            r = []
+            for c in columns:
+                r.append(self._create_crud_bind_param(c, row[c.key],
+                         name=c.key + str(i)))
+            values.append(r)
 
         return columns, values
 

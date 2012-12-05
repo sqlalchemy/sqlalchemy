@@ -1182,6 +1182,7 @@ class PGDialect(default.DefaultDialect):
 
     supports_default_values = True
     supports_empty_insert = False
+    supports_multirow_insert = True
     default_paramstyle = 'pyformat'
     ischema_names = ischema_names
     colspecs = colspecs
