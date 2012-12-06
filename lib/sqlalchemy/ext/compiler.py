@@ -65,11 +65,12 @@ dialect is used.
 Compiling sub-elements of a custom expression construct
 =======================================================
 
-The ``compiler`` argument is the :class:`~sqlalchemy.engine.base.Compiled`
-object in use. This object can be inspected for any information about the
-in-progress compilation, including ``compiler.dialect``,
-``compiler.statement`` etc. The :class:`~sqlalchemy.sql.compiler.SQLCompiler`
-and :class:`~sqlalchemy.sql.compiler.DDLCompiler` both include a ``process()``
+The ``compiler`` argument is the
+:class:`~sqlalchemy.engine.interfaces.Compiled` object in use. This object
+can be inspected for any information about the in-progress compilation,
+including ``compiler.dialect``, ``compiler.statement`` etc. The
+:class:`~sqlalchemy.sql.compiler.SQLCompiler` and
+:class:`~sqlalchemy.sql.compiler.DDLCompiler` both include a ``process()``
 method which can be used for compilation of embedded attributes::
 
     from sqlalchemy.sql.expression import Executable, ClauseElement

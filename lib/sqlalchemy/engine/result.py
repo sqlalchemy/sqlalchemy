@@ -557,7 +557,7 @@ class ResultProxy(object):
         supports "returning" and the insert statement executed
         with the "implicit returning" enabled.
 
-        Raises :class:`.InvalidRequestError` if the executed
+        Raises :class:`~sqlalchemy.exc.InvalidRequestError` if the executed
         statement is not a compiled expression construct
         or is not an insert() construct.
 
@@ -583,7 +583,7 @@ class ResultProxy(object):
         """Return the collection of updated parameters from this
         execution.
 
-        Raises :class:`.InvalidRequestError` if the executed
+        Raises :class:`~sqlalchemy.exc.InvalidRequestError` if the executed
         statement is not a compiled expression construct
         or is not an update() construct.
 
@@ -605,7 +605,7 @@ class ResultProxy(object):
         """Return the collection of inserted parameters from this
         execution.
 
-        Raises :class:`.InvalidRequestError` if the executed
+        Raises :class:`~sqlalchemy.exc.InvalidRequestError` if the executed
         statement is not a compiled expression construct
         or is not an insert() construct.
 
@@ -639,7 +639,7 @@ class ResultProxy(object):
 
         See :class:`.ExecutionContext` for details.
 
-        Raises :class:`.InvalidRequestError` if the executed
+        Raises :class:`~sqlalchemy.exc.InvalidRequestError` if the executed
         statement is not a compiled expression construct
         or is not an insert() or update() construct.
 
@@ -661,7 +661,7 @@ class ResultProxy(object):
 
         See :class:`.ExecutionContext` for details.
 
-        Raises :class:`.InvalidRequestError` if the executed
+        Raises :class:`~sqlalchemy.exc.InvalidRequestError` if the executed
         statement is not a compiled expression construct
         or is not an insert() or update() construct.
 

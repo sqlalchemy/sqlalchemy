@@ -121,7 +121,7 @@ class Connection(Connectable):
 
         Note that any key/value can be passed to
         :meth:`.Connection.execution_options`, and it will be stored in the
-        ``_execution_options`` dictionary of the :class:`.Connnection`.   It
+        ``_execution_options`` dictionary of the :class:`.Connection`.   It
         is suitable for usage by end-user schemes to communicate with
         event listeners, for example.
 
@@ -1295,8 +1295,8 @@ class TwoPhaseTransaction(Transaction):
 class Engine(Connectable, log.Identified):
     """
     Connects a :class:`~sqlalchemy.pool.Pool` and
-    :class:`~sqlalchemy.engine.Dialect` together to provide a source
-    of database connectivity and behavior.
+    :class:`~sqlalchemy.engine.interfaces.Dialect` together to provide a
+    source of database connectivity and behavior.
 
     An :class:`.Engine` object is instantiated publicly using the
     :func:`~sqlalchemy.create_engine` function.
@@ -1426,15 +1426,15 @@ class Engine(Connectable, log.Identified):
 
     @property
     def name(self):
-        """String name of the :class:`~sqlalchemy.engine.Dialect` in use by
-        this ``Engine``."""
+        """String name of the :class:`~sqlalchemy.engine.interfaces.Dialect`
+        in use by this :class:`Engine`."""
 
         return self.dialect.name
 
     @property
     def driver(self):
-        """Driver name of the :class:`~sqlalchemy.engine.Dialect` in use by
-        this ``Engine``."""
+        """Driver name of the :class:`~sqlalchemy.engine.interfaces.Dialect`
+        in use by this :class:`Engine`."""
 
         return self.dialect.driver
 
