@@ -1295,7 +1295,7 @@ class TwoPhaseTransaction(Transaction):
 class Engine(Connectable, log.Identified):
     """
     Connects a :class:`~sqlalchemy.pool.Pool` and
-    :class:`~sqlalchemy.engine.base.Dialect` together to provide a source
+    :class:`~sqlalchemy.engine.Dialect` together to provide a source
     of database connectivity and behavior.
 
     An :class:`.Engine` object is instantiated publicly using the

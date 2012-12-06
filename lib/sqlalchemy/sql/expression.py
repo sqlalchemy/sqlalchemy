@@ -1866,10 +1866,10 @@ class ClauseElement(Visitable):
     def compile(self, bind=None, dialect=None, **kw):
         """Compile this SQL expression.
 
-        The return value is a :class:`~sqlalchemy.engine.Compiled` object.
+        The return value is a :class:`~.Compiled` object.
         Calling ``str()`` or ``unicode()`` on the returned value will yield a
         string representation of the result. The
-        :class:`~sqlalchemy.engine.Compiled` object also can return a
+        :class:`~.Compiled` object also can return a
         dictionary of bind parameter names and values
         using the ``params`` accessor.
 
