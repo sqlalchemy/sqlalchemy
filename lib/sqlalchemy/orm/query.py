@@ -1503,7 +1503,7 @@ class Query(object):
         and :func:`.select` constructs, with either the one or two-argument forms::
 
             addresses_q = select([Address.user_id]).\\
-                            filter(Address.email_address.endswith("@bar.com")).\\
+                            where(Address.email_address.endswith("@bar.com")).\\
                             alias()
 
             q = session.query(User).\\
