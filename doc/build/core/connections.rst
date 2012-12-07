@@ -42,7 +42,8 @@ is achieved via the usage of :class:`.NullPool`) does not have this
 requirement.
 
 The engine can be used directly to issue SQL to the database. The most generic
-way is first procure a connection resource, which you get via the :class:`connect` method::
+way is first procure a connection resource, which you get via the
+:meth:`.Engine.connect` method::
 
     connection = engine.connect()
     result = connection.execute("select username from users")
@@ -325,7 +326,7 @@ Overall, the usage of "bound metadata" has three general effects:
   on behalf of a particular mapped class, though the :class:`.Session`
   also features its own explicit system of establishing complex :class:`.Engine`/
   mapped class configurations.
-* The :meth:`.MetaData.create_all`, :meth:`.Metadata.drop_all`, :meth:`.Table.create`,
+* The :meth:`.MetaData.create_all`, :meth:`.MetaData.drop_all`, :meth:`.Table.create`,
   :meth:`.Table.drop`, and "autoload" features all make usage of the bound
   :class:`.Engine` automatically without the need to pass it explicitly.
 
@@ -416,7 +417,7 @@ connectionless execution::
         db.rollback()
 
 Explicit execution can be mixed with connectionless execution by
-using the :class:`.Engine.connect` method to acquire a :class:`.Connection`
+using the :meth:`.Engine.connect` method to acquire a :class:`.Connection`
 that is not part of the threadlocal scope::
 
     db.begin()
