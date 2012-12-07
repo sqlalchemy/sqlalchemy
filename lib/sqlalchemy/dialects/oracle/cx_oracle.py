@@ -283,6 +283,13 @@ class _OracleText(_LOBMixin, sqltypes.Text):
     def get_dbapi_type(self, dbapi):
         return dbapi.CLOB
 
+class _OracleLong(oracle.LONG):
+    # a raw LONG is a text type, but does *not*
+    # get the LobMixin with cx_oracle.
+
+    def get_dbapi_type(self, dbapi):
+        return dbapi.LONG_STRING
+
 class _OracleString(_NativeUnicodeMixin, sqltypes.String):
     pass
 
@@ -502,6 +509,11 @@ class OracleDialect_cx_oracle(OracleDialect):
         sqltypes.String : _OracleString,
         sqltypes.UnicodeText : _OracleUnicodeText,
         sqltypes.CHAR : _OracleChar,
+
+        # a raw LONG is a text type, but does *not*
+        # get the LobMixin with cx_oracle.
+        oracle.LONG: _OracleLong,
+
         sqltypes.Integer : _OracleInteger,  # this is only needed for OUT parameters.
                                             # it would be nice if we could not use it otherwise.
         oracle.RAW: _OracleRaw,

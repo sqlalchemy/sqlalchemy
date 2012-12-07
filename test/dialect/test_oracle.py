@@ -1189,6 +1189,21 @@ class TypesTest(fixtures.TestBase):
         finally:
             t1.drop()
 
+    @testing.provide_metadata
+    def test_long_type(self):
+        metadata = self.metadata
+
+        t = Table('t', metadata,
+                Column('data', oracle.LONG)
+            )
+        metadata.create_all(testing.db)
+        testing.db.execute(t.insert(), data='xyz')
+        eq_(
+            testing.db.scalar(select([t.c.data])),
+            "xyz"
+        )
+
+
 
     def test_longstring(self):
         metadata = MetaData(testing.db)

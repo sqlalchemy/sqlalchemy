@@ -29,6 +29,15 @@
 
     .. change::
         :tags: oracle, bug
+        :tickets: 2620
+
+      The Oracle LONG type, while an unbounded text type, does not appear
+      to use the cx_Oracle.LOB type when result rows are returned,
+      so the dialect has been repaired to exclude LONG from
+      having cx_Oracle.LOB filtering applied.
+
+    .. change::
+        :tags: oracle, bug
         :tickets: 2611
 
       Repaired the usage of ``.prepare()`` in conjunction with
