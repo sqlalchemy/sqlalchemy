@@ -7,6 +7,19 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: oracle, bug
+        :tickets: 2611
+
+      Repaired the usage of ``.prepare()`` in conjunction with
+      cx_Oracle so that a return value of ``False`` will result
+      in no call to ``connection.commit()``, hence avoiding
+      "no transaction" errors.   Two-phase transactions have
+      now been shown to work in a rudimental fashion with
+      SQLAlchemy and cx_oracle, however are subject to caveats
+      observed with the driver; check the documentation
+      for details.  Also in 0.7.10.
+
+    .. change::
         :tags: sql, bug
         :tickets: 2618
 
