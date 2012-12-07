@@ -71,8 +71,40 @@ To disable this processing, pass ``auto_convert_lobs=False`` to :func:`create_en
 Two Phase Transaction Support
 -----------------------------
 
-Two Phase transactions are implemented using XA transactions.  Success has been reported
-with this feature but it should be regarded as experimental.
+Two Phase transactions are implemented using XA transactions, and are known
+to work in a rudimental fashion with recent versions of cx_Oracle
+as of SQLAlchemy 0.8.0b2, 0.7.10.   However, the mechanism is not yet
+considered to be robust and should still be regarded as experimental.
+
+In particular, the cx_Oracle DBAPI as recently as 5.1.2 has a bug regarding
+two phase which prevents
+a particular DBAPI connection from being consistently usable in both
+prepared transactions as well as traditional DBAPI usage patterns; therefore
+once a particular connection is used via :meth:`.Connection.begin_prepared`,
+all subsequent usages of the underlying DBAPI connection must be within
+the context of prepared transactions.
+
+The default behavior of :class:`.Engine` is to maintain a pool of DBAPI
+connections.  Therefore, due to the above glitch, a DBAPI connection that has
+been used in a two-phase operation, and is then returned to the pool, will
+not be usable in a non-two-phase context.   To avoid this situation,
+the application can make one of several choices:
+
+* Disable connection pooling using :class:`.NullPool`
+
+* Ensure that the particular :class:`.Engine` in use is only used
+  for two-phase operations.   A :class:`.Engine` bound to an ORM
+  :class:`.Session` which includes ``twophase=True`` will consistently
+  use the two-phase transaction style.
+
+* For ad-hoc two-phase operations without disabling pooling, the DBAPI
+  connection in use can be evicted from the connection pool using the
+  :class:`.Connection.detach` method.
+
+.. versionchanged:: 0.8.0b2,0.7.10
+    Support for cx_oracle prepared transactions has been implemented
+    and tested.
+
 
 Precision Numerics
 ------------------
@@ -142,11 +174,10 @@ a period "." as the decimal character.
 """
 
 from sqlalchemy.dialects.oracle.base import OracleCompiler, OracleDialect, \
-                                        RESERVED_WORDS, OracleExecutionContext
+                                        OracleExecutionContext
 from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.engine import base
 from sqlalchemy import types as sqltypes, util, exc, processors
-from datetime import datetime
 import random
 import collections
 from sqlalchemy.util.compat import decimal
@@ -556,13 +587,13 @@ class OracleDialect_cx_oracle(OracleDialect):
             # expect encoded strings or unicodes, etc.
             self.dbapi_type_map = {
                 self.dbapi.CLOB: oracle.CLOB(),
-                self.dbapi.NCLOB:oracle.NCLOB(),
+                self.dbapi.NCLOB: oracle.NCLOB(),
                 self.dbapi.BLOB: oracle.BLOB(),
                 self.dbapi.BINARY: oracle.RAW(),
             }
     @classmethod
     def dbapi(cls):
-        import cx_Oracle
+        cx_Oracle = __import__('cx_Oracle')
         return cx_Oracle
 
     def initialize(self, connection):
@@ -744,15 +775,23 @@ class OracleDialect_cx_oracle(OracleDialect):
         connection.connection.begin(*xid)
 
     def do_prepare_twophase(self, connection, xid):
-        connection.connection.prepare()
+        result = connection.connection.prepare()
+        connection.info['cx_oracle_prepared'] = result
 
-    def do_rollback_twophase(self, connection, xid, is_prepared=True, recover=False):
+    def do_rollback_twophase(self, connection, xid, is_prepared=True,
+                                                recover=False):
         self.do_rollback(connection.connection)
 
-    def do_commit_twophase(self, connection, xid, is_prepared=True, recover=False):
-        self.do_commit(connection.connection)
+    def do_commit_twophase(self, connection, xid, is_prepared=True,
+                                                recover=False):
+        if not is_prepared:
+            self.do_commit(connection.connection)
+        else:
+            oci_prepared = connection.info['cx_oracle_prepared']
+            if oci_prepared:
+                self.do_commit(connection.connection)
 
     def do_recover_twophase(self, connection):
-        pass
+        connection.info.pop('cx_oracle_prepared', None)
 
 dialect = OracleDialect_cx_oracle
