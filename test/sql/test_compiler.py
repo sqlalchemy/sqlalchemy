@@ -2554,18 +2554,18 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
                     "INSERT INTO sometable (foo) VALUES (foobar())", params={})
 
     def test_empty_insert_default(self):
-        stmt = table1.insert().values()
+        stmt = table1.insert().values({})  # hide from 2to3
         self.assert_compile(stmt, "INSERT INTO mytable () VALUES ()")
 
     def test_empty_insert_default_values(self):
-        stmt = table1.insert().values()
+        stmt = table1.insert().values({})  # hide from 2to3
         dialect = default.DefaultDialect()
         dialect.supports_empty_insert = dialect.supports_default_values = True
         self.assert_compile(stmt, "INSERT INTO mytable DEFAULT VALUES",
                         dialect=dialect)
 
     def test_empty_insert_not_supported(self):
-        stmt = table1.insert().values()
+        stmt = table1.insert().values({})  # hide from 2to3
         dialect = default.DefaultDialect()
         dialect.supports_empty_insert = dialect.supports_default_values = False
         assert_raises_message(
