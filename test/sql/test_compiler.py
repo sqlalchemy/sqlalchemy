@@ -2575,7 +2575,7 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
             stmt.compile, dialect=dialect
         )
 
-    def test_multirow_insert_not_supported(self):
+    def test_multivalues_insert_not_supported(self):
         stmt = table1.insert().values([{"myid": 1}, {"myid": 2}])
         dialect = default.DefaultDialect()
         assert_raises_message(
@@ -2585,7 +2585,7 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
             stmt.compile, dialect=dialect
         )
 
-    def test_multirow_insert_named(self):
+    def test_multivalues_insert_named(self):
         stmt = table1.insert().\
                     values([{"myid": 1, "name": 'a', "description": 'b'},
                             {"myid": 2, "name": 'c', "description": 'd'},
@@ -2598,7 +2598,7 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
                  "(:myid_2, :name_2, :description_2)"
 
         dialect = default.DefaultDialect()
-        dialect.supports_multirow_insert = True
+        dialect.supports_multivalues_insert = True
         self.assert_compile(stmt, result,
                 checkparams={
                     'description_2': 'f', 'name_2': 'e',
@@ -2608,7 +2608,7 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
                 },
                 dialect=dialect)
 
-    def test_multirow_insert_positional(self):
+    def test_multivalues_insert_positional(self):
         stmt = table1.insert().\
                     values([{"myid": 1, "name": 'a', "description": 'b'},
                             {"myid": 2, "name": 'c', "description": 'd'},
@@ -2621,7 +2621,7 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
                  "(%s, %s, %s)" \
 
         dialect = default.DefaultDialect()
-        dialect.supports_multirow_insert = True
+        dialect.supports_multivalues_insert = True
         dialect.paramstyle = "format"
         dialect.positional = True
         self.assert_compile(stmt, result,

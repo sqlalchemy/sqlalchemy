@@ -88,12 +88,12 @@ class SuiteRequirements(Requirements):
                 )
 
     @property
-    def multirow_inserts(self):
+    def multivalues_inserts(self):
         """target database must support multiple VALUES clauses in an
         INSERT statement."""
 
         return exclusions.skip_if(
-                    lambda: not self.db.dialect.supports_multirow_insert,
+                    lambda: not self.db.dialect.supports_multivalues_insert,
                     "Backend does not support multirow inserts."
                 )
 

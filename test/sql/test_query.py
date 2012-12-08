@@ -48,8 +48,8 @@ class QueryTest(fixtures.TestBase):
     def teardown_class(cls):
         metadata.drop_all()
 
-    @testing.requires.multirow_inserts
-    def test_multirow_insert(self):
+    @testing.requires.multivalues_inserts
+    def test_multivalues_insert(self):
         users.insert(values=[{'user_id':7, 'user_name':'jack'},
             {'user_id':8, 'user_name':'ed'}]).execute()
         rows = users.select().execute().fetchall()

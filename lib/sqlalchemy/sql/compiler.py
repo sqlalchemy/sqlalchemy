@@ -1286,7 +1286,7 @@ class SQLCompiler(engine.Compiled):
                                     self.dialect.name)
 
         if insert_stmt._has_multi_parameters:
-            if not self.dialect.supports_multirow_insert:
+            if not self.dialect.supports_multivalues_insert:
                 raise exc.CompileError("The '%s' dialect with current database "
                                     "version settings does not support "
                                     "in-place multirow inserts." %

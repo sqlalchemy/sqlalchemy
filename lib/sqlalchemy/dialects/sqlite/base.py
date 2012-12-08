@@ -601,7 +601,7 @@ class SQLiteDialect(default.DefaultDialect):
     supports_default_values = True
     supports_empty_insert = False
     supports_cast = True
-    supports_multirow_insert = True
+    supports_multivalues_insert = True
 
     default_paramstyle = 'qmark'
     execution_ctx_cls = SQLiteExecutionContext

@@ -108,7 +108,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
             eq_(result2.fetchall(), [(2, 2, False, None), (3, 3, True, None)])
 
 
-    @testing.requires.multirow_inserts
+    @testing.requires.multivalues_inserts
     def test_multirow_returning(self):
         ins = table.insert().returning(table.c.id, table.c.persons).values(
                             [
