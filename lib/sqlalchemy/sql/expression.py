@@ -1866,10 +1866,10 @@ class ClauseElement(Visitable):
     def compile(self, bind=None, dialect=None, **kw):
         """Compile this SQL expression.
 
-        The return value is a :class:`~sqlalchemy.engine.Compiled` object.
+        The return value is a :class:`~.Compiled` object.
         Calling ``str()`` or ``unicode()`` on the returned value will yield a
         string representation of the result. The
-        :class:`~sqlalchemy.engine.Compiled` object also can return a
+        :class:`~.Compiled` object also can return a
         dictionary of bind parameter names and values
         using the ``params`` accessor.
 
@@ -3723,6 +3723,7 @@ class BinaryExpression(ColumnElement):
         # refer to BinaryExpression directly and pass strings
         if isinstance(operator, basestring):
             operator = operators.custom_op(operator)
+        self._orig = (left, right)
         self.left = _literal_as_text(left).self_group(against=operator)
         self.right = _literal_as_text(right).self_group(against=operator)
         self.operator = operator
@@ -3735,9 +3736,9 @@ class BinaryExpression(ColumnElement):
             self.modifiers = modifiers
 
     def __nonzero__(self):
-        try:
-            return self.operator(hash(self.left), hash(self.right))
-        except:
+        if self.operator in (operator.eq, operator.ne):
+            return self.operator(hash(self._orig[0]), hash(self._orig[1]))
+        else:
             raise TypeError("Boolean value of this clause is not defined")
 
     @property

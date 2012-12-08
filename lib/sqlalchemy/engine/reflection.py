@@ -55,7 +55,7 @@ class Inspector(object):
     """Performs database schema inspection.
 
     The Inspector acts as a proxy to the reflection methods of the
-    :class:`~sqlalchemy.engine.base.Dialect`, providing a
+    :class:`~sqlalchemy.engine.interfaces.Dialect`, providing a
     consistent interface as well as caching support for previously
     fetched metadata.
 
@@ -72,7 +72,7 @@ class Inspector(object):
         engine = create_engine('...')
         insp = Inspector.from_engine(engine)
 
-    Where above, the :class:`~sqlalchemy.engine.base.Dialect` may opt
+    Where above, the :class:`~sqlalchemy.engine.interfaces.Dialect` may opt
     to return an :class:`.Inspector` subclass that provides additional
     methods specific to the dialect's target database.
 
@@ -81,13 +81,13 @@ class Inspector(object):
     def __init__(self, bind):
         """Initialize a new :class:`.Inspector`.
 
-        :param bind: a :class:`~sqlalchemy.engine.base.Connectable`,
+        :param bind: a :class:`~sqlalchemy.engine.Connectable`,
           which is typically an instance of
           :class:`~sqlalchemy.engine.Engine` or
           :class:`~sqlalchemy.engine.Connection`.
 
         For a dialect-specific instance of :class:`.Inspector`, see
-        :meth:`Inspector.from_engine`
+        :meth:`.Inspector.from_engine`
 
         """
         # this might not be a connection, it could be an engine.
@@ -111,16 +111,16 @@ class Inspector(object):
         """Construct a new dialect-specific Inspector object from the given
         engine or connection.
 
-        :param bind: a :class:`~sqlalchemy.engine.base.Connectable`,
+        :param bind: a :class:`~sqlalchemy.engine.Connectable`,
           which is typically an instance of
           :class:`~sqlalchemy.engine.Engine` or
           :class:`~sqlalchemy.engine.Connection`.
 
         This method differs from direct a direct constructor call of
         :class:`.Inspector` in that the
-        :class:`~sqlalchemy.engine.base.Dialect` is given a chance to provide
-        a dialect-specific :class:`.Inspector` instance, which may provide
-        additional methods.
+        :class:`~sqlalchemy.engine.interfaces.Dialect` is given a chance to
+        provide a dialect-specific :class:`.Inspector` instance, which may
+        provide additional methods.
 
         See the example at :class:`.Inspector`.
 

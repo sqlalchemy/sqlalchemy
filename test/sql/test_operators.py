@@ -833,6 +833,58 @@ class ComparisonOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_comparison_operators_ge(self):
         self._test_comparison_op(operator.ge, '>=', '<=')
 
+class NonZeroTest(fixtures.TestBase):
+    def _raises(self, expr):
+        assert_raises_message(
+            TypeError,
+            "Boolean value of this clause is not defined",
+            bool, expr
+        )
+
+    def _assert_true(self, expr):
+        is_(bool(expr), True)
+
+    def _assert_false(self, expr):
+        is_(bool(expr), False)
+
+    def test_column_identity_eq(self):
+        c1 = column('c1')
+        self._assert_true(c1 == c1)
+
+    def test_column_identity_gt(self):
+        c1 = column('c1')
+        self._raises(c1 > c1)
+
+    def test_column_compare_eq(self):
+        c1, c2 = column('c1'), column('c2')
+        self._assert_false(c1 == c2)
+
+    def test_column_compare_gt(self):
+        c1, c2 = column('c1'), column('c2')
+        self._raises(c1 > c2)
+
+    def test_binary_identity_eq(self):
+        c1 = column('c1')
+        expr = c1 > 5
+        self._assert_true(expr == expr)
+
+    def test_labeled_binary_identity_eq(self):
+        c1 = column('c1')
+        expr = (c1 > 5).label(None)
+        self._assert_true(expr == expr)
+
+    def test_annotated_binary_identity_eq(self):
+        c1 = column('c1')
+        expr1 = (c1 > 5)
+        expr2 = expr1._annotate({"foo": "bar"})
+        self._assert_true(expr1 == expr2)
+
+    def test_labeled_binary_compare_gt(self):
+        c1 = column('c1')
+        expr1 = (c1 > 5).label(None)
+        expr2 = (c1 > 5).label(None)
+        self._assert_false(expr1 == expr2)
+
 class NegationTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 

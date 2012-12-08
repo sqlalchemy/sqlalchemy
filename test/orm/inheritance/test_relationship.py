@@ -1,6 +1,6 @@
 from sqlalchemy.orm import create_session, relationship, mapper, \
     contains_eager, joinedload, subqueryload, subqueryload_all,\
-    Session, aliased
+    Session, aliased, with_polymorphic
 
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.engine import default
@@ -717,12 +717,26 @@ class EagerToSubclassTest(fixtures.MappedTest):
 
     def test_subq_through_related(self):
         Parent = self.classes.Parent
-        Sub = self.classes.Sub
+        Base = self.classes.Base
         sess = Session()
+
         def go():
             eq_(sess.query(Parent)
-                    .options(subqueryload_all(Parent.children, Sub.related))
+                    .options(subqueryload_all(Parent.children, Base.related))
                     .order_by(Parent.data).all(),
+                [p1, p2])
+        self.assert_sql_count(testing.db, go, 3)
+
+    def test_subq_through_related_aliased(self):
+        Parent = self.classes.Parent
+        Base = self.classes.Base
+        pa = aliased(Parent)
+        sess = Session()
+
+        def go():
+            eq_(sess.query(pa)
+                    .options(subqueryload_all(pa.children, Base.related))
+                    .order_by(pa.data).all(),
                 [p1, p2])
         self.assert_sql_count(testing.db, go, 3)
 
@@ -876,3 +890,226 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
                 [p1, p2])
         self.assert_sql_count(testing.db, go, 2)
 
+class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
+    """test pathing when two subclasses contain a different property
+    for the same name, and polymorphic loading is used.
+
+    #2614
+
+    """
+    run_setup_classes = 'once'
+    run_setup_mappers = 'once'
+    run_inserts = 'once'
+    run_deletes = None
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('a', metadata,
+            Column('id', Integer, primary_key=True,
+                    test_needs_autoincrement=True),
+            Column('type', String(10))
+        )
+        Table('b', metadata,
+            Column('id', Integer, ForeignKey('a.id'), primary_key=True)
+        )
+        Table('btod', metadata,
+            Column('bid', Integer, ForeignKey('b.id'), nullable=False),
+            Column('did', Integer, ForeignKey('d.id'), nullable=False)
+        )
+        Table('c', metadata,
+            Column('id', Integer, ForeignKey('a.id'), primary_key=True)
+        )
+        Table('ctod', metadata,
+            Column('cid', Integer, ForeignKey('c.id'), nullable=False),
+            Column('did', Integer, ForeignKey('d.id'), nullable=False)
+        )
+        Table('d', metadata,
+            Column('id', Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Comparable):
+            pass
+        class B(A):
+            pass
+        class C(A):
+            pass
+        class D(cls.Comparable):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        A = cls.classes.A
+        B = cls.classes.B
+        C = cls.classes.C
+        D = cls.classes.D
+
+        mapper(A, cls.tables.a, polymorphic_on=cls.tables.a.c.type)
+        mapper(B, cls.tables.b, inherits=A, polymorphic_identity='b',
+                    properties={
+                        'related': relationship(D, secondary=cls.tables.btod)
+                    })
+        mapper(C, cls.tables.c, inherits=A, polymorphic_identity='c',
+                    properties={
+                        'related': relationship(D, secondary=cls.tables.ctod)
+                    })
+        mapper(D, cls.tables.d)
+
+
+    @classmethod
+    def insert_data(cls):
+        B = cls.classes.B
+        C = cls.classes.C
+        D = cls.classes.D
+
+        session = Session()
+
+        d = D()
+        session.add_all([
+            B(related=[d]),
+            C(related=[d])
+        ])
+        session.commit()
+
+    def test_free_w_poly_subquery(self):
+        A = self.classes.A
+        B = self.classes.B
+        C = self.classes.C
+        D = self.classes.D
+
+        session = Session()
+        d = session.query(D).one()
+        a_poly = with_polymorphic(A, [B, C])
+        def go():
+            for a in session.query(a_poly).\
+                options(
+                        subqueryload(a_poly.B.related),
+                        subqueryload(a_poly.C.related)):
+                eq_(a.related, [d])
+        self.assert_sql_count(testing.db, go, 3)
+
+    def test_fixed_w_poly_subquery(self):
+        A = self.classes.A
+        B = self.classes.B
+        C = self.classes.C
+        D = self.classes.D
+
+        session = Session()
+        d = session.query(D).one()
+        def go():
+            for a in session.query(A).with_polymorphic([B, C]).\
+                options(subqueryload(B.related), subqueryload(C.related)):
+                eq_(a.related, [d])
+        self.assert_sql_count(testing.db, go, 3)
+
+    def test_free_w_poly_joined(self):
+        A = self.classes.A
+        B = self.classes.B
+        C = self.classes.C
+        D = self.classes.D
+
+        session = Session()
+        d = session.query(D).one()
+        a_poly = with_polymorphic(A, [B, C])
+        def go():
+            for a in session.query(a_poly).\
+                options(
+                        joinedload(a_poly.B.related),
+                        joinedload(a_poly.C.related)):
+                eq_(a.related, [d])
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_fixed_w_poly_joined(self):
+        A = self.classes.A
+        B = self.classes.B
+        C = self.classes.C
+        D = self.classes.D
+
+        session = Session()
+        d = session.query(D).one()
+        def go():
+            for a in session.query(A).with_polymorphic([B, C]).\
+                options(joinedload(B.related), joinedload(C.related)):
+                eq_(a.related, [d])
+        self.assert_sql_count(testing.db, go, 1)
+
+
+class SubClassToSubClassFromParentTest(fixtures.MappedTest):
+    """test #2617
+
+    """
+    run_setup_classes = 'once'
+    run_setup_mappers = 'once'
+    run_inserts = 'once'
+    run_deletes = None
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('z', metadata,
+            Column('id', Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+        )
+        Table('a', metadata,
+            Column('id', Integer, primary_key=True,
+                    test_needs_autoincrement=True),
+            Column('type', String(10)),
+            Column('z_id', Integer, ForeignKey('z.id'))
+        )
+        Table('b', metadata,
+            Column('id', Integer, ForeignKey('a.id'), primary_key=True)
+        )
+        Table('d', metadata,
+            Column('id', Integer, ForeignKey('a.id'), primary_key=True),
+            Column('b_id', Integer, ForeignKey('b.id'))
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Z(cls.Comparable):
+            pass
+        class A(cls.Comparable):
+            pass
+        class B(A):
+            pass
+        class D(A):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Z = cls.classes.Z
+        A = cls.classes.A
+        B = cls.classes.B
+        D = cls.classes.D
+
+        mapper(Z, cls.tables.z)
+        mapper(A, cls.tables.a, polymorphic_on=cls.tables.a.c.type,
+                    with_polymorphic='*',
+                    properties={
+                        'zs': relationship(Z, lazy="subquery")
+                    })
+        mapper(B, cls.tables.b, inherits=A, polymorphic_identity='b',
+                    properties={
+                        'related': relationship(D, lazy="subquery",
+                            primaryjoin=cls.tables.d.c.b_id ==
+                                                cls.tables.b.c.id)
+                    })
+        mapper(D, cls.tables.d, inherits=A, polymorphic_identity='d')
+
+
+    @classmethod
+    def insert_data(cls):
+        B = cls.classes.B
+
+        session = Session()
+        session.add(B())
+        session.commit()
+
+    def test_2617(self):
+        A = self.classes.A
+        session = Session()
+        def go():
+            a1 = session.query(A).first()
+            eq_(a1.related, [])
+        self.assert_sql_count(testing.db, go, 3)

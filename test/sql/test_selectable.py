@@ -1287,7 +1287,9 @@ class AnnotationsTest(fixtures.TestBase):
             t.c.x,
             a,
             s,
-            s2
+            s2,
+            t.c.x > 1,
+            (t.c.x > 1).label(None)
         ]:
             annot = obj._annotate({})
             eq_(set([obj]), set([annot]))

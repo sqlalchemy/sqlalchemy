@@ -157,7 +157,7 @@ class Query(object):
                 ent.setup_entity(*d[entity])
 
     def _mapper_loads_polymorphically_with(self, mapper, adapter):
-        for m2 in mapper._with_polymorphic_mappers:
+        for m2 in mapper._with_polymorphic_mappers or [mapper]:
             self._polymorphic_adapters[m2] = adapter
             for m in m2.iterate_to_root():
                 self._polymorphic_adapters[m.local_table] = adapter
@@ -2744,17 +2744,24 @@ class _MapperEntity(_QueryEntity):
         self._with_polymorphic = ext_info.with_polymorphic_mappers
         self._polymorphic_discriminator = \
                 ext_info.polymorphic_on
+        self.entity_zero = ext_info
         if ext_info.is_aliased_class:
-            self.entity_zero = ext_info.entity
-            self._label_name = self.entity_zero._sa_label_name
+            self._label_name = self.entity_zero.name
         else:
-            self.entity_zero = self.mapper
             self._label_name = self.mapper.class_.__name__
-        self.path = self.entity_zero._sa_path_registry
+        self.path = self.entity_zero._path_registry
 
     def set_with_polymorphic(self, query, cls_or_mappers,
                                 selectable, polymorphic_on):
+        """Receive an update from a call to query.with_polymorphic().
+
+        Note the newer style of using a free standing with_polymporphic()
+        construct doesn't make use of this method.
+
+
+        """
         if self.is_aliased_class:
+            # TODO: invalidrequest ?
             raise NotImplementedError(
                         "Can't use with_polymorphic() against "
                         "an Aliased object"
@@ -2785,13 +2792,18 @@ class _MapperEntity(_QueryEntity):
         return self.entity_zero
 
     def corresponds_to(self, entity):
-        entity_info = inspect(entity)
-        if entity_info.is_aliased_class or self.is_aliased_class:
-            return entity is self.entity_zero \
-                or \
-                entity in self._with_polymorphic
-        else:
-            return entity.common_parent(self.entity_zero)
+        if entity.is_aliased_class:
+            if self.is_aliased_class:
+                if entity._base_alias is self.entity_zero._base_alias:
+                    return True
+            return False
+        elif self.is_aliased_class:
+            if self.entity_zero._use_mapper_path:
+                return entity in self._with_polymorphic
+            else:
+                return entity is self.entity_zero
+
+        return entity.common_parent(self.entity_zero)
 
     def adapt_to_selectable(self, query, sel):
         query._entities.append(self)
@@ -3008,6 +3020,7 @@ class _ColumnEntity(_QueryEntity):
         if self.entity_zero is None:
             return False
         elif _is_aliased_class(entity):
+            # TODO: polymorphic subclasses ?
             return entity is self.entity_zero
         else:
             return not _is_aliased_class(self.entity_zero) and \

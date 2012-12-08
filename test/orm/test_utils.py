@@ -4,7 +4,7 @@ from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import Table
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, with_polymorphic
 from sqlalchemy.orm import mapper, create_session
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
@@ -228,6 +228,7 @@ class IdentityKeyTest(_fixtures.FixtureTest):
         key = util.identity_key(User, row=row)
         eq_(key, (User, (1,)))
 
+
 class PathRegistryTest(_fixtures.FixtureTest):
     run_setup_mappers = 'once'
     run_inserts = None
@@ -242,7 +243,7 @@ class PathRegistryTest(_fixtures.FixtureTest):
         umapper = inspect(self.classes.User)
         is_(
             util.RootRegistry()[umapper],
-            umapper._sa_path_registry
+            umapper._path_registry
         )
         eq_(
             util.RootRegistry()[umapper],
@@ -255,9 +256,10 @@ class PathRegistryTest(_fixtures.FixtureTest):
         path = PathRegistry.coerce((umapper,))
 
         eq_(
-            path['addresses'][amapper]['email_address'],
-            PathRegistry.coerce((umapper, 'addresses',
-                                amapper, 'email_address'))
+            path[umapper.attrs.addresses][amapper]
+                [amapper.attrs.email_address],
+            PathRegistry.coerce((umapper, umapper.attrs.addresses,
+                                amapper, amapper.attrs.email_address))
         )
 
     def test_entity_boolean(self):
@@ -267,47 +269,48 @@ class PathRegistryTest(_fixtures.FixtureTest):
 
     def test_key_boolean(self):
         umapper = inspect(self.classes.User)
-        path = PathRegistry.coerce((umapper, 'addresses'))
+        path = PathRegistry.coerce((umapper, umapper.attrs.addresses))
         is_(bool(path), True)
 
     def test_aliased_class(self):
         User = self.classes.User
         ua = aliased(User)
-        path = PathRegistry.coerce((ua, 'addresses'))
+        ua_insp = inspect(ua)
+        path = PathRegistry.coerce((ua_insp, ua_insp.mapper.attrs.addresses))
         assert path.parent.is_aliased_class
 
     def test_indexed_entity(self):
         umapper = inspect(self.classes.User)
         amapper = inspect(self.classes.Address)
-        path = PathRegistry.coerce((umapper, 'addresses',
-                                amapper, 'email_address'))
+        path = PathRegistry.coerce((umapper, umapper.attrs.addresses,
+                                amapper, amapper.attrs.email_address))
         is_(path[0], umapper)
         is_(path[2], amapper)
 
     def test_indexed_key(self):
         umapper = inspect(self.classes.User)
         amapper = inspect(self.classes.Address)
-        path = PathRegistry.coerce((umapper, 'addresses',
-                                amapper, 'email_address'))
-        eq_(path[1], 'addresses')
-        eq_(path[3], 'email_address')
+        path = PathRegistry.coerce((umapper, umapper.attrs.addresses,
+                                amapper, amapper.attrs.email_address))
+        eq_(path[1], umapper.attrs.addresses)
+        eq_(path[3], amapper.attrs.email_address)
 
     def test_slice(self):
         umapper = inspect(self.classes.User)
         amapper = inspect(self.classes.Address)
-        path = PathRegistry.coerce((umapper, 'addresses',
-                                amapper, 'email_address'))
-        eq_(path[1:3], ('addresses', amapper))
+        path = PathRegistry.coerce((umapper, umapper.attrs.addresses,
+                                amapper, amapper.attrs.email_address))
+        eq_(path[1:3], (umapper.attrs.addresses, amapper))
 
     def test_addition(self):
         umapper = inspect(self.classes.User)
         amapper = inspect(self.classes.Address)
-        p1 = PathRegistry.coerce((umapper, 'addresses'))
-        p2 = PathRegistry.coerce((amapper, 'email_address'))
+        p1 = PathRegistry.coerce((umapper, umapper.attrs.addresses))
+        p2 = PathRegistry.coerce((amapper, amapper.attrs.email_address))
         eq_(
             p1 + p2,
-            PathRegistry.coerce((umapper, 'addresses',
-                                amapper, 'email_address'))
+            PathRegistry.coerce((umapper, umapper.attrs.addresses,
+                                amapper, amapper.attrs.email_address))
         )
 
     def test_length(self):
@@ -315,10 +318,10 @@ class PathRegistryTest(_fixtures.FixtureTest):
         amapper = inspect(self.classes.Address)
         pneg1 = PathRegistry.coerce(())
         p0 = PathRegistry.coerce((umapper,))
-        p1 = PathRegistry.coerce((umapper, 'addresses'))
-        p2 = PathRegistry.coerce((umapper, 'addresses', amapper))
-        p3 = PathRegistry.coerce((umapper, 'addresses',
-                                amapper, 'email_address'))
+        p1 = PathRegistry.coerce((umapper, umapper.attrs.addresses))
+        p2 = PathRegistry.coerce((umapper, umapper.attrs.addresses, amapper))
+        p3 = PathRegistry.coerce((umapper, umapper.attrs.addresses,
+                                amapper, amapper.attrs.email_address))
 
         eq_(len(pneg1), 0)
         eq_(len(p0), 1)
@@ -334,14 +337,17 @@ class PathRegistryTest(_fixtures.FixtureTest):
     def test_eq(self):
         umapper = inspect(self.classes.User)
         amapper = inspect(self.classes.Address)
-        p1 = PathRegistry.coerce((umapper, 'addresses'))
-        p2 = PathRegistry.coerce((umapper, 'addresses'))
-        p3 = PathRegistry.coerce((umapper, 'other'))
-        p4 = PathRegistry.coerce((amapper, 'addresses'))
-        p5 = PathRegistry.coerce((umapper, 'addresses', amapper))
-        p6 = PathRegistry.coerce((amapper, 'user', umapper, 'addresses'))
-        p7 = PathRegistry.coerce((amapper, 'user', umapper, 'addresses',
-                                amapper, 'email_address'))
+        u_alias = inspect(aliased(self.classes.User))
+        p1 = PathRegistry.coerce((umapper, umapper.attrs.addresses))
+        p2 = PathRegistry.coerce((umapper, umapper.attrs.addresses))
+        p3 = PathRegistry.coerce((umapper, umapper.attrs.name))
+        p4 = PathRegistry.coerce((u_alias, umapper.attrs.addresses))
+        p5 = PathRegistry.coerce((umapper, umapper.attrs.addresses, amapper))
+        p6 = PathRegistry.coerce((amapper, amapper.attrs.user, umapper,
+                                umapper.attrs.addresses))
+        p7 = PathRegistry.coerce((amapper, amapper.attrs.user, umapper,
+                                umapper.attrs.addresses,
+                                amapper, amapper.attrs.email_address))
 
         is_(p1 == p2, True)
         is_(p1 == p3, False)
@@ -358,7 +364,7 @@ class PathRegistryTest(_fixtures.FixtureTest):
     def test_contains_mapper(self):
         umapper = inspect(self.classes.User)
         amapper = inspect(self.classes.Address)
-        p1 = PathRegistry.coerce((umapper, 'addresses'))
+        p1 = PathRegistry.coerce((umapper, umapper.attrs.addresses))
         assert p1.contains_mapper(umapper)
         assert not p1.contains_mapper(amapper)
 
@@ -373,18 +379,18 @@ class PathRegistryTest(_fixtures.FixtureTest):
         umapper = inspect(self.classes.User)
         amapper = inspect(self.classes.Address)
 
-        p1 = PathRegistry.coerce((umapper, 'addresses'))
-        p2 = PathRegistry.coerce((umapper, 'addresses', amapper))
-        p3 = PathRegistry.coerce((amapper, 'email_address'))
+        p1 = PathRegistry.coerce((umapper, umapper.attrs.addresses))
+        p2 = PathRegistry.coerce((umapper, umapper.attrs.addresses, amapper))
+        p3 = PathRegistry.coerce((amapper, amapper.attrs.email_address))
 
         eq_(
-            p1.path, (umapper, 'addresses')
+            p1.path, (umapper, umapper.attrs.addresses)
         )
         eq_(
-            p2.path, (umapper, 'addresses', amapper)
+            p2.path, (umapper, umapper.attrs.addresses, amapper)
         )
         eq_(
-            p3.path, (amapper, 'email_address')
+            p3.path, (amapper, amapper.attrs.email_address)
         )
 
     def test_registry_set(self):
@@ -392,9 +398,9 @@ class PathRegistryTest(_fixtures.FixtureTest):
         umapper = inspect(self.classes.User)
         amapper = inspect(self.classes.Address)
 
-        p1 = PathRegistry.coerce((umapper, 'addresses'))
-        p2 = PathRegistry.coerce((umapper, 'addresses', amapper))
-        p3 = PathRegistry.coerce((amapper, 'email_address'))
+        p1 = PathRegistry.coerce((umapper, umapper.attrs.addresses))
+        p2 = PathRegistry.coerce((umapper, umapper.attrs.addresses, amapper))
+        p3 = PathRegistry.coerce((amapper, amapper.attrs.email_address))
 
         p1.set(reg, "p1key", "p1value")
         p2.set(reg, "p2key", "p2value")
@@ -413,9 +419,9 @@ class PathRegistryTest(_fixtures.FixtureTest):
         umapper = inspect(self.classes.User)
         amapper = inspect(self.classes.Address)
 
-        p1 = PathRegistry.coerce((umapper, 'addresses'))
-        p2 = PathRegistry.coerce((umapper, 'addresses', amapper))
-        p3 = PathRegistry.coerce((amapper, 'email_address'))
+        p1 = PathRegistry.coerce((umapper, umapper.attrs.addresses))
+        p2 = PathRegistry.coerce((umapper, umapper.attrs.addresses, amapper))
+        p3 = PathRegistry.coerce((amapper, amapper.attrs.email_address))
         reg.update(
             {
                 ('p1key', p1.path): 'p1value',
@@ -435,9 +441,9 @@ class PathRegistryTest(_fixtures.FixtureTest):
         umapper = inspect(self.classes.User)
         amapper = inspect(self.classes.Address)
 
-        p1 = PathRegistry.coerce((umapper, 'addresses'))
-        p2 = PathRegistry.coerce((umapper, 'addresses', amapper))
-        p3 = PathRegistry.coerce((amapper, 'email_address'))
+        p1 = PathRegistry.coerce((umapper, umapper.attrs.addresses))
+        p2 = PathRegistry.coerce((umapper, umapper.attrs.addresses, amapper))
+        p3 = PathRegistry.coerce((amapper, amapper.attrs.email_address))
         reg.update(
             {
                 ('p1key', p1.path): 'p1value',
@@ -455,8 +461,8 @@ class PathRegistryTest(_fixtures.FixtureTest):
         umapper = inspect(self.classes.User)
         amapper = inspect(self.classes.Address)
 
-        p1 = PathRegistry.coerce((umapper, 'addresses'))
-        p2 = PathRegistry.coerce((umapper, 'addresses', amapper))
+        p1 = PathRegistry.coerce((umapper, umapper.attrs.addresses))
+        p2 = PathRegistry.coerce((umapper, umapper.attrs.addresses, amapper))
         reg.update(
             {
                 ('p1key', p1.path): 'p1value',
@@ -481,10 +487,10 @@ class PathRegistryTest(_fixtures.FixtureTest):
         umapper = inspect(self.classes.User)
         amapper = inspect(self.classes.Address)
 
-        p1 = PathRegistry.coerce((umapper, 'addresses', amapper,
-                            'email_address'))
-        p2 = PathRegistry.coerce((umapper, 'addresses', amapper))
-        p3 = PathRegistry.coerce((umapper, 'addresses'))
+        p1 = PathRegistry.coerce((umapper, umapper.attrs.addresses, amapper,
+                            amapper.attrs.email_address))
+        p2 = PathRegistry.coerce((umapper, umapper.attrs.addresses, amapper))
+        p3 = PathRegistry.coerce((umapper, umapper.attrs.addresses))
         eq_(
             p1.serialize(),
             [(User, "addresses"), (Address, "email_address")]
@@ -505,10 +511,10 @@ class PathRegistryTest(_fixtures.FixtureTest):
         amapper = inspect(self.classes.Address)
 
 
-        p1 = PathRegistry.coerce((umapper, 'addresses', amapper,
-                            'email_address'))
-        p2 = PathRegistry.coerce((umapper, 'addresses', amapper))
-        p3 = PathRegistry.coerce((umapper, 'addresses'))
+        p1 = PathRegistry.coerce((umapper, umapper.attrs.addresses, amapper,
+                            amapper.attrs.email_address))
+        p2 = PathRegistry.coerce((umapper, umapper.attrs.addresses, amapper))
+        p3 = PathRegistry.coerce((umapper, umapper.attrs.addresses))
 
         eq_(
             PathRegistry.deserialize([(User, "addresses"),
@@ -523,3 +529,135 @@ class PathRegistryTest(_fixtures.FixtureTest):
             PathRegistry.deserialize([(User, "addresses")]),
             p3
         )
+
+from .inheritance import _poly_fixtures
+class PathRegistryInhTest(_poly_fixtures._Polymorphic):
+    run_setup_mappers = 'once'
+    run_inserts = None
+    run_deletes = None
+
+    def test_plain(self):
+        Person = _poly_fixtures.Person
+        Engineer = _poly_fixtures.Engineer
+        pmapper = inspect(Person)
+        emapper = inspect(Engineer)
+
+        p1 = PathRegistry.coerce((pmapper, emapper.attrs.machines))
+
+        # given a mapper and an attribute on a subclass,
+        # the path converts what you get to be against that subclass
+        eq_(
+            p1.path,
+            (emapper, emapper.attrs.machines)
+        )
+
+    def test_plain_compound(self):
+        Company = _poly_fixtures.Company
+        Person = _poly_fixtures.Person
+        Engineer = _poly_fixtures.Engineer
+        cmapper = inspect(Company)
+        pmapper = inspect(Person)
+        emapper = inspect(Engineer)
+
+        p1 = PathRegistry.coerce((cmapper, cmapper.attrs.employees,
+                        pmapper, emapper.attrs.machines))
+
+        # given a mapper and an attribute on a subclass,
+        # the path converts what you get to be against that subclass
+        eq_(
+            p1.path,
+            (cmapper, cmapper.attrs.employees, emapper, emapper.attrs.machines)
+        )
+
+    def test_plain_aliased(self):
+        Person = _poly_fixtures.Person
+        Engineer = _poly_fixtures.Engineer
+        emapper = inspect(Engineer)
+
+        p_alias = aliased(Person)
+        p_alias = inspect(p_alias)
+
+        p1 = PathRegistry.coerce((p_alias, emapper.attrs.machines))
+        # plain AliasedClass - the path keeps that AliasedClass directly
+        # as is in the path
+        eq_(
+            p1.path,
+            (p_alias, emapper.attrs.machines)
+        )
+
+    def test_plain_aliased_compound(self):
+        Company = _poly_fixtures.Company
+        Person = _poly_fixtures.Person
+        Engineer = _poly_fixtures.Engineer
+        cmapper = inspect(Company)
+        emapper = inspect(Engineer)
+
+        c_alias = aliased(Company)
+        p_alias = aliased(Person)
+
+        c_alias = inspect(c_alias)
+        p_alias = inspect(p_alias)
+
+        p1 = PathRegistry.coerce((c_alias, cmapper.attrs.employees,
+                    p_alias, emapper.attrs.machines))
+        # plain AliasedClass - the path keeps that AliasedClass directly
+        # as is in the path
+        eq_(
+            p1.path,
+            (c_alias, cmapper.attrs.employees, p_alias, emapper.attrs.machines)
+        )
+
+    def test_with_poly_sub(self):
+        Person = _poly_fixtures.Person
+        Engineer = _poly_fixtures.Engineer
+        emapper = inspect(Engineer)
+
+        p_poly = with_polymorphic(Person, [Engineer])
+        e_poly = inspect(p_poly.Engineer)
+        p_poly = inspect(p_poly)
+
+        p1 = PathRegistry.coerce((p_poly, emapper.attrs.machines))
+
+        # polymorphic AliasedClass - the path uses _entity_for_mapper()
+        # to get the most specific sub-entity
+        eq_(
+            p1.path,
+            (e_poly, emapper.attrs.machines)
+        )
+
+    def test_with_poly_base(self):
+        Person = _poly_fixtures.Person
+        Engineer = _poly_fixtures.Engineer
+        pmapper = inspect(Person)
+        emapper = inspect(Engineer)
+
+        p_poly = with_polymorphic(Person, [Engineer])
+        p_poly = inspect(p_poly)
+
+        # "name" is actually on Person, not Engineer
+        p1 = PathRegistry.coerce((p_poly, emapper.attrs.name))
+
+        # polymorphic AliasedClass - because "name" is on Person,
+        # we get Person, not Engineer
+        eq_(
+            p1.path,
+            (p_poly, pmapper.attrs.name)
+        )
+
+    def test_with_poly_use_mapper(self):
+        Person = _poly_fixtures.Person
+        Engineer = _poly_fixtures.Engineer
+        emapper = inspect(Engineer)
+
+        p_poly = with_polymorphic(Person, [Engineer], _use_mapper_path=True)
+        p_poly = inspect(p_poly)
+
+        p1 = PathRegistry.coerce((p_poly, emapper.attrs.machines))
+
+        # polymorphic AliasedClass with the "use_mapper_path" flag -
+        # the AliasedClass acts just like the base mapper
+        eq_(
+            p1.path,
+            (emapper, emapper.attrs.machines)
+        )
+

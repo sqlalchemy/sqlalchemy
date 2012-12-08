@@ -385,7 +385,7 @@ class SessionExtension(object):
        :class:`.SessionEvents`.
 
     Subclasses may be installed into a :class:`.Session` (or
-    :func:`.sessionmaker`) using the ``extension`` keyword
+    :class:`.sessionmaker`) using the ``extension`` keyword
     argument::
 
         from sqlalchemy.orm.interfaces import SessionExtension
