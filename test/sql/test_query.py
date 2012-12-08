@@ -48,6 +48,18 @@ class QueryTest(fixtures.TestBase):
     def teardown_class(cls):
         metadata.drop_all()
 
+    @testing.requires.multirow_inserts
+    def test_multirow_insert(self):
+        users.insert(values=[{'user_id':7, 'user_name':'jack'},
+            {'user_id':8, 'user_name':'ed'}]).execute()
+        rows = users.select().execute().fetchall()
+        self.assert_(rows[0] == (7, 'jack'))
+        self.assert_(rows[1] == (8, 'ed'))
+        users.insert(values=[(9, 'jack'), (10, 'ed')]).execute()
+        rows = users.select().execute().fetchall()
+        self.assert_(rows[2] == (9, 'jack'))
+        self.assert_(rows[3] == (10, 'ed'))
+
     def test_insert_heterogeneous_params(self):
         """test that executemany parameters are asserted to match the
         parameter set of the first."""

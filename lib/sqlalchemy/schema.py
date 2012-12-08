@@ -146,7 +146,7 @@ class Table(SchemaItem, expression.TableClause):
         table.  The metadata is used as a point of association of this table
         with other tables which are referenced via foreign key.  It also
         may be used to associate this table with a particular
-        :class:`~sqlalchemy.engine.base.Connectable`.
+        :class:`.Connectable`.
 
     :param \*args: Additional positional arguments are used primarily
         to add the list of :class:`.Column` objects contained within this
@@ -240,7 +240,7 @@ class Table(SchemaItem, expression.TableClause):
         This alternate hook to :func:`.event.listen` allows the establishment
         of a listener function specific to this :class:`.Table` before
         the "autoload" process begins.  Particularly useful for
-        the :meth:`.events.column_reflect` event::
+        the :meth:`.DDLEvents.column_reflect` event::
 
             def listen_for_reflect(table, column_info):
                 "handle the column reflection event"
@@ -254,7 +254,7 @@ class Table(SchemaItem, expression.TableClause):
                 ])
 
     :param mustexist: When ``True``, indicates that this Table must already
-        be present in the given :class:`.MetaData`` collection, else
+        be present in the given :class:`.MetaData` collection, else
         an exception is raised.
 
     :param prefixes:
@@ -2600,9 +2600,8 @@ class MetaData(SchemaItem):
         in this ``MetaData`` no longer exists in the database.
 
         :param bind:
-          A :class:`~sqlalchemy.engine.base.Connectable` used to access the
-          database; if None, uses the existing bind on this ``MetaData``, if
-          any.
+          A :class:`.Connectable` used to access the database; if None, uses
+          the existing bind on this ``MetaData``, if any.
 
         :param schema:
           Optional, query and reflect tables from an alterate schema.
@@ -2689,7 +2688,7 @@ class MetaData(SchemaItem):
         present in the target database.
 
         :param bind:
-          A :class:`~sqlalchemy.engine.base.Connectable` used to access the
+          A :class:`.Connectable` used to access the
           database; if None, uses the existing bind on this ``MetaData``, if
           any.
 
@@ -2716,7 +2715,7 @@ class MetaData(SchemaItem):
         the target database.
 
         :param bind:
-          A :class:`~sqlalchemy.engine.base.Connectable` used to access the
+          A :class:`.Connectable` used to access the
           database; if None, uses the existing bind on this ``MetaData``, if
           any.
 
@@ -2858,14 +2857,14 @@ class DDLElement(expression.Executable, _DDLCompiles):
         """Execute this DDL immediately.
 
         Executes the DDL statement in isolation using the supplied
-        :class:`~sqlalchemy.engine.base.Connectable` or
-        :class:`~sqlalchemy.engine.base.Connectable` assigned to the ``.bind``
+        :class:`.Connectable` or
+        :class:`.Connectable` assigned to the ``.bind``
         property, if not supplied. If the DDL has a conditional ``on``
         criteria, it will be invoked with None as the event.
 
         :param bind:
           Optional, an ``Engine`` or ``Connection``. If not supplied, a valid
-          :class:`~sqlalchemy.engine.base.Connectable` must be present in the
+          :class:`.Connectable` must be present in the
           ``.bind`` property.
 
         :param target:
@@ -3146,7 +3145,7 @@ class DDL(DDLElement):
           available for use in string substitutions on the DDL statement.
 
         :param bind:
-          Optional. A :class:`~sqlalchemy.engine.base.Connectable`, used by
+          Optional. A :class:`.Connectable`, used by
           default when ``execute()`` is invoked without a bind argument.
 
 

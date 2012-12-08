@@ -1283,14 +1283,14 @@ constraint will be added via ALTER:
     ALTER TABLE users DROP CONSTRAINT cst_user_name_length
     DROP TABLE users{stop}
 
-The real usefulness of the above becomes clearer once we illustrate the :meth:`.DDLEvent.execute_if`
-method.  This method returns a modified form of the DDL callable which will
-filter on criteria before responding to a received event.   It accepts a
-parameter ``dialect``, which is the string name of a dialect or a tuple of such,
-which will limit the execution of the item to just those dialects.  It also
-accepts a ``callable_`` parameter which may reference a Python callable which will
-be invoked upon event reception, returning ``True`` or ``False`` indicating if
-the event should proceed.
+The real usefulness of the above becomes clearer once we illustrate the
+:meth:`.DDLElement.execute_if` method.  This method returns a modified form of
+the DDL callable which will filter on criteria before responding to a
+received event.   It accepts a parameter ``dialect``, which is the string
+name of a dialect or a tuple of such, which will limit the execution of the
+item to just those dialects.  It also accepts a ``callable_`` parameter which
+may reference a Python callable which will be invoked upon event reception,
+returning ``True`` or ``False`` indicating if the event should proceed.
 
 If our :class:`~sqlalchemy.schema.CheckConstraint` was only supported by
 Postgresql and not other databases, we could limit its usage to just that dialect::

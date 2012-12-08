@@ -2484,6 +2484,7 @@ class KwargPropagationTest(fixtures.TestBase):
         c = cast(self.column, Integer)
         self._do_test(c)
 
+
 class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
@@ -2540,7 +2541,7 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
             "INSERT C D INTO mytable (myid, name, description) "
             "VALUES (:myid, :name, :description)")
 
-    def test_inline_insert(self):
+    def test_inline_default_insert(self):
         metadata = MetaData()
         table = Table('sometable', metadata,
             Column('id', Integer, primary_key=True),
@@ -2551,6 +2552,151 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
                     table.insert(inline=True),
                     "INSERT INTO sometable (foo) VALUES (foobar())", params={})
+
+    def test_empty_insert_default(self):
+        stmt = table1.insert().values()
+        self.assert_compile(stmt, "INSERT INTO mytable () VALUES ()")
+
+    def test_empty_insert_default_values(self):
+        stmt = table1.insert().values()
+        dialect = default.DefaultDialect()
+        dialect.supports_empty_insert = dialect.supports_default_values = True
+        self.assert_compile(stmt, "INSERT INTO mytable DEFAULT VALUES",
+                        dialect=dialect)
+
+    def test_empty_insert_not_supported(self):
+        stmt = table1.insert().values()
+        dialect = default.DefaultDialect()
+        dialect.supports_empty_insert = dialect.supports_default_values = False
+        assert_raises_message(
+            exc.CompileError,
+            "The 'default' dialect with current database version "
+                "settings does not support empty inserts.",
+            stmt.compile, dialect=dialect
+        )
+
+    def test_multirow_insert_not_supported(self):
+        stmt = table1.insert().values([{"myid": 1}, {"myid": 2}])
+        dialect = default.DefaultDialect()
+        assert_raises_message(
+            exc.CompileError,
+            "The 'default' dialect with current database version settings "
+                "does not support in-place multirow inserts.",
+            stmt.compile, dialect=dialect
+        )
+
+    def test_multirow_insert_named(self):
+        stmt = table1.insert().\
+                    values([{"myid": 1, "name": 'a', "description": 'b'},
+                            {"myid": 2, "name": 'c', "description": 'd'},
+                            {"myid": 3, "name": 'e', "description": 'f'}
+                        ])
+
+        result = "INSERT INTO mytable (myid, name, description) VALUES " \
+                 "(:myid_0, :name_0, :description_0), " \
+                 "(:myid_1, :name_1, :description_1), " \
+                 "(:myid_2, :name_2, :description_2)"
+
+        dialect = default.DefaultDialect()
+        dialect.supports_multirow_insert = True
+        self.assert_compile(stmt, result,
+                checkparams={
+                    'description_2': 'f', 'name_2': 'e',
+                    'name_0': 'a', 'name_1': 'c', 'myid_2': 3,
+                    'description_0': 'b', 'myid_0': 1,
+                    'myid_1': 2, 'description_1': 'd'
+                },
+                dialect=dialect)
+
+    def test_multirow_insert_positional(self):
+        stmt = table1.insert().\
+                    values([{"myid": 1, "name": 'a', "description": 'b'},
+                            {"myid": 2, "name": 'c', "description": 'd'},
+                            {"myid": 3, "name": 'e', "description": 'f'}
+                        ])
+
+        result = "INSERT INTO mytable (myid, name, description) VALUES " \
+                 "(%s, %s, %s), " \
+                 "(%s, %s, %s), " \
+                 "(%s, %s, %s)" \
+
+        dialect = default.DefaultDialect()
+        dialect.supports_multirow_insert = True
+        dialect.paramstyle = "format"
+        dialect.positional = True
+        self.assert_compile(stmt, result,
+                checkpositional=(1, 'a', 'b', 2, 'c', 'd', 3, 'e', 'f'),
+                dialect=dialect)
+
+    def test_multirow_inline_default_insert(self):
+        metadata = MetaData()
+        table = Table('sometable', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String),
+            Column('foo', Integer, default=func.foobar()))
+
+        stmt = table.insert().\
+                    values([
+                            {"id": 1, "data": "data1"},
+                            {"id": 2, "data": "data2", "foo": "plainfoo"},
+                            {"id": 3, "data": "data3"},
+                        ])
+        result = "INSERT INTO sometable (id, data, foo) VALUES "\
+                    "(%(id_0)s, %(data_0)s, foobar()), "\
+                    "(%(id_1)s, %(data_1)s, %(foo_1)s), "\
+                    "(%(id_2)s, %(data_2)s, foobar())"
+
+        self.assert_compile(stmt, result,
+                checkparams={'data_2': 'data3', 'id_0': 1, 'id_2': 3,
+                                'foo_1': 'plainfoo', 'data_1': 'data2',
+                                'id_1': 2, 'data_0': 'data1'},
+                dialect=postgresql.dialect())
+
+    def test_multirow_server_default_insert(self):
+        metadata = MetaData()
+        table = Table('sometable', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String),
+            Column('foo', Integer, server_default=func.foobar()))
+
+        stmt = table.insert().\
+                    values([
+                            {"id": 1, "data": "data1"},
+                            {"id": 2, "data": "data2", "foo": "plainfoo"},
+                            {"id": 3, "data": "data3"},
+                        ])
+        result = "INSERT INTO sometable (id, data) VALUES "\
+                    "(%(id_0)s, %(data_0)s), "\
+                    "(%(id_1)s, %(data_1)s), "\
+                    "(%(id_2)s, %(data_2)s)"
+
+        self.assert_compile(stmt, result,
+                checkparams={'data_2': 'data3', 'id_0': 1, 'id_2': 3,
+                                'data_1': 'data2',
+                                'id_1': 2, 'data_0': 'data1'},
+                dialect=postgresql.dialect())
+
+        stmt = table.insert().\
+                    values([
+                            {"id": 1, "data": "data1", "foo": "plainfoo"},
+                            {"id": 2, "data": "data2"},
+                            {"id": 3, "data": "data3", "foo": "otherfoo"},
+                        ])
+
+        # note the effect here is that the first set of params
+        # takes effect for the rest of them, when one is absent
+        result = "INSERT INTO sometable (id, data, foo) VALUES "\
+                    "(%(id_0)s, %(data_0)s, %(foo_0)s), "\
+                    "(%(id_1)s, %(data_1)s, %(foo_0)s), "\
+                    "(%(id_2)s, %(data_2)s, %(foo_2)s)"
+
+        self.assert_compile(stmt, result,
+                checkparams={'data_2': 'data3', 'id_0': 1, 'id_2': 3,
+                                'data_1': 'data2',
+                                "foo_0": "plainfoo",
+                                "foo_2": "otherfoo",
+                                'id_1': 2, 'data_0': 'data1'},
+                dialect=postgresql.dialect())
 
     def test_update(self):
         self.assert_compile(

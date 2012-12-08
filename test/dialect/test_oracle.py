@@ -781,6 +781,76 @@ class ConstraintTest(fixtures.TestBase):
                     onupdate='CASCADE'))
         assert_raises(exc.SAWarning, bat.create)
 
+
+class TwoPhaseTest(fixtures.TablesTest):
+    """test cx_oracle two phase, which remains in a semi-broken state
+    so requires a carefully written test."""
+
+    __only_on__ = 'oracle+cx_oracle'
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('datatable', metadata,
+                Column('id', Integer, primary_key=True),
+                Column('data', String(50))
+            )
+
+    def _connection(self):
+        conn = testing.db.connect()
+        conn.detach()
+        return conn
+
+    def _assert_data(self, rows):
+        eq_(
+            testing.db.scalar("select count(*) from datatable"),
+            rows
+        )
+    def test_twophase_prepare_false(self):
+        conn = self._connection()
+        for i in xrange(2):
+            trans = conn.begin_twophase()
+            conn.execute("select 1 from dual")
+            trans.prepare()
+            trans.commit()
+        conn.close()
+        self._assert_data(0)
+
+    def test_twophase_prepare_true(self):
+        conn = self._connection()
+        for i in xrange(2):
+            trans = conn.begin_twophase()
+            conn.execute("insert into datatable (id, data) "
+                    "values (%s, 'somedata')" % i)
+            trans.prepare()
+            trans.commit()
+        conn.close()
+        self._assert_data(2)
+
+    def test_twophase_rollback(self):
+        conn = self._connection()
+        trans = conn.begin_twophase()
+        conn.execute("insert into datatable (id, data) "
+                "values (%s, 'somedata')" % 1)
+        trans.rollback()
+
+        trans = conn.begin_twophase()
+        conn.execute("insert into datatable (id, data) "
+                "values (%s, 'somedata')" % 1)
+        trans.prepare()
+        trans.commit()
+
+        conn.close()
+        self._assert_data(1)
+
+    def test_not_prepared(self):
+        conn = self._connection()
+        trans = conn.begin_twophase()
+        conn.execute("insert into datatable (id, data) "
+                "values (%s, 'somedata')" % 1)
+        trans.commit()
+        conn.close()
+        self._assert_data(1)
+
 class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = oracle.OracleDialect()
 
@@ -1244,6 +1314,21 @@ class TypesTest(fixtures.TestBase):
             eq_(t2.c.c3.type.length, 200)
         finally:
             t1.drop()
+
+    @testing.provide_metadata
+    def test_long_type(self):
+        metadata = self.metadata
+
+        t = Table('t', metadata,
+                Column('data', oracle.LONG)
+            )
+        metadata.create_all(testing.db)
+        testing.db.execute(t.insert(), data='xyz')
+        eq_(
+            testing.db.scalar(select([t.c.data])),
+            "xyz"
+        )
+
 
 
     def test_longstring(self):

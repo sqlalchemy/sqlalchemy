@@ -1280,9 +1280,21 @@ class SQLCompiler(engine.Compiled):
         if not colparams and \
                 not self.dialect.supports_default_values and \
                 not self.dialect.supports_empty_insert:
-            raise exc.CompileError("The version of %s you are using does "
-                                    "not support empty inserts." %
+            raise exc.CompileError("The '%s' dialect with current database "
+                                    "version settings does not support empty "
+                                    "inserts." %
                                     self.dialect.name)
+
+        if insert_stmt._has_multi_parameters:
+            if not self.dialect.supports_multirow_insert:
+                raise exc.CompileError("The '%s' dialect with current database "
+                                    "version settings does not support "
+                                    "in-place multirow inserts." %
+                                    self.dialect.name)
+            colparams_single = colparams[0]
+        else:
+            colparams_single = colparams
+
 
         preparer = self.preparer
         supports_default_values = self.dialect.supports_default_values
@@ -1313,9 +1325,9 @@ class SQLCompiler(engine.Compiled):
 
         text += table_text
 
-        if colparams or not supports_default_values:
+        if colparams_single or not supports_default_values:
             text += " (%s)" % ', '.join([preparer.format_column(c[0])
-                       for c in colparams])
+                       for c in colparams_single])
 
         if self.returning or insert_stmt._returning:
             self.returning = self.returning or insert_stmt._returning
@@ -1327,6 +1339,15 @@ class SQLCompiler(engine.Compiled):
 
         if not colparams and supports_default_values:
             text += " DEFAULT VALUES"
+        elif insert_stmt._has_multi_parameters:
+            text += " VALUES %s" % (
+                        ", ".join(
+                            "(%s)" % (
+                                ', '.join(c[1] for c in colparam_set)
+                            )
+                            for colparam_set in colparams
+                            )
+                        )
         else:
             text += " VALUES (%s)" % \
                      ', '.join([c[1] for c in colparams])
@@ -1442,8 +1463,10 @@ class SQLCompiler(engine.Compiled):
 
         return text
 
-    def _create_crud_bind_param(self, col, value, required=False):
-        bindparam = sql.bindparam(col.key, value,
+    def _create_crud_bind_param(self, col, value, required=False, name=None):
+        if name is None:
+            name = col.key
+        bindparam = sql.bindparam(name, value,
                             type_=col.type, required=required,
                             quote=col.quote)
         bindparam._is_crud = True
@@ -1475,6 +1498,11 @@ class SQLCompiler(engine.Compiled):
 
         required = object()
 
+        if stmt._has_multi_parameters:
+            stmt_parameters = stmt.parameters[0]
+        else:
+            stmt_parameters = stmt.parameters
+
         # if we have statement parameters - set defaults in the
         # compiled params
         if self.column_keys is None:
@@ -1482,14 +1510,14 @@ class SQLCompiler(engine.Compiled):
         else:
             parameters = dict((sql._column_as_key(key), required)
                               for key in self.column_keys
-                              if not stmt.parameters or
-                              key not in stmt.parameters)
+                              if not stmt_parameters or
+                              key not in stmt_parameters)
 
         # create a list of column assignment clauses as tuples
         values = []
 
-        if stmt.parameters is not None:
-            for k, v in stmt.parameters.iteritems():
+        if stmt_parameters is not None:
+            for k, v in stmt_parameters.iteritems():
                 colkey = sql._column_as_key(k)
                 if colkey is not None:
                     parameters.setdefault(colkey, v)
@@ -1517,10 +1545,10 @@ class SQLCompiler(engine.Compiled):
         check_columns = {}
         # special logic that only occurs for multi-table UPDATE
         # statements
-        if extra_tables and stmt.parameters:
+        if extra_tables and stmt_parameters:
             normalized_params = dict(
                 (sql._clause_element_as_expr(c), param)
-                for c, param in stmt.parameters.items()
+                for c, param in stmt_parameters.items()
             )
             assert self.isupdate
             affected_tables = set()
@@ -1566,7 +1594,11 @@ class SQLCompiler(engine.Compiled):
                 value = parameters.pop(c.key)
                 if sql._is_literal(value):
                     value = self._create_crud_bind_param(
-                                    c, value, required=value is required)
+                                    c, value, required=value is required,
+                                    name=c.key
+                                        if not stmt._has_multi_parameters
+                                        else "%s_0" % c.key
+                                    )
                 elif c.primary_key and implicit_returning:
                     self.returning.append(c)
                     value = self.process(value.self_group())
@@ -1660,7 +1692,7 @@ class SQLCompiler(engine.Compiled):
                 elif c.server_onupdate is not None:
                     self.postfetch.append(c)
 
-        if parameters and stmt.parameters:
+        if parameters and stmt_parameters:
             check = set(parameters).intersection(
                 sql._column_as_key(k) for k in stmt.parameters
             ).difference(check_columns)
@@ -1669,6 +1701,25 @@ class SQLCompiler(engine.Compiled):
                     "Unconsumed column names: %s" %
                     (", ".join(check))
                 )
+
+        if stmt._has_multi_parameters:
+            values_0 = values
+            values = [values]
+
+            values.extend(
+                [
+                        (
+                            c,
+                                self._create_crud_bind_param(
+                                        c, row[c.key],
+                                        name="%s_%d" % (c.key, i + 1)
+                                )
+                                if c.key in row else param
+                        )
+                        for (c, param) in values_0
+                    ]
+                    for i, row in enumerate(stmt.parameters[1:])
+            )
 
         return values
 

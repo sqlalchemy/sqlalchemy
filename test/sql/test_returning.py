@@ -88,25 +88,40 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
 
         eq_(result.fetchall(), [(1,)])
 
-        @testing.fails_on('postgresql', '')
-        @testing.fails_on('oracle+cx_oracle', '')
-        @testing.crashes('mssql+mxodbc', 'Raises an error')
-        def test_executemany():
-            # return value is documented as failing with psycopg2/executemany
-            result2 = table.insert().returning(table).execute(
-                 [{'persons': 2, 'full': False}, {'persons': 3, 'full': True}])
+    @testing.fails_on('postgresql', 'undefined behavior')
+    @testing.fails_on('oracle+cx_oracle', 'undefined behavior')
+    @testing.crashes('mssql+mxodbc', 'Raises an error')
+    def test_insert_returning_execmany(self):
 
-            if testing.against('mssql+zxjdbc'):
-                # jtds apparently returns only the first row
-                eq_(result2.fetchall(), [(2, 2, False, None)])
-            elif testing.against('firebird', 'mssql', 'oracle'):
-                # Multiple inserts only return the last row
-                eq_(result2.fetchall(), [(3, 3, True, None)])
-            else:
-                # nobody does this as far as we know (pg8000?)
-                eq_(result2.fetchall(), [(2, 2, False, None), (3, 3, True, None)])
+        # return value is documented as failing with psycopg2/executemany
+        result2 = table.insert().returning(table).execute(
+             [{'persons': 2, 'full': False}, {'persons': 3, 'full': True}])
 
-        test_executemany()
+        if testing.against('mssql+zxjdbc'):
+            # jtds apparently returns only the first row
+            eq_(result2.fetchall(), [(2, 2, False, None)])
+        elif testing.against('firebird', 'mssql', 'oracle'):
+            # Multiple inserts only return the last row
+            eq_(result2.fetchall(), [(3, 3, True, None)])
+        else:
+            # nobody does this as far as we know (pg8000?)
+            eq_(result2.fetchall(), [(2, 2, False, None), (3, 3, True, None)])
+
+
+    @testing.requires.multirow_inserts
+    def test_multirow_returning(self):
+        ins = table.insert().returning(table.c.id, table.c.persons).values(
+                            [
+                                {'persons': 1, 'full': False},
+                                {'persons': 2, 'full': True},
+                                {'persons': 3, 'full': False},
+                            ]
+                        )
+        result = testing.db.execute(ins)
+        eq_(
+                result.fetchall(),
+                 [(1, 1), (2, 2), (3, 3)]
+        )
 
     def test_no_ipk_on_returning(self):
         result = testing.db.execute(

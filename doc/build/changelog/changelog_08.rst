@@ -7,6 +7,38 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: sql, feature
+        :tickets: 2623
+
+      The :class:`.Insert` construct now supports multi-valued inserts,
+      that is, an INSERT that renders like
+      "INSERT INTO table VALUES (...), (...), ...".
+      Supported by Postgresql, SQLite, and MySQL.
+      Big thanks to Idan Kamara for doing the legwork on this one.
+
+    .. change::
+        :tags: oracle, bug
+        :tickets: 2620
+
+      The Oracle LONG type, while an unbounded text type, does not appear
+      to use the cx_Oracle.LOB type when result rows are returned,
+      so the dialect has been repaired to exclude LONG from
+      having cx_Oracle.LOB filtering applied.  Also in 0.7.10.
+
+    .. change::
+        :tags: oracle, bug
+        :tickets: 2611
+
+      Repaired the usage of ``.prepare()`` in conjunction with
+      cx_Oracle so that a return value of ``False`` will result
+      in no call to ``connection.commit()``, hence avoiding
+      "no transaction" errors.   Two-phase transactions have
+      now been shown to work in a rudimental fashion with
+      SQLAlchemy and cx_oracle, however are subject to caveats
+      observed with the driver; check the documentation
+      for details.  Also in 0.7.10.
+
+    .. change::
         :tags: sql, bug
         :tickets: 2618
 

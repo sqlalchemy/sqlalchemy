@@ -9,6 +9,28 @@
     :released:
 
     .. change::
+        :tags: oracle, bug
+        :tickets: 2620
+
+      The Oracle LONG type, while an unbounded text type, does not appear
+      to use the cx_Oracle.LOB type when result rows are returned,
+      so the dialect has been repaired to exclude LONG from
+      having cx_Oracle.LOB filtering applied.
+
+    .. change::
+        :tags: oracle, bug
+        :tickets: 2611
+
+      Repaired the usage of ``.prepare()`` in conjunction with
+      cx_Oracle so that a return value of ``False`` will result
+      in no call to ``connection.commit()``, hence avoiding
+      "no transaction" errors.   Two-phase transactions have
+      now been shown to work in a rudimental fashion with
+      SQLAlchemy and cx_oracle, however are subject to caveats
+      observed with the driver; check the documentation
+      for details.
+
+    .. change::
         :tags: orm, bug
         :tickets: 2624
 

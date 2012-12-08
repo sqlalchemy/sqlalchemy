@@ -1882,6 +1882,7 @@ class MySQLDialect(default.DefaultDialect):
 
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
+    supports_multirow_insert = True
 
     default_paramstyle = 'format'
     colspecs = colspecs
