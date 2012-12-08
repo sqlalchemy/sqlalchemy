@@ -7,6 +7,16 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: sql, feature
+        :tickets: 2623
+
+      The :class:`.Insert` construct now supports multi-valued inserts,
+      that is, an INSERT that renders like
+      "INSERT INTO table VALUES (...), (...), ...".
+      Supported by Postgresql, SQLite, and MySQL.
+      Big thanks to Idan Kamara for doing the legwork on this one.
+
+    .. change::
         :tags: oracle, bug
         :tickets: 2620
 

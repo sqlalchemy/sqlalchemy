@@ -88,6 +88,17 @@ class SuiteRequirements(Requirements):
                 )
 
     @property
+    def multirow_inserts(self):
+        """target database must support multiple VALUES clauses in an
+        INSERT statement."""
+
+        return exclusions.skip_if(
+                    lambda: not self.db.dialect.supports_multirow_insert,
+                    "Backend does not support multirow inserts."
+                )
+
+
+    @property
     def implements_get_lastrowid(self):
         """"target dialect implements the executioncontext.get_lastrowid()
         method without reliance on RETURNING.

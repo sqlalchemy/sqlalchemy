@@ -112,31 +112,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             '(%(name)s) RETURNING length(mytable.name) '
                             'AS length_1', dialect=dialect)
 
-    @testing.uses_deprecated('.*argument is deprecated.  Please use '
-                             'statement.returning.*')
-    def test_old_returning_names(self):
-        dialect = postgresql.dialect()
-        table1 = table('mytable', column('myid', Integer), column('name'
-                       , String(128)), column('description',
-                       String(128)))
-        u = update(table1, values=dict(name='foo'),
-                   postgres_returning=[table1.c.myid, table1.c.name])
-        self.assert_compile(u,
-                            'UPDATE mytable SET name=%(name)s '
-                            'RETURNING mytable.myid, mytable.name',
-                            dialect=dialect)
-        u = update(table1, values=dict(name='foo'),
-                   postgresql_returning=[table1.c.myid, table1.c.name])
-        self.assert_compile(u,
-                            'UPDATE mytable SET name=%(name)s '
-                            'RETURNING mytable.myid, mytable.name',
-                            dialect=dialect)
-        i = insert(table1, values=dict(name='foo'),
-                   postgres_returning=[table1.c.myid, table1.c.name])
-        self.assert_compile(i,
-                            'INSERT INTO mytable (name) VALUES '
-                            '(%(name)s) RETURNING mytable.myid, '
-                            'mytable.name', dialect=dialect)
 
     def test_create_partial_index(self):
         m = MetaData()

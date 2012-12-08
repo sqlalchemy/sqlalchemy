@@ -330,15 +330,13 @@ def insert(table, values=None, inline=False, **kwargs):
     :class:`~.schema.Table`.
 
 
-    :param table: The table to be inserted into.
+    :param table: :class:`.TableClause` which is the subject of the insert.
 
-    :param values: A dictionary which specifies the column specifications of
-     the ``INSERT``, and is optional. If left as None, the column
-     specifications are determined from the bind parameters used during the
-     compile phase of the ``INSERT`` statement. If the bind parameters also
-     are None during the compile phase, then the column specifications will be
-     generated from the full list of table columns. Note that the
-     :meth:`~Insert.values()` generative method may also be used for this.
+    :param values: collection of values to be inserted; see
+     :meth:`.Insert.values` for a description of allowed formats here.
+     Can be omitted entirely; a :class:`.Insert` construct will also
+     dynamically render the VALUES clause at execution time based on
+     the parameters passed to :meth:`.Connection.execute`.
 
     :param inline: if True, SQL defaults will be compiled 'inline' into the
       statement and not pre-executed.
@@ -358,7 +356,7 @@ def insert(table, values=None, inline=False, **kwargs):
     ``INSERT`` statement's table, the statement will be correlated
     against the ``INSERT`` statement.
 
-    See also:
+    .. seealso::
 
         :ref:`coretutorial_insert_expressions` - SQL Expression Tutorial
 
@@ -5836,19 +5834,24 @@ class UpdateBase(HasPrefixes, Executable, ClauseElement):
     def _process_colparams(self, parameters):
         def process_single(p):
             if isinstance(p, (list, tuple)):
-                pp = {}
-                for i, c in enumerate(self.table.c):
-                    pp[c.key] = p[i]
-                return pp
+                return dict(
+                    (c.key, pval)
+                    for c, pval in zip(self.table.c, p)
+                )
             else:
                 return p
 
         if isinstance(parameters, (list, tuple)) and \
               isinstance(parameters[0], (list, tuple, dict)):
-            return process_single(parameters[0]), \
-                   [process_single(p) for p in parameters[1:]]
+
+            if not self._supports_multi_parameters:
+                raise exc.InvalidRequestError(
+                    "This construct does not support "
+                    "multiple parameter sets.")
+
+            return [process_single(p) for p in parameters], True
         else:
-            return process_single(parameters), []
+            return process_single(parameters), False
 
     def params(self, *arg, **kw):
         """Set the parameters for the statement.
@@ -5873,19 +5876,6 @@ class UpdateBase(HasPrefixes, Executable, ClauseElement):
     def _set_bind(self, bind):
         self._bind = bind
     bind = property(bind, _set_bind)
-
-    _returning_re = re.compile(r'(?:firebird|postgres(?:ql)?)_returning')
-
-    def _process_deprecated_kw(self, kwargs):
-        for k in list(kwargs):
-            m = self._returning_re.match(k)
-            if m:
-                self._returning = kwargs.pop(k)
-                util.warn_deprecated(
-                    "The %r argument is deprecated.  Please "
-                    "use statement.returning(col1, col2, ...)" % k
-                )
-        return kwargs
 
     @_generative
     def returning(self, *cols):
@@ -5967,16 +5957,34 @@ class ValuesBase(UpdateBase):
 
     __visit_name__ = 'values_base'
 
+    _supports_multi_parameters = False
+    _has_multi_parameters = False
+
     def __init__(self, table, values, prefixes):
         self.table = table
-        self.parameters, self.multi_parameters = self._process_colparams(values)
+        self.parameters, self._has_multi_parameters = \
+                            self._process_colparams(values)
         if prefixes:
             self._setup_prefixes(prefixes)
 
     @_generative
     def values(self, *args, **kwargs):
-        """specify the VALUES clause for an INSERT statement, or the SET
+        """specify a fixed VALUES clause for an INSERT statement, or the SET
         clause for an UPDATE.
+
+        Note that the :class:`.Insert` and :class:`.Update` constructs support
+        per-execution time formatting of the VALUES and/or SET clauses,
+        based on the arguments passed to :meth:`.Connection.execute`.  However,
+        the :meth:`.ValuesBase.values` method can be used to "fix" a particular
+        set of parameters into the statement.
+
+        Multiple calls to :meth:`.ValuesBase.values` will produce a new
+        construct, each one with the parameter list modified to include
+        the new parameters sent.  In the typical case of a single
+        dictionary of parameters, the newly passed keys will replace
+        the same keys in the previous construct.  In the case of a list-based
+        "multiple values" construct, each new list of values is extended
+        onto the existing list of values.
 
         :param \**kwargs: key value pairs representing the string key
           of a :class:`.Column` mapped to the value to be rendered into the
@@ -5986,16 +5994,63 @@ class ValuesBase(UpdateBase):
 
                 users.update().where(users.c.id==5).values(name="some name")
 
-        :param \*args: A single dictionary can be sent as the first positional
-            argument. This allows non-string based keys, such as Column
-            objects, to be used::
+        :param \*args: Alternatively, a dictionary, tuple or list
+         of dictionaries or tuples can be passed as a single positional
+         argument in order to form the VALUES or
+         SET clause of the statement.  The single dictionary form
+         works the same as the kwargs form::
 
-                users.insert().values({users.c.name : "some name"})
+            users.insert().values({"name": "some name"})
 
-                users.update().where(users.c.id==5).values(
-                                {users.c.name: "some name"})
+         If a tuple is passed, the tuple should contain the same number
+         of columns as the target :class:`.Table`::
 
-        See also:
+            users.insert().values((5, "some name"))
+
+         The :class:`.Insert` construct also supports multiply-rendered VALUES
+         construct, for those backends which support this SQL syntax
+         (SQLite, Postgresql, MySQL).  This mode is indicated by passing a list
+         of one or more dictionaries/tuples::
+
+            users.insert().values([
+                                {"name": "some name"},
+                                {"name": "some other name"},
+                                {"name": "yet another name"},
+                            ])
+
+         In the case of an :class:`.Update`
+         construct, only the single dictionary/tuple form is accepted,
+         else an exception is raised.  It is also an exception case to
+         attempt to mix the single-/multiple- value styles together,
+         either through multiple :meth:`.ValuesBase.values` calls
+         or by sending a list + kwargs at the same time.
+
+         .. note::
+
+             Passing a multiple values list is *not* the same
+             as passing a multiple values list to the :meth:`.Connection.execute`
+             method.  Passing a list of parameter sets to :meth:`.ValuesBase.values`
+             produces a construct of this form::
+
+                INSERT INTO table (col1, col2, col3) VALUES
+                                (col1_0, col2_0, col3_0),
+                                (col1_1, col2_1, col3_1),
+                                ...
+
+             whereas a multiple list passed to :meth:`.Connection.execute`
+             has the effect of using the DBAPI
+             `executemany() <http://www.python.org/dev/peps/pep-0249/#id18>`_
+             method, which provides a high-performance system of invoking
+             a single-row INSERT statement many times against a series
+             of parameter sets.   The "executemany" style is supported by
+             all database backends, as it does not depend on a special SQL
+             syntax.
+
+         .. versionadded:: 0.8
+             Support for multiple-VALUES INSERT statements.
+
+
+        .. seealso::
 
             :ref:`inserts_and_updates` - SQL Expression
             Language Tutorial
@@ -6005,23 +6060,48 @@ class ValuesBase(UpdateBase):
             :func:`~.expression.update` - produce an ``UPDATE`` statement
 
         """
-        if self.multi_parameters and kwargs:
-            assert False
+        if self._has_multi_parameters and kwargs:
+            raise exc.InvalidRequestError(
+                        "This construct already has multiple parameter sets.")
+
         if args:
+            if len(args) > 1:
+                raise exc.ArgumentError(
+                            "Only a single dictionary/tuple or list of "
+                            "dictionaries/tuples is accepted positionally.")
             v = args[0]
         else:
             v = {}
 
         if self.parameters is None:
-            self.parameters, self.multi_parameters = self._process_colparams(v)
-            self.parameters.update(kwargs)
+            self.parameters, self._has_multi_parameters = \
+                    self._process_colparams(v)
         else:
-            self.parameters = self.parameters.copy()
-            p, mp = self._process_colparams(v)
-            self.parameters.update(p)
-            for p in mp:
-                self.multi_parameters.update(p)
-            self.parameters.update(kwargs)
+            if self._has_multi_parameters:
+                self.parameters = list(self.parameters)
+                p, self._has_multi_parameters = self._process_colparams(v)
+                if not self._has_multi_parameters:
+                    raise exc.ArgumentError(
+                        "Can't mix single-values and multiple values "
+                        "formats in one statement")
+
+                self.parameters.extend(p)
+            else:
+                self.parameters = self.parameters.copy()
+                p, self._has_multi_parameters = self._process_colparams(v)
+                if self._has_multi_parameters:
+                    raise exc.ArgumentError(
+                        "Can't mix single-values and multiple values "
+                        "formats in one statement")
+                self.parameters.update(p)
+
+        if kwargs:
+            if self._has_multi_parameters:
+                raise exc.ArgumentError(
+                            "Can't pass kwargs and multiple parameter sets "
+                            "simultaenously")
+            else:
+                self.parameters.update(kwargs)
 
 
 class Insert(ValuesBase):
@@ -6037,6 +6117,8 @@ class Insert(ValuesBase):
     """
     __visit_name__ = 'insert'
 
+    _supports_multi_parameters = True
+
     def __init__(self,
                 table,
                 values=None,
@@ -6050,9 +6132,7 @@ class Insert(ValuesBase):
         self.select = None
         self.inline = inline
         self._returning = returning
-
-        if kwargs:
-            self.kwargs = self._process_deprecated_kw(kwargs)
+        self.kwargs = kwargs
 
     def get_children(self, **kwargs):
         if self.select is not None:
@@ -6090,9 +6170,8 @@ class Update(ValuesBase):
         else:
             self._whereclause = None
         self.inline = inline
+        self.kwargs = kwargs
 
-        if kwargs:
-            self.kwargs = self._process_deprecated_kw(kwargs)
 
     def get_children(self, **kwargs):
         if self._whereclause is not None:
@@ -6161,8 +6240,7 @@ class Delete(UpdateBase):
         else:
             self._whereclause = None
 
-        if kwargs:
-            self.kwargs = self._process_deprecated_kw(kwargs)
+        self.kwargs = kwargs
 
     def get_children(self, **kwargs):
         if self._whereclause is not None:

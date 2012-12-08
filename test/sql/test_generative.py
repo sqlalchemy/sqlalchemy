@@ -6,9 +6,9 @@ from sqlalchemy.testing import fixtures, AssertsExecutionResults, \
 from sqlalchemy import testing
 from sqlalchemy.sql.visitors import ClauseVisitor, CloningVisitor, \
     cloned_traverse, ReplacingCloningVisitor
-from sqlalchemy import util, exc
+from sqlalchemy import exc
 from sqlalchemy.sql import util as sql_util
-from sqlalchemy.testing import eq_, ne_, assert_raises
+from sqlalchemy.testing import eq_, is_, assert_raises, assert_raises_message
 
 class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
     """test ClauseVisitor's traversal, particularly its
@@ -1304,8 +1304,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         s = text('select 42', execution_options=dict(foo='bar'))
         assert s._execution_options == dict(foo='bar')
 
-class InsertTest(fixtures.TestBase, AssertsCompiledSQL):
-    """Tests the generative capability of Insert"""
+class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
+    """Tests the generative capability of Insert, Update"""
 
     __dialect__ = 'default'
 
@@ -1351,3 +1351,125 @@ class InsertTest(fixtures.TestBase, AssertsCompiledSQL):
                             "table1 (col1, col2, col3) "
                             "VALUES (:col1, :col2, :col3)")
 
+    def test_add_kwarg(self):
+        i = t1.insert()
+        eq_(i.parameters, None)
+        i = i.values(col1=5)
+        eq_(i.parameters, {"col1": 5})
+        i = i.values(col2=7)
+        eq_(i.parameters, {"col1": 5, "col2": 7})
+
+    def test_via_tuple_single(self):
+        i = t1.insert()
+        eq_(i.parameters, None)
+        i = i.values((5, 6, 7))
+        eq_(i.parameters, {"col1": 5, "col2": 6, "col3": 7})
+
+    def test_kw_and_dict_simulatenously_single(self):
+        i = t1.insert()
+        i = i.values({"col1": 5}, col2=7)
+        eq_(i.parameters, {"col1": 5, "col2": 7})
+
+    def test_via_tuple_multi(self):
+        i = t1.insert()
+        eq_(i.parameters, None)
+        i = i.values([(5, 6, 7), (8, 9, 10)])
+        eq_(i.parameters, [
+                {"col1": 5, "col2": 6, "col3": 7},
+                {"col1": 8, "col2": 9, "col3": 10},
+                ]
+            )
+
+    def test_inline_values_single(self):
+        i = t1.insert(values={"col1": 5})
+        eq_(i.parameters, {"col1": 5})
+        is_(i._has_multi_parameters, False)
+
+    def test_inline_values_multi(self):
+        i = t1.insert(values=[{"col1": 5}, {"col1": 6}])
+        eq_(i.parameters, [{"col1": 5}, {"col1": 6}])
+        is_(i._has_multi_parameters, True)
+
+    def test_add_dictionary(self):
+        i = t1.insert()
+        eq_(i.parameters, None)
+        i = i.values({"col1": 5})
+        eq_(i.parameters, {"col1": 5})
+        is_(i._has_multi_parameters, False)
+
+        i = i.values({"col1": 6})
+        # note replaces
+        eq_(i.parameters, {"col1": 6})
+        is_(i._has_multi_parameters, False)
+
+        i = i.values({"col2": 7})
+        eq_(i.parameters, {"col1": 6, "col2": 7})
+        is_(i._has_multi_parameters, False)
+
+    def test_add_kwarg_disallowed_multi(self):
+        i = t1.insert()
+        i = i.values([{"col1": 5}, {"col1": 7}])
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "This construct already has multiple parameter sets.",
+            i.values, col2=7
+        )
+
+    def test_cant_mix_single_multi_formats_dict_to_list(self):
+        i = t1.insert().values(col1=5)
+        assert_raises_message(
+            exc.ArgumentError,
+            "Can't mix single-values and multiple values "
+            "formats in one statement",
+            i.values, [{"col1": 6}]
+        )
+
+    def test_cant_mix_single_multi_formats_list_to_dict(self):
+        i = t1.insert().values([{"col1": 6}])
+        assert_raises_message(
+            exc.ArgumentError,
+            "Can't mix single-values and multiple values "
+            "formats in one statement",
+            i.values, {"col1": 5}
+        )
+
+    def test_erroneous_multi_args_dicts(self):
+        i = t1.insert()
+        assert_raises_message(
+            exc.ArgumentError,
+            "Only a single dictionary/tuple or list of "
+            "dictionaries/tuples is accepted positionally.",
+            i.values, {"col1": 5}, {"col1": 7}
+        )
+
+    def test_erroneous_multi_args_tuples(self):
+        i = t1.insert()
+        assert_raises_message(
+            exc.ArgumentError,
+            "Only a single dictionary/tuple or list of "
+            "dictionaries/tuples is accepted positionally.",
+            i.values, (5, 6, 7), (8, 9, 10)
+        )
+
+    def test_erroneous_multi_args_plus_kw(self):
+        i = t1.insert()
+        assert_raises_message(
+            exc.ArgumentError,
+            "Can't pass kwargs and multiple parameter sets simultaenously",
+            i.values, [{"col1": 5}], col2=7
+        )
+
+    def test_update_no_support_multi_values(self):
+        u = t1.update()
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "This construct does not support multiple parameter sets.",
+            u.values, [{"col1": 5}, {"col1": 7}]
+        )
+
+    def test_update_no_support_multi_constructor(self):
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "This construct does not support multiple parameter sets.",
+            t1.update, values=[{"col1": 5}, {"col1": 7}]
+        )
