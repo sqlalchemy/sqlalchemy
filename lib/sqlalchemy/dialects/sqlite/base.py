@@ -631,6 +631,9 @@ class SQLiteDialect(default.DefaultDialect):
                                 self.dbapi.sqlite_version_info >= (3, 3, 8)
             self.supports_cast = \
                                 self.dbapi.sqlite_version_info >= (3, 2, 3)
+            self.supports_multivalues_insert = \
+                                self.dbapi.sqlite_version_info >= (3, 7, 11)
+                                #  http://www.sqlite.org/releaselog/3_7_11.html
 
     _isolation_lookup = {
         'READ UNCOMMITTED': 1,
