@@ -8,6 +8,19 @@
 
     .. change::
         :tags: sql, bug
+        :tickets: 2631
+
+      Fixed bug where using server_onupdate=<FetchedValue|DefaultClause>
+      without passing the "for_update=True" flag would apply the default
+      object to the server_default, blowing away whatever was there.
+      The explicit for_update=True argument shouldn't be needed with this usage
+      (especially since the documentation shows an example without it being
+      used) so it is now arranged internally using a copy of the given default
+      object, if the flag isn't set to what corresponds to that argument.
+      Also in 0.7.10.
+
+    .. change::
+        :tags: sql, bug
         :tickets: 2610
 
       Fixed bug whereby using a label_length on dialect that was smaller
