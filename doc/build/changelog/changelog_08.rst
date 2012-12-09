@@ -7,6 +7,14 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: orm, feature
+        :tickets: 2601
+
+      Added :meth:`.KeyedTuple._asdict` and :attr:`.KeyedTuple._fields`
+      to the :class:`.KeyedTuple` class to provide some degree of compatibility
+      with the Python standard library ``collections.namedtuple()``.
+
+    .. change::
         :tags: sql, bug
         :tickets: 2631
 

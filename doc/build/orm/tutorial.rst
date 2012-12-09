@@ -623,7 +623,8 @@ is expressed as tuples:
     fred Fred Flinstone
 
 The tuples returned by :class:`~sqlalchemy.orm.query.Query` are *named*
-tuples, and can be treated much like an ordinary Python object. The names are
+tuples, supplied by the :class:`.KeyedTuple` class, and can be treated much like an
+ordinary Python object. The names are
 the same as the attribute's name for an attribute, and the class name for a
 class:
 
