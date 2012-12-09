@@ -1665,3 +1665,42 @@ class UnicodeSchemaTest(fixtures.TestBase):
         eq_(result, u'’é')
 
 
+class DBLinkReflectionTest(fixtures.TestBase):
+    __requires__ = 'oracle_test_dblink',
+    __only_on__ = 'oracle'
+
+    @classmethod
+    def setup_class(cls):
+        from sqlalchemy.testing import config
+        cls.dblink = config.file_config.get('sqla_testing', 'oracle_db_link')
+
+        with testing.db.connect() as conn:
+            conn.execute(
+                "create table test_table "
+                "(id integer primary key, data varchar2(50))")
+            conn.execute("create synonym test_table_syn "
+                "for test_table@%s" % cls.dblink)
+
+    @classmethod
+    def teardown_class(cls):
+        with testing.db.connect() as conn:
+            conn.execute("drop synonym test_table_syn")
+            conn.execute("drop table test_table")
+
+    def test_hello_world(self):
+        """test that the synonym/dblink is functional."""
+        testing.db.execute("insert into test_table_syn (id, data) "
+                            "values (1, 'some data')")
+        eq_(
+            testing.db.execute("select * from test_table_syn").first(),
+            (1, 'some data')
+        )
+
+    def test_reflection(self):
+        """test the resolution of the synonym/dblink. """
+        m = MetaData()
+
+        t = Table('test_table_syn', m, autoload=True,
+                autoload_with=testing.db, oracle_resolve_synonyms=True)
+        eq_(t.c.keys(), ['id', 'data'])
+        eq_(list(t.primary_key), [t.c.id])

@@ -243,6 +243,7 @@ def _requirements(options, file_config):
 def _post_setup_options(opt, file_config):
     from sqlalchemy.testing import config
     config.options = options
+    config.file_config = file_config
 
 
 @post
@@ -366,9 +367,14 @@ class NoseSQLAlchemy(Plugin):
 
                 if not check.enabled:
                     raise SkipTest(
-                        "'%s' unsupported on DB implementation '%s'" % (
-                         cls.__name__, config.db.name)
+                        check.reason if check.reason
+                        else
+                        (
+                            "'%s' unsupported on DB implementation '%s'" % (
+                                cls.__name__, config.db.name
+                            )
                         )
+                    )
 
         if cls.__unsupported_on__:
             spec = exclusions.db_spec(*cls.__unsupported_on__)

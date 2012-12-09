@@ -7,6 +7,19 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: oracle, bug
+        :tickets: 2619
+
+      Fixed table reflection for Oracle when accessing a synonym that refers
+      to a DBLINK remote database; while the syntax has been present in the
+      Oracle dialect for some time, up until now it has never been tested.
+      The syntax has been tested against a sample database linking to itself,
+      however there's still some uncertainty as to what should be used for the
+      "owner" when querying the remote database for table information.
+      Currently, the value of "username" from user_db_links is used to
+      match the "owner".
+
+    .. change::
         :tags: orm, feature
         :tickets: 2601
 

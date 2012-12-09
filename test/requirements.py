@@ -498,6 +498,14 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(lambda: not self._has_sqlite())
 
     @property
+    def oracle_test_dblink(self):
+        return skip_if(
+                    lambda: not self.config.file_config.has_option(
+                        'sqla_testing', 'oracle_db_link'),
+                    "oracle_db_link option not specified in config"
+                )
+
+    @property
     def ad_hoc_engines(self):
         """Test environment must allow ad-hoc engine/connection creation.
 
