@@ -1229,6 +1229,37 @@ class ColumnDefaultsTest(fixtures.TestBase):
         assert c.server_default is target
         assert target.column is c
 
+    def test_onupdate_default_not_server_default_one(self):
+        target1 = schema.DefaultClause('y')
+        target2 = schema.DefaultClause('z')
+
+        c = self._fixture(server_default=target1, server_onupdate=target2)
+        eq_(c.server_default.arg, 'y')
+        eq_(c.server_onupdate.arg, 'z')
+
+    def test_onupdate_default_not_server_default_two(self):
+        target1 = schema.DefaultClause('y', for_update=True)
+        target2 = schema.DefaultClause('z', for_update=True)
+
+        c = self._fixture(server_default=target1, server_onupdate=target2)
+        eq_(c.server_default.arg, 'y')
+        eq_(c.server_onupdate.arg, 'z')
+
+    def test_onupdate_default_not_server_default_three(self):
+        target1 = schema.DefaultClause('y', for_update=False)
+        target2 = schema.DefaultClause('z', for_update=True)
+
+        c = self._fixture(target1, target2)
+        eq_(c.server_default.arg, 'y')
+        eq_(c.server_onupdate.arg, 'z')
+
+    def test_onupdate_default_not_server_default_four(self):
+        target1 = schema.DefaultClause('y', for_update=False)
+
+        c = self._fixture(server_onupdate=target1)
+        is_(c.server_default, None)
+        eq_(c.server_onupdate.arg, 'y')
+
     def test_server_default_keyword_as_schemaitem(self):
         target = schema.DefaultClause('y')
         c = self._fixture(server_default=target)
