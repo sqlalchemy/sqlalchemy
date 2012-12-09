@@ -2320,7 +2320,7 @@ class ColumnElement(ClauseElement, ColumnOperators):
         return hasattr(other, 'name') and hasattr(self, 'name') and \
                 other.name == self.name
 
-    def _make_proxy(self, selectable, name=None, **kw):
+    def _make_proxy(self, selectable, name=None, name_is_truncatable=False, **kw):
         """Create a new :class:`.ColumnElement` representing this
         :class:`.ColumnElement` as it appears in the select list of a
         descending selectable.
@@ -2331,7 +2331,7 @@ class ColumnElement(ClauseElement, ColumnOperators):
             key = str(self)
         else:
             key = name
-        co = ColumnClause(_as_truncated(name),
+        co = ColumnClause(_as_truncated(name) if name_is_truncatable else name,
                             selectable,
                             type_=getattr(self,
                           'type', None))
@@ -4490,12 +4490,15 @@ class ColumnClause(Immutable, ColumnElement):
                                 _compared_to_type=self.type,
                                 unique=True)
 
-    def _make_proxy(self, selectable, name=None, attach=True, **kw):
+    def _make_proxy(self, selectable, name=None, attach=True,
+                            name_is_truncatable=False, **kw):
         # propagate the "is_literal" flag only if we are keeping our name,
         # otherwise its considered to be a label
         is_literal = self.is_literal and (name is None or name == self.name)
         c = self._constructor(
-                    _as_truncated(name if name else self.name),
+                    _as_truncated(name or self.name) if \
+                                    name_is_truncatable else \
+                                    (name or self.name),
                     selectable=selectable,
                     type_=self.type,
                     is_literal=is_literal
@@ -5727,7 +5730,8 @@ class Select(HasPrefixes, SelectBase):
             if hasattr(c, '_make_proxy'):
                 c._make_proxy(self,
                         name=c._label if self.use_labels else None,
-                        key=c._key_label if self.use_labels else None)
+                        key=c._key_label if self.use_labels else None,
+                        name_is_truncatable=True)
 
     def _refresh_for_new_column(self, column):
         for fromclause in self._froms:
@@ -5738,7 +5742,8 @@ class Select(HasPrefixes, SelectBase):
                     if our_label not in self.c:
                         return col._make_proxy(self,
                             name=col._label if self.use_labels else None,
-                            key=col._key_label if self.use_labels else None)
+                            key=col._key_label if self.use_labels else None,
+                            name_is_truncatable=True)
                 return None
         return None
 

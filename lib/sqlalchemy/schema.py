@@ -945,7 +945,7 @@ class Column(SchemaItem, expression.ColumnClause):
 
         if self.server_default is not None:
             if isinstance(self.server_default, FetchedValue):
-                args.append(self.server_default)
+                args.append(self.server_default._as_for_update(False))
             else:
                 args.append(DefaultClause(self.server_default))
 
@@ -957,7 +957,7 @@ class Column(SchemaItem, expression.ColumnClause):
 
         if self.server_onupdate is not None:
             if isinstance(self.server_onupdate, FetchedValue):
-                args.append(self.server_onupdate)
+                args.append(self.server_onupdate._as_for_update(True))
             else:
                 args.append(DefaultClause(self.server_onupdate,
                                             for_update=True))
@@ -1114,7 +1114,8 @@ class Column(SchemaItem, expression.ColumnClause):
         c.dispatch._update(self.dispatch)
         return c
 
-    def _make_proxy(self, selectable, name=None, key=None):
+    def _make_proxy(self, selectable, name=None, key=None,
+                            name_is_truncatable=False, **kw):
         """Create a *proxy* for this column.
 
         This is a copy of this ``Column`` referenced by a different parent
@@ -1130,7 +1131,8 @@ class Column(SchemaItem, expression.ColumnClause):
                     "been assigned.")
         try:
             c = self._constructor(
-                expression._as_truncated(name or self.name),
+                expression._as_truncated(name or self.name) if \
+                                name_is_truncatable else (name or self.name),
                 self.type,
                 key=key if key else name if name else self.key,
                 primary_key=self.primary_key,
@@ -1851,6 +1853,19 @@ class FetchedValue(_NotAColumnExpr, events.SchemaEventTarget):
 
     def __init__(self, for_update=False):
         self.for_update = for_update
+
+    def _as_for_update(self, for_update):
+        if for_update == self.for_update:
+            return self
+        else:
+            return self._clone(for_update)
+
+    def _clone(self, for_update):
+        n = self.__class__.__new__(self.__class__)
+        n.__dict__.update(self.__dict__)
+        n.__dict__.pop('column', None)
+        n.for_update = for_update
+        return n
 
     def _set_parent(self, column):
         self.column = column
