@@ -491,3 +491,46 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=compile_dialect)
 
 
+    def test_colnames_longer_than_labels_lowercase(self):
+        t1 = table('a', column('abcde'))
+        self._test_colnames_longer_than_labels(t1)
+
+    def test_colnames_longer_than_labels_uppercase(self):
+        m = MetaData()
+        t1 = Table('a', m, Column('abcde', Integer))
+        self._test_colnames_longer_than_labels(t1)
+
+    def _test_colnames_longer_than_labels(self, t1):
+        dialect = default.DefaultDialect(label_length=4)
+        a1 = t1.alias(name='asdf')
+
+        # 'abcde' is longer than 4, but rendered as itself
+        # needs to have all characters
+        s = select([a1])
+        self.assert_compile(
+            select([a1]),
+            "SELECT asdf.abcde FROM a AS asdf",
+            dialect=dialect
+        )
+        compiled = s.compile(dialect=dialect)
+        assert set(compiled.result_map['abcde'][1]).issuperset([
+                    'abcde',
+                    a1.c.abcde,
+                    'abcde'
+                ])
+
+        # column still there, but short label
+        s = select([a1]).apply_labels()
+        self.assert_compile(
+            s,
+            "SELECT asdf.abcde AS _1 FROM a AS asdf",
+            dialect=dialect
+        )
+        compiled = s.compile(dialect=dialect)
+        assert set(compiled.result_map['_1'][1]).issuperset([
+                    'asdf_abcde',
+                    a1.c.abcde,
+                    '_1'
+                ])
+
+

@@ -7,6 +7,14 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: sql, bug
+        :tickets: 2610
+
+      Fixed bug whereby using a label_length on dialect that was smaller
+      than the size of actual column identifiers would fail to render
+      the columns correctly in a SELECT statement.
+
+    .. change::
         :tags: sql, feature
         :tickets: 2623
 

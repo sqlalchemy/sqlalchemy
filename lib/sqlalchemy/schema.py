@@ -1114,7 +1114,8 @@ class Column(SchemaItem, expression.ColumnClause):
         c.dispatch._update(self.dispatch)
         return c
 
-    def _make_proxy(self, selectable, name=None, key=None):
+    def _make_proxy(self, selectable, name=None, key=None,
+                            name_is_truncatable=False, **kw):
         """Create a *proxy* for this column.
 
         This is a copy of this ``Column`` referenced by a different parent
@@ -1130,7 +1131,8 @@ class Column(SchemaItem, expression.ColumnClause):
                     "been assigned.")
         try:
             c = self._constructor(
-                expression._as_truncated(name or self.name),
+                expression._as_truncated(name or self.name) if \
+                                name_is_truncatable else (name or self.name),
                 self.type,
                 key=key if key else name if name else self.key,
                 primary_key=self.primary_key,
