@@ -1,4 +1,5 @@
 # coding: utf-8
+from __future__ import with_statement
 
 from sqlalchemy.testing import eq_
 from sqlalchemy import *
