@@ -659,12 +659,13 @@ class Table(SchemaItem, expression.TableClause):
         args = []
         for c in self.columns:
             args.append(c.copy(schema=schema))
-        for c in self.constraints:
-            args.append(c.copy(schema=schema))
         table = Table(
             self.name, metadata, schema=schema,
             *args, **self.kwargs
             )
+        for c in self.constraints:
+            table.append_constraint(c.copy(schema=schema, target_table=table))
+
         for index in self.indexes:
             # skip indexes that would be generated
             # by the 'index' flag on Column
@@ -2077,7 +2078,8 @@ class CheckConstraint(Constraint):
     """
 
     def __init__(self, sqltext, name=None, deferrable=None,
-                    initially=None, table=None, _create_rule=None):
+                    initially=None, table=None, _create_rule=None,
+                    _autoattach=True):
         """Construct a CHECK constraint.
 
         :param sqltext:
@@ -2102,7 +2104,7 @@ class CheckConstraint(Constraint):
         self.sqltext = expression._literal_as_text(sqltext)
         if table is not None:
             self._set_parent_with_dispatch(table)
-        else:
+        elif _autoattach:
             cols = sqlutil.find_columns(self.sqltext)
             tables = set([c.table for c in cols
                         if c.table is not None])
@@ -2117,12 +2119,23 @@ class CheckConstraint(Constraint):
             return "column_check_constraint"
     __visit_name__ = property(__visit_name__)
 
-    def copy(self, **kw):
-        c = CheckConstraint(self.sqltext,
+    def copy(self, target_table=None, **kw):
+        if target_table is not None:
+            def replace(col):
+                if self.table.c.contains_column(col):
+                    return target_table.c[col.key]
+                else:
+                    return None
+            sqltext = visitors.replacement_traverse(self.sqltext, {}, replace)
+        else:
+            sqltext = self.sqltext
+        c = CheckConstraint(sqltext,
                                 name=self.name,
                                 initially=self.initially,
                                 deferrable=self.deferrable,
-                                _create_rule=self._create_rule)
+                                _create_rule=self._create_rule,
+                                table=target_table,
+                                _autoattach=False)
         c.dispatch._update(self.dispatch)
         return c
 
@@ -2265,10 +2278,10 @@ class ForeignKeyConstraint(Constraint):
             event.listen(table.metadata, "before_drop",
                          DropConstraint(self, on=supports_alter))
 
-    def copy(self, **kw):
+    def copy(self, schema=None, **kw):
         fkc = ForeignKeyConstraint(
                     [x.parent.name for x in self._elements.values()],
-                    [x._get_colspec(**kw) for x in self._elements.values()],
+                    [x._get_colspec(schema=schema) for x in self._elements.values()],
                     name=self.name,
                     onupdate=self.onupdate,
                     ondelete=self.ondelete,

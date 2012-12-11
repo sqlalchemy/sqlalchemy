@@ -599,6 +599,45 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
         c = Index('foo', t.c.a)
         assert c in t.indexes
 
+    def test_tometadata_ok(self):
+        m = MetaData()
+
+        t = Table('tbl', m,
+                  Column('a', Integer),
+                  Column('b', Integer)
+        )
+
+        t2 = Table('t2', m,
+                Column('a', Integer),
+                Column('b', Integer)
+        )
+
+        uq = UniqueConstraint(t.c.a)
+        ck = CheckConstraint(t.c.a > 5)
+        fk = ForeignKeyConstraint([t.c.a], [t2.c.a])
+        pk = PrimaryKeyConstraint(t.c.a)
+
+        m2 = MetaData()
+
+        t3 = t.tometadata(m2)
+
+        eq_(len(t3.constraints), 4)
+
+        for c in t3.constraints:
+            assert c.table is t3
+
+    def test_check_constraint_copy(self):
+        m = MetaData()
+        t = Table('tbl', m,
+                  Column('a', Integer),
+                  Column('b', Integer)
+        )
+        ck = CheckConstraint(t.c.a > 5)
+        ck2 = ck.copy()
+        assert ck in t.constraints
+        assert ck2 not in t.constraints
+
+
     def test_ambig_check_constraint_auto_append(self):
         m = MetaData()
 

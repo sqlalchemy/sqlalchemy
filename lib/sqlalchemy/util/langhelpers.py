@@ -303,6 +303,8 @@ def generic_repr(obj, additional_kw=(), to_inspect=None):
     if to_inspect is None:
         to_inspect = obj
 
+    missing = object()
+
     def genargs():
         try:
             (args, vargs, vkw, defaults) = \
@@ -322,16 +324,16 @@ def generic_repr(obj, additional_kw=(), to_inspect=None):
                 yield repr(getattr(obj, arg, None))
             for (arg, defval) in zip(args[-default_len:], defaults):
                 try:
-                    val = getattr(obj, arg, None)
-                    if val != defval:
+                    val = getattr(obj, arg, missing)
+                    if val is not missing and val != defval:
                         yield '%s=%r' % (arg, val)
                 except:
                     pass
         if additional_kw:
             for arg, defval in additional_kw:
                 try:
-                    val = getattr(obj, arg, None)
-                    if val != defval:
+                    val = getattr(obj, arg, missing)
+                    if val is not missing and val != defval:
                         yield '%s=%r' % (arg, val)
                 except:
                     pass

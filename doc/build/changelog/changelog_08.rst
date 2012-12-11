@@ -7,6 +7,17 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: sql, bug
+        :tickets: 2633
+
+      Fixed a regression caused by :ticket:`2410` whereby a
+      :class:`.CheckConstraint` would apply itself back to the
+      original table during a :meth:`.Table.tometadata` operation, as
+      it would parse the SQL expression for a parent table. The
+      operation now copies the given expression to correspond to the
+      new table.
+
+    .. change::
         :tags: oracle, bug
         :tickets: 2619
 
