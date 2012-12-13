@@ -1815,6 +1815,45 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         )
 
 
+    def test_aliased_class_vs_nonaliased(self):
+        User, users = self.classes.User, self.tables.users
+        mapper(User, users)
+
+        ua = aliased(User)
+
+        sess = create_session()
+        self.assert_compile(
+            sess.query(User).select_from(ua).join(User, ua.name > User.name),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users AS users_1 JOIN users ON users.name < users_1.name"
+        )
+
+        self.assert_compile(
+            sess.query(User.name).select_from(ua).join(User, ua.name > User.name),
+            "SELECT users.name AS users_name FROM users AS users_1 "
+            "JOIN users ON users.name < users_1.name"
+        )
+
+        self.assert_compile(
+            sess.query(ua.name).select_from(ua).join(User, ua.name > User.name),
+            "SELECT users_1.name AS users_1_name FROM users AS users_1 "
+            "JOIN users ON users.name < users_1.name"
+        )
+
+        self.assert_compile(
+            sess.query(ua).select_from(User).join(ua, ua.name > User.name),
+            "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
+            "FROM users JOIN users AS users_1 ON users.name < users_1.name"
+        )
+
+        # this is tested in many other places here, just adding it
+        # here for comparison
+        self.assert_compile(
+            sess.query(User.name).\
+                    select_from(users.select().where(users.c.id > 5)),
+            "SELECT anon_1.name AS anon_1_name FROM (SELECT users.id AS id, "
+            "users.name AS name FROM users WHERE users.id > :id_1) AS anon_1"
+        )
 
     def test_join_no_order_by(self):
         User, users = self.classes.User, self.tables.users

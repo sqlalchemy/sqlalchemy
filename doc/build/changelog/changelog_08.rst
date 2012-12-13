@@ -7,6 +7,75 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: orm, bug
+        :tickets: 2635
+
+      The :meth:`.Query.select_from` method can now be used with a
+      :func:`.aliased` construct without it interfering with the entities
+      being selected.   Basically, a statement like this::
+
+        ua = aliased(User)
+        session.query(User.name).select_from(ua).join(User, User.name > ua.name)
+
+      Will maintain the columns clause of the SELECT as coming from the
+      unaliased "user", as specified; the select_from only takes place in the
+      FROM clause::
+
+        SELECT users.name AS users_name FROM users AS users_1
+        JOIN users ON users.name < users_1.name
+
+      Note that this behavior is in contrast
+      to the original, older use case for :meth:`.Query.select_from`, which is that
+      of restating the mapped entity in terms of a different selectable::
+
+        session.query(User.name).\
+          select_from(user_table.select().where(user_table.c.id > 5))
+
+      Which produces::
+
+        SELECT anon_1.name AS anon_1_name FROM (SELECT users.id AS id,
+        users.name AS name FROM users WHERE users.id > :id_1) AS anon_1
+
+      It was the "aliasing" behavior of the latter use case that was
+      getting in the way of the former use case.   The method now
+      specifically considers a SQL expression like
+      :func:`.expression.select` or :func:`.expression.alias`
+      separately from a mapped entity like a :func:`.aliased`
+      construct.
+
+    .. change::
+        :tags: sql, bug
+        :tickets: 2633
+
+      Fixed a regression caused by :ticket:`2410` whereby a
+      :class:`.CheckConstraint` would apply itself back to the
+      original table during a :meth:`.Table.tometadata` operation, as
+      it would parse the SQL expression for a parent table. The
+      operation now copies the given expression to correspond to the
+      new table.
+
+    .. change::
+        :tags: oracle, bug
+        :tickets: 2619
+
+      Fixed table reflection for Oracle when accessing a synonym that refers
+      to a DBLINK remote database; while the syntax has been present in the
+      Oracle dialect for some time, up until now it has never been tested.
+      The syntax has been tested against a sample database linking to itself,
+      however there's still some uncertainty as to what should be used for the
+      "owner" when querying the remote database for table information.
+      Currently, the value of "username" from user_db_links is used to
+      match the "owner".
+
+    .. change::
+        :tags: orm, feature
+        :tickets: 2601
+
+      Added :meth:`.KeyedTuple._asdict` and :attr:`.KeyedTuple._fields`
+      to the :class:`.KeyedTuple` class to provide some degree of compatibility
+      with the Python standard library ``collections.namedtuple()``.
+
+    .. change::
         :tags: sql, bug
         :tickets: 2631
 

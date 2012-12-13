@@ -32,6 +32,9 @@ ORM-Specific Query Constructs
 
 .. autoclass:: sqlalchemy.orm.util.AliasedInsp
 
+.. autoclass:: sqlalchemy.util.KeyedTuple
+	:members: keys, _fields, _asdict
+
 .. autofunction:: join
 
 .. autofunction:: outerjoin
