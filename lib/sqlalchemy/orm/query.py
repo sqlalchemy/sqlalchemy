@@ -163,17 +163,29 @@ class Query(object):
                 self._polymorphic_adapters[m.local_table] = adapter
 
     def _set_select_from(self, *obj):
-
         fa = []
+        select_from_alias = None
         for from_obj in obj:
-            if isinstance(from_obj, expression.SelectBase):
-                from_obj = from_obj.alias()
-            fa.append(from_obj)
+            info = inspect(from_obj)
+
+            if hasattr(info, 'mapper') and \
+                (info.is_mapper or info.is_aliased_class):
+                self._select_from_entity = from_obj
+                fa.append(info.selectable)
+            elif not info.is_selectable:
+                raise sa_exc.ArgumentError(
+                        "argument is not a mapped class, mapper, "
+                        "aliased(), or FromClause instance.")
+            else:
+                if isinstance(from_obj, expression.SelectBase):
+                    from_obj = from_obj.alias()
+                select_from_alias = from_obj
+                fa.append(from_obj)
 
         self._from_obj = tuple(fa)
 
         if len(self._from_obj) == 1 and \
-            isinstance(self._from_obj[0], expression.Alias):
+            isinstance(select_from_alias, expression.Alias):
             equivs = self.__all_equivs()
             self._from_obj_alias = sql_util.ColumnAdapter(
                                                 self._from_obj[0], equivs)
@@ -2011,20 +2023,8 @@ class Query(object):
         usage of :meth:`~.Query.select_from`.
 
         """
-        obj = []
-        for fo in from_obj:
-            info = inspect(fo)
-            if hasattr(info, 'mapper') and \
-                (info.is_mapper or info.is_aliased_class):
-                self._select_from_entity = fo
-                obj.append(info.selectable)
-            elif not info.is_selectable:
-                raise sa_exc.ArgumentError(
-                            "select_from() accepts FromClause objects only.")
-            else:
-                obj.append(fo)
 
-        self._set_select_from(*obj)
+        self._set_select_from(*from_obj)
 
     def __getitem__(self, item):
         if isinstance(item, slice):

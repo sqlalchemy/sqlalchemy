@@ -7,6 +7,43 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: orm, bug
+        :tickets: 2635
+
+      The :meth:`.Query.select_from` method can now be used with a
+      :func:`.aliased` construct without it interfering with the entities
+      being selected.   Basically, a statement like this::
+
+        ua = aliased(User)
+        session.query(User.name).select_from(ua).join(User, User.name > ua.name)
+
+      Will maintain the columns clause of the SELECT as coming from the
+      unaliased "user", as specified; the select_from only takes place in the
+      FROM clause::
+
+        SELECT users.name AS users_name FROM users AS users_1
+        JOIN users ON users.name < users_1.name
+
+      Note that this behavior is in contrast
+      to the original, older use case for :meth:`.Query.select_from`, which is that
+      of restating the mapped entity in terms of a different selectable::
+
+        session.query(User.name).\
+          select_from(user_table.select().where(user_table.c.id > 5))
+
+      Which produces::
+
+        SELECT anon_1.name AS anon_1_name FROM (SELECT users.id AS id,
+        users.name AS name FROM users WHERE users.id > :id_1) AS anon_1
+
+      It was the "aliasing" behavior of the latter use case that was
+      getting in the way of the former use case.   The method now
+      specifically considers a SQL expression like
+      :func:`.expression.select` or :func:`.expression.alias`
+      separately from a mapped entity like a :func:`.aliased`
+      construct.
+
+    .. change::
         :tags: sql, bug
         :tickets: 2633
 
