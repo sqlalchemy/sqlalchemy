@@ -7,6 +7,16 @@
     :version: 0.8.0b2
 
     .. change::
+        :tags: sqlite, bug
+        :tickets: 2568
+
+      More adjustment to this SQLite related issue which was released in
+      0.7.9, to intercept legacy SQLite quoting characters when reflecting
+      foreign keys.  In addition to intercepting double quotes, other
+      quoting characters such as brackets, backticks, and single quotes
+      are now also intercepted.  Also in 0.7.10.
+
+    .. change::
         :tags: orm, bug
         :tickets: 2635
 
