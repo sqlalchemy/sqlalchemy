@@ -5,6 +5,7 @@
 
 .. changelog::
     :version: 0.8.0b2
+    :released: December 14, 2012
 
     .. change::
         :tags: sqlite, bug
