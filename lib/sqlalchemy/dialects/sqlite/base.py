@@ -885,8 +885,6 @@ class SQLiteDialect(default.DefaultDialect):
             fkeys.append(fk)
             fks[numerical_id] = fk
 
-        # look up the table based on the given table's engine, not 'self',
-        # since it could be a ProxyEngine
         if lcol not in fk['constrained_columns']:
             fk['constrained_columns'].append(lcol)
         if rcol not in fk['referred_columns']:
