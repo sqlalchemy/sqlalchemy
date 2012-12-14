@@ -28,6 +28,16 @@
       logic's failure to take .key into account.
 
     .. change::
+        :tags: sqlite, bug
+        :tickets: 2568
+
+      More adjustment to this SQLite related issue which was released in
+      0.7.9, to intercept legacy SQLite quoting characters when reflecting
+      foreign keys.  In addition to intercepting double quotes, other
+      quoting characters such as brackets, backticks, and single quotes
+      are now also intercepted.
+
+    .. change::
         :tags: sql, bug
         :tickets: 2631
 

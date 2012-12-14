@@ -550,6 +550,8 @@ class SQLiteDialect(default.DefaultDialect):
     supports_cast = True
     supports_default_values = True
 
+    _broken_fk_pragma_quotes = False
+
     def __init__(self, isolation_level=None, native_datetime=False, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
         self.isolation_level = isolation_level
@@ -565,6 +567,12 @@ class SQLiteDialect(default.DefaultDialect):
                                 self.dbapi.sqlite_version_info >= (3, 3, 8)
             self.supports_cast = \
                                 self.dbapi.sqlite_version_info >= (3, 2, 3)
+
+            # see http://www.sqlalchemy.org/trac/ticket/2568
+            # as well as http://www.sqlite.org/src/info/600482d161
+            self._broken_fk_pragma_quotes = \
+                                self.dbapi.sqlite_version_info < (3, 6, 14)
+
 
     _isolation_lookup = {
         'READ UNCOMMITTED':1,
@@ -772,7 +780,8 @@ class SQLiteDialect(default.DefaultDialect):
         else:
             pragma = "PRAGMA "
         qtable = quote(table_name)
-        c = _pragma_cursor(connection.execute("%sforeign_key_list(%s)" % (pragma, qtable)))
+        statement = "%sforeign_key_list(%s)" % (pragma, qtable)
+        c = _pragma_cursor(connection.execute(statement))
         fkeys = []
         fks = {}
         while True:
@@ -780,36 +789,37 @@ class SQLiteDialect(default.DefaultDialect):
             if row is None:
                 break
             (numerical_id, rtbl, lcol, rcol) = (row[0], row[2], row[3], row[4])
-            # sqlite won't return rcol if the table
-            # was created with REFERENCES <tablename>, no col
-            if rcol is None:
-                rcol = lcol
 
-            # see http://www.sqlalchemy.org/trac/ticket/2568
-            # as well as http://www.sqlite.org/src/info/600482d161
-            if self.dbapi.sqlite_version_info < (3, 6, 14):
-                rtbl = re.sub(r'^\"|\"$', '', rtbl)
-
-            try:
-                fk = fks[numerical_id]
-            except KeyError:
-                fk = {
-                    'name': None,
-                    'constrained_columns' : [],
-                    'referred_schema' : None,
-                    'referred_table' : rtbl,
-                    'referred_columns' : []
-                }
-                fkeys.append(fk)
-                fks[numerical_id] = fk
-
-            # look up the table based on the given table's engine, not 'self',
-            # since it could be a ProxyEngine
-            if lcol not in fk['constrained_columns']:
-                fk['constrained_columns'].append(lcol)
-            if rcol not in fk['referred_columns']:
-                fk['referred_columns'].append(rcol)
+            self._parse_fk(fks, fkeys, numerical_id, rtbl, lcol, rcol)
         return fkeys
+
+    def _parse_fk(self, fks, fkeys, numerical_id, rtbl, lcol, rcol):
+        # sqlite won't return rcol if the table
+        # was created with REFERENCES <tablename>, no col
+        if rcol is None:
+            rcol = lcol
+
+        if self._broken_fk_pragma_quotes:
+            rtbl = re.sub(r'^[\"\[`\']|[\"\]`\']$', '', rtbl)
+
+        try:
+            fk = fks[numerical_id]
+        except KeyError:
+            fk = {
+                'name': None,
+                'constrained_columns': [],
+                'referred_schema': None,
+                'referred_table': rtbl,
+                'referred_columns': []
+            }
+            fkeys.append(fk)
+            fks[numerical_id] = fk
+
+        if lcol not in fk['constrained_columns']:
+            fk['constrained_columns'].append(lcol)
+        if rcol not in fk['referred_columns']:
+            fk['referred_columns'].append(rcol)
+        return fk
 
     @reflection.cache
     def get_indexes(self, connection, table_name, schema=None, **kw):

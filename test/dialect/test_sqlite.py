@@ -314,7 +314,7 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
             meta.drop_all()
 
     @testing.provide_metadata
-    def test_quoted_identifiers_one(self):
+    def test_quoted_identifiers_functional_one(self):
         """Tests autoload of tables created with quoted column names."""
 
         metadata = self.metadata
@@ -340,7 +340,7 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
                 == table2.c.id)
 
     @testing.provide_metadata
-    def test_quoted_identifiers_two(self):
+    def test_quoted_identifiers_functional_two(self):
         """"test the edgiest of edge cases, quoted table/col names
         that start and end with quotes.
 
@@ -374,6 +374,30 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         #j = table1.join(table2)
         #assert j.onclause.compare(table1.c['"id"']
         #        == table2.c['"aid"'])
+
+    def test_legacy_quoted_identifiers_unit(self):
+        dialect = sqlite.dialect()
+        dialect._broken_fk_pragma_quotes = True
+
+
+        for row in [
+            (0, 'target', 'tid', 'id'),
+            (0, '"target"', 'tid', 'id'),
+            (0, '[target]', 'tid', 'id'),
+            (0, "'target'", 'tid', 'id'),
+            (0, '`target`', 'tid', 'id'),
+        ]:
+            fks = {}
+            fkeys = []
+            dialect._parse_fk(fks, fkeys, *row)
+            eq_(fkeys, [{
+                    'referred_table': 'target',
+                    'referred_columns': ['id'],
+                    'referred_schema': None,
+                    'name': None,
+                    'constrained_columns': ['tid']
+                }])
+
 
     def test_attached_as_schema(self):
         cx = testing.db.connect()
