@@ -481,7 +481,7 @@ and ``.contains()`` is available for a proxy to a scalar collection::
 :class:`.AssociationProxy` can be used with :meth:`.Query.join` somewhat manually
 using the :attr:`~.AssociationProxy.attr` attribute in a star-args context::
 
-    q = session.query(User).join(*User.keywords)
+    q = session.query(User).join(*User.keywords.attr)
 
 .. versionadded:: 0.7.3
     :attr:`~.AssociationProxy.attr` attribute in a star-args context.
