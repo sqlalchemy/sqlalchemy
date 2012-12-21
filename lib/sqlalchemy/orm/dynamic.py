@@ -286,6 +286,12 @@ class AppenderMixin(object):
 
         return query
 
+    def extend(self, iterator):
+        for item in iterator:
+            self.attr.append(
+                attributes.instance_state(self.instance),
+                attributes.instance_dict(self.instance), item, None)
+
     def append(self, item):
         self.attr.append(
             attributes.instance_state(self.instance),
