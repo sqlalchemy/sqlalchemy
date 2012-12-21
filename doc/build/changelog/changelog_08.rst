@@ -8,6 +8,16 @@
     :released: December 14, 2012
 
     .. change::
+        :tags: orm, bug
+        :tickets: 2637
+
+      Fixes to the "dynamic" loader on :func:`.relationship`, includes
+      that backrefs will work properly even when autoflush is disabled,
+      history events are more accurate in scenarios where multiple add/remove
+      of the same object occurs, as can often be the case in conjunction
+      with the association proxy.
+
+    .. change::
         :tags: sqlite, bug
         :tickets: 2568
 

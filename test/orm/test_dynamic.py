@@ -1,9 +1,9 @@
-from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_, is_
 from sqlalchemy.orm import backref, configure_mappers
 from sqlalchemy import testing
 from sqlalchemy import desc, select, func, exc
 from sqlalchemy.orm import mapper, relationship, create_session, Query, \
-                    attributes, exc as orm_exc
+                    attributes, exc as orm_exc, Session
 from sqlalchemy.orm.dynamic import AppenderMixin
 from sqlalchemy.testing import AssertsCompiledSQL, \
         assert_raises_message, assert_raises
@@ -591,6 +591,16 @@ class UOWTest(_DynamicFixture, _fixtures.FixtureTest):
     def test_backref_savead(self):
         self._backref_test(False, False)
 
+    def test_backref_events(self):
+        User, Address = self._user_address_fixture(addresses_args={
+                            "backref": "user",
+            })
+
+        u1 = User()
+        a1 = Address()
+        u1.addresses.append(a1)
+        is_(a1.user, u1)
+
     def test_no_deref(self):
         User, Address = self._user_address_fixture(addresses_args={
                             "backref": "user",
@@ -626,4 +636,162 @@ class UOWTest(_DynamicFixture, _fixtures.FixtureTest):
         eq_(query2(), [Address(email_address='joe@joesdomain.example')])
         eq_(query3(), [Address(email_address='joe@joesdomain.example')])
 
+class HistoryTest(_DynamicFixture, _fixtures.FixtureTest):
+    run_inserts = None
 
+    def _transient_fixture(self):
+        User, Address = self._user_address_fixture()
+
+        u1 = User()
+        a1 = Address()
+        return u1, a1
+
+    def _persistent_fixture(self, autoflush=True):
+        User, Address = self._user_address_fixture()
+
+        u1 = User(name='u1')
+        a1 = Address(email_address='a1')
+        s = Session(autoflush=autoflush)
+        s.add(u1)
+        s.flush()
+        return u1, a1, s
+
+    def _assert_history(self, obj, compare):
+        eq_(
+            attributes.get_history(obj, 'addresses'),
+            compare
+        )
+
+        eq_(
+            attributes.get_history(obj, 'addresses',
+                        attributes.LOAD_AGAINST_COMMITTED),
+            compare
+        )
+
+    def test_append_transient(self):
+        u1, a1 = self._transient_fixture()
+        u1.addresses.append(a1)
+
+        self._assert_history(u1,
+            ([a1], [], [])
+        )
+
+    def test_append_persistent(self):
+        u1, a1, s = self._persistent_fixture()
+        u1.addresses.append(a1)
+
+        self._assert_history(u1,
+            ([a1], [], [])
+        )
+
+    def test_remove_transient(self):
+        u1, a1 = self._transient_fixture()
+        u1.addresses.append(a1)
+        u1.addresses.remove(a1)
+
+        self._assert_history(u1,
+            ([], [], [])
+        )
+
+    def test_remove_persistent(self):
+        u1, a1, s = self._persistent_fixture()
+        u1.addresses.append(a1)
+        s.flush()
+        s.expire_all()
+
+        u1.addresses.remove(a1)
+
+        self._assert_history(u1,
+            ([], [], [a1])
+        )
+
+    def test_unchanged_persistent(self):
+        Address = self.classes.Address
+
+        u1, a1, s = self._persistent_fixture()
+        a2, a3 = Address(email_address='a2'), Address(email_address='a3')
+
+        u1.addresses.append(a1)
+        u1.addresses.append(a2)
+        s.flush()
+
+        u1.addresses.append(a3)
+        u1.addresses.remove(a2)
+
+        self._assert_history(u1,
+            ([a3], [a1], [a2])
+        )
+
+    def test_replace_transient(self):
+        Address = self.classes.Address
+
+        u1, a1 = self._transient_fixture()
+        a2, a3, a4, a5 = Address(email_address='a2'), \
+                            Address(email_address='a3'), \
+                            Address(email_address='a4'), \
+                            Address(email_address='a5')
+
+        u1.addresses = [a1, a2]
+        u1.addresses = [a2, a3, a4, a5]
+
+        self._assert_history(u1,
+            ([a2, a3, a4, a5], [], [])
+        )
+
+    def test_replace_persistent_noflush(self):
+        Address = self.classes.Address
+
+        u1, a1, s = self._persistent_fixture(autoflush=False)
+        a2, a3, a4, a5 = Address(email_address='a2'), \
+                            Address(email_address='a3'), \
+                            Address(email_address='a4'), \
+                            Address(email_address='a5')
+
+        u1.addresses = [a1, a2]
+        u1.addresses = [a2, a3, a4, a5]
+
+        self._assert_history(u1,
+            ([a2, a3, a4, a5], [], [])
+        )
+
+    def test_replace_persistent_autoflush(self):
+        Address = self.classes.Address
+
+        u1, a1, s = self._persistent_fixture(autoflush=True)
+        a2, a3, a4, a5 = Address(email_address='a2'), \
+                            Address(email_address='a3'), \
+                            Address(email_address='a4'), \
+                            Address(email_address='a5')
+
+        u1.addresses = [a1, a2]
+        u1.addresses = [a2, a3, a4, a5]
+
+        self._assert_history(u1,
+            ([a3, a4, a5], [a2], [a1])
+        )
+
+
+    def test_persistent_but_readded_noflush(self):
+        u1, a1, s = self._persistent_fixture(autoflush=False)
+        u1.addresses.append(a1)
+        s.flush()
+
+        u1.addresses.append(a1)
+
+        self._assert_history(u1, ([], [a1], []))
+
+    def test_persistent_but_readded_autoflush(self):
+        u1, a1, s = self._persistent_fixture(autoflush=True)
+        u1.addresses.append(a1)
+        s.flush()
+
+        u1.addresses.append(a1)
+
+        self._assert_history(u1, ([], [a1], []))
+
+    def test_missing_but_removed_noflush(self):
+        u1, a1, s = self._persistent_fixture(autoflush=False)
+
+        u1.addresses.remove(a1)
+
+        self._assert_history(u1, ([], [], []))

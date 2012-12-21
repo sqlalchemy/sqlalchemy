@@ -795,9 +795,10 @@ def bulk_replace(values, existing_adapter, new_adapter):
         values = list(values)
 
     idset = util.IdentitySet
-    constants = idset(existing_adapter or ()).intersection(values or ())
+    existing_idset = idset(existing_adapter or ())
+    constants = existing_idset.intersection(values or ())
     additions = idset(values or ()).difference(constants)
-    removals = idset(existing_adapter or ()).difference(constants)
+    removals = existing_idset.difference(constants)
 
     for member in values or ():
         if member in additions:
