@@ -656,16 +656,19 @@ class HistoryTest(_DynamicFixture, _fixtures.FixtureTest):
         s.flush()
         return u1, a1, s
 
-    def _assert_history(self, obj, compare):
+    def _assert_history(self, obj, compare, compare_passive=None):
         eq_(
             attributes.get_history(obj, 'addresses'),
             compare
         )
 
+        if compare_passive is None:
+            compare_passive = compare
+
         eq_(
             attributes.get_history(obj, 'addresses',
                         attributes.LOAD_AGAINST_COMMITTED),
-            compare
+            compare_passive
         )
 
     def test_append_transient(self):
@@ -719,7 +722,8 @@ class HistoryTest(_DynamicFixture, _fixtures.FixtureTest):
         u1.addresses.remove(a2)
 
         self._assert_history(u1,
-            ([a3], [a1], [a2])
+            ([a3], [a1], [a2]),
+            compare_passive=([a3], [], [a2])
         )
 
     def test_replace_transient(self):
@@ -767,7 +771,8 @@ class HistoryTest(_DynamicFixture, _fixtures.FixtureTest):
         u1.addresses = [a2, a3, a4, a5]
 
         self._assert_history(u1,
-            ([a3, a4, a5], [a2], [a1])
+            ([a3, a4, a5], [a2], [a1]),
+            compare_passive=([a3, a4, a5], [], [a1])
         )
 
 
@@ -778,7 +783,10 @@ class HistoryTest(_DynamicFixture, _fixtures.FixtureTest):
 
         u1.addresses.append(a1)
 
-        self._assert_history(u1, ([], [a1], []))
+        self._assert_history(u1,
+            ([], [a1], []),
+            compare_passive=([a1], [], [])
+        )
 
     def test_persistent_but_readded_autoflush(self):
         u1, a1, s = self._persistent_fixture(autoflush=True)
@@ -787,11 +795,17 @@ class HistoryTest(_DynamicFixture, _fixtures.FixtureTest):
 
         u1.addresses.append(a1)
 
-        self._assert_history(u1, ([], [a1], []))
+        self._assert_history(u1,
+            ([], [a1], []),
+            compare_passive=([a1], [], [])
+        )
 
     def test_missing_but_removed_noflush(self):
         u1, a1, s = self._persistent_fixture(autoflush=False)
 
         u1.addresses.remove(a1)
 
-        self._assert_history(u1, ([], [], []))
+        self._assert_history(u1,
+                    ([], [], []),
+                    compare_passive=([], [], [a1])
+                )

@@ -14,8 +14,7 @@
       Fixes to the "dynamic" loader on :func:`.relationship`, includes
       that backrefs will work properly even when autoflush is disabled,
       history events are more accurate in scenarios where multiple add/remove
-      of the same object occurs, as can often be the case in conjunction
-      with the association proxy.
+      of the same object occurs.
 
     .. change::
         :tags: sqlite, bug

@@ -180,7 +180,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         else:
             c = CollectionHistory(self, state)
 
-        if state.has_identity:
+        if state.has_identity and (passive & attributes.INIT_OK):
             return CollectionHistory(self, state, apply_to=c)
         else:
             return c
@@ -314,10 +314,12 @@ class CollectionHistory(object):
             self.unchanged_items = util.OrderedIdentitySet(coll)
             self.added_items = apply_to.added_items
             self.deleted_items = apply_to.deleted_items
+            self._reconcile_collection = True
         else:
             self.deleted_items = util.OrderedIdentitySet()
             self.added_items = util.OrderedIdentitySet()
             self.unchanged_items = util.OrderedIdentitySet()
+            self._reconcile_collection = False
 
     @property
     def added_plus_unchanged(self):
@@ -329,10 +331,14 @@ class CollectionHistory(object):
                         self.unchanged_items).union(self.deleted_items))
 
     def as_history(self):
-        added = self.added_items.difference(self.unchanged_items)
-        deleted = self.deleted_items.intersection(self.unchanged_items)
-        unchanged = self.unchanged_items.difference(deleted)
-
+        if self._reconcile_collection:
+            added = self.added_items.difference(self.unchanged_items)
+            deleted = self.deleted_items.intersection(self.unchanged_items)
+            unchanged = self.unchanged_items.difference(deleted)
+        else:
+            added, unchanged, deleted = self.added_items,\
+                                            self.unchanged_items,\
+                                            self.deleted_items
         return attributes.History(
                     list(added),
                     list(unchanged),
