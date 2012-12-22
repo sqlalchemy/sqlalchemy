@@ -195,6 +195,9 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         if initiator is not self:
             self.fire_remove_event(state, dict_, value, initiator)
 
+    def pop(self, state, dict_, value, initiator,
+                                            passive=attributes.PASSIVE_OFF):
+        self.remove(state, dict_, value, initiator, passive=passive)
 
 
 class AppenderMixin(object):

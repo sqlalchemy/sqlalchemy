@@ -9,6 +9,9 @@ from sqlalchemy.testing import AssertsCompiledSQL, \
         assert_raises_message, assert_raises
 from test.orm import _fixtures
 
+from sqlalchemy.testing.assertsql import CompiledSQL
+
+
 
 class _DynamicFixture(object):
     def _user_address_fixture(self, addresses_args={}):
@@ -23,6 +26,23 @@ class _DynamicFixture(object):
         })
         mapper(Address, addresses)
         return User, Address
+
+    def _order_item_fixture(self, items_args={}):
+        items, Order, orders, order_items, Item = (self.tables.items,
+                                self.classes.Order,
+                                self.tables.orders,
+                                self.tables.order_items,
+                                self.classes.Item)
+
+        mapper(Order, orders, properties={
+            'items': relationship(Item,
+                            secondary=order_items,
+                            lazy="dynamic",
+                            **items_args
+                        )
+        })
+        mapper(Item, items)
+        return Order, Item
 
 class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
 
@@ -200,20 +220,9 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
     def test_m2m(self):
-        items, Order, orders, order_items, Item = (self.tables.items,
-                                self.classes.Order,
-                                self.tables.orders,
-                                self.tables.order_items,
-                                self.classes.Item)
-
-        mapper(Order, orders, properties={
-            'items': relationship(Item,
-                            secondary=order_items,
-                            lazy="dynamic",
-                            backref=backref('orders', lazy="dynamic")
-                        )
-        })
-        mapper(Item, items)
+        Order, Item = self._order_item_fixture(items_args={
+                "backref": backref("orders", lazy="dynamic")
+            })
 
         sess = create_session()
         o1 = Order(id=15, description="order 10")
@@ -336,7 +345,8 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         eq_(type(q).__name__, 'MyQuery')
 
 
-class UOWTest(_DynamicFixture, _fixtures.FixtureTest):
+class UOWTest(_DynamicFixture, _fixtures.FixtureTest,
+                    testing.AssertsExecutionResults):
     run_inserts = None
 
     def test_persistence(self):
@@ -460,6 +470,73 @@ class UOWTest(_DynamicFixture, _fixtures.FixtureTest):
         eq_(list(u1.addresses), [a2, a3])
         u1.addresses = []
         eq_(list(u1.addresses), [])
+
+    def test_noload_append(self):
+        # test that a load of User.addresses is not emitted
+        # when flushing an append
+        User, Address = self._user_address_fixture()
+
+        sess = Session()
+        u1 = User(name="jack", addresses=[Address(email_address="a1")])
+        sess.add(u1)
+        sess.commit()
+
+        u1_id = u1.id
+        sess.expire_all()
+
+        u1.addresses.append(Address(email_address='a2'))
+
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            CompiledSQL(
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users WHERE users.id = :param_1",
+                lambda ctx: [{"param_1": u1_id}]),
+            CompiledSQL(
+                "INSERT INTO addresses (user_id, email_address) "
+                "VALUES (:user_id, :email_address)",
+                lambda ctx: [{'email_address': 'a2', 'user_id': u1_id}]
+            )
+        )
+
+    def test_noload_remove(self):
+        # test that a load of User.addresses is not emitted
+        # when flushing a remove
+        User, Address = self._user_address_fixture()
+
+        sess = Session()
+        u1 = User(name="jack", addresses=[Address(email_address="a1")])
+        a2 = Address(email_address='a2')
+        u1.addresses.append(a2)
+        sess.add(u1)
+        sess.commit()
+
+        u1_id = u1.id
+        a2_id = a2.id
+        sess.expire_all()
+
+        u1.addresses.remove(a2)
+
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            CompiledSQL(
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users WHERE users.id = :param_1",
+                lambda ctx: [{"param_1": u1_id}]),
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, addresses.email_address "
+                "AS addresses_email_address FROM addresses "
+                "WHERE addresses.id = :param_1",
+                lambda ctx: [{u'param_1': a2_id}]
+            ),
+            CompiledSQL(
+                "UPDATE addresses SET user_id=:user_id WHERE addresses.id = "
+                ":addresses_id",
+                lambda ctx: [{u'addresses_id': a2_id, 'user_id': None}]
+            )
+        )
 
     def test_rollback(self):
         User, Address = self._user_address_fixture()
@@ -639,15 +716,17 @@ class UOWTest(_DynamicFixture, _fixtures.FixtureTest):
 class HistoryTest(_DynamicFixture, _fixtures.FixtureTest):
     run_inserts = None
 
-    def _transient_fixture(self):
-        User, Address = self._user_address_fixture()
+    def _transient_fixture(self, addresses_args={}):
+        User, Address = self._user_address_fixture(
+                                    addresses_args=addresses_args)
 
         u1 = User()
         a1 = Address()
         return u1, a1
 
-    def _persistent_fixture(self, autoflush=True):
-        User, Address = self._user_address_fixture()
+    def _persistent_fixture(self, autoflush=True, addresses_args={}):
+        User, Address = self._user_address_fixture(
+                                    addresses_args=addresses_args)
 
         u1 = User(name='u1')
         a1 = Address(email_address='a1')
@@ -656,9 +735,24 @@ class HistoryTest(_DynamicFixture, _fixtures.FixtureTest):
         s.flush()
         return u1, a1, s
 
+    def _persistent_m2m_fixture(self, autoflush=True, items_args={}):
+        Order, Item = self._order_item_fixture(items_args=items_args)
+
+        o1 = Order()
+        i1 = Item(description="i1")
+        s = Session(autoflush=autoflush)
+        s.add(o1)
+        s.flush()
+        return o1, i1, s
+
     def _assert_history(self, obj, compare, compare_passive=None):
+        if isinstance(obj, self.classes.User):
+            attrname = "addresses"
+        elif isinstance(obj, self.classes.Order):
+            attrname = "items"
+
         eq_(
-            attributes.get_history(obj, 'addresses'),
+            attributes.get_history(obj, attrname),
             compare
         )
 
@@ -666,7 +760,7 @@ class HistoryTest(_DynamicFixture, _fixtures.FixtureTest):
             compare_passive = compare
 
         eq_(
-            attributes.get_history(obj, 'addresses',
+            attributes.get_history(obj, attrname,
                         attributes.LOAD_AGAINST_COMMITTED),
             compare_passive
         )
@@ -696,6 +790,21 @@ class HistoryTest(_DynamicFixture, _fixtures.FixtureTest):
             ([], [], [])
         )
 
+    def test_backref_pop_transient(self):
+        u1, a1 = self._transient_fixture(addresses_args={"backref": "user"})
+        u1.addresses.append(a1)
+
+        self._assert_history(u1,
+            ([a1], [], []),
+        )
+
+        a1.user = None
+
+        # removed from added
+        self._assert_history(u1,
+            ([], [], []),
+        )
+
     def test_remove_persistent(self):
         u1, a1, s = self._persistent_fixture()
         u1.addresses.append(a1)
@@ -706,6 +815,46 @@ class HistoryTest(_DynamicFixture, _fixtures.FixtureTest):
 
         self._assert_history(u1,
             ([], [], [a1])
+        )
+
+    def test_backref_pop_persistent_autoflush_o2m_active_hist(self):
+        u1, a1, s = self._persistent_fixture(
+                    addresses_args={"backref":
+                        backref("user", active_history=True)})
+        u1.addresses.append(a1)
+        s.flush()
+        s.expire_all()
+
+        a1.user = None
+
+        self._assert_history(u1,
+            ([], [], [a1]),
+        )
+
+    def test_backref_pop_persistent_autoflush_m2m(self):
+        o1, i1, s = self._persistent_m2m_fixture(
+                            items_args={"backref": "orders"})
+        o1.items.append(i1)
+        s.flush()
+        s.expire_all()
+
+        i1.orders.remove(o1)
+
+        self._assert_history(o1,
+            ([], [], [i1]),
+        )
+
+    def test_backref_pop_persistent_noflush_m2m(self):
+        o1, i1, s = self._persistent_m2m_fixture(
+                            items_args={"backref": "orders"}, autoflush=False)
+        o1.items.append(i1)
+        s.flush()
+        s.expire_all()
+
+        i1.orders.remove(o1)
+
+        self._assert_history(o1,
+            ([], [], [i1]),
         )
 
     def test_unchanged_persistent(self):
