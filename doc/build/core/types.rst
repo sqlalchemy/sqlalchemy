@@ -197,13 +197,13 @@ Database-specific types are also available for import from each
 database's dialect module. See the :ref:`sqlalchemy.dialects_toplevel`
 reference for the database you're interested in.
 
-For example, MySQL has a ``BIGINTEGER`` type and PostgreSQL has an
+For example, MySQL has a ``BIGINT`` type and PostgreSQL has an
 ``INET`` type.  To use these, import them from the module explicitly::
 
     from sqlalchemy.dialects import mysql
 
-    table = Table('foo', meta,
-        Column('id', mysql.BIGINTEGER),
+    table = Table('foo', metadata,
+        Column('id', mysql.BIGINT),
         Column('enumerates', mysql.ENUM('a', 'b', 'c'))
     )
 
@@ -211,10 +211,10 @@ Or some PostgreSQL types::
 
     from sqlalchemy.dialects import postgresql
 
-    table = Table('foo', meta,
+    table = Table('foo', metadata,
         Column('ipaddress', postgresql.INET),
-        Column('elements', postgresql.ARRAY(str))
-        )
+        Column('elements', postgresql.ARRAY(String))
+    )
 
 Each dialect provides the full set of typenames supported by
 that backend within its `__all__` collection, so that a simple
