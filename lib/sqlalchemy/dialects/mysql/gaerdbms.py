@@ -44,7 +44,9 @@ class MySQLDialect_gaerdbms(MySQLDialect_mysqldb):
         return NullPool
 
     def create_connect_args(self, url):
-        return [[], {'database': url.database}]
+        return [[], {'database': url.database,
+                     'user': url.username,
+                     'password': url.password}]
 
     def _extract_error_code(self, exception):
         match = re.compile(r"^(\d+):").match(str(exception))
