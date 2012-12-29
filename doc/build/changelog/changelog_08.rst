@@ -8,6 +8,20 @@
     :released: December 14, 2012
 
     .. change::
+        :tags: mysql, feature
+        :pullreq: 33
+
+      GAE dialect now accepts username/password arguments in the URL,
+      courtesy Owen Nelson.
+
+    .. change::
+        :tags: mysql, bug
+        :pullreq: 33
+
+      GAE dialect won't fail on None match if the error code can't be extracted
+      from the exception throw; courtesy Owen Nelson.
+
+    .. change::
         :tags: orm, bug
         :tickets: 2637
 
