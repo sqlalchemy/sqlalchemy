@@ -4,8 +4,17 @@
 ==============
 
 .. changelog::
-    :version: 0.8.0b2
-    :released: December 14, 2012
+    :version: 0.8.0
+
+    .. change::
+        :tags: orm, feature
+
+      Extended the :doc:`/core/inspection` system so that all Python descriptors
+      associated with the ORM or its extensions can be retrieved.
+      This fulfills the common request of being able to inspect
+      all :class:`.QueryableAttribute` descriptors in addition to
+      extension types such as :class:`.hybrid_property` and
+      :class:`.AssociationProxy`.  See :attr:`.Mapper.all_orm_descriptors`.
 
     .. change::
         :tags: mysql, feature
@@ -29,6 +38,10 @@
       that backrefs will work properly even when autoflush is disabled,
       history events are more accurate in scenarios where multiple add/remove
       of the same object occurs.
+
+.. changelog::
+    :version: 0.8.0b2
+    :released: December 14, 2012
 
     .. change::
         :tags: sqlite, bug

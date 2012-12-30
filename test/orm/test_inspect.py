@@ -159,7 +159,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         )
         is_(syn.name_syn, User.name_syn.original_property)
         eq_(dict(syn), {
-            "name_syn":User.name_syn.original_property
+            "name_syn": User.name_syn.original_property
         })
 
     def test_relationship_filter(self):
@@ -236,6 +236,70 @@ class TestORMInspection(_fixtures.FixtureTest):
         assert not hasattr(prop, 'columns')
         assert hasattr(prop, 'expression')
 
+
+    def test_extension_types(self):
+        from sqlalchemy.ext.associationproxy import \
+                                        association_proxy, ASSOCIATION_PROXY
+        from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method, \
+                                        HYBRID_PROPERTY, HYBRID_METHOD
+        from sqlalchemy import Table, MetaData, Integer, Column
+        from sqlalchemy.orm import mapper
+        from sqlalchemy.orm.interfaces import NOT_EXTENSION
+
+        class SomeClass(self.classes.User):
+            some_assoc = association_proxy('addresses', 'email_address')
+
+            @hybrid_property
+            def upper_name(self):
+                raise NotImplementedError()
+
+            @hybrid_method
+            def conv(self, fn):
+                raise NotImplementedError()
+
+        class SomeSubClass(SomeClass):
+            @hybrid_property
+            def upper_name(self):
+                raise NotImplementedError()
+
+            @hybrid_property
+            def foo(self):
+                raise NotImplementedError()
+
+        t = Table('sometable', MetaData(),
+                        Column('id', Integer, primary_key=True))
+        mapper(SomeClass, t)
+        mapper(SomeSubClass, inherits=SomeClass)
+
+        insp = inspect(SomeSubClass)
+        eq_(
+            dict((k, v.extension_type)
+                for k, v in insp.all_orm_descriptors.items()
+            ),
+            {
+                'id': NOT_EXTENSION,
+                'name': NOT_EXTENSION,
+                'name_syn': NOT_EXTENSION,
+                'addresses': NOT_EXTENSION,
+                'orders': NOT_EXTENSION,
+                'upper_name': HYBRID_PROPERTY,
+                'foo': HYBRID_PROPERTY,
+                'conv': HYBRID_METHOD,
+                'some_assoc': ASSOCIATION_PROXY
+            }
+        )
+        is_(
+            insp.all_orm_descriptors.upper_name,
+            SomeSubClass.__dict__['upper_name']
+        )
+        is_(
+            insp.all_orm_descriptors.some_assoc,
+            SomeClass.some_assoc
+        )
+        is_(
+            inspect(SomeClass).all_orm_descriptors.upper_name,
+            SomeClass.__dict__['upper_name']
+        )
 
     def test_instance_state(self):
         User = self.classes.User

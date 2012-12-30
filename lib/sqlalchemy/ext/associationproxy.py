@@ -16,7 +16,7 @@ import itertools
 import operator
 import weakref
 from .. import exc, orm, util
-from ..orm import collections
+from ..orm import collections, interfaces
 from ..sql import not_
 
 
@@ -75,8 +75,21 @@ def association_proxy(target_collection, attr, **kw):
     return AssociationProxy(target_collection, attr, **kw)
 
 
-class AssociationProxy(object):
+ASSOCIATION_PROXY = util.symbol('ASSOCIATION_PROXY')
+"""Symbol indicating an :class:`_InspectionAttr` that's
+    of type :class:`.AssociationProxy`.
+
+   Is assigned to the :attr:`._InspectionAttr.extension_type`
+   attibute.
+
+"""
+
+class AssociationProxy(interfaces._InspectionAttr):
     """A descriptor that presents a read/write view of an object attribute."""
+
+    is_attribute = False
+    extension_type = ASSOCIATION_PROXY
+
 
     def __init__(self, target_collection, attr, creator=None,
                  getset_factory=None, proxy_factory=None,

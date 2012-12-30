@@ -27,18 +27,24 @@ sections, are listed here.
     :members:
     :show-inheritance:
 
+.. autoclass:: sqlalchemy.orm.interfaces._InspectionAttr
+    :members:
+    :show-inheritance:
+
 .. autoclass:: sqlalchemy.orm.state.InstanceState
     :members:
     :show-inheritance:
 
 .. autoclass:: sqlalchemy.orm.attributes.InstrumentedAttribute
-    :members:
+    :members: __get__, __set__, __delete__
     :show-inheritance:
-    :inherited-members:
+    :undoc-members:
 
 .. autoclass:: sqlalchemy.orm.interfaces.MapperProperty
     :members:
     :show-inheritance:
+
+.. autodata:: sqlalchemy.orm.interfaces.NOT_EXTENSION
 
 .. autoclass:: sqlalchemy.orm.interfaces.PropComparator
     :members:

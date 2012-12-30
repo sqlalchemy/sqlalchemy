@@ -10,7 +10,13 @@ API Reference
 
 .. autoclass:: hybrid_method
     :members:
+
 .. autoclass:: hybrid_property
     :members:
+
 .. autoclass:: Comparator
     :show-inheritance:
+
+.. autodata:: HYBRID_METHOD
+
+.. autodata:: HYBRID_PROPERTY
