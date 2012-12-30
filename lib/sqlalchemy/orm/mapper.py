@@ -1502,11 +1502,48 @@ class Mapper(_InspectionAttr):
         returned, inclding :attr:`.synonyms`, :attr:`.column_attrs`,
         :attr:`.relationships`, and :attr:`.composites`.
 
+        .. seealso::
+
+            :attr:`.Mapper.all_orm_descriptors`
 
         """
         if _new_mappers:
             configure_mappers()
         return util.ImmutableProperties(self._props)
+
+    @util.memoized_property
+    def all_orm_descriptors(self):
+        """A namespace of all :class:`._InspectionAttr` attributes associated
+        with the mapped class.
+
+        These attributes are in all cases Python :term:`descriptors` associated
+        with the mapped class or its superclasses.
+
+        This namespace includes attributes that are mapped to the class
+        as well as attributes declared by extension modules.
+        It includes any Python descriptor type that inherits from
+        :class:`._InspectionAttr`.  This includes :class:`.QueryableAttribute`,
+        as well as extension types such as :class:`.hybrid_property`,
+        :class:`.hybrid_method` and :class:`.AssociationProxy`.
+
+        To distinguish between mapped attributes and extension attributes,
+        the attribute :attr:`._InspectionAttr.extension_type` will refer
+        to a constant that distinguishes between different extension types.
+
+        When dealing with a :class:`.QueryableAttribute`, the
+        :attr:`.QueryableAttribute.property` attribute refers to the
+        :class:`.MapperProperty` property, which is what you get when referring
+        to the collection of mapped properties via :attr:`.Mapper.attrs`.
+
+        .. versionadded:: 0.8.0
+
+        .. seealso::
+
+            :attr:`.Mapper.attrs`
+
+        """
+        return util.ImmutableProperties(
+                            dict(self.class_manager._all_sqla_attributes()))
 
     @_memoized_configured_property
     def synonyms(self):

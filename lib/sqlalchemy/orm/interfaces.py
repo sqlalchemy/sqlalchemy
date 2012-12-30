@@ -53,18 +53,79 @@ from .deprecated_interfaces import AttributeExtension, \
     MapperExtension
 
 
+NOT_EXTENSION = util.symbol('NOT_EXTENSION')
+"""Symbol indicating an :class:`_InspectionAttr` that's
+   not part of sqlalchemy.ext.
+
+   Is assigned to the :attr:`._InspectionAttr.extension_type`
+   attibute.
+
+"""
+
 class _InspectionAttr(object):
-    """Define a series of attributes that all ORM inspection
-    targets need to have."""
+    """A base class applied to all ORM objects that can be returned
+    by the :func:`.inspect` function.
+
+    The attributes defined here allow the usage of simple boolean
+    checks to test basic facts about the object returned.
+
+    While the boolean checks here are basically the same as using
+    the Python isinstance() function, the flags here can be used without
+    the need to import all of these classes, and also such that
+    the SQLAlchemy class system can change while leaving the flags
+    here intact for forwards-compatibility.
+
+    """
 
     is_selectable = False
-    is_aliased_class = False
-    is_instance = False
-    is_mapper = False
-    is_property = False
-    is_attribute = False
-    is_clause_element = False
+    """Return True if this object is an instance of :class:`.Selectable`."""
 
+    is_aliased_class = False
+    """True if this object is an instance of :class:`.AliasedClass`."""
+
+    is_instance = False
+    """True if this object is an instance of :class:`.InstanceState`."""
+
+    is_mapper = False
+    """True if this object is an instance of :class:`.Mapper`."""
+
+    is_property = False
+    """True if this object is an instance of :class:`.MapperProperty`."""
+
+    is_attribute = False
+    """True if this object is a Python :term:`descriptor`.
+
+    This can refer to one of many types.   Usually a
+    :class:`.QueryableAttribute` which handles attributes events on behalf
+    of a :class:`.MapperProperty`.   But can also be an extension type
+    such as :class:`.AssociationProxy` or :class:`.hybrid_property`.
+    The :attr:`._InspectionAttr.extension_type` will refer to a constant
+    identifying the specific subtype.
+
+    .. seealso::
+
+        :attr:`.Mapper.all_orm_descriptors`
+
+    """
+
+    is_clause_element = False
+    """True if this object is an instance of :class:`.ClauseElement`."""
+
+    extension_type = NOT_EXTENSION
+    """The extension type, if any.
+    Defaults to :data:`.interfaces.NOT_EXTENSION`
+
+    .. versionadded:: 0.8.0
+
+    .. seealso::
+
+        :data:`.HYBRID_METHOD`
+
+        :data:`.HYBRID_PROPERTY`
+
+        :data:`.ASSOCIATION_PROXY`
+
+    """
 
 class _MappedAttribute(object):
     """Mixin for attributes which should be replaced by mapper-assigned

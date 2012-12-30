@@ -628,12 +628,40 @@ there's probably a whole lot of amazing things it can be used for.
 from .. import util
 from ..orm import attributes, interfaces
 
+HYBRID_METHOD = util.symbol('HYBRID_METHOD')
+"""Symbol indicating an :class:`_InspectionAttr` that's
+   of type :class:`.hybrid_method`.
 
-class hybrid_method(object):
+   Is assigned to the :attr:`._InspectionAttr.extension_type`
+   attibute.
+
+   .. seealso::
+
+    :attr:`.Mapper.all_orm_attributes`
+
+"""
+
+HYBRID_PROPERTY = util.symbol('HYBRID_PROPERTY')
+"""Symbol indicating an :class:`_InspectionAttr` that's
+    of type :class:`.hybrid_method`.
+
+   Is assigned to the :attr:`._InspectionAttr.extension_type`
+   attibute.
+
+   .. seealso::
+
+    :attr:`.Mapper.all_orm_attributes`
+
+"""
+
+class hybrid_method(interfaces._InspectionAttr):
     """A decorator which allows definition of a Python object method with both
     instance-level and class-level behavior.
 
     """
+
+    is_attribute = True
+    extension_type = HYBRID_METHOD
 
     def __init__(self, func, expr=None):
         """Create a new :class:`.hybrid_method`.
@@ -669,11 +697,14 @@ class hybrid_method(object):
         return self
 
 
-class hybrid_property(object):
+class hybrid_property(interfaces._InspectionAttr):
     """A decorator which allows definition of a Python descriptor with both
     instance-level and class-level behavior.
 
     """
+
+    is_attribute = True
+    extension_type = HYBRID_PROPERTY
 
     def __init__(self, fget, fset=None, fdel=None, expr=None):
         """Create a new :class:`.hybrid_property`.

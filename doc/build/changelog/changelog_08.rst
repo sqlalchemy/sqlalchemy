@@ -4,8 +4,31 @@
 ==============
 
 .. changelog::
-    :version: 0.8.0b2
-    :released: December 14, 2012
+    :version: 0.8.0
+
+    .. change::
+        :tags: orm, feature
+
+      Extended the :doc:`/core/inspection` system so that all Python descriptors
+      associated with the ORM or its extensions can be retrieved.
+      This fulfills the common request of being able to inspect
+      all :class:`.QueryableAttribute` descriptors in addition to
+      extension types such as :class:`.hybrid_property` and
+      :class:`.AssociationProxy`.  See :attr:`.Mapper.all_orm_descriptors`.
+
+    .. change::
+        :tags: mysql, feature
+        :pullreq: 33
+
+      GAE dialect now accepts username/password arguments in the URL,
+      courtesy Owen Nelson.
+
+    .. change::
+        :tags: mysql, bug
+        :pullreq: 33
+
+      GAE dialect won't fail on None match if the error code can't be extracted
+      from the exception throw; courtesy Owen Nelson.
 
     .. change::
         :tags: orm, bug
@@ -15,6 +38,10 @@
       that backrefs will work properly even when autoflush is disabled,
       history events are more accurate in scenarios where multiple add/remove
       of the same object occurs.
+
+.. changelog::
+    :version: 0.8.0b2
+    :released: December 14, 2012
 
     .. change::
         :tags: sqlite, bug

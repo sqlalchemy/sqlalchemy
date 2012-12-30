@@ -72,7 +72,7 @@ columns), and in most cases a foreign key reference to the parent table::
             'polymorphic_identity':'engineer',
         }
 
-    class Manager(Person):
+    class Manager(Employee):
         __tablename__ = 'manager'
         id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
         manager_name = Column(String(30))

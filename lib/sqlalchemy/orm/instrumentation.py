@@ -29,7 +29,7 @@ alternate instrumentation forms.
 """
 
 
-from . import exc, collections, events
+from . import exc, collections, events, interfaces
 from operator import attrgetter
 from .. import event, util
 state = util.importlater("sqlalchemy.orm", "state")
@@ -82,6 +82,24 @@ class ClassManager(dict):
     def mapper(self):
         # raises unless self.mapper has been assigned
         raise exc.UnmappedClassError(self.class_)
+
+    def _all_sqla_attributes(self, exclude=None):
+        """return an iterator of all classbound attributes that are
+        implement :class:`._InspectionAttr`.
+
+        This includes :class:`.QueryableAttribute` as well as extension
+        types such as :class:`.hybrid_property` and :class:`.AssociationProxy`.
+
+        """
+        if exclude is None:
+            exclude = set()
+        for supercls in self.class_.__mro__:
+            for key in set(supercls.__dict__).difference(exclude):
+                exclude.add(key)
+                val = supercls.__dict__[key]
+                if isinstance(val, interfaces._InspectionAttr):
+                    yield key, val
+
 
     def _attr_has_impl(self, key):
         """Return True if the given attribute is fully initialized.

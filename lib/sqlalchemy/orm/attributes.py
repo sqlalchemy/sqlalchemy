@@ -120,7 +120,23 @@ PASSIVE_ONLY_PERSISTENT = util.symbol("PASSIVE_ONLY_PERSISTENT",
 class QueryableAttribute(interfaces._MappedAttribute,
                             interfaces._InspectionAttr,
                             interfaces.PropComparator):
-    """Base class for class-bound attributes. """
+    """Base class for :term:`descriptor` objects that intercept
+    attribute events on behalf of a :class:`.MapperProperty`
+    object.  The actual :class:`.MapperProperty` is accessible
+    via the :attr:`.QueryableAttribute.property`
+    attribute.
+
+
+    .. seealso::
+
+        :class:`.InstrumentedAttribute`
+
+        :class:`.MapperProperty`
+
+        :attr:`.Mapper.all_orm_descriptors`
+
+        :attr:`.Mapper.attrs`
+    """
 
     is_attribute = True
 
@@ -231,7 +247,13 @@ inspection._self_inspects(QueryableAttribute)
 
 
 class InstrumentedAttribute(QueryableAttribute):
-    """Class bound instrumented attribute which adds descriptor methods."""
+    """Class bound instrumented attribute which adds basic
+    :term:`descriptor` methods.
+
+    See :class:`.QueryableAttribute` for a description of most features.
+
+
+    """
 
     def __set__(self, instance, value):
         self.impl.set(instance_state(instance),
