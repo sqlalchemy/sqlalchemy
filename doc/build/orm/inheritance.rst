@@ -419,7 +419,7 @@ so that the right hand side of the join between ``Company`` and ``manager_and_en
 is converted into an aliased subquery.  Some backends, such as SQLite and older
 versions of MySQL can't handle a FROM clause of the following form::
 
-    FROM x JOIN (y JOIN z ON <onclause>) ON <onclause>`` - using ``aliased=True
+    FROM x JOIN (y JOIN z ON <onclause>) ON <onclause>
 
 Using ``aliased=True`` instead renders it more like::
 
