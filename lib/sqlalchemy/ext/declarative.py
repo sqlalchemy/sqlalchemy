@@ -743,7 +743,7 @@ reference a common target class via many-to-one::
 primaryjoin, order_by etc. expressions should use the string forms
 for these arguments, so that they are evaluated as late as possible.
 To reference the mixin class in these expressions, use the given ``cls``
-to get it's name::
+to get its name::
 
     class RefTargetMixin(object):
         @declared_attr
