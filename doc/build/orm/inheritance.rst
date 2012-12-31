@@ -349,11 +349,9 @@ of employees which are associated with a ``Company`` object. We'll add a
         __tablename__ = 'company'
         id = Column(Integer, primary_key=True)
         name = Column(String(50))
-
         employees = relationship("Employee",
                         backref='company',
                         cascade='all, delete-orphan')
-
 
     class Employee(Base):
         __tablename__ = 'employee'
@@ -362,18 +360,20 @@ of employees which are associated with a ``Company`` object. We'll add a
         company_id = Column(Integer, ForeignKey('company.id'))
         __mapper_args__ = {
             'polymorphic_on':type,
-            'polymorphic_identity':employee',
+            'polymorphic_identity':'employee',
             'with_polymorphic':'*'
         }
 
     class Engineer(Employee):
         __tablename__ = 'engineer'
         id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+        engineer_info = Column(String(50))
         __mapper_args__ = {'polymorphic_identity':'engineer'}
 
     class Manager(Employee):
         __tablename__ = 'manager'
         id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+        manager_data = Column(String(50))
         __mapper_args__ = {'polymorphic_identity':'manager'}
 
 When querying from ``Company`` onto the ``Employee`` relationship, the
@@ -419,7 +419,7 @@ so that the right hand side of the join between ``Company`` and ``manager_and_en
 is converted into an aliased subquery.  Some backends, such as SQLite and older
 versions of MySQL can't handle a FROM clause of the following form::
 
-    FROM x JOIN (y JOIN z ON <onclause>) ON <onclause>`` - using ``aliased=True
+    FROM x JOIN (y JOIN z ON <onclause>) ON <onclause>
 
 Using ``aliased=True`` instead renders it more like::
 
