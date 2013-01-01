@@ -1,5 +1,5 @@
 # informix/base.py
-# Copyright (C) 2005-2012 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
 # coding: gbk
 #
 # This module is part of SQLAlchemy and is released under
