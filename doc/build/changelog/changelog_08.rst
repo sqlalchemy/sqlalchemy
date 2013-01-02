@@ -7,6 +7,13 @@
     :version: 0.8.0
 
     .. change::
+        :tags: postgresql, bug
+
+      Fixed bug in :func:`.postgresql.array` construct whereby using it
+      inside of an :func:`.expression.insert` construct would produce an
+      error regarding a parameter issue in the ``self_group()`` method.
+
+    .. change::
         :tags: orm, feature
 
       Extended the :doc:`/core/inspection` system so that all Python descriptors

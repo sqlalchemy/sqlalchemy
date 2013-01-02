@@ -411,7 +411,7 @@ class array(expression.Tuple):
             for o in obj
         ])
 
-    def self_group(self, against):
+    def self_group(self, against=None):
         return self
 
 

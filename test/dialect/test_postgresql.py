@@ -319,6 +319,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 'param_3': 3, 'param_2': 2}
         )
 
+    def test_array_literal_insert(self):
+        m = MetaData()
+        t = Table('t', m, Column('data', postgresql.ARRAY(Integer)))
+        self.assert_compile(
+            t.insert().values(data=array([1, 2, 3])),
+            "INSERT INTO t (data) VALUES (ARRAY[%(param_1)s, "
+                "%(param_2)s, %(param_3)s])"
+        )
+
     def test_update_array_element(self):
         m = MetaData()
         t = Table('t', m, Column('data', postgresql.ARRAY(Integer)))
