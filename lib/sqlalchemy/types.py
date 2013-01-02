@@ -149,8 +149,15 @@ class TypeEngine(AbstractType):
 
     @util.memoized_property
     def _has_column_expression(self):
-        """memoized boolean, check if column_expression is implemented."""
-        return self.column_expression(column('x')) is not None
+        """memoized boolean, check if column_expression is implemented.
+
+        Allows the method to be skipped for the vast majority of expression
+        types that don't use this feature.
+
+        """
+
+        return self.__class__.column_expression.func_code \
+            is not TypeEngine.column_expression.func_code
 
     def bind_expression(self, bindvalue):
         """"Given a bind value (i.e. a :class:`.BindParameter` instance),
@@ -180,8 +187,15 @@ class TypeEngine(AbstractType):
 
     @util.memoized_property
     def _has_bind_expression(self):
-        """memoized boolean, check if bind_expression is implemented."""
-        return self.bind_expression(bindparam('x')) is not None
+        """memoized boolean, check if bind_expression is implemented.
+
+        Allows the method to be skipped for the vast majority of expression
+        types that don't use this feature.
+
+        """
+
+        return self.__class__.bind_expression.func_code \
+            is not TypeEngine.bind_expression.func_code
 
     def compare_values(self, x, y):
         """Compare two values for equality."""
@@ -699,6 +713,19 @@ class TypeDecorator(TypeEngine):
 
         raise NotImplementedError()
 
+    @util.memoized_property
+    def _has_bind_processor(self):
+        """memoized boolean, check if process_bind_param is implemented.
+
+        Allows the base process_bind_param to raise
+        NotImplementedError without needing to test an expensive
+        exception throw.
+
+        """
+
+        return self.__class__.process_bind_param.func_code \
+            is not TypeDecorator.process_bind_param.func_code
+
     def bind_processor(self, dialect):
         """Provide a bound value processing function for the
         given :class:`.Dialect`.
@@ -718,8 +745,7 @@ class TypeDecorator(TypeEngine):
         :meth:`result_processor` method of this class.
 
         """
-        if self.__class__.process_bind_param.func_code \
-            is not TypeDecorator.process_bind_param.func_code:
+        if self._has_bind_processor:
             process_param = self.process_bind_param
             impl_processor = self.impl.bind_processor(dialect)
             if impl_processor:
@@ -733,6 +759,18 @@ class TypeDecorator(TypeEngine):
             return process
         else:
             return self.impl.bind_processor(dialect)
+
+    @util.memoized_property
+    def _has_result_processor(self):
+        """memoized boolean, check if process_result_value is implemented.
+
+        Allows the base process_result_value to raise
+        NotImplementedError without needing to test an expensive
+        exception throw.
+
+        """
+        return self.__class__.process_result_value.func_code \
+            is not TypeDecorator.process_result_value.func_code
 
     def result_processor(self, dialect, coltype):
         """Provide a result value processing function for the given
@@ -754,8 +792,7 @@ class TypeDecorator(TypeEngine):
         :meth:`bind_processor` method of this class.
 
         """
-        if self.__class__.process_result_value.func_code \
-            is not TypeDecorator.process_result_value.func_code:
+        if self._has_result_processor:
             process_value = self.process_result_value
             impl_processor = self.impl.result_processor(dialect,
                     coltype)
