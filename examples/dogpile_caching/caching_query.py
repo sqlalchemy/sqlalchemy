@@ -233,7 +233,8 @@ class RelationshipCache(MapperOption):
 
         """
         if query._current_path:
-            mapper, key = query._current_path[-2:]
+            mapper, prop = query._current_path[-2:]
+            key = prop.key
 
             for cls in mapper.class_.__mro__:
                 if (cls, key) in self._relationship_options:

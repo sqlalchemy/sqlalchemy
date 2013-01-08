@@ -1,5 +1,5 @@
 # sql/compiler.py
-# Copyright (C) 2005-2012 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -63,6 +63,17 @@ BIND_TEMPLATES = {
     'numeric': ":[_POSITION]",
     'named': ":%(name)s"
 }
+
+REQUIRED = util.symbol('REQUIRED', """
+Placeholder for the value within a :class:`.BindParameter`
+which is required to be present when the statement is passed
+to :meth:`.Connection.execute`.
+
+This symbol is typically used when a :func:`.expression.insert`
+or :func:`.expression.update` statement is compiled without parameter
+values present.
+
+""")
 
 
 OPERATORS = {
@@ -1496,8 +1507,6 @@ class SQLCompiler(engine.Compiled):
                         for c in stmt.table.columns
                     ]
 
-        required = object()
-
         if stmt._has_multi_parameters:
             stmt_parameters = stmt.parameters[0]
         else:
@@ -1508,7 +1517,7 @@ class SQLCompiler(engine.Compiled):
         if self.column_keys is None:
             parameters = {}
         else:
-            parameters = dict((sql._column_as_key(key), required)
+            parameters = dict((sql._column_as_key(key), REQUIRED)
                               for key in self.column_keys
                               if not stmt_parameters or
                               key not in stmt_parameters)
@@ -1560,7 +1569,7 @@ class SQLCompiler(engine.Compiled):
                         value = normalized_params[c]
                         if sql._is_literal(value):
                             value = self._create_crud_bind_param(
-                                c, value, required=value is required)
+                                c, value, required=value is REQUIRED)
                         else:
                             self.postfetch.append(c)
                             value = self.process(value.self_group())
@@ -1594,7 +1603,7 @@ class SQLCompiler(engine.Compiled):
                 value = parameters.pop(c.key)
                 if sql._is_literal(value):
                     value = self._create_crud_bind_param(
-                                    c, value, required=value is required,
+                                    c, value, required=value is REQUIRED,
                                     name=c.key
                                         if not stmt._has_multi_parameters
                                         else "%s_0" % c.key

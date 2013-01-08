@@ -1,5 +1,5 @@
 # orm/loading.py
-# Copyright (C) 2005-2012 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -129,10 +129,11 @@ def merge_result(query, iterator, load=True):
             for row in iterator:
                 newrow = list(row)
                 for i in mapped_entities:
-                    newrow[i] = session._merge(
-                            attributes.instance_state(newrow[i]),
-                            attributes.instance_dict(newrow[i]),
-                            load=load, _recursive={})
+                    if newrow[i] is not None:
+                        newrow[i] = session._merge(
+                                attributes.instance_state(newrow[i]),
+                                attributes.instance_dict(newrow[i]),
+                                load=load, _recursive={})
                 result.append(util.KeyedTuple(newrow, keys))
 
         return iter(result)

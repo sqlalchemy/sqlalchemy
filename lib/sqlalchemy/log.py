@@ -1,5 +1,5 @@
 # sqlalchemy/log.py
-# Copyright (C) 2006-2011 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2006-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
 # Includes alterations by Vinay Sajip vinay_sajip@yahoo.co.uk
 #
 # This module is part of SQLAlchemy and is released under

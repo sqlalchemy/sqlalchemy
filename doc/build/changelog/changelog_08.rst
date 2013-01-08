@@ -7,6 +7,36 @@
     :version: 0.8.0
 
     .. change::
+        :tags: examples, bug
+
+      Fixed a regression in the examples/dogpile_caching example
+      which was due to the change in :ticket:`2614`.
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 2640
+
+      :meth:`.Query.merge_result` can now load rows from an outer join
+      where an entity may be ``None`` without throwing an error.
+      Also in 0.7.10.
+
+    .. change::
+        :tags: sql, bug
+        :tickets: 2648
+
+      Tweaked the "REQUIRED" symbol used by the compiler to identify
+      INSERT/UPDATE bound parameters that need to be passed, so that
+      it's more easily identifiable when writing custom bind-handling
+      code.
+
+    .. change::
+        :tags: postgresql, bug
+
+      Fixed bug in :func:`.postgresql.array` construct whereby using it
+      inside of an :func:`.expression.insert` construct would produce an
+      error regarding a parameter issue in the ``self_group()`` method.
+
+    .. change::
         :tags: orm, feature
 
       Extended the :doc:`/core/inspection` system so that all Python descriptors
