@@ -1,0 +1,91 @@
+from test.orm import _fixtures
+from sqlalchemy.orm import Session, mapper
+from test.lib.testing import eq_
+from sqlalchemy.util import NamedTuple
+
+# class InstancesTest(_fixtures.FixtureTest):
+# class GetFromIdentityTest(_fixtures.FixtureTest):
+# class LoadOnIdentTest(_fixtures.FixtureTest):
+# class InstanceProcessorTest(_fixture.FixtureTest):
+
+class MergeResultTest(_fixtures.FixtureTest):
+    run_setup_mappers = 'once'
+    run_inserts = 'once'
+    run_deletes = None
+
+    @classmethod
+    def setup_mappers(cls):
+        User = cls.classes.User
+        mapper(User, cls.tables.users)
+
+    def _fixture(self):
+        User = self.classes.User
+
+        s = Session()
+        u1, u2, u3, u4 = User(id=1, name='u1'), User(id=2, name='u2'), \
+                            User(id=7, name='u3'), User(id=8, name='u4')
+        s.query(User).filter(User.id.in_([7, 8])).all()
+        s.close()
+        return s, [u1, u2, u3, u4]
+
+    def test_single_entity(self):
+        s, (u1, u2, u3, u4) = self._fixture()
+        User = self.classes.User
+
+        q = s.query(User)
+        collection = [u1, u2, u3, u4]
+        it = q.merge_result(
+            collection
+        )
+        eq_(
+            [x.id for x in it],
+            [1, 2, 7, 8]
+        )
+
+    def test_single_column(self):
+        User = self.classes.User
+
+        s = Session()
+
+        q = s.query(User.id)
+        collection = [(1, ), (2, ), (7, ), (8, )]
+        it = q.merge_result(
+            collection
+        )
+        eq_(
+            list(it),
+            [(1, ), (2, ), (7, ), (8, )]
+        )
+
+    def test_entity_col_mix_plain_tuple(self):
+        s, (u1, u2, u3, u4) = self._fixture()
+        User = self.classes.User
+
+        q = s.query(User, User.id)
+        collection = [(u1, 1), (u2, 2), (u3, 7), (u4, 8)]
+        it = q.merge_result(
+            collection
+        )
+        it = list(it)
+        eq_(
+            [(x.id, y) for x, y in it],
+            [(1, 1), (2, 2), (7, 7), (8, 8)]
+        )
+        eq_(it[0].keys(), ['User', 'id'])
+
+    def test_entity_col_mix_keyed_tuple(self):
+        s, (u1, u2, u3, u4) = self._fixture()
+        User = self.classes.User
+
+        q = s.query(User, User.id)
+        kt = lambda *x: NamedTuple(x, ['User', 'id'])
+        collection = [kt(u1, 1), kt(u2, 2), kt(u3, 7), kt(u4, 8)]
+        it = q.merge_result(
+            collection
+        )
+        it = list(it)
+        eq_(
+            [(x.id, y) for x, y in it],
+            [(1, 1), (2, 2), (7, 7), (8, 8)]
+        )
+        eq_(it[0].keys(), ['User', 'id'])

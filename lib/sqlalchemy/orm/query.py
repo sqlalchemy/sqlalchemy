@@ -2415,6 +2415,7 @@ class Query(object):
                 mapped_entities = [i for i, e in enumerate(self._entities)
                                         if isinstance(e, _MapperEntity)]
                 result = []
+                keys = [ent._label_name for ent in self._entities]
                 for row in iterator:
                     newrow = list(row)
                     for i in mapped_entities:
@@ -2422,7 +2423,7 @@ class Query(object):
                                 attributes.instance_state(newrow[i]),
                                 attributes.instance_dict(newrow[i]),
                                 load=load, _recursive={})
-                    result.append(util.NamedTuple(newrow, row._labels))
+                    result.append(util.NamedTuple(newrow, keys))
 
             return iter(result)
         finally:
