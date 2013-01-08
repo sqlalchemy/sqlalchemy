@@ -7,6 +7,15 @@
     :version: 0.8.0
 
     .. change::
+        :tags: sql, bug
+        :tickets: 2648
+
+      Tweaked the "REQUIRED" symbol used by the compiler to identify
+      INSERT/UPDATE bound parameters that need to be passed, so that
+      it's more easily identifiable when writing custom bind-handling
+      code.
+
+    .. change::
         :tags: postgresql, bug
 
       Fixed bug in :func:`.postgresql.array` construct whereby using it
