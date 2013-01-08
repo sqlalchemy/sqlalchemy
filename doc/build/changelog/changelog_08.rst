@@ -7,6 +7,12 @@
     :version: 0.8.0
 
     .. change::
+        :tags: examples, bug
+
+      Fixed a regression in the examples/dogpile_caching example
+      which was due to the change in :ticket:`2614`.
+
+    .. change::
         :tags: orm, bug
         :tickets: 2640
 
