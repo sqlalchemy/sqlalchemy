@@ -2419,10 +2419,11 @@ class Query(object):
                 for row in iterator:
                     newrow = list(row)
                     for i in mapped_entities:
-                        newrow[i] = session._merge(
-                                attributes.instance_state(newrow[i]),
-                                attributes.instance_dict(newrow[i]),
-                                load=load, _recursive={})
+                        if newrow[i] is not None:
+                            newrow[i] = session._merge(
+                                    attributes.instance_state(newrow[i]),
+                                    attributes.instance_dict(newrow[i]),
+                                    load=load, _recursive={})
                     result.append(util.NamedTuple(newrow, keys))
 
             return iter(result)

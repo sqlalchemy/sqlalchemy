@@ -1,5 +1,5 @@
 from test.orm import _fixtures
-from sqlalchemy.orm import Session, mapper
+from sqlalchemy.orm import Session, mapper, aliased
 from test.lib.testing import eq_
 from sqlalchemy.util import NamedTuple
 
@@ -89,3 +89,24 @@ class MergeResultTest(_fixtures.FixtureTest):
             [(1, 1), (2, 2), (7, 7), (8, 8)]
         )
         eq_(it[0].keys(), ['User', 'id'])
+
+    def test_none_entity(self):
+        s, (u1, u2, u3, u4) = self._fixture()
+        User = self.classes.User
+
+        ua = aliased(User)
+        q = s.query(User, ua)
+        kt = lambda *x: NamedTuple(x, ['User', 'useralias'])
+        collection = [kt(u1, u2), kt(u1, None), kt(u2, u3)]
+        it = q.merge_result(
+            collection
+        )
+        eq_(
+            [
+                (x and x.id or None, y and y.id or None)
+                for x, y in it
+            ],
+            [(u1.id, u2.id), (u1.id, None), (u2.id, u3.id)]
+        )
+
+

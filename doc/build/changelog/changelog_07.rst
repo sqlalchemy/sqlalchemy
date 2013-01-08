@@ -28,6 +28,13 @@
       logic's failure to take .key into account.
 
     .. change::
+        :tags: orm, bug
+        :tickets: 2640
+
+      :meth:`.Query.merge_result` can now load rows from an outer join
+      where an entity may be ``None`` without throwing an error.
+
+    .. change::
         :tags: sqlite, bug
         :tickets: 2568
 
