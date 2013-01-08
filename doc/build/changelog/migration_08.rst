@@ -582,6 +582,23 @@ Dogpile.cache is a rewrite of the caching portion
 of Beaker, featuring vastly simpler and faster operation,
 as well as support for distributed locking.
 
+Note that the SQLAlchemy APIs used by the Dogpile example as well
+as the previous Beaker example have changed slightly, in particular
+this change is needed as illustrated in the Beaker example::
+
+    --- examples/beaker_caching/caching_query.py
+    +++ examples/beaker_caching/caching_query.py
+    @@ -222,7 +222,8 @@
+
+             """
+             if query._current_path:
+    -            mapper, key = query._current_path[-2:]
+    +            mapper, prop = query._current_path[-2:]
+    +            key = prop.key
+
+                 for cls in mapper.class_.__mro__:
+                     if (cls, key) in self._relationship_options:
+
 .. seealso::
 
     :mod:`dogpile_caching`
@@ -975,6 +992,8 @@ use cases should use the new "before_attach" event:
                                                 first()
 
 :ticket:`2464`
+
+
 
 Query now auto-correlates like a select() does
 ----------------------------------------------
