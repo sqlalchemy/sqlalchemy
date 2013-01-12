@@ -7,6 +7,25 @@
     :version: 0.8.0
 
     .. change::
+        :tags: mssql, bug
+
+      Fixed a regression whereby the "collation" parameter
+      of the character types CHAR, NCHAR, etc. stopped working,
+      as "collation" is now supported by the base string types.
+      The TEXT, NCHAR, CHAR, VARCHAR types within the
+      MSSQL dialect are now synonyms for the base types.
+
+    .. change::
+        :tags: mssql, feature
+        :tickets: 2644
+        :pullreq: 32
+
+      DDL for IDENTITY columns is now supported on
+      non-primary key columns, by establishing a
+      :class:`.Sequence` construct on any
+      integer column.  Courtesy Derek Harland.
+
+    .. change::
         :tags: examples, bug
 
       Fixed a regression in the examples/dogpile_caching example
