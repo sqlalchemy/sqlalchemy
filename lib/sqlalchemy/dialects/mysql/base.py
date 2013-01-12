@@ -9,28 +9,10 @@
 Supported Versions and Features
 -------------------------------
 
-SQLAlchemy supports 6 major MySQL versions: 3.23, 4.0, 4.1, 5.0, 5.1 and 6.0,
-with capabilities increasing with more modern servers.
-
-Versions 4.1 and higher support the basic SQL functionality that SQLAlchemy
-uses in the ORM and SQL expressions.  These versions pass the applicable tests
-in the suite 100%.  No heroic measures are taken to work around major missing
-SQL features- if your server version does not support sub-selects, for
+SQLAlchemy supports MySQL starting with version 4.1 through modern releases.
+However, no heroic measures are taken to work around major missing
+SQL features - if your server version does not support sub-selects, for
 example, they won't work in SQLAlchemy either.
-
-Most available DBAPI drivers are supported; see below.
-
-=====================================  ===============
-Feature                                Minimum Version
-=====================================  ===============
-sqlalchemy.orm                         4.1.1
-Table Reflection                       3.23.x
-DDL Generation                         4.1.1
-utf8/Full Unicode Connections          4.1.1
-Transactions                           3.23.15
-Two-Phase Transactions                 5.0.3
-Nested Transactions                    5.0.3
-=====================================  ===============
 
 See the official MySQL documentation for detailed information about features
 supported in any given server release.
