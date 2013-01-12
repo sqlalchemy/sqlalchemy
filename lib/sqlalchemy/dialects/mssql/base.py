@@ -1018,7 +1018,8 @@ class MSDDLCompiler(compiler.DDLCompiler):
                    + self.dialect.type_compiler.process(column.type))
 
         if column.nullable is not None:
-            if not column.nullable or column.primary_key:
+            if not column.nullable or column.primary_key or \
+                    isinstance(column.default, sa_schema.Sequence):
                 colspec += " NOT NULL"
             else:
                 colspec += " NULL"
@@ -1028,18 +1029,16 @@ class MSDDLCompiler(compiler.DDLCompiler):
                             "mssql requires Table-bound columns "
                             "in order to generate DDL")
 
-        seq_col = column.table._autoincrement_column
-
-        # install a IDENTITY Sequence if we have an implicit IDENTITY column
-        if seq_col is column:
-            sequence = isinstance(column.default, sa_schema.Sequence) and \
-                            column.default
-            if sequence:
-                start, increment = sequence.start or 1, \
-                                    sequence.increment or 1
+        # install an IDENTITY Sequence if we either a sequence or an implicit IDENTITY column
+        if isinstance(column.default, sa_schema.Sequence):
+            if column.default.start == 0:
+                start = 0
             else:
-                start, increment = 1, 1
-            colspec += " IDENTITY(%s,%s)" % (start, increment)
+                start = column.default.start or 1
+
+            colspec += " IDENTITY(%s,%s)" % (start, column.default.increment or 1)
+        elif column is column.table._autoincrement_column:
+            colspec += " IDENTITY(1,1)"
         else:
             default = self.get_column_default_string(column)
             if default is not None:
