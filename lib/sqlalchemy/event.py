@@ -7,6 +7,7 @@
 """Base event API."""
 
 from sqlalchemy import util, exc
+import weakref
 
 CANCEL = util.symbol('CANCEL')
 NO_RETVAL = util.symbol('NO_RETVAL')
@@ -203,11 +204,12 @@ class _DispatchDescriptor(object):
     def __init__(self, fn):
         self.__name__ = fn.__name__
         self.__doc__ = fn.__doc__
-        self._clslevel = util.defaultdict(list)
-        self._empty_listeners = {}
+        self._clslevel = weakref.WeakKeyDictionary()
+        self._empty_listeners = weakref.WeakKeyDictionary()
 
     def _contains(self, cls, evt):
-        return evt in self._clslevel[cls]
+        return cls in self._clslevel and \
+            evt in self._clslevel[cls]
 
     def insert(self, obj, target, propagate):
         assert isinstance(target, type), \
@@ -219,6 +221,8 @@ class _DispatchDescriptor(object):
             if cls is not target and cls not in self._clslevel:
                 self.update_subclass(cls)
             else:
+                if cls not in self._clslevel:
+                    self._clslevel[cls] = []
                 self._clslevel[cls].insert(0, obj)
 
     def append(self, obj, target, propagate):
@@ -232,9 +236,13 @@ class _DispatchDescriptor(object):
             if cls is not target and cls not in self._clslevel:
                 self.update_subclass(cls)
             else:
+                if cls not in self._clslevel:
+                    self._clslevel[cls] = []
                 self._clslevel[cls].append(obj)
 
     def update_subclass(self, target):
+        if target not in self._clslevel:
+            self._clslevel[target] = []
         clslevel = self._clslevel[target]
         for cls in target.__mro__[1:]:
             if cls in self._clslevel:
@@ -249,7 +257,8 @@ class _DispatchDescriptor(object):
         while stack:
             cls = stack.pop(0)
             stack.extend(cls.__subclasses__())
-            self._clslevel[cls].remove(obj)
+            if cls in self._clslevel:
+                self._clslevel[cls].remove(obj)
 
     def clear(self):
         """Clear all class level listeners"""

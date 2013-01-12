@@ -29,6 +29,19 @@
 
     .. change::
         :tags: orm, bug
+        :tickets: 2650
+
+      Fixed potential memory leak which could occur if an
+      arbitrary number of :func:`.sessionmaker` objects
+      were created.   The anonymous subclass created by
+      the sessionmaker, when dereferenced, would not be garbage
+      collected due to remaining class-level references from the
+      event package.  This issue also applies to any custom system
+      that made use of ad-hoc subclasses in conjunction with
+      an event dispatcher.
+
+    .. change::
+        :tags: orm, bug
         :tickets: 2640
 
       :meth:`.Query.merge_result` can now load rows from an outer join
