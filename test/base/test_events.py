@@ -2,8 +2,9 @@
 
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, \
     is_, is_not_
-from sqlalchemy import event, exc, util
+from sqlalchemy import event, exc
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.util import gc_collect
 
 class EventsTest(fixtures.TestBase):
     """Test class- and instance-level event registration."""
@@ -358,6 +359,31 @@ class CustomTargetsTest(fixtures.TestBase):
             event.listen,
             listen, "event_one", self.Target
         )
+
+class SubclassGrowthTest(fixtures.TestBase):
+    """test that ad-hoc subclasses are garbage collected."""
+
+    def setUp(self):
+        class TargetEvents(event.Events):
+            def some_event(self, x, y):
+                pass
+
+        class Target(object):
+            dispatch = event.dispatcher(TargetEvents)
+
+        self.Target = Target
+
+    def test_subclass(self):
+        class SubTarget(self.Target):
+            pass
+
+        st = SubTarget()
+        st.dispatch.some_event(1, 2)
+        del st
+        del SubTarget
+        gc_collect()
+        eq_(self.Target.__subclasses__(), [])
+
 
 class ListenOverrideTest(fixtures.TestBase):
     """Test custom listen functions which change the listener function signature."""

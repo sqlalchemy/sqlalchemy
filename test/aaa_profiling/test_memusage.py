@@ -1,24 +1,23 @@
 from sqlalchemy.testing import eq_
 from sqlalchemy.orm import mapper, relationship, create_session, \
-    clear_mappers, sessionmaker, class_mapper, aliased,\
+    clear_mappers, sessionmaker, aliased,\
     Session, subqueryload
 from sqlalchemy.orm.mapper import _mapper_registry
 from sqlalchemy.orm.session import _sessions
-import operator
 from sqlalchemy import testing
 from sqlalchemy.testing import engines
 from sqlalchemy import MetaData, Integer, String, ForeignKey, \
-    PickleType, create_engine, Unicode
-from sqlalchemy.testing.schema import Table, Column
+    Unicode, select
 import sqlalchemy as sa
+from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.sql import column
 from sqlalchemy.processors import to_decimal_processor_factory, \
     to_unicode_processor_factory
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.util.compat import decimal
 import gc
-import weakref
 from sqlalchemy.testing import fixtures
+import weakref
 
 class A(fixtures.ComparableEntity):
     pass
@@ -32,13 +31,21 @@ def profile_memory(times=50):
         # run the test 50 times.  if length of gc.get_objects()
         # keeps growing, assert false
 
+        def get_objects_skipping_sqlite_issue():
+            # pysqlite keeps adding weakref objects which only
+            # get reset after 220 iterations, which is too long
+            # to run lots of these tests, so just filter them
+            # out.
+            return [o for o in gc.get_objects()
+                    if not isinstance(o, weakref.ref)]
+
         def profile(*args):
             gc_collect()
             samples = [0 for x in range(0, times)]
             for x in range(0, times):
                 func(*args)
                 gc_collect()
-                samples[x] = len(gc.get_objects())
+                samples[x] = len(get_objects_skipping_sqlite_issue())
 
             print "sample gc sizes:", samples
 
@@ -144,6 +151,18 @@ class MemUsageTest(EnsureZeroed):
         metadata.drop_all()
         del m1, m2, m3
         assert_no_mappers()
+
+    def test_sessionmaker(self):
+        @profile_memory()
+        def go():
+            sessmaker = sessionmaker(bind=testing.db)
+            sess = sessmaker()
+            r = sess.execute(select([1]))
+            r.close()
+            sess.close()
+            del sess
+            del sessmaker
+        go()
 
     @testing.crashes('sqlite', ':memory: connection not suitable here')
     def test_orm_many_engines(self):
@@ -301,7 +320,7 @@ class MemUsageTest(EnsureZeroed):
         # pysqlite clearing out it's internal buffer and allow
         # the test to pass
         @testing.emits_warning()
-        @profile_memory(times=220)
+        @profile_memory()
         def go():
 
             # execute with a non-unicode object. a warning is emitted,
@@ -565,8 +584,6 @@ class MemUsageTest(EnsureZeroed):
             metadata.drop_all()
         assert_no_mappers()
 
-    @testing.fails_if(lambda : testing.db.dialect.name == 'sqlite' \
-                      and testing.db.dialect.dbapi.version > '2.5')
     @testing.provide_metadata
     def test_key_fallback_result(self):
         e = testing.db
@@ -585,8 +602,6 @@ class MemUsageTest(EnsureZeroed):
     # in pysqlite itself. background at:
     # http://thread.gmane.org/gmane.comp.python.db.pysqlite.user/2290
 
-    @testing.fails_if(lambda : testing.db.dialect.name == 'sqlite' \
-                      and testing.db.dialect.dbapi.version > '2.5')
     def test_join_cache(self):
         metadata = MetaData(testing.db)
         table1 = Table('table1', metadata, Column('id', Integer,
