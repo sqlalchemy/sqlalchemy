@@ -45,19 +45,19 @@ does in other dialects and results in an ``IDENTITY`` column.
 Collation Support
 -----------------
 
-MSSQL specific string types support a collation parameter that
-creates a column-level specific collation for the column. The
-collation parameter accepts a Windows Collation Name or a SQL
-Collation Name. Supported types are MSChar, MSNChar, MSString,
-MSNVarchar, MSText, and MSNText. For example::
+Character collations are supported by the base string types,
+specified by the string argument "collation"::
 
-    from sqlalchemy.dialects.mssql import VARCHAR
+    from sqlalchemy import VARCHAR
     Column('login', VARCHAR(32, collation='Latin1_General_CI_AS'))
 
 When such a column is associated with a :class:`.Table`, the
 CREATE TABLE statement for this column will yield::
 
     login VARCHAR(32) COLLATE Latin1_General_CI_AS NULL
+
+.. versionadded:: 0.8 Character collations are now part of the base string
+   types.
 
 LIMIT/OFFSET Support
 --------------------
@@ -176,7 +176,8 @@ from ...engine import reflection, default
 from ... import types as sqltypes
 from ...types import INTEGER, BIGINT, SMALLINT, DECIMAL, NUMERIC, \
                                 FLOAT, TIMESTAMP, DATETIME, DATE, BINARY,\
-                                VARBINARY
+                                VARBINARY, TEXT, VARCHAR, NVARCHAR, CHAR, NCHAR
+
 
 from ...util import update_wrapper
 from . import information_schema as ischema
@@ -331,132 +332,17 @@ class _StringType(object):
     """Base for MSSQL string types."""
 
     def __init__(self, collation=None):
-        self.collation = collation
+        super(_StringType, self).__init__(collation=collation)
 
 
-class TEXT(_StringType, sqltypes.TEXT):
-    """MSSQL TEXT type, for variable-length text up to 2^31 characters."""
-
-    def __init__(self, length=None, collation=None, **kw):
-        """Construct a TEXT.
-
-        :param collation: Optional, a column-level collation for this string
-          value. Accepts a Windows Collation Name or a SQL Collation Name.
-
-        """
-        _StringType.__init__(self, collation)
-        sqltypes.Text.__init__(self, length, **kw)
 
 
-class NTEXT(_StringType, sqltypes.UnicodeText):
+class NTEXT(sqltypes.UnicodeText):
     """MSSQL NTEXT type, for variable-length unicode text up to 2^30
     characters."""
 
     __visit_name__ = 'NTEXT'
 
-    def __init__(self, length=None, collation=None, **kw):
-        """Construct a NTEXT.
-
-        :param collation: Optional, a column-level collation for this string
-          value. Accepts a Windows Collation Name or a SQL Collation Name.
-
-        """
-        _StringType.__init__(self, collation)
-        sqltypes.UnicodeText.__init__(self, length, **kw)
-
-
-class VARCHAR(_StringType, sqltypes.VARCHAR):
-    """MSSQL VARCHAR type, for variable-length non-Unicode data with a maximum
-    of 8,000 characters."""
-
-    def __init__(self, length=None, collation=None, **kw):
-        """Construct a VARCHAR.
-
-        :param length: Optinal, maximum data length, in characters.
-
-        :param convert_unicode: defaults to False.  If True, convert
-          ``unicode`` data sent to the database to a ``str``
-          bytestring, and convert bytestrings coming back from the
-          database into ``unicode``.
-
-          Bytestrings are encoded using the dialect's
-          :attr:`~sqlalchemy.engine.Dialect.encoding`, which
-          defaults to `utf-8`.
-
-          If False, may be overridden by
-          :attr:`sqlalchemy.engine.Dialect.convert_unicode`.
-
-        :param collation: Optional, a column-level collation for this string
-          value. Accepts a Windows Collation Name or a SQL Collation Name.
-
-        """
-        _StringType.__init__(self, collation)
-        sqltypes.VARCHAR.__init__(self, length, **kw)
-
-
-class NVARCHAR(_StringType, sqltypes.NVARCHAR):
-    """MSSQL NVARCHAR type.
-
-    For variable-length unicode character data up to 4,000 characters."""
-
-    def __init__(self, length=None, collation=None, **kw):
-        """Construct a NVARCHAR.
-
-        :param length: Optional, Maximum data length, in characters.
-
-        :param collation: Optional, a column-level collation for this string
-          value. Accepts a Windows Collation Name or a SQL Collation Name.
-
-        """
-        _StringType.__init__(self, collation)
-        sqltypes.NVARCHAR.__init__(self, length, **kw)
-
-
-class CHAR(_StringType, sqltypes.CHAR):
-    """MSSQL CHAR type, for fixed-length non-Unicode data with a maximum
-    of 8,000 characters."""
-
-    def __init__(self, length=None, collation=None, **kw):
-        """Construct a CHAR.
-
-        :param length: Optinal, maximum data length, in characters.
-
-        :param convert_unicode: defaults to False.  If True, convert
-          ``unicode`` data sent to the database to a ``str``
-          bytestring, and convert bytestrings coming back from the
-          database into ``unicode``.
-
-          Bytestrings are encoded using the dialect's
-          :attr:`~sqlalchemy.engine.Dialect.encoding`, which
-          defaults to `utf-8`.
-
-          If False, may be overridden by
-          :attr:`sqlalchemy.engine.Dialect.convert_unicode`.
-
-        :param collation: Optional, a column-level collation for this string
-          value. Accepts a Windows Collation Name or a SQL Collation Name.
-
-        """
-        _StringType.__init__(self, collation)
-        sqltypes.CHAR.__init__(self, length, **kw)
-
-
-class NCHAR(_StringType, sqltypes.NCHAR):
-    """MSSQL NCHAR type.
-
-    For fixed-length unicode character data up to 4,000 characters."""
-
-    def __init__(self, length=None, collation=None, **kw):
-        """Construct an NCHAR.
-
-        :param length: Optional, Maximum data length, in characters.
-
-        :param collation: Optional, a column-level collation for this string
-          value. Accepts a Windows Collation Name or a SQL Collation Name.
-
-        """
-        _StringType.__init__(self, collation)
-        sqltypes.NCHAR.__init__(self, length, **kw)
 
 
 class IMAGE(sqltypes.LargeBinary):
@@ -1018,7 +904,8 @@ class MSDDLCompiler(compiler.DDLCompiler):
                    + self.dialect.type_compiler.process(column.type))
 
         if column.nullable is not None:
-            if not column.nullable or column.primary_key:
+            if not column.nullable or column.primary_key or \
+                    isinstance(column.default, sa_schema.Sequence):
                 colspec += " NOT NULL"
             else:
                 colspec += " NULL"
@@ -1028,18 +915,16 @@ class MSDDLCompiler(compiler.DDLCompiler):
                             "mssql requires Table-bound columns "
                             "in order to generate DDL")
 
-        seq_col = column.table._autoincrement_column
-
-        # install a IDENTITY Sequence if we have an implicit IDENTITY column
-        if seq_col is column:
-            sequence = isinstance(column.default, sa_schema.Sequence) and \
-                            column.default
-            if sequence:
-                start, increment = sequence.start or 1, \
-                                    sequence.increment or 1
+        # install an IDENTITY Sequence if we either a sequence or an implicit IDENTITY column
+        if isinstance(column.default, sa_schema.Sequence):
+            if column.default.start == 0:
+                start = 0
             else:
-                start, increment = 1, 1
-            colspec += " IDENTITY(%s,%s)" % (start, increment)
+                start = column.default.start or 1
+
+            colspec += " IDENTITY(%s,%s)" % (start, column.default.increment or 1)
+        elif column is column.table._autoincrement_column:
+            colspec += " IDENTITY(1,1)"
         else:
             default = self.get_column_default_string(column)
             if default is not None:
