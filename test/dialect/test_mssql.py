@@ -1899,6 +1899,13 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
         fp.close()
         return stream
 
+class InfoCoerceUnicodeTest(fixtures.TestBase):
+    def test_info_unicode_coercion(self):
+        from sqlalchemy.dialects.mssql.information_schema import CoerceUnicode
+
+        dialect = mssql.dialect()
+        value = CoerceUnicode().bind_processor(dialect)('a string')
+        assert isinstance(value, unicode)
 
 class ReflectHugeViewTest(fixtures.TestBase):
     __only_on__ = 'mssql'

@@ -28,6 +28,14 @@
       logic's failure to take .key into account.
 
     .. change::
+        :tags: mssql, bug
+        :tickets: 2638
+
+      Added a Py3K conditional around unnecessary .decode()
+      call in mssql information schema, fixes reflection
+      in Py3k.
+
+    .. change::
         :tags: orm, bug
         :tickets: 2650
 
