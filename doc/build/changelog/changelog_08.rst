@@ -7,6 +7,14 @@
     :version: 0.8.0
 
     .. change::
+        :tags: mssql, bug
+        :tickets: 2638
+
+      Added a py3K conditional around unnecessary .decode()
+      call in mssql information schema, fixes reflection
+      in Py3K. Also in 0.7.10.
+
+    .. change::
         :tags: orm, bug
         :tickets: 2650
 
