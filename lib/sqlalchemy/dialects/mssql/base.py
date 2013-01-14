@@ -943,13 +943,20 @@ class MSDDLCompiler(compiler.DDLCompiler):
         if index.kwargs.get("mssql_clustered"):
             text += "CLUSTERED "
 
+        # extend the custom ordering to the right length
+        ordering = index.kwargs.get("mssql_ordering", [])
+        if len(ordering) > len(index.columns):
+            raise ValueError("Column ordering length is incompatible with index columns")
+        elif len(ordering) < len(index.columns):
+            ordering.extend([""]*(len(index.columns) - len(ordering)))
+
         text += "INDEX %s ON %s (%s)" \
                     % (
                         self._prepared_index_name(index,
                                 include_schema=include_schema),
-                       preparer.format_table(index.table),
-                       ', '.join(preparer.quote(c.name, c.quote)
-                                 for c in index.columns))
+                        preparer.format_table(index.table),
+                        ', '.join([preparer.quote(c.name, c.quote) + (" " + o if o else "")
+                                   for c, o in zip(index.columns, ordering)]))
         return text
 
     def visit_drop_index(self, drop):

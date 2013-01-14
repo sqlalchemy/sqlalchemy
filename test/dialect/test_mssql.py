@@ -515,6 +515,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             "CREATE CLUSTERED INDEX foo ON test (id)"
                             )
 
+    def test_index_ordering(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('x', Integer), Column('y', Integer), Column('z', Integer))
+        idx = Index("foo", tbl.c.x, "y", mssql_ordering=['DESC'])
+        self.assert_compile(schema.CreateIndex(idx),
+                            "CREATE INDEX foo ON test (x DESC, y)"
+                            )
+
 class SchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
     """SQL server cannot reference schema-qualified tables in a SELECT statement, they
     must be aliased.
