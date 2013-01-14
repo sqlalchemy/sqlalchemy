@@ -957,6 +957,16 @@ class MSDDLCompiler(compiler.DDLCompiler):
                         preparer.format_table(index.table),
                         ', '.join([preparer.quote(c.name, c.quote) + (" " + o if o else "")
                                    for c, o in zip(index.columns, ordering)]))
+
+        # handle other included columns
+        if index.kwargs.get("mssql_include"):
+            inclusions = [index.table.c[col] if isinstance(col, basestring) else col
+                          for col in index.kwargs["mssql_include"]]
+
+            text += " INCLUDE (%s)" \
+                % ', '.join([preparer.quote(c.name, c.quote)
+                             for c in inclusions])
+
         return text
 
     def visit_drop_index(self, drop):

@@ -524,6 +524,24 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             "CREATE INDEX foo ON test (x DESC, y)"
                             )
 
+    def test_index_extra_include_1(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('x', Integer), Column('y', Integer), Column('z', Integer))
+        idx = Index("foo", tbl.c.x, mssql_include=['y'])
+        self.assert_compile(schema.CreateIndex(idx),
+                            "CREATE INDEX foo ON test (x) INCLUDE (y)"
+                            )
+
+    def test_index_extra_include_2(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('x', Integer), Column('y', Integer), Column('z', Integer))
+        idx = Index("foo", tbl.c.x, mssql_include=[tbl.c.y])
+        self.assert_compile(schema.CreateIndex(idx),
+                            "CREATE INDEX foo ON test (x) INCLUDE (y)"
+                            )
+
 class SchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
     """SQL server cannot reference schema-qualified tables in a SELECT statement, they
     must be aliased.
