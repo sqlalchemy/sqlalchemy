@@ -932,6 +932,26 @@ class MSDDLCompiler(compiler.DDLCompiler):
 
         return colspec
 
+    def visit_create_index(self, create, include_schema=False):
+        index = create.element
+        preparer = self.preparer
+        text = "CREATE "
+        if index.unique:
+            text += "UNIQUE "
+
+        # handle clustering option
+        if index.kwargs.get("mssql_clustered"):
+            text += "CLUSTERED "
+
+        text += "INDEX %s ON %s (%s)" \
+                    % (
+                        self._prepared_index_name(index,
+                                include_schema=include_schema),
+                       preparer.format_table(index.table),
+                       ', '.join(preparer.quote(c.name, c.quote)
+                                 for c in index.columns))
+        return text
+
     def visit_drop_index(self, drop):
         return "\nDROP INDEX %s.%s" % (
             self.preparer.quote_identifier(drop.element.table.name),
