@@ -1933,20 +1933,17 @@ class DDLCompiler(engine.Compiled):
     def visit_drop_view(self, drop):
         return "\nDROP VIEW " + self.preparer.format_table(drop.element)
 
-    def _index_identifier(self, ident):
-        if isinstance(ident, sql._truncated_label):
-            max = self.dialect.max_index_name_length or \
-                        self.dialect.max_identifier_length
-            if len(ident) > max:
-                ident = ident[0:max - 8] + \
-                                "_" + util.md5_hex(ident)[-4:]
-        else:
-            self.dialect.validate_identifier(ident)
 
-        return ident
+    def _verify_index_table(self, index):
+        if index.table is None:
+            raise exc.CompileError("Index '%s' is not associated "
+                            "with any table." % index.name)
 
-    def visit_create_index(self, create, include_schema=False):
+
+    def visit_create_index(self, create, include_schema=False,
+                                include_table_schema=True):
         index = create.element
+        self._verify_index_table(index)
         preparer = self.preparer
         text = "CREATE "
         if index.unique:
@@ -1955,9 +1952,13 @@ class DDLCompiler(engine.Compiled):
                     % (
                         self._prepared_index_name(index,
                                 include_schema=include_schema),
-                       preparer.format_table(index.table),
-                       ', '.join(preparer.quote(c.name, c.quote)
-                                 for c in index.columns))
+                       preparer.format_table(index.table,
+                                    use_schema=include_table_schema),
+                       ', '.join(
+                            self.sql_compiler.process(expr,
+                                include_table=False) for
+                                expr in index.expressions)
+                        )
         return text
 
     def visit_drop_index(self, drop):
@@ -1973,8 +1974,18 @@ class DDLCompiler(engine.Compiled):
         else:
             schema_name = None
 
+        ident = index.name
+        if isinstance(ident, sql._truncated_label):
+            max_ = self.dialect.max_index_name_length or \
+                        self.dialect.max_identifier_length
+            if len(ident) > max_:
+                ident = ident[0:max_ - 8] + \
+                                "_" + util.md5_hex(ident)[-4:]
+        else:
+            self.dialect.validate_identifier(ident)
+
         index_name = self.preparer.quote(
-                            self._index_identifier(index.name),
+                                    ident,
                                     index.quote)
 
         if schema_name:

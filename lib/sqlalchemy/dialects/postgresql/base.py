@@ -962,13 +962,13 @@ class PGDDLCompiler(compiler.DDLCompiler):
     def visit_create_index(self, create):
         preparer = self.preparer
         index = create.element
+        self._verify_index_table(index)
         text = "CREATE "
         if index.unique:
             text += "UNIQUE "
-        ops = index.kwargs.get('postgresql_ops', {})
         text += "INDEX %s ON %s " % (
-                    preparer.quote(
-                        self._index_identifier(index.name), index.quote),
+                        self._prepared_index_name(index,
+                                include_schema=True),
                     preparer.format_table(index.table)
                 )
 
@@ -976,20 +976,20 @@ class PGDDLCompiler(compiler.DDLCompiler):
             using = index.kwargs['postgresql_using']
             text += "USING %s " % preparer.quote(using, index.quote)
 
+        ops = index.kwargs.get('postgresql_ops', {})
         text += "(%s)" \
                 % (
                     ', '.join([
-                        preparer.format_column(c) +
+                        self.sql_compiler.process(expr, include_table=False) +
+
+
                         (c.key in ops and (' ' + ops[c.key]) or '')
-                        for c in index.columns])
+
+
+                        for expr, c in zip(index.expressions, index.columns)])
                     )
 
-        if "postgres_where" in index.kwargs:
-            whereclause = index.kwargs['postgres_where']
-            util.warn_deprecated(
-                    "The 'postgres_where' argument has been renamed "
-                    "to 'postgresql_where'.")
-        elif 'postgresql_where' in index.kwargs:
+        if 'postgresql_where' in index.kwargs:
             whereclause = index.kwargs['postgresql_where']
         else:
             whereclause = None

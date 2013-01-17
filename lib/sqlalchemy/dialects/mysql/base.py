@@ -1513,11 +1513,14 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
     def visit_create_index(self, create):
         index = create.element
+        self._verify_index_table(index)
         preparer = self.preparer
         table = preparer.format_table(index.table)
-        columns = [preparer.quote(c.name, c.quote) for c in index.columns]
+        columns = [self.sql_compiler.process(expr, include_table=False)
+                for expr in index.expressions]
+
         name = preparer.quote(
-                    self._index_identifier(index.name),
+                    self._prepared_index_name(index),
                     index.quote)
 
         text = "CREATE "
@@ -1550,10 +1553,9 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
     def visit_drop_index(self, drop):
         index = drop.element
 
-        return "\nDROP INDEX %s ON %s" % \
-                    (self.preparer.quote(
-                        self._index_identifier(index.name), index.quote
-                    ),
+        return "\nDROP INDEX %s ON %s" % (
+                    self._prepared_index_name(index,
+                                        include_schema=False),
                      self.preparer.format_table(index.table))
 
     def visit_drop_constraint(self, drop):

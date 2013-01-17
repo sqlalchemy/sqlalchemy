@@ -1170,6 +1170,30 @@ The :class:`~sqlalchemy.schema.Index` object also supports its own ``create()`` 
     {sql}i.create(engine)
     CREATE INDEX someindex ON mytable (col5){stop}
 
+Functional Indexes
+~~~~~~~~~~~~~~~~~~~
+
+:class:`.Index` supports SQL and function expressions, as supported by the
+target backend.  To create an index against a column using a descending
+value, the :meth:`.ColumnElement.desc` modifier may be used::
+
+    from sqlalchemy import Index
+
+    Index('someindex', mytable.c.somecol.desc())
+
+Or with a backend that supports functional indexes such as Postgresql,
+a "case insensitive" index can be created using the ``lower()`` function::
+
+    from sqlalchemy import func, Index
+
+    Index('someindex', func.lower(mytable.c.somecol))
+
+.. versionadded:: 0.8 :class:`.Index` supports SQL expressions and functions
+   as well as plain columns.
+
+Index API
+---------
+
 .. autoclass:: Index
     :show-inheritance:
     :members:

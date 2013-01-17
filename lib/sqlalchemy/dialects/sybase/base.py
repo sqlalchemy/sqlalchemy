@@ -412,8 +412,8 @@ class SybaseDDLCompiler(compiler.DDLCompiler):
         index = drop.element
         return "\nDROP INDEX %s.%s" % (
             self.preparer.quote_identifier(index.table.name),
-            self.preparer.quote(
-                    self._index_identifier(index.name), index.quote)
+            self._prepared_index_name(drop.element,
+                                        include_schema=False)
             )
 
 

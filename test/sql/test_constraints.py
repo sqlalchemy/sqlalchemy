@@ -297,6 +297,23 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
             )
         )
 
+    @testing.provide_metadata
+    def test_index_functional_create(self):
+        metadata = self.metadata
+
+        t = Table('sometable', metadata,
+                Column('id', Integer, primary_key=True),
+                Column('data', String(50))
+            )
+        Index('myindex', t.c.data.desc())
+        self.assert_sql_execution(
+            testing.db,
+            lambda: t.create(testing.db),
+            CompiledSQL('CREATE TABLE sometable (id INTEGER NOT NULL, '
+                            'data VARCHAR(50), PRIMARY KEY (id))'),
+            ExactSQL('CREATE INDEX myindex ON sometable (data DESC)')
+        )
+
 class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
@@ -371,6 +388,24 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
                         "this_other_name_is_too_long_for_what_were_doing",
                         t1.c.c)).compile,
             dialect=dialect
+        )
+
+    def test_functional_index(self):
+        metadata = MetaData()
+        x = Table('x', metadata,
+                Column('q', String(50))
+            )
+        idx = Index('y', func.lower(x.c.q))
+
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX y ON x (lower(q))"
+        )
+
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX y ON x (lower(q))",
+            dialect=testing.db.dialect
         )
 
     def test_index_declaration_inline(self):
@@ -819,8 +854,37 @@ class ConstraintAPITest(fixtures.TestBase):
             Index, "foo", 5
         )
 
+    def test_raise_expr_no_column(self):
+        idx = Index('foo', func.lower(5))
+
+        assert_raises_message(
+            exc.CompileError,
+            "Index 'foo' is not associated with any table.",
+            schema.CreateIndex(idx).compile, dialect=testing.db.dialect
+        )
+        assert_raises_message(
+            exc.CompileError,
+            "Index 'foo' is not associated with any table.",
+            schema.CreateIndex(idx).compile
+        )
+
+
     def test_no_warning_w_no_columns(self):
-        Index(name="foo")
+        # I think the test here is, there is no warning.
+        # people want to create empty indexes for the purpose of
+        # a drop.
+        idx = Index(name="foo")
+
+        assert_raises_message(
+            exc.CompileError,
+            "Index 'foo' is not associated with any table.",
+            schema.CreateIndex(idx).compile, dialect=testing.db.dialect
+        )
+        assert_raises_message(
+            exc.CompileError,
+            "Index 'foo' is not associated with any table.",
+            schema.CreateIndex(idx).compile
+        )
 
     def test_raise_clauseelement_not_a_column(self):
         m = MetaData()
