@@ -968,7 +968,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
             text += "UNIQUE "
         text += "INDEX %s ON %s " % (
                         self._prepared_index_name(index,
-                                include_schema=True),
+                                include_schema=False),
                     preparer.format_table(index.table)
                 )
 
