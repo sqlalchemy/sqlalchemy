@@ -611,9 +611,9 @@ class MutableDict(Mutable, dict):
         dict.__setitem__(self, key, value)
         self.changed()
 
-    def __delitem__(self, key, value):
+    def __delitem__(self, key):
         """Detect dictionary del events and emit change events."""
-        dict.__delitem__(self, key, value)
+        dict.__delitem__(self, key)
         self.changed()
 
     @classmethod
