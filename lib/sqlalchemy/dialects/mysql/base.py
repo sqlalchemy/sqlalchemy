@@ -1519,9 +1519,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         columns = [self.sql_compiler.process(expr, include_table=False)
                 for expr in index.expressions]
 
-        name = preparer.quote(
-                    self._prepared_index_name(index),
-                    index.quote)
+        name = self._prepared_index_name(index)
 
         text = "CREATE "
         if index.unique:
