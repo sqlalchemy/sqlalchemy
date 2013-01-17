@@ -2344,22 +2344,30 @@ class Index(ColumnCollectionMixin, SchemaItem):
 
     :ref:`schema_indexes` - General information on :class:`.Index`.
 
-    :ref:`postgresql_indexes` - PostgreSQL-specific options available for the :class:`.Index` construct.
+    :ref:`postgresql_indexes` - PostgreSQL-specific options available for the
+    :class:`.Index` construct.
 
-    :ref:`mysql_indexes` - MySQL-specific options available for the :class:`.Index` construct.
+    :ref:`mysql_indexes` - MySQL-specific options available for the
+    :class:`.Index` construct.
+
     """
 
     __visit_name__ = 'index'
 
-    def __init__(self, name, *columns, **kw):
+    def __init__(self, name, *expressions, **kw):
         """Construct an index object.
 
         :param name:
           The name of the index
 
-        :param \*columns:
-          Columns to include in the index. All columns must belong to the same
-          table.
+        :param \*expressions:
+          Column expressions to include in the index.   The expressions
+          are normally instances of :class:`.Column`, but may also
+          be arbitrary SQL expressions which ultmately refer to a
+          :class:`.Column`.
+
+          .. versionadded:: 0.8 :class:`.Index` supports SQL expressions as
+             well as plain columns.
 
         :param unique:
             Defaults to False: create a unique index.
@@ -2369,9 +2377,25 @@ class Index(ColumnCollectionMixin, SchemaItem):
 
         """
         self.table = None
+
+        columns = []
+        for expr in expressions:
+            if not isinstance(expr, expression.ClauseElement):
+                columns.append(expr)
+            else:
+                cols = []
+                visitors.traverse(expr, {}, {'column': cols.append})
+                if cols:
+                    columns.append(cols[0])
+                else:
+                    columns.append(expr)
+
+        self.expressions = expressions
+
         # will call _set_parent() if table-bound column
         # objects are present
         ColumnCollectionMixin.__init__(self, *columns)
+
         self.name = name
         self.unique = kw.pop('unique', False)
         self.kwargs = kw
@@ -2396,6 +2420,12 @@ class Index(ColumnCollectionMixin, SchemaItem):
                     (c, self.table.description)
                 )
         table.indexes.add(self)
+
+        self.expressions = [
+            expr if isinstance(expr, expression.ClauseElement)
+            else colexpr
+            for expr, colexpr in zip(self.expressions, self.columns)
+        ]
 
     @property
     def bind(self):

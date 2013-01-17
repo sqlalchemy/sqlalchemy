@@ -1,128 +1,236 @@
 from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy import *
 from sqlalchemy import exc, schema
-from sqlalchemy.testing import fixtures, AssertsExecutionResults, AssertsCompiledSQL
+from sqlalchemy.testing import fixtures, AssertsExecutionResults, \
+                    AssertsCompiledSQL
 from sqlalchemy import testing
-from sqlalchemy.testing import config, engines
-from sqlalchemy.engine import ddl
+from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing.assertsql import AllOf, RegexSQL, ExactSQL, CompiledSQL
-from sqlalchemy.dialects.postgresql import base as postgresql
 
-class ConstraintTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
     __dialect__ = 'default'
 
-    def setup(self):
-        global metadata
-        metadata = MetaData(testing.db)
+    @testing.provide_metadata
+    def test_pk_fk_constraint_create(self):
+        metadata = self.metadata
 
-    def teardown(self):
-        metadata.drop_all()
-
-    def test_constraint(self):
-        employees = Table('employees', metadata,
+        Table('employees', metadata,
             Column('id', Integer),
             Column('soc', String(40)),
             Column('name', String(30)),
             PrimaryKeyConstraint('id', 'soc')
             )
-        elements = Table('elements', metadata,
+        Table('elements', metadata,
             Column('id', Integer),
             Column('stuff', String(30)),
             Column('emp_id', Integer),
             Column('emp_soc', String(40)),
             PrimaryKeyConstraint('id', name='elements_primkey'),
-            ForeignKeyConstraint(['emp_id', 'emp_soc'], ['employees.id', 'employees.soc'])
+            ForeignKeyConstraint(['emp_id', 'emp_soc'],
+                                ['employees.id', 'employees.soc'])
             )
-        metadata.create_all()
+        self.assert_sql_execution(
+            testing.db,
+            lambda: metadata.create_all(checkfirst=False),
+            CompiledSQL('CREATE TABLE employees ('
+                    'id INTEGER, '
+                    'soc VARCHAR(40), '
+                    'name VARCHAR(30), '
+                    'PRIMARY KEY (id, soc)'
+                    ')'
+            ),
+            CompiledSQL('CREATE TABLE elements ('
+                    'id INTEGER, '
+                    'stuff VARCHAR(30), '
+                    'emp_id INTEGER, '
+                    'emp_soc VARCHAR(40), '
+                    'CONSTRAINT elements_primkey PRIMARY KEY (id), '
+                    'FOREIGN KEY(emp_id, emp_soc) '
+                            'REFERENCES employees (id, soc)'
+                ')'
+            )
+        )
 
-    def test_double_fk_usage_raises(self):
-        f = ForeignKey('b.id')
 
-        Column('x', Integer, f)
-        assert_raises(exc.InvalidRequestError, Column, "y", Integer, f)
+    @testing.provide_metadata
+    def test_cyclic_fk_table_constraint_create(self):
+        metadata = self.metadata
 
-    def test_circular_constraint(self):
-        a = Table("a", metadata,
+        Table("a", metadata,
             Column('id', Integer, primary_key=True),
             Column('bid', Integer),
-            ForeignKeyConstraint(["bid"], ["b.id"], name="afk")
+            ForeignKeyConstraint(["bid"], ["b.id"])
             )
-        b = Table("b", metadata,
+        Table("b", metadata,
             Column('id', Integer, primary_key=True),
             Column("aid", Integer),
             ForeignKeyConstraint(["aid"], ["a.id"], use_alter=True, name="bfk")
             )
-        metadata.create_all()
+        self._assert_cyclic_constraint(metadata)
 
-    def test_circular_constraint_2(self):
-        a = Table("a", metadata,
+    @testing.provide_metadata
+    def test_cyclic_fk_column_constraint_create(self):
+        metadata = self.metadata
+
+        Table("a", metadata,
             Column('id', Integer, primary_key=True),
             Column('bid', Integer, ForeignKey("b.id")),
             )
-        b = Table("b", metadata,
+        Table("b", metadata,
             Column('id', Integer, primary_key=True),
-            Column("aid", Integer, ForeignKey("a.id", use_alter=True, name="bfk")),
+            Column("aid", Integer,
+                ForeignKey("a.id", use_alter=True, name="bfk")
+                ),
             )
-        metadata.create_all()
+        self._assert_cyclic_constraint(metadata)
 
-    @testing.fails_on('mysql', 'FIXME: unknown')
-    def test_check_constraint(self):
-        foo = Table('foo', metadata,
+    def _assert_cyclic_constraint(self, metadata):
+        assertions = [
+            CompiledSQL('CREATE TABLE b ('
+                    'id INTEGER NOT NULL, '
+                    'aid INTEGER, '
+                    'PRIMARY KEY (id)'
+                    ')'
+                    ),
+            CompiledSQL('CREATE TABLE a ('
+                    'id INTEGER NOT NULL, '
+                    'bid INTEGER, '
+                    'PRIMARY KEY (id), '
+                    'FOREIGN KEY(bid) REFERENCES b (id)'
+                    ')'
+                ),
+        ]
+        if testing.db.dialect.supports_alter:
+            assertions.append(
+                CompiledSQL('ALTER TABLE b ADD CONSTRAINT bfk '
+                        'FOREIGN KEY(aid) REFERENCES a (id)')
+            )
+        self.assert_sql_execution(
+            testing.db,
+            lambda: metadata.create_all(checkfirst=False),
+            *assertions
+        )
+
+        assertions = []
+        if testing.db.dialect.supports_alter:
+            assertions.append(CompiledSQL('ALTER TABLE b DROP CONSTRAINT bfk'))
+        assertions.extend([
+            CompiledSQL("DROP TABLE a"),
+            CompiledSQL("DROP TABLE b"),
+            ])
+        self.assert_sql_execution(
+            testing.db,
+            lambda: metadata.drop_all(checkfirst=False),
+            *assertions
+        )
+
+    @testing.provide_metadata
+    def test_check_constraint_create(self):
+        metadata = self.metadata
+
+        Table('foo', metadata,
             Column('id', Integer, primary_key=True),
             Column('x', Integer),
             Column('y', Integer),
             CheckConstraint('x>y'))
-        bar = Table('bar', metadata,
+        Table('bar', metadata,
             Column('id', Integer, primary_key=True),
             Column('x', Integer, CheckConstraint('x>7')),
             Column('z', Integer)
             )
 
-        metadata.create_all()
-        foo.insert().execute(id=1,x=9,y=5)
-        assert_raises(exc.DBAPIError, foo.insert().execute, id=2,x=5,y=9)
-        bar.insert().execute(id=1,x=10)
-        assert_raises(exc.DBAPIError, bar.insert().execute, id=2,x=5)
+        self.assert_sql_execution(
+            testing.db,
+            lambda: metadata.create_all(checkfirst=False),
+            AllOf(
+                CompiledSQL('CREATE TABLE foo ('
+                        'id INTEGER NOT NULL, '
+                        'x INTEGER, '
+                        'y INTEGER, '
+                        'PRIMARY KEY (id), '
+                        'CHECK (x>y)'
+                        ')'
+                        ),
+                CompiledSQL('CREATE TABLE bar ('
+                        'id INTEGER NOT NULL, '
+                        'x INTEGER CHECK (x>7), '
+                        'z INTEGER, '
+                        'PRIMARY KEY (id)'
+                        ')'
+                )
+            )
+        )
 
-    def test_unique_constraint(self):
-        foo = Table('foo', metadata,
+    @testing.provide_metadata
+    def test_unique_constraint_create(self):
+        metadata = self.metadata
+
+        Table('foo', metadata,
             Column('id', Integer, primary_key=True),
             Column('value', String(30), unique=True))
-        bar = Table('bar', metadata,
+        Table('bar', metadata,
             Column('id', Integer, primary_key=True),
             Column('value', String(30)),
             Column('value2', String(30)),
             UniqueConstraint('value', 'value2', name='uix1')
             )
-        metadata.create_all()
-        foo.insert().execute(id=1, value='value1')
-        foo.insert().execute(id=2, value='value2')
-        bar.insert().execute(id=1, value='a', value2='a')
-        bar.insert().execute(id=2, value='a', value2='b')
-        assert_raises(exc.DBAPIError, foo.insert().execute, id=3, value='value1')
-        assert_raises(exc.DBAPIError, bar.insert().execute, id=3, value='a', value2='b')
 
+        self.assert_sql_execution(
+            testing.db,
+            lambda: metadata.create_all(checkfirst=False),
+            AllOf(
+                CompiledSQL('CREATE TABLE foo ('
+                        'id INTEGER NOT NULL, '
+                        'value VARCHAR(30), '
+                        'PRIMARY KEY (id), '
+                        'UNIQUE (value)'
+                    ')'),
+                CompiledSQL('CREATE TABLE bar ('
+                        'id INTEGER NOT NULL, '
+                        'value VARCHAR(30), '
+                        'value2 VARCHAR(30), '
+                        'PRIMARY KEY (id), '
+                        'CONSTRAINT uix1 UNIQUE (value, value2)'
+                        ')')
+            )
+        )
+
+    @testing.provide_metadata
     def test_index_create(self):
+        metadata = self.metadata
+
         employees = Table('employees', metadata,
                           Column('id', Integer, primary_key=True),
                           Column('first_name', String(30)),
                           Column('last_name', String(30)),
                           Column('email_address', String(30)))
-        employees.create()
 
         i = Index('employee_name_index',
                   employees.c.last_name, employees.c.first_name)
-        i.create()
         assert i in employees.indexes
 
         i2 = Index('employee_email_index',
                    employees.c.email_address, unique=True)
-        i2.create()
         assert i2 in employees.indexes
 
+        self.assert_sql_execution(
+            testing.db,
+            lambda: metadata.create_all(checkfirst=False),
+            RegexSQL("^CREATE TABLE"),
+            AllOf(
+                CompiledSQL('CREATE INDEX employee_name_index ON '
+                        'employees (last_name, first_name)', []),
+                CompiledSQL('CREATE UNIQUE INDEX employee_email_index ON '
+                        'employees (email_address)', [])
+            )
+        )
+
+    @testing.provide_metadata
     def test_index_create_camelcase(self):
         """test that mixed-case index identifiers are legal"""
+
+        metadata = self.metadata
 
         employees = Table('companyEmployees', metadata,
                           Column('id', Integer, primary_key=True),
@@ -130,25 +238,31 @@ class ConstraintTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
                           Column('lastName', String(30)),
                           Column('emailAddress', String(30)))
 
-        employees.create()
 
-        i = Index('employeeNameIndex',
+
+        Index('employeeNameIndex',
                   employees.c.lastName, employees.c.firstName)
-        i.create()
 
-        i = Index('employeeEmailIndex',
+        Index('employeeEmailIndex',
                   employees.c.emailAddress, unique=True)
-        i.create()
 
-        # Check that the table is useable. This is mostly for pg,
-        # which can be somewhat sticky with mixed-case identifiers
-        employees.insert().execute(firstName='Joe', lastName='Smith', id=0)
-        ss = employees.select().execute().fetchall()
-        assert ss[0].firstName == 'Joe'
-        assert ss[0].lastName == 'Smith'
+        self.assert_sql_execution(
+            testing.db,
+            lambda: metadata.create_all(checkfirst=False),
+            RegexSQL("^CREATE TABLE"),
+            AllOf(
+                CompiledSQL('CREATE INDEX "employeeNameIndex" ON '
+                        '"companyEmployees" ("lastName", "firstName")', []),
+                CompiledSQL('CREATE UNIQUE INDEX "employeeEmailIndex" ON '
+                        '"companyEmployees" ("emailAddress")', [])
+            )
+        )
 
+    @testing.provide_metadata
     def test_index_create_inline(self):
-        """Test indexes defined with tables"""
+        # test an index create using index=True, unique=True
+
+        metadata = self.metadata
 
         events = Table('events', metadata,
                        Column('id', Integer, primary_key=True),
@@ -158,12 +272,14 @@ class ConstraintTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
                        Column('announcer', String(30)),
                        Column('winner', String(30)))
 
-        Index('sport_announcer', events.c.sport, events.c.announcer, unique=True)
+        Index('sport_announcer', events.c.sport, events.c.announcer,
+                                    unique=True)
         Index('idx_winners', events.c.winner)
 
         eq_(
-            set([ ix.name for ix in events.indexes ]),
-            set(['ix_events_name', 'ix_events_location', 'sport_announcer', 'idx_winners'])
+            set(ix.name for ix in events.indexes),
+            set(['ix_events_name', 'ix_events_location',
+                        'sport_announcer', 'idx_winners'])
         )
 
         self.assert_sql_execution(
@@ -171,18 +287,72 @@ class ConstraintTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
             lambda: events.create(testing.db),
             RegexSQL("^CREATE TABLE events"),
             AllOf(
-                ExactSQL('CREATE UNIQUE INDEX ix_events_name ON events (name)'),
-                ExactSQL('CREATE INDEX ix_events_location ON events (location)'),
-                ExactSQL('CREATE UNIQUE INDEX sport_announcer ON events (sport, announcer)'),
+                ExactSQL('CREATE UNIQUE INDEX ix_events_name ON events '
+                                        '(name)'),
+                ExactSQL('CREATE INDEX ix_events_location ON events '
+                                        '(location)'),
+                ExactSQL('CREATE UNIQUE INDEX sport_announcer ON events '
+                                        '(sport, announcer)'),
                 ExactSQL('CREATE INDEX idx_winners ON events (winner)')
             )
         )
 
-        # verify that the table is functional
-        events.insert().execute(id=1, name='hockey finals', location='rink',
-                                sport='hockey', announcer='some canadian',
-                                winner='sweden')
-        ss = events.select().execute().fetchall()
+    @testing.provide_metadata
+    def test_index_functional_create(self):
+        metadata = self.metadata
+
+        t = Table('sometable', metadata,
+                Column('id', Integer, primary_key=True),
+                Column('data', String(50))
+            )
+        Index('myindex', t.c.data.desc())
+        self.assert_sql_execution(
+            testing.db,
+            lambda: t.create(testing.db),
+            CompiledSQL('CREATE TABLE sometable (id INTEGER NOT NULL, '
+                            'data VARCHAR(50), PRIMARY KEY (id))'),
+            ExactSQL('CREATE INDEX myindex ON sometable (data DESC)')
+        )
+
+class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def test_create_plain(self):
+        t = Table('t', MetaData(), Column('x', Integer))
+        i = Index("xyz", t.c.x)
+        self.assert_compile(
+            schema.CreateIndex(i),
+            "CREATE INDEX xyz ON t (x)"
+        )
+
+    def test_drop_plain_unattached(self):
+        self.assert_compile(
+            schema.DropIndex(Index(name="xyz")),
+            "DROP INDEX xyz"
+        )
+
+    def test_drop_plain(self):
+        self.assert_compile(
+            schema.DropIndex(Index(name="xyz")),
+            "DROP INDEX xyz"
+        )
+
+    def test_create_schema(self):
+        t = Table('t', MetaData(), Column('x', Integer), schema="foo")
+        i = Index("xyz", t.c.x)
+        self.assert_compile(
+            schema.CreateIndex(i),
+            "CREATE INDEX xyz ON foo.t (x)"
+        )
+
+    def test_drop_schema(self):
+        t = Table('t', MetaData(), Column('x', Integer), schema="foo")
+        i = Index("xyz", t.c.x)
+        self.assert_compile(
+            schema.DropIndex(i),
+            "DROP INDEX foo.xyz"
+        )
+
 
     def test_too_long_idx_name(self):
         dialect = testing.db.dialect.__class__()
@@ -220,7 +390,27 @@ class ConstraintTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
             dialect=dialect
         )
 
-    def test_index_declartion_inline(self):
+    def test_functional_index(self):
+        metadata = MetaData()
+        x = Table('x', metadata,
+                Column('q', String(50))
+            )
+        idx = Index('y', func.lower(x.c.q))
+
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX y ON x (lower(q))"
+        )
+
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX y ON x (lower(q))",
+            dialect=testing.db.dialect
+        )
+
+    def test_index_declaration_inline(self):
+        metadata = MetaData()
+
         t1 = Table('t1', metadata,
             Column('x', Integer),
             Column('y', Integer),
@@ -230,103 +420,6 @@ class ConstraintTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
             schema.CreateIndex(list(t1.indexes)[0]),
             "CREATE INDEX foo ON t1 (x, y)"
         )
-
-    def test_index_asserts_cols_standalone(self):
-        t1 = Table('t1', metadata,
-            Column('x', Integer)
-        )
-        t2 = Table('t2', metadata,
-            Column('y', Integer)
-        )
-        assert_raises_message(
-            exc.ArgumentError,
-            "Column 't2.y' is not part of table 't1'.",
-            Index,
-            "bar", t1.c.x, t2.c.y
-        )
-
-    def test_index_asserts_cols_inline(self):
-        t1 = Table('t1', metadata,
-            Column('x', Integer)
-        )
-        assert_raises_message(
-            exc.ArgumentError,
-            "Index 'bar' is against table 't1', and "
-            "cannot be associated with table 't2'.",
-            Table, 't2', metadata,
-                Column('y', Integer),
-                Index('bar', t1.c.x)
-        )
-
-    def test_raise_index_nonexistent_name(self):
-        m = MetaData()
-        # the KeyError isn't ideal here, a nicer message
-        # perhaps
-        assert_raises(
-            KeyError,
-            Table, 't', m, Column('x', Integer), Index("foo", "q")
-        )
-
-    def test_raise_not_a_column(self):
-        assert_raises(
-            exc.ArgumentError,
-            Index, "foo", 5
-        )
-
-    def test_no_warning_w_no_columns(self):
-        Index(name="foo")
-
-    def test_raise_clauseelement_not_a_column(self):
-        m = MetaData()
-        t2 = Table('t2', m, Column('x', Integer))
-        class SomeClass(object):
-            def __clause_element__(self):
-                return t2
-        assert_raises(
-            exc.ArgumentError,
-            Index, "foo", SomeClass()
-        )
-
-    def test_create_plain(self):
-        t = Table('t', MetaData(), Column('x', Integer))
-        i = Index("xyz", t.c.x)
-        self.assert_compile(
-            schema.CreateIndex(i),
-            "CREATE INDEX xyz ON t (x)"
-        )
-
-    def test_drop_plain_unattached(self):
-        self.assert_compile(
-            schema.DropIndex(Index(name="xyz")),
-            "DROP INDEX xyz"
-        )
-
-    def test_drop_plain(self):
-        t = Table('t', MetaData(), Column('x', Integer))
-        i = Index("xyz", t.c.x)
-        self.assert_compile(
-            schema.DropIndex(Index(name="xyz")),
-            "DROP INDEX xyz"
-        )
-
-    def test_create_schema(self):
-        t = Table('t', MetaData(), Column('x', Integer), schema="foo")
-        i = Index("xyz", t.c.x)
-        self.assert_compile(
-            schema.CreateIndex(i),
-            "CREATE INDEX xyz ON foo.t (x)"
-        )
-
-    def test_drop_schema(self):
-        t = Table('t', MetaData(), Column('x', Integer), schema="foo")
-        i = Index("xyz", t.c.x)
-        self.assert_compile(
-            schema.DropIndex(i),
-            "DROP INDEX foo.xyz"
-        )
-
-class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = 'default'
 
     def _test_deferrable(self, constraint_factory):
         t = Table('tbl', MetaData(),
@@ -366,7 +459,8 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_column_level_ck_name(self):
         t = Table('tbl', MetaData(),
-            Column('a', Integer, CheckConstraint("a > 5", name="ck_a_greater_five"))
+            Column('a', Integer, CheckConstraint("a > 5",
+                                name="ck_a_greater_five"))
         )
         self.assert_compile(
             schema.CreateTable(t),
@@ -424,7 +518,7 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_multiple(self):
         m = MetaData()
-        foo = Table("foo", m,
+        Table("foo", m,
             Column('id', Integer, primary_key=True),
             Column('bar', Integer, primary_key=True)
         )
@@ -454,18 +548,20 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateTable(t),
-            "CREATE TABLE tbl (a INTEGER, b INTEGER CHECK (a < b) DEFERRABLE INITIALLY DEFERRED)"
+            "CREATE TABLE tbl (a INTEGER, b INTEGER CHECK (a < b) "
+                "DEFERRABLE INITIALLY DEFERRED)"
         )
 
     def test_use_alter(self):
         m = MetaData()
-        t = Table('t', m,
+        Table('t', m,
                   Column('a', Integer),
         )
 
-        t2 = Table('t2', m,
-                Column('a', Integer, ForeignKey('t.a', use_alter=True, name='fk_ta')),
-                Column('b', Integer, ForeignKey('t.a', name='fk_tb')), # to ensure create ordering ...
+        Table('t2', m,
+                Column('a', Integer, ForeignKey('t.a', use_alter=True,
+                                                        name='fk_ta')),
+                Column('b', Integer, ForeignKey('t.a', name='fk_tb'))
         )
 
         e = engines.mock_engine(dialect_name='postgresql')
@@ -474,15 +570,16 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
 
         e.assert_sql([
             'CREATE TABLE t (a INTEGER)',
-            'CREATE TABLE t2 (a INTEGER, b INTEGER, CONSTRAINT fk_tb FOREIGN KEY(b) REFERENCES t (a))',
-            'ALTER TABLE t2 ADD CONSTRAINT fk_ta FOREIGN KEY(a) REFERENCES t (a)',
+            'CREATE TABLE t2 (a INTEGER, b INTEGER, CONSTRAINT fk_tb '
+                            'FOREIGN KEY(b) REFERENCES t (a))',
+            'ALTER TABLE t2 '
+                    'ADD CONSTRAINT fk_ta FOREIGN KEY(a) REFERENCES t (a)',
             'ALTER TABLE t2 DROP CONSTRAINT fk_ta',
             'DROP TABLE t2',
             'DROP TABLE t'
         ])
 
-
-    def test_add_drop_constraint(self):
+    def _constraint_create_fixture(self):
         m = MetaData()
 
         t = Table('tbl', m,
@@ -495,10 +592,14 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
                 Column('b', Integer)
         )
 
-        constraint = CheckConstraint('a < b',name="my_test_constraint",
-                                        deferrable=True,initially='DEFERRED',
-                                        table=t)
+        return t, t2
 
+    def test_render_ck_constraint_inline(self):
+        t, t2 = self._constraint_create_fixture()
+
+        CheckConstraint('a < b', name="my_test_constraint",
+                                        deferrable=True, initially='DEFERRED',
+                                        table=t)
 
         # before we create an AddConstraint,
         # the CONSTRAINT comes out inline
@@ -507,15 +608,32 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TABLE tbl ("
             "a INTEGER, "
             "b INTEGER, "
-            "CONSTRAINT my_test_constraint CHECK (a < b) DEFERRABLE INITIALLY DEFERRED"
+            "CONSTRAINT my_test_constraint CHECK (a < b) "
+                        "DEFERRABLE INITIALLY DEFERRED"
             ")"
         )
+
+    def test_render_ck_constraint_external(self):
+        t, t2 = self._constraint_create_fixture()
+
+        constraint = CheckConstraint('a < b', name="my_test_constraint",
+                                        deferrable=True, initially='DEFERRED',
+                                        table=t)
 
         self.assert_compile(
             schema.AddConstraint(constraint),
             "ALTER TABLE tbl ADD CONSTRAINT my_test_constraint "
                     "CHECK (a < b) DEFERRABLE INITIALLY DEFERRED"
         )
+
+    def test_external_ck_constraint_cancels_internal(self):
+        t, t2 = self._constraint_create_fixture()
+
+        constraint = CheckConstraint('a < b', name="my_test_constraint",
+                                        deferrable=True, initially='DEFERRED',
+                                        table=t)
+
+        schema.AddConstraint(constraint)
 
         # once we make an AddConstraint,
         # inline compilation of the CONSTRAINT
@@ -528,15 +646,32 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             ")"
         )
 
+    def test_render_drop_constraint(self):
+        t, t2 = self._constraint_create_fixture()
+
+        constraint = CheckConstraint('a < b', name="my_test_constraint",
+                                        deferrable=True, initially='DEFERRED',
+                                        table=t)
+
         self.assert_compile(
             schema.DropConstraint(constraint),
             "ALTER TABLE tbl DROP CONSTRAINT my_test_constraint"
         )
 
+    def test_render_drop_constraint_cascade(self):
+        t, t2 = self._constraint_create_fixture()
+
+        constraint = CheckConstraint('a < b', name="my_test_constraint",
+                                        deferrable=True, initially='DEFERRED',
+                                        table=t)
+
         self.assert_compile(
             schema.DropConstraint(constraint, cascade=True),
             "ALTER TABLE tbl DROP CONSTRAINT my_test_constraint CASCADE"
         )
+
+    def test_render_add_fk_constraint_stringcol(self):
+        t, t2 = self._constraint_create_fixture()
 
         constraint = ForeignKeyConstraint(["b"], ["t2.a"])
         t.append_constraint(constraint)
@@ -545,12 +680,18 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             "ALTER TABLE tbl ADD FOREIGN KEY(b) REFERENCES t2 (a)"
         )
 
+    def test_render_add_fk_constraint_realcol(self):
+        t, t2 = self._constraint_create_fixture()
+
         constraint = ForeignKeyConstraint([t.c.a], [t2.c.b])
         t.append_constraint(constraint)
         self.assert_compile(
             schema.AddConstraint(constraint),
             "ALTER TABLE tbl ADD FOREIGN KEY(a) REFERENCES t2 (b)"
         )
+
+    def test_render_add_uq_constraint_stringcol(self):
+        t, t2 = self._constraint_create_fixture()
 
         constraint = UniqueConstraint("a", "b", name="uq_cst")
         t2.append_constraint(constraint)
@@ -559,11 +700,17 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             "ALTER TABLE t2 ADD CONSTRAINT uq_cst UNIQUE (a, b)"
         )
 
+    def test_render_add_uq_constraint_realcol(self):
+        t, t2 = self._constraint_create_fixture()
+
         constraint = UniqueConstraint(t2.c.a, t2.c.b, name="uq_cs2")
         self.assert_compile(
             schema.AddConstraint(constraint),
             "ALTER TABLE t2 ADD CONSTRAINT uq_cs2 UNIQUE (a, b)"
         )
+
+    def test_render_add_pk_constraint(self):
+        t, t2 = self._constraint_create_fixture()
 
         assert t.c.a.primary_key is False
         constraint = PrimaryKeyConstraint(t.c.a)
@@ -572,6 +719,13 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.AddConstraint(constraint),
             "ALTER TABLE tbl ADD PRIMARY KEY (a)"
         )
+
+class ConstraintAPITest(fixtures.TestBase):
+    def test_double_fk_usage_raises(self):
+        f = ForeignKey('b.id')
+
+        Column('x', Integer, f)
+        assert_raises(exc.InvalidRequestError, Column, "y", Integer, f)
 
     def test_auto_append_constraint(self):
         m = MetaData()
@@ -612,10 +766,10 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
                 Column('b', Integer)
         )
 
-        uq = UniqueConstraint(t.c.a)
-        ck = CheckConstraint(t.c.a > 5)
-        fk = ForeignKeyConstraint([t.c.a], [t2.c.a])
-        pk = PrimaryKeyConstraint(t.c.a)
+        UniqueConstraint(t.c.a)
+        CheckConstraint(t.c.a > 5)
+        ForeignKeyConstraint([t.c.a], [t2.c.a])
+        PrimaryKeyConstraint(t.c.a)
 
         m2 = MetaData()
 
@@ -653,3 +807,92 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
         c = CheckConstraint(t.c.a > t2.c.b)
         assert c not in t.constraints
         assert c not in t2.constraints
+
+    def test_index_asserts_cols_standalone(self):
+        metadata = MetaData()
+
+        t1 = Table('t1', metadata,
+            Column('x', Integer)
+        )
+        t2 = Table('t2', metadata,
+            Column('y', Integer)
+        )
+        assert_raises_message(
+            exc.ArgumentError,
+            "Column 't2.y' is not part of table 't1'.",
+            Index,
+            "bar", t1.c.x, t2.c.y
+        )
+
+    def test_index_asserts_cols_inline(self):
+        metadata = MetaData()
+
+        t1 = Table('t1', metadata,
+            Column('x', Integer)
+        )
+        assert_raises_message(
+            exc.ArgumentError,
+            "Index 'bar' is against table 't1', and "
+            "cannot be associated with table 't2'.",
+            Table, 't2', metadata,
+                Column('y', Integer),
+                Index('bar', t1.c.x)
+        )
+
+    def test_raise_index_nonexistent_name(self):
+        m = MetaData()
+        # the KeyError isn't ideal here, a nicer message
+        # perhaps
+        assert_raises(
+            KeyError,
+            Table, 't', m, Column('x', Integer), Index("foo", "q")
+        )
+
+    def test_raise_not_a_column(self):
+        assert_raises(
+            exc.ArgumentError,
+            Index, "foo", 5
+        )
+
+    def test_raise_expr_no_column(self):
+        idx = Index('foo', func.lower(5))
+
+        assert_raises_message(
+            exc.CompileError,
+            "Index 'foo' is not associated with any table.",
+            schema.CreateIndex(idx).compile, dialect=testing.db.dialect
+        )
+        assert_raises_message(
+            exc.CompileError,
+            "Index 'foo' is not associated with any table.",
+            schema.CreateIndex(idx).compile
+        )
+
+
+    def test_no_warning_w_no_columns(self):
+        # I think the test here is, there is no warning.
+        # people want to create empty indexes for the purpose of
+        # a drop.
+        idx = Index(name="foo")
+
+        assert_raises_message(
+            exc.CompileError,
+            "Index 'foo' is not associated with any table.",
+            schema.CreateIndex(idx).compile, dialect=testing.db.dialect
+        )
+        assert_raises_message(
+            exc.CompileError,
+            "Index 'foo' is not associated with any table.",
+            schema.CreateIndex(idx).compile
+        )
+
+    def test_raise_clauseelement_not_a_column(self):
+        m = MetaData()
+        t2 = Table('t2', m, Column('x', Integer))
+        class SomeClass(object):
+            def __clause_element__(self):
+                return t2
+        assert_raises(
+            exc.ArgumentError,
+            Index, "foo", SomeClass()
+        )

@@ -935,9 +935,8 @@ class MSDDLCompiler(compiler.DDLCompiler):
     def visit_drop_index(self, drop):
         return "\nDROP INDEX %s.%s" % (
             self.preparer.quote_identifier(drop.element.table.name),
-            self.preparer.quote(
-                        self._index_identifier(drop.element.name),
-                        drop.element.quote)
+            self._prepared_index_name(drop.element,
+                                        include_schema=True)
             )
 
 

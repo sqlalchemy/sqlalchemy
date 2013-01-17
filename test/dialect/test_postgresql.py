@@ -180,17 +180,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'USING hash (data)',
                             dialect=postgresql.dialect())
 
-    @testing.uses_deprecated(r".*'postgres_where' argument has been "
-                             "renamed.*")
-    def test_old_create_partial_index(self):
-        tbl = Table('testtbl', MetaData(), Column('data', Integer))
-        idx = Index('test_idx1', tbl.c.data,
-                    postgres_where=and_(tbl.c.data > 5, tbl.c.data
-                    < 10))
-        self.assert_compile(schema.CreateIndex(idx),
-                            'CREATE INDEX test_idx1 ON testtbl (data) '
-                            'WHERE data > 5 AND data < 10',
-                            dialect=postgresql.dialect())
 
     def test_extract(self):
         t = table('t', column('col1', DateTime), column('col2', Date),

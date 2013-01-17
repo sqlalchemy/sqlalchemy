@@ -7,6 +7,24 @@
     :version: 0.8.0
 
     .. change::
+        :tags: sql, feature
+        :tickets: 695
+
+      :class:`.Index` now supports arbitrary SQL expressions and/or
+      functions, in addition to straight columns.   Common modifiers
+      include using ``somecolumn.desc()`` for a descending index and
+      ``func.lower(somecolumn)`` for a case-insensitive index, depending on the
+      capabilities of the target backend.
+
+    .. change::
+        :tags: mssql, bug
+        :tickets: 2638
+
+      Added a py3K conditional around unnecessary .decode()
+      call in mssql information schema, fixes reflection
+      in Py3K. Also in 0.7.10.
+
+    .. change::
         :tags: orm, bug
         :tickets: 2650
 
