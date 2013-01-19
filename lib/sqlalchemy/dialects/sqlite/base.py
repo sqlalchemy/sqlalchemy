@@ -87,7 +87,7 @@ the effect of each SQL statement and flush committing changes immediately.
 For more information on SQLite's lack of concurrency by design, please
 see `Situations Where Another RDBMS May Work Better - High
 Concurrency <http://www.sqlite.org/whentouse.html>`_ near the bottom of
- the page.
+the page.
 
 .. _sqlite_foreign_keys:
 
