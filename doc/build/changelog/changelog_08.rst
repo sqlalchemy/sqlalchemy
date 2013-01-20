@@ -7,6 +7,14 @@
     :version: 0.8.0
 
     .. change::
+        :tags: mssql, feature
+        :pullreq: 35
+
+      Added ``mssql_include`` and ``mssql_clustered`` options to
+      :class:`.Index`, renders the ``INCLUDE`` and ``CLUSTERED`` keywords,
+      respectively.  Courtesy Derek Harland.
+
+    .. change::
         :tags: sql, feature
         :tickets: 695
 

@@ -2340,15 +2340,18 @@ class Index(ColumnCollectionMixin, SchemaItem):
     column index, adding ``index=True`` to the ``Column`` definition is
     a shorthand equivalent for an unnamed, single column :class:`.Index`.
 
-    See also:
+    .. seealso::
 
-    :ref:`schema_indexes` - General information on :class:`.Index`.
+        :ref:`schema_indexes` - General information on :class:`.Index`.
 
-    :ref:`postgresql_indexes` - PostgreSQL-specific options available for the
-    :class:`.Index` construct.
+        :ref:`postgresql_indexes` - PostgreSQL-specific options available for the
+        :class:`.Index` construct.
 
-    :ref:`mysql_indexes` - MySQL-specific options available for the
-    :class:`.Index` construct.
+        :ref:`mysql_indexes` - MySQL-specific options available for the
+        :class:`.Index` construct.
+
+        :ref:`mssql_indexes` - MSSQL-specific options available for the
+        :class:`.Index` construct.
 
     """
 
