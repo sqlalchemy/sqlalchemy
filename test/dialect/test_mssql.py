@@ -506,6 +506,42 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,1))"
                             )
 
+    def test_index_clustering(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('id', Integer))
+        idx = Index("foo", tbl.c.id, mssql_clustered=True)
+        self.assert_compile(schema.CreateIndex(idx),
+                            "CREATE CLUSTERED INDEX foo ON test (id)"
+                            )
+
+    def test_index_ordering(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('x', Integer), Column('y', Integer), Column('z', Integer))
+        idx = Index("foo", tbl.c.x, "y", mssql_ordering=['DESC'])
+        self.assert_compile(schema.CreateIndex(idx),
+                            "CREATE INDEX foo ON test (x DESC, y)"
+                            )
+
+    def test_index_extra_include_1(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('x', Integer), Column('y', Integer), Column('z', Integer))
+        idx = Index("foo", tbl.c.x, mssql_include=['y'])
+        self.assert_compile(schema.CreateIndex(idx),
+                            "CREATE INDEX foo ON test (x) INCLUDE (y)"
+                            )
+
+    def test_index_extra_include_2(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('x', Integer), Column('y', Integer), Column('z', Integer))
+        idx = Index("foo", tbl.c.x, mssql_include=[tbl.c.y])
+        self.assert_compile(schema.CreateIndex(idx),
+                            "CREATE INDEX foo ON test (x) INCLUDE (y)"
+                            )
+
 class SchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
     """SQL server cannot reference schema-qualified tables in a SELECT statement, they
     must be aliased.

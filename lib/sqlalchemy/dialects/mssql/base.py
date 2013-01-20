@@ -932,6 +932,43 @@ class MSDDLCompiler(compiler.DDLCompiler):
 
         return colspec
 
+    def visit_create_index(self, create, include_schema=False):
+        index = create.element
+        preparer = self.preparer
+        text = "CREATE "
+        if index.unique:
+            text += "UNIQUE "
+
+        # handle clustering option
+        if index.kwargs.get("mssql_clustered"):
+            text += "CLUSTERED "
+
+        # extend the custom ordering to the right length
+        ordering = index.kwargs.get("mssql_ordering", [])
+        if len(ordering) > len(index.columns):
+            raise ValueError("Column ordering length is incompatible with index columns")
+        elif len(ordering) < len(index.columns):
+            ordering.extend([""]*(len(index.columns) - len(ordering)))
+
+        text += "INDEX %s ON %s (%s)" \
+                    % (
+                        self._prepared_index_name(index,
+                                include_schema=include_schema),
+                        preparer.format_table(index.table),
+                        ', '.join([preparer.quote(c.name, c.quote) + (" " + o if o else "")
+                                   for c, o in zip(index.columns, ordering)]))
+
+        # handle other included columns
+        if index.kwargs.get("mssql_include"):
+            inclusions = [index.table.c[col] if isinstance(col, basestring) else col
+                          for col in index.kwargs["mssql_include"]]
+
+            text += " INCLUDE (%s)" \
+                % ', '.join([preparer.quote(c.name, c.quote)
+                             for c in inclusions])
+
+        return text
+
     def visit_drop_index(self, drop):
         return "\nDROP INDEX %s.%s" % (
             self.preparer.quote_identifier(drop.element.table.name),
