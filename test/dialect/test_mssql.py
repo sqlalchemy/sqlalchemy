@@ -519,7 +519,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         metadata = MetaData()
         tbl = Table('test', metadata,
                     Column('x', Integer), Column('y', Integer), Column('z', Integer))
-        idx = Index("foo", tbl.c.x, "y", mssql_ordering=['DESC'])
+        idx = Index("foo", tbl.c.x.desc(), "y")
         self.assert_compile(schema.CreateIndex(idx),
                             "CREATE INDEX foo ON test (x DESC, y)"
                             )

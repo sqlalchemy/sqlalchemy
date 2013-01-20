@@ -1170,6 +1170,8 @@ The :class:`~sqlalchemy.schema.Index` object also supports its own ``create()`` 
     {sql}i.create(engine)
     CREATE INDEX someindex ON mytable (col5){stop}
 
+.. _schema_indexes_functional:
+
 Functional Indexes
 ~~~~~~~~~~~~~~~~~~~
 

@@ -101,6 +101,50 @@ The DATE and TIME types are not available for MSSQL 2005 and
 previous - if a server version below 2008 is detected, DDL
 for these types will be issued as DATETIME.
 
+.. _mssql_indexes:
+
+MSSQL-Specific Index Options
+-----------------------------
+
+The MSSQL dialect supports special options for :class:`.Index`.
+
+CLUSTERED
+^^^^^^^^^^
+
+The ``mssql_clustered`` option  adds the CLUSTERED keyword to the index::
+
+    Index("my_index", table.c.x, mssql_clustered=True)
+
+would render the index as ``CREATE CLUSTERED INDEX my_index ON table (x)``
+
+.. versionadded:: 0.8
+
+INCLUDE
+^^^^^^^
+
+The ``mssql_include`` option renders INCLUDE(colname) for the given string names::
+
+    Index("my_index", table.c.x, mssql_include=['y'])
+
+would render the index as ``CREATE INDEX my_index ON table (x) INCLUDE (y)``
+
+.. versionadded:: 0.8
+
+Index ordering
+^^^^^^^^^^^^^^
+
+Index ordering is available via functional expressions, such as::
+
+    Index("my_index", table.c.x.desc())
+
+would render the index as ``CREATE INDEX my_index ON table (x DESC)``
+
+.. versionadded:: 0.8
+
+.. seealso::
+
+    :ref:`schema_indexes_functional`
+
 Compatibility Levels
 --------------------
 MSSQL supports the notion of setting compatibility levels at the
@@ -934,6 +978,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
 
     def visit_create_index(self, create, include_schema=False):
         index = create.element
+        self._verify_index_table(index)
         preparer = self.preparer
         text = "CREATE "
         if index.unique:
@@ -943,24 +988,21 @@ class MSDDLCompiler(compiler.DDLCompiler):
         if index.kwargs.get("mssql_clustered"):
             text += "CLUSTERED "
 
-        # extend the custom ordering to the right length
-        ordering = index.kwargs.get("mssql_ordering", [])
-        if len(ordering) > len(index.columns):
-            raise ValueError("Column ordering length is incompatible with index columns")
-        elif len(ordering) < len(index.columns):
-            ordering.extend([""]*(len(index.columns) - len(ordering)))
-
         text += "INDEX %s ON %s (%s)" \
                     % (
                         self._prepared_index_name(index,
                                 include_schema=include_schema),
                         preparer.format_table(index.table),
-                        ', '.join([preparer.quote(c.name, c.quote) + (" " + o if o else "")
-                                   for c, o in zip(index.columns, ordering)]))
+                       ', '.join(
+                            self.sql_compiler.process(expr,
+                                include_table=False) for
+                                expr in index.expressions)
+                        )
 
         # handle other included columns
         if index.kwargs.get("mssql_include"):
-            inclusions = [index.table.c[col] if isinstance(col, basestring) else col
+            inclusions = [index.table.c[col]
+                            if isinstance(col, basestring) else col
                           for col in index.kwargs["mssql_include"]]
 
             text += " INCLUDE (%s)" \
