@@ -291,8 +291,8 @@ class collection(object):
 
     The decorators fall into two groups: annotations and interception recipes.
 
-    The annotating decorators (appender, remover, iterator,
-    internally_instrumented, link) indicate the method's purpose and take no
+    The annotating decorators (appender, remover, iterator, linker, converter,
+    internally_instrumented) indicate the method's purpose and take no
     arguments.  They are not written with parens::
 
         @collection.appender
@@ -418,8 +418,8 @@ class collection(object):
         return fn
 
     @staticmethod
-    def link(fn):
-        """Tag the method as a the "linked to attribute" event handler.
+    def linker(fn):
+        """Tag the method as a "linked to attribute" event handler.
 
         This optional event handler will be called when the collection class
         is linked to or unlinked from the InstrumentedAttribute.  It is
@@ -428,8 +428,11 @@ class collection(object):
         that has been linked, or None if unlinking.
 
         """
-        setattr(fn, '_sa_instrument_role', 'link')
+        setattr(fn, '_sa_instrument_role', 'linker')
         return fn
+
+    link = linker
+    """deprecated; synonym for :meth:`.collection.linker`."""
 
     @staticmethod
     def converter(fn):
@@ -608,14 +611,14 @@ class CollectionAdapter(object):
     def link_to_self(self, data):
         """Link a collection to this adapter, and fire a link event."""
         setattr(data, '_sa_adapter', self)
-        if hasattr(data, '_sa_on_link'):
-            getattr(data, '_sa_on_link')(self)
+        if hasattr(data, '_sa_linker'):
+            getattr(data, '_sa_linker')(self)
 
     def unlink(self, data):
         """Unlink a collection from any adapter, and fire a link event."""
         setattr(data, '_sa_adapter', None)
-        if hasattr(data, '_sa_on_link'):
-            getattr(data, '_sa_on_link')(None)
+        if hasattr(data, '_sa_linker'):
+            getattr(data, '_sa_linker')(None)
 
     def adapt_like_to_iterable(self, obj):
         """Converts collection-compatible objects to an iterable of values.
@@ -888,7 +891,7 @@ def _instrument_class(cls):
             if hasattr(method, '_sa_instrument_role'):
                 role = method._sa_instrument_role
                 assert role in ('appender', 'remover', 'iterator',
-                                'link', 'converter')
+                                'linker', 'converter')
                 roles.setdefault(role, name)
 
             # transfer instrumentation requests from decorated function

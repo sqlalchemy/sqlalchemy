@@ -2144,5 +2144,32 @@ class InstrumentationTest(fixtures.ORMTest):
         eq_(Sub._sa_iterator(Sub(), 5), "base_iterate")
         eq_(Sub._sa_converter(Sub(), 5), "sub_convert")
 
+    def test_link_event(self):
+        canary = []
+        class Collection(list):
+            @collection.linker
+            def _on_link(self, obj):
+                canary.append(obj)
+
+        class Foo(object):
+            pass
+
+        instrumentation.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', uselist=True,
+                                   typecallable=Collection, useobject=True)
+
+        f1 = Foo()
+        f1.attr.append(3)
+
+        eq_(canary, [f1.attr._sa_adapter])
+        adapter_1 = f1.attr._sa_adapter
+
+        l2 = Collection()
+        f1.attr = l2
+        eq_(canary, [adapter_1, f1.attr._sa_adapter, None])
+
+
+
+
 
 

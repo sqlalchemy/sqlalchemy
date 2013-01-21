@@ -8,6 +8,17 @@
 
     .. change::
         :tags: orm, bug
+        :tickets: 2653
+
+      Fixed the (most likely never used) "@collection.link" collection
+      method, which fires off each time the collection is associated
+      or de-associated with a mapped object - the decorator
+      was not tested or functional.  The decorator method
+      is now named :meth:`.collection.linker` though the name "link"
+      remains for backwards compatibility.  Courtesy Luca Wehrstedt.
+
+    .. change::
+        :tags: orm, bug
         :tickets: 2654
 
       Made some fixes to the system of producing custom instrumented
