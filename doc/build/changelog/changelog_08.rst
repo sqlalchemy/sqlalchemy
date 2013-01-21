@@ -7,6 +7,28 @@
     :version: 0.8.0
 
     .. change::
+        :tags: orm, bug
+        :tickets: 2654
+
+      Made some fixes to the system of producing custom instrumented
+      collections, mainly that the usage of the @collection decorators
+      will now honor the __mro__ of the given class, applying the
+      logic of the sub-most classes' version of a particular collection
+      method.   Previously, it wasn't predictable when subclassing
+      an existing instrumented class such as :class:`.MappedCollection`
+      whether or not custom methods would resolve correctly.
+
+    .. change::
+      :tags: orm, removed
+
+      The undocumented (and hopefully unused) system of producing
+      custom collections using an ``__instrumentation__`` datastructure
+      associated with the collection has been removed, as this was a complex
+      and untested feature which was also essentially redundant versus the
+      decorator approach.   Other internal simplifcations to the
+      orm.collections module have been made as well.
+
+    .. change::
         :tags: mssql, feature
         :pullreq: 35
 

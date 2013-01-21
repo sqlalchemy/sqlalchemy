@@ -1098,6 +1098,32 @@ class CollectionsTest(fixtures.ORMTest):
         self._test_dict_bulk(MyOrdered)
         self.assert_(getattr(MyOrdered, '_sa_instrumented') == id(MyOrdered))
 
+    def test_dict_subclass4(self):
+        # tests #2654
+        class MyDict(collections.MappedCollection):
+            def __init__(self):
+                super(MyDict, self).__init__(lambda value: "k%d" % value)
+
+            @collection.converter
+            def _convert(self, dictlike):
+                for key, value in dictlike.iteritems():
+                    yield value + 5
+
+        class Foo(object):
+            pass
+
+        canary = Canary()
+
+        instrumentation.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', uselist=True,
+                                    extension=canary,
+                                   typecallable=MyDict, useobject=True)
+
+        f = Foo()
+        f.attr = {"k1": 1, "k2": 2}
+
+        eq_(f.attr, {'k7': 7, 'k6': 6})
+
     def test_dict_duck(self):
         class DictLike(object):
             def __init__(self):
@@ -2074,4 +2100,49 @@ class InstrumentationTest(fixtures.ORMTest):
         assert 'no_touch' in dir(Touchy)
 
         collections._instrument_class(Touchy)
+
+    def test_name_setup(self):
+
+        class Base(object):
+            @collection.iterator
+            def base_iterate(self, x):
+                return "base_iterate"
+
+            @collection.appender
+            def base_append(self, x):
+                return "base_append"
+
+            @collection.converter
+            def base_convert(self, x):
+                return "base_convert"
+
+            @collection.remover
+            def base_remove(self, x):
+                return "base_remove"
+
+
+        from sqlalchemy.orm.collections import _instrument_class
+        _instrument_class(Base)
+
+        eq_(Base._sa_remover(Base(), 5), "base_remove")
+        eq_(Base._sa_appender(Base(), 5), "base_append")
+        eq_(Base._sa_iterator(Base(), 5), "base_iterate")
+        eq_(Base._sa_converter(Base(), 5), "base_convert")
+
+        class Sub(Base):
+            @collection.converter
+            def base_convert(self, x):
+                return "sub_convert"
+
+            @collection.remover
+            def sub_remove(self, x):
+                return "sub_remove"
+        _instrument_class(Sub)
+
+        eq_(Sub._sa_appender(Sub(), 5), "base_append")
+        eq_(Sub._sa_remover(Sub(), 5), "sub_remove")
+        eq_(Sub._sa_iterator(Sub(), 5), "base_iterate")
+        eq_(Sub._sa_converter(Sub(), 5), "sub_convert")
+
+
 
