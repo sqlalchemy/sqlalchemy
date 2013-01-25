@@ -7,6 +7,13 @@
     :version: 0.8.0
 
     .. change::
+        :tags: sql, bug
+        :tickets: 2629
+
+        insert().returning() raises an informative CompileError if attempted
+        to compile on a dialect that doesn't support RETURNING.
+
+    .. change::
         :tags: orm, bug
         :tickets: 2655
 
