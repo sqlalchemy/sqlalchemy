@@ -1081,7 +1081,7 @@ class RelationshipProperty(StrategizedProperty):
         self.target = self.mapper.mapped_table
 
         if self.cascade.delete_orphan:
-            self.mapper.primary_mapper().delete_orphans.append(
+            self.mapper.primary_mapper()._delete_orphans.append(
                             (self.key, self.parent.class_)
                         )
 

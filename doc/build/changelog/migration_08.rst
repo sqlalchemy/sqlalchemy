@@ -964,6 +964,124 @@ on :func:`.insert`, :func:`.select` and :class:`.Query`.
 Behavioral Changes
 ==================
 
+.. _legacy_is_orphan_addition:
+
+The consideration of a "pending" object as an "orphan" has been made more aggressive
+------------------------------------------------------------------------------------
+
+This is a late add to the 0.8 series, however it is hoped that the new behavior
+is generally more consistent and intuitive in a wider variety of
+situations.   The ORM has since at least version 0.4 included behavior
+such that an object that's "pending", meaning that it's
+associated with a :class:`.Session` but hasn't been inserted into the database
+yet, is automatically expunged from the :class:`.Session` when it becomes an "orphan",
+which means it has been de-associated with a parent object that refers to it
+with ``delete-orphan`` cascade on the configured :func:`.relationship`.   This
+behavior is intended to approximately mirror the behavior of a persistent
+(that is, already inserted) object, where the ORM will emit a DELETE for such
+objects that become orphans based on the interception of detachment events.
+
+The behavioral change comes into play for objects that
+are referred to by multiple kinds of parents that each specify ``delete-orphan``; the
+typical example is an :ref:`association object <association_pattern>` that bridges two other kinds of objects
+in a many-to-many pattern.   Previously, the behavior was such that the
+pending object would be expunged only when de-associated with *all* of its parents.
+With the behavioral change, the pending object
+is expunged as soon as it is de-associated from *any* of the parents that it was
+previously associated with.  This behavior is intended to more closely
+match that of persistent objects, which are deleted as soon
+as they are de-associated from any parent.
+
+The rationale for the older behavior dates back
+at least to version 0.4, and was basically a defensive decision to try to alleviate
+confusion when an object was still being constructed for INSERT.   But the reality
+is that the object is re-associated with the :class:`.Session` as soon as it is
+attached to any new parent in any case.
+
+It's still possible to flush an object
+that is not associated with all of its required parents, if the object was either
+not associated with those parents in the first place, or if it was expunged, but then
+re-associated with a :class:`.Session` via a subsequent attachment event but still
+not fully associated.   In this situation, it is expected that the database
+would emit an integrity error, as there are likely NOT NULL foreign key columns
+that are unpopulated.   The ORM makes the decision to let these INSERT attempts
+occur, based on the judgment that an object that is only partially associated with
+its required parents but has been actively associated with some of them,
+is more often than not a user error, rather than an intentional
+omission which should be silently skipped - silently skipping the INSERT here would
+make user errors of this nature very hard to debug.
+
+The old behavior, for applications that might have been relying upon it, can be re-enabled for
+any :class:`.Mapper` by specifying the flag ``legacy_is_orphan`` as a mapper
+option.
+
+The new behavior allows the following test case to work::
+
+    from sqlalchemy import Column, Integer, String, ForeignKey
+    from sqlalchemy.orm import relationship, backref
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+    class User(Base):
+        __tablename__ = 'user'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(64))
+
+    class UserKeyword(Base):
+        __tablename__ = 'user_keyword'
+        user_id = Column(Integer, ForeignKey('user.id'), primary_key=True)
+        keyword_id = Column(Integer, ForeignKey('keyword.id'), primary_key=True)
+
+        user = relationship(User,
+                    backref=backref("user_keywords",
+                                    cascade="all, delete-orphan")
+                )
+
+        keyword = relationship("Keyword",
+                    backref=backref("user_keywords",
+                                    cascade="all, delete-orphan")
+                )
+
+        # uncomment this to enable the old behavior
+        # __mapper_args__ = {"legacy_is_orphan": True}
+
+    class Keyword(Base):
+        __tablename__ = 'keyword'
+        id = Column(Integer, primary_key=True)
+        keyword = Column('keyword', String(64))
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session
+
+    # note we're using Postgresql to ensure that referential integrity
+    # is enforced, for demonstration purposes.
+    e = create_engine("postgresql://scott:tiger@localhost/test", echo=True)
+
+    Base.metadata.drop_all(e)
+    Base.metadata.create_all(e)
+
+    session = Session(e)
+
+    u1 = User(name="u1")
+    k1 = Keyword(keyword="k1")
+
+    session.add_all([u1, k1])
+
+    uk1 = UserKeyword(keyword=k1, user=u1)
+
+    # previously, if session.flush() were called here,
+    # this operation would succeed, but if session.flush()
+    # were not called here, the operation fails with an
+    # integrity error.
+    # session.flush()
+    del u1.user_keywords[0]
+
+    session.commit()
+
+
+:ticket:`2655`
+
 The after_attach event fires after the item is associated with the Session instead of before; before_attach added
 -----------------------------------------------------------------------------------------------------------------
 

@@ -6,7 +6,8 @@ from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
     sessionmaker, class_mapper, backref, Session, util as orm_util,\
     configure_mappers
-from sqlalchemy.orm import attributes, exc as orm_exc
+from sqlalchemy.orm.attributes import instance_state
+from sqlalchemy.orm import attributes, exc as orm_exc, object_mapper
 from sqlalchemy import testing
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -2261,10 +2262,7 @@ class DoubleParentO2MOrphanTest(fixtures.MappedTest):
             Column('account_id', Integer,
                    ForeignKey('accounts.account_id')))
 
-    def test_double_parent_expunge_o2m(self):
-        """test the delete-orphan uow event for multiple delete-orphan
-        parent relationships."""
-
+    def _fixture(self, legacy_is_orphan, uselist):
         sales_reps, customers, accounts = (self.tables.sales_reps,
                                 self.tables.customers,
                                 self.tables.accounts)
@@ -2277,15 +2275,17 @@ class DoubleParentO2MOrphanTest(fixtures.MappedTest):
         class SalesRep(fixtures.ComparableEntity):
             pass
 
-        mapper(Customer, customers)
+        mapper(Customer, customers, legacy_is_orphan=legacy_is_orphan)
         mapper(Account, accounts, properties=dict(
             customers=relationship(Customer,
                                cascade="all,delete-orphan",
-                               backref="account")))
+                               backref="account",
+                               uselist=uselist)))
         mapper(SalesRep, sales_reps, properties=dict(
             customers=relationship(Customer,
                                cascade="all,delete-orphan",
-                               backref="sales_rep")))
+                               backref="sales_rep",
+                               uselist=uselist)))
         s = create_session()
 
         a = Account(balance=0)
@@ -2295,9 +2295,21 @@ class DoubleParentO2MOrphanTest(fixtures.MappedTest):
 
         c = Customer(name="Jane")
 
-        a.customers.append(c)
-        sr.customers.append(c)
+        if uselist:
+            a.customers.append(c)
+            sr.customers.append(c)
+        else:
+            a.customers = c
+            sr.customers = c
+
         assert c in s
+        return s, c, a, sr
+
+    def test_double_parent_expunge_o2m_legacy(self):
+        """test the delete-orphan uow event for multiple delete-orphan
+        parent relationships."""
+
+        s, c, a, sr = self._fixture(True, True)
 
         a.customers.remove(c)
         assert c in s, "Should not expunge customer yet, still has one parent"
@@ -2306,48 +2318,44 @@ class DoubleParentO2MOrphanTest(fixtures.MappedTest):
         assert c not in s, \
             'Should expunge customer when both parents are gone'
 
-    def test_double_parent_expunge_o2o(self):
+    def test_double_parent_expunge_o2m_current(self):
         """test the delete-orphan uow event for multiple delete-orphan
         parent relationships."""
 
-        sales_reps, customers, accounts = (self.tables.sales_reps,
-                                self.tables.customers,
-                                self.tables.accounts)
+        s, c, a, sr = self._fixture(False, True)
+
+        a.customers.remove(c)
+        assert c not in s, "Should expunge customer when either parent is gone"
+
+        sr.customers.remove(c)
+        assert c not in s, \
+            'Should expunge customer when both parents are gone'
+
+    def test_double_parent_expunge_o2o_legacy(self):
+        """test the delete-orphan uow event for multiple delete-orphan
+        parent relationships."""
+
+        s, c, a, sr = self._fixture(True, False)
 
 
-        class Customer(fixtures.ComparableEntity):
-            pass
-        class Account(fixtures.ComparableEntity):
-            pass
-        class SalesRep(fixtures.ComparableEntity):
-            pass
-
-        mapper(Customer, customers)
-        mapper(Account, accounts, properties=dict(
-            customer=relationship(Customer,
-                               cascade="all,delete-orphan",
-                               backref="account", uselist=False)))
-        mapper(SalesRep, sales_reps, properties=dict(
-            customer=relationship(Customer,
-                               cascade="all,delete-orphan",
-                               backref="sales_rep", uselist=False)))
-        s = create_session()
-
-        a = Account(balance=0)
-        sr = SalesRep(name="John")
-        s.add_all((a, sr))
-        s.flush()
-
-        c = Customer(name="Jane")
-
-        a.customer = c
-        sr.customer = c
-        assert c in s
-
-        a.customer = None
+        a.customers = None
         assert c in s, "Should not expunge customer yet, still has one parent"
 
-        sr.customer = None
+        sr.customers = None
+        assert c not in s, \
+            'Should expunge customer when both parents are gone'
+
+    def test_double_parent_expunge_o2o_current(self):
+        """test the delete-orphan uow event for multiple delete-orphan
+        parent relationships."""
+
+        s, c, a, sr = self._fixture(False, False)
+
+
+        a.customers = None
+        assert c not in s, "Should expunge customer when either parent is gone"
+
+        sr.customers = None
         assert c not in s, \
             'Should expunge customer when both parents are gone'
 
@@ -2498,6 +2506,160 @@ class CollectionAssignmentOrphanTest(fixtures.MappedTest):
         sess.expunge_all()
         eq_(sess.query(A).get(a1.id),
             A(name='a1', bs=[B(name='b1'), B(name='b2'), B(name='b3')]))
+
+class OrphanCriterionTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(self, metadata):
+        Table("core", metadata,
+            Column("id", Integer,
+                    primary_key=True, test_needs_autoincrement=True),
+            Column("related_one_id", Integer, ForeignKey("related_one.id")),
+            Column("related_two_id", Integer, ForeignKey("related_two.id"))
+        )
+
+        Table("related_one", metadata,
+            Column("id", Integer,
+                primary_key=True, test_needs_autoincrement=True),
+            )
+
+        Table("related_two", metadata,
+            Column("id", Integer,
+                primary_key=True, test_needs_autoincrement=True),
+            )
+
+    def _fixture(self, legacy_is_orphan, persistent,
+                        r1_present, r2_present, detach_event=True):
+        class Core(object):
+            pass
+
+        class RelatedOne(object):
+            def __init__(self, cores):
+                self.cores = cores
+
+        class RelatedTwo(object):
+            def __init__(self, cores):
+                self.cores = cores
+
+        mapper(Core, self.tables.core, legacy_is_orphan=legacy_is_orphan)
+        mapper(RelatedOne, self.tables.related_one, properties={
+                'cores': relationship(Core, cascade="all, delete-orphan",
+                    backref="r1")
+            })
+        mapper(RelatedTwo, self.tables.related_two, properties={
+                'cores': relationship(Core, cascade="all, delete-orphan",
+                    backref="r2")
+            })
+        c1 = Core()
+        if detach_event:
+            r1 = RelatedOne(cores=[c1])
+            r2 = RelatedTwo(cores=[c1])
+        else:
+            if r1_present:
+                r1 = RelatedOne(cores=[c1])
+            if r2_present:
+                r2 = RelatedTwo(cores=[c1])
+
+        if persistent:
+            s = Session()
+            s.add(c1)
+            s.flush()
+
+        if detach_event:
+            if not r1_present:
+                c1.r1 = None
+            if not r2_present:
+                c1.r2 = None
+        return c1
+
+    def _assert_not_orphan(self, c1):
+        mapper = object_mapper(c1)
+        state = instance_state(c1)
+        assert not mapper._is_orphan(state)
+
+    def _assert_is_orphan(self, c1):
+        mapper = object_mapper(c1)
+        state = instance_state(c1)
+        assert mapper._is_orphan(state)
+
+    def test_leg_pers_r1_r2(self):
+        c1 = self._fixture(True, True, True, True)
+
+        self._assert_not_orphan(c1)
+
+    def test_current_pers_r1_r2(self):
+        c1 = self._fixture(False, True, True, True)
+
+        self._assert_not_orphan(c1)
+
+    def test_leg_pers_r1_notr2(self):
+        c1 = self._fixture(True, True, True, False)
+
+        self._assert_not_orphan(c1)
+
+    def test_current_pers_r1_notr2(self):
+        c1 = self._fixture(False, True, True, False)
+
+        self._assert_is_orphan(c1)
+
+    def test_leg_pers_notr1_notr2(self):
+        c1 = self._fixture(True, True, False, False)
+
+        self._assert_is_orphan(c1)
+
+    def test_current_pers_notr1_notr2(self):
+        c1 = self._fixture(False, True, True, False)
+
+        self._assert_is_orphan(c1)
+
+    def test_leg_transient_r1_r2(self):
+        c1 = self._fixture(True, False, True, True)
+
+        self._assert_not_orphan(c1)
+
+    def test_current_transient_r1_r2(self):
+        c1 = self._fixture(False, False, True, True)
+
+        self._assert_not_orphan(c1)
+
+    def test_leg_transient_r1_notr2(self):
+        c1 = self._fixture(True, False, True, False)
+
+        self._assert_not_orphan(c1)
+
+    def test_current_transient_r1_notr2(self):
+        c1 = self._fixture(False, False, True, False)
+
+        self._assert_is_orphan(c1)
+
+    def test_leg_transient_notr1_notr2(self):
+        c1 = self._fixture(True, False, False, False)
+
+        self._assert_is_orphan(c1)
+
+    def test_current_transient_notr1_notr2(self):
+        c1 = self._fixture(False, False, False, False)
+
+        self._assert_is_orphan(c1)
+
+    def test_leg_transient_notr1_notr2_noevent(self):
+        c1 = self._fixture(True, False, False, False, False)
+
+        self._assert_is_orphan(c1)
+
+    def test_current_transient_notr1_notr2_noevent(self):
+        c1 = self._fixture(False, False, False, False, False)
+
+        self._assert_is_orphan(c1)
+
+    def test_leg_persistent_notr1_notr2_noevent(self):
+        c1 = self._fixture(True, True, False, False, False)
+
+        self._assert_not_orphan(c1)
+
+    def test_current_persistent_notr1_notr2_noevent(self):
+        c1 = self._fixture(False, True, False, False, False)
+
+        self._assert_not_orphan(c1)
 
 class O2MConflictTest(fixtures.MappedTest):
     """test that O2M dependency detects a change in parent, does the

@@ -12,7 +12,7 @@ used, allowing arbitrary types (including built-ins) to be used as entity
 collections without requiring inheritance from a base class.
 
 Instrumentation decoration relays membership change events to the
-``InstrumentedCollectionAttribute`` that is currently managing the collection.
+:class:`.CollectionAttributeImpl` that is currently managing the collection.
 The decorators observe function call arguments and return values, tracking
 entities entering or leaving the collection.  Two decorator approaches are
 provided.  One is a bundle of generic decorators that map function arguments
@@ -97,12 +97,11 @@ instrumentation may be the answer.  Within your method,
 ``collection_adapter(self)`` will retrieve an object that you can use for
 explicit control over triggering append and remove events.
 
-The owning object and InstrumentedCollectionAttribute are also reachable
+The owning object and :class:`.CollectionAttributeImpl` are also reachable
 through the adapter, allowing for some very sophisticated behavior.
 
 """
 
-import copy
 import inspect
 import operator
 import weakref
@@ -292,8 +291,8 @@ class collection(object):
 
     The decorators fall into two groups: annotations and interception recipes.
 
-    The annotating decorators (appender, remover, iterator,
-    internally_instrumented, link) indicate the method's purpose and take no
+    The annotating decorators (appender, remover, iterator, linker, converter,
+    internally_instrumented) indicate the method's purpose and take no
     arguments.  They are not written with parens::
 
         @collection.appender
@@ -419,8 +418,8 @@ class collection(object):
         return fn
 
     @staticmethod
-    def link(fn):
-        """Tag the method as a the "linked to attribute" event handler.
+    def linker(fn):
+        """Tag the method as a "linked to attribute" event handler.
 
         This optional event handler will be called when the collection class
         is linked to or unlinked from the InstrumentedAttribute.  It is
@@ -429,8 +428,11 @@ class collection(object):
         that has been linked, or None if unlinking.
 
         """
-        setattr(fn, '_sa_instrument_role', 'link')
+        setattr(fn, '_sa_instrument_role', 'linker')
         return fn
+
+    link = linker
+    """deprecated; synonym for :meth:`.collection.linker`."""
 
     @staticmethod
     def converter(fn):
@@ -609,14 +611,14 @@ class CollectionAdapter(object):
     def link_to_self(self, data):
         """Link a collection to this adapter, and fire a link event."""
         setattr(data, '_sa_adapter', self)
-        if hasattr(data, '_sa_on_link'):
-            getattr(data, '_sa_on_link')(self)
+        if hasattr(data, '_sa_linker'):
+            getattr(data, '_sa_linker')(self)
 
     def unlink(self, data):
         """Unlink a collection from any adapter, and fire a link event."""
         setattr(data, '_sa_adapter', None)
-        if hasattr(data, '_sa_on_link'):
-            getattr(data, '_sa_on_link')(None)
+        if hasattr(data, '_sa_linker'):
+            getattr(data, '_sa_linker')(None)
 
     def adapt_like_to_iterable(self, obj):
         """Converts collection-compatible objects to an iterable of values.
@@ -832,7 +834,7 @@ def prepare_instrumentation(factory):
     # Did factory callable return a builtin?
     if cls in __canned_instrumentation:
         # Wrap it so that it returns our 'Instrumented*'
-        factory = __converting_factory(factory)
+        factory = __converting_factory(cls, factory)
         cls = factory()
 
     # Instrument the class if needed.
@@ -846,51 +848,26 @@ def prepare_instrumentation(factory):
     return factory
 
 
-def __converting_factory(original_factory):
-    """Convert the type returned by collection factories on the fly.
-
-    Given a collection factory that returns a builtin type (e.g. a list),
-    return a wrapped function that converts that type to one of our
-    instrumented types.
+def __converting_factory(specimen_cls, original_factory):
+    """Return a wrapper that converts a "canned" collection like
+    set, dict, list into the Instrumented* version.
 
     """
+
+    instrumented_cls = __canned_instrumentation[specimen_cls]
+
     def wrapper():
         collection = original_factory()
-        type_ = type(collection)
-        if type_ in __canned_instrumentation:
-            # return an instrumented type initialized from the factory's
-            # collection
-            return __canned_instrumentation[type_](collection)
-        else:
-            raise sa_exc.InvalidRequestError(
-                "Collection class factories must produce instances of a "
-                "single class.")
-    try:
-        # often flawed but better than nothing
-        wrapper.__name__ = "%sWrapper" % original_factory.__name__
-        wrapper.__doc__ = original_factory.__doc__
-    except:
-        pass
-    return wrapper
+        return instrumented_cls(collection)
 
+    # often flawed but better than nothing
+    wrapper.__name__ = "%sWrapper" % original_factory.__name__
+    wrapper.__doc__ = original_factory.__doc__
+
+    return wrapper
 
 def _instrument_class(cls):
     """Modify methods in a class and install instrumentation."""
-
-    # this can be documented as a decoratorless
-    # option for specifying instrumentation.  (likely doc'd here in code only,
-    # not in online docs.)  Useful for C types too.
-    #
-    # __instrumentation__ = {
-    #   'rolename': 'methodname', # ...
-    #   'methods': {
-    #     'methodname': ('fire_{append,remove}_event', argspec,
-    #                    'fire_{append,remove}_event'),
-    #     'append': ('fire_append_event', 1, None),
-    #     '__setitem__': ('fire_append_event', 1, 'fire_remove_event'),
-    #     'pop': (None, None, 'fire_remove_event'),
-    #     }
-    #  }
 
     # In the normal call flow, a request for any of the 3 basic collection
     # types is transformed into one of our trivial subclasses
@@ -900,53 +877,55 @@ def _instrument_class(cls):
             "Can not instrument a built-in type. Use a "
             "subclass, even a trivial one.")
 
+    roles = {}
+    methods = {}
+
+    # search for _sa_instrument_role-decorated methods in
+    # method resolution order, assign to roles
+    for supercls in cls.__mro__:
+        for name, method in vars(supercls).items():
+            if not util.callable(method):
+                continue
+
+            # note role declarations
+            if hasattr(method, '_sa_instrument_role'):
+                role = method._sa_instrument_role
+                assert role in ('appender', 'remover', 'iterator',
+                                'linker', 'converter')
+                roles.setdefault(role, name)
+
+            # transfer instrumentation requests from decorated function
+            # to the combined queue
+            before, after = None, None
+            if hasattr(method, '_sa_instrument_before'):
+                op, argument = method._sa_instrument_before
+                assert op in ('fire_append_event', 'fire_remove_event')
+                before = op, argument
+            if hasattr(method, '_sa_instrument_after'):
+                op = method._sa_instrument_after
+                assert op in ('fire_append_event', 'fire_remove_event')
+                after = op
+            if before:
+                methods[name] = before[0], before[1], after
+            elif after:
+                methods[name] = None, None, after
+
+    # see if this class has "canned" roles based on a known
+    # collection type (dict, set, list).  Apply those roles
+    # as needed to the "roles" dictionary, and also
+    # prepare "decorator" methods
     collection_type = util.duck_type_collection(cls)
     if collection_type in __interfaces:
-        roles = __interfaces[collection_type].copy()
-        decorators = roles.pop('_decorators', {})
-    else:
-        roles, decorators = {}, {}
+        canned_roles, decorators = __interfaces[collection_type]
+        for role, name in canned_roles.items():
+            roles.setdefault(role, name)
 
-    if hasattr(cls, '__instrumentation__'):
-        roles.update(copy.deepcopy(getattr(cls, '__instrumentation__')))
-
-    methods = roles.pop('methods', {})
-
-    for name in dir(cls):
-        method = getattr(cls, name, None)
-        if not util.callable(method):
-            continue
-
-        # note role declarations
-        if hasattr(method, '_sa_instrument_role'):
-            role = method._sa_instrument_role
-            assert role in ('appender', 'remover', 'iterator',
-                            'link', 'converter')
-            roles[role] = name
-
-        # transfer instrumentation requests from decorated function
-        # to the combined queue
-        before, after = None, None
-        if hasattr(method, '_sa_instrument_before'):
-            op, argument = method._sa_instrument_before
-            assert op in ('fire_append_event', 'fire_remove_event')
-            before = op, argument
-        if hasattr(method, '_sa_instrument_after'):
-            op = method._sa_instrument_after
-            assert op in ('fire_append_event', 'fire_remove_event')
-            after = op
-        if before:
-            methods[name] = before[0], before[1], after
-        elif after:
-            methods[name] = None, None, after
-
-    # apply ABC auto-decoration to methods that need it
-
-    for method, decorator in decorators.items():
-        fn = getattr(cls, method, None)
-        if (fn and method not in methods and
-            not hasattr(fn, '_sa_instrumented')):
-            setattr(cls, method, decorator(fn))
+        # apply ABC auto-decoration to methods that need it
+        for method, decorator in decorators.items():
+            fn = getattr(cls, method, None)
+            if (fn and method not in methods and
+                not hasattr(fn, '_sa_instrumented')):
+                setattr(cls, method, decorator(fn))
 
     # ensure all roles are present, and apply implicit instrumentation if
     # needed
@@ -973,13 +952,13 @@ def _instrument_class(cls):
 
     # apply ad-hoc instrumentation from decorators, class-level defaults
     # and implicit role declarations
-    for method, (before, argument, after) in methods.items():
-        setattr(cls, method,
-                _instrument_membership_mutator(getattr(cls, method),
+    for method_name, (before, argument, after) in methods.items():
+        setattr(cls, method_name,
+                _instrument_membership_mutator(getattr(cls, method_name),
                                                before, argument, after))
     # intern the role map
-    for role, method in roles.items():
-        setattr(cls, '_sa_%s' % role, getattr(cls, method))
+    for role, method_name in roles.items():
+        setattr(cls, '_sa_%s' % role, getattr(cls, method_name))
 
     setattr(cls, '_sa_instrumented', id(cls))
 
@@ -1032,12 +1011,12 @@ def _instrument_membership_mutator(method, before, argument, after):
             if res is not None:
                 getattr(executor, after)(res, initiator)
             return res
-    try:
-        wrapper._sa_instrumented = True
-        wrapper.__name__ = method.__name__
-        wrapper.__doc__ = method.__doc__
-    except:
-        pass
+
+    wrapper._sa_instrumented = True
+    if hasattr(method, "_sa_instrument_role"):
+        wrapper._sa_instrument_role = method._sa_instrument_role
+    wrapper.__name__ = method.__name__
+    wrapper.__doc__ = method.__doc__
     return wrapper
 
 
@@ -1461,31 +1440,14 @@ def _set_decorators():
 class InstrumentedList(list):
     """An instrumented version of the built-in list."""
 
-    __instrumentation__ = {
-       'appender': 'append',
-       'remover': 'remove',
-       'iterator': '__iter__', }
-
 
 class InstrumentedSet(set):
     """An instrumented version of the built-in set."""
-
-    __instrumentation__ = {
-       'appender': 'add',
-       'remover': 'remove',
-       'iterator': '__iter__', }
 
 
 class InstrumentedDict(dict):
     """An instrumented version of the built-in dict."""
 
-    # Py3K
-    #__instrumentation__ = {
-    #    'iterator': 'values', }
-    # Py2K
-    __instrumentation__ = {
-        'iterator': 'itervalues', }
-    # end Py2K
 
 __canned_instrumentation = {
     list: InstrumentedList,
@@ -1494,24 +1456,22 @@ __canned_instrumentation = {
     }
 
 __interfaces = {
-    list: {'appender': 'append',
-           'remover': 'remove',
-           'iterator': '__iter__',
-           '_decorators': _list_decorators(), },
-    set: {'appender': 'add',
+    list: (
+        {'appender': 'append', 'remover': 'remove',
+           'iterator': '__iter__'}, _list_decorators()
+        ),
+
+    set: ({'appender': 'add',
           'remover': 'remove',
-          'iterator': '__iter__',
-          '_decorators': _set_decorators(), },
+          'iterator': '__iter__'}, _set_decorators()
+        ),
+
     # decorators are required for dicts and object collections.
     # Py3K
-    #dict: {'iterator': 'values',
-    #       '_decorators': _dict_decorators(), },
+    #dict: ({'iterator': 'values'}, _dict_decorators()),
     # Py2K
-    dict: {'iterator': 'itervalues',
-           '_decorators': _dict_decorators(), },
+    dict: ({'iterator': 'itervalues'}, _dict_decorators()),
     # end Py2K
-    # < 0.4 compatible naming, deprecated- use decorators instead.
-    None: {}
     }
 
 
@@ -1541,14 +1501,16 @@ class MappedCollection(dict):
         """
         self.keyfunc = keyfunc
 
+    @collection.appender
+    @collection.internally_instrumented
     def set(self, value, _sa_initiator=None):
         """Add an item by value, consulting the keyfunc for the key."""
 
         key = self.keyfunc(value)
         self.__setitem__(key, value, _sa_initiator)
-    set = collection.internally_instrumented(set)
-    set = collection.appender(set)
 
+    @collection.remover
+    @collection.internally_instrumented
     def remove(self, value, _sa_initiator=None):
         """Remove an item by value, consulting the keyfunc for the key."""
 
@@ -1563,9 +1525,8 @@ class MappedCollection(dict):
                 "values after flush?" %
                 (value, self[key], key))
         self.__delitem__(key, _sa_initiator)
-    remove = collection.internally_instrumented(remove)
-    remove = collection.remover(remove)
 
+    @collection.converter
     def _convert(self, dictlike):
         """Validate and convert a dict-like object into values for set()ing.
 
@@ -1588,7 +1549,6 @@ class MappedCollection(dict):
                     "keying function requires a key of %r for this value." % (
                     incoming_key, value, new_key))
             yield value
-    _convert = collection.converter(_convert)
 
 # ensure instrumentation is associated with
 # these built-in classes; if a user-defined class

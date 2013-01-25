@@ -7,6 +7,56 @@
     :version: 0.8.0
 
     .. change::
+        :tags: orm, bug
+        :tickets: 2655
+
+        the consideration of a pending object as
+        an "orphan" has been modified to more closely match the
+        behavior as that of persistent objects, which is that the object
+        is expunged from the :class:`.Session` as soon as it is
+        de-associated from any of its orphan-enabled parents.  Previously,
+        the pending object would be expunged only if de-associated
+        from all of its orphan-enabled parents.  The new flag ``legacy_is_orphan``
+        is added to :func:`.orm.mapper` which re-establishes the
+        legacy behavior.
+
+        See the change note and example case at :ref:`legacy_is_orphan_addition`
+        for a detailed discussion of this change.
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 2653
+
+      Fixed the (most likely never used) "@collection.link" collection
+      method, which fires off each time the collection is associated
+      or de-associated with a mapped object - the decorator
+      was not tested or functional.  The decorator method
+      is now named :meth:`.collection.linker` though the name "link"
+      remains for backwards compatibility.  Courtesy Luca Wehrstedt.
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 2654
+
+      Made some fixes to the system of producing custom instrumented
+      collections, mainly that the usage of the @collection decorators
+      will now honor the __mro__ of the given class, applying the
+      logic of the sub-most classes' version of a particular collection
+      method.   Previously, it wasn't predictable when subclassing
+      an existing instrumented class such as :class:`.MappedCollection`
+      whether or not custom methods would resolve correctly.
+
+    .. change::
+      :tags: orm, removed
+
+      The undocumented (and hopefully unused) system of producing
+      custom collections using an ``__instrumentation__`` datastructure
+      associated with the collection has been removed, as this was a complex
+      and untested feature which was also essentially redundant versus the
+      decorator approach.   Other internal simplifcations to the
+      orm.collections module have been made as well.
+
+    .. change::
         :tags: mssql, feature
         :pullreq: 35
 
