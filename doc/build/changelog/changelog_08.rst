@@ -8,6 +8,23 @@
 
     .. change::
         :tags: orm, bug
+        :tickets: 2655
+
+        the consideration of a pending object as
+        an "orphan" has been modified to more closely match the
+        behavior as that of persistent objects, which is that the object
+        is expunged from the :class:`.Session` as soon as it is
+        de-associated from any of its orphan-enabled parents.  Previously,
+        the pending object would be expunged only if de-associated
+        from all of its orphan-enabled parents.  The new flag ``legacy_is_orphan``
+        is added to :func:`.orm.mapper` which re-establishes the
+        legacy behavior.
+
+        See the change note and example case at :ref:`legacy_is_orphan_addition`
+        for a detailed discussion of this change.
+
+    .. change::
+        :tags: orm, bug
         :tickets: 2653
 
       Fixed the (most likely never used) "@collection.link" collection

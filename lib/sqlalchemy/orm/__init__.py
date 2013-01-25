@@ -947,6 +947,32 @@ def mapper(class_, local_table=None, *args, **params):
            this parameter can be used to specify which columns are "foreign".
            In most cases can be left as ``None``.
 
+        :param legacy_is_orphan: Boolean, defaults to ``False``.
+          When ``True``, specifies that "legacy" orphan consideration
+          is to be applied to objects mapped by this mapper, which means
+          that a pending (that is, not persistent) object is auto-expunged
+          from an owning :class:`.Session` only when it is de-associated
+          from *all* parents that specify a ``delete-orphan`` cascade towards
+          this mapper.  The new default behavior is that the object is auto-expunged
+          when it is de-associated with *any* of its parents that specify
+          ``delete-orphan`` cascade.  This behavior is more consistent with
+          that of a persistent object, and allows behavior to be consistent
+          in more scenarios independently of whether or not an orphanable
+          object has been flushed yet or not.
+
+          See the change note and example at :ref:`legacy_is_orphan_addition`
+          for more detail on this change.
+
+          .. versionadded:: 0.8 - the consideration of a pending object as
+            an "orphan" has been modified to more closely match the
+            behavior as that of persistent objects, which is that the object
+            is expunged from the :class:`.Session` as soon as it is
+            de-associated from any of its orphan-enabled parents.  Previously,
+            the pending object would be expunged only if de-associated
+            from all of its orphan-enabled parents. The new flag ``legacy_is_orphan``
+            is added to :func:`.orm.mapper` which re-establishes the
+            legacy behavior.
+
         :param non_primary: Specify that this :class:`.Mapper` is in addition
           to the "primary" mapper, that is, the one used for persistence.
           The :class:`.Mapper` created here may be used for ad-hoc

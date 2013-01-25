@@ -113,6 +113,7 @@ class Mapper(_InspectionAttr):
                  exclude_properties=None,
                  passive_updates=True,
                  eager_defaults=False,
+                 legacy_is_orphan=False,
                  _compiled_cache_size=100,
                  ):
         """Construct a new mapper.
@@ -145,7 +146,7 @@ class Mapper(_InspectionAttr):
         self.inherit_condition = inherit_condition
         self.inherit_foreign_keys = inherit_foreign_keys
         self._init_properties = properties or {}
-        self.delete_orphans = []
+        self._delete_orphans = []
         self.batch = batch
         self.eager_defaults = eager_defaults
         self.column_prefix = column_prefix
@@ -154,6 +155,7 @@ class Mapper(_InspectionAttr):
         self._dependency_processors = []
         self.validators = util.immutabledict()
         self.passive_updates = passive_updates
+        self.legacy_is_orphan = legacy_is_orphan
         self._clause_adapter = None
         self._requires_row_aliasing = False
         self._inherits_equated_pairs = None
@@ -1292,14 +1294,23 @@ class Mapper(_InspectionAttr):
         )
 
     def _is_orphan(self, state):
-        o = False
+        orphan_possible = False
         for mapper in self.iterate_to_root():
-            for (key, cls) in mapper.delete_orphans:
-                if attributes.manager_of_class(cls).has_parent(
-                    state, key, optimistic=bool(state.key)):
+            for (key, cls) in mapper._delete_orphans:
+                orphan_possible = True
+
+                has_parent = attributes.manager_of_class(cls).has_parent(
+                        state, key, optimistic=state.has_identity)
+
+                if self.legacy_is_orphan and has_parent:
                     return False
-            o = o or bool(mapper.delete_orphans)
-        return o
+                elif not self.legacy_is_orphan and not has_parent:
+                    return True
+
+        if self.legacy_is_orphan:
+            return orphan_possible
+        else:
+            return False
 
     def has_property(self, key):
         return key in self._props
