@@ -120,7 +120,7 @@ FROM ONLY ...
 The dialect supports PostgreSQL's ONLY keyword for targeting only a particular
 table in an inheritance hierarchy. This can be used to produce the
 ``SELECT ... FROM ONLY``, ``UPDATE ONLY ...``, and ``DELETE FROM ONLY ...``
-syntaxes. It uses SQLAlchemy's hints mechanism:
+syntaxes. It uses SQLAlchemy's hints mechanism::
 
     # SELECT ... FROM ONLY ...
     result = table.select().with_hint(table, 'ONLY', 'postgresql')
