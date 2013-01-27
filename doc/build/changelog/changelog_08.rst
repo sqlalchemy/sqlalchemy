@@ -8,6 +8,14 @@
 
     .. change::
         :tags: sql, bug
+        :tickets: 2643
+
+        Fixed bug where :meth:`.Table.tometadata` would fail if a
+        :class:`.Column` had both a foreign key as well as an
+        alternate ".key" name for the column.   Also in 0.7.10.
+
+    .. change::
+        :tags: sql, bug
         :tickets: 2629
 
         insert().returning() raises an informative CompileError if attempted
