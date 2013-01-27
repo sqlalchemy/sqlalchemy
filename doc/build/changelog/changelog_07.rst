@@ -9,6 +9,14 @@
     :released:
 
     .. change::
+        :tags: sql, bug
+        :tickets: 2643
+
+        Fixed bug where :meth:`.Table.tometadata` would fail if a
+        :class:`.Column` had both a foreign key as well as an
+        alternate ".key" name for the column.
+
+    .. change::
         :tags: engine, bug
         :tickets: 2604
 

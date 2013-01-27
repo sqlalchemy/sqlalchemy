@@ -2145,7 +2145,7 @@ class ForeignKeyConstraint(Constraint):
 
     def copy(self, **kw):
         fkc = ForeignKeyConstraint(
-                    [x.parent.name for x in self._elements.values()],
+                    [x.parent.key for x in self._elements.values()],
                     [x._get_colspec(**kw) for x in self._elements.values()],
                     name=self.name,
                     onupdate=self.onupdate,
