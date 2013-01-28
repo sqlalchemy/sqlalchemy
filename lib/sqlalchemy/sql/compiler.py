@@ -1248,6 +1248,11 @@ class SQLCompiler(engine.Compiled):
         else:
             return ""
 
+    def returning_clause(self, stmt, returning_cols):
+        raise exc.CompileError(
+                    "RETURNING is not supported by this "
+                    "dialect's statement compiler.")
+
     def limit_clause(self, select):
         text = ""
         if select._limit is not None:

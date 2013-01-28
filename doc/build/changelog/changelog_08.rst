@@ -7,6 +7,30 @@
     :version: 0.8.0
 
     .. change::
+        :tags: feature, postgresql
+        :pullreq: 40
+
+      Added :meth:`.postgresql.ARRAY.Comparator.any` and
+      :meth:`.postgresql.ARRAY.Comparator.all`
+      methods, as well as standalone expression constructs.   Big thanks
+      to Audrius Kažukauskas for the terrific work here.
+
+    .. change::
+        :tags: sql, bug
+        :tickets: 2643
+
+        Fixed bug where :meth:`.Table.tometadata` would fail if a
+        :class:`.Column` had both a foreign key as well as an
+        alternate ".key" name for the column.   Also in 0.7.10.
+
+    .. change::
+        :tags: sql, bug
+        :tickets: 2629
+
+        insert().returning() raises an informative CompileError if attempted
+        to compile on a dialect that doesn't support RETURNING.
+
+    .. change::
         :tags: orm, bug
         :tickets: 2655
 

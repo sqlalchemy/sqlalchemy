@@ -349,6 +349,18 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         finally:
             meta.drop_all(testing.db)
 
+    def test_col_key_fk_parent_tometadata(self):
+        # test #2643
+        m1 = MetaData()
+        a = Table('a', m1, Column('x', Integer))
+        b = Table('b', m1, Column('x', Integer, ForeignKey('a.x'), key='y'))
+        assert b.c.y.references(a.c.x)
+
+        m2 = MetaData()
+        b2 = b.tometadata(m2)
+        a2 = a.tometadata(m2)
+        assert b2.c.y.references(a2.c.x)
+
     def test_pickle_metadata_sequence_restated(self):
         m1 = MetaData()
         Table('a', m1,

@@ -15,11 +15,10 @@ class TableDDLTest(fixtures.TestBase):
                 Column('data', String(50))
             )
 
-    def _simple_roundtrip(self):
+    def _simple_roundtrip(self, table):
         with config.db.begin() as conn:
-            conn.execute("insert into test_table(id, data) values "
-                            "(1, 'some data')")
-            result = conn.execute("select id, data from test_table")
+            conn.execute(table.insert().values((1, 'some data')))
+            result = conn.execute(table.select())
             eq_(
                 result.first(),
                 (1, 'some data')
@@ -32,7 +31,7 @@ class TableDDLTest(fixtures.TestBase):
         table.create(
             config.db, checkfirst=False
         )
-        self._simple_roundtrip()
+        self._simple_roundtrip(table)
 
     @requirements.drop_table
     @util.provide_metadata

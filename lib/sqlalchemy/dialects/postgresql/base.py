@@ -120,7 +120,7 @@ FROM ONLY ...
 The dialect supports PostgreSQL's ONLY keyword for targeting only a particular
 table in an inheritance hierarchy. This can be used to produce the
 ``SELECT ... FROM ONLY``, ``UPDATE ONLY ...``, and ``DELETE FROM ONLY ...``
-syntaxes. It uses SQLAlchemy's hints mechanism:
+syntaxes. It uses SQLAlchemy's hints mechanism::
 
     # SELECT ... FROM ONLY ...
     result = table.select().with_hint(table, 'ONLY', 'postgresql')
@@ -365,6 +365,46 @@ class _Slice(expression.ColumnElement):
                             operators.getitem, slice_.stop)
 
 
+class Any(expression.ColumnElement):
+    """Represent the clause ``left operator ANY (right)``.  ``right`` must be
+    an array expression.
+
+    .. seealso::
+
+        :class:`.postgresql.ARRAY`
+
+        :meth:`.postgresql.ARRAY.Comparator.any` - ARRAY-bound method
+
+    """
+    __visit_name__ = 'any'
+
+    def __init__(self, left, right, operator=operators.eq):
+        self.type = sqltypes.Boolean()
+        self.left = expression._literal_as_binds(left)
+        self.right = right
+        self.operator = operator
+
+
+class All(expression.ColumnElement):
+    """Represent the clause ``left operator ALL (right)``.  ``right`` must be
+    an array expression.
+
+    .. seealso::
+
+        :class:`.postgresql.ARRAY`
+
+        :meth:`.postgresql.ARRAY.Comparator.all` - ARRAY-bound method
+
+    """
+    __visit_name__ = 'all'
+
+    def __init__(self, left, right, operator=operators.eq):
+        self.type = sqltypes.Boolean()
+        self.left = expression._literal_as_binds(left)
+        self.right = right
+        self.operator = operator
+
+
 class array(expression.Tuple):
     """A Postgresql ARRAY literal.
 
@@ -501,6 +541,66 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
                 return_type = self.type.item_type
             return self._binary_operate(self.expr, operators.getitem, index,
                             result_type=return_type)
+
+        def any(self, other, operator=operators.eq):
+            """Return ``other operator ANY (array)`` clause.
+
+            Argument places are switched, because ANY requires array
+            expression to be on the right hand-side.
+
+            E.g.::
+
+                from sqlalchemy.sql import operators
+
+                conn.execute(
+                    select([table.c.data]).where(
+                            table.c.data.any(7, operator=operators.lt)
+                        )
+                )
+
+            :param other: expression to be compared
+            :param operator: an operator object from the
+             :mod:`sqlalchemy.sql.operators`
+             package, defaults to :func:`.operators.eq`.
+
+            .. seealso::
+
+                :class:`.postgresql.Any`
+
+                :meth:`.postgresql.ARRAY.Comparator.all`
+
+            """
+            return Any(other, self.expr, operator=operator)
+
+        def all(self, other, operator=operators.eq):
+            """Return ``other operator ALL (array)`` clause.
+
+            Argument places are switched, because ALL requires array
+            expression to be on the right hand-side.
+
+            E.g.::
+
+                from sqlalchemy.sql import operators
+
+                conn.execute(
+                    select([table.c.data]).where(
+                            table.c.data.all(7, operator=operators.lt)
+                        )
+                )
+
+            :param other: expression to be compared
+            :param operator: an operator object from the
+             :mod:`sqlalchemy.sql.operators`
+             package, defaults to :func:`.operators.eq`.
+
+            .. seealso::
+
+                :class:`.postgresql.All`
+
+                :meth:`.postgresql.ARRAY.Comparator.any`
+
+            """
+            return All(other, self.expr, operator=operator)
 
         def contains(self, other, **kwargs):
             """Boolean expression.  Test if elements are a superset of the
@@ -806,6 +906,20 @@ class PGCompiler(compiler.SQLCompiler):
                     self.process(element.start, **kw),
                     self.process(element.stop, **kw),
                 )
+
+    def visit_any(self, element, **kw):
+        return "%s%sANY (%s)" % (
+            self.process(element.left, **kw),
+            compiler.OPERATORS[element.operator],
+            self.process(element.right, **kw)
+        )
+
+    def visit_all(self, element, **kw):
+        return "%s%sALL (%s)" % (
+            self.process(element.left, **kw),
+            compiler.OPERATORS[element.operator],
+            self.process(element.right, **kw)
+        )
 
     def visit_getitem_binary(self, binary, operator, **kw):
         return "%s[%s]" % (

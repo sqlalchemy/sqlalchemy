@@ -2553,6 +2553,14 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
                     table.insert(inline=True),
                     "INSERT INTO sometable (foo) VALUES (foobar())", params={})
 
+    def test_insert_returning_not_in_default(self):
+        stmt = table1.insert().returning(table1.c.myid)
+        assert_raises_message(
+            exc.CompileError,
+            "RETURNING is not supported by this dialect's statement compiler.",
+            stmt.compile
+        )
+
     def test_empty_insert_default(self):
         stmt = table1.insert().values({})  # hide from 2to3
         self.assert_compile(stmt, "INSERT INTO mytable () VALUES ()")
