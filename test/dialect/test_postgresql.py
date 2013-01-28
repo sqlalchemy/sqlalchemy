@@ -20,7 +20,7 @@ from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import HSTORE, hstore, array, ARRAY
 from sqlalchemy.util.compat import decimal
 from sqlalchemy.testing.util import round_decimal
-from sqlalchemy.sql import table, column
+from sqlalchemy.sql import table, column, operators
 import logging
 import re
 
@@ -289,6 +289,26 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             c.overlap([3]),
             'x && %(x_1)s',
             checkparams={'x_1': [3]}
+        )
+        self.assert_compile(
+            postgresql.Any(4, c),
+            '%(param_1)s = ANY (x)',
+            checkparams={'param_1': 4}
+        )
+        self.assert_compile(
+            c.any(5, operator=operators.ne),
+            '%(param_1)s != ANY (x)',
+            checkparams={'param_1': 5}
+        )
+        self.assert_compile(
+            postgresql.All(6, c, operator=operators.gt),
+            '%(param_1)s > ALL (x)',
+            checkparams={'param_1': 6}
+        )
+        self.assert_compile(
+            c.all(7, operator=operators.lt),
+            '%(param_1)s < ALL (x)',
+            checkparams={'param_1': 7}
         )
 
     def test_array_literal_type(self):
@@ -2270,6 +2290,34 @@ class ArrayTest(fixtures.TestBase, AssertsExecutionResults):
                 conn.scalar(
                     select([arrtable.c.intarr]).
                         where(arrtable.c.intarr.overlap([7, 6]))
+                ),
+                [4, 5, 6]
+            )
+
+    def test_array_any_exec(self):
+        with testing.db.connect() as conn:
+            conn.execute(
+                arrtable.insert(),
+                intarr=[4, 5, 6]
+            )
+            eq_(
+                conn.scalar(
+                    select([arrtable.c.intarr]).
+                        where(postgresql.Any(5, arrtable.c.intarr))
+                ),
+                [4, 5, 6]
+            )
+
+    def test_array_all_exec(self):
+        with testing.db.connect() as conn:
+            conn.execute(
+                arrtable.insert(),
+                intarr=[4, 5, 6]
+            )
+            eq_(
+                conn.scalar(
+                    select([arrtable.c.intarr]).
+                        where(arrtable.c.intarr.all(4, operator=operators.le))
                 ),
                 [4, 5, 6]
             )

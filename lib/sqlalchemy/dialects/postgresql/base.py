@@ -365,6 +365,40 @@ class _Slice(expression.ColumnElement):
                             operators.getitem, slice_.stop)
 
 
+class Any(expression.ColumnElement):
+    """Return the clause ``left operator ANY (right)``.  ``right`` must be
+    an array expression.
+
+    See also:
+
+    :class:`.postgresql.ARRAY`
+    """
+    __visit_name__ = 'any'
+
+    def __init__(self, left, right, operator=operators.eq):
+        self.type = sqltypes.Boolean()
+        self.left = expression._literal_as_binds(left)
+        self.right = right
+        self.operator = operator
+
+
+class All(expression.ColumnElement):
+    """Return the clause ``left operator ALL (right)``.  ``right`` must be
+    an array expression.
+
+    See also:
+
+    :class:`.postgresql.ARRAY`
+    """
+    __visit_name__ = 'all'
+
+    def __init__(self, left, right, operator=operators.eq):
+        self.type = sqltypes.Boolean()
+        self.left = expression._literal_as_binds(left)
+        self.right = right
+        self.operator = operator
+
+
 class array(expression.Tuple):
     """A Postgresql ARRAY literal.
 
@@ -501,6 +535,20 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
                 return_type = self.type.item_type
             return self._binary_operate(self.expr, operators.getitem, index,
                             result_type=return_type)
+
+        def any(self, other, operator=operators.eq):
+            """Return ``other operator ANY (array)`` clause.  Argument places
+            are switched, because ANY requires array expression to be on the
+            right hand-side.
+            """
+            return Any(other, self.expr, operator=operator)
+
+        def all(self, other, operator=operators.eq):
+            """Return ``other operator ALL (array)`` clause.  Argument places
+            are switched, because ALL requires array expression to be on the
+            right hand-side.
+            """
+            return All(other, self.expr, operator=operator)
 
         def contains(self, other, **kwargs):
             """Boolean expression.  Test if elements are a superset of the
@@ -806,6 +854,20 @@ class PGCompiler(compiler.SQLCompiler):
                     self.process(element.start, **kw),
                     self.process(element.stop, **kw),
                 )
+
+    def visit_any(self, element, **kw):
+        return "%s%sANY (%s)" % (
+            self.process(element.left, **kw),
+            compiler.OPERATORS[element.operator],
+            self.process(element.right, **kw)
+        )
+
+    def visit_all(self, element, **kw):
+        return "%s%sALL (%s)" % (
+            self.process(element.left, **kw),
+            compiler.OPERATORS[element.operator],
+            self.process(element.right, **kw)
+        )
 
     def visit_getitem_binary(self, binary, operator, **kw):
         return "%s[%s]" % (

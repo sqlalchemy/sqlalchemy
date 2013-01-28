@@ -14,9 +14,9 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
 
     from sqlalchemy.dialects.postgresql import \
         ARRAY, BIGINT, BIT, BOOLEAN, BYTEA, CHAR, CIDR, DATE, \
-        DOUBLE_PRECISION, ENUM, FLOAT, INET, INTEGER, INTERVAL, \
-        MACADDR, NUMERIC, REAL, SMALLINT, TEXT, TIME, TIMESTAMP, \
-        UUID, VARCHAR
+        DOUBLE_PRECISION, ENUM, FLOAT, HSTORE, INET, INTEGER, \
+        INTERVAL, MACADDR, NUMERIC, REAL, SMALLINT, TEXT, TIME, \
+        TIMESTAMP, UUID, VARCHAR
 
 Types which are specific to PostgreSQL, or have PostgreSQL-specific
 construction arguments, are as follows:
@@ -28,6 +28,10 @@ construction arguments, are as follows:
 .. autoclass:: ARRAY
     :members: __init__, Comparator
     :show-inheritance:
+
+.. autoclass:: Any
+
+.. autoclass:: All
 
 .. autoclass:: BIT
     :members: __init__
