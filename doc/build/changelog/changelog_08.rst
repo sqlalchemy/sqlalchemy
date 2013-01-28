@@ -7,6 +7,15 @@
     :version: 0.8.0
 
     .. change::
+        :tags: feature, postgresql
+        :pullreq: 40
+
+      Added :meth:`.postgresql.ARRAY.Comparator.any` and
+      :meth:`.postgresql.ARRAY.Comparator.all`
+      methods, as well as standalone expression constructs.   Big thanks
+      to Audrius Kažukauskas for the terrific work here.
+
+    .. change::
         :tags: sql, bug
         :tickets: 2643
 
