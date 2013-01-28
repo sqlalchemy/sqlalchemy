@@ -356,6 +356,20 @@ class ColumnOperators(Operators):
 
         In a column context, produces the clause ``a LIKE other``.
 
+        E.g.::
+
+            select([sometable]).where(sometable.c.column.like("%foobar%"))
+
+        :param other: expression to be compared
+        :param escape: optional escape character, renders the ``ESCAPE``
+          keyword, e.g.::
+
+            somecolumn.like("foo/%bar", escape="/")
+
+        .. seealso::
+
+            :meth:`.ColumnOperators.ilike`
+
         """
         return self.operate(like_op, other, escape=escape)
 
@@ -363,6 +377,20 @@ class ColumnOperators(Operators):
         """Implement the ``ilike`` operator.
 
         In a column context, produces the clause ``a ILIKE other``.
+
+        E.g.::
+
+            select([sometable]).where(sometable.c.column.ilike("%foobar%"))
+
+        :param other: expression to be compared
+        :param escape: optional escape character, renders the ``ESCAPE``
+          keyword, e.g.::
+
+            somecolumn.ilike("foo/%bar", escape="/")
+
+        .. seealso::
+
+            :meth:`.ColumnOperators.like`
 
         """
         return self.operate(ilike_op, other, escape=escape)
