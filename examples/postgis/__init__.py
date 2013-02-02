@@ -1,7 +1,10 @@
 """A naive example illustrating techniques to help
 embed PostGIS functionality.
 
-This example was originally developed in the hopes that it would be extrapolated into a comprehensive PostGIS integration layer.  We are pleased to announce that this has come to fruition as `GeoAlchemy <http://www.geoalchemy.org/>`_.
+This example was originally developed in the hopes that it would be
+extrapolated into a comprehensive PostGIS integration layer.  We are
+pleased to announce that this has come to fruition as `GeoAlchemy
+<http://www.geoalchemy.org/>`_.
 
 The example illustrates:
 
