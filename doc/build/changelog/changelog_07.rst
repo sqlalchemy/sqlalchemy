@@ -10,6 +10,14 @@
 
     .. change::
         :tags: sql, bug
+        :tickets: 2594, 2584
+
+        Backported adjustment to ``__repr__`` for
+        :class:`.TypeDecorator` to 0.7, allows :class:`.PickleType`
+        to produce a clean ``repr()`` to help with Alembic.
+
+    .. change::
+        :tags: sql, bug
         :tickets: 2643
 
         Fixed bug where :meth:`.Table.tometadata` would fail if a

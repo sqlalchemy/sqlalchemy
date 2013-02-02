@@ -239,14 +239,16 @@ def unbound_method_to_callable(func_or_cls):
     else:
         return func_or_cls
 
-def generic_repr(obj, additional_kw=()):
+def generic_repr(obj, additional_kw=(), to_inspect=None):
     """Produce a __repr__() based on direct association of the __init__()
     specification vs. same-named attributes present.
 
     """
+    if to_inspect is None:
+        to_inspect = obj
     def genargs():
         try:
-            (args, vargs, vkw, defaults) = inspect.getargspec(obj.__init__)
+            (args, vargs, vkw, defaults) = inspect.getargspec(to_inspect.__init__)
         except TypeError:
             return
 

@@ -777,6 +777,9 @@ class TypeDecorator(TypeEngine):
         else:
             return op, typ
 
+    def __repr__(self):
+        return util.generic_repr(self, to_inspect=self.impl)
+
 class Variant(TypeDecorator):
     """A wrapping type that selects among a variety of
     implementations based on dialect in use.
@@ -932,6 +935,7 @@ def adapt_type(typeobj, colspecs):
     if (issubclass(typeobj.__class__, impltype)):
         return typeobj
     return typeobj.adapt(impltype)
+
 
 
 

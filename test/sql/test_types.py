@@ -335,6 +335,12 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
                 Float().dialect_impl(pg).__class__
         )
 
+    def test_type_decorator_repr(self):
+        class MyType(TypeDecorator):
+            impl = VARCHAR
+
+        eq_(repr(MyType(45)), "MyType(length=45)")
+
     def test_user_defined_typedec_impl_bind(self):
         class TypeOne(types.TypeEngine):
             def bind_processor(self, dialect):
