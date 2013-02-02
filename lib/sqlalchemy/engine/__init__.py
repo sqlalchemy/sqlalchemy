@@ -318,7 +318,8 @@ def create_engine(*args, **kwargs):
           :ref:`threadlocal_strategy`;
         * the ``mock`` strategy, which dispatches all statement
           execution to a function passed as the argument ``executor``.
-          See `example in the FAQ <http://www.sqlalchemy.org/trac/wiki/FAQ#HowcanIgettheCREATETABLEDROPTABLEoutputasastring>`_.
+          See `example in the FAQ
+          <http://www.sqlalchemy.org/trac/wiki/FAQ#HowcanIgettheCREATETABLEDROPTABLEoutputasastring>`_.
 
     :param executor=None: a function taking arguments
         ``(sql, *multiparams, **params)``, to which the ``mock`` strategy will
