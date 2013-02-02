@@ -634,15 +634,25 @@ class Table(SchemaItem, expression.TableClause):
 
         E.g.::
 
+            some_engine = create_engine("sqlite:///some.db")
+
             # create two metadata
-            meta1 = MetaData('sqlite:///querytest.db')
+            meta1 = MetaData()
             meta2 = MetaData()
 
             # load 'users' from the sqlite engine
-            users_table = Table('users', meta1, autoload=True)
+            users_table = Table('users', meta1, autoload=True,
+                                    autoload_with=some_engine)
 
             # create the same Table object for the plain metadata
             users_table_2 = users_table.tometadata(meta2)
+
+        :param metadata: Target :class:`.MetaData` object.
+        :param schema: Optional string name of a target schema, or
+         ``None`` for no schema.  The :class:`.Table` object will be
+         given this schema name upon copy.   Defaults to the special
+         symbol :attr:`.RETAIN_SCHEMA` which indicates no change should be
+         made to the schema name of the resulting :class:`.Table`.
 
         """
 
@@ -1094,9 +1104,13 @@ class Column(SchemaItem, expression.ColumnClause):
             [c.copy(**kw) for c in self.constraints] + \
             [c.copy(**kw) for c in self.foreign_keys if not c.constraint]
 
+        type_ = self.type
+        if isinstance(type_, sqltypes.SchemaType):
+            type_ = type_.copy(**kw)
+
         c = self._constructor(
                 name=self.name,
-                type_=self.type,
+                type_=type_,
                 key=self.key,
                 primary_key=self.primary_key,
                 nullable=self.nullable,

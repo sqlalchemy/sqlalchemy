@@ -6,7 +6,7 @@ import pickle
 from sqlalchemy import Integer, String, UniqueConstraint, \
     CheckConstraint, ForeignKey, MetaData, Sequence, \
     ForeignKeyConstraint, ColumnDefault, Index, event,\
-    events, Unicode
+    events, Unicode, types as sqltypes
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy import schema, exc
 import sqlalchemy as tsa
@@ -360,6 +360,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         b2 = b.tometadata(m2)
         a2 = a.tometadata(m2)
         assert b2.c.y.references(a2.c.x)
+
 
     def test_pickle_metadata_sequence_restated(self):
         m1 = MetaData()
@@ -747,6 +748,102 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
             extend_existing=True
         )
         is_(t._autoincrement_column, t.c.id)
+
+class SchemaTypeTest(fixtures.TestBase):
+    class MyType(sqltypes.SchemaType, sqltypes.TypeEngine):
+        column = None
+        table = None
+        evt_targets = ()
+
+        def _set_table(self, column, table):
+            super(SchemaTypeTest.MyType, self)._set_table(column, table)
+            self.column = column
+            self.table = table
+
+        def _on_table_create(self, target, bind, **kw):
+            self.evt_targets += (target,)
+
+    def test_independent_schema(self):
+        m = MetaData()
+        type_ = self.MyType(schema="q")
+        t1 = Table('x', m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, "q")
+
+    def test_inherit_schema(self):
+        m = MetaData()
+        type_ = self.MyType(schema="q", inherit_schema=True)
+        t1 = Table('x', m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, "z")
+
+    def test_independent_schema_enum(self):
+        m = MetaData()
+        type_ = sqltypes.Enum("a", schema="q")
+        t1 = Table('x', m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, "q")
+
+    def test_inherit_schema_enum(self):
+        m = MetaData()
+        type_ = sqltypes.Enum("a", "b", "c", schema="q", inherit_schema=True)
+        t1 = Table('x', m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, "z")
+
+    def test_tometadata_copy_type(self):
+        m1 = MetaData()
+
+        type_ = self.MyType()
+        t1 = Table('x', m1, Column("y", type_))
+
+        m2 = MetaData()
+        t2 = t1.tometadata(m2)
+
+        # metadata isn't set
+        is_(t2.c.y.type.metadata, None)
+
+        # our test type sets table, though
+        is_(t2.c.y.type.table, t2)
+
+    def test_tometadata_independent_schema(self):
+        m1 = MetaData()
+
+        type_ = self.MyType()
+        t1 = Table('x', m1, Column("y", type_))
+
+        m2 = MetaData()
+        t2 = t1.tometadata(m2, schema="bar")
+
+        eq_(t2.c.y.type.schema, None)
+
+    def test_tometadata_inherit_schema(self):
+        m1 = MetaData()
+
+        type_ = self.MyType(inherit_schema=True)
+        t1 = Table('x', m1, Column("y", type_))
+
+        m2 = MetaData()
+        t2 = t1.tometadata(m2, schema="bar")
+
+        eq_(t1.c.y.type.schema, None)
+        eq_(t2.c.y.type.schema, "bar")
+
+    def test_tometadata_independent_events(self):
+        m1 = MetaData()
+
+        type_ = self.MyType()
+        t1 = Table('x', m1, Column("y", type_))
+
+        m2 = MetaData()
+        t2 = t1.tometadata(m2)
+
+        t1.dispatch.before_create(t1, testing.db)
+        eq_(t1.c.y.type.evt_targets, (t1,))
+        eq_(t2.c.y.type.evt_targets, ())
+
+        t2.dispatch.before_create(t2, testing.db)
+        t2.dispatch.before_create(t2, testing.db)
+        eq_(t1.c.y.type.evt_targets, (t1,))
+        eq_(t2.c.y.type.evt_targets, (t2, t2))
+
+
 
 class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
 
