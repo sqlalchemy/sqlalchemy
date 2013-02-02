@@ -7,6 +7,21 @@
     :version: 0.8.0
 
     .. change::
+        :tags: feature, sql
+        :tickets: 2657
+
+      Added a new argument to :class:`.Enum` and its base
+      :class:`.SchemaType` ``inherit_schema``.  When set to ``True``,
+      the type will set its ``schema`` attribute of that of the
+      :class:`.Table` to which it is associated.  This also occurs
+      during a :meth:`.Table.tometadata` operation; the :class:`.SchemaType`
+      is now copied in all cases when :meth:`.Table.tometadata` happens,
+      and if ``inherit_schema=True``, the type will take on the new
+      schema name passed to the method.   The ``schema`` is important
+      when used with the Postgresql backend, as the type results in
+      a ``CREATE TYPE`` statement.
+
+    .. change::
         :tags: feature, postgresql
         :pullreq: 40
 

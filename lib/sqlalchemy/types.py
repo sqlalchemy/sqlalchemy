@@ -1791,6 +1791,13 @@ class SchemaType(events.SchemaEventTarget):
     surrounding the association of the type object with a parent
     :class:`.Column`.
 
+    .. seealso::
+
+        :class:`.Enum`
+
+        :class:`.Boolean`
+
+
     """
 
     def __init__(self, **kw):
@@ -1798,6 +1805,7 @@ class SchemaType(events.SchemaEventTarget):
         self.quote = kw.pop('quote', None)
         self.schema = kw.pop('schema', None)
         self.metadata = kw.pop('metadata', None)
+        self.inherit_schema = kw.pop('inherit_schema', False)
         if self.metadata:
             event.listen(
                 self.metadata,
@@ -1814,6 +1822,9 @@ class SchemaType(events.SchemaEventTarget):
         column._on_table_attach(util.portable_instancemethod(self._set_table))
 
     def _set_table(self, column, table):
+        if self.inherit_schema:
+            self.schema = table.schema
+
         event.listen(
             table,
             "before_create",
@@ -1838,6 +1849,20 @@ class SchemaType(events.SchemaEventTarget):
                 "after_drop",
                 util.portable_instancemethod(self._on_metadata_drop)
             )
+
+    def copy(self, **kw):
+        return self.adapt(self.__class__)
+
+    def adapt(self, impltype, **kw):
+        schema = kw.pop('schema', self.schema)
+        metadata = kw.pop('metadata', self.metadata)
+        return impltype(name=self.name,
+                    quote=self.quote,
+                    schema=schema,
+                    metadata=metadata,
+                    inherit_schema=self.inherit_schema,
+                    **kw
+                    )
 
     @property
     def bind(self):
@@ -1891,7 +1916,7 @@ class Enum(String, SchemaType):
     By default, uses the backend's native ENUM type if available,
     else uses VARCHAR + a CHECK constraint.
 
-    See also:
+    .. seealso::
 
         :class:`~.postgresql.ENUM` - PostgreSQL-specific type,
         which has additional functionality.
@@ -1933,15 +1958,30 @@ class Enum(String, SchemaType):
            available. Defaults to True. When False, uses VARCHAR + check
            constraint for all backends.
 
-        :param schema: Schemaname of this type. For types that exist on the
+        :param schema: Schema name of this type. For types that exist on the
            target database as an independent schema construct (Postgresql),
            this parameter specifies the named schema in which the type is
            present.
+
+           .. note::
+
+                The ``schema`` of the :class:`.Enum` type does not
+                by default make use of the ``schema`` established on the
+                owning :class:`.Table`.  If this behavior is desired,
+                set the ``inherit_schema`` flag to ``True``.
 
         :param quote: Force quoting to be on or off on the type's name. If
            left as the default of `None`, the usual schema-level "case
            sensitive"/"reserved name" rules are used to determine if this
            type's name should be quoted.
+
+        :param inherit_schema: When ``True``, the "schema" from the owning
+           :class:`.Table` will be copied to the "schema" attribute of this
+           :class:`.Enum`, replacing whatever value was passed for the
+           ``schema`` attribute.   This also takes effect when using the
+           :meth:`.Table.tometadata` operation.
+
+           .. versionadded:: 0.8
 
         """
         self.enums = enums
@@ -1988,13 +2028,16 @@ class Enum(String, SchemaType):
         table.append_constraint(e)
 
     def adapt(self, impltype, **kw):
+        schema = kw.pop('schema', self.schema)
+        metadata = kw.pop('metadata', self.metadata)
         if issubclass(impltype, Enum):
             return impltype(name=self.name,
                         quote=self.quote,
-                        schema=self.schema,
-                        metadata=self.metadata,
+                        schema=schema,
+                        metadata=metadata,
                         convert_unicode=self.convert_unicode,
                         native_enum=self.native_enum,
+                        inherit_schema=self.inherit_schema,
                         *self.enums,
                         **kw
                         )

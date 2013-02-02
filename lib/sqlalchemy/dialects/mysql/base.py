@@ -1061,6 +1061,7 @@ class ENUM(sqltypes.Enum, _StringType):
         kw.pop('name', None)
         kw.pop('quote', None)
         kw.pop('native_enum', None)
+        kw.pop('inherit_schema', None)
         _StringType.__init__(self, length=length, **kw)
         sqltypes.Enum.__init__(self, *enums)
 
