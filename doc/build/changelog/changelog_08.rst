@@ -7,6 +7,13 @@
     :version: 0.8.0
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2496
+
+      The :meth:`.ColumnOperators.in_` operator will now coerce
+      values of ``None`` to :func:`.null`.
+
+    .. change::
         :tags: feature, sql
         :tickets: 2657
 

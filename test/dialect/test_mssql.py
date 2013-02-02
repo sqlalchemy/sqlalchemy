@@ -171,6 +171,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 select([t]).where(t.c.foo.in_(['x', 'y', 'z'])),
                 "SELECT sometable.foo FROM sometable WHERE sometable.foo "
                 "IN ('x', 'y', 'z')",
+            ),
+            (
+                    t.c.foo.in_([None]),
+                    "sometable.foo IN (NULL)"
             )
         ]:
             self.assert_compile(expr, compile, dialect=mxodbc_dialect)

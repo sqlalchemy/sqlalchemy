@@ -736,6 +736,12 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             {'param_1': 10}
         )
 
+    def test_in_28(self):
+        self.assert_compile(
+            self.table1.c.myid.in_([None]),
+            "mytable.myid IN (NULL)"
+        )
+
 class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
