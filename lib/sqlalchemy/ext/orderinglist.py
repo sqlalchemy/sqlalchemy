@@ -4,62 +4,74 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""A custom list that manages index/position information for its children.
+"""A custom list that manages index/position information for contained
+elements.
 
 :author: Jason Kirtland
 
 ``orderinglist`` is a helper for mutable ordered relationships.  It will
-intercept list operations performed on a relationship collection and
-automatically synchronize changes in list position with an attribute on the
-related objects. (See :ref:`advdatamapping_entitycollections` for more
-information on the general pattern.)
+intercept list operations performed on a :func:`.relationship`-managed
+collection and
+automatically synchronize changes in list position onto a target scalar
+attribute.
 
-Example: Two tables that store slides in a presentation.  Each slide
-has a number of bullet points, displayed in order by the 'position'
-column on the bullets table.  These bullets can be inserted and re-ordered
-by your end users, and you need to update the 'position' column of all
-affected rows when changes are made.
+Example: A ``slide`` table, where each row refers to zero or more entries
+in a related ``bullet`` table.   The bullets within a slide are
+displayed in order based on the value of the ``position`` column in the
+``bullet`` table.   As entries are reordered in memory, the value of the
+``position`` attribute should be updated to reflect the new sort order::
 
-.. sourcecode:: python+sql
 
-    slides_table = Table('Slides', metadata,
-                         Column('id', Integer, primary_key=True),
-                         Column('name', String))
+    Base = declarative_base()
 
-    bullets_table = Table('Bullets', metadata,
-                          Column('id', Integer, primary_key=True),
-                          Column('slide_id', Integer, ForeignKey('Slides.id')),
-                          Column('position', Integer),
-                          Column('text', String))
+    class Slide(Base):
+        __tablename__ = 'slide'
 
-     class Slide(object):
-         pass
-     class Bullet(object):
-         pass
+        id = Column(Integer, primary_key=True)
+        name = Column(String)
 
-     mapper(Slide, slides_table, properties={
-           'bullets': relationship(Bullet, order_by=[bullets_table.c.position])
-     })
-     mapper(Bullet, bullets_table)
+        bullets = relationship("Bullet", order_by="Bullet.position")
+
+    class Bullet(Base):
+        __tablename__ = 'bullet'
+        id = Column(Integer, primary_key=True)
+        slide_id = Column(Integer, ForeignKey('slide.id'))
+        position = Column(Integer)
+        text = Column(String)
 
 The standard relationship mapping will produce a list-like attribute on each
-Slide containing all related Bullets, but coping with changes in ordering is
-totally your responsibility.  If you insert a Bullet into that list, there is
-no magic - it won't have a position attribute unless you assign it it one, and
-you'll need to manually renumber all the subsequent Bullets in the list to
-accommodate the insert.
+``Slide`` containing all related ``Bullet`` objects,
+but coping with changes in ordering is not handled automatically.
+When appending a ``Bullet`` into ``Slide.bullets``, the ``Bullet.position``
+attribute will remain unset until manually assigned.   When the ``Bullet``
+is inserted into the middle of the list, the following ``Bullet`` objects
+will also need to be renumbered.
 
-An ``orderinglist`` can automate this and manage the 'position' attribute on
-all related bullets for you.
+The :class:`.OrderingList` object automates this task, managing the
+``position`` attribute on all ``Bullet`` objects in the collection.  It is
+constructed using the :func:`.ordering_list` factory::
 
-.. sourcecode:: python+sql
+    from sqlalchemy.ext.orderinglist import ordering_list
 
-    mapper(Slide, slides_table, properties={
-           'bullets': relationship(Bullet,
-                               collection_class=ordering_list('position'),
-                               order_by=[bullets_table.c.position])
-    })
-    mapper(Bullet, bullets_table)
+    Base = declarative_base()
+
+    class Slide(Base):
+        __tablename__ = 'slide'
+
+        id = Column(Integer, primary_key=True)
+        name = Column(String)
+
+        bullets = relationship("Bullet", order_by="Bullet.position",
+                                collection_class=ordering_list('position'))
+
+    class Bullet(Base):
+        __tablename__ = 'bullet'
+        id = Column(Integer, primary_key=True)
+        slide_id = Column(Integer, ForeignKey('slide.id'))
+        position = Column(Integer)
+        text = Column(String)
+
+With the above mapping the ``Bullet.position`` attribute is managed::
 
     s = Slide()
     s.bullets.append(Bullet())
@@ -70,33 +82,28 @@ all related bullets for you.
     s.bullets[2].position
     >>> 2
 
-Use the ``ordering_list`` function to set up the ``collection_class`` on
-relationships (as in the mapper example above).  This implementation depends
-on the list starting in the proper order, so be SURE to put an order_by on
-your relationship.
+The :class:`.OrderingList` construct only works with **changes** to a collection,
+and not the initial load from the database, and requires that the list be
+sorted when loaded.  Therefore, be sure to
+specify ``order_by`` on the :func:`.relationship` against the target ordering
+attribute, so that the ordering is correct when first loaded.
 
 .. warning::
 
-  ``ordering_list`` only provides limited functionality when a primary
+  :class:`.OrderingList` only provides limited functionality when a primary
   key column or unique column is the target of the sort.  Since changing the
   order of entries often means that two rows must trade values, this is not
   possible when the value is constrained by a primary key or unique
   constraint, since one of the rows would temporarily have to point to a
   third available value so that the other row could take its old
-  value.   ``ordering_list`` doesn't do any of this for you,
+  value. :class:`.OrderingList` doesn't do any of this for you,
   nor does SQLAlchemy itself.
 
-``ordering_list`` takes the name of the related object's ordering attribute as
+:func:`.ordering_list` takes the name of the related object's ordering attribute as
 an argument.  By default, the zero-based integer index of the object's
-position in the ``ordering_list`` is synchronized with the ordering attribute:
+position in the :func:`.ordering_list` is synchronized with the ordering attribute:
 index 0 will get position 0, index 1 position 1, etc.  To start numbering at 1
 or some other integer, provide ``count_from=1``.
-
-Ordering values are not limited to incrementing integers.  Almost any scheme
-can implemented by supplying a custom ``ordering_func`` that maps a Python list
-index to any value you require.
-
-
 
 
 """
@@ -107,22 +114,34 @@ __all__ = ['ordering_list']
 
 
 def ordering_list(attr, count_from=None, **kw):
-    """Prepares an OrderingList factory for use in mapper definitions.
+    """Prepares an :class:`OrderingList` factory for use in mapper definitions.
 
     Returns an object suitable for use as an argument to a Mapper
-    relationship's ``collection_class`` option.  Arguments are:
+    relationship's ``collection_class`` option.  e.g.::
 
-    attr
+        from sqlalchemy.ext.orderinglist import ordering_list
+
+        class Slide(Base):
+            __tablename__ = 'slide'
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String)
+
+            bullets = relationship("Bullet", order_by="Bullet.position",
+                                    collection_class=ordering_list('position'))
+
+    :param attr:
       Name of the mapped attribute to use for storage and retrieval of
       ordering information
 
-    count_from (optional)
+    :param count_from:
       Set up an integer-based ordering, starting at ``count_from``.  For
       example, ``ordering_list('pos', count_from=1)`` would create a 1-based
       list in SQL, storing the value in the 'pos' column.  Ignored if
       ``ordering_func`` is supplied.
 
-    Passes along any keyword arguments to ``OrderingList`` constructor.
+    Additional arguments are passed to the :class:`.OrderingList` constructor.
+
     """
 
     kw = _unsugar_count_from(count_from=count_from, **kw)
@@ -177,9 +196,9 @@ def _unsugar_count_from(**kw):
 class OrderingList(list):
     """A custom list that manages position information for its children.
 
-    See the module and __init__ documentation for more details.  The
-    ``ordering_list`` factory function is used to configure ``OrderingList``
-    collections in ``mapper`` relationship definitions.
+    The :class:`.OrderingList` object is normally set up using the
+    :func:`.ordering_list` factory function, used in conjunction with
+    the :func:`.relationship` function.
 
     """
 
@@ -226,7 +245,7 @@ class OrderingList(list):
           making changes, any of whom happen to load this collection even in
           passing, all of the sessions would try to "clean up" the numbering
           in their commits, possibly causing all but one to fail with a
-          concurrent modification error.  Spooky action at a distance.
+          concurrent modification error.
 
           Recommend leaving this with the default of False, and just call
           ``reorder()`` if you're doing ``append()`` operations with
@@ -336,10 +355,10 @@ class OrderingList(list):
 
 
 def _reconstitute(cls, dict_, items):
-    """ Reconstitute an ``OrderingList``.
+    """ Reconstitute an :class:`.OrderingList`.
 
-    This is the adjoint to ``OrderingList.__reduce__()``.  It is used for
-    unpickling ``OrderingList``\\s
+    This is the adjoint to :meth:`.OrderingList.__reduce__`.  It is used for
+    unpickling :class:`.OrderingList` objects.
 
     """
     obj = cls.__new__(cls)
