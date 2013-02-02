@@ -120,7 +120,8 @@ class FBDialect_kinterbasdb(FBDialect):
             initialized = getattr(self.dbapi, 'initialized', None)
             if initialized is None:
                 # CVS rev 1.96 changed the name of the attribute:
-                # http://kinterbasdb.cvs.sourceforge.net/viewvc/kinterbasdb/Kinterbasdb-3.0/__init__.py?r1=1.95&r2=1.96
+                # http://kinterbasdb.cvs.sourceforge.net/viewvc/kinterbasdb/
+                # Kinterbasdb-3.0/__init__.py?r1=1.95&r2=1.96
                 initialized = getattr(self.dbapi, '_initialized', False)
             if not initialized:
                 self.dbapi.init(type_conv=type_conv,
