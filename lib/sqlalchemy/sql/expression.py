@@ -2084,6 +2084,8 @@ class _DefaultColumnComparator(operators.ColumnOperators):
                     raise exc.InvalidRequestError('in() function accept'
                             's either a list of non-selectable values, '
                             'or a selectable: %r' % o)
+            elif o is None:
+                o = null()
             else:
                 o = expr._bind_param(op, o)
             args.append(o)
