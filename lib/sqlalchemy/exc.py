@@ -161,6 +161,7 @@ class DontWrapMixin(object):
     emitted within the process of executing a statement.
 
     E.g.::
+
         from sqlalchemy.exc import DontWrapMixin
 
         class MyCustomException(Exception, DontWrapMixin):
