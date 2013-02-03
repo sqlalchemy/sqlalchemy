@@ -7,6 +7,14 @@
     :version: 0.8.0
 
     .. change::
+        :tags: bug, orm
+        :tickets: 1768
+
+      Fixed the consideration of the ``between()`` operator
+      so that it works correctly with the new relationship local/remote
+      system.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2660, 1768
 
