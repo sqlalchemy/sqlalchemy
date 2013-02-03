@@ -41,8 +41,20 @@ class MySQLDialect_gaerdbms(MySQLDialect_mysqldb):
 
     @classmethod
     def dbapi(cls):
-        from google.appengine.api import rdbms
-        return rdbms
+        # from django:
+        # http://code.google.com/p/googleappengine/source/
+        #     browse/trunk/python/google/storage/speckle/
+        #     python/django/backend/base.py#118
+        # see also [ticket:2649]
+        # see also http://stackoverflow.com/q/14224679/34549
+        from google.appengine.api import apiproxy_stub_map
+
+        if apiproxy_stub_map.apiproxy.GetStub('rdbms'):
+            from google.storage.speckle.python.api import rdbms_apiproxy
+            return rdbms_apiproxy
+        else:
+            from google.storage.speckle.python.api import rdbms_googleapi
+            return rdbms_googleapi
 
     @classmethod
     def get_pool_class(cls, url):
@@ -50,11 +62,22 @@ class MySQLDialect_gaerdbms(MySQLDialect_mysqldb):
         return NullPool
 
     def create_connect_args(self, url):
-        return [[],{'database':url.database}]
+        opts = url.translate_connect_args()
+        # 'dsn' and 'instance' are because we are skipping
+        # the traditional google.api.rdbms wrapper
+
+        opts['dsn'] = ''
+        opts['instance'] = url.query['instance']
+        return [], opts
 
     def _extract_error_code(self, exception):
         match = re.compile(r"^(\d+):").match(str(exception))
-        code = match.group(1)
+        # The rdbms api will wrap then re-raise some types of errors
+        # making this regex return no matches.
+        if match:
+            code = match.group(1)
+        else:
+            code = None
         if code:
             return int(code)
 

@@ -8,6 +8,17 @@
     :version: 0.7.10
     :released:
 
+    .. change:
+        :tags: sql, mysql, gae
+        :tickets: 2649
+
+        Added a conditional import to the ``gaerdbms`` dialect which attempts
+        to import rdbms_apiproxy vs. rdbms_googleapi to work
+        on both dev and production platforms.  Also now honors the
+        ``instance`` attribute.  Courtesy Sean Lynch.  Also backported
+        enhancements to allow username/password as well as
+        fixing error code interpretation from 0.8.
+
     .. change::
         :tags: sql, bug
         :tickets: 2594, 2584
