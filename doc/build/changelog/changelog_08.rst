@@ -32,6 +32,7 @@
       to import rdbms_apiproxy vs. rdbms_googleapi to work
       on both dev and production platforms.  Also now honors the
       ``instance`` attribute.  Courtesy Sean Lynch.
+      Also in 0.7.10.
 
     .. change::
         :tags: bug, sql
