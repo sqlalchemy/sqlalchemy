@@ -1556,3 +1556,34 @@ class AnnotationsTest(fixtures.TestBase):
         # also pass, [ticket:2425]
         eq_(str(or_(b, b._annotate({"foo": "bar"}))),
             ":bind_1 OR :bind_1")
+
+    def test_comparators_cleaned_out_construction(self):
+        c = column('a')
+
+        comp1 = c.comparator
+
+        c1 = c._annotate({"foo": "bar"})
+        comp2 = c1.comparator
+        assert comp1 is not comp2
+
+    def test_comparators_cleaned_out_reannotate(self):
+        c = column('a')
+
+        c1 = c._annotate({"foo": "bar"})
+        comp1 = c1.comparator
+
+        c2 = c1._annotate({"bat": "hoho"})
+        comp2 = c2.comparator
+
+        assert comp1 is not comp2
+
+    def test_comparator_cleanout_integration(self):
+        c = column('a')
+
+        c1 = c._annotate({"foo": "bar"})
+        comp1 = c1.comparator
+
+        c2 = c1._annotate({"bat": "hoho"})
+        comp2 = c2.comparator
+
+        assert (c2 == 5).left._annotations == {"foo": "bar", "bat": "hoho"}

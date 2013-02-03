@@ -7,6 +7,16 @@
     :version: 0.8.0
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2660, 1768
+
+      Fixed a bug regarding column annotations which in particular
+      could impact some usages of the new :func:`.orm.remote` and
+      :func:`.orm.local` annotation functions, where annotations
+      could be lost when the column were used in a subsequent
+      expression.
+
+    .. change::
         :tags: bug, mysql, gae
         :tickets: 2649
 
