@@ -18,6 +18,12 @@ class SequenceTest(fixtures.TablesTest):
                 Column('data', String(50))
             )
 
+        Table('seq_opt_pk', metadata,
+                Column('id', Integer, Sequence('tab_id_seq', optional=True),
+                                                primary_key=True),
+                Column('data', String(50))
+            )
+
     def test_insert_roundtrip(self):
         config.db.execute(
             self.tables.seq_pk.insert(),
@@ -43,6 +49,16 @@ class SequenceTest(fixtures.TablesTest):
             r, 1
         )
 
+    @requirements.sequences_optional
+    def test_optional_seq(self):
+        r = config.db.execute(
+            self.tables.seq_opt_pk.insert(),
+            data="some data"
+        )
+        eq_(
+            r.inserted_primary_key,
+            [1]
+        )
 
 
     def _assert_round_trip(self, table, conn):

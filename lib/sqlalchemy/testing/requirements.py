@@ -155,7 +155,17 @@ class SuiteRequirements(Requirements):
 
         return exclusions.only_if([
                 lambda: self.config.db.dialect.supports_sequences
-            ], "no SEQUENCE support")
+            ], "no sequence support")
+
+    @property
+    def sequences_optional(self):
+        """Target database supports sequences, but also optionally
+        as a means of generating new PK values."""
+
+        return exclusions.only_if([
+                lambda: self.config.db.dialect.supports_sequences and \
+                    self.config.db.dialect.sequences_optional
+            ], "no sequence support, or sequences not optional")
 
     @property
     def reflects_pk_names(self):
