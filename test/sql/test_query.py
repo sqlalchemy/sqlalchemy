@@ -1785,18 +1785,18 @@ class CompoundTest(fixtures.TestBase):
         global metadata, t1, t2, t3
         metadata = MetaData(testing.db)
         t1 = Table('t1', metadata,
-            Column('col1', Integer, Sequence('t1pkseq'), primary_key=True),
+            Column('col1', Integer, test_needs_autoincrement=True, primary_key=True),
             Column('col2', String(30)),
             Column('col3', String(40)),
             Column('col4', String(30))
             )
         t2 = Table('t2', metadata,
-            Column('col1', Integer, Sequence('t2pkseq'), primary_key=True),
+            Column('col1', Integer, test_needs_autoincrement=True, primary_key=True),
             Column('col2', String(30)),
             Column('col3', String(40)),
             Column('col4', String(30)))
         t3 = Table('t3', metadata,
-            Column('col1', Integer, Sequence('t3pkseq'), primary_key=True),
+            Column('col1', Integer, test_needs_autoincrement=True, primary_key=True),
             Column('col2', String(30)),
             Column('col3', String(40)),
             Column('col4', String(30)))

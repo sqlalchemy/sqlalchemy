@@ -69,6 +69,16 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def empty_inserts(self):
+        """target platform supports INSERT with no values, i.e.
+        INSERT DEFAULT VALUES or equivalent."""
+
+        return exclusions.only_if(
+                    lambda: self.config.db.dialect.supports_empty_insert,
+                    "empty inserts not supported"
+                )
+
+    @property
     def returning(self):
         """target platform supports RETURNING."""
 

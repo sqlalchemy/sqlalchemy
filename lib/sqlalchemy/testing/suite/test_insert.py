@@ -107,6 +107,24 @@ class InsertBehaviorTest(fixtures.TablesTest):
         assert r.is_insert
         assert not r.returns_rows
 
+    @requirements.empty_inserts
+    def test_empty_insert(self):
+        r = config.db.execute(
+            self.tables.autoinc_pk.insert(),
+            )
+        assert r.closed
+
+        r = config.db.execute(
+            self.tables.autoinc_pk.select()
+        )
+
+        eq_(
+            r.fetchall(),
+            [(1, None)]
+        )
+
+
+
 
 class ReturningTest(fixtures.TablesTest):
     run_deletes = 'each'
