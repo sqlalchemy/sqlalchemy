@@ -8,14 +8,16 @@ to provide specific inclusion/exlusions.
 
 """
 
-from . import exclusions
+from . import exclusions, config
 
 
 class Requirements(object):
-    def __init__(self, db, config):
-        self.db = db
+    def __init__(self, config):
         self.config = config
 
+    @property
+    def db(self):
+        return config.db
 
 class SuiteRequirements(Requirements):
 
@@ -60,6 +62,47 @@ class SuiteRequirements(Requirements):
         """Target database must support subqueries."""
 
         return exclusions.open()
+
+    @property
+    def offset(self):
+        """target database can render OFFSET, or an equivalent, in a SELECT."""
+
+        return exclusions.open()
+
+    @property
+    def boolean_col_expressions(self):
+        """Target database must support boolean expressions as columns"""
+
+        return exclusions.closed()
+
+    @property
+    def nullsordering(self):
+        """Target backends that support nulls ordering."""
+
+        return exclusions.closed()
+
+    @property
+    def standalone_binds(self):
+        """target database/driver supports bound parameters as column expressions
+        without being in the context of a typed column.
+
+        """
+        return exclusions.closed()
+
+    @property
+    def intersect(self):
+        """Target database must support INTERSECT or equivalent."""
+        return exclusions.closed()
+
+    @property
+    def except_(self):
+        """Target database must support EXCEPT or equivalent (i.e. MINUS)."""
+        return exclusions.closed()
+
+    @property
+    def window_functions(self):
+        """Target database must support window functions."""
+        return exclusions.closed()
 
     @property
     def autoincrement_insert(self):
@@ -300,3 +343,9 @@ class SuiteRequirements(Requirements):
             )
         """
         return exclusions.open()
+
+    @property
+    def mod_operator_as_percent_sign(self):
+        """target database must use a plain percent '%' as the 'modulus'
+        operator."""
+        return exclusions.closed()

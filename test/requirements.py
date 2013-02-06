@@ -238,6 +238,15 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(exclude('mysql', '<', (4, 1, 1)), 'no subquery support')
 
     @property
+    def mod_operator_as_percent_sign(self):
+        """target database must use a plain percent '%' as the 'modulus'
+        operator."""
+
+        return only_if(
+                    ['mysql', 'sqlite', 'postgresql+psycopg2', 'mssql']
+                )
+
+    @property
     def intersect(self):
         """Target database must support INTERSECT or equivalent."""
 
