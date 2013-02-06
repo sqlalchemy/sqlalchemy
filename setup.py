@@ -126,7 +126,7 @@ def run_setup(with_cext):
           author="Mike Bayer",
           author_email="mike_mp@zzzcomputing.com",
           url="http://www.sqlalchemy.org",
-          packages=find_packages('lib'),
+          packages=find_packages('lib', '.'),
           package_dir={'': 'lib'},
           license="MIT License",
           cmdclass=cmdclass,

@@ -1967,7 +1967,8 @@ class RemoteForeignBetweenColsTest(fixtures.DeclarativeMappedTest):
         class Network(fixtures.ComparableEntity, Base):
             __tablename__ = "network"
 
-            id = Column(sa.Integer, primary_key=True)
+            id = Column(sa.Integer, primary_key=True,
+                                test_needs_autoincrement=True)
             ip_net_addr = Column(Integer)
             ip_broadcast_addr = Column(Integer)
 
