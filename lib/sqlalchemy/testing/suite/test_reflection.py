@@ -3,7 +3,6 @@ from __future__ import with_statement
 import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import types as sql_types
-from sqlalchemy import schema
 from sqlalchemy import inspect
 from sqlalchemy import MetaData, Integer, String
 from sqlalchemy.engine.reflection import Inspector
@@ -32,45 +31,6 @@ class HasTableTest(fixtures.TablesTest):
             assert config.db.dialect.has_table(conn, "test_table")
             assert not config.db.dialect.has_table(conn, "nonexistent_table")
 
-
-class HasSequenceTest(fixtures.TestBase):
-    __requires__ = 'sequences',
-
-    def test_has_sequence(self):
-        metadata = MetaData()
-        Table('users', metadata, Column('user_id', sa.Integer,
-                      sa.Sequence('user_id_seq'), primary_key=True),
-                      Column('user_name', sa.String(40)))
-        metadata.create_all(bind=testing.db)
-        try:
-            eq_(testing.db.dialect.has_sequence(testing.db,
-                'user_id_seq'), True)
-        finally:
-            metadata.drop_all(bind=testing.db)
-        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'),
-            False)
-
-    @testing.requires.schemas
-    def test_has_sequence_schema(self):
-        test_schema = 'test_schema'
-        s1 = sa.Sequence('user_id_seq', schema=test_schema)
-        s2 = sa.Sequence('user_id_seq')
-        testing.db.execute(schema.CreateSequence(s1))
-        testing.db.execute(schema.CreateSequence(s2))
-        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq',
-            schema=test_schema), True)
-        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'),
-            True)
-        testing.db.execute(schema.DropSequence(s1))
-        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq',
-            schema=test_schema), False)
-        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'),
-            True)
-        testing.db.execute(schema.DropSequence(s2))
-        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq',
-            schema=test_schema), False)
-        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'),
-            False)
 
 
 class ComponentReflectionTest(fixtures.TablesTest):
@@ -427,4 +387,4 @@ class ComponentReflectionTest(fixtures.TablesTest):
         self._test_get_table_oid('users', schema='test_schema')
 
 
-__all__ = ('ComponentReflectionTest', 'HasSequenceTest', 'HasTableTest')
+__all__ = ('ComponentReflectionTest', 'HasTableTest')
