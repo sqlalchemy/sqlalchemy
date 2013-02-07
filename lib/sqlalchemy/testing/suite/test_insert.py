@@ -115,15 +115,11 @@ class InsertBehaviorTest(fixtures.TablesTest):
         assert r.closed
 
         r = config.db.execute(
-            self.tables.autoinc_pk.select()
+            self.tables.autoinc_pk.select().\
+                    where(self.tables.autoinc_pk.c.id != None)
         )
 
-        eq_(
-            r.fetchall(),
-            [(1, None)]
-        )
-
-
+        assert len(r.fetchall())
 
 
 class ReturningTest(fixtures.TablesTest):

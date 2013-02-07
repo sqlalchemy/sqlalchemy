@@ -138,7 +138,8 @@ class SuiteRequirements(Requirements):
         INSERT DEFAULT VALUES or equivalent."""
 
         return exclusions.only_if(
-                    lambda: self.config.db.dialect.supports_empty_insert,
+                    lambda: self.config.db.dialect.supports_empty_insert or \
+                        self.config.db.dialect.supports_default_values,
                     "empty inserts not supported"
                 )
 
