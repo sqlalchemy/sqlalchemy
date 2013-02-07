@@ -466,6 +466,61 @@ class DefaultRequirements(SuiteRequirements):
                     'oracle', 'sybase'])
 
     @property
+    def precision_numerics_general(self):
+        """target backend has general support for moderately high-precision
+        numerics."""
+        return fails_if('mssql+pymssql', 'FIXME: improve pymssql dec handling')
+
+    @property
+    def precision_numerics_enotation_small(self):
+        """target backend supports Decimal() objects using E notation
+        to represent very small values."""
+        return fails_if('mssql+pymssql', 'FIXME: improve pymssql dec handling')
+
+    @property
+    def precision_numerics_enotation_large(self):
+        """target backend supports Decimal() objects using E notation
+        to represent very large values."""
+
+        return fails_if(
+                ("sybase+pyodbc", None, None,
+                    "Don't know how do get these values through FreeTDS + Sybase"),
+                ("firebird", None, None, "Precision must be from 1 to 18"),
+            )
+
+    @property
+    def precision_numerics_many_significant_digits(self):
+        """target backend supports values with many digits on both sides,
+        such as 319438950232418390.273596, 87673.594069654243
+
+        """
+        return fails_if(
+                    [('sqlite', None, None, 'TODO'),
+                    ("firebird", None, None, "Precision must be from 1 to 18"),
+                    ("sybase+pysybase", None, None, "TODO"),
+                    ('mssql+pymssql', None, None, 'FIXME: improve pymssql dec handling')]
+                )
+
+    @property
+    def precision_numerics_retains_significant_digits(self):
+        """A precision numeric type will return empty significant digits,
+        i.e. a value such as 10.000 will come back in Decimal form with
+        the .000 maintained."""
+
+        return fails_if(
+                [
+                    ('oracle', None, None,
+            "this may be a bug due to the difficulty in handling "
+            "oracle precision numerics"),
+                    ('postgresql+pg8000', None, None,
+        "pg-8000 does native decimal but truncates the decimals."),
+                    ("firebird", None, None,
+        "database and/or driver truncates decimal places.")
+                ]
+                )
+
+
+    @property
     def python2(self):
         return skip_if(
                 lambda: sys.version_info >= (3,),
