@@ -15,17 +15,23 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 
+def _backend_specific_fk_args():
+    if testing.requires.deferrable_fks.enabled:
+        fk_args = dict(deferrable=True, initially='deferred')
+    elif not testing.requires.on_update_cascade.enabled:
+        fk_args = dict()
+    else:
+        fk_args = dict(onupdate='cascade')
+    return fk_args
+
 class NaturalPKTest(fixtures.MappedTest):
     # MySQL 5.5 on Windows crashes (the entire server, not the client)
     # if you screw around with ON UPDATE CASCADE type of stuff.
-    __requires__ = 'skip_mysql_on_windows',
+    __requires__ = 'skip_mysql_on_windows', 'on_update_or_deferrable_fks'
 
     @classmethod
     def define_tables(cls, metadata):
-        if testing.against('oracle'):
-            fk_args = dict(deferrable=True, initially='deferred')
-        else:
-            fk_args = dict(onupdate='cascade')
+        fk_args = _backend_specific_fk_args()
 
         users = Table('users', metadata,
             Column('username', String(50), primary_key=True),
@@ -128,8 +134,7 @@ class NaturalPKTest(fixtures.MappedTest):
         assert sess.query(User).get('ed').fullname == 'jack'
 
 
-    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
-    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
+    @testing.requires.on_update_cascade
     def test_onetomany_passive(self):
         self._test_onetomany(True)
 
@@ -190,8 +195,7 @@ class NaturalPKTest(fixtures.MappedTest):
         u1 = sess.query(User).get('fred')
         eq_(User(username='fred', fullname='jack'), u1)
 
-    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
-    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
+    @testing.requires.on_update_cascade
     def test_manytoone_passive(self):
         self._test_manytoone(True)
 
@@ -276,8 +280,7 @@ class NaturalPKTest(fixtures.MappedTest):
                 sess.query(Address).all())
 
 
-    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
-    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
+    @testing.requires.on_update_cascade
     def test_onetoone_passive(self):
         self._test_onetoone(True)
 
@@ -323,8 +326,7 @@ class NaturalPKTest(fixtures.MappedTest):
         sess.expunge_all()
         eq_([Address(username='ed')], sess.query(Address).all())
 
-    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
-    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
+    @testing.requires.on_update_cascade
     def test_bidirectional_passive(self):
         self._test_bidirectional(True)
 
@@ -339,7 +341,7 @@ class NaturalPKTest(fixtures.MappedTest):
 
         mapper(User, users)
         mapper(Address, addresses, properties={
-            'user':relationship(User, passive_updates=passive_updates,
+            'user': relationship(User, passive_updates=passive_updates,
                             backref='addresses')})
 
         sess = create_session()
@@ -382,8 +384,7 @@ class NaturalPKTest(fixtures.MappedTest):
                         sess.query(Address).all())
 
 
-    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
-    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
+    @testing.requires.on_update_cascade
     def test_manytomany_passive(self):
         self._test_manytomany(True)
 
@@ -549,14 +550,13 @@ class ReversePKsTest(fixtures.MappedTest):
 class SelfReferentialTest(fixtures.MappedTest):
     # mssql, mysql don't allow
     # ON UPDATE on self-referential keys
-    __unsupported_on__ = ('mssql','mysql')
+    __unsupported_on__ = ('mssql', 'mysql')
+
+    __requires__ = 'on_update_or_deferrable_fks',
 
     @classmethod
     def define_tables(cls, metadata):
-        if testing.against('oracle'):
-            fk_args = dict(deferrable=True, initially='deferred')
-        else:
-            fk_args = dict(onupdate='cascade')
+        fk_args = _backend_specific_fk_args()
 
         Table('nodes', metadata,
               Column('name', String(50), primary_key=True),
@@ -622,8 +622,7 @@ class SelfReferentialTest(fixtures.MappedTest):
              for n in sess.query(Node).filter(
                  Node.name.in_(['n11', 'n12', 'n13']))])
 
-    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
-    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
+    @testing.requires.on_update_cascade
     def test_many_to_one_passive(self):
         self._test_many_to_one(True)
 
@@ -657,14 +656,11 @@ class SelfReferentialTest(fixtures.MappedTest):
 
 
 class NonPKCascadeTest(fixtures.MappedTest):
-    __requires__ = 'skip_mysql_on_windows',
+    __requires__ = 'skip_mysql_on_windows', 'on_update_or_deferrable_fks'
 
     @classmethod
     def define_tables(cls, metadata):
-        if testing.against('oracle'):
-            fk_args = dict(deferrable=True, initially='deferred')
-        else:
-            fk_args = dict(onupdate='cascade')
+        fk_args = _backend_specific_fk_args()
 
         Table('users', metadata,
             Column('id', Integer, primary_key=True,
@@ -689,8 +685,7 @@ class NonPKCascadeTest(fixtures.MappedTest):
         class Address(cls.Comparable):
             pass
 
-    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
-    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
+    @testing.requires.on_update_cascade
     def test_onetomany_passive(self):
         self._test_onetomany(True)
 
@@ -770,10 +765,7 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
 
     @classmethod
     def define_tables(cls, metadata):
-        if testing.against('oracle'):
-            fk_args = dict(deferrable=True, initially='deferred')
-        else:
-            fk_args = dict(onupdate='cascade')
+        fk_args = _backend_specific_fk_args()
 
         Table('users', metadata,
             Column('username', String(50), primary_key=True),
@@ -796,8 +788,7 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         class Address(cls.Comparable):
             pass
 
-    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
-    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
+    @testing.requires.on_update_cascade
     def test_onetomany_passive(self):
         self._test_onetomany(True)
 
@@ -875,9 +866,7 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         u2.addresses.append(a1)
         sess.flush()
 
-    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE '
-                                'but requires referential integrity')
-    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
+    @testing.requires.on_update_cascade
     def test_change_m2o_passive(self):
         self._test_change_m2o(True)
 
@@ -1030,10 +1019,7 @@ class JoinedInheritanceTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        if testing.against('oracle'):
-            fk_args = dict(deferrable=True, initially='deferred')
-        else:
-            fk_args = dict(onupdate='cascade')
+        fk_args = _backend_specific_fk_args()
 
         Table('person', metadata,
             Column('name', String(50), primary_key=True),
@@ -1066,8 +1052,7 @@ class JoinedInheritanceTest(fixtures.MappedTest):
         class Manager(Person):
             pass
 
-    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
-    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
+    @testing.requires.on_update_cascade
     def test_pk_passive(self):
         self._test_pk(True)
 
@@ -1076,8 +1061,7 @@ class JoinedInheritanceTest(fixtures.MappedTest):
     def test_pk_nonpassive(self):
         self._test_pk(False)
 
-    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
-    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
+    @testing.requires.on_update_cascade
     def test_fk_passive(self):
         self._test_fk(True)
 

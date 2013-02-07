@@ -52,6 +52,23 @@ class DefaultRequirements(SuiteRequirements):
             )
 
     @property
+    def on_update_cascade(self):
+        """target database must support ON UPDATE..CASCADE behavior in
+        foreign keys."""
+
+        return skip_if(
+                    ['sqlite', 'oracle'],
+                    'target backend does not support ON UPDATE CASCADE'
+                )
+
+    @property
+    def deferrable_fks(self):
+        """target database must support deferrable fks"""
+
+        return only_on(['oracle'])
+
+
+    @property
     def unbounded_varchar(self):
         """Target database must support VARCHAR with no length"""
 
@@ -316,6 +333,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def unicode_data(self):
+        """target drive must support unicode data stored in columns."""
         return skip_if([
             no_support("sybase", "no unicode driver support")
             ])
@@ -330,7 +348,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def unicode_ddl(self):
-        """Target driver must support some encoding of Unicode across the wire."""
+        """Target driver must support some degree of non-ascii symbol names."""
         # TODO: expand to exclude MySQLdb versions w/ broken unicode
         return skip_if([
             no_support('maxdb', 'database support flakey'),

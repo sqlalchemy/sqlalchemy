@@ -40,6 +40,27 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def on_update_cascade(self):
+        """"target database must support ON UPDATE..CASCADE behavior in
+        foreign keys."""
+
+        return exclusions.open()
+
+    @property
+    def deferrable_fks(self):
+        return exclusions.closed()
+
+    @property
+    def on_update_or_deferrable_fks(self):
+        # TODO: exclusions should be composable,
+        # somehow only_if([x, y]) isn't working here, negation/conjunctions
+        # getting confused.
+        return exclusions.only_if(
+                    lambda: self.on_update_cascade.enabled or self.deferrable_fks.enabled
+                )
+
+
+    @property
     def self_referential_foreign_keys(self):
         """Target database must support self-referential foreign keys."""
 
@@ -254,6 +275,11 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def unicode_ddl(self):
+        """Target driver must support some degree of non-ascii symbol names."""
+        return exclusions.closed()
+
+    @property
     def datetime(self):
         """target dialect supports representation of Python
         datetime.datetime() objects."""
@@ -349,3 +375,19 @@ class SuiteRequirements(Requirements):
         """target database must use a plain percent '%' as the 'modulus'
         operator."""
         return exclusions.closed()
+
+    @property
+    def unicode_connections(self):
+        """Target driver must support non-ASCII characters being passed at all."""
+        return exclusions.open()
+
+    @property
+    def skip_mysql_on_windows(self):
+        """Catchall for a large variety of MySQL on Windows failures"""
+        return exclusions.open()
+
+    def _has_mysql_on_windows(self):
+        return False
+
+    def _has_mysql_fully_case_sensitive(self):
+        return False

@@ -218,6 +218,9 @@ class ComponentReflectionTest(fixtures.TablesTest):
                     ])) > 0, '%s(%s), %s(%s)' % (col.name,
                             col.type, cols[i]['name'], ctype))
 
+                if not col.primary_key:
+                    assert cols[i]['default'] is None
+
     @testing.requires.table_reflection
     def test_get_columns(self):
         self._test_get_columns()
@@ -385,6 +388,33 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.schemas
     def test_get_table_oid_with_schema(self):
         self._test_get_table_oid('users', schema='test_schema')
+
+    @testing.provide_metadata
+    def test_autoincrement_col(self):
+        """test that 'autoincrement' is reflected according to sqla's policy.
+
+        Don't mark this test as unsupported for any backend !
+
+        (technically it fails with MySQL InnoDB since "id" comes before "id2")
+
+        A backend is better off not returning "autoincrement" at all,
+        instead of potentially returning "False" for an auto-incrementing
+        primary key column.
+
+        """
+
+        meta = self.metadata
+        insp = inspect(meta.bind)
+
+        for tname, cname in [
+                ('users', 'user_id'),
+                ('email_addresses', 'address_id'),
+                ('dingalings', 'dingaling_id'),
+            ]:
+            cols = insp.get_columns(tname)
+            id_ = dict((c['name'], c) for c in cols)[cname]
+            assert id_.get('autoincrement', True)
+
 
 
 __all__ = ('ComponentReflectionTest', 'HasTableTest')

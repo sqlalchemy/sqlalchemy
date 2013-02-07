@@ -4,7 +4,7 @@ from .. import fixtures, config
 from ..assertions import eq_
 from ..config import requirements
 from sqlalchemy import Integer, Unicode, UnicodeText, select
-from sqlalchemy import Date, DateTime, Time, MetaData, String
+from sqlalchemy import Date, DateTime, Time, MetaData, String, Text
 from ..schema import Table, Column
 import datetime
 
@@ -102,6 +102,39 @@ class UnicodeTextTest(_UnicodeFixture, fixtures.TablesTest):
     @requirements.empty_strings_text
     def test_empty_strings_text(self):
         self._test_empty_strings()
+
+class TextTest(fixtures.TablesTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('text_table', metadata,
+            Column('id', Integer, primary_key=True,
+                        test_needs_autoincrement=True),
+            Column('text_data', Text),
+            )
+
+    def test_text_roundtrip(self):
+        text_table = self.tables.text_table
+
+        config.db.execute(
+            text_table.insert(),
+            {"text_data": 'some text'}
+        )
+        row = config.db.execute(
+                    select([text_table.c.text_data])
+                ).first()
+        eq_(row, ('some text',))
+
+    def test_text_empty_strings(self):
+        text_table = self.tables.text_table
+
+        config.db.execute(
+            text_table.insert(),
+            {"text_data": ''}
+        )
+        row = config.db.execute(
+                    select([text_table.c.text_data])
+                ).first()
+        eq_(row, ('',))
 
 
 class StringTest(fixtures.TestBase):
@@ -212,7 +245,7 @@ class DateHistoricTest(_DateFixture, fixtures.TablesTest):
 
 
 __all__ = ('UnicodeVarcharTest', 'UnicodeTextTest',
-            'DateTest', 'DateTimeTest',
+            'DateTest', 'DateTimeTest', 'TextTest',
             'DateTimeHistoricTest', 'DateTimeCoercedToDateTimeTest',
             'TimeMicrosecondsTest', 'TimeTest', 'DateTimeMicrosecondsTest',
             'DateHistoricTest', 'StringTest')
