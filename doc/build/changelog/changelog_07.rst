@@ -6,7 +6,7 @@
 
 .. changelog::
     :version: 0.7.10
-    :released:
+    :released: Thu Feb 7 2013
 
     .. change:
         :tags: sql, mysql, gae
