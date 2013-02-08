@@ -470,11 +470,15 @@ The Hybrid Value pattern is very useful for any kind of value that may
 have multiple representations, such as timestamps, time deltas, units
 of measurement, currencies and encrypted passwords.
 
-See Also:
+.. seealso::
 
-`Hybrids and Value Agnostic Types <http://techspot.zzzeek.org/2011/10/21/hybrids-and-value-agnostic-types/>`_ - on the techspot.zzzeek.org blog
+    `Hybrids and Value Agnostic Types
+    <http://techspot.zzzeek.org/2011/10/21/hybrids-and-value-agnostic-types/>`_ -
+    on the techspot.zzzeek.org blog
 
-`Value Agnostic Types, Part II <http://techspot.zzzeek.org/2011/10/29/value-agnostic-types-part-ii/>`_ - on the techspot.zzzeek.org blog
+    `Value Agnostic Types, Part II
+    <http://techspot.zzzeek.org/2011/10/29/value-agnostic-types-part-ii/>`_ -
+    on the techspot.zzzeek.org blog
 
 .. _hybrid_transformers:
 

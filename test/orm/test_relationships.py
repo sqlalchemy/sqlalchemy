@@ -1952,6 +1952,74 @@ class ViewOnlyComplexJoin(_RelationshipErrors, fixtures.MappedTest):
         mapper(T3, t3)
         self._assert_raises_no_local_remote(configure_mappers, "T1.t3s")
 
+class RemoteForeignBetweenColsTest(fixtures.DeclarativeMappedTest):
+    """test a complex annotation using between().
+
+    Using declarative here as an integration test for the local()
+    and remote() annotations in conjunction with already annotated
+    instrumented attributes, etc.
+
+    """
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Network(fixtures.ComparableEntity, Base):
+            __tablename__ = "network"
+
+            id = Column(sa.Integer, primary_key=True,
+                                test_needs_autoincrement=True)
+            ip_net_addr = Column(Integer)
+            ip_broadcast_addr = Column(Integer)
+
+            addresses = relationship("Address",
+                    primaryjoin="remote(foreign(Address.ip_addr)).between("
+                                "Network.ip_net_addr,"
+                                "Network.ip_broadcast_addr)",
+                    viewonly=True
+        )
+
+        class Address(fixtures.ComparableEntity, Base):
+            __tablename__ = "address"
+
+            ip_addr = Column(Integer, primary_key=True)
+
+
+    @classmethod
+    def insert_data(cls):
+        Network, Address = cls.classes.Network, cls.classes.Address
+        s = Session(testing.db)
+
+        s.add_all([
+            Network(ip_net_addr=5, ip_broadcast_addr=10),
+            Network(ip_net_addr=15, ip_broadcast_addr=25),
+            Network(ip_net_addr=30, ip_broadcast_addr=35),
+            Address(ip_addr=17), Address(ip_addr=18), Address(ip_addr=9),
+            Address(ip_addr=27)
+        ])
+        s.commit()
+
+    def test_col_query(self):
+        Network, Address = self.classes.Network, self.classes.Address
+
+        session = Session(testing.db)
+        eq_(
+            session.query(Address.ip_addr).\
+                select_from(Network).\
+                join(Network.addresses).\
+                filter(Network.ip_net_addr == 15).\
+                all(),
+            [(17, ), (18, )]
+        )
+
+    def test_lazyload(self):
+        Network, Address = self.classes.Network, self.classes.Address
+
+        session = Session(testing.db)
+
+        n3 = session.query(Network).filter(Network.ip_net_addr == 5).one()
+        eq_([a.ip_addr for a in n3.addresses], [9])
+
 
 class ExplicitLocalRemoteTest(fixtures.MappedTest):
 

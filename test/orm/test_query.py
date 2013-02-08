@@ -1099,20 +1099,27 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
     def test_basic(self):
         User = self.classes.User
 
-        assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).all()
+        users = create_session().query(User).all()
+        eq_(
+            [User(id=7), User(id=8), User(id=9),User(id=10)],
+            users
+        )
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
-    def test_limit(self):
+    @testing.requires.offset
+    def test_limit_offset(self):
         User = self.classes.User
 
-        assert [User(id=8), User(id=9)] == create_session().query(User).order_by(User.id).limit(2).offset(1).all()
+        sess = create_session()
 
-        assert [User(id=8), User(id=9)] == list(create_session().query(User).order_by(User.id)[1:3])
+        assert [User(id=8), User(id=9)] == sess.query(User).order_by(User.id).limit(2).offset(1).all()
 
-        assert User(id=8) == create_session().query(User).order_by(User.id)[1]
+        assert [User(id=8), User(id=9)] == list(sess.query(User).order_by(User.id)[1:3])
 
-        assert [] == create_session().query(User).order_by(User.id)[3:3]
-        assert [] == create_session().query(User).order_by(User.id)[0:0]
+        assert User(id=8) == sess.query(User).order_by(User.id)[1]
+
+        assert [] == sess.query(User).order_by(User.id)[3:3]
+        assert [] == sess.query(User).order_by(User.id)[0:0]
+
 
     @testing.requires.boolean_col_expressions
     def test_exists(self):

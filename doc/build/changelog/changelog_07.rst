@@ -6,7 +6,26 @@
 
 .. changelog::
     :version: 0.7.10
-    :released:
+    :released: Thu Feb 7 2013
+
+    .. change::
+        :tags: sql, mysql, gae
+        :tickets: 2649
+
+        Added a conditional import to the ``gaerdbms`` dialect which attempts
+        to import rdbms_apiproxy vs. rdbms_googleapi to work
+        on both dev and production platforms.  Also now honors the
+        ``instance`` attribute.  Courtesy Sean Lynch.  Also backported
+        enhancements to allow username/password as well as
+        fixing error code interpretation from 0.8.
+
+    .. change::
+        :tags: sql, bug
+        :tickets: 2594, 2584
+
+        Backported adjustment to ``__repr__`` for
+        :class:`.TypeDecorator` to 0.7, allows :class:`.PickleType`
+        to produce a clean ``repr()`` to help with Alembic.
 
     .. change::
         :tags: sql, bug

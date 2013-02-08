@@ -8,14 +8,16 @@ to provide specific inclusion/exlusions.
 
 """
 
-from . import exclusions
+from . import exclusions, config
 
 
 class Requirements(object):
-    def __init__(self, db, config):
-        self.db = db
+    def __init__(self, config):
         self.config = config
 
+    @property
+    def db(self):
+        return config.db
 
 class SuiteRequirements(Requirements):
 
@@ -36,6 +38,27 @@ class SuiteRequirements(Requirements):
         """Target database must support foreign keys."""
 
         return exclusions.open()
+
+    @property
+    def on_update_cascade(self):
+        """"target database must support ON UPDATE..CASCADE behavior in
+        foreign keys."""
+
+        return exclusions.open()
+
+    @property
+    def deferrable_fks(self):
+        return exclusions.closed()
+
+    @property
+    def on_update_or_deferrable_fks(self):
+        # TODO: exclusions should be composable,
+        # somehow only_if([x, y]) isn't working here, negation/conjunctions
+        # getting confused.
+        return exclusions.only_if(
+                    lambda: self.on_update_cascade.enabled or self.deferrable_fks.enabled
+                )
+
 
     @property
     def self_referential_foreign_keys(self):
@@ -62,11 +85,63 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def offset(self):
+        """target database can render OFFSET, or an equivalent, in a SELECT."""
+
+        return exclusions.open()
+
+    @property
+    def boolean_col_expressions(self):
+        """Target database must support boolean expressions as columns"""
+
+        return exclusions.closed()
+
+    @property
+    def nullsordering(self):
+        """Target backends that support nulls ordering."""
+
+        return exclusions.closed()
+
+    @property
+    def standalone_binds(self):
+        """target database/driver supports bound parameters as column expressions
+        without being in the context of a typed column.
+
+        """
+        return exclusions.closed()
+
+    @property
+    def intersect(self):
+        """Target database must support INTERSECT or equivalent."""
+        return exclusions.closed()
+
+    @property
+    def except_(self):
+        """Target database must support EXCEPT or equivalent (i.e. MINUS)."""
+        return exclusions.closed()
+
+    @property
+    def window_functions(self):
+        """Target database must support window functions."""
+        return exclusions.closed()
+
+    @property
     def autoincrement_insert(self):
         """target platform generates new surrogate integer primary key values
         when insert() is executed, excluding the pk column."""
 
         return exclusions.open()
+
+    @property
+    def empty_inserts(self):
+        """target platform supports INSERT with no values, i.e.
+        INSERT DEFAULT VALUES or equivalent."""
+
+        return exclusions.only_if(
+                    lambda: self.config.db.dialect.supports_empty_insert or \
+                        self.config.db.dialect.supports_default_values,
+                    "empty inserts not supported"
+                )
 
     @property
     def returning(self):
@@ -145,7 +220,21 @@ class SuiteRequirements(Requirements):
 
         return exclusions.only_if([
                 lambda: self.config.db.dialect.supports_sequences
-            ], "no SEQUENCE support")
+            ], "no sequence support")
+
+    @property
+    def sequences_optional(self):
+        """Target database supports sequences, but also optionally
+        as a means of generating new PK values."""
+
+        return exclusions.only_if([
+                lambda: self.config.db.dialect.supports_sequences and \
+                    self.config.db.dialect.sequences_optional
+            ], "no sequence support, or sequences not optional")
+
+
+
+
 
     @property
     def reflects_pk_names(self):
@@ -189,6 +278,11 @@ class SuiteRequirements(Requirements):
 
         """
         return exclusions.open()
+
+    @property
+    def unicode_ddl(self):
+        """Target driver must support some degree of non-ascii symbol names."""
+        return exclusions.closed()
 
     @property
     def datetime(self):
@@ -240,6 +334,40 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def precision_numerics_general(self):
+        """target backend has general support for moderately high-precision
+        numerics."""
+        return exclusions.open()
+
+    @property
+    def precision_numerics_enotation_small(self):
+        """target backend supports Decimal() objects using E notation
+        to represent very small values."""
+        return exclusions.closed()
+
+    @property
+    def precision_numerics_enotation_large(self):
+        """target backend supports Decimal() objects using E notation
+        to represent very large values."""
+        return exclusions.closed()
+
+    @property
+    def precision_numerics_many_significant_digits(self):
+        """target backend supports values with many digits on both sides,
+        such as 319438950232418390.273596, 87673.594069654243
+
+        """
+        return exclusions.closed()
+
+    @property
+    def precision_numerics_retains_significant_digits(self):
+        """A precision numeric type will return empty significant digits,
+        i.e. a value such as 10.000 will come back in Decimal form with
+        the .000 maintained."""
+
+        return exclusions.closed()
+
+    @property
     def text_type(self):
         """Target database must support an unbounded Text() "
         "type such as TEXT or CLOB"""
@@ -280,3 +408,25 @@ class SuiteRequirements(Requirements):
             )
         """
         return exclusions.open()
+
+    @property
+    def mod_operator_as_percent_sign(self):
+        """target database must use a plain percent '%' as the 'modulus'
+        operator."""
+        return exclusions.closed()
+
+    @property
+    def unicode_connections(self):
+        """Target driver must support non-ASCII characters being passed at all."""
+        return exclusions.open()
+
+    @property
+    def skip_mysql_on_windows(self):
+        """Catchall for a large variety of MySQL on Windows failures"""
+        return exclusions.open()
+
+    def _has_mysql_on_windows(self):
+        return False
+
+    def _has_mysql_fully_case_sensitive(self):
+        return False

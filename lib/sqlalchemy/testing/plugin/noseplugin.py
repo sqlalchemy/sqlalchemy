@@ -222,13 +222,23 @@ def _reverse_topological(options, file_config):
                 dependency.set = RandomSet
 
 
+def _requirements_opt(options, opt_str, value, parser):
+    _setup_requirements(value)
+
 @post
 def _requirements(options, file_config):
+
+    requirement_cls = file_config.get('sqla_testing', "requirement_cls")
+    _setup_requirements(requirement_cls)
+
+def _setup_requirements(argument):
     from sqlalchemy.testing import config
     from sqlalchemy import testing
-    requirement_cls = file_config.get('sqla_testing', "requirement_cls")
 
-    modname, clsname = requirement_cls.split(":")
+    if config.requirements is not None:
+        return
+
+    modname, clsname = argument.split(":")
 
     # importlib.import_module() only introduced in 2.7, a little
     # late
@@ -236,7 +246,7 @@ def _requirements(options, file_config):
     for component in modname.split(".")[1:]:
         mod = getattr(mod, component)
     req_cls = getattr(mod, clsname)
-    config.requirements = testing.requires = req_cls(db, config)
+    config.requirements = testing.requires = req_cls(config)
 
 
 @post
@@ -290,6 +300,9 @@ class NoseSQLAlchemy(Plugin):
         opt("--reversetop", action="store_true", dest="reversetop", default=False,
             help="Use a random-ordering set implementation in the ORM (helps "
                   "reveal dependency issues)")
+        opt("--requirements", action="callback", type="string",
+            callback=_requirements_opt,
+            help="requirements class for testing, overrides setup.cfg")
         opt("--with-cdecimal", action="store_true", dest="cdecimal", default=False,
             help="Monkeypatch the cdecimal library into Python 'decimal' for all tests")
         opt("--unhashable", action="store_true", dest="unhashable", default=False,

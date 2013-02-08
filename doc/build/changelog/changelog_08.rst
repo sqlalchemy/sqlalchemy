@@ -7,6 +7,34 @@
     :version: 0.8.0
 
     .. change::
+        :tags: bug, orm
+        :tickets: 1768
+
+      Fixed the consideration of the ``between()`` operator
+      so that it works correctly with the new relationship local/remote
+      system.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 2660, 1768
+
+      Fixed a bug regarding column annotations which in particular
+      could impact some usages of the new :func:`.orm.remote` and
+      :func:`.orm.local` annotation functions, where annotations
+      could be lost when the column were used in a subsequent
+      expression.
+
+    .. change::
+        :tags: bug, mysql, gae
+        :tickets: 2649
+
+      Added a conditional import to the ``gaerdbms`` dialect which attempts
+      to import rdbms_apiproxy vs. rdbms_googleapi to work
+      on both dev and production platforms.  Also now honors the
+      ``instance`` attribute.  Courtesy Sean Lynch.
+      Also in 0.7.10.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2496
 

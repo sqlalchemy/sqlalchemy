@@ -758,7 +758,7 @@ def nullslast_op(a):
 
 _commutative = set([eq, ne, add, mul])
 
-_comparison = set([eq, ne, lt, gt, ge, le])
+_comparison = set([eq, ne, lt, gt, ge, le, between_op])
 
 
 def is_comparison(op):

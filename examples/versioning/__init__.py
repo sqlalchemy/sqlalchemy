@@ -46,8 +46,9 @@ A fragment of example usage, using declarative::
                 all() \\
                 == [SomeClassHistory(version=1, name='sc1')]
 
-The ``Versioned`` mixin is designed to work with declarative.  To use the extension with
-classical mappers, the ``_history_mapper`` function can be applied::
+The ``Versioned`` mixin is designed to work with declarative.  To use
+the extension with classical mappers, the ``_history_mapper`` function
+can be applied::
 
     from history_meta import _history_mapper
 

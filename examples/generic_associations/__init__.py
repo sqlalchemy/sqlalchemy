@@ -19,6 +19,7 @@ The configurations include:
 
 The ``discriminator_on_association.py`` script in particular is a modernized
 version of the "polymorphic associations" example present in older versions of
-SQLAlchemy, originally from the blog post at http://techspot.zzzeek.org/2007/05/29/polymorphic-associations-with-sqlalchemy/.
+SQLAlchemy, originally from the blog post at
+http://techspot.zzzeek.org/2007/05/29/polymorphic-associations-with-sqlalchemy/.
 
 """

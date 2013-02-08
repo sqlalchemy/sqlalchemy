@@ -443,10 +443,7 @@ class QueryTest(fixtures.TestBase):
         ):
             eq_(expr.execute().fetchall(), result)
 
-    @testing.fails_on("firebird", "see dialect.test_firebird:MiscTest.test_percents_in_text")
-    @testing.fails_on("oracle", "neither % nor %% are accepted")
-    @testing.fails_on("informix", "neither % nor %% are accepted")
-    @testing.fails_on("+pg8000", "can't interpret result column from '%%'")
+    @testing.requires.mod_operator_as_percent_sign
     @testing.emits_warning('.*now automatically escapes.*')
     def test_percents_in_text(self):
         for expr, result in (
@@ -534,6 +531,7 @@ class QueryTest(fixtures.TestBase):
         a_eq(prep(r"(\:that$other)"), "(:that$other)")
         a_eq(prep(r".\:that$ :other."), ".:that$ ?.")
 
+    @testing.requires.standalone_binds
     def test_select_from_bindparam(self):
         """Test result row processing when selecting from a plain bind param."""
 
@@ -911,15 +909,23 @@ class QueryTest(fixtures.TestBase):
         eq_(users.select().execute().fetchall(), [(1, 'john')])
 
     def test_result_as_args(self):
-        users.insert().execute([dict(user_id=1, user_name='john'), dict(user_id=2, user_name='ed')])
+        users.insert().execute([
+                dict(user_id=1, user_name='john'),
+                dict(user_id=2, user_name='ed')])
         r = users.select().execute()
         users2.insert().execute(list(r))
-        assert users2.select().execute().fetchall() == [(1, 'john'), (2, 'ed')]
+        eq_(
+            users2.select().order_by(users2.c.user_id).execute().fetchall(),
+            [(1, 'john'), (2, 'ed')]
+        )
 
         users2.delete().execute()
         r = users.select().execute()
         users2.insert().execute(*list(r))
-        assert users2.select().execute().fetchall() == [(1, 'john'), (2, 'ed')]
+        eq_(
+            users2.select().order_by(users2.c.user_id).execute().fetchall(),
+            [(1, 'john'), (2, 'ed')]
+        )
 
     def test_ambiguous_column(self):
         users.insert().execute(user_id=1, user_name='john')
@@ -1744,7 +1750,6 @@ class LimitTest(fixtures.TestBase):
         self.assert_(r == [(1, 'john'), (2, 'jack'), (3, 'ed')], repr(r))
 
     @testing.requires.offset
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_select_limit_offset(self):
         """Test the interaction between limit and offset"""
 
@@ -1785,18 +1790,18 @@ class CompoundTest(fixtures.TestBase):
         global metadata, t1, t2, t3
         metadata = MetaData(testing.db)
         t1 = Table('t1', metadata,
-            Column('col1', Integer, Sequence('t1pkseq'), primary_key=True),
+            Column('col1', Integer, test_needs_autoincrement=True, primary_key=True),
             Column('col2', String(30)),
             Column('col3', String(40)),
             Column('col4', String(30))
             )
         t2 = Table('t2', metadata,
-            Column('col1', Integer, Sequence('t2pkseq'), primary_key=True),
+            Column('col1', Integer, test_needs_autoincrement=True, primary_key=True),
             Column('col2', String(30)),
             Column('col3', String(40)),
             Column('col4', String(30)))
         t3 = Table('t3', metadata,
-            Column('col1', Integer, Sequence('t3pkseq'), primary_key=True),
+            Column('col1', Integer, test_needs_autoincrement=True, primary_key=True),
             Column('col2', String(30)),
             Column('col3', String(40)),
             Column('col4', String(30)))
@@ -2369,7 +2374,7 @@ class OperatorTest(fixtures.TestBase):
         eq_(
             select([flds.c.intcol % 3],
                    order_by=flds.c.idcol).execute().fetchall(),
-            [(2,),(1,)]
+            [(2,), (1,)]
         )
 
     @testing.requires.window_functions

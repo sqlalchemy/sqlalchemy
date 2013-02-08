@@ -84,7 +84,9 @@ def succeeds_if(predicate, reason=None):
 class Predicate(object):
     @classmethod
     def as_predicate(cls, predicate):
-        if isinstance(predicate, Predicate):
+        if isinstance(predicate, skip_if):
+            return predicate.predicate
+        elif isinstance(predicate, Predicate):
             return predicate
         elif isinstance(predicate, list):
             return OrPredicate([cls.as_predicate(pred) for pred in predicate])

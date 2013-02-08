@@ -645,8 +645,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             id INTEGER NOT NULL,
             isbn VARCHAR(50) NOT NULL,
             title VARCHAR(100) NOT NULL,
-            series INTEGER,
-            series_id INTEGER,
+            series INTEGER NOT NULL,
+            series_id INTEGER NOT NULL,
             UNIQUE(series, series_id),
             PRIMARY KEY(id, isbn)
         )""")
@@ -1060,7 +1060,7 @@ class UnicodeReflectionTest(fixtures.TestBase):
         # are really limited unless you're on PG or SQLite
 
         # forget about it on these backends
-        if testing.against('sybase', 'maxdb', 'oracle'):
+        if not testing.requires.unicode_ddl.enabled:
             names = no_multibyte_period
         # mysql can't handle casing usually
         elif testing.against("mysql") and \

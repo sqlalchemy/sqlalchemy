@@ -3,7 +3,6 @@ from __future__ import with_statement
 import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import types as sql_types
-from sqlalchemy import schema
 from sqlalchemy import inspect
 from sqlalchemy import MetaData, Integer, String
 from sqlalchemy.engine.reflection import Inspector
@@ -32,45 +31,6 @@ class HasTableTest(fixtures.TablesTest):
             assert config.db.dialect.has_table(conn, "test_table")
             assert not config.db.dialect.has_table(conn, "nonexistent_table")
 
-
-class HasSequenceTest(fixtures.TestBase):
-    __requires__ = 'sequences',
-
-    def test_has_sequence(self):
-        metadata = MetaData()
-        Table('users', metadata, Column('user_id', sa.Integer,
-                      sa.Sequence('user_id_seq'), primary_key=True),
-                      Column('user_name', sa.String(40)))
-        metadata.create_all(bind=testing.db)
-        try:
-            eq_(testing.db.dialect.has_sequence(testing.db,
-                'user_id_seq'), True)
-        finally:
-            metadata.drop_all(bind=testing.db)
-        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'),
-            False)
-
-    @testing.requires.schemas
-    def test_has_sequence_schema(self):
-        test_schema = 'test_schema'
-        s1 = sa.Sequence('user_id_seq', schema=test_schema)
-        s2 = sa.Sequence('user_id_seq')
-        testing.db.execute(schema.CreateSequence(s1))
-        testing.db.execute(schema.CreateSequence(s2))
-        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq',
-            schema=test_schema), True)
-        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'),
-            True)
-        testing.db.execute(schema.DropSequence(s1))
-        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq',
-            schema=test_schema), False)
-        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'),
-            True)
-        testing.db.execute(schema.DropSequence(s2))
-        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq',
-            schema=test_schema), False)
-        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'),
-            False)
 
 
 class ComponentReflectionTest(fixtures.TablesTest):
@@ -258,6 +218,9 @@ class ComponentReflectionTest(fixtures.TablesTest):
                     ])) > 0, '%s(%s), %s(%s)' % (col.name,
                             col.type, cols[i]['name'], ctype))
 
+                if not col.primary_key:
+                    assert cols[i]['default'] is None
+
     @testing.requires.table_reflection
     def test_get_columns(self):
         self._test_get_columns()
@@ -426,5 +389,32 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def test_get_table_oid_with_schema(self):
         self._test_get_table_oid('users', schema='test_schema')
 
+    @testing.provide_metadata
+    def test_autoincrement_col(self):
+        """test that 'autoincrement' is reflected according to sqla's policy.
 
-__all__ = ('ComponentReflectionTest', 'HasSequenceTest', 'HasTableTest')
+        Don't mark this test as unsupported for any backend !
+
+        (technically it fails with MySQL InnoDB since "id" comes before "id2")
+
+        A backend is better off not returning "autoincrement" at all,
+        instead of potentially returning "False" for an auto-incrementing
+        primary key column.
+
+        """
+
+        meta = self.metadata
+        insp = inspect(meta.bind)
+
+        for tname, cname in [
+                ('users', 'user_id'),
+                ('email_addresses', 'address_id'),
+                ('dingalings', 'dingaling_id'),
+            ]:
+            cols = insp.get_columns(tname)
+            id_ = dict((c['name'], c) for c in cols)[cname]
+            assert id_.get('autoincrement', True)
+
+
+
+__all__ = ('ComponentReflectionTest', 'HasTableTest')
