@@ -8,6 +8,14 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 2661
+
+      Fixed bug whereby :meth:`.Query.yield_per` would set the execution
+      options incorrectly, thereby breaking subsequent usage of the
+      :meth:`.Query.execution_options` method.  Courtesy Ryan Kelly.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 1768
 
       Fixed the consideration of the ``between()`` operator

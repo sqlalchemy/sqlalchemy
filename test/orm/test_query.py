@@ -1784,6 +1784,17 @@ class YieldTest(QueryTest):
         except StopIteration:
             pass
 
+    def test_yield_per_and_execution_options(self):
+        User = self.classes.User
+
+        sess = create_session()
+        q = sess.query(User).yield_per(1)
+        q = q.execution_options(foo='bar')
+        assert q._yield_per
+        eq_(q._execution_options, {"stream_results": True, "foo": "bar"})
+
+
+
 class HintsTest(QueryTest, AssertsCompiledSQL):
     def test_hints(self):
         User = self.classes.User
