@@ -1,3 +1,5 @@
+.. _session_toplevel:
+
 =================
 Using the Session
 =================
