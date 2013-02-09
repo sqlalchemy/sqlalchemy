@@ -7,6 +7,23 @@
     :version: 0.8.0
 
     .. change::
+        :tags: bug, oracle
+
+      The cx_oracle dialect will no longer run the bind parameter names
+      through ``encode()``, as this is not valid on Python 3, and prevented
+      statements from functioning correctly on Python 3.  We now
+      encode only if ``supports_unicode_binds`` is False, which is not
+      the case for cx_oracle when at least version 5 of cx_oracle is used.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 2661
+
+      Fixed bug whereby :meth:`.Query.yield_per` would set the execution
+      options incorrectly, thereby breaking subsequent usage of the
+      :meth:`.Query.execution_options` method.  Courtesy Ryan Kelly.
+
+    .. change::
         :tags: bug, orm
         :tickets: 1768
 

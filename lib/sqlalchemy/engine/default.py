@@ -744,7 +744,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                         (not exclude_types or dbtype not in exclude_types):
                     if translate:
                         key = translate.get(key, key)
-                    inputsizes[self.dialect._encoder(key)[0]] = dbtype
+                    if not self.dialect.supports_unicode_binds:
+                        key = self.dialect._encoder(key)[0]
+                    inputsizes[key] = dbtype
             try:
                 self.cursor.setinputsizes(**inputsizes)
             except Exception, e:

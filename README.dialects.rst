@@ -37,9 +37,9 @@ The file structure of a dialect is typically similar to the following::
                                               __init__.py
                                               base.py
                                               <dbapi>.py
+                                              requirements.py
                          test/
                                               __init__.py
-                                              requirements.py
                                               test_suite.py
                                               test_<dialect_specific_test>.py
                                               ...
@@ -76,12 +76,12 @@ Key aspects of this file layout include:
     [nosetests]
     with-sqla_testing = true
     where = test
-    cover-package = sqlalchemy-access
+    cover-package = sqlalchemy_access
     with-coverage = 1
     cover-erase = 1
 
     [sqla_testing]
-    requirement_cls=test.requirements:Requirements
+    requirement_cls=sqlalchemy_access.requirements:Requirements
     profile_file=.profiles.txt
 
     [db]
@@ -125,7 +125,7 @@ Key aspects of this file layout include:
     $ python run_tests.py -v
 
 * requirements.py - The ``requirements.py`` file is where directives
-  regarding database and dialect   capabilities are set up.
+  regarding database and dialect capabilities are set up.
   SQLAlchemy's tests are often annotated with decorators   that mark
   tests as "skip" or "fail" for particular backends.  Over time, this
   system   has been refined such that specific database and DBAPI names
@@ -142,7 +142,7 @@ Key aspects of this file layout include:
   the RETURNING construct but does not support reflection of tables
   might look like this::
 
-      # test/requirements.py
+      # sqlalchemy_access/requirements.py
 
       from sqlalchemy.testing.requirements import SuiteRequirements
 
@@ -161,6 +161,17 @@ Key aspects of this file layout include:
   ``sqlalchemy.testing.requirements`` contains a large number of
   requirements rules, which attempt to have reasonable defaults. The
   tests will report on those requirements found as they are run.
+
+  The requirements system can also be used when running SQLAlchemy's
+  primary test suite against the external dialect.  In this use case,
+  a ``--dburi`` as well as a ``--requirements`` flag are passed to SQLAlchemy's
+  main test runner ``./sqla_nose.py`` so that exclusions specific to the
+  dialect take place::
+
+    cd /path/to/sqlalchemy
+    python ./sqla_nose.py -v \
+      --requirements sqlalchemy_access.requirements:Requirements \
+      --dburi access+pyodbc://admin@access_test
 
 * test_suite.py - Finally, the ``test_suite.py`` module represents a
   Nose test suite, which pulls   in the actual SQLAlchemy test suite.
