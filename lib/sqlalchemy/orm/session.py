@@ -655,6 +655,10 @@ class Session(_SessionClassMethods):
         to the first real transaction are closed.  Subtransactions occur when
         begin() is called multiple times.
 
+        .. seealso::
+
+            :ref:`session_rollback`
+
         """
         if self.transaction is None:
             pass
@@ -678,10 +682,15 @@ class Session(_SessionClassMethods):
         multiple times), the subtransaction will be closed, and the next call
         to ``commit()`` will operate on the enclosing transaction.
 
-        For a session configured with autocommit=False, a new transaction will
+        When using the :class:`.Session` in its default mode of
+        ``autocommit=False``, a new transaction will
         be begun immediately after the commit, but note that the newly begun
         transaction does *not* use any connection resources until the first
         SQL is actually emitted.
+
+        .. seealso::
+
+            :ref:`session_committing`
 
         """
         if self.transaction is None:
