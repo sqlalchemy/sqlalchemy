@@ -134,15 +134,16 @@ class DialectDirective(Directive):
     def _append_dbapi_bullet(self, dialect_name, dbapi_name, name, idname):
         env = self.state.document.settings.env
         dialect_directive = self._dialects[dialect_name]
-
+        try:
+            relative_uri = env.app.builder.get_relative_uri(dialect_directive.docname, self.docname) 
+        except:
+            relative_uri = ""
         list_node = nodes.list_item('',
                 nodes.paragraph('', '',
                     nodes.reference('', '',
                                 nodes.Text(name, name),
                                 refdocname=self.docname,
-                                refuri=env.app.builder.get_relative_uri(
-                                        dialect_directive.docname, self.docname) +
-                                            "#" + idname
+                                refuri= relative_uri + "#" + idname
                             ),
                     #nodes.Text(" ", " "),
                     #nodes.reference('', '',
