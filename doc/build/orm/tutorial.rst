@@ -1807,6 +1807,8 @@ Uh oh, they're still there ! Analyzing the flush SQL, we can see that the
 deleted. SQLAlchemy doesn't assume that deletes cascade, you have to tell it
 to do so.
 
+.. _tutorial_delete_cascade:
+
 Configuring delete/delete-orphan Cascade
 ----------------------------------------
 
