@@ -738,6 +738,8 @@ caveats, including that "delete" and "delete-orphan" cascades won't be fully
 expressed for collections which are already loaded. See the API docs for
 :meth:`~sqlalchemy.orm.query.Query.delete` for more details.
 
+.. _session_flushing:
+
 Flushing
 --------
 
