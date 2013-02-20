@@ -12,7 +12,7 @@ from sqlalchemy import testing
 from sqlalchemy import Integer, String, Sequence
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, backref, joinedload, \
-    exc as orm_exc, object_session
+    exc as orm_exc, object_session, was_deleted
 from sqlalchemy.util import pypy
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
@@ -835,6 +835,24 @@ class SessionStateWFixtureTest(_fixtures.FixtureTest):
             assert sa.orm.object_session(a) is None
             assert sa.orm.attributes.instance_state(a).session_id is None
 
+    def test_deleted_expunged(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        sess = Session()
+
+        u1 = sess.query(User).first()
+        sess.delete(u1)
+
+        assert not was_deleted(u1)
+        sess.flush()
+
+        assert was_deleted(u1)
+        assert u1 not in sess
+        assert object_session(u1) is sess
+        sess.commit()
+
+        assert object_session(u1) is None
 
 
 class WeakIdentityMapTest(_fixtures.FixtureTest):
