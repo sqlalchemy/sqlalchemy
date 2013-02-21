@@ -780,6 +780,27 @@ class SessionStateTest(_fixtures.FixtureTest):
         go()
         eq_(canary, [False])
 
+    def test_deleted_expunged(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        sess = Session()
+        sess.add(User(name='x'))
+        sess.commit()
+
+        u1 = sess.query(User).first()
+        sess.delete(u1)
+
+        assert not was_deleted(u1)
+        sess.flush()
+
+        assert was_deleted(u1)
+        assert u1 not in sess
+        assert object_session(u1) is sess
+        sess.commit()
+
+        assert object_session(u1) is None
+
 class SessionStateWFixtureTest(_fixtures.FixtureTest):
 
     def test_autoflush_rollback(self):
@@ -835,24 +856,6 @@ class SessionStateWFixtureTest(_fixtures.FixtureTest):
             assert sa.orm.object_session(a) is None
             assert sa.orm.attributes.instance_state(a).session_id is None
 
-    def test_deleted_expunged(self):
-        users, User = self.tables.users, self.classes.User
-
-        mapper(User, users)
-        sess = Session()
-
-        u1 = sess.query(User).first()
-        sess.delete(u1)
-
-        assert not was_deleted(u1)
-        sess.flush()
-
-        assert was_deleted(u1)
-        assert u1 not in sess
-        assert object_session(u1) is sess
-        sess.commit()
-
-        assert object_session(u1) is None
 
 
 class WeakIdentityMapTest(_fixtures.FixtureTest):
