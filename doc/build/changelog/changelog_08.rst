@@ -7,6 +7,22 @@
     :version: 0.8.0
 
     .. change::
+        :tags: feature, orm
+        :tickets: 2658
+
+      Added new helper function :func:`.was_deleted`, returns True
+      if the given object was the subject of a :meth:`.Session.delete`
+      operation.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 2658
+
+      An object that's deleted from a session will be de-associated with
+      that session fully after the transaction is committed, that is
+      the :func:`.object_session` function will return None.
+
+    .. change::
         :tags: bug, oracle
 
       The cx_oracle dialect will no longer run the bind parameter names

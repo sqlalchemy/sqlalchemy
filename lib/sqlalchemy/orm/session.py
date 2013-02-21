@@ -255,6 +255,10 @@ class SessionTransaction(object):
         if not self.nested and self.session.expire_on_commit:
             for s in self.session.identity_map.all_states():
                 s._expire(s.dict, self.session.identity_map._modified)
+            for s in self._deleted:
+                s.session_id = None
+            self._deleted.clear()
+
 
     def _connection_for_bind(self, bind):
         self._assert_is_active()

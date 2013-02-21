@@ -35,6 +35,7 @@ from .util import (
      object_mapper,
      outerjoin,
      polymorphic_union,
+     was_deleted,
      with_parent,
      with_polymorphic,
      )
@@ -125,6 +126,7 @@ __all__ = (
     'undefer',
     'undefer_group',
     'validates',
+    'was_deleted',
     'with_polymorphic'
     )
 
