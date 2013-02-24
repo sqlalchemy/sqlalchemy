@@ -1946,6 +1946,8 @@ Session Utilites
 
 .. autofunction:: object_session
 
+.. autofunction:: was_deleted
+
 Attribute and State Management Utilities
 -----------------------------------------
 

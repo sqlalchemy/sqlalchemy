@@ -1,5 +1,5 @@
 from sqlalchemy.testing import eq_, assert_raises, \
-    assert_raises_message, assert_warnings
+    assert_raises_message
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing import pickleable
 from sqlalchemy.util import pickle
@@ -12,7 +12,7 @@ from sqlalchemy import testing
 from sqlalchemy import Integer, String, Sequence
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, backref, joinedload, \
-    exc as orm_exc, object_session
+    exc as orm_exc, object_session, was_deleted
 from sqlalchemy.util import pypy
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
@@ -30,22 +30,21 @@ class BindTest(_fixtures.FixtureTest):
 
         # ensure tables are unbound
         m2 = sa.MetaData()
-        users_unbound =users.tometadata(m2)
+        users_unbound = users.tometadata(m2)
         addresses_unbound = addresses.tometadata(m2)
 
         mapper(Address, addresses_unbound)
         mapper(User, users_unbound, properties={
-            'addresses':relationship(Address,
+            'addresses': relationship(Address,
                                  backref=backref("user", cascade="all"),
                                  cascade="all")})
 
-        Session = sessionmaker(binds={User: self.metadata.bind,
+        sess = Session(binds={User: self.metadata.bind,
                                       Address: self.metadata.bind})
-        sess = Session()
 
         u1 = User(id=1, name='ed')
         sess.add(u1)
-        eq_(sess.query(User).filter(User.id==1).all(),
+        eq_(sess.query(User).filter(User.id == 1).all(),
             [User(id=1, name='ed')])
 
         # test expression binding
@@ -72,12 +71,12 @@ class BindTest(_fixtures.FixtureTest):
 
         # ensure tables are unbound
         m2 = sa.MetaData()
-        users_unbound =users.tometadata(m2)
+        users_unbound = users.tometadata(m2)
         addresses_unbound = addresses.tometadata(m2)
 
         mapper(Address, addresses_unbound)
         mapper(User, users_unbound, properties={
-            'addresses':relationship(Address,
+            'addresses': relationship(Address,
                                  backref=backref("user", cascade="all"),
                                  cascade="all")})
 
@@ -87,7 +86,7 @@ class BindTest(_fixtures.FixtureTest):
 
         u1 = User(id=1, name='ed')
         sess.add(u1)
-        eq_(sess.query(User).filter(User.id==1).all(),
+        eq_(sess.query(User).filter(User.id == 1).all(),
             [User(id=1, name='ed')])
 
         sess.execute(users_unbound.insert(), params=dict(id=2, name='jack'))
@@ -232,13 +231,13 @@ class ExecutionTest(_fixtures.FixtureTest):
 
         # use :bindparam style
         eq_(sess.execute("select * from users where id=:id",
-                         {'id':7}).fetchall(),
+                         {'id': 7}).fetchall(),
             [(7, u'jack')])
 
 
         # use :bindparam style
         eq_(sess.scalar("select id from users where id=:id",
-                         {'id':7}),
+                         {'id': 7}),
             7)
 
     def test_parameter_execute(self):
@@ -479,20 +478,20 @@ class SessionStateTest(_fixtures.FixtureTest):
                                 self.classes.User)
 
         mapper(User, users, properties={
-            'addresses':relationship(Address, backref="user")})
+            'addresses': relationship(Address, backref="user")})
         mapper(Address, addresses)
 
         sess = create_session(autoflush=True, autocommit=False)
         u = User(name='ed', addresses=[Address(email_address='foo')])
         sess.add(u)
-        eq_(sess.query(Address).filter(Address.user==u).one(),
+        eq_(sess.query(Address).filter(Address.user == u).one(),
             Address(email_address='foo'))
 
         # still works after "u" is garbage collected
         sess.commit()
         sess.close()
         u = sess.query(User).get(u.id)
-        q = sess.query(Address).filter(Address.user==u)
+        q = sess.query(Address).filter(Address.user == u)
         del u
         gc_collect()
         eq_(q.one(), Address(email_address='foo'))
@@ -532,7 +531,6 @@ class SessionStateTest(_fixtures.FixtureTest):
 
         mapper(User, users)
         conn1 = testing.db.connect()
-        conn2 = testing.db.connect()
         sess = create_session(bind=conn1, autocommit=False,
                               autoflush=True)
         u = User()
@@ -576,7 +574,7 @@ class SessionStateTest(_fixtures.FixtureTest):
 
         s = create_session()
         mapper(User, users, properties={
-            'addresses':relationship(Address, cascade="all, delete")
+            'addresses': relationship(Address, cascade="all, delete")
         })
         mapper(Address, addresses)
 
@@ -782,6 +780,27 @@ class SessionStateTest(_fixtures.FixtureTest):
         go()
         eq_(canary, [False])
 
+    def test_deleted_expunged(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        sess = Session()
+        sess.add(User(name='x'))
+        sess.commit()
+
+        u1 = sess.query(User).first()
+        sess.delete(u1)
+
+        assert not was_deleted(u1)
+        sess.flush()
+
+        assert was_deleted(u1)
+        assert u1 not in sess
+        assert object_session(u1) is sess
+        sess.commit()
+
+        assert object_session(u1) is None
+
 class SessionStateWFixtureTest(_fixtures.FixtureTest):
 
     def test_autoflush_rollback(self):
@@ -792,7 +811,7 @@ class SessionStateWFixtureTest(_fixtures.FixtureTest):
 
         mapper(Address, addresses)
         mapper(User, users, properties={
-            'addresses':relationship(Address)})
+            'addresses': relationship(Address)})
 
         sess = create_session(autocommit=False, autoflush=True)
         u = sess.query(User).get(8)
@@ -818,7 +837,7 @@ class SessionStateWFixtureTest(_fixtures.FixtureTest):
 
         mapper(Address, addresses)
         mapper(User, users, properties={
-            'addresses':relationship(Address,
+            'addresses': relationship(Address,
                                  backref=backref("user", cascade="all"),
                                  cascade="all")})
 
@@ -919,14 +938,14 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
 
         s = sessionmaker()()
         mapper(User, users, properties={
-            "addresses":relationship(Address, backref="user")
+            "addresses": relationship(Address, backref="user")
         })
         mapper(Address, addresses)
         s.add(User(name="ed", addresses=[Address(email_address="ed1")]))
         s.commit()
 
         user = s.query(User).options(joinedload(User.addresses)).one()
-        user.addresses[0].user # lazyload
+        user.addresses[0].user  # lazyload
         eq_(user, User(name="ed", addresses=[Address(email_address="ed1")]))
 
         del user
@@ -934,8 +953,8 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         assert len(s.identity_map) == 0
 
         user = s.query(User).options(joinedload(User.addresses)).one()
-        user.addresses[0].email_address='ed2'
-        user.addresses[0].user # lazyload
+        user.addresses[0].email_address = 'ed2'
+        user.addresses[0].user  # lazyload
         del user
         gc_collect()
         assert len(s.identity_map) == 2
@@ -953,7 +972,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
 
         s = sessionmaker()()
         mapper(User, users, properties={
-            "address":relationship(Address, backref="user", uselist=False)
+            "address": relationship(Address, backref="user", uselist=False)
         })
         mapper(Address, addresses)
         s.add(User(name="ed", address=Address(email_address="ed1")))
@@ -968,8 +987,8 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         assert len(s.identity_map) == 0
 
         user = s.query(User).options(joinedload(User.address)).one()
-        user.address.email_address='ed2'
-        user.address.user # lazyload
+        user.address.email_address = 'ed2'
+        user.address.user  # lazyload
 
         del user
         gc_collect()
@@ -1096,7 +1115,7 @@ class IsModifiedTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
         users, addresses = self.tables.users, self.tables.addresses
         mapper(User, users, properties={
-            "addresses":relationship(Address)
+            "addresses": relationship(Address)
         })
         mapper(Address, addresses)
         return User, Address
@@ -1158,7 +1177,7 @@ class IsModifiedTest(_fixtures.FixtureTest):
         # can't predict result here
         # deterministically, depending on if
         # 'name' or 'addresses' is tested first
-        mod  = s.is_modified(u)
+        mod = s.is_modified(u)
         addresses_loaded = 'addresses' in u.__dict__
         assert mod is not addresses_loaded
 
@@ -1193,7 +1212,7 @@ class IsModifiedTest(_fixtures.FixtureTest):
 
         s = sessionmaker()()
 
-        mapper(User, users, properties={'uname':sa.orm.synonym('name')})
+        mapper(User, users, properties={'uname': sa.orm.synonym('name')})
         u = User(uname='fred')
         assert s.is_modified(u)
         s.add(u)
@@ -1207,18 +1226,16 @@ class DisposedStates(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        global t1
-        t1 = Table('t1', metadata, Column('id', Integer,
+        Table('t1', metadata, Column('id', Integer,
                    primary_key=True, test_needs_autoincrement=True),
                    Column('data', String(50)))
 
     @classmethod
-    def setup_mappers(cls):
-        global T
-        class T(object):
+    def setup_classes(cls):
+        class T(cls.Basic):
             def __init__(self, data):
                 self.data = data
-        mapper(T, t1)
+        mapper(T, cls.tables.t1)
 
     def teardown(self):
         from sqlalchemy.orm.session import _sessions
@@ -1241,14 +1258,14 @@ class DisposedStates(fixtures.MappedTest):
         """
 
         all_states = sess.identity_map.all_states()
-        sess.identity_map.all_states = lambda : all_states
+        sess.identity_map.all_states = lambda: all_states
         for obj in objs:
             state = attributes.instance_state(obj)
             sess.identity_map.discard(state)
             state._dispose()
 
     def _test_session(self, **kwargs):
-        global sess
+        T = self.classes.T
         sess = create_session(**kwargs)
 
         data = o1, o2, o3, o4, o5 = [T('t1'), T('t2'), T('t3'), T('t4'
