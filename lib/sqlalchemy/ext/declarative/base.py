@@ -39,7 +39,6 @@ def _as_declarative(cls, classname, dict_):
     mapper_args_fn = None
     table_args = inherited_table_args = None
     tablename = None
-    parent_columns = ()
 
     declarative_props = (declared_attr, util.classproperty)
 
@@ -57,8 +56,6 @@ def _as_declarative(cls, classname, dict_):
                 return
 
         class_mapped = _declared_mapping_info(base) is not None
-        if class_mapped:
-            parent_columns = base.__table__.c.keys()
 
         for name, obj in vars(base).items():
             if name == '__mapper_args__':
