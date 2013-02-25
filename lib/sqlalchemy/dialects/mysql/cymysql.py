@@ -16,7 +16,6 @@
 
 from .mysqldb import MySQLDialect_mysqldb
 
-
 class MySQLDialect_cymysql(MySQLDialect_mysqldb):
     driver = 'cymysql'
 
@@ -25,5 +24,8 @@ class MySQLDialect_cymysql(MySQLDialect_mysqldb):
     @classmethod
     def dbapi(cls):
         return __import__('cymysql')
+
+    def _extract_error_code(self, exception):
+        return exception.args[0]
 
 dialect = MySQLDialect_cymysql
