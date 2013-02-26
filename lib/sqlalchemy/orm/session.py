@@ -57,6 +57,10 @@ class _SessionClassMethods(object):
         return object_session(instance)
 
 
+ACTIVE = util.symbol('ACTIVE')
+PREPARED = util.symbol('PREPARED')
+DEACTIVE = util.symbol('DEACTIVE')
+
 class SessionTransaction(object):
     """A :class:`.Session`-level transaction.
 
@@ -144,8 +148,7 @@ class SessionTransaction(object):
         self._connections = {}
         self._parent = parent
         self.nested = nested
-        self._active = True
-        self._prepared = False
+        self._state = ACTIVE
         if not parent and nested:
             raise sa_exc.InvalidRequestError(
                 "Can't start a SAVEPOINT transaction when no existing "
@@ -159,11 +162,17 @@ class SessionTransaction(object):
 
     @property
     def is_active(self):
-        return self.session is not None and self._active
+        return self.session is not None and self._state is ACTIVE
 
     def _assert_is_active(self):
         self._assert_is_open()
-        if not self._active:
+        if self._state is PREPARED:
+            raise sa_exc.InvalidRequestError(
+                    "This session is in 'prepared' state, where no further "
+                    "SQL can be emitted until the transaction is fully "
+                    "committed."
+                )
+        elif self._state is DEACTIVE:
             if self._rollback_exception:
                 raise sa_exc.InvalidRequestError(
                     "This Session's transaction has been rolled back "
@@ -327,12 +336,11 @@ class SessionTransaction(object):
                 self.rollback()
                 raise
 
-        self._deactivate()
-        self._prepared = True
+        self._state = PREPARED
 
     def commit(self):
         self._assert_is_open()
-        if not self._prepared:
+        if self._state is not PREPARED:
             self._prepare_impl()
 
         if self._parent is None or self.nested:
@@ -355,14 +363,14 @@ class SessionTransaction(object):
             for subtransaction in stx._iterate_parents(upto=self):
                 subtransaction.close()
 
-        if self.is_active or self._prepared:
+        if self._state in (ACTIVE, PREPARED):
             for transaction in self._iterate_parents():
                 if transaction._parent is None or transaction.nested:
                     transaction._rollback_impl()
-                    transaction._deactivate()
+                    transaction._state = DEACTIVE
                     break
                 else:
-                    transaction._deactivate()
+                    transaction._state = DEACTIVE
 
         sess = self.session
 
@@ -393,9 +401,6 @@ class SessionTransaction(object):
 
         self.session.dispatch.after_rollback(self.session)
 
-    def _deactivate(self):
-        self._active = False
-
     def close(self):
         self.session.transaction = self._parent
         if self._parent is None:
@@ -406,7 +411,7 @@ class SessionTransaction(object):
                 else:
                     transaction.close()
 
-        self._deactivate()
+        self._state = DEACTIVE
         if self.session.dispatch.after_transaction_end:
             self.session.dispatch.after_transaction_end(self.session, self)
 
