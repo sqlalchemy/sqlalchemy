@@ -26,9 +26,10 @@ class MySQLDialect_cymysql(MySQLDialect_mysqldb):
         return __import__('cymysql')
 
     def _extract_error_code(self, exception):
-        v = exception.args[0]
-        if not isinstance(v, int):
-            v = v.args[0]
-        return v
+        # Py2K
+        return exception[0]
+        # end Py2K
+        # Py3K
+        #return exception.args[0].args[0]
 
 dialect = MySQLDialect_cymysql
