@@ -212,6 +212,29 @@ class SyncTest(fixtures.MappedTest,
             True
         )
 
+    def test_source_modified_composite(self):
+        uowcommit, a1, b1, a_mapper, b_mapper = self._fixture()
+        a1.obj().foo = 10
+        a1._commit_all(a1.dict)
+        a1.obj().foo = 12
+        pairs = [(a_mapper.c.id, b_mapper.c.id,),
+                (a_mapper.c.foo, b_mapper.c.id)]
+        eq_(
+            sync.source_modified(uowcommit, a1, a_mapper, pairs),
+            True
+        )
+
+    def test_source_modified_composite_unmodified(self):
+        uowcommit, a1, b1, a_mapper, b_mapper = self._fixture()
+        a1.obj().foo = 10
+        a1._commit_all(a1.dict)
+        pairs = [(a_mapper.c.id, b_mapper.c.id,),
+                (a_mapper.c.foo, b_mapper.c.id)]
+        eq_(
+            sync.source_modified(uowcommit, a1, a_mapper, pairs),
+            False
+        )
+
     def test_source_modified_no_unmapped(self):
         uowcommit, a1, b1, a_mapper, b_mapper = self._fixture()
         pairs = [(b_mapper.c.id, b_mapper.c.id,)]
