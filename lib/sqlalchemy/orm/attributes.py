@@ -1145,7 +1145,7 @@ class History(History):
 
         from sqlalchemy import inspect
 
-        hist = inspect(myobject).attr.myattribute.history
+        hist = inspect(myobject).attrs.myattribute.history
 
     Each tuple member is an iterable sequence:
 
