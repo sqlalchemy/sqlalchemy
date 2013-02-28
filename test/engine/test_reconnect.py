@@ -487,6 +487,9 @@ class InvalidateDuringResultTest(fixtures.TestBase):
         meta.drop_all()
         engine.dispose()
 
+    @testing.fails_on('+cymysql',
+                      "Buffers the result set and doesn't check for "
+                      "connection close")
     @testing.fails_on('+pymysql',
                       "Buffers the result set and doesn't check for "
                       "connection close")
