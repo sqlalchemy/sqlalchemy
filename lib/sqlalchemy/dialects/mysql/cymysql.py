@@ -15,11 +15,40 @@
 """
 
 from .mysqldb import MySQLDialect_mysqldb
+from .base import (BIT, MySQLDialect)
+from ... import util
+
+class _cymysqlBIT(BIT):
+    def result_processor(self, dialect, coltype):
+        """Convert a MySQL's 64 bit, variable length binary string to a long.
+        """
+
+        def process(value):
+            if value is not None:
+                # Py2K
+                value = 0L
+                for i in map(ord, value):
+                    value = value << 8 | i
+                # end Py2K
+                # Py3K
+                #value = 0
+                #for i in value:
+                #    value = value << 8 | i 
+            return value
+        return process
+
 
 class MySQLDialect_cymysql(MySQLDialect_mysqldb):
     driver = 'cymysql'
 
     description_encoding = None
+
+    colspecs = util.update_copy(
+        MySQLDialect.colspecs,
+        {
+            BIT: _cymysqlBIT,
+        }
+    )
 
     @classmethod
     def dbapi(cls):
