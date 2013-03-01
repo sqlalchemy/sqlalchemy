@@ -34,6 +34,7 @@ class _cymysqlBIT(BIT):
                 #v = 0
                 #for i in value:
                 #    v = v << 8 | i
+                return v
             return value
         return process
 
