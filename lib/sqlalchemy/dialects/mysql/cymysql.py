@@ -26,14 +26,14 @@ class _cymysqlBIT(BIT):
         def process(value):
             if value is not None:
                 # Py2K
-                value = 0L
+                v = 0L
                 for i in map(ord, value):
-                    value = value << 8 | i
+                    v = v << 8 | i
                 # end Py2K
                 # Py3K
-                #value = 0
+                #v = 0
                 #for i in value:
-                #    value = value << 8 | i 
+                #    v = v << 8 | i
             return value
         return process
 
