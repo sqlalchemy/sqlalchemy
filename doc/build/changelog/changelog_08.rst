@@ -6,6 +6,25 @@
 .. changelog::
     :version: 0.8.0
 
+    .. note::
+
+      Be sure to *re-read* :doc:`migration_08` for this release.
+      There are some new behavioral changes as of 0.8.0
+      not present in 0.8.0b2, including:
+
+      * :ref:`legacy_is_orphan_addition`
+
+      * :ref:`metadata_create_drop_tables`
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 2664
+
+      :meth:`.MetaData.create_all` and :meth:`.MetaData.drop_all` will
+      now accommodate an empty list as an instruction to not create/drop
+      any items, rather than ignoring the collection.
+
+
     .. change::
         :tags: bug, tests
         :tickets: 2669
