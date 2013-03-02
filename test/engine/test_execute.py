@@ -9,7 +9,7 @@ from test.lib.schema import Table, Column
 import sqlalchemy as tsa
 from test.lib import testing, engines
 from test.lib.engines import testing_engine
-import logging
+import logging.handlers
 from sqlalchemy.dialects.oracle.zxjdbc import ReturningParam
 from sqlalchemy.engine import base, default
 from sqlalchemy.engine.base import Connection, Engine

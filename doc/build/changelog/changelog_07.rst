@@ -3,6 +3,16 @@
 0.7 Changelog
 ==============
 
+.. changelog::
+    :version: 0.7.11
+
+    .. change::
+        :tags: bug, tests
+        :tickets: 2669
+        :pullreq: 41
+
+      Fixed an import of "logging" in test_execute which was not
+      working on some linux platforms.
 
 .. changelog::
     :version: 0.7.10
