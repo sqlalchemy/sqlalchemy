@@ -58,4 +58,15 @@ class MySQLDialect_cymysql(MySQLDialect_mysqldb):
     def _extract_error_code(self, exception):
         return exception.errno
 
+    def is_disconnect(self, e, connection, cursor):
+        if isinstance(e, self.dbapi.OperationalError):
+            return self._extract_error_code(e) in \
+                        (2006, 2013, 2014, 2045, 2055)
+        elif isinstance(e, self.dbapi.InterfaceError):
+            # if underlying connection is closed,
+            # this is the error you get
+            return True
+        else:
+            return False
+
 dialect = MySQLDialect_cymysql
