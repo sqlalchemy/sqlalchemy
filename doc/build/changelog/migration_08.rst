@@ -1145,6 +1145,23 @@ entity, ``query.correlate(someentity)``.
 
 :ticket:`2179`
 
+.. _metadata_create_drop_tables:
+
+create_all() and drop_all() will now honor an empty list as such
+----------------------------------------------------------------
+
+The methods :meth:`.MetaData.create_all` and :meth:`.MetaData.drop_all`
+will now accept a list of :class:`.Table` objects that is empty,
+and will not emit any CREATE or DROP statements.  Previously,
+an empty list was interepreted the same as passing ``None``
+for a collection, and CREATE/DROP would be emitted for all
+items unconditionally.
+
+This is a bug fix but some applications may have been relying upon
+the previous behavior.
+
+:ticket:`2664`
+
 Repaired the Event Targeting of :class:`.InstrumentationEvents`
 ----------------------------------------------------------------
 

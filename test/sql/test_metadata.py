@@ -1628,3 +1628,4 @@ class CatchAllEventsTest(fixtures.TestBase):
                 'UniqueConstraint->Table', 'UniqueConstraint->t2'
             ]
         )
+
