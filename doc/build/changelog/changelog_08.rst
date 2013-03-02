@@ -7,6 +7,14 @@
     :version: 0.8.0
 
     .. change::
+        :tags: bug, tests
+        :tickets: 2669
+        :pullreq: 41
+
+      Fixed an import of "logging" in test_execute which was not
+      working on some linux platforms.  Also in 0.7.11.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2662
 

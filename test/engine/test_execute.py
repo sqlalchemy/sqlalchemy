@@ -13,7 +13,7 @@ import sqlalchemy as tsa
 from sqlalchemy import testing
 from sqlalchemy.testing import engines
 from sqlalchemy.testing.engines import testing_engine
-import logging, logging.handlers
+import logging.handlers
 from sqlalchemy.dialects.oracle.zxjdbc import ReturningParam
 from sqlalchemy.engine import result as _result, default
 from sqlalchemy.engine.base import Connection, Engine
