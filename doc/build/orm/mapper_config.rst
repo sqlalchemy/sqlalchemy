@@ -992,8 +992,11 @@ subquery::
                 orders.c.customer_id
                 ]).group_by(orders.c.customer_id).alias()
 
-    customer_select = select([customers,subq]).\
-                where(customers.c.customer_id==subq.c.customer_id)
+    customer_select = select([customers, subq]).\
+                select_from(
+                    join(customers, subq,
+                            customers.c.id == subq.c.customer_id)
+                ).alias()
 
     class Customer(Base):
         __table__ = customer_select
@@ -1010,6 +1013,19 @@ When the ORM persists new instances of ``Customer``, only the
 primary key of the ``orders`` table is not represented in the mapping;  the ORM
 will only emit an INSERT into a table for which it has mapped the primary
 key.
+
+.. note::
+
+    The practice of mapping to arbitrary SELECT statements, especially
+    complex ones as above, is
+    almost never needed; it necessarily tends to produce complex queries
+    which are often less efficient than that which would be produced
+    by direct query construction.   The practice is to some degree
+    based on the very early history of SQLAlchemy where the :func:`.mapper`
+    construct was meant to represent the primary querying interface;
+    in modern usage, the :class:`.Query` object can be used to construct
+    virtually any SELECT statement, including complex composites, and should
+    be favored over the "map-to-selectable" approach.
 
 Multiple Mappers for One Class
 ==============================

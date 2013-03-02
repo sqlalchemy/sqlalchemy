@@ -2604,7 +2604,14 @@ class FromClause(Selectable):
                     **params)
 
     def select(self, whereclause=None, **params):
-        """return a SELECT of this :class:`.FromClause`."""
+        """return a SELECT of this :class:`.FromClause`.
+
+        .. seealso::
+
+            :func:`~.sql.expression.select` - general purpose
+            method which allows for arbitrary column lists.
+
+        """
 
         return select([self], whereclause, **params)
 

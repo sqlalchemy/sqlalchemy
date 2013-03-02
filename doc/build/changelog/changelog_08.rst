@@ -7,6 +7,23 @@
     :version: 0.8.0
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2662
+
+      A clear error message is emitted if an event handler
+      attempts to emit SQL on a Session within the after_commit()
+      handler, where there is not a viable transaction in progress.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 2665
+
+      Detection of a primary key change within the process
+      of cascading a natural primary key update will succeed
+      even if the key is composite and only some of the
+      attributes have changed.
+
+    .. change::
         :tags: feature, orm
         :tickets: 2658
 

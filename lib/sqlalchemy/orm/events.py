@@ -1118,40 +1118,102 @@ class SessionEvents(event.Events):
     def after_transaction_create(self, session, transaction):
         """Execute when a new :class:`.SessionTransaction` is created.
 
+        This event differs from :meth:`~.SessionEvents.after_begin`
+        in that it occurs for each :class:`.SessionTransaction`
+        overall, as opposed to when transactions are begun
+        on individual database connections.  It is also invoked
+        for nested transactions and subtransactions, and is always
+        matched by a corresponding
+        :meth:`~.SessionEvents.after_transaction_end` event
+        (assuming normal operation of the :class:`.Session`).
+
         :param session: the target :class:`.Session`.
         :param transaction: the target :class:`.SessionTransaction`.
 
         .. versionadded:: 0.8
+
+        .. seealso::
+
+            :meth:`~.SessionEvents.after_transaction_end`
 
         """
 
     def after_transaction_end(self, session, transaction):
         """Execute when the span of a :class:`.SessionTransaction` ends.
 
+        This event differs from :meth:`~.SessionEvents.after_commit`
+        in that it corresponds to all :class:`.SessionTransaction`
+        objects in use, including those for nested transactions
+        and subtransactions, and is always matched by a corresponding
+        :meth:`~.SessionEvents.after_transaction_create` event.
+
         :param session: the target :class:`.Session`.
         :param transaction: the target :class:`.SessionTransaction`.
 
         .. versionadded:: 0.8
+
+        .. seealso::
+
+            :meth:`~.SessionEvents.after_transaction_create`
 
         """
 
     def before_commit(self, session):
         """Execute before commit is called.
 
-        Note that this may not be per-flush if a longer running
-        transaction is ongoing.
+        .. note::
+
+            The :meth:`.before_commit` hook is *not* per-flush,
+            that is, the :class:`.Session` can emit SQL to the database
+            many times within the scope of a transaction.
+            For interception of these events, use the :meth:`~.SessionEvents.before_flush`,
+            :meth:`~.SessionEvents.after_flush`, or :meth:`~.SessionEvents.after_flush_postexec`
+            events.
 
         :param session: The target :class:`.Session`.
+
+        .. seealso::
+
+            :meth:`~.SessionEvents.after_commit`
+
+            :meth:`~.SessionEvents.after_begin`
+
+            :meth:`~.SessionEvents.after_transaction_create`
+
+            :meth:`~.SessionEvents.after_transaction_end`
 
         """
 
     def after_commit(self, session):
         """Execute after a commit has occurred.
 
-        Note that this may not be per-flush if a longer running
-        transaction is ongoing.
+        .. note::
+
+            The :meth:`~.SessionEvents.after_commit` hook is *not* per-flush,
+            that is, the :class:`.Session` can emit SQL to the database
+            many times within the scope of a transaction.
+            For interception of these events, use the :meth:`~.SessionEvents.before_flush`,
+            :meth:`~.SessionEvents.after_flush`, or :meth:`~.SessionEvents.after_flush_postexec`
+            events.
+
+        .. note::
+
+            The :class:`.Session` is not in an active tranasction
+            when the :meth:`~.SessionEvents.after_commit` event is invoked, and therefore
+            can not emit SQL.  To emit SQL corresponding to every transaction,
+            use the :meth:`~.SessionEvents.before_commit` event.
 
         :param session: The target :class:`.Session`.
+
+        .. seealso::
+
+            :meth:`~.SessionEvents.before_commit`
+
+            :meth:`~.SessionEvents.after_begin`
+
+            :meth:`~.SessionEvents.after_transaction_create`
+
+            :meth:`~.SessionEvents.after_transaction_end`
 
         """
 
@@ -1211,6 +1273,12 @@ class SessionEvents(event.Events):
          objects which can be passed to the :meth:`.Session.flush` method
          (note this usage is deprecated).
 
+        .. seealso::
+
+            :meth:`~.SessionEvents.after_flush`
+
+            :meth:`~.SessionEvents.after_flush_postexec`
+
         """
 
     def after_flush(self, session, flush_context):
@@ -1224,6 +1292,12 @@ class SessionEvents(event.Events):
         :param session: The target :class:`.Session`.
         :param flush_context: Internal :class:`.UOWTransaction` object
          which handles the details of the flush.
+
+        .. seealso::
+
+            :meth:`~.SessionEvents.before_flush`
+
+            :meth:`~.SessionEvents.after_flush_postexec`
 
         """
 
@@ -1239,6 +1313,14 @@ class SessionEvents(event.Events):
         :param session: The target :class:`.Session`.
         :param flush_context: Internal :class:`.UOWTransaction` object
          which handles the details of the flush.
+
+
+        .. seealso::
+
+            :meth:`~.SessionEvents.before_flush`
+
+            :meth:`~.SessionEvents.after_flush`
+
         """
 
     def after_begin(self, session, transaction, connection):
@@ -1248,6 +1330,16 @@ class SessionEvents(event.Events):
         :param transaction: The :class:`.SessionTransaction`.
         :param connection: The :class:`~.engine.Connection` object
          which will be used for SQL statements.
+
+        .. seealso::
+
+            :meth:`~.SessionEvents.before_commit`
+
+            :meth:`~.SessionEvents.after_commit`
+
+            :meth:`~.SessionEvents.after_transaction_create`
+
+            :meth:`~.SessionEvents.after_transaction_end`
 
         """
 
@@ -1261,6 +1353,10 @@ class SessionEvents(event.Events):
            fires off after the item is part of the session.
            :meth:`.before_attach` is provided for those cases where
            the item should not yet be part of the session state.
+
+        .. seealso::
+
+            :meth:`~.SessionEvents.after_attach`
 
         """
 
@@ -1279,6 +1375,10 @@ class SessionEvents(event.Events):
            may autoflush while the target object is not
            yet complete) consider the
            new :meth:`.before_attach` event.
+
+        .. seealso::
+
+            :meth:`~.SessionEvents.before_attach`
 
         """
 

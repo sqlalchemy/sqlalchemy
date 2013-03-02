@@ -358,6 +358,18 @@ class SessionTransactionTest(FixtureTest):
                               sess.begin, subtransactions=True)
         sess.close()
 
+    def test_no_sql_during_prepare(self):
+        sess = create_session(bind=testing.db, autocommit=False)
+
+        @event.listens_for(sess, "after_commit")
+        def go(session):
+            session.execute("select 1")
+        assert_raises_message(sa_exc.InvalidRequestError,
+                    "This session is in 'prepared' state, where no "
+                    "further SQL can be emitted until the "
+                    "transaction is fully committed.",
+                    sess.commit)
+
     def _inactive_flushed_session_fixture(self):
         users, User = self.tables.users, self.classes.User
 
