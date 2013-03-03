@@ -816,7 +816,10 @@ class RelationshipProperty(StrategizedProperty):
                 adapt_source=adapt_source)
 
     def __str__(self):
-        return str(self.parent.class_.__name__) + "." + self.key
+        if self.parent:
+            return str(self.parent.class_.__name__) + "." + self.key
+        else:
+            return "." + self.key
 
     def merge(self,
                     session,
@@ -1201,11 +1204,15 @@ class RelationshipProperty(StrategizedProperty):
             else:
                 backref_key, kwargs = self.backref
             mapper = self.mapper.primary_mapper()
-            if mapper.has_property(backref_key):
-                raise sa_exc.ArgumentError("Error creating backref "
-                        "'%s' on relationship '%s': property of that "
-                        "name exists on mapper '%s'" % (backref_key,
-                        self, mapper))
+
+            check = set(mapper.iterate_to_root()).\
+                        union(mapper.self_and_descendants)
+            for m in check:
+                if m.has_property(backref_key):
+                    raise sa_exc.ArgumentError("Error creating backref "
+                            "'%s' on relationship '%s': property of that "
+                            "name exists on mapper '%s'" % (backref_key,
+                            self, m))
 
             # determine primaryjoin/secondaryjoin for the
             # backref.  Use the one we had, so that

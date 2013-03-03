@@ -1094,7 +1094,7 @@ class Mapper(_InspectionAttr):
                 # initialized; check for 'readonly'
                 if hasattr(self, '_readonly_props') and \
                     (not hasattr(col, 'table') or
-                    col.table not in self._cols_by_table):
+                        col.table not in self._cols_by_table):
                         self._readonly_props.add(prop)
 
             else:
@@ -1131,6 +1131,16 @@ class Mapper(_InspectionAttr):
                         "a ColumnProperty already exists keyed to the name "
                         "%r for column %r" % (syn, key, key, syn)
                     )
+
+        if key in self._props and \
+                not isinstance(prop, properties.ColumnProperty) and \
+                not isinstance(self._props[key], properties.ColumnProperty):
+            util.warn("Property %s on %s being replaced with new "
+                            "property %s; the old property will be discarded" % (
+                            self._props[key],
+                            self,
+                            prop,
+                        ))
 
         self._props[key] = prop
 

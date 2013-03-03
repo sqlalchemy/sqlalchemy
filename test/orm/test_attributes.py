@@ -1170,7 +1170,10 @@ class CyclicBackrefAssertionTest(fixtures.TestBase):
         b1 = B()
         assert_raises_message(
             ValueError,
-            "Object <B at .*> not associated with attribute of type C.a",
+            'Bidirectional attribute conflict detected: '
+            'Passing object <B at .*> to attribute "C.a" '
+            'triggers a modify event on attribute "C.b" '
+            'via the backref "B.c".',
             setattr, c1, 'a', b1
         )
 
@@ -1180,9 +1183,13 @@ class CyclicBackrefAssertionTest(fixtures.TestBase):
         b1 = B()
         assert_raises_message(
             ValueError,
-            "Object <B at .*> not associated with attribute of type C.a",
+            'Bidirectional attribute conflict detected: '
+            'Passing object <B at .*> to attribute "C.a" '
+            'triggers a modify event on attribute "C.b" '
+            'via the backref "B.c".',
             c1.a.append, b1
         )
+
 
     def _scalar_fixture(self):
         class A(object):
@@ -1224,6 +1231,36 @@ class CyclicBackrefAssertionTest(fixtures.TestBase):
         attributes.register_attribute(B, 'c', backref='b', useobject=True)
 
         return A, B, C
+
+    def _broken_collection_fixture(self):
+        class A(object):
+            pass
+        class B(object):
+            pass
+        instrumentation.register_class(A)
+        instrumentation.register_class(B)
+
+        attributes.register_attribute(A, 'b', backref='a1', useobject=True)
+        attributes.register_attribute(B, 'a1', backref='b', useobject=True,
+                                                uselist=True)
+
+        attributes.register_attribute(B, 'a2', backref='b', useobject=True,
+                                                uselist=True)
+
+        return A, B
+
+    def test_broken_collection_assertion(self):
+        A, B = self._broken_collection_fixture()
+        b1 = B()
+        a1 = A()
+        assert_raises_message(
+            ValueError,
+            'Bidirectional attribute conflict detected: '
+            'Passing object <A at .*> to attribute "B.a2" '
+            'triggers a modify event on attribute "B.a1" '
+            'via the backref "A.b".',
+            b1.a2.append, a1
+        )
 
 class PendingBackrefTest(fixtures.ORMTest):
     def setup(self):
