@@ -40,9 +40,9 @@ def track_cascade_events(descriptor, prop):
 
             prop = state.manager.mapper._props[key]
             item_state = attributes.instance_state(item)
-            if prop.cascade.save_update and \
+            if prop._cascade.save_update and \
                 (prop.cascade_backrefs or key == initiator.key) and \
-                not sess._contains_state(item_state):
+                    not sess._contains_state(item_state):
                 sess._save_or_update_state(item_state)
         return item
 
@@ -63,9 +63,9 @@ def track_cascade_events(descriptor, prop):
 
             # expunge pending orphans
             item_state = attributes.instance_state(item)
-            if prop.cascade.delete_orphan and \
+            if prop._cascade.delete_orphan and \
                 item_state in sess._new and \
-                prop.mapper._is_orphan(item_state):
+                    prop.mapper._is_orphan(item_state):
                     sess.expunge(item)
 
     def set_(state, newvalue, oldvalue, initiator):
@@ -83,14 +83,14 @@ def track_cascade_events(descriptor, prop):
             prop = state.manager.mapper._props[key]
             if newvalue is not None:
                 newvalue_state = attributes.instance_state(newvalue)
-                if prop.cascade.save_update and \
+                if prop._cascade.save_update and \
                     (prop.cascade_backrefs or key == initiator.key) and \
                     not sess._contains_state(newvalue_state):
                     sess._save_or_update_state(newvalue_state)
 
             if oldvalue is not None and \
                 oldvalue is not attributes.PASSIVE_NO_RESULT and \
-                prop.cascade.delete_orphan:
+                prop._cascade.delete_orphan:
                 # possible to reach here with attributes.NEVER_SET ?
                 oldvalue_state = attributes.instance_state(oldvalue)
 

@@ -17,6 +17,14 @@
       * :ref:`metadata_create_drop_tables`
 
     .. change::
+        :tags: feature, orm
+
+      Can set/change the "cascade" attribute on a :func:`.relationship`
+      construct after it's been constructed already.  This is not
+      a pattern for normal use but we like to change the setting
+      for demonstration purposes in tutorials.
+
+    .. change::
         :tags: bug, schema
         :tickets: 2664
 
