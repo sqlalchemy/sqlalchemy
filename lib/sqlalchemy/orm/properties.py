@@ -816,10 +816,7 @@ class RelationshipProperty(StrategizedProperty):
                 adapt_source=adapt_source)
 
     def __str__(self):
-        if self.parent:
-            return str(self.parent.class_.__name__) + "." + self.key
-        else:
-            return "." + self.key
+        return str(self.parent.class_.__name__) + "." + self.key
 
     def merge(self,
                     session,
