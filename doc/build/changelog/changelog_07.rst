@@ -14,6 +14,29 @@
       Fixed an import of "logging" in test_execute which was not
       working on some linux platforms.
 
+    .. change::
+        :tags: bug, orm
+        :tickets: 2674
+
+      Improved the error message emitted when a "backref loop" is detected,
+      that is when an attribute event triggers a bidirectional
+      assignment between two other attributes with no end.
+      This condition can occur not just when an object of the wrong
+      type is assigned, but also when an attribute is mis-configured
+      to backref into an existing backref pair.
+
+    .. change::
+      :tags: bug, orm
+      :tickets: 2674
+
+      A warning is emitted when a MapperProperty is assigned to a mapper
+      that replaces an existing property, if the properties in question
+      aren't plain column-based properties.   Replacement of relationship
+      properties is rarely (ever?) what is intended and usually refers to a
+      mapper mis-configuration.   This will also warn if a backref configures
+      itself on top of an existing one in an inheritance relationship
+      (which is an error in 0.8).
+
 .. changelog::
     :version: 0.7.10
     :released: Thu Feb 7 2013
