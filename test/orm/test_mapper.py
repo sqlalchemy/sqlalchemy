@@ -488,7 +488,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert hasattr(User, 'addresses')
         assert "addresses" in [p.key for p in m1._polymorphic_properties]
 
-    def test_replace_property(self):
+    def test_replace_col_prop_w_syn(self):
         users, User = self.tables.users, self.classes.User
 
         m = mapper(User, users)
@@ -513,6 +513,24 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         eq_(u.name, 'jack')
         u.name = 'jacko'
         assert m._columntoproperty[users.c.name] is m.get_property('_name')
+
+    def test_replace_rel_prop_with_rel_warns(self):
+        users, User = self.tables.users, self.classes.User
+        addresses, Address = self.tables.addresses, self.classes.Address
+
+        m = mapper(User, users, properties={
+                "addresses": relationship(Address)
+            })
+        mapper(Address, addresses)
+
+        assert_raises_message(
+            sa.exc.SAWarning,
+            "Property User.addresses on Mapper|User|users being replaced "
+            "with new property User.addresses; the old property will "
+            "be discarded",
+            m.add_property,
+            "addresses", relationship(Address)
+        )
 
     def test_add_column_prop_deannotate(self):
         User, users = self.classes.User, self.tables.users

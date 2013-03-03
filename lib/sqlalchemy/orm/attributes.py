@@ -433,6 +433,9 @@ class AttributeImpl(object):
 
         self.expire_missing = expire_missing
 
+    def __str__(self):
+        return "%s.%s" % (self.class_.__name__, self.key)
+
     def _get_active_history(self):
         """Backwards compat for impl.active_history"""
 
@@ -1043,11 +1046,18 @@ def backref_listeners(attribute, key, uselist):
 
     parent_token = attribute.impl.parent_token
 
-    def _acceptable_key_err(child_state, initiator):
+    def _acceptable_key_err(child_state, initiator, child_impl):
         raise ValueError(
-            "Object %s not associated with attribute of "
-            "type %s" % (orm_util.state_str(child_state),
-                    manager_of_class(initiator.class_)[initiator.key]))
+            "Bidirectional attribute conflict detected: "
+            'Passing object %s to attribute "%s" '
+            'triggers a modify event on attribute "%s" '
+            'via the backref "%s".' % (
+                orm_util.state_str(child_state),
+                initiator.parent_token,
+                child_impl.parent_token,
+                attribute.impl.parent_token
+            )
+        )
 
     def emit_backref_from_scalar_set_event(state, child, oldchild, initiator):
         if oldchild is child:
@@ -1069,7 +1079,7 @@ def backref_listeners(attribute, key, uselist):
             child_impl = child_state.manager[key].impl
             if initiator.parent_token is not parent_token and \
                 initiator.parent_token is not child_impl.parent_token:
-                _acceptable_key_err(state, initiator)
+                _acceptable_key_err(state, initiator, child_impl)
             child_impl.append(
                                 child_state,
                                 child_dict,
@@ -1085,9 +1095,11 @@ def backref_listeners(attribute, key, uselist):
         child_state, child_dict = instance_state(child), \
                                     instance_dict(child)
         child_impl = child_state.manager[key].impl
+
+        print initiator.parent_token, parent_token, child_impl.parent_token
         if initiator.parent_token is not parent_token and \
             initiator.parent_token is not child_impl.parent_token:
-            _acceptable_key_err(state, initiator)
+            _acceptable_key_err(state, initiator, child_impl)
         child_impl.append(
                                 child_state,
                                 child_dict,

@@ -230,6 +230,8 @@ class RelationshipProperty(StrategizedProperty):
 
     strategy_wildcard_key = 'relationship:*'
 
+    _dependency_processor = None
+
     def __init__(self, argument,
         secondary=None, primaryjoin=None,
         secondaryjoin=None,
@@ -252,7 +254,7 @@ class RelationshipProperty(StrategizedProperty):
         load_on_pending=False,
         strategy_class=None, _local_remote_pairs=None,
         query_class=None,
-        info=None):
+            info=None):
 
         self.uselist = uselist
         self.argument = argument
@@ -297,17 +299,8 @@ class RelationshipProperty(StrategizedProperty):
 
         self._reverse_property = set()
 
-        if cascade is not False:
-            self.cascade = CascadeOptions(cascade)
-        else:
-            self.cascade = CascadeOptions("save-update, merge")
-
-        if self.passive_deletes == 'all' and \
-                    ("delete" in self.cascade or
-                    "delete-orphan" in self.cascade):
-            raise sa_exc.ArgumentError(
-                            "Can't set passive_deletes='all' in conjunction "
-                            "with 'delete' or 'delete-orphan' cascade")
+        self.cascade = cascade if cascade is not False \
+                            else "save-update, merge"
 
         self.order_by = order_by
 
@@ -723,8 +716,8 @@ class RelationshipProperty(StrategizedProperty):
                 if self.property._use_get:
                     return sql.and_(*[
                         sql.or_(
-                        adapt(x) != state_bindparam(adapt(x), state, y),
-                        adapt(x) == None)
+                            adapt(x) != state_bindparam(adapt(x), state, y),
+                            adapt(x) == None)
                         for (x, y) in self.property.local_remote_pairs])
 
             criterion = sql.and_(*[x == y for (x, y) in
@@ -823,7 +816,10 @@ class RelationshipProperty(StrategizedProperty):
                 adapt_source=adapt_source)
 
     def __str__(self):
-        return str(self.parent.class_.__name__) + "." + self.key
+        if self.parent:
+            return str(self.parent.class_.__name__) + "." + self.key
+        else:
+            return "." + self.key
 
     def merge(self,
                     session,
@@ -838,7 +834,7 @@ class RelationshipProperty(StrategizedProperty):
                 if (source_state, r) in _recursive:
                     return
 
-        if not "merge" in self.cascade:
+        if not "merge" in self._cascade:
             return
 
         if self.key not in source_dict:
@@ -916,7 +912,7 @@ class RelationshipProperty(StrategizedProperty):
 
     def cascade_iterator(self, type_, state, dict_,
                          visited_states, halt_on=None):
-        #assert type_ in self.cascade
+        #assert type_ in self._cascade
 
         # only actively lazy load on the 'delete' cascade
         if type_ != 'delete' or self.passive_deletes:
@@ -933,7 +929,7 @@ class RelationshipProperty(StrategizedProperty):
                             passive=passive)
 
         skip_pending = type_ == 'refresh-expire' and 'delete-orphan' \
-            not in self.cascade
+            not in self._cascade
 
         for instance_state, c in tuples:
             if instance_state in visited_states:
@@ -980,7 +976,7 @@ class RelationshipProperty(StrategizedProperty):
                     'does not reference mapper %s' % (key, self, other,
                     self.parent))
         if self.direction in (ONETOMANY, MANYTOONE) and self.direction \
-            == other.direction:
+                        == other.direction:
             raise sa_exc.ArgumentError('%s and back-reference %s are '
                     'both of the same direction %r.  Did you mean to '
                     'set remote_side on the many-to-one side ?'
@@ -1025,7 +1021,7 @@ class RelationshipProperty(StrategizedProperty):
         self._check_conflicts()
         self._process_dependent_arguments()
         self._setup_join_conditions()
-        self._check_cascade_settings()
+        self._check_cascade_settings(self._cascade)
         self._post_init()
         self._generate_backref()
         super(RelationshipProperty, self).do_init()
@@ -1043,7 +1039,7 @@ class RelationshipProperty(StrategizedProperty):
         for attr in (
             'order_by', 'primaryjoin', 'secondaryjoin',
             'secondary', '_user_defined_foreign_keys', 'remote_side',
-            ):
+                ):
             attr_value = getattr(self, attr)
             if util.callable(attr_value):
                 setattr(self, attr, attr_value())
@@ -1080,10 +1076,6 @@ class RelationshipProperty(StrategizedProperty):
 
         self.target = self.mapper.mapped_table
 
-        if self.cascade.delete_orphan:
-            self.mapper.primary_mapper()._delete_orphans.append(
-                            (self.key, self.parent.class_)
-                        )
 
     def _setup_join_conditions(self):
         self._join_condition = jc = relationships.JoinCondition(
@@ -1134,28 +1126,57 @@ class RelationshipProperty(StrategizedProperty):
         if not self.parent.concrete:
             for inheriting in self.parent.iterate_to_root():
                 if inheriting is not self.parent \
-                    and inheriting.has_property(self.key):
+                        and inheriting.has_property(self.key):
                     util.warn("Warning: relationship '%s' on mapper "
                               "'%s' supersedes the same relationship "
                               "on inherited mapper '%s'; this can "
                               "cause dependency issues during flush"
                               % (self.key, self.parent, inheriting))
 
-    def _check_cascade_settings(self):
-        if self.cascade.delete_orphan and not self.single_parent \
+    @property
+    def cascade(self):
+        """Return the current cascade setting for this
+        :class:`.RelationshipProperty`.
+        """
+        return self._cascade
+
+    @cascade.setter
+    def cascade(self, cascade):
+        cascade = CascadeOptions(cascade)
+        if 'mapper' in self.__dict__:
+            self._check_cascade_settings(cascade)
+        self._cascade = cascade
+
+        if self._dependency_processor:
+            self._dependency_processor.cascade = cascade
+
+    def _check_cascade_settings(self, cascade):
+        if cascade.delete_orphan and not self.single_parent \
             and (self.direction is MANYTOMANY or self.direction
                  is MANYTOONE):
             raise sa_exc.ArgumentError(
                     'On %s, delete-orphan cascade is not supported '
-                      'on a many-to-many or many-to-one relationship '
-                      'when single_parent is not set.   Set '
-                      'single_parent=True on the relationship().'
-                      % self)
+                    'on a many-to-many or many-to-one relationship '
+                    'when single_parent is not set.   Set '
+                    'single_parent=True on the relationship().'
+                    % self)
         if self.direction is MANYTOONE and self.passive_deletes:
             util.warn("On %s, 'passive_deletes' is normally configured "
                       "on one-to-many, one-to-one, many-to-many "
                       "relationships only."
                        % self)
+
+        if self.passive_deletes == 'all' and \
+                    ("delete" in cascade or
+                    "delete-orphan" in cascade):
+            raise sa_exc.ArgumentError(
+                    "On %s, can't set passive_deletes='all' in conjunction "
+                    "with 'delete' or 'delete-orphan' cascade" % self)
+
+        if cascade.delete_orphan:
+            self.mapper.primary_mapper()._delete_orphans.append(
+                            (self.key, self.parent.class_)
+                        )
 
     def _columns_are_mapped(self, *cols):
         """Return True if all columns in the given collection are
@@ -1164,10 +1185,10 @@ class RelationshipProperty(StrategizedProperty):
         """
         for c in cols:
             if self.secondary is not None \
-                and self.secondary.c.contains_column(c):
+                    and self.secondary.c.contains_column(c):
                 continue
             if not self.parent.mapped_table.c.contains_column(c) and \
-                not self.target.c.contains_column(c):
+                    not self.target.c.contains_column(c):
                 return False
         return True
 
@@ -1183,11 +1204,15 @@ class RelationshipProperty(StrategizedProperty):
             else:
                 backref_key, kwargs = self.backref
             mapper = self.mapper.primary_mapper()
-            if mapper.has_property(backref_key):
-                raise sa_exc.ArgumentError("Error creating backref "
-                        "'%s' on relationship '%s': property of that "
-                        "name exists on mapper '%s'" % (backref_key,
-                        self, mapper))
+
+            check = set(mapper.iterate_to_root()).\
+                        union(mapper.self_and_descendants)
+            for m in check:
+                if m.has_property(backref_key):
+                    raise sa_exc.ArgumentError("Error creating backref "
+                            "'%s' on relationship '%s': property of that "
+                            "name exists on mapper '%s'" % (backref_key,
+                            self, m))
 
             # determine primaryjoin/secondaryjoin for the
             # backref.  Use the one we had, so that

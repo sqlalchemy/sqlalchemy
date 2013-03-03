@@ -17,6 +17,46 @@
       * :ref:`metadata_create_drop_tables`
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2674
+
+      Improved checking for an existing backref name conflict during
+      mapper configuration; will now test for name conflicts on
+      superclasses and subclasses, in addition to the current mapper,
+      as these conflicts break things just as much.  This is new for
+      0.8, but see below for a warning that will also be triggered
+      in 0.7.11.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 2674
+
+      Improved the error message emitted when a "backref loop" is detected,
+      that is when an attribute event triggers a bidirectional
+      assignment between two other attributes with no end.
+      This condition can occur not just when an object of the wrong
+      type is assigned, but also when an attribute is mis-configured
+      to backref into an existing backref pair.  Also in 0.7.11.
+
+    .. change::
+      :tags: bug, orm
+      :tickets: 2674
+
+      A warning is emitted when a MapperProperty is assigned to a mapper
+      that replaces an existing property, if the properties in question
+      aren't plain column-based properties.   Replacement of relationship
+      properties is rarely (ever?) what is intended and usually refers to a
+      mapper mis-configuration.   Also in 0.7.11.
+
+    .. change::
+        :tags: feature, orm
+
+      Can set/change the "cascade" attribute on a :func:`.relationship`
+      construct after it's been constructed already.  This is not
+      a pattern for normal use but we like to change the setting
+      for demonstration purposes in tutorials.
+
+    .. change::
         :tags: bug, schema
         :tickets: 2664
 

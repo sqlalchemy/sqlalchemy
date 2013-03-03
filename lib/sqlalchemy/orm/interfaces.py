@@ -149,7 +149,7 @@ class MapperProperty(_MappedAttribute, _InspectionAttr):
 
     """
 
-    cascade = ()
+    cascade = frozenset()
     """The set of 'cascade' attribute names.
 
     This collection is checked before the 'cascade_iterator' method is called.
