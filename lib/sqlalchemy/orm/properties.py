@@ -816,10 +816,7 @@ class RelationshipProperty(StrategizedProperty):
                 adapt_source=adapt_source)
 
     def __str__(self):
-        if self.parent:
-            return str(self.parent.class_.__name__) + "." + self.key
-        else:
-            return "." + self.key
+        return str(self.parent.class_.__name__) + "." + self.key
 
     def merge(self,
                     session,
@@ -1133,15 +1130,13 @@ class RelationshipProperty(StrategizedProperty):
                               "cause dependency issues during flush"
                               % (self.key, self.parent, inheriting))
 
-    @property
-    def cascade(self):
+    def _get_cascade(self):
         """Return the current cascade setting for this
         :class:`.RelationshipProperty`.
         """
         return self._cascade
 
-    @cascade.setter
-    def cascade(self, cascade):
+    def _set_cascade(self, cascade):
         cascade = CascadeOptions(cascade)
         if 'mapper' in self.__dict__:
             self._check_cascade_settings(cascade)
@@ -1149,6 +1144,8 @@ class RelationshipProperty(StrategizedProperty):
 
         if self._dependency_processor:
             self._dependency_processor.cascade = cascade
+
+    cascade = property(_get_cascade, _set_cascade)
 
     def _check_cascade_settings(self, cascade):
         if cascade.delete_orphan and not self.single_parent \
