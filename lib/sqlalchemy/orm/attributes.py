@@ -1011,7 +1011,7 @@ def backref_listeners(attribute, key, uselist):
                                         instance_dict(child)
             child_impl = child_state.manager[key].impl
             if initiator.parent_token is not parent_token and \
-                initiator.parent_token is not child_impl.parent_token:
+                    initiator.parent_token is not child_impl.parent_token:
                 _acceptable_key_err(state, initiator, child_impl)
             child_impl.append(
                                 child_state,
@@ -1026,9 +1026,8 @@ def backref_listeners(attribute, key, uselist):
                                     instance_dict(child)
         child_impl = child_state.manager[key].impl
 
-        print initiator.parent_token, parent_token, child_impl.parent_token
         if initiator.parent_token is not parent_token and \
-            initiator.parent_token is not child_impl.parent_token:
+                initiator.parent_token is not child_impl.parent_token:
             _acceptable_key_err(state, initiator, child_impl)
         child_impl.append(
                                 child_state,
