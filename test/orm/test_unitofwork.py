@@ -616,19 +616,25 @@ class ExtraPassiveDeletesTest(fixtures.MappedTest):
 
     def test_assertions(self):
         myothertable, MyOtherClass = self.tables.myothertable, self.classes.MyOtherClass
+        mytable, MyClass = self.tables.mytable, self.classes.MyClass
 
+        mapper(MyClass, mytable, properties={
+            'foo': relationship(MyOtherClass,
+                                    passive_deletes='all',
+                                    cascade="all")
+            })
         mapper(MyOtherClass, myothertable)
+
         assert_raises_message(
             sa.exc.ArgumentError,
-            "Can't set passive_deletes='all' in conjunction with 'delete' "
+            "On MyClass.foo, can't set passive_deletes='all' in conjunction with 'delete' "
             "or 'delete-orphan' cascade",
-            relationship, MyOtherClass,
-                                    passive_deletes='all',
-                                    cascade="all"
+            sa.orm.configure_mappers
         )
 
     def test_extra_passive(self):
-        myothertable, MyClass, MyOtherClass, mytable = (self.tables.myothertable,
+        myothertable, MyClass, MyOtherClass, mytable = (
+                                self.tables.myothertable,
                                 self.classes.MyClass,
                                 self.classes.MyOtherClass,
                                 self.tables.mytable)
