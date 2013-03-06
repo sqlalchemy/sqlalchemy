@@ -43,6 +43,10 @@ class MySQLDialect_cymysql(MySQLDialect_mysqldb):
     driver = 'cymysql'
 
     description_encoding = None
+# Py2K
+    supports_unicode_binds = True
+    supports_unicode_statements = True
+# end Py2K
 
     colspecs = util.update_copy(
         MySQLDialect.colspecs,
@@ -54,6 +58,10 @@ class MySQLDialect_cymysql(MySQLDialect_mysqldb):
     @classmethod
     def dbapi(cls):
         return __import__('cymysql')
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+        """Provide an implementation of *cursor.execute(statement, parameters)*."""
+        cursor.execute(statement, parameters)
 
     def _extract_error_code(self, exception):
         return exception.errno
