@@ -17,6 +17,12 @@
       * :ref:`metadata_create_drop_tables`
 
     .. change::
+        :tags: feature, mysql
+        :pullreq: 42
+
+      New dialect for CyMySQL added, courtesy Hajime Nakagami.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2674
 
