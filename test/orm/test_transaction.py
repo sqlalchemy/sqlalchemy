@@ -358,17 +358,79 @@ class SessionTransactionTest(FixtureTest):
                               sess.begin, subtransactions=True)
         sess.close()
 
-    def test_no_sql_during_prepare(self):
+    def test_no_sql_during_commit(self):
         sess = create_session(bind=testing.db, autocommit=False)
 
         @event.listens_for(sess, "after_commit")
         def go(session):
             session.execute("select 1")
         assert_raises_message(sa_exc.InvalidRequestError,
-                    "This session is in 'prepared' state, where no "
-                    "further SQL can be emitted until the "
-                    "transaction is fully committed.",
+                    "This session is in 'committed' state; no further "
+                    "SQL can be emitted within this transaction.",
                     sess.commit)
+
+    def test_no_sql_during_prepare(self):
+        sess = create_session(bind=testing.db, autocommit=False, twophase=True)
+
+        sess.prepare()
+
+        assert_raises_message(sa_exc.InvalidRequestError,
+                    "This session is in 'prepared' state; no further "
+                    "SQL can be emitted within this transaction.",
+                    sess.execute, "select 1")
+
+    def test_no_prepare_wo_twophase(self):
+        sess = create_session(bind=testing.db, autocommit=False)
+
+        assert_raises_message(sa_exc.InvalidRequestError,
+                    "'twophase' mode not enabled, or not root "
+                    "transaction; can't prepare.",
+                    sess.prepare)
+
+    def test_closed_status_check(self):
+        sess = create_session()
+        trans = sess.begin()
+        trans.rollback()
+        assert_raises_message(
+                sa_exc.ResourceClosedError,
+                "This transaction is closed",
+                trans.rollback
+        )
+        assert_raises_message(
+                sa_exc.ResourceClosedError,
+                "This transaction is closed",
+                trans.commit
+        )
+
+    def test_deactive_status_check(self):
+        sess = create_session()
+        trans = sess.begin()
+        trans2 = sess.begin(subtransactions=True)
+        trans2.rollback()
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "This Session's transaction has been rolled back by a nested "
+            "rollback\(\) call.  To begin a new transaction, issue "
+            "Session.rollback\(\) first.",
+            trans.commit
+        )
+
+    def test_deactive_status_check_w_exception(self):
+        sess = create_session()
+        trans = sess.begin()
+        trans2 = sess.begin(subtransactions=True)
+        try:
+            raise Exception("test")
+        except:
+            trans2.rollback(_capture_exception=True)
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "This Session's transaction has been rolled back due to a "
+            "previous exception during flush. To begin a new transaction "
+            "with this Session, first issue Session.rollback\(\). "
+            "Original exception was: test",
+            trans.commit
+        )
 
     def _inactive_flushed_session_fixture(self):
         users, User = self.tables.users, self.classes.User

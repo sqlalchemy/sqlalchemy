@@ -37,6 +37,22 @@ class CascadeArgTest(fixtures.MappedTest):
         class Address(cls.Basic):
             pass
 
+    def test_delete_with_passive_deletes_all(self):
+        User, Address = self.classes.User, self.classes.Address
+        users, addresses = self.tables.users, self.tables.addresses
+
+        mapper(User, users, properties={
+            'addresses': relationship(Address,
+                    passive_deletes="all", cascade="all, delete-orphan")
+            })
+        mapper(Address, addresses)
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "On User.addresses, can't set passive_deletes='all' "
+            "in conjunction with 'delete' or 'delete-orphan' cascade",
+            configure_mappers
+        )
+
     def test_delete_orphan_without_delete(self):
         User, Address = self.classes.User, self.classes.Address
         users, addresses = self.tables.users, self.tables.addresses
@@ -68,6 +84,33 @@ class CascadeArgTest(fixtures.MappedTest):
         assert isinstance(
             orm_util.CascadeOptions("all, delete-orphan"),
             frozenset)
+
+    def test_cascade_assignable(self):
+        User, Address = self.classes.User, self.classes.Address
+        users, addresses = self.tables.users, self.tables.addresses
+
+        rel = relationship(Address)
+        eq_(rel.cascade, set(['save-update', 'merge']))
+        rel.cascade = "save-update, merge, expunge"
+        eq_(rel.cascade, set(['save-update', 'merge', 'expunge']))
+
+        mapper(User, users, properties={
+                'addresses': rel
+            })
+        am = mapper(Address, addresses)
+        configure_mappers()
+
+        eq_(rel.cascade, set(['save-update', 'merge', 'expunge']))
+
+        assert ("addresses", User) not in am._delete_orphans
+        rel.cascade = "all, delete, delete-orphan"
+        assert ("addresses", User) in am._delete_orphans
+
+        eq_(rel.cascade,
+            set(['delete', 'delete-orphan', 'expunge', 'merge',
+                    'refresh-expire', 'save-update'])
+            )
+
 
 class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
     run_inserts = None

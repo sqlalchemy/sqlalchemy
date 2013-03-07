@@ -142,6 +142,16 @@ class ChangeLogDirective(EnvDirective, Directive):
                         self._parsed_content['released']))
         else:
             topsection.append(nodes.Text("no release date"))
+
+        intro_para = nodes.paragraph('', '')
+        for len_, text in enumerate(self._parsed_content['text']):
+            if ".. change::" in text:
+                break
+        if len_:
+            self.state.nested_parse(self._parsed_content['text'][0:len_], 0,
+                            intro_para)
+            topsection.append(intro_para)
+
         return topsection
 
 
