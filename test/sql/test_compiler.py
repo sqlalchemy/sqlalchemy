@@ -451,7 +451,11 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         # intentional again
         s = s.correlate(t, t2)
         s2 = select([t, t2, s])
-        self.assert_compile(s, "SELECT t.a WHERE t.a = t2.d")
+        self.assert_compile(
+            s2,
+            "SELECT t.a, t.b, t2.c, t2.d, a "
+            "FROM t, t2, (SELECT t.a AS a WHERE t.a = t2.d)"
+        )
 
     def test_exists(self):
         s = select([table1.c.myid]).where(table1.c.myid == 5)

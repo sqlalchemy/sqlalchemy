@@ -588,15 +588,24 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         assert orig == str(s) == str(s5)
 
     def test_correlated_select(self):
-        s = select(['*'], t1.c.col1 == t2.c.col1,
-                    from_obj=[t1, t2]).correlate(t2)
+        s = select(
+            [func.count(t1.c.col1)],
+            t1.c.col1 == t2.c.col1,
+            from_obj=[t1, t2]
+        ).correlate(t2)
+
         class Vis(CloningVisitor):
             def visit_select(self, select):
                 select.append_whereclause(t1.c.col2 == 7)
 
-        self.assert_compile(Vis().traverse(s),
-                    "SELECT * FROM table1 WHERE table1.col1 = table2.col1 "
-                    "AND table1.col2 = :col2_1")
+        supers = select([t2, Vis().traverse(s)])
+
+        self.assert_compile(supers,
+                    "SELECT table2.col1, table2.col2, table2.col3, "
+                    "count_1 FROM table2, "
+                    "(SELECT count(table1.col1) AS count_1 "
+                    "FROM table1 WHERE table1.col1 = table2.col1 "
+                    "AND table1.col2 = :col2_1)")
 
     def test_this_thing(self):
         s = select([t1]).where(t1.c.col1 == 'foo').alias()
@@ -619,32 +628,32 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_select_fromtwice(self):
         t1a = t1.alias()
 
-        s = select([1], t1.c.col1 == t1a.c.col1, from_obj=t1a).correlate(t1)
+        s = select([1], t1.c.col1 == t1a.c.col1, from_obj=t1a)
         self.assert_compile(s,
-                            'SELECT 1 FROM table1 AS table1_1 WHERE '
+                            'SELECT 1 FROM table1, table1 AS table1_1 WHERE '
                             'table1.col1 = table1_1.col1')
 
         s = CloningVisitor().traverse(s)
         self.assert_compile(s,
-                            'SELECT 1 FROM table1 AS table1_1 WHERE '
+                            'SELECT 1 FROM table1, table1 AS table1_1 WHERE '
                             'table1.col1 = table1_1.col1')
 
-        s = select([t1]).where(t1.c.col1 == 'foo').alias()
+        s = select([t1]).where(t1.c.col1 == 'foo').correlate(t1).alias()
 
-        s2 = select([1], t1.c.col1 == s.c.col1, from_obj=s).correlate(t1)
+        s2 = select([1], t1.c.col1 == s.c.col1, from_obj=s)
         self.assert_compile(s2,
-                            'SELECT 1 FROM (SELECT table1.col1 AS '
-                            'col1, table1.col2 AS col2, table1.col3 AS '
-                            'col3 FROM table1 WHERE table1.col1 = '
-                            ':col1_1) AS anon_1 WHERE table1.col1 = '
-                            'anon_1.col1')
+                            'SELECT 1 FROM table1, '
+                            '(SELECT table1.col1 AS col1, '
+                            'table1.col2 AS col2, table1.col3 AS col3 '
+                            'WHERE table1.col1 = :col1_1) AS anon_1 '
+                            'WHERE table1.col1 = anon_1.col1')
         s2 = ReplacingCloningVisitor().traverse(s2)
         self.assert_compile(s2,
-                            'SELECT 1 FROM (SELECT table1.col1 AS '
-                            'col1, table1.col2 AS col2, table1.col3 AS '
-                            'col3 FROM table1 WHERE table1.col1 = '
-                            ':col1_1) AS anon_1 WHERE table1.col1 = '
-                            'anon_1.col1')
+                            'SELECT 1 FROM table1, '
+                            '(SELECT table1.col1 AS col1, '
+                            'table1.col2 AS col2, table1.col3 AS col3 '
+                            'WHERE table1.col1 = :col1_1) AS anon_1 '
+                            'WHERE table1.col1 = anon_1.col1')
 
 class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
@@ -784,16 +793,15 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
                             == t2.c.col2, from_obj=[t1, t2])),
                             'SELECT * FROM table1 AS t1alias, table2 '
                             'WHERE t1alias.col1 = table2.col2')
-        self.assert_compile(vis.traverse(select(['*'], t1.c.col1
-                            == t2.c.col2, from_obj=[t1,
-                            t2]).correlate(t1)),
-                            'SELECT * FROM table2 WHERE t1alias.col1 = '
-                            'table2.col2')
-        self.assert_compile(vis.traverse(select(['*'], t1.c.col1
-                            == t2.c.col2, from_obj=[t1,
-                            t2]).correlate(t2)),
-                            'SELECT * FROM table1 AS t1alias WHERE '
-                            't1alias.col1 = table2.col2')
+        self.assert_compile(vis.traverse(select([
+                            t1, select([func.count(t2.c.col2)],
+                            t1.c.col1 == t2.c.col2, from_obj=[t1,
+                            t2]).correlate(t1)])),
+                            'SELECT t1alias.col1, t1alias.col2, '
+                            't1alias.col3, count_1 FROM table1 AS '
+                            't1alias, (SELECT count(table2.col2) '
+                            'AS count_1 FROM table2 '
+                            'WHERE t1alias.col1 = table2.col2)')
         self.assert_compile(vis.traverse(case([(t1.c.col1 == 5,
                             t1.c.col2)], else_=t1.c.col1)),
                             'CASE WHEN (t1alias.col1 = :col1_1) THEN '
@@ -836,16 +844,15 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
                             'SELECT * FROM table1 AS t1alias, table2 '
                             'AS t2alias WHERE t1alias.col1 = '
                             't2alias.col2')
-        self.assert_compile(vis.traverse(select(['*'], t1.c.col1
-                            == t2.c.col2, from_obj=[t1,
-                            t2]).correlate(t1)),
-                            'SELECT * FROM table2 AS t2alias WHERE '
-                            't1alias.col1 = t2alias.col2')
-        self.assert_compile(vis.traverse(select(['*'], t1.c.col1
-                            == t2.c.col2, from_obj=[t1,
-                            t2]).correlate(t2)),
-                            'SELECT * FROM table1 AS t1alias WHERE '
-                            't1alias.col1 = t2alias.col2')
+        self.assert_compile(vis.traverse(select([
+                            t1, select([func.count(t2.c.col2)],
+                            t1.c.col1 == t2.c.col2, from_obj=[t1,
+                            t2]).correlate(t1)])),
+                            'SELECT t1alias.col1, t1alias.col2, '
+                            't1alias.col3, count_1 FROM table1 AS '
+                            't1alias, (SELECT count(t2alias.col2) '
+                            'AS count_1 FROM table2 AS t2alias '
+                            'WHERE t1alias.col1 = t2alias.col2)')
 
     def test_include_exclude(self):
         m = MetaData()
