@@ -229,7 +229,7 @@ def utf8_engine(url=None, options=None):
     from sqlalchemy.engine import url as engine_url
 
     if config.db.dialect.name == 'mysql' and \
-        config.db.driver in ['mysqldb', 'pymysql']:
+        config.db.driver in ['mysqldb', 'pymysql', 'cymysql']:
         # note 1.2.1.gamma.6 or greater of MySQLdb
         # needed here
         url = url or config.db_url
