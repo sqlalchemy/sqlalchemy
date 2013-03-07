@@ -1500,6 +1500,7 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @testing.fails_on('mysql+mysqldb', 'uses format')
     @testing.fails_on('mysql+pymysql', 'uses format')
+    @testing.fails_on('mysql+cymysql', 'uses format')
     @testing.fails_on('mysql+oursql', 'uses format')
     @testing.fails_on('mysql+pyodbc', 'uses format')
     @testing.fails_on('mysql+zxjdbc', 'uses format')

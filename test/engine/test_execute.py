@@ -110,7 +110,7 @@ class ExecuteTest(fixtures.TestBase):
 
     # some psycopg2 versions bomb this.
     @testing.fails_on_everything_except('mysql+mysqldb', 'mysql+pymysql',
-            'mysql+mysqlconnector', 'postgresql')
+            'mysql+cymysql', 'mysql+mysqlconnector', 'postgresql')
     @testing.fails_on('postgresql+zxjdbc', 'sprintf not supported')
     def test_raw_sprintf(self):
         def go(conn):
@@ -157,7 +157,7 @@ class ExecuteTest(fixtures.TestBase):
                      'db-api flaky')
     @testing.fails_on_everything_except('postgresql+psycopg2',
             'postgresql+pypostgresql', 'mysql+mysqlconnector',
-            'mysql+pymysql')
+            'mysql+pymysql', 'mysql+cymysql')
     def test_raw_python(self):
         def go(conn):
             conn.execute('insert into users (user_id, user_name) '

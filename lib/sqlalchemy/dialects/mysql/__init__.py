@@ -6,7 +6,7 @@
 
 from . import base, mysqldb, oursql, \
                                 pyodbc, zxjdbc, mysqlconnector, pymysql,\
-                                gaerdbms
+                                gaerdbms, cymysql
 
 # default dialect
 base.dialect = mysqldb.dialect

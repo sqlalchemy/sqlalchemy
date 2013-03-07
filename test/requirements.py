@@ -378,6 +378,7 @@ class DefaultRequirements(SuiteRequirements):
         """
         return fails_on_everything_except('mysql+mysqldb', 'mysql+oursql',
                                       'sqlite+pysqlite', 'mysql+pymysql',
+                                      'mysql+cymysql',
                                       'sybase', 'mssql+pyodbc', 'mssql+mxodbc')
 
     @property
@@ -393,7 +394,8 @@ class DefaultRequirements(SuiteRequirements):
 
         """
         return fails_on_everything_except('mysql+mysqldb', 'mysql+oursql',
-                                       'sqlite+pysqlite', 'mysql+pymysql')
+                                       'sqlite+pysqlite', 'mysql+pymysql',
+                                       'mysql+cymysql')
 
     @property
     def sane_multi_rowcount(self):

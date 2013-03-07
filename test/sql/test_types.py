@@ -690,6 +690,16 @@ class UnicodeTest(fixtures.TestBase):
                 ('charset' in testing.db.url.query)
             )
 
+        elif testing.against('mysql+cymysql'):
+            eq_(
+                testing.db.dialect.returns_unicode_strings,
+                # Py3K
+                #True
+                # Py2K
+                False
+                # end Py2K
+            )
+
         else:
             expected = (testing.db.name, testing.db.driver) in \
                 (
