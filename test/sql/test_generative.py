@@ -588,24 +588,15 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         assert orig == str(s) == str(s5)
 
     def test_correlated_select(self):
-        s = select(
-            [func.count(t1.c.col1)],
-            t1.c.col1 == t2.c.col1,
-            from_obj=[t1, t2]
-        ).correlate(t2)
-
+        s = select(['*'], t1.c.col1 == t2.c.col1,
+                    from_obj=[t1, t2]).correlate(t2)
         class Vis(CloningVisitor):
             def visit_select(self, select):
                 select.append_whereclause(t1.c.col2 == 7)
 
-        supers = select([t2, Vis().traverse(s)])
-
-        self.assert_compile(supers,
-                    "SELECT table2.col1, table2.col2, table2.col3, "
-                    "count_1 FROM table2, "
-                    "(SELECT count(table1.col1) AS count_1 "
-                    "FROM table1 WHERE table1.col1 = table2.col1 "
-                    "AND table1.col2 = :col2_1)")
+        self.assert_compile(Vis().traverse(s),
+                    "SELECT * FROM table1 WHERE table1.col1 = table2.col1 "
+                    "AND table1.col2 = :col2_1")
 
     def test_this_thing(self):
         s = select([t1]).where(t1.c.col1 == 'foo').alias()
@@ -628,32 +619,32 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_select_fromtwice(self):
         t1a = t1.alias()
 
-        s = select([1], t1.c.col1 == t1a.c.col1, from_obj=t1a)
+        s = select([1], t1.c.col1 == t1a.c.col1, from_obj=t1a).correlate(t1)
         self.assert_compile(s,
-                            'SELECT 1 FROM table1, table1 AS table1_1 WHERE '
+                            'SELECT 1 FROM table1 AS table1_1 WHERE '
                             'table1.col1 = table1_1.col1')
 
         s = CloningVisitor().traverse(s)
         self.assert_compile(s,
-                            'SELECT 1 FROM table1, table1 AS table1_1 WHERE '
+                            'SELECT 1 FROM table1 AS table1_1 WHERE '
                             'table1.col1 = table1_1.col1')
 
-        s = select([t1]).where(t1.c.col1 == 'foo').correlate(t1).alias()
+        s = select([t1]).where(t1.c.col1 == 'foo').alias()
 
-        s2 = select([1], t1.c.col1 == s.c.col1, from_obj=s)
+        s2 = select([1], t1.c.col1 == s.c.col1, from_obj=s).correlate(t1)
         self.assert_compile(s2,
-                            'SELECT 1 FROM table1, '
-                            '(SELECT table1.col1 AS col1, '
-                            'table1.col2 AS col2, table1.col3 AS col3 '
-                            'WHERE table1.col1 = :col1_1) AS anon_1 '
-                            'WHERE table1.col1 = anon_1.col1')
+                            'SELECT 1 FROM (SELECT table1.col1 AS '
+                            'col1, table1.col2 AS col2, table1.col3 AS '
+                            'col3 FROM table1 WHERE table1.col1 = '
+                            ':col1_1) AS anon_1 WHERE table1.col1 = '
+                            'anon_1.col1')
         s2 = ReplacingCloningVisitor().traverse(s2)
         self.assert_compile(s2,
-                            'SELECT 1 FROM table1, '
-                            '(SELECT table1.col1 AS col1, '
-                            'table1.col2 AS col2, table1.col3 AS col3 '
-                            'WHERE table1.col1 = :col1_1) AS anon_1 '
-                            'WHERE table1.col1 = anon_1.col1')
+                            'SELECT 1 FROM (SELECT table1.col1 AS '
+                            'col1, table1.col2 AS col2, table1.col3 AS '
+                            'col3 FROM table1 WHERE table1.col1 = '
+                            ':col1_1) AS anon_1 WHERE table1.col1 = '
+                            'anon_1.col1')
 
 class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
@@ -772,66 +763,114 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
                             'FROM addresses WHERE users_1.id = '
                             'addresses.user_id')
 
-    def test_table_to_alias(self):
-
+    def test_table_to_alias_1(self):
         t1alias = t1.alias('t1alias')
 
         vis = sql_util.ClauseAdapter(t1alias)
         ff = vis.traverse(func.count(t1.c.col1).label('foo'))
         assert list(_from_objects(ff)) == [t1alias]
 
+    def test_table_to_alias_2(self):
+        t1alias = t1.alias('t1alias')
+        vis = sql_util.ClauseAdapter(t1alias)
         self.assert_compile(vis.traverse(select(['*'], from_obj=[t1])),
                             'SELECT * FROM table1 AS t1alias')
+
+    def test_table_to_alias_3(self):
+        t1alias = t1.alias('t1alias')
+        vis = sql_util.ClauseAdapter(t1alias)
         self.assert_compile(select(['*'], t1.c.col1 == t2.c.col2),
                             'SELECT * FROM table1, table2 WHERE '
                             'table1.col1 = table2.col2')
+
+    def test_table_to_alias_4(self):
+        t1alias = t1.alias('t1alias')
+        vis = sql_util.ClauseAdapter(t1alias)
         self.assert_compile(vis.traverse(select(['*'], t1.c.col1
                             == t2.c.col2)),
                             'SELECT * FROM table1 AS t1alias, table2 '
                             'WHERE t1alias.col1 = table2.col2')
+
+    def test_table_to_alias_5(self):
+        t1alias = t1.alias('t1alias')
+        vis = sql_util.ClauseAdapter(t1alias)
         self.assert_compile(vis.traverse(select(['*'], t1.c.col1
                             == t2.c.col2, from_obj=[t1, t2])),
                             'SELECT * FROM table1 AS t1alias, table2 '
                             'WHERE t1alias.col1 = table2.col2')
-        self.assert_compile(vis.traverse(select([
-                            t1, select([func.count(t2.c.col2)],
-                            t1.c.col1 == t2.c.col2, from_obj=[t1,
-                            t2]).correlate(t1)])),
-                            'SELECT t1alias.col1, t1alias.col2, '
-                            't1alias.col3, count_1 FROM table1 AS '
-                            't1alias, (SELECT count(table2.col2) '
-                            'AS count_1 FROM table2 '
-                            'WHERE t1alias.col1 = table2.col2)')
+
+    def test_table_to_alias_6(self):
+        t1alias = t1.alias('t1alias')
+        vis = sql_util.ClauseAdapter(t1alias)
+        self.assert_compile(select(t1).where(
+                        t1.c.col1 == vis.traverse(select(['*'], t1.c.col1
+                            == t2.c.col2, from_obj=[t1,
+                            t2]).correlate(t1))),
+                            'SELECT * FROM table2 WHERE t1alias.col1 = '
+                            'table2.col2')
+
+    def test_table_to_alias_7(self):
+        t1alias = t1.alias('t1alias')
+        vis = sql_util.ClauseAdapter(t1alias)
+        self.assert_compile(vis.traverse(select(['*'], t1.c.col1
+                            == t2.c.col2, from_obj=[t1,
+                            t2]).correlate(t2)),
+                            'SELECT * FROM table1 AS t1alias WHERE '
+                            't1alias.col1 = table2.col2')
+
+    def test_table_to_alias_8(self):
+        t1alias = t1.alias('t1alias')
+        vis = sql_util.ClauseAdapter(t1alias)
         self.assert_compile(vis.traverse(case([(t1.c.col1 == 5,
                             t1.c.col2)], else_=t1.c.col1)),
                             'CASE WHEN (t1alias.col1 = :col1_1) THEN '
                             't1alias.col2 ELSE t1alias.col1 END')
+
+    def test_table_to_alias_9(self):
+        t1alias = t1.alias('t1alias')
+        vis = sql_util.ClauseAdapter(t1alias)
         self.assert_compile(vis.traverse(case([(5, t1.c.col2)],
                             value=t1.c.col1, else_=t1.c.col1)),
                             'CASE t1alias.col1 WHEN :param_1 THEN '
                             't1alias.col2 ELSE t1alias.col1 END')
 
 
+    def test_table_to_alias_10(self):
         s = select(['*'], from_obj=[t1]).alias('foo')
         self.assert_compile(s.select(),
                             'SELECT foo.* FROM (SELECT * FROM table1) '
                             'AS foo')
+
+    def test_table_to_alias_11(self):
+        s = select(['*'], from_obj=[t1]).alias('foo')
+        vis = sql_util.ClauseAdapter(t1alias)
         self.assert_compile(vis.traverse(s.select()),
                             'SELECT foo.* FROM (SELECT * FROM table1 '
                             'AS t1alias) AS foo')
+
+    def test_table_to_alias_12(self):
+        s = select(['*'], from_obj=[t1]).alias('foo')
         self.assert_compile(s.select(),
                             'SELECT foo.* FROM (SELECT * FROM table1) '
                             'AS foo')
+
+    def test_table_to_alias_13(self):
+        s = select(['*'], from_obj=[t1]).alias('foo')
+        vis = sql_util.ClauseAdapter(t1alias)
         ff = vis.traverse(func.count(t1.c.col1).label('foo'))
         self.assert_compile(select([ff]),
                             'SELECT count(t1alias.col1) AS foo FROM '
                             'table1 AS t1alias')
         assert list(_from_objects(ff)) == [t1alias]
 
+    #def test_table_to_alias_2(self):
         # TODO: self.assert_compile(vis.traverse(select([func.count(t1.c
         # .col1).l abel('foo')]), clone=True), "SELECT
         # count(t1alias.col1) AS foo FROM table1 AS t1alias")
 
+    def test_table_to_alias_14(self):
+        t1alias = t1.alias('t1alias')
+        vis = sql_util.ClauseAdapter(t1alias)
         t2alias = t2.alias('t2alias')
         vis.chain(sql_util.ClauseAdapter(t2alias))
         self.assert_compile(vis.traverse(select(['*'], t1.c.col1
@@ -839,27 +878,50 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
                             'SELECT * FROM table1 AS t1alias, table2 '
                             'AS t2alias WHERE t1alias.col1 = '
                             't2alias.col2')
+
+    def test_table_to_alias_15(self):
+        t1alias = t1.alias('t1alias')
+        vis = sql_util.ClauseAdapter(t1alias)
+        t2alias = t2.alias('t2alias')
+        vis.chain(sql_util.ClauseAdapter(t2alias))
         self.assert_compile(vis.traverse(select(['*'], t1.c.col1
                             == t2.c.col2, from_obj=[t1, t2])),
                             'SELECT * FROM table1 AS t1alias, table2 '
                             'AS t2alias WHERE t1alias.col1 = '
                             't2alias.col2')
-        self.assert_compile(vis.traverse(select([
-                            t1, select([func.count(t2.c.col2)],
-                            t1.c.col1 == t2.c.col2, from_obj=[t1,
-                            t2]).correlate(t1)])),
-                            'SELECT t1alias.col1, t1alias.col2, '
-                            't1alias.col3, count_1 FROM table1 AS '
-                            't1alias, (SELECT count(t2alias.col2) '
-                            'AS count_1 FROM table2 AS t2alias '
-                            'WHERE t1alias.col1 = t2alias.col2)')
+
+    def test_table_to_alias_16(self):
+        t1alias = t1.alias('t1alias')
+        vis = sql_util.ClauseAdapter(t1alias)
+        t2alias = t2.alias('t2alias')
+        vis.chain(sql_util.ClauseAdapter(t2alias))
+        self.assert_compile(vis.traverse(select(['*'], t1.c.col1
+                            == t2.c.col2, from_obj=[t1,
+                            t2]).correlate(t1)),
+                            'SELECT * FROM table2 AS t2alias WHERE '
+                            't1alias.col1 = t2alias.col2')
+
+    def test_table_to_alias_17(self):
+        t1alias = t1.alias('t1alias')
+        vis = sql_util.ClauseAdapter(t1alias)
+        t2alias = t2.alias('t2alias')
+        vis.chain(sql_util.ClauseAdapter(t2alias))
+        self.assert_compile(
+                t2alias.select().where(t2alias.c.col2 ==
+                        vis.traverse(select(['*'],
+                        t1.c.col1 == t2.c.col2,
+                        from_obj=[t1, t2]).correlate(t2))),
+                            'SELECT t2alias.col1, t2alias.col2, t2alias.col3 '
+                            'FROM table2 AS t2alias WHERE t2alias.col2 = '
+                            '(SELECT * FROM table1 AS t1alias WHERE '
+                            't1alias.col1 = t2alias.col2)')
 
     def test_include_exclude(self):
         m = MetaData()
-        a=Table( 'a',m,
-          Column( 'id',    Integer, primary_key=True),
-          Column( 'xxx_id', Integer,
-                        ForeignKey( 'a.id', name='adf',use_alter=True )
+        a = Table('a', m,
+            Column('id', Integer, primary_key=True),
+            Column('xxx_id', Integer,
+                ForeignKey('a.id', name='adf', use_alter=True)
         )
         )
 
