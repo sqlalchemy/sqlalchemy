@@ -36,7 +36,7 @@ from sqlalchemy.dialects.sybase.base import SybaseDialect,\
                                             SybaseExecutionContext
 from sqlalchemy.connectors.pyodbc import PyODBCConnector
 from sqlalchemy import types as sqltypes, processors
-from sqlalchemy.util.compat import decimal
+import decimal
 
 
 class _SybNumeric_pyodbc(sqltypes.Numeric):

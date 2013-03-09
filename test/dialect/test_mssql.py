@@ -13,9 +13,8 @@ from sqlalchemy.engine import url
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, \
         AssertsExecutionResults, ComparesTables
 from sqlalchemy import testing
-from sqlalchemy.testing import eq_, emits_warning_on, \
-    assert_raises_message
-from sqlalchemy.util.compat import decimal
+from sqlalchemy.testing import emits_warning_on, assert_raises_message
+import decimal
 from sqlalchemy.engine.reflection import Inspector
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):

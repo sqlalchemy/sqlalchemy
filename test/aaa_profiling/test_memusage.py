@@ -14,7 +14,7 @@ from sqlalchemy.sql import column
 from sqlalchemy.processors import to_decimal_processor_factory, \
     to_unicode_processor_factory
 from sqlalchemy.testing.util import gc_collect
-from sqlalchemy.util.compat import decimal
+import decimal
 import gc
 from sqlalchemy.testing import fixtures
 import weakref

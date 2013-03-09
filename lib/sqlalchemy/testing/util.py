@@ -1,6 +1,5 @@
 from ..util import jython, pypy, defaultdict, decorator
-from ..util.compat import decimal
-
+import decimal
 import gc
 import time
 import random

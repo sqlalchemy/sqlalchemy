@@ -15,7 +15,6 @@ from sqlalchemy import testing
 from sqlalchemy.testing import AssertsCompiledSQL, AssertsExecutionResults, \
     engines, pickleable
 from sqlalchemy.testing.util import picklers
-from sqlalchemy.util.compat import decimal
 from sqlalchemy.testing.util import round_decimal
 from sqlalchemy.testing import fixtures
 

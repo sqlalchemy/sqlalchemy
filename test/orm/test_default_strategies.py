@@ -2,7 +2,6 @@ from test.orm import _fixtures
 from sqlalchemy import testing
 from sqlalchemy.orm import mapper, relationship, create_session
 from sqlalchemy import util
-from sqlalchemy.util import any
 import sqlalchemy as sa
 from sqlalchemy.testing import eq_, assert_raises_message
 

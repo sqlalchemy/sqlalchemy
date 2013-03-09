@@ -6,7 +6,6 @@
 
 """Collection classes and helpers."""
 
-import sys
 import itertools
 import weakref
 import operator
@@ -649,37 +648,25 @@ class OrderedIdentitySet(IdentitySet):
                 self.add(o)
 
 
-if sys.version_info >= (2, 5):
-    class PopulateDict(dict):
-        """A dict which populates missing values via a creation function.
+class PopulateDict(dict):
+    """A dict which populates missing values via a creation function.
 
-        Note the creation function takes a key, unlike
-        collections.defaultdict.
+    Note the creation function takes a key, unlike
+    collections.defaultdict.
 
-        """
+    """
 
-        def __init__(self, creator):
-            self.creator = creator
+    def __init__(self, creator):
+        self.creator = creator
 
-        def __missing__(self, key):
-            self[key] = val = self.creator(key)
-            return val
-else:
-    class PopulateDict(dict):
-        """A dict which populates missing values via a creation function."""
+    def __missing__(self, key):
+        self[key] = val = self.creator(key)
+        return val
 
-        def __init__(self, creator):
-            self.creator = creator
-
-        def __getitem__(self, key):
-            try:
-                return dict.__getitem__(self, key)
-            except KeyError:
-                self[key] = value = self.creator(key)
-                return value
-
-# define collections that are capable of storing
+# Define collections that are capable of storing
 # ColumnElement objects as hashable keys/elements.
+# At this point, these are mostly historical, things
+# used to be more complicated.
 column_set = set
 column_dict = dict
 ordered_column_set = OrderedSet
