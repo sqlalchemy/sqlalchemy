@@ -19,6 +19,16 @@
       * :ref:`correlation_context_specific`
 
     .. change::
+        :tags: feature, orm
+        :tickets: 2675
+
+      A meaningful :attr:`.QueryableAttribute.info` attribute is
+      added, which proxies down to the ``.info`` attribute on either
+      the :class:`.schema.Column` object if directly present, or
+      the :class:`.MapperProperty` otherwise.  The full behavior
+      is documented and ensured by tests to remain stable.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2668
 
