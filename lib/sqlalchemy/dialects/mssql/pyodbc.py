@@ -114,7 +114,7 @@ for unix + PyODBC.
 from .base import MSExecutionContext, MSDialect
 from ...connectors.pyodbc import PyODBCConnector
 from ... import types as sqltypes, util
-from ...util.compat import decimal
+import decimal
 
 
 class _MSNumeric_pyodbc(sqltypes.Numeric):

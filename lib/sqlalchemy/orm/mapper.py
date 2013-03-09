@@ -2224,7 +2224,7 @@ def _event_on_resurrect(state):
                                             state, state.dict, col, val)
 
 
-class _ColumnMapping(util.py25_dict):
+class _ColumnMapping(dict):
     """Error reporting helper for mapper._columntoproperty."""
 
     def __init__(self, mapper):

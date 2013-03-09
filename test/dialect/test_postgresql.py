@@ -17,8 +17,8 @@ from sqlalchemy import Table, Column, select, MetaData, text, Integer, \
 from sqlalchemy.orm import Session, mapper, aliased
 from sqlalchemy import exc, schema, types
 from sqlalchemy.dialects.postgresql import base as postgresql
-from sqlalchemy.dialects.postgresql import HSTORE, hstore, array, ARRAY
-from sqlalchemy.util.compat import decimal
+from sqlalchemy.dialects.postgresql import HSTORE, hstore, array
+import decimal
 from sqlalchemy.testing.util import round_decimal
 from sqlalchemy.sql import table, column, operators
 import logging
@@ -734,7 +734,6 @@ class NumericInterpretationTest(fixtures.TestBase):
 
     def test_numeric_codes(self):
         from sqlalchemy.dialects.postgresql import pg8000, psycopg2, base
-        from sqlalchemy.util.compat import decimal
 
         for dialect in (pg8000.dialect(), psycopg2.dialect()):
 

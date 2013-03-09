@@ -50,8 +50,8 @@ __ http://kinterbasdb.sourceforge.net/dist_docs/usage.html#special_issue_concurr
 
 from .base import FBDialect, FBExecutionContext
 from ... import util, types as sqltypes
-from ...util.compat import decimal
 from re import match
+import decimal
 
 
 class _FBNumeric_kinterbasdb(sqltypes.Numeric):
