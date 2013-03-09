@@ -5258,34 +5258,36 @@ class Select(HasPrefixes, SelectBase):
             # using a list to maintain ordering
             froms = [f for f in froms if f not in toremove]
 
-        if self._correlate:
-            froms = [
-                f for f in froms if f not in
-                _cloned_intersection(
-                    _cloned_intersection(froms, existing_froms or ()),
-                    self._correlate
-                )
-            ]
-        if self._correlate_except:
-            froms = [
-                f for f in froms if f in
-                _cloned_intersection(
-                    froms,
-                    self._correlate_except
-                )
-            ]
-        if self._auto_correlate and existing_froms and len(froms) > 1 and not asfrom:
-            froms = [
-                f for f in froms if f not in
-                _cloned_intersection(froms, existing_froms)
-            ]
+        if not asfrom:
+            if self._correlate:
+                froms = [
+                    f for f in froms if f not in
+                    _cloned_intersection(
+                        _cloned_intersection(froms, existing_froms or ()),
+                        self._correlate
+                    )
+                ]
+            if self._correlate_except:
+                froms = [
+                    f for f in froms if f in
+                    _cloned_intersection(
+                        froms,
+                        self._correlate_except
+                    )
+                ]
 
-            if not len(froms):
-                raise exc.InvalidRequestError("Select statement '%s"
-                        "' returned no FROM clauses due to "
-                        "auto-correlation; specify "
-                        "correlate(<tables>) to control "
-                        "correlation manually." % self)
+            if self._auto_correlate and existing_froms and len(froms) > 1:
+                froms = [
+                    f for f in froms if f not in
+                    _cloned_intersection(froms, existing_froms)
+                ]
+
+                if not len(froms):
+                    raise exc.InvalidRequestError("Select statement '%s"
+                            "' returned no FROM clauses due to "
+                            "auto-correlation; specify "
+                            "correlate(<tables>) to control "
+                            "correlation manually." % self)
 
         return froms
 
