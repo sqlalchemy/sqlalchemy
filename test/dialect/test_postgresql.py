@@ -180,6 +180,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'USING hash (data)',
                             dialect=postgresql.dialect())
 
+    def test_substring(self):
+        self.assert_compile(func.substring('abc', 1, 2),
+                            'SUBSTRING(%(substring_1)s FROM %(substring_2)s '
+                            'FOR %(substring_3)s)')
+        self.assert_compile(func.substring('abc', 1),
+                            'SUBSTRING(%(substring_1)s FROM %(substring_2)s)')
+
+
 
     def test_extract(self):
         t = table('t', column('col1', DateTime), column('col2', Date),

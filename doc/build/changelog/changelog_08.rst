@@ -19,6 +19,15 @@
       * :ref:`correlation_context_specific`
 
     .. change::
+        :tags: feature, postgresql
+        :tickets: 2676
+
+      Added support for Postgresql's traditional SUBSTRING
+      function syntax, renders as "SUBSTRING(x FROM y FOR z)"
+      when regular ``func.substring()`` is used.
+      Also in 0.7.11.  Courtesy Gunnlaugur Þór Briem.
+
+    .. change::
         :tags: feature, orm
         :tickets: 2675
 

@@ -1030,6 +1030,15 @@ class PGCompiler(compiler.SQLCompiler):
             field, self.process(expr))
 
 
+    def visit_substring_func(self, func, **kw):
+        s = self.process(func.clauses.clauses[0], **kw)
+        start = self.process(func.clauses.clauses[1], **kw)
+        if len(func.clauses.clauses) > 2:
+            length = self.process(func.clauses.clauses[2], **kw)
+            return "SUBSTRING(%s FROM %s FOR %s)" % (s, start, length)
+        else:
+            return "SUBSTRING(%s FROM %s)" % (s, start)
+
 class PGDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column)
@@ -1042,8 +1051,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
                 (
                     isinstance(column.default, schema.Sequence) and
                     column.default.optional
-                )
-            ):
+                )):
             if isinstance(impl_type, sqltypes.BigInteger):
                 colspec += " BIGSERIAL"
             else:
