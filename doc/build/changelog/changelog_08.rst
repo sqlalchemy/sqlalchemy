@@ -8,13 +8,29 @@
 
     .. note::
 
-      Be sure to *re-read* :doc:`migration_08` for this release.
       There are some new behavioral changes as of 0.8.0
-      not present in 0.8.0b2, including:
+      not present in 0.8.0b2.  They are present in the
+      migration document as follows:
 
       * :ref:`legacy_is_orphan_addition`
 
       * :ref:`metadata_create_drop_tables`
+
+      * :ref:`correlation_context_specific`
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 2668
+
+      The behavior of SELECT correlation has been improved such that
+      the :meth:`.Select.correlate` and :meth:`.Select.correlate_except`
+      methods, as well as their ORM analogues, will still retain
+      "auto-correlation" behavior in that the FROM clause is modified
+      only if the output would be legal SQL; that is, the FROM clause
+      is left intact if the correlated SELECT is not used in the context
+      of an enclosing SELECT inside of the WHERE, columns, or HAVING clause.
+      The two methods now only specify conditions to the default
+      "auto correlation", rather than absolute FROM lists.
 
     .. change::
         :tags: feature, mysql

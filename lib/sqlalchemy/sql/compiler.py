@@ -1086,14 +1086,9 @@ class SQLCompiler(engine.Compiled):
                             positional_names=None, **kwargs):
         entry = self.stack and self.stack[-1] or {}
 
-        if not asfrom:
-            existingfroms = entry.get('from', None)
-        else:
-            # don't render correlations if we're rendering a FROM list
-            # entry
-            existingfroms = []
+        existingfroms = entry.get('from', None)
 
-        froms = select._get_display_froms(existingfroms)
+        froms = select._get_display_froms(existingfroms, asfrom=asfrom)
 
         correlate_froms = set(sql._from_objects(*froms))
 
