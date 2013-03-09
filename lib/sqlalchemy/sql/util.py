@@ -507,6 +507,9 @@ class AnnotatedColumnElement(Annotated):
         """pull 'key' from parent, if not present"""
         return self._Annotated__element.key
 
+    @util.memoized_property
+    def info(self):
+        return self._Annotated__element.info
 
 # hard-generate Annotated subclasses.  this technique
 # is used instead of on-the-fly types (i.e. type.__new__())

@@ -193,6 +193,14 @@ class ColumnProperty(StrategizedProperty):
                     "parententity": self._parentmapper,
                     "parentmapper": self._parentmapper})
 
+        @util.memoized_property
+        def info(self):
+            ce = self.__clause_element__()
+            try:
+                return ce.info
+            except AttributeError:
+                return self.prop.info
+
         def __getattr__(self, key):
             """proxy attribute access down to the mapped column.
 

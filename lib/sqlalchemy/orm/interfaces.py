@@ -209,6 +209,12 @@ class MapperProperty(_MappedAttribute, _InspectionAttr):
         .. versionadded:: 0.8  Added support for .info to all
            :class:`.MapperProperty` subclasses.
 
+        .. seealso::
+
+            :attr:`.QueryableAttribute.info`
+
+            :attr:`.SchemaItem.info`
+
         """
         return {}
 
@@ -389,6 +395,10 @@ class PropComparator(operators.ColumnOperators):
         """
 
         return self.__class__(self.prop, self._parentmapper, adapter)
+
+    @util.memoized_property
+    def info(self):
+        return self.property.info
 
     @staticmethod
     def any_op(a, b, **kwargs):
