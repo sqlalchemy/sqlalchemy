@@ -997,19 +997,22 @@ class AdaptedJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
         )
 
 class LazyClauseTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
-    def _test_lazy_clause_o2m(self):
+    def test_lazy_clause_o2m(self):
         joincond = self._join_fixture_o2m()
+        lazywhere, bind_to_col, equated_columns = joincond.create_lazy_clause()
         self.assert_compile(
-            relationships.create_lazy_clause(joincond),
-            ""
+            lazywhere,
+            ":param_1 = rgt.lid"
         )
 
-    def _test_lazy_clause_o2m_reverse(self):
+    def test_lazy_clause_o2m_reverse(self):
         joincond = self._join_fixture_o2m()
+        lazywhere, bind_to_col, equated_columns =\
+            joincond.create_lazy_clause(reverse_direction=True)
         self.assert_compile(
-            relationships.create_lazy_clause(joincond,
-                                reverse_direction=True),
-            ""
+            lazywhere,
+            "lft.id = :param_1"
         )
 
