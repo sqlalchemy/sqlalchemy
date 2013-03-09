@@ -7,6 +7,7 @@ from sqlalchemy import testing
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing.assertsql import AllOf, RegexSQL, ExactSQL, CompiledSQL
+from sqlalchemy.sql import table, column
 
 class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
     __dialect__ = 'default'
@@ -752,6 +753,18 @@ class ConstraintAPITest(fixtures.TestBase):
 
         c = Index('foo', t.c.a)
         assert c in t.indexes
+
+    def test_auto_append_lowercase_table(self):
+        t = table('t', column('a'))
+        t2 = table('t2', column('a'))
+        for c in (
+            UniqueConstraint(t.c.a),
+            CheckConstraint(t.c.a > 5),
+            ForeignKeyConstraint([t.c.a], [t2.c.a]),
+            PrimaryKeyConstraint(t.c.a),
+            Index('foo', t.c.a)
+        ):
+            assert True
 
     def test_tometadata_ok(self):
         m = MetaData()

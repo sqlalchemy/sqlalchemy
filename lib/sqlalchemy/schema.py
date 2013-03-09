@@ -2025,7 +2025,7 @@ class ColumnCollectionMixin(object):
                                     for c in columns]
         if self._pending_colargs and \
                 isinstance(self._pending_colargs[0], Column) and \
-                self._pending_colargs[0].table is not None:
+                isinstance(self._pending_colargs[0].table, Table):
             self._set_parent_with_dispatch(self._pending_colargs[0].table)
 
     def _set_parent(self, table):
@@ -2121,7 +2121,7 @@ class CheckConstraint(Constraint):
         elif _autoattach:
             cols = sqlutil.find_columns(self.sqltext)
             tables = set([c.table for c in cols
-                        if c.table is not None])
+                        if isinstance(c.table, Table)])
             if len(tables) == 1:
                 self._set_parent_with_dispatch(
                         tables.pop())
