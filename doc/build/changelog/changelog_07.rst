@@ -7,6 +7,15 @@
     :version: 0.7.11
 
     .. change::
+        :tags: feature, postgresql
+        :tickets: 2676
+
+      Added support for Postgresql's traditional SUBSTRING
+      function syntax, renders as "SUBSTRING(x FROM y FOR z)"
+      when regular ``func.substring()`` is used.
+      Courtesy Gunnlaugur Þór Briem.
+
+    .. change::
         :tags: bug, tests
         :tickets: 2669
         :pullreq: 41

@@ -272,6 +272,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(x,
             '''SELECT pg_table.col1, pg_table."variadic" FROM pg_table''')
 
+    def test_substring(self):
+        self.assert_compile(func.substring('abc', 1, 2),
+                            'SUBSTRING(%(substring_1)s FROM %(substring_2)s '
+                            'FOR %(substring_3)s)')
+        self.assert_compile(func.substring('abc', 1),
+                            'SUBSTRING(%(substring_1)s FROM %(substring_2)s)')
+
+
 
 class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
     __only_on__ = 'postgresql'
