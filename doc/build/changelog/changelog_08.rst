@@ -5,6 +5,7 @@
 
 .. changelog::
     :version: 0.8.0
+    :released: March 9, 2013
 
     .. note::
 
