@@ -4914,6 +4914,10 @@ class SelectBase(Executable, FromClause):
 
         The criterion will be appended to any pre-existing ORDER BY criterion.
 
+        This is an **in-place** mutation method; the
+        :meth:`~.SelectBase.order_by` method is preferred, as it provides standard
+        :term:`method chaining`.
+
         """
         if len(clauses) == 1 and clauses[0] is None:
             self._order_by_clause = ClauseList()
@@ -4926,6 +4930,10 @@ class SelectBase(Executable, FromClause):
         """Append the given GROUP BY criterion applied to this selectable.
 
         The criterion will be appended to any pre-existing GROUP BY criterion.
+
+        This is an **in-place** mutation method; the
+        :meth:`~.SelectBase.group_by` method is preferred, as it provides standard
+        :term:`method chaining`.
 
         """
         if len(clauses) == 1 and clauses[0] is None:
@@ -5682,7 +5690,13 @@ class Select(HasPrefixes, SelectBase):
 
     def append_correlation(self, fromclause):
         """append the given correlation expression to this select()
-        construct."""
+        construct.
+
+        This is an **in-place** mutation method; the
+        :meth:`~.Select.correlate` method is preferred, as it provides standard
+        :term:`method chaining`.
+
+        """
 
         self._auto_correlate = False
         self._correlate = set(self._correlate).union(
@@ -5691,6 +5705,10 @@ class Select(HasPrefixes, SelectBase):
     def append_column(self, column):
         """append the given column expression to the columns clause of this
         select() construct.
+
+        This is an **in-place** mutation method; the
+        :meth:`~.Select.column` method is preferred, as it provides standard
+        :term:`method chaining`.
 
         """
         self._reset_exported()
@@ -5705,6 +5723,10 @@ class Select(HasPrefixes, SelectBase):
         """append the given columns clause prefix expression to this select()
         construct.
 
+        This is an **in-place** mutation method; the
+        :meth:`~.Select.prefix_with` method is preferred, as it provides standard
+        :term:`method chaining`.
+
         """
         clause = _literal_as_text(clause)
         self._prefixes = self._prefixes + (clause,)
@@ -5714,6 +5736,10 @@ class Select(HasPrefixes, SelectBase):
         criterion.
 
         The expression will be joined to existing WHERE criterion via AND.
+
+        This is an **in-place** mutation method; the
+        :meth:`~.Select.where` method is preferred, as it provides standard
+        :term:`method chaining`.
 
         """
         self._reset_exported()
@@ -5730,6 +5756,10 @@ class Select(HasPrefixes, SelectBase):
 
         The expression will be joined to existing HAVING criterion via AND.
 
+        This is an **in-place** mutation method; the
+        :meth:`~.Select.having` method is preferred, as it provides standard
+        :term:`method chaining`.
+
         """
         if self._having is not None:
             self._having = and_(self._having, _literal_as_text(having))
@@ -5739,6 +5769,10 @@ class Select(HasPrefixes, SelectBase):
     def append_from(self, fromclause):
         """append the given FromClause expression to this select() construct's
         FROM clause.
+
+        This is an **in-place** mutation method; the
+        :meth:`~.Select.select_from` method is preferred, as it provides standard
+        :term:`method chaining`.
 
         """
         self._reset_exported()
