@@ -181,10 +181,10 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
     string arguments, which will be converted as appropriate into
     either :func:`text()` or :func:`literal_column()` constructs.
 
-    See also:
+    .. seealso::
 
-    :ref:`coretutorial_selecting` - Core Tutorial description of
-    :func:`.select`.
+        :ref:`coretutorial_selecting` - Core Tutorial description of
+        :func:`.select`.
 
     :param columns:
       A list of :class:`.ClauseElement` objects, typically
@@ -464,7 +464,7 @@ def update(table, whereclause=None, values=None, inline=False, **kwargs):
                         as_scalar()
             )
 
-    See also:
+    .. seealso::
 
         :ref:`inserts_and_updates` - SQL Expression
         Language Tutorial
@@ -493,7 +493,7 @@ def delete(table, whereclause=None, **kwargs):
       condition of the ``UPDATE`` statement. Note that the
       :meth:`~Delete.where()` generative method may be used instead.
 
-    See also:
+    .. seealso::
 
         :ref:`deletes` - SQL Expression Tutorial
 
@@ -3073,7 +3073,7 @@ class Executable(Generative):
         See :meth:`.Connection.execution_options` for a full list of
         possible options.
 
-        See also:
+        .. seealso::
 
             :meth:`.Connection.execution_options()`
 
@@ -3444,15 +3444,15 @@ class Case(ColumnElement):
 class FunctionElement(Executable, ColumnElement, FromClause):
     """Base for SQL function-oriented constructs.
 
-    See also:
+    .. seealso::
 
-    :class:`.Function` - named SQL function.
+        :class:`.Function` - named SQL function.
 
-    :data:`.func` - namespace which produces registered or ad-hoc
-    :class:`.Function` instances.
+        :data:`.func` - namespace which produces registered or ad-hoc
+        :class:`.Function` instances.
 
-    :class:`.GenericFunction` - allows creation of registered function
-    types.
+        :class:`.GenericFunction` - allows creation of registered function
+        types.
 
     """
 
@@ -3571,15 +3571,13 @@ class Function(FunctionElement):
     See the superclass :class:`.FunctionElement` for a description
     of public methods.
 
-    See also:
+    .. seealso::
 
-    See also:
+        :data:`.func` - namespace which produces registered or ad-hoc
+        :class:`.Function` instances.
 
-    :data:`.func` - namespace which produces registered or ad-hoc
-    :class:`.Function` instances.
-
-    :class:`.GenericFunction` - allows creation of registered function
-    types.
+        :class:`.GenericFunction` - allows creation of registered function
+        types.
 
     """
 
@@ -4725,7 +4723,9 @@ class SelectBase(Executable, FromClause):
         """return a 'scalar' representation of this selectable, embedded as a
         subquery with a label.
 
-        See also :meth:`~.SelectBase.as_scalar`.
+        .. seealso::
+
+            :meth:`~.SelectBase.as_scalar`.
 
         """
         return self.as_scalar().label(name)
@@ -4843,9 +4843,9 @@ class SelectBase(Executable, FromClause):
             result = conn.execute(statement).fetchall()
 
 
-        See also:
+        .. seealso::
 
-        :meth:`.orm.query.Query.cte` - ORM version of :meth:`.SelectBase.cte`.
+            :meth:`.orm.query.Query.cte` - ORM version of :meth:`.SelectBase.cte`.
 
         """
         return CTE(self, name=name, recursive=recursive)
@@ -5128,13 +5128,13 @@ class HasPrefixes(object):
 class Select(HasPrefixes, SelectBase):
     """Represents a ``SELECT`` statement.
 
-    See also:
+    .. seealso::
 
-    :func:`~.expression.select` - the function which creates
-     a :class:`.Select` object.
+        :func:`~.expression.select` - the function which creates
+        a :class:`.Select` object.
 
-    :ref:`coretutorial_selecting` - Core Tutorial description
-     of :func:`.select`.
+        :ref:`coretutorial_selecting` - Core Tutorial description
+        of :func:`.select`.
 
     """
 
@@ -6169,9 +6169,9 @@ class Insert(ValuesBase):
     The :class:`.Insert` object is created using the
     :func:`~.expression.insert()` function.
 
-    See also:
+    .. seealso::
 
-    :ref:`coretutorial_insert_expressions`
+        :ref:`coretutorial_insert_expressions`
 
     """
     __visit_name__ = 'insert'

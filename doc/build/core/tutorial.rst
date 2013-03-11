@@ -684,7 +684,7 @@ not have a name:
     ...               )
     ...           )
     ...        )
-    >>> print conn.execute(s).fetchall() #doctest: +NORMALIZE_WHITESPACE
+    >>> conn.execute(s).fetchall() #doctest: +NORMALIZE_WHITESPACE
     SELECT users.fullname || ? || addresses.email_address AS title
     FROM users, addresses
     WHERE users.id = addresses.user_id AND users.name BETWEEN ? AND ? AND
@@ -713,7 +713,7 @@ A shortcut to using :func:`.and_` is to chain together multiple
     ...                  addresses.c.email_address.like('%@msn.com')
     ...               )
     ...        )
-    >>> print conn.execute(s).fetchall() #doctest: +NORMALIZE_WHITESPACE
+    >>> conn.execute(s).fetchall() #doctest: +NORMALIZE_WHITESPACE
     SELECT users.fullname || ? || addresses.email_address AS title
     FROM users, addresses
     WHERE users.id = addresses.user_id AND users.name BETWEEN ? AND ? AND
@@ -748,7 +748,7 @@ feeding in the bind parameters to the :meth:`~.Connection.execute` method:
     ...         "AND users.name BETWEEN :x AND :y "
     ...         "AND (addresses.email_address LIKE :e1 "
     ...             "OR addresses.email_address LIKE :e2)")
-    {sql}>>> print conn.execute(s, x='m', y='z', e1='%@aol.com', e2='%@msn.com').fetchall() # doctest:+NORMALIZE_WHITESPACE
+    {sql}>>> conn.execute(s, x='m', y='z', e1='%@aol.com', e2='%@msn.com').fetchall() # doctest:+NORMALIZE_WHITESPACE
     SELECT users.fullname || ', ' || addresses.email_address AS title
     FROM users, addresses
     WHERE users.id = addresses.user_id AND users.name BETWEEN ? AND ? AND
@@ -778,7 +778,7 @@ to be placed within the FROM clause:
     ...                 "(addresses.email_address LIKE :x OR addresses.email_address LIKE :y)"
     ...             )
     ...           ).select_from('users, addresses')
-    {sql}>>> print conn.execute(s, x='%@aol.com', y='%@msn.com').fetchall() #doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> conn.execute(s, x='%@aol.com', y='%@msn.com').fetchall() #doctest: +NORMALIZE_WHITESPACE
     SELECT users.fullname || ', ' || addresses.email_address AS title
     FROM users, addresses
     WHERE users.id = addresses.user_id AND users.name BETWEEN 'm' AND 'z'
@@ -833,7 +833,7 @@ once for each address.   We create two :class:`.Alias` constructs against
     ...            a1.c.email_address == 'jack@msn.com',
     ...            a2.c.email_address == 'jack@yahoo.com'
     ...        ))
-    {sql}>>> print conn.execute(s).fetchall()  # doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> conn.execute(s).fetchall()  # doctest: +NORMALIZE_WHITESPACE
     SELECT users.id, users.name, users.fullname
     FROM users, addresses AS addresses_1, addresses AS addresses_2
     WHERE users.id = addresses_1.user_id
@@ -868,7 +868,7 @@ to "correlate" the inner ``users`` table with the outer one:
 
     >>> a1 = s.correlate(None).alias()
     >>> s = select([users.c.name]).where(users.c.id == a1.c.id)
-    {sql}>>> print conn.execute(s).fetchall()  # doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> conn.execute(s).fetchall()  # doctest: +NORMALIZE_WHITESPACE
     SELECT users.name
     FROM users,
         (SELECT users.id AS id, users.name AS name, users.fullname AS fullname
@@ -926,7 +926,7 @@ here we make use of the :meth:`~.Select.select_from` method:
     ...    users.join(addresses,
     ...             addresses.c.email_address.like(users.c.name + '%'))
     ...    )
-    {sql}>>> print conn.execute(s).fetchall()  # doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> conn.execute(s).fetchall()  # doctest: +NORMALIZE_WHITESPACE
     SELECT users.fullname
     FROM users JOIN addresses ON addresses.email_address LIKE (users.name || ?)
     ('%',)
@@ -1067,13 +1067,16 @@ not important in this case:
 
 .. sourcecode:: pycon+sql
 
-    >>> print conn.execute(
-    ...     select([func.max(addresses.c.email_address, type_=String).label('maxemail')])
-    ... ).scalar() # doctest: +NORMALIZE_WHITESPACE
+    >>> conn.execute(
+    ...     select([
+    ...            func.max(addresses.c.email_address, type_=String).
+    ...                label('maxemail')
+    ...           ])
+    ...     ).scalar() # doctest: +NORMALIZE_WHITESPACE
     {opensql}SELECT max(addresses.email_address) AS maxemail
     FROM addresses
     ()
-    {stop}www@www.org
+    {stop}u'www@www.org'
 
 Databases such as PostgreSQL and Oracle which support functions that return
 whole result sets can be assembled into selectable units, which can be used in
@@ -1085,14 +1088,19 @@ well as bind parameters:
 .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy.sql import column
-    >>> calculate = select([column('q'), column('z'), column('r')],
-    ...     from_obj=[func.calculate(bindparam('x'), bindparam('y'))])
-
-    >>> print select([users], users.c.id > calculate.c.z) # doctest: +NORMALIZE_WHITESPACE
+    >>> calculate = select([column('q'), column('z'), column('r')]).\
+    ...        select_from(
+    ...             func.calculate(
+    ...                    bindparam('x'),
+    ...                    bindparam('y')
+    ...                )
+    ...             )
+    >>> calc = calculate.alias()
+    >>> print select([users]).where(users.c.id > calc.c.z) # doctest: +NORMALIZE_WHITESPACE
     SELECT users.id, users.name, users.fullname
     FROM users, (SELECT q, z, r
-    FROM calculate(:x, :y))
-    WHERE users.id > z
+    FROM calculate(:x, :y)) AS anon_1
+    WHERE users.id > anon_1.z
 
 If we wanted to use our ``calculate`` statement twice with different bind
 parameters, the :func:`~sqlalchemy.sql.expression.ClauseElement.unique_params`
@@ -1102,21 +1110,20 @@ of our selectable:
 
 .. sourcecode:: pycon+sql
 
-    >>> s = select([users], users.c.id.between(
-    ...    calculate.alias('c1').unique_params(x=17, y=45).c.z,
-    ...    calculate.alias('c2').unique_params(x=5, y=12).c.z))
-
+    >>> calc1 = calculate.alias('c1').unique_params(x=17, y=45)
+    >>> calc2 = calculate.alias('c2').unique_params(x=5, y=12)
+    >>> s = select([users]).\
+    ...         where(users.c.id.between(calc1.c.z, calc2.c.z))
     >>> print s # doctest: +NORMALIZE_WHITESPACE
     SELECT users.id, users.name, users.fullname
-    FROM users, (SELECT q, z, r
-    FROM calculate(:x_1, :y_1)) AS c1, (SELECT q, z, r
-    FROM calculate(:x_2, :y_2)) AS c2
+    FROM users,
+        (SELECT q, z, r FROM calculate(:x_1, :y_1)) AS c1,
+        (SELECT q, z, r FROM calculate(:x_2, :y_2)) AS c2
     WHERE users.id BETWEEN c1.z AND c2.z
 
     >>> s.compile().params
     {u'x_2': 5, u'y_2': 12, u'y_1': 45, u'x_1': 17}
 
-See also :data:`~.expression.func`.
 
 Window Functions
 -----------------
@@ -1127,7 +1134,10 @@ OVER clause, using the :meth:`~.FunctionElement.over` method:
 
 .. sourcecode:: pycon+sql
 
-    >>> s = select([users.c.id, func.row_number().over(order_by=users.c.name)])
+    >>> s = select([
+    ...         users.c.id,
+    ...         func.row_number().over(order_by=users.c.name)
+    ...     ])
     >>> print s # doctest: +NORMALIZE_WHITESPACE
     SELECT users.id, row_number() OVER (ORDER BY users.name) AS anon_1
     FROM users
@@ -1136,40 +1146,51 @@ Unions and Other Set Operations
 -------------------------------
 
 Unions come in two flavors, UNION and UNION ALL, which are available via
-module level functions:
+module level functions :func:`~.expression.union` and
+:func:`~.expression.union_all`:
 
 .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy.sql import union
     >>> u = union(
-    ...     addresses.select(addresses.c.email_address == 'foo@bar.com'),
-    ...    addresses.select(addresses.c.email_address.like('%@yahoo.com')),
+    ...     addresses.select().
+    ...             where(addresses.c.email_address == 'foo@bar.com'),
+    ...    addresses.select().
+    ...             where(addresses.c.email_address.like('%@yahoo.com')),
     ... ).order_by(addresses.c.email_address)
 
-    {sql}>>> print conn.execute(u).fetchall() # doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> conn.execute(u).fetchall() # doctest: +NORMALIZE_WHITESPACE
     SELECT addresses.id, addresses.user_id, addresses.email_address
     FROM addresses
-    WHERE addresses.email_address = ? UNION SELECT addresses.id, addresses.user_id, addresses.email_address
+    WHERE addresses.email_address = ?
+    UNION
+    SELECT addresses.id, addresses.user_id, addresses.email_address
     FROM addresses
     WHERE addresses.email_address LIKE ? ORDER BY addresses.email_address
     ('foo@bar.com', '%@yahoo.com')
     {stop}[(1, 1, u'jack@yahoo.com')]
 
-Also available, though not supported on all databases, are ``intersect()``,
-``intersect_all()``, ``except_()``, and ``except_all()``:
+Also available, though not supported on all databases, are
+:func:`~.expression.intersect`,
+:func:`~.expression.intersect_all`,
+:func:`~.expression.except_`, and :func:`~.expression.except_all`:
 
 .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy.sql import except_
     >>> u = except_(
-    ...    addresses.select(addresses.c.email_address.like('%@%.com')),
-    ...    addresses.select(addresses.c.email_address.like('%@msn.com'))
+    ...    addresses.select().
+    ...             where(addresses.c.email_address.like('%@%.com')),
+    ...    addresses.select().
+    ...             where(addresses.c.email_address.like('%@msn.com'))
     ... )
 
-    {sql}>>> print conn.execute(u).fetchall() # doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> conn.execute(u).fetchall() # doctest: +NORMALIZE_WHITESPACE
     SELECT addresses.id, addresses.user_id, addresses.email_address
     FROM addresses
-    WHERE addresses.email_address LIKE ? EXCEPT SELECT addresses.id, addresses.user_id, addresses.email_address
+    WHERE addresses.email_address LIKE ?
+    EXCEPT
+    SELECT addresses.id, addresses.user_id, addresses.email_address
     FROM addresses
     WHERE addresses.email_address LIKE ?
     ('%@%.com', '%@msn.com')
@@ -1187,54 +1208,78 @@ want the "union" to be stated as a subquery:
 
     >>> u = except_(
     ...    union(
-    ...         addresses.select(addresses.c.email_address.like('%@yahoo.com')),
-    ...         addresses.select(addresses.c.email_address.like('%@msn.com'))
+    ...         addresses.select().
+    ...             where(addresses.c.email_address.like('%@yahoo.com')),
+    ...         addresses.select().
+    ...             where(addresses.c.email_address.like('%@msn.com'))
     ...     ).alias().select(),   # apply subquery here
     ...    addresses.select(addresses.c.email_address.like('%@msn.com'))
     ... )
-    {sql}>>> print conn.execute(u).fetchall()   # doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> conn.execute(u).fetchall()   # doctest: +NORMALIZE_WHITESPACE
     SELECT anon_1.id, anon_1.user_id, anon_1.email_address
     FROM (SELECT addresses.id AS id, addresses.user_id AS user_id,
-    addresses.email_address AS email_address FROM addresses
-    WHERE addresses.email_address LIKE ? UNION SELECT addresses.id AS id,
-    addresses.user_id AS user_id, addresses.email_address AS email_address
-    FROM addresses WHERE addresses.email_address LIKE ?) AS anon_1 EXCEPT
+        addresses.email_address AS email_address
+        FROM addresses
+        WHERE addresses.email_address LIKE ?
+        UNION
+        SELECT addresses.id AS id,
+            addresses.user_id AS user_id,
+            addresses.email_address AS email_address
+        FROM addresses
+        WHERE addresses.email_address LIKE ?) AS anon_1
+    EXCEPT
     SELECT addresses.id, addresses.user_id, addresses.email_address
     FROM addresses
     WHERE addresses.email_address LIKE ?
     ('%@yahoo.com', '%@msn.com', '%@msn.com')
     {stop}[(1, 1, u'jack@yahoo.com')]
 
+.. _scalar_selects:
 
 Scalar Selects
 --------------
 
-To embed a SELECT in a column expression, use
-:func:`~sqlalchemy.sql.expression.SelectBase.as_scalar`:
+A scalar select is a SELECT that returns exactly one row and one
+column.  It can then be used as a column expression.  A scalar select
+is often a :term:`correlated subquery`, which relies upon the enclosing
+SELECT statement in order to acquire at least one of its FROM clauses.
+
+The :func:`.select` construct can be modified to act as a
+column expression by calling either the :meth:`~.SelectBase.as_scalar`
+or :meth:`~.SelectBase.label` method:
 
 .. sourcecode:: pycon+sql
 
-    {sql}>>> print conn.execute(select([   # doctest: +NORMALIZE_WHITESPACE
-    ...       users.c.name,
-    ...       select([func.count(addresses.c.id)], users.c.id == addresses.c.user_id).as_scalar()
-    ...    ])).fetchall()
-    SELECT users.name, (SELECT count(addresses.id) AS count_1
+    >>> stmt = select([func.count(addresses.c.id)]).\
+    ...             where(users.c.id == addresses.c.user_id).\
+    ...             as_scalar()
+
+The above construct is now a :class:`~.expression.ScalarSelect` object,
+and is no longer part of the :class:`~.expression.FromClause` hierarchy;
+it instead is within the :class:`~.expression.ColumnElement` family of
+expression constructs.  We can place this construct the same as any
+other column within another :func:`.select`:
+
+.. sourcecode:: pycon+sql
+
+    >>> conn.execute(select([users.c.name, stmt])).fetchall()  # doctest: +NORMALIZE_WHITESPACE
+    {opensql}SELECT users.name, (SELECT count(addresses.id) AS count_1
     FROM addresses
     WHERE users.id = addresses.user_id) AS anon_1
     FROM users
     ()
     {stop}[(u'jack', 2), (u'wendy', 2)]
 
-Alternatively, applying a ``label()`` to a select evaluates it as a scalar as
-well:
+To apply a non-anonymous column name to our scalar select, we create
+it using :meth:`.SelectBase.label` instead:
 
 .. sourcecode:: pycon+sql
 
-    {sql}>>> print conn.execute(select([    # doctest: +NORMALIZE_WHITESPACE
-    ...       users.c.name,
-    ...       select([func.count(addresses.c.id)], users.c.id == addresses.c.user_id).label('address_count')
-    ...    ])).fetchall()
-    SELECT users.name, (SELECT count(addresses.id) AS count_1
+    >>> stmt = select([func.count(addresses.c.id)]).\
+    ...             where(users.c.id == addresses.c.user_id).\
+    ...             label("address_count")
+    >>> conn.execute(select([users.c.name, stmt])).fetchall()  # doctest: +NORMALIZE_WHITESPACE
+    {opensql}SELECT users.name, (SELECT count(addresses.id) AS count_1
     FROM addresses
     WHERE users.id = addresses.user_id) AS address_count
     FROM users
@@ -1246,150 +1291,264 @@ well:
 Correlated Subqueries
 ---------------------
 
-Notice in the examples on "scalar selects", the FROM clause of each embedded
+Notice in the examples on :ref:`scalar_selects`, the FROM clause of each embedded
 select did not contain the ``users`` table in its FROM clause. This is because
-SQLAlchemy automatically attempts to correlate embedded FROM objects to that
-of an enclosing query. To disable this, or to specify explicit FROM clauses to
-be correlated, use ``correlate()``::
+SQLAlchemy automatically :term:`correlates` embedded FROM objects to that
+of an enclosing query, if present, and if the inner SELECT statement would
+still have at least one FROM clause of its own.  For example:
 
-    >>> s = select([users.c.name], users.c.id == select([users.c.id]).correlate(None))
-    >>> print s # doctest: +NORMALIZE_WHITESPACE
-    SELECT users.name
-    FROM users
-    WHERE users.id = (SELECT users.id
-    FROM users)
+.. sourcecode:: pycon+sql
 
-    >>> s = select([users.c.name, addresses.c.email_address], users.c.id==
-    ...        select([users.c.id], users.c.id == addresses.c.user_id).correlate(addresses)
-    ...    )
-    >>> print s # doctest: +NORMALIZE_WHITESPACE
-    SELECT users.name, addresses.email_address
-    FROM users, addresses
-    WHERE users.id = (SELECT users.id
+    >>> stmt = select([addresses.c.user_id]).\
+    ...             where(addresses.c.user_id == users.c.id).\
+    ...             where(addresses.c.email_address == 'jack@yahoo.com')
+    >>> enclosing_stmt = select([users.c.name]).where(users.c.id == stmt)
+    >>> conn.execute(enclosing_stmt).fetchall()  # doctest: +NORMALIZE_WHITESPACE
+    {opensql}SELECT users.name
     FROM users
-    WHERE users.id = addresses.user_id)
+    WHERE users.id = (SELECT addresses.user_id
+        FROM addresses
+        WHERE addresses.user_id = users.id
+        AND addresses.email_address = ?)
+    ('jack@yahoo.com',)
+    {stop}[(u'jack',)]
+
+Auto-correlation will usually do what's expected, however it can also be controlled.
+For example, if we wanted a statement to correlate only to the ``addresses`` table
+but not the ``users`` table, even if both were present in the enclosing SELECT,
+we use the :meth:`~.Select.correlate` method to specify those FROM clauses that
+may be correlated:
+
+.. sourcecode:: pycon+sql
+
+    >>> stmt = select([users.c.id]).\
+    ...             where(users.c.id == addresses.c.user_id).\
+    ...             where(users.c.name == 'jack').\
+    ...             correlate(addresses)
+    >>> enclosing_stmt = select(
+    ...         [users.c.name, addresses.c.email_address]).\
+    ...     select_from(users.join(addresses)).\
+    ...     where(users.c.id == stmt)
+    >>> conn.execute(enclosing_stmt).fetchall()  # doctest: +NORMALIZE_WHITESPACE
+    {opensql}SELECT users.name, addresses.email_address
+     FROM users JOIN addresses ON users.id = addresses.user_id
+     WHERE users.id = (SELECT users.id
+     FROM users
+     WHERE users.id = addresses.user_id AND users.name = ?)
+     ('jack',)
+     {stop}[(u'jack', u'jack@yahoo.com'), (u'jack', u'jack@msn.com')]
+
+To entirely disable a statement from correlating, we can pass ``None``
+as the argument:
+
+.. sourcecode:: pycon+sql
+
+    >>> stmt = select([users.c.id]).\
+    ...             where(users.c.name == 'wendy').\
+    ...             correlate(None)
+    >>> enclosing_stmt = select([users.c.name]).\
+    ...     where(users.c.id == stmt)
+    >>> conn.execute(enclosing_stmt).fetchall()  # doctest: +NORMALIZE_WHITESPACE
+    {opensql}SELECT users.name
+     FROM users
+     WHERE users.id = (SELECT users.id
+      FROM users
+      WHERE users.name = ?)
+    ('wendy',)
+    {stop}[(u'wendy',)]
 
 Ordering, Grouping, Limiting, Offset...ing...
 ---------------------------------------------
 
-
-The :func:`.select` function can take keyword arguments ``order_by``,
-``group_by`` (as well as ``having``), ``limit``, and ``offset``. There's also
-``distinct=True``. These are all also available as generative functions.
-``order_by()`` expressions can use the modifiers ``asc()`` or ``desc()`` to
-indicate ascending or descending.
+Ordering is done by passing column expressions to the
+:meth:`~.SelectBase.order_by` method:
 
 .. sourcecode:: pycon+sql
 
-    >>> s = select([addresses.c.user_id, func.count(addresses.c.id)]).\
-    ...     group_by(addresses.c.user_id).having(func.count(addresses.c.id)>1)
-    {sql}>>> print conn.execute(s).fetchall() # doctest: +NORMALIZE_WHITESPACE
-    SELECT addresses.user_id, count(addresses.id) AS count_1
-    FROM addresses GROUP BY addresses.user_id
-    HAVING count(addresses.id) > ?
-    (1,)
-    {stop}[(1, 2), (2, 2)]
-
-    >>> s = select([addresses.c.email_address, addresses.c.id]).distinct().\
-    ...     order_by(addresses.c.email_address.desc(), addresses.c.id)
-    {sql}>>> conn.execute(s).fetchall() # doctest: +NORMALIZE_WHITESPACE
-    SELECT DISTINCT addresses.email_address, addresses.id
-    FROM addresses ORDER BY addresses.email_address DESC, addresses.id
+    >>> stmt = select([users.c.name]).order_by(users.c.name)
+    >>> conn.execute(stmt).fetchall()  # doctest: +NORMALIZE_WHITESPACE
+    {opensql}SELECT users.name
+    FROM users ORDER BY users.name
     ()
-    {stop}[(u'www@www.org', 3), (u'wendy@aol.com', 4), (u'jack@yahoo.com', 1), (u'jack@msn.com', 2)]
+    {stop}[(u'jack',), (u'wendy',)]
 
-    >>> s = select([addresses]).offset(1).limit(1)
-    {sql}>>> print conn.execute(s).fetchall() # doctest: +NORMALIZE_WHITESPACE
-    SELECT addresses.id, addresses.user_id, addresses.email_address
-    FROM addresses
-    LIMIT ? OFFSET ?
+Ascending or descending can be controlled using the :meth:`~.ColumnElement.asc`
+and :meth:`~.ColumnElement.desc` modifiers:
+
+.. sourcecode:: pycon+sql
+
+    >>> stmt = select([users.c.name]).order_by(users.c.name.desc())
+    >>> conn.execute(stmt).fetchall()  # doctest: +NORMALIZE_WHITESPACE
+    {opensql}SELECT users.name
+    FROM users ORDER BY users.name DESC
+    ()
+    {stop}[(u'wendy',), (u'jack',)]
+
+Grouping refers to the GROUP BY clause, and is usually used in conjunction
+with aggregate functions to establish groups of rows to be aggregated.
+This is provided via the :meth:`~.SelectBase.group_by` method:
+
+.. sourcecode:: pycon+sql
+
+    >>> stmt = select([users.c.name, func.count(addresses.c.id)]).\
+    ...             select_from(users.join(addresses)).\
+    ...             group_by(users.c.name)
+    >>> conn.execute(stmt).fetchall()  # doctest: +NORMALIZE_WHITESPACE
+    {opensql}SELECT users.name, count(addresses.id) AS count_1
+    FROM users JOIN addresses
+        ON users.id = addresses.user_id
+    GROUP BY users.name
+    ()
+    {stop}[(u'jack', 2), (u'wendy', 2)]
+
+HAVING can be used to filter results on an aggregate value, after GROUP BY has
+been applied.  It's available here via the :meth:`~.Select.having`
+method:
+
+.. sourcecode:: pycon+sql
+
+    >>> stmt = select([users.c.name, func.count(addresses.c.id)]).\
+    ...             select_from(users.join(addresses)).\
+    ...             group_by(users.c.name).\
+    ...             having(func.length(users.c.name) > 4)
+    >>> conn.execute(stmt).fetchall()  # doctest: +NORMALIZE_WHITESPACE
+    {opensql}SELECT users.name, count(addresses.id) AS count_1
+    FROM users JOIN addresses
+        ON users.id = addresses.user_id
+    GROUP BY users.name
+    HAVING length(users.name) > ?
+    (4,)
+    {stop}[(u'wendy', 2)]
+
+A common system of dealing with duplicates in composed SELECT statments
+is the DISTINCT modifier.  A simple DISTINCT clause can be added using the
+:meth:`.Select.distinct` method:
+
+.. sourcecode:: pycon+sql
+
+    >>> stmt = select([users.c.name]).\
+    ...             where(addresses.c.email_address.
+    ...                    contains(users.c.name)).\
+    ...             distinct()
+    >>> conn.execute(stmt).fetchall()  # doctest: +NORMALIZE_WHITESPACE
+    {opensql}SELECT DISTINCT users.name
+    FROM users, addresses
+    WHERE addresses.email_address LIKE '%%' || users.name || '%%'
+    ()
+    {stop}[(u'jack',), (u'wendy',)]
+
+Most database backends support a system of limiting how many rows
+are returned, and the majority also feature a means of starting to return
+rows after a given "offset".   While common backends like Postgresql,
+MySQL and SQLite support LIMIT and OFFSET keywords, other backends
+need to refer to more esoteric features such as "window functions"
+and row ids to achieve the same effect.  The :meth:`~.Select.limit`
+and :meth:`~.Select.offset` methods provide an easy abstraction
+into the current backend's methodology:
+
+.. sourcecode:: pycon+sql
+
+    >>> stmt = select([users.c.name, addresses.c.email_address]).\
+    ...             select_from(users.join(addresses)).\
+    ...             limit(1).offset(1)
+    >>> conn.execute(stmt).fetchall()  # doctest: +NORMALIZE_WHITESPACE
+    {opensql}SELECT users.name, addresses.email_address
+    FROM users JOIN addresses ON users.id = addresses.user_id
+     LIMIT ? OFFSET ?
     (1, 1)
-    {stop}[(2, 1, u'jack@msn.com')]
+    {stop}[(u'jack', u'jack@msn.com')]
+
 
 .. _inserts_and_updates:
 
-Inserts and Updates
-===================
+Inserts, Updates and Deletes
+============================
 
-Finally, we're back to INSERT for some more detail. The
-:func:`~sqlalchemy.sql.expression.insert` construct provides a :meth:`~.ValuesBase.values`
-method which can be used to send any value or clause expression to the VALUES
-portion of the INSERT::
+We've seen :meth:`~.TableClause.insert` demonstrated
+earlier in this tutorial.   Where :meth:`~.TableClause.insert`
+prodces INSERT, the :meth:`~.TableClause.update`
+method produces UPDATE.  Both of these constructs feature
+a method called :meth:`~.ValuesBase.values` which specifies
+the VALUES or SET clause of the statement.
 
-    # insert from a function
-    users.insert().values(id=12, name=func.upper('jack'))
+The :meth:`~.ValuesBase.values` method accommodates any column expression
+as a value:
 
-    # insert from a concatenation expression
-    addresses.insert().values(email_address = name + '@' + host)
+.. sourcecode:: pycon+sql
 
-``values()`` can be mixed with per-execution values::
+    >>> stmt = users.update().\
+    ...             values(fullname="Fullname: " + users.c.name)
+    >>> conn.execute(stmt) #doctest: +ELLIPSIS
+    {opensql}UPDATE users SET fullname=(? || users.name)
+    ('Fullname: ',)
+    COMMIT
+    {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
 
-    conn.execute(
-        users.insert().values(name=func.upper('jack')),
-        fullname='Jack Jones'
-    )
+When using :meth:`~.TableClause.insert` or :meth:`~.TableClause.update`
+in an "execute many" context, we may also want to specify named
+bound parameters which we can refer to in the argument list.
+The two constructs will automatically generate bound placeholders
+for any column names passed in the dictionaries sent to
+:meth:`~.Connection.execute` at execution time.  However, if we
+wish to use explicitly targeted named parameters with composed expressions,
+we need to use the :func:`~.expression.bindparam` construct.
+When using :func:`~.expression.bindparam` with
+:meth:`~.TableClause.insert` or :meth:`~.TableClause.update`,
+the names of the table's columns themselves are reserved for the
+"automatic" generation of bind names.  We can combine the usage
+of implicitly available bind names and explicitly named parameters
+as in the example below:
 
-:func:`~sqlalchemy.sql.expression.bindparam` constructs can be passed, however
-the names of the table's columns are reserved for the "automatic" generation
-of bind names::
+.. sourcecode:: pycon+sql
 
-    users.insert().values(id=bindparam('_id'), name=bindparam('_name'))
+    >>> stmt = users.insert().\
+    ...         values(name=bindparam('_name') + " .. name")
+    >>> conn.execute(stmt, [               # doctest: +ELLIPSIS
+    ...        {'id':4, '_name':'name1'},
+    ...        {'id':5, '_name':'name2'},
+    ...        {'id':6, '_name':'name3'},
+    ...     ])
+    {opensql}INSERT INTO users (id, name) VALUES (?, (? || ?))
+    ((4, 'name1', ' .. name'), (5, 'name2', ' .. name'), (6, 'name3', ' .. name'))
+    COMMIT
+    <sqlalchemy.engine.result.ResultProxy object at 0x...>
 
-    # insert many rows at once:
-    conn.execute(
-        users.insert().values(id=bindparam('_id'), name=bindparam('_name')),
-        [
-            {'_id':1, '_name':'name1'},
-            {'_id':2, '_name':'name2'},
-            {'_id':3, '_name':'name3'},
-        ]
-    )
-
-An UPDATE statement is emitted using the :func:`.update` construct.  These
-work much like an INSERT, except there is an additional WHERE clause
+An UPDATE statement is emitted using the :meth:`~.TableClause.update` construct.  This
+works much like an INSERT, except there is an additional WHERE clause
 that can be specified:
 
 .. sourcecode:: pycon+sql
 
-    >>> # change 'jack' to 'ed'
-    {sql}>>> conn.execute(users.update().
-    ...                    where(users.c.name == 'jack').
-    ...                    values(name='ed')
-    ...                ) #doctest: +ELLIPSIS
-    UPDATE users SET name=? WHERE users.name = ?
+    >>> stmt = users.update().\
+    ...             where(users.c.name == 'jack').\
+    ...             values(name='ed')
+
+    >>> conn.execute(stmt) #doctest: +ELLIPSIS
+    {opensql}UPDATE users SET name=? WHERE users.name = ?
     ('ed', 'jack')
     COMMIT
     {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
 
-    >>> # use bind parameters
-    >>> u = users.update().\
+When using :meth:`~.TableClause.update` in an "execute many" context,
+we may wish to also use explicitly named bound parameters in the
+WHERE clause.  Again, :func:`~.expression.bindparam` is the construct
+used to achieve this:
+
+.. sourcecode:: pycon+sql
+
+    >>> stmt = users.update().\
     ...             where(users.c.name == bindparam('oldname')).\
     ...             values(name=bindparam('newname'))
-    {sql}>>> conn.execute(u, oldname='jack', newname='ed') #doctest: +ELLIPSIS
-    UPDATE users SET name=? WHERE users.name = ?
-    ('ed', 'jack')
-    COMMIT
-    {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
-
-    >>> # with binds, you can also update many rows at once
-    {sql}>>> conn.execute(u, [
+    >>> conn.execute(stmt, [
     ...     {'oldname':'jack', 'newname':'ed'},
     ...     {'oldname':'wendy', 'newname':'mary'},
     ...     {'oldname':'jim', 'newname':'jake'},
     ...     ]) #doctest: +ELLIPSIS
-    UPDATE users SET name=? WHERE users.name = ?
+    {opensql}UPDATE users SET name=? WHERE users.name = ?
     (('ed', 'jack'), ('mary', 'wendy'), ('jake', 'jim'))
     COMMIT
     {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
 
-    >>> # update a column to an expression.:
-    {sql}>>> conn.execute(users.update().
-    ...                     values(fullname="Fullname: " + users.c.name)
-    ...                 ) #doctest: +ELLIPSIS
-    UPDATE users SET fullname=(? || users.name)
-    ('Fullname: ',)
-    COMMIT
-    {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
 
 Correlated Updates
 ------------------
@@ -1399,11 +1558,11 @@ table, or the same table:
 
 .. sourcecode:: pycon+sql
 
-    >>> s = select([addresses.c.email_address]).\
+    >>> stmt = select([addresses.c.email_address]).\
     ...             where(addresses.c.user_id == users.c.id).\
     ...             limit(1)
-    {sql}>>> conn.execute(users.update().values(fullname=s)) #doctest: +ELLIPSIS,+NORMALIZE_WHITESPACE
-    UPDATE users SET fullname=(SELECT addresses.email_address
+    >>> conn.execute(users.update().values(fullname=stmt)) #doctest: +ELLIPSIS,+NORMALIZE_WHITESPACE
+    {opensql}UPDATE users SET fullname=(SELECT addresses.email_address
         FROM addresses
         WHERE addresses.user_id = users.id
         LIMIT ? OFFSET ?)
@@ -1461,24 +1620,42 @@ by the database if this syntax is not supported.
 .. _deletes:
 
 Deletes
-========
+-------
 
 Finally, a delete.  This is accomplished easily enough using the
-:func:`~.expression.delete` construct:
+:meth:`~.TableClause.delete` construct:
 
 .. sourcecode:: pycon+sql
 
-    {sql}>>> conn.execute(addresses.delete()) #doctest: +ELLIPSIS
-    DELETE FROM addresses
+    >>> conn.execute(addresses.delete()) #doctest: +ELLIPSIS
+    {opensql}DELETE FROM addresses
     ()
     COMMIT
     {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
 
-    {sql}>>> conn.execute(users.delete().where(users.c.name > 'm')) #doctest: +ELLIPSIS
-    DELETE FROM users WHERE users.name > ?
+    >>> conn.execute(users.delete().where(users.c.name > 'm')) #doctest: +ELLIPSIS
+    {opensql}DELETE FROM users WHERE users.name > ?
     ('m',)
     COMMIT
     {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
+
+Matched Row Counts
+------------------
+
+Both of :meth:`~.TableClause.update` and
+:meth:`~.TableClause.delete` are associated with *matched row counts*.  This is a
+number indicating the number of rows that were matched by the WHERE clause.
+Note that by "matched", this includes rows where no UPDATE actually took place.
+The value is available as :attr:`~.ResultProxy.rowcount`:
+
+.. sourcecode:: pycon+sql
+
+    >>> result = conn.execute(users.delete()) #doctest: +ELLIPSIS
+    {opensql}DELETE FROM users
+    ()
+    COMMIT
+    {stop}>>> result.rowcount
+    1
 
 Further Reference
 ==================
