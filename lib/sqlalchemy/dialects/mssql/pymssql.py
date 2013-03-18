@@ -54,7 +54,7 @@ class MSDialect_pymssql(MSDialect):
         module = __import__('pymssql')
         # pymmsql doesn't have a Binary method.  we use string
         # TODO: monkeypatching here is less than ideal
-        module.Binary = str
+        module.Binary = lambda x: x if hasattr(x, 'decode') else str(x)
 
         client_ver = tuple(int(x) for x in module.__version__.split("."))
         if client_ver < (1, ):
