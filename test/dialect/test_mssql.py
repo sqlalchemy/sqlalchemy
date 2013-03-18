@@ -1323,8 +1323,8 @@ class ParseConnectTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_pymssql_disconnect(self):
         dialect = pymssql.dialect()
 
-        for error in ['20003', '20003', '20006']:
-            eq_(dialect.is_disconnect('Error %s' % error, None, None), True)
+        for error in ['Adaptive Server connection timed out', 'message 20003']:
+            eq_(dialect.is_disconnect(error, None, None), True)
 
     @testing.only_on(['mssql+pyodbc', 'mssql+pymssql'], "FreeTDS specific test")
     def test_bad_freetds_warning(self):
