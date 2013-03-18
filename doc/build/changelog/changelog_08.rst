@@ -4,6 +4,16 @@
 ==============
 
 .. changelog::
+    :version: 0.8.1
+
+    .. change::
+      :tags: bug, postgresql
+      :tickets: 2680
+
+    Added missing HSTORE type to postgresql type names
+    so that the type can be reflected.
+
+.. changelog::
     :version: 0.8.0
     :released: March 9, 2013
 

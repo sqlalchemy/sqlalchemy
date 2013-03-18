@@ -3101,6 +3101,12 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         engine.connect()
         return engine
 
+    def test_reflect(self):
+        from sqlalchemy import inspect
+        insp = inspect(testing.db)
+        cols = insp.get_columns('data_table')
+        assert isinstance(cols[2]['type'], HSTORE)
+
     @testing.only_on("postgresql+psycopg2")
     def test_insert_native(self):
         engine = testing.db
