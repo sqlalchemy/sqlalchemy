@@ -1925,6 +1925,19 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults, ComparesTabl
                         not in list(engine.execute(tbl.select()).first())
                 engine.execute(tbl.delete())
 
+class MonkeyPatchedBinaryTest(fixtures.TestBase):
+    def test_unicode(self):
+        module = __import__('pymssql')
+        result = module.Binary(u'foo')
+        eq_(result, u'foo')
+
+    def test_bytes(self):
+        module = __import__('pymssql')
+        input = b'\x80\x03]q\x00X\x03\x00\x00\x00oneq\x01a.'
+        expected_result = input
+        result = module.Binary(input)
+        eq_(result, expected_result)
+
 class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
     """Test the Binary and VarBinary types"""
 
