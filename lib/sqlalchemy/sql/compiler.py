@@ -423,7 +423,7 @@ class SQLCompiler(engine.Compiled):
         name = orig_name = column.name
         if name is None:
             raise exc.CompileError("Cannot compile Column object until "
-                                   "it's 'name' is assigned.")
+                                   "its 'name' is assigned.")
 
         is_literal = column.is_literal
         if not is_literal and isinstance(name, sql._truncated_label):
