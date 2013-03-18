@@ -195,7 +195,6 @@ from ... import sql, schema, exc, util
 from ...engine import default, reflection
 from ...sql import compiler, expression, util as sql_util, operators
 from ... import types as sqltypes
-from .hstore import HSTORE
 
 try:
     from uuid import UUID as _python_UUID
@@ -894,7 +893,6 @@ ischema_names = {
     'interval': INTERVAL,
     'interval year to month': INTERVAL,
     'interval day to second': INTERVAL,
-    'hstore': HSTORE,
 }
 
 
