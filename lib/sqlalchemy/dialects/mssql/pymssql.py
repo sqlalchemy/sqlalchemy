@@ -85,6 +85,9 @@ class MSDialect_pymssql(MSDialect):
 
     def is_disconnect(self, e, connection, cursor):
         for msg in (
+            "Error 20003",  # Connection Timeout
+            "Error 20004",  # Read from SQL server failed
+            "Error 20006",  # Write to SQL Server failed
             "Error 10054",
             "Not connected to any MS SQL server",
             "Connection is closed"

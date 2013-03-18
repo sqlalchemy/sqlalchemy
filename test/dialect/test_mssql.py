@@ -1320,6 +1320,12 @@ class ParseConnectTest(fixtures.TestBase, AssertsCompiledSQL):
                     'user': 'scott', 'database': 'test'}], connection
         )
 
+    def test_pymssql_disconnect(self):
+        dialect = pymssql.dialect()
+
+        for error in ['20003', '20003', '20006']:
+            eq_(dialect.is_disconnect('Error %s' % error, None, None), True)
+
     @testing.only_on(['mssql+pyodbc', 'mssql+pymssql'], "FreeTDS specific test")
     def test_bad_freetds_warning(self):
         engine = engines.testing_engine()
