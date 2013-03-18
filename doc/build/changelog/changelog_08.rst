@@ -7,6 +7,14 @@
     :version: 0.8.1
 
     .. change::
+      :tags: bug, mssql
+      :tickets: 2683
+      :pullreq: 46
+
+    Fixed Py3K bug regarding "binary" types and
+    pymssql.  Courtesy Marc Abramowitz.
+
+    .. change::
       :tags: bug, postgresql
       :tickets: 2680
 
