@@ -1926,6 +1926,8 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults, ComparesTabl
                 engine.execute(tbl.delete())
 
 class MonkeyPatchedBinaryTest(fixtures.TestBase):
+    __only_on__ = 'mssql'
+
     def test_unicode(self):
         module = __import__('pymssql')
         result = module.Binary(u'foo')
