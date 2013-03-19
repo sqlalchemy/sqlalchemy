@@ -699,6 +699,16 @@ class UnicodeTest(fixtures.TestBase):
                 # end Py2K
             )
 
+        elif testing.against('mysql+pymysql'):
+            eq_(
+                testing.db.dialect.returns_unicode_strings,
+                # Py3K
+                #True
+                # Py2K
+                False
+                # end Py2K
+            )
+
         else:
             expected = (testing.db.name, testing.db.driver) in \
                 (
@@ -709,7 +719,7 @@ class UnicodeTest(fixtures.TestBase):
                     ('mysql', 'oursql'),
                     ('mysql', 'zxjdbc'),
                     ('mysql', 'mysqlconnector'),
-                    ('mysql', 'pymysql'),
+                    #('mysql', 'pymysql'),
                     ('sqlite', 'pysqlite'),
                     ('oracle', 'zxjdbc'),
                     ('oracle', 'cx_oracle'),
