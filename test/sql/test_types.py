@@ -719,7 +719,6 @@ class UnicodeTest(fixtures.TestBase):
                     ('mysql', 'oursql'),
                     ('mysql', 'zxjdbc'),
                     ('mysql', 'mysqlconnector'),
-                    #('mysql', 'pymysql'),
                     ('sqlite', 'pysqlite'),
                     ('oracle', 'zxjdbc'),
                     ('oracle', 'cx_oracle'),
