@@ -132,3 +132,11 @@ else:
             return obj
         return g
 
+# Adapted from six.py
+if py3k:
+    def b(s):
+        return s.encode("latin-1")
+else:
+    def b(s):
+        return s
+
