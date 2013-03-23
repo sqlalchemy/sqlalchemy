@@ -94,7 +94,7 @@ SQLAlchemy supports installation using standard Python "distutils" or
 * **Standard Setuptools** - When using `setuptools <http://pypi.python.org/pypi/setuptools/>`_,
   SQLAlchemy can be installed via ``setup.py`` or ``easy_install``, and the C
   extensions are supported.  setuptools is not supported on Python 3 at the time
-  of of this writing.
+  of this writing.
 * **Distribute** - With `distribute <http://pypi.python.org/pypi/distribute/>`_,
   SQLAlchemy can be installed via ``setup.py`` or ``easy_install``, and the C
   extensions as well as Python 3 builds are supported.

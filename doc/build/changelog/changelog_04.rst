@@ -2036,7 +2036,7 @@
       new synonym() behavior: an attribute will be placed on the mapped
       class, if one does not exist already, in all cases. if a property
       already exists on the class, the synonym will decorate the property
-      with the appropriate comparison operators so that it can be used in in
+      with the appropriate comparison operators so that it can be used in
       column expressions just like any other mapped attribute (i.e. usable in
       filter(), etc.) the "proxy=True" flag is deprecated and no longer means
       anything. Additionally, the flag "map_column=True" will automatically
@@ -2872,7 +2872,7 @@
         :tickets: 
 
       PG reflection, upon seeing the default schema name being used explicitly
-      as the "schema" argument in a Table, will assume that this is the the
+      as the "schema" argument in a Table, will assume that this is the
       user's desired convention, and will explicitly set the "schema" argument
       in foreign-key-related reflected tables, thus making them match only
       with Table constructors that also use the explicit "schema" argument
@@ -2929,7 +2929,7 @@
         :tickets: 810
 
       Fixed breakage with postgres and multiple two-phase transactions. Two-phase
-      commits and and rollbacks didn't automatically end up with a new transaction
+      commits and rollbacks didn't automatically end up with a new transaction
       as the usual dbapi commits/rollbacks do.
 
     .. change::

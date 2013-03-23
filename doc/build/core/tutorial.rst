@@ -306,7 +306,7 @@ and use it in the "normal" way:
     COMMIT
     {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
 
-Above, because we specified all three columns in the the ``execute()`` method,
+Above, because we specified all three columns in the ``execute()`` method,
 the compiled :class:`~.expression.Insert` included all three
 columns. The :class:`~.expression.Insert` statement is compiled
 at execution time based on the parameters we specified; if we specified fewer
