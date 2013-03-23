@@ -7,6 +7,13 @@
     :version: 0.8.1
 
     .. change::
+      :tags: bug, sql
+
+    Fixed bug whereby a DBAPI that can return "0"
+    for cursor.lastrowid would not function correctly
+    in conjunction with :attr:`.ResultProxy.inserted_primary_key`.
+
+    .. change::
       :tags: bug, mssql
       :tickets: 2683
       :pullreq: 46

@@ -190,9 +190,26 @@ class QueryTest(fixtures.TestBase):
                 try:
                     table.create(bind=engine, checkfirst=True)
                     i = insert_values(engine, table, values)
-                    assert i == assertvalues, "tablename: %s %r %r" % (table.name, repr(i), repr(assertvalues))
+                    assert i == assertvalues, "tablename: %s %r %r" %
+                            (table.name, repr(i), repr(assertvalues))
                 finally:
                     table.drop(bind=engine)
+
+    @testing.only_on('sqlite+pysqlite')
+    @testing.provide_metadata
+    def test_lastrowid_zero(self):
+        from sqlalchemy.dialects import sqlite
+        eng = engines.testing_engine()
+        class ExcCtx(sqlite.base.SQLiteExecutionContext):
+            def get_lastrowid(self):
+                return 0
+        eng.dialect.execution_ctx_cls = ExcCtx
+        t = Table('t', MetaData(), Column('x', Integer, primary_key=True),
+                            Column('y', Integer))
+        t.create(eng)
+        r = eng.execute(t.insert().values(y=5))
+        eq_(r.inserted_primary_key, [0])
+
 
     @testing.fails_on('sqlite', "sqlite autoincremnt doesn't work with composite pks")
     def test_misordered_lastrow(self):

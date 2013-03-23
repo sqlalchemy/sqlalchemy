@@ -679,7 +679,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                     lastrowid = proc(lastrowid)
 
             self.inserted_primary_key = [
-                c is autoinc_col and lastrowid or v
+                lastrowid if c is autoinc_col else v
                 for c, v in zip(
                                     table.primary_key,
                                     self.inserted_primary_key)
