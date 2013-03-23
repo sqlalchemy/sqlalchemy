@@ -943,7 +943,7 @@
         :tickets: 1953
 
       The cx_oracle "decimal detection" logic, which takes place
-      for for result set columns with ambiguous numeric characteristics,
+      for result set columns with ambiguous numeric characteristics,
       now uses the decimal point character determined by the locale/
       NLS_LANG setting, using an on-first-connect detection of
       this character.  cx_oracle 5.0.3 or greater is also required
@@ -2851,7 +2851,7 @@
         :tickets: 1071
 
       Postgresql now reflects sequence names associated with
-      SERIAL columns correctly, after the name of of the sequence
+      SERIAL columns correctly, after the name of the sequence
       has been changed.  Thanks to Kumar McMillan for the patch.
 
     .. change::

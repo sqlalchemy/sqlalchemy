@@ -2092,7 +2092,7 @@
         :tickets: 
 
       added a mutex to the mapper compilation step. ive been reluctant to add any
-      kind of threading anything to SA but this is one spot that its its really
+      kind of threading anything to SA but this is one spot that its really
       needed since mappers are typically "global", and while their state does not
       change during normal operation, the initial compilation step does modify
       internal state significantly, and this step usually occurs not at
