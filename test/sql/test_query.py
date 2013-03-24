@@ -190,7 +190,7 @@ class QueryTest(fixtures.TestBase):
                 try:
                     table.create(bind=engine, checkfirst=True)
                     i = insert_values(engine, table, values)
-                    assert i == assertvalues, "tablename: %s %r %r" %
+                    assert i == assertvalues, "tablename: %s %r %r" % \
                             (table.name, repr(i), repr(assertvalues))
                 finally:
                     table.drop(bind=engine)
