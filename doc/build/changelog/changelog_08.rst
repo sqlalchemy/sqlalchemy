@@ -7,6 +7,15 @@
     :version: 0.8.1
 
     .. change::
+      :tags: feature, sql
+
+    Loosened the check on dialect-specific argument names
+    passed to Table(); since we want to support external dialects
+    and also want to support args without a certain dialect
+    being installed, it only checks the format of the arg now,
+    rather than looking for that dialect in sqlalchemy.dialects.
+
+    .. change::
       :tags: bug, sql
 
     Fixed bug whereby a DBAPI that can return "0"
