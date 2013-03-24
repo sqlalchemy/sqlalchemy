@@ -34,6 +34,10 @@ class DefaultDialect(interfaces.Dialect):
     preparer = compiler.IdentifierPreparer
     supports_alter = True
 
+    # the first value we'd get for an autoincrement
+    # column.
+    default_sequence_base = 1
+
     # most DBAPIs happy with this for execute().
     # not cx_oracle.
     execute_sequence_format = tuple
