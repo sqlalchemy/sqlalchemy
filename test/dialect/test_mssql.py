@@ -16,6 +16,7 @@ from sqlalchemy import testing
 from sqlalchemy.testing import emits_warning_on, assert_raises_message
 import decimal
 from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.util.compat import b
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = mssql.dialect()
@@ -1926,6 +1927,8 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults, ComparesTabl
                 engine.execute(tbl.delete())
 
 class MonkeyPatchedBinaryTest(fixtures.TestBase):
+    __only_on__ = 'mssql'
+
     def test_unicode(self):
         module = __import__('pymssql')
         result = module.Binary(u'foo')
@@ -1933,7 +1936,7 @@ class MonkeyPatchedBinaryTest(fixtures.TestBase):
 
     def test_bytes(self):
         module = __import__('pymssql')
-        input = b'\x80\x03]q\x00X\x03\x00\x00\x00oneq\x01a.'
+        input = b('\x80\x03]q\x00X\x03\x00\x00\x00oneq\x01a.')
         expected_result = input
         result = module.Binary(input)
         eq_(result, expected_result)
