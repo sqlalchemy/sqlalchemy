@@ -361,7 +361,6 @@ class NoseSQLAlchemy(Plugin):
              The class being examined by the selector
 
         """
-
         if not issubclass(cls, fixtures.TestBase):
             return False
         elif cls.__name__.startswith('_'):
