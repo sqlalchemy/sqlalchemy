@@ -7,6 +7,13 @@
     :version: 0.8.1
 
     .. change::
+      :tags: bug, mssql
+      :pullreq: 47
+
+    Added support for additional "disconnect" messages
+    to the pymssql dialect.  Courtesy John Anderson.
+
+    .. change::
       :tags: feature, sql
 
     Loosened the check on dialect-specific argument names
