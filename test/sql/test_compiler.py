@@ -14,7 +14,7 @@ from sqlalchemy.testing import eq_, is_, assert_raises, assert_raises_message
 from sqlalchemy import testing
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy import Integer, String, MetaData, Table, Column, select, \
-    func, not_, cast, text, tuple_, exists, delete, update, bindparam,\
+    func, not_, cast, text, tuple_, exists, update, bindparam,\
     insert, literal, and_, null, type_coerce, alias, or_, literal_column,\
     Float, TIMESTAMP, Numeric, Date, Text, collate, union, except_,\
     intersect, union_all, Boolean, distinct, join, outerjoin, asc, desc,\
@@ -2851,51 +2851,6 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
                 "WHERE myothertable.otherid = mytable.myid "
                 "AND myothertable.othername = mytable_1.name",
                 dialect=mssql.dialect())
-
-    def test_delete(self):
-        self.assert_compile(
-                        delete(table1, table1.c.myid == 7),
-                        "DELETE FROM mytable WHERE mytable.myid = :myid_1")
-        self.assert_compile(
-                        table1.delete().where(table1.c.myid == 7),
-                        "DELETE FROM mytable WHERE mytable.myid = :myid_1")
-        self.assert_compile(
-                        table1.delete().where(table1.c.myid == 7).\
-                                        where(table1.c.name == 'somename'),
-                        "DELETE FROM mytable WHERE mytable.myid = :myid_1 "
-                        "AND mytable.name = :name_1")
-
-    def test_delete_prefix(self):
-        stmt = table1.delete().prefix_with("A", "B", dialect="mysql").\
-                prefix_with("C", "D")
-        self.assert_compile(stmt,
-            "DELETE A B C D FROM mytable",
-            dialect=mysql.dialect()
-        )
-        self.assert_compile(stmt,
-            "DELETE C D FROM mytable")
-
-    def test_aliased_delete(self):
-        talias1 = table1.alias('t1')
-        self.assert_compile(
-                        delete(talias1).where(talias1.c.myid == 7),
-                        "DELETE FROM mytable AS t1 WHERE t1.myid = :myid_1")
-
-    def test_correlated_delete(self):
-        # test a non-correlated WHERE clause
-        s = select([table2.c.othername], table2.c.otherid == 7)
-        u = delete(table1, table1.c.name == s)
-        self.assert_compile(u, "DELETE FROM mytable WHERE mytable.name = "
-        "(SELECT myothertable.othername FROM myothertable "
-            "WHERE myothertable.otherid = :otherid_1)")
-
-        # test one that is actually correlated...
-        s = select([table2.c.othername], table2.c.otherid == table1.c.myid)
-        u = table1.delete(table1.c.name == s)
-        self.assert_compile(u,
-                    "DELETE FROM mytable WHERE mytable.name = (SELECT "
-                    "myothertable.othername FROM myothertable WHERE "
-                    "myothertable.otherid = mytable.myid)")
 
     def test_binds_that_match_columns(self):
         """test bind params named after column names
