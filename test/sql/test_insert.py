@@ -109,13 +109,6 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         self.assert_compile(table.insert(inline=True),
             'INSERT INTO sometable (foo) VALUES (foobar())', params={})
 
-    def test_returning_not_in_default(self):
-        table1 = self.tables.mytable
-
-        stmt = table1.insert().returning(table1.c.myid)
-        m = "RETURNING is not supported by this dialect's statement compiler."
-        assert_raises_message(exc.CompileError, m, stmt.compile)
-
 
 class EmptyTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     __dialect__ = 'default'
