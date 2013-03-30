@@ -8,18 +8,23 @@ from sqlalchemy.testing.schema import Table, Column
 class _UpdateFromTestBase(object):
     @classmethod
     def define_tables(cls, metadata):
+        Table('mytable', metadata,
+              Column('myid', Integer),
+              Column('name', String(30)),
+              Column('description', String(50)))
+        Table('myothertable', metadata,
+              Column('otherid', Integer),
+              Column('othername', String(30)))
         Table('users', metadata,
               Column('id', Integer, primary_key=True,
                      test_needs_autoincrement=True),
               Column('name', String(30), nullable=False))
-
         Table('addresses', metadata,
               Column('id', Integer, primary_key=True,
                      test_needs_autoincrement=True),
               Column('user_id', None, ForeignKey('users.id')),
               Column('name', String(30), nullable=False),
               Column('email_address', String(50), nullable=False))
-
         Table('dingalings', metadata,
               Column('id', Integer, primary_key=True,
                      test_needs_autoincrement=True),
@@ -50,6 +55,172 @@ class _UpdateFromTestBase(object):
                 (2, 5, 'ding 2/5')
             ),
         )
+
+
+class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def test_update_1(self):
+        table1 = self.tables.mytable
+
+        self.assert_compile(
+            update(table1, table1.c.myid == 7),
+            'UPDATE mytable SET name=:name WHERE mytable.myid = :myid_1',
+            params={table1.c.name: 'fred'})
+
+    def test_update_2(self):
+        table1 = self.tables.mytable
+
+        self.assert_compile(
+            table1.update().
+                where(table1.c.myid == 7).
+                values({table1.c.myid: 5}),
+            'UPDATE mytable SET myid=:myid WHERE mytable.myid = :myid_1',
+            checkparams={'myid': 5, 'myid_1': 7})
+
+    def test_update_3(self):
+        table1 = self.tables.mytable
+
+        self.assert_compile(
+            update(table1, table1.c.myid == 7),
+            'UPDATE mytable SET name=:name WHERE mytable.myid = :myid_1',
+            params={'name': 'fred'})
+
+    def test_update_4(self):
+        table1 = self.tables.mytable
+
+        self.assert_compile(
+            update(table1, values={table1.c.name: table1.c.myid}),
+            'UPDATE mytable SET name=mytable.myid')
+
+    def test_update_5(self):
+        table1 = self.tables.mytable
+
+        self.assert_compile(
+            update(table1, 
+                whereclause=table1.c.name == bindparam('crit'),
+                values={table1.c.name: 'hi'}),
+            'UPDATE mytable SET name=:name WHERE mytable.name = :crit',
+            params={'crit': 'notthere'},
+            checkparams={'crit': 'notthere', 'name': 'hi'})
+
+    def test_update_6(self):
+        table1 = self.tables.mytable
+
+        self.assert_compile(
+            update(table1,
+                table1.c.myid == 12,
+                values={table1.c.name: table1.c.myid}),
+            'UPDATE mytable '
+            'SET name=mytable.myid, description=:description '
+            'WHERE mytable.myid = :myid_1',
+            params={'description': 'test'},
+            checkparams={'description': 'test', 'myid_1': 12})
+
+    def test_update_7(self):
+        table1 = self.tables.mytable
+ 
+        self.assert_compile(
+            update(table1, table1.c.myid == 12, values={table1.c.myid: 9}),
+            'UPDATE mytable '
+            'SET myid=:myid, description=:description '
+            'WHERE mytable.myid = :myid_1',
+            params={'myid_1': 12, 'myid': 9, 'description': 'test'})
+
+    def test_update_8(self):
+        table1 = self.tables.mytable
+
+        self.assert_compile(
+            update(table1, table1.c.myid == 12),
+            'UPDATE mytable SET myid=:myid WHERE mytable.myid = :myid_1',
+            params={'myid': 18}, checkparams={'myid': 18, 'myid_1': 12})
+
+    def test_update_9(self):
+        table1 = self.tables.mytable
+
+        s = table1.update(table1.c.myid == 12, values={table1.c.name: 'lala'})
+        c = s.compile(column_keys=['id', 'name'])
+        eq_(str(s), str(c))
+
+    def test_update_10(self):
+        table1 = self.tables.mytable
+
+        v1 = {table1.c.name: table1.c.myid}
+        v2 = {table1.c.name: table1.c.name + 'foo'}
+        self.assert_compile(
+            update(table1, table1.c.myid == 12, values=v1).values(v2),
+            'UPDATE mytable '
+            'SET '
+                'name=(mytable.name || :name_1), '
+                'description=:description '
+            'WHERE mytable.myid = :myid_1',
+            params={'description': 'test'})
+
+    def test_update_11(self):
+        table1 = self.tables.mytable
+
+        values = {
+            table1.c.name: table1.c.name + 'lala',
+            table1.c.myid: func.do_stuff(table1.c.myid, literal('hoho'))
+        }
+        self.assert_compile(update(table1,
+            (table1.c.myid == func.hoho(4)) &
+            (table1.c.name == literal('foo') + 
+             table1.c.name + literal('lala')),
+            values=values),
+            'UPDATE mytable '
+            'SET '
+                'myid=do_stuff(mytable.myid, :param_1), '
+                'name=(mytable.name || :name_1) '
+            'WHERE '
+                'mytable.myid = hoho(:hoho_1) AND '
+                'mytable.name = :param_2 || mytable.name || :param_3')
+
+    def test_prefix_with(self):
+        table1 = self.tables.mytable
+
+        stmt = table1.update().\
+            prefix_with('A', 'B', dialect='mysql').\
+            prefix_with('C', 'D')
+
+        self.assert_compile(stmt,
+            'UPDATE C D mytable SET myid=:myid, name=:name, '
+            'description=:description')
+
+        self.assert_compile(stmt,
+            'UPDATE A B C D mytable SET myid=%s, name=%s, description=%s',
+            dialect=mysql.dialect())
+
+    def test_alias(self):
+        table1 = self.tables.mytable
+        talias1 = table1.alias('t1')
+
+        self.assert_compile(update(talias1, talias1.c.myid == 7),
+            'UPDATE mytable AS t1 '
+            'SET name=:name '
+            'WHERE t1.myid = :myid_1',
+            params={table1.c.name: 'fred'})
+
+        self.assert_compile(update(talias1, table1.c.myid == 7),
+            'UPDATE mytable AS t1 '
+            'SET name=:name '
+            'FROM mytable '
+            'WHERE mytable.myid = :myid_1',
+            params={table1.c.name: 'fred'})
+
+    def test_update_to_expression(self):
+        """test update from an expression.
+
+        this logic is triggered currently by a left side that doesn't
+        have a key.  The current supported use case is updating the index
+        of a Postgresql ARRAY type.
+
+        """
+        table1 = self.tables.mytable
+        expr = func.foo(table1.c.myid)
+        assert not hasattr(expr, 'key')
+        self.assert_compile(table1.update().values({expr: 'bar'}),
+            'UPDATE mytable SET foo(myid)=:param_1')
 
 
 class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
