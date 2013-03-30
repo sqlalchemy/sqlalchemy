@@ -97,7 +97,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.mytable
 
         self.assert_compile(
-            update(table1, 
+            update(table1,
                 whereclause=table1.c.name == bindparam('crit'),
                 values={table1.c.name: 'hi'}),
             'UPDATE mytable SET name=:name WHERE mytable.name = :crit',
@@ -119,7 +119,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_update_7(self):
         table1 = self.tables.mytable
- 
+
         self.assert_compile(
             update(table1, table1.c.myid == 12, values={table1.c.myid: 9}),
             'UPDATE mytable '
@@ -165,7 +165,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         }
         self.assert_compile(update(table1,
             (table1.c.myid == func.hoho(4)) &
-            (table1.c.name == literal('foo') + 
+            (table1.c.name == literal('foo') +
              table1.c.name + literal('lala')),
             values=values),
             'UPDATE mytable '
