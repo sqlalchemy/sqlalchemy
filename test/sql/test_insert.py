@@ -13,11 +13,11 @@ class _InsertTestBase(object):
     def define_tables(cls, metadata):
         Table('mytable', metadata,
               Column('myid', Integer),
-              Column('name', String),
-              Column('description', String))
+              Column('name', String(30)),
+              Column('description', String(30)))
         Table('myothertable', metadata,
               Column('otherid', Integer),
-              Column('othername', String))
+              Column('othername', String(30)))
 
 
 class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):

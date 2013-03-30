@@ -10,11 +10,11 @@ class _DeleteTestBase(object):
     def define_tables(cls, metadata):
         Table('mytable', metadata,
               Column('myid', Integer),
-              Column('name', String),
-              Column('description', String))
+              Column('name', String(30)),
+              Column('description', String(50)))
         Table('myothertable', metadata,
               Column('otherid', Integer),
-              Column('othername', String))
+              Column('othername', String(30)))
 
 
 class DeleteTest(_DeleteTestBase, fixtures.TablesTest, AssertsCompiledSQL):
