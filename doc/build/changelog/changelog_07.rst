@@ -7,6 +7,15 @@
     :version: 0.7.11
 
     .. change::
+      :tags: bug, orm
+      :tickets: 2689
+
+    Fixed bug in unit of work whereby a joined-inheritance
+    subclass could insert the row for the "sub" table
+    before the parent table, if the two tables had no
+    ForeignKey constraints set up between them.
+
+    .. change::
         :tags: feature, postgresql
         :tickets: 2676
 

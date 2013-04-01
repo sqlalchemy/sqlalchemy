@@ -12,11 +12,14 @@ from collections import deque
 
 """Utility functions that build upon SQL and Schema constructs."""
 
-def sort_tables(tables):
+def sort_tables(tables, extra_dependencies=None):
     """sort a collection of Table objects in order of their foreign-key dependency."""
 
     tables = list(tables)
     tuples = []
+    if extra_dependencies:
+        tuples.extend(extra_dependencies)
+
     def visit_foreign_key(fkey):
         if fkey.use_alter:
             return
@@ -28,8 +31,8 @@ def sort_tables(tables):
 
     for table in tables:
         visitors.traverse(table,
-                            {'schema_visitor':True},
-                            {'foreign_key':visit_foreign_key})
+                            {'schema_visitor': True},
+                            {'foreign_key': visit_foreign_key})
 
         tuples.extend(
             [parent, table] for parent in table._extra_dependencies

@@ -915,6 +915,73 @@ class FlushTest(fixtures.MappedTest):
         sess.flush()
         assert user_roles.count().scalar() == 1
 
+class JoinedNoFKSortingTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("a", metadata,
+                Column('id', Integer, primary_key=True,
+                    test_needs_autoincrement=True)
+            )
+        Table("b", metadata,
+                Column('id', Integer, primary_key=True)
+            )
+        Table("c", metadata,
+                Column('id', Integer, primary_key=True)
+            )
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Basic):
+            pass
+        class B(A):
+            pass
+        class C(A):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        A, B, C = cls.classes.A, cls.classes.B, cls.classes.C
+        mapper(A, cls.tables.a)
+        mapper(B, cls.tables.b, inherits=A,
+                    inherit_condition=cls.tables.a.c.id == cls.tables.b.c.id)
+        mapper(C, cls.tables.c, inherits=A,
+                    inherit_condition=cls.tables.a.c.id == cls.tables.c.c.id)
+
+    def test_ordering(self):
+        B, C = self.classes.B, self.classes.C
+        sess = Session()
+        sess.add_all([B(), C(), B(), C()])
+        self.assert_sql_execution(
+                testing.db,
+                sess.flush,
+                CompiledSQL(
+                    "INSERT INTO a () VALUES ()",
+                    {}
+                ),
+                CompiledSQL(
+                    "INSERT INTO a () VALUES ()",
+                    {}
+                ),
+                CompiledSQL(
+                    "INSERT INTO a () VALUES ()",
+                    {}
+                ),
+                CompiledSQL(
+                    "INSERT INTO a () VALUES ()",
+                    {}
+                ),
+                AllOf(
+                    CompiledSQL(
+                        "INSERT INTO b (id) VALUES (:id)",
+                        [{"id": 1}, {"id": 3}]
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO c (id) VALUES (:id)",
+                        [{"id": 2}, {"id": 4}]
+                    )
+                )
+        )
+
 class VersioningTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
