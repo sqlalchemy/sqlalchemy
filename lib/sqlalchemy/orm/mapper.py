@@ -2002,9 +2002,19 @@ class Mapper(_InspectionAttr):
     @_memoized_configured_property
     def _sorted_tables(self):
         table_to_mapper = {}
+
         for mapper in self.base_mapper.self_and_descendants:
             for t in mapper.tables:
                 table_to_mapper.setdefault(t, mapper)
+
+        extra_dependencies = []
+        for table, mapper in table_to_mapper.items():
+            super_ = mapper.inherits
+            if super_:
+                extra_dependencies.extend([
+                    (super_table, table)
+                    for super_table in super_.tables
+                    ])
 
         def skip(fk):
             # attempt to skip dependencies that are not
@@ -2017,7 +2027,7 @@ class Mapper(_InspectionAttr):
             if parent is not None and \
                 dep is not None and \
                 dep is not parent and \
-                dep.inherit_condition is not None:
+                    dep.inherit_condition is not None:
                 cols = set(sql_util.find_columns(dep.inherit_condition))
                 if parent.inherit_condition is not None:
                     cols = cols.union(sql_util.find_columns(
@@ -2028,7 +2038,9 @@ class Mapper(_InspectionAttr):
             return False
 
         sorted_ = sql_util.sort_tables(table_to_mapper.iterkeys(),
-                                    skip_fn=skip)
+                                    skip_fn=skip,
+                                    extra_dependencies=extra_dependencies)
+
         ret = util.OrderedDict()
         for t in sorted_:
             ret[t] = table_to_mapper[t]
