@@ -13,12 +13,14 @@ from collections import deque
 """Utility functions that build upon SQL and Schema constructs."""
 
 
-def sort_tables(tables, skip_fn=None):
+def sort_tables(tables, skip_fn=None, extra_dependencies=None):
     """sort a collection of Table objects in order of
                 their foreign-key dependency."""
 
     tables = list(tables)
     tuples = []
+    if extra_dependencies is not None:
+        tuples.extend(extra_dependencies)
 
     def visit_foreign_key(fkey):
         if fkey.use_alter:

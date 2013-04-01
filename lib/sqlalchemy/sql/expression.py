@@ -2873,6 +2873,8 @@ class BindParameter(ColumnElement):
     __visit_name__ = 'bindparam'
     quote = None
 
+    _is_crud = False
+
     def __init__(self, key, value, type_=None, unique=False,
                             callable_=None,
                             isoutparam=False, required=False,

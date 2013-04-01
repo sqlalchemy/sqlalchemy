@@ -33,7 +33,7 @@ class LastrowidTest(fixtures.TablesTest):
         row = conn.execute(table.select()).first()
         eq_(
             row,
-            (1, "some data")
+            (config.db.dialect.default_sequence_base, "some data")
         )
 
     def test_autoincrement_on_insert(self):
@@ -132,7 +132,7 @@ class ReturningTest(fixtures.TablesTest):
         row = conn.execute(table.select()).first()
         eq_(
             row,
-            (1, "some data")
+            (config.db.dialect.default_sequence_base, "some data")
         )
 
     @classmethod

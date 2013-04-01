@@ -93,14 +93,13 @@ def _get_table_key(name, schema):
 
 def _validate_dialect_kwargs(kwargs, name):
     # validate remaining kwargs that they all specify DB prefixes
-    if len([k for k in kwargs
-            if not re.match(
-                        r'^(?:%s)_' %
-                        '|'.join(dialects.__all__), k
-                    )
-            ]):
-        raise TypeError(
-            "Invalid argument(s) for %s: %r" % (name, kwargs.keys()))
+
+    for k in kwargs:
+        m = re.match('^(.+?)_.*', k)
+        if m is None:
+            raise TypeError("Additional arguments should be "
+                    "named <dialectname>_<argument>, got '%s'" % k)
+
 
 inspection._self_inspects(SchemaItem)
 

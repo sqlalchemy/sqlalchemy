@@ -215,11 +215,8 @@ def _set_table_options(options, file_config):
 @post
 def _reverse_topological(options, file_config):
     if options.reversetop:
-        from sqlalchemy.orm import unitofwork, session, mapper, dependency
-        from sqlalchemy.util import topological
-        from sqlalchemy.testing.util import RandomSet
-        topological.set = unitofwork.set = session.set = mapper.set = \
-                dependency.set = RandomSet
+        from sqlalchemy.orm.util import randomize_unitofwork
+        randomize_unitofwork()
 
 
 def _requirements_opt(options, opt_str, value, parser):
@@ -361,7 +358,6 @@ class NoseSQLAlchemy(Plugin):
              The class being examined by the selector
 
         """
-
         if not issubclass(cls, fixtures.TestBase):
             return False
         elif cls.__name__.startswith('_'):

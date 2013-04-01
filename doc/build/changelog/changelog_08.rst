@@ -4,6 +4,57 @@
 ==============
 
 .. changelog::
+    :version: 0.8.1
+
+    .. change::
+      :tags: bug, orm
+      :tickets: 2689
+
+    Fixed bug in unit of work whereby a joined-inheritance
+    subclass could insert the row for the "sub" table
+    before the parent table, if the two tables had no
+    ForeignKey constraints set up between them.
+    Also in 0.7.11.
+
+    .. change::
+      :tags: bug, mssql
+      :pullreq: 47
+
+    Added support for additional "disconnect" messages
+    to the pymssql dialect.  Courtesy John Anderson.
+
+    .. change::
+      :tags: feature, sql
+
+    Loosened the check on dialect-specific argument names
+    passed to Table(); since we want to support external dialects
+    and also want to support args without a certain dialect
+    being installed, it only checks the format of the arg now,
+    rather than looking for that dialect in sqlalchemy.dialects.
+
+    .. change::
+      :tags: bug, sql
+
+    Fixed bug whereby a DBAPI that can return "0"
+    for cursor.lastrowid would not function correctly
+    in conjunction with :attr:`.ResultProxy.inserted_primary_key`.
+
+    .. change::
+      :tags: bug, mssql
+      :tickets: 2683
+      :pullreq: 46
+
+    Fixed Py3K bug regarding "binary" types and
+    pymssql.  Courtesy Marc Abramowitz.
+
+    .. change::
+      :tags: bug, postgresql
+      :tickets: 2680
+
+    Added missing HSTORE type to postgresql type names
+    so that the type can be reflected.
+
+.. changelog::
     :version: 0.8.0
     :released: March 9, 2013
 

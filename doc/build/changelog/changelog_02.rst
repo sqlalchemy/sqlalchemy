@@ -678,7 +678,7 @@
       modified version (works in py2.3/2.4!) that uses a threading.RLock
       for a mutex.  this is to fix a reported case where a ConnectionFairy's
       __del__() method got called within the Queue's get() method, which
-      then returns its connection to the Queue via the the put() method,
+      then returns its connection to the Queue via the put() method,
       causing a reentrant hang unless threading.RLock is used.
 
     .. change::

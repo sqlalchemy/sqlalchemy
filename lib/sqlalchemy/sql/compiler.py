@@ -423,7 +423,7 @@ class SQLCompiler(engine.Compiled):
         name = orig_name = column.name
         if name is None:
             raise exc.CompileError("Cannot compile Column object until "
-                                   "it's 'name' is assigned.")
+                                   "its 'name' is assigned.")
 
         is_literal = column.is_literal
         if not is_literal and isinstance(name, sql._truncated_label):
@@ -787,14 +787,14 @@ class SQLCompiler(engine.Compiled):
             existing = self.binds[name]
             if existing is not bindparam:
                 if (existing.unique or bindparam.unique) and \
-                    not existing.proxy_set.intersection(bindparam.proxy_set):
+                        not existing.proxy_set.intersection(
+                                                        bindparam.proxy_set):
                     raise exc.CompileError(
                             "Bind parameter '%s' conflicts with "
                             "unique bind parameter of the same name" %
                             bindparam.key
                         )
-                elif getattr(existing, '_is_crud', False) or \
-                    getattr(bindparam, '_is_crud', False):
+                elif existing._is_crud or bindparam._is_crud:
                     raise exc.CompileError(
                         "bindparam() name '%s' is reserved "
                         "for automatic usage in the VALUES or SET "

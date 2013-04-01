@@ -87,8 +87,10 @@ class ComponentReflectionTest(fixtures.TablesTest):
             test_needs_fk=True,
         )
 
-        cls.define_index(metadata, users)
-        cls.define_views(metadata, schema)
+        if testing.requires.index_reflection.enabled:
+            cls.define_index(metadata, users)
+        if testing.requires.view_reflection.enabled:
+            cls.define_views(metadata, schema)
 
     @classmethod
     def define_index(cls, metadata, users):
@@ -121,12 +123,14 @@ class ComponentReflectionTest(fixtures.TablesTest):
 
         self.assert_('test_schema' in insp.get_schema_names())
 
+    @testing.requires.schema_reflection
     def test_dialect_initialize(self):
         engine = engines.testing_engine()
         assert not hasattr(engine.dialect, 'default_schema_name')
         inspect(engine)
         assert hasattr(engine.dialect, 'default_schema_name')
 
+    @testing.requires.schema_reflection
     def test_get_default_schema_name(self):
         insp = inspect(testing.db)
         eq_(insp.default_schema_name, testing.db.dialect.default_schema_name)
@@ -157,6 +161,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
         self._test_get_table_names()
 
     @testing.requires.table_reflection
+    @testing.requires.foreign_key_constraint_reflection
     def test_get_table_names_fks(self):
         self._test_get_table_names(order_by='foreign_key')
 
@@ -261,6 +266,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
         self._test_get_pk_constraint()
 
     @testing.requires.table_reflection
+    @testing.requires.primary_key_constraint_reflection
     @testing.requires.schemas
     def test_get_pk_constraint_with_schema(self):
         self._test_get_pk_constraint(schema='test_schema')

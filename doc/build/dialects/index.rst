@@ -38,7 +38,7 @@ External Dialects
    SQLAlchemy install and test suite from growing inordinately large.
 
    The "classic" dialects such as SQLite, MySQL, Postgresql, Oracle,
-   SQL Server, Firebird will remain in the Core for the time being.
+   SQL Server, and Firebird will remain in the Core for the time being.
 
 Current external dialect projects for SQLAlchemy include:
 

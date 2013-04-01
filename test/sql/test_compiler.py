@@ -2211,14 +2211,14 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert_raises_message(
             exc.CompileError,
-            "Cannot compile Column object until it's 'name' is assigned.",
+            "Cannot compile Column object until its 'name' is assigned.",
             str, sel2
         )
 
         sel3 = select([my_str]).as_scalar()
         assert_raises_message(
             exc.CompileError,
-            "Cannot compile Column object until it's 'name' is assigned.",
+            "Cannot compile Column object until its 'name' is assigned.",
             str, sel3
         )
 

@@ -1265,3 +1265,40 @@ def attribute_str(instance, attribute):
 
 def state_attribute_str(state, attribute):
     return state_str(state) + "." + attribute
+
+
+def randomize_unitofwork():
+    """Use random-ordering sets within the unit of work in order
+    to detect unit of work sorting issues.
+
+    This is a utility function that can be used to help reproduce
+    inconsistent unit of work sorting issues.   For example,
+    if two kinds of objects A and B are being inserted, and
+    B has a foreign key reference to A - the A must be inserted first.
+    However, if there is no relationship between A and B, the unit of work
+    won't know to perform this sorting, and an operation may or may not
+    fail, depending on how the ordering works out.   Since Python sets
+    and dictionaries have non-deterministic ordering, such an issue may
+    occur on some runs and not on others, and in practice it tends to
+    have a great dependence on the state of the interpreter.  This leads
+    to so-called "heisenbugs" where changing entirely irrelevant aspects
+    of the test program still cause the failure behavior to change.
+
+    By calling ``randomize_unitofwork()`` when a script first runs, the
+    ordering of a key series of sets within the unit of work implementation
+    are randomized, so that the script can be minimized down to the fundamental
+    mapping and operation that's failing, while still reproducing the issue
+    on at least some runs.
+
+    This utility is also available when running the test suite via the
+    ``--reversetop`` flag.
+
+    .. versionadded:: 0.8.1 created a standalone version of the
+       ``--reversetop`` feature.
+
+    """
+    from sqlalchemy.orm import unitofwork, session, mapper, dependency
+    from sqlalchemy.util import topological
+    from sqlalchemy.testing.util import RandomSet
+    topological.set = unitofwork.set = session.set = mapper.set = \
+            dependency.set = RandomSet
