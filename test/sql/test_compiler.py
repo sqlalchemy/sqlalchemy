@@ -2460,10 +2460,6 @@ class KwargPropagationTest(fixtures.TestBase):
 class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
-    def test_insert_returning_not_in_default(self):
-        stmt = table1.insert().returning(table1.c.myid)
-        m = "RETURNING is not supported by this dialect's statement compiler."
-        assert_raises_message(exc.CompileError, m, stmt.compile)
 
     def test_correlated_update(self):
         # test against a straight text subquery
