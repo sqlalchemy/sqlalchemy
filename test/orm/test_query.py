@@ -194,22 +194,33 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         Address = self.classes.Address
 
         self.assert_compile(
-            select([User]).where(User.id == Address.user_id).
-                correlate(Address),
-            "SELECT users.id, users.name FROM users "
-            "WHERE users.id = addresses.user_id"
+            select([User.name, Address.id,
+                    select([func.count(Address.id)]).\
+                    where(User.id == Address.user_id).\
+                    correlate(User).as_scalar()
+            ]),
+            "SELECT users.name, addresses.id, "
+            "(SELECT count(addresses.id) AS count_1 "
+                "FROM addresses WHERE users.id = addresses.user_id) AS anon_1 "
+            "FROM users, addresses"
         )
 
     def test_correlate_aliased_entity(self):
         User = self.classes.User
         Address = self.classes.Address
-        aa = aliased(Address, name="aa")
+        uu = aliased(User, name="uu")
 
         self.assert_compile(
-            select([User]).where(User.id == aa.user_id).
-                correlate(aa),
-            "SELECT users.id, users.name FROM users "
-            "WHERE users.id = aa.user_id"
+            select([uu.name, Address.id,
+                    select([func.count(Address.id)]).\
+                    where(uu.id == Address.user_id).\
+                    correlate(uu).as_scalar()
+            ]),
+            # curious, "address.user_id = uu.id" is reversed here
+            "SELECT uu.name, addresses.id, "
+            "(SELECT count(addresses.id) AS count_1 "
+                "FROM addresses WHERE addresses.user_id = uu.id) AS anon_1 "
+            "FROM users AS uu, addresses"
         )
 
     def test_columns_clause_entity(self):

@@ -2409,7 +2409,6 @@ class MySQLTableDefinitionParser(object):
                     state.constraints.append(spec)
                 else:
                     pass
-
         return state
 
     def _parse_constraints(self, line):

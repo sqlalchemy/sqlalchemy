@@ -174,9 +174,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
             )
 
         # a little tedious here, adding labels to work around Query's
-        # auto-labelling. TODO: can we detect only one table in the
-        # "froms" and then turn off use_labels ? note: this query is
-        # incorrect SQL with the correlate of users in the FROM list.
+        # auto-labelling.
         s = sess.query(addresses.c.id.label('id'),
                             addresses.c.email_address.label('email')).\
             filter(addresses.c.user_id == users.c.id).correlate(users).\
@@ -188,7 +186,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
                 "SELECT users.id AS users_id, users.name AS users_name, "
                 "anon_1.email AS anon_1_email "
                 "FROM users JOIN (SELECT addresses.id AS id, "
-                "addresses.email_address AS email FROM addresses "
+                "addresses.email_address AS email FROM addresses, users "
                 "WHERE addresses.user_id = users.id) AS anon_1 "
                 "ON anon_1.id = users.id",
             )

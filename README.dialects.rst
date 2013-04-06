@@ -112,7 +112,13 @@ Key aspects of this file layout include:
 
     from sqlalchemy.testing import runner
 
-    runner.main()
+    # use this in setup.py 'test_suite':
+    # test_suite="run_tests.setup_py_test"
+    def setup_py_test():
+        runner.setup_py_test()
+
+    if __name__ == '__main__':
+        runner.main()
 
   Where above, the ``registry`` module, introduced in SQLAlchemy 0.8, provides
   an in-Python means of installing the dialect entrypoints without the use

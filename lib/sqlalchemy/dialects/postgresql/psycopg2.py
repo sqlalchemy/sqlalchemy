@@ -147,7 +147,7 @@ import re
 import logging
 
 from ... import util, exc
-from ...util.compat import decimal
+import decimal
 from ... import processors
 from ...engine import result as _result
 from ...sql import expression

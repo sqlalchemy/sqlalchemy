@@ -15,10 +15,31 @@ import re
 import sys
 import types
 import warnings
-from .compat import update_wrapper, set_types, threading, \
+from .compat import set_types, threading, \
     callable, inspect_getfullargspec
+from functools import update_wrapper
 from .. import exc
+import hashlib
 
+def md5_hex(x):
+    # Py3K
+    #x = x.encode('utf-8')
+    m = hashlib.md5()
+    m.update(x)
+    return m.hexdigest()
+
+def decode_slice(slc):
+    """decode a slice object as sent to __getitem__.
+
+    takes into account the 2.5 __index__() method, basically.
+
+    """
+    ret = []
+    for x in slc.start, slc.stop, slc.step:
+        if hasattr(x, '__index__'):
+            x = x.__index__()
+        ret.append(x)
+    return tuple(ret)
 
 def _unique_symbols(used, *bases):
     used = set(used)
@@ -123,7 +144,7 @@ def get_cls_kwargs(cls):
         ctr = class_.__dict__.get('__init__', False)
         if (not ctr or
             not isinstance(ctr, types.FunctionType) or
-            not isinstance(ctr.func_code, types.CodeType)):
+                not isinstance(ctr.func_code, types.CodeType)):
             stack.update(class_.__bases__)
             continue
 
@@ -256,7 +277,6 @@ def format_argspec_init(method, grouped=True):
     try:
         return format_argspec_plus(method, grouped=grouped)
     except TypeError:
-        self_arg = 'self'
         if method is object.__init__:
             args = grouped and '(self)' or 'self'
         else:
@@ -784,7 +804,7 @@ def duck_type_collection(specimen, default=None):
     if hasattr(specimen, '__emulates__'):
         # canonicalize set vs sets.Set to a standard: the builtin set
         if (specimen.__emulates__ is not None and
-            issubclass(specimen.__emulates__, set_types)):
+                issubclass(specimen.__emulates__, set_types)):
             return set
         else:
             return specimen.__emulates__

@@ -158,6 +158,37 @@ Glossary
         of classes; "joined", "single", and "concrete".   The section
         :ref:`inheritance_toplevel` describes inheritance mapping fully.
 
+    generative
+        A term that SQLAlchemy uses to refer what's normally known
+        as :term:`method chaining`; see that term for details.
+
+    method chaining
+        An object-oriented technique whereby the state of an object
+        is constructed by calling methods on the object.   The
+        object features any number of methods, each of which return
+        a new object (or in some cases the same object) with
+        additional state added to the object.
+
+        The two SQLAlchemy objects that make the most use of
+        method chaining are the :class:`~.expression.Select`
+        object and the :class:`~.orm.query.Query` object.
+        For example, a :class:`~.expression.Select` object can
+        be assigned two expressions to its WHERE clause as well
+        as an ORDER BY clause by calling upon the :meth:`~.Select.where`
+        and :meth:`~.Select.order_by` methods::
+
+            stmt = select([user.c.name]).\
+                        where(user.c.id > 5).\
+                        where(user.c.name.like('e%').\
+                        order_by(user.c.name)
+
+        Each method call above returns a copy of the original
+        :class:`~.expression.Select` object with additional qualifiers
+        added.
+
+        .. seealso::
+
+            :term:`generative`
 
     release
     releases
@@ -231,3 +262,36 @@ Glossary
             `Unit of Work by Martin Fowler <http://martinfowler.com/eaaCatalog/unitOfWork.html>`_
 
             :doc:`orm/session`
+
+    correlates
+    correlated subquery
+    correlated subqueries
+        A :term:`subquery` is correlated if it depends on data in the
+        enclosing ``SELECT``.
+
+        Below, a subquery selects the aggregate value ``MIN(a.id)``
+        from the ``email_address`` table, such that
+        it will be invoked for each value of ``user_account.id``, correlating
+        the value of this column against the ``email_address.user_account_id``
+        column:
+
+        .. sourcecode:: sql
+
+            SELECT user_account.name, email_address.email
+             FROM user_account
+             JOIN email_address ON user_account.id=email_address.user_account_id
+             WHERE email_address.id = (
+                SELECT MIN(a.id) FROM email_address AS a
+                WHERE a.user_account_id=user_account.id
+             )
+
+        The above subquery refers to the ``user_account`` table, which is not itself
+        in the ``FROM`` clause of this nested query.   Instead, the ``user_account``
+        table is recieved from the enclosing query, where each row selected from
+        ``user_account`` results in a distinct execution of the subquery.
+
+        A correlated subquery is nearly always present in the :term:`WHERE clause`
+        or :term:`columns clause` of the enclosing ``SELECT`` statement, and never
+        in the :term:`FROM clause`; this is because
+        the correlation can only proceed once the original source rows from the enclosing
+        statement's FROM clause are available.

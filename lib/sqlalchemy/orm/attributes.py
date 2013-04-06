@@ -174,6 +174,49 @@ class QueryableAttribute(interfaces._MappedAttribute,
         # TODO: conditionally attach this method based on clause_element ?
         return self
 
+
+    @util.memoized_property
+    def info(self):
+        """Return the 'info' dictionary for the underlying SQL element.
+
+        The behavior here is as follows:
+
+        * If the attribute is a column-mapped property, i.e.
+          :class:`.ColumnProperty`, which is mapped directly
+          to a schema-level :class:`.Column` object, this attribute
+          will return the :attr:`.SchemaItem.info` dictionary associated
+          with the core-level :class:`.Column` object.
+
+        * If the attribute is a :class:`.ColumnProperty` but is mapped to
+          any other kind of SQL expression other than a :class:`.Column`,
+          the attribute will refer to the :attr:`.MapperProperty.info` dictionary
+          associated directly with the :class:`.ColumnProperty`, assuming the SQL
+          expression itself does not have it's own ``.info`` attribute
+          (which should be the case, unless a user-defined SQL construct
+          has defined one).
+
+        * If the attribute refers to any other kind of :class:`.MapperProperty`,
+          including :class:`.RelationshipProperty`, the attribute will refer
+          to the :attr:`.MapperProperty.info` dictionary associated with
+          that :class:`.MapperProperty`.
+
+        * To access the :attr:`.MapperProperty.info` dictionary of the :class:`.MapperProperty`
+          unconditionally, including for a :class:`.ColumnProperty` that's
+          associated directly with a :class:`.schema.Column`, the attribute
+          can be referred to using :attr:`.QueryableAttribute.property`
+          attribute, as ``MyClass.someattribute.property.info``.
+
+        .. versionadded:: 0.8.0
+
+        .. seealso::
+
+            :attr:`.SchemaItem.info`
+
+            :attr:`.MapperProperty.info`
+
+        """
+        return self.comparator.info
+
     @util.memoized_property
     def parent(self):
         """Return an inspection instance representing the parent.

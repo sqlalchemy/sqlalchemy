@@ -7,9 +7,10 @@ What's New in SQLAlchemy 0.8?
     This document describes changes between SQLAlchemy version 0.7,
     undergoing maintenance releases as of October, 2012,
     and SQLAlchemy version 0.8, which is expected for release
-    in late 2012.
+    in early 2013.
 
     Document date: October 25, 2012
+    Updated: March 9, 2013
 
 Introduction
 ============
@@ -1144,6 +1145,59 @@ like in ``select()``, correlation can be disabled by calling
 entity, ``query.correlate(someentity)``.
 
 :ticket:`2179`
+
+.. _correlation_context_specific:
+
+Correlation is now always context-specific
+------------------------------------------
+
+To allow a wider variety of correlation scenarios, the behavior of
+:meth:`.Select.correlate` and :meth:`.Query.correlate` has changed slightly
+such that the SELECT statement will omit the "correlated" target from the
+FROM clause only if the statement is actually used in that context.  Additionally,
+it's no longer possible for a SELECT statement that's placed as a FROM
+in an enclosing SELECT statement to "correlate" (i.e. omit) a FROM clause.
+
+This change only makes things better as far as rendering SQL, in that it's no
+longer possible to render illegal SQL where there are insufficient FROM
+objects relative to what's being selected::
+
+    from sqlalchemy.sql import table, column, select
+
+    t1 = table('t1', column('x'))
+    t2 = table('t2', column('y'))
+    s = select([t1, t2]).correlate(t1)
+
+    print(s)
+
+Prior to this change, the above would return::
+
+    SELECT t1.x, t2.y FROM t2
+
+which is invalid SQL as "t1" is not referred to in any FROM clause.
+
+Now, in the absense of an enclosing SELECT, it returns::
+
+    SELECT t1.x, t2.y FROM t1, t2
+
+Within a SELECT, the correlation takes effect as expected::
+
+    s2 = select([t1, t2]).where(t1.c.x == t2.c.y).where(t1.c.x == s)
+
+    print (s2)
+
+    SELECT t1.x, t2.y FROM t1, t2
+    WHERE t1.x = t2.y AND t1.x =
+        (SELECT t1.x, t2.y FROM t2)
+
+This change is not expected to impact any existing applications, as
+the correlation behavior remains identical for properly constructed
+expressions.  Only an application that relies, most likely within a
+testing scenario, on the invalid string output of a correlated
+SELECT used in a non-correlating context would see any change.
+
+:ticket:`2668`
+
 
 .. _metadata_create_drop_tables:
 

@@ -1372,7 +1372,7 @@ Using Subtransactions with Autocommit
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A subtransaction indicates usage of the :meth:`.Session.begin` method in conjunction with
-the ``subtransactions=True`` flag.  This produces a a non-transactional, delimiting construct that
+the ``subtransactions=True`` flag.  This produces a non-transactional, delimiting construct that
 allows nesting of calls to :meth:`~.Session.begin` and :meth:`~.Session.commit`.
 It's purpose is to allow the construction of code that can function within a transaction
 both independently of any external code that starts a transaction,

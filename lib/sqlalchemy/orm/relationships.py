@@ -352,7 +352,7 @@ class JoinCondition(object):
                 return
 
             if "foreign" not in binary.left._annotations and \
-                "foreign" not in binary.right._annotations:
+                    "foreign" not in binary.right._annotations:
                 col = is_foreign(binary.left, binary.right)
                 if col is not None:
                     if col.compare(binary.left):
@@ -451,12 +451,11 @@ class JoinCondition(object):
         def visit_binary(binary):
             equated = binary.left.compare(binary.right)
             if isinstance(binary.left, expression.ColumnClause) and \
-                isinstance(binary.right, expression.ColumnClause):
+                    isinstance(binary.right, expression.ColumnClause):
                 # assume one to many - FKs are "remote"
                 if fn(binary.left):
                     binary.left = binary.left._annotate({"remote": True})
-                if fn(binary.right) and \
-                    not equated:
+                if fn(binary.right) and not equated:
                     binary.right = binary.right._annotate(
                                         {"remote": True})
             else:
@@ -507,9 +506,9 @@ class JoinCondition(object):
 
         def proc_left_right(left, right):
             if isinstance(left, expression.ColumnClause) and \
-                isinstance(right, expression.ColumnClause):
+                    isinstance(right, expression.ColumnClause):
                 if self.child_selectable.c.contains_column(right) and \
-                    self.parent_selectable.c.contains_column(left):
+                        self.parent_selectable.c.contains_column(left):
                     right = right._annotate({"remote": True})
             else:
                 self._warn_non_column_elements()
@@ -532,8 +531,7 @@ class JoinCondition(object):
                     not self.parent_local_selectable.c.\
                             contains_column(element)
                     or self.child_local_selectable.c.\
-                            contains_column(element)
-                ):
+                            contains_column(element)):
                 return element._annotate({"remote": True})
         self.primaryjoin = visitors.replacement_traverse(
                                     self.primaryjoin, {},  repl)
@@ -568,7 +566,7 @@ class JoinCondition(object):
 
         def locals_(elem):
             if "remote" not in elem._annotations and \
-                elem in local_side:
+                    elem in local_side:
                 return elem._annotate({"local": True})
         self.primaryjoin = visitors.replacement_traverse(
                 self.primaryjoin, {}, locals_
@@ -603,7 +601,7 @@ class JoinCondition(object):
             can_sync = bool(self.secondary_synchronize_pairs)
 
         if self.support_sync and can_sync or \
-            (not self.support_sync and has_foreign):
+                (not self.support_sync and has_foreign):
             return
 
         # from here below is just determining the best error message
@@ -685,8 +683,7 @@ class JoinCondition(object):
                         "Ensure that only those columns referring "
                         "to a parent column are marked as foreign, "
                         "either via the foreign() annotation or "
-                        "via the foreign_keys argument."
-                         % self.prop)
+                        "via the foreign_keys argument." % self.prop)
             elif onetomany_fk:
                 self.direction = ONETOMANY
             elif manytoone_fk:
@@ -716,14 +713,14 @@ class JoinCondition(object):
             def visit_binary(binary, left, right):
                 if "remote" in right._annotations and \
                     "remote" not in left._annotations and \
-                    self.can_be_synced_fn(left):
+                        self.can_be_synced_fn(left):
                     lrp.add((left, right))
                 elif "remote" in left._annotations and \
                     "remote" not in right._annotations and \
-                    self.can_be_synced_fn(right):
+                        self.can_be_synced_fn(right):
                     lrp.add((right, left))
                 if binary.operator is operators.eq and \
-                    self.can_be_synced_fn(left, right):
+                        self.can_be_synced_fn(left, right):
                     if "foreign" in right._annotations:
                         collection.append((left, right))
                     elif "foreign" in left._annotations:

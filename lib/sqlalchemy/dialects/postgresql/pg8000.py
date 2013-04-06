@@ -27,7 +27,7 @@ yet.
 
 """
 from ... import util, exc
-from ...util.compat import decimal
+import decimal
 from ... import processors
 from ... import types as sqltypes
 from .base import PGDialect, \

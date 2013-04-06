@@ -4,17 +4,110 @@
 ==============
 
 .. changelog::
+    :version: 0.8.1
+
+    .. change::
+      :tags: bug, orm
+      :tickets: 2689
+
+    Fixed bug in unit of work whereby a joined-inheritance
+    subclass could insert the row for the "sub" table
+    before the parent table, if the two tables had no
+    ForeignKey constraints set up between them.
+    Also in 0.7.11.
+
+    .. change::
+      :tags: bug, mssql
+      :pullreq: 47
+
+    Added support for additional "disconnect" messages
+    to the pymssql dialect.  Courtesy John Anderson.
+
+    .. change::
+      :tags: feature, sql
+
+    Loosened the check on dialect-specific argument names
+    passed to Table(); since we want to support external dialects
+    and also want to support args without a certain dialect
+    being installed, it only checks the format of the arg now,
+    rather than looking for that dialect in sqlalchemy.dialects.
+
+    .. change::
+      :tags: bug, sql
+
+    Fixed bug whereby a DBAPI that can return "0"
+    for cursor.lastrowid would not function correctly
+    in conjunction with :attr:`.ResultProxy.inserted_primary_key`.
+
+    .. change::
+      :tags: bug, mssql
+      :tickets: 2683
+      :pullreq: 46
+
+    Fixed Py3K bug regarding "binary" types and
+    pymssql.  Courtesy Marc Abramowitz.
+
+    .. change::
+      :tags: bug, postgresql
+      :tickets: 2680
+
+    Added missing HSTORE type to postgresql type names
+    so that the type can be reflected.
+
+.. changelog::
     :version: 0.8.0
+    :released: March 9, 2013
 
     .. note::
 
-      Be sure to *re-read* :doc:`migration_08` for this release.
       There are some new behavioral changes as of 0.8.0
-      not present in 0.8.0b2, including:
+      not present in 0.8.0b2.  They are present in the
+      migration document as follows:
 
       * :ref:`legacy_is_orphan_addition`
 
       * :ref:`metadata_create_drop_tables`
+
+      * :ref:`correlation_context_specific`
+
+    .. change::
+        :tags: feature, postgresql
+        :tickets: 2676
+
+      Added support for Postgresql's traditional SUBSTRING
+      function syntax, renders as "SUBSTRING(x FROM y FOR z)"
+      when regular ``func.substring()`` is used.
+      Also in 0.7.11.  Courtesy Gunnlaugur Þór Briem.
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 2675
+
+      A meaningful :attr:`.QueryableAttribute.info` attribute is
+      added, which proxies down to the ``.info`` attribute on either
+      the :class:`.schema.Column` object if directly present, or
+      the :class:`.MapperProperty` otherwise.  The full behavior
+      is documented and ensured by tests to remain stable.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 2668
+
+      The behavior of SELECT correlation has been improved such that
+      the :meth:`.Select.correlate` and :meth:`.Select.correlate_except`
+      methods, as well as their ORM analogues, will still retain
+      "auto-correlation" behavior in that the FROM clause is modified
+      only if the output would be legal SQL; that is, the FROM clause
+      is left intact if the correlated SELECT is not used in the context
+      of an enclosing SELECT inside of the WHERE, columns, or HAVING clause.
+      The two methods now only specify conditions to the default
+      "auto correlation", rather than absolute FROM lists.
+
+    .. change::
+        :tags: feature, mysql
+        :pullreq: 42
+
+      New dialect for CyMySQL added, courtesy Hajime Nakagami.
 
     .. change::
         :tags: bug, orm
