@@ -29,7 +29,6 @@ class TransactionTest(fixtures.TestBase):
         testing.db.execute(users.delete()).close()
 
     @classmethod
-    @testing.crashes('mysql+cymysql', 'deadlock')
     def teardown_class(cls):
         users.drop(testing.db)
 
