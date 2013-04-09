@@ -650,6 +650,7 @@ class _PolymorphicTestBase(object):
         count = 5
         self.assert_sql_count(testing.db, go, count)
 
+
     def test_joinedload_on_subclass(self):
         sess = create_session()
         expected = [
