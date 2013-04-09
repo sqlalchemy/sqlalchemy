@@ -18,7 +18,7 @@
     The populated results still tended to be correct as additional
     rows are just ignored, so this issue may be present as a
     performance degradation in applications that are
-    otherwise working correctly.
+    otherwise working correctly.  Also in 0.7.11.
 
     .. change::
       :tags: bug, orm
