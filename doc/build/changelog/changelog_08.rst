@@ -7,6 +7,19 @@
     :version: 0.8.1
 
     .. change::
+      :tags: bug, orm, declarative
+      :tickets: 2656
+
+    Fixed indirect regression regarding :func:`.has_inherited_table`,
+    where since it considers the current class' ``__table__``, was
+    sensitive to when it was called.  This is 0.7's behavior also,
+    but in 0.7 things tended to "work out" within events like
+    ``__mapper_args__()``.  :func:`.has_inherited_table` now only
+    considers superclasses, so should return the same answer
+    regarding the current class no matter when it's called
+    (obviously assuming the state of the superclass).
+
+    .. change::
       :tags: bug, orm
       :tickets: 2699
 
@@ -18,7 +31,7 @@
     The populated results still tended to be correct as additional
     rows are just ignored, so this issue may be present as a
     performance degradation in applications that are
-    otherwise working correctly.
+    otherwise working correctly.  Also in 0.7.11.
 
     .. change::
       :tags: bug, orm
