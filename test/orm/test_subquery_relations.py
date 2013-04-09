@@ -1017,7 +1017,7 @@ class BaseRelationFromJoinedSubclassTest(fixtures.MappedTest):
             polymorphic_identity='person',
             properties={
                 'paperwork': relationship(
-                    Paperwork)})
+                    Paperwork, order_by=paperwork.c.paperwork_id)})
 
         mapper(Engineer, engineers,
             inherits=Person,
@@ -1079,7 +1079,7 @@ class BaseRelationFromJoinedSubclassTest(fixtures.MappedTest):
                             ":primary_language_1) AS anon_1 "
                     "JOIN paperwork "
                         "ON anon_1.people_person_id = paperwork.person_id "
-                    "ORDER BY anon_1.people_person_id",
+                    "ORDER BY anon_1.people_person_id, paperwork.paperwork_id",
                     {"primary_language_1": "java"}
                 )
         )
