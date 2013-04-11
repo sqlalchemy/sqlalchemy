@@ -8,6 +8,21 @@
 
     .. change::
       :tags: bug, sql
+      :tickets: 2695
+
+      Improvements to Connection auto-invalidation
+      handling.  If a non-disconnect error occurs,
+      but leads to a delayed disconnect error within error
+      handling (happens with MySQL), the disconnect condition
+      is detected.  The Connection can now also be closed
+      when in an invalid state, meaning it will raise "closed"
+      on next usage, and additionally the "close with result"
+      feature will work even if the autorollback in an error
+      handling routine fails and regardless of whether the
+      condition is a disconnect or not.
+
+    .. change::
+      :tags: bug, sql
       :tickets: 2702
 
       A major fix to the way in which a select() object produces
