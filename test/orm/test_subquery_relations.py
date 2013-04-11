@@ -12,6 +12,7 @@ from test.lib.assertsql import CompiledSQL
 from test.lib import fixtures
 from test.orm import _fixtures
 import sqlalchemy as sa
+from test.orm.inheritance.test_polymorphic_rel import Person, Engineer, Paperwork
 
 class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     run_inserts = 'once'
@@ -978,7 +979,6 @@ class OrderBySecondaryTest(fixtures.MappedTest):
             ])
         self.assert_sql_count(testing.db, go, 2)
 
-from .inheritance.test_polymorphic_rel import Person, Engineer, Paperwork
 
 class BaseRelationFromJoinedSubclassTest(fixtures.MappedTest):
     @classmethod
