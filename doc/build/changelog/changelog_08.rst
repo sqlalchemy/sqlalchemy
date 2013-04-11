@@ -7,6 +7,14 @@
     :version: 0.8.1
 
     .. change::
+      :tags: bug, orm
+
+      Fixed `__repr__()` on mapper property constructs
+      to work before the object is initialized, so
+      that Sphinx builds with recent Sphinx versions
+      can read them.
+
+    .. change::
       :tags: bug, sql, postgresql
 
       The _Binary base type now converts values through

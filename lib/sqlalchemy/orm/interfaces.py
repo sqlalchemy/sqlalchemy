@@ -289,7 +289,7 @@ class MapperProperty(_MappedAttribute, _InspectionAttr):
     def __repr__(self):
         return '<%s at 0x%x; %s>' % (
             self.__class__.__name__,
-            id(self), self.key)
+            id(self), getattr(self, 'key', 'no key'))
 
 class PropComparator(operators.ColumnOperators):
     """Defines boolean, comparison, and other operators for
