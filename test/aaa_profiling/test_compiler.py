@@ -61,3 +61,15 @@ class CompileTest(fixtures.TestBase, AssertsExecutionResults):
             s = select([t1], t1.c.c2 == t2.c.c1)
             s.compile(dialect=self.dialect)
         go()
+
+    def test_select_labels(self):
+        # give some of the cached type values
+        # a chance to warm up
+        s = select([t1], t1.c.c2 == t2.c.c1).apply_labels()
+        s.compile(dialect=self.dialect)
+
+        @profiling.function_call_count()
+        def go():
+            s = select([t1], t1.c.c2 == t2.c.c1).apply_labels()
+            s.compile(dialect=self.dialect)
+        go()

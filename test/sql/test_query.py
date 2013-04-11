@@ -1028,6 +1028,22 @@ class QueryTest(fixtures.TestBase):
             lambda: row[u2.c.user_id]
         )
 
+    def test_ambiguous_column_contains(self):
+        # ticket 2702.  in 0.7 we'd get True, False.
+        # in 0.8, both columns are present so it's True;
+        # but when they're fetched you'll get the ambiguous error.
+        users.insert().execute(user_id=1, user_name='john')
+        result = select([
+                    users.c.user_id,
+                    addresses.c.user_id]).\
+                    select_from(users.outerjoin(addresses)).execute()
+        row = result.first()
+
+        eq_(
+            set([users.c.user_id in row, addresses.c.user_id in row]),
+            set([True])
+        )
+
     def test_ambiguous_column_by_col_plus_label(self):
         users.insert().execute(user_id=1, user_name='john')
         result = select([users.c.user_id,

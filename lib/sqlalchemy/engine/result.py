@@ -301,7 +301,7 @@ class ResultMetaData(object):
             # this check isn't currently available if the row
             # was unpickled.
             if result is not None and \
-                result[1] is not None:
+                 result[1] is not None:
                 for obj in result[1]:
                     if key._compare_name_for_result(obj):
                         break

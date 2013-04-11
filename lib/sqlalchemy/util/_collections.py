@@ -672,7 +672,6 @@ column_dict = dict
 ordered_column_set = OrderedSet
 populate_column_dict = PopulateDict
 
-
 def unique_list(seq, hashfunc=None):
     seen = {}
     if not hashfunc:

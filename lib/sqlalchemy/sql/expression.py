@@ -5781,13 +5781,47 @@ class Select(HasPrefixes, SelectBase):
         fromclause = _interpret_as_from(fromclause)
         self._from_obj = self._from_obj.union([fromclause])
 
+
+    @_memoized_property
+    def _columns_plus_names(self):
+        if self.use_labels:
+            names = set()
+            def name_for_col(c):
+                if c._label is None:
+                    return (None, c)
+                name = c._label
+                if name in names:
+                    name = c.anon_label
+                else:
+                    names.add(name)
+                return name, c
+
+            return [
+                name_for_col(c)
+                for c in util.unique_list(_select_iterables(self._raw_columns))
+            ]
+        else:
+            return [
+                (None, c)
+                for c in util.unique_list(_select_iterables(self._raw_columns))
+            ]
+
     def _populate_column_collection(self):
-        for c in self.inner_columns:
-            if hasattr(c, '_make_proxy'):
-                c._make_proxy(self,
-                        name=c._label if self.use_labels else None,
-                        key=c._key_label if self.use_labels else None,
-                        name_is_truncatable=True)
+        for name, c in self._columns_plus_names:
+            if not hasattr(c, '_make_proxy'):
+                continue
+            if name is None:
+                key = None
+            elif self.use_labels:
+                key = c._key_label
+                if key is not None and key in self.c:
+                    key = c.anon_label
+            else:
+                key = None
+
+            c._make_proxy(self, key=key,
+                    name=name,
+                    name_is_truncatable=True)
 
     def _refresh_for_new_column(self, column):
         for fromclause in self._froms:
