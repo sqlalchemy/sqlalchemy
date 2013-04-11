@@ -10,24 +10,24 @@
       :tags: bug, orm
       :tickets: 2699
 
-    Fixed bug when a query of the form:
-    ``query(SubClass).options(subqueryload(Baseclass.attrname))``,
-    where ``SubClass`` is a joined inh of ``BaseClass``,
-    would fail to apply the ``JOIN`` inside the subquery
-    on the attribute load, producing a cartesian product.
-    The populated results still tended to be correct as additional
-    rows are just ignored, so this issue may be present as a
-    performance degradation in applications that are
-    otherwise working correctly.
+      Fixed bug when a query of the form:
+      ``query(SubClass).options(subqueryload(Baseclass.attrname))``,
+      where ``SubClass`` is a joined inh of ``BaseClass``,
+      would fail to apply the ``JOIN`` inside the subquery
+      on the attribute load, producing a cartesian product.
+      The populated results still tended to be correct as additional
+      rows are just ignored, so this issue may be present as a
+      performance degradation in applications that are
+      otherwise working correctly.
 
     .. change::
-      :tags: bug, orm
-      :tickets: 2689
+        :tags: bug, orm
+        :tickets: 2689
 
-    Fixed bug in unit of work whereby a joined-inheritance
-    subclass could insert the row for the "sub" table
-    before the parent table, if the two tables had no
-    ForeignKey constraints set up between them.
+      Fixed bug in unit of work whereby a joined-inheritance
+      subclass could insert the row for the "sub" table
+      before the parent table, if the two tables had no
+      ForeignKey constraints set up between them.
 
     .. change::
         :tags: feature, postgresql
