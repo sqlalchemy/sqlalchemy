@@ -2320,3 +2320,64 @@ class TestOverlyEagerEquivalentCols(fixtures.MappedTest):
                 filter(Sub1.id==1).one(),
                 b1
         )
+
+class LabelCollideTest(fixtures.MappedTest):
+    """Test handling for a label collision.  This collision
+    is handled by core, see ticket:2702 as well as
+    test/sql/test_selectable->WithLabelsTest.  here we want
+    to make sure the end result is as we expect.
+
+    """
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('foo', metadata,
+                Column('id', Integer, primary_key=True),
+                Column('bar_id', Integer)
+        )
+        Table('foo_bar', metadata,
+                Column('id', Integer, primary_key=True),
+                )
+
+    @classmethod
+    def setup_classes(cls):
+        class Foo(cls.Basic):
+            pass
+        class Bar(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        mapper(cls.classes.Foo, cls.tables.foo)
+        mapper(cls.classes.Bar, cls.tables.foo_bar)
+
+    @classmethod
+    def insert_data(cls):
+        s = Session()
+        s.add_all([
+            cls.classes.Foo(id=1, bar_id=2),
+            cls.classes.Bar(id=3)
+        ])
+        s.commit()
+
+    def test_overlap_plain(self):
+        s = Session()
+        row = s.query(self.classes.Foo, self.classes.Bar).all()[0]
+        def go():
+            eq_(row.Foo.id, 1)
+            eq_(row.Foo.bar_id, 2)
+            eq_(row.Bar.id, 3)
+        # all three columns are loaded independently without
+        # overlap, no additional SQL to load all attributes
+        self.assert_sql_count(testing.db, go, 0)
+
+    def test_overlap_subquery(self):
+        s = Session()
+        row = s.query(self.classes.Foo, self.classes.Bar).from_self().all()[0]
+        def go():
+            eq_(row.Foo.id, 1)
+            eq_(row.Foo.bar_id, 2)
+            eq_(row.Bar.id, 3)
+        # all three columns are loaded independently without
+        # overlap, no additional SQL to load all attributes
+        self.assert_sql_count(testing.db, go, 0)

@@ -992,13 +992,15 @@ class SQLCompiler(engine.Compiled):
         else:
             self.result_map[keyname] = name, objects, type_
 
-    def _label_select_column(self, select, column, populate_result_map,
+    def _label_select_column(self, select, column,
+                                    populate_result_map,
                                     asfrom, column_clause_args,
+                                    name=None,
                                     within_columns_clause=True):
         """produce labeled columns present in a select()."""
 
         if column.type._has_column_expression and \
-            populate_result_map:
+                populate_result_map:
             col_expr = column.type.column_expression(column)
             add_to_result_map = lambda keyname, name, objects, type_: \
                                 self._add_to_result_map(
@@ -1023,13 +1025,11 @@ class SQLCompiler(engine.Compiled):
             else:
                 result_expr = col_expr
 
-        elif select is not None and \
-                select.use_labels and \
-                column._label:
+        elif select is not None and name:
             result_expr = _CompileLabel(
                     col_expr,
-                    column._label,
-                    alt_names=(column._key_label, )
+                    name,
+                    alt_names=(column._key_label,)
                 )
 
         elif \
@@ -1037,7 +1037,7 @@ class SQLCompiler(engine.Compiled):
             isinstance(column, sql.ColumnClause) and \
             not column.is_literal and \
             column.table is not None and \
-            not isinstance(column.table, sql.Select):
+                not isinstance(column.table, sql.Select):
             result_expr = _CompileLabel(col_expr,
                                     sql._as_truncated(column.name),
                                     alt_names=(column.key,))
@@ -1098,11 +1098,11 @@ class SQLCompiler(engine.Compiled):
         # correlate_froms.union(existingfroms)
 
         populate_result_map = force_result_map or (
-                                compound_index == 0 and (
-                                    not entry or \
-                                    entry.get('iswrapper', False)
-                                )
-                            )
+                                        compound_index == 0 and (
+                                            not entry or \
+                                            entry.get('iswrapper', False)
+                                        )
+                                    )
 
         self.stack.append({'from': correlate_froms,
                             'iswrapper': iswrapper})
@@ -1117,10 +1117,12 @@ class SQLCompiler(engine.Compiled):
         # the actual list of columns to print in the SELECT column list.
         inner_columns = [
             c for c in [
-                self._label_select_column(select, column,
+                self._label_select_column(select,
+                                    column,
                                     populate_result_map, asfrom,
-                                    column_clause_args)
-                for column in util.unique_list(select.inner_columns)
+                                    column_clause_args,
+                                    name=name)
+                for name, column in select._columns_plus_names
                 ]
             if c is not None
         ]

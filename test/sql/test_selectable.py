@@ -1587,3 +1587,156 @@ class AnnotationsTest(fixtures.TestBase):
         comp2 = c2.comparator
 
         assert (c2 == 5).left._annotations == {"foo": "bar", "bat": "hoho"}
+
+class WithLabelsTest(fixtures.TestBase):
+    def _assert_labels_warning(self, s):
+        assert_raises_message(
+            exc.SAWarning,
+            "replaced by another column with the same key",
+            lambda: s.c
+        )
+
+    def _assert_result_keys(self, s, keys):
+        compiled = s.compile()
+        eq_(set(compiled.result_map), set(keys))
+
+    def _assert_subq_result_keys(self, s, keys):
+        compiled = s.select().compile()
+        eq_(set(compiled.result_map), set(keys))
+
+    def _names_overlap(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('x', Integer))
+        t2 = Table('t2', m, Column('x', Integer))
+        return select([t1, t2])
+
+    def test_names_overlap_nolabel(self):
+        sel = self._names_overlap()
+        self._assert_labels_warning(sel)
+        self._assert_result_keys(sel, ['x'])
+
+    def test_names_overlap_label(self):
+        sel = self._names_overlap().apply_labels()
+        eq_(
+            sel.c.keys(),
+            ['t1_x', 't2_x']
+        )
+        self._assert_result_keys(sel, ['t1_x', 't2_x'])
+
+    def _names_overlap_keys_dont(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('x', Integer, key='a'))
+        t2 = Table('t2', m, Column('x', Integer, key='b'))
+        return select([t1, t2])
+
+    def test_names_overlap_keys_dont_nolabel(self):
+        sel = self._names_overlap_keys_dont()
+        eq_(
+            sel.c.keys(),
+            ['a', 'b']
+        )
+        self._assert_result_keys(sel, ['x'])
+
+    def test_names_overlap_keys_dont_label(self):
+        sel = self._names_overlap_keys_dont().apply_labels()
+        eq_(
+            sel.c.keys(),
+            ['t1_a', 't2_b']
+        )
+        self._assert_result_keys(sel, ['t1_x', 't2_x'])
+
+    def _labels_overlap(self):
+        m = MetaData()
+        t1 = Table('t', m, Column('x_id', Integer))
+        t2 = Table('t_x', m, Column('id', Integer))
+        return select([t1, t2])
+
+    def test_labels_overlap_nolabel(self):
+        sel = self._labels_overlap()
+        eq_(
+            sel.c.keys(),
+            ['x_id', 'id']
+        )
+        self._assert_result_keys(sel, ['x_id', 'id'])
+
+    def test_labels_overlap_label(self):
+        sel = self._labels_overlap().apply_labels()
+        t2 = sel.froms[1]
+        eq_(
+            sel.c.keys(),
+            ['t_x_id', t2.c.id.anon_label]
+        )
+        self._assert_result_keys(sel, ['t_x_id', 'id_1'])
+        self._assert_subq_result_keys(sel, ['t_x_id', 'id_1'])
+
+    def _labels_overlap_keylabels_dont(self):
+        m = MetaData()
+        t1 = Table('t', m, Column('x_id', Integer, key='a'))
+        t2 = Table('t_x', m, Column('id', Integer, key='b'))
+        return select([t1, t2])
+
+    def test_labels_overlap_keylabels_dont_nolabel(self):
+        sel = self._labels_overlap_keylabels_dont()
+        eq_(sel.c.keys(), ['a', 'b'])
+        self._assert_result_keys(sel, ['x_id', 'id'])
+
+    def test_labels_overlap_keylabels_dont_label(self):
+        sel = self._labels_overlap_keylabels_dont().apply_labels()
+        eq_(sel.c.keys(), ['t_a', 't_x_b'])
+        self._assert_result_keys(sel, ['t_x_id', 'id_1'])
+
+    def _keylabels_overlap_labels_dont(self):
+        m = MetaData()
+        t1 = Table('t', m, Column('a', Integer, key='x_id'))
+        t2 = Table('t_x', m, Column('b', Integer, key='id'))
+        return select([t1, t2])
+
+    def test_keylabels_overlap_labels_dont_nolabel(self):
+        sel = self._keylabels_overlap_labels_dont()
+        eq_(sel.c.keys(), ['x_id', 'id'])
+        self._assert_result_keys(sel, ['a', 'b'])
+
+    def test_keylabels_overlap_labels_dont_label(self):
+        sel = self._keylabels_overlap_labels_dont().apply_labels()
+        t2 = sel.froms[1]
+        eq_(sel.c.keys(), ['t_x_id', t2.c.id.anon_label])
+        self._assert_result_keys(sel, ['t_a', 't_x_b'])
+        self._assert_subq_result_keys(sel, ['t_a', 't_x_b'])
+
+    def _keylabels_overlap_labels_overlap(self):
+        m = MetaData()
+        t1 = Table('t', m, Column('x_id', Integer, key='x_a'))
+        t2 = Table('t_x', m, Column('id', Integer, key='a'))
+        return select([t1, t2])
+
+    def test_keylabels_overlap_labels_overlap_nolabel(self):
+        sel = self._keylabels_overlap_labels_overlap()
+        eq_(sel.c.keys(), ['x_a', 'a'])
+        self._assert_result_keys(sel, ['x_id', 'id'])
+        self._assert_subq_result_keys(sel, ['x_id', 'id'])
+
+    def test_keylabels_overlap_labels_overlap_label(self):
+        sel = self._keylabels_overlap_labels_overlap().apply_labels()
+        t2 = sel.froms[1]
+        eq_(sel.c.keys(), ['t_x_a', t2.c.a.anon_label])
+        self._assert_result_keys(sel, ['t_x_id', 'id_1'])
+        self._assert_subq_result_keys(sel, ['t_x_id', 'id_1'])
+
+    def _keys_overlap_names_dont(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('a', Integer, key='x'))
+        t2 = Table('t2', m, Column('b', Integer, key='x'))
+        return select([t1, t2])
+
+    def test_keys_overlap_names_dont_nolabel(self):
+        sel = self._keys_overlap_names_dont()
+        self._assert_labels_warning(sel)
+        self._assert_result_keys(sel, ['a', 'b'])
+
+    def test_keys_overlap_names_dont_label(self):
+        sel = self._keys_overlap_names_dont().apply_labels()
+        eq_(
+            sel.c.keys(),
+            ['t1_x', 't2_x']
+        )
+        self._assert_result_keys(sel, ['t1_a', 't2_b'])

@@ -33,6 +33,10 @@ test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_postgresql_psycopg2
 test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_sqlite_pysqlite_cextensions 135
 test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_sqlite_pysqlite_nocextensions 135
 
+# TEST: test.aaa_profiling.test_compiler.CompileTest.test_select_labels
+
+test.aaa_profiling.test_compiler.CompileTest.test_select_labels 2.7_sqlite_pysqlite_nocextensions 177
+
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_update
 
 test.aaa_profiling.test_compiler.CompileTest.test_update 2.5_sqlite_pysqlite_nocextensions 65
