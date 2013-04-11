@@ -7,7 +7,7 @@
     :version: 0.8.1
 
     .. change::
-      :tags: bug, core
+      :tags: bug, sql
       :tickets: 2702
 
       A major fix to the way in which a select() object produces
