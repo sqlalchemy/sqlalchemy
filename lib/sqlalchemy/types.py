@@ -1711,8 +1711,15 @@ class _Binary(TypeEngine):
         return process
 
     # Python 3 has native bytes() type
-    # both sqlite3 and pg8000 seem to return it
-    # (i.e. and not 'memoryview')
+    # both sqlite3 and pg8000 seem to return it,
+    # psycopg2 as of 2.5 returns 'memoryview'
+    # Py3K
+    #def result_processor(self, dialect, coltype):
+    #    def process(value):
+    #        if value is not None:
+    #            value = bytes(value)
+    #        return value
+    #    return process
     # Py2K
     def result_processor(self, dialect, coltype):
         if util.jython:

@@ -7,6 +7,23 @@
     :version: 0.8.1
 
     .. change::
+      :tags: bug, orm
+
+      Fixed `__repr__()` on mapper property constructs
+      to work before the object is initialized, so
+      that Sphinx builds with recent Sphinx versions
+      can read them.
+
+    .. change::
+      :tags: bug, sql, postgresql
+
+      The _Binary base type now converts values through
+      the bytes() callable when run on Python 3; in particular
+      psycopg2 2.5 with Python 3.3 seems to now be returning
+      the "memoryview" type, so this is converted to bytes
+      before return.
+
+    .. change::
       :tags: bug, sql
       :tickets: 2695
 
