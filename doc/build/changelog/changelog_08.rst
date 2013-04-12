@@ -8,6 +8,17 @@
 
     .. change::
       :tags: bug, orm
+      :tickets: 2697
+
+      Fixed bug whereby ORM would run the wrong kind of
+      query when refreshing an inheritance-mapped class
+      where the superclass was mapped to a non-Table
+      object, like a custom join() or a select(),
+      running a query that assumed a hierarchy that's
+      mapped to individual Table-per-class.
+
+    .. change::
+      :tags: bug, orm
 
       Fixed `__repr__()` on mapper property constructs
       to work before the object is initialized, so

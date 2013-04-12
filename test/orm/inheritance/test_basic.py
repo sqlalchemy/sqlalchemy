@@ -1637,6 +1637,53 @@ class OptimizedLoadTest(fixtures.MappedTest):
             Column('b', String(10))
         )
 
+    def test_no_optimize_on_map_to_join(self):
+        base, sub = self.tables.base, self.tables.sub
+
+        class Base(fixtures.ComparableEntity):
+            pass
+
+        class JoinBase(fixtures.ComparableEntity):
+            pass
+        class SubJoinBase(JoinBase):
+            pass
+
+        mapper(Base, base)
+        mapper(JoinBase, base.outerjoin(sub), properties={
+                'id': [base.c.id, sub.c.id],
+                'counter': [base.c.counter, sub.c.counter]
+            })
+        mapper(SubJoinBase, inherits=JoinBase)
+
+        sess = Session()
+        sess.add(Base(data='data'))
+        sess.commit()
+
+        sjb = sess.query(SubJoinBase).one()
+        sjb_id = sjb.id
+        sess.expire(sjb)
+
+        # this should not use the optimized load,
+        # which assumes discrete tables
+        def go():
+            eq_(sjb.data, 'data')
+
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT base.counter AS base_counter, "
+                "sub.counter AS sub_counter, base.id AS base_id, "
+                "sub.id AS sub_id, base.data AS base_data, "
+                "base.type AS base_type, sub.sub AS sub_sub, "
+                "sub.counter2 AS sub_counter2 FROM base "
+                "LEFT OUTER JOIN sub ON base.id = sub.id "
+                "WHERE base.id = :param_1",
+                {'param_1': sjb_id}
+            ),
+        )
+
+
     def test_optimized_passes(self):
         """"test that the 'optimized load' routine doesn't crash when
         a column in the join condition is not available."""
@@ -1678,7 +1725,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
             pass
         mapper(Base, base, polymorphic_on=base.c.type, polymorphic_identity='base')
         mapper(Sub, sub, inherits=Base, polymorphic_identity='sub', properties={
-            'concat':column_property(sub.c.sub + "|" + sub.c.sub)
+            'concat': column_property(sub.c.sub + "|" + sub.c.sub)
         })
         sess = sessionmaker()()
         s1 = Sub(data='s1data', sub='s1sub')
@@ -1697,7 +1744,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
             pass
         mapper(Base, base, polymorphic_on=base.c.type, polymorphic_identity='base')
         mapper(Sub, sub, inherits=Base, polymorphic_identity='sub', properties={
-            'concat':column_property(base.c.data + "|" + sub.c.sub)
+            'concat': column_property(base.c.data + "|" + sub.c.sub)
         })
         sess = sessionmaker()()
         s1 = Sub(data='s1data', sub='s1sub')
