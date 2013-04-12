@@ -1933,6 +1933,8 @@ class Mapper(_InspectionAttr):
             for mapper in reversed(list(self.iterate_to_root())):
                 if mapper.local_table in tables:
                     start = True
+                elif not isinstance(mapper.local_table, expression.TableClause):
+                    return None
                 if start and not mapper.single:
                     allconds.append(visitors.cloned_traverse(
                                                 mapper.inherit_condition,
