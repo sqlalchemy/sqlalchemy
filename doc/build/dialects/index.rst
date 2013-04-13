@@ -47,5 +47,6 @@ Current external dialect projects for SQLAlchemy include:
 * `sqlalchemy-akiban <https://github.com/zzzeek/sqlalchemy_akiban>`_ - driver and ORM extensions for the `Akiban <http://www.akiban.com>`_ database.
 * `sqlalchemy-cubrid <https://bitbucket.org/zzzeek/sqlalchemy-cubrid>`_ - driver for the CUBRID database.
 * `sqlalchemy-maxdb <https://bitbucket.org/zzzeek/sqlalchemy-maxdb>`_ - driver for the MaxDB database.
+* `CALCHIPAN <https://bitbucket.org/zzzeek/calchipan/>`_ - Adapts `Pandas <http://pandas.pydata.org/>`_ dataframes to SQLAlchemy.
 
 

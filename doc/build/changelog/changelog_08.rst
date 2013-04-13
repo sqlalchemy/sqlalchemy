@@ -8,51 +8,142 @@
 
     .. change::
       :tags: bug, orm
+      :tickets: 2697
+
+      Fixed bug whereby ORM would run the wrong kind of
+      query when refreshing an inheritance-mapped class
+      where the superclass was mapped to a non-Table
+      object, like a custom join() or a select(),
+      running a query that assumed a hierarchy that's
+      mapped to individual Table-per-class.
+
+    .. change::
+      :tags: bug, orm
+
+      Fixed `__repr__()` on mapper property constructs
+      to work before the object is initialized, so
+      that Sphinx builds with recent Sphinx versions
+      can read them.
+
+    .. change::
+      :tags: bug, sql, postgresql
+
+      The _Binary base type now converts values through
+      the bytes() callable when run on Python 3; in particular
+      psycopg2 2.5 with Python 3.3 seems to now be returning
+      the "memoryview" type, so this is converted to bytes
+      before return.
+
+    .. change::
+      :tags: bug, sql
+      :tickets: 2695
+
+      Improvements to Connection auto-invalidation
+      handling.  If a non-disconnect error occurs,
+      but leads to a delayed disconnect error within error
+      handling (happens with MySQL), the disconnect condition
+      is detected.  The Connection can now also be closed
+      when in an invalid state, meaning it will raise "closed"
+      on next usage, and additionally the "close with result"
+      feature will work even if the autorollback in an error
+      handling routine fails and regardless of whether the
+      condition is a disconnect or not.
+
+    .. change::
+      :tags: bug, sql
+      :tickets: 2702
+
+      A major fix to the way in which a select() object produces
+      labeled columns when apply_labels() is used; this mode
+      produces a SELECT where each column is labeled as in
+      <tablename>_<columnname>, to remove column name collisions
+      for a multiple table select.   The fix is that if two labels
+      collide when combined with the table name, i.e.
+      "foo.bar_id" and "foo_bar.id", anonymous aliasing will be
+      applied to one of the dupes.  This allows the ORM to handle
+      both columns independently; previously, 0.7
+      would in some cases silently emit a second SELECT for the
+      column that was "duped", and in 0.8 an ambiguous column error
+      would be emitted.   The "keys" applied to the .c. collection
+      of the select() will also be deduped, so that the "column
+      being replaced" warning will no longer emit for any select()
+      that specifies use_labels, though the dupe key will be given
+      an anonymous label which isn't generally user-friendly.
+
+    .. change::
+      :tags: bug, orm, declarative
+      :tickets: 2656
+
+      Fixed indirect regression regarding :func:`.has_inherited_table`,
+      where since it considers the current class' ``__table__``, was
+      sensitive to when it was called.  This is 0.7's behavior also,
+      but in 0.7 things tended to "work out" within events like
+      ``__mapper_args__()``.  :func:`.has_inherited_table` now only
+      considers superclasses, so should return the same answer
+      regarding the current class no matter when it's called
+      (obviously assuming the state of the superclass).
+
+    .. change::
+      :tags: bug, orm
+      :tickets: 2699
+
+      Fixed bug when a query of the form:
+      ``query(SubClass).options(subqueryload(Baseclass.attrname))``,
+      where ``SubClass`` is a joined inh of ``BaseClass``,
+      would fail to apply the ``JOIN`` inside the subquery
+      on the attribute load, producing a cartesian product.
+      The populated results still tended to be correct as additional
+      rows are just ignored, so this issue may be present as a
+      performance degradation in applications that are
+      otherwise working correctly.  Also in 0.7.11.
+
+    .. change::
+      :tags: bug, orm
       :tickets: 2689
 
-    Fixed bug in unit of work whereby a joined-inheritance
-    subclass could insert the row for the "sub" table
-    before the parent table, if the two tables had no
-    ForeignKey constraints set up between them.
-    Also in 0.7.11.
+      Fixed bug in unit of work whereby a joined-inheritance
+      subclass could insert the row for the "sub" table
+      before the parent table, if the two tables had no
+      ForeignKey constraints set up between them.
+      Also in 0.7.11.
 
     .. change::
       :tags: bug, mssql
       :pullreq: 47
 
-    Added support for additional "disconnect" messages
-    to the pymssql dialect.  Courtesy John Anderson.
+      Added support for additional "disconnect" messages
+      to the pymssql dialect.  Courtesy John Anderson.
 
     .. change::
       :tags: feature, sql
 
-    Loosened the check on dialect-specific argument names
-    passed to Table(); since we want to support external dialects
-    and also want to support args without a certain dialect
-    being installed, it only checks the format of the arg now,
-    rather than looking for that dialect in sqlalchemy.dialects.
+      Loosened the check on dialect-specific argument names
+      passed to Table(); since we want to support external dialects
+      and also want to support args without a certain dialect
+      being installed, it only checks the format of the arg now,
+      rather than looking for that dialect in sqlalchemy.dialects.
 
     .. change::
       :tags: bug, sql
 
-    Fixed bug whereby a DBAPI that can return "0"
-    for cursor.lastrowid would not function correctly
-    in conjunction with :attr:`.ResultProxy.inserted_primary_key`.
+      Fixed bug whereby a DBAPI that can return "0"
+      for cursor.lastrowid would not function correctly
+      in conjunction with :attr:`.ResultProxy.inserted_primary_key`.
 
     .. change::
       :tags: bug, mssql
       :tickets: 2683
       :pullreq: 46
 
-    Fixed Py3K bug regarding "binary" types and
-    pymssql.  Courtesy Marc Abramowitz.
+      Fixed Py3K bug regarding "binary" types and
+      pymssql.  Courtesy Marc Abramowitz.
 
     .. change::
       :tags: bug, postgresql
       :tickets: 2680
 
-    Added missing HSTORE type to postgresql type names
-    so that the type can be reflected.
+      Added missing HSTORE type to postgresql type names
+      so that the type can be reflected.
 
 .. changelog::
     :version: 0.8.0
