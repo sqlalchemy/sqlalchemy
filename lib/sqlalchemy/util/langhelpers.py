@@ -51,10 +51,13 @@ class safe_reraise(object):
         self._exc_info = sys.exc_info()
 
     def __exit__(self, type_, value, traceback):
+        # see #2703 for notes
         if type_ is None:
             exc_type, exc_value, exc_tb = self._exc_info
+            self._exc_info = None   # remove potential circular references
             compat.reraise(exc_type, exc_value, exc_tb)
         else:
+            self._exc_info = None   # remove potential circular references
             compat.reraise(type_, value, traceback)
 
 def decode_slice(slc):
