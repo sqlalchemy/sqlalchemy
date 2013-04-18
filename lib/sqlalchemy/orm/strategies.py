@@ -778,11 +778,12 @@ class SubqueryLoader(AbstractRelationshipLoader):
         # to look only for significant columns
         q = orig_query._clone().correlate(None)
 
-        # TODO: why does polymporphic etc. require hardcoding
-        # into _adapt_col_list ?  Does query.add_columns(...) work
-        # with polymorphic loading ?
-        if entity_mapper.isa(leftmost_mapper):
+        # set a real "from" if not present, as this is more
+        # accurate than just going off of the column expression
+        if not q._from_obj and entity_mapper.isa(leftmost_mapper):
             q._set_select_from(entity_mapper)
+
+        # select from the identity columns of the outer
         q._set_entities(q._adapt_col_list(leftmost_attr))
 
         if q._order_by is False:
