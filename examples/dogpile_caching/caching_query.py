@@ -187,24 +187,6 @@ class RelationshipCache(MapperOption):
 
     propagate_to_loaders = True
 
-    def __init__(self, attribute, region="default"):
-        self.region = region
-        self.cls_ = attribute.property.parent.class_
-        self.key = attribute.property.key
-
-    def process_query_conditionally(self, query):
-        if query._current_path:
-            mapper, key = query._current_path[-2:]
-            if issubclass(mapper.class_, self.cls_) and \
-                key == self.key:
-                query._cache_region = self
-
-class RelationshipCache(MapperOption):
-    """Specifies that a Query as called within a "lazy load"
-       should load results from a cache."""
-
-    propagate_to_loaders = True
-
     def __init__(self, attribute, region="default", cache_key=None):
         """Construct a new RelationshipCache.
 
