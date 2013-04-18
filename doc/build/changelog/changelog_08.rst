@@ -8,6 +8,15 @@
 
     .. change::
       :tags: bug, sql
+      :tickets: 2691
+
+      Fixed bug where disconnect detect on error would
+      raise an attribute error if the error were being
+      raised after the Connection object had already
+      been closed.
+
+    .. change::
+      :tags: bug, sql
       :tickets: 2703
 
       Reworked internal exception raises that emit

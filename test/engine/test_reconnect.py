@@ -51,6 +51,7 @@ class MockCursor(object):
     def __init__(self, parent):
         self.explode = parent.explode
         self.description = ()
+        self.closed = False
     def execute(self, *args, **kwargs):
         if self.explode == 'execute':
             raise MockDisconnect("Lost the DB connection on execute")
@@ -60,10 +61,20 @@ class MockCursor(object):
         elif self.explode in ('rollback', 'rollback_no_disconnect'):
             raise MockError(
                 "something broke on execute but we didn't lose the connection")
+        elif args and "select" in args[0]:
+            self.description = [('foo', None, None, None, None, None)]
         else:
             return
+    def fetchall(self):
+        if self.closed:
+            raise MockError("cursor closed")
+        return []
+    def fetchone(self):
+        if self.closed:
+            raise MockError("cursor closed")
+        return None
     def close(self):
-        pass
+        self.closed = True
 
 db, dbapi = None, None
 class MockReconnectTest(fixtures.TestBase):
@@ -292,6 +303,17 @@ class MockReconnectTest(fixtures.TestBase):
             tsa.exc.StatementError,
             "This Connection is closed",
             conn.execute, select([1])
+        )
+
+    def test_check_disconnect_no_cursor(self):
+        conn = db.connect()
+        result = conn.execute("select 1")
+        result.cursor.close()
+        conn.close()
+        assert_raises_message(
+            tsa.exc.DBAPIError,
+            "cursor closed",
+            list, result
         )
 
 class CursorErrTest(fixtures.TestBase):
