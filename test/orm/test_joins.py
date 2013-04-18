@@ -2068,7 +2068,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest):
 
         sess = create_session()
         eq_(sess.query(Node).filter(Node.children.any(Node.data == 'n3'
-            )).all(), [Node(data='n1'), Node(data='n2')])
+            )).order_by(Node.data).all(), [Node(data='n1'), Node(data='n2')])
 
     def test_contains(self):
         Node = self.classes.Node
