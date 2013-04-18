@@ -3,8 +3,9 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-
 """Provides the Session class and related utilities."""
+
+from __future__ import with_statement
 
 import weakref
 from .. import util, sql, engine, exc as sa_exc, event
