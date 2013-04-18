@@ -1037,7 +1037,7 @@ class BaseRelationFromJoinedSubclassTest(fixtures.MappedTest):
         sess.add_all([e1, e2])
         sess.flush()
 
-    def test_correct_subquery(self):
+    def test_correct_subquery_nofrom(self):
         sess = create_session()
         # use Person.paperwork here just to give the least
         # amount of context
@@ -1083,6 +1083,57 @@ class BaseRelationFromJoinedSubclassTest(fixtures.MappedTest):
                     {"primary_language_1": "java"}
                 )
         )
+
+    def test_correct_subquery_existingfrom(self):
+        sess = create_session()
+        # use Person.paperwork here just to give the least
+        # amount of context
+        q = sess.query(Engineer).\
+                filter(Engineer.primary_language == 'java').\
+                join(Engineer.paperwork).\
+                filter(Paperwork.description == "tps report #2").\
+                options(subqueryload(Person.paperwork))
+        def go():
+            eq_(q.one().paperwork,
+                    [Paperwork(description="tps report #1"),
+                    Paperwork(description="tps report #2")],
+
+                )
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT people.person_id AS people_person_id, "
+                "people.name AS people_name, people.type AS people_type, "
+                "engineers.engineer_id AS engineers_engineer_id, "
+                "engineers.primary_language AS engineers_primary_language "
+                "FROM people JOIN engineers "
+                    "ON people.person_id = engineers.engineer_id "
+                    "JOIN paperwork ON people.person_id = paperwork.person_id "
+                "WHERE engineers.primary_language = :primary_language_1 "
+                "AND paperwork.description = :description_1",
+                {"primary_language_1": "java",
+                    "description_1": "tps report #2"}
+            ),
+            CompiledSQL(
+                "SELECT paperwork.paperwork_id AS paperwork_paperwork_id, "
+                "paperwork.description AS paperwork_description, "
+                "paperwork.person_id AS paperwork_person_id, "
+                "anon_1.people_person_id AS anon_1_people_person_id "
+                "FROM (SELECT people.person_id AS people_person_id "
+                "FROM people JOIN engineers ON people.person_id = "
+                "engineers.engineer_id JOIN paperwork "
+                "ON people.person_id = paperwork.person_id "
+                "WHERE engineers.primary_language = :primary_language_1 AND "
+                "paperwork.description = :description_1) AS anon_1 "
+                "JOIN paperwork ON anon_1.people_person_id = "
+                "paperwork.person_id "
+                "ORDER BY anon_1.people_person_id, paperwork.paperwork_id",
+                {"primary_language_1": "java",
+                    "description_1": "tps report #2"}
+            )
+        )
+
 
 
 
