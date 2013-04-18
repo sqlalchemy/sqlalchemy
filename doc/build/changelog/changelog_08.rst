@@ -7,6 +7,20 @@
     :version: 0.8.1
 
     .. change::
+      :tags: bug, mssql
+      :tickets: 2355
+
+      Part of a longer series of fixes needed for pyodbc+
+      mssql, a CAST to NVARCHAR(max) has been added to the bound
+      parameter for the table name and schema name in all information schema
+      queries to avoid the issue of comparing NVARCHAR to NTEXT,
+      which seems to be rejected by the ODBC driver in some cases,
+      such as FreeTDS (0.91 only?) plus unicode bound parameters being passed.
+      The issue seems to be specific to the SQL Server information
+      schema tables and the workaround is harmless for those cases
+      where the problem doesn't exist in the first place.
+
+    .. change::
       :tags: bug, sql
       :tickets: 2691
 
