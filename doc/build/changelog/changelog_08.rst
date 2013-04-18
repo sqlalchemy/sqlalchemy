@@ -7,6 +7,17 @@
     :version: 0.8.1
 
     .. change::
+      :tags: bug, sql
+      :tickets: 2703
+
+      Reworked internal exception raises that emit
+      a rollback() before re-raising, so that the stack
+      trace is preserved from sys.exc_info() before entering
+      the rollback.  This so that the traceback is preserved
+      when using coroutine frameworks which may have switched
+      contexts before the rollback function returns.
+
+    .. change::
       :tags: bug, orm
       :tickets: 2697
 

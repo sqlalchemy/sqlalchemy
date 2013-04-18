@@ -341,8 +341,8 @@ class SessionTransaction(object):
                 for t in set(self._connections.values()):
                     t[1].prepare()
             except:
-                self.rollback()
-                raise
+                with util.safe_reraise():
+                    self.rollback()
 
         self._state = PREPARED
 
@@ -441,8 +441,8 @@ class SessionTransaction(object):
             try:
                 self.commit()
             except:
-                self.rollback()
-                raise
+                with util.safe_reraise():
+                    self.rollback()
         else:
             self.rollback()
 
@@ -1928,8 +1928,8 @@ class Session(_SessionClassMethods):
             transaction.commit()
 
         except:
-            transaction.rollback(_capture_exception=True)
-            raise
+            with util.safe_reraise():
+                transaction.rollback(_capture_exception=True)
 
     def is_modified(self, instance, include_collections=True,
                             passive=True):
