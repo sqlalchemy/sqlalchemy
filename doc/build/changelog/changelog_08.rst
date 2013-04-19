@@ -7,6 +7,17 @@
     :version: 0.8.1
 
     .. change::
+      :tags: bug, examples
+
+      Fixed a long-standing bug in the caching example, where
+      the limit/offset parameter values wouldn't be taken into
+      account when computing the cache key.  The
+      _key_from_query() function has been simplified to work
+      directly from the final compiled statement in order to get
+      at both the full statement as well as the fully processed
+      parameter list.
+
+    .. change::
       :tags: bug, mssql
       :tickets: 2355
 

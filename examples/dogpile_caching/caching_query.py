@@ -136,24 +136,15 @@ def _key_from_query(query, qualifier=None):
 
     """
 
-    v = []
-    def visit_bindparam(bind):
-
-        if bind.key in query._params:
-            value = query._params[bind.key]
-        elif bind.callable:
-            value = bind.callable()
-        else:
-            value = bind.value
-
-        v.append(unicode(value))
-
     stmt = query.statement
-    visitors.traverse(stmt, {}, {'bindparam': visit_bindparam})
+    compiled = stmt.compile()
+    params = compiled.params
 
     # here we return the key as a long string.  our "key mangler"
     # set up with the region will boil it down to an md5.
-    return " ".join([unicode(stmt)] + v)
+    return " ".join(
+                    [unicode(compiled)] +
+                    [unicode(params[k]) for k in sorted(params)])
 
 class FromCache(MapperOption):
     """Specifies that a Query should load results from a cache."""
