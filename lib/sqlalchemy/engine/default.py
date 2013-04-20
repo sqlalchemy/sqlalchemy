@@ -737,7 +737,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             except Exception, e:
                 self.root_connection._handle_dbapi_exception(
                                 e, None, None, None, self)
-                raise
         else:
             inputsizes = {}
             for key in self.compiled.bind_names.values():
@@ -756,7 +755,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             except Exception, e:
                 self.root_connection._handle_dbapi_exception(
                                 e, None, None, None, self)
-                raise
 
     def _exec_default(self, default, type_):
         if default.is_sequence:

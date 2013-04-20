@@ -136,24 +136,15 @@ def _key_from_query(query, qualifier=None):
 
     """
 
-    v = []
-    def visit_bindparam(bind):
-
-        if bind.key in query._params:
-            value = query._params[bind.key]
-        elif bind.callable:
-            value = bind.callable()
-        else:
-            value = bind.value
-
-        v.append(unicode(value))
-
     stmt = query.statement
-    visitors.traverse(stmt, {}, {'bindparam': visit_bindparam})
+    compiled = stmt.compile()
+    params = compiled.params
 
     # here we return the key as a long string.  our "key mangler"
     # set up with the region will boil it down to an md5.
-    return " ".join([unicode(stmt)] + v)
+    return " ".join(
+                    [unicode(compiled)] +
+                    [unicode(params[k]) for k in sorted(params)])
 
 class FromCache(MapperOption):
     """Specifies that a Query should load results from a cache."""
@@ -180,24 +171,6 @@ class FromCache(MapperOption):
     def process_query(self, query):
         """Process a Query during normal loading operation."""
         query._cache_region = self
-
-class RelationshipCache(MapperOption):
-    """Specifies that a Query as called within a "lazy load"
-       should load results from a cache."""
-
-    propagate_to_loaders = True
-
-    def __init__(self, attribute, region="default"):
-        self.region = region
-        self.cls_ = attribute.property.parent.class_
-        self.key = attribute.property.key
-
-    def process_query_conditionally(self, query):
-        if query._current_path:
-            mapper, key = query._current_path[-2:]
-            if issubclass(mapper.class_, self.cls_) and \
-                key == self.key:
-                query._cache_region = self
 
 class RelationshipCache(MapperOption):
     """Specifies that a Query as called within a "lazy load"

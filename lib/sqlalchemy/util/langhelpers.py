@@ -20,6 +20,7 @@ from .compat import set_types, threading, \
 from functools import update_wrapper
 from .. import exc
 import hashlib
+from . import compat
 
 def md5_hex(x):
     # Py3K
@@ -27,6 +28,37 @@ def md5_hex(x):
     m = hashlib.md5()
     m.update(x)
     return m.hexdigest()
+
+class safe_reraise(object):
+    """Reraise an exception after invoking some
+    handler code.
+
+    Stores the existing exception info before
+    invoking so that it is maintained across a potential
+    coroutine context switch.
+
+    e.g.::
+
+        try:
+            sess.commit()
+        except:
+            with safe_reraise():
+                sess.rollback()
+
+    """
+
+    def __enter__(self):
+        self._exc_info = sys.exc_info()
+
+    def __exit__(self, type_, value, traceback):
+        # see #2703 for notes
+        if type_ is None:
+            exc_type, exc_value, exc_tb = self._exc_info
+            self._exc_info = None   # remove potential circular references
+            compat.reraise(exc_type, exc_value, exc_tb)
+        else:
+            self._exc_info = None   # remove potential circular references
+            compat.reraise(type_, value, traceback)
 
 def decode_slice(slc):
     """decode a slice object as sent to __getitem__.
