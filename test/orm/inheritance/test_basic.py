@@ -1649,10 +1649,10 @@ class OptimizedLoadTest(fixtures.MappedTest):
             pass
 
         mapper(Base, base)
-        mapper(JoinBase, base.outerjoin(sub), properties={
-                'id': [base.c.id, sub.c.id],
-                'counter': [base.c.counter, sub.c.counter]
-            })
+        mapper(JoinBase, base.outerjoin(sub), properties=util.OrderedDict(
+                [('id', [base.c.id, sub.c.id]),
+                ('counter', [base.c.counter, sub.c.counter])])
+            )
         mapper(SubJoinBase, inherits=JoinBase)
 
         sess = Session()
@@ -1672,9 +1672,9 @@ class OptimizedLoadTest(fixtures.MappedTest):
             testing.db,
             go,
             CompiledSQL(
-                "SELECT base.counter AS base_counter, "
-                "sub.counter AS sub_counter, base.id AS base_id, "
-                "sub.id AS sub_id, base.data AS base_data, "
+                "SELECT base.id AS base_id, sub.id AS sub_id, "
+                "base.counter AS base_counter, sub.counter AS sub_counter, "
+                "base.data AS base_data, "
                 "base.type AS base_type, sub.sub AS sub_sub, "
                 "sub.counter2 AS sub_counter2 FROM base "
                 "LEFT OUTER JOIN sub ON base.id = sub.id "
