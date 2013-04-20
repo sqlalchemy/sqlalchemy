@@ -857,6 +857,150 @@ class SessionStateWFixtureTest(_fixtures.FixtureTest):
             assert sa.orm.attributes.instance_state(a).session_id is None
 
 
+class NoCyclesOnTransientDetachedTest(_fixtures.FixtureTest):
+    """Test the instance_state._strong_obj link that it
+    is present only on persistent/pending objects and never
+    transient/detached.
+
+    """
+    run_inserts = None
+
+    def setup(self):
+        mapper(self.classes.User, self.tables.users)
+
+    def _assert_modified(self, u1):
+        assert sa.orm.attributes.instance_state(u1).modified
+
+    def _assert_not_modified(self, u1):
+        assert not sa.orm.attributes.instance_state(u1).modified
+
+    def _assert_cycle(self, u1):
+        assert sa.orm.attributes.instance_state(u1)._strong_obj is not None
+
+    def _assert_no_cycle(self, u1):
+        assert sa.orm.attributes.instance_state(u1)._strong_obj is None
+
+    def _persistent_fixture(self):
+        User = self.classes.User
+        u1 = User()
+        u1.name = "ed"
+        sess = Session()
+        sess.add(u1)
+        sess.flush()
+        return sess, u1
+
+    def test_transient(self):
+        User = self.classes.User
+        u1 = User()
+        u1.name = 'ed'
+        self._assert_no_cycle(u1)
+        self._assert_modified(u1)
+
+    def test_transient_to_pending(self):
+        User = self.classes.User
+        u1 = User()
+        u1.name = 'ed'
+        self._assert_modified(u1)
+        self._assert_no_cycle(u1)
+        sess = Session()
+        sess.add(u1)
+        self._assert_cycle(u1)
+        sess.flush()
+        self._assert_no_cycle(u1)
+        self._assert_not_modified(u1)
+
+    def test_dirty_persistent_to_detached_via_expunge(self):
+        sess, u1 = self._persistent_fixture()
+        u1.name = 'edchanged'
+        self._assert_cycle(u1)
+        sess.expunge(u1)
+        self._assert_no_cycle(u1)
+
+    def test_dirty_persistent_to_detached_via_close(self):
+        sess, u1 = self._persistent_fixture()
+        u1.name = 'edchanged'
+        self._assert_cycle(u1)
+        sess.close()
+        self._assert_no_cycle(u1)
+
+    def test_clean_persistent_to_detached_via_close(self):
+        sess, u1 = self._persistent_fixture()
+        self._assert_no_cycle(u1)
+        self._assert_not_modified(u1)
+        sess.close()
+        u1.name = 'edchanged'
+        self._assert_modified(u1)
+        self._assert_no_cycle(u1)
+
+    def test_detached_to_dirty_deleted(self):
+        sess, u1 = self._persistent_fixture()
+        sess.expunge(u1)
+        u1.name = 'edchanged'
+        self._assert_no_cycle(u1)
+        sess.delete(u1)
+        self._assert_cycle(u1)
+
+    def test_detached_to_dirty_persistent(self):
+        sess, u1 = self._persistent_fixture()
+        sess.expunge(u1)
+        u1.name = 'edchanged'
+        self._assert_modified(u1)
+        self._assert_no_cycle(u1)
+        sess.add(u1)
+        self._assert_cycle(u1)
+        self._assert_modified(u1)
+
+    def test_detached_to_clean_persistent(self):
+        sess, u1 = self._persistent_fixture()
+        sess.expunge(u1)
+        self._assert_no_cycle(u1)
+        self._assert_not_modified(u1)
+        sess.add(u1)
+        self._assert_no_cycle(u1)
+        self._assert_not_modified(u1)
+
+    def test_move_persistent_clean(self):
+        sess, u1 = self._persistent_fixture()
+        sess.close()
+        s2 = Session()
+        s2.add(u1)
+        self._assert_no_cycle(u1)
+        self._assert_not_modified(u1)
+
+    def test_move_persistent_dirty(self):
+        sess, u1 = self._persistent_fixture()
+        u1.name = 'edchanged'
+        self._assert_cycle(u1)
+        self._assert_modified(u1)
+        sess.close()
+        self._assert_no_cycle(u1)
+        s2 = Session()
+        s2.add(u1)
+        self._assert_cycle(u1)
+        self._assert_modified(u1)
+
+    @testing.requires.predictable_gc
+    def test_move_gc_session_persistent_dirty(self):
+        sess, u1 = self._persistent_fixture()
+        u1.name = 'edchanged'
+        self._assert_cycle(u1)
+        self._assert_modified(u1)
+        del sess
+        gc_collect()
+        self._assert_cycle(u1)
+        s2 = Session()
+        s2.add(u1)
+        self._assert_cycle(u1)
+        self._assert_modified(u1)
+
+    def test_persistent_dirty_to_expired(self):
+        sess, u1 = self._persistent_fixture()
+        u1.name = 'edchanged'
+        self._assert_cycle(u1)
+        self._assert_modified(u1)
+        sess.expire(u1)
+        self._assert_no_cycle(u1)
+        self._assert_not_modified(u1)
 
 class WeakIdentityMapTest(_fixtures.FixtureTest):
     run_inserts = None

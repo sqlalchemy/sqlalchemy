@@ -7,6 +7,22 @@
     :version: 0.8.1
 
     .. change::
+      :tags: bug
+      :tickets: 2708
+
+      Improved the behavior of instance management regarding
+      the creation of strong references within the Session;
+      an object will no longer have an internal reference cycle
+      created if it's in the transient state or moves into the
+      detached state - the strong ref is created only when the
+      object is attached to a Session and is removed when the
+      object is detached.  This makes it somewhat safer for an
+      object to have a `__del__()` method, even though this is
+      not recommended, as relationships with backrefs produce
+      cycles too.  A warning has been added when a class with
+      a `__del__()` method is mapped.
+
+    .. change::
       :tags: bug, mysql
       :pullreq: 54
 

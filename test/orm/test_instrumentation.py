@@ -445,6 +445,20 @@ class MapperInitTest(fixtures.ORMTest):
         # C is not mapped in the current implementation
         assert_raises(sa.orm.exc.UnmappedClassError, class_mapper, C)
 
+    def test_del_warning(self):
+        class A(object):
+            def __del__(self):
+                pass
+
+        assert_raises_message(
+            sa.exc.SAWarning,
+            r"__del__\(\) method on class "
+            "<class 'test.orm.test_instrumentation.A'> will cause "
+            "unreachable cycles and memory leaks, as SQLAlchemy "
+            "instrumentation often creates reference cycles.  "
+            "Please remove this method.",
+            mapper, A, self.fixture()
+        )
 
 class OnLoadTest(fixtures.ORMTest):
     """Check that Events.load is not hit in regular attributes operations."""

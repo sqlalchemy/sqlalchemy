@@ -1727,13 +1727,13 @@ class Session(_SessionClassMethods):
 
     def _before_attach(self, state):
         if state.session_id != self.hash_key and \
-            self.dispatch.before_attach:
+                self.dispatch.before_attach:
             self.dispatch.before_attach(self, state.obj())
 
     def _attach(self, state, include_before=False):
         if state.key and \
             state.key in self.identity_map and \
-            not self.identity_map.contains_state(state):
+                not self.identity_map.contains_state(state):
             raise sa_exc.InvalidRequestError("Can't attach instance "
                     "%s; another instance with key %s is already "
                     "present in this session."
@@ -1749,9 +1749,11 @@ class Session(_SessionClassMethods):
 
         if state.session_id != self.hash_key:
             if include_before and \
-                self.dispatch.before_attach:
+                    self.dispatch.before_attach:
                 self.dispatch.before_attach(self, state.obj())
             state.session_id = self.hash_key
+            if state.modified and not state._strong_obj:
+                state._strong_obj = state.obj()
             if self.dispatch.after_attach:
                 self.dispatch.after_attach(self, state.obj())
 
