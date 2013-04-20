@@ -19,6 +19,7 @@ from sqlalchemy import exc, schema, types
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import HSTORE, hstore, array
 import decimal
+from sqlalchemy import util
 from sqlalchemy.testing.util import round_decimal
 from sqlalchemy.sql import table, column, operators
 import logging
@@ -2836,8 +2837,8 @@ class HStoreTest(fixtures.TestBase):
         dialect = default.DefaultDialect()
         proc = self.test_table.c.hash.type._cached_bind_processor(dialect)
         eq_(
-            proc({"key1": "value1", "key2": "value2"}),
-            '"key2"=>"value2", "key1"=>"value1"'
+            proc(util.OrderedDict([("key1", "value1"), ("key2", "value2")])),
+            '"key1"=>"value1", "key2"=>"value2"'
         )
 
     def test_parse_error(self):
@@ -2878,8 +2879,8 @@ class HStoreTest(fixtures.TestBase):
         dialect._has_native_hstore = False
         proc = self.test_table.c.hash.type._cached_bind_processor(dialect)
         eq_(
-            proc({"key1": "value1", "key2": "value2"}),
-            '"key2"=>"value2", "key1"=>"value1"'
+            proc(util.OrderedDict([("key1", "value1"), ("key2", "value2")])),
+            '"key1"=>"value1", "key2"=>"value2"'
         )
 
     def test_result_deserialize_psycopg2(self):
