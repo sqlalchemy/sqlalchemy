@@ -1752,7 +1752,7 @@ class Session(_SessionClassMethods):
                     self.dispatch.before_attach:
                 self.dispatch.before_attach(self, state.obj())
             state.session_id = self.hash_key
-            if state.modified and not state._strong_obj:
+            if state.modified and state._strong_obj is None:
                 state._strong_obj = state.obj()
             if self.dispatch.after_attach:
                 self.dispatch.after_attach(self, state.obj())
