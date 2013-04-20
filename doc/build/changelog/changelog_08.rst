@@ -7,6 +7,14 @@
     :version: 0.8.1
 
     .. change::
+      :tags: bug, mysql
+      :pullreq: 54
+
+      Updated a regexp to correctly extract error code on
+      google app engine v1.7.5 and newer.  Courtesy
+      Dan Ring.
+
+    .. change::
       :tags: bug, examples
 
       Fixed a long-standing bug in the caching example, where
