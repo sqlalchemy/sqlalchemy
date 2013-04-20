@@ -3,8 +3,9 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-
 """Provides the Session class and related utilities."""
+
+from __future__ import with_statement
 
 import weakref
 from .. import util, sql, engine, exc as sa_exc, event
@@ -341,8 +342,8 @@ class SessionTransaction(object):
                 for t in set(self._connections.values()):
                     t[1].prepare()
             except:
-                self.rollback()
-                raise
+                with util.safe_reraise():
+                    self.rollback()
 
         self._state = PREPARED
 
@@ -441,8 +442,8 @@ class SessionTransaction(object):
             try:
                 self.commit()
             except:
-                self.rollback()
-                raise
+                with util.safe_reraise():
+                    self.rollback()
         else:
             self.rollback()
 
@@ -1726,13 +1727,13 @@ class Session(_SessionClassMethods):
 
     def _before_attach(self, state):
         if state.session_id != self.hash_key and \
-            self.dispatch.before_attach:
+                self.dispatch.before_attach:
             self.dispatch.before_attach(self, state.obj())
 
     def _attach(self, state, include_before=False):
         if state.key and \
             state.key in self.identity_map and \
-            not self.identity_map.contains_state(state):
+                not self.identity_map.contains_state(state):
             raise sa_exc.InvalidRequestError("Can't attach instance "
                     "%s; another instance with key %s is already "
                     "present in this session."
@@ -1748,9 +1749,11 @@ class Session(_SessionClassMethods):
 
         if state.session_id != self.hash_key:
             if include_before and \
-                self.dispatch.before_attach:
+                    self.dispatch.before_attach:
                 self.dispatch.before_attach(self, state.obj())
             state.session_id = self.hash_key
+            if state.modified and state._strong_obj is None:
+                state._strong_obj = state.obj()
             if self.dispatch.after_attach:
                 self.dispatch.after_attach(self, state.obj())
 
@@ -1928,8 +1931,8 @@ class Session(_SessionClassMethods):
             transaction.commit()
 
         except:
-            transaction.rollback(_capture_exception=True)
-            raise
+            with util.safe_reraise():
+                transaction.rollback(_capture_exception=True)
 
     def is_modified(self, instance, include_collections=True,
                             passive=True):

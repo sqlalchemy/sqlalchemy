@@ -72,6 +72,13 @@ class ClassManager(dict):
         self.manage()
         self._instrument_init()
 
+        if '__del__' in class_.__dict__:
+            util.warn("__del__() method on class %s will "
+                        "cause unreachable cycles and memory leaks, "
+                        "as SQLAlchemy instrumentation often creates "
+                        "reference cycles.  Please remove this method." %
+                        class_)
+
     dispatch = event.dispatcher(events.InstanceEvents)
 
     @property

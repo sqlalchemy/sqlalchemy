@@ -1949,7 +1949,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults, ComparesTabl
                 engine.execute(tbl.delete())
 
 class MonkeyPatchedBinaryTest(fixtures.TestBase):
-    __only_on__ = 'mssql'
+    __only_on__ = 'mssql+pymssql'
 
     def test_unicode(self):
         module = __import__('pymssql')

@@ -761,8 +761,9 @@ class Mapper(_InspectionAttr):
             del self._configure_failed
 
         if not self.non_primary and \
+            self.class_manager is not None and \
             self.class_manager.is_mapped and \
-            self.class_manager.mapper is self:
+                self.class_manager.mapper is self:
             instrumentation.unregister_class(self.class_)
 
     def _configure_pks(self):

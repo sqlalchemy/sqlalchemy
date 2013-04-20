@@ -164,7 +164,7 @@ class InstanceState(interfaces._InspectionAttr):
         return bool(self.key)
 
     def _detach(self):
-        self.session_id = None
+        self.session_id = self._strong_obj = None
 
     def _dispose(self):
         self._detach()
@@ -176,7 +176,7 @@ class InstanceState(interfaces._InspectionAttr):
             instance_dict.discard(self)
 
         self.callables = {}
-        self.session_id = None
+        self.session_id = self._strong_obj = None
         del self.obj
 
     def obj(self):
@@ -259,9 +259,6 @@ class InstanceState(interfaces._InspectionAttr):
         self.expired = state.get('expired', False)
         self.callables = state.get('callables', {})
 
-        if self.modified:
-            self._strong_obj = inst
-
         self.__dict__.update([
             (k, state[k]) for k in (
                 'key', 'load_options',
@@ -322,6 +319,7 @@ class InstanceState(interfaces._InspectionAttr):
             modified_set.discard(self)
 
         self.modified = False
+        self._strong_obj = None
 
         self.committed_state.clear()
 
@@ -335,7 +333,7 @@ class InstanceState(interfaces._InspectionAttr):
         for key in self.manager:
             impl = self.manager[key].impl
             if impl.accepts_scalar_loader and \
-                (impl.expire_missing or key in dict_):
+                    (impl.expire_missing or key in dict_):
                 self.callables[key] = self
             old = dict_.pop(key, None)
             if impl.collection and old is not None:
@@ -435,18 +433,22 @@ class InstanceState(interfaces._InspectionAttr):
 
             self.committed_state[attr.key] = previous
 
-        # the "or not self.modified" is defensive at
-        # this point.  The assertion below is expected
-        # to be True:
         # assert self._strong_obj is None or self.modified
 
-        if self._strong_obj is None or not self.modified:
+        if (self.session_id and self._strong_obj is None) \
+                or not self.modified:
             instance_dict = self._instance_dict()
             if instance_dict:
                 instance_dict._modified.add(self)
 
-            self._strong_obj = self.obj()
-            if self._strong_obj is None:
+            # only create _strong_obj link if attached
+            # to a session
+
+            inst = self.obj()
+            if self.session_id:
+                self._strong_obj = inst
+
+            if inst is None:
                 raise orm_exc.ObjectDereferencedError(
                         "Can't emit change event for attribute '%s' - "
                         "parent object of type %s has been garbage "
@@ -467,7 +469,6 @@ class InstanceState(interfaces._InspectionAttr):
         this step if a value was not populated in state.dict.
 
         """
-        class_manager = self.manager
         for key in keys:
             self.committed_state.pop(key, None)
 

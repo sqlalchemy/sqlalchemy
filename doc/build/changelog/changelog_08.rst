@@ -8,6 +8,96 @@
 
     .. change::
       :tags: bug, orm
+      :tickets: 2708
+
+      Improved the behavior of instance management regarding
+      the creation of strong references within the Session;
+      an object will no longer have an internal reference cycle
+      created if it's in the transient state or moves into the
+      detached state - the strong ref is created only when the
+      object is attached to a Session and is removed when the
+      object is detached.  This makes it somewhat safer for an
+      object to have a `__del__()` method, even though this is
+      not recommended, as relationships with backrefs produce
+      cycles too.  A warning has been added when a class with
+      a `__del__()` method is mapped.
+
+    .. change::
+      :tags: bug, sql
+      :tickets: 2702
+
+      A major fix to the way in which a select() object produces
+      labeled columns when apply_labels() is used; this mode
+      produces a SELECT where each column is labeled as in
+      <tablename>_<columnname>, to remove column name collisions
+      for a multiple table select.   The fix is that if two labels
+      collide when combined with the table name, i.e.
+      "foo.bar_id" and "foo_bar.id", anonymous aliasing will be
+      applied to one of the dupes.  This allows the ORM to handle
+      both columns independently; previously, 0.7
+      would in some cases silently emit a second SELECT for the
+      column that was "duped", and in 0.8 an ambiguous column error
+      would be emitted.   The "keys" applied to the .c. collection
+      of the select() will also be deduped, so that the "column
+      being replaced" warning will no longer emit for any select()
+      that specifies use_labels, though the dupe key will be given
+      an anonymous label which isn't generally user-friendly.
+
+    .. change::
+      :tags: bug, mysql
+      :pullreq: 54
+
+      Updated a regexp to correctly extract error code on
+      google app engine v1.7.5 and newer.  Courtesy
+      Dan Ring.
+
+    .. change::
+      :tags: bug, examples
+
+      Fixed a long-standing bug in the caching example, where
+      the limit/offset parameter values wouldn't be taken into
+      account when computing the cache key.  The
+      _key_from_query() function has been simplified to work
+      directly from the final compiled statement in order to get
+      at both the full statement as well as the fully processed
+      parameter list.
+
+    .. change::
+      :tags: bug, mssql
+      :tickets: 2355
+
+      Part of a longer series of fixes needed for pyodbc+
+      mssql, a CAST to NVARCHAR(max) has been added to the bound
+      parameter for the table name and schema name in all information schema
+      queries to avoid the issue of comparing NVARCHAR to NTEXT,
+      which seems to be rejected by the ODBC driver in some cases,
+      such as FreeTDS (0.91 only?) plus unicode bound parameters being passed.
+      The issue seems to be specific to the SQL Server information
+      schema tables and the workaround is harmless for those cases
+      where the problem doesn't exist in the first place.
+
+    .. change::
+      :tags: bug, sql
+      :tickets: 2691
+
+      Fixed bug where disconnect detect on error would
+      raise an attribute error if the error were being
+      raised after the Connection object had already
+      been closed.
+
+    .. change::
+      :tags: bug, sql
+      :tickets: 2703
+
+      Reworked internal exception raises that emit
+      a rollback() before re-raising, so that the stack
+      trace is preserved from sys.exc_info() before entering
+      the rollback.  This so that the traceback is preserved
+      when using coroutine frameworks which may have switched
+      contexts before the rollback function returns.
+
+    .. change::
+      :tags: bug, orm
       :tickets: 2697
 
       Fixed bug whereby ORM would run the wrong kind of
@@ -49,26 +139,6 @@
       handling routine fails and regardless of whether the
       condition is a disconnect or not.
 
-    .. change::
-      :tags: bug, sql
-      :tickets: 2702
-
-      A major fix to the way in which a select() object produces
-      labeled columns when apply_labels() is used; this mode
-      produces a SELECT where each column is labeled as in
-      <tablename>_<columnname>, to remove column name collisions
-      for a multiple table select.   The fix is that if two labels
-      collide when combined with the table name, i.e.
-      "foo.bar_id" and "foo_bar.id", anonymous aliasing will be
-      applied to one of the dupes.  This allows the ORM to handle
-      both columns independently; previously, 0.7
-      would in some cases silently emit a second SELECT for the
-      column that was "duped", and in 0.8 an ambiguous column error
-      would be emitted.   The "keys" applied to the .c. collection
-      of the select() will also be deduped, so that the "column
-      being replaced" warning will no longer emit for any select()
-      that specifies use_labels, though the dupe key will be given
-      an anonymous label which isn't generally user-friendly.
 
     .. change::
       :tags: bug, orm, declarative
