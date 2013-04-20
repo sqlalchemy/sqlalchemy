@@ -7,7 +7,7 @@
     :version: 0.8.1
 
     .. change::
-      :tags: bug
+      :tags: bug, orm
       :tickets: 2708
 
       Improved the behavior of instance management regarding
@@ -21,6 +21,27 @@
       not recommended, as relationships with backrefs produce
       cycles too.  A warning has been added when a class with
       a `__del__()` method is mapped.
+
+    .. change::
+      :tags: bug, sql
+      :tickets: 2702
+
+      A major fix to the way in which a select() object produces
+      labeled columns when apply_labels() is used; this mode
+      produces a SELECT where each column is labeled as in
+      <tablename>_<columnname>, to remove column name collisions
+      for a multiple table select.   The fix is that if two labels
+      collide when combined with the table name, i.e.
+      "foo.bar_id" and "foo_bar.id", anonymous aliasing will be
+      applied to one of the dupes.  This allows the ORM to handle
+      both columns independently; previously, 0.7
+      would in some cases silently emit a second SELECT for the
+      column that was "duped", and in 0.8 an ambiguous column error
+      would be emitted.   The "keys" applied to the .c. collection
+      of the select() will also be deduped, so that the "column
+      being replaced" warning will no longer emit for any select()
+      that specifies use_labels, though the dupe key will be given
+      an anonymous label which isn't generally user-friendly.
 
     .. change::
       :tags: bug, mysql
@@ -118,26 +139,6 @@
       handling routine fails and regardless of whether the
       condition is a disconnect or not.
 
-    .. change::
-      :tags: bug, sql
-      :tickets: 2702
-
-      A major fix to the way in which a select() object produces
-      labeled columns when apply_labels() is used; this mode
-      produces a SELECT where each column is labeled as in
-      <tablename>_<columnname>, to remove column name collisions
-      for a multiple table select.   The fix is that if two labels
-      collide when combined with the table name, i.e.
-      "foo.bar_id" and "foo_bar.id", anonymous aliasing will be
-      applied to one of the dupes.  This allows the ORM to handle
-      both columns independently; previously, 0.7
-      would in some cases silently emit a second SELECT for the
-      column that was "duped", and in 0.8 an ambiguous column error
-      would be emitted.   The "keys" applied to the .c. collection
-      of the select() will also be deduped, so that the "column
-      being replaced" warning will no longer emit for any select()
-      that specifies use_labels, though the dupe key will be given
-      an anonymous label which isn't generally user-friendly.
 
     .. change::
       :tags: bug, orm, declarative
