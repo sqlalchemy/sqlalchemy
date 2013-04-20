@@ -65,10 +65,10 @@ class MySQLDialect_gaerdbms(MySQLDialect_mysqldb):
         return [], opts
 
     def _extract_error_code(self, exception):
-        match = re.compile(r"^(\d+):").match(str(exception))
+        match = re.compile(r"^(\d+):|^\((\d+),").match(str(exception))
         # The rdbms api will wrap then re-raise some types of errors
         # making this regex return no matches.
-        code = match.group(1) if match else None
+        code = match.group(1) or match.group(2) if match else None
         if code:
             return int(code)
 
