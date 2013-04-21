@@ -7,6 +7,15 @@
     :version: 0.8.1
 
     .. change::
+      :tags: bug, mysql
+      :tickets: 2663
+
+      Improvements to the operation of the pymysql dialect on
+      Python 3, including some important decode/bytes steps.
+      Issues remain with BLOB types due to driver issues.
+      Courtesy Ben Trofatter.
+
+    .. change::
       :tags: bug, orm
       :tickets: 2710
 

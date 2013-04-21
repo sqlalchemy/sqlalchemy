@@ -1932,11 +1932,8 @@ class MySQLDialect(default.DefaultDialect):
         cursor.execute('SELECT @@tx_isolation')
         val = cursor.fetchone()[0]
         cursor.close()
-        # Py3K
-        #if isinstance(val, bytes):
-        #    val = val.decode()
-        # Py2K
-        # end Py2K
+        if util.py3k and isinstance(val, bytes):
+            val = val.decode()
         return val.upper().replace("-", " ")
 
     def do_commit(self, dbapi_connection):
