@@ -12,7 +12,8 @@
 
       Fixed bug where many-to-many relationship with uselist=False
       would fail to delete the association row and raise an error
-      if the scalar attribute were set to None.  Also in 0.7.11.
+      if the scalar attribute were set to None.  This was a
+      regression introduced by the changes for :ticket:`2229`.
 
     .. change::
       :tags: bug, orm
