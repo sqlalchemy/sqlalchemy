@@ -307,6 +307,7 @@ class MemUsageTest(EnsureZeroed):
         finally:
             metadata.drop_all()
 
+    @testing.crashes('mysql+cymysql', 'blocking with cymysql >= 0.6')
     def test_unicode_warnings(self):
         metadata = MetaData(testing.db)
         table1 = Table('mytable', metadata, Column('col1', Integer,
