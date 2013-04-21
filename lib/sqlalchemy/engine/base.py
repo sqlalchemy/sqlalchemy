@@ -62,6 +62,7 @@ class Connection(Connectable):
         self.__savepoint_seq = 0
         self.__branch = _branch
         self.__invalid = False
+        self.__can_reconnect = True
         if _dispatch:
             self.dispatch = _dispatch
         elif engine._has_events:
@@ -213,8 +214,8 @@ class Connection(Connectable):
     def closed(self):
         """Return True if this connection is closed."""
 
-        return not self.__invalid and '_Connection__connection' \
-                        not in self.__dict__
+        return '_Connection__connection' not in self.__dict__ \
+            and not self.__can_reconnect
 
     @property
     def invalidated(self):
@@ -232,7 +233,7 @@ class Connection(Connectable):
             return self._revalidate_connection()
 
     def _revalidate_connection(self):
-        if self.__invalid:
+        if self.__can_reconnect and self.__invalid:
             if self.__transaction is not None:
                 raise exc.InvalidRequestError(
                                 "Can't reconnect until invalid "
@@ -461,7 +462,6 @@ class Connection(Connectable):
             self.engine.dialect.do_begin(self.connection)
         except Exception, e:
             self._handle_dbapi_exception(e, None, None, None, None)
-            raise
 
     def _rollback_impl(self):
         if self._has_events:
@@ -475,7 +475,6 @@ class Connection(Connectable):
                 self.__transaction = None
             except Exception, e:
                 self._handle_dbapi_exception(e, None, None, None, None)
-                raise
         else:
             self.__transaction = None
 
@@ -490,7 +489,6 @@ class Connection(Connectable):
             self.__transaction = None
         except Exception, e:
             self._handle_dbapi_exception(e, None, None, None, None)
-            raise
 
     def _savepoint_impl(self, name=None):
         if self._has_events:
@@ -577,15 +575,15 @@ class Connection(Connectable):
         and will allow no further operations.
 
         """
-
         try:
             conn = self.__connection
         except AttributeError:
-            return
-        if not self.__branch:
-            conn.close()
-        self.__invalid = False
-        del self.__connection
+            pass
+        else:
+            if not self.__branch:
+                conn.close()
+            del self.__connection
+        self.__can_reconnect = False
         self.__transaction = None
 
     def scalar(self, object, *multiparams, **params):
@@ -692,7 +690,6 @@ class Connection(Connectable):
                                 dialect, self, conn)
         except Exception, e:
             self._handle_dbapi_exception(e, None, None, None, None)
-            raise
 
         ret = ctx._exec_default(default, None)
         if self.should_close_with_result:
@@ -829,7 +826,6 @@ class Connection(Connectable):
             self._handle_dbapi_exception(e,
                         str(statement), parameters,
                         None, None)
-            raise
 
         if context.compiled:
             context.pre_exec()
@@ -876,7 +872,6 @@ class Connection(Connectable):
                                 parameters,
                                 cursor,
                                 context)
-            raise
 
         if self._has_events:
             self.dispatch.after_cursor_execute(self, cursor,
@@ -951,7 +946,6 @@ class Connection(Connectable):
                                 parameters,
                                 cursor,
                                 None)
-            raise
 
     def _safe_close_cursor(self, cursor):
         """Close the given cursor, catching exceptions
@@ -972,23 +966,31 @@ class Connection(Connectable):
             if isinstance(e, (SystemExit, KeyboardInterrupt)):
                 raise
 
+    _reentrant_error = False
+    _is_disconnect = False
+
     def _handle_dbapi_exception(self,
                                     e,
                                     statement,
                                     parameters,
                                     cursor,
                                     context):
-        if getattr(self, '_reentrant_error', False):
-            # Py3K
-            #raise exc.DBAPIError.instance(statement, parameters, e,
-            #                               self.dialect.dbapi.Error) from e
-            # Py2K
-            raise exc.DBAPIError.instance(statement,
+
+        exc_info = sys.exc_info()
+
+        if not self._is_disconnect:
+            self._is_disconnect = isinstance(e, self.dialect.dbapi.Error) and \
+                not self.closed and \
+                self.dialect.is_disconnect(e, self.__connection, cursor)
+
+        if self._reentrant_error:
+            util.raise_from_cause(
+                        exc.DBAPIError.instance(statement,
                                             parameters,
                                             e,
-                                            self.dialect.dbapi.Error), \
-                                            None, sys.exc_info()[2]
-            # end Py2K
+                                            self.dialect.dbapi.Error),
+                        exc_info
+                        )
         self._reentrant_error = True
         try:
             # non-DBAPI error - if we already got a context,
@@ -1006,45 +1008,35 @@ class Connection(Connectable):
                                                     e)
                 context.handle_dbapi_exception(e)
 
-            is_disconnect = isinstance(e, self.dialect.dbapi.Error) and \
-                self.dialect.is_disconnect(e, self.__connection, cursor)
-
-            if is_disconnect:
-                dbapi_conn_wrapper = self.connection
-                self.invalidate(e)
-                if not hasattr(dbapi_conn_wrapper, '_pool') or \
-                    dbapi_conn_wrapper._pool is self.engine.pool:
-                    self.engine.dispose()
-            else:
+            if not self._is_disconnect:
                 if cursor:
                     self._safe_close_cursor(cursor)
                 self._autorollback()
-                if self.should_close_with_result:
-                    self.close()
 
-            if not should_wrap:
-                return
+            if should_wrap:
+                util.raise_from_cause(
+                                    exc.DBAPIError.instance(
+                                        statement,
+                                        parameters,
+                                        e,
+                                        self.dialect.dbapi.Error,
+                                        connection_invalidated=self._is_disconnect),
+                                    exc_info
+                                )
 
-            # Py3K
-            #raise exc.DBAPIError.instance(
-            #                        statement,
-            #                        parameters,
-            #                        e,
-            #                        self.dialect.dbapi.Error,
-            #                        connection_invalidated=is_disconnect) \
-            #                        from e
-            # Py2K
-            raise exc.DBAPIError.instance(
-                                    statement,
-                                    parameters,
-                                    e,
-                                    self.dialect.dbapi.Error,
-                                    connection_invalidated=is_disconnect), \
-                                    None, sys.exc_info()[2]
-            # end Py2K
+            util.reraise(*exc_info)
 
         finally:
             del self._reentrant_error
+            if self._is_disconnect:
+                del self._is_disconnect
+                dbapi_conn_wrapper = self.connection
+                self.invalidate(e)
+                if not hasattr(dbapi_conn_wrapper, '_pool') or \
+                        dbapi_conn_wrapper._pool is self.engine.pool:
+                    self.engine.dispose()
+            if self.should_close_with_result:
+                self.close()
 
     # poor man's multimethod/generic function thingy
     executors = {
@@ -1107,8 +1099,8 @@ class Connection(Connectable):
             trans.commit()
             return ret
         except:
-            trans.rollback()
-            raise
+            with util.safe_reraise():
+                trans.rollback()
 
     def run_callable(self, callable_, *args, **kwargs):
         """Given a callable object or function, execute it, passing
@@ -1214,8 +1206,8 @@ class Transaction(object):
             try:
                 self.commit()
             except:
-                self.rollback()
-                raise
+                with util.safe_reraise():
+                    self.rollback()
         else:
             self.rollback()
 
@@ -1540,8 +1532,8 @@ class Engine(Connectable, log.Identified):
         try:
             trans = conn.begin()
         except:
-            conn.close()
-            raise
+            with util.safe_reraise():
+                conn.close()
         return Engine._trans_ctx(conn, trans, close_with_result)
 
     def transaction(self, callable_, *args, **kwargs):

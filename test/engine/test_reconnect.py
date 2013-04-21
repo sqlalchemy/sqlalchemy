@@ -11,7 +11,10 @@ from sqlalchemy import exc
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.engines import testing_engine
 
-class MockDisconnect(Exception):
+class MockError(Exception):
+    pass
+
+class MockDisconnect(MockError):
     pass
 
 class MockDBAPI(object):
@@ -20,17 +23,23 @@ class MockDBAPI(object):
         self.connections = weakref.WeakKeyDictionary()
     def connect(self, *args, **kwargs):
         return MockConnection(self)
-    def shutdown(self):
+    def shutdown(self, explode='execute'):
         for c in self.connections:
-            c.explode[0] = True
-    Error = MockDisconnect
+            c.explode = explode
+    Error = MockError
 
 class MockConnection(object):
     def __init__(self, dbapi):
         dbapi.connections[self] = True
-        self.explode = [False]
+        self.explode = ""
     def rollback(self):
-        pass
+        if self.explode == 'rollback':
+            raise MockDisconnect("Lost the DB connection on rollback")
+        if self.explode == 'rollback_no_disconnect':
+            raise MockError(
+                "something broke on rollback but we didn't lose the connection")
+        else:
+            return
     def commit(self):
         pass
     def cursor(self):
@@ -42,13 +51,30 @@ class MockCursor(object):
     def __init__(self, parent):
         self.explode = parent.explode
         self.description = ()
+        self.closed = False
     def execute(self, *args, **kwargs):
-        if self.explode[0]:
-            raise MockDisconnect("Lost the DB connection")
+        if self.explode == 'execute':
+            raise MockDisconnect("Lost the DB connection on execute")
+        elif self.explode in ('execute_no_disconnect', ):
+            raise MockError(
+                "something broke on execute but we didn't lose the connection")
+        elif self.explode in ('rollback', 'rollback_no_disconnect'):
+            raise MockError(
+                "something broke on execute but we didn't lose the connection")
+        elif args and "select" in args[0]:
+            self.description = [('foo', None, None, None, None, None)]
         else:
             return
+    def fetchall(self):
+        if self.closed:
+            raise MockError("cursor closed")
+        return []
+    def fetchone(self):
+        if self.closed:
+            raise MockError("cursor closed")
+        return None
     def close(self):
-        pass
+        self.closed = True
 
 db, dbapi = None, None
 class MockReconnectTest(fixtures.TestBase):
@@ -167,12 +193,10 @@ class MockReconnectTest(fixtures.TestBase):
 
         dbapi.shutdown()
 
-        # raises error
-        try:
-            conn.execute(select([1]))
-            assert False
-        except tsa.exc.DBAPIError:
-            pass
+        assert_raises(
+            tsa.exc.DBAPIError,
+            conn.execute, select([1])
+        )
 
         assert not conn.closed
         assert conn.invalidated
@@ -185,6 +209,112 @@ class MockReconnectTest(fixtures.TestBase):
         conn.execute(select([1]))
         assert not conn.invalidated
         assert len(dbapi.connections) == 1
+
+    def test_invalidated_close(self):
+        conn = db.connect()
+
+        dbapi.shutdown()
+
+        assert_raises(
+            tsa.exc.DBAPIError,
+            conn.execute, select([1])
+        )
+
+        conn.close()
+        assert conn.closed
+        assert conn.invalidated
+        assert_raises_message(
+            tsa.exc.StatementError,
+            "This Connection is closed",
+            conn.execute, select([1])
+        )
+
+    def test_noreconnect_execute_plus_closewresult(self):
+        conn = db.connect(close_with_result=True)
+
+        dbapi.shutdown("execute_no_disconnect")
+
+        # raises error
+        assert_raises_message(
+            tsa.exc.DBAPIError,
+            "something broke on execute but we didn't lose the connection",
+            conn.execute, select([1])
+        )
+
+        assert conn.closed
+        assert not conn.invalidated
+
+    def test_noreconnect_rollback_plus_closewresult(self):
+        conn = db.connect(close_with_result=True)
+
+        dbapi.shutdown("rollback_no_disconnect")
+
+        # raises error
+        assert_raises_message(
+            tsa.exc.DBAPIError,
+            "something broke on rollback but we didn't lose the connection",
+            conn.execute, select([1])
+        )
+
+        assert conn.closed
+        assert not conn.invalidated
+
+        assert_raises_message(
+            tsa.exc.StatementError,
+            "This Connection is closed",
+            conn.execute, select([1])
+        )
+
+    def test_reconnect_on_reentrant(self):
+        conn = db.connect()
+
+        conn.execute(select([1]))
+
+        assert len(dbapi.connections) == 1
+
+        dbapi.shutdown("rollback")
+
+        # raises error
+        assert_raises_message(
+            tsa.exc.DBAPIError,
+            "Lost the DB connection on rollback",
+            conn.execute, select([1])
+        )
+
+        assert not conn.closed
+        assert conn.invalidated
+
+    def test_reconnect_on_reentrant_plus_closewresult(self):
+        conn = db.connect(close_with_result=True)
+
+        dbapi.shutdown("rollback")
+
+        # raises error
+        assert_raises_message(
+            tsa.exc.DBAPIError,
+            "Lost the DB connection on rollback",
+            conn.execute, select([1])
+        )
+
+        assert conn.closed
+        assert conn.invalidated
+
+        assert_raises_message(
+            tsa.exc.StatementError,
+            "This Connection is closed",
+            conn.execute, select([1])
+        )
+
+    def test_check_disconnect_no_cursor(self):
+        conn = db.connect()
+        result = conn.execute("select 1")
+        result.cursor.close()
+        conn.close()
+        assert_raises_message(
+            tsa.exc.DBAPIError,
+            "cursor closed",
+            list, result
+        )
 
 class CursorErrTest(fixtures.TestBase):
 

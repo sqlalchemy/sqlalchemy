@@ -6,7 +6,7 @@
 
 import re
 
-from .base import ARRAY
+from .base import ARRAY, ischema_names
 from ... import types as sqltypes
 from ...sql import functions as sqlfunc
 from ...sql.operators import custom_op
@@ -274,6 +274,9 @@ class HSTORE(sqltypes.Concatenable, sqltypes.TypeEngine):
             else:
                 return value
         return process
+
+
+ischema_names['hstore'] = HSTORE
 
 
 class hstore(sqlfunc.GenericFunction):

@@ -976,6 +976,166 @@ class OrderBySecondaryTest(fixtures.MappedTest):
             ])
         self.assert_sql_count(testing.db, go, 2)
 
+
+from .inheritance._poly_fixtures import _Polymorphic, Person, Engineer, Paperwork
+
+class BaseRelationFromJoinedSubclassTest(_Polymorphic):
+    @classmethod
+    def define_tables(cls, metadata):
+        people = Table('people', metadata,
+            Column('person_id', Integer,
+                primary_key=True,
+                test_needs_autoincrement=True),
+            Column('name', String(50)),
+            Column('type', String(30)))
+
+        # to test fully, PK of engineers table must be
+        # named differently from that of people
+        engineers = Table('engineers', metadata,
+            Column('engineer_id', Integer,
+                ForeignKey('people.person_id'),
+                primary_key=True),
+            Column('primary_language', String(50)))
+
+        paperwork = Table('paperwork', metadata,
+            Column('paperwork_id', Integer,
+                primary_key=True,
+                test_needs_autoincrement=True),
+            Column('description', String(50)),
+            Column('person_id', Integer,
+                ForeignKey('people.person_id')))
+
+    @classmethod
+    def setup_mappers(cls):
+        people = cls.tables.people
+        engineers = cls.tables.engineers
+        paperwork = cls.tables.paperwork
+
+        mapper(Person, people,
+            polymorphic_on=people.c.type,
+            polymorphic_identity='person',
+            properties={
+                'paperwork': relationship(
+                    Paperwork, order_by=paperwork.c.paperwork_id)})
+
+        mapper(Engineer, engineers,
+            inherits=Person,
+            polymorphic_identity='engineer')
+
+        mapper(Paperwork, paperwork)
+
+    @classmethod
+    def insert_data(cls):
+
+        e1 = Engineer(primary_language="java")
+        e2 = Engineer(primary_language="c++")
+        e1.paperwork = [Paperwork(description="tps report #1"),
+                        Paperwork(description="tps report #2")]
+        e2.paperwork = [Paperwork(description="tps report #3")]
+        sess = create_session()
+        sess.add_all([e1, e2])
+        sess.flush()
+
+    def test_correct_subquery_nofrom(self):
+        sess = create_session()
+        # use Person.paperwork here just to give the least
+        # amount of context
+        q = sess.query(Engineer).\
+                filter(Engineer.primary_language == 'java').\
+                options(subqueryload(Person.paperwork))
+        def go():
+            eq_(q.all()[0].paperwork,
+                    [Paperwork(description="tps report #1"),
+                    Paperwork(description="tps report #2")],
+
+                )
+        self.assert_sql_execution(
+                testing.db,
+                go,
+                CompiledSQL(
+                    "SELECT people.person_id AS people_person_id, "
+                    "people.name AS people_name, people.type AS people_type, "
+                    "engineers.engineer_id AS engineers_engineer_id, "
+                    "engineers.primary_language AS engineers_primary_language "
+                    "FROM people JOIN engineers ON "
+                    "people.person_id = engineers.engineer_id "
+                    "WHERE engineers.primary_language = :primary_language_1",
+                    {"primary_language_1": "java"}
+                ),
+                # ensure we get "people JOIN engineer" here, even though
+                # primary key "people.person_id" is against "Person"
+                # *and* the path comes out as "Person.paperwork", still
+                # want to select from "Engineer" entity
+                CompiledSQL(
+                    "SELECT paperwork.paperwork_id AS paperwork_paperwork_id, "
+                    "paperwork.description AS paperwork_description, "
+                    "paperwork.person_id AS paperwork_person_id, "
+                    "anon_1.people_person_id AS anon_1_people_person_id "
+                    "FROM (SELECT people.person_id AS people_person_id "
+                        "FROM people JOIN engineers "
+                        "ON people.person_id = engineers.engineer_id "
+                        "WHERE engineers.primary_language = "
+                            ":primary_language_1) AS anon_1 "
+                    "JOIN paperwork "
+                        "ON anon_1.people_person_id = paperwork.person_id "
+                    "ORDER BY anon_1.people_person_id, paperwork.paperwork_id",
+                    {"primary_language_1": "java"}
+                )
+        )
+
+    def test_correct_subquery_existingfrom(self):
+        sess = create_session()
+        # use Person.paperwork here just to give the least
+        # amount of context
+        q = sess.query(Engineer).\
+                filter(Engineer.primary_language == 'java').\
+                join(Engineer.paperwork).\
+                filter(Paperwork.description == "tps report #2").\
+                options(subqueryload(Person.paperwork))
+        def go():
+            eq_(q.one().paperwork,
+                    [Paperwork(description="tps report #1"),
+                    Paperwork(description="tps report #2")],
+
+                )
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT people.person_id AS people_person_id, "
+                "people.name AS people_name, people.type AS people_type, "
+                "engineers.engineer_id AS engineers_engineer_id, "
+                "engineers.primary_language AS engineers_primary_language "
+                "FROM people JOIN engineers "
+                    "ON people.person_id = engineers.engineer_id "
+                    "JOIN paperwork ON people.person_id = paperwork.person_id "
+                "WHERE engineers.primary_language = :primary_language_1 "
+                "AND paperwork.description = :description_1",
+                {"primary_language_1": "java",
+                    "description_1": "tps report #2"}
+            ),
+            CompiledSQL(
+                "SELECT paperwork.paperwork_id AS paperwork_paperwork_id, "
+                "paperwork.description AS paperwork_description, "
+                "paperwork.person_id AS paperwork_person_id, "
+                "anon_1.people_person_id AS anon_1_people_person_id "
+                "FROM (SELECT people.person_id AS people_person_id "
+                "FROM people JOIN engineers ON people.person_id = "
+                "engineers.engineer_id JOIN paperwork "
+                "ON people.person_id = paperwork.person_id "
+                "WHERE engineers.primary_language = :primary_language_1 AND "
+                "paperwork.description = :description_1) AS anon_1 "
+                "JOIN paperwork ON anon_1.people_person_id = "
+                "paperwork.person_id "
+                "ORDER BY anon_1.people_person_id, paperwork.paperwork_id",
+                {"primary_language_1": "java",
+                    "description_1": "tps report #2"}
+            )
+        )
+
+
+
+
 class SelfReferentialTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):

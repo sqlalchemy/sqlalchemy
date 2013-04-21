@@ -1,4 +1,4 @@
-from sqlalchemy.testing import assert_raises, assert_raises_message, eq_, \
+from sqlalchemy.testing import assert_raises_message, eq_, \
     AssertsCompiledSQL, is_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.orm import relationships, foreign, remote
@@ -119,9 +119,9 @@ class _JoinFixtures(object):
             support_sync=False,
             can_be_synced_fn=_can_sync,
             primaryjoin=and_(
-                self.three_tab_a.c.id==self.three_tab_b.c.aid,
-                self.three_tab_c.c.bid==self.three_tab_b.c.id,
-                self.three_tab_c.c.aid==self.three_tab_a.c.id
+                self.three_tab_a.c.id == self.three_tab_b.c.aid,
+                self.three_tab_c.c.bid == self.three_tab_b.c.id,
+                self.three_tab_c.c.aid == self.three_tab_a.c.id
             )
         )
 
@@ -215,9 +215,9 @@ class _JoinFixtures(object):
             self.composite_selfref,
             self.composite_selfref,
             primaryjoin=and_(
-                self.composite_selfref.c.group_id==
+                self.composite_selfref.c.group_id ==
                     func.foo(self.composite_selfref.c.group_id),
-                self.composite_selfref.c.parent_id==
+                self.composite_selfref.c.parent_id ==
                     self.composite_selfref.c.id
             ),
             **kw
@@ -230,9 +230,9 @@ class _JoinFixtures(object):
             self.composite_selfref,
             self.composite_selfref,
             primaryjoin=and_(
-                remote(self.composite_selfref.c.group_id)==
+                remote(self.composite_selfref.c.group_id) ==
                     func.foo(self.composite_selfref.c.group_id),
-                remote(self.composite_selfref.c.parent_id)==
+                remote(self.composite_selfref.c.parent_id) ==
                     self.composite_selfref.c.id
             ),
             **kw
@@ -281,58 +281,60 @@ class _JoinFixtures(object):
         # see test/orm/inheritance/test_abc_inheritance:TestaTobM2O
         # and others there
         right = self.base_w_sub_rel.join(self.rel_sub,
-            self.base_w_sub_rel.c.id==self.rel_sub.c.id
+            self.base_w_sub_rel.c.id == self.rel_sub.c.id
         )
         return relationships.JoinCondition(
             self.base_w_sub_rel,
             right,
             self.base_w_sub_rel,
             self.rel_sub,
-            primaryjoin=self.base_w_sub_rel.c.sub_id==\
+            primaryjoin=self.base_w_sub_rel.c.sub_id == \
                         self.rel_sub.c.id,
             **kw
         )
 
     def _join_fixture_o2m_joined_sub_to_base(self, **kw):
         left = self.base.join(self.sub_w_base_rel,
-                        self.base.c.id==self.sub_w_base_rel.c.id)
+                        self.base.c.id == self.sub_w_base_rel.c.id)
         return relationships.JoinCondition(
             left,
             self.base,
             self.sub_w_base_rel,
             self.base,
-            primaryjoin=self.sub_w_base_rel.c.base_id==self.base.c.id
+            primaryjoin=self.sub_w_base_rel.c.base_id == self.base.c.id
         )
 
     def _join_fixture_m2o_joined_sub_to_sub_on_base(self, **kw):
         # this is a late add - a variant of the test case
         # in #2491 where we join on the base cols instead.  only
         # m2o has a problem at the time of this test.
-        left = self.base.join(self.sub, self.base.c.id==self.sub.c.id)
-        right = self.base.join(self.sub_w_base_rel, self.base.c.id==self.sub_w_base_rel.c.id)
+        left = self.base.join(self.sub, self.base.c.id == self.sub.c.id)
+        right = self.base.join(self.sub_w_base_rel,
+                        self.base.c.id == self.sub_w_base_rel.c.id)
         return relationships.JoinCondition(
             left,
             right,
             self.sub,
             self.sub_w_base_rel,
-            primaryjoin=self.sub_w_base_rel.c.base_id==self.base.c.id,
+            primaryjoin=self.sub_w_base_rel.c.base_id == self.base.c.id,
         )
 
     def _join_fixture_o2m_joined_sub_to_sub(self, **kw):
-        left = self.base.join(self.sub, self.base.c.id==self.sub.c.id)
-        right = self.base.join(self.sub_w_sub_rel, self.base.c.id==self.sub_w_sub_rel.c.id)
+        left = self.base.join(self.sub, self.base.c.id == self.sub.c.id)
+        right = self.base.join(self.sub_w_sub_rel,
+                        self.base.c.id == self.sub_w_sub_rel.c.id)
         return relationships.JoinCondition(
             left,
             right,
             self.sub,
             self.sub_w_sub_rel,
-            primaryjoin=self.sub.c.id==self.sub_w_sub_rel.c.sub_id
+            primaryjoin=self.sub.c.id == self.sub_w_sub_rel.c.sub_id
         )
 
     def _join_fixture_m2o_sub_to_joined_sub(self, **kw):
         # see test.orm.test_mapper:MapperTest.test_add_column_prop_deannotate,
         right = self.base.join(self.right_w_base_rel,
-                        self.base.c.id==self.right_w_base_rel.c.id)
+                        self.base.c.id == self.right_w_base_rel.c.id)
         return relationships.JoinCondition(
             self.right_w_base_rel,
             right,
@@ -343,19 +345,19 @@ class _JoinFixtures(object):
     def _join_fixture_m2o_sub_to_joined_sub_func(self, **kw):
         # see test.orm.test_mapper:MapperTest.test_add_column_prop_deannotate,
         right = self.base.join(self.right_w_base_rel,
-                        self.base.c.id==self.right_w_base_rel.c.id)
+                        self.base.c.id == self.right_w_base_rel.c.id)
         return relationships.JoinCondition(
             self.right_w_base_rel,
             right,
             self.right_w_base_rel,
             self.right_w_base_rel,
-            primaryjoin=self.right_w_base_rel.c.base_id==\
+            primaryjoin=self.right_w_base_rel.c.base_id == \
                 func.foo(self.base.c.id)
         )
 
     def _join_fixture_o2o_joined_sub_to_base(self, **kw):
         left = self.base.join(self.sub,
-                        self.base.c.id==self.sub.c.id)
+                        self.base.c.id == self.sub.c.id)
 
         # see test_relationships->AmbiguousJoinInterpretedAsSelfRef
         return relationships.JoinCondition(
@@ -371,7 +373,7 @@ class _JoinFixtures(object):
                     self.right,
                     self.left,
                     self.right,
-                    primaryjoin=self.left.c.id==
+                    primaryjoin=self.left.c.id ==
                         foreign(func.foo(self.right.c.lid)),
                     **kw
                 )
@@ -382,7 +384,7 @@ class _JoinFixtures(object):
                     self.right,
                     self.left,
                     self.right,
-                    primaryjoin=self.left.c.id==
+                    primaryjoin=self.left.c.id ==
                         func.foo(self.right.c.lid),
                     consider_as_foreign_keys=[self.right.c.lid],
                     **kw
@@ -399,7 +401,7 @@ class _JoinFixtures(object):
         )
 
     def _assert_raises_no_relevant_fks(self, fn, expr, relname,
-        primary, *arg, **kw):
+                primary, *arg, **kw):
         assert_raises_message(
             exc.ArgumentError,
             r"Could not locate any relevant foreign key columns "
@@ -414,9 +416,9 @@ class _JoinFixtures(object):
         )
 
     def _assert_raises_no_equality(self, fn, expr, relname,
-        primary, *arg, **kw):
+                    primary, *arg, **kw):
         assert_raises_message(
-            sa.exc.ArgumentError,
+            exc.ArgumentError,
             "Could not locate any simple equality expressions "
             "involving locally mapped foreign key columns for %s join "
             "condition '%s' on relationship %s.  "
@@ -431,7 +433,7 @@ class _JoinFixtures(object):
         )
 
     def _assert_raises_ambig_join(self, fn, relname, secondary_arg,
-        *arg, **kw):
+                    *arg, **kw):
         if secondary_arg is not None:
             assert_raises_message(
                 exc.AmbiguousForeignKeysError,
@@ -455,7 +457,7 @@ class _JoinFixtures(object):
                 fn, *arg, **kw)
 
     def _assert_raises_no_join(self, fn, relname, secondary_arg,
-        *arg, **kw):
+                    *arg, **kw):
         if secondary_arg is not None:
             assert_raises_message(
                 exc.NoForeignKeysError,
@@ -463,7 +465,8 @@ class _JoinFixtures(object):
                 "parent/child tables on relationship %s - "
                 "there are no foreign keys linking these tables "
                 "via secondary table '%s'.  "
-                "Ensure that referencing columns are associated with a ForeignKey "
+                "Ensure that referencing columns are associated "
+                "with a ForeignKey "
                 "or ForeignKeyConstraint, or specify 'primaryjoin' and "
                 "'secondaryjoin' expressions"
                 % (relname, secondary_arg),
@@ -474,14 +477,16 @@ class _JoinFixtures(object):
                 "Could not determine join condition between "
                 "parent/child tables on relationship %s - "
                 "there are no foreign keys linking these tables.  "
-                "Ensure that referencing columns are associated with a ForeignKey "
+                "Ensure that referencing columns are associated "
+                "with a ForeignKey "
                 "or ForeignKeyConstraint, or specify a 'primaryjoin' "
                 "expression."
                 % (relname,),
                 fn, *arg, **kw)
 
 
-class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
+class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase,
+                                                        AssertsCompiledSQL):
     def test_determine_local_remote_pairs_o2o_joined_sub_to_base(self):
         joincond = self._join_fixture_o2o_joined_sub_to_base()
         eq_(
@@ -580,7 +585,7 @@ class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL
             ]
         )
 
-    def test_determine_local_remote_compound_1(self):
+    def test_determine_local_remote_compound_3(self):
         joincond = self._join_fixture_compound_expression_1()
         eq_(
             joincond.local_remote_pairs,
@@ -627,8 +632,10 @@ class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL
         eq_(
             joincond.local_remote_pairs,
             [
-                (self.composite_selfref.c.group_id, self.composite_selfref.c.group_id),
-                (self.composite_selfref.c.id, self.composite_selfref.c.parent_id),
+                (self.composite_selfref.c.group_id,
+                                    self.composite_selfref.c.group_id),
+                (self.composite_selfref.c.id,
+                                    self.composite_selfref.c.parent_id),
             ]
         )
 
@@ -647,8 +654,10 @@ class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL
         eq_(
             joincond.local_remote_pairs,
             [
-                (self.composite_selfref.c.group_id, self.composite_selfref.c.group_id),
-                (self.composite_selfref.c.id, self.composite_selfref.c.parent_id),
+                (self.composite_selfref.c.group_id,
+                                    self.composite_selfref.c.group_id),
+                (self.composite_selfref.c.id,
+                                    self.composite_selfref.c.parent_id),
             ]
         )
 
@@ -713,8 +722,8 @@ class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL
         eq_(
             j2.local_remote_pairs,
             [
-            (self.m2mright.c.id, self.m2msecondary.c.rid),
-            (self.m2mleft.c.id, self.m2msecondary.c.lid),
+                (self.m2mright.c.id, self.m2msecondary.c.rid),
+                (self.m2mleft.c.id, self.m2msecondary.c.lid),
             ]
         )
 
@@ -997,19 +1006,22 @@ class AdaptedJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
         )
 
 class LazyClauseTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
-    def _test_lazy_clause_o2m(self):
+    def test_lazy_clause_o2m(self):
         joincond = self._join_fixture_o2m()
+        lazywhere, bind_to_col, equated_columns = joincond.create_lazy_clause()
         self.assert_compile(
-            relationships.create_lazy_clause(joincond),
-            ""
+            lazywhere,
+            ":param_1 = rgt.lid"
         )
 
-    def _test_lazy_clause_o2m_reverse(self):
+    def test_lazy_clause_o2m_reverse(self):
         joincond = self._join_fixture_o2m()
+        lazywhere, bind_to_col, equated_columns =\
+            joincond.create_lazy_clause(reverse_direction=True)
         self.assert_compile(
-            relationships.create_lazy_clause(joincond,
-                                reverse_direction=True),
-            ""
+            lazywhere,
+            "lft.id = :param_1"
         )
 

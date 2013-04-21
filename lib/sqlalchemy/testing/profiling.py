@@ -14,11 +14,12 @@ import pstats
 import time
 import collections
 from .. import util
+
 try:
     import cProfile
 except ImportError:
     cProfile = None
-from ..util.compat import jython, pypy, win32
+from ..util import jython, pypy, win32, update_wrapper
 
 _current_test = None
 
@@ -210,7 +211,6 @@ class ProfileStatsFile(object):
                 profile_f.write("%s %s %s\n" % (test_key, platform_key, c))
         profile_f.close()
 
-from sqlalchemy.util.compat import update_wrapper
 
 
 def function_call_count(variance=0.05):

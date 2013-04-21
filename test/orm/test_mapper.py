@@ -407,6 +407,37 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             obj.info["q"] = "p"
             eq_(obj.info, {"q": "p"})
 
+    def test_info_via_instrumented(self):
+        m = MetaData()
+        # create specific tables here as we don't want
+        # users.c.id.info to be pre-initialized
+        users = Table('u', m, Column('id', Integer, primary_key=True),
+                            Column('name', String))
+        addresses = Table('a', m, Column('id', Integer, primary_key=True),
+                            Column('name', String),
+                            Column('user_id', Integer, ForeignKey('u.id')))
+        Address = self.classes.Address
+        User = self.classes.User
+
+        mapper(User, users, properties={
+                "name_lower": column_property(func.lower(users.c.name)),
+                "addresses": relationship(Address)
+            })
+        mapper(Address, addresses)
+
+        # attr.info goes down to the original Column object
+        # for the dictionary.  The annotated element needs to pass
+        # this on.
+        assert 'info' not in users.c.id.__dict__
+        is_(User.id.info, users.c.id.info)
+        assert 'info' in users.c.id.__dict__
+
+        # for SQL expressions, ORM-level .info
+        is_(User.name_lower.info, User.name_lower.property.info)
+
+        # same for relationships
+        is_(User.addresses.info, User.addresses.property.info)
+
 
     def test_add_property(self):
         users, addresses, Address = (self.tables.users,
@@ -488,7 +519,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert hasattr(User, 'addresses')
         assert "addresses" in [p.key for p in m1._polymorphic_properties]
 
-    def test_replace_property(self):
+    def test_replace_col_prop_w_syn(self):
         users, User = self.tables.users, self.classes.User
 
         m = mapper(User, users)
@@ -513,6 +544,24 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         eq_(u.name, 'jack')
         u.name = 'jacko'
         assert m._columntoproperty[users.c.name] is m.get_property('_name')
+
+    def test_replace_rel_prop_with_rel_warns(self):
+        users, User = self.tables.users, self.classes.User
+        addresses, Address = self.tables.addresses, self.classes.Address
+
+        m = mapper(User, users, properties={
+                "addresses": relationship(Address)
+            })
+        mapper(Address, addresses)
+
+        assert_raises_message(
+            sa.exc.SAWarning,
+            "Property User.addresses on Mapper|User|users being replaced "
+            "with new property User.addresses; the old property will "
+            "be discarded",
+            m.add_property,
+            "addresses", relationship(Address)
+        )
 
     def test_add_column_prop_deannotate(self):
         User, users = self.classes.User, self.tables.users

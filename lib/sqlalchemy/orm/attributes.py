@@ -174,6 +174,49 @@ class QueryableAttribute(interfaces._MappedAttribute,
         # TODO: conditionally attach this method based on clause_element ?
         return self
 
+
+    @util.memoized_property
+    def info(self):
+        """Return the 'info' dictionary for the underlying SQL element.
+
+        The behavior here is as follows:
+
+        * If the attribute is a column-mapped property, i.e.
+          :class:`.ColumnProperty`, which is mapped directly
+          to a schema-level :class:`.Column` object, this attribute
+          will return the :attr:`.SchemaItem.info` dictionary associated
+          with the core-level :class:`.Column` object.
+
+        * If the attribute is a :class:`.ColumnProperty` but is mapped to
+          any other kind of SQL expression other than a :class:`.Column`,
+          the attribute will refer to the :attr:`.MapperProperty.info` dictionary
+          associated directly with the :class:`.ColumnProperty`, assuming the SQL
+          expression itself does not have it's own ``.info`` attribute
+          (which should be the case, unless a user-defined SQL construct
+          has defined one).
+
+        * If the attribute refers to any other kind of :class:`.MapperProperty`,
+          including :class:`.RelationshipProperty`, the attribute will refer
+          to the :attr:`.MapperProperty.info` dictionary associated with
+          that :class:`.MapperProperty`.
+
+        * To access the :attr:`.MapperProperty.info` dictionary of the :class:`.MapperProperty`
+          unconditionally, including for a :class:`.ColumnProperty` that's
+          associated directly with a :class:`.schema.Column`, the attribute
+          can be referred to using :attr:`.QueryableAttribute.property`
+          attribute, as ``MyClass.someattribute.property.info``.
+
+        .. versionadded:: 0.8.0
+
+        .. seealso::
+
+            :attr:`.SchemaItem.info`
+
+            :attr:`.MapperProperty.info`
+
+        """
+        return self.comparator.info
+
     @util.memoized_property
     def parent(self):
         """Return an inspection instance representing the parent.
@@ -432,6 +475,9 @@ class AttributeImpl(object):
             self.dispatch._active_history = True
 
         self.expire_missing = expire_missing
+
+    def __str__(self):
+        return "%s.%s" % (self.class_.__name__, self.key)
 
     def _get_active_history(self):
         """Backwards compat for impl.active_history"""
@@ -1043,11 +1089,18 @@ def backref_listeners(attribute, key, uselist):
 
     parent_token = attribute.impl.parent_token
 
-    def _acceptable_key_err(child_state, initiator):
+    def _acceptable_key_err(child_state, initiator, child_impl):
         raise ValueError(
-            "Object %s not associated with attribute of "
-            "type %s" % (orm_util.state_str(child_state),
-                    manager_of_class(initiator.class_)[initiator.key]))
+            "Bidirectional attribute conflict detected: "
+            'Passing object %s to attribute "%s" '
+            'triggers a modify event on attribute "%s" '
+            'via the backref "%s".' % (
+                orm_util.state_str(child_state),
+                initiator.parent_token,
+                child_impl.parent_token,
+                attribute.impl.parent_token
+            )
+        )
 
     def emit_backref_from_scalar_set_event(state, child, oldchild, initiator):
         if oldchild is child:
@@ -1068,8 +1121,8 @@ def backref_listeners(attribute, key, uselist):
                                         instance_dict(child)
             child_impl = child_state.manager[key].impl
             if initiator.parent_token is not parent_token and \
-                initiator.parent_token is not child_impl.parent_token:
-                _acceptable_key_err(state, initiator)
+                    initiator.parent_token is not child_impl.parent_token:
+                _acceptable_key_err(state, initiator, child_impl)
             child_impl.append(
                                 child_state,
                                 child_dict,
@@ -1085,9 +1138,10 @@ def backref_listeners(attribute, key, uselist):
         child_state, child_dict = instance_state(child), \
                                     instance_dict(child)
         child_impl = child_state.manager[key].impl
+
         if initiator.parent_token is not parent_token and \
-            initiator.parent_token is not child_impl.parent_token:
-            _acceptable_key_err(state, initiator)
+                initiator.parent_token is not child_impl.parent_token:
+            _acceptable_key_err(state, initiator, child_impl)
         child_impl.append(
                                 child_state,
                                 child_dict,

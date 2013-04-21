@@ -190,9 +190,26 @@ class QueryTest(fixtures.TestBase):
                 try:
                     table.create(bind=engine, checkfirst=True)
                     i = insert_values(engine, table, values)
-                    assert i == assertvalues, "tablename: %s %r %r" % (table.name, repr(i), repr(assertvalues))
+                    assert i == assertvalues, "tablename: %s %r %r" % \
+                            (table.name, repr(i), repr(assertvalues))
                 finally:
                     table.drop(bind=engine)
+
+    @testing.only_on('sqlite+pysqlite')
+    @testing.provide_metadata
+    def test_lastrowid_zero(self):
+        from sqlalchemy.dialects import sqlite
+        eng = engines.testing_engine()
+        class ExcCtx(sqlite.base.SQLiteExecutionContext):
+            def get_lastrowid(self):
+                return 0
+        eng.dialect.execution_ctx_cls = ExcCtx
+        t = Table('t', MetaData(), Column('x', Integer, primary_key=True),
+                            Column('y', Integer))
+        t.create(eng)
+        r = eng.execute(t.insert().values(y=5))
+        eq_(r.inserted_primary_key, [0])
+
 
     @testing.fails_on('sqlite', "sqlite autoincremnt doesn't work with composite pks")
     def test_misordered_lastrow(self):
@@ -1009,6 +1026,22 @@ class QueryTest(fixtures.TestBase):
             exc.InvalidRequestError,
             "Ambiguous column name",
             lambda: row[u2.c.user_id]
+        )
+
+    def test_ambiguous_column_contains(self):
+        # ticket 2702.  in 0.7 we'd get True, False.
+        # in 0.8, both columns are present so it's True;
+        # but when they're fetched you'll get the ambiguous error.
+        users.insert().execute(user_id=1, user_name='john')
+        result = select([
+                    users.c.user_id,
+                    addresses.c.user_id]).\
+                    select_from(users.outerjoin(addresses)).execute()
+        row = result.first()
+
+        eq_(
+            set([users.c.user_id in row, addresses.c.user_id in row]),
+            set([True])
         )
 
     def test_ambiguous_column_by_col_plus_label(self):

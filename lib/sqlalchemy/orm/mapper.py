@@ -761,8 +761,9 @@ class Mapper(_InspectionAttr):
             del self._configure_failed
 
         if not self.non_primary and \
+            self.class_manager is not None and \
             self.class_manager.is_mapped and \
-            self.class_manager.mapper is self:
+                self.class_manager.mapper is self:
             instrumentation.unregister_class(self.class_)
 
     def _configure_pks(self):
@@ -1094,7 +1095,7 @@ class Mapper(_InspectionAttr):
                 # initialized; check for 'readonly'
                 if hasattr(self, '_readonly_props') and \
                     (not hasattr(col, 'table') or
-                    col.table not in self._cols_by_table):
+                        col.table not in self._cols_by_table):
                         self._readonly_props.add(prop)
 
             else:
@@ -1131,6 +1132,16 @@ class Mapper(_InspectionAttr):
                         "a ColumnProperty already exists keyed to the name "
                         "%r for column %r" % (syn, key, key, syn)
                     )
+
+        if key in self._props and \
+                not isinstance(prop, properties.ColumnProperty) and \
+                not isinstance(self._props[key], properties.ColumnProperty):
+            util.warn("Property %s on %s being replaced with new "
+                            "property %s; the old property will be discarded" % (
+                            self._props[key],
+                            self,
+                            prop,
+                        ))
 
         self._props[key] = prop
 
@@ -1923,6 +1934,8 @@ class Mapper(_InspectionAttr):
             for mapper in reversed(list(self.iterate_to_root())):
                 if mapper.local_table in tables:
                     start = True
+                elif not isinstance(mapper.local_table, expression.TableClause):
+                    return None
                 if start and not mapper.single:
                     allconds.append(visitors.cloned_traverse(
                                                 mapper.inherit_condition,
@@ -1992,9 +2005,19 @@ class Mapper(_InspectionAttr):
     @_memoized_configured_property
     def _sorted_tables(self):
         table_to_mapper = {}
+
         for mapper in self.base_mapper.self_and_descendants:
             for t in mapper.tables:
                 table_to_mapper.setdefault(t, mapper)
+
+        extra_dependencies = []
+        for table, mapper in table_to_mapper.items():
+            super_ = mapper.inherits
+            if super_:
+                extra_dependencies.extend([
+                    (super_table, table)
+                    for super_table in super_.tables
+                    ])
 
         def skip(fk):
             # attempt to skip dependencies that are not
@@ -2007,7 +2030,7 @@ class Mapper(_InspectionAttr):
             if parent is not None and \
                 dep is not None and \
                 dep is not parent and \
-                dep.inherit_condition is not None:
+                    dep.inherit_condition is not None:
                 cols = set(sql_util.find_columns(dep.inherit_condition))
                 if parent.inherit_condition is not None:
                     cols = cols.union(sql_util.find_columns(
@@ -2018,7 +2041,9 @@ class Mapper(_InspectionAttr):
             return False
 
         sorted_ = sql_util.sort_tables(table_to_mapper.iterkeys(),
-                                    skip_fn=skip)
+                                    skip_fn=skip,
+                                    extra_dependencies=extra_dependencies)
+
         ret = util.OrderedDict()
         for t in sorted_:
             ret[t] = table_to_mapper[t]
@@ -2214,7 +2239,7 @@ def _event_on_resurrect(state):
                                             state, state.dict, col, val)
 
 
-class _ColumnMapping(util.py25_dict):
+class _ColumnMapping(dict):
     """Error reporting helper for mapper._columntoproperty."""
 
     def __init__(self, mapper):

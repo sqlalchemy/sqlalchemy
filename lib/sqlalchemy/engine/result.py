@@ -301,7 +301,7 @@ class ResultMetaData(object):
             # this check isn't currently available if the row
             # was unpickled.
             if result is not None and \
-                result[1] is not None:
+                 result[1] is not None:
                 for obj in result[1]:
                     if key._compare_name_for_result(obj):
                         break
@@ -443,7 +443,6 @@ class ResultProxy(object):
         except Exception, e:
             self.connection._handle_dbapi_exception(
                               e, None, None, self.cursor, self.context)
-            raise
 
     @property
     def lastrowid(self):
@@ -467,7 +466,6 @@ class ResultProxy(object):
             self.connection._handle_dbapi_exception(
                                  e, None, None,
                                  self._saved_cursor, self.context)
-            raise
 
     @property
     def returns_rows(self):
@@ -752,7 +750,6 @@ class ResultProxy(object):
             self.connection._handle_dbapi_exception(
                                     e, None, None,
                                     self.cursor, self.context)
-            raise
 
     def fetchmany(self, size=None):
         """Fetch many rows, just like DB-API
@@ -772,7 +769,6 @@ class ResultProxy(object):
             self.connection._handle_dbapi_exception(
                                     e, None, None,
                                     self.cursor, self.context)
-            raise
 
     def fetchone(self):
         """Fetch one row, just like DB-API ``cursor.fetchone()``.
@@ -792,7 +788,6 @@ class ResultProxy(object):
             self.connection._handle_dbapi_exception(
                                     e, None, None,
                                     self.cursor, self.context)
-            raise
 
     def first(self):
         """Fetch the first row and then close the result set unconditionally.
@@ -809,7 +804,6 @@ class ResultProxy(object):
             self.connection._handle_dbapi_exception(
                                     e, None, None,
                                     self.cursor, self.context)
-            raise
 
         try:
             if row is not None:

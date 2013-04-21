@@ -8,6 +8,7 @@
 
 from ... import Table, MetaData, Column
 from ...types import String, Unicode, Integer, TypeDecorator
+from ... import cast
 
 ischema = MetaData()
 
@@ -21,6 +22,9 @@ class CoerceUnicode(TypeDecorator):
             value = value.decode(dialect.encoding)
         # end Py2K
         return value
+
+    def bind_expression(self, bindvalue):
+        return cast(bindvalue, Unicode)
 
 schemata = Table("SCHEMATA", ischema,
     Column("CATALOG_NAME", CoerceUnicode, key="catalog_name"),

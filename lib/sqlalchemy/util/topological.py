@@ -49,7 +49,8 @@ def sort(tuples, allitems):
 
 
 def find_cycles(tuples, allitems):
-    # straight from gvr with some mods
+    # adapted from:
+    # http://neopythonic.blogspot.com/2009/01/detecting-cycles-in-directed-graph.html
 
     edges = util.defaultdict(set)
     for parent, child in tuples:

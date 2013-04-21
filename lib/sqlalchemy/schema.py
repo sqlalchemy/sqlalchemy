@@ -93,14 +93,13 @@ def _get_table_key(name, schema):
 
 def _validate_dialect_kwargs(kwargs, name):
     # validate remaining kwargs that they all specify DB prefixes
-    if len([k for k in kwargs
-            if not re.match(
-                        r'^(?:%s)_' %
-                        '|'.join(dialects.__all__), k
-                    )
-            ]):
-        raise TypeError(
-            "Invalid argument(s) for %s: %r" % (name, kwargs.keys()))
+
+    for k in kwargs:
+        m = re.match('^(.+?)_.*', k)
+        if m is None:
+            raise TypeError("Additional arguments should be "
+                    "named <dialectname>_<argument>, got '%s'" % k)
+
 
 inspection._self_inspects(SchemaItem)
 
@@ -2025,7 +2024,7 @@ class ColumnCollectionMixin(object):
                                     for c in columns]
         if self._pending_colargs and \
                 isinstance(self._pending_colargs[0], Column) and \
-                self._pending_colargs[0].table is not None:
+                isinstance(self._pending_colargs[0].table, Table):
             self._set_parent_with_dispatch(self._pending_colargs[0].table)
 
     def _set_parent(self, table):
@@ -2121,7 +2120,7 @@ class CheckConstraint(Constraint):
         elif _autoattach:
             cols = sqlutil.find_columns(self.sqltext)
             tables = set([c.table for c in cols
-                        if c.table is not None])
+                        if isinstance(c.table, Table)])
             if len(tables) == 1:
                 self._set_parent_with_dispatch(
                         tables.pop())

@@ -672,7 +672,7 @@ Usage::
 
 The implementation for :meth:`.ColumnOperators.__add__` is consulted
 by an owning SQL expression, by instantiating the :class:`.TypeEngine.Comparator` with
-itself as as the ``expr`` attribute.   The mechanics of the expression
+itself as the ``expr`` attribute.   The mechanics of the expression
 system are such that operations continue recursively until an
 expression object produces a new SQL expression construct. Above, we
 could just as well have said ``self.expr.op("goofy")(other)`` instead

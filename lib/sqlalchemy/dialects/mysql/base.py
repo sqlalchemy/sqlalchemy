@@ -2040,7 +2040,7 @@ class MySQLDialect(default.DefaultDialect):
         try:
             try:
                 rs = connection.execute(st)
-                have = rs.rowcount > 0
+                have = len(rs.fetchall()) > 0
                 rs.close()
                 return have
             except exc.DBAPIError, e:
@@ -2409,7 +2409,6 @@ class MySQLTableDefinitionParser(object):
                     state.constraints.append(spec)
                 else:
                     pass
-
         return state
 
     def _parse_constraints(self, line):

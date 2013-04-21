@@ -34,6 +34,10 @@ class DefaultDialect(interfaces.Dialect):
     preparer = compiler.IdentifierPreparer
     supports_alter = True
 
+    # the first value we'd get for an autoincrement
+    # column.
+    default_sequence_base = 1
+
     # most DBAPIs happy with this for execute().
     # not cx_oracle.
     execute_sequence_format = tuple
@@ -679,7 +683,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                     lastrowid = proc(lastrowid)
 
             self.inserted_primary_key = [
-                c is autoinc_col and lastrowid or v
+                lastrowid if c is autoinc_col else v
                 for c, v in zip(
                                     table.primary_key,
                                     self.inserted_primary_key)
@@ -733,7 +737,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             except Exception, e:
                 self.root_connection._handle_dbapi_exception(
                                 e, None, None, None, self)
-                raise
         else:
             inputsizes = {}
             for key in self.compiled.bind_names.values():
@@ -752,7 +755,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             except Exception, e:
                 self.root_connection._handle_dbapi_exception(
                                 e, None, None, None, self)
-                raise
 
     def _exec_default(self, default, type_):
         if default.is_sequence:

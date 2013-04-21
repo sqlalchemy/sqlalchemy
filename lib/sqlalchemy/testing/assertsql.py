@@ -174,6 +174,8 @@ class CompiledSQL(SQLMatchRule):
                 params = self.params
             if not isinstance(params, list):
                 params = [params]
+            else:
+                params = list(params)
             all_params = list(params)
             all_received = list(_received_parameters)
             while params:

@@ -21,7 +21,7 @@ class SchemaGenerator(DDLBase):
                  tables=None, **kwargs):
         super(SchemaGenerator, self).__init__(connection, **kwargs)
         self.checkfirst = checkfirst
-        self.tables = tables and set(tables) or None
+        self.tables = tables
         self.preparer = dialect.identifier_preparer
         self.dialect = dialect
         self.memo = {}
@@ -39,17 +39,17 @@ class SchemaGenerator(DDLBase):
             (
                 (not self.dialect.sequences_optional or
                  not sequence.optional) and
-                 (
-                 not self.checkfirst or
-                 not self.dialect.has_sequence(
-                            self.connection,
-                            sequence.name,
-                            schema=sequence.schema)
-                 )
+                    (
+                        not self.checkfirst or
+                        not self.dialect.has_sequence(
+                                self.connection,
+                                sequence.name,
+                                schema=sequence.schema)
+                     )
             )
 
     def visit_metadata(self, metadata):
-        if self.tables:
+        if self.tables is not None:
             tables = self.tables
         else:
             tables = metadata.tables.values()
@@ -117,7 +117,7 @@ class SchemaDropper(DDLBase):
         self.memo = {}
 
     def visit_metadata(self, metadata):
-        if self.tables:
+        if self.tables is not None:
             tables = self.tables
         else:
             tables = metadata.tables.values()
@@ -160,7 +160,7 @@ class SchemaDropper(DDLBase):
             ((not self.dialect.sequences_optional or
                  not sequence.optional) and
                 (not self.checkfirst or
-                 self.dialect.has_sequence(
+                self.dialect.has_sequence(
                                 self.connection,
                                 sequence.name,
                                 schema=sequence.schema))

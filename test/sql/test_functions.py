@@ -8,7 +8,7 @@ from sqlalchemy.testing.engines import all_dialects
 from sqlalchemy import types as sqltypes
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.functions import GenericFunction
-from sqlalchemy.util.compat import decimal
+import decimal
 from sqlalchemy import testing
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, engines
 from sqlalchemy.dialects import sqlite, postgresql, mysql, oracle

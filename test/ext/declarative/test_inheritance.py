@@ -14,7 +14,8 @@ from sqlalchemy.orm import relationship, create_session, class_mapper, \
     Session
 from sqlalchemy.testing import eq_
 from sqlalchemy.util import classproperty
-from sqlalchemy.ext.declarative import declared_attr, AbstractConcreteBase, ConcreteBase
+from sqlalchemy.ext.declarative import declared_attr, AbstractConcreteBase, \
+            ConcreteBase, has_inherited_table
 from sqlalchemy.testing import fixtures
 
 Base = None
@@ -1111,6 +1112,46 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
             __mapper_args__ = {'polymorphic_identity':'engineer',
                             'concrete':True}
         self._roundtrip(Employee, Manager, Engineer, Boss)
+
+
+    def test_has_inherited_table_doesnt_consider_base(self):
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+
+        assert not has_inherited_table(A)
+
+        class B(A):
+            __tablename__ = 'b'
+            id = Column(Integer, ForeignKey('a.id'), primary_key=True)
+
+        assert has_inherited_table(B)
+
+    def test_has_inherited_table_in_mapper_args(self):
+        class Test(Base):
+            __tablename__ = 'test'
+            id = Column(Integer, primary_key=True)
+            type = Column(String(20))
+
+            @declared_attr
+            def __mapper_args__(cls):
+                if not has_inherited_table(cls):
+                    ret = {
+                        'polymorphic_identity': 'default',
+                        'polymorphic_on': cls.type,
+                        }
+                else:
+                    ret = {'polymorphic_identity': cls.__name__}
+                return ret
+
+        class PolyTest(Test):
+            __tablename__ = 'poly_test'
+            id = Column(Integer, ForeignKey(Test.id), primary_key=True)
+
+        configure_mappers()
+
+        assert Test.__mapper__.polymorphic_on is Test.__table__.c.type
+        assert PolyTest.__mapper__.polymorphic_on is Test.__table__.c.type
 
     def test_ok_to_override_type_from_abstract(self):
         class Employee(AbstractConcreteBase, Base, fixtures.ComparableEntity):

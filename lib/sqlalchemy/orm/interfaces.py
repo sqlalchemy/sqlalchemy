@@ -149,7 +149,7 @@ class MapperProperty(_MappedAttribute, _InspectionAttr):
 
     """
 
-    cascade = ()
+    cascade = frozenset()
     """The set of 'cascade' attribute names.
 
     This collection is checked before the 'cascade_iterator' method is called.
@@ -208,6 +208,12 @@ class MapperProperty(_MappedAttribute, _InspectionAttr):
 
         .. versionadded:: 0.8  Added support for .info to all
            :class:`.MapperProperty` subclasses.
+
+        .. seealso::
+
+            :attr:`.QueryableAttribute.info`
+
+            :attr:`.SchemaItem.info`
 
         """
         return {}
@@ -283,7 +289,7 @@ class MapperProperty(_MappedAttribute, _InspectionAttr):
     def __repr__(self):
         return '<%s at 0x%x; %s>' % (
             self.__class__.__name__,
-            id(self), self.key)
+            id(self), getattr(self, 'key', 'no key'))
 
 class PropComparator(operators.ColumnOperators):
     """Defines boolean, comparison, and other operators for
@@ -389,6 +395,10 @@ class PropComparator(operators.ColumnOperators):
         """
 
         return self.__class__(self.prop, self._parentmapper, adapter)
+
+    @util.memoized_property
+    def info(self):
+        return self.property.info
 
     @staticmethod
     def any_op(a, b, **kwargs):

@@ -25,10 +25,10 @@ import codecs
 
 from . import exc, schema, util, processors, events, event
 from .sql import operators
-from .sql.expression import _DefaultColumnComparator, column, bindparam
+from .sql.expression import _DefaultColumnComparator
 from .util import pickle
-from .util.compat import decimal
 from .sql.visitors import Visitable
+import decimal
 default = util.importlater("sqlalchemy.engine", "default")
 
 NoneType = type(None)
@@ -1372,8 +1372,7 @@ class Numeric(_DateAffinity, TypeEngine):
        implementations however, most of which contain an import for plain
        ``decimal`` in their source code, even though some such as psycopg2
        provide hooks for alternate adapters. SQLAlchemy imports ``decimal``
-       globally as well. While the alternate ``Decimal`` class can be patched
-       into SQLA's ``decimal`` module, overall the most straightforward and
+       globally as well.  The most straightforward and
        foolproof way to use "cdecimal" given current DBAPI and Python support
        is to patch it directly into sys.modules before anything else is
        imported::
@@ -1712,8 +1711,15 @@ class _Binary(TypeEngine):
         return process
 
     # Python 3 has native bytes() type
-    # both sqlite3 and pg8000 seem to return it
-    # (i.e. and not 'memoryview')
+    # both sqlite3 and pg8000 seem to return it,
+    # psycopg2 as of 2.5 returns 'memoryview'
+    # Py3K
+    #def result_processor(self, dialect, coltype):
+    #    def process(value):
+    #        if value is not None:
+    #            value = bytes(value)
+    #        return value
+    #    return process
     # Py2K
     def result_processor(self, dialect, coltype):
         if util.jython:

@@ -175,6 +175,11 @@ MySQL-Connector
 
 .. automodule:: sqlalchemy.dialects.mysql.mysqlconnector
 
+cymysql
+------------
+
+.. automodule:: sqlalchemy.dialects.mysql.cymysql
+
 Google App Engine
 -----------------------
 

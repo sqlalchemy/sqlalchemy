@@ -4,7 +4,328 @@
 ==============
 
 .. changelog::
+    :version: 0.8.1
+
+    .. change::
+      :tags: bug, orm
+      :tickets: 2708
+
+      Improved the behavior of instance management regarding
+      the creation of strong references within the Session;
+      an object will no longer have an internal reference cycle
+      created if it's in the transient state or moves into the
+      detached state - the strong ref is created only when the
+      object is attached to a Session and is removed when the
+      object is detached.  This makes it somewhat safer for an
+      object to have a `__del__()` method, even though this is
+      not recommended, as relationships with backrefs produce
+      cycles too.  A warning has been added when a class with
+      a `__del__()` method is mapped.
+
+    .. change::
+      :tags: bug, sql
+      :tickets: 2702
+
+      A major fix to the way in which a select() object produces
+      labeled columns when apply_labels() is used; this mode
+      produces a SELECT where each column is labeled as in
+      <tablename>_<columnname>, to remove column name collisions
+      for a multiple table select.   The fix is that if two labels
+      collide when combined with the table name, i.e.
+      "foo.bar_id" and "foo_bar.id", anonymous aliasing will be
+      applied to one of the dupes.  This allows the ORM to handle
+      both columns independently; previously, 0.7
+      would in some cases silently emit a second SELECT for the
+      column that was "duped", and in 0.8 an ambiguous column error
+      would be emitted.   The "keys" applied to the .c. collection
+      of the select() will also be deduped, so that the "column
+      being replaced" warning will no longer emit for any select()
+      that specifies use_labels, though the dupe key will be given
+      an anonymous label which isn't generally user-friendly.
+
+    .. change::
+      :tags: bug, mysql
+      :pullreq: 54
+
+      Updated a regexp to correctly extract error code on
+      google app engine v1.7.5 and newer.  Courtesy
+      Dan Ring.
+
+    .. change::
+      :tags: bug, examples
+
+      Fixed a long-standing bug in the caching example, where
+      the limit/offset parameter values wouldn't be taken into
+      account when computing the cache key.  The
+      _key_from_query() function has been simplified to work
+      directly from the final compiled statement in order to get
+      at both the full statement as well as the fully processed
+      parameter list.
+
+    .. change::
+      :tags: bug, mssql
+      :tickets: 2355
+
+      Part of a longer series of fixes needed for pyodbc+
+      mssql, a CAST to NVARCHAR(max) has been added to the bound
+      parameter for the table name and schema name in all information schema
+      queries to avoid the issue of comparing NVARCHAR to NTEXT,
+      which seems to be rejected by the ODBC driver in some cases,
+      such as FreeTDS (0.91 only?) plus unicode bound parameters being passed.
+      The issue seems to be specific to the SQL Server information
+      schema tables and the workaround is harmless for those cases
+      where the problem doesn't exist in the first place.
+
+    .. change::
+      :tags: bug, sql
+      :tickets: 2691
+
+      Fixed bug where disconnect detect on error would
+      raise an attribute error if the error were being
+      raised after the Connection object had already
+      been closed.
+
+    .. change::
+      :tags: bug, sql
+      :tickets: 2703
+
+      Reworked internal exception raises that emit
+      a rollback() before re-raising, so that the stack
+      trace is preserved from sys.exc_info() before entering
+      the rollback.  This so that the traceback is preserved
+      when using coroutine frameworks which may have switched
+      contexts before the rollback function returns.
+
+    .. change::
+      :tags: bug, orm
+      :tickets: 2697
+
+      Fixed bug whereby ORM would run the wrong kind of
+      query when refreshing an inheritance-mapped class
+      where the superclass was mapped to a non-Table
+      object, like a custom join() or a select(),
+      running a query that assumed a hierarchy that's
+      mapped to individual Table-per-class.
+
+    .. change::
+      :tags: bug, orm
+
+      Fixed `__repr__()` on mapper property constructs
+      to work before the object is initialized, so
+      that Sphinx builds with recent Sphinx versions
+      can read them.
+
+    .. change::
+      :tags: bug, sql, postgresql
+
+      The _Binary base type now converts values through
+      the bytes() callable when run on Python 3; in particular
+      psycopg2 2.5 with Python 3.3 seems to now be returning
+      the "memoryview" type, so this is converted to bytes
+      before return.
+
+    .. change::
+      :tags: bug, sql
+      :tickets: 2695
+
+      Improvements to Connection auto-invalidation
+      handling.  If a non-disconnect error occurs,
+      but leads to a delayed disconnect error within error
+      handling (happens with MySQL), the disconnect condition
+      is detected.  The Connection can now also be closed
+      when in an invalid state, meaning it will raise "closed"
+      on next usage, and additionally the "close with result"
+      feature will work even if the autorollback in an error
+      handling routine fails and regardless of whether the
+      condition is a disconnect or not.
+
+
+    .. change::
+      :tags: bug, orm, declarative
+      :tickets: 2656
+
+      Fixed indirect regression regarding :func:`.has_inherited_table`,
+      where since it considers the current class' ``__table__``, was
+      sensitive to when it was called.  This is 0.7's behavior also,
+      but in 0.7 things tended to "work out" within events like
+      ``__mapper_args__()``.  :func:`.has_inherited_table` now only
+      considers superclasses, so should return the same answer
+      regarding the current class no matter when it's called
+      (obviously assuming the state of the superclass).
+
+    .. change::
+      :tags: bug, orm
+      :tickets: 2699
+
+      Fixed bug when a query of the form:
+      ``query(SubClass).options(subqueryload(Baseclass.attrname))``,
+      where ``SubClass`` is a joined inh of ``BaseClass``,
+      would fail to apply the ``JOIN`` inside the subquery
+      on the attribute load, producing a cartesian product.
+      The populated results still tended to be correct as additional
+      rows are just ignored, so this issue may be present as a
+      performance degradation in applications that are
+      otherwise working correctly.  Also in 0.7.11.
+
+    .. change::
+      :tags: bug, orm
+      :tickets: 2689
+
+      Fixed bug in unit of work whereby a joined-inheritance
+      subclass could insert the row for the "sub" table
+      before the parent table, if the two tables had no
+      ForeignKey constraints set up between them.
+      Also in 0.7.11.
+
+    .. change::
+      :tags: bug, mssql
+      :pullreq: 47
+
+      Added support for additional "disconnect" messages
+      to the pymssql dialect.  Courtesy John Anderson.
+
+    .. change::
+      :tags: feature, sql
+
+      Loosened the check on dialect-specific argument names
+      passed to Table(); since we want to support external dialects
+      and also want to support args without a certain dialect
+      being installed, it only checks the format of the arg now,
+      rather than looking for that dialect in sqlalchemy.dialects.
+
+    .. change::
+      :tags: bug, sql
+
+      Fixed bug whereby a DBAPI that can return "0"
+      for cursor.lastrowid would not function correctly
+      in conjunction with :attr:`.ResultProxy.inserted_primary_key`.
+
+    .. change::
+      :tags: bug, mssql
+      :tickets: 2683
+      :pullreq: 46
+
+      Fixed Py3K bug regarding "binary" types and
+      pymssql.  Courtesy Marc Abramowitz.
+
+    .. change::
+      :tags: bug, postgresql
+      :tickets: 2680
+
+      Added missing HSTORE type to postgresql type names
+      so that the type can be reflected.
+
+.. changelog::
     :version: 0.8.0
+    :released: March 9, 2013
+
+    .. note::
+
+      There are some new behavioral changes as of 0.8.0
+      not present in 0.8.0b2.  They are present in the
+      migration document as follows:
+
+      * :ref:`legacy_is_orphan_addition`
+
+      * :ref:`metadata_create_drop_tables`
+
+      * :ref:`correlation_context_specific`
+
+    .. change::
+        :tags: feature, postgresql
+        :tickets: 2676
+
+      Added support for Postgresql's traditional SUBSTRING
+      function syntax, renders as "SUBSTRING(x FROM y FOR z)"
+      when regular ``func.substring()`` is used.
+      Also in 0.7.11.  Courtesy Gunnlaugur Þór Briem.
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 2675
+
+      A meaningful :attr:`.QueryableAttribute.info` attribute is
+      added, which proxies down to the ``.info`` attribute on either
+      the :class:`.schema.Column` object if directly present, or
+      the :class:`.MapperProperty` otherwise.  The full behavior
+      is documented and ensured by tests to remain stable.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 2668
+
+      The behavior of SELECT correlation has been improved such that
+      the :meth:`.Select.correlate` and :meth:`.Select.correlate_except`
+      methods, as well as their ORM analogues, will still retain
+      "auto-correlation" behavior in that the FROM clause is modified
+      only if the output would be legal SQL; that is, the FROM clause
+      is left intact if the correlated SELECT is not used in the context
+      of an enclosing SELECT inside of the WHERE, columns, or HAVING clause.
+      The two methods now only specify conditions to the default
+      "auto correlation", rather than absolute FROM lists.
+
+    .. change::
+        :tags: feature, mysql
+        :pullreq: 42
+
+      New dialect for CyMySQL added, courtesy Hajime Nakagami.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 2674
+
+      Improved checking for an existing backref name conflict during
+      mapper configuration; will now test for name conflicts on
+      superclasses and subclasses, in addition to the current mapper,
+      as these conflicts break things just as much.  This is new for
+      0.8, but see below for a warning that will also be triggered
+      in 0.7.11.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 2674
+
+      Improved the error message emitted when a "backref loop" is detected,
+      that is when an attribute event triggers a bidirectional
+      assignment between two other attributes with no end.
+      This condition can occur not just when an object of the wrong
+      type is assigned, but also when an attribute is mis-configured
+      to backref into an existing backref pair.  Also in 0.7.11.
+
+    .. change::
+      :tags: bug, orm
+      :tickets: 2674
+
+      A warning is emitted when a MapperProperty is assigned to a mapper
+      that replaces an existing property, if the properties in question
+      aren't plain column-based properties.   Replacement of relationship
+      properties is rarely (ever?) what is intended and usually refers to a
+      mapper mis-configuration.   Also in 0.7.11.
+
+    .. change::
+        :tags: feature, orm
+
+      Can set/change the "cascade" attribute on a :func:`.relationship`
+      construct after it's been constructed already.  This is not
+      a pattern for normal use but we like to change the setting
+      for demonstration purposes in tutorials.
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 2664
+
+      :meth:`.MetaData.create_all` and :meth:`.MetaData.drop_all` will
+      now accommodate an empty list as an instruction to not create/drop
+      any items, rather than ignoring the collection.
+
+
+    .. change::
+        :tags: bug, tests
+        :tickets: 2669
+        :pullreq: 41
+
+      Fixed an import of "logging" in test_execute which was not
+      working on some linux platforms.  Also in 0.7.11.
 
     .. change::
         :tags: bug, orm

@@ -17,8 +17,8 @@ from sqlalchemy import Table, Column, select, MetaData, text, Integer, \
 from sqlalchemy.orm import Session, mapper, aliased
 from sqlalchemy import exc, schema, types
 from sqlalchemy.dialects.postgresql import base as postgresql
-from sqlalchemy.dialects.postgresql import HSTORE, hstore, array, ARRAY
-from sqlalchemy.util.compat import decimal
+from sqlalchemy.dialects.postgresql import HSTORE, hstore, array
+import decimal
 from sqlalchemy.testing.util import round_decimal
 from sqlalchemy.sql import table, column, operators
 import logging
@@ -179,6 +179,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'CREATE INDEX test_idx3 ON testtbl '
                             'USING hash (data)',
                             dialect=postgresql.dialect())
+
+    def test_substring(self):
+        self.assert_compile(func.substring('abc', 1, 2),
+                            'SUBSTRING(%(substring_1)s FROM %(substring_2)s '
+                            'FOR %(substring_3)s)')
+        self.assert_compile(func.substring('abc', 1),
+                            'SUBSTRING(%(substring_1)s FROM %(substring_2)s)')
+
 
 
     def test_extract(self):
@@ -734,7 +742,6 @@ class NumericInterpretationTest(fixtures.TestBase):
 
     def test_numeric_codes(self):
         from sqlalchemy.dialects.postgresql import pg8000, psycopg2, base
-        from sqlalchemy.util.compat import decimal
 
         for dialect in (pg8000.dialect(), psycopg2.dialect()):
 
@@ -3093,6 +3100,12 @@ class HStoreRoundTripTest(fixtures.TablesTest):
             engine = testing.db
         engine.connect()
         return engine
+
+    def test_reflect(self):
+        from sqlalchemy import inspect
+        insp = inspect(testing.db)
+        cols = insp.get_columns('data_table')
+        assert isinstance(cols[2]['type'], HSTORE)
 
     @testing.only_on("postgresql+psycopg2")
     def test_insert_native(self):

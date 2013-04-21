@@ -190,7 +190,7 @@ from ...engine import result as _result
 from sqlalchemy import types as sqltypes, util, exc, processors
 import random
 import collections
-from sqlalchemy.util.compat import decimal
+import decimal
 import re
 
 
