@@ -8,6 +8,13 @@
 
     .. change::
       :tags: bug, mysql
+      :pullreq: 55
+
+      Fixes to support the latest cymysql DBAPI, courtesy
+      Hajime Nakagami.
+
+    .. change::
+      :tags: bug, mysql
       :tickets: 2663
 
       Improvements to the operation of the pymysql dialect on

@@ -2042,7 +2042,7 @@ class MySQLDialect(default.DefaultDialect):
         try:
             try:
                 rs = connection.execute(st)
-                have = len(rs.fetchall()) > 0
+                have = rs.fetchone() is not None
                 rs.close()
                 return have
             except exc.DBAPIError, e:
