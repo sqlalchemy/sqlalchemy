@@ -28,9 +28,21 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     driver = 'pymysql'
 
     description_encoding = None
+    # Py3K
+    #supports_unicode_statements = True
+    # Py2K
+    # end Py2K
 
     @classmethod
     def dbapi(cls):
         return __import__('pymysql')
+
+    # Py3K
+    #def _extract_error_code(self, exception):
+    #    if isinstance(exception.args[0], Exception):
+    #        exception = exception.args[0]
+    #    return exception.args[0]
+    # Py2K
+    # end Py2K
 
 dialect = MySQLDialect_pymysql
