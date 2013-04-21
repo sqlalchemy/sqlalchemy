@@ -316,8 +316,10 @@ class AssortedPersistenceTests(fixtures.MappedTest):
             )
 
         Table('secondary', metadata,
-            Column('left_id', Integer, ForeignKey('left.id')),
-            Column('right_id', Integer, ForeignKey('right.id')),
+            Column('left_id', Integer, ForeignKey('left.id'),
+                                        primary_key=True),
+            Column('right_id', Integer, ForeignKey('right.id'),
+                                        primary_key=True),
             )
 
     @classmethod
@@ -334,6 +336,17 @@ class AssortedPersistenceTests(fixtures.MappedTest):
         mapper(A, left, properties={
             'bs': relationship(B, secondary=secondary,
                             backref='as', order_by=right.c.id)
+        })
+        mapper(B, right)
+
+    def _bidirectional_onescalar_fixture(self):
+        left, secondary, right = self.tables.left, \
+                    self.tables.secondary, self.tables.right
+        A, B = self.classes.A, self.classes.B
+        mapper(A, left, properties={
+            'bs': relationship(B, secondary=secondary,
+                            backref=backref('a', uselist=False),
+                            order_by=right.c.id)
         })
         mapper(B, right)
 
@@ -359,3 +372,25 @@ class AssortedPersistenceTests(fixtures.MappedTest):
         sess.flush()
         eq_(sess.query(secondary).count(), 0)
 
+    def test_remove_scalar(self):
+        # test setting a uselist=False to None
+        self._bidirectional_onescalar_fixture()
+        A, B = self.classes.A, self.classes.B
+        secondary = self.tables.secondary
+
+        sess = Session()
+        sess.add_all([
+            A(data='a1', bs=[B(data='b1'), B(data='b2')]),
+        ])
+        sess.commit()
+
+        a1 = sess.query(A).filter_by(data='a1').one()
+        b2 = sess.query(B).filter_by(data='b2').one()
+        assert b2.a is a1
+
+        b2.a = None
+        sess.commit()
+
+        eq_(a1.bs, [B(data='b1')])
+        eq_(b2.a, None)
+        eq_(sess.query(secondary).count(), 1)
