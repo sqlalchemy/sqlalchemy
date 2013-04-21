@@ -863,7 +863,7 @@ class DetectKeySwitch(DependencyProcessor):
                 related = state.get_impl(self.key).get(state, dict_,
                         passive=self._passive_update_flag)
                 if related is not attributes.PASSIVE_NO_RESULT and \
-                    related is not None:
+                        related is not None:
                     related_state = attributes.instance_state(dict_[self.key])
                     if related_state in switchers:
                         uowcommit.register_object(state,
@@ -1127,10 +1127,14 @@ class ManyToManyDP(DependencyProcessor):
 
     def _synchronize(self, state, child, associationrow,
                                             clearkeys, uowcommit, operation):
-        if associationrow is None:
-            return
 
+        # this checks for None if uselist=True
         self._verify_canload(child)
+
+        # but if uselist=False we get here.   If child is None,
+        # no association row can be generated, so return.
+        if child is None:
+            return False
 
         if child is not None and not uowcommit.session._contains_state(child):
             if not child.deleted:

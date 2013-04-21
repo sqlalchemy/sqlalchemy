@@ -453,7 +453,7 @@ class MapperInitTest(fixtures.ORMTest):
         assert_raises_message(
             sa.exc.SAWarning,
             r"__del__\(\) method on class "
-            "<class 'test.orm.test_instrumentation.A'> will cause "
+            "<class '.*\.A'> will cause "
             "unreachable cycles and memory leaks, as SQLAlchemy "
             "instrumentation often creates reference cycles.  "
             "Please remove this method.",

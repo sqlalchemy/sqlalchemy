@@ -971,8 +971,10 @@ class ReconstitutionTest(fixtures.TestBase):
         p.kids.extend(['c1', 'c2'])
         r1 = pickle.loads(pickle.dumps(p))
         assert r1.kids == ['c1', 'c2']
-        r2 = pickle.loads(pickle.dumps(p.kids))
-        assert r2 == ['c1', 'c2']
+
+        # can't do this without parent having a cycle
+        #r2 = pickle.loads(pickle.dumps(p.kids))
+        #assert r2 == ['c1', 'c2']
 
     def test_pickle_set(self):
         mapper(Parent, self.parents,
@@ -983,8 +985,10 @@ class ReconstitutionTest(fixtures.TestBase):
         p.kids.update(['c1', 'c2'])
         r1 = pickle.loads(pickle.dumps(p))
         assert r1.kids == set(['c1', 'c2'])
-        r2 = pickle.loads(pickle.dumps(p.kids))
-        assert r2 == set(['c1', 'c2'])
+
+        # can't do this without parent having a cycle
+        #r2 = pickle.loads(pickle.dumps(p.kids))
+        #assert r2 == set(['c1', 'c2'])
 
     def test_pickle_dict(self):
         mapper(Parent, self.parents,
@@ -997,8 +1001,10 @@ class ReconstitutionTest(fixtures.TestBase):
         assert p.kids == {'c1': 'c1', 'c2': 'c2'}
         r1 = pickle.loads(pickle.dumps(p))
         assert r1.kids == {'c1': 'c1', 'c2': 'c2'}
-        r2 = pickle.loads(pickle.dumps(p.kids))
-        assert r2 == {'c1': 'c1', 'c2': 'c2'}
+
+        # can't do this without parent having a cycle
+        #r2 = pickle.loads(pickle.dumps(p.kids))
+        #assert r2 == {'c1': 'c1', 'c2': 'c2'}
 
 class PickleKeyFunc(object):
     def __init__(self, name):
