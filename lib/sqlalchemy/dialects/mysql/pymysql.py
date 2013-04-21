@@ -22,15 +22,23 @@ the pymysql driver as well.
 """
 
 from .mysqldb import MySQLDialect_mysqldb
-
+from ...util import py3k
 
 class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     driver = 'pymysql'
 
     description_encoding = None
+    if py3k:
+        supports_unicode_statements = True
 
     @classmethod
     def dbapi(cls):
         return __import__('pymysql')
+
+    if py3k:
+        def _extract_error_code(self, exception):
+            if isinstance(exception.args[0], Exception):
+                exception = exception.args[0]
+            return exception.args[0]
 
 dialect = MySQLDialect_pymysql

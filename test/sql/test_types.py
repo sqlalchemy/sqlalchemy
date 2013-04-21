@@ -1,14 +1,13 @@
 # coding: utf-8
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 import decimal
-import datetime, os, re
+import datetime
+import os
 from sqlalchemy import *
-from sqlalchemy import exc, types, util, schema, dialects
+from sqlalchemy import exc, types, util, dialects
 for name in dialects.__all__:
     __import__("sqlalchemy.dialects.%s" % name)
 from sqlalchemy.sql import operators, column, table
-from sqlalchemy.testing import eq_
-import sqlalchemy.engine.url as url
 from sqlalchemy.engine import default
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy import testing
@@ -677,7 +676,7 @@ class UnicodeTest(fixtures.TestBase):
 
         if (testing.against('mssql+pyodbc') and
                 not testing.db.dialect.freetds) \
-            or testing.against('mssql+mxodbc'):
+                or testing.against('mssql+mxodbc'):
             eq_(
                 testing.db.dialect.returns_unicode_strings,
                 'conditional'
@@ -689,15 +688,12 @@ class UnicodeTest(fixtures.TestBase):
                 ('charset' in testing.db.url.query)
             )
 
-        elif testing.against('mysql+cymysql'):
+        elif testing.against('mysql+cymysql', 'mysql+pymssql'):
             eq_(
                 testing.db.dialect.returns_unicode_strings,
-                # Py3K
-                #True
-                # Py2K
-                False
-                # end Py2K
+                True if util.py3k else False
             )
+
 
         else:
             expected = (testing.db.name, testing.db.driver) in \
@@ -709,7 +705,6 @@ class UnicodeTest(fixtures.TestBase):
                     ('mysql', 'oursql'),
                     ('mysql', 'zxjdbc'),
                     ('mysql', 'mysqlconnector'),
-                    ('mysql', 'pymysql'),
                     ('sqlite', 'pysqlite'),
                     ('oracle', 'zxjdbc'),
                     ('oracle', 'cx_oracle'),
