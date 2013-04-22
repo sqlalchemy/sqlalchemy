@@ -2247,6 +2247,17 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
             7
         )
 
+    def test_undim_array_empty(self):
+        arrtable = self.tables.arrtable
+        self._fixture_456(arrtable)
+        eq_(
+            testing.db.scalar(
+                select([arrtable.c.intarr]).
+                    where(arrtable.c.intarr.contains([]))
+            ),
+            [4, 5, 6]
+        )
+
     def test_array_getitem_slice_exec(self):
         arrtable = self.tables.arrtable
         testing.db.execute(
