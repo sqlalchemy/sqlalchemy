@@ -7,6 +7,18 @@
     :version: 0.8.1
 
     .. change::
+      :tags: bug, postgresql
+      :tickets: 2681
+
+      The operators for the Postgresql ARRAY type supports
+      input types of sets, generators, etc. but only when a dimension
+      is specified for the ARRAY; otherwise, the dialect
+      needs to peek inside of "arr[0]" to guess how many
+      dimensions are in use.  If this occurs with a non
+      list/tuple type, the error message is now informative
+      and directs to specify a dimension for the ARRAY.
+
+    .. change::
       :tags: bug, mysql
       :pullreq: 55
 
