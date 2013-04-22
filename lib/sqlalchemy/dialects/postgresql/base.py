@@ -669,10 +669,22 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
     def compare_values(self, x, y):
         return x == y
 
+    def _test_array_of_scalars(self, arr):
+        if not arr:
+            return True
+        else:
+            try:
+                return not isinstance(arr[0], (list, tuple))
+            except TypeError:
+                raise TypeError(
+                            "Cannot auto-coerce ARRAY value of type "
+                            "%s unless dimensions are specified "
+                            "for ARRAY type" % type(arr))
+
     def _proc_array(self, arr, itemproc, dim, collection):
         if dim == 1 or (
                     dim is None and
-                    (not arr or not isinstance(arr[0], (list, tuple)))
+                    self._test_array_of_scalars(arr)
                 ):
             if itemproc:
                 return collection(itemproc(x) for x in arr)
