@@ -671,11 +671,9 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
 
     def _proc_array(self, arr, itemproc, dim, collection):
         if dim is None:
-            if arr is None:
-                arr = []
-            else:
-                arr = list(arr)
-        if dim == 1 or dim is None and not hasattr(arr[0], '__iter__'):
+            arr = list(arr)
+        if dim == 1 or dim is None and (
+                        not arr or not hasattr(arr[0], '__iter__')):
             if itemproc:
                 return collection(itemproc(x) for x in arr)
             else:
