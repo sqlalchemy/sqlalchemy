@@ -2279,21 +2279,14 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
         )
 
     def test_undim_array_contains_set_exec(self):
-        assert_raises_message(
-            exc.StatementError,
-            "Cannot auto-coerce ARRAY value of type",
-            self._test_undim_array_contains_typed_exec, set
-        )
+        self._test_undim_array_contains_typed_exec(set)
 
     def test_undim_array_contains_list_exec(self):
         self._test_undim_array_contains_typed_exec(list)
 
     def test_undim_array_contains_generator_exec(self):
-        assert_raises_message(
-            exc.StatementError,
-            "Cannot auto-coerce ARRAY value of type",
-            self._test_undim_array_contains_typed_exec, lambda elem: (x for x in elem)
-        )
+        self._test_undim_array_contains_typed_exec(
+                    lambda elem: (x for x in elem))
 
     def _test_dim_array_contains_typed_exec(self, struct):
         dim_arrtable = self.tables.dim_arrtable

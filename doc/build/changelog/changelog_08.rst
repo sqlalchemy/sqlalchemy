@@ -11,12 +11,9 @@
       :tickets: 2681
 
       The operators for the Postgresql ARRAY type supports
-      input types of sets, generators, etc. but only when a dimension
-      is specified for the ARRAY; otherwise, the dialect
-      needs to peek inside of "arr[0]" to guess how many
-      dimensions are in use.  If this occurs with a non
-      list/tuple type, the error message is now informative
-      and directs to specify a dimension for the ARRAY.
+      input types of sets, generators, etc. even when
+      a dimension is not specified, by turning the given
+      iterable into a collection unconditionally.
 
     .. change::
       :tags: bug, mysql
