@@ -421,23 +421,26 @@ class PGDialect_psycopg2(PGDialect):
         return ([], opts)
 
     def is_disconnect(self, e, connection, cursor):
-        if isinstance(e, self.dbapi.OperationalError):
-            # these error messages from libpq: interfaces/libpq/fe-misc.c.
-            # TODO: these are sent through gettext in libpq and we can't
-            # check within other locales - consider using connection.closed
-            return 'terminating connection' in str(e) or \
-                    'closed the connection' in str(e) or \
-                    'connection not open' in str(e) or \
-                    'could not receive data from server' in str(e)
-        elif isinstance(e, self.dbapi.InterfaceError):
-            # psycopg2 client errors, psycopg2/conenction.h, psycopg2/cursor.h
-            return 'connection already closed' in str(e) or \
-                    'cursor already closed' in str(e)
-        elif isinstance(e, self.dbapi.ProgrammingError):
-            # not sure where this path is originally from, it may
-            # be obsolete.   It really says "losed", not "closed".
-            return "losed the connection unexpectedly" in str(e)
-        else:
-            return False
+        if isinstance(e, self.dbapi.Error):
+            str_e = str(e)
+            for msg in [
+                # these error messages from libpq: interfaces/libpq/fe-misc.c
+                # and interfaces/libpq/fe-secure.c.
+                # TODO: these are sent through gettext in libpq and we can't
+                # check within other locales - consider using connection.closed
+                'terminating connection',
+                'closed the connection',
+                'connection not open',
+                'could not receive data from server',
+                # psycopg2 client errors, psycopg2/conenction.h, psycopg2/cursor.h
+                'connection already closed',
+                'cursor already closed',
+                # not sure where this path is originally from, it may
+                # be obsolete.   It really says "losed", not "closed".
+                'losed the connection unexpectedly'
+            ]:
+                if msg in str_e:
+                    return True
+        return False
 
 dialect = PGDialect_psycopg2
