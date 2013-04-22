@@ -7,6 +7,16 @@
     :version: 0.8.1
 
     .. change::
+      :tags: bug, postgresql
+      :tickets: 2712
+
+      Opened up the checking for "disconnect" with psycopg2/libpq
+      to check for all the various "disconnect" messages within
+      the full exception hierarchy.  Specifically the
+      "closed the connection unexpectedly" message has now been
+      seen in at least three different exception types.
+
+    .. change::
       :tags: bug, sql, mysql
       :tickets: 2682
 
