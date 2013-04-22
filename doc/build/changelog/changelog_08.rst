@@ -7,6 +7,18 @@
     :version: 0.8.1
 
     .. change::
+      :tags: bug, sql, mysql
+      :tickets: 2682
+
+      Fully implemented the IS and IS NOT operators with
+      regards to the True/False constants.  An expression like
+      ``col.is_(True)`` will now render ``col IS true``
+      on the target platform, rather than converting the True/
+      False constant to an integer bound parameter.
+      This allows the ``is_()`` operator to work on MySQL when
+      given True/False constants.
+
+    .. change::
       :tags: bug, postgresql
       :tickets: 2681
 

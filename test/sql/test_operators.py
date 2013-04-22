@@ -1,7 +1,7 @@
 from sqlalchemy.testing import fixtures, eq_, is_
 from sqlalchemy import testing
 from sqlalchemy.testing import assert_raises_message
-from sqlalchemy.sql import column, desc, asc, literal, collate
+from sqlalchemy.sql import column, desc, asc, literal, collate, null, true, false
 from sqlalchemy.sql.expression import BinaryExpression, \
                 ClauseList, Grouping, \
                 UnaryExpression, select, union, func, tuple_
@@ -65,6 +65,33 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
 
     def test_isnot_null(self):
         self._do_operate_test(operators.isnot, None)
+
+    def test_is_null_const(self):
+        self._do_operate_test(operators.is_, null())
+
+    def test_is_true_const(self):
+        self._do_operate_test(operators.is_, true())
+
+    def test_is_false_const(self):
+        self._do_operate_test(operators.is_, false())
+
+    def test_equals_true(self):
+        self._do_operate_test(operators.eq, True)
+
+    def test_notequals_true(self):
+        self._do_operate_test(operators.ne, True)
+
+    def test_is_true(self):
+        self._do_operate_test(operators.is_, True)
+
+    def test_isnot_true(self):
+        self._do_operate_test(operators.isnot, True)
+
+    def test_is_false(self):
+        self._do_operate_test(operators.is_, False)
+
+    def test_isnot_false(self):
+        self._do_operate_test(operators.isnot, False)
 
     def test_like(self):
         self._do_operate_test(operators.like_op)
