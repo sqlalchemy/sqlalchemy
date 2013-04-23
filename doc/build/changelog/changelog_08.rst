@@ -7,6 +7,15 @@
     :version: 0.8.1
 
     .. change::
+      :tags: bug, orm
+
+      Added a conditional to the unpickling process for ORM
+      mapped objects, such that if the reference to the object
+      were lost when the object was pickled, we don't
+      erroneously try to set up _sa_instance_state - fixes
+      a NoneType error.
+
+    .. change::
       :tags: bug, postgresql
       :tickets: 2712
 
