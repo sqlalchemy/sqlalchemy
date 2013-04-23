@@ -422,7 +422,7 @@ class PGDialect_psycopg2(PGDialect):
 
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.Error):
-            str_e = str(e)
+            str_e = str(e).partition("\n")[0]
             for msg in [
                 # these error messages from libpq: interfaces/libpq/fe-misc.c
                 # and interfaces/libpq/fe-secure.c.
@@ -439,7 +439,8 @@ class PGDialect_psycopg2(PGDialect):
                 # be obsolete.   It really says "losed", not "closed".
                 'losed the connection unexpectedly'
             ]:
-                if msg in str_e:
+                idx = str_e.find(msg)
+                if idx >= 0 and '"' not in str_e[:idx]:
                     return True
         return False
 

@@ -15,6 +15,7 @@
       the full exception hierarchy.  Specifically the
       "closed the connection unexpectedly" message has now been
       seen in at least three different exception types.
+      Courtesy Eli Collins.
 
     .. change::
       :tags: bug, sql, mysql
