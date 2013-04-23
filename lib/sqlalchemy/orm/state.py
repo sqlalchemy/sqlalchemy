@@ -272,7 +272,8 @@ class InstanceState(interfaces._InspectionAttr):
         # setup _sa_instance_state ahead of time so that
         # unpickle events can access the object normally.
         # see [ticket:2362]
-        manager.setup_instance(inst, self)
+        if inst is not None:
+            manager.setup_instance(inst, self)
         manager.dispatch.unpickle(self, state)
 
     def _initialize(self, key):
