@@ -2057,8 +2057,8 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             sess.query(parent, grandparent, Node).\
                 join(parent, Node.parent).\
                 join(grandparent, parent.parent).\
-                    filter(Node.data=='n122').filter(parent.data=='n12').\
-                    filter(grandparent.data=='n1').from_self().first(),
+                    filter(Node.data == 'n122').filter(parent.data == 'n12').\
+                    filter(grandparent.data == 'n1').from_self().first(),
             (Node(data='n12'), Node(data='n1'), Node(data='n122'))
         )
 

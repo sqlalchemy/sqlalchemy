@@ -872,20 +872,16 @@ class _ORMJoin(expression.Join):
 
     def __init__(self, left, right, onclause=None,
                             isouter=False, join_to_left=True):
-        adapt_from = None
 
+        adapt_from = None
         if hasattr(left, '_orm_mappers'):
             left_mapper = left._orm_mappers[1]
-            if join_to_left:
-                adapt_from = left.right
         else:
             info = inspection.inspect(left)
             left_mapper = getattr(info, 'mapper', None)
-            left = info.selectable
-            left_is_aliased = getattr(info, 'is_aliased_class', False)
 
-            if join_to_left and (left_is_aliased or not left_mapper):
-                adapt_from = left
+        left_info = inspection.inspect(left)
+        left_selectable = left_info.selectable
 
         info = inspection.inspect(right)
         right_mapper = getattr(info, 'mapper', None)
@@ -902,18 +898,34 @@ class _ORMJoin(expression.Join):
 
             if isinstance(onclause, basestring):
                 prop = left_mapper.get_property(onclause)
+                on_selectable = prop.parent.selectable
             elif isinstance(onclause, attributes.QueryableAttribute):
-                if adapt_from is None:
-                    adapt_from = onclause.comparator._source_selectable()
+                on_selectable = onclause.comparator._source_selectable()
+                #if adapt_from is None:
+                #    adapt_from = onclause.comparator._source_selectable()
                 prop = onclause.property
             elif isinstance(onclause, MapperProperty):
                 prop = onclause
+                on_selectable = prop.parent.selectable
             else:
                 prop = None
 
             if prop:
+                import pdb
+                pdb.set_trace()
+                _derived = []
+                for s in expression._from_objects(left_selectable):
+                    if s == on_selectable:
+                        adapt_from = s
+                        break
+                    elif s.is_derived_from(on_selectable):
+                        _derived.append(s)
+                else:
+                    if _derived:
+                        adapt_from = _derived[0]
+
                 pj, sj, source, dest, \
-                secondary, target_adapter = prop._create_joins(
+                    secondary, target_adapter = prop._create_joins(
                                 source_selectable=adapt_from,
                                 dest_selectable=adapt_to,
                                 source_polymorphic=True,

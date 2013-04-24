@@ -1921,38 +1921,15 @@ class Query(object):
             info.selectable,\
             getattr(info, 'is_aliased_class', False)
 
-        # this is an overly broad assumption here, but there's a
-        # very wide variety of situations where we rely upon orm.join's
-        # adaption to glue clauses together, with joined-table inheritance's
-        # wide array of variables taking up most of the space.
-        # Setting the flag here is still a guess, so it is a bug
-        # that we don't have definitive criterion to determine when
-        # adaption should be enabled (or perhaps that we're even doing the
-        # whole thing the way we are here).
-        join_to_left = not right_is_aliased and not left_is_aliased
-
         if self._from_obj and left_selectable is not None:
             replace_clause_index, clause = sql_util.find_join_source(
                                                     self._from_obj,
                                                     left_selectable)
             if clause is not None:
-                # the entire query's FROM clause is an alias of itself (i.e.
-                # from_self(), similar). if the left clause is that one,
-                # ensure it adapts to the left side.
-                if self._from_obj_alias and clause is self._from_obj[0]:
-                    join_to_left = True
-
-                # An exception case where adaption to the left edge is not
-                # desirable.  See above note on join_to_left.
-                if join_to_left and isinstance(clause, expression.Join) and \
-                    sql_util.clause_is_present(left_selectable, clause):
-                    join_to_left = False
-
                 try:
                     clause = orm_join(clause,
                                     right,
-                                    onclause, isouter=outerjoin,
-                                    join_to_left=join_to_left)
+                                    onclause, isouter=outerjoin)
                 except sa_exc.ArgumentError, ae:
                     raise sa_exc.InvalidRequestError(
                             "Could not find a FROM clause to join from.  "
@@ -1981,8 +1958,7 @@ class Query(object):
                     "Could not find a FROM clause to join from")
 
         try:
-            clause = orm_join(clause, right, onclause,
-                                isouter=outerjoin, join_to_left=join_to_left)
+            clause = orm_join(clause, right, onclause, isouter=outerjoin)
         except sa_exc.ArgumentError, ae:
             raise sa_exc.InvalidRequestError(
                     "Could not find a FROM clause to join from.  "
