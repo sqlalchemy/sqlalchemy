@@ -426,14 +426,14 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         #)
 
         self.assert_compile(
-            sess.query(User).join((Order, User.id==Order.user_id)),
+            sess.query(User).join((Order, User.id == Order.user_id)),
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users JOIN orders ON users.id = orders.user_id",
         )
 
         self.assert_compile(
             sess.query(User).join(
-                                (Order, User.id==Order.user_id),
+                                (Order, User.id == Order.user_id),
                                 (Item, Order.items)),
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users JOIN orders ON users.id = orders.user_id "
@@ -449,7 +449,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "FROM users JOIN orders ON users.id = orders.user_id",
         )
 
-    def test_single_prop(self):
+    def test_single_prop_1(self):
         Item, Order, User, Address = (self.classes.Item,
                                 self.classes.Order,
                                 self.classes.User,
@@ -462,14 +462,27 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "FROM users JOIN orders ON users.id = orders.user_id"
         )
 
+    def test_single_prop_2(self):
+        Item, Order, User, Address = (self.classes.Item,
+                                self.classes.Order,
+                                self.classes.User,
+                                self.classes.Address)
+
+        sess = create_session()
         self.assert_compile(
             sess.query(User).join(Order.user),
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM orders JOIN users ON users.id = orders.user_id"
         )
 
+    def test_single_prop_3(self):
+        Item, Order, User, Address = (self.classes.Item,
+                                self.classes.Order,
+                                self.classes.User,
+                                self.classes.Address)
+
+        sess = create_session()
         oalias1 = aliased(Order)
-        oalias2 = aliased(Order)
 
         self.assert_compile(
             sess.query(User).join(oalias1.user),
@@ -477,6 +490,15 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "FROM orders AS orders_1 JOIN users ON users.id = orders_1.user_id"
         )
 
+    def test_single_prop_4(self):
+        Item, Order, User, Address = (self.classes.Item,
+                                self.classes.Order,
+                                self.classes.User,
+                                self.classes.Address)
+
+        sess = create_session()
+        oalias1 = aliased(Order)
+        oalias2 = aliased(Order)
         # another nonsensical query.  (from [ticket:1537]).
         # in this case, the contract of "left to right" is honored
         self.assert_compile(
@@ -486,6 +508,13 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "orders AS orders_2 JOIN users ON users.id = orders_2.user_id"
         )
 
+    def test_single_prop_5(self):
+        Item, Order, User, Address = (self.classes.Item,
+                                self.classes.Order,
+                                self.classes.User,
+                                self.classes.Address)
+
+        sess = create_session()
         self.assert_compile(
             sess.query(User).join(User.orders, Order.items),
             "SELECT users.id AS users_id, users.name AS users_name FROM users "
@@ -493,6 +522,13 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "ON orders.id = order_items_1.order_id JOIN items ON items.id = order_items_1.item_id"
         )
 
+    def test_single_prop_6(self):
+        Item, Order, User, Address = (self.classes.Item,
+                                self.classes.Order,
+                                self.classes.User,
+                                self.classes.Address)
+
+        sess = create_session()
         ualias = aliased(User)
         self.assert_compile(
             sess.query(ualias).join(ualias.orders),
@@ -500,6 +536,13 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "FROM users AS users_1 JOIN orders ON users_1.id = orders.user_id"
         )
 
+    def test_single_prop_7(self):
+        Item, Order, User, Address = (self.classes.Item,
+                                self.classes.Order,
+                                self.classes.User,
+                                self.classes.Address)
+
+        sess = create_session()
         # this query is somewhat nonsensical.  the old system didn't render a correct
         # query for this.   In this case its the most faithful to what was asked -
         # there's no linkage between User.orders and "oalias", so two FROM elements
@@ -513,8 +556,16 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "JOIN items ON items.id = order_items_1.item_id"
         )
 
+    def test_single_prop_8(self):
+        Item, Order, User, Address = (self.classes.Item,
+                                self.classes.Order,
+                                self.classes.User,
+                                self.classes.Address)
+
+        sess = create_session()
         # same as before using an aliased() for User as well
         ualias = aliased(User)
+        oalias = aliased(Order)
         self.assert_compile(
             sess.query(ualias).join(ualias.orders, oalias.items),
             "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name FROM users AS users_1 "
@@ -523,23 +574,47 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "JOIN items ON items.id = order_items_1.item_id"
         )
 
+    def test_single_prop_9(self):
+        Item, Order, User, Address = (self.classes.Item,
+                                self.classes.Order,
+                                self.classes.User,
+                                self.classes.Address)
+
+        sess = create_session()
         self.assert_compile(
-            sess.query(User).filter(User.name=='ed').from_self().join(User.orders),
+            sess.query(User).filter(User.name == 'ed').from_self().
+                join(User.orders),
             "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name AS anon_1_users_name "
             "FROM (SELECT users.id AS users_id, users.name AS users_name "
             "FROM users "
             "WHERE users.name = :name_1) AS anon_1 JOIN orders ON anon_1.users_id = orders.user_id"
         )
 
+    def test_single_prop_10(self):
+        Item, Order, User, Address = (self.classes.Item,
+                                self.classes.Order,
+                                self.classes.User,
+                                self.classes.Address)
+
+        sess = create_session()
         self.assert_compile(
-            sess.query(User).join(User.addresses, aliased=True).filter(Address.email_address=='foo'),
+            sess.query(User).join(User.addresses, aliased=True).
+                filter(Address.email_address == 'foo'),
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id "
             "WHERE addresses_1.email_address = :email_address_1"
         )
 
+    def test_single_prop_11(self):
+        Item, Order, User, Address = (self.classes.Item,
+                                self.classes.Order,
+                                self.classes.User,
+                                self.classes.Address)
+
+        sess = create_session()
         self.assert_compile(
-            sess.query(User).join(User.orders, Order.items, aliased=True).filter(Item.id==10),
+            sess.query(User).join(User.orders, Order.items, aliased=True).
+                filter(Item.id == 10),
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users JOIN orders AS orders_1 ON users.id = orders_1.user_id "
             "JOIN order_items AS order_items_1 ON orders_1.id = order_items_1.order_id "
@@ -547,6 +622,14 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "WHERE items_1.id = :id_1"
         )
 
+    def test_single_prop_12(self):
+        Item, Order, User, Address = (self.classes.Item,
+                                self.classes.Order,
+                                self.classes.User,
+                                self.classes.Address)
+
+        sess = create_session()
+        oalias1 = aliased(Order)
         # test #1 for [ticket:1706]
         ualias = aliased(User)
         self.assert_compile(
@@ -559,7 +642,15 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "= addresses.user_id"
         )
 
+    def test_single_prop_13(self):
+        Item, Order, User, Address = (self.classes.Item,
+                                self.classes.Order,
+                                self.classes.User,
+                                self.classes.Address)
+
+        sess = create_session()
         # test #2 for [ticket:1706]
+        ualias = aliased(User)
         ualias2 = aliased(User)
         self.assert_compile(
             sess.query(ualias).
