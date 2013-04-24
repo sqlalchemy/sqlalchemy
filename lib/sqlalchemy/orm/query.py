@@ -2373,6 +2373,26 @@ class Query(object):
                 kwargs.get('offset') is not None or
                 kwargs.get('distinct', False))
 
+    def exists(self):
+        """A convenience method that turns a query into an EXISTS subquery
+        of the form EXISTS (SELECT 1 FROM ... WHERE ...).
+
+        e.g.::
+
+            q = session.query(User).filter(User.name == 'fred')
+            session.query(q.exists())
+
+        Producing SQL similar to::
+
+            SELECT EXISTS (
+                SELECT 1 FROM users WHERE users.name = :name_1
+            ) AS anon_1
+
+        .. versionadded:: 0.8.1
+
+        """
+        return sql.exists(self.with_entities('1').statement)
+
     def count(self):
         """Return a count of rows this Query would return.
 

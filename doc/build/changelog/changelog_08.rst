@@ -7,6 +7,14 @@
     :version: 0.8.1
 
     .. change::
+      :tags: feature, orm
+      :tickets: 2673
+
+      Added a convenience method to Query that turns a query into an
+      EXISTS subquery of the form
+      ``EXISTS (SELECT 1 FROM ... WHERE ...)``.
+
+    .. change::
       :tags: bug, orm
 
       Added a conditional to the unpickling process for ORM
