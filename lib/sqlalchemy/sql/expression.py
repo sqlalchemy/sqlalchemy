@@ -3953,12 +3953,6 @@ class Join(FromClause):
     def get_children(self, **kwargs):
         return self.left, self.right, self.onclause
 
-    def compare(self, other):
-        return isinstance(other, Join) and \
-            self.left.compare(other.left) and \
-            self.right.compare(other.right) and \
-            self.onclause.compare(other.onclause)
-
     def _match_primaries(self, left, right):
         if isinstance(left, Join):
             left_right = left.right
