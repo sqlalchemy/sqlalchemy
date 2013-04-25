@@ -870,20 +870,10 @@ class _ORMJoin(expression.Join):
 
     __visit_name__ = expression.Join.__visit_name__
 
-    def __init__(self, left, right, onclause=None,
-                            isouter=False, join_to_left=True):
+    def __init__(self, left, right, onclause=None, isouter=False):
 
-        adapt_from = None
         left_info = inspection.inspect(left)
-
-        if hasattr(left, '_orm_infos'):
-            left_orm_info = left._orm_infos[1]
-        else:
-            #if isinstance(left, expression.Join):
-            #    info = inspection.inspect(left.right)
-            #else:
-            #    info = inspection.inspect(left)
-            left_orm_info = left_info
+        left_orm_info = getattr(left, '_joined_from_info', left_info)
 
         right_info = inspection.inspect(right)
 
@@ -892,9 +882,7 @@ class _ORMJoin(expression.Join):
         else:
             adapt_to = None
 
-#        import pdb
-#        pdb.set_trace()
-        self._orm_infos = (left_orm_info, right_info)
+        self._joined_from_info = right_info
 
         if isinstance(onclause, basestring):
             onclause = getattr(left_orm_info.entity, onclause)
@@ -909,33 +897,11 @@ class _ORMJoin(expression.Join):
             prop = None
 
         if prop:
-            #import pdb
-            #pdb.set_trace()
             if sql_util.clause_is_present(on_selectable, left_info.selectable):
                 adapt_from = on_selectable
             else:
                 adapt_from = left_info.selectable
-#                import pdb
-#                pdb.set_trace()
-                #adapt_from = left_orm_info.selectable
-                #adapt_from = left_info.selectable
-#                adapt_from = None
-#            if adapt_from is None:
-#                _derived = []
-#                for s in expression._from_objects(left_info.selectable):
-#                    if s == on_selectable:
-#                        adapt_from = s
-#                        break
-#                    elif s.is_derived_from(on_selectable):
-#                        _derived.append(s)
-#                else:
-#                    if _derived:
-#                        adapt_from = _derived[0]
 
-            #if adapt_from is None:
-#            adapt_from = left_info.selectable
-
-            #adapt_from = None
             pj, sj, source, dest, \
                 secondary, target_adapter = prop._create_joins(
                             source_selectable=adapt_from,
@@ -953,14 +919,14 @@ class _ORMJoin(expression.Join):
 
         expression.Join.__init__(self, left, right, onclause, isouter)
 
-    def join(self, right, onclause=None, isouter=False, join_to_left=True):
-        return _ORMJoin(self, right, onclause, isouter, join_to_left)
+    def join(self, right, onclause=None, isouter=False, join_to_left=None):
+        return _ORMJoin(self, right, onclause, isouter)
 
-    def outerjoin(self, right, onclause=None, join_to_left=True):
-        return _ORMJoin(self, right, onclause, True, join_to_left)
+    def outerjoin(self, right, onclause=None, join_to_left=None):
+        return _ORMJoin(self, right, onclause, True)
 
 
-def join(left, right, onclause=None, isouter=False, join_to_left=True):
+def join(left, right, onclause=None, isouter=False, join_to_left=None):
     """Produce an inner join between left and right clauses.
 
     :func:`.orm.join` is an extension to the core join interface
@@ -970,11 +936,6 @@ def join(left, right, onclause=None, isouter=False, join_to_left=True):
     :class:`.AliasedClass` instances.   The "on" clause can
     be a SQL expression, or an attribute or string name
     referencing a configured :func:`.relationship`.
-
-    ``join_to_left`` indicates to attempt aliasing the ON clause,
-    in whatever form it is passed, to the selectable
-    passed as the left side.  If False, the onclause
-    is used as is.
 
     :func:`.orm.join` is not commonly needed in modern usage,
     as its functionality is encapsulated within that of the
@@ -999,11 +960,14 @@ def join(left, right, onclause=None, isouter=False, join_to_left=True):
     See :meth:`.Query.join` for information on modern usage
     of ORM level joins.
 
+    .. versionchanged:: 0.8.1 - the ``join_to_left`` parameter
+       is no longer used, and is deprecated.
+
     """
-    return _ORMJoin(left, right, onclause, isouter, join_to_left)
+    return _ORMJoin(left, right, onclause, isouter)
 
 
-def outerjoin(left, right, onclause=None, join_to_left=True):
+def outerjoin(left, right, onclause=None, join_to_left=None):
     """Produce a left outer join between left and right clauses.
 
     This is the "outer join" version of the :func:`.orm.join` function,
@@ -1011,7 +975,7 @@ def outerjoin(left, right, onclause=None, join_to_left=True):
     See that function's documentation for other usage details.
 
     """
-    return _ORMJoin(left, right, onclause, True, join_to_left)
+    return _ORMJoin(left, right, onclause, True)
 
 
 def with_parent(instance, prop):
