@@ -3910,13 +3910,7 @@ class Join(FromClause):
     def is_derived_from(self, fromclause):
         return fromclause is self or \
                 self.left.is_derived_from(fromclause) or \
-                self.right.is_derived_from(fromclause) or \
-                (
-                    isinstance(fromclause, Join) and
-                    self.left.is_derived_from(fromclause.left) and
-                    self.right.is_derived_from(fromclause.right) and
-                    self.onclause.compare(fromclause.onclause)
-                )
+                self.right.is_derived_from(fromclause)
 
     def self_group(self, against=None):
         return FromGrouping(self)
