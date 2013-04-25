@@ -876,11 +876,7 @@ class _ORMJoin(expression.Join):
         left_orm_info = getattr(left, '_joined_from_info', left_info)
 
         right_info = inspection.inspect(right)
-
-        if getattr(right_info, 'is_aliased_class', False):
-            adapt_to = right_info.selectable
-        else:
-            adapt_to = None
+        adapt_to = right_info.selectable
 
         self._joined_from_info = right_info
 
