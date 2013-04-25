@@ -1812,9 +1812,9 @@ class Query(object):
                         "are the same entity" %
                         (left, right))
 
-        right, right_is_aliased, onclause = self._prepare_right_side(
+        right, onclause = self._prepare_right_side(
                                             right, onclause,
-                                            outerjoin, create_aliases,
+                                            create_aliases,
                                             prop)
 
         # if joining on a MapperProperty path,
@@ -1825,16 +1825,11 @@ class Query(object):
                 'prev': ((left, right, prop.key), self._joinpoint)
             })
         else:
-            self._joinpoint = {
-                '_joinpoint_entity': right
-            }
+            self._joinpoint = {'_joinpoint_entity': right}
 
-        self._join_to_left(left, right,
-                                right_is_aliased,
-                                onclause, outerjoin)
+        self._join_to_left(left, right, onclause, outerjoin)
 
-    def _prepare_right_side(self, right, onclause, outerjoin,
-                                create_aliases, prop):
+    def _prepare_right_side(self, right, onclause, create_aliases, prop):
         info = inspect(right)
 
         right_mapper, right_selectable, right_is_aliased = \
@@ -1911,17 +1906,14 @@ class Query(object):
                         )
                     )
 
-        return right, right_is_aliased, onclause
+        return right, onclause
 
-    def _join_to_left(self, left, right, right_is_aliased,
-                                    onclause, outerjoin):
+    def _join_to_left(self, left, right, onclause, outerjoin):
         info = inspect(left)
-        left_mapper, left_selectable, left_is_aliased = \
-            getattr(info, 'mapper', None),\
-            info.selectable,\
-            getattr(info, 'is_aliased_class', False)
+        left_mapper = getattr(info, 'mapper', None)
+        left_selectable = info.selectable
 
-        if self._from_obj and left_selectable is not None:
+        if self._from_obj:
             replace_clause_index, clause = sql_util.find_join_source(
                                                     self._from_obj,
                                                     left_selectable)
@@ -1948,14 +1940,10 @@ class Query(object):
                     break
             else:
                 clause = left
-        elif left_selectable is not None:
-            clause = left_selectable
         else:
-            clause = None
+            clause = left_selectable
 
-        if clause is None:
-            raise sa_exc.InvalidRequestError(
-                    "Could not find a FROM clause to join from")
+        assert clause is not None
 
         try:
             clause = orm_join(clause, right, onclause, isouter=outerjoin)
