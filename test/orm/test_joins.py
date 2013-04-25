@@ -215,7 +215,7 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
             , use_default_dialect = True
         )
 
-    def test_prop_with_polymorphic(self):
+    def test_prop_with_polymorphic_1(self):
         Person, Manager, Paperwork = (self.classes.Person,
                                 self.classes.Manager,
                                 self.classes.Paperwork)
@@ -237,6 +237,13 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
                 "ORDER BY people.person_id"
                 , use_default_dialect=True
             )
+
+    def test_prop_with_polymorphic_2(self):
+        Person, Manager, Paperwork = (self.classes.Person,
+                                self.classes.Manager,
+                                self.classes.Paperwork)
+
+        sess = create_session()
 
         self.assert_compile(
             sess.query(Person).with_polymorphic(Manager).
@@ -1928,33 +1935,49 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             use_default_dialect=True
         )
 
-    def test_explicit_join(self):
+    def test_explicit_join_1(self):
         Node = self.classes.Node
-
-        sess = create_session()
-
         n1 = aliased(Node)
         n2 = aliased(Node)
 
         self.assert_compile(
             join(Node, n1, 'children').join(n2, 'children'),
-            "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id",
+            "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id "
+            "JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id",
             use_default_dialect=True
         )
 
+    def test_explicit_join_2(self):
+        Node = self.classes.Node
+        n1 = aliased(Node)
+        n2 = aliased(Node)
+
         self.assert_compile(
             join(Node, n1, Node.children).join(n2, n1.children),
-            "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id",
+            "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id "
+            "JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id",
             use_default_dialect=True
         )
+
+    def test_explicit_join_3(self):
+        Node = self.classes.Node
+        n1 = aliased(Node)
+        n2 = aliased(Node)
 
         # the join_to_left=False here is unfortunate.   the default on this flag should
         # be False.
         self.assert_compile(
             join(Node, n1, Node.children).join(n2, Node.children, join_to_left=False),
-            "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id JOIN nodes AS nodes_2 ON nodes.id = nodes_2.parent_id",
+            "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id "
+            "JOIN nodes AS nodes_2 ON nodes.id = nodes_2.parent_id",
             use_default_dialect=True
         )
+
+    def test_explicit_join_4(self):
+        Node = self.classes.Node
+        sess = create_session()
+        n1 = aliased(Node)
+        n2 = aliased(Node)
 
         self.assert_compile(
             sess.query(Node).join(n1, Node.children).join(n2, n1.children),
@@ -1964,6 +1987,12 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             use_default_dialect=True
         )
 
+    def test_explicit_join_5(self):
+        Node = self.classes.Node
+        sess = create_session()
+        n1 = aliased(Node)
+        n2 = aliased(Node)
+
         self.assert_compile(
             sess.query(Node).join(n1, Node.children).join(n2, Node.children),
             "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, nodes.data AS "
@@ -1972,25 +2001,59 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             use_default_dialect=True
         )
 
-        node = sess.query(Node).select_from(join(Node, n1, 'children')).filter(n1.data=='n122').first()
-        assert node.data=='n12'
+    def test_explicit_join_6(self):
+        Node = self.classes.Node
+        sess = create_session()
+        n1 = aliased(Node)
 
-        node = sess.query(Node).select_from(join(Node, n1, 'children').join(n2, 'children')).\
-            filter(n2.data=='n122').first()
-        assert node.data=='n1'
+        node = sess.query(Node).select_from(join(Node, n1, 'children')).\
+                filter(n1.data == 'n122').first()
+        assert node.data == 'n12'
+
+    def test_explicit_join_7(self):
+        Node = self.classes.Node
+        sess = create_session()
+        n1 = aliased(Node)
+        n2 = aliased(Node)
+
+        node = sess.query(Node).select_from(
+                join(Node, n1, 'children').join(n2, 'children')).\
+            filter(n2.data == 'n122').first()
+        assert node.data == 'n1'
+
+    def test_explicit_join_8(self):
+        Node = self.classes.Node
+        sess = create_session()
+        n1 = aliased(Node)
+        n2 = aliased(Node)
 
         # mix explicit and named onclauses
-        node = sess.query(Node).select_from(join(Node, n1, Node.id==n1.parent_id).join(n2, 'children')).\
-            filter(n2.data=='n122').first()
-        assert node.data=='n1'
+        node = sess.query(Node).select_from(
+                    join(Node, n1, Node.id == n1.parent_id).join(n2, 'children')).\
+            filter(n2.data == 'n122').first()
+        assert node.data == 'n1'
+
+    def test_explicit_join_9(self):
+        Node = self.classes.Node
+        sess = create_session()
+        n1 = aliased(Node)
+        n2 = aliased(Node)
 
         node = sess.query(Node).select_from(join(Node, n1, 'parent').join(n2, 'parent')).\
-            filter(and_(Node.data=='n122', n1.data=='n12', n2.data=='n1')).first()
+            filter(and_(Node.data == 'n122', n1.data == 'n12', n2.data == 'n1')).first()
         assert node.data == 'n122'
+
+    def test_explicit_join_10(self):
+        Node = self.classes.Node
+        sess = create_session()
+        n1 = aliased(Node)
+        n2 = aliased(Node)
 
         eq_(
             list(sess.query(Node).select_from(join(Node, n1, 'parent').join(n2, 'parent')).\
-            filter(and_(Node.data=='n122', n1.data=='n12', n2.data=='n1')).values(Node.data, n1.data, n2.data)),
+            filter(and_(Node.data == 'n122',
+                        n1.data == 'n12',
+                        n2.data == 'n1')).values(Node.data, n1.data, n2.data)),
             [('n122', 'n12', 'n1')])
 
     def test_join_to_nonaliased(self):
@@ -2040,8 +2103,8 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             sess.query(Node, parent, grandparent).\
                 join(parent, Node.parent).\
                 join(grandparent, parent.parent).\
-                    filter(Node.data=='n122').filter(parent.data=='n12').\
-                    filter(grandparent.data=='n1').from_self().first(),
+                    filter(Node.data == 'n122').filter(parent.data == 'n12').\
+                    filter(grandparent.data == 'n1').from_self().first(),
             (Node(data='n122'), Node(data='n12'), Node(data='n1'))
         )
 

@@ -3909,8 +3909,14 @@ class Join(FromClause):
 
     def is_derived_from(self, fromclause):
         return fromclause is self or \
-                self.left.is_derived_from(fromclause) or\
-                self.right.is_derived_from(fromclause)
+                self.left.is_derived_from(fromclause) or \
+                self.right.is_derived_from(fromclause) or \
+                (
+                    isinstance(fromclause, Join) and
+                    self.left.is_derived_from(fromclause.left) and
+                    self.right.is_derived_from(fromclause.right) and
+                    self.onclause.compare(fromclause.onclause)
+                )
 
     def self_group(self, against=None):
         return FromGrouping(self)
@@ -3946,6 +3952,12 @@ class Join(FromClause):
 
     def get_children(self, **kwargs):
         return self.left, self.right, self.onclause
+
+    def compare(self, other):
+        return isinstance(other, Join) and \
+            self.left.compare(other.left) and \
+            self.right.compare(other.right) and \
+            self.onclause.compare(other.onclause)
 
     def _match_primaries(self, left, right):
         if isinstance(left, Join):

@@ -203,7 +203,7 @@ def clause_is_present(clause, search):
     stack = [search]
     while stack:
         elem = stack.pop()
-        if clause is elem:
+        if clause == elem:  # use == here so that Annotated's compare
             return True
         elif isinstance(elem, expression.Join):
             stack.extend((elem.left, elem.right))
