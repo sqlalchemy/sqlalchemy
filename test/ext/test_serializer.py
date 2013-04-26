@@ -1,9 +1,7 @@
 
 from sqlalchemy.ext import serializer
-from sqlalchemy import exc
-import sqlalchemy as sa
 from sqlalchemy import testing
-from sqlalchemy import MetaData, Integer, String, ForeignKey, select, \
+from sqlalchemy import Integer, String, ForeignKey, select, \
     desc, func, util
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.schema import Column
@@ -19,6 +17,7 @@ class User(fixtures.ComparableEntity):
 class Address(fixtures.ComparableEntity):
     pass
 
+users = addresses = Session = None
 
 class SerializeTest(fixtures.MappedTest):
 
@@ -89,24 +88,21 @@ class SerializeTest(fixtures.MappedTest):
         eq_(re_expr.execute().fetchall(), [(7, u'jack'), (8, u'ed'),
             (8, u'ed'), (8, u'ed'), (9, u'fred')])
 
-    @testing.requires.python26  # namedtuple workaround not serializable in 2.5
-    @testing.skip_if(lambda: util.pypy, "pickle sometimes has "
-                        "problems here, sometimes not")
-    @testing.skip_if("postgresql", "Having intermittent problems on jenkins "
-                    "with this test, it's really not that important")
-    def test_query(self):
-        q = Session.query(User).filter(User.name == 'ed'
-                ).options(joinedload(User.addresses))
-        eq_(q.all(), [User(name='ed', addresses=[Address(id=2),
-            Address(id=3), Address(id=4)])])
-        q2 = serializer.loads(serializer.dumps(q, -1), users.metadata,
-                              Session)
+    def test_query_one(self):
+        q = Session.query(User).\
+                filter(User.name == 'ed').\
+                    options(joinedload(User.addresses))
 
+        q2 = serializer.loads(
+                    serializer.dumps(q, -1),
+                            users.metadata, Session)
         def go():
-            eq_(q2.all(), [User(name='ed', addresses=[Address(id=2),
-                Address(id=3), Address(id=4)])])
+            eq_(q2.all(), [
+                    User(name='ed', addresses=[Address(id=2),
+                    Address(id=3), Address(id=4)])])
 
         self.assert_sql_count(testing.db, go, 1)
+
         eq_(q2.join(User.addresses).filter(Address.email
             == 'ed@bettyboop.com').value(func.count('*')), 1)
         u1 = Session.query(User).get(8)
@@ -118,17 +114,37 @@ class SerializeTest(fixtures.MappedTest):
             Address(email='ed@lala.com'),
             Address(email='ed@bettyboop.com')])
 
-        # unfortunately pickle just doesn't have the horsepower
-        # to pickle annotated joins, both cpickle and pickle
-        # get confused likely since identity-unequal/hash equal
-        # objects with cycles being used
-        #q = \
-        #    Session.query(User).join(User.addresses).\
-        #       filter(Address.email.like('%fred%'))
-        #q2 = serializer.loads(serializer.dumps(q, -1), users.metadata,
-        #                      Session)
-        #eq_(q2.all(), [User(name='fred')])
-        #eq_(list(q2.values(User.id, User.name)), [(9, u'fred')])
+    def test_query_two(self):
+        q = \
+            Session.query(User).join(User.addresses).\
+               filter(Address.email.like('%fred%'))
+        q2 = serializer.loads(serializer.dumps(q, -1), users.metadata,
+                              Session)
+        eq_(q2.all(), [User(name='fred')])
+        eq_(list(q2.values(User.id, User.name)), [(9, u'fred')])
+
+    def test_query_three(self):
+        ua = aliased(User)
+        q = \
+            Session.query(ua).join(ua.addresses).\
+               filter(Address.email.like('%fred%'))
+        q2 = serializer.loads(serializer.dumps(q, -1), users.metadata,
+                              Session)
+        eq_(q2.all(), [User(name='fred')])
+
+        # try to pull out the aliased entity here...
+        ua_2 = q2._entities[0].entity_zero.entity
+        eq_(list(q2.values(ua_2.id, ua_2.name)), [(9, u'fred')])
+
+    def test_orm_join(self):
+        from sqlalchemy.orm.util import join
+
+        j = join(User, Address, User.addresses)
+
+        j2 = serializer.loads(serializer.dumps(j, -1), users.metadata)
+        assert j2.left is j.left
+        assert j2.right is j.right
+        assert j2._target_adapter._next
 
     @testing.requires.python26 # namedtuple workaround not serializable in 2.5
     @testing.exclude('sqlite', '<=', (3, 5, 9),

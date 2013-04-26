@@ -835,12 +835,12 @@ class JoinCondition(object):
                     secondary_aliasizer.traverse(secondaryjoin)
             else:
                 primary_aliasizer = ClauseAdapter(dest_selectable,
-                        exclude_fn=lambda c: "local" in c._annotations,
+                        exclude_fn=_ColInAnnotations("local"),
                         equivalents=self.child_equivalents)
                 if source_selectable is not None:
                     primary_aliasizer.chain(
                         ClauseAdapter(source_selectable,
-                            exclude_fn=lambda c: "remote" in c._annotations,
+                            exclude_fn=_ColInAnnotations("remote"),
                             equivalents=self.parent_equivalents))
                 secondary_aliasizer = None
 
@@ -895,3 +895,14 @@ class JoinCondition(object):
         bind_to_col = dict((binds[col].key, col) for col in binds)
 
         return lazywhere, bind_to_col, equated_columns
+
+class _ColInAnnotations(object):
+    """Seralizable equivalent to:
+
+        lambda c: "name" in c._annotations
+    """
+    def __init__(self, name):
+        self.name = name
+
+    def __call__(self, c):
+        return self.name in c._annotations

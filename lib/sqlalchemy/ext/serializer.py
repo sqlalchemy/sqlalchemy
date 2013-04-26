@@ -109,7 +109,8 @@ def Serializer(*args, **kw):
     pickler.persistent_id = persistent_id
     return pickler
 
-our_ids = re.compile(r'(mapper|table|column|session|attribute|engine):(.*)')
+our_ids = re.compile(
+            r'(mapperprop|mapper|table|column|session|attribute|engine):(.*)')
 
 
 def Deserializer(file, metadata=None, scoped_session=None, engine=None):
@@ -126,7 +127,7 @@ def Deserializer(file, metadata=None, scoped_session=None, engine=None):
             return None
 
     def persistent_load(id):
-        m = our_ids.match(id)
+        m = our_ids.match(str(id))
         if not m:
             return None
         else:

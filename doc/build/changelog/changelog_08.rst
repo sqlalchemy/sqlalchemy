@@ -8,6 +8,16 @@
 
     .. change::
       :tags: bug, orm
+      :tickets: 2698
+
+      Fixes to the ``sqlalchemy.ext.serializer`` extension, including
+      that the "id" passed from the pickler is turned into a string
+      to prevent against bytes being parsed on Py3K, as well as that
+      ``relationship()`` and ``orm.join()`` constructs are now properly
+      serialized.
+
+    .. change::
+      :tags: bug, orm
       :tickets: 2714
 
       A significant improvement to the inner workings of query.join(),
