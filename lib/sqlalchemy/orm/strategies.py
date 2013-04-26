@@ -1152,7 +1152,6 @@ class JoinedLoader(AbstractRelationshipLoader):
 
         towrap = context.eager_joins.setdefault(entity_key, default_towrap)
 
-        join_to_left = False
         if adapter:
             if getattr(adapter, 'aliased_class', None):
                 onclause = getattr(
@@ -1168,11 +1167,6 @@ class JoinedLoader(AbstractRelationshipLoader):
                                 self.key, self.parent_property
                             )
 
-            if onclause is self.parent_property:
-                # TODO: this is a temporary hack to
-                # account for polymorphic eager loads where
-                # the eagerload is referencing via of_type().
-                join_to_left = True
         else:
             onclause = self.parent_property
 
@@ -1182,7 +1176,6 @@ class JoinedLoader(AbstractRelationshipLoader):
                                             towrap,
                                             clauses.aliased_class,
                                             onclause,
-                                            join_to_left=join_to_left,
                                             isouter=not innerjoin
                                             )
 

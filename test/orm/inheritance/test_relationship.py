@@ -1113,3 +1113,267 @@ class SubClassToSubClassFromParentTest(fixtures.MappedTest):
             a1 = session.query(A).first()
             eq_(a1.related, [])
         self.assert_sql_count(testing.db, go, 3)
+
+
+class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
+    """
+    Two different joined-inh subclasses, led by a
+    parent, with two distinct endpoints:
+
+    parent -> subcl1 -> subcl2 -> (ep1, ep2)
+
+    the join to ep2 indicates we need to join
+    from the middle of the joinpoint, skipping ep1
+
+    """
+
+    run_create_tables = None
+    run_deletes = None
+    __dialect__ = 'default'
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('parent', metadata,
+            Column('id', Integer, primary_key=True,
+                    test_needs_autoincrement=True),
+            Column('data', String(30))
+            )
+        Table('base1', metadata,
+            Column('id', Integer, primary_key=True,
+                    test_needs_autoincrement=True),
+            Column('data', String(30))
+            )
+        Table('sub1', metadata,
+            Column('id', Integer, ForeignKey('base1.id'), primary_key=True),
+            Column('parent_id', ForeignKey('parent.id')),
+            Column('subdata', String(30))
+            )
+
+        Table('base2', metadata,
+            Column('id', Integer, primary_key=True,
+                    test_needs_autoincrement=True),
+            Column('base1_id', ForeignKey('base1.id')),
+            Column('data', String(30))
+            )
+        Table('sub2', metadata,
+            Column('id', Integer, ForeignKey('base2.id'), primary_key=True),
+            Column('subdata', String(30))
+            )
+        Table('ep1', metadata,
+            Column('id', Integer, primary_key=True,
+                                test_needs_autoincrement=True),
+            Column('base2_id', Integer, ForeignKey('base2.id')),
+            Column('data', String(30))
+            )
+        Table('ep2', metadata,
+            Column('id', Integer, primary_key=True,
+                                test_needs_autoincrement=True),
+            Column('base2_id', Integer, ForeignKey('base2.id')),
+            Column('data', String(30))
+            )
+
+    @classmethod
+    def setup_classes(cls):
+        class Parent(cls.Comparable):
+            pass
+        class Base1(cls.Comparable):
+            pass
+        class Sub1(Base1):
+            pass
+        class Base2(cls.Comparable):
+            pass
+        class Sub2(Base2):
+            pass
+        class EP1(cls.Comparable):
+            pass
+        class EP2(cls.Comparable):
+            pass
+
+    @classmethod
+    def _classes(cls):
+        return cls.classes.Parent, cls.classes.Base1,\
+            cls.classes.Base2, cls.classes.Sub1,\
+            cls.classes.Sub2, cls.classes.EP1,\
+            cls.classes.EP2
+
+    @classmethod
+    def setup_mappers(cls):
+        Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = cls._classes()
+
+        mapper(Parent, cls.tables.parent, properties={
+                'sub1': relationship(Sub1)
+            })
+        mapper(Base1, cls.tables.base1, properties={
+                'sub2': relationship(Sub2)
+            })
+        mapper(Sub1, cls.tables.sub1, inherits=Base1)
+        mapper(Base2, cls.tables.base2, properties={
+                'ep1': relationship(EP1),
+                'ep2': relationship(EP2)
+            })
+        mapper(Sub2, cls.tables.sub2, inherits=Base2)
+        mapper(EP1, cls.tables.ep1)
+        mapper(EP2, cls.tables.ep2)
+
+    def test_one(self):
+        Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
+
+        s = Session()
+        self.assert_compile(
+            s.query(Parent).join(Parent.sub1, Sub1.sub2).
+                join(Sub2.ep1).
+                join(Sub2.ep2),
+            "SELECT parent.id AS parent_id, parent.data AS parent_data "
+            "FROM parent JOIN (SELECT base1.id AS base1_id, "
+            "base1.data AS base1_data, sub1.id AS sub1_id, "
+            "sub1.parent_id AS sub1_parent_id, sub1.subdata AS sub1_subdata "
+            "FROM base1 JOIN sub1 ON base1.id = sub1.id) AS anon_1 "
+            "ON parent.id = anon_1.sub1_parent_id JOIN "
+            "(SELECT base2.id AS base2_id, base2.base1_id AS base2_base1_id, "
+            "base2.data AS base2_data, sub2.id AS sub2_id, "
+            "sub2.subdata AS sub2_subdata FROM base2 JOIN sub2 "
+            "ON base2.id = sub2.id) AS anon_2 "
+            "ON anon_1.base1_id = anon_2.base2_base1_id "
+            "JOIN ep1 ON anon_2.base2_id = ep1.base2_id "
+            "JOIN ep2 ON anon_2.base2_id = ep2.base2_id"
+        )
+
+    def test_two(self):
+        Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
+
+        s2a = aliased(Sub2)
+
+        s = Session()
+        self.assert_compile(
+            s.query(Parent).join(Parent.sub1).
+                join(s2a, Sub1.sub2),
+            "SELECT parent.id AS parent_id, parent.data AS parent_data "
+            "FROM parent JOIN (SELECT base1.id AS base1_id, "
+            "base1.data AS base1_data, sub1.id AS sub1_id, "
+            "sub1.parent_id AS sub1_parent_id, sub1.subdata AS sub1_subdata "
+            "FROM base1 JOIN sub1 ON base1.id = sub1.id) AS anon_1 "
+            "ON parent.id = anon_1.sub1_parent_id JOIN "
+            "(SELECT base2.id AS base2_id, base2.base1_id AS base2_base1_id, "
+            "base2.data AS base2_data, sub2.id AS sub2_id, "
+            "sub2.subdata AS sub2_subdata FROM base2 JOIN sub2 "
+            "ON base2.id = sub2.id) AS anon_2 "
+            "ON anon_1.base1_id = anon_2.base2_base1_id"
+        )
+
+    def test_three(self):
+        Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
+
+        s = Session()
+        self.assert_compile(
+            s.query(Base1).join(Base1.sub2).
+                join(Sub2.ep1).\
+                join(Sub2.ep2),
+            "SELECT base1.id AS base1_id, base1.data AS base1_data "
+            "FROM base1 JOIN (SELECT base2.id AS base2_id, base2.base1_id "
+            "AS base2_base1_id, base2.data AS base2_data, sub2.id AS sub2_id, "
+            "sub2.subdata AS sub2_subdata FROM base2 JOIN sub2 "
+            "ON base2.id = sub2.id) AS anon_1 ON base1.id = "
+            "anon_1.base2_base1_id "
+            "JOIN ep1 ON anon_1.base2_id = ep1.base2_id "
+            "JOIN ep2 ON anon_1.base2_id = ep2.base2_id"
+        )
+
+    def test_four(self):
+        Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
+
+        s = Session()
+        self.assert_compile(
+            s.query(Sub2).join(Base1, Base1.id == Sub2.base1_id).
+                join(Sub2.ep1).\
+                join(Sub2.ep2),
+            "SELECT sub2.id AS sub2_id, base2.id AS base2_id, "
+            "base2.base1_id AS base2_base1_id, base2.data AS base2_data, "
+            "sub2.subdata AS sub2_subdata "
+            "FROM base2 JOIN sub2 ON base2.id = sub2.id "
+            "JOIN base1 ON base1.id = base2.base1_id "
+            "JOIN ep1 ON base2.id = ep1.base2_id "
+            "JOIN ep2 ON base2.id = ep2.base2_id"
+        )
+
+    def test_five(self):
+        Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
+
+        s = Session()
+        self.assert_compile(
+            s.query(Sub2).join(Sub1, Sub1.id == Sub2.base1_id).
+                join(Sub2.ep1).\
+                join(Sub2.ep2),
+            "SELECT sub2.id AS sub2_id, base2.id AS base2_id, "
+            "base2.base1_id AS base2_base1_id, base2.data AS base2_data, "
+            "sub2.subdata AS sub2_subdata "
+            "FROM base2 JOIN sub2 ON base2.id = sub2.id "
+            "JOIN "
+            "(SELECT base1.id AS base1_id, base1.data AS base1_data, "
+                "sub1.id AS sub1_id, sub1.parent_id AS sub1_parent_id, "
+                "sub1.subdata AS sub1_subdata "
+                "FROM base1 JOIN sub1 ON base1.id = sub1.id) AS anon_1 "
+            "ON anon_1.sub1_id = base2.base1_id "
+            "JOIN ep1 ON base2.id = ep1.base2_id "
+            "JOIN ep2 ON base2.id = ep2.base2_id"
+        )
+
+    def test_six(self):
+        Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
+
+        s = Session()
+        self.assert_compile(
+            s.query(Sub2).from_self().\
+                join(Sub2.ep1).
+                join(Sub2.ep2),
+            "SELECT anon_1.sub2_id AS anon_1_sub2_id, "
+            "anon_1.base2_id AS anon_1_base2_id, "
+            "anon_1.base2_base1_id AS anon_1_base2_base1_id, "
+            "anon_1.base2_data AS anon_1_base2_data, "
+            "anon_1.sub2_subdata AS anon_1_sub2_subdata "
+            "FROM (SELECT sub2.id AS sub2_id, base2.id AS base2_id, "
+            "base2.base1_id AS base2_base1_id, base2.data AS base2_data, "
+            "sub2.subdata AS sub2_subdata "
+            "FROM base2 JOIN sub2 ON base2.id = sub2.id) AS anon_1 "
+            "JOIN ep1 ON anon_1.base2_id = ep1.base2_id "
+            "JOIN ep2 ON anon_1.base2_id = ep2.base2_id"
+        )
+
+    def test_seven(self):
+        Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
+
+        s = Session()
+        self.assert_compile(
+            # adding Sub2 to the entities list helps it,
+            # otherwise the joins for Sub2.ep1/ep2 don't have columns
+            # to latch onto.   Can't really make it better than this
+            s.query(Parent, Sub2).join(Parent.sub1).\
+                join(Sub1.sub2).from_self().\
+                join(Sub2.ep1).
+                join(Sub2.ep2),
+            "SELECT anon_1.parent_id AS anon_1_parent_id, "
+            "anon_1.parent_data AS anon_1_parent_data, "
+            "anon_1.anon_2_sub2_id AS anon_1_anon_2_sub2_id, "
+            "anon_1.anon_2_base2_id AS anon_1_anon_2_base2_id, "
+            "anon_1.anon_2_base2_base1_id AS anon_1_anon_2_base2_base1_id, "
+            "anon_1.anon_2_base2_data AS anon_1_anon_2_base2_data, "
+            "anon_1.anon_2_sub2_subdata AS anon_1_anon_2_sub2_subdata "
+            "FROM (SELECT parent.id AS parent_id, parent.data AS parent_data, "
+            "anon_2.sub2_id AS anon_2_sub2_id, "
+            "anon_2.base2_id AS anon_2_base2_id, "
+            "anon_2.base2_base1_id AS anon_2_base2_base1_id, "
+            "anon_2.base2_data AS anon_2_base2_data, "
+            "anon_2.sub2_subdata AS anon_2_sub2_subdata "
+            "FROM parent JOIN (SELECT base1.id AS base1_id, "
+            "base1.data AS base1_data, sub1.id AS sub1_id, "
+            "sub1.parent_id AS sub1_parent_id, sub1.subdata AS sub1_subdata "
+            "FROM base1 JOIN sub1 ON base1.id = sub1.id) AS anon_3 "
+            "ON parent.id = anon_3.sub1_parent_id JOIN "
+            "(SELECT base2.id AS base2_id, base2.base1_id AS base2_base1_id, "
+            "base2.data AS base2_data, sub2.id AS sub2_id, "
+            "sub2.subdata AS sub2_subdata "
+            "FROM base2 JOIN sub2 ON base2.id = sub2.id) AS anon_2 "
+            "ON anon_3.base1_id = anon_2.base2_base1_id) AS anon_1 "
+            "JOIN ep1 ON anon_1.anon_2_base2_id = ep1.base2_id "
+            "JOIN ep2 ON anon_1.anon_2_base2_id = ep2.base2_id"
+        )
+

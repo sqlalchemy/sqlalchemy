@@ -1620,6 +1620,21 @@ class AggregateTest(QueryTest):
 
         assert [User(name=u'jack',id=7), User(name=u'fred',id=9)] == sess.query(User).order_by(User.id).group_by(User).join('addresses').having(func.count(Address.id)< 2).all()
 
+
+class ExistsTest(QueryTest, AssertsCompiledSQL):
+
+    def test_exists(self):
+        User = self.classes.User
+        sess = create_session()
+        q1 = sess.query(User).filter(User.name == 'fred')
+        self.assert_compile(sess.query(q1.exists()),
+            'SELECT EXISTS ('
+                'SELECT 1 FROM users WHERE users.name = :name_1'
+            ') AS anon_1',
+            dialect=default.DefaultDialect()
+        )
+
+
 class CountTest(QueryTest):
     def test_basic(self):
         users, User = self.tables.users, self.classes.User

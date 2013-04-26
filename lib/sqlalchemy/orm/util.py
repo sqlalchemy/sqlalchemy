@@ -870,73 +870,59 @@ class _ORMJoin(expression.Join):
 
     __visit_name__ = expression.Join.__visit_name__
 
-    def __init__(self, left, right, onclause=None,
-                            isouter=False, join_to_left=True):
-        adapt_from = None
+    def __init__(self, left, right, onclause=None, isouter=False):
 
-        if hasattr(left, '_orm_mappers'):
-            left_mapper = left._orm_mappers[1]
-            if join_to_left:
-                adapt_from = left.right
+        left_info = inspection.inspect(left)
+        left_orm_info = getattr(left, '_joined_from_info', left_info)
+
+        right_info = inspection.inspect(right)
+        adapt_to = right_info.selectable
+
+        self._joined_from_info = right_info
+
+        if isinstance(onclause, basestring):
+            onclause = getattr(left_orm_info.entity, onclause)
+
+        if isinstance(onclause, attributes.QueryableAttribute):
+            on_selectable = onclause.comparator._source_selectable()
+            prop = onclause.property
+        elif isinstance(onclause, MapperProperty):
+            prop = onclause
+            on_selectable = prop.parent.selectable
         else:
-            info = inspection.inspect(left)
-            left_mapper = getattr(info, 'mapper', None)
-            left = info.selectable
-            left_is_aliased = getattr(info, 'is_aliased_class', False)
+            prop = None
 
-            if join_to_left and (left_is_aliased or not left_mapper):
-                adapt_from = left
-
-        info = inspection.inspect(right)
-        right_mapper = getattr(info, 'mapper', None)
-        right = info.selectable
-        right_is_aliased = getattr(info, 'is_aliased_class', False)
-
-        if right_is_aliased:
-            adapt_to = right
-        else:
-            adapt_to = None
-
-        if left_mapper or right_mapper:
-            self._orm_mappers = (left_mapper, right_mapper)
-
-            if isinstance(onclause, basestring):
-                prop = left_mapper.get_property(onclause)
-            elif isinstance(onclause, attributes.QueryableAttribute):
-                if adapt_from is None:
-                    adapt_from = onclause.comparator._source_selectable()
-                prop = onclause.property
-            elif isinstance(onclause, MapperProperty):
-                prop = onclause
+        if prop:
+            if sql_util.clause_is_present(on_selectable, left_info.selectable):
+                adapt_from = on_selectable
             else:
-                prop = None
+                adapt_from = left_info.selectable
 
-            if prop:
-                pj, sj, source, dest, \
+            pj, sj, source, dest, \
                 secondary, target_adapter = prop._create_joins(
-                                source_selectable=adapt_from,
-                                dest_selectable=adapt_to,
-                                source_polymorphic=True,
-                                dest_polymorphic=True,
-                                of_type=right_mapper)
+                            source_selectable=adapt_from,
+                            dest_selectable=adapt_to,
+                            source_polymorphic=True,
+                            dest_polymorphic=True,
+                            of_type=right_info.mapper)
 
-                if sj is not None:
-                    left = sql.join(left, secondary, pj, isouter)
-                    onclause = sj
-                else:
-                    onclause = pj
-                self._target_adapter = target_adapter
+            if sj is not None:
+                left = sql.join(left, secondary, pj, isouter)
+                onclause = sj
+            else:
+                onclause = pj
+            self._target_adapter = target_adapter
 
         expression.Join.__init__(self, left, right, onclause, isouter)
 
-    def join(self, right, onclause=None, isouter=False, join_to_left=True):
-        return _ORMJoin(self, right, onclause, isouter, join_to_left)
+    def join(self, right, onclause=None, isouter=False, join_to_left=None):
+        return _ORMJoin(self, right, onclause, isouter)
 
-    def outerjoin(self, right, onclause=None, join_to_left=True):
-        return _ORMJoin(self, right, onclause, True, join_to_left)
+    def outerjoin(self, right, onclause=None, join_to_left=None):
+        return _ORMJoin(self, right, onclause, True)
 
 
-def join(left, right, onclause=None, isouter=False, join_to_left=True):
+def join(left, right, onclause=None, isouter=False, join_to_left=None):
     """Produce an inner join between left and right clauses.
 
     :func:`.orm.join` is an extension to the core join interface
@@ -946,11 +932,6 @@ def join(left, right, onclause=None, isouter=False, join_to_left=True):
     :class:`.AliasedClass` instances.   The "on" clause can
     be a SQL expression, or an attribute or string name
     referencing a configured :func:`.relationship`.
-
-    ``join_to_left`` indicates to attempt aliasing the ON clause,
-    in whatever form it is passed, to the selectable
-    passed as the left side.  If False, the onclause
-    is used as is.
 
     :func:`.orm.join` is not commonly needed in modern usage,
     as its functionality is encapsulated within that of the
@@ -975,11 +956,14 @@ def join(left, right, onclause=None, isouter=False, join_to_left=True):
     See :meth:`.Query.join` for information on modern usage
     of ORM level joins.
 
+    .. versionchanged:: 0.8.1 - the ``join_to_left`` parameter
+       is no longer used, and is deprecated.
+
     """
-    return _ORMJoin(left, right, onclause, isouter, join_to_left)
+    return _ORMJoin(left, right, onclause, isouter)
 
 
-def outerjoin(left, right, onclause=None, join_to_left=True):
+def outerjoin(left, right, onclause=None, join_to_left=None):
     """Produce a left outer join between left and right clauses.
 
     This is the "outer join" version of the :func:`.orm.join` function,
@@ -987,7 +971,7 @@ def outerjoin(left, right, onclause=None, join_to_left=True):
     See that function's documentation for other usage details.
 
     """
-    return _ORMJoin(left, right, onclause, True, join_to_left)
+    return _ORMJoin(left, right, onclause, True)
 
 
 def with_parent(instance, prop):
