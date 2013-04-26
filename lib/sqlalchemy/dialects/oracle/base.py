@@ -429,6 +429,12 @@ class OracleCompiler(compiler.SQLCompiler):
         return "CONTAINS (%s, %s)" % (self.process(binary.left),
                                         self.process(binary.right))
 
+    def visit_true(self, expr, **kw):
+        return '1'
+
+    def visit_false(self, expr, **kw):
+        return '0'
+
     def get_select_hint_text(self, byfroms):
         return " ".join(
             "/*+ %s */" % text for table, text in byfroms.items()
