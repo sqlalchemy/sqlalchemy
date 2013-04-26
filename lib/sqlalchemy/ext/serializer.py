@@ -141,7 +141,7 @@ def Deserializer(file, metadata=None, scoped_session=None, engine=None):
                 return class_mapper(cls)
             elif type_ == "mapperprop":
                 mapper, keyname = args.split(':')
-                cls = pickle.loads(b64decode(args))
+                cls = pickle.loads(b64decode(mapper))
                 return class_mapper(cls).attrs[keyname]
             elif type_ == "table":
                 return metadata.tables[args]
