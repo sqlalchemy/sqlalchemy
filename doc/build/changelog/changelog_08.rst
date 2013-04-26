@@ -7,6 +7,19 @@
     :version: 0.8.1
 
     .. change::
+      :tags: bug, orm
+      :tickets: 2714
+
+      A significant improvement to the inner workings of query.join(),
+      such that the decisionmaking involved on how to join has been
+      dramatically simplified.  New test cases now pass such as
+      multiple joins extending from the middle of an already complex
+      series of joins involving inheritance and such.   Joining from
+      deeply nested subquery structures is still complicated and
+      not without caveats, but with these improvements the edge
+      cases are hopefully pushed even farther out to the edges.
+
+    .. change::
       :tags: feature, orm
       :tickets: 2673
 
