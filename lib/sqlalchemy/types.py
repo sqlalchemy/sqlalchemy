@@ -1184,7 +1184,9 @@ class Text(String):
 
     In SQL, usually corresponds to CLOB or TEXT. Can also take Python
     unicode objects and encode to the database's encoding in bind
-    params (and the reverse for result sets.)
+    params (and the reverse for result sets.)  In general, TEXT objects
+    do not have a length; while some databases will accept a length
+    argument here, it will be rejected by others.
 
     """
     __visit_name__ = 'text'
