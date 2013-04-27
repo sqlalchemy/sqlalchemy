@@ -124,7 +124,7 @@ class VerticalPropertyDictMixin(object):
 
 if __name__ == '__main__':
     from sqlalchemy import (MetaData, Table, Column, Integer, Unicode,
-        ForeignKey, UnicodeText, and_, not_)
+        ForeignKey, UnicodeText, and_, not_, create_engine)
     from sqlalchemy.orm import mapper, relationship, Session
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
@@ -172,10 +172,9 @@ if __name__ == '__main__':
         })
     mapper(AnimalFact, facts)
 
-
-    metadata.bind = 'sqlite:///'
-    metadata.create_all()
-    session = Session()
+    engine = create_engine("sqlite://")
+    metadata.create_all(engine)
+    session = Session(bind=engine)
 
     stoat = Animal(u'stoat')
     stoat[u'color'] = u'reddish'
@@ -195,9 +194,9 @@ if __name__ == '__main__':
     critter[u'cuteness'] = u'very'
 
     print 'changing cuteness:'
-    metadata.bind.echo = True
+    engine.echo = True
     session.commit()
-    metadata.bind.echo = False
+    engine.echo = False
 
     marten = Animal(u'marten')
     marten[u'color'] = u'brown'
@@ -245,4 +244,3 @@ if __name__ == '__main__':
     print 'just the facts', q.all()
 
 
-    metadata.drop_all()

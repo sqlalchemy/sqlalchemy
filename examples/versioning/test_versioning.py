@@ -5,6 +5,9 @@ from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import clear_mappers, sessionmaker, deferred, relationship
 from _lib import ComparableEntity, eq_
 
+engine = Session = None
+
+
 def setup():
     global engine
     engine = create_engine('sqlite://', echo=True)
@@ -12,16 +15,16 @@ def setup():
 class TestVersioning(TestCase):
     def setUp(self):
         global Base, Session, Versioned
-        Base = declarative_base(bind=engine)
-        Session = sessionmaker()
+        Base = declarative_base()
+        Session = sessionmaker(engine)
         versioned_session(Session)
 
     def tearDown(self):
         clear_mappers()
-        Base.metadata.drop_all()
+        Base.metadata.drop_all(engine)
 
     def create_tables(self):
-        Base.metadata.create_all()
+        Base.metadata.create_all(engine)
 
     def test_plain(self):
         class SomeClass(Versioned, Base, ComparableEntity):
