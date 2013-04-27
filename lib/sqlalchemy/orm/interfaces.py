@@ -15,7 +15,7 @@ Other than the deprecated extensions, this module and the
 classes within should be considered mostly private.
 
 """
-from __future__ import absolute_import
+
 
 from .. import exc as sa_exc, util, inspect
 from ..sql import operators
@@ -659,7 +659,7 @@ class PropertyOption(MapperOption):
         tokens = deque(self.key)
         while tokens:
             token = tokens.popleft()
-            if isinstance(token, basestring):
+            if isinstance(token, str):
                 # wildcard token
                 if token.endswith(':*'):
                     return [path.token(token)]

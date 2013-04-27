@@ -14,7 +14,7 @@ be used directly and is also accepted directly by ``create_engine()``.
 """
 
 import re
-import urllib
+import urllib.request, urllib.parse, urllib.error
 from .. import exc, util
 from . import Dialect
 
@@ -67,7 +67,7 @@ class URL(object):
         if self.username is not None:
             s += self.username
             if self.password is not None:
-                s += ':' + urllib.quote_plus(self.password)
+                s += ':' + urllib.parse.quote_plus(self.password)
             s += "@"
         if self.host is not None:
             s += self.host
@@ -76,7 +76,7 @@ class URL(object):
         if self.database is not None:
             s += '/' + self.database
         if self.query:
-            keys = self.query.keys()
+            keys = list(self.query.keys())
             keys.sort()
             s += '?' + "&".join("%s=%s" % (k, self.query[k]) for k in keys)
         return s
@@ -150,7 +150,7 @@ def make_url(name_or_url):
     existing URL object is passed, just returns the object.
     """
 
-    if isinstance(name_or_url, basestring):
+    if isinstance(name_or_url, str):
         return _parse_rfc1738_args(name_or_url)
     else:
         return name_or_url
@@ -177,17 +177,17 @@ def _parse_rfc1738_args(name):
             tokens = components['database'].split('?', 2)
             components['database'] = tokens[0]
             query = (len(tokens) > 1 and dict(util.parse_qsl(tokens[1]))) or None
-            # Py2K
-            if query is not None:
-                query = dict((k.encode('ascii'), query[k]) for k in query)
-            # end Py2K
+# start Py2K
+#            if query is not None:
+#                query = dict((k.encode('ascii'), query[k]) for k in query)
+# end Py2K
         else:
             query = None
         components['query'] = query
 
         if components['password'] is not None:
             components['password'] = \
-                urllib.unquote_plus(components['password'])
+                urllib.parse.unquote_plus(components['password'])
 
         name = components.pop('name')
         return URL(name, **components)

@@ -661,13 +661,13 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select([table1.c.myid]).as_scalar()
         try:
             s.c.foo
-        except exc.InvalidRequestError, err:
+        except exc.InvalidRequestError as err:
             assert str(err) \
                 == 'Scalar Select expression has no columns; use this '\
                 'object directly within a column-level expression.'
         try:
             s.columns.foo
-        except exc.InvalidRequestError, err:
+        except exc.InvalidRequestError as err:
             assert str(err) \
                 == 'Scalar Select expression has no columns; use this '\
                 'object directly within a column-level expression.'
@@ -1116,9 +1116,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # test unicode
         self.assert_compile(select(
-            [u"foobar(a)", u"pk_foo_bar(syslaal)"],
-            u"a = 12",
-            from_obj=[u"foobar left outer join lala on foobar.foo = lala.foo"]
+            ["foobar(a)", "pk_foo_bar(syslaal)"],
+            "a = 12",
+            from_obj=["foobar left outer join lala on foobar.foo = lala.foo"]
             ),
             "SELECT foobar(a), pk_foo_bar(syslaal) FROM foobar "
             "left outer join lala on foobar.foo = lala.foo WHERE a = 12"
@@ -2245,7 +2245,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                     func.lala(table1.c.name).label('gg')])
 
         eq_(
-            s1.c.keys(),
+            list(s1.c.keys()),
             ['myid', 'foobar', str(f1), 'gg']
         )
 
@@ -2273,7 +2273,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 t = table1
 
             s1 = select([col], from_obj=t)
-            assert s1.c.keys() == [key], s1.c.keys()
+            assert list(s1.c.keys()) == [key], list(s1.c.keys())
 
             if label:
                 self.assert_compile(s1,
@@ -2679,11 +2679,11 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_reraise_of_column_spec_issue_unicode(self):
         MyType = self._illegal_type_fixture()
         t1 = Table('t', MetaData(),
-            Column(u'méil', MyType())
+            Column('méil', MyType())
         )
         assert_raises_message(
             exc.CompileError,
-            ur"\(in table 't', column 'méil'\): Couldn't compile type",
+            r"\(in table 't', column 'méil'\): Couldn't compile type",
             schema.CreateTable(t1).compile
         )
 

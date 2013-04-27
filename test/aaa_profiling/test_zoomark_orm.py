@@ -75,14 +75,14 @@ class ZooMarkTest(fixtures.TestBase):
         class Zoo(object):
 
             def __init__(self, **kwargs):
-                for k, v in kwargs.iteritems():
+                for k, v in kwargs.items():
                     setattr(self, k, v)
 
 
         class Animal(object):
 
             def __init__(self, **kwargs):
-                for k, v in kwargs.iteritems():
+                for k, v in kwargs.items():
                     setattr(self, k, v)
 
 
@@ -90,93 +90,93 @@ class ZooMarkTest(fixtures.TestBase):
         mapper(Animal, animal)
 
     def test_baseline_1a_populate(self):
-        wap = Zoo(Name=u'Wild Animal Park', Founded=datetime.date(2000,
+        wap = Zoo(Name='Wild Animal Park', Founded=datetime.date(2000,
                   1, 1), Opens=datetime.time(8, 15, 59),
                   LastEscape=datetime.datetime( 2004, 7, 29, 5, 6, 7, ),
                   Admission=4.95)
         session.add(wap)
-        sdz = Zoo(Name=u'San Diego Zoo', Founded=datetime.date(1835, 9,
+        sdz = Zoo(Name='San Diego Zoo', Founded=datetime.date(1835, 9,
                   13), Opens=datetime.time(9, 0, 0), Admission=0)
         session.add(sdz)
-        bio = Zoo(Name=u'Montr\xe9al Biod\xf4me',
+        bio = Zoo(Name='Montr\xe9al Biod\xf4me',
                   Founded=datetime.date(1992, 6, 19),
                   Opens=datetime.time(9, 0, 0), Admission=11.75)
         session.add(bio)
-        seaworld = Zoo(Name=u'Sea_World', Admission=60)
+        seaworld = Zoo(Name='Sea_World', Admission=60)
         session.add(seaworld)
 
         # Let's add a crazy futuristic Zoo to test large date values.
 
-        lp = Zoo(Name=u'Luna Park', Founded=datetime.date(2072, 7, 17),
+        lp = Zoo(Name='Luna Park', Founded=datetime.date(2072, 7, 17),
                  Opens=datetime.time(0, 0, 0), Admission=134.95)
         session.add(lp)
         session.flush()
 
         # Animals
 
-        leopard = Animal(Species=u'Leopard', Lifespan=73.5)
+        leopard = Animal(Species='Leopard', Lifespan=73.5)
         session.add(leopard)
         leopard.ZooID = wap.ID
         leopard.LastEscape = \
                 datetime.datetime(2004, 12, 21, 8, 15, 0, 999907, )
-        session.add(Animal(Species=u'Lion', ZooID=wap.ID))
-        session.add(Animal(Species=u'Slug', Legs=1, Lifespan=.75))
-        session.add(Animal(Species=u'Tiger', ZooID=sdz.ID))
+        session.add(Animal(Species='Lion', ZooID=wap.ID))
+        session.add(Animal(Species='Slug', Legs=1, Lifespan=.75))
+        session.add(Animal(Species='Tiger', ZooID=sdz.ID))
 
         # Override Legs.default with itself just to make sure it works.
 
-        session.add(Animal(Species=u'Bear', Legs=4))
-        session.add(Animal(Species=u'Ostrich', Legs=2, Lifespan=103.2))
-        session.add(Animal(Species=u'Centipede', Legs=100))
-        session.add(Animal(Species=u'Emperor Penguin', Legs=2,
+        session.add(Animal(Species='Bear', Legs=4))
+        session.add(Animal(Species='Ostrich', Legs=2, Lifespan=103.2))
+        session.add(Animal(Species='Centipede', Legs=100))
+        session.add(Animal(Species='Emperor Penguin', Legs=2,
                     ZooID=seaworld.ID))
-        session.add(Animal(Species=u'Adelie Penguin', Legs=2,
+        session.add(Animal(Species='Adelie Penguin', Legs=2,
                     ZooID=seaworld.ID))
-        session.add(Animal(Species=u'Millipede', Legs=1000000,
+        session.add(Animal(Species='Millipede', Legs=1000000,
                     ZooID=sdz.ID))
 
         # Add a mother and child to test relationships
 
-        bai_yun = Animal(Species=u'Ape', Nameu=u'Bai Yun', Legs=2)
+        bai_yun = Animal(Species='Ape', Nameu='Bai Yun', Legs=2)
         session.add(bai_yun)
-        session.add(Animal(Species=u'Ape', Name=u'Hua Mei', Legs=2,
+        session.add(Animal(Species='Ape', Name='Hua Mei', Legs=2,
                     MotherID=bai_yun.ID))
         session.flush()
         session.commit()
 
     def test_baseline_2_insert(self):
-        for x in xrange(ITERATIONS):
-            session.add(Animal(Species=u'Tick', Name=u'Tick %d' % x,
+        for x in range(ITERATIONS):
+            session.add(Animal(Species='Tick', Name='Tick %d' % x,
                         Legs=8))
         session.flush()
 
     def test_baseline_3_properties(self):
-        for x in xrange(ITERATIONS):
+        for x in range(ITERATIONS):
 
             # Zoos
 
             WAP = list(session.query(Zoo).filter(Zoo.Name
-                       == u'Wild Animal Park'))
+                       == 'Wild Animal Park'))
             SDZ = list(session.query(Zoo).filter(Zoo.Founded
                        == datetime.date(1835, 9, 13)))
             Biodome = list(session.query(Zoo).filter(Zoo.Name
-                           == u'Montr\xe9al Biod\xf4me'))
+                           == 'Montr\xe9al Biod\xf4me'))
             seaworld = list(session.query(Zoo).filter(Zoo.Admission
                             == float(60)))
 
             # Animals
 
             leopard = list(session.query(Animal).filter(Animal.Species
-                           == u'Leopard'))
+                           == 'Leopard'))
             ostrich = list(session.query(Animal).filter(Animal.Species
-                           == u'Ostrich'))
+                           == 'Ostrich'))
             millipede = list(session.query(Animal).filter(Animal.Legs
                              == 1000000))
             ticks = list(session.query(Animal).filter(Animal.Species
-                         == u'Tick'))
+                         == 'Tick'))
 
     def test_baseline_4_expressions(self):
-        for x in xrange(ITERATIONS):
+        for x in range(ITERATIONS):
             assert len(list(session.query(Zoo))) == 5
             assert len(list(session.query(Animal))) == ITERATIONS + 12
             assert len(list(session.query(Animal).filter(Animal.Legs
@@ -190,9 +190,9 @@ class ZooMarkTest(fixtures.TestBase):
             assert len(list(session.query(Animal).filter(Animal.Lifespan
                        > 70))) == 2
             assert len(list(session.query(Animal).
-                        filter(Animal.Species.like(u'L%')))) == 2
+                        filter(Animal.Species.like('L%')))) == 2
             assert len(list(session.query(Animal).
-                        filter(Animal.Species.like(u'%pede')))) == 2
+                        filter(Animal.Species.like('%pede')))) == 2
             assert len(list(session.query(Animal).filter(Animal.LastEscape
                        != None))) == 1
             assert len(list(session.query(Animal).filter(Animal.LastEscape
@@ -201,29 +201,29 @@ class ZooMarkTest(fixtures.TestBase):
             # In operator (containedby)
 
             assert len(list(session.query(Animal).filter(
-                    Animal.Species.like(u'%pede%')))) == 2
+                    Animal.Species.like('%pede%')))) == 2
             assert len(list(session.query(Animal).
-                    filter(Animal.Species.in_((u'Lion'
-                       , u'Tiger', u'Bear'))))) == 3
+                    filter(Animal.Species.in_(('Lion'
+                       , 'Tiger', 'Bear'))))) == 3
 
             # Try In with cell references
             class thing(object):
                 pass
 
             pet, pet2 = thing(), thing()
-            pet.Name, pet2.Name = u'Slug', u'Ostrich'
+            pet.Name, pet2.Name = 'Slug', 'Ostrich'
             assert len(list(session.query(Animal).
                     filter(Animal.Species.in_((pet.Name,
                        pet2.Name))))) == 2
 
             # logic and other functions
 
-            name = u'Lion'
+            name = 'Lion'
             assert len(list(session.query(Animal).
                     filter(func.length(Animal.Species)
                        == len(name)))) == ITERATIONS + 3
             assert len(list(session.query(Animal).
-                    filter(Animal.Species.like(u'%i%'
+                    filter(Animal.Species.like('%i%'
                        )))) == ITERATIONS + 7
 
             # Test now(), today(), year(), month(), day()
@@ -246,7 +246,7 @@ class ZooMarkTest(fixtures.TestBase):
 
         # TODO: convert to ORM
         engine = metadata.bind
-        for x in xrange(ITERATIONS):
+        for x in range(ITERATIONS):
 
             # views
 
@@ -270,7 +270,7 @@ class ZooMarkTest(fixtures.TestBase):
             for species, lifespan in engine.execute(select([Animal.c.Species,
                     Animal.c.Lifespan])).fetchall():
                 assert lifespan == expected[species]
-            expected = [u'Montr\xe9al Biod\xf4me', 'Wild Animal Park']
+            expected = ['Montr\xe9al Biod\xf4me', 'Wild Animal Park']
             e = select([Zoo.c.Name], and_(Zoo.c.Founded != None,
                        Zoo.c.Founded <= func.current_timestamp(),
                        Zoo.c.Founded >= datetime.date(1990, 1, 1)))
@@ -284,13 +284,13 @@ class ZooMarkTest(fixtures.TestBase):
             legs.sort()
 
     def test_baseline_6_editing(self):
-        for x in xrange(ITERATIONS):
+        for x in range(ITERATIONS):
 
             # Edit
 
-            SDZ = session.query(Zoo).filter(Zoo.Name == u'San Diego Zoo'
+            SDZ = session.query(Zoo).filter(Zoo.Name == 'San Diego Zoo'
                     ).one()
-            SDZ.Name = u'The San Diego Zoo'
+            SDZ.Name = 'The San Diego Zoo'
             SDZ.Founded = datetime.date(1900, 1, 1)
             SDZ.Opens = datetime.time(7, 30, 0)
             SDZ.Admission = 35.00
@@ -298,19 +298,19 @@ class ZooMarkTest(fixtures.TestBase):
             # Test edits
 
             SDZ = session.query(Zoo).filter(Zoo.Name
-                    == u'The San Diego Zoo').one()
+                    == 'The San Diego Zoo').one()
             assert SDZ.Founded == datetime.date(1900, 1, 1), SDZ.Founded
 
             # Change it back
 
-            SDZ.Name = u'San Diego Zoo'
+            SDZ.Name = 'San Diego Zoo'
             SDZ.Founded = datetime.date(1835, 9, 13)
             SDZ.Opens = datetime.time(9, 0, 0)
             SDZ.Admission = 0
 
             # Test re-edits
 
-            SDZ = session.query(Zoo).filter(Zoo.Name == u'San Diego Zoo'
+            SDZ = session.query(Zoo).filter(Zoo.Name == 'San Diego Zoo'
                     ).one()
             assert SDZ.Founded == datetime.date(1835, 9, 13), \
                 SDZ.Founded

@@ -82,7 +82,7 @@ class MxODBCConnector(Connector):
                           category=errorclass,
                           stacklevel=2)
             else:
-                raise errorclass, errorvalue
+                raise errorclass(errorvalue)
         return error_handler
 
     def create_connect_args(self, url):

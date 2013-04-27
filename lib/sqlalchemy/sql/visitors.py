@@ -87,13 +87,11 @@ def _generate_dispatch(cls):
         cls._compiler_dispatch = _compiler_dispatch
 
 
-class Visitable(object):
+class Visitable(object, metaclass=VisitableType):
     """Base class for visitable objects, applies the
     ``VisitableType`` metaclass.
 
     """
-
-    __metaclass__ = VisitableType
 
 
 class ClauseVisitor(object):

@@ -47,7 +47,7 @@ def _generative(*assertions):
     def generate(fn, *args, **kw):
         self = args[0]._clone()
         for assertion in assertions:
-            assertion(self, fn.func_name)
+            assertion(self, fn.__name__)
         fn(self, *args[1:], **kw)
         return self
     return generate
@@ -981,11 +981,12 @@ class Query(object):
         """Return a scalar result corresponding to the given
         column expression."""
         try:
-            # Py3K
-            #return self.values(column).__next__()[0]
-            # Py2K
-            return self.values(column).next()[0]
-            # end Py2K
+# start Py3K
+            return self.values(column).__next__()[0]
+# end Py3K
+# start Py2K
+#            return self.values(column).next()[0]
+# end Py2K
         except StopIteration:
             return None
 
@@ -1231,7 +1232,7 @@ class Query(object):
         """
 
         clauses = [_entity_descriptor(self._joinpoint_zero(), key) == value
-            for key, value in kwargs.iteritems()]
+            for key, value in kwargs.items()]
         return self.filter(sql.and_(*clauses))
 
     @_generative(_no_statement_condition, _no_limit_offset)
@@ -1296,7 +1297,7 @@ class Query(object):
 
         """
 
-        if isinstance(criterion, basestring):
+        if isinstance(criterion, str):
             criterion = sql.text(criterion)
 
         if criterion is not None and \
@@ -1655,7 +1656,7 @@ class Query(object):
                                     kwargs.pop('from_joinpoint', False)
         if kwargs:
             raise TypeError("unknown arguments: %s" %
-                                ','.join(kwargs.iterkeys()))
+                                ','.join(iter(kwargs.keys())))
         return self._join(props,
                             outerjoin=False, create_aliases=aliased,
                             from_joinpoint=from_joinpoint)
@@ -1671,7 +1672,7 @@ class Query(object):
                                 kwargs.pop('from_joinpoint', False)
         if kwargs:
             raise TypeError("unknown arguments: %s" %
-                    ','.join(kwargs.iterkeys()))
+                    ','.join(iter(kwargs.keys())))
         return self._join(props,
                             outerjoin=True, create_aliases=aliased,
                             from_joinpoint=from_joinpoint)
@@ -1701,7 +1702,7 @@ class Query(object):
         if len(keys) == 2 and \
             isinstance(keys[0], (expression.FromClause,
                                     type, AliasedClass)) and \
-            isinstance(keys[1], (basestring, expression.ClauseElement,
+            isinstance(keys[1], (str, expression.ClauseElement,
                                         interfaces.PropComparator)):
             # detect 2-arg form of join and
             # convert to a tuple.
@@ -1721,14 +1722,14 @@ class Query(object):
             # is a little bit of legacy behavior still at work here
             # which means they might be in either order.  may possibly
             # lock this down to (right_entity, onclause) in 0.6.
-            if isinstance(arg1, (interfaces.PropComparator, basestring)):
+            if isinstance(arg1, (interfaces.PropComparator, str)):
                 right_entity, onclause = arg2, arg1
             else:
                 right_entity, onclause = arg1, arg2
 
             left_entity = prop = None
 
-            if isinstance(onclause, basestring):
+            if isinstance(onclause, str):
                 left_entity = self._joinpoint_zero()
 
                 descriptor = _entity_descriptor(left_entity, onclause)
@@ -1922,7 +1923,7 @@ class Query(object):
                     clause = orm_join(clause,
                                     right,
                                     onclause, isouter=outerjoin)
-                except sa_exc.ArgumentError, ae:
+                except sa_exc.ArgumentError as ae:
                     raise sa_exc.InvalidRequestError(
                             "Could not find a FROM clause to join from.  "
                             "Tried joining to %s, but got: %s" % (right, ae))
@@ -1947,7 +1948,7 @@ class Query(object):
 
         try:
             clause = orm_join(clause, right, onclause, isouter=outerjoin)
-        except sa_exc.ArgumentError, ae:
+        except sa_exc.ArgumentError as ae:
             raise sa_exc.InvalidRequestError(
                     "Could not find a FROM clause to join from.  "
                     "Tried joining to %s, but got: %s" % (right, ae))
@@ -2115,7 +2116,7 @@ class Query(object):
         appropriate to the entity class represented by this ``Query``.
 
         """
-        if isinstance(statement, basestring):
+        if isinstance(statement, str):
             statement = sql.text(statement)
 
         if not isinstance(statement,
@@ -2609,7 +2610,7 @@ class Query(object):
                             use_labels=context.labels)
 
         from_clause = inner
-        for eager_join in context.eager_joins.values():
+        for eager_join in list(context.eager_joins.values()):
             # EagerLoader places a 'stop_on' attribute on the join,
             # giving us a marker as to where the "splice point" of
             # the join should be
@@ -2674,7 +2675,7 @@ class Query(object):
         subtypes are selected from the total results.
 
         """
-        for (ext_info, adapter) in self._mapper_adapter_map.values():
+        for (ext_info, adapter) in list(self._mapper_adapter_map.values()):
             if ext_info in self._join_entities:
                 continue
             single_crit = ext_info.mapper._single_table_criterion
@@ -2697,7 +2698,7 @@ class _QueryEntity(object):
     def __new__(cls, *args, **kwargs):
         if cls is _QueryEntity:
             entity = args[1]
-            if not isinstance(entity, basestring) and \
+            if not isinstance(entity, str) and \
                         _is_mapped_class(entity):
                 cls = _MapperEntity
             else:
@@ -2905,7 +2906,7 @@ class _ColumnEntity(_QueryEntity):
         self.expr = column
         self.namespace = namespace
 
-        if isinstance(column, basestring):
+        if isinstance(column, str):
             column = sql.literal_column(column)
             self._label_name = column.name
         elif isinstance(column, (
@@ -3080,7 +3081,7 @@ class AliasOption(interfaces.MapperOption):
         self.alias = alias
 
     def process_query(self, query):
-        if isinstance(self.alias, basestring):
+        if isinstance(self.alias, str):
             alias = query._mapper_zero().mapped_table.alias(self.alias)
         else:
             alias = self.alias

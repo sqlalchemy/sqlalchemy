@@ -68,5 +68,5 @@ session.add(e1)
 session.add(e2)
 session.commit()
 
-print session.query(Employee).all()
+print(session.query(Employee).all())
 

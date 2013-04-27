@@ -95,7 +95,7 @@ def runit():
             name="Boss %d" % i,
             golf_average=Decimal(random.randint(40, 150))
         )
-        for i in xrange(1000)
+        for i in range(1000)
     ]
 
     sess.add_all(bosses)
@@ -107,7 +107,7 @@ def runit():
             name="Grunt %d" % i,
             savings=Decimal(random.randint(5000000, 15000000) / 100)
         )
-        for i in xrange(10000)
+        for i in range(10000)
     ]
 
     # Assign each Grunt a Boss.  Look them up in the DB
@@ -149,15 +149,15 @@ stats = pstats.Stats(filename)
 
 counts_by_methname = dict((key[2], stats.stats[key][0]) for key in stats.stats)
 
-print "SQLA Version: %s" % __version__
-print "Total calls %d" % stats.total_calls
-print "Total cpu seconds: %.2f" % stats.total_tt
-print 'Total execute calls: %d' \
+print("SQLA Version: %s" % __version__)
+print("Total calls %d" % stats.total_calls)
+print("Total cpu seconds: %.2f" % stats.total_tt)
+print('Total execute calls: %d' \
     % counts_by_methname["<method 'execute' of 'sqlite3.Cursor' "
-                         "objects>"]
-print 'Total executemany calls: %d' \
+                         "objects>"])
+print('Total executemany calls: %d' \
     % counts_by_methname.get("<method 'executemany' of 'sqlite3.Cursor' "
-                         "objects>", 0)
+                         "objects>", 0))
 
 #stats.sort_stats('time', 'calls')
 #stats.print_stats()

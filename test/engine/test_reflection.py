@@ -811,7 +811,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         try:
             m4.reflect(only=['rt_a', 'rt_f'])
             self.assert_(False)
-        except sa.exc.InvalidRequestError, e:
+        except sa.exc.InvalidRequestError as e:
             self.assert_(e.args[0].endswith('(rt_f)'))
 
         m5 = MetaData(testing.db)
@@ -833,7 +833,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         )
 
         if existing:
-            print "Other tables present in database, skipping some checks."
+            print("Other tables present in database, skipping some checks.")
         else:
             baseline.drop_all()
             m9 = MetaData(testing.db)
@@ -1041,19 +1041,19 @@ class UnicodeReflectionTest(fixtures.TestBase):
         cls.metadata = metadata = MetaData()
 
         no_multibyte_period = set([
-            (u'plain', u'col_plain', u'ix_plain')
+            ('plain', 'col_plain', 'ix_plain')
         ])
         no_has_table = [
-            (u'no_has_table_1', u'col_Unit\u00e9ble', u'ix_Unit\u00e9ble'),
-            (u'no_has_table_2', u'col_\u6e2c\u8a66', u'ix_\u6e2c\u8a66'),
+            ('no_has_table_1', 'col_Unit\u00e9ble', 'ix_Unit\u00e9ble'),
+            ('no_has_table_2', 'col_\u6e2c\u8a66', 'ix_\u6e2c\u8a66'),
         ]
         no_case_sensitivity = [
-            (u'\u6e2c\u8a66', u'col_\u6e2c\u8a66', u'ix_\u6e2c\u8a66'),
-            (u'unit\u00e9ble', u'col_unit\u00e9ble', u'ix_unit\u00e9ble'),
+            ('\u6e2c\u8a66', 'col_\u6e2c\u8a66', 'ix_\u6e2c\u8a66'),
+            ('unit\u00e9ble', 'col_unit\u00e9ble', 'ix_unit\u00e9ble'),
         ]
         full = [
-            (u'Unit\u00e9ble', u'col_Unit\u00e9ble', u'ix_Unit\u00e9ble'),
-            (u'\u6e2c\u8a66', u'col_\u6e2c\u8a66', u'ix_\u6e2c\u8a66'),
+            ('Unit\u00e9ble', 'col_Unit\u00e9ble', 'ix_Unit\u00e9ble'),
+            ('\u6e2c\u8a66', 'col_\u6e2c\u8a66', 'ix_\u6e2c\u8a66'),
         ]
 
         # as you can see, our options for this kind of thing

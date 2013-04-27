@@ -657,11 +657,12 @@ class CollectionAdapter(object):
         if getattr(obj, '_sa_adapter', None) is not None:
             return getattr(obj, '_sa_adapter')
         elif setting_type == dict:
-            # Py3K
-            #return obj.values()
-            # Py2K
-            return getattr(obj, 'itervalues', getattr(obj, 'values'))()
-            # end Py2K
+# start Py3K
+            return list(obj.values())
+# end Py3K
+# start Py2K
+#            return getattr(obj, 'itervalues', getattr(obj, 'values'))()
+# end Py2K
         else:
             return iter(obj)
 
@@ -705,14 +706,15 @@ class CollectionAdapter(object):
     def __iter__(self):
         """Iterate over entities in the collection."""
 
-        # Py3K requires iter() here
+# start Py3K
+# end Py3K
         return iter(getattr(self._data(), '_sa_iterator')())
 
     def __len__(self):
         """Count entities in the collection."""
         return len(list(getattr(self._data(), '_sa_iterator')()))
 
-    def __nonzero__(self):
+    def __bool__(self):
         return True
 
     def fire_append_event(self, item, initiator=None):
@@ -883,7 +885,7 @@ def _instrument_class(cls):
     # search for _sa_instrument_role-decorated methods in
     # method resolution order, assign to roles
     for supercls in cls.__mro__:
-        for name, method in vars(supercls).items():
+        for name, method in list(vars(supercls).items()):
             if not util.callable(method):
                 continue
 
@@ -917,11 +919,11 @@ def _instrument_class(cls):
     collection_type = util.duck_type_collection(cls)
     if collection_type in __interfaces:
         canned_roles, decorators = __interfaces[collection_type]
-        for role, name in canned_roles.items():
+        for role, name in list(canned_roles.items()):
             roles.setdefault(role, name)
 
         # apply ABC auto-decoration to methods that need it
-        for method, decorator in decorators.items():
+        for method, decorator in list(decorators.items()):
             fn = getattr(cls, method, None)
             if (fn and method not in methods and
                 not hasattr(fn, '_sa_instrumented')):
@@ -952,12 +954,12 @@ def _instrument_class(cls):
 
     # apply ad-hoc instrumentation from decorators, class-level defaults
     # and implicit role declarations
-    for method_name, (before, argument, after) in methods.items():
+    for method_name, (before, argument, after) in list(methods.items()):
         setattr(cls, method_name,
                 _instrument_membership_mutator(getattr(cls, method_name),
                                                before, argument, after))
     # intern the role map
-    for role, method_name in roles.items():
+    for role, method_name in list(roles.items()):
         setattr(cls, '_sa_%s' % role, getattr(cls, method_name))
 
     setattr(cls, '_sa_instrumented', id(cls))
@@ -1094,14 +1096,14 @@ def _list_decorators():
                     stop += len(self)
 
                 if step == 1:
-                    for i in xrange(start, stop, step):
+                    for i in range(start, stop, step):
                         if len(self) > start:
                             del self[start]
 
                     for i, item in enumerate(value):
                         self.insert(i + start, item)
                 else:
-                    rng = range(start, stop, step)
+                    rng = list(range(start, stop, step))
                     if len(value) != len(rng):
                         raise ValueError(
                             "attempt to assign sequence of size %s to "
@@ -1128,24 +1130,24 @@ def _list_decorators():
         _tidy(__delitem__)
         return __delitem__
 
-    # Py2K
-    def __setslice__(fn):
-        def __setslice__(self, start, end, values):
-            for value in self[start:end]:
-                __del(self, value)
-            values = [__set(self, value) for value in values]
-            fn(self, start, end, values)
-        _tidy(__setslice__)
-        return __setslice__
-
-    def __delslice__(fn):
-        def __delslice__(self, start, end):
-            for value in self[start:end]:
-                __del(self, value)
-            fn(self, start, end)
-        _tidy(__delslice__)
-        return __delslice__
-    # end Py2K
+# start Py2K
+#    def __setslice__(fn):
+#        def __setslice__(self, start, end, values):
+#            for value in self[start:end]:
+#                __del(self, value)
+#            values = [__set(self, value) for value in values]
+#            fn(self, start, end, values)
+#        _tidy(__setslice__)
+#        return __setslice__
+#
+#    def __delslice__(fn):
+#        def __delslice__(self, start, end):
+#            for value in self[start:end]:
+#                __del(self, value)
+#            fn(self, start, end)
+#        _tidy(__delslice__)
+#        return __delslice__
+# end Py2K
 
     def extend(fn):
         def extend(self, iterable):
@@ -1251,7 +1253,7 @@ def _dict_decorators():
         def update(self, __other=Unspecified, **kw):
             if __other is not Unspecified:
                 if hasattr(__other, 'keys'):
-                    for key in __other.keys():
+                    for key in list(__other.keys()):
                         if (key not in self or
                             self[key] is not __other[key]):
                             self[key] = __other[key]
@@ -1467,11 +1469,12 @@ __interfaces = {
         ),
 
     # decorators are required for dicts and object collections.
-    # Py3K
-    #dict: ({'iterator': 'values'}, _dict_decorators()),
-    # Py2K
-    dict: ({'iterator': 'itervalues'}, _dict_decorators()),
-    # end Py2K
+# start Py3K
+    dict: ({'iterator': 'values'}, _dict_decorators()),
+# end Py3K
+# start Py2K
+#    dict: ({'iterator': 'itervalues'}, _dict_decorators()),
+# end Py2K
     }
 
 

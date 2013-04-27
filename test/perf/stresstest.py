@@ -17,13 +17,13 @@ def gen_table(num_fields, field_type, metadata):
 
 def insert(test_table, num_fields, num_records, genvalue, verbose=True):
     if verbose:
-        print "building insert values...",
+        print("building insert values...", end=' ')
         sys.stdout.flush()
     values = [dict(("field%d" % fnum, genvalue(rnum, fnum))
                    for fnum in range(num_fields))
               for rnum in range(num_records)]
     if verbose:
-        print "inserting...",
+        print("inserting...", end=' ')
         sys.stdout.flush()
     def db_insert():
         test_table.insert().execute(values)
@@ -32,11 +32,11 @@ def insert(test_table, num_fields, num_records, genvalue, verbose=True):
                             "from __main__ import db_insert",
                             number=1)
     if verbose:
-        print "%s" % round(timing, 3)
+        print("%s" % round(timing, 3))
 
 def check_result(results, num_fields, genvalue, verbose=True):
     if verbose:
-        print "checking...",
+        print("checking...", end=' ')
         sys.stdout.flush()
     for rnum, row in enumerate(results):
         expected = tuple([rnum + 1] +
@@ -49,28 +49,28 @@ def avgdev(values, comparison):
 
 def nicer_res(values, printvalues=False):
     if printvalues:
-        print values
+        print(values)
     min_time = min(values)
     return round(min_time, 3), round(avgdev(values, min_time), 2)
 
 def profile_func(func_name, verbose=True):
     if verbose:
-        print "profiling...",
+        print("profiling...", end=' ')
         sys.stdout.flush()
     cProfile.run('%s()' % func_name, 'prof')
 
 def time_func(func_name, num_tests=1, verbose=True):
     if verbose:
-        print "timing...",
+        print("timing...", end=' ')
         sys.stdout.flush()
     timings = timeit.repeat('%s()' % func_name,
                             "from __main__ import %s" % func_name,
                             number=num_tests, repeat=5)
     avg, dev = nicer_res(timings)
     if verbose:
-        print "%s (%s)" % (avg, dev)
+        print("%s (%s)" % (avg, dev))
     else:
-        print avg
+        print(avg)
 
 def profile_and_time(func_name, num_tests=1):
     profile_func(func_name)
@@ -121,7 +121,7 @@ def time_dbfunc(test_table, test_func, genvalue,
                 check_results=check_result, profile=True,
                 check_leaks=True, print_leaks=False, verbose=True):
     if verbose:
-        print "testing '%s'..." % test_func.__name__,
+        print("testing '%s'..." % test_func.__name__, end=' ')
     sys.stdout.flush()
     if class_ is not None:
         clear_mappers()
@@ -148,12 +148,12 @@ def time_dbfunc(test_table, test_func, genvalue,
         diff = hashable_objects_after - hashable_objects_before
         ldiff = len(diff)
         if print_leaks and ldiff < num_records:
-            print "\n*** hashable objects leaked (%d) ***" % ldiff
-            print '\n'.join(map(str, diff))
-            print "***\n"
+            print("\n*** hashable objects leaked (%d) ***" % ldiff)
+            print('\n'.join(map(str, diff)))
+            print("***\n")
 
         if num_leaks > num_records:
-            print "(leaked: %d !)" % num_leaks,
+            print("(leaked: %d !)" % num_leaks, end=' ')
     if profile:
         profile_func('test', verbose)
     time_func('test', num_tests, verbose)

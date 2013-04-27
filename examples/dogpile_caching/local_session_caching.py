@@ -53,8 +53,8 @@ register_backend("sqlalchemy.session", __name__, "ScopedSessionBackend")
 
 
 if __name__ == '__main__':
-    from environment import Session, regions
-    from caching_query import FromCache
+    from .environment import Session, regions
+    from .caching_query import FromCache
     from dogpile.cache import make_region
 
     # set up a region based on the ScopedSessionBackend,
@@ -67,7 +67,7 @@ if __name__ == '__main__':
         }
     )
 
-    from model import Person
+    from .model import Person
 
     # query to load Person by name, with criterion
     # of "person 10"

@@ -600,7 +600,7 @@ class AutoIncrementTest(fixtures.TablesTest):
             nonai.insert().execute(data='row 1')
             nonai.insert().execute(data='row 2')
             assert False
-        except sa.exc.DBAPIError, e:
+        except sa.exc.DBAPIError as e:
             assert True
 
         nonai.insert().execute(id=1, data='row 1')
@@ -649,7 +649,7 @@ class SequenceExecTest(fixtures.TestBase):
     def _assert_seq_result(self, ret):
         """asserts return of next_value is an int"""
 
-        assert isinstance(ret, (int, long))
+        assert isinstance(ret, int)
         assert ret > 0
 
     def test_implicit_connectionless(self):
@@ -781,7 +781,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 ]
                 start = seq.start or 1
                 inc = seq.increment or 1
-                assert values == list(xrange(start, start + inc * 3, inc))
+                assert values == list(range(start, start + inc * 3, inc))
 
             finally:
                 seq.drop(testing.db)
@@ -1156,20 +1156,22 @@ class UnicodeDefaultsTest(fixtures.TestBase):
         c = Column(Unicode(32))
 
     def test_unicode_default(self):
-        # Py3K
-        #default = 'foo'
-        # Py2K
-        default = u'foo'
-        # end Py2K
+# start Py3K
+        default = 'foo'
+# end Py3K
+# start Py2K
+#        default = u'foo'
+# end Py2K
         c = Column(Unicode(32), default=default)
 
 
     def test_nonunicode_default(self):
-        # Py3K
-        #default = b'foo'
-        # Py2K
-        default = 'foo'
-        # end Py2K
+# start Py3K
+        default = b'foo'
+# end Py3K
+# start Py2K
+#        default = 'foo'
+# end Py2K
         assert_raises_message(
             sa.exc.SAWarning,
             "Unicode column received non-unicode default value.",

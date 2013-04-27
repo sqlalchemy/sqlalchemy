@@ -1,5 +1,5 @@
 # coding: utf-8
-from __future__ import with_statement
+
 
 from sqlalchemy.testing import eq_
 from sqlalchemy import *
@@ -807,7 +807,7 @@ class TwoPhaseTest(fixtures.TablesTest):
         )
     def test_twophase_prepare_false(self):
         conn = self._connection()
-        for i in xrange(2):
+        for i in range(2):
             trans = conn.begin_twophase()
             conn.execute("select 1 from dual")
             trans.prepare()
@@ -817,7 +817,7 @@ class TwoPhaseTest(fixtures.TablesTest):
 
     def test_twophase_prepare_true(self):
         conn = self._connection()
-        for i in xrange(2):
+        for i in range(2):
             trans = conn.begin_twophase()
             conn.execute("insert into datatable (id, data) "
                     "values (%s, 'somedata')" % i)
@@ -870,7 +870,7 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
         b = bindparam("foo", "hello world!")
         assert b.type.dialect_impl(dialect).get_dbapi_type(dbapi) == 'STRING'
 
-        b = bindparam("foo", u"hello world!")
+        b = bindparam("foo", "hello world!")
         assert b.type.dialect_impl(dialect).get_dbapi_type(dbapi) == 'STRING'
 
     def test_long(self):
@@ -1257,7 +1257,7 @@ class TypesTest(fixtures.TestBase):
             autoload=True, oracle_resolve_synonyms=True
             )
         for row in types_table.select().execute().fetchall():
-            [row[k] for k in row.keys()]
+            [row[k] for k in list(row.keys())]
 
     @testing.provide_metadata
     def test_raw_roundtrip(self):
@@ -1291,11 +1291,11 @@ class TypesTest(fixtures.TestBase):
                 t2.c.data.type.dialect_impl(testing.db.dialect),
                 cx_oracle._OracleNVarChar)
 
-        data = u'm’a réveillé.'
+        data = 'm’a réveillé.'
         t2.insert().execute(data=data)
         res = t2.select().execute().first()['data']
         eq_(res, data)
-        assert isinstance(res, unicode)
+        assert isinstance(res, str)
 
 
     def test_char_length(self):
@@ -1426,7 +1426,7 @@ class DontReflectIOTTest(fixtures.TestBase):
         m = MetaData(testing.db)
         m.reflect()
         eq_(
-            set(t.name for t in m.tables.values()),
+            set(t.name for t in list(m.tables.values())),
             set(['admin_docindex'])
         )
 
@@ -1641,28 +1641,28 @@ class UnicodeSchemaTest(fixtures.TestBase):
         metadata.create_all()
 
         table.insert().execute(
-            {'_underscorecolumn': u'’é'},
+            {'_underscorecolumn': '’é'},
         )
         result = testing.db.execute(
-            table.select().where(table.c._underscorecolumn==u'’é')
+            table.select().where(table.c._underscorecolumn=='’é')
         ).scalar()
-        eq_(result, u'’é')
+        eq_(result, '’é')
 
     @testing.provide_metadata
     def test_quoted_column_unicode(self):
         metadata = self.metadata
         table=Table("atable", metadata,
-            Column(u"méil", Unicode(255), primary_key=True),
+            Column("méil", Unicode(255), primary_key=True),
         )
         metadata.create_all()
 
         table.insert().execute(
-            {u'méil': u'’é'},
+            {'méil': '’é'},
         )
         result = testing.db.execute(
-            table.select().where(table.c[u'méil']==u'’é')
+            table.select().where(table.c['méil']=='’é')
         ).scalar()
-        eq_(result, u'’é')
+        eq_(result, '’é')
 
 
 class DBLinkReflectionTest(fixtures.TestBase):
@@ -1702,5 +1702,5 @@ class DBLinkReflectionTest(fixtures.TestBase):
 
         t = Table('test_table_syn', m, autoload=True,
                 autoload_with=testing.db, oracle_resolve_synonyms=True)
-        eq_(t.c.keys(), ['id', 'data'])
+        eq_(list(t.c.keys()), ['id', 'data'])
         eq_(list(t.primary_key), [t.c.id])

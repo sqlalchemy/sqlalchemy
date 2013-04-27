@@ -685,7 +685,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             __mapper_args__ = dict(polymorphic_identity='specific')
 
         assert Specific.__table__ is Generic.__table__
-        eq_(Generic.__table__.c.keys(), ['id', 'type', 'value'])
+        eq_(list(Generic.__table__.c.keys()), ['id', 'type', 'value'])
         assert class_mapper(Specific).polymorphic_on \
             is Generic.__table__.c.type
         eq_(class_mapper(Specific).polymorphic_identity, 'specific')
@@ -714,9 +714,9 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         eq_(Generic.__table__.name, 'generic')
         eq_(Specific.__table__.name, 'specific')
-        eq_(Generic.__table__.c.keys(), ['timestamp', 'id',
+        eq_(list(Generic.__table__.c.keys()), ['timestamp', 'id',
             'python_type'])
-        eq_(Specific.__table__.c.keys(), ['id'])
+        eq_(list(Specific.__table__.c.keys()), ['id'])
         eq_(Generic.__table__.kwargs, {'mysql_engine': 'InnoDB'})
         eq_(Specific.__table__.kwargs, {'mysql_engine': 'InnoDB'})
 
@@ -749,12 +749,12 @@ class DeclarativeMixinTest(DeclarativeTestBase):
                         primary_key=True)
 
         eq_(BaseType.__table__.name, 'basetype')
-        eq_(BaseType.__table__.c.keys(), ['timestamp', 'type', 'id',
+        eq_(list(BaseType.__table__.c.keys()), ['timestamp', 'type', 'id',
             'value'])
         eq_(BaseType.__table__.kwargs, {'mysql_engine': 'InnoDB'})
         assert Single.__table__ is BaseType.__table__
         eq_(Joined.__table__.name, 'joined')
-        eq_(Joined.__table__.c.keys(), ['id'])
+        eq_(list(Joined.__table__.c.keys()), ['id'])
         eq_(Joined.__table__.kwargs, {'mysql_engine': 'InnoDB'})
 
     def test_col_copy_vs_declared_attr_joined_propagation(self):
@@ -839,7 +839,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             __mapper_args__ = dict(polymorphic_identity='specific')
 
         eq_(BaseType.__table__.name, 'basetype')
-        eq_(BaseType.__table__.c.keys(), ['type', 'id', 'value'])
+        eq_(list(BaseType.__table__.c.keys()), ['type', 'id', 'value'])
         assert Specific.__table__ is BaseType.__table__
         assert class_mapper(Specific).polymorphic_on \
             is BaseType.__table__.c.type
@@ -870,9 +870,9 @@ class DeclarativeMixinTest(DeclarativeTestBase):
                         primary_key=True)
 
         eq_(BaseType.__table__.name, 'basetype')
-        eq_(BaseType.__table__.c.keys(), ['type', 'id', 'value'])
+        eq_(list(BaseType.__table__.c.keys()), ['type', 'id', 'value'])
         eq_(Specific.__table__.name, 'specific')
-        eq_(Specific.__table__.c.keys(), ['id'])
+        eq_(list(Specific.__table__.c.keys()), ['id'])
 
     def test_single_back_propagate(self):
 
@@ -891,7 +891,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
             __mapper_args__ = dict(polymorphic_identity='specific')
 
-        eq_(BaseType.__table__.c.keys(), ['type', 'id', 'timestamp'])
+        eq_(list(BaseType.__table__.c.keys()), ['type', 'id', 'timestamp'])
 
     def test_table_in_model_and_same_column_in_mixin(self):
 
@@ -987,7 +987,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             id = Column(Integer, primary_key=True)
             __tablename__ = 'model'
 
-        eq_(Model.__table__.c.keys(), ['col1', 'col3', 'col2', 'col4',
+        eq_(list(Model.__table__.c.keys()), ['col1', 'col3', 'col2', 'col4',
             'id'])
 
     def test_honor_class_mro_one(self):
@@ -1078,8 +1078,8 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             filter_class = FilterB
             id = Column(Integer(), primary_key=True)
 
-        TypeA(filters=[u'foo'])
-        TypeB(filters=[u'foo'])
+        TypeA(filters=['foo'])
+        TypeB(filters=['foo'])
 
 class DeclarativeMixinPropertyTest(DeclarativeTestBase):
 

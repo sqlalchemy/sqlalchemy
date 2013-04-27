@@ -17,7 +17,7 @@ def eq_(a, b, msg=None):
 _repr_stack = set()
 class BasicEntity(object):
     def __init__(self, **kw):
-        for key, value in kw.iteritems():
+        for key, value in kw.items():
             setattr(self, key, value)
 
     def __repr__(self):

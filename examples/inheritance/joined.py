@@ -92,10 +92,10 @@ session.commit()
 
 c = session.query(Company).get(1)
 for e in c.employees:
-    print e, inspect(e).key, e.company
+    print(e, inspect(e).key, e.company)
 assert set([e.name for e in c.employees]) == set(['pointy haired boss',
         'dilbert', 'joesmith', 'wally', 'jsmith'])
-print "\n"
+print("\n")
 
 dilbert = session.query(Person).filter_by(name='dilbert').one()
 dilbert2 = session.query(Engineer).filter_by(name='dilbert').one()
@@ -107,29 +107,29 @@ session.commit()
 
 c = session.query(Company).get(1)
 for e in c.employees:
-    print e
+    print(e)
 
 # query using with_polymorphic.
 eng_manager = with_polymorphic(Person, [Engineer, Manager], aliased=True)
-print session.query(eng_manager).\
+print(session.query(eng_manager).\
             filter(
                 or_(eng_manager.Engineer.engineer_name=='engineer1',
                     eng_manager.Manager.manager_name=='manager2'
                 )
-            ).all()
+            ).all())
 
 # illustrate join from Company,
 # We use aliased=True
 # to help when the selectable is used as the target of a join.
 eng_manager = with_polymorphic(Person, [Engineer, Manager], aliased=True)
-print session.query(Company).\
+print(session.query(Company).\
     join(
         eng_manager,
         Company.employees
     ).filter(
         or_(eng_manager.Engineer.engineer_name=='engineer1',
             eng_manager.Manager.manager_name=='manager2')
-    ).all()
+    ).all())
 
 session.commit()
 

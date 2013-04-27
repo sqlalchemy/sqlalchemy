@@ -10,8 +10,8 @@ City --(has a)--> Country
 """
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-from caching_query import FromCache, RelationshipCache
-from environment import Base, bootstrap
+from .caching_query import FromCache, RelationshipCache
+from .environment import Base, bootstrap
 
 class Country(Base):
     __tablename__ = 'country'

@@ -14,8 +14,8 @@ from operator import (
     getitem, lshift, rshift
     )
 
-# Py2K
-from operator import (div,)
+# start Py2K
+#from operator import (div,)
 # end Py2K
 
 from ..util import symbol
@@ -789,9 +789,9 @@ _PRECEDENCE = {
     getitem: 15,
     mul: 8,
     truediv: 8,
-    # Py2K
-    div: 8,
-    # end Py2K
+# start Py2K
+#    div: 8,
+# end Py2K
     mod: 8,
     neg: 8,
     add: 7,

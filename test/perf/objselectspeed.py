@@ -36,7 +36,7 @@ def setup():
     metadata.create_all()
     i = Person_table.insert()
     data = [{'name':'John Doe','sex':1,'age':35, 'type':'employee'}] * 100
-    for j in xrange(500):
+    for j in range(500):
         i.execute(data)
 
     # note we arent fetching from employee_table,
@@ -46,7 +46,7 @@ def setup():
     #for j in xrange(500):
     #    i.execute(data)
 
-    print "Inserted 50,000 rows"
+    print("Inserted 50,000 rows")
 
 def sqlite_select(entity_cls):
     conn = db.connect().connection
@@ -89,10 +89,10 @@ def all():
         t, t2 = 0, 0
         def usage(label):
             now = resource.getrusage(resource.RUSAGE_SELF)
-            print "%s: %0.3fs real, %0.3fs user, %0.3fs sys" % (
+            print("%s: %0.3fs real, %0.3fs user, %0.3fs sys" % (
                 label, t2 - t,
                 now.ru_utime - usage.last.ru_utime,
-                now.ru_stime - usage.last.ru_stime)
+                now.ru_stime - usage.last.ru_stime))
             usage.snap(now)
         usage.snap = lambda stats=None: setattr(
             usage, 'last', stats or resource.getrusage(resource.RUSAGE_SELF))

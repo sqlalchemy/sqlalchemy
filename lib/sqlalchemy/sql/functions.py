@@ -41,7 +41,7 @@ class _GenericMeta(VisitableType):
         super(_GenericMeta, cls).__init__(clsname, bases, clsdict)
 
 
-class GenericFunction(Function):
+class GenericFunction(Function, metaclass=_GenericMeta):
     """Define a 'generic' function.
 
     A generic function is a pre-established :class:`.Function`
@@ -112,7 +112,6 @@ class GenericFunction(Function):
        name is still recognized for backwards-compatibility.
 
     """
-    __metaclass__ = _GenericMeta
 
     coerce_arguments = True
 

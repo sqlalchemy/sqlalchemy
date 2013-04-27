@@ -43,14 +43,14 @@ else:
 
 if sys.version_info < (2, 6):
     def next(iter):
-        return iter.next()
+        return iter.__next__()
 else:
     next = next
 if py3k_warning:
     import pickle
 else:
     try:
-        import cPickle as pickle
+        import pickle as pickle
     except ImportError:
         import pickle
 
@@ -59,12 +59,13 @@ if sys.version_info < (2, 6):
     # in newer pythons
     from cgi import parse_qsl
 else:
-    from urlparse import parse_qsl
+    from urllib.parse import parse_qsl
 
-# Py3K
-#from inspect import getfullargspec as inspect_getfullargspec
-# Py2K
-from inspect import getargspec as inspect_getfullargspec
+# start Py3K
+from inspect import getfullargspec as inspect_getfullargspec
+# end Py3K
+# start Py2K
+#from inspect import getargspec as inspect_getfullargspec
 # end Py2K
 
 if py3k_warning:

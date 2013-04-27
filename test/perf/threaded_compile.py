@@ -4,7 +4,7 @@ collection is being compiled."""
 
 from sqlalchemy import *
 from sqlalchemy.orm import *
-import thread, time
+import _thread, time
 from sqlalchemy.orm import mapperlib
 
 
@@ -42,20 +42,20 @@ class FakeLock(object):
 
 def run1():
     for i in range(50):
-        print "T1", thread.get_ident()
+        print("T1", _thread.get_ident())
         class_mapper(T1)
         time.sleep(.05)
 
 def run2():
     for i in range(50):
-        print "T2", thread.get_ident()
+        print("T2", _thread.get_ident())
         class_mapper(T2)
         time.sleep(.057)
 
 def run3():
     for i in range(50):
         def foo():
-            print "FOO", thread.get_ident()
+            print("FOO", _thread.get_ident())
             class Foo(object):pass
             mapper(Foo, t3)
             class_mapper(Foo).compile()
@@ -64,12 +64,12 @@ def run3():
 
 mapper(T1, t1, properties={'t2':relationship(T2, backref="t1")})
 mapper(T2, t2)
-print "START"
+print("START")
 for j in range(0, 5):
-    thread.start_new_thread(run1, ())
-    thread.start_new_thread(run2, ())
-    thread.start_new_thread(run3, ())
-    thread.start_new_thread(run3, ())
-    thread.start_new_thread(run3, ())
-print "WAIT"
+    _thread.start_new_thread(run1, ())
+    _thread.start_new_thread(run2, ())
+    _thread.start_new_thread(run3, ())
+    _thread.start_new_thread(run3, ())
+    _thread.start_new_thread(run3, ())
+print("WAIT")
 time.sleep(5)

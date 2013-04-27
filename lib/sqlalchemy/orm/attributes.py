@@ -1214,7 +1214,7 @@ class History(History):
 
     """
 
-    def __nonzero__(self):
+    def __bool__(self):
         return self != HISTORY_BLANK
 
     def empty(self):

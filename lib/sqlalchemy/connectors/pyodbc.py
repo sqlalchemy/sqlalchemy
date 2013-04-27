@@ -9,7 +9,7 @@ from ..util import asbool
 
 import sys
 import re
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 
 class PyODBCConnector(Connector):
@@ -59,7 +59,7 @@ class PyODBCConnector(Connector):
                 connect_args[param] = asbool(keys.pop(param))
 
         if 'odbc_connect' in keys:
-            connectors = [urllib.unquote_plus(keys.pop('odbc_connect'))]
+            connectors = [urllib.parse.unquote_plus(keys.pop('odbc_connect'))]
         else:
             dsn_connection = 'dsn' in keys or \
                             ('host' in keys and 'database' not in keys)
@@ -91,7 +91,7 @@ class PyODBCConnector(Connector):
                 connectors.append("AutoTranslate=%s" %
                                     keys.pop("odbc_autotranslate"))
 
-            connectors.extend(['%s=%s' % (k, v) for k, v in keys.iteritems()])
+            connectors.extend(['%s=%s' % (k, v) for k, v in keys.items()])
         return [[";".join(connectors)], connect_args]
 
     def is_disconnect(self, e, connection, cursor):
@@ -123,16 +123,16 @@ class PyODBCConnector(Connector):
 
         # the "Py2K only" part here is theoretical.
         # have not tried pyodbc + python3.1 yet.
-        # Py2K
-        self.supports_unicode_statements = (
-            not self.freetds and not self.easysoft)
-        if self._user_supports_unicode_binds is not None:
-            self.supports_unicode_binds = self._user_supports_unicode_binds
-        else:
-            self.supports_unicode_binds = (
-                not self.freetds or self.freetds_driver_version >= '0.91'
-            ) and not self.easysoft
-        # end Py2K
+# start Py2K
+#        self.supports_unicode_statements = (
+#            not self.freetds and not self.easysoft)
+#        if self._user_supports_unicode_binds is not None:
+#            self.supports_unicode_binds = self._user_supports_unicode_binds
+#        else:
+#            self.supports_unicode_binds = (
+#                not self.freetds or self.freetds_driver_version >= '0.91'
+#            ) and not self.easysoft
+# end Py2K
 
         # run other initialization which asks for user name, etc.
         super(PyODBCConnector, self).initialize(connection)

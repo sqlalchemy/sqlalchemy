@@ -57,7 +57,7 @@ def _as_declarative(cls, classname, dict_):
 
         class_mapped = _declared_mapping_info(base) is not None
 
-        for name, obj in vars(base).items():
+        for name, obj in list(vars(base).items()):
             if name == '__mapper_args__':
                 if not mapper_args_fn and (
                                         not class_mapped or
@@ -129,7 +129,7 @@ def _as_declarative(cls, classname, dict_):
                         ret.doc = obj.__doc__
 
     # apply inherited columns as we should
-    for k, v in potential_columns.items():
+    for k, v in list(potential_columns.items()):
         dict_[k] = v
 
     if inherited_table_args and not tablename:
@@ -173,7 +173,7 @@ def _as_declarative(cls, classname, dict_):
 
     # extract columns from the class dict
     declared_columns = set()
-    for key, c in our_stuff.iteritems():
+    for key, c in our_stuff.items():
         if isinstance(c, (ColumnProperty, CompositeProperty)):
             for col in c.columns:
                 if isinstance(col, Column) and \
@@ -354,7 +354,7 @@ class _MapperConfig(object):
             # in which case the mapper makes this combination).
             # See if the superclass has a similar column property.
             # If so, join them together.
-            for k, col in properties.items():
+            for k, col in list(properties.items()):
                 if not isinstance(col, expression.ColumnElement):
                     continue
                 if k in inherited_mapper._props:

@@ -129,7 +129,7 @@ class EagerTest(fixtures.MappedTest):
         # 3  "
 
         # not orm style correct query
-        print "Obtaining correct results without orm"
+        print("Obtaining correct results without orm")
         result = sa.select(
             [tests.c.id,categories.c.name],
             sa.and_(tests.c.owner_id == 1,
@@ -140,7 +140,7 @@ class EagerTest(fixtures.MappedTest):
                 tests.c.id == options.c.test_id,
                 tests.c.owner_id == options.c.owner_id))]
             ).execute().fetchall()
-        eq_(result, [(1, u'Some Category'), (3, u'Some Category')])
+        eq_(result, [(1, 'Some Category'), (3, 'Some Category')])
 
     def test_withoutjoinedload(self):
         Thing, tests, options = (self.classes.Thing,
@@ -158,7 +158,7 @@ class EagerTest(fixtures.MappedTest):
                                    options.c.someoption==False))))
 
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
-        eq_(result, [u'1 Some Category', u'3 Some Category'])
+        eq_(result, ['1 Some Category', '3 Some Category'])
 
     def test_withjoinedload(self):
         """
@@ -185,7 +185,7 @@ class EagerTest(fixtures.MappedTest):
                                  options.c.someoption==False))))
 
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
-        eq_(result, [u'1 Some Category', u'3 Some Category'])
+        eq_(result, ['1 Some Category', '3 Some Category'])
 
     def test_dslish(self):
         """test the same as withjoinedload except using generative"""
@@ -203,7 +203,7 @@ class EagerTest(fixtures.MappedTest):
             ).outerjoin('owner_option')
 
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
-        eq_(result, [u'1 Some Category', u'3 Some Category'])
+        eq_(result, ['1 Some Category', '3 Some Category'])
 
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     def test_without_outerjoin_literal(self):
@@ -219,7 +219,7 @@ class EagerTest(fixtures.MappedTest):
              join('owner_option'))
 
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
-        eq_(result, [u'3 Some Category'])
+        eq_(result, ['3 Some Category'])
 
     def test_withoutouterjoin(self):
         Thing, tests, options = (self.classes.Thing,
@@ -234,7 +234,7 @@ class EagerTest(fixtures.MappedTest):
                     ).join('owner_option')
 
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
-        eq_(result, [u'3 Some Category'])
+        eq_(result, ['3 Some Category'])
 
 
 class EagerTest2(fixtures.MappedTest):
@@ -764,7 +764,7 @@ class EagerTest8(fixtures.MappedTest):
                        (1,),),
 
             task=(('title', 'task_type_id', 'status_id', 'prj_id'),
-                  (u'task 1', 1, 1, 1)))
+                  ('task 1', 1, 1, 1)))
 
     @classmethod
     def setup_classes(cls):
@@ -804,7 +804,7 @@ class EagerTest8(fixtures.MappedTest):
         session = create_session()
 
         eq_(session.query(Joined).limit(10).offset(0).one(),
-            Joined(id=1, title=u'task 1', props_cnt=0))
+            Joined(id=1, title='task 1', props_cnt=0))
 
 
 class EagerTest9(fixtures.MappedTest):

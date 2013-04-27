@@ -367,10 +367,10 @@ class QueryTest(fixtures.TestBase):
                 )
                 if use_labels:
                     eq_(result[0]['query_users_user_id'], 7)
-                    eq_(result[0].keys(), ["query_users_user_id", "query_users_user_name"])
+                    eq_(list(result[0].keys()), ["query_users_user_id", "query_users_user_name"])
                 else:
                     eq_(result[0]['user_id'], 7)
-                    eq_(result[0].keys(), ["user_id", "user_name"])
+                    eq_(list(result[0].keys()), ["user_id", "user_name"])
 
                 eq_(result[0][0], 7)
                 eq_(result[0][users.c.user_id], 7)
@@ -523,13 +523,13 @@ class QueryTest(fixtures.TestBase):
 
         def a_eq(got, wanted):
             if got != wanted:
-                print "Wanted %s" % wanted
-                print "Received %s" % got
+                print("Wanted %s" % wanted)
+                print("Received %s" % got)
             self.assert_(got == wanted, got)
 
         a_eq(prep('select foo'), 'select foo')
         a_eq(prep("time='12:30:00'"), "time='12:30:00'")
-        a_eq(prep(u"time='12:30:00'"), u"time='12:30:00'")
+        a_eq(prep("time='12:30:00'"), "time='12:30:00'")
         a_eq(prep(":this:that"), ":this:that")
         a_eq(prep(":this :that"), "? ?")
         a_eq(prep("(:this),(:that :other)"), "(?),(? ?)")
@@ -769,7 +769,7 @@ class QueryTest(fixtures.TestBase):
             ).first()
         eq_(r['user_id'], 1)
         eq_(r['user_name'], "john")
-        eq_(r.keys(), ["user_id", "user_name"])
+        eq_(list(r.keys()), ["user_id", "user_name"])
 
     @testing.only_on("sqlite", "sqlite specific feature")
     def test_column_accessor_sqlite_raw(self):
@@ -784,7 +784,7 @@ class QueryTest(fixtures.TestBase):
         assert 'user_name' not in r
         eq_(r['query_users.user_id'], 1)
         eq_(r['query_users.user_name'], "john")
-        eq_(r.keys(), ["query_users.user_id", "query_users.user_name"])
+        eq_(list(r.keys()), ["query_users.user_id", "query_users.user_name"])
 
     @testing.only_on("sqlite", "sqlite specific feature")
     def test_column_accessor_sqlite_translated(self):
@@ -799,7 +799,7 @@ class QueryTest(fixtures.TestBase):
         eq_(r['user_name'], "john")
         eq_(r['query_users.user_id'], 1)
         eq_(r['query_users.user_name'], "john")
-        eq_(r.keys(), ["user_id", "user_name"])
+        eq_(list(r.keys()), ["user_id", "user_name"])
 
     def test_column_accessor_labels_w_dots(self):
         users.insert().execute(
@@ -812,7 +812,7 @@ class QueryTest(fixtures.TestBase):
         eq_(r['query_users.user_id'], 1)
         eq_(r['query_users.user_name'], "john")
         assert "user_name" not in r
-        eq_(r.keys(), ["query_users.user_id", "query_users.user_name"])
+        eq_(list(r.keys()), ["query_users.user_id", "query_users.user_name"])
 
     def test_column_accessor_unary(self):
         users.insert().execute(
@@ -889,7 +889,7 @@ class QueryTest(fixtures.TestBase):
             ])
         ).first()
 
-        eq_(row.keys(), ["case_insensitive", "CaseSensitive"])
+        eq_(list(row.keys()), ["case_insensitive", "CaseSensitive"])
         eq_(row["case_insensitive"], 1)
         eq_(row["CaseSensitive"], 2)
 
@@ -911,7 +911,7 @@ class QueryTest(fixtures.TestBase):
             ])
         ).first()
 
-        eq_(row.keys(), ["case_insensitive", "CaseSensitive"])
+        eq_(list(row.keys()), ["case_insensitive", "CaseSensitive"])
         eq_(row["case_insensitive"], 1)
         eq_(row["CaseSensitive"], 2)
         eq_(row["Case_insensitive"],1)
@@ -1072,14 +1072,14 @@ class QueryTest(fixtures.TestBase):
     def test_keys(self):
         users.insert().execute(user_id=1, user_name='foo')
         r = users.select().execute()
-        eq_([x.lower() for x in r.keys()], ['user_id', 'user_name'])
+        eq_([x.lower() for x in list(r.keys())], ['user_id', 'user_name'])
         r = r.first()
-        eq_([x.lower() for x in r.keys()], ['user_id', 'user_name'])
+        eq_([x.lower() for x in list(r.keys())], ['user_id', 'user_name'])
 
     def test_items(self):
         users.insert().execute(user_id=1, user_name='foo')
         r = users.select().execute().first()
-        eq_([(x[0].lower(), x[1]) for x in r.items()], [('user_id', 1), ('user_name', 'foo')])
+        eq_([(x[0].lower(), x[1]) for x in list(r.items())], [('user_id', 1), ('user_name', 'foo')])
 
     def test_len(self):
         users.insert().execute(user_id=1, user_name='foo')
@@ -1098,8 +1098,8 @@ class QueryTest(fixtures.TestBase):
         r = users.select(users.c.user_id==1).execute().first()
         eq_(r[0], 1)
         eq_(r[1], 'foo')
-        eq_([x.lower() for x in r.keys()], ['user_id', 'user_name'])
-        eq_(r.values(), [1, 'foo'])
+        eq_([x.lower() for x in list(r.keys())], ['user_id', 'user_name'])
+        eq_(list(r.values()), [1, 'foo'])
 
     def test_column_order_with_text_query(self):
         # should return values in query order
@@ -1107,8 +1107,8 @@ class QueryTest(fixtures.TestBase):
         r = testing.db.execute('select user_name, user_id from query_users').first()
         eq_(r[0], 'foo')
         eq_(r[1], 1)
-        eq_([x.lower() for x in r.keys()], ['user_name', 'user_id'])
-        eq_(r.values(), ['foo', 1])
+        eq_([x.lower() for x in list(r.keys())], ['user_name', 'user_id'])
+        eq_(list(r.values()), ['foo', 1])
 
     @testing.crashes('oracle', 'FIXME: unknown, varify not fails_on()')
     @testing.crashes('firebird', 'An identifier must begin with a letter')
@@ -1137,7 +1137,7 @@ class QueryTest(fixtures.TestBase):
             self.assert_(r['_parent'] == 'Hidden parent')
             self.assert_(r['_row'] == 'Hidden row')
             try:
-                print r._parent, r._row
+                print(r._parent, r._row)
                 self.fail('Should not allow access to private attributes')
             except AttributeError:
                 pass # expected
@@ -2334,7 +2334,7 @@ class JoinTest(fixtures.TestBase):
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
                 from_obj=[(t1.join(t2).outerjoin(t3, criteria))])
-            print expr
+            print(expr)
             self.assertRows(expr, [(10, 20, 30), (11, 21, None)])
 
     def test_mixed_where(self):
@@ -2416,7 +2416,7 @@ class OperatorTest(fixtures.TestBase):
             select([
                 flds.c.intcol, func.row_number().over(order_by=flds.c.strcol)
             ]).execute().fetchall(),
-            [(13, 1L), (5, 2L)]
+            [(13, 1), (5, 2)]
         )
 
 

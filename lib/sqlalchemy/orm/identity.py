@@ -75,7 +75,7 @@ class WeakInstanceDict(IdentityMap):
         state = dict.__getitem__(self, key)
         o = state.obj()
         if o is None:
-            raise KeyError, key
+            raise KeyError(key)
         return o
 
     def __contains__(self, key):
@@ -152,30 +152,32 @@ class WeakInstanceDict(IdentityMap):
 
         return result
 
-    # Py3K
-    #def items(self):
-    #    return iter(self._items())
-    #
-    #def values(self):
-    #    return iter(self._values())
-    # Py2K
-    items = _items
-
-    def iteritems(self):
-        return iter(self.items())
-
-    values = _values
-
-    def itervalues(self):
-        return iter(self.values())
-    # end Py2K
+# start Py3K
+    def items(self):
+        return iter(self._items())
+    
+    def values(self):
+        return iter(self._values())
+# end Py3K
+# start Py2K
+#    items = _items
+#
+#    def iteritems(self):
+#        return iter(self.items())
+#
+#    values = _values
+#
+#    def itervalues(self):
+#        return iter(self.values())
+# end Py2K
 
     def all_states(self):
-        # Py3K
-        # return list(dict.values(self))
-        # Py2K
-        return dict.values(self)
-        # end Py2K
+# start Py3K
+         return list(dict.values(self))
+# end Py3K
+# start Py2K
+#        return dict.values(self)
+# end Py2K
 
     def discard(self, state):
         st = dict.get(self, state.key, None)
@@ -189,7 +191,7 @@ class WeakInstanceDict(IdentityMap):
 
 class StrongInstanceDict(IdentityMap):
     def all_states(self):
-        return [attributes.instance_state(o) for o in self.itervalues()]
+        return [attributes.instance_state(o) for o in self.values()]
 
     def contains_state(self, state):
         return (

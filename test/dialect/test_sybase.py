@@ -19,7 +19,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             'year': 'year',
             }
 
-        for field, subst in mapping.items():
+        for field, subst in list(mapping.items()):
             self.assert_compile(
                 select([extract(field, t.c.col1)]),
                 'SELECT DATEPART("%s", t.col1) AS anon_1 FROM t' % subst)

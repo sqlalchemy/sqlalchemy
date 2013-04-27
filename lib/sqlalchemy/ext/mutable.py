@@ -485,7 +485,7 @@ class Mutable(MutableBase):
     def changed(self):
         """Subclasses should call this method whenever change events occur."""
 
-        for parent, key in self._parents.items():
+        for parent, key in list(self._parents.items()):
             flag_modified(parent, key)
 
     @classmethod
@@ -579,7 +579,7 @@ class MutableComposite(MutableBase):
     def changed(self):
         """Subclasses should call this method whenever change events occur."""
 
-        for parent, key in self._parents.items():
+        for parent, key in list(self._parents.items()):
 
             prop = object_mapper(parent).get_property(key)
             for value, attr_name in zip(

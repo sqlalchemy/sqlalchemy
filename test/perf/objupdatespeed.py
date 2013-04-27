@@ -39,12 +39,12 @@ def setup():
     i.execute(data)
 
     i = Email_table.insert()
-    for j in xrange(1, NUM + 1):
+    for j in range(1, NUM + 1):
         i.execute(address='foo@bar', person_id=j)
         if j % 2:
             i.execute(address='baz@quux', person_id=j)
 
-    print "Inserted %d rows." % (NUM + NUM + (NUM // 2))
+    print("Inserted %d rows." % (NUM + NUM + (NUM // 2)))
 
 def orm_select(session):
     return session.query(Person).all()
@@ -63,10 +63,10 @@ def all():
         t, t2 = 0, 0
         def usage(label):
             now = resource.getrusage(resource.RUSAGE_SELF)
-            print "%s: %0.3fs real, %0.3fs user, %0.3fs sys" % (
+            print("%s: %0.3fs real, %0.3fs user, %0.3fs sys" % (
                 label, t2 - t,
                 now.ru_utime - usage.last.ru_utime,
-                now.ru_stime - usage.last.ru_stime)
+                now.ru_stime - usage.last.ru_stime))
             usage.snap(now)
         usage.snap = lambda stats=None: setattr(
             usage, 'last', stats or resource.getrusage(resource.RUSAGE_SELF))

@@ -685,7 +685,7 @@ class FBDialect(default.DefaultDialect):
                                 self.normalize_name(row['fname']))
             fk['referred_columns'].append(
                                 self.normalize_name(row['targetfname']))
-        return fks.values()
+        return list(fks.values())
 
     @reflection.cache
     def get_indexes(self, connection, table_name, schema=None, **kw):
@@ -716,7 +716,7 @@ class FBDialect(default.DefaultDialect):
             indexrec['column_names'].append(
                                 self.normalize_name(row['field_name']))
 
-        return indexes.values()
+        return list(indexes.values())
 
     def do_execute(self, cursor, statement, parameters, context=None):
         # kinterbase does not accept a None, but wants an empty list

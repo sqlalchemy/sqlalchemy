@@ -315,7 +315,7 @@ class UOWTransaction(object):
         # see if the graph of mapper dependencies has cycles.
         self.cycles = cycles = topological.find_cycles(
                                         self.dependencies,
-                                        self.postsort_actions.values())
+                                        list(self.postsort_actions.values()))
 
         if cycles:
             # if yes, break the per-mapper actions into
@@ -342,7 +342,7 @@ class UOWTransaction(object):
                     for dep in convert[edge[1]]:
                         self.dependencies.add((edge[0], dep))
 
-        return set([a for a in self.postsort_actions.values()
+        return set([a for a in list(self.postsort_actions.values())
                     if not a.disabled
                     ]
                 ).difference(cycles)
@@ -381,7 +381,7 @@ class UOWTransaction(object):
         """
         states = set(self.states)
         isdel = set(
-            s for (s, (isdelete, listonly)) in self.states.iteritems()
+            s for (s, (isdelete, listonly)) in self.states.items()
             if isdelete
         )
         other = states.difference(isdel)
@@ -461,7 +461,7 @@ class PostSortRec(object):
     def __repr__(self):
         return "%s(%s)" % (
             self.__class__.__name__,
-            ",".join(str(x) for x in self.__dict__.values())
+            ",".join(str(x) for x in list(self.__dict__.values()))
         )
 
 

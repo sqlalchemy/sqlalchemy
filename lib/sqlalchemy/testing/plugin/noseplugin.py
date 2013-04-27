@@ -9,10 +9,10 @@ When third party libraries use this plugin, it can be imported
 normally as "from sqlalchemy.testing.plugin import noseplugin".
 
 """
-from __future__ import absolute_import
+
 
 import os
-import ConfigParser
+import configparser
 
 from nose.plugins import Plugin
 from nose import SkipTest
@@ -55,9 +55,9 @@ def _log(option, opt_str, value, parser):
 
 
 def _list_dbs(*args):
-    print "Available --db options (use --dburi to override)"
+    print("Available --db options (use --dburi to override)")
     for macro in sorted(file_config.options('db')):
-        print "%20s\t%s" % (macro, file_config.get('db', macro))
+        print("%20s\t%s" % (macro, file_config.get('db', macro)))
     sys.exit(0)
 
 
@@ -318,7 +318,7 @@ class NoseSQLAlchemy(Plugin):
         opt("--write-profiles", action="store_true", dest="write_profiles", default=False,
                 help="Write/update profiling data.")
         global file_config
-        file_config = ConfigParser.ConfigParser()
+        file_config = configparser.ConfigParser()
         file_config.read(['setup.cfg', 'test.cfg'])
 
     def configure(self, options, conf):

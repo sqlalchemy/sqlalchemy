@@ -74,8 +74,8 @@ class TransactionTest(fixtures.TestBase):
             connection.execute(users.insert(), user_id=1, user_name='user3')
             transaction.commit()
             assert False
-        except Exception , e:
-            print "Exception: ", e
+        except Exception as e:
+            print("Exception: ", e)
             transaction.rollback()
 
         result = connection.execute("select * from query_users")
@@ -121,10 +121,10 @@ class TransactionTest(fixtures.TestBase):
                     trans2.rollback()
                     raise
                 transaction.rollback()
-            except Exception, e:
+            except Exception as e:
                 transaction.rollback()
                 raise
-        except Exception, e:
+        except Exception as e:
             try:
                 assert str(e) == 'uh oh'  # and not "This transaction is
                                           # inactive"
@@ -167,7 +167,7 @@ class TransactionTest(fixtures.TestBase):
         connection.execute(users.insert(), user_id=2, user_name='user2')
         try:
             connection.execute(users.insert(), user_id=2, user_name='user2.5')
-        except Exception, e:
+        except Exception as e:
             trans.__exit__(*sys.exc_info())
 
         assert not trans.is_active
@@ -1019,7 +1019,7 @@ class ForUpdateTest(fixtures.TestBase):
         con = testing.db.connect()
         sel = counters.select(for_update=update_style,
                               whereclause=counters.c.counter_id == 1)
-        for i in xrange(count):
+        for i in range(count):
             trans = con.begin()
             try:
                 existing = con.execute(sel).first()
@@ -1033,7 +1033,7 @@ class ForUpdateTest(fixtures.TestBase):
                     raise AssertionError('Got %s post-update, expected '
                             '%s' % (readback['counter_value'], incr))
                 trans.commit()
-            except Exception, e:
+            except Exception as e:
                 trans.rollback()
                 errors.append(e)
                 break
@@ -1057,7 +1057,7 @@ class ForUpdateTest(fixtures.TestBase):
         db.execute(counters.insert(), counter_id=1, counter_value=0)
         iterations, thread_count = 10, 5
         threads, errors = [], []
-        for i in xrange(thread_count):
+        for i in range(thread_count):
             thrd = threading.Thread(target=self.increment,
                                     args=(iterations, ),
                                     kwargs={'errors': errors,
@@ -1088,7 +1088,7 @@ class ForUpdateTest(fixtures.TestBase):
             rows = con.execute(sel).fetchall()
             time.sleep(0.25)
             trans.commit()
-        except Exception, e:
+        except Exception as e:
             trans.rollback()
             errors.append(e)
         con.close()
@@ -1105,7 +1105,7 @@ class ForUpdateTest(fixtures.TestBase):
             db.execute(counters.insert(), counter_id=cid + 1,
                        counter_value=0)
         errors, threads = [], []
-        for i in xrange(thread_count):
+        for i in range(thread_count):
             thrd = threading.Thread(target=self.overlap,
                                     args=(groups.pop(0), errors,
                                     update_style))

@@ -13,18 +13,18 @@ Person_table = Table('Person', metadata,
 
 def sa_unprofiled_insertmany(n):
     i = Person_table.insert()
-    i.execute([{'name':'John Doe','sex':1,'age':35} for j in xrange(n)])
+    i.execute([{'name':'John Doe','sex':1,'age':35} for j in range(n)])
 
 def sqlite_unprofiled_insertmany(n):
     conn = db.connect().connection
     c = conn.cursor()
-    persons = [('john doe', 1, 35) for i in xrange(n)]
+    persons = [('john doe', 1, 35) for i in range(n)]
     c.executemany("insert into Person(name, sex, age) values (?,?,?)", persons)
 
 @profiling.profiled('sa_profiled_insert_many', always=True)
 def sa_profiled_insert_many(n):
     i = Person_table.insert()
-    i.execute([{'name':'John Doe','sex':1,'age':35} for j in xrange(n)])
+    i.execute([{'name':'John Doe','sex':1,'age':35} for j in range(n)])
     s = Person_table.select()
     r = s.execute()
     res = [[value for value in row] for row in r.fetchall()]
@@ -32,7 +32,7 @@ def sa_profiled_insert_many(n):
 def sqlite_unprofiled_insert(n):
     conn = db.connect().connection
     c = conn.cursor()
-    for j in xrange(n):
+    for j in range(n):
         c.execute("insert into Person(name, sex, age) values (?,?,?)",
                   ('john doe', 1, 35))
 
@@ -40,13 +40,13 @@ def sa_unprofiled_insert(n):
     # Another option is to build Person_table.insert() outside of the
     # loop. But it doesn't make much of a difference, so might as well
     # use the worst-case/naive version here.
-    for j in xrange(n):
+    for j in range(n):
         Person_table.insert().execute({'name':'John Doe','sex':1,'age':35})
 
 @profiling.profiled('sa_profiled_insert', always=True)
 def sa_profiled_insert(n):
     i = Person_table.insert()
-    for j in xrange(n):
+    for j in range(n):
         i.execute({'name':'John Doe','sex':1,'age':35})
     s = Person_table.select()
     r = s.execute()
@@ -69,12 +69,12 @@ def run_profiled(fn, label, *args, **kw):
     metadata.drop_all()
     metadata.create_all()
 
-    print "%s (%s)" % (label, ', '.join([str(a) for a in args]))
+    print("%s (%s)" % (label, ', '.join([str(a) for a in args])))
     fn(*args, **kw)
 
 def all():
     try:
-        print "Bulk INSERTS via executemany():\n"
+        print("Bulk INSERTS via executemany():\n")
 
         run_timed(sqlite_unprofiled_insertmany,
                   'pysqlite bulk insert',
@@ -88,7 +88,7 @@ def all():
                      'SQLAlchemy bulk insert/select, profiled',
                      50000)
 
-        print "\nIndividual INSERTS via execute():\n"
+        print("\nIndividual INSERTS via execute():\n")
 
         run_timed(sqlite_unprofiled_insert,
                   "pysqlite individual insert",

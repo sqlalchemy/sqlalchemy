@@ -424,7 +424,7 @@ class DeferredReflection(object):
     def prepare(cls, engine):
         """Reflect all :class:`.Table` objects for all current
         :class:`.DeferredReflection` subclasses"""
-        to_map = [m for m in _MapperConfig.configs.values()
+        to_map = [m for m in list(_MapperConfig.configs.values())
                     if issubclass(m.cls, cls)]
         for thingy in to_map:
             cls._sa_decl_prepare(thingy.local_table, engine)

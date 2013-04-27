@@ -17,10 +17,10 @@ class CoerceUnicode(TypeDecorator):
     impl = Unicode
 
     def process_bind_param(self, value, dialect):
-        # Py2K
-        if isinstance(value, str):
-            value = value.decode(dialect.encoding)
-        # end Py2K
+# start Py2K
+#        if isinstance(value, str):
+#            value = value.decode(dialect.encoding)
+# end Py2K
         return value
 
     def bind_expression(self, bindvalue):

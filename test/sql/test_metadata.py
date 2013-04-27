@@ -89,7 +89,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             msgs.append("attach %s.%s" % (t.name, c.name))
         c1 = Column('foo', String())
         m = MetaData()
-        for i in xrange(3):
+        for i in range(3):
             cx = c1.copy()
             # as of 0.7, these events no longer copy.  its expected
             # that listeners will be re-established from the
@@ -511,7 +511,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         def _get_key(i):
             return [i.name, i.unique] + \
                     sorted(i.kwargs.items()) + \
-                    i.columns.keys()
+                    list(i.columns.keys())
 
         eq_(
             sorted([_get_key(i) for i in table.indexes]),

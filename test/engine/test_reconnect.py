@@ -173,7 +173,7 @@ class MockReconnectTest(fixtures.TestBase):
         try:
             trans.commit()
             assert False
-        except tsa.exc.InvalidRequestError, e:
+        except tsa.exc.InvalidRequestError as e:
             assert str(e) \
                 == "Can't reconnect until invalid transaction is "\
                 "rolled back"
@@ -370,7 +370,7 @@ class RealReconnectTest(fixtures.TestBase):
         try:
             conn.execute(select([1]))
             assert False
-        except tsa.exc.DBAPIError, e:
+        except tsa.exc.DBAPIError as e:
             if not e.connection_invalidated:
                 raise
 
@@ -386,7 +386,7 @@ class RealReconnectTest(fixtures.TestBase):
         try:
             conn.execute(select([1]))
             assert False
-        except tsa.exc.DBAPIError, e:
+        except tsa.exc.DBAPIError as e:
             if not e.connection_invalidated:
                 raise
         assert conn.invalidated
@@ -407,7 +407,7 @@ class RealReconnectTest(fixtures.TestBase):
         try:
             c1.execute(select([1]))
             assert False
-        except tsa.exc.DBAPIError, e:
+        except tsa.exc.DBAPIError as e:
             assert e.connection_invalidated
 
         p2 = engine.pool
@@ -415,7 +415,7 @@ class RealReconnectTest(fixtures.TestBase):
         try:
             c2.execute(select([1]))
             assert False
-        except tsa.exc.DBAPIError, e:
+        except tsa.exc.DBAPIError as e:
             assert e.connection_invalidated
 
         # pool isn't replaced
@@ -503,7 +503,7 @@ class RealReconnectTest(fixtures.TestBase):
         try:
             conn.execute(select([1]))
             assert False
-        except tsa.exc.DBAPIError, e:
+        except tsa.exc.DBAPIError as e:
             if not e.connection_invalidated:
                 raise
         assert not conn.closed
@@ -523,7 +523,7 @@ class RealReconnectTest(fixtures.TestBase):
         try:
             conn.execute(select([1]))
             assert False
-        except tsa.exc.DBAPIError, e:
+        except tsa.exc.DBAPIError as e:
             if not e.connection_invalidated:
                 raise
 
@@ -542,7 +542,7 @@ class RealReconnectTest(fixtures.TestBase):
         try:
             conn.execute(select([1]))
             assert False
-        except tsa.exc.DBAPIError, e:
+        except tsa.exc.DBAPIError as e:
             if not e.connection_invalidated:
                 raise
         assert not conn.closed
@@ -558,7 +558,7 @@ class RealReconnectTest(fixtures.TestBase):
         try:
             trans.commit()
             assert False
-        except tsa.exc.InvalidRequestError, e:
+        except tsa.exc.InvalidRequestError as e:
             assert str(e) \
                 == "Can't reconnect until invalid transaction is "\
                 "rolled back"
@@ -634,13 +634,13 @@ class InvalidateDuringResultTest(fixtures.TestBase):
     def test_invalidate_on_results(self):
         conn = engine.connect()
         result = conn.execute('select * from sometable')
-        for x in xrange(20):
+        for x in range(20):
             result.fetchone()
         engine.test_shutdown()
         try:
-            print 'ghost result: %r' % result.fetchone()
+            print('ghost result: %r' % result.fetchone())
             assert False
-        except tsa.exc.DBAPIError, e:
+        except tsa.exc.DBAPIError as e:
             if not e.connection_invalidated:
                 raise
         assert conn.invalidated

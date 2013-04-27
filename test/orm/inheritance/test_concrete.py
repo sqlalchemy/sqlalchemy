@@ -722,10 +722,10 @@ class ColKeysTest(fixtures.MappedTest):
     @classmethod
     def insert_data(cls):
         refugees_table.insert().execute(dict(refugee_fid=1,
-                name=u'refugee1'), dict(refugee_fid=2, name=u'refugee2'
+                name='refugee1'), dict(refugee_fid=2, name='refugee2'
                 ))
         offices_table.insert().execute(dict(office_fid=1,
-                name=u'office1'), dict(office_fid=2, name=u'office2'))
+                name='office1'), dict(office_fid=2, name='office2'))
 
     def test_keys(self):
         pjoin = polymorphic_union({'refugee': refugees_table, 'office'

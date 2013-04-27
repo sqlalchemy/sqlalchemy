@@ -267,8 +267,9 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
         }
     )
 
-    # Py3K
-    #description_encoding = None
+# start Py3K
+    description_encoding = None
+# end Py3K
 
     driver = 'pysqlite'
 
@@ -288,7 +289,7 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
     def dbapi(cls):
         try:
             from pysqlite2 import dbapi2 as sqlite
-        except ImportError, e:
+        except ImportError as e:
             try:
                 from sqlite3 import dbapi2 as sqlite  # try 2.5+ stdlib name.
             except ImportError:

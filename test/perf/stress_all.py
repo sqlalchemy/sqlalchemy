@@ -2,7 +2,7 @@
 from datetime import *
 import decimal
 #from fastdec import mpd as Decimal
-from cPickle import dumps, loads
+from pickle import dumps, loads
 
 #from sqlalchemy.dialects.postgresql.base import ARRAY
 
@@ -42,9 +42,9 @@ def getitem_int_results(raw_results):
 
 def getitem_long_results(raw_results):
     return [
-        (r[0L],
-         r[1L], r[2L], r[3L], r[4L], r[5L],
-         r[6L], r[7L], r[8L], r[9L], r[10L])
+        (r[0],
+         r[1], r[2], r[3], r[4], r[5],
+         r[6], r[7], r[8], r[9], r[10])
          for r in raw_results]
 
 def getitem_obj_results(raw_results):
@@ -128,7 +128,7 @@ typedecoratortest = (MyIntType, genmyintvalue,
 
 # Unicode
 def genunicodevalue(rnum, fnum):
-    return (rnum % 4) and (u"value%d" % fnum) or None
+    return (rnum % 4) and ("value%d" % fnum) or None
 unicodetest = (Unicode(20, ), genunicodevalue,
                dict(num_records=100000))
 #               dict(engineurl='mysql:///test', freshdata=False))
@@ -139,10 +139,10 @@ if test_types:
              pickletypetest, typedecoratortest, unicodetest]
     for engineurl in ('postgresql://scott:tiger@localhost/test',
                         'sqlite://', 'mysql://scott:tiger@localhost/test'):
-        print "\n%s\n" % engineurl
+        print("\n%s\n" % engineurl)
         for datatype, genvalue, kwargs in tests:
-            print "%s:" % getattr(datatype, '__name__',
-                                  datatype.__class__.__name__),
+            print("%s:" % getattr(datatype, '__name__',
+                                  datatype.__class__.__name__), end=' ')
             profile_and_time_dbfunc(iter_results, datatype, genvalue,
                                     profile=False, engineurl=engineurl,
                                     verbose=verbose, **kwargs)
@@ -158,13 +158,13 @@ if test_methods:
                slice_results]
     for engineurl in ('postgresql://scott:tiger@localhost/test',
                        'sqlite://', 'mysql://scott:tiger@localhost/test'):
-        print "\n%s\n" % engineurl
+        print("\n%s\n" % engineurl)
         test_table = prepare(Unicode(20,),
                              genunicodevalue,
                              num_fields=10, num_records=100000,
                              verbose=verbose, engineurl=engineurl)
         for method in methods:
-            print "%s:" % method.__name__,
+            print("%s:" % method.__name__, end=' ')
             time_dbfunc(test_table, method, genunicodevalue,
                         num_fields=10, num_records=100000, profile=False,
                         verbose=verbose)
@@ -174,9 +174,9 @@ if test_methods:
 # --------------------------------
 
 def pickletofile_results(raw_results):
-    from cPickle import dump, load
+    from pickle import dump, load
     for protocol in (0, 1, 2):
-        print "dumping protocol %d..." % protocol
+        print("dumping protocol %d..." % protocol)
         f = file('noext.pickle%d' % protocol, 'wb')
         dump(raw_results, f, protocol)
         f.close()
@@ -198,7 +198,7 @@ if test_pickle:
                          num_fields=10, num_records=10000)
     funcs = [pickle_rows, pickle_results]
     for func in funcs:
-        print "%s:" % func.__name__,
+        print("%s:" % func.__name__, end=' ')
         time_dbfunc(test_table, func, genunicodevalue,
                     num_records=10000, profile=False, verbose=verbose)
 
@@ -217,9 +217,9 @@ if test_orm:
 
     def get_results():
         return session.query(Test).all()
-    print "ORM:",
+    print("ORM:", end=' ')
     for engineurl in ('postgresql:///test', 'sqlite://', 'mysql:///test'):
-        print "\n%s\n" % engineurl
+        print("\n%s\n" % engineurl)
         profile_and_time_dbfunc(getattr_results, Unicode(20), genunicodevalue,
                                 class_=Test, getresults_func=get_results,
                                 engineurl=engineurl, #freshdata=False,

@@ -55,9 +55,9 @@ class MySQLExecutionContext_oursql(MySQLExecutionContext):
 
 class MySQLDialect_oursql(MySQLDialect):
     driver = 'oursql'
-# Py2K
-    supports_unicode_binds = True
-    supports_unicode_statements = True
+# start Py2K
+#    supports_unicode_binds = True
+#    supports_unicode_statements = True
 # end Py2K
 
     supports_native_decimal = True
@@ -90,12 +90,13 @@ class MySQLDialect_oursql(MySQLDialect):
         connection.cursor().execute('BEGIN', plain_query=True)
 
     def _xa_query(self, connection, query, xid):
-# Py2K
-        arg = connection.connection._escape_string(xid)
+# start Py2K
+#        arg = connection.connection._escape_string(xid)
 # end Py2K
-# Py3K
-#        charset = self._connection_charset
-#        arg = connection.connection._escape_string(xid.encode(charset)).decode(charset)
+# start Py3K
+        charset = self._connection_charset
+        arg = connection.connection._escape_string(xid.encode(charset)).decode(charset)
+# end Py3K
         arg = "'%s'" % arg
         connection.execution_options(_oursql_plain_query=True).execute(query % arg)
 

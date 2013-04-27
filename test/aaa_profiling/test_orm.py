@@ -144,7 +144,7 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
 
         child.insert().execute([
             {'id':i, 'data':'c%d' % i}
-            for i in xrange(1, 251)
+            for i in range(1, 251)
         ])
         parent.insert().execute([
             {
@@ -152,7 +152,7 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
                 'data':'p%dc%d' % (i, (i % 250) + 1),
                 'child_id':(i % 250) + 1
             }
-            for i in xrange(1, 1000)
+            for i in range(1, 1000)
         ])
 
     def test_many_to_one_load_no_identity(self):
@@ -234,11 +234,11 @@ class MergeBackrefsTest(fixtures.MappedTest):
         s = Session()
         s.add_all([
             A(id=i,
-                bs=[B(id=(i * 5) + j) for j in xrange(1, 5)],
+                bs=[B(id=(i * 5) + j) for j in range(1, 5)],
                 c=C(id=i),
-                ds=[D(id=(i * 5) + j) for j in xrange(1, 5)]
+                ds=[D(id=(i * 5) + j) for j in range(1, 5)]
             )
-            for i in xrange(1, 5)
+            for i in range(1, 5)
         ])
         s.commit()
 
@@ -249,11 +249,11 @@ class MergeBackrefsTest(fixtures.MappedTest):
         s = Session()
         for a in [
             A(id=i,
-                bs=[B(id=(i * 5) + j) for j in xrange(1, 5)],
+                bs=[B(id=(i * 5) + j) for j in range(1, 5)],
                 c=C(id=i),
-                ds=[D(id=(i * 5) + j) for j in xrange(1, 5)]
+                ds=[D(id=(i * 5) + j) for j in range(1, 5)]
             )
-            for i in xrange(1, 5)
+            for i in range(1, 5)
         ]:
             s.merge(a)
 

@@ -55,7 +55,7 @@ class KeyedTuple(tuple):
         t = tuple.__new__(cls, vals)
         t._labels = []
         if labels:
-            t.__dict__.update(zip(labels, vals))
+            t.__dict__.update(list(zip(labels, vals)))
             t._labels = labels
         return t
 
@@ -94,7 +94,7 @@ class KeyedTuple(tuple):
         .. versionadded:: 0.8
 
         """
-        return dict((key, self.__dict__[key]) for key in self.keys())
+        return dict((key, self.__dict__[key]) for key in list(self.keys()))
 
 
 class ImmutableContainer(object):
@@ -142,7 +142,7 @@ class Properties(object):
         return len(self._data)
 
     def __iter__(self):
-        return self._data.itervalues()
+        return iter(self._data.values())
 
     def __add__(self, other):
         return list(self) + list(other)
@@ -189,13 +189,13 @@ class Properties(object):
             return default
 
     def keys(self):
-        return self._data.keys()
+        return list(self._data.keys())
 
     def values(self):
-        return self._data.values()
+        return list(self._data.values())
 
     def items(self):
-        return self._data.items()
+        return list(self._data.items())
 
     def has_key(self, key):
         return key in self._data
@@ -242,7 +242,7 @@ class OrderedDict(dict):
     def update(self, ____sequence=None, **kwargs):
         if ____sequence is not None:
             if hasattr(____sequence, 'keys'):
-                for key in ____sequence.keys():
+                for key in list(____sequence.keys()):
                     self.__setitem__(key, ____sequence[key])
             else:
                 for key, value in ____sequence:
@@ -270,13 +270,13 @@ class OrderedDict(dict):
         return list(self._list)
 
     def iterkeys(self):
-        return iter(self.keys())
+        return iter(list(self.keys()))
 
     def items(self):
-        return [(key, self[key]) for key in self.keys()]
+        return [(key, self[key]) for key in list(self.keys())]
 
     def iteritems(self):
-        return iter(self.items())
+        return iter(list(self.items()))
 
     def __setitem__(self, key, object):
         if key not in self:
@@ -470,8 +470,8 @@ class IdentitySet(object):
 
         if len(self) > len(other):
             return False
-        for m in itertools.ifilterfalse(other._members.__contains__,
-                                        self._members.iterkeys()):
+        for m in itertools.filterfalse(other._members.__contains__,
+                                        iter(self._members.keys())):
             return False
         return True
 
@@ -491,8 +491,8 @@ class IdentitySet(object):
         if len(self) < len(other):
             return False
 
-        for m in itertools.ifilterfalse(self._members.__contains__,
-                                        other._members.iterkeys()):
+        for m in itertools.filterfalse(self._members.__contains__,
+                                        iter(other._members.keys())):
             return False
         return True
 
@@ -582,7 +582,7 @@ class IdentitySet(object):
         return result
 
     def _member_id_tuples(self):
-        return ((id(v), v) for v in self._members.itervalues())
+        return ((id(v), v) for v in self._members.values())
 
     def __xor__(self, other):
         if not isinstance(other, IdentitySet):
@@ -599,7 +599,7 @@ class IdentitySet(object):
         return self
 
     def copy(self):
-        return type(self)(self._members.itervalues())
+        return type(self)(iter(self._members.values()))
 
     __copy__ = copy
 
@@ -607,13 +607,13 @@ class IdentitySet(object):
         return len(self._members)
 
     def __iter__(self):
-        return self._members.itervalues()
+        return iter(self._members.values())
 
     def __hash__(self):
         raise TypeError('set objects are unhashable')
 
     def __repr__(self):
-        return '%s(%r)' % (type(self).__name__, self._members.values())
+        return '%s(%r)' % (type(self).__name__, list(self._members.values()))
 
 
 class WeakSequence(object):
@@ -623,7 +623,7 @@ class WeakSequence(object):
         )
 
     def __iter__(self):
-        return self._storage.itervalues()
+        return iter(self._storage.values())
 
     def __getitem__(self, index):
         try:
@@ -754,7 +754,7 @@ def flatten_iterator(x):
 
     """
     for elem in x:
-        if not isinstance(elem, basestring) and hasattr(elem, '__iter__'):
+        if not isinstance(elem, str) and hasattr(elem, '__iter__'):
             for y in flatten_iterator(elem):
                 yield y
         else:

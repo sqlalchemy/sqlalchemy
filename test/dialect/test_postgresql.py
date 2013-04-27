@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from __future__ import with_statement
+
 
 from sqlalchemy.testing.assertions import eq_, assert_raises, \
                 assert_raises_message, is_, AssertsExecutionResults, \
@@ -559,21 +559,21 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         t1 = Table('table', metadata,
             Column('id', Integer, primary_key=True),
             Column('value',
-                    Enum(u'réveillé', u'drôle', u'S’il',
+                    Enum('réveillé', 'drôle', 'S’il',
                             name='onetwothreetype'))
         )
 
         metadata.create_all()
         try:
-            t1.insert().execute(value=u'drôle')
-            t1.insert().execute(value=u'réveillé')
-            t1.insert().execute(value=u'S’il')
+            t1.insert().execute(value='drôle')
+            t1.insert().execute(value='réveillé')
+            t1.insert().execute(value='S’il')
             eq_(t1.select().order_by(t1.c.id).execute().fetchall(),
-                [(1, u'drôle'), (2, u'réveillé'), (3, u'S’il')]
+                [(1, 'drôle'), (2, 'réveillé'), (3, 'S’il')]
             )
             m2 = MetaData(testing.db)
             t2 = Table('table', m2, autoload=True)
-            assert t2.c.value.type.enums == (u'réveillé', u'drôle', u'S’il')
+            assert t2.c.value.type.enums == ('réveillé', 'drôle', 'S’il')
         finally:
             metadata.drop_all()
 
@@ -1238,7 +1238,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             :
             try:
                 con.execute(ddl)
-            except exc.DBAPIError, e:
+            except exc.DBAPIError as e:
                 if not 'already exists' in str(e):
                     raise e
         con.execute('CREATE TABLE testtable (question integer, answer '
@@ -1476,7 +1476,7 @@ class ReflectionTest(fixtures.TestBase):
         meta1.create_all()
         meta2 = MetaData(testing.db)
         subject = Table('subject', meta2, autoload=True)
-        eq_(subject.primary_key.columns.keys(), [u'p2', u'p1'])
+        eq_(list(subject.primary_key.columns.keys()), ['p2', 'p1'])
 
     @testing.provide_metadata
     def test_pg_weirdchar_reflection(self):
@@ -1749,7 +1749,7 @@ class ReflectionTest(fixtures.TestBase):
         conn.execute("ALTER TABLE t RENAME COLUMN x to y")
 
         ind = testing.db.dialect.get_indexes(conn, "t", None)
-        eq_(ind, [{'unique': False, 'column_names': [u'y'], 'name': u'idx1'}])
+        eq_(ind, [{'unique': False, 'column_names': ['y'], 'name': 'idx1'}])
         conn.close()
 
 class CustomTypeReflectionTest(fixtures.TestBase):
@@ -2174,8 +2174,8 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
 
     def test_insert_array(self):
         arrtable = self.tables.arrtable
-        arrtable.insert().execute(intarr=[1, 2, 3], strarr=[u'abc',
-                                  u'def'])
+        arrtable.insert().execute(intarr=[1, 2, 3], strarr=['abc',
+                                  'def'])
         results = arrtable.select().execute().fetchall()
         eq_(len(results), 1)
         eq_(results[0]['intarr'], [1, 2, 3])
@@ -2183,9 +2183,9 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
 
     def test_array_where(self):
         arrtable = self.tables.arrtable
-        arrtable.insert().execute(intarr=[1, 2, 3], strarr=[u'abc',
-                                  u'def'])
-        arrtable.insert().execute(intarr=[4, 5, 6], strarr=u'ABC')
+        arrtable.insert().execute(intarr=[1, 2, 3], strarr=['abc',
+                                  'def'])
+        arrtable.insert().execute(intarr=[4, 5, 6], strarr='ABC')
         results = arrtable.select().where(arrtable.c.intarr == [1, 2,
                 3]).execute().fetchall()
         eq_(len(results), 1)
@@ -2194,7 +2194,7 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
     def test_array_concat(self):
         arrtable = self.tables.arrtable
         arrtable.insert().execute(intarr=[1, 2, 3],
-                    strarr=[u'abc', u'def'])
+                    strarr=['abc', 'def'])
         results = select([arrtable.c.intarr + [4, 5,
                          6]]).execute().fetchall()
         eq_(len(results), 1)
@@ -2203,15 +2203,15 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
     def test_array_subtype_resultprocessor(self):
         arrtable = self.tables.arrtable
         arrtable.insert().execute(intarr=[4, 5, 6],
-                                  strarr=[[u'm\xe4\xe4'], [u'm\xf6\xf6'
+                                  strarr=[['m\xe4\xe4'], ['m\xf6\xf6'
                                   ]])
-        arrtable.insert().execute(intarr=[1, 2, 3], strarr=[u'm\xe4\xe4'
-                                  , u'm\xf6\xf6'])
+        arrtable.insert().execute(intarr=[1, 2, 3], strarr=['m\xe4\xe4'
+                                  , 'm\xf6\xf6'])
         results = \
             arrtable.select(order_by=[arrtable.c.intarr]).execute().fetchall()
         eq_(len(results), 2)
-        eq_(results[0]['strarr'], [u'm\xe4\xe4', u'm\xf6\xf6'])
-        eq_(results[1]['strarr'], [[u'm\xe4\xe4'], [u'm\xf6\xf6']])
+        eq_(results[0]['strarr'], ['m\xe4\xe4', 'm\xf6\xf6'])
+        eq_(results[1]['strarr'], [['m\xe4\xe4'], ['m\xf6\xf6']])
 
     def test_array_literal(self):
         eq_(
@@ -2263,7 +2263,7 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
         testing.db.execute(
             arrtable.insert(),
             intarr=[4, 5, 6],
-            strarr=[u'abc', u'def']
+            strarr=['abc', 'def']
         )
         eq_(
             testing.db.scalar(select([arrtable.c.intarr[2:3]])),

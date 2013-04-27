@@ -82,7 +82,7 @@ class DependencySortTest(fixtures.TestBase):
         try:
             list(topological.sort(tuples, allitems))
             assert False
-        except exc.CircularDependencyError, err:
+        except exc.CircularDependencyError as err:
             eq_(err.cycles, set(['node1', 'node3', 'node2', 'node5',
                 'node4']))
             eq_(err.edges, set([('node3', 'node1'), ('node4', 'node1'),
@@ -105,7 +105,7 @@ class DependencySortTest(fixtures.TestBase):
         try:
             list(topological.sort(tuples, allitems))
             assert False
-        except exc.CircularDependencyError, err:
+        except exc.CircularDependencyError as err:
             eq_(err.cycles, set(['node1', 'node3', 'node2']))
             eq_(err.edges, set([('node3', 'node1'), ('node2', 'node3'),
                 ('node3', 'node2'), ('node1', 'node2'),
@@ -271,7 +271,7 @@ class DependencySortTest(fixtures.TestBase):
               ('node4', 'node17'), ('node2', 'node20'), ('node19', 'node10'),
               ('node8', 'node4'), ('node11', 'node3'), ('node6', 'node1')
         ]
-        allnodes = ['node%d' % i for i in xrange(1, 21)]
+        allnodes = ['node%d' % i for i in range(1, 21)]
         eq_(
             topological.find_cycles(tuples, allnodes),
             set(['node11', 'node10', 'node13', 'node15', 'node14', 'node17',

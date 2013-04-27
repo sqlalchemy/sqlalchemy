@@ -1628,7 +1628,7 @@ def contains_eager(*keys, **kwargs):
     alias = kwargs.pop('alias', None)
     if kwargs:
         raise exc.ArgumentError(
-                'Invalid kwargs for contains_eager: %r' % kwargs.keys())
+                'Invalid kwargs for contains_eager: %r' % list(kwargs.keys()))
     return strategies.EagerLazyOption(keys, lazy='joined',
             propagate_to_loaders=False, chained=True), \
         strategies.LoadEagerFromAliasOption(keys, alias=alias, chained=True)

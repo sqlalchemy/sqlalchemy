@@ -62,27 +62,27 @@ sess = sessionmaker()()
 p1 = Parent(name='p1')
 sess.add(p1)
 
-print "\n---------begin setting nodes, autoflush occurs\n"
+print("\n---------begin setting nodes, autoflush occurs\n")
 p1.child_map['k1'] = Child(key='k1')
 p1.child_map['k2'] = Child(key='k2')
 
 # this will autoflush the current map.
 # ['k1', 'k2']
-print "\n---------print keys - flushes first\n"
-print p1.child_map.keys()
+print("\n---------print keys - flushes first\n")
+print(list(p1.child_map.keys()))
 
 # k1
-print "\n---------print 'k1' node\n"
-print p1.child_map['k1']
+print("\n---------print 'k1' node\n")
+print(p1.child_map['k1'])
 
-print "\n---------update 'k2' node - must find existing, and replace\n"
+print("\n---------update 'k2' node - must find existing, and replace\n")
 p1.child_map['k2'] = Child(key='k2')
 
-print "\n---------print 'k2' key - flushes first\n"
+print("\n---------print 'k2' key - flushes first\n")
 # k2
-print p1.child_map['k2']
+print(p1.child_map['k2'])
 
-print "\n---------print all child nodes\n"
+print("\n---------print all child nodes\n")
 # [k1, k2b]
-print sess.query(Child).all()
+print(sess.query(Child).all())
 

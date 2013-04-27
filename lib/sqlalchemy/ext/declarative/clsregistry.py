@@ -255,7 +255,7 @@ def _resolver(cls, prop):
                     return x.cls
                 else:
                     return x
-            except NameError, n:
+            except NameError as n:
                 raise exc.InvalidRequestError(
                     "When initializing mapper %s, expression %r failed to "
                     "locate a name (%r). If this is a class name, consider "
@@ -275,14 +275,14 @@ def _deferred_relationship(cls, prop):
         for attr in ('argument', 'order_by', 'primaryjoin', 'secondaryjoin',
                      'secondary', '_user_defined_foreign_keys', 'remote_side'):
             v = getattr(prop, attr)
-            if isinstance(v, basestring):
+            if isinstance(v, str):
                 setattr(prop, attr, resolve_arg(v))
 
         if prop.backref and isinstance(prop.backref, tuple):
             key, kwargs = prop.backref
             for attr in ('primaryjoin', 'secondaryjoin', 'secondary',
                          'foreign_keys', 'remote_side', 'order_by'):
-                if attr in kwargs and isinstance(kwargs[attr], basestring):
+                if attr in kwargs and isinstance(kwargs[attr], str):
                     kwargs[attr] = resolve_arg(kwargs[attr])
 
     return prop

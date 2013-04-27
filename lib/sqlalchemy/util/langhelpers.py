@@ -21,10 +21,12 @@ from functools import update_wrapper
 from .. import exc
 import hashlib
 from . import compat
+import collections
 
 def md5_hex(x):
-    # Py3K
-    #x = x.encode('utf-8')
+# start Py3K
+    x = x.encode('utf-8')
+# end Py3K
     m = hashlib.md5()
     m.update(x)
     return m.hexdigest()
@@ -77,8 +79,8 @@ def _unique_symbols(used, *bases):
     used = set(used)
     for base in bases:
         pool = itertools.chain((base,),
-                               itertools.imap(lambda i: base + str(i),
-                                              xrange(1000)))
+                               map(lambda i: base + str(i),
+                                              range(1000)))
         for sym in pool:
             if sym not in used:
                 used.add(sym)
@@ -95,7 +97,7 @@ def decorator(target):
         if not inspect.isfunction(fn):
             raise Exception("not a decoratable function")
         spec = inspect_getfullargspec(fn)
-        names = tuple(spec[0]) + spec[1:3] + (fn.func_name,)
+        names = tuple(spec[0]) + spec[1:3] + (fn.__name__,)
         targ_name, fn_name = _unique_symbols(names, 'target', 'fn')
 
         metadata = dict(target=targ_name, fn=fn_name)
@@ -104,7 +106,7 @@ def decorator(target):
         code = 'lambda %(args)s: %(target)s(%(fn)s, %(apply_kw)s)' % (
                 metadata)
         decorated = eval(code, {targ_name: target, fn_name: fn})
-        decorated.func_defaults = getattr(fn, 'im_func', fn).func_defaults
+        decorated.__defaults__ = getattr(fn, 'im_func', fn).__defaults__
         return update_wrapper(decorated, fn)
     return update_wrapper(decorate, target)
 
@@ -176,7 +178,7 @@ def get_cls_kwargs(cls):
         ctr = class_.__dict__.get('__init__', False)
         if (not ctr or
             not isinstance(ctr, types.FunctionType) or
-                not isinstance(ctr.func_code, types.CodeType)):
+                not isinstance(ctr.__code__, types.CodeType)):
             stack.update(class_.__bases__)
             continue
 
@@ -194,7 +196,7 @@ try:
     from inspect import CO_VARKEYWORDS
 
     def inspect_func_args(fn):
-        co = fn.func_code
+        co = fn.__code__
         nargs = co.co_argcount
         names = co.co_varnames
         args = list(names[:nargs])
@@ -250,7 +252,7 @@ def format_argspec_plus(fn, grouped=True):
        'apply_pos': '(self, a, b, c, **d)'}
 
     """
-    if callable(fn):
+    if isinstance(fn, collections.Callable):
         spec = inspect_getfullargspec(fn)
     else:
         # we accept an existing argspec...
@@ -263,22 +265,23 @@ def format_argspec_plus(fn, grouped=True):
     else:
         self_arg = None
 
-    # Py3K
-    #apply_pos = inspect.formatargspec(spec[0], spec[1],
-    #    spec[2], None, spec[4])
-    #num_defaults = 0
-    #if spec[3]:
-    #    num_defaults += len(spec[3])
-    #if spec[4]:
-    #    num_defaults += len(spec[4])
-    #name_args = spec[0] + spec[4]
-    # Py2K
-    apply_pos = inspect.formatargspec(spec[0], spec[1], spec[2])
+# start Py3K
+    apply_pos = inspect.formatargspec(spec[0], spec[1],
+        spec[2], None, spec[4])
     num_defaults = 0
     if spec[3]:
         num_defaults += len(spec[3])
-    name_args = spec[0]
-    # end Py2K
+    if spec[4]:
+        num_defaults += len(spec[4])
+    name_args = spec[0] + spec[4]
+# end Py3K
+# start Py2K
+#    apply_pos = inspect.formatargspec(spec[0], spec[1], spec[2])
+#    num_defaults = 0
+#    if spec[3]:
+#        num_defaults += len(spec[3])
+#    name_args = spec[0]
+# end Py2K
 
     if num_defaults:
         defaulted_vals = name_args[0 - num_defaults:]
@@ -341,8 +344,8 @@ def unbound_method_to_callable(func_or_cls):
 
     """
 
-    if isinstance(func_or_cls, types.MethodType) and not func_or_cls.im_self:
-        return func_or_cls.im_func
+    if isinstance(func_or_cls, types.MethodType) and not func_or_cls.__self__:
+        return func_or_cls.__func__
     else:
         return func_or_cls
 
@@ -399,7 +402,7 @@ class portable_instancemethod(object):
 
     """
     def __init__(self, meth):
-        self.target = meth.im_self
+        self.target = meth.__self__
         self.name = meth.__name__
 
     def __call__(self, *arg, **kw):
@@ -419,32 +422,34 @@ def class_hierarchy(cls):
     will not be descended.
 
     """
-    # Py2K
-    if isinstance(cls, types.ClassType):
-        return list()
-    # end Py2K
+# start Py2K
+#    if isinstance(cls, types.ClassType):
+#        return list()
+# end Py2K
     hier = set([cls])
     process = list(cls.__mro__)
     while process:
         c = process.pop()
-        # Py2K
-        if isinstance(c, types.ClassType):
-            continue
+# start Py2K
+#        if isinstance(c, types.ClassType):
+#            continue
+#        for b in (_ for _ in c.__bases__
+#                  if _ not in hier and not isinstance(_, types.ClassType)):
+# end Py2K
+# start Py3K
         for b in (_ for _ in c.__bases__
-                  if _ not in hier and not isinstance(_, types.ClassType)):
-        # end Py2K
-        # Py3K
-        #for b in (_ for _ in c.__bases__
-        #          if _ not in hier):
+                  if _ not in hier):
+# end Py3K
             process.append(b)
             hier.add(b)
-        # Py3K
-        #if c.__module__ == 'builtins' or not hasattr(c, '__subclasses__'):
-        #    continue
-        # Py2K
-        if c.__module__ == '__builtin__' or not hasattr(c, '__subclasses__'):
+# start Py3K
+        if c.__module__ == 'builtins' or not hasattr(c, '__subclasses__'):
             continue
-        # end Py2K
+# end Py3K
+# start Py2K
+#        if c.__module__ == '__builtin__' or not hasattr(c, '__subclasses__'):
+#            continue
+# end Py2K
         for s in [_ for _ in c.__subclasses__() if _ not in hier]:
             process.append(s)
             hier.add(s)
@@ -501,9 +506,9 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
               "return %(name)s.%(method)s%(d_args)s" % locals())
 
         env = from_instance is not None and {name: from_instance} or {}
-        exec py in env
+        exec(py, env)
         try:
-            env[method].func_defaults = fn.func_defaults
+            env[method].__defaults__ = fn.__defaults__
         except AttributeError:
             pass
         setattr(into_cls, method, env[method])
@@ -512,11 +517,12 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
 def methods_equivalent(meth1, meth2):
     """Return True if the two methods are the same implementation."""
 
-    # Py3K
-    #return getattr(meth1, '__func__', meth1) is getattr(meth2, '__func__', meth2)
-    # Py2K
-    return getattr(meth1, 'im_func', meth1) is getattr(meth2, 'im_func', meth2)
-    # end Py2K
+# start Py3K
+    return getattr(meth1, '__func__', meth1) is getattr(meth2, '__func__', meth2)
+# end Py3K
+# start Py2K
+#    return getattr(meth1, 'im_func', meth1) is getattr(meth2, 'im_func', meth2)
+# end Py2K
 
 
 def as_interface(obj, cls=None, methods=None, required=None):
@@ -589,7 +595,7 @@ def as_interface(obj, cls=None, methods=None, required=None):
     for method, impl in dictlike_iteritems(obj):
         if method not in interface:
             raise TypeError("%r: unknown in this interface" % method)
-        if not callable(impl):
+        if not isinstance(impl, collections.Callable):
             raise TypeError("%r=%r is not callable" % (method, impl))
         setattr(AnonymousInterface, method, staticmethod(impl))
         found.add(method)
@@ -753,7 +759,7 @@ class importlater(object):
 
 # from paste.deploy.converters
 def asbool(obj):
-    if isinstance(obj, (str, unicode)):
+    if isinstance(obj, str):
         obj = obj.strip().lower()
         if obj in ['true', 'yes', 'on', 'y', 't', '1']:
             return True
@@ -814,13 +820,13 @@ def counter():
     """Return a threadsafe counter function."""
 
     lock = threading.Lock()
-    counter = itertools.count(1L)
+    counter = itertools.count(1)
 
     # avoid the 2to3 "next" transformation...
     def _next():
         lock.acquire()
         try:
-            return counter.next()
+            return next(counter)
         finally:
             lock.release()
 
@@ -876,15 +882,16 @@ def assert_arg_type(arg, argtype, name):
 def dictlike_iteritems(dictlike):
     """Return a (key, value) iterator for almost any dict-like object."""
 
-    # Py3K
-    #if hasattr(dictlike, 'items'):
-    #    return dictlike.items()
-    # Py2K
-    if hasattr(dictlike, 'iteritems'):
-        return dictlike.iteritems()
-    elif hasattr(dictlike, 'items'):
-        return iter(dictlike.items())
-    # end Py2K
+# start Py3K
+    if hasattr(dictlike, 'items'):
+        return list(dictlike.items())
+# end Py3K
+# start Py2K
+#    if hasattr(dictlike, 'iteritems'):
+#        return dictlike.iteritems()
+#    elif hasattr(dictlike, 'items'):
+#        return iter(dictlike.items())
+# end Py2K
 
     getter = getattr(dictlike, '__getitem__', getattr(dictlike, 'get', None))
     if getter is None:
@@ -893,11 +900,11 @@ def dictlike_iteritems(dictlike):
 
     if hasattr(dictlike, 'iterkeys'):
         def iterator():
-            for key in dictlike.iterkeys():
+            for key in dictlike.keys():
                 yield key, getter(key)
         return iterator()
     elif hasattr(dictlike, 'keys'):
-        return iter((key, getter(key)) for key in dictlike.keys())
+        return iter((key, getter(key)) for key in list(dictlike.keys()))
     else:
         raise TypeError(
             "Object '%r' is not dict-like" % dictlike)
@@ -1034,7 +1041,7 @@ def warn(msg, stacklevel=3):
        be controlled.
 
     """
-    if isinstance(msg, basestring):
+    if isinstance(msg, str):
         warnings.warn(msg, exc.SAWarning, stacklevel=stacklevel)
     else:
         warnings.warn(msg, stacklevel=stacklevel)

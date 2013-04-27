@@ -426,13 +426,13 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
         c1 = Company('c1')
         c2 = Company('c2')
 
-        e1 = Employee(u'emp1', c1, 1)
-        e2 = Employee(u'emp2', c1, 2, e1)
-        e3 = Employee(u'emp3', c1, 3, e1)
-        e4 = Employee(u'emp4', c1, 4, e3)
-        e5 = Employee(u'emp5', c2, 1)
-        e6 = Employee(u'emp6', c2, 2, e5)
-        e7 = Employee(u'emp7', c2, 3, e5)
+        e1 = Employee('emp1', c1, 1)
+        e2 = Employee('emp2', c1, 2, e1)
+        e3 = Employee('emp3', c1, 3, e1)
+        e4 = Employee('emp4', c1, 4, e3)
+        e5 = Employee('emp5', c2, 1)
+        e6 = Employee('emp6', c2, 2, e5)
+        e7 = Employee('emp7', c2, 3, e5)
 
         sess.add_all((c1, c2))
         sess.commit()
@@ -642,7 +642,7 @@ class FKsAsPksTest(fixtures.MappedTest):
         try:
             sess.flush()
             assert False
-        except AssertionError, e:
+        except AssertionError as e:
             startswith_(str(e),
                         "Dependency rule tried to blank-out "
                         "primary key column 'tableB.id' on instance ")
@@ -667,7 +667,7 @@ class FKsAsPksTest(fixtures.MappedTest):
         try:
             sess.flush()
             assert False
-        except AssertionError, e:
+        except AssertionError as e:
             startswith_(str(e),
                         "Dependency rule tried to blank-out "
                         "primary key column 'tableB.id' on instance ")
@@ -1106,9 +1106,9 @@ class AmbiguousJoinInterpretedAsSelfRef(fixtures.MappedTest):
         eq_(
             sess.query(Subscriber).order_by(Subscriber.type).all(),
             [
-                Subscriber(id=1, type=u'A'),
-                Subscriber(id=2, type=u'B'),
-                Subscriber(id=2, type=u'C')
+                Subscriber(id=1, type='A'),
+                Subscriber(id=2, type='B'),
+                Subscriber(id=2, type='C')
             ]
         )
 
@@ -1365,7 +1365,7 @@ class TypeMatchTest(fixtures.MappedTest):
         try:
             sess.add(a1)
             assert False
-        except AssertionError, err:
+        except AssertionError as err:
             eq_(str(err),
                 "Attribute 'bs' on class '%s' doesn't handle "
                 "objects of type '%s'" % (A, C))

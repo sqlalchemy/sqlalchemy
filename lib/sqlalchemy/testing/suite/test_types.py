@@ -15,9 +15,9 @@ import datetime
 class _UnicodeFixture(object):
     __requires__ = 'unicode_data',
 
-    data = u"Alors vous imaginez ma surprise, au lever du jour, "\
-                u"quand une drôle de petite voix m’a réveillé. Elle "\
-                u"disait: « S’il vous plaît… dessine-moi un mouton! »"
+    data = "Alors vous imaginez ma surprise, au lever du jour, "\
+                "quand une drôle de petite voix m’a réveillé. Elle "\
+                "disait: « S’il vous plaît… dessine-moi un mouton! »"
 
     @classmethod
     def define_tables(cls, metadata):
@@ -47,7 +47,7 @@ class _UnicodeFixture(object):
             row,
             (self.data, )
         )
-        assert isinstance(row[0], unicode)
+        assert isinstance(row[0], str)
 
     def test_round_trip_executemany(self):
         unicode_table = self.tables.unicode_table
@@ -58,7 +58,7 @@ class _UnicodeFixture(object):
                 {
                     'unicode_data': self.data,
                 }
-                for i in xrange(3)
+                for i in range(3)
             ]
         )
 
@@ -69,22 +69,22 @@ class _UnicodeFixture(object):
                 ).fetchall()
         eq_(
             rows,
-            [(self.data, ) for i in xrange(3)]
+            [(self.data, ) for i in range(3)]
         )
         for row in rows:
-            assert isinstance(row[0], unicode)
+            assert isinstance(row[0], str)
 
     def _test_empty_strings(self):
         unicode_table = self.tables.unicode_table
 
         config.db.execute(
             unicode_table.insert(),
-            {"unicode_data": u''}
+            {"unicode_data": ''}
         )
         row = config.db.execute(
                     select([unicode_table.c.unicode_data])
                 ).first()
-        eq_(row, (u'',))
+        eq_(row, ('',))
 
 
 class UnicodeVarcharTest(_UnicodeFixture, fixtures.TablesTest):

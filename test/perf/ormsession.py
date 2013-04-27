@@ -81,9 +81,9 @@ def insert_data():
 
     transaction = con.begin()
     data, subdata = [], []
-    for item_id in xrange(1, q_items + 1):
+    for item_id in range(1, q_items + 1):
         data.append({'name': "item number %s" % item_id})
-        for subitem_id in xrange(1, (item_id % q_sub_per_item) + 1):
+        for subitem_id in range(1, (item_id % q_sub_per_item) + 1):
             subdata.append({'item_id': item_id,
                          'name': "subitem number %s" % subitem_id})
         if item_id % 100 == 0:
@@ -99,7 +99,7 @@ def insert_data():
 
     transaction = con.begin()
     data = []
-    for customer_id in xrange(1, q_customers):
+    for customer_id in range(1, q_customers):
         data.append({'name': "customer number %s" % customer_id})
         if customer_id % 100 == 0:
             customers.insert().execute(*data)
@@ -111,7 +111,7 @@ def insert_data():
     transaction = con.begin()
     data, subdata = [], []
     order_t = int(time.time()) - (5000 * 5 * 60)
-    current = xrange(1, q_customers)
+    current = range(1, q_customers)
     step, purchase_id = 1, 0
     while current:
         next = []

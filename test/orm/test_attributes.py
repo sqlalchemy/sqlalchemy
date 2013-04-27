@@ -838,7 +838,7 @@ class AttributesTest(fixtures.ORMTest):
             attributes.register_attribute(Foo, 'collection',
                     uselist=True, typecallable=dict, useobject=True)
             assert False
-        except sa_exc.ArgumentError, e:
+        except sa_exc.ArgumentError as e:
             assert str(e) \
                 == 'Type InstrumentedDict must elect an appender '\
                 'method to be a collection class'
@@ -865,7 +865,7 @@ class AttributesTest(fixtures.ORMTest):
             attributes.register_attribute(Foo, 'collection',
                     uselist=True, typecallable=MyColl, useobject=True)
             assert False
-        except sa_exc.ArgumentError, e:
+        except sa_exc.ArgumentError as e:
             assert str(e) \
                 == 'Type MyColl must elect an appender method to be a '\
                 'collection class'
@@ -889,7 +889,7 @@ class AttributesTest(fixtures.ORMTest):
         try:
             Foo().collection
             assert True
-        except sa_exc.ArgumentError, e:
+        except sa_exc.ArgumentError as e:
             assert False
 
 class GetNoValueTest(fixtures.ORMTest):
@@ -1410,7 +1410,7 @@ class HistoryTest(fixtures.TestBase):
         class Foo(fixtures.BasicEntity):
             pass
         class Bar(fixtures.BasicEntity):
-            def __nonzero__(self):
+            def __bool__(self):
                 assert False
 
         instrumentation.register_class(Foo)

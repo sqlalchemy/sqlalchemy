@@ -525,23 +525,23 @@ class DeprecatedPoolListenerTest(PoolTestBase):
                 self.assert_((item in innerself.checked_out) == in_cout)
                 self.assert_((item in innerself.checked_in) == in_cin)
             def inst_connect(self, con, record):
-                print "connect(%s, %s)" % (con, record)
+                print("connect(%s, %s)" % (con, record))
                 assert con is not None
                 assert record is not None
                 self.connected.append(con)
             def inst_first_connect(self, con, record):
-                print "first_connect(%s, %s)" % (con, record)
+                print("first_connect(%s, %s)" % (con, record))
                 assert con is not None
                 assert record is not None
                 self.first_connected.append(con)
             def inst_checkout(self, con, record, proxy):
-                print "checkout(%s, %s, %s)" % (con, record, proxy)
+                print("checkout(%s, %s, %s)" % (con, record, proxy))
                 assert con is not None
                 assert record is not None
                 assert proxy is not None
                 self.checked_out.append(con)
             def inst_checkin(self, con, record):
-                print "checkin(%s, %s)" % (con, record)
+                print("checkin(%s, %s)" % (con, record))
                 # con can be None if invalidated
                 assert record is not None
                 self.checked_in.append(con)
@@ -738,8 +738,8 @@ class QueuePoolTest(PoolTestBase):
         def status(pool):
             tup = pool.size(), pool.checkedin(), pool.overflow(), \
                 pool.checkedout()
-            print 'Pool size: %d  Connections in pool: %d Current '\
-                'Overflow: %d Current Checked out connections: %d' % tup
+            print('Pool size: %d  Connections in pool: %d Current '\
+                'Overflow: %d Current Checked out connections: %d' % tup)
             return tup
 
         c1 = p.connect()
@@ -794,7 +794,7 @@ class QueuePoolTest(PoolTestBase):
         try:
             c4 = p.connect()
             assert False
-        except tsa.exc.TimeoutError, e:
+        except tsa.exc.TimeoutError as e:
             assert int(time.time() - now) == 2
 
     def test_timeout_race(self):
@@ -812,18 +812,18 @@ class QueuePoolTest(PoolTestBase):
                 max_overflow = 1, use_threadlocal = False, timeout=3)
         timeouts = []
         def checkout():
-            for x in xrange(1):
+            for x in range(1):
                 now = time.time()
                 try:
                     c1 = p.connect()
-                except tsa.exc.TimeoutError, e:
+                except tsa.exc.TimeoutError as e:
                     timeouts.append(time.time() - now)
                     continue
                 time.sleep(4)
                 c1.close()
 
         threads = []
-        for i in xrange(10):
+        for i in range(10):
             th = threading.Thread(target=checkout)
             th.start()
             threads.append(th)
@@ -860,7 +860,7 @@ class QueuePoolTest(PoolTestBase):
                 except tsa.exc.TimeoutError:
                     pass
         threads = []
-        for i in xrange(thread_count):
+        for i in range(thread_count):
             th = threading.Thread(target=whammy)
             th.start()
             threads.append(th)
@@ -1007,8 +1007,8 @@ class QueuePoolTest(PoolTestBase):
             strong_refs.add(c.connection)
             return c
 
-        for j in xrange(5):
-            conns = [_conn() for i in xrange(4)]
+        for j in range(5):
+            conns = [_conn() for i in range(4)]
             for c in conns:
                 c.close()
 
@@ -1152,7 +1152,7 @@ class SingletonThreadPoolTest(PoolTestBase):
                 return p.connect()
 
         def checkout():
-            for x in xrange(10):
+            for x in range(10):
                 c = _conn()
                 assert c
                 c.cursor()
@@ -1160,7 +1160,7 @@ class SingletonThreadPoolTest(PoolTestBase):
                 time.sleep(.1)
 
         threads = []
-        for i in xrange(10):
+        for i in range(10):
             th = threading.Thread(target=checkout)
             th.start()
             threads.append(th)

@@ -510,11 +510,11 @@ class MappedSelectTest(fixtures.MappedTest):
         session.commit()
         eq_(
             testing.db.execute(descriptions.select()).fetchall(),
-            [(1, u'Color', u'Number')]
+            [(1, 'Color', 'Number')]
         )
         eq_(
             testing.db.execute(values.select()).fetchall(),
-            [(1, 1, u'Red', u'5'), (2, 1, u'Blue', u'1')]
+            [(1, 1, 'Red', '5'), (2, 1, 'Blue', '1')]
         )
 
 class ManyToOneTest(fixtures.MappedTest):

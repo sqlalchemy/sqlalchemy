@@ -142,7 +142,7 @@ type.  This replaces SQLAlchemy's pure-Python HSTORE coercion which takes
 effect for other DBAPIs.
 
 """
-from __future__ import absolute_import
+
 import re
 import logging
 
@@ -190,22 +190,22 @@ class _PGNumeric(sqltypes.Numeric):
 class _PGEnum(ENUM):
     def __init__(self, *arg, **kw):
         super(_PGEnum, self).__init__(*arg, **kw)
-        # Py2K
-        if self.convert_unicode:
-            self.convert_unicode = "force"
-        # end Py2K
+# start Py2K
+#        if self.convert_unicode:
+#            self.convert_unicode = "force"
+# end Py2K
 
 
 class _PGArray(ARRAY):
     def __init__(self, *arg, **kw):
         super(_PGArray, self).__init__(*arg, **kw)
-        # Py2K
-        # FIXME: this check won't work for setups that
-        # have convert_unicode only on their create_engine().
-        if isinstance(self.item_type, sqltypes.String) and \
-                    self.item_type.convert_unicode:
-            self.item_type.convert_unicode = "force"
-        # end Py2K
+# start Py2K
+#        # FIXME: this check won't work for setups that
+#        # have convert_unicode only on their create_engine().
+#        if isinstance(self.item_type, sqltypes.String) and \
+#                    self.item_type.convert_unicode:
+#            self.item_type.convert_unicode = "force"
+# end Py2K
 
 
 class _PGHStore(HSTORE):
@@ -294,9 +294,9 @@ class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
 
 class PGDialect_psycopg2(PGDialect):
     driver = 'psycopg2'
-    # Py2K
-    supports_unicode_statements = False
-    # end Py2K
+# start Py2K
+#    supports_unicode_statements = False
+# end Py2K
     default_paramstyle = 'pyformat'
     supports_sane_multi_rowcount = False
     execution_ctx_cls = PGExecutionContext_psycopg2
