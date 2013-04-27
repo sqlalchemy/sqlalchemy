@@ -69,7 +69,7 @@ if __name__ == '__main__':
 
     session.add_all([
         A(collections={
-            "1":set([1, 2, 3]),
+            "1": set([1, 2, 3]),
         })
     ])
     session.commit()

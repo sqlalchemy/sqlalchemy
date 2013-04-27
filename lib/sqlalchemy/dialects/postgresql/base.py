@@ -673,7 +673,10 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
         if dim is None:
             arr = list(arr)
         if dim == 1 or dim is None and (
-                        not arr or not hasattr(arr[0], '__iter__')):
+                        # this has to be (list, tuple), or at least
+                        # not hasattr('__iter__'), since Py3K strings
+                        # etc. have __iter__
+                        not arr or not isinstance(arr[0], (list, tuple))):
             if itemproc:
                 return collection(itemproc(x) for x in arr)
             else:

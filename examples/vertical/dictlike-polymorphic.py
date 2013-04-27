@@ -254,6 +254,3 @@ if __name__ == '__main__':
     q = (session.query(AnimalFact).
          filter(with_characteristic(u'cuteness', u'very cute')))
     print q.all()
-
-    session.close()
-    metadata.drop_all(engine)

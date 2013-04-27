@@ -4,7 +4,7 @@ and listen for change events.
 
 """
 
-from sqlalchemy import event, orm
+from sqlalchemy import event
 
 def configure_listener(class_, key, inst):
     def append(instance, value, initiator):

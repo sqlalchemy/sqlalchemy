@@ -96,6 +96,6 @@ if __name__ == '__main__':
     # print customers who bought 'MySQL Crowbar' on sale
     orders = session.query(Order).\
                     join('order_items', 'item').\
-                    filter(Item.description=='MySQL Crowbar').\
+                    filter(Item.description == 'MySQL Crowbar').\
                     filter(Item.price > OrderItem.price)
-    print [order.customer_name for order in orders]
+    print [o.customer_name for o in orders]

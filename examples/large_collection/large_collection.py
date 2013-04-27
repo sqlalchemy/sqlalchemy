@@ -14,7 +14,8 @@ org_table = Table('organizations', meta,
 member_table = Table('members', meta,
     Column('member_id', Integer, primary_key=True),
     Column('member_name', String(50), nullable=False, key='name'),
-    Column('org_id', Integer, ForeignKey('organizations.org_id', ondelete="CASCADE")),
+    Column('org_id', Integer,
+                    ForeignKey('organizations.org_id', ondelete="CASCADE")),
     mysql_engine='InnoDB')
 
 

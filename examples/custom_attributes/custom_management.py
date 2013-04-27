@@ -64,7 +64,8 @@ class MyClass(object):
 
 
 if __name__ == '__main__':
-    meta = MetaData(create_engine('sqlite://'))
+    engine = create_engine('sqlite://')
+    meta = MetaData()
 
     table1 = Table('table1', meta,
                     Column('id', Integer, primary_key=True),
@@ -73,7 +74,7 @@ if __name__ == '__main__':
                     Column('id', Integer, primary_key=True),
                     Column('name', Text),
                     Column('t1id', Integer, ForeignKey('table1.id')))
-    meta.create_all()
+    meta.create_all(engine)
 
     class A(MyClass):
         pass
@@ -82,7 +83,7 @@ if __name__ == '__main__':
         pass
 
     mapper(A, table1, properties={
-        'bs':relationship(B)
+        'bs': relationship(B)
     })
 
     mapper(B, table2)
@@ -92,7 +93,7 @@ if __name__ == '__main__':
     assert a1.name == 'a1'
     assert a1.bs[0].name == 'b1'
 
-    sess = Session()
+    sess = Session(engine)
     sess.add(a1)
 
     sess.commit()

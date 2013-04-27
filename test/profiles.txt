@@ -1,15 +1,15 @@
 # /Users/classic/dev/sqlalchemy/test/profiles.txt
 # This file is written out on a per-environment basis.
-# For each test in aaa_profiling, the corresponding function and 
+# For each test in aaa_profiling, the corresponding function and
 # environment is located within this file.  If it doesn't exist,
 # the test is skipped.
-# If a callcount does exist, it is compared to what we received. 
+# If a callcount does exist, it is compared to what we received.
 # assertions are raised if the counts do not match.
-# 
-# To add a new callcount test, apply the function_call_count 
-# decorator and re-run the tests using the --write-profiles 
+#
+# To add a new callcount test, apply the function_call_count
+# decorator and re-run the tests using the --write-profiles
 # option - this file will be rewritten including the new count.
-# 
+#
 
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_insert
 
@@ -217,7 +217,7 @@ test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_3_properties 2.7_postgr
 
 # TEST: test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_4_expressions
 
-test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_4_expressions 2.7_postgresql_psycopg2_cextensions 10366
+test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_4_expressions 2.7_postgresql_psycopg2_cextensions 10915
 test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_4_expressions 2.7_postgresql_psycopg2_nocextensions 11982
 
 # TEST: test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_5_aggregates
