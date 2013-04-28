@@ -80,19 +80,12 @@ class DefaultEngineStrategy(EngineStrategy):
                     return dialect.connect(*cargs, **cparams)
                 except Exception as e:
                     invalidated = dialect.is_disconnect(e, None, None)
-# start Py3K
-                    raise exc.DBAPIError.instance(None, None,
-                        e, dialect.dbapi.Error,
-                        connection_invalidated=invalidated
-                    ) from e
-# end Py3K
-# start Py2K
-#                    import sys
-#                    raise exc.DBAPIError.instance(
-#                        None, None, e, dialect.dbapi.Error,
-#                        connection_invalidated=invalidated
-#                    ), None, sys.exc_info()[2]
-# end Py2K
+                    util.raise_from_cause(
+                        exc.DBAPIError.instance(None, None,
+                            e, dialect.dbapi.Error,
+                            connection_invalidated=invalidated
+                        )
+                    )
 
             creator = kwargs.pop('creator', connect)
 

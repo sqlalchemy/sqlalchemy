@@ -14,7 +14,6 @@ be used directly and is also accepted directly by ``create_engine()``.
 """
 
 import re
-import urllib.request, urllib.parse, urllib.error
 from .. import exc, util
 from . import Dialect
 
@@ -67,7 +66,7 @@ class URL(object):
         if self.username is not None:
             s += self.username
             if self.password is not None:
-                s += ':' + urllib.parse.quote_plus(self.password)
+                s += ':' + util.quote_plus(self.password)
             s += "@"
         if self.host is not None:
             s += self.host
@@ -76,7 +75,7 @@ class URL(object):
         if self.database is not None:
             s += '/' + self.database
         if self.query:
-            keys = list(self.query.keys())
+            keys = list(self.query)
             keys.sort()
             s += '?' + "&".join("%s=%s" % (k, self.query[k]) for k in keys)
         return s
@@ -177,17 +176,15 @@ def _parse_rfc1738_args(name):
             tokens = components['database'].split('?', 2)
             components['database'] = tokens[0]
             query = (len(tokens) > 1 and dict(util.parse_qsl(tokens[1]))) or None
-# start Py2K
-#            if query is not None:
-#                query = dict((k.encode('ascii'), query[k]) for k in query)
-# end Py2K
+            if util.py2k and query is not None:
+                query = dict((k.encode('ascii'), query[k]) for k in query)
         else:
             query = None
         components['query'] = query
 
         if components['password'] is not None:
             components['password'] = \
-                urllib.parse.unquote_plus(components['password'])
+                util.unquote_plus(components['password'])
 
         name = components.pop('name')
         return URL(name, **components)

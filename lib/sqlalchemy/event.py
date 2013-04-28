@@ -171,7 +171,8 @@ class _EventMeta(type):
     associated _Dispatch classes."""
 
     def __init__(cls, classname, bases, dict_):
-        _create_dispatcher_class(cls, classname, bases, dict_)
+        if classname != 'MetaBase':
+            _create_dispatcher_class(cls, classname, bases, dict_)
         return type.__init__(cls, classname, bases, dict_)
 
 
@@ -200,10 +201,8 @@ def _remove_dispatcher(cls):
             if not _registrars[k]:
                 del _registrars[k]
 
-class Events(object): #util.with_metaclass(_EventMeta, object)):
+class Events(util.with_metaclass(_EventMeta, object)):
     """Define event listening functions for a particular target type."""
-
-    __metaclass__ = _EventMeta
 
     @classmethod
     def _accept_with(cls, target):

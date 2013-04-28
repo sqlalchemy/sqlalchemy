@@ -16,6 +16,7 @@ classes within should be considered mostly private.
 
 """
 
+from __future__ import absolute_import
 
 from .. import exc as sa_exc, util, inspect
 from ..sql import operators

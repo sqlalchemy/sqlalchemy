@@ -31,17 +31,18 @@ def register_function(identifier, fn, package="_default"):
 
 class _GenericMeta(VisitableType):
     def __init__(cls, clsname, bases, clsdict):
-        cls.name = name = clsdict.get('name', clsname)
-        cls.identifier = identifier = clsdict.get('identifier', name)
-        package = clsdict.pop('package', '_default')
-        # legacy
-        if '__return_type__' in clsdict:
-            cls.type = clsdict['__return_type__']
-        register_function(identifier, cls, package)
+        if clsname != 'MetaBase':
+            cls.name = name = clsdict.get('name', clsname)
+            cls.identifier = identifier = clsdict.get('identifier', name)
+            package = clsdict.pop('package', '_default')
+            # legacy
+            if '__return_type__' in clsdict:
+                cls.type = clsdict['__return_type__']
+            register_function(identifier, cls, package)
         super(_GenericMeta, cls).__init__(clsname, bases, clsdict)
 
 
-class GenericFunction(Function, metaclass=_GenericMeta):
+class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
     """Define a 'generic' function.
 
     A generic function is a pre-established :class:`.Function`

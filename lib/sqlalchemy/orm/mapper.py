@@ -13,6 +13,7 @@ This is a semi-private module; the main configurational API of the ORM is
 available in :class:`~sqlalchemy.orm.`.
 
 """
+from __future__ import absolute_import
 
 import types
 import weakref
@@ -26,8 +27,8 @@ from . import instrumentation, attributes, \
 from .interfaces import MapperProperty, _InspectionAttr, _MappedAttribute
 
 from .util import _INSTRUMENTOR, _class_to_mapper, \
-     _state_mapper, class_mapper, \
-     PathRegistry
+        _state_mapper, class_mapper, \
+        PathRegistry
 import sys
 properties = util.importlater("sqlalchemy.orm", "properties")
 descriptor_props = util.importlater("sqlalchemy.orm", "descriptor_props")

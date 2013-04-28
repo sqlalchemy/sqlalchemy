@@ -1869,22 +1869,12 @@ class DDLCompiler(engine.Compiled):
                 if column.primary_key:
                     first_pk = True
             except exc.CompileError as ce:
-# start Py3K
-                raise exc.CompileError("(in table '%s', column '%s'): %s"
-                                             % (
+                util.raise_from_cause(
+                    exc.CompileError("(in table '%s', column '%s'): %s" % (
                                                 table.description,
                                                 column.name,
                                                 ce.args[0]
-                                            )) from ce
-# end Py3K
-# start Py2K
-#                raise exc.CompileError("(in table '%s', column '%s'): %s"
-#                                            % (
-#                                                table.description,
-#                                                column.name,
-#                                                ce.args[0]
-#                                            )), None, sys.exc_info()[2]
-# end Py2K
+                                            )))
 
         const = self.create_table_constraints(table)
         if const:
