@@ -22,11 +22,8 @@ win32 = sys.platform.startswith('win')
 cpython = not pypy and not jython  # TODO: something better for this ?
 
 
-if sys.version_info < (2, 6):
-    def next(iter):
-        return iter.__next__()
-else:
-    next = next
+next = next
+
 if py3k:
     import pickle
 else:
@@ -34,8 +31,6 @@ else:
         import pickle as pickle
     except ImportError:
         import pickle
-
-
 
 if py3k:
     from inspect import getfullargspec as inspect_getfullargspec
@@ -45,6 +40,21 @@ if py3k:
     text_type = str
     int_types = int,
     iterbytes = iter
+
+    def b(s):
+        return s.encode("latin-1")
+
+    if py32:
+        callable = callable
+    else:
+        def callable(fn):
+            return hasattr(fn, '__call__')
+
+    def cmp(a, b):
+        return (a > b) - (a < b)
+
+    from functools import reduce
+
 else:
     from inspect import getargspec as inspect_getfullargspec
     from urllib import quote_plus, unquote_plus
@@ -56,31 +66,13 @@ else:
     def iterbytes(buf):
         return (ord(byte) for byte in buf)
 
-if py3k:
-    # they're bringing it back in 3.2.  brilliant !
-    def callable(fn):
-        return hasattr(fn, '__call__')
+    def b(s):
+        return s
 
-    def cmp(a, b):
-        return (a > b) - (a < b)
-
-    from functools import reduce
-else:
     callable = callable
     cmp = cmp
     reduce = reduce
 
-try:
-    from collections import namedtuple
-except ImportError:
-    def namedtuple(typename, fieldnames):
-        def __new__(cls, *values):
-            tup = tuple.__new__(cls, values)
-            for i, fname in enumerate(fieldnames):
-                setattr(tup, fname, tup[i])
-            return tup
-        tuptype = type(typename, (tuple, ), {'__new__': __new__})
-        return tuptype
 
 try:
     from weakref import WeakSet
@@ -110,24 +102,8 @@ if win32 or jython:
 else:
     time_func = time.time
 
-
-if sys.version_info >= (2, 6):
-    from operator import attrgetter as dottedgetter
-else:
-    def dottedgetter(attr):
-        def g(obj):
-            for name in attr.split("."):
-                obj = getattr(obj, name)
-            return obj
-        return g
-
-# Adapted from six.py
-if py3k:
-    def b(s):
-        return s.encode("latin-1")
-else:
-    def b(s):
-        return s
+from collections import namedtuple
+from operator import attrgetter as dottedgetter
 
 
 if py3k:
