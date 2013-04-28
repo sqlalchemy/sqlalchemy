@@ -1115,12 +1115,7 @@ class String(Concatenable, TypeEngine):
                 self.convert_unicode != 'force':
                 if self._warn_on_bytestring:
                     def process(value):
-# start Py3K
-                        if isinstance(value, bytes):
-# end Py3K
-# start Py2K
-#                        if isinstance(value, str):
-# end Py2K
+                        if isinstance(value, util.binary_type):
                             util.warn("Unicode type received non-unicode bind "
                                       "param value.")
                         return value
@@ -1132,7 +1127,7 @@ class String(Concatenable, TypeEngine):
                 warn_on_bytestring = self._warn_on_bytestring
 
                 def process(value):
-                    if isinstance(value, str):
+                    if isinstance(value, util.text_type):
                         return encoder(value, self.unicode_error)[0]
                     elif warn_on_bytestring and value is not None:
                         util.warn("Unicode type received non-unicode bind "
@@ -1173,7 +1168,7 @@ class String(Concatenable, TypeEngine):
     @property
     def python_type(self):
         if self.convert_unicode:
-            return str
+            return util.text_type
         else:
             return str
 
@@ -1744,7 +1739,7 @@ class _Binary(TypeEngine):
     def coerce_compared_value(self, op, value):
         """See :meth:`.TypeEngine.coerce_compared_value` for a description."""
 
-        if isinstance(value, str):
+        if isinstance(value, util.string_types):
             return self
         else:
             return super(_Binary, self).coerce_compared_value(op, value)
@@ -2001,7 +1996,7 @@ class Enum(String, SchemaType):
         convert_unicode = kw.pop('convert_unicode', None)
         if convert_unicode is None:
             for e in enums:
-                if isinstance(e, str):
+                if isinstance(e, util.string_types):
                     convert_unicode = True
                     break
             else:
@@ -2454,13 +2449,6 @@ BOOLEANTYPE = Boolean()
 STRINGTYPE = String()
 
 _type_map = {
-    str: String(),
-# start Py3K
-    bytes: LargeBinary(),
-# end Py3K
-# start Py2K
-#    unicode: Unicode(),
-# end Py2K
     int: Integer(),
     float: Numeric(),
     bool: BOOLEANTYPE,
@@ -2471,3 +2459,12 @@ _type_map = {
     dt.timedelta: Interval(),
     NoneType: NULLTYPE
 }
+
+if util.py3k:
+    _type_map[bytes] = LargeBinary()
+    _type_map[str] = Unicode()
+else:
+    _type_map[unicode] = Unicode()
+    _type_map[str] = String()
+
+

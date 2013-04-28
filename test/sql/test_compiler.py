@@ -734,13 +734,14 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                             'JOIN myothertable ON mytable.myid = '
                             'myothertable.otherid')
 
-    def test_label_comparison(self):
+    def test_label_comparison_one(self):
         x = func.lala(table1.c.myid).label('foo')
         self.assert_compile(select([x], x == 5),
                             'SELECT lala(mytable.myid) AS foo FROM '
                             'mytable WHERE lala(mytable.myid) = '
                             ':param_1')
 
+    def test_label_comparison_two(self):
         self.assert_compile(
                 label('bar', column('foo', type_=String)) + 'foo',
                 'foo || :param_1')

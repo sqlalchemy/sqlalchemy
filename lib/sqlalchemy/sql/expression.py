@@ -2204,7 +2204,7 @@ class _DefaultColumnComparator(operators.ColumnOperators):
     def _check_literal(self, expr, operator, other):
         if isinstance(other, (ColumnElement, TextClause)):
             if isinstance(other, BindParameter) and \
-                isinstance(other.type, sqltypes.NullType):
+                    isinstance(other.type, sqltypes.NullType):
                 # TODO: perhaps we should not mutate the incoming
                 # bindparam() here and instead make a copy of it.
                 # this might be the only place that we're mutating
@@ -3116,7 +3116,6 @@ class Executable(Generative):
 
     def execute(self, *multiparams, **params):
         """Compile and execute this :class:`.Executable`."""
-
         e = self.bind
         if e is None:
             label = getattr(self, 'description', self.__class__.__name__)
