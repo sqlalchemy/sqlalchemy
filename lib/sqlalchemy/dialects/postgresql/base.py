@@ -188,7 +188,6 @@ underlying CREATE INDEX command, so it *must* be a valid index type for your
 version of PostgreSQL.
 
 """
-
 import re
 
 from ... import sql, schema, exc, util
@@ -333,7 +332,7 @@ class UUID(sqltypes.TypeEngine):
         if self.as_uuid:
             def process(value):
                 if value is not None:
-                    value = str(value)
+                    value = util.text_type(value)
                 return value
             return process
         else:
@@ -1419,7 +1418,7 @@ class PGDialect(default.DefaultDialect):
                 query,
                 bindparams=[
                     sql.bindparam(
-                        'schema', str(schema.lower()),
+                        'schema', util.text_type(schema.lower()),
                         type_=sqltypes.Unicode)]
             )
         )
@@ -1435,7 +1434,7 @@ class PGDialect(default.DefaultDialect):
                 "n.oid=c.relnamespace where n.nspname=current_schema() and "
                 "relname=:name",
                 bindparams=[
-                        sql.bindparam('name', str(table_name),
+                        sql.bindparam('name', util.text_type(table_name),
                         type_=sqltypes.Unicode)]
                 )
             )
@@ -1447,9 +1446,9 @@ class PGDialect(default.DefaultDialect):
                 "relname=:name",
                     bindparams=[
                         sql.bindparam('name',
-                        str(table_name), type_=sqltypes.Unicode),
+                        util.text_type(table_name), type_=sqltypes.Unicode),
                         sql.bindparam('schema',
-                        str(schema), type_=sqltypes.Unicode)]
+                        util.text_type(schema), type_=sqltypes.Unicode)]
                 )
             )
         return bool(cursor.first())
@@ -1463,7 +1462,7 @@ class PGDialect(default.DefaultDialect):
                     "n.nspname=current_schema() "
                     "and relname=:name",
                     bindparams=[
-                        sql.bindparam('name', str(sequence_name),
+                        sql.bindparam('name', util.text_type(sequence_name),
                         type_=sqltypes.Unicode)
                     ]
                 )
@@ -1475,10 +1474,10 @@ class PGDialect(default.DefaultDialect):
                 "n.oid=c.relnamespace where relkind='S' and "
                 "n.nspname=:schema and relname=:name",
                 bindparams=[
-                    sql.bindparam('name', str(sequence_name),
+                    sql.bindparam('name', util.text_type(sequence_name),
                      type_=sqltypes.Unicode),
                     sql.bindparam('schema',
-                                str(schema), type_=sqltypes.Unicode)
+                                util.text_type(schema), type_=sqltypes.Unicode)
                 ]
             )
             )
@@ -1488,9 +1487,9 @@ class PGDialect(default.DefaultDialect):
     def has_type(self, connection, type_name, schema=None):
         bindparams = [
             sql.bindparam('typname',
-                str(type_name), type_=sqltypes.Unicode),
+                util.text_type(type_name), type_=sqltypes.Unicode),
             sql.bindparam('nspname',
-                str(schema), type_=sqltypes.Unicode),
+                util.text_type(schema), type_=sqltypes.Unicode),
             ]
         if schema is not None:
             query = """
@@ -1546,9 +1545,9 @@ class PGDialect(default.DefaultDialect):
         """ % schema_where_clause
         # Since we're binding to unicode, table_name and schema_name must be
         # unicode.
-        table_name = str(table_name)
+        table_name = util.text_type(table_name)
         if schema is not None:
-            schema = str(schema)
+            schema = util.text_type(schema)
         s = sql.text(query, bindparams=[
             sql.bindparam('table_name', type_=sqltypes.Unicode),
             sql.bindparam('schema', type_=sqltypes.Unicode)

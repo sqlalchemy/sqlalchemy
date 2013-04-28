@@ -1153,7 +1153,7 @@ class String(Concatenable, TypeEngine):
                 # habits.  since we will be getting back unicode
                 # in most cases, we check for it (decode will fail).
                 def process(value):
-                    if isinstance(value, str):
+                    if isinstance(value, util.text_type):
                         return value
                     else:
                         return to_unicode(value)
