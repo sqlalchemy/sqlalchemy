@@ -299,7 +299,7 @@ class InfoDDLCompiler(compiler.DDLCompiler):
 
     def get_column_default_string(self, column):
         if (isinstance(column.server_default, schema.DefaultClause) and
-            isinstance(column.server_default.arg, str)):
+            isinstance(column.server_default.arg, util.string_type)):
                 if isinstance(column.type, (sqltypes.Integer, sqltypes.Numeric)):
                     return self.sql_compiler.process(text(column.server_default.arg))
 
@@ -323,10 +323,10 @@ class InfoDDLCompiler(compiler.DDLCompiler):
         remote_table = list(constraint._elements.values())[0].column.table
         text = "FOREIGN KEY (%s) REFERENCES %s (%s)" % (
             ', '.join(preparer.quote(f.parent.name, f.parent.quote)
-                      for f in list(constraint._elements.values())),
+                      for f in constraint._elements.values()),
             preparer.format_table(remote_table),
             ', '.join(preparer.quote(f.column.name, f.column.quote)
-                      for f in list(constraint._elements.values()))
+                      for f in constraint._elements.values())
         )
         text += self.define_constraint_cascades(constraint)
         text += self.define_constraint_deferrability(constraint)

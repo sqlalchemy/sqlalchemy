@@ -21,11 +21,8 @@ pypy = hasattr(sys, 'pypy_version_info')
 win32 = sys.platform.startswith('win')
 cpython = not pypy and not jython  # TODO: something better for this ?
 
-if py3k_warning:
+if py3k:
     set_types = set
-elif sys.version_info < (2, 6):
-    import sets
-    set_types = set, sets.Set
 else:
     # 2.6 deprecates sets.Set, but we still need to be able to detect them
     # in user code and as return values from DB-APIs
@@ -46,7 +43,7 @@ if sys.version_info < (2, 6):
         return iter.__next__()
 else:
     next = next
-if py3k_warning:
+if py3k:
     import pickle
 else:
     try:
@@ -54,19 +51,21 @@ else:
     except ImportError:
         import pickle
 
-if sys.version_info < (2, 6):
-    # emits a nasty deprecation warning
-    # in newer pythons
-    from cgi import parse_qsl
-else:
-    from urllib.parse import parse_qsl
+from urllib.parse import parse_qsl
 
-# start Py3K
-from inspect import getfullargspec as inspect_getfullargspec
-# end Py3K
-# start Py2K
-#from inspect import getargspec as inspect_getfullargspec
-# end Py2K
+
+if py3k:
+    from inspect import getfullargspec as inspect_getfullargspec
+    from urllib.parse import quote_plus, unquote_plus
+    string_types = str,
+    binary_type = bytes
+    text_type = str
+else:
+    from inspect import getargspec as inspect_getfullargspec
+    from urllib import quote_plus, unquote_plus
+    string_types = basestring,
+    binary_type = str
+    text_type = unicode
 
 if py3k_warning:
     # they're bringing it back in 3.2.  brilliant !

@@ -295,7 +295,7 @@ class _MSDate(sqltypes.Date):
         def process(value):
             if isinstance(value, datetime.datetime):
                 return value.date()
-            elif isinstance(value, str):
+            elif isinstance(value, util.string_type):
                 return datetime.date(*[
                         int(x or 0)
                         for x in self._reg.match(value).groups()
@@ -328,7 +328,7 @@ class TIME(sqltypes.TIME):
         def process(value):
             if isinstance(value, datetime.datetime):
                 return value.time()
-            elif isinstance(value, str):
+            elif isinstance(value, util.string_type):
                 return datetime.time(*[
                         int(x or 0)
                         for x in self._reg.match(value).groups()])
@@ -1002,7 +1002,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         # handle other included columns
         if index.kwargs.get("mssql_include"):
             inclusions = [index.table.c[col]
-                            if isinstance(col, str) else col
+                            if isinstance(col, util.string_type) else col
                           for col in index.kwargs["mssql_include"]]
 
             text += " INCLUDE (%s)" \
@@ -1150,7 +1150,7 @@ class MSDialect(default.DefaultDialect):
             try:
                 default_schema_name = connection.scalar(query, name=user_name)
                 if default_schema_name is not None:
-                    return str(default_schema_name)
+                    return util.text_type(default_schema_name)
             except:
                 pass
         return self.schema_name
