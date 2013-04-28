@@ -87,7 +87,7 @@ def _generate_dispatch(cls):
         cls._compiler_dispatch = _compiler_dispatch
 
 
-class Visitable(object, metaclass=VisitableType):
+class Visitable(util.with_metaclass(VisitableType, object)):
     """Base class for visitable objects, applies the
     ``VisitableType`` metaclass.
 

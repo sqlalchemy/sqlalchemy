@@ -9,6 +9,7 @@
 from ... import Table, MetaData, Column
 from ...types import String, Unicode, Integer, TypeDecorator
 from ... import cast
+from ... import util
 
 ischema = MetaData()
 
@@ -17,10 +18,8 @@ class CoerceUnicode(TypeDecorator):
     impl = Unicode
 
     def process_bind_param(self, value, dialect):
-# start Py2K
-#        if isinstance(value, str):
-#            value = value.decode(dialect.encoding)
-# end Py2K
+        if util.py2k and isinstance(value, util.binary_type):
+            value = value.decode(dialect.encoding)
         return value
 
     def bind_expression(self, bindvalue):

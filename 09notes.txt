@@ -1,0 +1,6 @@
+-- temporary notes --
+
+
+- make sure input() function in dogpile example works in py2
+- we want to get rid of any support for sets.Set entirely; check to see what
+impact this has

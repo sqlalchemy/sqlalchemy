@@ -5,9 +5,10 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from .compat import callable, cmp, reduce,  \
-    threading, py3k, py3k_warning, jython, pypy, cpython, win32, set_types, \
+    threading, py3k, py2k, jython, pypy, cpython, win32, \
     pickle, dottedgetter, parse_qsl, namedtuple, next, WeakSet, reraise, \
-    raise_from_cause, text_type, string_type, binary_type, quote_plus
+    raise_from_cause, text_type, string_types, int_types, binary_type, \
+    quote_plus, with_metaclass
 
 from ._collections import KeyedTuple, ImmutableContainer, immutabledict, \
     Properties, OrderedProperties, ImmutableProperties, OrderedDict, \

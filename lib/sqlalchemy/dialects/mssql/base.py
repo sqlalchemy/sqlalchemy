@@ -295,7 +295,7 @@ class _MSDate(sqltypes.Date):
         def process(value):
             if isinstance(value, datetime.datetime):
                 return value.date()
-            elif isinstance(value, util.string_type):
+            elif isinstance(value, util.string_types):
                 return datetime.date(*[
                         int(x or 0)
                         for x in self._reg.match(value).groups()
@@ -328,7 +328,7 @@ class TIME(sqltypes.TIME):
         def process(value):
             if isinstance(value, datetime.datetime):
                 return value.time()
-            elif isinstance(value, util.string_type):
+            elif isinstance(value, util.string_types):
                 return datetime.time(*[
                         int(x or 0)
                         for x in self._reg.match(value).groups()])
@@ -1002,7 +1002,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         # handle other included columns
         if index.kwargs.get("mssql_include"):
             inclusions = [index.table.c[col]
-                            if isinstance(col, util.string_type) else col
+                            if isinstance(col, util.string_types) else col
                           for col in index.kwargs["mssql_include"]]
 
             text += " INCLUDE (%s)" \

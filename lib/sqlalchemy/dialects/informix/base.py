@@ -299,7 +299,7 @@ class InfoDDLCompiler(compiler.DDLCompiler):
 
     def get_column_default_string(self, column):
         if (isinstance(column.server_default, schema.DefaultClause) and
-            isinstance(column.server_default.arg, util.string_type)):
+            isinstance(column.server_default.arg, util.string_types)):
                 if isinstance(column.type, (sqltypes.Integer, sqltypes.Numeric)):
                     return self.sql_compiler.process(text(column.server_default.arg))
 

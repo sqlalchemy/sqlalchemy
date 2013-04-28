@@ -14,29 +14,13 @@ except ImportError:
     import dummy_threading as threading
 
 py32 = sys.version_info >= (3, 2)
-py3k_warning = getattr(sys, 'py3kwarning', False) or sys.version_info >= (3, 0)
 py3k = sys.version_info >= (3, 0)
+py2k = not py3k
 jython = sys.platform.startswith('java')
 pypy = hasattr(sys, 'pypy_version_info')
 win32 = sys.platform.startswith('win')
 cpython = not pypy and not jython  # TODO: something better for this ?
 
-if py3k:
-    set_types = set
-else:
-    # 2.6 deprecates sets.Set, but we still need to be able to detect them
-    # in user code and as return values from DB-APIs
-    ignore = ('ignore', None, DeprecationWarning, None, 0)
-    import warnings
-    try:
-        warnings.filters.insert(0, ignore)
-    except Exception:
-        import sets
-    else:
-        import sets
-        warnings.filters.remove(ignore)
-
-    set_types = set, sets.Set
 
 if sys.version_info < (2, 6):
     def next(iter):
@@ -51,23 +35,28 @@ else:
     except ImportError:
         import pickle
 
-from urllib.parse import parse_qsl
 
 
 if py3k:
     from inspect import getfullargspec as inspect_getfullargspec
-    from urllib.parse import quote_plus, unquote_plus
+    from urllib.parse import quote_plus, unquote_plus, parse_qsl
     string_types = str,
     binary_type = bytes
     text_type = str
+    int_types = int,
+    iterbytes = iter
 else:
     from inspect import getargspec as inspect_getfullargspec
     from urllib import quote_plus, unquote_plus
+    from urlparse import parse_qsl
     string_types = basestring,
     binary_type = str
     text_type = unicode
+    int_types = int, long
+    def iterbytes(buf):
+        return (ord(byte) for byte in buf)
 
-if py3k_warning:
+if py3k:
     # they're bringing it back in 3.2.  brilliant !
     def callable(fn):
         return hasattr(fn, '__call__')
@@ -149,19 +138,25 @@ if py3k:
             raise value.with_traceback(tb)
         raise value
 
-    def raise_from_cause(exception, exc_info):
+    def raise_from_cause(exception, exc_info=None):
+        if exc_info is None:
+            exc_info = sys.exc_info()
         exc_type, exc_value, exc_tb = exc_info
         reraise(type(exception), exception, tb=exc_tb, cause=exc_value)
 else:
     exec("def reraise(tp, value, tb=None, cause=None):\n"
             "    raise tp, value, tb\n")
 
-    def raise_from_cause(exception, exc_info):
+    def raise_from_cause(exception, exc_info=None):
         # not as nice as that of Py3K, but at least preserves
         # the code line where the issue occurred
+        if exc_info is None:
+            exc_info = sys.exc_info()
         exc_type, exc_value, exc_tb = exc_info
         reraise(type(exception), exception, tb=exc_tb)
 
 
+def with_metaclass(meta, *bases):
+    """Create a base class with a metaclass."""
 
-
+    return meta("MetaBase", bases, {})

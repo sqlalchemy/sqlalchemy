@@ -3,7 +3,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-
+from __future__ import with_statement
 
 """Defines :class:`.Connection` and :class:`.Engine`.
 
@@ -734,7 +734,7 @@ class Connection(Connectable):
 
         distilled_params = _distill_params(multiparams, params)
         if distilled_params:
-            keys = list(distilled_params[0].keys())
+            keys = list(distilled_params[0])
         else:
             keys = []
 
@@ -1045,7 +1045,7 @@ class Connection(Connectable):
         Compiled: _execute_compiled,
         schema.SchemaItem: _execute_default,
         schema.DDLElement: _execute_ddl,
-        str: _execute_text
+        util.string_types[0]: _execute_text
     }
 
     def default_schema_name(self):

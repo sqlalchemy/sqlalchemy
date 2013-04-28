@@ -15,8 +15,8 @@ import re
 import sys
 import types
 import warnings
-from .compat import set_types, threading, \
-    callable, inspect_getfullargspec
+from .compat import threading, \
+    callable, inspect_getfullargspec, py3k
 from functools import update_wrapper
 from .. import exc
 import hashlib
@@ -265,23 +265,21 @@ def format_argspec_plus(fn, grouped=True):
     else:
         self_arg = None
 
-# start Py3K
-    apply_pos = inspect.formatargspec(spec[0], spec[1],
-        spec[2], None, spec[4])
-    num_defaults = 0
-    if spec[3]:
-        num_defaults += len(spec[3])
-    if spec[4]:
-        num_defaults += len(spec[4])
-    name_args = spec[0] + spec[4]
-# end Py3K
-# start Py2K
-#    apply_pos = inspect.formatargspec(spec[0], spec[1], spec[2])
-#    num_defaults = 0
-#    if spec[3]:
-#        num_defaults += len(spec[3])
-#    name_args = spec[0]
-# end Py2K
+    if py3k:
+        apply_pos = inspect.formatargspec(spec[0], spec[1],
+            spec[2], None, spec[4])
+        num_defaults = 0
+        if spec[3]:
+            num_defaults += len(spec[3])
+        if spec[4]:
+            num_defaults += len(spec[4])
+        name_args = spec[0] + spec[4]
+    else:
+        apply_pos = inspect.formatargspec(spec[0], spec[1], spec[2])
+        num_defaults = 0
+        if spec[3]:
+            num_defaults += len(spec[3])
+        name_args = spec[0]
 
     if num_defaults:
         defaulted_vals = name_args[0 - num_defaults:]
@@ -842,7 +840,7 @@ def duck_type_collection(specimen, default=None):
     if hasattr(specimen, '__emulates__'):
         # canonicalize set vs sets.Set to a standard: the builtin set
         if (specimen.__emulates__ is not None and
-                issubclass(specimen.__emulates__, set_types)):
+                issubclass(specimen.__emulates__, set)):
             return set
         else:
             return specimen.__emulates__
@@ -850,7 +848,7 @@ def duck_type_collection(specimen, default=None):
     isa = isinstance(specimen, type) and issubclass or isinstance
     if isa(specimen, list):
         return list
-    elif isa(specimen, set_types):
+    elif isa(specimen, set):
         return set
     elif isa(specimen, dict):
         return dict

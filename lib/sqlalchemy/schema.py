@@ -1154,24 +1154,15 @@ class Column(SchemaItem, expression.ColumnClause):
                 nullable=self.nullable,
                 quote=self.quote,
                 _proxies=[self], *fk)
-        except TypeError as e:
-# start Py3K
-            raise TypeError(
-                "Could not create a copy of this %r object.  "
-                "Ensure the class includes a _constructor() "
-                "attribute or method which accepts the "
-                "standard Column constructor arguments, or "
-                "references the Column class itself." % self.__class__) from e
-# end Py3K
-# start Py2K
-#            raise TypeError(
-#                "Could not create a copy of this %r object.  "
-#                "Ensure the class includes a _constructor() "
-#                "attribute or method which accepts the "
-#                "standard Column constructor arguments, or "
-#                "references the Column class itself. "
-#                "Original error: %s" % (self.__class__, e))
-# end Py2K
+        except TypeError:
+            util.raise_from_cause(
+                TypeError(
+                    "Could not create a copy of this %r object.  "
+                    "Ensure the class includes a _constructor() "
+                    "attribute or method which accepts the "
+                    "standard Column constructor arguments, or "
+                    "references the Column class itself." % self.__class__)
+                )
 
         c.table = selectable
         selectable._columns.add(c)

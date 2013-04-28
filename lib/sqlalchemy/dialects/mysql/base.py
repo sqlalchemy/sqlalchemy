@@ -1171,7 +1171,7 @@ class SET(_StringType):
         super_convert = super(SET, self).bind_processor(dialect)
 
         def process(value):
-            if value is None or isinstance(value, (int, str)):
+            if value is None or isinstance(value, util.int_types + util.string_types):
                 pass
             else:
                 if None in value:
@@ -1352,7 +1352,7 @@ class MySQLCompiler(compiler.SQLCompiler):
           of a SELECT.
 
         """
-        if isinstance(select._distinct, str):
+        if isinstance(select._distinct, util.string_types):
             return select._distinct.upper() + " "
         elif select._distinct:
             return "DISTINCT "
@@ -1494,7 +1494,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
                 k[len(self.dialect.name) + 1:].upper(),
                 v
             )
-            for k, v in list(table.kwargs.items())
+            for k, v in table.kwargs.items()
             if k.startswith('%s_' % self.dialect.name)
         )
 
@@ -2485,7 +2485,7 @@ class MySQLTableDefinitionParser(object):
         for nope in ('auto_increment', 'data directory', 'index directory'):
             options.pop(nope, None)
 
-        for opt, val in list(options.items()):
+        for opt, val in options.items():
             state.table_options['%s_%s' % (self.dialect.name, opt)] = val
 
     def _parse_column(self, line, state):
@@ -2626,11 +2626,11 @@ class MySQLTableDefinitionParser(object):
 
         _final = self.preparer.final_quote
 
-        quotes = dict(list(zip(('iq', 'fq', 'esc_fq'),
+        quotes = dict(zip(('iq', 'fq', 'esc_fq'),
                           [re.escape(s) for s in
                            (self.preparer.initial_quote,
                             _final,
-                            self.preparer._escape_identifier(_final))])))
+                            self.preparer._escape_identifier(_final))]))
 
         self._pr_name = _pr_compile(
             r'^CREATE (?:\w+ +)?TABLE +'
@@ -2802,12 +2802,8 @@ class _DecodingRowProxy(object):
         item = self.rowproxy[index]
         if isinstance(item, _array):
             item = item.tostring()
-# start Py2K
-#        if self.charset and isinstance(item, str):
-# end Py2K
-# start Py3K
-        if self.charset and isinstance(item, bytes):
-# end Py3K
+
+        if self.charset and isinstance(item, util.binary_type):
             return item.decode(self.charset)
         else:
             return item
@@ -2816,12 +2812,7 @@ class _DecodingRowProxy(object):
         item = getattr(self.rowproxy, attr)
         if isinstance(item, _array):
             item = item.tostring()
-# start Py2K
-#        if self.charset and isinstance(item, str):
-# end Py2K
-# start Py3K
-        if self.charset and isinstance(item, bytes):
-# end Py3K
+        if self.charset and isinstance(item, util.binary_type):
             return item.decode(self.charset)
         else:
             return item
