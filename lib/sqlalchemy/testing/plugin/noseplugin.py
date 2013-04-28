@@ -10,13 +10,19 @@ normally as "from sqlalchemy.testing.plugin import noseplugin".
 
 """
 
+from __future__ import absolute_import
 
 import os
-import configparser
+import sys
+py3k = sys.version_info >= (3, 0)
+
+if py3k:
+    import configparser
+else:
+    import ConfigParser as configparser
 
 from nose.plugins import Plugin
 from nose import SkipTest
-import time
 import sys
 import re
 

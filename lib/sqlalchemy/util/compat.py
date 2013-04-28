@@ -33,6 +33,8 @@ else:
         import pickle
 
 if py3k:
+    import builtins
+
     from inspect import getfullargspec as inspect_getfullargspec
     from urllib.parse import quote_plus, unquote_plus, parse_qsl
     string_types = str,
@@ -40,6 +42,9 @@ if py3k:
     text_type = str
     int_types = int,
     iterbytes = iter
+
+    def u(s):
+        return s
 
     def b(s):
         return s.encode("latin-1")
@@ -55,6 +60,13 @@ if py3k:
 
     from functools import reduce
 
+    print_ = getattr(builtins, "print")
+
+    import_ = getattr(builtins, '__import__')
+
+    import itertools
+    itertools_filterfalse = itertools.filterfalse
+    itertools_imap = map
 else:
     from inspect import getargspec as inspect_getfullargspec
     from urllib import quote_plus, unquote_plus
@@ -66,12 +78,34 @@ else:
     def iterbytes(buf):
         return (ord(byte) for byte in buf)
 
+    def u(s):
+        return unicode(s, "unicode_escape")
+
     def b(s):
         return s
+
+    def import_(*args):
+        if len(args) == 4:
+            args = args[0:3] + ([str(arg) for arg in args[3]],)
+        return __import__(*args)
 
     callable = callable
     cmp = cmp
     reduce = reduce
+
+    def print_(*args, **kwargs):
+        fp = kwargs.pop("file", sys.stdout)
+        if fp is None:
+            return
+        for arg in enumerate(args):
+            if not isinstance(arg, basestring):
+                arg = str(arg)
+            fp.write(arg)
+
+    import itertools
+    itertools_filterfalse = itertools.ifilterfalse
+    itertools_imap = itertools.imap
+
 
 
 try:
@@ -130,6 +164,12 @@ else:
             exc_info = sys.exc_info()
         exc_type, exc_value, exc_tb = exc_info
         reraise(type(exception), exception, tb=exc_tb)
+
+if py3k:
+    exec_ = getattr(builtins, 'exec')
+else:
+    def exec_(func_text, globals_, lcl):
+        exec('exec func_text in globals_, lcl')
 
 
 def with_metaclass(meta, *bases):

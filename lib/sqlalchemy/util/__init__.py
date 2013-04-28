@@ -8,7 +8,7 @@ from .compat import callable, cmp, reduce,  \
     threading, py3k, py2k, jython, pypy, cpython, win32, \
     pickle, dottedgetter, parse_qsl, namedtuple, next, WeakSet, reraise, \
     raise_from_cause, text_type, string_types, int_types, binary_type, \
-    quote_plus, with_metaclass
+    quote_plus, with_metaclass, print_, itertools_filterfalse, u, b
 
 from ._collections import KeyedTuple, ImmutableContainer, immutabledict, \
     Properties, OrderedProperties, ImmutableProperties, OrderedDict, \

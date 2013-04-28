@@ -1,6 +1,7 @@
 from . import config
 from . import assertions, schema
 from .util import adict
+from .. import util
 from .engines import drop_all_tables
 from .entities import BasicEntity, ComparableEntity
 import sys
@@ -126,8 +127,9 @@ class TablesTest(TestBase):
                 try:
                     table.delete().execute().close()
                 except sa.exc.DBAPIError as ex:
-                    print("Error emptying table %s: %r" % (
-                        table, ex), file=sys.stderr)
+                    util.print_(
+                        ("Error emptying table %s: %r" % (table, ex)),
+                        file=sys.stderr)
 
     def setup(self):
         self._setup_each_tables()
@@ -190,7 +192,7 @@ class TablesTest(TestBase):
         for table, data in cls.fixtures().items():
             if len(data) < 2:
                 continue
-            if isinstance(table, str):
+            if isinstance(table, util.string_types):
                 table = cls.tables[table]
             headers[table] = data[0]
             rows[table] = data[1:]
@@ -199,7 +201,7 @@ class TablesTest(TestBase):
                 continue
             cls.bind.execute(
                 table.insert(),
-                [dict(list(zip(headers[table], column_values)))
+                [dict(zip(headers[table], column_values))
                  for column_values in rows[table]])
 
 
@@ -284,7 +286,7 @@ class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
                 cls_registry[classname] = cls
                 return type.__init__(cls, classname, bases, dict_)
 
-        class _Base(object, metaclass=FindFixture):
+        class _Base(util.with_metaclass(FindFixture, object)):
             pass
 
         class Basic(BasicEntity, _Base):

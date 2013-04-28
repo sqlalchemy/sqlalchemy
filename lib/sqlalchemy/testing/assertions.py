@@ -1,4 +1,4 @@
-
+from __future__ import absolute_import
 
 from . import util as testutil
 from sqlalchemy import pool, orm, util
@@ -63,7 +63,7 @@ def emits_warning_on(db, *warnings):
 
     @decorator
     def decorate(fn, *args, **kw):
-        if isinstance(db, str):
+        if isinstance(db, util.string_types):
             if not spec(config.db):
                 return fn(*args, **kw)
             else:
@@ -172,8 +172,8 @@ def assert_raises_message(except_cls, msg, callable_, *args, **kwargs):
         callable_(*args, **kwargs)
         assert False, "Callable did not raise an exception"
     except except_cls as e:
-        assert re.search(msg, str(e), re.UNICODE), "%r !~ %s" % (msg, e)
-        print(str(e).encode('utf-8'))
+        assert re.search(msg, util.text_type(e), re.UNICODE), "%r !~ %s" % (msg, e)
+        print(util.text_type(e).encode('utf-8'))
 
 
 class AssertsCompiledSQL(object):
@@ -190,12 +190,12 @@ class AssertsCompiledSQL(object):
                 dialect = default.DefaultDialect()
             elif dialect is None:
                 dialect = config.db.dialect
-            elif isinstance(dialect, str):
+            elif isinstance(dialect, util.string_types):
                 dialect = create_engine("%s://" % dialect).dialect
 
         kw = {}
         if params is not None:
-            kw['column_keys'] = list(params.keys())
+            kw['column_keys'] = list(params)
 
         if isinstance(clause, orm.Query):
             context = clause._compile_context()
@@ -205,13 +205,13 @@ class AssertsCompiledSQL(object):
         c = clause.compile(dialect=dialect, **kw)
 
         param_str = repr(getattr(c, 'params', {}))
-# start Py3K
-        param_str = param_str.encode('utf-8').decode('ascii', 'ignore')
-# end Py3K
 
-        print("\nSQL String:\n" + str(c) + param_str)
+        if util.py3k:
+            param_str = param_str.encode('utf-8').decode('ascii', 'ignore')
 
-        cc = re.sub(r'[\n\t]', '', str(c))
+        print("\nSQL String:\n" + util.text_type(c) + param_str)
+
+        cc = re.sub(r'[\n\t]', '', util.text_type(c))
 
         eq_(cc, result, "%r != %r on dialect %r" % (cc, result, dialect))
 
@@ -301,7 +301,7 @@ class AssertsExecutionResults(object):
         found = util.IdentitySet(result)
         expected = set([immutabledict(e) for e in expected])
 
-        for wrong in itertools.filterfalse(lambda o: type(o) == cls, found):
+        for wrong in util.itertools_filterfalse(lambda o: type(o) == cls, found):
             fail('Unexpected type "%s", expected "%s"' % (
                 type(wrong).__name__, cls.__name__))
 

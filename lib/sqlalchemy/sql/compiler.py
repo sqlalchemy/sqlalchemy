@@ -83,9 +83,7 @@ OPERATORS = {
     operators.add: ' + ',
     operators.mul: ' * ',
     operators.sub: ' - ',
-# start Py2K
-#    operators.div: ' / ',
-# end Py2K
+    operators.div: ' / ',
     operators.mod: ' % ',
     operators.truediv: ' / ',
     operators.neg: '-',
@@ -826,12 +824,12 @@ class SQLCompiler(engine.Compiled):
         of the DBAPI.
 
         """
-        if isinstance(value, str):
+        if isinstance(value, util.string_types):
             value = value.replace("'", "''")
             return "'%s'" % value
         elif value is None:
             return "NULL"
-        elif isinstance(value, (float, int)):
+        elif isinstance(value, (float, ) + util.int_types):
             return repr(value)
         elif isinstance(value, decimal.Decimal):
             return str(value)
@@ -1214,7 +1212,7 @@ class SQLCompiler(engine.Compiled):
             self.positiontup = self.cte_positional + self.positiontup
         cte_text = self.get_cte_preamble(self.ctes_recursive) + " "
         cte_text += ", \n".join(
-            [txt for txt in list(self.ctes.values())]
+            [txt for txt in self.ctes.values()]
         )
         cte_text += "\n "
         return cte_text
@@ -1325,7 +1323,7 @@ class SQLCompiler(engine.Compiled):
             dialect_hints = dict([
                 (table, hint_text)
                 for (table, dialect), hint_text in
-                list(insert_stmt._hints.items())
+                insert_stmt._hints.items()
                 if dialect in ('*', self.dialect.name)
             ])
             if insert_stmt.table in dialect_hints:
@@ -1422,7 +1420,7 @@ class SQLCompiler(engine.Compiled):
             dialect_hints = dict([
                 (table, hint_text)
                 for (table, dialect), hint_text in
-                list(update_stmt._hints.items())
+                update_stmt._hints.items()
                 if dialect in ('*', self.dialect.name)
             ])
             if update_stmt.table in dialect_hints:
@@ -1559,7 +1557,7 @@ class SQLCompiler(engine.Compiled):
         if extra_tables and stmt_parameters:
             normalized_params = dict(
                 (sql._clause_element_as_expr(c), param)
-                for c, param in list(stmt_parameters.items())
+                for c, param in stmt_parameters.items()
             )
             assert self.isupdate
             affected_tables = set()
@@ -1752,7 +1750,7 @@ class SQLCompiler(engine.Compiled):
             dialect_hints = dict([
                 (table, hint_text)
                 for (table, dialect), hint_text in
-                list(delete_stmt._hints.items())
+                delete_stmt._hints.items()
                 if dialect in ('*', self.dialect.name)
             ])
             if delete_stmt.table in dialect_hints:
@@ -1870,11 +1868,11 @@ class DDLCompiler(engine.Compiled):
                     first_pk = True
             except exc.CompileError as ce:
                 util.raise_from_cause(
-                    exc.CompileError("(in table '%s', column '%s'): %s" % (
+                    exc.CompileError(util.u("(in table '%s', column '%s'): %s" % (
                                                 table.description,
                                                 column.name,
                                                 ce.args[0]
-                                            )))
+                                            ))))
 
         const = self.create_table_constraints(table)
         if const:

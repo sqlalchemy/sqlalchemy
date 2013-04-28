@@ -1,4 +1,4 @@
-
+from __future__ import absolute_import
 
 import warnings
 from .. import exc as sa_exc
@@ -10,7 +10,7 @@ def testing_warn(msg, stacklevel=3):
 
     filename = "sqlalchemy.testing.warnings"
     lineno = 1
-    if isinstance(msg, str):
+    if isinstance(msg, util.string_types):
         warnings.warn_explicit(msg, sa_exc.SAWarning, filename, lineno)
     else:
         warnings.warn_explicit(msg, filename, lineno)

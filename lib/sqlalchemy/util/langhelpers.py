@@ -15,18 +15,14 @@ import re
 import sys
 import types
 import warnings
-from .compat import threading, \
-    callable, inspect_getfullargspec, py3k
 from functools import update_wrapper
 from .. import exc
 import hashlib
 from . import compat
-import collections
 
 def md5_hex(x):
-# start Py3K
-    x = x.encode('utf-8')
-# end Py3K
+    if compat.py3k:
+        x = x.encode('utf-8')
     m = hashlib.md5()
     m.update(x)
     return m.hexdigest()
@@ -79,7 +75,7 @@ def _unique_symbols(used, *bases):
     used = set(used)
     for base in bases:
         pool = itertools.chain((base,),
-                               map(lambda i: base + str(i),
+                               compat.itertools_imap(lambda i: base + str(i),
                                               range(1000)))
         for sym in pool:
             if sym not in used:
@@ -96,7 +92,7 @@ def decorator(target):
     def decorate(fn):
         if not inspect.isfunction(fn):
             raise Exception("not a decoratable function")
-        spec = inspect_getfullargspec(fn)
+        spec = compat.inspect_getfullargspec(fn)
         names = tuple(spec[0]) + spec[1:3] + (fn.__name__,)
         targ_name, fn_name = _unique_symbols(names, 'target', 'fn')
 
@@ -145,7 +141,7 @@ class PluginLoader(object):
 
     def register(self, name, modulepath, objname):
         def load():
-            mod = __import__(modulepath)
+            mod = compat.import_(modulepath)
             for token in modulepath.split(".")[1:]:
                 mod = getattr(mod, token)
             return getattr(mod, objname)
@@ -252,8 +248,8 @@ def format_argspec_plus(fn, grouped=True):
        'apply_pos': '(self, a, b, c, **d)'}
 
     """
-    if isinstance(fn, collections.Callable):
-        spec = inspect_getfullargspec(fn)
+    if compat.callable(fn):
+        spec = compat.inspect_getfullargspec(fn)
     else:
         # we accept an existing argspec...
         spec = fn
@@ -265,7 +261,7 @@ def format_argspec_plus(fn, grouped=True):
     else:
         self_arg = None
 
-    if py3k:
+    if compat.py3k:
         apply_pos = inspect.formatargspec(spec[0], spec[1],
             spec[2], None, spec[4])
         num_defaults = 0
@@ -420,34 +416,33 @@ def class_hierarchy(cls):
     will not be descended.
 
     """
-# start Py2K
-#    if isinstance(cls, types.ClassType):
-#        return list()
-# end Py2K
+    if compat.py2k:
+        if isinstance(cls, types.ClassType):
+            return list()
+
     hier = set([cls])
     process = list(cls.__mro__)
     while process:
         c = process.pop()
-# start Py2K
-#        if isinstance(c, types.ClassType):
-#            continue
-#        for b in (_ for _ in c.__bases__
-#                  if _ not in hier and not isinstance(_, types.ClassType)):
-# end Py2K
-# start Py3K
-        for b in (_ for _ in c.__bases__
-                  if _ not in hier):
-# end Py3K
+        if compat.py2k:
+            if isinstance(c, types.ClassType):
+                continue
+            bases = (_ for _ in c.__bases__
+                  if _ not in hier and not isinstance(_, types.ClassType))
+        else:
+            bases = (_ for _ in c.__bases__ if _ not in hier)
+
+        for b in bases:
             process.append(b)
             hier.add(b)
-# start Py3K
-        if c.__module__ == 'builtins' or not hasattr(c, '__subclasses__'):
-            continue
-# end Py3K
-# start Py2K
-#        if c.__module__ == '__builtin__' or not hasattr(c, '__subclasses__'):
-#            continue
-# end Py2K
+
+        if compat.py3k:
+            if c.__module__ == 'builtins' or not hasattr(c, '__subclasses__'):
+                continue
+        else:
+            if c.__module__ == '__builtin__' or not hasattr(c, '__subclasses__'):
+                continue
+
         for s in [_ for _ in c.__subclasses__() if _ not in hier]:
             process.append(s)
             hier.add(s)
@@ -504,7 +499,7 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
               "return %(name)s.%(method)s%(d_args)s" % locals())
 
         env = from_instance is not None and {name: from_instance} or {}
-        exec(py, env)
+        compat.exec_(py, env, {})
         try:
             env[method].__defaults__ = fn.__defaults__
         except AttributeError:
@@ -593,7 +588,7 @@ def as_interface(obj, cls=None, methods=None, required=None):
     for method, impl in dictlike_iteritems(obj):
         if method not in interface:
             raise TypeError("%r: unknown in this interface" % method)
-        if not isinstance(impl, collections.Callable):
+        if not compat.callable(impl):
             raise TypeError("%r=%r is not callable" % (method, impl))
         setattr(AnonymousInterface, method, staticmethod(impl))
         found.add(method)
@@ -734,11 +729,11 @@ class importlater(object):
     def _resolve(self):
         importlater._unresolved.discard(self)
         if self._il_addtl:
-            self._initial_import = __import__(
+            self._initial_import = compat.import_(
                                 self._il_path, globals(), locals(),
                                 [self._il_addtl])
         else:
-            self._initial_import = __import__(self._il_path)
+            self._initial_import = compat.import_(self._il_path)
 
     def __getattr__(self, key):
         if key == 'module':
@@ -757,7 +752,7 @@ class importlater(object):
 
 # from paste.deploy.converters
 def asbool(obj):
-    if isinstance(obj, str):
+    if isinstance(obj, compat.string_types):
         obj = obj.strip().lower()
         if obj in ['true', 'yes', 'on', 'y', 't', '1']:
             return True
@@ -817,7 +812,7 @@ def constructor_copy(obj, cls, **kw):
 def counter():
     """Return a threadsafe counter function."""
 
-    lock = threading.Lock()
+    lock = compat.threading.Lock()
     counter = itertools.count(1)
 
     # avoid the 2to3 "next" transformation...
@@ -880,16 +875,14 @@ def assert_arg_type(arg, argtype, name):
 def dictlike_iteritems(dictlike):
     """Return a (key, value) iterator for almost any dict-like object."""
 
-# start Py3K
-    if hasattr(dictlike, 'items'):
-        return list(dictlike.items())
-# end Py3K
-# start Py2K
-#    if hasattr(dictlike, 'iteritems'):
-#        return dictlike.iteritems()
-#    elif hasattr(dictlike, 'items'):
-#        return iter(dictlike.items())
-# end Py2K
+    if compat.py3k:
+        if hasattr(dictlike, 'items'):
+            return list(dictlike.items())
+    else:
+        if hasattr(dictlike, 'iteritems'):
+            return dictlike.iteritems()
+        elif hasattr(dictlike, 'items'):
+            return iter(dictlike.items())
 
     getter = getattr(dictlike, '__getitem__', getattr(dictlike, 'get', None))
     if getter is None:
@@ -902,7 +895,7 @@ def dictlike_iteritems(dictlike):
                 yield key, getter(key)
         return iterator()
     elif hasattr(dictlike, 'keys'):
-        return iter((key, getter(key)) for key in list(dictlike.keys()))
+        return iter((key, getter(key)) for key in dictlike.keys())
     else:
         raise TypeError(
             "Object '%r' is not dict-like" % dictlike)
@@ -942,7 +935,7 @@ class hybridmethod(object):
 class _symbol(int):
     def __new__(self, name, doc=None, canonical=None):
         """Construct a new named symbol."""
-        assert isinstance(name, str)
+        assert isinstance(name, compat.string_types)
         if canonical is None:
             canonical = hash(name)
         v = int.__new__(_symbol, canonical)
@@ -985,7 +978,7 @@ class symbol(object):
 
     """
     symbols = {}
-    _lock = threading.Lock()
+    _lock = compat.threading.Lock()
 
     def __new__(cls, name, doc=None, canonical=None):
         cls._lock.acquire()
@@ -1039,7 +1032,7 @@ def warn(msg, stacklevel=3):
        be controlled.
 
     """
-    if isinstance(msg, str):
+    if isinstance(msg, compat.string_types):
         warnings.warn(msg, exc.SAWarning, stacklevel=stacklevel)
     else:
         warnings.warn(msg, stacklevel=stacklevel)

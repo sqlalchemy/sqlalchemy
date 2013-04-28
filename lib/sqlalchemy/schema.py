@@ -679,11 +679,11 @@ class Table(SchemaItem, expression.TableClause):
             # skip indexes that would be generated
             # by the 'index' flag on Column
             if len(index.columns) == 1 and \
-                list(index.columns)[0].index:
+                    list(index.columns)[0].index:
                 continue
             Index(index.name,
                   unique=index.unique,
-                  *[table.c[col] for col in list(index.columns.keys())],
+                  *[table.c[col] for col in index.columns.keys()],
                   **index.kwargs)
         table.dispatch._update(self.dispatch)
         return table
@@ -898,7 +898,7 @@ class Column(SchemaItem, expression.ColumnClause):
         type_ = kwargs.pop('type_', None)
         args = list(args)
         if args:
-            if isinstance(args[0], str):
+            if isinstance(args[0], util.string_types):
                 if name is not None:
                     raise exc.ArgumentError(
                         "May not pass name positionally and as a keyword.")
@@ -944,12 +944,7 @@ class Column(SchemaItem, expression.ColumnClause):
                 args.append(self.default)
             else:
                 if getattr(self.type, '_warn_on_bytestring', False):
-# start Py3K
-                    if isinstance(self.default, bytes):
-# end Py3K
-# start Py2K
-#                    if isinstance(self.default, str):
-# end Py2K
+                    if isinstance(self.default, util.binary_type):
                         util.warn("Unicode column received non-unicode "
                                   "default value.")
                 args.append(ColumnDefault(self.default))
@@ -984,7 +979,7 @@ class Column(SchemaItem, expression.ColumnClause):
 
         if kwargs:
             raise exc.ArgumentError(
-                "Unknown arguments passed to Column: " + repr(list(kwargs.keys())))
+                "Unknown arguments passed to Column: " + repr(list(kwargs)))
 
     def __str__(self):
         if self.name is None:
@@ -1070,7 +1065,7 @@ class Column(SchemaItem, expression.ColumnClause):
         self.table = table
 
         if self.index:
-            if isinstance(self.index, str):
+            if isinstance(self.index, util.string_types):
                 raise exc.ArgumentError(
                     "The 'index' keyword argument on Column is boolean only. "
                     "To create indexes with a specific name, create an "
@@ -1078,7 +1073,7 @@ class Column(SchemaItem, expression.ColumnClause):
             Index(expression._truncated_label('ix_%s' % self._label),
                                     self, unique=self.unique)
         elif self.unique:
-            if isinstance(self.unique, str):
+            if isinstance(self.unique, util.string_types):
                 raise exc.ArgumentError(
                     "The 'unique' keyword argument on Column is boolean "
                     "only. To create unique constraints or indexes with a "
@@ -1338,7 +1333,7 @@ class ForeignKey(SchemaItem):
         if schema:
             return schema + "." + self.column.table.name + \
                                     "." + self.column.key
-        elif isinstance(self._colspec, str):
+        elif isinstance(self._colspec, util.string_types):
             return self._colspec
         elif hasattr(self._colspec, '__clause_element__'):
             _column = self._colspec.__clause_element__()
@@ -1383,7 +1378,7 @@ class ForeignKey(SchemaItem):
         """
         # ForeignKey inits its remote column as late as possible, so tables
         # can be defined without dependencies
-        if isinstance(self._colspec, str):
+        if isinstance(self._colspec, util.string_types):
             # locate the parent table this foreign key is attached to.  we
             # use the "original" column which our parent column represents
             # (its a list of columns/other ColumnElements if the parent
@@ -1650,8 +1645,7 @@ class ColumnDefault(DefaultGenerator):
         defaulted = argspec[3] is not None and len(argspec[3]) or 0
         positionals = len(argspec[0]) - defaulted
 
-# start Py3K
-# end Py3K
+        # Py3K compat - no unbound methods
         if inspect.ismethod(inspectable) or inspect.isclass(fn):
             positionals -= 1
 
@@ -1913,7 +1907,7 @@ class DefaultClause(FetchedValue):
     has_argument = True
 
     def __init__(self, arg, for_update=False, _reflected=False):
-        util.assert_arg_type(arg, (str,
+        util.assert_arg_type(arg, (util.string_types[0],
                                    expression.ClauseElement,
                                    expression.TextClause), 'arg')
         super(DefaultClause, self).__init__(for_update)
@@ -2023,7 +2017,7 @@ class ColumnCollectionMixin(object):
 
     def _set_parent(self, table):
         for col in self._pending_colargs:
-            if isinstance(col, str):
+            if isinstance(col, util.string_types):
                 col = table.c[col]
             self.columns.add(col)
 
@@ -2060,7 +2054,7 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
 
     def copy(self, **kw):
         c = self.__class__(name=self.name, deferrable=self.deferrable,
-                              initially=self.initially, *list(self.columns.keys()))
+                              initially=self.initially, *self.columns.keys())
         c.dispatch._update(self.dispatch)
         return c
 
@@ -2241,7 +2235,7 @@ class ForeignKeyConstraint(Constraint):
             self._set_parent_with_dispatch(table)
         elif columns and \
             isinstance(columns[0], Column) and \
-            columns[0].table is not None:
+                columns[0].table is not None:
             self._set_parent_with_dispatch(columns[0].table)
 
     @property
@@ -2250,7 +2244,7 @@ class ForeignKeyConstraint(Constraint):
 
     @property
     def columns(self):
-        return list(self._elements.keys())
+        return list(self._elements)
 
     @property
     def elements(self):
@@ -2262,7 +2256,7 @@ class ForeignKeyConstraint(Constraint):
         for col, fk in self._elements.items():
             # string-specified column names now get
             # resolved to Column objects
-            if isinstance(col, str):
+            if isinstance(col, util.string_types):
                 try:
                     col = table.c[col]
                 except KeyError:
@@ -2272,7 +2266,7 @@ class ForeignKeyConstraint(Constraint):
                         "named '%s' is present." % (table.description, col))
 
             if not hasattr(fk, 'parent') or \
-                fk.parent is not col:
+                    fk.parent is not col:
                 fk._set_parent_with_dispatch(col)
 
         if self.use_alter:
@@ -2287,8 +2281,8 @@ class ForeignKeyConstraint(Constraint):
 
     def copy(self, schema=None, **kw):
         fkc = ForeignKeyConstraint(
-                    [x.parent.key for x in list(self._elements.values())],
-                    [x._get_colspec(schema=schema) for x in list(self._elements.values())],
+                    [x.parent.key for x in self._elements.values()],
+                    [x._get_colspec(schema=schema) for x in self._elements.values()],
                     name=self.name,
                     onupdate=self.onupdate,
                     ondelete=self.ondelete,
@@ -2563,7 +2557,7 @@ class MetaData(SchemaItem):
         return 'MetaData(bind=%r)' % self.bind
 
     def __contains__(self, table_or_key):
-        if not isinstance(table_or_key, str):
+        if not isinstance(table_or_key, util.string_types):
             table_or_key = table_or_key.key
         return table_or_key in self.tables
 
@@ -2578,7 +2572,7 @@ class MetaData(SchemaItem):
         dict.pop(self.tables, key, None)
         if self._schemas:
             self._schemas = set([t.schema
-                                for t in list(self.tables.values())
+                                for t in self.tables.values()
                                 if t.schema is not None])
 
     def __getstate__(self):
@@ -2623,7 +2617,7 @@ class MetaData(SchemaItem):
     def _bind_to(self, bind):
         """Bind this MetaData to an Engine, Connection, string or URL."""
 
-        if isinstance(bind, (str, url.URL)):
+        if isinstance(bind, util.string_types + (url.URL, )):
             from sqlalchemy import create_engine
             self._bind = create_engine(bind)
         else:
@@ -2656,7 +2650,7 @@ class MetaData(SchemaItem):
             :meth:`.Inspector.sorted_tables`
 
         """
-        return sqlutil.sort_tables(iter(self.tables.values()))
+        return sqlutil.sort_tables(self.tables.values())
 
     def reflect(self, bind=None, schema=None, views=False, only=None):
         """Load all available table definitions from the database.
@@ -2717,7 +2711,7 @@ class MetaData(SchemaItem):
                     bind.dialect.get_view_names(conn, schema)
                 )
 
-            current = set(self.tables.keys())
+            current = set(self.tables)
 
             if only is None:
                 load = [name for name in available if name not in current]
@@ -2839,7 +2833,7 @@ class ThreadLocalMetaData(MetaData):
     def _bind_to(self, bind):
         """Bind to a Connectable in the caller's thread."""
 
-        if isinstance(bind, (str, url.URL)):
+        if isinstance(bind, util.string_types + (url.URL, )):
             try:
                 self.context._engine = self.__engines[bind]
             except KeyError:
@@ -3069,7 +3063,7 @@ class DDLElement(expression.Executable, _DDLCompiles):
             not self._should_execute_deprecated(None, target, bind, **kw):
             return False
 
-        if isinstance(self.dialect, str):
+        if isinstance(self.dialect, util.string_types):
             if self.dialect != bind.engine.name:
                 return False
         elif isinstance(self.dialect, (tuple, list, set)):
@@ -3084,7 +3078,7 @@ class DDLElement(expression.Executable, _DDLCompiles):
     def _should_execute_deprecated(self, event, target, bind, **kw):
         if self.on is None:
             return True
-        elif isinstance(self.on, str):
+        elif isinstance(self.on, util.string_types):
             return self.on == bind.engine.name
         elif isinstance(self.on, (tuple, list, set)):
             return bind.engine.name in self.on
@@ -3099,7 +3093,7 @@ class DDLElement(expression.Executable, _DDLCompiles):
 
     def _check_ddl_on(self, on):
         if (on is not None and
-            (not isinstance(on, (str, tuple, list, set)) and
+            (not isinstance(on, util.string_types + (tuple, list, set)) and
                     not util.callable(on))):
             raise exc.ArgumentError(
                 "Expected the name of a database dialect, a tuple "
@@ -3224,7 +3218,7 @@ class DDL(DDLElement):
 
         """
 
-        if not isinstance(statement, str):
+        if not isinstance(statement, util.string_types):
             raise exc.ArgumentError(
                 "Expected a string or unicode SQL statement, got '%r'" %
                 statement)
@@ -3256,7 +3250,7 @@ def _to_schema_column(element):
 def _to_schema_column_or_string(element):
     if hasattr(element, '__clause_element__'):
         element = element.__clause_element__()
-    if not isinstance(element, (str, expression.ColumnElement)):
+    if not isinstance(element, util.string_types + (expression.ColumnElement, )):
         msg = "Element %r is not a string name or column element"
         raise exc.ArgumentError(msg % element)
     return element
