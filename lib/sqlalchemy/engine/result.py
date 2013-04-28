@@ -274,7 +274,7 @@ class ResultMetaData(object):
     def _key_fallback(self, key, raiseerr=True):
         map = self._keymap
         result = None
-        if isinstance(key, str):
+        if isinstance(key, util.string_types):
             result = map.get(key if self.case_sensitive else key.lower())
         # fallback for targeting a ColumnElement to a textual expression
         # this is a rare use case which only occurs when matching text()
@@ -329,7 +329,7 @@ class ResultMetaData(object):
             '_pickled_keymap': dict(
                 (key, index)
                 for key, (processor, obj, index) in self._keymap.items()
-                if isinstance(key, (str, int))
+                if isinstance(key, util.string_types + util.int_types)
             ),
             'keys': self.keys,
             "case_sensitive": self.case_sensitive,
