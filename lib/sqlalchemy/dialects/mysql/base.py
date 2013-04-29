@@ -9,28 +9,10 @@
 Supported Versions and Features
 -------------------------------
 
-SQLAlchemy supports 6 major MySQL versions: 3.23, 4.0, 4.1, 5.0, 5.1 and 6.0,
-with capabilities increasing with more modern servers.
-
-Versions 4.1 and higher support the basic SQL functionality that SQLAlchemy
-uses in the ORM and SQL expressions.  These versions pass the applicable tests
-in the suite 100%.  No heroic measures are taken to work around major missing
-SQL features- if your server version does not support sub-selects, for
+SQLAlchemy supports MySQL starting with version 4.1 through modern releases.
+However, no heroic measures are taken to work around major missing
+SQL features - if your server version does not support sub-selects, for
 example, they won't work in SQLAlchemy either.
-
-Most available DBAPI drivers are supported; see below.
-
-=====================================  ===============
-Feature                                Minimum Version
-=====================================  ===============
-sqlalchemy.orm                         4.1.1
-Table Reflection                       3.23.x
-DDL Generation                         4.1.1
-utf8/Full Unicode Connections          4.1.1
-Transactions                           3.23.15
-Two-Phase Transactions                 5.0.3
-Nested Transactions                    5.0.3
-=====================================  ===============
 
 See the official MySQL documentation for detailed information about features
 supported in any given server release.
@@ -44,7 +26,7 @@ Connection Timeouts
 -------------------
 
 MySQL features an automatic connection close behavior, for connections that have
-been idle for eight hours or more.   To circumvent having this issue, use the 
+been idle for eight hours or more.   To circumvent having this issue, use the
 ``pool_recycle`` option which controls the maximum age of any connection::
 
     engine = create_engine('mysql+mysqldb://...', pool_recycle=3600)
@@ -103,32 +85,20 @@ engines::
         Column('id', Integer, primary_key=True)
        )
 
-SQL Mode
---------
+Ansi Quoting Style
+------------------
 
-MySQL SQL modes are supported.  Modes that enable ``ANSI_QUOTES`` (such as
-``ANSI``) require an engine option to modify SQLAlchemy's quoting style.
-When using an ANSI-quoting mode, supply ``use_ansiquotes=True`` when
-creating your ``Engine``::
+MySQL features two varieties of identifier "quoting style", one using
+backticks and the other using quotes, e.g. ```some_identifier```  vs.
+``"some_identifier"``.   All MySQL dialects detect which version
+is in use by checking the value of ``sql_mode`` when a connection is first
+established with a particular :class:`.Engine`.  This quoting style comes
+into play when rendering table and column names as well as when reflecting
+existing database structures.  The detection is entirely automatic and
+no special configuration is needed to use either quoting style.
 
-  create_engine('mysql://localhost/test', use_ansiquotes=True)
-
-This is an engine-wide option and is not toggleable on a per-connection basis.
-SQLAlchemy does not presume to ``SET sql_mode`` for you with this option.  For
-the best performance, set the quoting style server-wide in ``my.cnf`` or by
-supplying ``--sql-mode`` to ``mysqld``.  You can also use a
-:class:`sqlalchemy.pool.Pool` listener hook to issue a ``SET SESSION
-sql_mode='...'`` on connect to configure each connection.
-
-If you do not specify ``use_ansiquotes``, the regular MySQL quoting style is
-used by default.
-
-If you do issue a ``SET sql_mode`` through SQLAlchemy, the dialect must be
-updated if the quoting style is changed.  Again, this change will affect all
-connections::
-
-  connection.execute('SET sql_mode="ansi"')
-  connection.dialect.use_ansiquotes = True
+.. versionchanged:: 0.6 detection of ANSI quoting style is entirely automatic,
+   there's no longer any end-user ``create_engine()`` options in this regard.
 
 MySQL SQL Extensions
 --------------------
@@ -160,7 +130,7 @@ usual definition of "number of rows matched by an UPDATE or DELETE" statement.
 This is in contradiction to the default setting on most MySQL DBAPI drivers,
 which is "number of rows actually modified/deleted".  For this reason, the
 SQLAlchemy MySQL dialects always set the ``constants.CLIENT.FOUND_ROWS`` flag,
-or whatever is equivalent for the DBAPI in use, on connect, unless the flag value 
+or whatever is equivalent for the DBAPI in use, on connect, unless the flag value
 is overridden using DBAPI-specific options
 (such as ``client_flag`` for the MySQL-Python driver, ``found_rows`` for the
 OurSQL driver).
@@ -1329,7 +1299,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         table_opts = []
         opts = dict(
             (
-                k[len(self.dialect.name)+1:].upper(), 
+                k[len(self.dialect.name)+1:].upper(),
                 v
             )
             for k, v in table.kwargs.items()
@@ -1345,7 +1315,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
                 arg = "'%s'" % arg.replace("\\", "\\\\").replace("'", "''")
 
             if opt in ('DATA_DIRECTORY', 'INDEX_DIRECTORY',
-                       'DEFAULT_CHARACTER_SET', 'CHARACTER_SET', 
+                       'DEFAULT_CHARACTER_SET', 'CHARACTER_SET',
                        'DEFAULT_CHARSET',
                        'DEFAULT_COLLATE'):
                 opt = opt.replace('_', ' ')
@@ -1618,8 +1588,8 @@ class MySQLIdentifierPreparer(compiler.IdentifierPreparer):
             quote = '"'
 
         super(MySQLIdentifierPreparer, self).__init__(
-                                                dialect, 
-                                                initial_quote=quote, 
+                                                dialect,
+                                                initial_quote=quote,
                                                 escape_quote=quote)
 
     def _quote_free_identifiers(self, *ids):
@@ -1652,7 +1622,7 @@ class MySQLDialect(default.DefaultDialect):
     preparer = MySQLIdentifierPreparer
 
     # default SQL compilation settings -
-    # these are modified upon initialize(), 
+    # these are modified upon initialize(),
     # i.e. first connect
     _backslash_escapes = True
     _server_ansiquotes = False
@@ -1717,7 +1687,7 @@ class MySQLDialect(default.DefaultDialect):
             return self._extract_error_code(e) in \
                         (2006, 2013, 2014, 2045, 2055)
         elif isinstance(e, self.dbapi.InterfaceError):
-            # if underlying connection is closed, 
+            # if underlying connection is closed,
             # this is the error you get
             return "(0, '')" in str(e)
         else:
@@ -1932,9 +1902,9 @@ class MySQLDialect(default.DefaultDialect):
 
     def _parsed_state_or_create(self, connection, table_name, schema=None, **kw):
         return self._setup_parser(
-                        connection, 
-                        table_name, 
-                        schema, 
+                        connection,
+                        table_name,
+                        schema,
                         info_cache=kw.get('info_cache', None)
                     )
 
@@ -1942,7 +1912,7 @@ class MySQLDialect(default.DefaultDialect):
     def _tabledef_parser(self):
         """return the MySQLTableDefinitionParser, generate if needed.
 
-        The deferred creation ensures that the dialect has 
+        The deferred creation ensures that the dialect has
         retrieved server version information first.
 
         """
@@ -2029,7 +1999,7 @@ class MySQLDialect(default.DefaultDialect):
 
         row = self._compat_first(
             connection.execute("SHOW VARIABLES LIKE 'sql_mode'"),
-                               charset=self._connection_charset)
+                                charset=self._connection_charset)
 
         if not row:
             mode = ''
