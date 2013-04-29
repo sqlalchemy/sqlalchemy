@@ -617,19 +617,12 @@ class InvalidateDuringResultTest(fixtures.TestBase):
         meta.drop_all()
         engine.dispose()
 
-    @testing.fails_on('+cymysql',
-                      "Buffers the result set and doesn't check for "
-                      "connection close")
-    @testing.fails_on('+pymysql',
-                      "Buffers the result set and doesn't check for "
-                      "connection close")
-    @testing.fails_on('+mysqldb',
-                      "Buffers the result set and doesn't check for "
-                      "connection close")
-    @testing.fails_on('+pg8000',
-                      "Buffers the result set and doesn't check for "
-                      "connection close")
-    @testing.fails_on('+informixdb',
+    @testing.fails_if([
+                    '+mysqlconnector', '+mysqldb'
+                    '+cymysql', '+pymysql', '+pg8000'
+                    ], "Buffers the result set and doesn't check for "
+                        "connection close")
+    @testing.fails_if('+informixdb',
                       "Wrong error thrown, fix in informixdb?")
     def test_invalidate_on_results(self):
         conn = engine.connect()

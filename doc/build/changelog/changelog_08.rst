@@ -4,6 +4,16 @@
 ==============
 
 .. changelog::
+    :version: 0.8.2
+
+    .. change::
+      :tags: bug, mysql
+
+      Updated mysqlconnector dialect to check for disconnect based
+      on the apparent string message sent in the exception; tested
+      against mysqlconnector 1.0.9.
+
+.. changelog::
     :version: 0.8.1
     :released: April 27, 2013
 
