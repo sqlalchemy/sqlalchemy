@@ -125,32 +125,20 @@ engines::
         Column('id', Integer, primary_key=True)
        )
 
-SQL Mode
---------
+Ansi Quoting Style
+------------------
 
-MySQL SQL modes are supported.  Modes that enable ``ANSI_QUOTES`` (such as
-``ANSI``) require an engine option to modify SQLAlchemy's quoting style.
-When using an ANSI-quoting mode, supply ``use_ansiquotes=True`` when
-creating your ``Engine``::
+MySQL features two varieties of identifier "quoting style", one using
+backticks and the other using quotes, e.g. ```some_identifier```  vs.
+``"some_identifier"``.   All MySQL dialects detect which version
+is in use by checking the value of ``sql_mode`` when a connection is first
+established with a particular :class:`.Engine`.  This quoting style comes
+into play when rendering table and column names as well as when reflecting
+existing database structures.  The detection is entirely automatic and
+no special configuration is needed to use either quoting style.
 
-  create_engine('mysql://localhost/test', use_ansiquotes=True)
-
-This is an engine-wide option and is not toggleable on a per-connection basis.
-SQLAlchemy does not presume to ``SET sql_mode`` for you with this option.  For
-the best performance, set the quoting style server-wide in ``my.cnf`` or by
-supplying ``--sql-mode`` to ``mysqld``.  You can also use a
-:class:`sqlalchemy.pool.Pool` listener hook to issue a ``SET SESSION
-sql_mode='...'`` on connect to configure each connection.
-
-If you do not specify ``use_ansiquotes``, the regular MySQL quoting style is
-used by default.
-
-If you do issue a ``SET sql_mode`` through SQLAlchemy, the dialect must be
-updated if the quoting style is changed.  Again, this change will affect all
-connections::
-
-  connection.execute('SET sql_mode="ansi"')
-  connection.dialect.use_ansiquotes = True
+.. versionchanged:: 0.6 detection of ANSI quoting style is entirely automatic,
+   there's no longer any end-user ``create_engine()`` options in this regard.
 
 MySQL SQL Extensions
 --------------------
@@ -1833,7 +1821,8 @@ class MySQLDialect(default.DefaultDialect):
     _backslash_escapes = True
     _server_ansiquotes = False
 
-    def __init__(self, use_ansiquotes=None, isolation_level=None, **kwargs):
+    def __init__(self, isolation_level=None, **kwargs):
+        kwargs.pop('use_ansiquotes', None)   # legacy
         default.DefaultDialect.__init__(self, **kwargs)
         self.isolation_level = isolation_level
 
@@ -2225,7 +2214,7 @@ class MySQLDialect(default.DefaultDialect):
 
         row = self._compat_first(
             connection.execute("SHOW VARIABLES LIKE 'sql_mode'"),
-                               charset=self._connection_charset)
+                                charset=self._connection_charset)
 
         if not row:
             mode = ''
