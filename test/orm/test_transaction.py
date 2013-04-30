@@ -1,4 +1,4 @@
-
+from __future__ import with_statement
 from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message, assert_warnings
 from sqlalchemy import *
@@ -82,6 +82,8 @@ class SessionTransactionTest(FixtureTest):
         except:
             conn.close()
             raise
+
+
 
     @testing.requires.savepoints
     def test_heavy_nesting(self):
@@ -619,6 +621,66 @@ class CleanSavepointTest(FixtureTest):
             s.query(User).filter_by(name='u2').update(dict(name='u2modified'),
                                     synchronize_session='fetch')
         self._run_test(update_fn)
+
+class ContextManagerTest(FixtureTest):
+    run_inserts = None
+
+    @testing.requires.savepoints
+    @engines.close_open_connections
+    def test_contextmanager_nested_rollback(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        sess = Session()
+        def go():
+            with sess.begin_nested():
+                sess.add(User())   # name can't be null
+                sess.flush()
+
+        # and not InvalidRequestError
+        assert_raises(
+            sa_exc.DBAPIError,
+            go
+        )
+
+        with sess.begin_nested():
+            sess.add(User(name='u1'))
+
+        eq_(sess.query(User).count(), 1)
+
+    def test_contextmanager_commit(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        sess = Session(autocommit=True)
+        with sess.begin():
+            sess.add(User(name='u1'))
+
+        sess.rollback()
+        eq_(sess.query(User).count(), 1)
+
+    def test_contextmanager_rollback(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        sess = Session(autocommit=True)
+        def go():
+            with sess.begin():
+                sess.add(User())  # name can't be null
+        assert_raises(
+            sa_exc.DBAPIError,
+            go
+        )
+
+        eq_(sess.query(User).count(), 0)
+
+        with sess.begin():
+            sess.add(User(name='u1'))
+        eq_(sess.query(User).count(), 1)
+
 
 class AutoExpireTest(_LocalFixture):
 
