@@ -7,6 +7,16 @@
     :version: 0.8.2
 
     .. change::
+      :tags: bug, orm
+      :tickets: 2718
+
+      Fixed a regression from 0.7 where the contextmanager feature
+      of :meth:`.Session.begin_nested` would fail to correctly
+      roll back the transaction when a flush error occurred, instead
+      raising its own exception while leaving the session still
+      pending a rollback.
+
+    .. change::
       :tags: bug, mysql
 
       Updated mysqlconnector dialect to check for disconnect based
