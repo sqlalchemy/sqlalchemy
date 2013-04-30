@@ -169,6 +169,7 @@ class SessionTransaction(object):
 
     def _assert_active(self, prepared_ok=False,
                         rollback_ok=False,
+                        deactive_ok=False,
                         closed_msg="This transaction is closed"):
         if self._state is COMMITTED:
             raise sa_exc.InvalidRequestError(
@@ -182,7 +183,7 @@ class SessionTransaction(object):
                         "SQL can be emitted within this transaction."
                     )
         elif self._state is DEACTIVE:
-            if not rollback_ok:
+            if not deactive_ok and not rollback_ok:
                 if self._rollback_exception:
                     raise sa_exc.InvalidRequestError(
                         "This Session's transaction has been rolled back "
@@ -192,7 +193,7 @@ class SessionTransaction(object):
                         " Original exception was: %s"
                         % self._rollback_exception
                     )
-                else:
+                elif not deactive_ok:
                     raise sa_exc.InvalidRequestError(
                         "This Session's transaction has been rolled back "
                         "by a nested rollback() call.  To begin a new "
@@ -435,7 +436,7 @@ class SessionTransaction(object):
         return self
 
     def __exit__(self, type, value, traceback):
-        self._assert_active(prepared_ok=True)
+        self._assert_active(deactive_ok=True, prepared_ok=True)
         if self.session.transaction is None:
             return
         if type is None:
