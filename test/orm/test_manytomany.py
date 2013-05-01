@@ -233,6 +233,9 @@ class M2MTest(fixtures.MappedTest):
         p2 = Place('place2')
         p3 = Place('place3')
 
+        sess = Session()
+        sess.add_all([p3, p1, t1, t2, p2, t3])
+
         t1.inputs.append(p1)
         t1.inputs.append(p2)
         t1.outputs.append(p3)
@@ -240,8 +243,6 @@ class M2MTest(fixtures.MappedTest):
         p2.inputs.append(t2)
         p3.inputs.append(t2)
         p1.outputs.append(t1)
-        sess = Session()
-        sess.add_all((t1, t2, t3, p1, p2, p3))
         sess.commit()
 
         self.assert_result([t1],
