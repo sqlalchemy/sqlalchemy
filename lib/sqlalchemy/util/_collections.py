@@ -9,7 +9,7 @@
 import itertools
 import weakref
 import operator
-from .compat import threading
+from .compat import threading, itertools_filterfalse
 
 EMPTY_SET = frozenset()
 
@@ -470,7 +470,7 @@ class IdentitySet(object):
 
         if len(self) > len(other):
             return False
-        for m in itertools.filterfalse(other._members.__contains__,
+        for m in itertools_filterfalse(other._members.__contains__,
                                         iter(self._members.keys())):
             return False
         return True
@@ -491,7 +491,7 @@ class IdentitySet(object):
         if len(self) < len(other):
             return False
 
-        for m in itertools.filterfalse(self._members.__contains__,
+        for m in itertools_filterfalse(self._members.__contains__,
                                         iter(other._members.keys())):
             return False
         return True

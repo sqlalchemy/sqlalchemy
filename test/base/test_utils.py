@@ -843,14 +843,12 @@ class IdentitySetTest(fixtures.TestBase):
         return super_, sub_, twin1, twin2, unique1, unique2
 
     def _assert_unorderable_types(self, callable_):
-# start Py3K
-        assert_raises_message(
-            TypeError, 'unorderable types', callable_)
-# end Py3K
-# start Py2K
-#        assert_raises_message(
-#            TypeError, 'cannot compare sets using cmp()', callable_)
-# end Py2K
+        if util.py3k:
+            assert_raises_message(
+                TypeError, 'unorderable types', callable_)
+        else:
+            assert_raises_message(
+                TypeError, 'cannot compare sets using cmp()', callable_)
 
     def test_basic_sanity(self):
         IdentitySet = util.IdentitySet
