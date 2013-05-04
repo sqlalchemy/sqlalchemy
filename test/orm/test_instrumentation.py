@@ -41,7 +41,8 @@ class InitTest(fixtures.ORMTest):
     def test_A(self):
         inits = []
 
-        class A(object): pass
+        class A(object):
+            pass
         self.register(A, inits)
 
         obj = A()
@@ -65,7 +66,8 @@ class InitTest(fixtures.ORMTest):
             def __init__(self):
                 inits.append((A, '__init__'))
 
-        class B(A): pass
+        class B(A):
+            pass
         self.register(B, inits)
 
         obj = A()
@@ -148,7 +150,8 @@ class InitTest(fixtures.ORMTest):
                 inits.append((A, '__init__'))
         self.register(A, inits)
 
-        class B(A): pass
+        class B(A):
+            pass
         self.register(B, inits)
 
         obj = A()
@@ -232,7 +235,8 @@ class InitTest(fixtures.ORMTest):
                 inits.append((A, '__init__'))
         self.register(A, inits)
 
-        class B(A): pass
+        class B(A):
+            pass
 
         class C(B):
             def __init__(self):
@@ -260,7 +264,8 @@ class InitTest(fixtures.ORMTest):
                 inits.append((A, '__init__'))
         self.register(A, inits)
 
-        class B(A): pass
+        class B(A):
+            pass
         self.register(B, inits)
 
         class C(B):
@@ -289,10 +294,12 @@ class InitTest(fixtures.ORMTest):
                 inits.append((A, '__init__'))
         self.register(A, inits)
 
-        class B(A): pass
+        class B(A):
+            pass
         self.register(B, inits)
 
-        class C(B): pass
+        class C(B):
+            pass
         self.register(C, inits)
 
         obj = A()
@@ -310,7 +317,8 @@ class InitTest(fixtures.ORMTest):
     def test_A_Bi_C(self):
         inits = []
 
-        class A(object): pass
+        class A(object):
+            pass
         self.register(A, inits)
 
         class B(A):
@@ -318,7 +326,8 @@ class InitTest(fixtures.ORMTest):
                 inits.append((B, '__init__'))
         self.register(B, inits)
 
-        class C(B): pass
+        class C(B):
+            pass
         self.register(C, inits)
 
         obj = A()
@@ -336,10 +345,12 @@ class InitTest(fixtures.ORMTest):
     def test_A_B_Ci(self):
         inits = []
 
-        class A(object): pass
+        class A(object):
+            pass
         self.register(A, inits)
 
-        class B(A): pass
+        class B(A):
+            pass
         self.register(B, inits)
 
         class C(B):
@@ -362,13 +373,16 @@ class InitTest(fixtures.ORMTest):
     def test_A_B_C(self):
         inits = []
 
-        class A(object): pass
+        class A(object):
+            pass
         self.register(A, inits)
 
-        class B(A): pass
+        class B(A):
+            pass
         self.register(B, inits)
 
-        class C(B): pass
+        class C(B):
+            pass
         self.register(C, inits)
 
         obj = A()
@@ -470,7 +484,8 @@ class OnLoadTest(fixtures.ORMTest):
         class A(object):
             pass
 
-        def canary(instance): assert False
+        def canary(instance):
+            assert False
 
         try:
             instrumentation.register_class(A)
@@ -486,7 +501,8 @@ class OnLoadTest(fixtures.ORMTest):
 
 class NativeInstrumentationTest(fixtures.ORMTest):
     def test_register_reserved_attribute(self):
-        class T(object): pass
+        class T(object):
+            pass
 
         instrumentation.register_class(T)
         manager = instrumentation.manager_of_class(T)
@@ -507,7 +523,8 @@ class NativeInstrumentationTest(fixtures.ORMTest):
                   Column('id', Integer, primary_key=True),
                   Column(instrumentation.ClassManager.STATE_ATTR, Integer))
 
-        class T(object): pass
+        class T(object):
+            pass
 
         assert_raises(KeyError, mapper, T, t)
 
@@ -516,7 +533,8 @@ class NativeInstrumentationTest(fixtures.ORMTest):
                   Column('id', Integer, primary_key=True),
                   Column(instrumentation.ClassManager.MANAGER_ATTR, Integer))
 
-        class T(object): pass
+        class T(object):
+            pass
         assert_raises(KeyError, mapper, T, t)
 
 class Py3KFunctionInstTest(fixtures.ORMTest):
@@ -559,23 +577,23 @@ class Py3KFunctionInstTest(fixtures.ORMTest):
         cls, canary = self._kw_only_fixture()
 
         a = cls("a", b="b", c="c")
-        eq_(canary, [(('a', ), {'b':'b','c':'c'})])
+        eq_(canary, [(('a', ), {'b': 'b', 'c': 'c'})])
 
     def test_kw_plus_posn_args(self):
         cls, canary = self._kw_plus_posn_fixture()
 
         a = cls("a", 1, 2, 3, b="b", c="c")
-        eq_(canary, [(('a', 1, 2, 3), {'b':'b','c':'c'})])
+        eq_(canary, [(('a', 1, 2, 3), {'b': 'b', 'c': 'c'})])
 
     def test_kw_only_args_plus_opt(self):
         cls, canary = self._kw_opt_fixture()
 
         a = cls("a", b="b")
-        eq_(canary, [(('a', ), {'b':'b','c':'c'})])
+        eq_(canary, [(('a', ), {'b': 'b', 'c': 'c'})])
 
         canary[:] = []
         a = cls("a", b="b", c="d")
-        eq_(canary, [(('a', ), {'b':'b','c':'d'})])
+        eq_(canary, [(('a', ), {'b': 'b', 'c': 'd'})])
 
     def test_kw_only_sig(self):
         cls, canary = self._kw_only_fixture()
@@ -603,7 +621,8 @@ class MiscTest(fixtures.ORMTest):
         t = Table('t', MetaData(),
                   Column('id', Integer, primary_key=True),
                   Column('x', Integer))
-        class A(object): pass
+        class A(object):
+            pass
         mapper(A, t)
 
         a = A()
@@ -617,8 +636,10 @@ class MiscTest(fixtures.ORMTest):
         t2 = Table('t2', m,
                    Column('id', Integer, primary_key=True),
                    Column('t1_id', Integer, ForeignKey('t1.id')))
-        class A(object): pass
-        class B(object): pass
+        class A(object):
+            pass
+        class B(object):
+            pass
         mapper(A, t1, properties=dict(bs=relationship(B)))
         mapper(B, t2)
 
@@ -626,7 +647,8 @@ class MiscTest(fixtures.ORMTest):
         assert not a.bs
 
     def test_uninstrument(self):
-        class A(object):pass
+        class A(object):
+            pass
 
         manager = instrumentation.register_class(A)
         attributes.register_attribute(A, 'x', uselist=False, useobject=False)
@@ -654,8 +676,10 @@ class MiscTest(fixtures.ORMTest):
                 pass
 
         for base in object, Base:
-            class A(base): pass
-            class B(base): pass
+            class A(base):
+                pass
+            class B(base):
+                pass
             mapper(A, t1, properties=dict(bs=relationship(B, backref='a')))
             mapper(B, t2)
 
@@ -678,13 +702,17 @@ class MiscTest(fixtures.ORMTest):
                    Column('t1_id', Integer, ForeignKey('t1.id')))
 
         class Base(object):
-            def __init__(self): pass
+            def __init__(self):
+                pass
         class Base_AKW(object):
-            def __init__(self, *args, **kwargs): pass
+            def __init__(self, *args, **kwargs):
+                pass
 
         for base in object, Base, Base_AKW:
-            class A(base): pass
-            class B(base): pass
+            class A(base):
+                pass
+            class B(base):
+                pass
             mapper(A, t1)
             mapper(B, t2, properties=dict(a=relationship(A, backref='bs')))
 
