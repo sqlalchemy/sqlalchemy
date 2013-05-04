@@ -11,6 +11,7 @@ from sqlalchemy.types import TypeDecorator, TypeEngine
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.dialects import sqlite
 from sqlalchemy.testing import fixtures
+from sqlalchemy.util import u, b
 
 t = f = f2 = ts = currenttime = metadata = default_generator = None
 
@@ -1157,22 +1158,12 @@ class UnicodeDefaultsTest(fixtures.TestBase):
         Column(Unicode(32))
 
     def test_unicode_default(self):
-# start Py3K
-        default = 'foo'
-# end Py3K
-# start Py2K
-#        default = u'foo'
-# end Py2K
+        default = u('foo')
         Column(Unicode(32), default=default)
 
 
     def test_nonunicode_default(self):
-# start Py3K
-        default = b'foo'
-# end Py3K
-# start Py2K
-#        default = 'foo'
-# end Py2K
+        default = b('foo')
         assert_raises_message(
             sa.exc.SAWarning,
             "Unicode column received non-unicode default value.",
