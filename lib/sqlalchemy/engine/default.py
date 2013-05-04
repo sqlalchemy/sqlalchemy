@@ -221,7 +221,7 @@ class DefaultDialect(interfaces.Dialect):
                     )
                     row = cursor.fetchone()
 
-                    return isinstance(row[0], util.string_types)
+                    return isinstance(row[0], util.text_type)
                 except self.dbapi.Error as de:
                     util.warn("Exception attempting to "
                             "detect unicode returns: %r" % de)

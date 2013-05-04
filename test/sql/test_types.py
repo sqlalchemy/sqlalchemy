@@ -1349,7 +1349,7 @@ class NumericRawSQLTest(fixtures.TestBase):
         metadata = self.metadata
         self._fixture(metadata, Integer, 45)
         val = testing.db.execute("select val from t").scalar()
-        assert isinstance(val, int)
+        assert isinstance(val, util.int_types)
         eq_(val, 45)
 
     @testing.provide_metadata
