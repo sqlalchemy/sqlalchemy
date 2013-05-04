@@ -12,6 +12,7 @@ from sqlalchemy.testing.schema import Table, Column
 import sqlalchemy as tsa
 from sqlalchemy import testing
 from sqlalchemy.testing import engines
+from sqlalchemy import util
 from sqlalchemy.testing.engines import testing_engine
 import logging.handlers
 from sqlalchemy.dialects.oracle.zxjdbc import ReturningParam
@@ -836,7 +837,7 @@ class MockStrategyTest(fixtures.TestBase):
     def _engine_fixture(self):
         buf = io.StringIO()
         def dump(sql, *multiparams, **params):
-            buf.write(str(sql.compile(dialect=engine.dialect)))
+            buf.write(util.text_type(sql.compile(dialect=engine.dialect)))
         engine = create_engine('postgresql://', strategy='mock', executor=dump)
         return engine, buf
 
