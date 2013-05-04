@@ -12,6 +12,7 @@ from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.dialects import sqlite
 from sqlalchemy.testing import fixtures
 from sqlalchemy.util import u, b
+from sqlalchemy import util
 
 t = f = f2 = ts = currenttime = metadata = default_generator = None
 
@@ -648,7 +649,7 @@ class SequenceExecTest(fixtures.TestBase):
     def _assert_seq_result(self, ret):
         """asserts return of next_value is an int"""
 
-        assert isinstance(ret, int)
+        assert isinstance(ret, util.int_types)
         assert ret > 0
 
     def test_implicit_connectionless(self):
