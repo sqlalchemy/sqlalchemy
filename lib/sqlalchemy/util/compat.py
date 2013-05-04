@@ -37,6 +37,9 @@ if py3k:
 
     from inspect import getfullargspec as inspect_getfullargspec
     from urllib.parse import quote_plus, unquote_plus, parse_qsl
+    import configparser
+    from io import StringIO
+
     string_types = str,
     binary_type = bytes
     text_type = str
@@ -74,6 +77,9 @@ else:
     from inspect import getargspec as inspect_getfullargspec
     from urllib import quote_plus, unquote_plus
     from urlparse import parse_qsl
+    import ConfigParser as configparser
+    from StringIO import StringIO
+
     string_types = basestring,
     binary_type = str
     text_type = unicode

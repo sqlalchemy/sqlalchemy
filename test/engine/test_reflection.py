@@ -7,6 +7,8 @@ from sqlalchemy.testing import ComparesTables, \
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import testing
+from sqlalchemy.util import ue
+
 
 metadata, users = None, None
 
@@ -1042,16 +1044,16 @@ class UnicodeReflectionTest(fixtures.TestBase):
             ('plain', 'col_plain', 'ix_plain')
         ])
         no_has_table = [
-            ('no_has_table_1', 'col_Unit\u00e9ble', 'ix_Unit\u00e9ble'),
-            ('no_has_table_2', 'col_\u6e2c\u8a66', 'ix_\u6e2c\u8a66'),
+            ('no_has_table_1', ue('col_Unit\u00e9ble'), ue('ix_Unit\u00e9ble')),
+            ('no_has_table_2', ue('col_\u6e2c\u8a66'), ue('ix_\u6e2c\u8a66')),
         ]
         no_case_sensitivity = [
-            ('\u6e2c\u8a66', 'col_\u6e2c\u8a66', 'ix_\u6e2c\u8a66'),
-            ('unit\u00e9ble', 'col_unit\u00e9ble', 'ix_unit\u00e9ble'),
+            (ue('\u6e2c\u8a66'), ue('col_\u6e2c\u8a66'), ue('ix_\u6e2c\u8a66')),
+            (ue('unit\u00e9ble'), ue('col_unit\u00e9ble'), ue('ix_unit\u00e9ble')),
         ]
         full = [
-            ('Unit\u00e9ble', 'col_Unit\u00e9ble', 'ix_Unit\u00e9ble'),
-            ('\u6e2c\u8a66', 'col_\u6e2c\u8a66', 'ix_\u6e2c\u8a66'),
+            (ue('Unit\u00e9ble'), ue('col_Unit\u00e9ble'), ue('ix_Unit\u00e9ble')),
+            (ue('\u6e2c\u8a66'), ue('col_\u6e2c\u8a66'), ue('ix_\u6e2c\u8a66')),
         ]
 
         # as you can see, our options for this kind of thing

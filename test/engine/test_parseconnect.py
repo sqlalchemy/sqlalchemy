@@ -1,6 +1,5 @@
-from sqlalchemy.testing import assert_raises, assert_raises_message, eq_
-import configparser
-import io
+from sqlalchemy.testing import assert_raises, eq_
+from sqlalchemy.util.compat import configparser, StringIO
 import sqlalchemy.engine.url as url
 from sqlalchemy import create_engine, engine_from_config, exc, pool
 from sqlalchemy.engine.util import _coerce_config
@@ -104,7 +103,7 @@ pool_threadlocal=1
 pool_timeout=10
 """
         ini = configparser.ConfigParser()
-        ini.readfp(io.StringIO(raw))
+        ini.readfp(StringIO(raw))
 
         expected = {
             'url': 'postgresql://scott:tiger@somehost/test?fooz=somevalue',
