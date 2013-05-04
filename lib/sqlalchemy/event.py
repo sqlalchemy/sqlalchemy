@@ -378,6 +378,8 @@ class _EmptyListener(object):
     def __bool__(self):
         return bool(self.parent_listeners)
 
+    __nonzero__ = __bool__
+
 
 class _CompoundListener(object):
     _exec_once = False
@@ -415,6 +417,7 @@ class _CompoundListener(object):
     def __bool__(self):
         return bool(self.listeners or self.parent_listeners)
 
+    __nonzero__ = __bool__
 
 class _ListenerCollection(_CompoundListener):
     """Instance-level attributes on instances of :class:`._Dispatch`.

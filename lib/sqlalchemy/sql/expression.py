@@ -3769,6 +3769,7 @@ class BinaryExpression(ColumnElement):
             return self.operator(hash(self._orig[0]), hash(self._orig[1]))
         else:
             raise TypeError("Boolean value of this clause is not defined")
+
     __nonzero__ = __bool__
 
     @property

@@ -657,12 +657,10 @@ class CollectionAdapter(object):
         if getattr(obj, '_sa_adapter', None) is not None:
             return getattr(obj, '_sa_adapter')
         elif setting_type == dict:
-# start Py3K
-            return list(obj.values())
-# end Py3K
-# start Py2K
-#            return getattr(obj, 'itervalues', getattr(obj, 'values'))()
-# end Py2K
+            if util.py3k:
+                return obj.values()
+            else:
+                return getattr(obj, 'itervalues', getattr(obj, 'values'))()
         else:
             return iter(obj)
 
@@ -706,8 +704,6 @@ class CollectionAdapter(object):
     def __iter__(self):
         """Iterate over entities in the collection."""
 
-# start Py3K
-# end Py3K
         return iter(getattr(self._data(), '_sa_iterator')())
 
     def __len__(self):
@@ -716,6 +712,8 @@ class CollectionAdapter(object):
 
     def __bool__(self):
         return True
+
+    __nonzero__ = __bool__
 
     def fire_append_event(self, item, initiator=None):
         """Notify that a entity has entered the collection.
@@ -1130,24 +1128,23 @@ def _list_decorators():
         _tidy(__delitem__)
         return __delitem__
 
-# start Py2K
-#    def __setslice__(fn):
-#        def __setslice__(self, start, end, values):
-#            for value in self[start:end]:
-#                __del(self, value)
-#            values = [__set(self, value) for value in values]
-#            fn(self, start, end, values)
-#        _tidy(__setslice__)
-#        return __setslice__
-#
-#    def __delslice__(fn):
-#        def __delslice__(self, start, end):
-#            for value in self[start:end]:
-#                __del(self, value)
-#            fn(self, start, end)
-#        _tidy(__delslice__)
-#        return __delslice__
-# end Py2K
+    if util.py2k:
+        def __setslice__(fn):
+            def __setslice__(self, start, end, values):
+                for value in self[start:end]:
+                    __del(self, value)
+                values = [__set(self, value) for value in values]
+                fn(self, start, end, values)
+            _tidy(__setslice__)
+            return __setslice__
+
+        def __delslice__(fn):
+            def __delslice__(self, start, end):
+                for value in self[start:end]:
+                    __del(self, value)
+                fn(self, start, end)
+            _tidy(__delslice__)
+            return __delslice__
 
     def extend(fn):
         def extend(self, iterable):
@@ -1465,12 +1462,8 @@ __interfaces = {
         ),
 
     # decorators are required for dicts and object collections.
-# start Py3K
-    dict: ({'iterator': 'values'}, _dict_decorators()),
-# end Py3K
-# start Py2K
-#    dict: ({'iterator': 'itervalues'}, _dict_decorators()),
-# end Py2K
+    dict: ({'iterator': 'values'}, _dict_decorators()) if util.py3k
+            else ({'iterator': 'itervalues'}, _dict_decorators()),
     }
 
 

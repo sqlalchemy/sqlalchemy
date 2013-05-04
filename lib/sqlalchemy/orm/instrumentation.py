@@ -329,6 +329,8 @@ class ClassManager(dict):
         """All ClassManagers are non-zero regardless of attribute state."""
         return True
 
+    __nonzero__ = __bool__
+
     def __repr__(self):
         return '<%s of %r at %x>' % (
             self.__class__.__name__, self.class_, id(self))

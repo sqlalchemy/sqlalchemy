@@ -478,6 +478,8 @@ class _AssociationCollection(object):
     def __bool__(self):
         return bool(self.col)
 
+    __nonzero__ = __bool__
+
     def __getstate__(self):
         return {'parent': self.parent, 'lazy_collection': self.lazy_collection}
 

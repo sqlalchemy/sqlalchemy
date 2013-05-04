@@ -711,12 +711,12 @@ class ColKeysTest(fixtures.MappedTest):
         refugees_table = Table('refugee', metadata, Column('refugee_fid'
                                , Integer, primary_key=True,
                                test_needs_autoincrement=True),
-                               Column('refugee_name', Unicode(30),
+                               Column('refugee_name', String(30),
                                key='name'))
         offices_table = Table('office', metadata, Column('office_fid',
                               Integer, primary_key=True,
                               test_needs_autoincrement=True),
-                              Column('office_name', Unicode(30),
+                              Column('office_name', String(30),
                               key='name'))
 
     @classmethod

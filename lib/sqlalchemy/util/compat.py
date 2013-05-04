@@ -184,8 +184,11 @@ else:
 if py3k:
     exec_ = getattr(builtins, 'exec')
 else:
-    def exec_(func_text, globals_, lcl):
-        exec('exec func_text in globals_, lcl')
+    def exec_(func_text, globals_, lcl=None):
+        if lcl is None:
+            exec('exec func_text in globals_')
+        else:
+            exec('exec func_text in globals_, lcl')
 
 
 def with_metaclass(meta, *bases):

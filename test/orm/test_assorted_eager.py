@@ -723,13 +723,13 @@ class EagerTest8(fixtures.MappedTest):
         Table('prj', metadata,
               Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('created', sa.DateTime ),
-              Column('title', sa.Unicode(100)))
+              Column('title', sa.String(100)))
 
         Table('task', metadata,
               Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('status_id', Integer,
                      ForeignKey('task_status.id'), nullable=False),
-              Column('title', sa.Unicode(100)),
+              Column('title', sa.String(100)),
               Column('task_type_id', Integer ,
                      ForeignKey('task_type.id'), nullable=False),
               Column('prj_id', Integer , ForeignKey('prj.id'), nullable=False))
@@ -748,8 +748,8 @@ class EagerTest8(fixtures.MappedTest):
 
         Table('msg_type', metadata,
               Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-              Column('name', sa.Unicode(20)),
-              Column('display_name', sa.Unicode(20)))
+              Column('name', sa.String(20)),
+              Column('display_name', sa.String(20)))
 
     @classmethod
     def fixtures(cls):

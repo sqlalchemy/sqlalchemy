@@ -2107,7 +2107,7 @@ class SelfReferentialM2MEagerTest(fixtures.MappedTest):
     def define_tables(cls, metadata):
         Table('widget', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('name', sa.Unicode(40), nullable=False, unique=True),
+            Column('name', sa.String(40), nullable=False, unique=True),
         )
 
         Table('widget_rel', metadata,

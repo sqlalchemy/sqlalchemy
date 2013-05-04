@@ -413,6 +413,7 @@ class EntityRegistry(PathRegistry, dict):
 
     def __bool__(self):
         return True
+    __nonzero__ = __bool__
 
     def __getitem__(self, entity):
         if isinstance(entity, (int, slice)):

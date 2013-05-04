@@ -981,12 +981,7 @@ class Query(object):
         """Return a scalar result corresponding to the given
         column expression."""
         try:
-# start Py3K
-            return self.values(column).__next__()[0]
-# end Py3K
-# start Py2K
-#            return self.values(column).next()[0]
-# end Py2K
+            return next(self.values(column))[0]
         except StopIteration:
             return None
 

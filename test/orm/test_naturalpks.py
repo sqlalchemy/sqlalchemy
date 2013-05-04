@@ -499,7 +499,7 @@ class ReversePKsTest(fixtures.MappedTest):
             'user', metadata,
             Column('code', Integer, primary_key=True),
             Column('status', Integer, primary_key=True),
-            Column('username', Unicode(50), nullable=False),
+            Column('username', String(50), nullable=False),
             )
 
     @classmethod

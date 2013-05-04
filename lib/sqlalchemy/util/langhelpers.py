@@ -499,7 +499,7 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
               "return %(name)s.%(method)s%(d_args)s" % locals())
 
         env = from_instance is not None and {name: from_instance} or {}
-        compat.exec_(py, env, {})
+        compat.exec_(py, env)
         try:
             env[method].__defaults__ = fn.__defaults__
         except AttributeError:
@@ -510,12 +510,7 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
 def methods_equivalent(meth1, meth2):
     """Return True if the two methods are the same implementation."""
 
-# start Py3K
     return getattr(meth1, '__func__', meth1) is getattr(meth2, '__func__', meth2)
-# end Py3K
-# start Py2K
-#    return getattr(meth1, 'im_func', meth1) is getattr(meth2, 'im_func', meth2)
-# end Py2K
 
 
 def as_interface(obj, cls=None, methods=None, required=None):

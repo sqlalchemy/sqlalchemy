@@ -386,8 +386,8 @@ def create_proxied_attribute(descriptor):
                     return getattr(self.comparator, attribute)
                 except AttributeError:
                     raise AttributeError(
-                    'Neither %r object nor %r object associated with %s '
-                    'has an attribute %r' % (
+                        'Neither %r object nor %r object associated with %s '
+                        'has an attribute %r' % (
                     type(descriptor).__name__,
                     type(self.comparator).__name__,
                     self,
@@ -1216,6 +1216,7 @@ class History(History):
 
     def __bool__(self):
         return self != HISTORY_BLANK
+    __nonzero__ = __bool__
 
     def empty(self):
         """Return True if this :class:`.History` has no changes
