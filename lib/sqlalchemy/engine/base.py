@@ -956,17 +956,11 @@ class Connection(Connectable):
         """
         try:
             cursor.close()
-        except Exception as e:
-            try:
-                ex_text = str(e)
-            except TypeError:
-                ex_text = repr(e)
-            if not self.closed:
-                self.connection._logger.warn(
-                            "Error closing cursor: %s", ex_text)
-
-            if isinstance(e, (SystemExit, KeyboardInterrupt)):
-                raise
+        except (SystemExit, KeyboardInterrupt):
+            raise
+        except Exception:
+            self.connection._logger.error(
+                                    "Error closing cursor", exc_info=True)
 
     _reentrant_error = False
     _is_disconnect = False
