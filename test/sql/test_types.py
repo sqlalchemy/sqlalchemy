@@ -74,7 +74,7 @@ class AdaptTest(fixtures.TestBase):
                 (DATE, "DATE"),
                 (TIME, ("TIME", "TIME WITHOUT TIME ZONE")),
                 (CLOB, "CLOB"),
-                (VARCHAR(10), ("VARCHAR(10)","VARCHAR(10 CHAR)")),
+                (VARCHAR(10), ("VARCHAR(10)", "VARCHAR(10 CHAR)")),
                 (NVARCHAR(10), ("NVARCHAR(10)", "NATIONAL VARCHAR(10)",
                                     "NVARCHAR2(10)")),
                 (CHAR, "CHAR"),
@@ -122,7 +122,7 @@ class AdaptTest(fixtures.TestBase):
                 t1 = typ()
             for cls in [typ] + typ.__subclasses__():
                 if not issubclass(typ, types.Enum) and \
-                    issubclass(cls, types.Enum):
+                        issubclass(cls, types.Enum):
                     continue
                 t2 = t1.adapt(cls)
                 assert t1 is not t2
@@ -275,8 +275,8 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
     def test_typedecorator_impl(self):
         for impl_, exp, kw in [
             (Float, "FLOAT", {}),
-            (Float, "FLOAT(2)", {'precision':2}),
-            (Float(2), "FLOAT(2)", {'precision':4}),
+            (Float, "FLOAT(2)", {'precision': 2}),
+            (Float(2), "FLOAT(2)", {'precision': 4}),
             (Numeric(19, 2), "NUMERIC(19, 2)", {}),
         ]:
             for dialect_ in (dialects.postgresql, dialects.mssql, dialects.mysql):
@@ -458,7 +458,7 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
                 return "VARCHAR(100)"
             def bind_processor(self, dialect):
                 def process(value):
-                    return "BIND_IN"+ value
+                    return "BIND_IN" + value
                 return process
             def result_processor(self, dialect, coltype):
                 def process(value):
@@ -471,13 +471,13 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
             impl = String
             def bind_processor(self, dialect):
                 impl_processor = super(MyDecoratedType, self).bind_processor(dialect)\
-                                        or (lambda value:value)
+                                        or (lambda value: value)
                 def process(value):
-                    return "BIND_IN"+ impl_processor(value)
+                    return "BIND_IN" + impl_processor(value)
                 return process
             def result_processor(self, dialect, coltype):
                 impl_processor = super(MyDecoratedType, self).result_processor(dialect, coltype)\
-                                        or (lambda value:value)
+                                        or (lambda value: value)
                 def process(value):
                     return impl_processor(value) + "BIND_OUT"
                 return process
@@ -520,15 +520,15 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
 
             def bind_processor(self, dialect):
                 impl_processor = super(MyUnicodeType, self).bind_processor(dialect)\
-                                        or (lambda value:value)
+                                        or (lambda value: value)
 
                 def process(value):
-                    return "BIND_IN"+ impl_processor(value)
+                    return "BIND_IN" + impl_processor(value)
                 return process
 
             def result_processor(self, dialect, coltype):
                 impl_processor = super(MyUnicodeType, self).result_processor(dialect, coltype)\
-                                        or (lambda value:value)
+                                        or (lambda value: value)
                 def process(value):
                     return impl_processor(value) + "BIND_OUT"
                 return process
@@ -537,17 +537,17 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
                 return MyUnicodeType(self.impl.length)
 
         Table('users', metadata,
-            Column('user_id', Integer, primary_key = True),
+            Column('user_id', Integer, primary_key=True),
             # totall custom type
-            Column('goofy', MyType, nullable = False),
+            Column('goofy', MyType, nullable=False),
 
             # decorated type with an argument, so its a String
-            Column('goofy2', MyDecoratedType(50), nullable = False),
+            Column('goofy2', MyDecoratedType(50), nullable=False),
 
-            Column('goofy4', MyUnicodeType(50), nullable = False),
-            Column('goofy7', MyNewUnicodeType(50), nullable = False),
-            Column('goofy8', MyNewIntType, nullable = False),
-            Column('goofy9', MyNewIntSubClass, nullable = False),
+            Column('goofy4', MyUnicodeType(50), nullable=False),
+            Column('goofy7', MyNewUnicodeType(50), nullable=False),
+            Column('goofy8', MyNewIntType, nullable=False),
+            Column('goofy9', MyNewIntSubClass, nullable=False),
         )
 
 class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -801,9 +801,9 @@ class EnumTest(fixtures.TestBase):
                         'but expression is of type text')
     def test_round_trip(self):
         enum_table.insert().execute([
-            {'id':1, 'someenum':'two'},
-            {'id':2, 'someenum':'two'},
-            {'id':3, 'someenum':'one'},
+            {'id': 1, 'someenum': 'two'},
+            {'id': 2, 'someenum': 'two'},
+            {'id': 3, 'someenum': 'one'},
         ])
 
         eq_(
@@ -817,9 +817,9 @@ class EnumTest(fixtures.TestBase):
 
     def test_non_native_round_trip(self):
         non_native_enum_table.insert().execute([
-            {'id':1, 'someenum':'two'},
-            {'id':2, 'someenum':'two'},
-            {'id':3, 'someenum':'one'},
+            {'id': 1, 'someenum': 'two'},
+            {'id': 2, 'someenum': 'two'},
+            {'id': 3, 'someenum': 'one'},
         ])
 
         eq_(
@@ -834,11 +834,11 @@ class EnumTest(fixtures.TestBase):
 
     def test_adapt(self):
         from sqlalchemy.dialects.postgresql import ENUM
-        e1 = Enum('one','two','three', native_enum=False)
+        e1 = Enum('one', 'two', 'three', native_enum=False)
         eq_(e1.adapt(ENUM).native_enum, False)
-        e1 = Enum('one','two','three', native_enum=True)
+        e1 = Enum('one', 'two', 'three', native_enum=True)
         eq_(e1.adapt(ENUM).native_enum, True)
-        e1 = Enum('one','two','three', name='foo', schema='bar')
+        e1 = Enum('one', 'two', 'three', name='foo', schema='bar')
         eq_(e1.adapt(ENUM).name, 'foo')
         eq_(e1.adapt(ENUM).schema, 'bar')
 
@@ -848,7 +848,7 @@ class EnumTest(fixtures.TestBase):
     def test_constraint(self):
         assert_raises(exc.DBAPIError,
             enum_table.insert().execute,
-            {'id':4, 'someenum':'four'}
+            {'id': 4, 'someenum': 'four'}
         )
 
     @testing.fails_on('mysql',
@@ -856,7 +856,7 @@ class EnumTest(fixtures.TestBase):
     def test_non_native_constraint(self):
         assert_raises(exc.DBAPIError,
             non_native_enum_table.insert().execute,
-            {'id':4, 'someenum':'four'}
+            {'id': 4, 'someenum': 'four'}
         )
 
     def test_mock_engine_no_prob(self):
@@ -919,8 +919,8 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
         testobj2 = pickleable.Foo('im foo 2')
         testobj3 = pickleable.Foo('im foo 3')
 
-        stream1 =self.load_stream('binary_data_one.dat')
-        stream2 =self.load_stream('binary_data_two.dat')
+        stream1 = self.load_stream('binary_data_one.dat')
+        stream2 = self.load_stream('binary_data_two.dat')
         binary_table.insert().execute(
                             primary_id=1,
                             misc='binary_data_one.dat',
@@ -945,9 +945,9 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
             binary_table.select(order_by=binary_table.c.primary_id),
             text(
                 "select * from binary_table order by binary_table.primary_id",
-                typemap={'pickled':PickleType,
-                        'mypickle':MyPickleType,
-                        'data':LargeBinary, 'data_slice':LargeBinary},
+                typemap={'pickled': PickleType,
+                        'mypickle': MyPickleType,
+                        'data': LargeBinary, 'data_slice': LargeBinary},
                 bind=testing.db)
         ):
             l = stmt.execute().fetchall()
@@ -968,7 +968,9 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
 
         data = os.urandom(32)
         binary_table.insert().execute(data=data)
-        eq_(binary_table.select().where(binary_table.c.data==data).alias().count().scalar(), 1)
+        eq_(binary_table.select().
+                    where(binary_table.c.data == data).alias().
+                    count().scalar(), 1)
 
 
     def load_stream(self, name):
@@ -994,8 +996,8 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
                     return value / 10
                 return process
             def adapt_operator(self, op):
-                return {operators.add:operators.sub,
-                    operators.sub:operators.add}.get(op, op)
+                return {operators.add: operators.sub,
+                    operators.sub: operators.add}.get(op, op)
 
         class MyTypeDec(types.TypeDecorator):
             impl = String
@@ -1018,10 +1020,10 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         meta.create_all()
 
         test_table.insert().execute({
-                                'id':1,
-                                'data':'somedata',
-                                'atimestamp':datetime.date(2007, 10, 15),
-                                'avalue':25, 'bvalue':'foo'})
+                                'id': 1,
+                                'data': 'somedata',
+                                'atimestamp': datetime.date(2007, 10, 15),
+                                'avalue': 25, 'bvalue': 'foo'})
 
     @classmethod
     def teardown_class(cls):
@@ -1045,7 +1047,7 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
             testing.db.execute(
                     select([test_table.c.id, test_table.c.data, test_table.c.atimestamp])
                     .where(expr),
-                    {"thedate":datetime.date(2007, 10, 15)}).fetchall(),
+                    {"thedate": datetime.date(2007, 10, 15)}).fetchall(),
             [(1, 'somedata', datetime.date(2007, 10, 15))]
         )
 
@@ -1064,7 +1066,7 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
 
         eq_(
             testing.db.execute(test_table.select().where(expr),
-                {"somevalue":"foo"}).fetchall(),
+                {"somevalue": "foo"}).fetchall(),
             [(1, 'somedata',
                 datetime.date(2007, 10, 15), 25, 'BIND_INfooBIND_OUT')]
         )
@@ -1328,7 +1330,7 @@ class NumericRawSQLTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_decimal_fp(self):
         metadata = self.metadata
-        t = self._fixture(metadata, Numeric(10, 5), decimal.Decimal("45.5"))
+        self._fixture(metadata, Numeric(10, 5), decimal.Decimal("45.5"))
         val = testing.db.execute("select val from t").scalar()
         assert isinstance(val, decimal.Decimal)
         eq_(val, decimal.Decimal("45.5"))
@@ -1337,7 +1339,7 @@ class NumericRawSQLTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_decimal_int(self):
         metadata = self.metadata
-        t = self._fixture(metadata, Numeric(10, 5), decimal.Decimal("45"))
+        self._fixture(metadata, Numeric(10, 5), decimal.Decimal("45"))
         val = testing.db.execute("select val from t").scalar()
         assert isinstance(val, decimal.Decimal)
         eq_(val, decimal.Decimal("45"))
@@ -1345,7 +1347,7 @@ class NumericRawSQLTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_ints(self):
         metadata = self.metadata
-        t = self._fixture(metadata, Integer, 45)
+        self._fixture(metadata, Integer, 45)
         val = testing.db.execute("select val from t").scalar()
         assert isinstance(val, int)
         eq_(val, 45)
@@ -1353,7 +1355,7 @@ class NumericRawSQLTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_float(self):
         metadata = self.metadata
-        t = self._fixture(metadata, Float, 46.583)
+        self._fixture(metadata, Float, 46.583)
         val = testing.db.execute("select val from t").scalar()
         assert isinstance(val, float)
 
@@ -1486,7 +1488,7 @@ class PickleTest(fixtures.TestBase):
         p1 = PickleType()
 
         for obj in (
-            {'1':'2'},
+            {'1': '2'},
             pickleable.Bar(5, 6),
             pickleable.OldSchool(10, 11)
         ):
@@ -1501,7 +1503,7 @@ class PickleTest(fixtures.TestBase):
         p1 = PickleType()
 
         for obj in (
-            {'1':'2'},
+            {'1': '2'},
             pickleable.Bar(5, 6),
             pickleable.OldSchool(10, 11)
         ):
