@@ -812,7 +812,7 @@ class SQLiteDialect(default.DefaultDialect):
             coltype = sqltypes.NullType()
 
         if default is not None:
-            default = str(default)
+            default = util.text_type(default)
 
         return {
             'name': name,

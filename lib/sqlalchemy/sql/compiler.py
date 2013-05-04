@@ -1868,11 +1868,11 @@ class DDLCompiler(engine.Compiled):
                     first_pk = True
             except exc.CompileError as ce:
                 util.raise_from_cause(
-                    exc.CompileError(util.u("(in table '%s', column '%s'): %s" % (
+                    exc.CompileError(util.u("(in table '%s', column '%s'): %s") % (
                                                 table.description,
                                                 column.name,
                                                 ce.args[0]
-                                            ))))
+                                            )))
 
         const = self.create_table_constraints(table)
         if const:
@@ -2344,7 +2344,7 @@ class IdentifierPreparer(object):
         lc_value = value.lower()
         return (lc_value in self.reserved_words
                 or value[0] in self.illegal_initial_characters
-                or not self.legal_characters.match(str(value))
+                or not self.legal_characters.match(util.text_type(value))
                 or (lc_value != value))
 
     def quote_schema(self, schema, force):

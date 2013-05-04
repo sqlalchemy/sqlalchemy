@@ -46,6 +46,9 @@ if py3k:
     def u(s):
         return s
 
+    def ue(s):
+        return s
+
     def b(s):
         return s.encode("latin-1")
 
@@ -79,6 +82,13 @@ else:
         return (ord(byte) for byte in buf)
 
     def u(s):
+        # this differs from what six does, which doesn't support non-ASCII
+        # strings - we only use u() with
+        # literal source strings, and all our source files with non-ascii
+        # in them (all are tests) are utf-8 encoded.
+        return unicode(s, "utf-8")
+
+    def ue(s):
         return unicode(s, "unicode_escape")
 
     def b(s):

@@ -20,6 +20,7 @@ from sqlalchemy import Integer, String, MetaData, Table, Column, select, \
     intersect, union_all, Boolean, distinct, join, outerjoin, asc, desc,\
     over, subquery, case
 import decimal
+from sqlalchemy.util import u
 from sqlalchemy import exc, sql, util, types, schema
 from sqlalchemy.sql import table, column, label
 from sqlalchemy.sql.expression import ClauseList, _literal_as_text, HasPrefixes
@@ -2680,11 +2681,11 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_reraise_of_column_spec_issue_unicode(self):
         MyType = self._illegal_type_fixture()
         t1 = Table('t', MetaData(),
-            Column('méil', MyType())
+            Column(u('méil'), MyType())
         )
         assert_raises_message(
             exc.CompileError,
-            r"\(in table 't', column 'méil'\): Couldn't compile type",
+            u(r"\(in table 't', column 'méil'\): Couldn't compile type"),
             schema.CreateTable(t1).compile
         )
 
