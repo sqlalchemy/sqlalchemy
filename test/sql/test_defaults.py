@@ -16,6 +16,8 @@ from sqlalchemy import util
 
 t = f = f2 = ts = currenttime = metadata = default_generator = None
 
+t = f = f2 = ts = currenttime = metadata = default_generator = None
+
 class DefaultTest(fixtures.TestBase):
 
     @classmethod
