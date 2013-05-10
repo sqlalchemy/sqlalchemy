@@ -351,31 +351,64 @@ def relationship(argument, secondary=None, **kwargs):
       **Deprecated.**  Please see :class:`.AttributeEvents`.
 
     :param foreign_keys:
-      a list of columns which are to be used as "foreign key" columns.
-      Normally, :func:`relationship` uses the :class:`.ForeignKey`
-      and :class:`.ForeignKeyConstraint` objects present within the
-      mapped or secondary :class:`.Table` to determine the "foreign" side of
-      the join condition.  This is used to construct SQL clauses in order
-      to load objects, as well as to "synchronize" values from
-      primary key columns to referencing foreign key columns.
-      The ``foreign_keys`` parameter overrides the notion of what's
-      "foreign" in the table metadata, allowing the specification
-      of a list of :class:`.Column` objects that should be considered
-      part of the foreign key.
+      a list of columns which are to be used as "foreign key" columns,
+      or columns which refer to the value in a remote column, within the
+      context of this :func:`.relationship` object's ``primaryjoin``
+      condition.   That is, if the ``primaryjoin`` condition of this
+      :func:`.relationship` is ``a.id == b.a_id``, and the values in ``b.a_id``
+      are required to be present in ``a.id``, then the "foreign key" column
+      of this :func:`.relationship` is ``b.a_id``.
 
-      There are only two use cases for ``foreign_keys`` - one, when it is not
-      convenient for :class:`.Table` metadata to contain its own foreign key
-      metadata (which should be almost never, unless reflecting a large amount
-      of tables from a MySQL MyISAM schema, or a schema that doesn't actually
-      have foreign keys on it). The other is for extremely
-      rare and exotic composite foreign key setups where some columns
-      should artificially not be considered as foreign.
+      In normal cases, the ``foreign_keys`` parameter is **not required.**
+      :func:`.relationship` will **automatically** determine which columns
+      in the ``primaryjoin`` conditition are to be considered "foreign key"
+      columns based on those :class:`.Column` objects that specify
+      :class:`.ForeignKey`, or are otherwise listed as referencing columns
+      in a :class:`.ForeignKeyConstraint` construct.  ``foreign_keys`` is only
+      needed when:
+
+        1. There is more than one way to construct a join from the local
+           table to the remote table, as there are multiple foreign key
+           references present.  Setting ``foreign_keys`` will limit the
+           :func:`.relationship` to consider just those columns specified
+           here as "foreign".
+
+           .. versionchanged:: 0.8
+                A multiple-foreign key join ambiguity can be resolved by
+                setting the ``foreign_keys`` parameter alone, without the
+                need to explicitly set ``primaryjoin`` as well.
+
+        2. The :class:`.Table` being mapped does not actually have
+           :class:`.ForeignKey` or :class:`.ForeignKeyConstraint`
+           constructs present, often because the table
+           was reflected from a database that does not support foreign key
+           reflection (MySQL MyISAM).
+
+        3. The ``primaryjoin`` argument is used to construct a non-standard
+           join condition, which makes use of columns or expressions that do
+           not normally refer to their "parent" column, such as a join condition
+           expressed by a complex comparison using a SQL function.
+
+      The :func:`.relationship` construct will raise informative error messages
+      that suggest the use of the ``foreign_keys`` parameter when presented
+      with an ambiguous condition.   In typical cases, if :func:`.relationship`
+      doesn't raise any exceptions, the ``foreign_keys`` parameter is usually
+      not needed.
 
       ``foreign_keys`` may also be passed as a callable function
       which is evaluated at mapper initialization time, and may be passed as a
       Python-evaluable string when using Declarative.
 
-      .. versionchanged:: 0.8
+      .. seealso::
+
+        :ref:`relationship_foreign_keys`
+
+        :ref:`relationship_custom_foreign`
+
+        :func:`.foreign` - allows direct annotation of the "foreign" columns
+        within a ``primaryjoin`` condition.
+
+      .. versionadded:: 0.8
           The :func:`.foreign` annotation can also be applied
           directly to the ``primaryjoin`` expression, which is an alternate,
           more specific system of describing which columns in a particular
