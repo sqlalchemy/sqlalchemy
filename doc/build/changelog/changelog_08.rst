@@ -8,6 +8,16 @@
 
     .. change::
       :tags: bug, orm
+      :tickets: 2481
+
+      Fixed a regression from 0.7 caused by this ticket, which
+      made the check for recursion overflow in self-referential
+      eager joining too loose, missing a particular circumstance
+      where a subclass had lazy="joined" or "subquery" configured
+      and the load was a "with_polymorphic" against the base.
+
+    .. change::
+      :tags: bug, orm
       :tickets: 2718
 
       Fixed a regression from 0.7 where the contextmanager feature
