@@ -304,7 +304,14 @@ class PathRegistry(object):
             yield path[i], path[i + 1]
 
     def contains_mapper(self, mapper):
-        return mapper in self.path
+        for path_mapper in [
+            self.path[i] for i in range(0, len(self.path), 2)
+        ]:
+            if isinstance(path_mapper, mapperlib.Mapper) and \
+                path_mapper.isa(mapper):
+                return True
+        else:
+            return False
 
     def contains(self, reg, key):
         return (key, self.path) in reg._attributes

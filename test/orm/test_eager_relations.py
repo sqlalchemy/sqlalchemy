@@ -2663,4 +2663,58 @@ class CyclicalInheritingEagerTestTwo(fixtures.DeclarativeMappedTest,
         d = session.query(Director).options(joinedload('*')).first()
         assert len(list(session)) == 3
 
+class CyclicalInheritingEagerTestThree(fixtures.DeclarativeMappedTest,
+                        testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
 
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+        class PersistentObject(Base):
+            __tablename__ = 'persistent'
+            id = Column(Integer, primary_key=True,
+                    test_needs_autoincrement=True)
+
+            __mapper_args__ = {'with_polymorphic': "*"}
+
+        class Director(PersistentObject):
+            __tablename__ = 'director'
+            id = Column(Integer, ForeignKey('persistent.id'), primary_key=True)
+            other_id = Column(Integer, ForeignKey('persistent.id'))
+            name = Column(String(50))
+            other = relationship(PersistentObject,
+                            primaryjoin=other_id==PersistentObject.id,
+                            lazy=False)
+            __mapper_args__ = {"inherit_condition": id==PersistentObject.id}
+
+    def test_gen_query_nodepth(self):
+        PersistentObject = self.classes.PersistentObject
+        sess = create_session()
+        self.assert_compile(
+            sess.query(PersistentObject),
+            "SELECT persistent.id AS persistent_id, director.id AS director_id,"
+            " director.other_id AS director_other_id, "
+            "director.name AS director_name FROM persistent "
+            "LEFT OUTER JOIN director ON director.id = persistent.id"
+        )
+
+    def test_gen_query_depth(self):
+        PersistentObject = self.classes.PersistentObject
+        Director = self.classes.Director
+        sess = create_session()
+        self.assert_compile(
+            sess.query(PersistentObject).options(joinedload(Director.other, join_depth=1)),
+            "SELECT persistent.id AS persistent_id, director.id AS director_id, "
+            "director.other_id AS director_other_id, "
+            "director.name AS director_name, anon_1.persistent_id AS "
+            "anon_1_persistent_id, anon_1.director_id AS anon_1_director_id, "
+            "anon_1.director_other_id AS anon_1_director_other_id, "
+            "anon_1.director_name AS anon_1_director_name "
+            "FROM persistent LEFT OUTER JOIN director ON director.id = persistent.id "
+            "LEFT OUTER JOIN (SELECT persistent.id AS persistent_id, "
+                "director.id AS director_id, director.other_id AS director_other_id, "
+                "director.name AS director_name "
+                "FROM persistent LEFT OUTER JOIN director ON "
+                "director.id = persistent.id) "
+            "AS anon_1 ON director.other_id = anon_1.persistent_id"
+        )
