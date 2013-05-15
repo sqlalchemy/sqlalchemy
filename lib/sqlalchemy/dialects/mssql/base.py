@@ -701,6 +701,12 @@ class MSSQLCompiler(compiler.SQLCompiler):
                 (self.process(binary.left, **kw),
                 self.process(binary.right, **kw))
 
+    def visit_true(self, expr, **kw):
+        return '1'
+
+    def visit_false(self, expr, **kw):
+        return '0'
+
     def visit_match_op_binary(self, binary, operator, **kw):
         return "CONTAINS (%s, %s)" % (
                                         self.process(binary.left, **kw),

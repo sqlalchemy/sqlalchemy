@@ -15,6 +15,7 @@ import decimal
 from sqlalchemy.testing.schema import Table, Column
 import datetime
 import os
+from sqlalchemy import sql
 
 
 class OutParamTest(fixtures.TestBase, AssertsExecutionResults):
@@ -105,6 +106,15 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __dialect__ = oracle.dialect()
+
+    def test_true_false(self):
+        self.assert_compile(
+            sql.false(), "0"
+        )
+        self.assert_compile(
+            sql.true(),
+            "1"
+        )
 
     def test_owner(self):
         meta = MetaData()

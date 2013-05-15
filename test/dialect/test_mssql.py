@@ -17,9 +17,20 @@ from sqlalchemy.testing import emits_warning_on, assert_raises_message
 import decimal
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.util.compat import b
+from sqlalchemy import sql
+
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = mssql.dialect()
+
+    def test_true_false(self):
+        self.assert_compile(
+            sql.false(), "0"
+        )
+        self.assert_compile(
+            sql.true(),
+            "1"
+        )
 
     def test_select(self):
         t = table('sometable', column('somecolumn'))
