@@ -33,6 +33,14 @@
       on the apparent string message sent in the exception; tested
       against mysqlconnector 1.0.9.
 
+    .. change::
+      :tags: bug, sql, mssql
+      :tickets: 2682
+
+      Regression from this ticket caused the unsupported keyword
+      "true" to render, added logic to convert this to 1/0
+      for SQL server.
+
 .. changelog::
     :version: 0.8.1
     :released: April 27, 2013
