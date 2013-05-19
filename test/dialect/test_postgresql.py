@@ -3249,9 +3249,10 @@ class _RangeTypeMixin(object):
     def define_tables(cls, metadata):
         # no reason ranges shouldn't be primary keys,
         # so lets just use them as such
-        Table('data_table', metadata,
+        table = Table('data_table', metadata,
             Column('range', cls._col_type, primary_key=True),
         )
+        cls.col = table.c.range
 
     def test_actual_type(self):
         eq_(str(self._col_type()), self._col_str)
@@ -3282,6 +3283,163 @@ class _RangeTypeMixin(object):
         )
         self._assert_data()
 
+    # operator tests
+        
+    def _test_clause(self, colclause, expected):
+        dialect = postgresql.dialect()
+        compiled = str(colclause.compile(dialect=dialect))
+        eq_(compiled, expected)
+
+    def test_where_equal(self):
+        self._test_clause(
+            self.col==self._data_str,
+            "data_table.range = %(range_1)s"
+        )
+
+    def test_where_not_equal(self):
+        self._test_clause(
+            self.col!=self._data_str,
+            "data_table.range <> %(range_1)s"
+        )
+
+    def test_where_less_than(self):
+        self._test_clause(
+            self.col < self._data_str,
+            "data_table.range < %(range_1)s"
+        )
+
+    def test_where_greater_than(self):
+        self._test_clause(
+            self.col > self._data_str,
+            "data_table.range > %(range_1)s"
+        )
+
+    def test_where_less_than_or_equal(self):
+        self._test_clause(
+            self.col <= self._data_str,
+            "data_table.range <= %(range_1)s"
+        )
+
+    def test_where_greater_than_or_equal(self):
+        self._test_clause(
+            self.col >= self._data_str,
+            "data_table.range >= %(range_1)s"
+        )
+
+    def test_contains(self):
+        self._test_clause(
+            self.col.contains(self._data_str),
+            "data_table.range @> %(range_1)s"
+        )
+
+    def test_contained_by(self):
+        self._test_clause(
+            self.col.contained_by(self._data_str),
+            "data_table.range <@ %(range_1)s"
+        )
+
+    def test_overlaps(self):
+        self._test_clause(
+            self.col.overlaps(self._data_str),
+            "data_table.range && %(range_1)s"
+        )
+
+    def test_strictly_left_of(self):
+        self._test_clause(
+            self.col << self._data_str,
+            "data_table.range << %(range_1)s"
+        )
+        self._test_clause(
+            self.col.strictly_left_of(self._data_str),
+            "data_table.range << %(range_1)s"
+        )
+
+    def test_strictly_right_of(self):
+        self._test_clause(
+            self.col >> self._data_str,
+            "data_table.range >> %(range_1)s"
+        )
+        self._test_clause(
+            self.col.strictly_right_of(self._data_str),
+            "data_table.range >> %(range_1)s"
+        )
+
+    def test_not_extend_right_of(self):
+        self._test_clause(
+            self.col.not_extend_right_of(self._data_str),
+            "data_table.range &< %(range_1)s"
+        )
+
+    def test_not_extend_left_of(self):
+        self._test_clause(
+            self.col.not_extend_left_of(self._data_str),
+            "data_table.range &> %(range_1)s"
+        )
+
+    def test_adjacent_to(self):
+        self._test_clause(
+            self.col.adjacent_to(self._data_str),
+            "data_table.range -|- %(range_1)s"
+        )
+
+    def test_union(self):
+        self._test_clause(
+            self.col + self.col,
+            "data_table.range + data_table.range"
+        )
+
+    def test_union_result(self):
+        # insert
+        testing.db.engine.execute(
+            self.tables.data_table.insert(),
+            {'range': self._data_str}
+        )
+        # select
+        range = self.tables.data_table.c.range
+        data = testing.db.execute(
+            select([range + range])
+            ).fetchall()
+        eq_(data, [(self._data_obj(), )])
+        
+
+    def test_intersection(self):
+        self._test_clause(
+            self.col * self.col,
+            "data_table.range * data_table.range"
+        )
+
+    def test_intersection_result(self):
+        # insert
+        testing.db.engine.execute(
+            self.tables.data_table.insert(),
+            {'range': self._data_str}
+        )
+        # select
+        range = self.tables.data_table.c.range
+        data = testing.db.execute(
+            select([range * range])
+            ).fetchall()
+        eq_(data, [(self._data_obj(), )])
+        
+    def test_different(self):
+        self._test_clause(
+            self.col - self.col,
+            "data_table.range - data_table.range"
+        )
+
+    def test_difference_result(self):
+        # insert
+        testing.db.engine.execute(
+            self.tables.data_table.insert(),
+            {'range': self._data_str}
+        )
+        # select
+        range = self.tables.data_table.c.range
+        data = testing.db.execute(
+            select([range - range])
+            ).fetchall()
+        eq_(data, [(self._data_obj().__class__(empty=True), )])
+        
 class Int4RangeTests(_RangeTypeMixin, fixtures.TablesTest):
 
     _col_type = INT4RANGE
