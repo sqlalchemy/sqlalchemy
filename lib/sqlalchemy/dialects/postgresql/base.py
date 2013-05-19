@@ -1150,6 +1150,24 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_HSTORE(self, type_):
         return "HSTORE"
 
+    def visit_INT4RANGE(self, type_):
+        return "INT4RANGE"
+
+    def visit_INT8RANGE(self, type_):
+        return "INT8RANGE"
+
+    def visit_NUMRANGE(self, type_):
+        return "NUMRANGE"
+
+    def visit_DATERANGE(self, type_):
+        return "DATERANGE"
+
+    def visit_TSRANGE(self, type_):
+        return "TSRANGE"
+
+    def visit_TSTZRANGE(self, type_):
+        return "TSTZRANGE"
+
     def visit_datetime(self, type_):
         return self.visit_TIMESTAMP(type_)
 

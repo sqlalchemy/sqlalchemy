@@ -17,7 +17,8 @@ from sqlalchemy import Table, Column, select, MetaData, text, Integer, \
 from sqlalchemy.orm import Session, mapper, aliased
 from sqlalchemy import exc, schema, types
 from sqlalchemy.dialects.postgresql import base as postgresql
-from sqlalchemy.dialects.postgresql import HSTORE, hstore, array
+from sqlalchemy.dialects.postgresql import HSTORE, hstore, array, \
+            INT4RANGE, INT8RANGE, NUMRANGE, DATERANGE, TSRANGE, TSTZRANGE
 import decimal
 from sqlalchemy import util
 from sqlalchemy.testing.util import round_decimal
@@ -3232,3 +3233,124 @@ class HStoreRoundTripTest(fixtures.TablesTest):
     def test_unicode_round_trip_native(self):
         engine = testing.db
         self._test_unicode_round_trip(engine)
+
+class _RangeTypeMixin(object):
+    __requires__ = 'range_types',
+    __dialect__ = 'postgresql+psycopg2'
+
+    @property
+    def extras(self):
+        # done this way so we don't get ImportErrors with
+        # older psycopg2 versions.
+        from psycopg2 import extras
+        return extras
+    
+    @classmethod
+    def define_tables(cls, metadata):
+        # no reason ranges shouldn't be primary keys,
+        # so lets just use them as such
+        Table('data_table', metadata,
+            Column('range', cls._col_type, primary_key=True),
+        )
+
+    def test_actual_type(self):
+        eq_(str(self._col_type()), self._col_str)
+        
+    def test_reflect(self):
+        from sqlalchemy import inspect
+        insp = inspect(testing.db)
+        cols = insp.get_columns('data_table')
+        assert isinstance(cols[0]['type'], self._col_type)
+
+    def _assert_data(self):
+        data = testing.db.execute(
+            select([self.tables.data_table.c.range])
+        ).fetchall()
+        eq_(data, [(self._data_obj(), )])
+
+    def test_insert_obj(self):
+        testing.db.engine.execute(
+            self.tables.data_table.insert(),
+            {'range': self._data_obj()}
+        )
+        self._assert_data()
+
+    def test_insert_text(self):
+        testing.db.engine.execute(
+            self.tables.data_table.insert(),
+            {'range': self._data_str}
+        )
+        self._assert_data()
+
+class Int4RangeTests(_RangeTypeMixin, fixtures.TablesTest):
+
+    _col_type = INT4RANGE
+    _col_str = 'INT4RANGE'
+    _data_str = '[1,2)'
+    def _data_obj(self):
+        return self.extras.NumericRange(1, 2)
+
+class Int8RangeTests(_RangeTypeMixin, fixtures.TablesTest):
+
+    _col_type = INT8RANGE
+    _col_str = 'INT8RANGE'
+    _data_str = '[9223372036854775806,9223372036854775807)'
+    def _data_obj(self):
+        return self.extras.NumericRange(
+            9223372036854775806, 9223372036854775807
+            )
+
+class NumRangeTests(_RangeTypeMixin, fixtures.TablesTest):
+
+    _col_type = NUMRANGE
+    _col_str = 'NUMRANGE'
+    _data_str = '[1.0,2.0)'
+    def _data_obj(self):
+        return self.extras.NumericRange(
+            decimal.Decimal('1.0'), decimal.Decimal('2.0')
+            )
+
+class DateRangeTests(_RangeTypeMixin, fixtures.TablesTest):
+
+    _col_type = DATERANGE
+    _col_str = 'DATERANGE'
+    _data_str = '[2013-03-23,2013-03-24)'
+    def _data_obj(self):
+        return self.extras.DateRange(
+            datetime.date(2013, 3, 23), datetime.date(2013, 3, 24)
+            )
+
+class DateTimeRangeTests(_RangeTypeMixin, fixtures.TablesTest):
+
+    _col_type = TSRANGE
+    _col_str = 'TSRANGE'
+    _data_str = '[2013-03-23 14:30,2013-03-23 23:30)'
+    def _data_obj(self):
+        return self.extras.DateTimeRange(
+            datetime.datetime(2013, 3, 23, 14, 30),
+            datetime.datetime(2013, 3, 23, 23, 30)
+            )
+
+class DateTimeTZRangeTests(_RangeTypeMixin, fixtures.TablesTest):
+
+    _col_type = TSTZRANGE
+    _col_str = 'TSTZRANGE'
+
+    # make sure we use one, steady timestamp with timezone pair
+    # for all parts of all these tests
+    _tstzs = None
+    def tstzs(self):
+        if self._tstzs is None:
+            lower = testing.db.connect().scalar(
+                func.current_timestamp().select()
+                )
+            upper = lower+datetime.timedelta(1)
+            self._tstzs = (lower, upper)
+        return self._tstzs
+
+    @property
+    def _data_str(self):
+        return '[%s,%s)' % self.tstzs()
+    
+    def _data_obj(self):
+        return self.extras.DateTimeTZRange(*self.tstzs())
