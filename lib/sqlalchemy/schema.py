@@ -2007,7 +2007,7 @@ class Constraint(SchemaItem):
             pass
         raise exc.InvalidRequestError(
                     "This constraint is not bound to a table.  Did you "
-                    "mean to call table.add_constraint(constraint) ?")
+                    "mean to call table.append_constraint(constraint) ?")
 
     def _set_parent(self, parent):
         self.parent = parent
