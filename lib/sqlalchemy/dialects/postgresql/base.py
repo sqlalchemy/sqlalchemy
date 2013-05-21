@@ -1124,6 +1124,22 @@ class PGDDLCompiler(compiler.DDLCompiler):
             text += " WHERE " + where_compiled
         return text
 
+    def visit_exclude_constraint(self, constraint):
+        text = ""
+        if constraint.name is not None:
+            text += "CONSTRAINT %s " % \
+                    self.preparer.format_constraint(constraint)
+        elements = []
+        for c in constraint.columns:
+            op = constraint.operators[c.name]
+            elements.append(self.preparer.quote(c.name, c.quote)+' WITH '+op)
+        text += "EXCLUDE USING %s (%s)" % (constraint.using, ', '.join(elements))
+        if constraint.where is not None:
+            sqltext = sql_util.expression_as_ddl(constraint.where)
+            text += ' WHERE (%s)' % self.sql_compiler.process(sqltext)
+        text += self.define_constraint_deferrability(constraint)
+        return text
+
 
 class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_INET(self, type_):

@@ -18,7 +18,8 @@ from sqlalchemy.orm import Session, mapper, aliased
 from sqlalchemy import exc, schema, types
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import HSTORE, hstore, array, \
-            INT4RANGE, INT8RANGE, NUMRANGE, DATERANGE, TSRANGE, TSTZRANGE
+            INT4RANGE, INT8RANGE, NUMRANGE, DATERANGE, TSRANGE, TSTZRANGE, \
+            ExcludeConstraint
 import decimal
 from sqlalchemy import util
 from sqlalchemy.testing.util import round_decimal
@@ -181,6 +182,53 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(schema.CreateIndex(idx3),
                             'CREATE INDEX test_idx3 ON testtbl '
                             'USING hash (data)',
+                            dialect=postgresql.dialect())
+
+    def test_exclude_constraint_min(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, 
+                    Column('room', Integer, primary_key=True))
+        cons = ExcludeConstraint(('room', '='))
+        tbl.append_constraint(cons)
+        self.assert_compile(schema.AddConstraint(cons),
+                            'ALTER TABLE testtbl ADD EXCLUDE USING gist '
+                            '(room WITH =)',
+                            dialect=postgresql.dialect())
+
+    def test_exclude_constraint_full(self):
+        m = MetaData()
+        room = Column('room', Integer, primary_key=True)
+        tbl = Table('testtbl', m,
+                    room,
+                    Column('during', TSRANGE))
+        room = Column('room', Integer, primary_key=True)
+        cons = ExcludeConstraint((room, '='), ('during', '&&'),
+                                 name='my_name',
+                                 using='gist',
+                                 where="room > 100",
+                                 deferrable=True,
+                                 initially='immediate')
+        tbl.append_constraint(cons)
+        self.assert_compile(schema.AddConstraint(cons),
+                            'ALTER TABLE testtbl ADD CONSTRAINT my_name '
+                            'EXCLUDE USING gist '
+                            '(room WITH =, during WITH ''&&) WHERE '
+                            '(room > 100) DEFERRABLE INITIALLY immediate',
+                            dialect=postgresql.dialect())
+
+    def test_exclude_constraint_copy(self):
+        m = MetaData()
+        cons = ExcludeConstraint(('room', '='))
+        tbl = Table('testtbl', m, 
+              Column('room', Integer, primary_key=True),
+              cons)
+        # apparently you can't copy a ColumnCollectionConstraint until
+        # after it has been bound to a table...
+        cons_copy = cons.copy()
+        tbl.append_constraint(cons_copy)
+        self.assert_compile(schema.AddConstraint(cons_copy),
+                            'ALTER TABLE testtbl ADD EXCLUDE USING gist '
+                            '(room WITH =)',
                             dialect=postgresql.dialect())
 
     def test_substring(self):
