@@ -150,7 +150,7 @@ class PluginLoader(object):
         self.impls[name] = load
 
 
-def get_cls_kwargs(cls):
+def get_cls_kwargs(cls, _set=None):
     """Return the full set of inherited kwargs for the given `cls`.
 
     Probes a class's __init__ method, collecting all named arguments.  If the
@@ -162,33 +162,31 @@ def get_cls_kwargs(cls):
     No anonymous tuple arguments please !
 
     """
+    toplevel = _set == None
+    if toplevel:
+        _set = set()
 
-    for c in cls.__mro__:
-        if '__init__' in c.__dict__:
-            stack = set([c])
-            break
-    else:
-        return []
+    ctr = cls.__dict__.get('__init__', False)
 
-    args = set()
-    while stack:
-        class_ = stack.pop()
-        ctr = class_.__dict__.get('__init__', False)
-        if (not ctr or
-            not isinstance(ctr, types.FunctionType) or
-                not isinstance(ctr.func_code, types.CodeType)):
-            stack.update(class_.__bases__)
-            continue
+    has_init = ctr and isinstance(ctr, types.FunctionType) and \
+        isinstance(ctr.func_code, types.CodeType)
 
-        # this is shorthand for
-        # names, _, has_kw, _ = inspect.getargspec(ctr)
-
+    if has_init:
         names, has_kw = inspect_func_args(ctr)
-        args.update(names)
-        if has_kw:
-            stack.update(class_.__bases__)
-    args.discard('self')
-    return args
+        _set.update(names)
+
+        if not has_kw and not toplevel:
+            return None
+
+    if not has_init or has_kw:
+        for c in cls.__bases__:
+            if get_cls_kwargs(c, _set) is None:
+                break
+
+    _set.discard('self')
+    return _set
+
+
 
 try:
     from inspect import CO_VARKEYWORDS

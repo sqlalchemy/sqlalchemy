@@ -1084,6 +1084,10 @@ class ArgInspectionTest(fixtures.TestBase):
             def __init__(self, b1, **kw):
                 pass
 
+        class B2(B):
+            def __init__(self, b2):
+                pass
+
         class AB(A, B):
             def __init__(self, ab):
                 pass
@@ -1101,13 +1105,25 @@ class ArgInspectionTest(fixtures.TestBase):
         class CBA(B, A):
             pass
 
+        class CB1A1(B1, A1):
+            pass
+
         class CAB1(A, B1):
             pass
 
         class CB1A(B1, A):
             pass
 
+        class CB2A(B2, A):
+            pass
+
         class D(object):
+            pass
+
+        class BA2(B, A):
+            pass
+
+        class A11B1(A11, B1):
             pass
 
         def test(cls, *expected):
@@ -1122,10 +1138,14 @@ class ArgInspectionTest(fixtures.TestBase):
         test(BA, 'ba', 'b', 'a')
         test(BA1, 'ba', 'b', 'a')
         test(CAB, 'a')
-        test(CBA, 'b')
+        test(CBA, 'b', 'a')
         test(CAB1, 'a')
-        test(CB1A, 'b1', 'b')
+        test(CB1A, 'b1', 'b', 'a')
+        test(CB2A, 'b2')
+        test(CB1A1, "a1", "b1", "b")
         test(D)
+        test(BA2, "a", "b")
+        test(A11B1, "a1", "a11", "b", "b1")
 
     def test_get_func_kwargs(self):
 
