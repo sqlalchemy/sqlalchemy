@@ -7,6 +7,14 @@
     :version: 0.8.2
 
     .. change::
+      :tags: bug, engine, sybase
+      :tickets: 2732
+
+      Fixed a bug where the routine to detect the correct kwargs
+      being sent to :func:`.create_engine` would fail in some cases,
+      such as with the Sybase dialect.
+
+    .. change::
       :tags: bug, orm
       :tickets: 2481
 
