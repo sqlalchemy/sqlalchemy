@@ -1,0 +1,11 @@
+*.pyc
+build/
+dist/
+docs/build/output/
+dogpile_data/
+*.orig
+tox.ini
+.venv
+.egg-info
+.coverage
+.*,cover
