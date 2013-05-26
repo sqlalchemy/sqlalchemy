@@ -389,12 +389,11 @@ class Inspector(object):
             del tblkw[k]
             tblkw[str(k)] = v
 
-# start Py2K
-#        if isinstance(schema, str):
-#            schema = schema.decode(dialect.encoding)
-#        if isinstance(table_name, str):
-#            table_name = table_name.decode(dialect.encoding)
-# end Py2K
+        if util.py2k:
+            if isinstance(schema, str):
+                schema = schema.decode(dialect.encoding)
+            if isinstance(table_name, str):
+                table_name = table_name.decode(dialect.encoding)
 
         # columns
         found_table = False

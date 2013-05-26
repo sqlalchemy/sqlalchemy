@@ -6,7 +6,7 @@
 
 import weakref
 from . import attributes
-
+from .. import util
 
 class IdentityMap(dict):
     def __init__(self):
@@ -152,32 +152,28 @@ class WeakInstanceDict(IdentityMap):
 
         return result
 
-# start Py3K
-    def items(self):
-        return iter(self._items())
-    
-    def values(self):
-        return iter(self._values())
-# end Py3K
-# start Py2K
-#    items = _items
-#
-#    def iteritems(self):
-#        return iter(self.items())
-#
-#    values = _values
-#
-#    def itervalues(self):
-#        return iter(self.values())
-# end Py2K
+    if util.py2k:
+        items = _items
+
+        def iteritems(self):
+            return iter(self.items())
+
+        values = _values
+
+        def itervalues(self):
+            return iter(self.values())
+    else:
+        def items(self):
+            return iter(self._items())
+
+        def values(self):
+            return iter(self._values())
 
     def all_states(self):
-# start Py3K
-         return list(dict.values(self))
-# end Py3K
-# start Py2K
-#        return dict.values(self)
-# end Py2K
+        if util.py2k:
+            return dict.values(self)
+        else:
+             return list(dict.values(self))
 
     def discard(self, state):
         st = dict.get(self, state.key, None)

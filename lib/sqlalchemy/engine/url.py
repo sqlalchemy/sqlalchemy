@@ -149,7 +149,7 @@ def make_url(name_or_url):
     existing URL object is passed, just returns the object.
     """
 
-    if isinstance(name_or_url, str):
+    if isinstance(name_or_url, util.string_types):
         return _parse_rfc1738_args(name_or_url)
     else:
         return name_or_url

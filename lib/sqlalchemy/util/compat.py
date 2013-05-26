@@ -75,6 +75,7 @@ if py3k:
 
     import itertools
     itertools_filterfalse = itertools.filterfalse
+    itertools_filter = filter
     itertools_imap = map
 
     import base64
@@ -135,6 +136,7 @@ else:
 
     import itertools
     itertools_filterfalse = itertools.ifilterfalse
+    itertools_filter = itertools.ifilter
     itertools_imap = itertools.imap
 
 

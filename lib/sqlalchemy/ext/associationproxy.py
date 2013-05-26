@@ -571,7 +571,7 @@ class _AssociationList(_AssociationCollection):
 
     def count(self, value):
         return sum([1 for _ in
-                    filter(lambda v: v == value, iter(self))])
+                    util.itertools_filter(lambda v: v == value, iter(self))])
 
     def extend(self, values):
         for v in values:
@@ -740,7 +740,7 @@ class _AssociationDict(_AssociationCollection):
         return cmp(dict(self), other)
 
     def __repr__(self):
-        return repr(dict(list(self.items())))
+        return repr(dict(self.items()))
 
     def get(self, key, default=None):
         try:
@@ -756,26 +756,35 @@ class _AssociationDict(_AssociationCollection):
             return self[key]
 
     def keys(self):
-        return list(self.col.keys())
+        return self.col.keys()
 
-    def iterkeys(self):
-        return iter(self.col.keys())
+    def _iteritems(self):
+        for key in self.col:
+            yield (key, self._get(self.col[key]))
+        raise StopIteration
 
-    def values(self):
-        return [self._get(member) for member in list(self.col.values())]
-
-    def itervalues(self):
+    def _itervalues(self):
         for key in self.col:
             yield self._get(self.col[key])
         raise StopIteration
 
-    def items(self):
-        return [(k, self._get(self.col[k])) for k in self]
+    def _iterkeys(self):
+        return self.col.iterkeys()
 
-    def iteritems(self):
-        for key in self.col:
-            yield (key, self._get(self.col[key]))
-        raise StopIteration
+
+    if util.py2k:
+        iterkeys = _iterkeys
+        itervalues = _itervalues
+        iteritems = _iteritems
+
+        def values(self):
+            return [self._get(member) for member in list(self.col.values())]
+
+        def items(self):
+            return [(k, self._get(self.col[k])) for k in self]
+    else:
+        values = _itervalues
+        items = _iteritems
 
     def pop(self, key, default=_NotProvided):
         if default is _NotProvided:
@@ -813,7 +822,7 @@ class _AssociationDict(_AssociationCollection):
             self[key] = value
 
     def copy(self):
-        return dict(list(self.items()))
+        return dict(self.items())
 
     def __hash__(self):
         raise TypeError("%s objects are unhashable" % type(self).__name__)
@@ -845,6 +854,8 @@ class _AssociationSet(_AssociationCollection):
             return True
         else:
             return False
+
+    __nonzero__ = __bool__
 
     def __contains__(self, value):
         for member in self.col:
