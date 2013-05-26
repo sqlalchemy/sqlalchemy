@@ -16,8 +16,8 @@ from sqlalchemy import testing
 from sqlalchemy.testing import emits_warning_on, assert_raises_message
 import decimal
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.util.compat import b
-from sqlalchemy import sql
+from sqlalchemy.util import b, u, ue
+from sqlalchemy import sql, util
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -862,11 +862,11 @@ class QueryUnicodeTest(fixtures.TestBase):
         # encode in UTF-8 (sting object) because this is the default
         # dialect encoding
 
-        con.execute("insert into unitest_table values ('bien u\
-                    umang\xc3\xa9')".encode('UTF-8'))
+        con.execute(ue("insert into unitest_table values ('bien u\
+                    umang\xc3\xa9')").encode('UTF-8'))
         try:
             r = t1.select().execute().first()
-            assert isinstance(r[1], str), \
+            assert isinstance(r[1], util.text_type), \
                 '%s is %s instead of unicode, working on %s' % (r[1],
                     type(r[1]), meta.bind)
         finally:
@@ -2084,7 +2084,7 @@ class InfoCoerceUnicodeTest(fixtures.TestBase):
 
         dialect = mssql.dialect()
         value = CoerceUnicode().bind_processor(dialect)('a string')
-        assert isinstance(value, str)
+        assert isinstance(value, util.text_type)
 
 class ReflectHugeViewTest(fixtures.TestBase):
     __only_on__ = 'mssql'
