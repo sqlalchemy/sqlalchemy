@@ -232,7 +232,7 @@ def bind_values(clause):
 
 
 def _quote_ddl_expr(element):
-    if isinstance(element, str):
+    if isinstance(element, util.string_types):
         element = element.replace("'", "''")
         return "'%s'" % element
     else:
@@ -765,7 +765,7 @@ class AliasedRow(object):
         return self.row[self.map[key]]
 
     def keys(self):
-        return list(self.row.keys())
+        return self.row.keys()
 
 
 class ClauseAdapter(visitors.ReplacingCloningVisitor):

@@ -267,9 +267,7 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
         }
     )
 
-# start Py3K
     description_encoding = None
-# end Py3K
 
     driver = 'pysqlite'
 

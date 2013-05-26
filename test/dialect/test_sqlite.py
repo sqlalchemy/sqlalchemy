@@ -4,7 +4,7 @@ from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message
 import datetime
 from sqlalchemy import *
-from sqlalchemy import exc, sql, schema, pool, types as sqltypes
+from sqlalchemy import exc, sql, schema, pool, types as sqltypes, util
 from sqlalchemy.dialects.sqlite import base as sqlite, \
     pysqlite as pysqlite_dialect
 from sqlalchemy.engine.url import make_url
@@ -84,7 +84,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             eq_(row, (1, datetime.date(2010, 5, 10),
             datetime.datetime( 2010, 5, 10, 12, 15, 25, )))
             r = engine.execute(func.current_date()).scalar()
-            assert isinstance(r, str)
+            assert isinstance(r, util.string_types)
         finally:
             t.drop(engine)
             engine.dispose()
@@ -104,8 +104,8 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             UnicodeText(),
             ):
             bindproc = t.dialect_impl(dialect).bind_processor(dialect)
-            assert not bindproc or isinstance(bindproc('some string'),
-                    str)
+            assert not bindproc or \
+                isinstance(bindproc(util.u('some string')), util.text_type)
 
     @testing.provide_metadata
     def test_type_reflection(self):
@@ -602,7 +602,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             'dow': '%w',
             'week': '%W',
             }
-        for field, subst in list(mapping.items()):
+        for field, subst in mapping.items():
             self.assert_compile(select([extract(field, t.c.col1)]),
                                 "SELECT CAST(STRFTIME('%s', t.col1) AS "
                                 "INTEGER) AS anon_1 FROM t" % subst)
