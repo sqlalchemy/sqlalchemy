@@ -10,3 +10,4 @@ tox.ini
 .coverage
 .*,cover
 *.so
+sqlnet.log

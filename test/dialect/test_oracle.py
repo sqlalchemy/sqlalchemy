@@ -7,7 +7,7 @@ from sqlalchemy import types as sqltypes, exc, schema
 from sqlalchemy.sql import table, column
 from sqlalchemy.testing import fixtures, AssertsExecutionResults, AssertsCompiledSQL
 from sqlalchemy import testing
-from sqlalchemy.util import u
+from sqlalchemy.util import u, b
 from sqlalchemy import util
 from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy.testing.engines import testing_engine
@@ -1279,10 +1279,10 @@ class TypesTest(fixtures.TestBase):
             Column('data', oracle.RAW(35))
         )
         metadata.create_all()
-        testing.db.execute(raw_table.insert(), id=1, data="ABCDEF")
+        testing.db.execute(raw_table.insert(), id=1, data=b("ABCDEF"))
         eq_(
             testing.db.execute(raw_table.select()).first(),
-            (1, "ABCDEF")
+            (1, b("ABCDEF"))
         )
 
     @testing.provide_metadata
@@ -1369,10 +1369,10 @@ class TypesTest(fixtures.TestBase):
         try:
             engine.execute(t.insert(), id=1,
                                         data='this is text',
-                                        bindata='this is binary')
+                                        bindata=b('this is binary'))
             row = engine.execute(t.select()).first()
             eq_(row['data'].read(), 'this is text')
-            eq_(row['bindata'].read(), 'this is binary')
+            eq_(row['bindata'].read(), b('this is binary'))
         finally:
             t.drop(engine)
 
@@ -1457,7 +1457,8 @@ class BufferedColumnTest(fixtures.TestBase, AssertsCompiledSQL):
         stream = os.path.join(
                         os.path.dirname(__file__), "..",
                         'binary_data_one.dat')
-        stream = file(stream).read(12000)
+        with open(stream, "rb") as file_:
+            stream = file_.read(12000)
 
         for i in range(1, 11):
             binary_table.insert().execute(id=i, data=stream)
