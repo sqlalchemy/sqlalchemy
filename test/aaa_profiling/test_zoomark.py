@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 """Benchmark for SQLAlchemy.
 
 An adaptation of Robert Brewers' ZooMark speed tests. """

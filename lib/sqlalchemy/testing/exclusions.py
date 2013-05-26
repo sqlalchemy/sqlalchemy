@@ -92,7 +92,7 @@ class Predicate(object):
             return OrPredicate([cls.as_predicate(pred) for pred in predicate])
         elif isinstance(predicate, tuple):
             return SpecPredicate(*predicate)
-        elif isinstance(predicate, str):
+        elif isinstance(predicate, util.string_types):
             return SpecPredicate(predicate, None, None)
         elif util.callable(predicate):
             return LambdaPredicate(predicate)
