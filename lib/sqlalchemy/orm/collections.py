@@ -883,7 +883,7 @@ def _instrument_class(cls):
     # search for _sa_instrument_role-decorated methods in
     # method resolution order, assign to roles
     for supercls in cls.__mro__:
-        for name, method in list(vars(supercls).items()):
+        for name, method in vars(supercls).items():
             if not util.callable(method):
                 continue
 
@@ -917,11 +917,11 @@ def _instrument_class(cls):
     collection_type = util.duck_type_collection(cls)
     if collection_type in __interfaces:
         canned_roles, decorators = __interfaces[collection_type]
-        for role, name in list(canned_roles.items()):
+        for role, name in canned_roles.items():
             roles.setdefault(role, name)
 
         # apply ABC auto-decoration to methods that need it
-        for method, decorator in list(decorators.items()):
+        for method, decorator in decorators.items():
             fn = getattr(cls, method, None)
             if (fn and method not in methods and
                 not hasattr(fn, '_sa_instrumented')):
@@ -952,12 +952,12 @@ def _instrument_class(cls):
 
     # apply ad-hoc instrumentation from decorators, class-level defaults
     # and implicit role declarations
-    for method_name, (before, argument, after) in list(methods.items()):
+    for method_name, (before, argument, after) in methods.items():
         setattr(cls, method_name,
                 _instrument_membership_mutator(getattr(cls, method_name),
                                                before, argument, after))
     # intern the role map
-    for role, method_name in list(roles.items()):
+    for role, method_name in roles.items():
         setattr(cls, '_sa_%s' % role, getattr(cls, method_name))
 
     setattr(cls, '_sa_instrumented', id(cls))
@@ -1250,7 +1250,7 @@ def _dict_decorators():
         def update(self, __other=Unspecified, **kw):
             if __other is not Unspecified:
                 if hasattr(__other, 'keys'):
-                    for key in list(__other.keys()):
+                    for key in list(__other):
                         if (key not in self or
                             self[key] is not __other[key]):
                             self[key] = __other[key]

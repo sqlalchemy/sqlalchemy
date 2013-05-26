@@ -734,7 +734,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                                 e, None, None, None, self)
         else:
             inputsizes = {}
-            for key in list(self.compiled.bind_names.values()):
+            for key in self.compiled.bind_names.values():
                 typeengine = types[key]
                 dbtype = typeengine.dialect_impl(self.dialect).\
                                 get_dbapi_type(self.dialect.dbapi)

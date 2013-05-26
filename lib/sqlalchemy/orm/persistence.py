@@ -803,7 +803,7 @@ class BulkUD(object):
             raise sa_exc.ArgumentError(
                             "Valid strategies for session synchronization "
                             "are %s" % (", ".join(sorted(repr(x)
-                                for x in list(lookup.keys())))))
+                                for x in lookup))))
         else:
             return klass(*arg)
 

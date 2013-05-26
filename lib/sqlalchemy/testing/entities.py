@@ -67,7 +67,7 @@ class ComparableEntity(BasicEntity):
                 a = self
                 b = other
 
-            for attr in list(a.__dict__.keys()):
+            for attr in list(a.__dict__):
                 if attr.startswith('_'):
                     continue
                 value = getattr(a, attr)

@@ -35,7 +35,7 @@ class _SessionClassMethods(object):
     def close_all(cls):
         """Close *all* sessions in memory."""
 
-        for sess in list(_sessions.values()):
+        for sess in _sessions.values():
             sess.close()
 
     @classmethod
@@ -250,7 +250,7 @@ class SessionTransaction(object):
             if s.key:
                 del s.key
 
-        for s, (oldkey, newkey) in list(self._key_switches.items()):
+        for s, (oldkey, newkey) in self._key_switches.items():
             self.session.identity_map.discard(s)
             s.key = oldkey
             self.session.identity_map.replace(s)
@@ -2237,7 +2237,7 @@ class sessionmaker(_SessionClassMethods):
             session = Session()  # invokes sessionmaker.__call__()
 
         """
-        for k, v in list(self.kw.items()):
+        for k, v in self.kw.items():
             local_kw.setdefault(k, v)
         return self.class_(**local_kw)
 
@@ -2256,7 +2256,7 @@ class sessionmaker(_SessionClassMethods):
         return "%s(class_=%r%s)" % (
                     self.__class__.__name__,
                     self.class_.__name__,
-                    ", ".join("%s=%r" % (k, v) for k, v in list(self.kw.items()))
+                    ", ".join("%s=%r" % (k, v) for k, v in self.kw.items())
                 )
 
 _sessions = weakref.WeakValueDictionary()

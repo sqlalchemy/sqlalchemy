@@ -417,7 +417,7 @@ class InstanceState(interfaces._InspectionAttr):
            against this set when a refresh operation occurs.
 
         """
-        return set([k for k, v in list(self.callables.items()) if v is self])
+        return set([k for k, v in self.callables.items() if v is self])
 
     def _instance_dict(self):
         return None

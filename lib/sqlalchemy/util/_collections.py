@@ -94,7 +94,7 @@ class KeyedTuple(tuple):
         .. versionadded:: 0.8
 
         """
-        return dict((key, self.__dict__[key]) for key in list(self.keys()))
+        return dict((key, self.__dict__[key]) for key in self.keys())
 
 
 class ImmutableContainer(object):
@@ -242,7 +242,7 @@ class OrderedDict(dict):
     def update(self, ____sequence=None, **kwargs):
         if ____sequence is not None:
             if hasattr(____sequence, 'keys'):
-                for key in list(____sequence.keys()):
+                for key in ____sequence.keys():
                     self.__setitem__(key, ____sequence[key])
             else:
                 for key, value in ____sequence:
@@ -273,7 +273,7 @@ class OrderedDict(dict):
         return iter(list(self.keys()))
 
     def items(self):
-        return [(key, self[key]) for key in list(self.keys())]
+        return [(key, self[key]) for key in self.keys()]
 
     def iteritems(self):
         return iter(list(self.items()))

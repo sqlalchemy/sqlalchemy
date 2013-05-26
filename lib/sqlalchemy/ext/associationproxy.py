@@ -778,7 +778,7 @@ class _AssociationDict(_AssociationCollection):
         iteritems = _iteritems
 
         def values(self):
-            return [self._get(member) for member in list(self.col.values())]
+            return [self._get(member) for member in self.col.values()]
 
         def items(self):
             return [(k, self._get(self.col[k])) for k in self]

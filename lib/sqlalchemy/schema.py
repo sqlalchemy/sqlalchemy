@@ -1044,7 +1044,7 @@ class Column(SchemaItem, expression.ColumnClause):
         if self.key in table._columns:
             col = table._columns.get(self.key)
             if col is not self:
-                for fk in list(col.foreign_keys):
+                for fk in col.foreign_keys:
                     table.foreign_keys.remove(fk)
                     if fk.constraint in table.constraints:
                         # this might have been removed

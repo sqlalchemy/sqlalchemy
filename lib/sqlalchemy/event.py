@@ -300,7 +300,7 @@ class _DispatchDescriptor(object):
     def clear(self):
         """Clear all class level listeners"""
 
-        for dispatcher in list(self._clslevel.values()):
+        for dispatcher in self._clslevel.values():
             dispatcher[:] = []
 
     def for_modify(self, obj):

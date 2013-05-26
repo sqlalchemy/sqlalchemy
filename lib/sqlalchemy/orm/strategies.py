@@ -359,7 +359,7 @@ class LazyLoader(AbstractRelationshipLoader):
                         )
 
         if self.use_get:
-            for col in list(self._equated_columns.keys()):
+            for col in list(self._equated_columns):
                 if col in self.mapper._equivalent_columns:
                     for c in self.mapper._equivalent_columns[col]:
                         self._equated_columns[c] = self._equated_columns[col]

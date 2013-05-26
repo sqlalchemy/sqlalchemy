@@ -866,7 +866,7 @@ class CollectionAttributeImpl(AttributeImpl):
         self.collection_factory = typecallable
 
     def __copy(self, item):
-        return [y for y in list(collections.collection_adapter(item))]
+        return [y for y in collections.collection_adapter(item)]
 
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
         current = self.get(state, dict_, passive=passive)

@@ -57,7 +57,7 @@ def _as_declarative(cls, classname, dict_):
 
         class_mapped = _declared_mapping_info(base) is not None
 
-        for name, obj in list(vars(base).items()):
+        for name, obj in vars(base).items():
             if name == '__mapper_args__':
                 if not mapper_args_fn and (
                                         not class_mapped or
@@ -129,7 +129,7 @@ def _as_declarative(cls, classname, dict_):
                         ret.doc = obj.__doc__
 
     # apply inherited columns as we should
-    for k, v in list(potential_columns.items()):
+    for k, v in potential_columns.items():
         dict_[k] = v
 
     if inherited_table_args and not tablename:

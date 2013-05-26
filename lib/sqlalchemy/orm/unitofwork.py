@@ -342,7 +342,7 @@ class UOWTransaction(object):
                     for dep in convert[edge[1]]:
                         self.dependencies.add((edge[0], dep))
 
-        return set([a for a in list(self.postsort_actions.values())
+        return set([a for a in self.postsort_actions.values()
                     if not a.disabled
                     ]
                 ).difference(cycles)
@@ -461,7 +461,7 @@ class PostSortRec(object):
     def __repr__(self):
         return "%s(%s)" % (
             self.__class__.__name__,
-            ",".join(str(x) for x in list(self.__dict__.values()))
+            ",".join(str(x) for x in self.__dict__.values())
         )
 
 

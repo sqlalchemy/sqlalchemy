@@ -1004,7 +1004,7 @@ class _DBProxy(object):
         self._create_pool_mutex = threading.Lock()
 
     def close(self):
-        for key in list(self.pools.keys()):
+        for key in list(self.pools):
             del self.pools[key]
 
     def __del__(self):

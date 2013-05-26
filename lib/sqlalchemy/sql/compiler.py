@@ -2073,11 +2073,11 @@ class DDLCompiler(engine.Compiled):
         remote_table = list(constraint._elements.values())[0].column.table
         text += "FOREIGN KEY(%s) REFERENCES %s (%s)" % (
             ', '.join(preparer.quote(f.parent.name, f.parent.quote)
-                      for f in list(constraint._elements.values())),
+                      for f in constraint._elements.values()),
             self.define_constraint_remote_table(
                             constraint, remote_table, preparer),
             ', '.join(preparer.quote(f.column.name, f.column.quote)
-                      for f in list(constraint._elements.values()))
+                      for f in constraint._elements.values())
         )
         text += self.define_constraint_match(constraint)
         text += self.define_constraint_cascades(constraint)

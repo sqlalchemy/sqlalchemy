@@ -117,7 +117,7 @@ from .inspection import inspect
 from .engine import create_engine, engine_from_config
 
 
-__all__ = sorted(name for name, obj in list(locals().items())
+__all__ = sorted(name for name, obj in locals().items()
                  if not (name.startswith('_') or _inspect.ismodule(obj)))
 
 __version__ = '0.8.2'
