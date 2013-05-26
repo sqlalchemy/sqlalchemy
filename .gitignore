@@ -6,6 +6,7 @@ dogpile_data/
 *.orig
 tox.ini
 .venv
-.egg-info
+*.egg-info
 .coverage
 .*,cover
+*.so

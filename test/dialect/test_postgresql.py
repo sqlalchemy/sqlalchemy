@@ -23,6 +23,7 @@ from sqlalchemy import util
 from sqlalchemy.testing.util import round_decimal
 from sqlalchemy.sql import table, column, operators
 import logging
+import logging.handlers
 import re
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
