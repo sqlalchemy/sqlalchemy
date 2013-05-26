@@ -13,7 +13,7 @@ from sqlalchemy.orm import relationship, create_session, class_mapper, \
     deferred, column_property, composite,\
     Session
 from sqlalchemy.testing import eq_
-from sqlalchemy.util import classproperty
+from sqlalchemy.util import classproperty, with_metaclass
 from sqlalchemy.ext.declarative import declared_attr, AbstractConcreteBase, \
     ConcreteBase, synonym_for
 from sqlalchemy.testing import fixtures
@@ -133,7 +133,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
         # even though this class has an xyzzy attribute, getattr(cls,"xyzzy")
         # fails
-        class BrokenParent(object, metaclass=BrokenMeta):
+        class BrokenParent(with_metaclass(BrokenMeta)):
             xyzzy = "magic"
 
         # _as_declarative() inspects obj.__class__.__bases__
@@ -274,7 +274,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
             __tablename__ = 'foo'
             id = Column(Integer, primary_key=True)
-            _user_id = Column(Integer) 
+            _user_id = Column(Integer)
             rel = relationship('User',
                                uselist=False,
                                foreign_keys=[User.id],

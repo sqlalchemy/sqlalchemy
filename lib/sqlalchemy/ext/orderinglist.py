@@ -334,15 +334,13 @@ class OrderingList(list):
         super(OrderingList, self).__delitem__(index)
         self._reorder()
 
-# start Py2K
-#    def __setslice__(self, start, end, values):
-#        super(OrderingList, self).__setslice__(start, end, values)
-#        self._reorder()
-#
-#    def __delslice__(self, start, end):
-#        super(OrderingList, self).__delslice__(start, end)
-#        self._reorder()
-# end Py2K
+    def __setslice__(self, start, end, values):
+        super(OrderingList, self).__setslice__(start, end, values)
+        self._reorder()
+
+    def __delslice__(self, start, end):
+        super(OrderingList, self).__delslice__(start, end)
+        self._reorder()
 
     def __reduce__(self):
         return _reconstitute, (self.__class__, self.__dict__, list(self))
