@@ -28,7 +28,7 @@ if py3k:
     import pickle
 else:
     try:
-        import pickle as pickle
+        import cPickle as pickle
     except ImportError:
         import pickle
 
@@ -39,6 +39,9 @@ if py3k:
     from urllib.parse import quote_plus, unquote_plus, parse_qsl
     import configparser
     from io import StringIO
+
+    from io import BytesIO as byte_buffer
+
 
     string_types = str,
     binary_type = bytes
@@ -73,12 +76,20 @@ if py3k:
     import itertools
     itertools_filterfalse = itertools.filterfalse
     itertools_imap = map
+
+    import base64
+    def b64encode(x):
+        return base64.b64encode(x).decode('ascii')
+    def b64decode(x):
+        return base64.b64decode(x.encode('ascii'))
+
 else:
     from inspect import getargspec as inspect_getfullargspec
     from urllib import quote_plus, unquote_plus
     from urlparse import parse_qsl
     import ConfigParser as configparser
     from StringIO import StringIO
+    from cStringIO import StringIO as byte_buffer
 
     string_types = basestring,
     binary_type = str
@@ -108,6 +119,10 @@ else:
     callable = callable
     cmp = cmp
     reduce = reduce
+
+    import base64
+    b64encode = base64.b64encode
+    b64decode = base64.b64decode
 
     def print_(*args, **kwargs):
         fp = kwargs.pop("file", sys.stdout)
