@@ -1592,7 +1592,7 @@ class WithLabelsTest(fixtures.TestBase):
     def _assert_labels_warning(self, s):
         assert_raises_message(
             exc.SAWarning,
-            "replaced by another column with the same key",
+            r"replaced by Column.*, which has the same key",
             lambda: s.c
         )
 
