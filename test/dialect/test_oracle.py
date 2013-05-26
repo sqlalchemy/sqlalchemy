@@ -8,6 +8,7 @@ from sqlalchemy.sql import table, column
 from sqlalchemy.testing import fixtures, AssertsExecutionResults, AssertsCompiledSQL
 from sqlalchemy import testing
 from sqlalchemy.util import u
+from sqlalchemy import util
 from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.dialects.oracle import cx_oracle, base as oracle
@@ -1652,7 +1653,7 @@ class UnicodeSchemaTest(fixtures.TestBase):
         metadata.create_all()
 
         table.insert().execute(
-            {'_underscorecolumn': '’é'},
+            {'_underscorecolumn': u('’é')},
         )
         result = testing.db.execute(
             table.select().where(table.c._underscorecolumn==u('’é'))

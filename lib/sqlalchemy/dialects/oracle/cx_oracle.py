@@ -182,7 +182,7 @@ a period "." as the decimal character.
 
 """
 
-
+from __future__ import absolute_import
 
 from .base import OracleCompiler, OracleDialect, OracleExecutionContext
 from . import base as oracle
@@ -269,16 +269,16 @@ class _LOBMixin(object):
 
 class _NativeUnicodeMixin(object):
     if util.py2k:
-    def bind_processor(self, dialect):
-        if dialect._cx_oracle_with_unicode:
-            def process(value):
-                if value is None:
-                    return value
-                else:
-                    return unicode(value)
-            return process
-        else:
-            return super(_NativeUnicodeMixin, self).bind_processor(dialect)
+        def bind_processor(self, dialect):
+            if dialect._cx_oracle_with_unicode:
+                def process(value):
+                    if value is None:
+                        return value
+                    else:
+                        return unicode(value)
+                return process
+            else:
+                return super(_NativeUnicodeMixin, self).bind_processor(dialect)
 
     # we apply a connection output handler that returns
     # unicode in all cases, so the "native_unicode" flag
