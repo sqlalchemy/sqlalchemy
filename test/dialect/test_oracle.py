@@ -7,6 +7,7 @@ from sqlalchemy import types as sqltypes, exc, schema
 from sqlalchemy.sql import table, column
 from sqlalchemy.testing import fixtures, AssertsExecutionResults, AssertsCompiledSQL
 from sqlalchemy import testing
+from sqlalchemy.util import u
 from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.dialects.oracle import cx_oracle, base as oracle
@@ -1267,7 +1268,7 @@ class TypesTest(fixtures.TestBase):
             autoload=True, oracle_resolve_synonyms=True
             )
         for row in types_table.select().execute().fetchall():
-            [row[k] for k in list(row.keys())]
+            [row[k] for k in row.keys()]
 
     @testing.provide_metadata
     def test_raw_roundtrip(self):
@@ -1301,11 +1302,11 @@ class TypesTest(fixtures.TestBase):
                 t2.c.data.type.dialect_impl(testing.db.dialect),
                 cx_oracle._OracleNVarChar)
 
-        data = 'm’a réveillé.'
+        data = u('m’a réveillé.')
         t2.insert().execute(data=data)
         res = t2.select().execute().first()['data']
         eq_(res, data)
-        assert isinstance(res, str)
+        assert isinstance(res, util.text_type)
 
 
     def test_char_length(self):
@@ -1436,7 +1437,7 @@ class DontReflectIOTTest(fixtures.TestBase):
         m = MetaData(testing.db)
         m.reflect()
         eq_(
-            set(t.name for t in list(m.tables.values())),
+            set(t.name for t in m.tables.values()),
             set(['admin_docindex'])
         )
 
@@ -1654,25 +1655,25 @@ class UnicodeSchemaTest(fixtures.TestBase):
             {'_underscorecolumn': '’é'},
         )
         result = testing.db.execute(
-            table.select().where(table.c._underscorecolumn=='’é')
+            table.select().where(table.c._underscorecolumn==u('’é'))
         ).scalar()
-        eq_(result, '’é')
+        eq_(result, u('’é'))
 
     @testing.provide_metadata
     def test_quoted_column_unicode(self):
         metadata = self.metadata
         table=Table("atable", metadata,
-            Column("méil", Unicode(255), primary_key=True),
+            Column(u("méil"), Unicode(255), primary_key=True),
         )
         metadata.create_all()
 
         table.insert().execute(
-            {'méil': '’é'},
+            {u('méil'): u('’é')},
         )
         result = testing.db.execute(
-            table.select().where(table.c['méil']=='’é')
+            table.select().where(table.c[u('méil')] == u('’é'))
         ).scalar()
-        eq_(result, '’é')
+        eq_(result, u('’é'))
 
 
 class DBLinkReflectionTest(fixtures.TestBase):

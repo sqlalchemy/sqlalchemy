@@ -437,7 +437,7 @@ class OracleCompiler(compiler.SQLCompiler):
 
     def get_select_hint_text(self, byfroms):
         return " ".join(
-            "/*+ %s */" % text for table, text in list(byfroms.items())
+            "/*+ %s */" % text for table, text in byfroms.items()
         )
 
     def function_argspec(self, fn, **kw):
@@ -661,7 +661,7 @@ class OracleIdentifierPreparer(compiler.IdentifierPreparer):
         lc_value = value.lower()
         return (lc_value in self.reserved_words
                 or value[0] in self.illegal_initial_characters
-                or not self.legal_characters.match(str(value))
+                or not self.legal_characters.match(util.text_type(value))
                 )
 
     def format_savepoint(self, savepoint):
@@ -765,10 +765,9 @@ class OracleDialect(default.DefaultDialect):
     def normalize_name(self, name):
         if name is None:
             return None
-# start Py2K
-#        if isinstance(name, str):
-#            name = name.decode(self.encoding)
-# end Py2K
+        if util.py2k:
+            if isinstance(name, str):
+                name = name.decode(self.encoding)
         if name.upper() == name and \
               not self.identifier_preparer._requires_quotes(name.lower()):
             return name.lower()
@@ -780,12 +779,11 @@ class OracleDialect(default.DefaultDialect):
             return None
         elif name.lower() == name and not self.identifier_preparer._requires_quotes(name.lower()):
             name = name.upper()
-# start Py2K
-#        if not self.supports_unicode_binds:
-#            name = name.encode(self.encoding)
-#        else:
-#            name = unicode(name)
-# end Py2K
+        if util.py2k:
+            if not self.supports_unicode_binds:
+                name = name.encode(self.encoding)
+            else:
+                name = unicode(name)
         return name
 
     def _get_default_schema_name(self, connection):
