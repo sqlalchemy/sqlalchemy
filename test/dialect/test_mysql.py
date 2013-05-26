@@ -5,6 +5,7 @@ from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 
 from sqlalchemy import *
 from sqlalchemy import sql, exc, schema, types as sqltypes
+from sqlalchemy.util import u
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, AssertsExecutionResults
@@ -684,17 +685,17 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         metadata = MetaData(unicode_engine)
         t1 = Table('table', metadata,
             Column('id', Integer, primary_key=True),
-            Column('value', Enum('réveillé', 'drôle', 'S’il')),
-            Column('value2', mysql.ENUM('réveillé', 'drôle', 'S’il'))
+            Column('value', Enum(u('réveillé'), u('drôle'), u('S’il'))),
+            Column('value2', mysql.ENUM(u('réveillé'), u('drôle'), u('S’il')))
         )
         metadata.create_all()
         try:
-            t1.insert().execute(value='drôle', value2='drôle')
-            t1.insert().execute(value='réveillé', value2='réveillé')
-            t1.insert().execute(value='S’il', value2='S’il')
+            t1.insert().execute(value=u('drôle'), value2=u('drôle'))
+            t1.insert().execute(value=u('réveillé'), value2=u('réveillé'))
+            t1.insert().execute(value=u('S’il'), value2=u('S’il'))
             eq_(t1.select().order_by(t1.c.id).execute().fetchall(),
-                [(1, 'drôle', 'drôle'), (2, 'réveillé', 'réveillé'),
-                            (3, 'S’il', 'S’il')]
+                [(1, u('drôle'), u('drôle')), (2, u('réveillé'), u('réveillé')),
+                            (3, u('S’il'), u('S’il'))]
             )
 
             # test reflection of the enum labels
@@ -706,10 +707,10 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             # latin-1 stuff forcing its way in ?
 
             assert t2.c.value.type.enums[0:2] == \
-                    ('réveillé', 'drôle')  # u'S’il') # eh ?
+                    (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
 
             assert t2.c.value2.type.enums[0:2] == \
-                    ('réveillé', 'drôle')  # u'S’il') # eh ?
+                    (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
         finally:
             metadata.drop_all()
 
@@ -877,13 +878,13 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             reflected = Table('mysql_case', MetaData(testing.db),
                               autoload=True, include_columns=['c1', 'C2'])
             for t in case_table, reflected:
-                assert 'c1' in list(t.c.keys())
-                assert 'C2' in list(t.c.keys())
+                assert 'c1' in t.c.keys()
+                assert 'C2' in t.c.keys()
             reflected2 = Table('mysql_case', MetaData(testing.db),
                               autoload=True, include_columns=['c1', 'c2'])
-            assert 'c1' in list(reflected2.c.keys())
+            assert 'c1' in reflected2.c.keys()
             for c in ['c2', 'C2', 'C3']:
-                assert c not in list(reflected2.c.keys())
+                assert c not in reflected2.c.keys()
         finally:
             case_table.drop()
 

@@ -1139,14 +1139,10 @@ class SET(_StringType):
             #   No ',' quoting issues- commas aren't allowed in SET values
             # The bad news:
             #   Plenty of driver inconsistencies here.
-            if isinstance(value, util.set_types):
+            if isinstance(value, set):
                 # ..some versions convert '' to an empty set
                 if not value:
                     value.add('')
-                # ..some return sets.Set, even for pythons
-                # that have __builtin__.set
-                if not isinstance(value, set):
-                    value = set(value)
                 return value
             # ...and some versions return strings
             if value is not None:
