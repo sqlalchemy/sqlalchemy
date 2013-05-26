@@ -267,7 +267,8 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
         }
     )
 
-    description_encoding = None
+    if not util.py2k:
+        description_encoding = None
 
     driver = 'pysqlite'
 

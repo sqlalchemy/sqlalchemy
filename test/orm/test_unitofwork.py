@@ -6,6 +6,7 @@ import datetime
 from sqlalchemy.orm import mapper as orm_mapper
 
 import sqlalchemy as sa
+from sqlalchemy.util import u, ue, b
 from sqlalchemy import Integer, String, ForeignKey, literal_column, event
 from sqlalchemy.testing import engines
 from sqlalchemy import testing
@@ -87,7 +88,7 @@ class UnicodeTest(fixtures.MappedTest):
 
         mapper(Test, uni_t1)
 
-        txt = "\u0160\u0110\u0106\u010c\u017d"
+        txt = ue("\u0160\u0110\u0106\u010c\u017d")
         t1 = Test(id=1, txt=txt)
         self.assert_(t1.txt == txt)
 
@@ -107,7 +108,7 @@ class UnicodeTest(fixtures.MappedTest):
             't2s': relationship(Test2)})
         mapper(Test2, uni_t2)
 
-        txt = "\u0160\u0110\u0106\u010c\u017d"
+        txt = ue("\u0160\u0110\u0106\u010c\u017d")
         t1 = Test(txt=txt)
         t1.t2s.append(Test2())
         t1.t2s.append(Test2())
@@ -132,16 +133,16 @@ class UnicodeSchemaTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         t1 = Table('unitable1', metadata,
-              Column('méil', Integer, primary_key=True, key='a', test_needs_autoincrement=True),
-              Column('\u6e2c\u8a66', Integer, key='b'),
+              Column(u('méil'), Integer, primary_key=True, key='a', test_needs_autoincrement=True),
+              Column(ue('\u6e2c\u8a66'), Integer, key='b'),
               Column('type',  String(20)),
               test_needs_fk=True,
               test_needs_autoincrement=True)
-        t2 = Table('Unitéble2', metadata,
-              Column('méil', Integer, primary_key=True, key="cc", test_needs_autoincrement=True),
-              Column('\u6e2c\u8a66', Integer,
+        t2 = Table(u('Unitéble2'), metadata,
+              Column(u('méil'), Integer, primary_key=True, key="cc", test_needs_autoincrement=True),
+              Column(ue('\u6e2c\u8a66'), Integer,
                      ForeignKey('unitable1.a'), key="d"),
-              Column('\u6e2c\u8a66_2', Integer, key="e"),
+              Column(ue('\u6e2c\u8a66_2'), Integer, key="e"),
               test_needs_fk=True,
               test_needs_autoincrement=True)
 
@@ -237,13 +238,7 @@ class BinaryHistTest(fixtures.MappedTest, testing.AssertsExecutionResults):
     def test_binary_equality(self):
         Foo, t1 = self.classes.Foo, self.tables.t1
 
-
-# start Py3K
-        data = b"this is some data"
-# end Py3K
-# start Py2K
-#        data = "this is some data"
-# end Py2K
+        data = b("this is some data")
 
         mapper(Foo, t1)
 
@@ -2128,7 +2123,6 @@ class SaveTest3(fixtures.MappedTest):
 
         assert assoc.count().scalar() == 2
         i.keywords = []
-        print(i.keywords)
         session.flush()
         assert assoc.count().scalar() == 0
 

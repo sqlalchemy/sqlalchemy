@@ -215,6 +215,8 @@ class ResultMetaData(object):
             processors.append(processor)
             rec = (processor, obj, i)
 
+#            name.encode('ascii')
+
             # indexes as keys. This is only needed for the Python version of
             # RowProxy (the C version uses a faster path for integer indexes).
             primary_keymap[i] = rec

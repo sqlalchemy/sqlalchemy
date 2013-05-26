@@ -1,9 +1,16 @@
+#!coding: utf-8
+
 """SQLite-specific tests."""
 
 from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message
 import datetime
-from sqlalchemy import *
+from sqlalchemy import Table, String, select, Text, CHAR, bindparam, Column,\
+    Unicode, Date, MetaData, UnicodeText, Time, Integer, TIMESTAMP, \
+    Boolean, func, NUMERIC, DateTime, extract, ForeignKey, text, Numeric,\
+    DefaultClause, and_, DECIMAL, TypeDecorator, create_engine, Float, \
+    INTEGER, UniqueConstraint, DATETIME, DATE, TIME, BOOLEAN
+from sqlalchemy.util import u, ue
 from sqlalchemy import exc, sql, schema, pool, types as sqltypes, util
 from sqlalchemy.dialects.sqlite import base as sqlite, \
     pysqlite as pysqlite_dialect
@@ -485,6 +492,20 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
                     'constrained_columns': ['tid']
                 }])
 
+    @testing.provide_metadata
+    def test_description_encoding(self):
+        # amazingly, pysqlite seems to still deliver cursor.description
+        # as encoded bytes in py2k
+
+        t = Table('x', self.metadata,
+                Column(u('méil'), Integer, primary_key=True),
+                Column(ue('\u6e2c\u8a66'), Integer),
+            )
+        self.metadata.create_all(testing.db)
+
+        result = testing.db.execute(t.select())
+        assert u('méil') in result.keys()
+        assert ue('\u6e2c\u8a66') in result.keys()
 
     def test_attached_as_schema(self):
         cx = testing.db.connect()
