@@ -1478,7 +1478,7 @@ class ReflectionTest(fixtures.TestBase):
         meta1.create_all()
         meta2 = MetaData(testing.db)
         subject = Table('subject', meta2, autoload=True)
-        eq_(list(subject.primary_key.columns.keys()), ['p2', 'p1'])
+        eq_(subject.primary_key.columns.keys(), ['p2', 'p1'])
 
     @testing.provide_metadata
     def test_pg_weirdchar_reflection(self):
@@ -2205,15 +2205,15 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
     def test_array_subtype_resultprocessor(self):
         arrtable = self.tables.arrtable
         arrtable.insert().execute(intarr=[4, 5, 6],
-                                  strarr=[[util.u('m\xe4\xe4')], [
-                                    util.u('m\xf6\xf6')]])
+                                  strarr=[[util.ue('m\xe4\xe4')], [
+                                    util.ue('m\xf6\xf6')]])
         arrtable.insert().execute(intarr=[1, 2, 3], strarr=[
-                        util.u('m\xe4\xe4'), util.u('m\xf6\xf6')])
+                        util.ue('m\xe4\xe4'), util.ue('m\xf6\xf6')])
         results = \
             arrtable.select(order_by=[arrtable.c.intarr]).execute().fetchall()
         eq_(len(results), 2)
-        eq_(results[0]['strarr'], [util.u('m\xe4\xe4'), util.u('m\xf6\xf6')])
-        eq_(results[1]['strarr'], [[util.u('m\xe4\xe4')], [util.u('m\xf6\xf6')]])
+        eq_(results[0]['strarr'], [util.ue('m\xe4\xe4'), util.ue('m\xf6\xf6')])
+        eq_(results[1]['strarr'], [[util.ue('m\xe4\xe4')], [util.ue('m\xf6\xf6')]])
 
     def test_array_literal(self):
         eq_(

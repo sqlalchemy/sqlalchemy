@@ -1569,14 +1569,13 @@ class PGDialect(default.DefaultDialect):
         """
         rp = connection.execute(s)
         # what about system tables?
-# start Py3K
-        schema_names = [row[0] for row in rp \
+
+        if util.py2k:
+            schema_names = [row[0].decode(self.encoding) for row in rp \
                         if not row[0].startswith('pg_')]
-# end Py3K
-# start Py2K
-#        schema_names = [row[0].decode(self.encoding) for row in rp \
-#                        if not row[0].startswith('pg_')]
-# end Py2K
+        else:
+            schema_names = [row[0] for row in rp \
+                        if not row[0].startswith('pg_')]
         return schema_names
 
     @reflection.cache
@@ -1610,13 +1609,12 @@ class PGDialect(default.DefaultDialect):
           AND '%(schema)s' = (select nspname from pg_namespace n
           where n.oid = c.relnamespace)
         """ % dict(schema=current_schema)
-# start Py3K
-        view_names = [row[0] for row in connection.execute(s)]
-# end Py3K
-# start Py2K
-#        view_names = [row[0].decode(self.encoding)
-#                            for row in connection.execute(s)]
-# end Py2K
+
+        if util.py2k:
+            view_names = [row[0].decode(self.encoding)
+                            for row in connection.execute(s)]
+        else:
+            view_names = [row[0] for row in connection.execute(s)]
         return view_names
 
     @reflection.cache
@@ -1633,12 +1631,10 @@ class PGDialect(default.DefaultDialect):
         rp = connection.execute(sql.text(s),
                                 view_name=view_name, schema=current_schema)
         if rp:
-# start Py3K
-            view_def = rp.scalar()
-# end Py3K
-# start Py2K
-#            view_def = rp.scalar().decode(self.encoding)
-# end Py2K
+            if util.py2k:
+                view_def = rp.scalar().decode(self.encoding)
+            else:
+                view_def = rp.scalar()
             return view_def
 
     @reflection.cache

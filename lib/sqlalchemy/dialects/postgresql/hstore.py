@@ -10,6 +10,8 @@ from .base import ARRAY, ischema_names
 from ... import types as sqltypes
 from ...sql import functions as sqlfunc
 from ...sql.operators import custom_op
+from ... import util
+
 
 __all__ = ('HSTORE', 'hstore')
 
@@ -96,7 +98,7 @@ def _serialize_hstore(val):
     def esc(s, position):
         if position == 'value' and s is None:
             return 'NULL'
-        elif isinstance(s, str):
+        elif isinstance(s, util.string_types):
             return '"%s"' % s.replace('"', r'\"')
         else:
             raise ValueError("%r in %s position is not a string." %
