@@ -2485,7 +2485,7 @@ class ColumnCollection(util.OrderedProperties):
             existing = self[key]
             if not existing.shares_lineage(value):
                 util.warn('Column %r on table %r being replaced by '
-                          '%r , which has the same key.  Consider '
+                          '%r, which has the same key.  Consider '
                           'use_labels for select() statements.' % (key,
                           getattr(existing, 'table', None), value))
             self._all_cols.remove(existing)
