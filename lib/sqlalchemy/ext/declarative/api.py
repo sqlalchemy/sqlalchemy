@@ -308,7 +308,7 @@ class AbstractConcreteBase(ConcreteBase):
 
     Example::
 
-        from sqlalchemy.ext.declarative import ConcreteBase
+        from sqlalchemy.ext.declarative import AbstractConcreteBase
 
         class Employee(AbstractConcreteBase, Base):
             pass
