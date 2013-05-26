@@ -582,7 +582,7 @@ class Mapper(_InspectionAttr):
         if with_polymorphic == '*':
             self.with_polymorphic = ('*', None)
         elif isinstance(with_polymorphic, (tuple, list)):
-            if isinstance(with_polymorphic[0], (str, tuple, list)):
+            if isinstance(with_polymorphic[0], util.string_types + (tuple, list)):
                 self.with_polymorphic = with_polymorphic
             else:
                 self.with_polymorphic = (with_polymorphic, None)
@@ -920,7 +920,7 @@ class Mapper(_InspectionAttr):
         if self.polymorphic_on is not None:
             setter = True
 
-            if isinstance(self.polymorphic_on, str):
+            if isinstance(self.polymorphic_on, util.string_types):
                 # polymorphic_on specified as as string - link
                 # it to mapped ColumnProperty
                 try:
@@ -1973,7 +1973,7 @@ class Mapper(_InspectionAttr):
         visited_states = set()
         prp, mpp = object(), object()
 
-        visitables = deque([(deque(list(self._props.values())), prp,
+        visitables = deque([(deque(self._props.values()), prp,
                                 state, state.dict)])
 
         while visitables:
@@ -1995,7 +1995,7 @@ class Mapper(_InspectionAttr):
                                 corresponding_dict = iterator.popleft()
                 yield instance, instance_mapper, \
                         corresponding_state, corresponding_dict
-                visitables.append((deque(list(instance_mapper._props.values())),
+                visitables.append((deque(instance_mapper._props.values()),
                                         prp, corresponding_state,
                                         corresponding_dict))
 
@@ -2012,7 +2012,7 @@ class Mapper(_InspectionAttr):
                 table_to_mapper.setdefault(t, mapper)
 
         extra_dependencies = []
-        for table, mapper in list(table_to_mapper.items()):
+        for table, mapper in table_to_mapper.items():
             super_ = mapper.inherits
             if super_:
                 extra_dependencies.extend([
@@ -2041,7 +2041,7 @@ class Mapper(_InspectionAttr):
                     return fk.parent not in cols
             return False
 
-        sorted_ = sql_util.sort_tables(iter(table_to_mapper.keys()),
+        sorted_ = sql_util.sort_tables(table_to_mapper,
                                     skip_fn=skip,
                                     extra_dependencies=extra_dependencies)
 

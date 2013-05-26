@@ -1292,7 +1292,7 @@ class Query(object):
 
         """
 
-        if isinstance(criterion, str):
+        if isinstance(criterion, util.string_types):
             criterion = sql.text(criterion)
 
         if criterion is not None and \
@@ -1651,7 +1651,7 @@ class Query(object):
                                     kwargs.pop('from_joinpoint', False)
         if kwargs:
             raise TypeError("unknown arguments: %s" %
-                                ','.join(iter(kwargs.keys())))
+                                ','.join(kwargs.keys))
         return self._join(props,
                             outerjoin=False, create_aliases=aliased,
                             from_joinpoint=from_joinpoint)
@@ -1667,7 +1667,7 @@ class Query(object):
                                 kwargs.pop('from_joinpoint', False)
         if kwargs:
             raise TypeError("unknown arguments: %s" %
-                    ','.join(iter(kwargs.keys())))
+                    ','.join(kwargs))
         return self._join(props,
                             outerjoin=True, create_aliases=aliased,
                             from_joinpoint=from_joinpoint)
@@ -1717,14 +1717,14 @@ class Query(object):
             # is a little bit of legacy behavior still at work here
             # which means they might be in either order.  may possibly
             # lock this down to (right_entity, onclause) in 0.6.
-            if isinstance(arg1, (interfaces.PropComparator, str)):
+            if isinstance(arg1, (interfaces.PropComparator, util.string_types)):
                 right_entity, onclause = arg2, arg1
             else:
                 right_entity, onclause = arg1, arg2
 
             left_entity = prop = None
 
-            if isinstance(onclause, str):
+            if isinstance(onclause, util.string_types):
                 left_entity = self._joinpoint_zero()
 
                 descriptor = _entity_descriptor(left_entity, onclause)
@@ -2111,7 +2111,7 @@ class Query(object):
         appropriate to the entity class represented by this ``Query``.
 
         """
-        if isinstance(statement, str):
+        if isinstance(statement, util.string_types):
             statement = sql.text(statement)
 
         if not isinstance(statement,
@@ -2605,7 +2605,7 @@ class Query(object):
                             use_labels=context.labels)
 
         from_clause = inner
-        for eager_join in list(context.eager_joins.values()):
+        for eager_join in context.eager_joins.values():
             # EagerLoader places a 'stop_on' attribute on the join,
             # giving us a marker as to where the "splice point" of
             # the join should be
@@ -2670,7 +2670,7 @@ class Query(object):
         subtypes are selected from the total results.
 
         """
-        for (ext_info, adapter) in list(self._mapper_adapter_map.values()):
+        for (ext_info, adapter) in self._mapper_adapter_map.values():
             if ext_info in self._join_entities:
                 continue
             single_crit = ext_info.mapper._single_table_criterion
@@ -2693,7 +2693,7 @@ class _QueryEntity(object):
     def __new__(cls, *args, **kwargs):
         if cls is _QueryEntity:
             entity = args[1]
-            if not isinstance(entity, str) and \
+            if not isinstance(entity, util.string_types) and \
                         _is_mapped_class(entity):
                 cls = _MapperEntity
             else:
@@ -2901,7 +2901,7 @@ class _ColumnEntity(_QueryEntity):
         self.expr = column
         self.namespace = namespace
 
-        if isinstance(column, str):
+        if isinstance(column, util.string_types):
             column = sql.literal_column(column)
             self._label_name = column.name
         elif isinstance(column, (
@@ -3076,7 +3076,7 @@ class AliasOption(interfaces.MapperOption):
         self.alias = alias
 
     def process_query(self, query):
-        if isinstance(self.alias, str):
+        if isinstance(self.alias, util.string_types):
             alias = query._mapper_zero().mapped_table.alias(self.alias)
         else:
             alias = self.alias

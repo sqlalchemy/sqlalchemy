@@ -120,7 +120,7 @@ def polymorphic_union(table_map, typecolname,
     colnames = util.OrderedSet()
     colnamemaps = {}
     types = {}
-    for key in list(table_map.keys()):
+    for key in table_map:
         table = table_map[key]
 
         # mysql doesnt like selecting from a select;
@@ -203,7 +203,7 @@ def identity_key(*args, **kwargs):
                 "positional arguments, got %s" % len(args))
         if kwargs:
             raise sa_exc.ArgumentError("unknown keyword arguments: %s"
-                % ", ".join(list(kwargs.keys())))
+                % ", ".join(kwargs))
         mapper = class_mapper(class_)
         if "ident" in locals():
             return mapper.identity_key_from_primary_key(util.to_list(ident))
@@ -211,7 +211,7 @@ def identity_key(*args, **kwargs):
     instance = kwargs.pop("instance")
     if kwargs:
         raise sa_exc.ArgumentError("unknown keyword arguments: %s"
-            % ", ".join(list(kwargs.keys())))
+            % ", ".join(kwargs.keys))
     mapper = object_mapper(instance)
     return mapper.identity_key_from_instance(instance)
 
@@ -888,7 +888,7 @@ class _ORMJoin(expression.Join):
 
         self._joined_from_info = right_info
 
-        if isinstance(onclause, str):
+        if isinstance(onclause, util.string_types):
             onclause = getattr(left_orm_info.entity, onclause)
 
         if isinstance(onclause, attributes.QueryableAttribute):
@@ -1009,7 +1009,7 @@ def with_parent(instance, prop):
       parent/child relationship.
 
     """
-    if isinstance(prop, str):
+    if isinstance(prop, util.string_types):
         mapper = object_mapper(instance)
         prop = getattr(mapper.class_, prop).property
     elif isinstance(prop, attributes.QueryableAttribute):
