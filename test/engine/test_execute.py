@@ -19,7 +19,6 @@ from sqlalchemy.dialects.oracle.zxjdbc import ReturningParam
 from sqlalchemy.engine import result as _result, default
 from sqlalchemy.engine.base import Connection, Engine
 from sqlalchemy.testing import fixtures
-import io
 
 users, metadata, users_autoinc = None, None, None
 class ExecuteTest(fixtures.TestBase):
@@ -835,7 +834,7 @@ class EchoTest(fixtures.TestBase):
 
 class MockStrategyTest(fixtures.TestBase):
     def _engine_fixture(self):
-        buf = io.StringIO()
+        buf = util.StringIO()
         def dump(sql, *multiparams, **params):
             buf.write(util.text_type(sql.compile(dialect=engine.dialect)))
         engine = create_engine('postgresql://', strategy='mock', executor=dump)
@@ -940,7 +939,6 @@ class ResultProxyTest(fixtures.TestBase):
     def test_row_c_sequence_check(self):
         import csv
         import collections
-        from io import StringIO
 
         metadata = MetaData()
         metadata.bind = 'sqlite://'
@@ -953,7 +951,7 @@ class ResultProxyTest(fixtures.TestBase):
         users.insert().execute(name='Test')
         row = users.select().execute().fetchone()
 
-        s = StringIO()
+        s = util.StringIO()
         writer = csv.writer(s)
         # csv performs PySequenceCheck call
         writer.writerow(row)
