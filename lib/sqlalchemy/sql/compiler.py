@@ -2025,7 +2025,7 @@ class DDLCompiler(engine.Compiled):
 
     def get_column_default_string(self, column):
         if isinstance(column.server_default, schema.DefaultClause):
-            if isinstance(column.server_default.arg, str):
+            if isinstance(column.server_default.arg, util.string_types):
                 return "'%s'" % column.server_default.arg
             else:
                 return self.sql_compiler.process(column.server_default.arg)
