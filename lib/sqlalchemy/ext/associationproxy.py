@@ -758,24 +758,15 @@ class _AssociationDict(_AssociationCollection):
     def keys(self):
         return self.col.keys()
 
-    def _iteritems(self):
-        for key in self.col:
-            yield (key, self._get(self.col[key]))
-        raise StopIteration
-
-    def _itervalues(self):
-        for key in self.col:
-            yield self._get(self.col[key])
-        raise StopIteration
-
-    def _iterkeys(self):
-        return self.col.iterkeys()
-
-
     if util.py2k:
-        iterkeys = _iterkeys
-        itervalues = _itervalues
-        iteritems = _iteritems
+        def iteritems(self):
+            return ((key, self._get(self.col[key])) for key in self.col)
+
+        def itervalues(self):
+            return (self._get(self.col[key]) for key in self.col)
+
+        def iterkeys(self):
+            return self.col.iterkeys()
 
         def values(self):
             return [self._get(member) for member in self.col.values()]
@@ -783,8 +774,11 @@ class _AssociationDict(_AssociationCollection):
         def items(self):
             return [(k, self._get(self.col[k])) for k in self]
     else:
-        values = _itervalues
-        items = _iteritems
+        def items(self):
+            return ((key, self._get(self.col[key])) for key in self.col)
+
+        def values(self):
+            return (self._get(self.col[key]) for key in self.col)
 
     def pop(self, key, default=_NotProvided):
         if default is _NotProvided:

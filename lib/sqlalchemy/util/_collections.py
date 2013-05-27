@@ -10,6 +10,7 @@ import itertools
 import weakref
 import operator
 from .compat import threading, itertools_filterfalse
+from . import py2k
 
 EMPTY_SET = frozenset()
 
@@ -55,7 +56,7 @@ class KeyedTuple(tuple):
         t = tuple.__new__(cls, vals)
         t._labels = []
         if labels:
-            t.__dict__.update(list(zip(labels, vals)))
+            t.__dict__.update(zip(labels, vals))
             t._labels = labels
         return t
 
@@ -189,13 +190,13 @@ class Properties(object):
             return default
 
     def keys(self):
-        return list(self._data.keys())
+        return self._data.keys()
 
     def values(self):
-        return list(self._data.values())
+        return self._data.values()
 
     def items(self):
-        return list(self._data.items())
+        return self._data.items()
 
     def has_key(self, key):
         return key in self._data
@@ -260,23 +261,33 @@ class OrderedDict(dict):
     def __iter__(self):
         return iter(self._list)
 
-    def values(self):
-        return [self[key] for key in self._list]
+    if py2k:
+        def values(self):
+            return [self[key] for key in self._list]
 
-    def itervalues(self):
-        return iter([self[key] for key in self._list])
+        def keys(self):
+            return self._list
 
-    def keys(self):
-        return list(self._list)
+        def itervalues(self):
+            return iter([self[key] for key in self._list])
 
-    def iterkeys(self):
-        return iter(list(self.keys()))
+        def iterkeys(self):
+            return iter(self)
 
-    def items(self):
-        return [(key, self[key]) for key in self.keys()]
+        def iteritems(self):
+            return iter(self.items())
 
-    def iteritems(self):
-        return iter(list(self.items()))
+        def items(self):
+            return [(key, self[key]) for key in self._list]
+    else:
+        def values(self):
+            return (self[key] for key in self._list)
+
+        def keys(self):
+            return iter(self._list)
+
+        def items(self):
+            return ((key, self[key]) for key in self._list)
 
     def __setitem__(self, key, object):
         if key not in self:

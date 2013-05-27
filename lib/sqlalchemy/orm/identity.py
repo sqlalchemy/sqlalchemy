@@ -154,11 +154,10 @@ class WeakInstanceDict(IdentityMap):
 
     if util.py2k:
         items = _items
+        values = _values
 
         def iteritems(self):
             return iter(self.items())
-
-        values = _values
 
         def itervalues(self):
             return iter(self.values())
