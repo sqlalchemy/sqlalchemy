@@ -173,7 +173,7 @@ def _as_declarative(cls, classname, dict_):
 
     # extract columns from the class dict
     declared_columns = set()
-    for key, c in our_stuff.items():
+    for key, c in list(our_stuff.items()):
         if isinstance(c, (ColumnProperty, CompositeProperty)):
             for col in c.columns:
                 if isinstance(col, Column) and \

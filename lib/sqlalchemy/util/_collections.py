@@ -261,6 +261,14 @@ class OrderedDict(dict):
     def __iter__(self):
         return iter(self._list)
 
+
+    #def __iter__(self):
+    #    len_ = len(self._list)
+    #    for item in self._list:
+    #        yield item
+    #        assert len_ == len(self._list), \
+    #           "Dictionary changed size during iteration"
+
     if py2k:
         def values(self):
             return [self[key] for key in self._list]
@@ -281,12 +289,15 @@ class OrderedDict(dict):
             return [(key, self[key]) for key in self._list]
     else:
         def values(self):
+            #return (self[key] for key in self)
             return (self[key] for key in self._list)
 
         def keys(self):
+            #return iter(self)
             return iter(self._list)
 
         def items(self):
+            #return ((key, self[key]) for key in self)
             return ((key, self[key]) for key in self._list)
 
     def __setitem__(self, key, object):
