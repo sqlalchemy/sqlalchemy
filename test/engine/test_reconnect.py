@@ -7,7 +7,7 @@ import sqlalchemy as tsa
 from sqlalchemy import testing
 from sqlalchemy.testing import engines
 from sqlalchemy.testing.util import gc_collect
-from sqlalchemy import exc
+from sqlalchemy import exc, util
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.engines import testing_engine
 
@@ -464,6 +464,9 @@ class RealReconnectTest(fixtures.TestBase):
         conn.invalidate()
         conn.invalidate()
 
+    @testing.skip_if(
+        [lambda: util.py3k, "oracle+cx_oracle"],
+        "Crashes on py3k+cx_oracle")
     def test_explode_in_initializer(self):
         engine = engines.testing_engine()
         def broken_initialize(connection):

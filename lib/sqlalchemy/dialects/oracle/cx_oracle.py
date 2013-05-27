@@ -819,6 +819,11 @@ class OracleDialect_cx_oracle(OracleDialect):
         id = random.randint(0, 2 ** 128)
         return (0x1234, "%032x" % id, "%032x" % 9)
 
+    def do_executemany(self, cursor, statement, parameters, context=None):
+        if isinstance(parameters, tuple):
+            parameters = list(parameters)
+        cursor.executemany(statement, parameters)
+
     def do_begin_twophase(self, connection, xid):
         connection.connection.begin(*xid)
 
