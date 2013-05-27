@@ -389,16 +389,24 @@ class SQLCompiler(engine.Compiled):
     def visit_label(self, label,
                             add_to_result_map=None,
                             within_label_clause=False,
-                            within_columns_clause=False, **kw):
+                            within_columns_clause=False,
+                            order_by_labels=None, **kw):
         # only render labels within the columns clause
         # or ORDER BY clause of a select.  dialect-specific compilers
         # can modify this behavior.
-        if within_columns_clause and not within_label_clause:
+#        if order_by_labels:
+#            import pdb
+#            pdb.set_trace()
+        render_label_with_as = within_columns_clause and not within_label_clause
+        render_label_only = order_by_labels and label in order_by_labels
+
+        if render_label_only or render_label_with_as:
             if isinstance(label.name, sql._truncated_label):
                 labelname = self._truncated_identifier("colident", label.name)
             else:
                 labelname = label.name
 
+        if render_label_with_as:
             if add_to_result_map is not None:
                 add_to_result_map(
                         labelname,
@@ -413,6 +421,8 @@ class SQLCompiler(engine.Compiled):
                                     **kw) + \
                         OPERATORS[operators.as_] + \
                         self.preparer.format_label(label, labelname)
+        elif render_label_only:
+            return labelname
         else:
             return label.element._compiler_dispatch(self,
                                     within_columns_clause=False,
@@ -1181,7 +1191,13 @@ class SQLCompiler(engine.Compiled):
                 text += " \nHAVING " + t
 
         if select._order_by_clause.clauses:
-            text += self.order_by_clause(select, **kwargs)
+            if self.dialect.supports_simple_order_by_label:
+                order_by_labels = set(c for k, c in select._columns_plus_names)
+            else:
+                order_by_labels = None
+
+            text += self.order_by_clause(select,
+                                    order_by_labels=order_by_labels, **kwargs)
         if select._limit is not None or select._offset is not None:
             text += self.limit_clause(select)
         if select.for_update:

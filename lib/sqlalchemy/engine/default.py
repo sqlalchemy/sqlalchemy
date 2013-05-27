@@ -52,6 +52,8 @@ class DefaultDialect(interfaces.Dialect):
     supports_native_enum = False
     supports_native_boolean = False
 
+    supports_simple_order_by_label = True
+
     # if the NUMERIC type
     # returns decimal.Decimal.
     # *not* the FLOAT type however.

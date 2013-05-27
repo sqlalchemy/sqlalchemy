@@ -746,6 +746,69 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 'foo || :param_1')
 
 
+    def test_labels_in_expressions(self):
+        """test that label() constructs in ORDER BY render as the labelname.
+
+        Postgres' behavior was used as the guide for this,
+        so that only a simple label expression
+        and not a more complex expression involving the label
+        name would be rendered using the label name.
+
+        """
+        lab1 = (table1.c.myid + "12").label('foo')
+        lab2 = func.somefunc(table1.c.name).label('bar')
+
+        dialect = default.DefaultDialect()
+        self.assert_compile(select([lab1, lab2]).order_by(lab1, desc(lab2)),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "somefunc(mytable.name) AS bar FROM mytable "
+            "ORDER BY foo, bar DESC",
+            dialect=dialect
+        )
+
+        # the function embedded label renders as the function
+        self.assert_compile(
+            select([lab1, lab2]).order_by(func.hoho(lab1), desc(lab2)),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "somefunc(mytable.name) AS bar FROM mytable "
+            "ORDER BY hoho(mytable.myid + :myid_1), bar DESC",
+            dialect=dialect
+        )
+
+        # binary expressions render as the expression without labels
+        self.assert_compile(select([lab1, lab2]).order_by(lab1 + "test"),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "somefunc(mytable.name) AS bar FROM mytable "
+            "ORDER BY mytable.myid + :myid_1 + :param_1",
+            dialect=dialect
+        )
+
+        # labels within functions in the columns clause render
+        # with the expression
+        self.assert_compile(
+            select([lab1, func.foo(lab1)]),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "foo(mytable.myid + :myid_1) AS foo_1 FROM mytable",
+            dialect=dialect
+            )
+
+        dialect = default.DefaultDialect()
+        dialect.supports_simple_order_by_label = False
+        self.assert_compile(select([lab1, lab2]).order_by(lab1, desc(lab2)),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "somefunc(mytable.name) AS bar FROM mytable "
+            "ORDER BY mytable.myid + :myid_1, somefunc(mytable.name) DESC",
+            dialect=dialect
+        )
+        self.assert_compile(
+            select([lab1, lab2]).order_by(func.hoho(lab1), desc(lab2)),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "somefunc(mytable.name) AS bar FROM mytable "
+            "ORDER BY hoho(mytable.myid + :myid_1), "
+            "somefunc(mytable.name) DESC",
+            dialect=dialect
+        )
+
     def test_conjunctions(self):
         a, b, c = 'a', 'b', 'c'
         x = and_(a, b, c)
