@@ -392,13 +392,11 @@ class TypeEngine(AbstractType):
             return default.DefaultDialect()
 
     def __str__(self):
-# start Py3K
-        return str(self.compile())
-# end Py3K
-# start Py2K
-#        return unicode(self.compile()).\
-#                        encode('ascii', 'backslashreplace')
-# end Py2K
+        if util.py2k:
+            return unicode(self.compile()).\
+                        encode('ascii', 'backslashreplace')
+        else:
+            return str(self.compile())
 
     def __init__(self, *args, **kwargs):
         """Support implementations that were passing arguments"""
@@ -1315,12 +1313,10 @@ class Integer(_DateAffinity, TypeEngine):
                 Integer: self.__class__,
                 Numeric: Numeric,
             },
-# start Py2K
-#            operators.div: {
-#                Integer: self.__class__,
-#                Numeric: Numeric,
-#            },
-# end Py2K
+            operators.div: {
+                Integer: self.__class__,
+                Numeric: Numeric,
+            },
             operators.truediv: {
                 Integer: self.__class__,
                 Numeric: Numeric,
@@ -1485,12 +1481,10 @@ class Numeric(_DateAffinity, TypeEngine):
                 Numeric: self.__class__,
                 Integer: self.__class__,
             },
-# start Py2K
-#            operators.div: {
-#                Numeric: self.__class__,
-#                Integer: self.__class__,
-#            },
-# end Py2K
+            operators.div: {
+                Numeric: self.__class__,
+                Integer: self.__class__,
+            },
             operators.truediv: {
                 Numeric: self.__class__,
                 Integer: self.__class__,
@@ -1555,11 +1549,9 @@ class Float(Numeric):
                 Interval: Interval,
                 Numeric: self.__class__,
             },
-# start Py2K
-#            operators.div: {
-#                Numeric: self.__class__,
-#            },
-# end Py2K
+            operators.div: {
+                Numeric: self.__class__,
+            },
             operators.truediv: {
                 Numeric: self.__class__,
             },
@@ -1690,12 +1682,7 @@ class _Binary(TypeEngine):
 
     @property
     def python_type(self):
-# start Py3K
-        return bytes
-# end Py3K
-# start Py2K
-#        return str
-# end Py2K
+        return util.binary_type
 
     # Python 3 - sqlite3 doesn't need the `Binary` conversion
     # here, though pg8000 does to indicate "bytea"
@@ -1713,28 +1700,26 @@ class _Binary(TypeEngine):
     # Python 3 has native bytes() type
     # both sqlite3 and pg8000 seem to return it,
     # psycopg2 as of 2.5 returns 'memoryview'
-# start Py3K
-    def result_processor(self, dialect, coltype):
-        def process(value):
-            if value is not None:
-                value = bytes(value)
-            return value
-        return process
-# end Py3K
-# start Py2K
-#    def result_processor(self, dialect, coltype):
-#        if util.jython:
-#            def process(value):
-#                if value is not None:
-#                    if isinstance(value, array.array):
-#                        return value.tostring()
-#                    return str(value)
-#                else:
-#                    return None
-#        else:
-#            process = processors.to_str
-#        return process
-# end Py2K
+    if util.py2k:
+        def result_processor(self, dialect, coltype):
+            if util.jython:
+                def process(value):
+                    if value is not None:
+                        if isinstance(value, array.array):
+                            return value.tostring()
+                        return str(value)
+                    else:
+                        return None
+            else:
+                process = processors.to_str
+            return process
+    else:
+        def result_processor(self, dialect, coltype):
+            def process(value):
+                if value is not None:
+                    value = bytes(value)
+                return value
+            return process
 
     def coerce_compared_value(self, op, value):
         """See :meth:`.TypeEngine.coerce_compared_value` for a description."""
@@ -1996,7 +1981,7 @@ class Enum(String, SchemaType):
         convert_unicode = kw.pop('convert_unicode', None)
         if convert_unicode is None:
             for e in enums:
-                if isinstance(e, util.string_types):
+                if isinstance(e, util.text_type):
                     convert_unicode = True
                     break
             else:
@@ -2295,11 +2280,9 @@ class Interval(_DateAffinity, TypeDecorator):
             operators.truediv: {
                 Numeric: self.__class__
             },
-# start Py2K
-#            operators.div: {
-#                Numeric: self.__class__
-#            }
-# end Py2K
+            operators.div: {
+                Numeric: self.__class__
+            }
         }
 
     @property
