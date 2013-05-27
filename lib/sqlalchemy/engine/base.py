@@ -734,9 +734,9 @@ class Connection(Connectable):
 
         distilled_params = _distill_params(multiparams, params)
         if distilled_params:
-            # need list() + keys() here to suit
-            # both dict and RowProxy
-            keys = list(distilled_params[0].keys())
+            # note this is usually dict but we support RowProxy
+            # as well; but dict.keys() as an iterator is OK
+            keys = distilled_params[0].keys()
         else:
             keys = []
 

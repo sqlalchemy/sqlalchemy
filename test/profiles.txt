@@ -265,8 +265,7 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 3.3_sqlite_pysqlite
 
 # TEST: test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_1a_populate
 
-test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_1a_populate 2.7_postgresql_psycopg2_cextensions 5131
-test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_1a_populate 2.7_postgresql_psycopg2_nocextensions 5693
+test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_1a_populate 2.7_postgresql_psycopg2_nocextensions 5175
 test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_1a_populate 3.2_postgresql_psycopg2_nocextensions 4828
 test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_1a_populate 3.3_postgresql_psycopg2_nocextensions 4792
 
