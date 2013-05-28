@@ -7,6 +7,13 @@
     :version: 0.8.2
 
     .. change::
+      :tags: bug, examples
+
+      Fixed a small bug in the dogpile example where the generation
+      of SQL cache keys wasn't applying deduping labels to the
+      statement the same way :class:`.Query` normally does.
+
+    .. change::
       :tags: bug, engine, sybase
       :tickets: 2732
 
