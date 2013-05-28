@@ -390,15 +390,13 @@ class SQLCompiler(engine.Compiled):
                             add_to_result_map=None,
                             within_label_clause=False,
                             within_columns_clause=False,
-                            order_by_labels=None, **kw):
+                            render_label_as_label=None,
+                            **kw):
         # only render labels within the columns clause
         # or ORDER BY clause of a select.  dialect-specific compilers
         # can modify this behavior.
-#        if order_by_labels:
-#            import pdb
-#            pdb.set_trace()
         render_label_with_as = within_columns_clause and not within_label_clause
-        render_label_only = order_by_labels and label in order_by_labels
+        render_label_only = render_label_as_label is label
 
         if render_label_only or render_label_with_as:
             if isinstance(label.name, sql._truncated_label):
@@ -518,7 +516,9 @@ class SQLCompiler(engine.Compiled):
     def visit_false(self, expr, **kw):
         return 'false'
 
-    def visit_clauselist(self, clauselist, **kwargs):
+    def visit_clauselist(self, clauselist, order_by_select=None, **kw):
+        if order_by_select is not None:
+            return self._order_by_clauselist(clauselist, order_by_select, **kw)
         sep = clauselist.operator
         if sep is None:
             sep = " "
@@ -526,8 +526,34 @@ class SQLCompiler(engine.Compiled):
             sep = OPERATORS[clauselist.operator]
         return sep.join(
                     s for s in
-                    (c._compiler_dispatch(self, **kwargs)
-                    for c in clauselist.clauses)
+                    (
+                        c._compiler_dispatch(self, **kw)
+                        for c in clauselist.clauses)
+                    if s)
+
+    def _order_by_clauselist(self, clauselist, order_by_select, **kw):
+        # look through raw columns collection for labels.
+        # note that its OK we aren't expanding tables and other selectables
+        # here; we can only add a label in the ORDER BY for an individual
+        # label expression in the columns clause.
+        raw_col = set(order_by_select._raw_columns)
+        def label_ok(c):
+            if c in raw_col:
+                return c
+            elif getattr(c, 'modifier', None) in \
+                    (operators.desc_op, operators.asc_op) and \
+                    c.element.proxy_set.intersection(raw_col):
+                return c.element
+            else:
+                return None
+
+        return ", ".join(
+                    s for s in
+                    (
+                        c._compiler_dispatch(self,
+                                render_label_as_label=label_ok(c),
+                                **kw)
+                        for c in clauselist.clauses)
                     if s)
 
     def visit_case(self, clause, **kwargs):
@@ -1192,12 +1218,12 @@ class SQLCompiler(engine.Compiled):
 
         if select._order_by_clause.clauses:
             if self.dialect.supports_simple_order_by_label:
-                order_by_labels = set(c for k, c in select._columns_plus_names)
+                order_by_select = select
             else:
-                order_by_labels = None
+                order_by_select = None
 
             text += self.order_by_clause(select,
-                                    order_by_labels=order_by_labels, **kwargs)
+                            order_by_select=order_by_select, **kwargs)
         if select._limit is not None or select._offset is not None:
             text += self.limit_clause(select)
         if select.for_update:
