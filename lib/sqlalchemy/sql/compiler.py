@@ -536,14 +536,14 @@ class SQLCompiler(engine.Compiled):
         # note that its OK we aren't expanding tables and other selectables
         # here; we can only add a label in the ORDER BY for an individual
         # label expression in the columns clause.
-        raw_col = set(order_by_select._raw_columns)
+
+        raw_col = set(l._order_by_label_element.name
+                        for l in order_by_select._raw_columns
+                        if l._order_by_label_element is not None)
         def label_ok(c):
-            if c in raw_col:
-                return c
-            elif getattr(c, 'modifier', None) in \
-                    (operators.desc_op, operators.asc_op) and \
-                    c.element.proxy_set.intersection(raw_col):
-                return c.element
+            if c._order_by_label_element is not None and \
+                c._order_by_label_element.name in raw_col:
+                return c._order_by_label_element
             else:
                 return None
 

@@ -746,19 +746,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 'foo || :param_1')
 
 
-    def test_foo(self):
-        lx = (table1.c.myid + table1.c.myid).label('lx')
-        ly = (func.lower(table1.c.name) + table1.c.description).label('ly')
-        dialect = default.DefaultDialect()
-
-        self.assert_compile(
-            select([lx, ly]).order_by(lx, ly.desc()),
-            "SELECT mytable.myid + mytable.myid AS lx, "
-            "lower(mytable.name) || mytable.description AS ly "
-            "FROM mytable ORDER BY lx, ly DESC",
-            dialect=dialect
-            )
-
     def test_labels_in_expressions(self):
         lab1 = (table1.c.myid + 12).label('foo')
         lab2 = func.somefunc(table1.c.name).label('bar')

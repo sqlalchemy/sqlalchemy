@@ -1659,6 +1659,8 @@ class ClauseElement(Visitable):
     is_selectable = False
     is_clause_element = True
 
+    _order_by_label_element = None
+
     def _clone(self):
         """Create a shallow copy of this ClauseElement.
 
@@ -3690,6 +3692,13 @@ class UnaryExpression(ColumnElement):
         self.type = sqltypes.to_instance(type_)
         self.negate = negate
 
+    @util.memoized_property
+    def _order_by_label_element(self):
+        if self.modifier in (operators.desc_op, operators.asc_op):
+            return self.element._order_by_label_element
+        else:
+            return None
+
     @property
     def _from_objects(self):
         return self.element._from_objects
@@ -4325,6 +4334,10 @@ class Label(ColumnElement):
         self._type = type_
         self.quote = element.quote
         self._proxies = [element]
+
+    @util.memoized_property
+    def _order_by_label_element(self):
+        return self
 
     @util.memoized_property
     def type(self):
