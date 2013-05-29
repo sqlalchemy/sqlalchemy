@@ -190,13 +190,13 @@ class Properties(object):
             return default
 
     def keys(self):
-        return self._data.keys()
+        return list(self._data)
 
     def values(self):
-        return self._data.values()
+        return list(self._data.values())
 
     def items(self):
-        return self._data.items()
+        return list(self._data.items())
 
     def has_key(self, key):
         return key in self._data
