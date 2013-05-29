@@ -1,8 +1,8 @@
 *.pyc
-build/
-dist/
-docs/build/output/
-dogpile_data/
+/build/
+/dist/
+/docs/build/output/
+/dogpile_data/
 *.orig
 tox.ini
 .venv
@@ -11,5 +11,5 @@ tox.ini
 .*,cover
 *.so
 sqlnet.log
-mapping_setup.py
-test.py
+/mapping_setup.py
+/test.py
