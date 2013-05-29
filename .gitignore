@@ -11,3 +11,5 @@ tox.ini
 .*,cover
 *.so
 sqlnet.log
+mapping_setup.py
+test.py
