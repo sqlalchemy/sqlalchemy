@@ -260,19 +260,35 @@ class HSTORE(sqltypes.Concatenable, sqltypes.TypeEngine):
                 _adapt_expression(self, op, other_comparator)
 
     def bind_processor(self, dialect):
-        def process(value):
-            if isinstance(value, dict):
-                return _serialize_hstore(value)
-            else:
-                return value
+        if util.py2k:
+            encoding = dialect.encoding
+            def process(value):
+                if isinstance(value, dict):
+                    return _serialize_hstore(value).encode(encoding)
+                else:
+                    return value
+        else:
+            def process(value):
+                if isinstance(value, dict):
+                    return _serialize_hstore(value)
+                else:
+                    return value
         return process
 
     def result_processor(self, dialect, coltype):
-        def process(value):
-            if value is not None:
-                return _parse_hstore(value)
-            else:
-                return value
+        if util.py2k:
+            encoding = dialect.encoding
+            def process(value):
+                if value is not None:
+                    return _parse_hstore(value.decode(encoding))
+                else:
+                    return value
+        else:
+            def process(value):
+                if value is not None:
+                    return _parse_hstore(value)
+                else:
+                    return value
         return process
 
 
