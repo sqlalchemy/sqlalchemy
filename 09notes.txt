@@ -1,0 +1,10 @@
+-- temporary notes --
+
+
+- make sure input() function in dogpile example works in py2
+- we want to get rid of any support for sets.Set entirely; check to see what
+impact this has.   in langhelpers as well as in collections.py
+- give raise_from_cause some more manual tests:
+	 - schema.py has one
+	 - engine/strategies.py on connect
+	 - sql/compiler.py for column errors in create table

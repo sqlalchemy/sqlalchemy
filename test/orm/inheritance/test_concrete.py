@@ -711,21 +711,21 @@ class ColKeysTest(fixtures.MappedTest):
         refugees_table = Table('refugee', metadata, Column('refugee_fid'
                                , Integer, primary_key=True,
                                test_needs_autoincrement=True),
-                               Column('refugee_name', Unicode(30),
+                               Column('refugee_name', String(30),
                                key='name'))
         offices_table = Table('office', metadata, Column('office_fid',
                               Integer, primary_key=True,
                               test_needs_autoincrement=True),
-                              Column('office_name', Unicode(30),
+                              Column('office_name', String(30),
                               key='name'))
 
     @classmethod
     def insert_data(cls):
         refugees_table.insert().execute(dict(refugee_fid=1,
-                name=u'refugee1'), dict(refugee_fid=2, name=u'refugee2'
+                name='refugee1'), dict(refugee_fid=2, name='refugee2'
                 ))
         offices_table.insert().execute(dict(office_fid=1,
-                name=u'office1'), dict(office_fid=2, name=u'office2'))
+                name='office1'), dict(office_fid=2, name='office2'))
 
     def test_keys(self):
         pjoin = polymorphic_union({'refugee': refugees_table, 'office'

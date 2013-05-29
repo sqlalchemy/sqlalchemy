@@ -24,6 +24,7 @@ from sqlalchemy import sql, schema, exc, pool, util
 from sqlalchemy.sql import compiler, text
 from sqlalchemy.engine import default, reflection
 from sqlalchemy import types as sqltypes
+from functools import reduce
 
 RESERVED_WORDS = set(
     ["abs", "absolute", "access", "access_method", "acos", "active", "add",
@@ -298,7 +299,7 @@ class InfoDDLCompiler(compiler.DDLCompiler):
 
     def get_column_default_string(self, column):
         if (isinstance(column.server_default, schema.DefaultClause) and
-            isinstance(column.server_default.arg, basestring)):
+            isinstance(column.server_default.arg, util.string_types)):
                 if isinstance(column.type, (sqltypes.Integer, sqltypes.Numeric)):
                     return self.sql_compiler.process(text(column.server_default.arg))
 
@@ -506,7 +507,7 @@ class InformixDialect(default.DefaultDialect):
             if remote_column not in remote_cols:
                 remote_cols.append(remote_column)
 
-        return fkeys.values()
+        return list(fkeys.values())
 
     @reflection.cache
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):

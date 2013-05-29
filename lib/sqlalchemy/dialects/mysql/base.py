@@ -640,7 +640,7 @@ class BIT(sqltypes.TypeEngine):
 
         def process(value):
             if value is not None:
-                v = 0L
+                v = 0
                 for i in map(ord, value):
                     v = v << 8 | i
                 return v
@@ -1139,14 +1139,10 @@ class SET(_StringType):
             #   No ',' quoting issues- commas aren't allowed in SET values
             # The bad news:
             #   Plenty of driver inconsistencies here.
-            if isinstance(value, util.set_types):
+            if isinstance(value, set):
                 # ..some versions convert '' to an empty set
                 if not value:
                     value.add('')
-                # ..some return sets.Set, even for pythons
-                # that have __builtin__.set
-                if not isinstance(value, set):
-                    value = set(value)
                 return value
             # ...and some versions return strings
             if value is not None:
@@ -1159,7 +1155,7 @@ class SET(_StringType):
         super_convert = super(SET, self).bind_processor(dialect)
 
         def process(value):
-            if value is None or isinstance(value, (int, long, basestring)):
+            if value is None or isinstance(value, util.int_types + util.string_types):
                 pass
             else:
                 if None in value:
@@ -1340,7 +1336,7 @@ class MySQLCompiler(compiler.SQLCompiler):
           of a SELECT.
 
         """
-        if isinstance(select._distinct, basestring):
+        if isinstance(select._distinct, util.string_types):
             return select._distinct.upper() + " "
         elif select._distinct:
             return "DISTINCT "
@@ -1429,7 +1425,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
                         MySQLDDLCompiler, self).create_table_constraints(table)
 
         engine_key = '%s_engine' % self.dialect.name
-        is_innodb = table.kwargs.has_key(engine_key) and \
+        is_innodb = engine_key in table.kwargs and \
                     table.kwargs[engine_key].lower() == 'innodb'
 
         auto_inc_column = table._autoincrement_column
@@ -2034,7 +2030,7 @@ class MySQLDialect(default.DefaultDialect):
                 have = rs.fetchone() is not None
                 rs.close()
                 return have
-            except exc.DBAPIError, e:
+            except exc.DBAPIError as e:
                 if self._extract_error_code(e.orig) == 1146:
                     return False
                 raise
@@ -2317,7 +2313,7 @@ class MySQLDialect(default.DefaultDialect):
         rp = None
         try:
             rp = connection.execute(st)
-        except exc.DBAPIError, e:
+        except exc.DBAPIError as e:
             if self._extract_error_code(e.orig) == 1146:
                 raise exc.NoSuchTableError(full_name)
             else:
@@ -2341,7 +2337,7 @@ class MySQLDialect(default.DefaultDialect):
         try:
             try:
                 rp = connection.execute(st)
-            except exc.DBAPIError, e:
+            except exc.DBAPIError as e:
                 if self._extract_error_code(e.orig) == 1146:
                     raise exc.NoSuchTableError(full_name)
                 else:
@@ -2791,11 +2787,8 @@ class _DecodingRowProxy(object):
         item = self.rowproxy[index]
         if isinstance(item, _array):
             item = item.tostring()
-        # Py2K
-        if self.charset and isinstance(item, str):
-        # end Py2K
-        # Py3K
-        #if self.charset and isinstance(item, bytes):
+
+        if self.charset and isinstance(item, util.binary_type):
             return item.decode(self.charset)
         else:
             return item
@@ -2804,11 +2797,7 @@ class _DecodingRowProxy(object):
         item = getattr(self.rowproxy, attr)
         if isinstance(item, _array):
             item = item.tostring()
-        # Py2K
-        if self.charset and isinstance(item, str):
-        # end Py2K
-        # Py3K
-        #if self.charset and isinstance(item, bytes):
+        if self.charset and isinstance(item, util.binary_type):
             return item.decode(self.charset)
         else:
             return item

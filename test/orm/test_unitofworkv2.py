@@ -26,7 +26,7 @@ class AssertsUOW(object):
     def _assert_uow_size(self, session, expected ):
         uow = self._get_test_uow(session)
         postsort_actions = uow._generate_actions()
-        print postsort_actions
+        print(postsort_actions)
         eq_(len(postsort_actions), expected, postsort_actions)
 
 class UOWTest(_fixtures.FixtureTest,
@@ -125,12 +125,12 @@ class RudimentaryFlushTest(UOWTest):
                 CompiledSQL(
                     "UPDATE addresses SET user_id=:user_id WHERE "
                     "addresses.id = :addresses_id",
-                    lambda ctx: [{u'addresses_id': a1.id, 'user_id': None}]
+                    lambda ctx: [{'addresses_id': a1.id, 'user_id': None}]
                 ),
                 CompiledSQL(
                     "UPDATE addresses SET user_id=:user_id WHERE "
                     "addresses.id = :addresses_id",
-                    lambda ctx: [{u'addresses_id': a2.id, 'user_id': None}]
+                    lambda ctx: [{'addresses_id': a2.id, 'user_id': None}]
                 ),
                 CompiledSQL(
                     "DELETE FROM users WHERE users.id = :id",
@@ -235,12 +235,12 @@ class RudimentaryFlushTest(UOWTest):
                 CompiledSQL(
                     "UPDATE addresses SET user_id=:user_id WHERE "
                     "addresses.id = :addresses_id",
-                    lambda ctx: [{u'addresses_id': a1.id, 'user_id': None}]
+                    lambda ctx: [{'addresses_id': a1.id, 'user_id': None}]
                 ),
                 CompiledSQL(
                     "UPDATE addresses SET user_id=:user_id WHERE "
                     "addresses.id = :addresses_id",
-                    lambda ctx: [{u'addresses_id': a2.id, 'user_id': None}]
+                    lambda ctx: [{'addresses_id': a2.id, 'user_id': None}]
                 ),
                 CompiledSQL(
                     "DELETE FROM users WHERE users.id = :id",
@@ -1149,7 +1149,7 @@ class SingleCycleM2MTest(fixtures.MappedTest,
                     "nodes, node_to_nodes WHERE :param_1 = "
                     "node_to_nodes.right_node_id AND nodes.id = "
                     "node_to_nodes.left_node_id" ,
-                    lambda ctx:{u'param_1': n1.id},
+                    lambda ctx:{'param_1': n1.id},
                 ),
                 CompiledSQL(
                     "DELETE FROM node_to_nodes WHERE "

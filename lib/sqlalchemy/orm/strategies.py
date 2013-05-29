@@ -359,7 +359,7 @@ class LazyLoader(AbstractRelationshipLoader):
                         )
 
         if self.use_get:
-            for col in self._equated_columns.keys():
+            for col in list(self._equated_columns):
                 if col in self.mapper._equivalent_columns:
                     for c in self.mapper._equivalent_columns[col]:
                         self._equated_columns[c] = self._equated_columns[col]
@@ -1332,7 +1332,7 @@ class EagerLazyOption(StrategizedOption):
     def __init__(self, key, lazy=True, chained=False,
                     propagate_to_loaders=True
                     ):
-        if isinstance(key[0], basestring) and key[0] == '*':
+        if isinstance(key[0], str) and key[0] == '*':
             if len(key) != 1:
                 raise sa_exc.ArgumentError(
                         "Wildcard identifier '*' must "
@@ -1384,7 +1384,7 @@ class LoadEagerFromAliasOption(PropertyOption):
     def __init__(self, key, alias=None, chained=False):
         super(LoadEagerFromAliasOption, self).__init__(key)
         if alias is not None:
-            if not isinstance(alias, basestring):
+            if not isinstance(alias, str):
                 info = inspect(alias)
                 alias = info.selectable
         self.alias = alias
@@ -1401,7 +1401,7 @@ class LoadEagerFromAliasOption(PropertyOption):
 
         root_mapper, prop = paths[-1].path[-2:]
         if self.alias is not None:
-            if isinstance(self.alias, basestring):
+            if isinstance(self.alias, str):
                 self.alias = prop.target.alias(self.alias)
             paths[-1].set(query, "user_defined_eager_row_processor",
                 sql_util.ColumnAdapter(self.alias,

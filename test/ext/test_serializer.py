@@ -47,12 +47,12 @@ class SerializeTest(fixtures.MappedTest):
 
     @classmethod
     def insert_data(cls):
-        params = [dict(zip(('id', 'name'), column_values))
+        params = [dict(list(zip(('id', 'name'), column_values)))
                   for column_values in [(7, 'jack'), (8, 'ed'), (9,
                   'fred'), (10, 'chuck')]]
         users.insert().execute(params)
-        addresses.insert().execute([dict(zip(('id', 'user_id', 'email'
-                                   ), column_values))
+        addresses.insert().execute([dict(list(zip(('id', 'user_id', 'email'
+                                   ), column_values)))
                                    for column_values in [(1, 7,
                                    'jack@bean.com'), (2, 8,
                                    'ed@wood.com'), (3, 8,
@@ -85,8 +85,8 @@ class SerializeTest(fixtures.MappedTest):
                                    users.metadata, None)
         eq_(str(expr), str(re_expr))
         assert re_expr.bind is testing.db
-        eq_(re_expr.execute().fetchall(), [(7, u'jack'), (8, u'ed'),
-            (8, u'ed'), (8, u'ed'), (9, u'fred')])
+        eq_(re_expr.execute().fetchall(), [(7, 'jack'), (8, 'ed'),
+            (8, 'ed'), (8, 'ed'), (9, 'fred')])
 
     def test_query_one(self):
         q = Session.query(User).\
@@ -114,7 +114,7 @@ class SerializeTest(fixtures.MappedTest):
             Address(email='ed@lala.com'),
             Address(email='ed@bettyboop.com')])
 
-    @testing.skip_if(lambda: util.pypy, "problems with pypy pickle reported")
+    @testing.requires.non_broken_pickle
     def test_query_two(self):
         q = \
             Session.query(User).join(User.addresses).\
@@ -122,9 +122,9 @@ class SerializeTest(fixtures.MappedTest):
         q2 = serializer.loads(serializer.dumps(q, -1), users.metadata,
                               Session)
         eq_(q2.all(), [User(name='fred')])
-        eq_(list(q2.values(User.id, User.name)), [(9, u'fred')])
+        eq_(list(q2.values(User.id, User.name)), [(9, 'fred')])
 
-    @testing.skip_if(lambda: util.pypy, "problems with pypy pickle reported")
+    @testing.requires.non_broken_pickle
     def test_query_three(self):
         ua = aliased(User)
         q = \
@@ -136,9 +136,9 @@ class SerializeTest(fixtures.MappedTest):
 
         # try to pull out the aliased entity here...
         ua_2 = q2._entities[0].entity_zero.entity
-        eq_(list(q2.values(ua_2.id, ua_2.name)), [(9, u'fred')])
+        eq_(list(q2.values(ua_2.id, ua_2.name)), [(9, 'fred')])
 
-    @testing.skip_if(lambda: util.pypy, "problems with pypy pickle reported")
+    @testing.requires.non_broken_pickle
     def test_orm_join(self):
         from sqlalchemy.orm.util import join
 
@@ -165,8 +165,7 @@ class SerializeTest(fixtures.MappedTest):
         eq_(list(q2.all()), [(u7, u8), (u7, u9), (u7, u10), (u8, u9),
             (u8, u10)])
 
-    @testing.skip_if(lambda: util.pypy, "pickle sometimes has "
-                        "problems here, sometimes not")
+    @testing.requires.non_broken_pickle
     def test_any(self):
         r = User.addresses.any(Address.email == 'x')
         ser = serializer.dumps(r, -1)

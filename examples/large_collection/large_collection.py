@@ -63,14 +63,14 @@ if __name__ == '__main__':
 
     sess.add(org)
 
-    print "-------------------------\nflush one - save org + 3 members\n"
+    print("-------------------------\nflush one - save org + 3 members\n")
     sess.commit()
 
     # the 'members' collection is a Query.  it issues
     # SQL as needed to load subsets of the collection.
-    print "-------------------------\nload subset of members\n"
+    print("-------------------------\nload subset of members\n")
     members = org.members.filter(member_table.c.name.like('%member t%')).all()
-    print members
+    print(members)
 
     # new Members can be appended without any
     # SQL being emitted to load the full collection
@@ -78,19 +78,19 @@ if __name__ == '__main__':
     org.members.append(Member('member five'))
     org.members.append(Member('member six'))
 
-    print "-------------------------\nflush two - save 3 more members\n"
+    print("-------------------------\nflush two - save 3 more members\n")
     sess.commit()
 
     # delete the object.   Using ON DELETE CASCADE
     # SQL is only emitted for the head row - the Member rows
     # disappear automatically without the need for additional SQL.
     sess.delete(org)
-    print "-------------------------\nflush three - delete org, delete members in one statement\n"
+    print("-------------------------\nflush three - delete org, delete members in one statement\n")
     sess.commit()
 
-    print "-------------------------\nno Member rows should remain:\n"
-    print sess.query(Member).count()
+    print("-------------------------\nno Member rows should remain:\n")
+    print(sess.query(Member).count())
     sess.close()
 
-    print "------------------------\ndone.  dropping tables."
+    print("------------------------\ndone.  dropping tables.")
     meta.drop_all(engine)

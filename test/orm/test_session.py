@@ -232,7 +232,7 @@ class ExecutionTest(_fixtures.FixtureTest):
         # use :bindparam style
         eq_(sess.execute("select * from users where id=:id",
                          {'id': 7}).fetchall(),
-            [(7, u'jack')])
+            [(7, 'jack')])
 
 
         # use :bindparam style
@@ -733,7 +733,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         # withstand a change?  should this be
         # more directly attempting to manipulate the identity_map ?
         u1, u2, u3 = sess.query(User).all()
-        for i, (key, value) in enumerate(sess.identity_map.iteritems()):
+        for i, (key, value) in enumerate(iter(sess.identity_map.items())):
             if i == 2:
                 del u3
                 gc_collect()
@@ -747,7 +747,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         @event.listens_for(m, "after_update")
         def e(mapper, conn, target):
             sess = object_session(target)
-            for entry in sess.identity_map.values():
+            for entry in list(sess.identity_map.values()):
                 entry.name = "5"
 
         a1, a2 = User(name="1"), User(name="2")
@@ -845,7 +845,7 @@ class SessionStateWFixtureTest(_fixtures.FixtureTest):
         u = session.query(User).filter_by(id=7).one()
 
         # get everything to load in both directions
-        print [a.user for a in u.addresses]
+        print([a.user for a in u.addresses])
 
         # then see if expunge fails
         session.expunge(u)
@@ -1187,7 +1187,7 @@ class StrongIdentityMapTest(_fixtures.FixtureTest):
         s.flush()
         user = s.query(User).one()
         user = None
-        print s.identity_map
+        print(s.identity_map)
         gc_collect()
         assert len(s.identity_map) == 1
 
@@ -1207,7 +1207,7 @@ class StrongIdentityMapTest(_fixtures.FixtureTest):
         s = create_session(weak_identity_map=False)
         mapper(User, users)
 
-        for o in [User(name='u%s' % x) for x in xrange(10)]:
+        for o in [User(name='u%s' % x) for x in range(10)]:
             s.add(o)
         # o is still live after this loop...
 

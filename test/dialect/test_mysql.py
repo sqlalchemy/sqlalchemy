@@ -5,6 +5,7 @@ from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 
 from sqlalchemy import *
 from sqlalchemy import sql, exc, schema, types as sqltypes
+from sqlalchemy.util import u
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, AssertsExecutionResults
@@ -372,9 +373,9 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 try:
                     self.assert_(list(row) == expected)
                 except:
-                    print "Storing %s" % store
-                    print "Expected %s" % expected
-                    print "Found %s" % list(row)
+                    print("Storing %s" % store)
+                    print("Expected %s" % expected)
+                    print("Found %s" % list(row))
                     raise
                 table.delete().execute().close()
 
@@ -684,17 +685,17 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         metadata = MetaData(unicode_engine)
         t1 = Table('table', metadata,
             Column('id', Integer, primary_key=True),
-            Column('value', Enum(u'réveillé', u'drôle', u'S’il')),
-            Column('value2', mysql.ENUM(u'réveillé', u'drôle', u'S’il'))
+            Column('value', Enum(u('réveillé'), u('drôle'), u('S’il'))),
+            Column('value2', mysql.ENUM(u('réveillé'), u('drôle'), u('S’il')))
         )
         metadata.create_all()
         try:
-            t1.insert().execute(value=u'drôle', value2=u'drôle')
-            t1.insert().execute(value=u'réveillé', value2=u'réveillé')
-            t1.insert().execute(value=u'S’il', value2=u'S’il')
+            t1.insert().execute(value=u('drôle'), value2=u('drôle'))
+            t1.insert().execute(value=u('réveillé'), value2=u('réveillé'))
+            t1.insert().execute(value=u('S’il'), value2=u('S’il'))
             eq_(t1.select().order_by(t1.c.id).execute().fetchall(),
-                [(1, u'drôle', u'drôle'), (2, u'réveillé', u'réveillé'),
-                            (3, u'S’il', u'S’il')]
+                [(1, u('drôle'), u('drôle')), (2, u('réveillé'), u('réveillé')),
+                            (3, u('S’il'), u('S’il'))]
             )
 
             # test reflection of the enum labels
@@ -706,10 +707,10 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             # latin-1 stuff forcing its way in ?
 
             assert t2.c.value.type.enums[0:2] == \
-                    (u'réveillé', u'drôle')  # u'S’il') # eh ?
+                    (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
 
             assert t2.c.value2.type.enums[0:2] == \
-                    (u'réveillé', u'drôle')  # u'S’il') # eh ?
+                    (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
         finally:
             metadata.drop_all()
 
@@ -1370,7 +1371,7 @@ class SQLModeDetectionTest(fixtures.TestBase):
     def _options(self, modes):
         def connect(con, record):
             cursor = con.cursor()
-            print "DOING THiS:", "set sql_mode='%s'" % (",".join(modes))
+            print("DOING THiS:", "set sql_mode='%s'" % (",".join(modes)))
             cursor.execute("set sql_mode='%s'" % (",".join(modes)))
         e = engines.testing_engine(options={
             'pool_events':[

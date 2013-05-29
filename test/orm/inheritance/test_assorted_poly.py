@@ -18,7 +18,7 @@ from sqlalchemy.testing.schema import Table, Column
 
 class AttrSettable(object):
     def __init__(self, **kwargs):
-        [setattr(self, k, v) for k, v in kwargs.iteritems()]
+        [setattr(self, k, v) for k, v in kwargs.items()]
     def __repr__(self):
         return self.__class__.__name__ + "(%s)" % (hex(id(self)))
 
@@ -386,7 +386,7 @@ class RelationshipTest4(fixtures.MappedTest):
         # class definitions
         class Person(object):
             def __init__(self, **kwargs):
-                for key, value in kwargs.iteritems():
+                for key, value in kwargs.items():
                     setattr(self, key, value)
             def __repr__(self):
                 return "Ordinary person %s" % self.name
@@ -400,7 +400,7 @@ class RelationshipTest4(fixtures.MappedTest):
                         (self.name, self.longer_status)
         class Car(object):
             def __init__(self, **kwargs):
-                for key, value in kwargs.iteritems():
+                for key, value in kwargs.items():
                     setattr(self, key, value)
             def __repr__(self):
                 return "Car number %d" % self.car_id
@@ -512,7 +512,7 @@ class RelationshipTest5(fixtures.MappedTest):
 
         class Person(object):
             def __init__(self, **kwargs):
-                for key, value in kwargs.iteritems():
+                for key, value in kwargs.items():
                     setattr(self, key, value)
             def __repr__(self):
                 return "Ordinary person %s" % self.name
@@ -526,7 +526,7 @@ class RelationshipTest5(fixtures.MappedTest):
                         (self.name, self.longer_status)
         class Car(object):
             def __init__(self, **kwargs):
-                for key, value in kwargs.iteritems():
+                for key, value in kwargs.items():
                     setattr(self, key, value)
             def __repr__(self):
                 return "Car number %d" % self.car_id
@@ -646,7 +646,7 @@ class RelationshipTest7(fixtures.MappedTest):
 
         class PersistentObject(object):
             def __init__(self, **kwargs):
-                for key, value in kwargs.iteritems():
+                for key, value in kwargs.items():
                     setattr(self, key, value)
 
         class Status(PersistentObject):
@@ -838,7 +838,7 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
         # class definitions
         class PersistentObject(object):
             def __init__(self, **kwargs):
-                for key, value in kwargs.iteritems():
+                for key, value in kwargs.items():
                     setattr(self, key, value)
         class Status(PersistentObject):
             def __repr__(self):
@@ -968,7 +968,7 @@ class MultiLevelTest(fixtures.MappedTest):
     def test_threelevels(self):
         class Employee( object):
             def set( me, **kargs):
-                for k,v in kargs.iteritems(): setattr( me, k, v)
+                for k,v in kargs.items(): setattr( me, k, v)
                 return me
             def __str__(me):
                 return str(me.__class__.__name__)+':'+str(me.name)

@@ -1,5 +1,5 @@
 # coding: utf-8
-from __future__ import with_statement
+
 
 from sqlalchemy.testing import eq_
 from sqlalchemy import *
@@ -7,6 +7,8 @@ from sqlalchemy import types as sqltypes, exc, schema
 from sqlalchemy.sql import table, column
 from sqlalchemy.testing import fixtures, AssertsExecutionResults, AssertsCompiledSQL
 from sqlalchemy import testing
+from sqlalchemy.util import u, b
+from sqlalchemy import util
 from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.dialects.oracle import cx_oracle, base as oracle
@@ -817,7 +819,7 @@ class TwoPhaseTest(fixtures.TablesTest):
         )
     def test_twophase_prepare_false(self):
         conn = self._connection()
-        for i in xrange(2):
+        for i in range(2):
             trans = conn.begin_twophase()
             conn.execute("select 1 from dual")
             trans.prepare()
@@ -827,7 +829,7 @@ class TwoPhaseTest(fixtures.TablesTest):
 
     def test_twophase_prepare_true(self):
         conn = self._connection()
-        for i in xrange(2):
+        for i in range(2):
             trans = conn.begin_twophase()
             conn.execute("insert into datatable (id, data) "
                     "values (%s, 'somedata')" % i)
@@ -880,7 +882,7 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
         b = bindparam("foo", "hello world!")
         assert b.type.dialect_impl(dialect).get_dbapi_type(dbapi) == 'STRING'
 
-        b = bindparam("foo", u"hello world!")
+        b = bindparam("foo", "hello world!")
         assert b.type.dialect_impl(dialect).get_dbapi_type(dbapi) == 'STRING'
 
     def test_long(self):
@@ -1277,10 +1279,10 @@ class TypesTest(fixtures.TestBase):
             Column('data', oracle.RAW(35))
         )
         metadata.create_all()
-        testing.db.execute(raw_table.insert(), id=1, data="ABCDEF")
+        testing.db.execute(raw_table.insert(), id=1, data=b("ABCDEF"))
         eq_(
             testing.db.execute(raw_table.select()).first(),
-            (1, "ABCDEF")
+            (1, b("ABCDEF"))
         )
 
     @testing.provide_metadata
@@ -1301,11 +1303,11 @@ class TypesTest(fixtures.TestBase):
                 t2.c.data.type.dialect_impl(testing.db.dialect),
                 cx_oracle._OracleNVarChar)
 
-        data = u'm’a réveillé.'
+        data = u('m’a réveillé.')
         t2.insert().execute(data=data)
         res = t2.select().execute().first()['data']
         eq_(res, data)
-        assert isinstance(res, unicode)
+        assert isinstance(res, util.text_type)
 
 
     def test_char_length(self):
@@ -1367,10 +1369,10 @@ class TypesTest(fixtures.TestBase):
         try:
             engine.execute(t.insert(), id=1,
                                         data='this is text',
-                                        bindata='this is binary')
+                                        bindata=b('this is binary'))
             row = engine.execute(t.select()).first()
             eq_(row['data'].read(), 'this is text')
-            eq_(row['bindata'].read(), 'this is binary')
+            eq_(row['bindata'].read(), b('this is binary'))
         finally:
             t.drop(engine)
 
@@ -1455,7 +1457,8 @@ class BufferedColumnTest(fixtures.TestBase, AssertsCompiledSQL):
         stream = os.path.join(
                         os.path.dirname(__file__), "..",
                         'binary_data_one.dat')
-        stream = file(stream).read(12000)
+        with open(stream, "rb") as file_:
+            stream = file_.read(12000)
 
         for i in range(1, 11):
             binary_table.insert().execute(id=i, data=stream)
@@ -1651,28 +1654,28 @@ class UnicodeSchemaTest(fixtures.TestBase):
         metadata.create_all()
 
         table.insert().execute(
-            {'_underscorecolumn': u'’é'},
+            {'_underscorecolumn': u('’é')},
         )
         result = testing.db.execute(
-            table.select().where(table.c._underscorecolumn==u'’é')
+            table.select().where(table.c._underscorecolumn==u('’é'))
         ).scalar()
-        eq_(result, u'’é')
+        eq_(result, u('’é'))
 
     @testing.provide_metadata
     def test_quoted_column_unicode(self):
         metadata = self.metadata
         table=Table("atable", metadata,
-            Column(u"méil", Unicode(255), primary_key=True),
+            Column(u("méil"), Unicode(255), primary_key=True),
         )
         metadata.create_all()
 
         table.insert().execute(
-            {u'méil': u'’é'},
+            {u('méil'): u('’é')},
         )
         result = testing.db.execute(
-            table.select().where(table.c[u'méil']==u'’é')
+            table.select().where(table.c[u('méil')] == u('’é'))
         ).scalar()
-        eq_(result, u'’é')
+        eq_(result, u('’é'))
 
 
 class DBLinkReflectionTest(fixtures.TestBase):
@@ -1712,5 +1715,5 @@ class DBLinkReflectionTest(fixtures.TestBase):
 
         t = Table('test_table_syn', m, autoload=True,
                 autoload_with=testing.db, oracle_resolve_synonyms=True)
-        eq_(t.c.keys(), ['id', 'data'])
+        eq_(list(t.c.keys()), ['id', 'data'])
         eq_(list(t.primary_key), [t.c.id])

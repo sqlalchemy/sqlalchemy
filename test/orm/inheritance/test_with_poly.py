@@ -11,7 +11,7 @@ from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.testing import assert_raises, eq_
 
-from _poly_fixtures import Company, Person, Engineer, Manager, Boss, \
+from ._poly_fixtures import Company, Person, Engineer, Manager, Boss, \
     Machine, Paperwork, _PolymorphicFixtureBase, _Polymorphic,\
     _PolymorphicPolymorphic, _PolymorphicUnions, _PolymorphicJoins,\
     _PolymorphicAliasedJoins
@@ -37,8 +37,8 @@ class _WithPolymorphicBase(_PolymorphicFixtureBase):
                                 pa.Manager.manager_name=='dogbert')).\
                 order_by(pa.Engineer.type).all(),
             [
-                (u'dilbert', u'java', None),
-                (u'dogbert', None, u'dogbert'),
+                ('dilbert', 'java', None),
+                ('dogbert', None, 'dogbert'),
             ]
         )
 
@@ -63,10 +63,10 @@ class _WithPolymorphicBase(_PolymorphicFixtureBase):
                     )
                 ).order_by(pa.name, pa_alias.name)],
             [
-                (u'dilbert', Engineer, u'dilbert', Engineer),
-                (u'dogbert', Manager, u'pointy haired boss', Boss),
-                (u'vlad', Engineer, u'vlad', Engineer),
-                (u'wally', Engineer, u'wally', Engineer)
+                ('dilbert', Engineer, 'dilbert', Engineer),
+                ('dogbert', Manager, 'pointy haired boss', Boss),
+                ('vlad', Engineer, 'vlad', Engineer),
+                ('wally', Engineer, 'wally', Engineer)
             ]
         )
 
@@ -91,10 +91,10 @@ class _WithPolymorphicBase(_PolymorphicFixtureBase):
                     )
                 ).order_by(pa.name, pa_alias.name)],
             [
-                (u'dilbert', u'java', u'dilbert', u'java'),
-                (u'dogbert', None, u'pointy haired boss', None),
-                (u'vlad', u'cobol', u'vlad', u'cobol'),
-                (u'wally', u'c++', u'wally', u'c++')
+                ('dilbert', 'java', 'dilbert', 'java'),
+                ('dogbert', None, 'pointy haired boss', None),
+                ('vlad', 'cobol', 'vlad', 'cobol'),
+                ('wally', 'c++', 'wally', 'c++')
             ]
         )
 

@@ -60,9 +60,9 @@ def profiled(target=None, **target_opts):
             if report:
                 sort_ = target_opts.get('sort', profile_config['sort'])
                 limit = target_opts.get('limit', profile_config['limit'])
-                print ("Profile report for target '%s' (%s)" % (
+                print(("Profile report for target '%s' (%s)" % (
                     target, filename)
-                    )
+                    ))
 
                 stats = load_stats()
                 stats.sort_stats(*sort_)
@@ -198,7 +198,7 @@ class ProfileStatsFile(object):
         profile_f.close()
 
     def _write(self):
-        print("Writing profile file %s" % self.fname)
+        print(("Writing profile file %s" % self.fname))
         profile_f = open(self.fname, "w")
         profile_f.write(self._header())
         for test_key in sorted(self.data):
@@ -253,11 +253,11 @@ def function_call_count(variance=0.05):
             else:
                 line_no, expected_count = expected
 
-            print("Pstats calls: %d Expected %s" % (
+            print(("Pstats calls: %d Expected %s" % (
                     callcount,
                     expected_count
                 )
-            )
+            ))
             stats.print_stats()
             #stats.print_callers()
 

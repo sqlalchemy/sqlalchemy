@@ -184,7 +184,7 @@ class CompositeProperty(DescriptorProperty):
     def _init_props(self):
         self.props = props = []
         for attr in self.attrs:
-            if isinstance(attr, basestring):
+            if isinstance(attr, str):
                 prop = self.parent.get_property(attr)
             elif isinstance(attr, schema.Column):
                 prop = self.parent._columntoproperty[attr]

@@ -78,13 +78,8 @@ class GenerativeQueryTest(fixtures.MappedTest):
         assert sess.query(func.min(foo.c.bar)).filter(foo.c.bar<30).one() == (0,)
 
         assert sess.query(func.max(foo.c.bar)).filter(foo.c.bar<30).one() == (29,)
-        # Py3K
-        #assert query.filter(foo.c.bar<30).values(sa.func.max(foo.c.bar)).__next__()[0] == 29
-        #assert query.filter(foo.c.bar<30).values(sa.func.max(foo.c.bar)).__next__()[0] == 29
-        # Py2K
-        assert query.filter(foo.c.bar<30).values(sa.func.max(foo.c.bar)).next()[0] == 29
-        assert query.filter(foo.c.bar<30).values(sa.func.max(foo.c.bar)).next()[0] == 29
-        # end Py2K
+        assert next(query.filter(foo.c.bar<30).values(sa.func.max(foo.c.bar)))[0] == 29
+        assert next(query.filter(foo.c.bar<30).values(sa.func.max(foo.c.bar)))[0] == 29
 
     @testing.fails_if(lambda:testing.against('mysql+mysqldb') and
             testing.db.dialect.dbapi.version_info[:4] == (1, 2, 1, 'gamma'),
@@ -111,18 +106,10 @@ class GenerativeQueryTest(fixtures.MappedTest):
 
         query = create_session().query(Foo)
 
-        # Py3K
-        #avg_f = query.filter(foo.c.bar<30).values(sa.func.avg(foo.c.bar)).__next__()[0]
-        # Py2K
-        avg_f = query.filter(foo.c.bar<30).values(sa.func.avg(foo.c.bar)).next()[0]
-        # end Py2K
+        avg_f = next(query.filter(foo.c.bar<30).values(sa.func.avg(foo.c.bar)))[0]
         assert float(round(avg_f, 1)) == 14.5
 
-        # Py3K
-        #avg_o = query.filter(foo.c.bar<30).values(sa.func.avg(foo.c.bar)).__next__()[0]
-        # Py2K
-        avg_o = query.filter(foo.c.bar<30).values(sa.func.avg(foo.c.bar)).next()[0]
-        # end Py2K
+        avg_o = next(query.filter(foo.c.bar<30).values(sa.func.avg(foo.c.bar)))[0]
         assert float(round(avg_o, 1)) == 14.5
 
     def test_filter(self):

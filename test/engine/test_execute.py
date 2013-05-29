@@ -1,4 +1,4 @@
-from __future__ import with_statement
+
 
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, \
     config, is_
@@ -12,13 +12,13 @@ from sqlalchemy.testing.schema import Table, Column
 import sqlalchemy as tsa
 from sqlalchemy import testing
 from sqlalchemy.testing import engines
+from sqlalchemy import util
 from sqlalchemy.testing.engines import testing_engine
 import logging.handlers
 from sqlalchemy.dialects.oracle.zxjdbc import ReturningParam
 from sqlalchemy.engine import result as _result, default
 from sqlalchemy.engine.base import Connection, Engine
 from sqlalchemy.testing import fixtures
-import StringIO
 
 users, metadata, users_autoinc = None, None, None
 class ExecuteTest(fixtures.TestBase):
@@ -256,7 +256,7 @@ class ExecuteTest(fixtures.TestBase):
             try:
                 cursor = raw.cursor()
                 cursor.execute("SELECTINCORRECT")
-            except testing.db.dialect.dbapi.DatabaseError, orig:
+            except testing.db.dialect.dbapi.DatabaseError as orig:
                 # py3k has "orig" in local scope...
                 the_orig = orig
         finally:
@@ -622,7 +622,7 @@ class LogParamsTest(fixtures.TestBase):
     def test_log_large_dict(self):
         self.eng.execute(
             "INSERT INTO foo (data) values (:data)",
-            [{"data":str(i)} for i in xrange(100)]
+            [{"data":str(i)} for i in range(100)]
         )
         eq_(
             self.buf.buffer[1].message,
@@ -635,7 +635,7 @@ class LogParamsTest(fixtures.TestBase):
     def test_log_large_list(self):
         self.eng.execute(
             "INSERT INTO foo (data) values (?)",
-            [(str(i), ) for i in xrange(100)]
+            [(str(i), ) for i in range(100)]
         )
         eq_(
             self.buf.buffer[1].message,
@@ -654,7 +654,7 @@ class LogParamsTest(fixtures.TestBase):
             "100 total bound parameter sets ...  {'data': '98'}, {'data': '99'}\]",
             lambda: self.eng.execute(
                 "INSERT INTO nonexistent (data) values (:data)",
-                [{"data":str(i)} for i in xrange(100)]
+                [{"data":str(i)} for i in range(100)]
             )
         )
 
@@ -668,7 +668,7 @@ class LogParamsTest(fixtures.TestBase):
             "\('98',\), \('99',\)\]",
             lambda: self.eng.execute(
                 "INSERT INTO nonexistent (data) values (?)",
-                [(str(i), ) for i in xrange(100)]
+                [(str(i), ) for i in range(100)]
             )
         )
 
@@ -834,9 +834,9 @@ class EchoTest(fixtures.TestBase):
 
 class MockStrategyTest(fixtures.TestBase):
     def _engine_fixture(self):
-        buf = StringIO.StringIO()
+        buf = util.StringIO()
         def dump(sql, *multiparams, **params):
-            buf.write(unicode(sql.compile(dialect=engine.dialect)))
+            buf.write(util.text_type(sql.compile(dialect=engine.dialect)))
         engine = create_engine('postgresql://', strategy='mock', executor=dump)
         return engine, buf
 
@@ -939,7 +939,6 @@ class ResultProxyTest(fixtures.TestBase):
     def test_row_c_sequence_check(self):
         import csv
         import collections
-        from StringIO import StringIO
 
         metadata = MetaData()
         metadata.bind = 'sqlite://'
@@ -952,7 +951,7 @@ class ResultProxyTest(fixtures.TestBase):
         users.insert().execute(name='Test')
         row = users.select().execute().fetchone()
 
-        s = StringIO()
+        s = util.StringIO()
         writer = csv.writer(s)
         # csv performs PySequenceCheck call
         writer.writerow(row)
@@ -1026,7 +1025,7 @@ class AlternateResultProxyTest(fixtures.TestBase):
         )
         m.create_all(engine)
         engine.execute(t.insert(), [
-            {'x':i, 'y':"t_%d" % i} for i in xrange(1, 12)
+            {'x':i, 'y':"t_%d" % i} for i in range(1, 12)
         ])
 
     def _test_proxy(self, cls):
@@ -1039,13 +1038,13 @@ class AlternateResultProxyTest(fixtures.TestBase):
         assert isinstance(r, cls)
         for i in range(5):
             rows.append(r.fetchone())
-        eq_(rows, [(i, "t_%d" % i) for i in xrange(1, 6)])
+        eq_(rows, [(i, "t_%d" % i) for i in range(1, 6)])
 
         rows = r.fetchmany(3)
-        eq_(rows, [(i, "t_%d" % i) for i in xrange(6, 9)])
+        eq_(rows, [(i, "t_%d" % i) for i in range(6, 9)])
 
         rows = r.fetchall()
-        eq_(rows, [(i, "t_%d" % i) for i in xrange(9, 12)])
+        eq_(rows, [(i, "t_%d" % i) for i in range(9, 12)])
 
         r = self.engine.execute(select([self.table]))
         rows = r.fetchmany(None)
@@ -1059,7 +1058,7 @@ class AlternateResultProxyTest(fixtures.TestBase):
 
         r = self.engine.execute(select([self.table]).limit(5))
         rows = r.fetchmany(6)
-        eq_(rows, [(i, "t_%d" % i) for i in xrange(1, 6)])
+        eq_(rows, [(i, "t_%d" % i) for i in range(1, 6)])
 
     def test_plain(self):
         self._test_proxy(_result.ResultProxy)
@@ -1184,7 +1183,7 @@ class EngineEventsTest(fixtures.TestBase):
         try:
             conn.execute("SELECT FOO FROM I_DONT_EXIST")
             assert False
-        except tsa.exc.DBAPIError, e:
+        except tsa.exc.DBAPIError as e:
             assert canary[0][2] is e.orig
             assert canary[0][0] == "SELECT FOO FROM I_DONT_EXIST"
 

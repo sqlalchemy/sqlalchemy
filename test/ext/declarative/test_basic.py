@@ -13,7 +13,7 @@ from sqlalchemy.orm import relationship, create_session, class_mapper, \
     deferred, column_property, composite,\
     Session
 from sqlalchemy.testing import eq_
-from sqlalchemy.util import classproperty
+from sqlalchemy.util import classproperty, with_metaclass
 from sqlalchemy.ext.declarative import declared_attr, AbstractConcreteBase, \
     ConcreteBase, synonym_for
 from sqlalchemy.testing import fixtures
@@ -127,14 +127,13 @@ class DeclarativeTest(DeclarativeTestBase):
         class BrokenMeta(type):
             def __getattribute__(self, attr):
                 if attr == 'xyzzy':
-                    raise AttributeError, 'xyzzy'
+                    raise AttributeError('xyzzy')
                 else:
                     return object.__getattribute__(self,attr)
 
         # even though this class has an xyzzy attribute, getattr(cls,"xyzzy")
         # fails
-        class BrokenParent(object):
-            __metaclass__ = BrokenMeta
+        class BrokenParent(with_metaclass(BrokenMeta)):
             xyzzy = "magic"
 
         # _as_declarative() inspects obj.__class__.__bases__
@@ -275,7 +274,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
             __tablename__ = 'foo'
             id = Column(Integer, primary_key=True)
-            _user_id = Column(Integer) 
+            _user_id = Column(Integer)
             rel = relationship('User',
                                uselist=False,
                                foreign_keys=[User.id],
@@ -1458,12 +1457,12 @@ def _produce_test(inline, stringbased):
 
         @classmethod
         def insert_data(cls):
-            params = [dict(zip(('id', 'name'), column_values))
+            params = [dict(list(zip(('id', 'name'), column_values)))
                       for column_values in [(7, 'jack'), (8, 'ed'), (9,
                       'fred'), (10, 'chuck')]]
             User.__table__.insert().execute(params)
-            Address.__table__.insert().execute([dict(zip(('id',
-                    'user_id', 'email'), column_values))
+            Address.__table__.insert().execute([dict(list(zip(('id',
+                    'user_id', 'email'), column_values)))
                     for column_values in [(1, 7, 'jack@bean.com'), (2,
                     8, 'ed@wood.com'), (3, 8, 'ed@bettyboop.com'), (4,
                     8, 'ed@lala.com'), (5, 9, 'fred@fred.com')]])
@@ -1492,6 +1491,6 @@ def _produce_test(inline, stringbased):
 for inline in True, False:
     for stringbased in True, False:
         testclass = _produce_test(inline, stringbased)
-        exec '%s = testclass' % testclass.__name__
+        exec('%s = testclass' % testclass.__name__)
         del testclass
 

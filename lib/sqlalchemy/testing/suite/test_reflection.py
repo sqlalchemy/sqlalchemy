@@ -1,4 +1,4 @@
-from __future__ import with_statement
+
 
 import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc
@@ -386,7 +386,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
                     self.tables.email_addresses, self.tables.dingalings
         insp = inspect(meta.bind)
         oid = insp.get_table_oid(table_name, schema)
-        self.assert_(isinstance(oid, (int, long)))
+        self.assert_(isinstance(oid, int))
 
     def test_get_table_oid(self):
         self._test_get_table_oid('users')

@@ -52,7 +52,7 @@ class SchemaGenerator(DDLBase):
         if self.tables is not None:
             tables = self.tables
         else:
-            tables = metadata.tables.values()
+            tables = list(metadata.tables.values())
         collection = [t for t in sql_util.sort_tables(tables)
                         if self._can_create_table(t)]
         seq_coll = [s for s in metadata._sequences.values()
@@ -120,7 +120,7 @@ class SchemaDropper(DDLBase):
         if self.tables is not None:
             tables = self.tables
         else:
-            tables = metadata.tables.values()
+            tables = list(metadata.tables.values())
 
         collection = [
             t

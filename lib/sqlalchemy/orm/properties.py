@@ -27,7 +27,7 @@ from .interfaces import MANYTOMANY, MANYTOONE, ONETOMANY,\
 mapperlib = util.importlater("sqlalchemy.orm", "mapperlib")
 NoneType = type(None)
 
-from descriptor_props import CompositeProperty, SynonymProperty, \
+from .descriptor_props import CompositeProperty, SynonymProperty, \
             ComparableProperty, ConcreteInheritedProperty
 
 __all__ = ['ColumnProperty', 'CompositeProperty', 'SynonymProperty',
@@ -1204,7 +1204,7 @@ class RelationshipProperty(StrategizedProperty):
         if not self.is_primary():
             return
         if self.backref is not None and not self.back_populates:
-            if isinstance(self.backref, basestring):
+            if isinstance(self.backref, str):
                 backref_key, kwargs = self.backref, {}
             else:
                 backref_key, kwargs = self.backref

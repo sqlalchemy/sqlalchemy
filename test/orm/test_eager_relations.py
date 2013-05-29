@@ -747,11 +747,11 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         sess = create_session()
         eq_(sess.query(User).first(),
-            User(name=u'jack',orders=[
-                Order(address_id=1,description=u'order 1',isopen=0,user_id=7,id=1),
-                Order(address_id=1,description=u'order 3',isopen=1,user_id=7,id=3),
-                Order(address_id=None,description=u'order 5',isopen=0,user_id=7,id=5)],
-            email_address=u'jack@bean.com',id=7)
+            User(name='jack',orders=[
+                Order(address_id=1,description='order 1',isopen=0,user_id=7,id=1),
+                Order(address_id=1,description='order 3',isopen=1,user_id=7,id=3),
+                Order(address_id=None,description='order 5',isopen=0,user_id=7,id=5)],
+            email_address='jack@bean.com',id=7)
         )
 
     def test_useget_cancels_eager(self):
@@ -2107,7 +2107,7 @@ class SelfReferentialM2MEagerTest(fixtures.MappedTest):
     def define_tables(cls, metadata):
         Table('widget', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('name', sa.Unicode(40), nullable=False, unique=True),
+            Column('name', sa.String(40), nullable=False, unique=True),
         )
 
         Table('widget_rel', metadata,
@@ -2131,15 +2131,15 @@ class SelfReferentialM2MEagerTest(fixtures.MappedTest):
         })
 
         sess = create_session()
-        w1 = Widget(name=u'w1')
-        w2 = Widget(name=u'w2')
+        w1 = Widget(name='w1')
+        w2 = Widget(name='w2')
         w1.children.append(w2)
         sess.add(w1)
         sess.flush()
         sess.expunge_all()
 
         eq_([Widget(name='w1', children=[Widget(name='w2')])],
-            sess.query(Widget).filter(Widget.name==u'w1').all())
+            sess.query(Widget).filter(Widget.name=='w1').all())
 
 class MixedEntitiesTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     run_setup_mappers = 'once'
@@ -2223,24 +2223,24 @@ class MixedEntitiesTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             eq_(
                 [
                     (
-                        User(addresses=[Address(email_address=u'fred@fred.com')], name=u'fred'),
-                        Order(description=u'order 2', isopen=0, items=[Item(description=u'item 1'), Item(description=u'item 2'), Item(description=u'item 3')]),
-                        User(addresses=[Address(email_address=u'jack@bean.com')], name=u'jack'),
-                        Order(description=u'order 3', isopen=1, items=[Item(description=u'item 3'), Item(description=u'item 4'), Item(description=u'item 5')])
+                        User(addresses=[Address(email_address='fred@fred.com')], name='fred'),
+                        Order(description='order 2', isopen=0, items=[Item(description='item 1'), Item(description='item 2'), Item(description='item 3')]),
+                        User(addresses=[Address(email_address='jack@bean.com')], name='jack'),
+                        Order(description='order 3', isopen=1, items=[Item(description='item 3'), Item(description='item 4'), Item(description='item 5')])
                     ),
 
                     (
-                        User(addresses=[Address(email_address=u'fred@fred.com')], name=u'fred'),
-                        Order(description=u'order 2', isopen=0, items=[Item(description=u'item 1'), Item(description=u'item 2'), Item(description=u'item 3')]),
-                        User(addresses=[Address(email_address=u'jack@bean.com')], name=u'jack'),
-                        Order(address_id=None, description=u'order 5', isopen=0, items=[Item(description=u'item 5')])
+                        User(addresses=[Address(email_address='fred@fred.com')], name='fred'),
+                        Order(description='order 2', isopen=0, items=[Item(description='item 1'), Item(description='item 2'), Item(description='item 3')]),
+                        User(addresses=[Address(email_address='jack@bean.com')], name='jack'),
+                        Order(address_id=None, description='order 5', isopen=0, items=[Item(description='item 5')])
                     ),
 
                     (
-                        User(addresses=[Address(email_address=u'fred@fred.com')], name=u'fred'),
-                        Order(description=u'order 4', isopen=1, items=[Item(description=u'item 1'), Item(description=u'item 5')]),
-                        User(addresses=[Address(email_address=u'jack@bean.com')], name=u'jack'),
-                        Order(address_id=None, description=u'order 5', isopen=0, items=[Item(description=u'item 5')])
+                        User(addresses=[Address(email_address='fred@fred.com')], name='fred'),
+                        Order(description='order 4', isopen=1, items=[Item(description='item 1'), Item(description='item 5')]),
+                        User(addresses=[Address(email_address='jack@bean.com')], name='jack'),
+                        Order(address_id=None, description='order 5', isopen=0, items=[Item(description='item 5')])
                     ),
                 ],
                 sess.query(User, Order, u1, o1).\
@@ -2651,9 +2651,9 @@ class CyclicalInheritingEagerTestTwo(fixtures.DeclarativeMappedTest,
         Movie = self.classes.Movie
 
         session = Session(testing.db)
-        rscott = Director(name=u"Ridley Scott")
-        alien = Movie(title=u"Alien")
-        brunner = Movie(title=u"Blade Runner")
+        rscott = Director(name="Ridley Scott")
+        alien = Movie(title="Alien")
+        brunner = Movie(title="Blade Runner")
         rscott.movies.append(brunner)
         rscott.movies.append(alien)
         session.add_all([rscott, alien, brunner])

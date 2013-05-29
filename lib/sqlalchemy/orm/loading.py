@@ -11,7 +11,7 @@ the functions here are called primarily by Query, Mapper,
 as well as some of the attribute loading strategies.
 
 """
-from __future__ import absolute_import
+
 
 from .. import util
 from . import attributes, exc as orm_exc, state as statelib
@@ -47,11 +47,11 @@ def instances(query, cursor, context):
                     query._entities[0].mapper.dispatch.append_result
 
     (process, labels) = \
-                zip(*[
+                list(zip(*[
                     query_entity.row_processor(query,
                             context, custom_rows)
                     for query_entity in query._entities
-                ])
+                ]))
 
     while True:
         context.progress = {}
@@ -84,11 +84,11 @@ def instances(query, cursor, context):
             context.progress.pop(context.refresh_state)
 
         statelib.InstanceState._commit_all_states(
-            context.progress.items(),
+            list(context.progress.items()),
             session.identity_map
         )
 
-        for state, (dict_, attrs) in context.partials.iteritems():
+        for state, (dict_, attrs) in context.partials.items():
             state._commit(dict_, attrs)
 
         for row in rows:
@@ -507,7 +507,7 @@ def _populators(mapper, context, path, row, adapter,
     pops = (new_populators, existing_populators, delayed_populators,
                         eager_populators)
 
-    for prop in mapper._props.itervalues():
+    for prop in mapper._props.values():
 
         for i, pop in enumerate(prop.create_row_processor(
                                     context,

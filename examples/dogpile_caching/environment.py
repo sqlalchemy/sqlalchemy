@@ -4,7 +4,7 @@ Establish data / cache file paths, and configurations,
 bootstrap fixture data if necessary.
 
 """
-import caching_query
+from . import caching_query
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
@@ -31,7 +31,7 @@ Base = declarative_base()
 root = "./dogpile_data/"
 
 if not os.path.exists(root):
-    raw_input("Will create datafiles in %r.\n"
+    input("Will create datafiles in %r.\n"
                 "To reset the cache + database, delete this directory.\n"
                 "Press enter to continue.\n" % root
                 )
@@ -77,7 +77,7 @@ installed = False
 
 def bootstrap():
     global installed
-    import fixture_data
+    from . import fixture_data
     if not os.path.exists(dbfile):
         fixture_data.install()
         installed = True

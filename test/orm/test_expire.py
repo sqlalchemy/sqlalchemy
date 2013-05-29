@@ -850,7 +850,7 @@ class ExpireTest(_fixtures.FixtureTest):
         assert len(u.addresses) == 3
         sess.expire(u)
         assert 'addresses' not in u.__dict__
-        print "-------------------------------------------"
+        print("-------------------------------------------")
         sess.query(User).filter_by(id=8).all()
         assert 'addresses' in u.__dict__
         assert len(u.addresses) == 3

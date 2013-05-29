@@ -83,12 +83,12 @@ if __name__ == '__main__':
 
     # query the order, print items
     order = session.query(Order).filter_by(customer_name='john smith').one()
-    print [(order_item.item.description, order_item.price)
-           for order_item in order.order_items]
+    print([(order_item.item.description, order_item.price)
+           for order_item in order.order_items])
 
     # print customers who bought 'MySQL Crowbar' on sale
     q = session.query(Order).join('order_items', 'item')
     q = q.filter(and_(Item.description == 'MySQL Crowbar',
                       Item.price > OrderItem.price))
 
-    print [order.customer_name for order in q]
+    print([order.customer_name for order in q])

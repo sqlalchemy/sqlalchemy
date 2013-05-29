@@ -188,7 +188,6 @@ underlying CREATE INDEX command, so it *must* be a valid index type for your
 version of PostgreSQL.
 
 """
-
 import re
 
 from ... import sql, schema, exc, util
@@ -333,7 +332,7 @@ class UUID(sqltypes.TypeEngine):
         if self.as_uuid:
             def process(value):
                 if value is not None:
-                    value = str(value)
+                    value = util.text_type(value)
                 return value
             return process
         else:
@@ -1419,7 +1418,7 @@ class PGDialect(default.DefaultDialect):
                 query,
                 bindparams=[
                     sql.bindparam(
-                        'schema', unicode(schema.lower()),
+                        'schema', util.text_type(schema.lower()),
                         type_=sqltypes.Unicode)]
             )
         )
@@ -1435,7 +1434,7 @@ class PGDialect(default.DefaultDialect):
                 "n.oid=c.relnamespace where n.nspname=current_schema() and "
                 "relname=:name",
                 bindparams=[
-                        sql.bindparam('name', unicode(table_name),
+                        sql.bindparam('name', util.text_type(table_name),
                         type_=sqltypes.Unicode)]
                 )
             )
@@ -1447,9 +1446,9 @@ class PGDialect(default.DefaultDialect):
                 "relname=:name",
                     bindparams=[
                         sql.bindparam('name',
-                        unicode(table_name), type_=sqltypes.Unicode),
+                        util.text_type(table_name), type_=sqltypes.Unicode),
                         sql.bindparam('schema',
-                        unicode(schema), type_=sqltypes.Unicode)]
+                        util.text_type(schema), type_=sqltypes.Unicode)]
                 )
             )
         return bool(cursor.first())
@@ -1463,7 +1462,7 @@ class PGDialect(default.DefaultDialect):
                     "n.nspname=current_schema() "
                     "and relname=:name",
                     bindparams=[
-                        sql.bindparam('name', unicode(sequence_name),
+                        sql.bindparam('name', util.text_type(sequence_name),
                         type_=sqltypes.Unicode)
                     ]
                 )
@@ -1475,10 +1474,10 @@ class PGDialect(default.DefaultDialect):
                 "n.oid=c.relnamespace where relkind='S' and "
                 "n.nspname=:schema and relname=:name",
                 bindparams=[
-                    sql.bindparam('name', unicode(sequence_name),
+                    sql.bindparam('name', util.text_type(sequence_name),
                      type_=sqltypes.Unicode),
                     sql.bindparam('schema',
-                                unicode(schema), type_=sqltypes.Unicode)
+                                util.text_type(schema), type_=sqltypes.Unicode)
                 ]
             )
             )
@@ -1488,9 +1487,9 @@ class PGDialect(default.DefaultDialect):
     def has_type(self, connection, type_name, schema=None):
         bindparams = [
             sql.bindparam('typname',
-                unicode(type_name), type_=sqltypes.Unicode),
+                util.text_type(type_name), type_=sqltypes.Unicode),
             sql.bindparam('nspname',
-                unicode(schema), type_=sqltypes.Unicode),
+                util.text_type(schema), type_=sqltypes.Unicode),
             ]
         if schema is not None:
             query = """
@@ -1546,9 +1545,9 @@ class PGDialect(default.DefaultDialect):
         """ % schema_where_clause
         # Since we're binding to unicode, table_name and schema_name must be
         # unicode.
-        table_name = unicode(table_name)
+        table_name = util.text_type(table_name)
         if schema is not None:
-            schema = unicode(schema)
+            schema = util.text_type(schema)
         s = sql.text(query, bindparams=[
             sql.bindparam('table_name', type_=sqltypes.Unicode),
             sql.bindparam('schema', type_=sqltypes.Unicode)
@@ -1570,13 +1569,13 @@ class PGDialect(default.DefaultDialect):
         """
         rp = connection.execute(s)
         # what about system tables?
-        # Py3K
-        #schema_names = [row[0] for row in rp \
-        #                if not row[0].startswith('pg_')]
-        # Py2K
-        schema_names = [row[0].decode(self.encoding) for row in rp \
+
+        if util.py2k:
+            schema_names = [row[0].decode(self.encoding) for row in rp \
                         if not row[0].startswith('pg_')]
-        # end Py2K
+        else:
+            schema_names = [row[0] for row in rp \
+                        if not row[0].startswith('pg_')]
         return schema_names
 
     @reflection.cache
@@ -1587,7 +1586,7 @@ class PGDialect(default.DefaultDialect):
             current_schema = self.default_schema_name
 
         result = connection.execute(
-            sql.text(u"SELECT relname FROM pg_class c "
+            sql.text("SELECT relname FROM pg_class c "
                 "WHERE relkind = 'r' "
                 "AND '%s' = (select nspname from pg_namespace n "
                 "where n.oid = c.relnamespace) " %
@@ -1610,12 +1609,12 @@ class PGDialect(default.DefaultDialect):
           AND '%(schema)s' = (select nspname from pg_namespace n
           where n.oid = c.relnamespace)
         """ % dict(schema=current_schema)
-        # Py3K
-        #view_names = [row[0] for row in connection.execute(s)]
-        # Py2K
-        view_names = [row[0].decode(self.encoding)
+
+        if util.py2k:
+            view_names = [row[0].decode(self.encoding)
                             for row in connection.execute(s)]
-        # end Py2K
+        else:
+            view_names = [row[0] for row in connection.execute(s)]
         return view_names
 
     @reflection.cache
@@ -1632,11 +1631,10 @@ class PGDialect(default.DefaultDialect):
         rp = connection.execute(sql.text(s),
                                 view_name=view_name, schema=current_schema)
         if rp:
-            # Py3K
-            #view_def = rp.scalar()
-            # Py2K
-            view_def = rp.scalar().decode(self.encoding)
-            # end Py2K
+            if util.py2k:
+                view_def = rp.scalar().decode(self.encoding)
+            else:
+                view_def = rp.scalar()
             return view_def
 
     @reflection.cache

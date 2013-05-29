@@ -1,6 +1,7 @@
 from . import config
 from . import assertions, schema
 from .util import adict
+from .. import util
 from .engines import drop_all_tables
 from .entities import BasicEntity, ComparableEntity
 import sys
@@ -125,9 +126,10 @@ class TablesTest(TestBase):
             for table in reversed(self.metadata.sorted_tables):
                 try:
                     table.delete().execute().close()
-                except sa.exc.DBAPIError, ex:
-                    print >> sys.stderr, "Error emptying table %s: %r" % (
-                        table, ex)
+                except sa.exc.DBAPIError as ex:
+                    util.print_(
+                        ("Error emptying table %s: %r" % (table, ex)),
+                        file=sys.stderr)
 
     def setup(self):
         self._setup_each_tables()
@@ -187,10 +189,10 @@ class TablesTest(TestBase):
     def _load_fixtures(cls):
         """Insert rows as represented by the fixtures() method."""
         headers, rows = {}, {}
-        for table, data in cls.fixtures().iteritems():
+        for table, data in cls.fixtures().items():
             if len(data) < 2:
                 continue
-            if isinstance(table, basestring):
+            if isinstance(table, util.string_types):
                 table = cls.tables[table]
             headers[table] = data[0]
             rows[table] = data[1:]
@@ -284,8 +286,8 @@ class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
                 cls_registry[classname] = cls
                 return type.__init__(cls, classname, bases, dict_)
 
-        class _Base(object):
-            __metaclass__ = FindFixture
+        class _Base(util.with_metaclass(FindFixture, object)):
+            pass
 
         class Basic(BasicEntity, _Base):
             pass

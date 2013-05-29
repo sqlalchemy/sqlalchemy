@@ -14,6 +14,7 @@ available in :class:`~sqlalchemy.orm.`.
 
 """
 from __future__ import absolute_import
+
 import types
 import weakref
 from itertools import chain
@@ -26,8 +27,8 @@ from . import instrumentation, attributes, \
 from .interfaces import MapperProperty, _InspectionAttr, _MappedAttribute
 
 from .util import _INSTRUMENTOR, _class_to_mapper, \
-     _state_mapper, class_mapper, \
-     PathRegistry
+        _state_mapper, class_mapper, \
+        PathRegistry
 import sys
 properties = util.importlater("sqlalchemy.orm", "properties")
 descriptor_props = util.importlater("sqlalchemy.orm", "descriptor_props")
@@ -581,7 +582,7 @@ class Mapper(_InspectionAttr):
         if with_polymorphic == '*':
             self.with_polymorphic = ('*', None)
         elif isinstance(with_polymorphic, (tuple, list)):
-            if isinstance(with_polymorphic[0], (basestring, tuple, list)):
+            if isinstance(with_polymorphic[0], util.string_types + (tuple, list)):
                 self.with_polymorphic = with_polymorphic
             else:
                 self.with_polymorphic = (with_polymorphic, None)
@@ -626,7 +627,7 @@ class Mapper(_InspectionAttr):
         self.inherits._inheriting_mappers.add(self)
         self.passive_updates = self.inherits.passive_updates
         self._all_tables = self.inherits._all_tables
-        for key, prop in mapper._props.iteritems():
+        for key, prop in mapper._props.items():
             if key not in self._props and \
                 not self._should_exclude(key, key, local=False,
                                         column=None):
@@ -866,12 +867,12 @@ class Mapper(_InspectionAttr):
 
         # load custom properties
         if self._init_properties:
-            for key, prop in self._init_properties.iteritems():
+            for key, prop in self._init_properties.items():
                 self._configure_property(key, prop, False)
 
         # pull properties from the inherited mapper if any.
         if self.inherits:
-            for key, prop in self.inherits._props.iteritems():
+            for key, prop in self.inherits._props.items():
                 if key not in self._props and \
                     not self._should_exclude(key, key, local=False,
                                             column=None):
@@ -919,7 +920,7 @@ class Mapper(_InspectionAttr):
         if self.polymorphic_on is not None:
             setter = True
 
-            if isinstance(self.polymorphic_on, basestring):
+            if isinstance(self.polymorphic_on, util.string_types):
                 # polymorphic_on specified as as string - link
                 # it to mapped ColumnProperty
                 try:
@@ -1235,7 +1236,7 @@ class Mapper(_InspectionAttr):
         """
 
         self._log("_post_configure_properties() started")
-        l = [(key, prop) for key, prop in self._props.iteritems()]
+        l = [(key, prop) for key, prop in self._props.items()]
         for key, prop in l:
             self._log("initialize prop %s", key)
 
@@ -1253,7 +1254,7 @@ class Mapper(_InspectionAttr):
         using `add_property`.
 
         """
-        for key, value in dict_of_properties.iteritems():
+        for key, value in dict_of_properties.items():
             self.add_property(key, value)
 
     def add_property(self, key, prop):
@@ -1350,7 +1351,7 @@ class Mapper(_InspectionAttr):
         """return an iterator of all MapperProperty objects."""
         if _new_mappers:
             configure_mappers()
-        return self._props.itervalues()
+        return iter(self._props.values())
 
     def _mappers_from_spec(self, spec, selectable):
         """given a with_polymorphic() argument, return the set of mappers it
@@ -1623,7 +1624,7 @@ class Mapper(_InspectionAttr):
         if _new_mappers:
             configure_mappers()
         return util.ImmutableProperties(util.OrderedDict(
-            (k, v) for k, v in self._props.iteritems()
+            (k, v) for k, v in self._props.items()
             if isinstance(v, type_)
         ))
 
@@ -2040,7 +2041,7 @@ class Mapper(_InspectionAttr):
                     return fk.parent not in cols
             return False
 
-        sorted_ = sql_util.sort_tables(table_to_mapper.iterkeys(),
+        sorted_ = sql_util.sort_tables(table_to_mapper,
                                     skip_fn=skip,
                                     extra_dependencies=extra_dependencies)
 

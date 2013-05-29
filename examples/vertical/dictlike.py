@@ -176,49 +176,49 @@ if __name__ == '__main__':
     metadata.create_all(engine)
     session = Session(bind=engine)
 
-    stoat = Animal(u'stoat')
-    stoat[u'color'] = u'reddish'
-    stoat[u'cuteness'] = u'somewhat'
+    stoat = Animal('stoat')
+    stoat['color'] = 'reddish'
+    stoat['cuteness'] = 'somewhat'
 
     # dict-like assignment transparently creates entries in the
     # stoat.facts collection:
-    print stoat.facts[u'color']
+    print(stoat.facts['color'])
 
     session.add(stoat)
     session.commit()
 
-    critter = session.query(Animal).filter(Animal.name == u'stoat').one()
-    print critter[u'color']
-    print critter[u'cuteness']
+    critter = session.query(Animal).filter(Animal.name == 'stoat').one()
+    print(critter['color'])
+    print(critter['cuteness'])
 
-    critter[u'cuteness'] = u'very'
+    critter['cuteness'] = 'very'
 
-    print 'changing cuteness:'
+    print('changing cuteness:')
     engine.echo = True
     session.commit()
     engine.echo = False
 
-    marten = Animal(u'marten')
-    marten[u'color'] = u'brown'
-    marten[u'cuteness'] = u'somewhat'
+    marten = Animal('marten')
+    marten['color'] = 'brown'
+    marten['cuteness'] = 'somewhat'
     session.add(marten)
 
-    shrew = Animal(u'shrew')
-    shrew[u'cuteness'] = u'somewhat'
-    shrew[u'poisonous-part'] = u'saliva'
+    shrew = Animal('shrew')
+    shrew['cuteness'] = 'somewhat'
+    shrew['poisonous-part'] = 'saliva'
     session.add(shrew)
 
-    loris = Animal(u'slow loris')
-    loris[u'cuteness'] = u'fairly'
-    loris[u'poisonous-part'] = u'elbows'
+    loris = Animal('slow loris')
+    loris['cuteness'] = 'fairly'
+    loris['poisonous-part'] = 'elbows'
     session.add(loris)
     session.commit()
 
     q = (session.query(Animal).
          filter(Animal.facts.any(
-           and_(AnimalFact.key == u'color',
-                AnimalFact.value == u'reddish'))))
-    print 'reddish animals', q.all()
+           and_(AnimalFact.key == 'color',
+                AnimalFact.value == 'reddish'))))
+    print('reddish animals', q.all())
 
     # Save some typing by wrapping that up in a function:
     with_characteristic = lambda key, value: and_(AnimalFact.key == key,
@@ -226,21 +226,21 @@ if __name__ == '__main__':
 
     q = (session.query(Animal).
          filter(Animal.facts.any(
-           with_characteristic(u'color', u'brown'))))
-    print 'brown animals', q.all()
+           with_characteristic('color', 'brown'))))
+    print('brown animals', q.all())
 
     q = (session.query(Animal).
            filter(not_(Animal.facts.any(
-                         with_characteristic(u'poisonous-part', u'elbows')))))
-    print 'animals without poisonous-part == elbows', q.all()
+                         with_characteristic('poisonous-part', 'elbows')))))
+    print('animals without poisonous-part == elbows', q.all())
 
     q = (session.query(Animal).
-         filter(Animal.facts.any(AnimalFact.value == u'somewhat')))
-    print 'any animal with any .value of "somewhat"', q.all()
+         filter(Animal.facts.any(AnimalFact.value == 'somewhat')))
+    print('any animal with any .value of "somewhat"', q.all())
 
     # Facts can be queried as well.
     q = (session.query(AnimalFact).
-         filter(with_characteristic(u'cuteness', u'very')))
-    print 'just the facts', q.all()
+         filter(with_characteristic('cuteness', 'very')))
+    print('just the facts', q.all())
 
 

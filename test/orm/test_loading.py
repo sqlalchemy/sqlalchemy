@@ -73,7 +73,7 @@ class MergeResultTest(_fixtures.FixtureTest):
             [(x.id, y) for x, y in it],
             [(1, 1), (2, 2), (7, 7), (8, 8)]
         )
-        eq_(it[0].keys(), ['User', 'id'])
+        eq_(list(it[0].keys()), ['User', 'id'])
 
     def test_entity_col_mix_keyed_tuple(self):
         s, (u1, u2, u3, u4) = self._fixture()
@@ -91,7 +91,7 @@ class MergeResultTest(_fixtures.FixtureTest):
             [(x.id, y) for x, y in it],
             [(1, 1), (2, 2), (7, 7), (8, 8)]
         )
-        eq_(it[0].keys(), ['User', 'id'])
+        eq_(list(it[0].keys()), ['User', 'id'])
 
     def test_none_entity(self):
         s, (u1, u2, u3, u4) = self._fixture()

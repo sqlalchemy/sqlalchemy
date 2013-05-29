@@ -33,7 +33,7 @@ from sqlalchemy.orm import comparable_property
 from sqlalchemy.ext.hybrid import hybrid_property
 
 # Using the VerticalPropertyDictMixin from the base example
-from dictlike import VerticalPropertyDictMixin
+from .dictlike import VerticalPropertyDictMixin
 
 class PolymorphicVerticalProperty(object):
     """A key/value pair with polymorphic value storage.
@@ -150,9 +150,9 @@ if __name__ == '__main__':
 
     class AnimalFact(PolymorphicVerticalProperty):
         type_map = {
-            int: (u'integer', 'int_value'),
-            unicode: (u'char', 'char_value'),
-            bool: (u'boolean', 'boolean_value'),
+            int: ('integer', 'int_value'),
+            str: ('char', 'char_value'),
+            bool: ('boolean', 'boolean_value'),
             type(None): (None, None),
             }
 
@@ -190,42 +190,42 @@ if __name__ == '__main__':
     metadata.create_all(engine)
     session = Session(engine)
 
-    stoat = Animal(u'stoat')
-    stoat[u'color'] = u'red'
-    stoat[u'cuteness'] = 7
-    stoat[u'weasel-like'] = True
+    stoat = Animal('stoat')
+    stoat['color'] = 'red'
+    stoat['cuteness'] = 7
+    stoat['weasel-like'] = True
 
     session.add(stoat)
     session.commit()
 
-    critter = session.query(Animal).filter(Animal.name == u'stoat').one()
-    print critter[u'color']
-    print critter[u'cuteness']
+    critter = session.query(Animal).filter(Animal.name == 'stoat').one()
+    print(critter['color'])
+    print(critter['cuteness'])
 
-    print "changing cuteness value and type:"
-    critter[u'cuteness'] = u'very cute'
+    print("changing cuteness value and type:")
+    critter['cuteness'] = 'very cute'
 
     session.commit()
 
-    marten = Animal(u'marten')
-    marten[u'cuteness'] = 5
-    marten[u'weasel-like'] = True
-    marten[u'poisonous'] = False
+    marten = Animal('marten')
+    marten['cuteness'] = 5
+    marten['weasel-like'] = True
+    marten['poisonous'] = False
     session.add(marten)
 
-    shrew = Animal(u'shrew')
-    shrew[u'cuteness'] = 5
-    shrew[u'weasel-like'] = False
-    shrew[u'poisonous'] = True
+    shrew = Animal('shrew')
+    shrew['cuteness'] = 5
+    shrew['weasel-like'] = False
+    shrew['poisonous'] = True
 
     session.add(shrew)
     session.commit()
 
     q = (session.query(Animal).
          filter(Animal.facts.any(
-           and_(AnimalFact.key == u'weasel-like',
+           and_(AnimalFact.key == 'weasel-like',
                 AnimalFact.value == True))))
-    print 'weasel-like animals', q.all()
+    print('weasel-like animals', q.all())
 
     # Save some typing by wrapping that up in a function:
     with_characteristic = lambda key, value: and_(AnimalFact.key == key,
@@ -233,24 +233,24 @@ if __name__ == '__main__':
 
     q = (session.query(Animal).
          filter(Animal.facts.any(
-           with_characteristic(u'weasel-like', True))))
-    print 'weasel-like animals again', q.all()
+           with_characteristic('weasel-like', True))))
+    print('weasel-like animals again', q.all())
 
     q = (session.query(Animal).
-           filter(Animal.facts.any(with_characteristic(u'poisonous', False))))
-    print 'animals with poisonous=False', q.all()
+           filter(Animal.facts.any(with_characteristic('poisonous', False))))
+    print('animals with poisonous=False', q.all())
 
     q = (session.query(Animal).
          filter(or_(Animal.facts.any(
-                      with_characteristic(u'poisonous', False)),
-                    not_(Animal.facts.any(AnimalFact.key == u'poisonous')))))
-    print 'non-poisonous animals', q.all()
+                      with_characteristic('poisonous', False)),
+                    not_(Animal.facts.any(AnimalFact.key == 'poisonous')))))
+    print('non-poisonous animals', q.all())
 
     q = (session.query(Animal).
          filter(Animal.facts.any(AnimalFact.value == 5)))
-    print 'any animal with a .value of 5', q.all()
+    print('any animal with a .value of 5', q.all())
 
     # Facts can be queried as well.
     q = (session.query(AnimalFact).
-         filter(with_characteristic(u'cuteness', u'very cute')))
-    print q.all()
+         filter(with_characteristic('cuteness', 'very cute')))
+    print(q.all())

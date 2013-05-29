@@ -1355,7 +1355,7 @@ class SyncCompileTest(fixtures.MappedTest):
     def _do_test(self, j1, j2):
         class A(object):
            def __init__(self, **kwargs):
-               for key, value in kwargs.items():
+               for key, value in list(kwargs.items()):
                     setattr(self, key, value)
 
         class B(A):
@@ -1830,7 +1830,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
                 "SELECT sub.counter AS sub_counter, base.counter AS base_counter, "
                 "sub.counter2 AS sub_counter2 FROM base JOIN sub ON "
                 "base.id = sub.id WHERE base.id = :param_1",
-                lambda ctx:{u'param_1': s1.id}
+                lambda ctx:{'param_1': s1.id}
             ),
         )
 
@@ -1910,7 +1910,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
                 "SELECT subsub.counter2 AS subsub_counter2, "
                 "sub.counter2 AS sub_counter2 FROM subsub, sub "
                 "WHERE :param_1 = sub.id AND sub.id = subsub.id",
-                lambda ctx:{u'param_1': s1.id}
+                lambda ctx:{'param_1': s1.id}
             ),
         )
 
@@ -2409,9 +2409,9 @@ class NameConflictTest(fixtures.MappedTest):
                     polymorphic_identity='foo')
         sess = create_session()
         f = Foo()
-        f.content_type = u'bar'
+        f.content_type = 'bar'
         sess.add(f)
         sess.flush()
         f_id = f.id
         sess.expunge_all()
-        assert sess.query(Content).get(f_id).content_type == u'bar'
+        assert sess.query(Content).get(f_id).content_type == 'bar'

@@ -34,7 +34,7 @@ if __name__ == '__main__':
             if oldvalue:
                 s += "which replaced the value '%s', " % oldvalue
             s += "on object %s" % self
-            print s
+            print(s)
 
     Base = declarative_base(cls=Base)
 

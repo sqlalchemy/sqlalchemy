@@ -141,22 +141,14 @@ class AdaptTest(fixtures.TestBase):
         eq_(types.Integer().python_type, int)
         eq_(types.Numeric().python_type, decimal.Decimal)
         eq_(types.Numeric(asdecimal=False).python_type, float)
-        # Py3K
-        #eq_(types.LargeBinary().python_type, bytes)
-        # Py2K
-        eq_(types.LargeBinary().python_type, str)
-        # end Py2K
+        eq_(types.LargeBinary().python_type, util.binary_type)
         eq_(types.Float().python_type, float)
         eq_(types.Interval().python_type, datetime.timedelta)
         eq_(types.Date().python_type, datetime.date)
         eq_(types.DateTime().python_type, datetime.datetime)
-        # Py3K
-        #eq_(types.String().python_type, unicode)
-        # Py2K
         eq_(types.String().python_type, str)
-        # end Py2K
-        eq_(types.Unicode().python_type, unicode)
-        eq_(types.String(convert_unicode=True).python_type, unicode)
+        eq_(types.Unicode().python_type, util.text_type)
+        eq_(types.String(convert_unicode=True).python_type, util.text_type)
 
         assert_raises(
             NotImplementedError,
@@ -257,14 +249,14 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
     def test_processing(self):
         users = self.tables.users
         users.insert().execute(
-            user_id=2, goofy='jack', goofy2='jack', goofy4=u'jack',
-            goofy7=u'jack', goofy8=12, goofy9=12)
+            user_id=2, goofy='jack', goofy2='jack', goofy4=util.u('jack'),
+            goofy7=util.u('jack'), goofy8=12, goofy9=12)
         users.insert().execute(
-            user_id=3, goofy='lala', goofy2='lala', goofy4=u'lala',
-            goofy7=u'lala', goofy8=15, goofy9=15)
+            user_id=3, goofy='lala', goofy2='lala', goofy4=util.u('lala'),
+            goofy7=util.u('lala'), goofy8=15, goofy9=15)
         users.insert().execute(
-            user_id=4, goofy='fred', goofy2='fred', goofy4=u'fred',
-            goofy7=u'fred', goofy8=9, goofy9=9)
+            user_id=4, goofy='fred', goofy2='fred', goofy4=util.u('fred'),
+            goofy7=util.u('fred'), goofy8=9, goofy9=9)
 
         l = users.select().order_by(users.c.user_id).execute().fetchall()
         for assertstr, assertint, assertint2, row in zip(
@@ -278,7 +270,7 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
             eq_(row[5], assertint)
             eq_(row[6], assertint2)
             for col in row[3], row[4]:
-                assert isinstance(col, unicode)
+                assert isinstance(col, util.text_type)
 
     def test_typedecorator_impl(self):
         for impl_, exp, kw in [
@@ -715,9 +707,9 @@ class UnicodeTest(fixtures.TestBase):
                 expected
             )
 
-    data = u"Alors vous imaginez ma surprise, au lever du jour, quand "\
-            u"une drôle de petite voix m’a réveillé. "\
-            u"Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
+    data = util.u("Alors vous imaginez ma surprise, au lever du jour, quand "\
+            "une drôle de petite voix m’a réveillé. "\
+            "Elle disait: « S’il vous plaît… dessine-moi un mouton! »")
 
     def test_unicode_warnings_typelevel_native_unicode(self):
 
@@ -726,13 +718,12 @@ class UnicodeTest(fixtures.TestBase):
         dialect = default.DefaultDialect()
         dialect.supports_unicode_binds = True
         uni = u.dialect_impl(dialect).bind_processor(dialect)
-        # Py3K
-        #assert_raises(exc.SAWarning, uni, b'x')
-        #assert isinstance(uni(unicodedata), str)
-        # Py2K
-        assert_raises(exc.SAWarning, uni, 'x')
-        assert isinstance(uni(unicodedata), unicode)
-        # end Py2K
+        if util.py3k:
+            assert_raises(exc.SAWarning, uni, b'x')
+            assert isinstance(uni(unicodedata), str)
+        else:
+            assert_raises(exc.SAWarning, uni, 'x')
+            assert isinstance(uni(unicodedata), unicode)
 
     def test_unicode_warnings_typelevel_sqla_unicode(self):
         unicodedata = self.data
@@ -740,13 +731,8 @@ class UnicodeTest(fixtures.TestBase):
         dialect = default.DefaultDialect()
         dialect.supports_unicode_binds = False
         uni = u.dialect_impl(dialect).bind_processor(dialect)
-        # Py3K
-        #assert_raises(exc.SAWarning, uni, b'x')
-        #assert isinstance(uni(unicodedata), bytes)
-        # Py2K
-        assert_raises(exc.SAWarning, uni, 'x')
-        assert isinstance(uni(unicodedata), str)
-        # end Py2K
+        assert_raises(exc.SAWarning, uni, util.b('x'))
+        assert isinstance(uni(unicodedata), util.binary_type)
 
         eq_(uni(unicodedata), unicodedata.encode('utf-8'))
 
@@ -759,14 +745,9 @@ class UnicodeTest(fixtures.TestBase):
 
         s = String()
         uni = s.dialect_impl(dialect).bind_processor(dialect)
-        # this is not the unicode type - no warning
-        # Py3K
-        #uni(b'x')
-        #assert isinstance(uni(unicodedata), bytes)
-        # Py2K
-        uni('x')
-        assert isinstance(uni(unicodedata), str)
-        # end Py2K
+
+        uni(util.b('x'))
+        assert isinstance(uni(unicodedata), util.binary_type)
 
         eq_(uni(unicodedata), unicodedata.encode('utf-8'))
 
@@ -1368,7 +1349,7 @@ class NumericRawSQLTest(fixtures.TestBase):
         metadata = self.metadata
         self._fixture(metadata, Integer, 45)
         val = testing.db.execute("select val from t").scalar()
-        assert isinstance(val, (int, long))
+        assert isinstance(val, util.int_types)
         eq_(val, 45)
 
     @testing.provide_metadata

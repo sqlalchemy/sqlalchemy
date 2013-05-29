@@ -11,6 +11,10 @@ from sqlalchemy.types import TypeDecorator, TypeEngine
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.dialects import sqlite
 from sqlalchemy.testing import fixtures
+from sqlalchemy.util import u, b
+from sqlalchemy import util
+
+t = f = f2 = ts = currenttime = metadata = default_generator = None
 
 t = f = f2 = ts = currenttime = metadata = default_generator = None
 
@@ -647,7 +651,7 @@ class SequenceExecTest(fixtures.TestBase):
     def _assert_seq_result(self, ret):
         """asserts return of next_value is an int"""
 
-        assert isinstance(ret, (int, long))
+        assert isinstance(ret, util.int_types)
         assert ret > 0
 
     def test_implicit_connectionless(self):
@@ -779,7 +783,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 ]
                 start = seq.start or 1
                 inc = seq.increment or 1
-                assert values == list(xrange(start, start + inc * 3, inc))
+                assert values == list(range(start, start + inc * 3, inc))
 
             finally:
                 seq.drop(testing.db)
@@ -1157,20 +1161,12 @@ class UnicodeDefaultsTest(fixtures.TestBase):
         Column(Unicode(32))
 
     def test_unicode_default(self):
-        # Py3K
-        #default = 'foo'
-        # Py2K
-        default = u'foo'
-        # end Py2K
+        default = u('foo')
         Column(Unicode(32), default=default)
 
 
     def test_nonunicode_default(self):
-        # Py3K
-        #default = b'foo'
-        # Py2K
-        default = 'foo'
-        # end Py2K
+        default = b('foo')
         assert_raises_message(
             sa.exc.SAWarning,
             "Unicode column received non-unicode default value.",

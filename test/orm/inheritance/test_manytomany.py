@@ -42,7 +42,7 @@ class InheritTest(fixtures.MappedTest):
     def testbasic(self):
         class Principal(object):
             def __init__(self, **kwargs):
-                for key, value in kwargs.iteritems():
+                for key, value in kwargs.items():
                     setattr(self, key, value)
 
         class User(Principal):
@@ -94,8 +94,8 @@ class InheritTest2(fixtures.MappedTest):
 
         mapper(Foo, foo)
         mapper(Bar, bar, inherits=Foo)
-        print foo.join(bar).primary_key
-        print class_mapper(Bar).primary_key
+        print(foo.join(bar).primary_key)
+        print(class_mapper(Bar).primary_key)
         b = Bar('somedata')
         sess = create_session()
         sess.add(b)
@@ -133,8 +133,8 @@ class InheritTest2(fixtures.MappedTest):
         sess.expunge_all()
 
         l = sess.query(Bar).all()
-        print l[0]
-        print l[0].foos
+        print(l[0])
+        print(l[0].foos)
         self.assert_unordered_result(l, Bar,
 #            {'id':1, 'data':'barfoo', 'bid':1, 'foos':(Foo, [{'id':2,'data':'subfoo1'}, {'id':3,'data':'subfoo2'}])},
             {'id':b.id, 'data':'barfoo', 'foos':(Foo, [{'id':f1.id,'data':'subfoo1'}, {'id':f2.id,'data':'subfoo2'}])},
@@ -197,7 +197,7 @@ class InheritTest3(fixtures.MappedTest):
         compare = [repr(b)] + sorted([repr(o) for o in b.foos])
         sess.expunge_all()
         l = sess.query(Bar).all()
-        print repr(l[0]) + repr(l[0].foos)
+        print(repr(l[0]) + repr(l[0].foos))
         found = [repr(l[0])] + sorted([repr(o) for o in l[0].foos])
         eq_(found, compare)
 
@@ -239,11 +239,11 @@ class InheritTest3(fixtures.MappedTest):
         sess.expunge_all()
 
         l = sess.query(Blub).all()
-        print l
+        print(l)
         self.assert_(repr(l[0]) == compare)
         sess.expunge_all()
         x = sess.query(Blub).filter_by(id=blubid).one()
-        print x
+        print(x)
         self.assert_(repr(x) == compare)
 
 

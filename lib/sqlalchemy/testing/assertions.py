@@ -63,7 +63,7 @@ def emits_warning_on(db, *warnings):
 
     @decorator
     def decorate(fn, *args, **kw):
-        if isinstance(db, basestring):
+        if isinstance(db, util.string_types):
             if not spec(config.db):
                 return fn(*args, **kw)
             else:
@@ -171,9 +171,9 @@ def assert_raises_message(except_cls, msg, callable_, *args, **kwargs):
     try:
         callable_(*args, **kwargs)
         assert False, "Callable did not raise an exception"
-    except except_cls, e:
-        assert re.search(msg, unicode(e), re.UNICODE), u"%r !~ %s" % (msg, e)
-        print unicode(e).encode('utf-8')
+    except except_cls as e:
+        assert re.search(msg, util.text_type(e), re.UNICODE), "%r !~ %s" % (msg, e)
+        print(util.text_type(e).encode('utf-8'))
 
 
 class AssertsCompiledSQL(object):
@@ -190,12 +190,12 @@ class AssertsCompiledSQL(object):
                 dialect = default.DefaultDialect()
             elif dialect is None:
                 dialect = config.db.dialect
-            elif isinstance(dialect, basestring):
+            elif isinstance(dialect, util.string_types):
                 dialect = create_engine("%s://" % dialect).dialect
 
         kw = {}
         if params is not None:
-            kw['column_keys'] = params.keys()
+            kw['column_keys'] = list(params)
 
         if isinstance(clause, orm.Query):
             context = clause._compile_context()
@@ -205,12 +205,13 @@ class AssertsCompiledSQL(object):
         c = clause.compile(dialect=dialect, **kw)
 
         param_str = repr(getattr(c, 'params', {}))
-        # Py3K
-        #param_str = param_str.encode('utf-8').decode('ascii', 'ignore')
 
-        print "\nSQL String:\n" + str(c) + param_str
+        if util.py3k:
+            param_str = param_str.encode('utf-8').decode('ascii', 'ignore')
 
-        cc = re.sub(r'[\n\t]', '', str(c))
+        print("\nSQL String:\n" + util.text_type(c) + param_str)
+
+        cc = re.sub(r'[\n\t]', '', util.text_type(c))
 
         eq_(cc, result, "%r != %r on dialect %r" % (cc, result, dialect))
 
@@ -262,7 +263,7 @@ class ComparesTables(object):
 class AssertsExecutionResults(object):
     def assert_result(self, result, class_, *objects):
         result = list(result)
-        print repr(result)
+        print(repr(result))
         self.assert_list(result, class_, objects)
 
     def assert_list(self, result, class_, list):
@@ -275,7 +276,7 @@ class AssertsExecutionResults(object):
     def assert_row(self, class_, rowobj, desc):
         self.assert_(rowobj.__class__ is class_,
                      "item class is not " + repr(class_))
-        for key, value in desc.iteritems():
+        for key, value in desc.items():
             if isinstance(value, tuple):
                 if isinstance(value[1], list):
                     self.assert_list(getattr(rowobj, key), value[0], value[1])
@@ -300,7 +301,7 @@ class AssertsExecutionResults(object):
         found = util.IdentitySet(result)
         expected = set([immutabledict(e) for e in expected])
 
-        for wrong in itertools.ifilterfalse(lambda o: type(o) == cls, found):
+        for wrong in util.itertools_filterfalse(lambda o: type(o) == cls, found):
             fail('Unexpected type "%s", expected "%s"' % (
                 type(wrong).__name__, cls.__name__))
 
@@ -311,7 +312,7 @@ class AssertsExecutionResults(object):
         NOVALUE = object()
 
         def _compare_item(obj, spec):
-            for key, value in spec.iteritems():
+            for key, value in spec.items():
                 if isinstance(value, tuple):
                     try:
                         self.assert_unordered_result(
@@ -352,7 +353,7 @@ class AssertsExecutionResults(object):
         for rule in rules:
             if isinstance(rule, dict):
                 newrule = assertsql.AllOf(*[
-                    assertsql.ExactSQL(k, v) for k, v in rule.iteritems()
+                    assertsql.ExactSQL(k, v) for k, v in rule.items()
                 ])
             else:
                 newrule = assertsql.ExactSQL(*rule)

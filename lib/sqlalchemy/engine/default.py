@@ -57,17 +57,16 @@ class DefaultDialect(interfaces.Dialect):
     # *not* the FLOAT type however.
     supports_native_decimal = False
 
-    # Py3K
-    #supports_unicode_statements = True
-    #supports_unicode_binds = True
-    #returns_unicode_strings = True
-    #description_encoding = None
-    # Py2K
-    supports_unicode_statements = False
-    supports_unicode_binds = False
-    returns_unicode_strings = False
-    description_encoding = 'use_encoding'
-    # end Py2K
+    if util.py3k:
+        supports_unicode_statements = True
+        supports_unicode_binds = True
+        returns_unicode_strings = True
+        description_encoding = None
+    else:
+        supports_unicode_statements = False
+        supports_unicode_binds = False
+        returns_unicode_strings = False
+        description_encoding = 'use_encoding'
 
     name = 'default'
 
@@ -201,14 +200,10 @@ class DefaultDialect(interfaces.Dialect):
         return None
 
     def _check_unicode_returns(self, connection):
-        # Py2K
-        if self.supports_unicode_statements:
-            cast_to = unicode
+        if util.py2k and not self.supports_unicode_statements:
+            cast_to = util.binary_type
         else:
-            cast_to = str
-        # end Py2K
-        # Py3K
-        #cast_to = str
+            cast_to = util.text_type
 
         def check_unicode(formatstr, type_):
             cursor = connection.connection.cursor()
@@ -217,8 +212,8 @@ class DefaultDialect(interfaces.Dialect):
                     cursor.execute(
                         cast_to(
                             expression.select(
-                            [expression.cast(
-                                expression.literal_column(
+                                [expression.cast(
+                                    expression.literal_column(
                                         "'test %s returns'" % formatstr),
                                         type_)
                             ]).compile(dialect=self)
@@ -226,8 +221,8 @@ class DefaultDialect(interfaces.Dialect):
                     )
                     row = cursor.fetchone()
 
-                    return isinstance(row[0], unicode)
-                except self.dbapi.Error, de:
+                    return isinstance(row[0], util.text_type)
+                except self.dbapi.Error as de:
                     util.warn("Exception attempting to "
                             "detect unicode returns: %r" % de)
                     return False
@@ -373,10 +368,10 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             self.execution_options.update(connection._execution_options)
 
         if not dialect.supports_unicode_statements:
-            self.unicode_statement = unicode(compiled)
+            self.unicode_statement = util.text_type(compiled)
             self.statement = dialect._encoder(self.unicode_statement)[0]
         else:
-            self.statement = self.unicode_statement = unicode(compiled)
+            self.statement = self.unicode_statement = util.text_type(compiled)
 
         self.cursor = self.create_cursor()
         self.compiled_parameters = []
@@ -414,7 +409,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         self.result_map = compiled.result_map
 
-        self.unicode_statement = unicode(compiled)
+        self.unicode_statement = util.text_type(compiled)
         if not dialect.supports_unicode_statements:
             self.statement = self.unicode_statement.encode(
                                         self.dialect.encoding)
@@ -519,7 +514,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.executemany = len(parameters) > 1
 
         if not dialect.supports_unicode_statements and \
-            isinstance(statement, unicode):
+                isinstance(statement, util.text_type):
             self.unicode_statement = statement
             self.statement = dialect._encoder(statement)[0]
         else:
@@ -573,8 +568,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         """
 
         conn = self.root_connection
-        if isinstance(stmt, unicode) and \
-            not self.dialect.supports_unicode_statements:
+        if isinstance(stmt, util.text_type) and \
+                not self.dialect.supports_unicode_statements:
             stmt = self.dialect._encoder(stmt)[0]
 
         if self.dialect.positional:
@@ -734,7 +729,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                     inputsizes.append(dbtype)
             try:
                 self.cursor.setinputsizes(*inputsizes)
-            except Exception, e:
+            except Exception as e:
                 self.root_connection._handle_dbapi_exception(
                                 e, None, None, None, self)
         else:
@@ -752,7 +747,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                     inputsizes[key] = dbtype
             try:
                 self.cursor.setinputsizes(**inputsizes)
-            except Exception, e:
+            except Exception as e:
                 self.root_connection._handle_dbapi_exception(
                                 e, None, None, None, self)
 

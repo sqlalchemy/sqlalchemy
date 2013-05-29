@@ -75,13 +75,13 @@ if __name__ == '__main__':
     session.commit()
 
     a1 = session.query(A).first()
-    print a1.collections["1"]
+    print(a1.collections["1"])
     a1.collections["1"].add(4)
     session.commit()
 
     a1.collections["2"].update([7, 8, 9])
     session.commit()
 
-    print a1.collections["2"]
+    print(a1.collections["2"])
 
 

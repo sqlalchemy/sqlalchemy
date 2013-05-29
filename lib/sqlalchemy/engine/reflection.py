@@ -41,8 +41,12 @@ def cache(fn, self, con, *args, **kw):
         return fn(self, con, *args, **kw)
     key = (
             fn.__name__,
-            tuple(a for a in args if isinstance(a, basestring)),
-            tuple((k, v) for k, v in kw.iteritems() if isinstance(v, (basestring, int, float)))
+            tuple(a for a in args if isinstance(a, util.string_types)),
+            tuple((k, v) for k, v in kw.items() if
+                    isinstance(v,
+                        util.string_types + util.int_types + (float, )
+                    )
+                )
         )
     ret = info_cache.get(key)
     if ret is None:
@@ -381,16 +385,15 @@ class Inspector(object):
         # table.kwargs will need to be passed to each reflection method.  Make
         # sure keywords are strings.
         tblkw = table.kwargs.copy()
-        for (k, v) in tblkw.items():
+        for (k, v) in list(tblkw.items()):
             del tblkw[k]
             tblkw[str(k)] = v
 
-        # Py2K
-        if isinstance(schema, str):
-            schema = schema.decode(dialect.encoding)
-        if isinstance(table_name, str):
-            table_name = table_name.decode(dialect.encoding)
-        # end Py2K
+        if util.py2k:
+            if isinstance(schema, str):
+                schema = schema.decode(dialect.encoding)
+            if isinstance(table_name, str):
+                table_name = table_name.decode(dialect.encoding)
 
         # columns
         found_table = False

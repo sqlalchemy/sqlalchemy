@@ -242,7 +242,7 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
             'WHERE '
                 'users.id = addresses.user_id AND '
                 'addresses.email_address = :email_address_1',
-            checkparams={u'email_address_1': 'e1', 'name': 'newname'})
+            checkparams={'email_address_1': 'e1', 'name': 'newname'})
 
     def test_render_multi_table(self):
         users = self.tables.users
@@ -250,8 +250,8 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
         dingalings = self.tables.dingalings
 
         checkparams = {
-            u'email_address_1': 'e1',
-            u'id_1': 2,
+            'email_address_1': 'e1',
+            'id_1': 2,
             'name': 'newname'
         }
 
@@ -285,15 +285,15 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
             'WHERE '
                 'users.id = addresses.user_id AND '
                 'addresses.email_address = %s',
-            checkparams={u'email_address_1': 'e1', 'name': 'newname'},
+            checkparams={'email_address_1': 'e1', 'name': 'newname'},
             dialect=mysql.dialect())
 
     def test_render_subquery(self):
         users, addresses = self.tables.users, self.tables.addresses
 
         checkparams = {
-            u'email_address_1': 'e1',
-            u'id_1': 7,
+            'email_address_1': 'e1',
+            'id_1': 7,
             'name': 'newname'
         }
 

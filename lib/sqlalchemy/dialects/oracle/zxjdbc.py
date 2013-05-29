@@ -95,8 +95,8 @@ class OracleExecutionContext_zxjdbc(OracleExecutionContext):
             try:
                 try:
                     rrs = self.statement.__statement__.getReturnResultSet()
-                    rrs.next()
-                except SQLException, sqle:
+                    next(rrs)
+                except SQLException as sqle:
                     msg = '%s [SQLCode: %d]' % (sqle.getMessage(), sqle.getErrorCode())
                     if sqle.getSQLState() is not None:
                         msg += ' [SQLState: %s]' % sqle.getSQLState()

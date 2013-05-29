@@ -573,7 +573,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             primary_language = Column(String(50))
 
         assert Person.__table__.c.golf_swing is not None
-        assert not Person.__table__.c.has_key('primary_language')
+        assert 'primary_language' not in Person.__table__.c
         assert Engineer.__table__.c.primary_language is not None
         assert Engineer.primary_language is not None
         assert Manager.golf_swing is not None

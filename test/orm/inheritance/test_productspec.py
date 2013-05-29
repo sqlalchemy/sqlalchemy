@@ -122,8 +122,8 @@ class InheritTest(fixtures.MappedTest):
 
         a1 = session.query(Product).filter_by(name='a1').one()
         new = repr(a1)
-        print orig
-        print new
+        print(orig)
+        print(new)
         assert orig == new == '<Assembly a1> specification=[<SpecLine 1.0 <Product p1>>, <SpecLine 1.0 <Detail d1>>] documents=None'
 
     def testtwo(self):
@@ -153,8 +153,8 @@ class InheritTest(fixtures.MappedTest):
         session.flush()
         session.expunge_all()
         new = repr(session.query(SpecLine).all())
-        print orig
-        print new
+        print(orig)
+        print(new)
         assert orig == new == '[<SpecLine 1.0 <Product p1>>, <SpecLine 1.0 <Detail d1>>]'
 
     def testthree(self):
@@ -206,8 +206,8 @@ class InheritTest(fixtures.MappedTest):
 
         a1 = session.query(Product).filter_by(name='a1').one()
         new = repr(a1)
-        print orig
-        print new
+        print(orig)
+        print(new)
         assert orig == new  == '<Assembly a1> specification=[<SpecLine 1.0 <Detail d1>>] documents=[<Document doc1>, <RasterDocument doc2>]'
 
     def testfour(self):
@@ -245,8 +245,8 @@ class InheritTest(fixtures.MappedTest):
 
         a1 = session.query(Product).filter_by(name='a1').one()
         new = repr(a1)
-        print orig
-        print new
+        print(orig)
+        print(new)
         assert orig == new  == '<Assembly a1> specification=None documents=[<RasterDocument doc2>]'
 
         del a1.documents[0]
@@ -312,7 +312,7 @@ class InheritTest(fixtures.MappedTest):
 
         a1 = session.query(Product).filter_by(name='a1').one()
         new = repr(a1)
-        print orig
-        print new
+        print(orig)
+        print(new)
         assert orig == new  == '<Assembly a1> specification=[<SpecLine 1.0 <Detail d1>>] documents=[<Document doc1>, <RasterDocument doc2>]'
 

@@ -1,4 +1,4 @@
-from __future__ import with_statement
+
 from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy.schema import DDL, CheckConstraint, AddConstraint, \
     DropConstraint

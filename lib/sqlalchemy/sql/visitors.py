@@ -49,11 +49,9 @@ class VisitableType(type):
     Classes having no __visit_name__ attribute will remain unaffected.
     """
     def __init__(cls, clsname, bases, clsdict):
-        if cls.__name__ == 'Visitable' or not hasattr(cls, '__visit_name__'):
-            super(VisitableType, cls).__init__(clsname, bases, clsdict)
-            return
-
-        _generate_dispatch(cls)
+        if clsname not in ('MetaBase', 'Visitable') and \
+                hasattr(cls, '__visit_name__'):
+            _generate_dispatch(cls)
 
         super(VisitableType, cls).__init__(clsname, bases, clsdict)
 
@@ -87,13 +85,11 @@ def _generate_dispatch(cls):
         cls._compiler_dispatch = _compiler_dispatch
 
 
-class Visitable(object):
+class Visitable(util.with_metaclass(VisitableType, object)):
     """Base class for visitable objects, applies the
     ``VisitableType`` metaclass.
 
     """
-
-    __metaclass__ = VisitableType
 
 
 class ClauseVisitor(object):

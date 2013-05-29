@@ -654,14 +654,14 @@ class OracleDDLCompiler(compiler.DDLCompiler):
 class OracleIdentifierPreparer(compiler.IdentifierPreparer):
 
     reserved_words = set([x.lower() for x in RESERVED_WORDS])
-    illegal_initial_characters = set(xrange(0, 10)).union(["_", "$"])
+    illegal_initial_characters = set(range(0, 10)).union(["_", "$"])
 
     def _bindparam_requires_quotes(self, value):
         """Return True if the given identifier requires quoting."""
         lc_value = value.lower()
         return (lc_value in self.reserved_words
                 or value[0] in self.illegal_initial_characters
-                or not self.legal_characters.match(unicode(value))
+                or not self.legal_characters.match(util.text_type(value))
                 )
 
     def format_savepoint(self, savepoint):
@@ -765,10 +765,9 @@ class OracleDialect(default.DefaultDialect):
     def normalize_name(self, name):
         if name is None:
             return None
-        # Py2K
-        if isinstance(name, str):
-            name = name.decode(self.encoding)
-        # end Py2K
+        if util.py2k:
+            if isinstance(name, str):
+                name = name.decode(self.encoding)
         if name.upper() == name and \
               not self.identifier_preparer._requires_quotes(name.lower()):
             return name.lower()
@@ -780,16 +779,15 @@ class OracleDialect(default.DefaultDialect):
             return None
         elif name.lower() == name and not self.identifier_preparer._requires_quotes(name.lower()):
             name = name.upper()
-        # Py2K
-        if not self.supports_unicode_binds:
-            name = name.encode(self.encoding)
-        else:
-            name = unicode(name)
-        # end Py2K
+        if util.py2k:
+            if not self.supports_unicode_binds:
+                name = name.encode(self.encoding)
+            else:
+                name = unicode(name)
         return name
 
     def _get_default_schema_name(self, connection):
-        return self.normalize_name(connection.execute(u'SELECT USER FROM DUAL').scalar())
+        return self.normalize_name(connection.execute('SELECT USER FROM DUAL').scalar())
 
     def _resolve_synonym(self, connection, desired_owner=None, desired_synonym=None, desired_table=None):
         """search for a local synonym matching the given desired owner/name.
@@ -1167,7 +1165,7 @@ class OracleDialect(default.DefaultDialect):
                 local_cols.append(local_column)
                 remote_cols.append(remote_column)
 
-        return fkeys.values()
+        return list(fkeys.values())
 
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None,
@@ -1187,7 +1185,9 @@ class OracleDialect(default.DefaultDialect):
 
         rp = connection.execute(sql.text(text), **params).scalar()
         if rp:
-            return rp.decode(self.encoding)
+            if util.py2k:
+                rp = rp.decode(self.encoding)
+            return rp
         else:
             return None
 

@@ -556,6 +556,15 @@ class DefaultRequirements(SuiteRequirements):
                "cPython interpreter needed"
              )
 
+
+    @property
+    def non_broken_pickle(self):
+        from sqlalchemy.util import pickle
+        return only_if(
+            lambda: pickle.__name__ == 'cPickle' or sys.version_info >= (3, 2),
+            "Needs cPickle or newer Python 3 pickle"
+        )
+
     @property
     def predictable_gc(self):
         """target platform must remove all cycles unconditionally when

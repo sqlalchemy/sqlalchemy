@@ -16,8 +16,8 @@ from sqlalchemy import testing
 from sqlalchemy.testing import emits_warning_on, assert_raises_message
 import decimal
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.util.compat import b
-from sqlalchemy import sql
+from sqlalchemy.util import b, u, ue
+from sqlalchemy import sql, util
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -414,7 +414,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             s,
             "SELECT TOP 10 t.x, t.y FROM t WHERE t.x = :x_1 ORDER BY t.y",
-            checkparams={u'x_1': 5}
+            checkparams={'x_1': 5}
         )
 
     def test_limit_zero_using_top(self):
@@ -425,7 +425,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             s,
             "SELECT TOP 0 t.x, t.y FROM t WHERE t.x = :x_1 ORDER BY t.y",
-            checkparams={u'x_1': 5}
+            checkparams={'x_1': 5}
         )
 
     def test_offset_using_window(self):
@@ -435,14 +435,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # test that the select is not altered with subsequent compile
         # calls
-        for i in xrange(2):
+        for i in range(2):
             self.assert_compile(
                 s,
                 "SELECT anon_1.x, anon_1.y FROM (SELECT t.x AS x, t.y "
                 "AS y, ROW_NUMBER() OVER (ORDER BY t.y) AS "
                 "mssql_rn FROM t WHERE t.x = :x_1) AS "
                 "anon_1 WHERE mssql_rn > :mssql_rn_1",
-                checkparams={u'mssql_rn_1': 20, u'x_1': 5}
+                checkparams={'mssql_rn_1': 20, 'x_1': 5}
             )
 
     def test_limit_offset_using_window(self):
@@ -458,7 +458,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM t "
             "WHERE t.x = :x_1) AS anon_1 "
             "WHERE mssql_rn > :mssql_rn_1 AND mssql_rn <= :mssql_rn_2",
-            checkparams={u'mssql_rn_1': 20, u'mssql_rn_2': 30, u'x_1': 5}
+            checkparams={'mssql_rn_1': 20, 'mssql_rn_2': 30, 'x_1': 5}
         )
 
     def test_limit_offset_with_correlated_order_by(self):
@@ -479,7 +479,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM t1 "
             "WHERE t1.x = :x_1) AS anon_1 "
             "WHERE mssql_rn > :mssql_rn_1 AND mssql_rn <= :mssql_rn_2",
-            checkparams={u'mssql_rn_1': 20, u'mssql_rn_2': 30, u'x_1': 5}
+            checkparams={'mssql_rn_1': 20, 'mssql_rn_2': 30, 'x_1': 5}
         )
 
     def test_limit_zero_offset_using_window(self):
@@ -493,7 +493,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             s,
             "SELECT TOP 0 t.x, t.y FROM t "
             "WHERE t.x = :x_1 ORDER BY t.y",
-            checkparams={u'x_1': 5}
+            checkparams={'x_1': 5}
         )
 
     def test_sequence_start_0(self):
@@ -862,11 +862,11 @@ class QueryUnicodeTest(fixtures.TestBase):
         # encode in UTF-8 (sting object) because this is the default
         # dialect encoding
 
-        con.execute(u"insert into unitest_table values ('bien u\
-                    umang\xc3\xa9')".encode('UTF-8'))
+        con.execute(ue("insert into unitest_table values ('bien u\
+                    umang\xc3\xa9')").encode('UTF-8'))
         try:
             r = t1.select().execute().first()
-            assert isinstance(r[1], unicode), \
+            assert isinstance(r[1], util.text_type), \
                 '%s is %s instead of unicode, working on %s' % (r[1],
                     type(r[1]), meta.bind)
         finally:
@@ -1718,7 +1718,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults, ComparesTabl
                 )]
             for value in test_items:
                 float_table.insert().execute(floatcol=value)
-        except Exception, e:
+        except Exception as e:
             raise e
 
 
@@ -1964,8 +1964,8 @@ class MonkeyPatchedBinaryTest(fixtures.TestBase):
 
     def test_unicode(self):
         module = __import__('pymssql')
-        result = module.Binary(u'foo')
-        eq_(result, u'foo')
+        result = module.Binary('foo')
+        eq_(result, 'foo')
 
     def test_bytes(self):
         module = __import__('pymssql')
@@ -2084,7 +2084,7 @@ class InfoCoerceUnicodeTest(fixtures.TestBase):
 
         dialect = mssql.dialect()
         value = CoerceUnicode().bind_processor(dialect)('a string')
-        assert isinstance(value, unicode)
+        assert isinstance(value, util.text_type)
 
 class ReflectHugeViewTest(fixtures.TestBase):
     __only_on__ = 'mssql'
@@ -2096,13 +2096,13 @@ class ReflectHugeViewTest(fixtures.TestBase):
         t = Table('base_table', self.metadata,
                 *[
                     Column("long_named_column_number_%d" % i, Integer)
-                    for i in xrange(self.col_num)
+                    for i in range(self.col_num)
                 ]
         )
         self.view_str = view_str = \
             "CREATE VIEW huge_named_view AS SELECT %s FROM base_table" % (
             ",".join("long_named_column_number_%d" % i
-                        for i in xrange(self.col_num))
+                        for i in range(self.col_num))
             )
         assert len(view_str) > 4000
 

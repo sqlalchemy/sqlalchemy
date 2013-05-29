@@ -97,14 +97,14 @@ def _serialize_hstore(val):
     def esc(s, position):
         if position == 'value' and s is None:
             return 'NULL'
-        elif isinstance(s, basestring):
+        elif isinstance(s, util.string_types):
             return '"%s"' % s.replace('"', r'\"')
         else:
             raise ValueError("%r in %s position is not a string." %
                              (s, position))
 
     return ', '.join('%s=>%s' % (esc(k, 'key'), esc(v, 'value'))
-                     for k, v in val.iteritems())
+                     for k, v in val.items())
 
 
 class HSTORE(sqltypes.Concatenable, sqltypes.TypeEngine):
