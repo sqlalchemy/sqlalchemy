@@ -10,6 +10,7 @@ from .base import ARRAY, ischema_names
 from ... import types as sqltypes
 from ...sql import functions as sqlfunc
 from ...sql.operators import custom_op
+from ... import util
 
 __all__ = ('HSTORE', 'hstore')
 
