@@ -2900,8 +2900,8 @@ class HStoreTest(fixtures.TestBase):
                     dialect, None)
         assert_raises_message(
             ValueError,
-            r'''After '\[\.\.\.\], "key1"=>"value1", ', could not parse '''
-            '''residual at position 36: 'crapcrapcrap, "key3"\[\.\.\.\]''',
+            r'''After u?'\[\.\.\.\], "key1"=>"value1", ', could not parse '''
+            '''residual at position 36: u?'crapcrapcrap, "key3"\[\.\.\.\]''',
             proc,
             '"key2"=>"value2", "key1"=>"value1", '
                         'crapcrapcrap, "key3"=>"value3"'
@@ -3206,3 +3206,28 @@ class HStoreRoundTripTest(fixtures.TablesTest):
     def test_fixed_round_trip_native(self):
         engine = testing.db
         self._test_fixed_round_trip(engine)
+
+    def _test_unicode_round_trip(self, engine):
+        s = select([
+                hstore(
+                    array([u'réveillé', u'drôle', u'S’il']),
+                    array([u'réveillé', u'drôle', u'S’il'])
+                )
+            ])
+        eq_(
+            engine.scalar(s),
+            {
+                u'réveillé': u'réveillé',
+                u'drôle': u'drôle',
+                u'S’il': u'S’il'
+            }
+        )
+
+    def test_unicode_round_trip_python(self):
+        engine = self._non_native_engine()
+        self._test_unicode_round_trip(engine)
+
+    @testing.only_on("postgresql+psycopg2")
+    def test_unicode_round_trip_native(self):
+        engine = testing.db
+        self._test_unicode_round_trip(engine)

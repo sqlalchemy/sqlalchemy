@@ -19,6 +19,7 @@ from .. import sql, util, exc as sa_exc, schema
 from . import attributes, sync, exc as orm_exc, evaluator
 from .util import _state_mapper, state_str, _attr_as_key
 from ..sql import expression
+from . import loading
 
 
 def save_obj(base_mapper, states, uowtransaction, single=False):
@@ -699,7 +700,6 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction,
         # refresh whatever has been expired.
         if base_mapper.eager_defaults and state.unloaded:
             state.key = base_mapper._identity_key_from_state(state)
-            from . import loading
             loading.load_on_ident(
                 uowtransaction.session.query(base_mapper),
                 state.key, refresh_state=state,

@@ -7,6 +7,15 @@
     :version: 0.8.2
 
     .. change::
+      :tags: bug, postgresql
+      :tickets: 2735
+
+      Fixed the HSTORE type to correctly encode/decode for unicode.
+      This is always on, as the hstore is a textual type, and
+      matches the behavior of psycopg2 when using Python 3.
+      Courtesy Dmitry Mugtasimov.
+
+    .. change::
       :tags: bug, examples
 
       Fixed a small bug in the dogpile example where the generation

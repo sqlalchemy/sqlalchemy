@@ -393,7 +393,13 @@ class PGDialect_psycopg2(PGDialect):
                 hstore_oids = self._hstore_oids(conn)
                 if hstore_oids is not None:
                     oid, array_oid = hstore_oids
-                    extras.register_hstore(conn, oid=oid, array_oid=array_oid)
+                    if util.py2k:
+                        extras.register_hstore(conn, oid=oid,
+                                        array_oid=array_oid,
+                                           unicode=True)
+                    else:
+                        extras.register_hstore(conn, oid=oid,
+                                        array_oid=array_oid)
             fns.append(on_connect)
 
         if fns:
