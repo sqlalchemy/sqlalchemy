@@ -171,8 +171,7 @@ class _EventMeta(type):
     associated _Dispatch classes."""
 
     def __init__(cls, classname, bases, dict_):
-        if classname != 'MetaBase':
-            _create_dispatcher_class(cls, classname, bases, dict_)
+        _create_dispatcher_class(cls, classname, bases, dict_)
         return type.__init__(cls, classname, bases, dict_)
 
 
