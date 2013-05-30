@@ -1715,17 +1715,6 @@ class ClauseElement(Visitable):
         d.pop('_is_clone_of', None)
         return d
 
-    if util.jython:
-        def __hash__(self):
-            """Return a distinct hash code.
-
-            ClauseElements may have special equality comparisons which
-            makes us rely on them having unique hash codes for use in
-            hash-based collections. Stock __hash__ doesn't guarantee
-            unique values on platforms with moving GCs.
-            """
-            return id(self)
-
     def _annotate(self, values):
         """return a copy of this ClauseElement with annotations
         updated by the given dictionary.

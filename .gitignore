@@ -9,6 +9,7 @@ tox.ini
 *.egg-info
 .coverage
 .*,cover
+*.class
 *.so
 sqlnet.log
 /mapping_setup.py
