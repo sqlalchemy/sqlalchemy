@@ -1,7 +1,7 @@
 *.pyc
 /build/
 /dist/
-/docs/build/output/
+/doc/build/output/
 /dogpile_data/
 *.orig
 tox.ini

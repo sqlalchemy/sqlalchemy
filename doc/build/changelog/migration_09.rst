@@ -1,12 +1,12 @@
 ==============================
-What's New in SQLAlchemy 0.8?
+What's New in SQLAlchemy 0.9?
 ==============================
 
 .. admonition:: About this Document
 
     This document describes changes between SQLAlchemy version 0.8,
     undergoing maintenance releases as of May, 2013,
-    and SQLAlchemy version 0., which is expected for release
+    and SQLAlchemy version 0.9, which is expected for release
     in late 2013.
 
     Document date: May 29, 2013
