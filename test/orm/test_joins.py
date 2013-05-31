@@ -1066,7 +1066,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         # same with an explicit select_from()
         eq_(
-            sess.query(User).select_from(select([users]).
+            sess.query(User).select_entity_from(select([users]).
                                 order_by(User.id).offset(2).alias()).
                                 join(Order, User.id==Order.user_id).
                                 all(),

@@ -19,3 +19,21 @@
 
     	The Oracle unit tests with cx_oracle now pass
     	fully under Python 3.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 2736
+
+        The "auto-aliasing" behavior of the :class:`.Query.select_from`
+        method has been turned off.  The specific behavior is now
+        availble via a new method :class:`.Query.select_entity_from`.
+        The auto-aliasing behavior here was never well documented and
+        is generally not what's desired, as :class:`.Query.select_from`
+        has become more oriented towards controlling how a JOIN is
+        rendered.  :class:`.Query.select_entity_from` will also be made
+        available in 0.8 so that applications which rely on the auto-aliasing
+        can shift their applications to use this method.
+
+        .. seealso::
+
+            :ref:`migration_2736`
