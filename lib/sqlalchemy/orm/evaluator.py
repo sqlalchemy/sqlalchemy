@@ -40,6 +40,12 @@ class EvaluatorCompiler(object):
     def visit_null(self, clause):
         return lambda obj: None
 
+    def visit_false(self, clause):
+        return lambda obj: False
+
+    def visit_true(self, clause):
+        return lambda obj: True
+
     def visit_column(self, clause):
         if 'parentmapper' in clause._annotations:
             key = clause._annotations['parentmapper'].\
