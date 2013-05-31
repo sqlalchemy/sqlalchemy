@@ -438,6 +438,18 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
             "users) AS anon_1 WHERE anon_1.name = :name_1"
         )
 
+    def test_select_entity_from_no_entities(self):
+        User = self.classes.User
+        sess = create_session()
+
+        q = sess.query(User)
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            r"A selectable \(FromClause\) instance is "
+            "expected when the base alias is being set",
+            sess.query(User).select_entity_from, User
+        )
+
     def test_select_from_no_aliasing(self):
         User = self.classes.User
         sess = create_session()
