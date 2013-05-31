@@ -175,6 +175,7 @@ class Query(object):
                     raise sa_exc.ArgumentError(
                             "A selectable (FromClause) instance is "
                             "expected when the base alias is being set.")
+                self._select_from_entity = from_obj
                 fa.append(info.selectable)
             elif not info.is_selectable:
                 raise sa_exc.ArgumentError(
