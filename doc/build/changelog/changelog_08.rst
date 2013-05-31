@@ -7,6 +7,15 @@
     :version: 0.8.2
 
     .. change::
+      :tags: bug, orm
+      :tickets: 2737
+
+      Fixed a regression caused by :ticket:`2682` whereby the
+      evaluation invoked by :meth:`.Query.update` and :meth:`.Query.delete`
+      would hit upon unsupported ``True`` and ``False`` symbols
+      which now appear due to the usage of ``IS``.
+
+    .. change::
       :tags: bug, postgresql
       :tickets: 2735
 

@@ -62,6 +62,23 @@ class EvaluateTest(fixtures.MappedTest):
             (User(name=None), True),
         ])
 
+    def test_true_false(self):
+        User = self.classes.User
+
+        eval_eq(User.name == False, testcases=[
+                (User(name='foo'), False),
+                (User(name=True), False),
+                (User(name=False), True),
+            ]
+        )
+
+        eval_eq(User.name == True, testcases=[
+                (User(name='foo'), False),
+                (User(name=True), True),
+                (User(name=False), False),
+            ]
+        )
+
     def test_boolean_ops(self):
         User = self.classes.User
 
