@@ -162,15 +162,19 @@ class Query(object):
             for m in m2.iterate_to_root():
                 self._polymorphic_adapters[m.local_table] = adapter
 
-    def _set_select_from(self, *obj):
+    def _set_select_from(self, obj, set_base_alias):
         fa = []
         select_from_alias = None
+
         for from_obj in obj:
             info = inspect(from_obj)
 
             if hasattr(info, 'mapper') and \
                 (info.is_mapper or info.is_aliased_class):
-                self._select_from_entity = from_obj
+                if set_base_alias:
+                    raise sa_exc.ArgumentError(
+                            "A selectable (FromClause) instance is "
+                            "expected when the base alias is being set.")
                 fa.append(info.selectable)
             elif not info.is_selectable:
                 raise sa_exc.ArgumentError(
@@ -189,6 +193,7 @@ class Query(object):
             equivs = self.__all_equivs()
             self._from_obj_alias = sql_util.ColumnAdapter(
                                                 self._from_obj[0], equivs)
+
 
     def _reset_polymorphic_adapter(self, mapper):
         for m2 in mapper._with_polymorphic_mappers:
@@ -953,7 +958,7 @@ class Query(object):
                 '_prefixes',
         ):
             self.__dict__.pop(attr, None)
-        self._set_select_from(fromclause)
+        self._set_select_from([fromclause], True)
 
         # this enables clause adaptation for non-ORM
         # expressions.
@@ -1970,25 +1975,147 @@ class Query(object):
         """
         self._reset_joinpoint()
 
+
     @_generative(_no_clauseelement_condition)
     def select_from(self, *from_obj):
         """Set the FROM clause of this :class:`.Query` explicitly.
 
-        Sending a mapped class or entity here effectively replaces the
+        :meth:`.Query.select_from` is often used in conjunction with
+        :meth:`.Query.join` in order to control which entity is selected
+        from on the "left" side of the join.
+
+        The entity or selectable object here effectively replaces the
         "left edge" of any calls to :meth:`~.Query.join`, when no
         joinpoint is otherwise established - usually, the default "join
         point" is the leftmost entity in the :class:`~.Query` object's
         list of entities to be selected.
 
-        Mapped entities or plain :class:`~.Table` or other selectables
-        can be sent here which will form the default FROM clause.
+        A typical example::
 
-        See the example in :meth:`~.Query.join` for a typical
-        usage of :meth:`~.Query.select_from`.
+            q = session.query(Address).select_from(User).\\
+                join(User.addresses).\\
+                filter(User.name == 'ed')
+
+        Which produces SQL equivalent to::
+
+            SELECT address.* FROM user
+            JOIN address ON user.id=address.user_id
+            WHERE user.name = :name_1
+
+        :param \*from_obj: collection of one or more entities to apply
+         to the FROM clause.  Entities can be mapped classes,
+         :class:`.AliasedClass` objects, :class:`.Mapper` objects
+         as well as core :class:`.FromClause` elements like subqueries.
+
+        .. note::
+
+            :meth:`.Query.select_from` features a deprecated behavior
+            whereby when passed a :class:`.FromClause` element,
+            such as a select construct, it will apply that select
+            construct to *replace* the FROM clause that an existing
+            entity is joined from.  This behavior is being removed
+            in SQLAlchemy 0.9, to be replaced with the
+            :meth:`.Query.select_entity_from` method.  Applications
+            which rely on this behavior to re-base query entities to
+            an arbitrary selectable should transition to this
+            method before upgrading to 0.9.
+
+        .. seealso::
+
+            :meth:`~.Query.join`
+
+            :meth:`.Query.select_entity_from`
 
         """
 
-        self._set_select_from(*from_obj)
+        self._set_select_from(from_obj, False)
+
+    @_generative(_no_clauseelement_condition)
+    def select_entity_from(self, from_obj):
+        """Set the FROM clause of this :class:`.Query` to a
+        core selectable, applying it as a replacement FROM clause
+        for corresponding mapped entities.
+
+        This method is currently equivalent to the
+        :meth:`.Query.select_from` method, but in 0.9 these two
+        methods will diverge in functionality.
+
+        In addition to changing the FROM list, the method will
+        also apply the given selectable
+        to replace the FROM which the selected entities would normally
+        select from.
+
+        The given ``from_obj`` must be an instance of a :class:`.FromClause`,
+        e.g. a :func:`.select` or :class:`.Alias` construct.
+
+        An example would be a :class:`.Query` that selects ``User`` entities,
+        but uses :meth:`.Query.select_entity_from` to have the entities
+        selected from a :func:`.select` construct instead of the
+        base ``user`` table::
+
+            select_stmt = select([User]).where(User.id == 7)
+
+            q = session.query(User).\\
+                    select_entity_from(select_stmt).\\
+                    filter(User.name == 'ed')
+
+        The query generated will select ``User`` entities directly
+        from the given :func:`.select` construct, and will be::
+
+            SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name
+            FROM (SELECT "user".id AS id, "user".name AS name
+            FROM "user"
+            WHERE "user".id = :id_1) AS anon_1
+            WHERE anon_1.name = :name_1
+
+        Notice above that even the WHERE criterion was "adapted" such that
+        the ``anon_1`` subquery effectively replaces all references to the
+        ``user`` table, except for the one that it refers to internally.
+
+        Compare this to :meth:`.Query.select_from`, which as of
+        version 0.9, does not affect existing entities.  The
+        statement below::
+
+            q = session.query(User).\\
+                    select_from(select_stmt).\\
+                    filter(User.name == 'ed')
+
+        Produces SQL where both the ``user`` table as well as the
+        ``select_stmt`` construct are present as separate elements
+        in the FROM clause.  No "adaptation" of the ``user`` table
+        is applied::
+
+            SELECT "user".id AS user_id, "user".name AS user_name
+            FROM "user", (SELECT "user".id AS id, "user".name AS name
+            FROM "user"
+            WHERE "user".id = :id_1) AS anon_1
+            WHERE "user".name = :name_1
+
+        :meth:`.Query.select_entity_from` maintains an older
+        behavior of :meth:`.Query.select_from`.  In modern usage,
+        similar results can also be achieved using :func:`.aliased`::
+
+            select_stmt = select([User]).where(User.id == 7)
+            user_from_select = aliased(User, select_stmt.alias())
+
+            q = session.query(user_from_select)
+
+        :param from_obj: a :class:`.FromClause` object that will replace
+         the FROM clause of this :class:`.Query`.
+
+        .. seealso::
+
+            :meth:`.Query.select_from`
+
+        .. versionadded:: 0.8.2
+            :meth:`.Query.select_entity_from` was added to specify
+            the specific behavior of entity replacement, however
+            the :meth:`.Query.select_from` maintains this behavior
+            as well until 0.9.
+
+        """
+
+        self._set_select_from([from_obj], True)
 
     def __getitem__(self, item):
         if isinstance(item, slice):

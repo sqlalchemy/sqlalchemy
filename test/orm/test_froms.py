@@ -425,6 +425,32 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
             "WHERE anon_1.anon_2_users_name = :name_1"
         )
 
+    def test_select_entity_from(self):
+        User = self.classes.User
+        sess = create_session()
+
+        q = sess.query(User)
+        q = sess.query(User).select_entity_from(q.statement)
+        self.assert_compile(
+            q.filter(User.name=='ed'),
+            "SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name "
+            "FROM (SELECT users.id AS id, users.name AS name FROM "
+            "users) AS anon_1 WHERE anon_1.name = :name_1"
+        )
+
+    def test_select_entity_from_no_entities(self):
+        User = self.classes.User
+        sess = create_session()
+
+        q = sess.query(User)
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            r"A selectable \(FromClause\) instance is "
+            "expected when the base alias is being set.",
+            sess.query(User).select_entity_from, User
+        )
+
+
     def test_select_from(self):
         User = self.classes.User
         sess = create_session()
