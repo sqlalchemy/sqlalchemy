@@ -7,6 +7,17 @@
     :version: 0.8.2
 
     .. change::
+      :tags: feature, orm
+      :tickets: 2736
+
+      Added a new method :meth:`.Query.select_entity_from` which
+      will in 0.9 replace part of the functionality of
+      :meth:`.Query.select_from`.  In 0.8, the two methods perform
+      the same function, so that code can be migrated to use the
+      :meth:`.Query.select_entity_from` method as appropriate.
+      See the 0.9 migration guide for details.
+
+    .. change::
       :tags: bug, orm
       :tickets: 2737
 
