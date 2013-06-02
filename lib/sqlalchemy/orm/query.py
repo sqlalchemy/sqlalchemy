@@ -1862,19 +1862,20 @@ class Query(object):
                     (right_selectable.description,
                     right_mapper.mapped_table.description))
 
-            if not isinstance(right_selectable, expression.Alias):
-                right_selectable = right_selectable.alias()
+            if not isinstance(right_selectable, expression.Join):
+                if not isinstance(right_selectable, expression.Alias):
+                    right_selectable = right_selectable.alias()
 
+                need_adapter = True
             right = aliased(right_mapper, right_selectable)
-            need_adapter = True
 
         aliased_entity = right_mapper and \
                             not right_is_aliased and \
                             (
-                                right_mapper.with_polymorphic or
-                                isinstance(
-                                    right_mapper.mapped_table,
-                                    expression.Join)
+                                right_mapper.with_polymorphic
+                                #isinstance(
+                                #    right_mapper.mapped_table,
+                                #    expression.Join)
                             )
 
         if not need_adapter and (create_aliases or aliased_entity):
@@ -1946,7 +1947,6 @@ class Query(object):
             clause = left_selectable
 
         assert clause is not None
-
         try:
             clause = orm_join(clause, right, onclause, isouter=outerjoin)
         except sa_exc.ArgumentError as ae:

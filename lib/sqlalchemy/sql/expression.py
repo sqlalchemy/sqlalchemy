@@ -4212,10 +4212,10 @@ class FromGrouping(FromClause):
 
     @property
     def foreign_keys(self):
-        # this could be
-        # self.element.foreign_keys
-        # see SelectableTest.test_join_condition
-        return set()
+        return self.element.foreign_keys
+
+    def is_derived_from(self, element):
+        return self.element.is_derived_from(element)
 
     @property
     def _hide_froms(self):

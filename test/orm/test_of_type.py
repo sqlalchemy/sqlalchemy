@@ -69,12 +69,16 @@ class _PolymorphicTestBase(object):
                 .filter(Engineer.primary_language == 'java').count(),
             1)
 
+    def test_join_to_subclass_four(self):
+        sess = Session()
         # test [ticket:2093]
         eq_(sess.query(Company.company_id, Engineer)
                 .join(Company.employees.of_type(Engineer))
                 .filter(Engineer.primary_language == 'java').count(),
             1)
 
+    def test_join_to_subclass_five(self):
+        sess = Session()
         eq_(sess.query(Company)
                 .join(Company.employees.of_type(Engineer))
                 .filter(Engineer.primary_language == 'java').count(),
@@ -184,6 +188,7 @@ class _PolymorphicTestBase(object):
                 [self._company_with_emps_fixture()[0]]
             )
         self.assert_sql_count(testing.db, go, 3)
+
 
 class PolymorphicPolymorphicTest(_PolymorphicTestBase, _PolymorphicPolymorphic):
     def _polymorphic_join_target(self, cls):
@@ -524,11 +529,8 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
         self.assert_compile(q,
             "SELECT data_container.id AS data_container_id, "
             "data_container.name AS data_container_name "
-            "FROM data_container JOIN (SELECT job.id AS job_id, "
-            "job.type AS job_type, job.container_id AS job_container_id, "
-            "subjob.id AS subjob_id, subjob.attr AS subjob_attr "
-            "FROM job JOIN subjob ON job.id = subjob.id) AS anon_1 "
-            "ON data_container.id = anon_1.job_container_id"
+            "FROM data_container JOIN (job JOIN subjob ON job.id = subjob.id) "
+            "ON data_container.id = job.container_id"
         )
 
     def test_join_wpoly_innerjoin(self):
