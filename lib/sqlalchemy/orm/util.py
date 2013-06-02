@@ -278,16 +278,16 @@ class PathRegistry(object):
         return other is not None and \
             self.path == other.path
 
-    def set(self, reg, key, value):
-        reg._attributes[(key, self.path)] = value
+    def set(self, attributes, key, value):
+        attributes[(key, self.path)] = value
 
-    def setdefault(self, reg, key, value):
-        reg._attributes.setdefault((key, self.path), value)
+    def setdefault(self, attributes, key, value):
+        attributes.setdefault((key, self.path), value)
 
-    def get(self, reg, key, value=None):
+    def get(self, attributes, key, value=None):
         key = (key, self.path)
-        if key in reg._attributes:
-            return reg._attributes[key]
+        if key in attributes:
+            return attributes[key]
         else:
             return value
 
@@ -313,8 +313,8 @@ class PathRegistry(object):
         else:
             return False
 
-    def contains(self, reg, key):
-        return (key, self.path) in reg._attributes
+    def contains(self, attributes, key):
+        return (key, self.path) in attributes
 
     def __reduce__(self):
         return _unreduce_path, (self.serialize(), )
@@ -441,8 +441,8 @@ class EntityRegistry(PathRegistry, dict):
         """
         path = dict.__getitem__(self, prop)
         path_key = (key, path.path)
-        if path_key in context._attributes:
-            return context._attributes[path_key]
+        if path_key in context.attributes:
+            return context.attributes[path_key]
         else:
             return None
 

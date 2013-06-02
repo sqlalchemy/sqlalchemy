@@ -3186,7 +3186,7 @@ class QueryContext(object):
         self.create_eager_joins = []
         self.propagate_options = set(o for o in query._with_options if
                                         o.propagate_to_loaders)
-        self.attributes = self._attributes = query._attributes.copy()
+        self.attributes = query._attributes.copy()
 
 
 class AliasOption(interfaces.MapperOption):
