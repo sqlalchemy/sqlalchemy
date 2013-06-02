@@ -30,6 +30,7 @@ import operator
 __all__ = ['VisitableType', 'Visitable', 'ClauseVisitor',
     'CloningVisitor', 'ReplacingCloningVisitor', 'iterate',
     'iterate_depthfirst', 'traverse_using', 'traverse',
+    'traverse_depthfirst',
     'cloned_traverse', 'replacement_traverse']
 
 
@@ -255,7 +256,11 @@ def cloned_traverse(obj, opts, visitors):
     """clone the given expression structure, allowing
     modifications by visitors."""
 
-    cloned = util.column_dict()
+
+    if "cloned" in opts:
+        cloned = opts['cloned']
+    else:
+        cloned = util.column_dict()
     stop_on = util.column_set(opts.get('stop_on', []))
 
     def clone(elem):

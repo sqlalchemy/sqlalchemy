@@ -1077,23 +1077,64 @@ class SQLCompiler(engine.Compiled):
     def get_crud_hint_text(self, table, text):
         return None
 
+    def _transform_select_for_nested_joins(self, select):
+        adapters = []
+
+        traverse_options = {"cloned": {}}
+
+        def visit_join(elem):
+            if isinstance(elem.right, sql.FromGrouping):
+                selectable = sql.select([elem.right.element], use_labels=True)
+                selectable = selectable.alias()
+
+                while adapters:
+                    adapt = adapters.pop(-1)
+                    selectable = adapt.traverse(selectable)
+
+                for c in selectable.c:
+                    c._label = c._key_label = c.name
+
+                elem.right = selectable
+                adapters.append(
+                        sql_util.ClauseAdapter(selectable,
+                                        traverse_options=traverse_options)
+                )
+
+        select = visitors.cloned_traverse(select,
+                                    traverse_options, {"join": visit_join})
+
+        for adap in reversed(adapters):
+            select = adap.traverse(select)
+        return select
+
+    def _transform_result_map_for_nested_joins(self, select, transformed_select):
+        d = dict(zip(transformed_select.inner_columns, select.inner_columns))
+        for key, (name, objs, typ) in list(self.result_map.items()):
+            objs = tuple([d.get(col, col) for col in objs])
+            self.result_map[key] = (name, objs, typ)
+
     def visit_select(self, select, asfrom=False, parens=True,
                             iswrapper=False, fromhints=None,
                             compound_index=0,
                             force_result_map=False,
-                            positional_names=None, **kwargs):
+                            positional_names=None,
+                            nested_join_translation=False, **kwargs):
+
+        #nested_join_translation = True
+        if not nested_join_translation:
+            transformed_select = self._transform_select_for_nested_joins(select)
+            text = self.visit_select(
+                            transformed_select, asfrom=asfrom, parens=parens,
+                            iswrapper=iswrapper, fromhints=fromhints,
+                            compound_index=compound_index,
+                            force_result_map=force_result_map,
+                            positional_names=positional_names,
+                            nested_join_translation=True, **kwargs
+                        )
+
+
+
         entry = self.stack and self.stack[-1] or {}
-
-        existingfroms = entry.get('from', None)
-
-        froms = select._get_display_froms(existingfroms, asfrom=asfrom)
-
-        correlate_froms = set(sql._from_objects(*froms))
-
-        # TODO: might want to propagate existing froms for
-        # select(select(select)) where innermost select should correlate
-        # to outermost if existingfroms: correlate_froms =
-        # correlate_froms.union(existingfroms)
 
         populate_result_map = force_result_map or (
                                         compound_index == 0 and (
@@ -1101,6 +1142,19 @@ class SQLCompiler(engine.Compiled):
                                             entry.get('iswrapper', False)
                                         )
                                     )
+
+        if not nested_join_translation:
+            if populate_result_map:
+                self._transform_result_map_for_nested_joins(
+                                                select, transformed_select)
+            return text
+
+        existingfroms = entry.get('from', None)
+
+        froms = select._get_display_froms(existingfroms, asfrom=asfrom)
+
+        correlate_froms = set(sql._from_objects(*froms))
+
 
         self.stack.append({'from': correlate_froms,
                             'iswrapper': iswrapper})
