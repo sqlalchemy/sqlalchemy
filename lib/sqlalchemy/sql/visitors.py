@@ -286,10 +286,12 @@ def replacement_traverse(obj, opts, replace):
 
     cloned = util.column_dict()
     stop_on = util.column_set([id(x) for x in opts.get('stop_on', [])])
+    unconditional = opts.get('unconditional', False)
 
     def clone(elem, **kw):
         if id(elem) in stop_on or \
-            'no_replacement_traverse' in elem._annotations:
+            (not unconditional
+                    and 'no_replacement_traverse' in elem._annotations):
             return elem
         else:
             newelem = replace(elem)

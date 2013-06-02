@@ -447,6 +447,8 @@ class Query(object):
                         statement
         if self._params:
             stmt = stmt.params(self._params)
+
+
         # TODO: there's no tests covering effects of
         # the annotation not being there
         return stmt._annotate({'no_replacement_traverse': True})

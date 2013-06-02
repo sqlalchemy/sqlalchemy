@@ -1080,7 +1080,7 @@ class SQLCompiler(engine.Compiled):
     def _transform_select_for_nested_joins(self, select):
         adapters = []
 
-        traverse_options = {"cloned": {}}
+        traverse_options = {"cloned": {}, "unconditional": True}
 
         def visit_join(elem):
             if isinstance(elem.right, sql.FromGrouping):
@@ -1095,19 +1095,13 @@ class SQLCompiler(engine.Compiled):
                     c._label = c._key_label = c.name
 
                 elem.right = selectable
-                import pdb
-                pdb.set_trace()
                 adapter = sql_util.ClauseAdapter(selectable,
                                         traverse_options=traverse_options)
-                adapter.__traverse_options__.pop('stop_on')
                 adapters.append(adapter)
 
         select = visitors.cloned_traverse(select,
                                     traverse_options, {"join": visit_join})
 
-        if adapters:
-            import pdb
-            pdb.set_trace()
         for adap in reversed(adapters):
             select = adap.traverse(select)
         return select
