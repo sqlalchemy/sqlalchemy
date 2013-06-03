@@ -7,6 +7,15 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, sql, reflection
+        :tickets: 2728
+
+        Fixed bug whereby using :meth:`.MetaData.reflect` across a remote
+        schema as well as a local schema could produce wrong results
+        in the case where both schemas had a table of the same name.
+        Also in 0.8.2.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2726
 

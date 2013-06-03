@@ -1245,6 +1245,30 @@ class SchemaTest(fixtures.TestBase):
                 'test_schema.email_addresses'])
         )
 
+    @testing.requires.schemas
+    @testing.provide_metadata
+    def test_reflect_all_schemas_default_overlap(self):
+        t1 = Table('t', self.metadata,
+                Column('id', Integer, primary_key=True))
+
+        t2 = Table('t', self.metadata,
+            Column('id1', sa.ForeignKey('t.id')),
+            schema="test_schema"
+        )
+
+        self.metadata.create_all()
+        m2 = MetaData()
+        m2.reflect(testing.db, schema="test_schema")
+
+        m3 = MetaData()
+        m3.reflect(testing.db)
+        m3.reflect(testing.db, schema="test_schema")
+
+        eq_(
+            set((t.name, t.schema) for t in m2.tables.values()),
+            set((t.name, t.schema) for t in m3.tables.values())
+        )
+
 
 
 
