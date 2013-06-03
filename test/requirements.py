@@ -240,6 +240,13 @@ class DefaultRequirements(SuiteRequirements):
                     "firebird"
                 ], "no schema support")
 
+    @property
+    def cross_schema_fk_reflection(self):
+        """target system must support reflection of inter-schema foreign keys
+        """
+        return only_on([
+                    "postgresql"
+                ])
 
     @property
     def update_nowait(self):

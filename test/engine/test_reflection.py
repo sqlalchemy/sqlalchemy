@@ -1144,15 +1144,13 @@ class UnicodeReflectionTest(fixtures.TestBase):
 class SchemaTest(fixtures.TestBase):
 
     @testing.requires.schemas
-    @testing.fails_on_everything_except("postgresql", "unimplemented feature")
+    @testing.requires.cross_schema_fk_reflection
     def test_has_schema(self):
         eq_(testing.db.dialect.has_schema(testing.db, 'test_schema'), True)
         eq_(testing.db.dialect.has_schema(testing.db, 'sa_fake_schema_123'), False)
 
-    @testing.crashes('firebird', 'No schema support')
+    @testing.requires.schemas
     @testing.fails_on('sqlite', 'FIXME: unknown')
-    # fixme: revisit these below.
-    @testing.fails_on('access', 'FIXME: unknown')
     @testing.fails_on('sybase', 'FIXME: unknown')
     def test_explicit_default_schema(self):
         engine = testing.db
@@ -1191,9 +1189,7 @@ class SchemaTest(fixtures.TestBase):
         finally:
             metadata.drop_all()
 
-    @testing.crashes('firebird', 'No schema support')
-    # fixme: revisit these below.
-    @testing.fails_on('access', 'FIXME: unknown')
+    @testing.requires.schemas
     @testing.fails_on('sybase', 'FIXME: unknown')
     def test_explicit_default_schema_metadata(self):
         engine = testing.db
@@ -1244,6 +1240,7 @@ class SchemaTest(fixtures.TestBase):
         )
 
     @testing.requires.schemas
+    @testing.requires.cross_schema_fk_reflection
     @testing.provide_metadata
     def test_reflect_all_schemas_default_overlap(self):
         t1 = Table('t', self.metadata,
