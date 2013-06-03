@@ -7,6 +7,13 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, ext, orm
+        :tickets: 2730
+
+        Fixed bug where :class:`.MutableDict` didn't report a change event
+        when ``clear()`` was called.  Also in 0.8.2
+
+    .. change::
         :tags: bug, sql
         :tickets: 2738
 
