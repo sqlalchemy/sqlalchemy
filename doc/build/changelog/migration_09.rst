@@ -124,4 +124,16 @@ to 0.9 without issue.
 :ticket:`2736`
 
 
+Dialect Changes
+===============
+
+Firebird ``fdb`` is now the default Firebird dialect.
+-----------------------------------------------------
+
+The ``fdb`` dialect is now used if an engine is created without a dialect
+specifier, i.e. ``firebird://``.  ``fdb`` is a ``kinterbasdb`` compatible
+DBAPI which per the Firebird project is now their official Python driver.
+
+:ticket:`2504`
+
 

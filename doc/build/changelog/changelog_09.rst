@@ -7,6 +7,15 @@
     :version: 0.9.0
 
     .. change::
+        :tags: feature, firebird
+        :tickets: 2504
+
+        The ``fdb`` dialect is now the default dialect when
+        specified without a dialect qualifier, i.e. ``firebird://``,
+        per the Firebird project publishing ``fdb`` as their
+        official Python driver.
+
+    .. change::
     	:tags: feature, general
       	:tickets: 2671
 
