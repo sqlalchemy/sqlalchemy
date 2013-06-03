@@ -516,7 +516,9 @@ class SQLCompiler(engine.Compiled):
 
     def visit_clauselist(self, clauselist, order_by_select=None, **kw):
         if order_by_select is not None:
-            return self._order_by_clauselist(clauselist, order_by_select, **kw)
+            return self._order_by_clauselist(
+                                    clauselist, order_by_select, **kw)
+
         sep = clauselist.operator
         if sep is None:
             sep = " "
@@ -538,19 +540,17 @@ class SQLCompiler(engine.Compiled):
         raw_col = set(l._order_by_label_element.name
                         for l in order_by_select._raw_columns
                         if l._order_by_label_element is not None)
-        def label_ok(c):
-            if c._order_by_label_element is not None and \
-                c._order_by_label_element.name in raw_col:
-                return c._order_by_label_element
-            else:
-                return None
 
         return ", ".join(
                     s for s in
                     (
                         c._compiler_dispatch(self,
-                                render_label_as_label=label_ok(c),
-                                **kw)
+                            render_label_as_label=
+                                c._order_by_label_element if
+                                    c._order_by_label_element is not None and
+                                    c._order_by_label_element.name in raw_col
+                                else None,
+                            **kw)
                         for c in clauselist.clauses)
                     if s)
 

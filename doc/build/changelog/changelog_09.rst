@@ -7,6 +7,17 @@
     :version: 0.9.0
 
     .. change::
+        :tags: feature, sql
+        :tickets: 1068
+
+        A :class:`.Label` construct will now render as its name alone
+        in an ``ORDER BY`` clause, if that label is also referred to
+        in the columns clause of the select, instead of rewriting the
+        full expression.  This gives the database a better chance to
+        optimize the evaulation of the same expression in two different
+        contexts.
+
+    .. change::
         :tags: feature, firebird
         :tickets: 2504
 

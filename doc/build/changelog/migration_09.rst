@@ -124,6 +124,48 @@ to 0.9 without issue.
 :ticket:`2736`
 
 
+Behavioral Improvements
+=======================
+
+Improvements that should produce no compatibility issues, but are good
+to be aware of in case there are unexpected issues.
+
+Label constructs can now render as their name alone in an ORDER BY
+------------------------------------------------------------------
+
+For the case where a :class:`.Label` is used in both the columns clause
+as well as the ORDER BY clause of a SELECT, the label will render as
+just it's name in the ORDER BY clause, assuming the underlying dialect
+reports support of this feature.
+
+E.g. an example like::
+
+	from sqlalchemy.sql import table, column, select, func
+
+	t = table('t', column('c1'), column('c2'))
+	expr = (func.foo(t.c.c1) + t.c.c2).label("expr")
+
+	stmt = select([expr]).order_by(expr)
+
+	print stmt
+
+Prior to 0.9 would render as::
+
+	SELECT foo(t.c1) + t.c2 AS expr
+	FROM t ORDER BY foo(t.c1) + t.c2
+
+And now	renders as::
+
+	SELECT foo(t.c1) + t.c2 AS expr
+	FROM t ORDER BY expr
+
+The ORDER BY only renders the label if the label isn't further embedded into an expression within the ORDER BY, other than a simple ``ASC`` or ``DESC``.
+
+The above format works on all databases tested, but might have compatibility issues with older database versions (MySQL 4?  Oracle 8? etc.).   Based on user reports we can add rules
+that will disable the feature based on database version detection.
+
+:ticket:`1068`
+
 Dialect Changes
 ===============
 
