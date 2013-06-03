@@ -119,9 +119,9 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         eq_(
             list(u.addresses.order_by(desc(Address.email_address))),
              [
-                Address(email_address=u'ed@wood.com'),
-                Address(email_address=u'ed@lala.com'),
-                Address(email_address=u'ed@bettyboop.com')
+                Address(email_address='ed@wood.com'),
+                Address(email_address='ed@lala.com'),
+                Address(email_address='ed@bettyboop.com')
             ]
         )
 
@@ -137,9 +137,9 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         eq_(
             list(u.addresses),
             [
-                Address(email_address=u'ed@wood.com'),
-                Address(email_address=u'ed@lala.com'),
-                Address(email_address=u'ed@bettyboop.com')
+                Address(email_address='ed@wood.com'),
+                Address(email_address='ed@lala.com'),
+                Address(email_address='ed@bettyboop.com')
             ]
         )
 
@@ -147,9 +147,9 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         eq_(
             list(u.addresses.order_by(None).order_by(Address.email_address)),
             [
-                Address(email_address=u'ed@bettyboop.com'),
-                Address(email_address=u'ed@lala.com'),
-                Address(email_address=u'ed@wood.com')
+                Address(email_address='ed@bettyboop.com'),
+                Address(email_address='ed@lala.com'),
+                Address(email_address='ed@wood.com')
             ]
         )
 
@@ -157,9 +157,9 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         eq_(
             set(u.addresses.order_by(None)),
             set([
-                Address(email_address=u'ed@bettyboop.com'),
-                Address(email_address=u'ed@lala.com'),
-                Address(email_address=u'ed@wood.com')
+                Address(email_address='ed@bettyboop.com'),
+                Address(email_address='ed@lala.com'),
+                Address(email_address='ed@wood.com')
             ])
         )
 
@@ -529,12 +529,12 @@ class UOWTest(_DynamicFixture, _fixtures.FixtureTest,
                 "SELECT addresses.id AS addresses_id, addresses.email_address "
                 "AS addresses_email_address FROM addresses "
                 "WHERE addresses.id = :param_1",
-                lambda ctx: [{u'param_1': a2_id}]
+                lambda ctx: [{'param_1': a2_id}]
             ),
             CompiledSQL(
                 "UPDATE addresses SET user_id=:user_id WHERE addresses.id = "
                 ":addresses_id",
-                lambda ctx: [{u'addresses_id': a2_id, 'user_id': None}]
+                lambda ctx: [{'addresses_id': a2_id, 'user_id': None}]
             )
         )
 

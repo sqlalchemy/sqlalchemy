@@ -156,8 +156,8 @@ class TypeEngine(AbstractType):
 
         """
 
-        return self.__class__.column_expression.func_code \
-            is not TypeEngine.column_expression.func_code
+        return self.__class__.column_expression.__code__ \
+            is not TypeEngine.column_expression.__code__
 
     def bind_expression(self, bindvalue):
         """"Given a bind value (i.e. a :class:`.BindParameter` instance),
@@ -194,8 +194,8 @@ class TypeEngine(AbstractType):
 
         """
 
-        return self.__class__.bind_expression.func_code \
-            is not TypeEngine.bind_expression.func_code
+        return self.__class__.bind_expression.__code__ \
+            is not TypeEngine.bind_expression.__code__
 
     def compare_values(self, x, y):
         """Compare two values for equality."""
@@ -392,12 +392,11 @@ class TypeEngine(AbstractType):
             return default.DefaultDialect()
 
     def __str__(self):
-        # Py3K
-        #return unicode(self.compile())
-        # Py2K
-        return unicode(self.compile()).\
+        if util.py2k:
+            return unicode(self.compile()).\
                         encode('ascii', 'backslashreplace')
-        # end Py2K
+        else:
+            return str(self.compile())
 
     def __init__(self, *args, **kwargs):
         """Support implementations that were passing arguments"""
@@ -723,8 +722,8 @@ class TypeDecorator(TypeEngine):
 
         """
 
-        return self.__class__.process_bind_param.func_code \
-            is not TypeDecorator.process_bind_param.func_code
+        return self.__class__.process_bind_param.__code__ \
+            is not TypeDecorator.process_bind_param.__code__
 
     def bind_processor(self, dialect):
         """Provide a bound value processing function for the
@@ -769,8 +768,8 @@ class TypeDecorator(TypeEngine):
         exception throw.
 
         """
-        return self.__class__.process_result_value.func_code \
-            is not TypeDecorator.process_result_value.func_code
+        return self.__class__.process_result_value.__code__ \
+            is not TypeDecorator.process_result_value.__code__
 
     def result_processor(self, dialect, coltype):
         """Provide a result value processing function for the given
@@ -1114,11 +1113,7 @@ class String(Concatenable, TypeEngine):
                 self.convert_unicode != 'force':
                 if self._warn_on_bytestring:
                     def process(value):
-                        # Py3K
-                        #if isinstance(value, bytes):
-                        # Py2K
-                        if isinstance(value, str):
-                        # end Py2K
+                        if isinstance(value, util.binary_type):
                             util.warn("Unicode type received non-unicode bind "
                                       "param value.")
                         return value
@@ -1130,7 +1125,7 @@ class String(Concatenable, TypeEngine):
                 warn_on_bytestring = self._warn_on_bytestring
 
                 def process(value):
-                    if isinstance(value, unicode):
+                    if isinstance(value, util.text_type):
                         return encoder(value, self.unicode_error)[0]
                     elif warn_on_bytestring and value is not None:
                         util.warn("Unicode type received non-unicode bind "
@@ -1156,7 +1151,7 @@ class String(Concatenable, TypeEngine):
                 # habits.  since we will be getting back unicode
                 # in most cases, we check for it (decode will fail).
                 def process(value):
-                    if isinstance(value, unicode):
+                    if isinstance(value, util.text_type):
                         return value
                     else:
                         return to_unicode(value)
@@ -1171,7 +1166,7 @@ class String(Concatenable, TypeEngine):
     @property
     def python_type(self):
         if self.convert_unicode:
-            return unicode
+            return util.text_type
         else:
             return str
 
@@ -1318,12 +1313,10 @@ class Integer(_DateAffinity, TypeEngine):
                 Integer: self.__class__,
                 Numeric: Numeric,
             },
-            # Py2K
             operators.div: {
                 Integer: self.__class__,
                 Numeric: Numeric,
             },
-            # end Py2K
             operators.truediv: {
                 Integer: self.__class__,
                 Numeric: Numeric,
@@ -1488,12 +1481,10 @@ class Numeric(_DateAffinity, TypeEngine):
                 Numeric: self.__class__,
                 Integer: self.__class__,
             },
-            # Py2K
             operators.div: {
                 Numeric: self.__class__,
                 Integer: self.__class__,
             },
-            # end Py2K
             operators.truediv: {
                 Numeric: self.__class__,
                 Integer: self.__class__,
@@ -1558,11 +1549,9 @@ class Float(Numeric):
                 Interval: Interval,
                 Numeric: self.__class__,
             },
-            # Py2K
             operators.div: {
                 Numeric: self.__class__,
             },
-            # end Py2K
             operators.truediv: {
                 Numeric: self.__class__,
             },
@@ -1693,11 +1682,7 @@ class _Binary(TypeEngine):
 
     @property
     def python_type(self):
-        # Py3K
-        #return bytes
-        # Py2K
-        return str
-        # end Py2K
+        return util.binary_type
 
     # Python 3 - sqlite3 doesn't need the `Binary` conversion
     # here, though pg8000 does to indicate "bytea"
@@ -1715,32 +1700,31 @@ class _Binary(TypeEngine):
     # Python 3 has native bytes() type
     # both sqlite3 and pg8000 seem to return it,
     # psycopg2 as of 2.5 returns 'memoryview'
-    # Py3K
-    #def result_processor(self, dialect, coltype):
-    #    def process(value):
-    #        if value is not None:
-    #            value = bytes(value)
-    #        return value
-    #    return process
-    # Py2K
-    def result_processor(self, dialect, coltype):
-        if util.jython:
+    if util.py2k:
+        def result_processor(self, dialect, coltype):
+            if util.jython:
+                def process(value):
+                    if value is not None:
+                        if isinstance(value, array.array):
+                            return value.tostring()
+                        return str(value)
+                    else:
+                        return None
+            else:
+                process = processors.to_str
+            return process
+    else:
+        def result_processor(self, dialect, coltype):
             def process(value):
                 if value is not None:
-                    if isinstance(value, array.array):
-                        return value.tostring()
-                    return str(value)
-                else:
-                    return None
-        else:
-            process = processors.to_str
-        return process
-    # end Py2K
+                    value = bytes(value)
+                return value
+            return process
 
     def coerce_compared_value(self, op, value):
         """See :meth:`.TypeEngine.coerce_compared_value` for a description."""
 
-        if isinstance(value, basestring):
+        if isinstance(value, util.string_types):
             return self
         else:
             return super(_Binary, self).coerce_compared_value(op, value)
@@ -1997,7 +1981,7 @@ class Enum(String, SchemaType):
         convert_unicode = kw.pop('convert_unicode', None)
         if convert_unicode is None:
             for e in enums:
-                if isinstance(e, unicode):
+                if isinstance(e, util.text_type):
                     convert_unicode = True
                     break
             else:
@@ -2296,11 +2280,9 @@ class Interval(_DateAffinity, TypeDecorator):
             operators.truediv: {
                 Numeric: self.__class__
             },
-            # Py2K
             operators.div: {
                 Numeric: self.__class__
             }
-            # end Py2K
         }
 
     @property
@@ -2450,12 +2432,6 @@ BOOLEANTYPE = Boolean()
 STRINGTYPE = String()
 
 _type_map = {
-    str: String(),
-    # Py3K
-    #bytes: LargeBinary(),
-    # Py2K
-    unicode: Unicode(),
-    # end Py2K
     int: Integer(),
     float: Numeric(),
     bool: BOOLEANTYPE,
@@ -2466,3 +2442,12 @@ _type_map = {
     dt.timedelta: Interval(),
     NoneType: NULLTYPE
 }
+
+if util.py3k:
+    _type_map[bytes] = LargeBinary()
+    _type_map[str] = Unicode()
+else:
+    _type_map[unicode] = Unicode()
+    _type_map[str] = String()
+
+

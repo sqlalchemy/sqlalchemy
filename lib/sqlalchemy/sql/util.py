@@ -232,7 +232,7 @@ def bind_values(clause):
 
 
 def _quote_ddl_expr(element):
-    if isinstance(element, basestring):
+    if isinstance(element, util.string_types):
         element = element.replace("'", "''")
         return "'%s'" % element
     else:
@@ -349,7 +349,7 @@ def join_condition(a, b, ignore_nonexistent_tables=False,
                 continue
             try:
                 col = fk.get_referent(left)
-            except exc.NoReferenceError, nrte:
+            except exc.NoReferenceError as nrte:
                 if nrte.table_name == left.name:
                     raise
                 else:
@@ -367,7 +367,7 @@ def join_condition(a, b, ignore_nonexistent_tables=False,
                     continue
                 try:
                     col = fk.get_referent(b)
-                except exc.NoReferenceError, nrte:
+                except exc.NoReferenceError as nrte:
                     if nrte.table_name == b.name:
                         raise
                     else:
@@ -518,15 +518,15 @@ class AnnotatedColumnElement(Annotated):
 # so that the resulting objects are pickleable.
 annotated_classes = {}
 
-for cls in expression.__dict__.values() + [schema.Column, schema.Table]:
+for cls in list(expression.__dict__.values()) + [schema.Column, schema.Table]:
     if isinstance(cls, type) and issubclass(cls, expression.ClauseElement):
         if issubclass(cls, expression.ColumnElement):
             annotation_cls = "AnnotatedColumnElement"
         else:
             annotation_cls = "Annotated"
-        exec "class Annotated%s(%s, cls):\n" \
-             "    pass" % (cls.__name__, annotation_cls) in locals()
-        exec "annotated_classes[cls] = Annotated%s" % (cls.__name__,)
+        exec("class Annotated%s(%s, cls):\n" \
+             "    pass" % (cls.__name__, annotation_cls), locals())
+        exec("annotated_classes[cls] = Annotated%s" % (cls.__name__,))
 
 
 def _deep_annotate(element, annotations, exclude=None):

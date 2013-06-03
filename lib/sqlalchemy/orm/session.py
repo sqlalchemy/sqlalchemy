@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 """Provides the Session class and related utilities."""
 
-from __future__ import with_statement
+
 
 import weakref
 from .. import util, sql, engine, exc as sa_exc, event
@@ -328,7 +328,7 @@ class SessionTransaction(object):
                 subtransaction.commit()
 
         if not self.session._flushing:
-            for _flush_guard in xrange(100):
+            for _flush_guard in range(100):
                 if self.session._is_clean():
                     break
                 self.session.flush()
@@ -605,7 +605,7 @@ class Session(_SessionClassMethods):
                 SessionExtension._adapt_listener(self, ext)
 
         if binds is not None:
-            for mapperortable, bind in binds.iteritems():
+            for mapperortable, bind in binds.items():
                 if isinstance(mapperortable, (type, Mapper)):
                     self.bind_mapper(mapperortable, bind)
                 else:
@@ -1776,7 +1776,7 @@ class Session(_SessionClassMethods):
         Session.
 
         """
-        return iter(list(self._new.values()) + self.identity_map.values())
+        return iter(list(self._new.values()) + list(self.identity_map.values()))
 
     def _contains_state(self, state):
         return state in self._new or self.identity_map.contains_state(state)
@@ -2139,13 +2139,13 @@ class Session(_SessionClassMethods):
     def deleted(self):
         "The set of all instances marked as 'deleted' within this ``Session``"
 
-        return util.IdentitySet(self._deleted.values())
+        return util.IdentitySet(list(self._deleted.values()))
 
     @property
     def new(self):
         "The set of all instances marked as 'new' within this ``Session``."
 
-        return util.IdentitySet(self._new.values())
+        return util.IdentitySet(list(self._new.values()))
 
 
 class sessionmaker(_SessionClassMethods):

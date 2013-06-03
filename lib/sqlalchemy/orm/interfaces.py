@@ -15,6 +15,7 @@ Other than the deprecated extensions, this module and the
 classes within should be considered mostly private.
 
 """
+
 from __future__ import absolute_import
 
 from .. import exc as sa_exc, util, inspect
@@ -659,7 +660,7 @@ class PropertyOption(MapperOption):
         tokens = deque(self.key)
         while tokens:
             token = tokens.popleft()
-            if isinstance(token, basestring):
+            if isinstance(token, str):
                 # wildcard token
                 if token.endswith(':*'):
                     return [path.token(token)]
@@ -744,7 +745,7 @@ class PropertyOption(MapperOption):
                                 ext_info.mapper, aliased=True,
                                 _use_mapper_path=True)
                     ext_info = inspect(ac)
-                path.set(query, "path_with_polymorphic", ext_info)
+                path.set(query._attributes, "path_with_polymorphic", ext_info)
             else:
                 path_element = mapper = getattr(prop, 'mapper', None)
                 if mapper is None and tokens:
@@ -775,13 +776,13 @@ class StrategizedOption(PropertyOption):
         if self.chained:
             for path in paths:
                 path.set(
-                    query,
+                    query._attributes,
                     "loaderstrategy",
                     strategy
                 )
         else:
             paths[-1].set(
-                query,
+                query._attributes,
                 "loaderstrategy",
                 strategy
             )

@@ -166,7 +166,7 @@ def create_version(obj, session, deleted = False):
 
     attr['version'] = obj.version
     hist = history_cls()
-    for key, value in attr.iteritems():
+    for key, value in attr.items():
         setattr(hist, key, value)
     session.add(hist)
     obj.version += 1

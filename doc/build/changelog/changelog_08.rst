@@ -7,6 +7,42 @@
     :version: 0.8.2
 
     .. change::
+      :tags: feature, orm
+      :tickets: 2736
+
+      Added a new method :meth:`.Query.select_entity_from` which
+      will in 0.9 replace part of the functionality of
+      :meth:`.Query.select_from`.  In 0.8, the two methods perform
+      the same function, so that code can be migrated to use the
+      :meth:`.Query.select_entity_from` method as appropriate.
+      See the 0.9 migration guide for details.
+
+    .. change::
+      :tags: bug, orm
+      :tickets: 2737
+
+      Fixed a regression caused by :ticket:`2682` whereby the
+      evaluation invoked by :meth:`.Query.update` and :meth:`.Query.delete`
+      would hit upon unsupported ``True`` and ``False`` symbols
+      which now appear due to the usage of ``IS``.
+
+    .. change::
+      :tags: bug, postgresql
+      :tickets: 2735
+
+      Fixed the HSTORE type to correctly encode/decode for unicode.
+      This is always on, as the hstore is a textual type, and
+      matches the behavior of psycopg2 when using Python 3.
+      Courtesy Dmitry Mugtasimov.
+
+    .. change::
+      :tags: bug, examples
+
+      Fixed a small bug in the dogpile example where the generation
+      of SQL cache keys wasn't applying deduping labels to the
+      statement the same way :class:`.Query` normally does.
+
+    .. change::
       :tags: bug, engine, sybase
       :tickets: 2732
 

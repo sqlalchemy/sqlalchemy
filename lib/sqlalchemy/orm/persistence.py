@@ -19,6 +19,7 @@ from .. import sql, util, exc as sa_exc, schema
 from . import attributes, sync, exc as orm_exc, evaluator
 from .util import _state_mapper, state_str, _attr_as_key
 from ..sql import expression
+from . import loading
 
 
 def save_obj(base_mapper, states, uowtransaction, single=False):
@@ -45,7 +46,7 @@ def save_obj(base_mapper, states, uowtransaction, single=False):
 
     cached_connections = _cached_connection_dict(base_mapper)
 
-    for table, mapper in base_mapper._sorted_tables.iteritems():
+    for table, mapper in base_mapper._sorted_tables.items():
         insert = _collect_insert_commands(base_mapper, uowtransaction,
                                 table, states_to_insert)
 
@@ -77,7 +78,7 @@ def post_update(base_mapper, states, uowtransaction, post_update_cols):
                                     base_mapper,
                                     states, uowtransaction)
 
-    for table, mapper in base_mapper._sorted_tables.iteritems():
+    for table, mapper in base_mapper._sorted_tables.items():
         update = _collect_post_update_commands(base_mapper, uowtransaction,
                                             table, states_to_update,
                                             post_update_cols)
@@ -105,7 +106,7 @@ def delete_obj(base_mapper, states, uowtransaction):
 
     table_to_mapper = base_mapper._sorted_tables
 
-    for table in reversed(table_to_mapper.keys()):
+    for table in reversed(list(table_to_mapper.keys())):
         delete = _collect_delete_commands(base_mapper, uowtransaction,
                                 table, states_to_delete)
 
@@ -318,7 +319,7 @@ def _collect_update_commands(base_mapper, uowtransaction,
                     # history is only
                     # in a different table than the one
                     # where the version_id_col is.
-                    for prop in mapper._columntoproperty.itervalues():
+                    for prop in mapper._columntoproperty.values():
                         history = attributes.get_state_history(
                                 state, prop.key,
                                 attributes.PASSIVE_NO_INITIALIZE)
@@ -526,7 +527,7 @@ def _emit_insert_statements(base_mapper, uowtransaction,
     for (connection, pkeys, hasvalue, has_all_pks), \
         records in groupby(insert,
                             lambda rec: (rec[4],
-                                    rec[2].keys(),
+                                    list(rec[2].keys()),
                                     bool(rec[5]),
                                     rec[6])
     ):
@@ -612,7 +613,7 @@ def _emit_post_update_statements(base_mapper, uowtransaction,
     # also group them into common (connection, cols) sets
     # to support executemany().
     for key, grouper in groupby(
-        update, lambda rec: (rec[4], rec[2].keys())
+        update, lambda rec: (rec[4], list(rec[2].keys()))
     ):
         connection = key[0]
         multiparams = [params for state, state_dict,
@@ -646,7 +647,7 @@ def _emit_delete_statements(base_mapper, uowtransaction, cached_connections,
 
         return table.delete(clause)
 
-    for connection, del_objects in delete.iteritems():
+    for connection, del_objects in delete.items():
         statement = base_mapper._memo(('delete', table), delete_stmt)
 
         connection = cached_connections[connection]
@@ -699,7 +700,6 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction,
         # refresh whatever has been expired.
         if base_mapper.eager_defaults and state.unloaded:
             state.key = base_mapper._identity_key_from_state(state)
-            from . import loading
             loading.load_on_ident(
                 uowtransaction.session.query(base_mapper),
                 state.key, refresh_state=state,
@@ -803,7 +803,7 @@ class BulkUD(object):
             raise sa_exc.ArgumentError(
                             "Valid strategies for session synchronization "
                             "are %s" % (", ".join(sorted(repr(x)
-                                for x in lookup.keys()))))
+                                for x in lookup))))
         else:
             return klass(*arg)
 
@@ -868,7 +868,7 @@ class BulkEvaluate(BulkUD):
         #TODO: detect when the where clause is a trivial primary key match
         self.matched_objects = [
                             obj for (cls, pk), obj in
-                            query.session.identity_map.iteritems()
+                            query.session.identity_map.items()
                             if issubclass(cls, target_cls) and
                             eval_condition(obj)]
 
@@ -951,7 +951,7 @@ class BulkUpdateEvaluate(BulkEvaluate, BulkUpdate):
 
     def _additional_evaluators(self, evaluator_compiler):
         self.value_evaluators = {}
-        for key, value in self.values.iteritems():
+        for key, value in self.values.items():
             key = _attr_as_key(key)
             self.value_evaluators[key] = evaluator_compiler.process(
                                 expression._literal_as_binds(value))
@@ -959,7 +959,7 @@ class BulkUpdateEvaluate(BulkEvaluate, BulkUpdate):
     def _do_post_synchronize(self):
         session = self.query.session
         states = set()
-        evaluated_keys = self.value_evaluators.keys()
+        evaluated_keys = list(self.value_evaluators.keys())
         for obj in self.matched_objects:
             state, dict_ = attributes.instance_state(obj),\
                                     attributes.instance_dict(obj)

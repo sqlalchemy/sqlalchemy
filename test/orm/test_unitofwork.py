@@ -6,6 +6,7 @@ import datetime
 from sqlalchemy.orm import mapper as orm_mapper
 
 import sqlalchemy as sa
+from sqlalchemy.util import u, ue, b
 from sqlalchemy import Integer, String, ForeignKey, literal_column, event
 from sqlalchemy.testing import engines
 from sqlalchemy import testing
@@ -87,7 +88,7 @@ class UnicodeTest(fixtures.MappedTest):
 
         mapper(Test, uni_t1)
 
-        txt = u"\u0160\u0110\u0106\u010c\u017d"
+        txt = ue("\u0160\u0110\u0106\u010c\u017d")
         t1 = Test(id=1, txt=txt)
         self.assert_(t1.txt == txt)
 
@@ -107,7 +108,7 @@ class UnicodeTest(fixtures.MappedTest):
             't2s': relationship(Test2)})
         mapper(Test2, uni_t2)
 
-        txt = u"\u0160\u0110\u0106\u010c\u017d"
+        txt = ue("\u0160\u0110\u0106\u010c\u017d")
         t1 = Test(txt=txt)
         t1.t2s.append(Test2())
         t1.t2s.append(Test2())
@@ -132,16 +133,16 @@ class UnicodeSchemaTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         t1 = Table('unitable1', metadata,
-              Column(u'méil', Integer, primary_key=True, key='a', test_needs_autoincrement=True),
-              Column(u'\u6e2c\u8a66', Integer, key='b'),
+              Column(u('méil'), Integer, primary_key=True, key='a', test_needs_autoincrement=True),
+              Column(ue('\u6e2c\u8a66'), Integer, key='b'),
               Column('type',  String(20)),
               test_needs_fk=True,
               test_needs_autoincrement=True)
-        t2 = Table(u'Unitéble2', metadata,
-              Column(u'méil', Integer, primary_key=True, key="cc", test_needs_autoincrement=True),
-              Column(u'\u6e2c\u8a66', Integer,
-                     ForeignKey(u'unitable1.a'), key="d"),
-              Column(u'\u6e2c\u8a66_2', Integer, key="e"),
+        t2 = Table(u('Unitéble2'), metadata,
+              Column(u('méil'), Integer, primary_key=True, key="cc", test_needs_autoincrement=True),
+              Column(ue('\u6e2c\u8a66'), Integer,
+                     ForeignKey('unitable1.a'), key="d"),
+              Column(ue('\u6e2c\u8a66_2'), Integer, key="e"),
               test_needs_fk=True,
               test_needs_autoincrement=True)
 
@@ -237,12 +238,7 @@ class BinaryHistTest(fixtures.MappedTest, testing.AssertsExecutionResults):
     def test_binary_equality(self):
         Foo, t1 = self.classes.Foo, self.tables.t1
 
-
-        # Py3K
-        #data = b"this is some data"
-        # Py2K
-        data = "this is some data"
-        # end Py2K
+        data = b("this is some data")
 
         mapper(Foo, t1)
 
@@ -1054,13 +1050,13 @@ class OneToManyTest(_fixtures.FixtureTest):
         session.flush()
 
         user_rows = users.select(users.c.id.in_([u.id])).execute().fetchall()
-        eq_(user_rows[0].values(), [u.id, 'one2manytester'])
+        eq_(list(user_rows[0].values()), [u.id, 'one2manytester'])
 
         address_rows = addresses.select(
             addresses.c.id.in_([a.id, a2.id]),
             order_by=[addresses.c.email_address]).execute().fetchall()
-        eq_(address_rows[0].values(), [a2.id, u.id, 'lala@test.org'])
-        eq_(address_rows[1].values(), [a.id, u.id, 'one2many@test.org'])
+        eq_(list(address_rows[0].values()), [a2.id, u.id, 'lala@test.org'])
+        eq_(list(address_rows[1].values()), [a.id, u.id, 'one2many@test.org'])
 
         userid = u.id
         addressid = a2.id
@@ -1071,7 +1067,7 @@ class OneToManyTest(_fixtures.FixtureTest):
 
         address_rows = addresses.select(
             addresses.c.id == addressid).execute().fetchall()
-        eq_(address_rows[0].values(),
+        eq_(list(address_rows[0].values()),
             [addressid, userid, 'somethingnew@foo.com'])
         self.assert_(u.id == userid and a2.id == addressid)
 
@@ -1501,18 +1497,18 @@ class SaveTest(_fixtures.FixtureTest):
         assert u.name == 'multitester'
 
         user_rows = users.select(users.c.id.in_([u.foo_id])).execute().fetchall()
-        eq_(user_rows[0].values(), [u.foo_id, 'multitester'])
+        eq_(list(user_rows[0].values()), [u.foo_id, 'multitester'])
         address_rows = addresses.select(addresses.c.id.in_([u.id])).execute().fetchall()
-        eq_(address_rows[0].values(), [u.id, u.foo_id, 'multi@test.org'])
+        eq_(list(address_rows[0].values()), [u.id, u.foo_id, 'multi@test.org'])
 
         u.email = 'lala@hey.com'
         u.name = 'imnew'
         session.flush()
 
         user_rows = users.select(users.c.id.in_([u.foo_id])).execute().fetchall()
-        eq_(user_rows[0].values(), [u.foo_id, 'imnew'])
+        eq_(list(user_rows[0].values()), [u.foo_id, 'imnew'])
         address_rows = addresses.select(addresses.c.id.in_([u.id])).execute().fetchall()
-        eq_(address_rows[0].values(), [u.id, u.foo_id, 'lala@hey.com'])
+        eq_(list(address_rows[0].values()), [u.id, u.foo_id, 'lala@hey.com'])
 
         session.expunge_all()
         u = session.query(User).get(id)
@@ -1650,7 +1646,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
         l = sa.select([users, addresses],
                       sa.and_(users.c.id==addresses.c.user_id,
                               addresses.c.id==a.id)).execute()
-        eq_(l.first().values(),
+        eq_(list(l.first().values()),
             [a.user.id, 'asdf8d', a.id, a.user_id, 'theater@foo.com'])
 
     def test_many_to_one_1(self):
@@ -2127,7 +2123,6 @@ class SaveTest3(fixtures.MappedTest):
 
         assert assoc.count().scalar() == 2
         i.keywords = []
-        print i.keywords
         session.flush()
         assert assoc.count().scalar() == 0
 

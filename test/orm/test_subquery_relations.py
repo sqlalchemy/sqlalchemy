@@ -1552,9 +1552,9 @@ class CyclicalInheritingEagerTestTwo(fixtures.DeclarativeMappedTest,
         Movie = self.classes.Movie
 
         session = Session(testing.db)
-        rscott = Director(name=u"Ridley Scott")
-        alien = Movie(title=u"Alien")
-        brunner = Movie(title=u"Blade Runner")
+        rscott = Director(name="Ridley Scott")
+        alien = Movie(title="Alien")
+        brunner = Movie(title="Blade Runner")
         rscott.movies.append(brunner)
         rscott.movies.append(alien)
         session.add_all([rscott, alien, brunner])

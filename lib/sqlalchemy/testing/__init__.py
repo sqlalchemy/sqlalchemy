@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+
 
 from .warnings import testing_warn, assert_warnings, resetwarnings
 

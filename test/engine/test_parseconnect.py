@@ -1,6 +1,5 @@
-from sqlalchemy.testing import assert_raises, assert_raises_message, eq_
-import ConfigParser
-import StringIO
+from sqlalchemy.testing import assert_raises, eq_
+from sqlalchemy.util.compat import configparser, StringIO
 import sqlalchemy.engine.url as url
 from sqlalchemy import create_engine, engine_from_config, exc, pool
 from sqlalchemy.engine.util import _coerce_config
@@ -103,8 +102,8 @@ pool_size=2
 pool_threadlocal=1
 pool_timeout=10
 """
-        ini = ConfigParser.ConfigParser()
-        ini.readfp(StringIO.StringIO(raw))
+        ini = configparser.ConfigParser()
+        ini.readfp(StringIO(raw))
 
         expected = {
             'url': 'postgresql://scott:tiger@somehost/test?fooz=somevalue',
@@ -234,7 +233,7 @@ pool_timeout=10
                           : True}, convert_unicode=True)
         try:
             e.connect()
-        except tsa.exc.DBAPIError, de:
+        except tsa.exc.DBAPIError as de:
             assert not de.connection_invalidated
 
     def test_ensure_dialect_does_is_disconnect_no_conn(self):
@@ -266,7 +265,7 @@ pool_timeout=10
         try:
             create_engine('sqlite://', module=ThrowOnConnect()).connect()
             assert False
-        except tsa.exc.DBAPIError, de:
+        except tsa.exc.DBAPIError as de:
             assert de.connection_invalidated
 
     def test_urlattr(self):

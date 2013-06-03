@@ -26,7 +26,7 @@ to stay the same in future releases.
 
 """
 
-
+from __future__ import unicode_literals
 import itertools
 import re
 from operator import attrgetter
@@ -1375,7 +1375,7 @@ func = _FunctionGenerator()
 modifier = _FunctionGenerator(group=False)
 
 
-class _truncated_label(unicode):
+class _truncated_label(util.text_type):
     """A unicode subclass used to identify symbolic "
     "names that may require truncation."""
 
@@ -1395,13 +1395,13 @@ class _anonymous_label(_truncated_label):
 
     def __add__(self, other):
         return _anonymous_label(
-                    unicode(self) +
-                    unicode(other))
+                    util.text_type(self) +
+                    util.text_type(other))
 
     def __radd__(self, other):
         return _anonymous_label(
-                    unicode(other) +
-                    unicode(self))
+                    util.text_type(other) +
+                    util.text_type(self))
 
     def apply_map(self, map_):
         return self % map_
@@ -1422,7 +1422,7 @@ def _as_truncated(value):
 
 
 def _string_or_unprintable(element):
-    if isinstance(element, basestring):
+    if isinstance(element, util.string_types):
         return element
     else:
         try:
@@ -1486,7 +1486,7 @@ def _labeled(element):
 
 
 def _column_as_key(element):
-    if isinstance(element, basestring):
+    if isinstance(element, util.string_types):
         return element
     if hasattr(element, '__clause_element__'):
         element = element.__clause_element__()
@@ -1508,8 +1508,8 @@ def _literal_as_text(element):
         return element
     elif hasattr(element, '__clause_element__'):
         return element.__clause_element__()
-    elif isinstance(element, basestring):
-        return TextClause(unicode(element))
+    elif isinstance(element, util.string_types):
+        return TextClause(util.text_type(element))
     elif isinstance(element, (util.NoneType, bool)):
         return _const_expr(element)
     else:
@@ -1583,8 +1583,8 @@ def _interpret_as_column_or_from(element):
 def _interpret_as_from(element):
     insp = inspection.inspect(element, raiseerr=False)
     if insp is None:
-        if isinstance(element, basestring):
-            return TextClause(unicode(element))
+        if isinstance(element, util.string_types):
+            return TextClause(util.text_type(element))
     elif hasattr(insp, "selectable"):
         return insp.selectable
     raise exc.ArgumentError("FROM expression expected")
@@ -1716,17 +1716,6 @@ class ClauseElement(Visitable):
         d = self.__dict__.copy()
         d.pop('_is_clone_of', None)
         return d
-
-    if util.jython:
-        def __hash__(self):
-            """Return a distinct hash code.
-
-            ClauseElements may have special equality comparisons which
-            makes us rely on them having unique hash codes for use in
-            hash-based collections. Stock __hash__ doesn't guarantee
-            unique values on platforms with moving GCs.
-            """
-            return id(self)
 
     def _annotate(self, values):
         """return a copy of this ClauseElement with annotations
@@ -1916,11 +1905,10 @@ class ClauseElement(Visitable):
         return dialect.statement_compiler(dialect, self, **kw)
 
     def __str__(self):
-        # Py3K
-        #return unicode(self.compile())
-        # Py2K
-        return unicode(self.compile()).encode('ascii', 'backslashreplace')
-        # end Py2K
+        if util.py3k:
+            return str(self.compile())
+        else:
+            return unicode(self.compile()).encode('ascii', 'backslashreplace')
 
     def __and__(self, other):
         return and_(self, other)
@@ -1931,8 +1919,10 @@ class ClauseElement(Visitable):
     def __invert__(self):
         return self._negate()
 
-    def __nonzero__(self):
+    def __bool__(self):
         raise TypeError("Boolean value of this clause is not defined")
+
+    __nonzero__ = __bool__
 
     def _negate(self):
         if hasattr(self, 'negation_clause'):
@@ -2205,7 +2195,7 @@ class _DefaultColumnComparator(operators.ColumnOperators):
     def _check_literal(self, expr, operator, other):
         if isinstance(other, (ColumnElement, TextClause)):
             if isinstance(other, BindParameter) and \
-                isinstance(other.type, sqltypes.NullType):
+                    isinstance(other.type, sqltypes.NullType):
                 # TODO: perhaps we should not mutate the incoming
                 # bindparam() here and instead make a copy of it.
                 # this might be the only place that we're mutating
@@ -2525,7 +2515,7 @@ class ColumnCollection(util.OrderedProperties):
         return and_(*l)
 
     def __contains__(self, other):
-        if not isinstance(other, basestring):
+        if not isinstance(other, util.string_types):
             raise exc.ArgumentError("__contains__ requires a string argument")
         return util.OrderedProperties.__contains__(self, other)
 
@@ -3117,7 +3107,6 @@ class Executable(Generative):
 
     def execute(self, *multiparams, **params):
         """Compile and execute this :class:`.Executable`."""
-
         e = self.bind
         if e is None:
             label = getattr(self, 'description', self.__class__.__name__)
@@ -3186,13 +3175,13 @@ class TextClause(Executable, ClauseElement):
     _hide_froms = []
 
     def __init__(
-        self,
-        text='',
-        bind=None,
-        bindparams=None,
-        typemap=None,
-        autocommit=None,
-        ):
+                    self,
+                    text='',
+                    bind=None,
+                    bindparams=None,
+                    typemap=None,
+                    autocommit=None):
+
         self._bind = bind
         self.bindparams = {}
         self.typemap = typemap
@@ -3202,9 +3191,9 @@ class TextClause(Executable, ClauseElement):
                                  'e)')
             self._execution_options = \
                 self._execution_options.union(
-                  {'autocommit': autocommit})
+                    {'autocommit': autocommit})
         if typemap is not None:
-            for key in typemap.keys():
+            for key in typemap:
                 typemap[key] = sqltypes.to_instance(typemap[key])
 
         def repl(m):
@@ -3241,7 +3230,7 @@ class TextClause(Executable, ClauseElement):
                                for b in self.bindparams.values())
 
     def get_children(self, **kwargs):
-        return self.bindparams.values()
+        return list(self.bindparams.values())
 
 
 class Null(ColumnElement):
@@ -3759,7 +3748,7 @@ class BinaryExpression(ColumnElement):
                     negate=None, modifiers=None):
         # allow compatibility with libraries that
         # refer to BinaryExpression directly and pass strings
-        if isinstance(operator, basestring):
+        if isinstance(operator, util.string_types):
             operator = operators.custom_op(operator)
         self._orig = (left, right)
         self.left = _literal_as_text(left).self_group(against=operator)
@@ -3773,11 +3762,13 @@ class BinaryExpression(ColumnElement):
         else:
             self.modifiers = modifiers
 
-    def __nonzero__(self):
+    def __bool__(self):
         if self.operator in (operator.eq, operator.ne):
             return self.operator(hash(self._orig[0]), hash(self._orig[1]))
         else:
             raise TypeError("Boolean value of this clause is not defined")
+
+    __nonzero__ = __bool__
 
     @property
     def is_comparison(self):
@@ -4066,11 +4057,10 @@ class Alias(FromClause):
 
     @property
     def description(self):
-        # Py3K
-        #return self.name
-        # Py2K
-        return self.name.encode('ascii', 'backslashreplace')
-        # end Py2K
+        if util.py3k:
+            return self.name
+        else:
+            return self.name.encode('ascii', 'backslashreplace')
 
     def as_scalar(self):
         try:
@@ -4484,11 +4474,10 @@ class ColumnClause(Immutable, ColumnElement):
 
     @util.memoized_property
     def description(self):
-        # Py3K
-        #return self.name
-        # Py2K
-        return self.name.encode('ascii', 'backslashreplace')
-        # end Py2K
+        if util.py3k:
+            return self.name
+        else:
+            return self.name.encode('ascii', 'backslashreplace')
 
     @_memoized_property
     def _key_label(self):
@@ -4615,11 +4604,10 @@ class TableClause(Immutable, FromClause):
 
     @util.memoized_property
     def description(self):
-        # Py3K
-        #return self.name
-        # Py2K
-        return self.name.encode('ascii', 'backslashreplace')
-        # end Py2K
+        if util.py3k:
+            return self.name
+        else:
+            return self.name.encode('ascii', 'backslashreplace')
 
     def append_column(self, c):
         self._columns[c.key] = c

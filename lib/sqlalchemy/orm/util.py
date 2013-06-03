@@ -120,7 +120,7 @@ def polymorphic_union(table_map, typecolname,
     colnames = util.OrderedSet()
     colnamemaps = {}
     types = {}
-    for key in table_map.keys():
+    for key in table_map:
         table = table_map[key]
 
         # mysql doesnt like selecting from a select;
@@ -146,7 +146,7 @@ def polymorphic_union(table_map, typecolname,
                 return sql.type_coerce(sql.null(), types[name]).label(name)
 
     result = []
-    for type, table in table_map.iteritems():
+    for type, table in table_map.items():
         if typecolname is not None:
             result.append(
                     sql.select([col(name, table) for name in colnames] +
@@ -203,7 +203,7 @@ def identity_key(*args, **kwargs):
                 "positional arguments, got %s" % len(args))
         if kwargs:
             raise sa_exc.ArgumentError("unknown keyword arguments: %s"
-                % ", ".join(kwargs.keys()))
+                % ", ".join(kwargs))
         mapper = class_mapper(class_)
         if "ident" in locals():
             return mapper.identity_key_from_primary_key(util.to_list(ident))
@@ -211,7 +211,7 @@ def identity_key(*args, **kwargs):
     instance = kwargs.pop("instance")
     if kwargs:
         raise sa_exc.ArgumentError("unknown keyword arguments: %s"
-            % ", ".join(kwargs.keys()))
+            % ", ".join(kwargs.keys))
     mapper = object_mapper(instance)
     return mapper.identity_key_from_instance(instance)
 
@@ -278,16 +278,16 @@ class PathRegistry(object):
         return other is not None and \
             self.path == other.path
 
-    def set(self, reg, key, value):
-        reg._attributes[(key, self.path)] = value
+    def set(self, attributes, key, value):
+        attributes[(key, self.path)] = value
 
-    def setdefault(self, reg, key, value):
-        reg._attributes.setdefault((key, self.path), value)
+    def setdefault(self, attributes, key, value):
+        attributes.setdefault((key, self.path), value)
 
-    def get(self, reg, key, value=None):
+    def get(self, attributes, key, value=None):
         key = (key, self.path)
-        if key in reg._attributes:
-            return reg._attributes[key]
+        if key in attributes:
+            return attributes[key]
         else:
             return value
 
@@ -300,7 +300,7 @@ class PathRegistry(object):
 
     def pairs(self):
         path = self.path
-        for i in xrange(0, len(path), 2):
+        for i in range(0, len(path), 2):
             yield path[i], path[i + 1]
 
     def contains_mapper(self, mapper):
@@ -313,18 +313,18 @@ class PathRegistry(object):
         else:
             return False
 
-    def contains(self, reg, key):
-        return (key, self.path) in reg._attributes
+    def contains(self, attributes, key):
+        return (key, self.path) in attributes
 
     def __reduce__(self):
         return _unreduce_path, (self.serialize(), )
 
     def serialize(self):
         path = self.path
-        return zip(
+        return list(zip(
             [m.class_ for m in [path[i] for i in range(0, len(path), 2)]],
             [path[i].key for i in range(1, len(path), 2)] + [None]
-        )
+        ))
 
     @classmethod
     def deserialize(cls, path):
@@ -418,8 +418,9 @@ class EntityRegistry(PathRegistry, dict):
 
         self.path = parent.path + (entity,)
 
-    def __nonzero__(self):
+    def __bool__(self):
         return True
+    __nonzero__ = __bool__
 
     def __getitem__(self, entity):
         if isinstance(entity, (int, slice)):
@@ -440,8 +441,8 @@ class EntityRegistry(PathRegistry, dict):
         """
         path = dict.__getitem__(self, prop)
         path_key = (key, path.path)
-        if path_key in context._attributes:
-            return context._attributes[path_key]
+        if path_key in context.attributes:
+            return context.attributes[path_key]
         else:
             return None
 
@@ -596,8 +597,8 @@ class AliasedClass(object):
             return self.__adapt_prop(attr, key)
         elif hasattr(attr, 'func_code'):
             is_method = getattr(self.__target, key, None)
-            if is_method and is_method.im_self is not None:
-                return util.types.MethodType(attr.im_func, self, self)
+            if is_method and is_method.__self__ is not None:
+                return util.types.MethodType(attr.__func__, self, self)
             else:
                 return None
         elif hasattr(attr, '__get__'):
@@ -887,7 +888,7 @@ class _ORMJoin(expression.Join):
 
         self._joined_from_info = right_info
 
-        if isinstance(onclause, basestring):
+        if isinstance(onclause, util.string_types):
             onclause = getattr(left_orm_info.entity, onclause)
 
         if isinstance(onclause, attributes.QueryableAttribute):
@@ -1008,7 +1009,7 @@ def with_parent(instance, prop):
       parent/child relationship.
 
     """
-    if isinstance(prop, basestring):
+    if isinstance(prop, util.string_types):
         mapper = object_mapper(instance)
         prop = getattr(mapper.class_, prop).property
     elif isinstance(prop, attributes.QueryableAttribute):

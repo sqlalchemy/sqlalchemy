@@ -10,7 +10,7 @@ from sqlalchemy import (MetaData, Table, Column, Integer, String, ForeignKey,
     Unicode, and_, create_engine)
 from sqlalchemy.orm import mapper, relationship, Session, lazyload
 
-import sys, os, StringIO, re
+import sys, os, io, re
 
 from xml.etree import ElementTree
 
@@ -55,7 +55,7 @@ class Document(object):
         self.element = element
 
     def __str__(self):
-        buf = StringIO.StringIO()
+        buf = io.StringIO()
         self.element.write(buf)
         return buf.getvalue()
 
@@ -127,12 +127,12 @@ class ElementTreeMarshal(object):
     def __set__(self, document, element):
         def traverse(node):
             n = _Node()
-            n.tag = unicode(node.tag)
-            n.text = unicode(node.text)
-            n.tail = unicode(node.tail)
+            n.tag = str(node.tag)
+            n.text = str(node.text)
+            n.tail = str(node.tail)
             document._nodes.append(n)
             n.children = [traverse(n2) for n2 in node]
-            n.attributes = [_Attribute(unicode(k), unicode(v)) for k, v in node.attrib.iteritems()]
+            n.attributes = [_Attribute(str(k), str(v)) for k, v in node.attrib.items()]
             return n
 
         traverse(element.getroot())
@@ -158,27 +158,27 @@ for file in ('test.xml', 'test2.xml', 'test3.xml'):
     doc = ElementTree.parse(filename)
     session.add(Document(file, doc))
 
-print "\nSaving three documents...", line
+print("\nSaving three documents...", line)
 session.commit()
-print "Done."
+print("Done.")
 
-print "\nFull text of document 'text.xml':", line
+print("\nFull text of document 'text.xml':", line)
 document = session.query(Document).filter_by(filename="test.xml").first()
 
-print document
+print(document)
 
 ######################## PART VI - Searching for Paths #######################
 
 # manually search for a document which contains "/somefile/header/field1:hi"
-print "\nManual search for /somefile/header/field1=='hi':", line
+print("\nManual search for /somefile/header/field1=='hi':", line)
 d = session.query(Document).join('_nodes', aliased=True).\
-                filter(and_(_Node.parent_id==None, _Node.tag==u'somefile')).\
+                filter(and_(_Node.parent_id==None, _Node.tag=='somefile')).\
                 join('children', aliased=True, from_joinpoint=True).\
-                filter(_Node.tag==u'header').\
+                filter(_Node.tag=='header').\
                 join('children', aliased=True, from_joinpoint=True).\
-                filter(and_(_Node.tag==u'field1', _Node.text==u'hi')).\
+                filter(and_(_Node.tag=='field1', _Node.text=='hi')).\
                 one()
-print d
+print(d)
 
 # generalize the above approach into an extremely impoverished xpath function:
 def find_document(path, compareto):
@@ -203,11 +203,11 @@ def find_document(path, compareto):
     return query.options(lazyload('_nodes')).filter(_Node.text==compareto).all()
 
 for path, compareto in (
-        (u'/somefile/header/field1', u'hi'),
-        (u'/somefile/field1', u'hi'),
-        (u'/somefile/header/field2', u'there'),
-        (u'/somefile/header/field2[@attr=foo]', u'there')
+        ('/somefile/header/field1', 'hi'),
+        ('/somefile/field1', 'hi'),
+        ('/somefile/header/field2', 'there'),
+        ('/somefile/header/field2[@attr=foo]', 'there')
     ):
-    print "\nDocuments containing '%s=%s':" % (path, compareto), line
-    print [d.filename for d in find_document(path, compareto)]
+    print("\nDocuments containing '%s=%s':" % (path, compareto), line)
+    print([d.filename for d in find_document(path, compareto)])
 

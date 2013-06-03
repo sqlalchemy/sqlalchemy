@@ -51,7 +51,7 @@ RESERVED_WORDS = set([
     'using', 'verbose', 'when', 'where'])
 
 LEGAL_CHARACTERS = re.compile(r'^[A-Z0-9_$]+$', re.I)
-ILLEGAL_INITIAL_CHARACTERS = set([str(x) for x in xrange(0, 10)]).union(['$'])
+ILLEGAL_INITIAL_CHARACTERS = set([str(x) for x in range(0, 10)]).union(['$'])
 
 BIND_PARAMS = re.compile(r'(?<![:\w\$\x5c]):([\w\$]+)(?![:\w\$])', re.UNICODE)
 BIND_PARAMS_ESC = re.compile(r'\x5c(:[\w\$]+)(?![:\w\$])', re.UNICODE)
@@ -83,9 +83,7 @@ OPERATORS = {
     operators.add: ' + ',
     operators.mul: ' * ',
     operators.sub: ' - ',
-    # Py2K
     operators.div: ' / ',
-    # end Py2K
     operators.mod: ' % ',
     operators.truediv: ' / ',
     operators.neg: '-',
@@ -334,7 +332,7 @@ class SQLCompiler(engine.Compiled):
 
         if params:
             pd = {}
-            for bindparam, name in self.bind_names.iteritems():
+            for bindparam, name in self.bind_names.items():
                 if bindparam.key in params:
                     pd[name] = params[bindparam.key]
                 elif name in params:
@@ -488,7 +486,7 @@ class SQLCompiler(engine.Compiled):
 
     def visit_textclause(self, textclause, **kwargs):
         if textclause.typemap is not None:
-            for colname, type_ in textclause.typemap.iteritems():
+            for colname, type_ in textclause.typemap.items():
                 self.result_map[colname
                                 if self.dialect.case_sensitive
                                 else colname.lower()] = \
@@ -862,12 +860,12 @@ class SQLCompiler(engine.Compiled):
         of the DBAPI.
 
         """
-        if isinstance(value, basestring):
+        if isinstance(value, util.string_types):
             value = value.replace("'", "''")
             return "'%s'" % value
         elif value is None:
             return "NULL"
-        elif isinstance(value, (float, int, long)):
+        elif isinstance(value, (float, ) + util.int_types):
             return repr(value)
         elif isinstance(value, decimal.Decimal):
             return str(value)
@@ -1172,7 +1170,7 @@ class SQLCompiler(engine.Compiled):
                                     self, ashint=True)
                             })
                             for (from_, dialect), hinttext in
-                            select._hints.iteritems()
+                            select._hints.items()
                             if dialect in ('*', self.dialect.name)
                         ])
             hint_text = self.get_select_hint_text(byfrom)
@@ -1570,7 +1568,7 @@ class SQLCompiler(engine.Compiled):
         values = []
 
         if stmt_parameters is not None:
-            for k, v in stmt_parameters.iteritems():
+            for k, v in stmt_parameters.items():
                 colkey = sql._column_as_key(k)
                 if colkey is not None:
                     parameters.setdefault(colkey, v)
@@ -1910,22 +1908,13 @@ class DDLCompiler(engine.Compiled):
                                     and not first_pk)
                 if column.primary_key:
                     first_pk = True
-            except exc.CompileError, ce:
-                # Py3K
-                #raise exc.CompileError("(in table '%s', column '%s'): %s"
-                #                             % (
-                #                                table.description,
-                #                                column.name,
-                #                                ce.args[0]
-                #                            )) from ce
-                # Py2K
-                raise exc.CompileError("(in table '%s', column '%s'): %s"
-                                            % (
+            except exc.CompileError as ce:
+                util.raise_from_cause(
+                    exc.CompileError(util.u("(in table '%s', column '%s'): %s") % (
                                                 table.description,
                                                 column.name,
                                                 ce.args[0]
-                                            )), None, sys.exc_info()[2]
-                # end Py2K
+                                            )))
 
         const = self.create_table_constraints(table)
         if const:
@@ -2078,7 +2067,7 @@ class DDLCompiler(engine.Compiled):
 
     def get_column_default_string(self, column):
         if isinstance(column.server_default, schema.DefaultClause):
-            if isinstance(column.server_default.arg, basestring):
+            if isinstance(column.server_default.arg, util.string_types):
                 return "'%s'" % column.server_default.arg
             else:
                 return self.sql_compiler.process(column.server_default.arg)
@@ -2397,7 +2386,7 @@ class IdentifierPreparer(object):
         lc_value = value.lower()
         return (lc_value in self.reserved_words
                 or value[0] in self.illegal_initial_characters
-                or not self.legal_characters.match(unicode(value))
+                or not self.legal_characters.match(util.text_type(value))
                 or (lc_value != value))
 
     def quote_schema(self, schema, force):

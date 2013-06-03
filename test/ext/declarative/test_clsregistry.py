@@ -124,7 +124,7 @@ class ClsRegistryTest(fixtures.TestBase):
 
         base = weakref.WeakValueDictionary()
 
-        for i in xrange(3):
+        for i in range(3):
             f1 = MockClass(base, "foo.bar.Foo")
             f2 = MockClass(base, "foo.alt.Foo")
             clsregistry.add_class("Foo", f1)

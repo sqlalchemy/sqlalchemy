@@ -443,21 +443,21 @@ class TupleLabelTest(_fixtures.FixtureTest):
                 if pickled is not False:
                     row = pickle.loads(pickle.dumps(row, pickled))
 
-                eq_(row.keys(), ['User', 'Address'])
+                eq_(list(row.keys()), ['User', 'Address'])
                 eq_(row.User, row[0])
                 eq_(row.Address, row[1])
 
             for row in sess.query(User.name, User.id.label('foobar')):
                 if pickled is not False:
                     row = pickle.loads(pickle.dumps(row, pickled))
-                eq_(row.keys(), ['name', 'foobar'])
+                eq_(list(row.keys()), ['name', 'foobar'])
                 eq_(row.name, row[0])
                 eq_(row.foobar, row[1])
 
             for row in sess.query(User).values(User.name, User.id.label('foobar')):
                 if pickled is not False:
                     row = pickle.loads(pickle.dumps(row, pickled))
-                eq_(row.keys(), ['name', 'foobar'])
+                eq_(list(row.keys()), ['name', 'foobar'])
                 eq_(row.name, row[0])
                 eq_(row.foobar, row[1])
 
@@ -465,21 +465,21 @@ class TupleLabelTest(_fixtures.FixtureTest):
             for row in sess.query(User, oalias).join(User.orders).all():
                 if pickled is not False:
                     row = pickle.loads(pickle.dumps(row, pickled))
-                eq_(row.keys(), ['User'])
+                eq_(list(row.keys()), ['User'])
                 eq_(row.User, row[0])
 
             oalias = aliased(Order, name='orders')
             for row in sess.query(User, oalias).join(oalias, User.orders).all():
                 if pickled is not False:
                     row = pickle.loads(pickle.dumps(row, pickled))
-                eq_(row.keys(), ['User', 'orders'])
+                eq_(list(row.keys()), ['User', 'orders'])
                 eq_(row.User, row[0])
                 eq_(row.orders, row[1])
 
             # test here that first col is not labeled, only
             # one name in keys, matches correctly
             for row in sess.query(User.name + 'hoho', User.name):
-                eq_(row.keys(), ['name'])
+                eq_(list(row.keys()), ['name'])
                 eq_(row[0], row.name + 'hoho')
 
             if pickled is not False:

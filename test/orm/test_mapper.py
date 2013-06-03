@@ -272,13 +272,14 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                     )
         m = mapper(Foo, foo_t)
         class DontCompareMeToString(int):
-        # Py3K
-        #    pass
-        # Py2K
-            def __lt__(self, other):
-                assert not isinstance(other, basestring)
-                return int(self) < other
-        # end Py2K
+# start Py3K
+            pass
+# end Py3K
+# start Py2K
+#            def __lt__(self, other):
+#                assert not isinstance(other, basestring)
+#                return int(self) < other
+# end Py2K
         foos = [Foo(id='f%d' % i) for i in range(5)]
         states = [attributes.instance_state(f) for f in foos]
 
@@ -847,7 +848,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
     def test_we_dont_call_bool(self):
         class NoBoolAllowed(object):
-            def __nonzero__(self):
+            def __bool__(self):
                 raise Exception("nope")
         mapper(NoBoolAllowed, self.tables.users)
         u1 = NoBoolAllowed()
@@ -1057,12 +1058,12 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         eq_(
             create_session().query(User).all(),
-            [User(id=7, name=u'jack'), User(id=9, name=u'fred'), User(id=8, name=u'ed'), User(id=10, name=u'chuck')]
+            [User(id=7, name='jack'), User(id=9, name='fred'), User(id=8, name='ed'), User(id=10, name='chuck')]
         )
 
         eq_(
             create_session().query(User).order_by(User.name).all(),
-            [User(id=10, name=u'chuck'), User(id=8, name=u'ed'), User(id=9, name=u'fred'), User(id=7, name=u'jack')]
+            [User(id=10, name='chuck'), User(id=8, name='ed'), User(id=9, name='fred'), User(id=7, name='jack')]
         )
 
     # 'Raises a "expression evaluation not supported" error at prepare time
@@ -2123,7 +2124,7 @@ class ValidatorTest(_fixtures.FixtureTest):
         mapper(Address, addresses)
 
         eq_(
-            dict((k, v[0].__name__) for k, v in u_m.validators.items()),
+            dict((k, v[0].__name__) for k, v in list(u_m.validators.items())),
             {'name':'validate_name',
             'addresses':'validate_address'}
         )
@@ -2992,29 +2993,29 @@ class RequirementsTest(fixtures.MappedTest):
               Column('ht1b_id', Integer, ForeignKey('ht1.id'), primary_key=True),
               Column('value', String(10)))
 
-    # Py2K
-    def test_baseclass(self):
-        ht1 = self.tables.ht1
-
-        class OldStyle:
-            pass
-
-        assert_raises(sa.exc.ArgumentError, mapper, OldStyle, ht1)
-
-        assert_raises(sa.exc.ArgumentError, mapper, 123)
-
-        class NoWeakrefSupport(str):
-            pass
-
-        # TODO: is weakref support detectable without an instance?
-        #self.assertRaises(sa.exc.ArgumentError, mapper, NoWeakrefSupport, t2)
-    # end Py2K
+# start Py2K
+#    def test_baseclass(self):
+#        ht1 = self.tables.ht1
+#
+#        class OldStyle:
+#            pass
+#
+#        assert_raises(sa.exc.ArgumentError, mapper, OldStyle, ht1)
+#
+#        assert_raises(sa.exc.ArgumentError, mapper, 123)
+#
+#        class NoWeakrefSupport(str):
+#            pass
+#
+#        # TODO: is weakref support detectable without an instance?
+#        #self.assertRaises(sa.exc.ArgumentError, mapper, NoWeakrefSupport, t2)
+# end Py2K
 
     class _ValueBase(object):
         def __init__(self, value='abc', id=None):
             self.id = id
             self.value = value
-        def __nonzero__(self):
+        def __bool__(self):
             return False
         def __hash__(self):
             return hash(self.value)
@@ -3173,7 +3174,7 @@ class RequirementsTest(fixtures.MappedTest):
                 return self.value
 
         class H2(object):
-            def __nonzero__(self):
+            def __bool__(self):
                 return bool(self.get_value())
 
             def get_value(self):
@@ -3224,7 +3225,7 @@ class IsUserlandTest(fixtures.MappedTest):
         self._test("someprop")
 
     def test_unicode(self):
-        self._test(u"someprop")
+        self._test("someprop")
 
     def test_int(self):
         self._test(5)

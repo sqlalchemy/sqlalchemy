@@ -1,6 +1,6 @@
 """tests the "bind" attribute/argument across schema and SQL,
 including the deprecated versions of these arguments"""
-from __future__ import with_statement
+
 from sqlalchemy.testing import eq_, assert_raises
 from sqlalchemy import engine, exc
 from sqlalchemy import MetaData, ThreadLocalMetaData
@@ -61,7 +61,7 @@ class BindTest(fixtures.TestBase):
             try:
                 meth()
                 assert False
-            except exc.UnboundExecutionError, e:
+            except exc.UnboundExecutionError as e:
                 eq_(str(e),
                     "The MetaData is not bound to an Engine or "
                     "Connection.  Execution can not proceed without a "
@@ -82,7 +82,7 @@ class BindTest(fixtures.TestBase):
             try:
                 meth()
                 assert False
-            except exc.UnboundExecutionError, e:
+            except exc.UnboundExecutionError as e:
                 eq_(
                     str(e),
                     "The Table 'test_table' "

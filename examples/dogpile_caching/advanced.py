@@ -6,9 +6,9 @@ and collection caching.
 
 """
 
-from environment import Session
-from model import Person, Address, cache_address_bits
-from caching_query import FromCache, RelationshipCache
+from .environment import Session
+from .model import Person, Address, cache_address_bits
+from .caching_query import FromCache, RelationshipCache
 from sqlalchemy.orm import joinedload
 
 def load_name_range(start, end, invalidate=False):
@@ -49,31 +49,31 @@ def load_name_range(start, end, invalidate=False):
 
     return q.all()
 
-print "two through twelve, possibly from cache:\n"
-print ", ".join([p.name for p in load_name_range(2, 12)])
+print("two through twelve, possibly from cache:\n")
+print(", ".join([p.name for p in load_name_range(2, 12)]))
 
-print "\ntwenty five through forty, possibly from cache:\n"
-print ", ".join([p.name for p in load_name_range(25, 40)])
+print("\ntwenty five through forty, possibly from cache:\n")
+print(", ".join([p.name for p in load_name_range(25, 40)]))
 
 # loading them again, no SQL is emitted
-print "\ntwo through twelve, from the cache:\n"
-print ", ".join([p.name for p in load_name_range(2, 12)])
+print("\ntwo through twelve, from the cache:\n")
+print(", ".join([p.name for p in load_name_range(2, 12)]))
 
 # but with invalidate, they are
-print "\ntwenty five through forty, invalidate first:\n"
-print ", ".join([p.name for p in load_name_range(25, 40, True)])
+print("\ntwenty five through forty, invalidate first:\n")
+print(", ".join([p.name for p in load_name_range(25, 40, True)]))
 
 # illustrate the address loading from either cache/already
 # on the Person
-print "\n\nPeople plus addresses, two through twelve, addresses possibly from cache"
+print("\n\nPeople plus addresses, two through twelve, addresses possibly from cache")
 for p in load_name_range(2, 12):
-    print p.format_full()
+    print(p.format_full())
 
 # illustrate the address loading from either cache/already
 # on the Person
-print "\n\nPeople plus addresses, two through twelve, addresses from cache"
+print("\n\nPeople plus addresses, two through twelve, addresses from cache")
 for p in load_name_range(2, 12):
-    print p.format_full()
+    print(p.format_full())
 
-print "\n\nIf this was the first run of advanced.py, try "\
-        "a second run.  Only one SQL statement will be emitted."
+print("\n\nIf this was the first run of advanced.py, try "\
+        "a second run.  Only one SQL statement will be emitted.")

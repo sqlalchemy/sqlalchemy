@@ -288,7 +288,7 @@ class CustomDictTest(DictTest):
         ch = Child('a', 'regular')
         p1._children.append(ch)
 
-        self.assert_(ch in p1._children.values())
+        self.assert_(ch in list(p1._children.values()))
         self.assert_(len(p1._children) == 1)
 
         self.assert_(p1.children)
@@ -300,7 +300,7 @@ class CustomDictTest(DictTest):
 
         p1.children['b'] = 'proxied'
 
-        self.assert_('proxied' in p1.children.values())
+        self.assert_('proxied' in list(p1.children.values()))
         self.assert_('b' in p1.children)
         self.assert_('proxied' not in p1._children)
         self.assert_(len(p1.children) == 2)
@@ -526,9 +526,9 @@ class SetTest(_CollectionOperations):
                     try:
                         self.assert_(p.children == control)
                     except:
-                        print 'Test %s.%s(%s):' % (set(base), op, other)
-                        print 'want', repr(control)
-                        print 'got', repr(p.children)
+                        print('Test %s.%s(%s):' % (set(base), op, other))
+                        print('want', repr(control))
+                        print('got', repr(p.children))
                         raise
 
                     p = self.roundtrip(p)
@@ -536,9 +536,9 @@ class SetTest(_CollectionOperations):
                     try:
                         self.assert_(p.children == control)
                     except:
-                        print 'Test %s.%s(%s):' % (base, op, other)
-                        print 'want', repr(control)
-                        print 'got', repr(p.children)
+                        print('Test %s.%s(%s):' % (base, op, other))
+                        print('want', repr(control))
+                        print('got', repr(p.children))
                         raise
 
         # in-place mutations
@@ -553,15 +553,15 @@ class SetTest(_CollectionOperations):
                     p.children = base[:]
                     control = set(base[:])
 
-                    exec "p.children %s other" % op
-                    exec "control %s other" % op
+                    exec("p.children %s other" % op)
+                    exec("control %s other" % op)
 
                     try:
                         self.assert_(p.children == control)
                     except:
-                        print 'Test %s %s %s:' % (set(base), op, other)
-                        print 'want', repr(control)
-                        print 'got', repr(p.children)
+                        print('Test %s %s %s:' % (set(base), op, other))
+                        print('want', repr(control))
+                        print('got', repr(p.children))
                         raise
 
                     p = self.roundtrip(p)
@@ -569,9 +569,9 @@ class SetTest(_CollectionOperations):
                     try:
                         self.assert_(p.children == control)
                     except:
-                        print 'Test %s %s %s:' % (base, op, other)
-                        print 'want', repr(control)
-                        print 'got', repr(p.children)
+                        print('Test %s %s %s:' % (base, op, other))
+                        print('want', repr(control))
+                        print('got', repr(p.children))
                         raise
 
 

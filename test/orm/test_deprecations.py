@@ -122,7 +122,7 @@ class QueryAlternativesTest(fixtures.MappedTest):
         session = sessionmaker(query_cls=MyQuery)()
 
         ad1 = session.query(Address).get(1)
-        assert ad1 in cache.values()
+        assert ad1 in list(cache.values())
 
     def test_load(self):
         """x = session.query(Address).load(1)

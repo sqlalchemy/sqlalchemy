@@ -1,4 +1,4 @@
-from __future__ import with_statement
+
 
 import operator
 from nose import SkipTest
@@ -23,10 +23,10 @@ class skip_if(object):
     def fail_if(self, name='block'):
         try:
             yield
-        except Exception, ex:
+        except Exception as ex:
             if self.predicate():
-                print ("%s failed as expected (%s): %s " % (
-                    name, self.predicate, str(ex)))
+                print(("%s failed as expected (%s): %s " % (
+                    name, self.predicate, str(ex))))
             else:
                 raise
         else:
@@ -92,7 +92,7 @@ class Predicate(object):
             return OrPredicate([cls.as_predicate(pred) for pred in predicate])
         elif isinstance(predicate, tuple):
             return SpecPredicate(*predicate)
-        elif isinstance(predicate, basestring):
+        elif isinstance(predicate, util.string_types):
             return SpecPredicate(predicate, None, None)
         elif util.callable(predicate):
             return LambdaPredicate(predicate)

@@ -5,8 +5,8 @@ Canadian cities.   Then, 100 Person records are installed, each with a
 randomly selected postal code.
 
 """
-from environment import Session, Base
-from model import City, Country, PostalCode, Person, Address
+from .environment import Session, Base
+from .model import City, Country, PostalCode, Person, Address
 import random
 
 def install():
@@ -35,7 +35,7 @@ def install():
         Session.add_all(pc)
         all_post_codes.extend(pc)
 
-    for i in xrange(1, 51):
+    for i in range(1, 51):
         person = Person(
                     "person %.2d" % i,
                     Address(

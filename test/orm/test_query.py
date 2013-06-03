@@ -407,11 +407,12 @@ class GetTest(QueryTest):
             Column('data', Unicode(40)))
         try:
             metadata.create_all()
-            # Py3K
-            #ustring = b'petit voix m\xe2\x80\x99a'.decode('utf-8')
-            # Py2K
-            ustring = 'petit voix m\xe2\x80\x99a'.decode('utf-8')
-            # end Py2K
+# start Py3K
+            ustring = b'petit voix m\xe2\x80\x99a'.decode('utf-8')
+# end Py3K
+# start Py2K
+#            ustring = 'petit voix m\xe2\x80\x99a'.decode('utf-8')
+# end Py2K
 
             table.insert().execute(id=ustring, data=ustring)
             class LocalFoo(self.classes.Base):
@@ -637,9 +638,9 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
                                 (operator.sub, '-'),
                                 # Py3k
                                 #(operator.truediv, '/'),
-                                # Py2K
-                                (operator.div, '/'),
-                                # end Py2K
+# start Py2K
+#                                (operator.div, '/'),
+# end Py2K
                                 ):
             for (lhs, rhs, res) in (
                 (5, User.id, ':id_1 %s users.id'),
@@ -1047,7 +1048,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         adalias = aliased(Address, q1.subquery())
         eq_(
             s.query(User, adalias).join(adalias, User.id==adalias.user_id).all(),
-            [(User(id=7,name=u'jack'), Address(email_address=u'jack@bean.com',user_id=7,id=1))]
+            [(User(id=7,name='jack'), Address(email_address='jack@bean.com',user_id=7,id=1))]
         )
 
 # more slice tests are available in test/orm/generative.py
@@ -1196,7 +1197,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             "users.name AS users_name FROM users WHERE users.id = :param_1 "
             "UNION SELECT users.id AS users_id, users.name AS users_name "
             "FROM users WHERE users.id = :param_2) AS anon_1",
-            checkparams = {u'param_1': 7, u'param_2': 8}
+            checkparams = {'param_1': 7, 'param_2': 8}
         )
 
     def test_any(self):
@@ -1319,7 +1320,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             "FROM users JOIN addresses ON users.id = addresses.user_id "
             "WHERE users.name = :name_1 AND "
             "addresses.email_address = :email_address_1",
-            checkparams={u'email_address_1': 'ed@ed.com', u'name_1': 'ed'}
+            checkparams={'email_address_1': 'ed@ed.com', 'name_1': 'ed'}
         )
 
     def test_filter_by_no_property(self):
@@ -1468,14 +1469,14 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
         for q in (q3.order_by(User.id, "anon_1_param_1"), q6.order_by(User.id, "foo")):
             eq_(q.all(),
                 [
-                    (User(id=7, name=u'jack'), u'x'),
-                    (User(id=7, name=u'jack'), u'y'),
-                    (User(id=8, name=u'ed'), u'x'),
-                    (User(id=8, name=u'ed'), u'y'),
-                    (User(id=9, name=u'fred'), u'x'),
-                    (User(id=9, name=u'fred'), u'y'),
-                    (User(id=10, name=u'chuck'), u'x'),
-                    (User(id=10, name=u'chuck'), u'y')
+                    (User(id=7, name='jack'), 'x'),
+                    (User(id=7, name='jack'), 'y'),
+                    (User(id=8, name='ed'), 'x'),
+                    (User(id=8, name='ed'), 'y'),
+                    (User(id=9, name='fred'), 'x'),
+                    (User(id=9, name='fred'), 'y'),
+                    (User(id=10, name='chuck'), 'x'),
+                    (User(id=10, name='chuck'), 'y')
                 ]
             )
 
@@ -1603,7 +1604,7 @@ class AggregateTest(QueryTest):
 
         sess = create_session()
         orders = sess.query(Order).filter(Order.id.in_([2, 3, 4]))
-        eq_(orders.values(func.sum(Order.user_id * Order.address_id)).next(), (79,))
+        eq_(next(orders.values(func.sum(Order.user_id * Order.address_id))), (79,))
         eq_(orders.value(func.sum(Order.user_id * Order.address_id)), 79)
 
     def test_apply(self):
@@ -1616,9 +1617,9 @@ class AggregateTest(QueryTest):
         User, Address = self.classes.User, self.classes.Address
 
         sess = create_session()
-        assert [User(name=u'ed',id=8)] == sess.query(User).order_by(User.id).group_by(User).join('addresses').having(func.count(Address.id)> 2).all()
+        assert [User(name='ed',id=8)] == sess.query(User).order_by(User.id).group_by(User).join('addresses').having(func.count(Address.id)> 2).all()
 
-        assert [User(name=u'jack',id=7), User(name=u'fred',id=9)] == sess.query(User).order_by(User.id).group_by(User).join('addresses').having(func.count(Address.id)< 2).all()
+        assert [User(name='jack',id=7), User(name='fred',id=9)] == sess.query(User).order_by(User.id).group_by(User).join('addresses').having(func.count(Address.id)< 2).all()
 
 
 class ExistsTest(QueryTest, AssertsCompiledSQL):
@@ -1798,14 +1799,14 @@ class YieldTest(QueryTest):
 
         ret = []
         eq_(len(sess.identity_map), 0)
-        ret.append(q.next())
-        ret.append(q.next())
+        ret.append(next(q))
+        ret.append(next(q))
         eq_(len(sess.identity_map), 2)
-        ret.append(q.next())
-        ret.append(q.next())
+        ret.append(next(q))
+        ret.append(next(q))
         eq_(len(sess.identity_map), 4)
         try:
-            q.next()
+            next(q)
             assert False
         except StopIteration:
             pass
@@ -1915,7 +1916,7 @@ class TextTest(QueryTest):
                     User.id, text("users.name"))
 
         eq_(s.query(User.id, "name").order_by(User.id).all(),
-                [(7, u'jack'), (8, u'ed'), (9, u'fred'), (10, u'chuck')])
+                [(7, 'jack'), (8, 'ed'), (9, 'fred'), (10, 'chuck')])
 
     def test_via_select(self):
         User = self.classes.User
@@ -1973,7 +1974,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         try:
             q = sess.query(Item).with_parent(u1)
             assert False
-        except sa_exc.InvalidRequestError, e:
+        except sa_exc.InvalidRequestError as e:
             assert str(e) \
                 == "Could not locate a property which relates "\
                 "instances of class 'Item' to instances of class 'User'"
@@ -2058,7 +2059,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
             "addresses.id AS addresses_id, addresses.user_id AS "
             "addresses_user_id, addresses.email_address AS addresses_email_address "
             "FROM addresses WHERE :param_2 = addresses.user_id) AS anon_1",
-            checkparams={u'param_1': 7, u'param_2': 8},
+            checkparams={'param_1': 7, 'param_2': 8},
         )
 
     def test_unique_binds_or(self):
@@ -2075,7 +2076,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
             "addresses_user_id, addresses.email_address AS "
             "addresses_email_address FROM addresses WHERE "
             ":param_1 = addresses.user_id OR :param_2 = addresses.user_id",
-            checkparams={u'param_1': 7, u'param_2': 8},
+            checkparams={'param_1': 7, 'param_2': 8},
         )
 
 class SynonymTest(QueryTest):
@@ -2117,9 +2118,9 @@ class SynonymTest(QueryTest):
                         options(joinedload(User.orders_syn)).all()
             eq_(result, [
                 User(id=7, name='jack', orders=[
-                    Order(description=u'order 1'),
-                    Order(description=u'order 3'),
-                    Order(description=u'order 5')
+                    Order(description='order 1'),
+                    Order(description='order 3'),
+                    Order(description='order 5')
                 ])
             ])
         self.assert_sql_count(testing.db, go, 1)
@@ -2133,9 +2134,9 @@ class SynonymTest(QueryTest):
                         options(joinedload(User.orders_syn_2)).all()
             eq_(result, [
                 User(id=7, name='jack', orders=[
-                    Order(description=u'order 1'),
-                    Order(description=u'order 3'),
-                    Order(description=u'order 5')
+                    Order(description='order 1'),
+                    Order(description='order 3'),
+                    Order(description='order 5')
                 ])
             ])
         self.assert_sql_count(testing.db, go, 1)
@@ -2149,9 +2150,9 @@ class SynonymTest(QueryTest):
                         options(joinedload('orders_syn_2')).all()
             eq_(result, [
                 User(id=7, name='jack', orders=[
-                    Order(description=u'order 1'),
-                    Order(description=u'order 3'),
-                    Order(description=u'order 5')
+                    Order(description='order 1'),
+                    Order(description='order 3'),
+                    Order(description='order 5')
                 ])
             ])
         self.assert_sql_count(testing.db, go, 1)
@@ -2355,7 +2356,7 @@ class OptionsTest(QueryTest):
                 if isinstance(item, type):
                     item = class_mapper(item)
             else:
-                if isinstance(item, basestring):
+                if isinstance(item, str):
                     item = inspect(r[-1]).mapper.attrs[item]
             r.append(item)
         return tuple(r)

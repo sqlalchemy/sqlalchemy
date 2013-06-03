@@ -540,30 +540,6 @@ class NativeInstrumentationTest(fixtures.ORMTest):
 class Py3KFunctionInstTest(fixtures.ORMTest):
     __requires__ = ("python3", )
 
-    # Py3K
-    #def _kw_only_fixture(self):
-    #    class A(object):
-    #        def __init__(self, a, *, b, c):
-    #            self.a = a
-    #            self.b = b
-    #            self.c = c
-    #    return self._instrument(A)
-    #
-    #def _kw_plus_posn_fixture(self):
-    #    class A(object):
-    #        def __init__(self, a, *args, b, c):
-    #            self.a = a
-    #            self.b = b
-    #            self.c = c
-    #    return self._instrument(A)
-    #
-    #def _kw_opt_fixture(self):
-    #    class A(object):
-    #        def __init__(self, a, *, b, c="c"):
-    #            self.a = a
-    #            self.b = b
-    #            self.c = c
-    #    return self._instrument(A)
 
     def _instrument(self, cls):
         manager = instrumentation.register_class(cls)
@@ -613,6 +589,36 @@ class Py3KFunctionInstTest(fixtures.ORMTest):
             TypeError,
             cls, "a", "b", c="c"
         )
+
+if util.py3k:
+    _locals = {}
+    exec("""
+def _kw_only_fixture(self):
+    class A(object):
+        def __init__(self, a, *, b, c):
+            self.a = a
+            self.b = b
+            self.c = c
+    return self._instrument(A)
+
+def _kw_plus_posn_fixture(self):
+    class A(object):
+        def __init__(self, a, *args, b, c):
+            self.a = a
+            self.b = b
+            self.c = c
+    return self._instrument(A)
+
+def _kw_opt_fixture(self):
+    class A(object):
+        def __init__(self, a, *, b, c="c"):
+            self.a = a
+            self.b = b
+            self.c = c
+    return self._instrument(A)
+""", _locals)
+    for k in _locals:
+        setattr(Py3KFunctionInstTest, k, _locals[k])
 
 class MiscTest(fixtures.ORMTest):
     """Seems basic, but not directly covered elsewhere!"""

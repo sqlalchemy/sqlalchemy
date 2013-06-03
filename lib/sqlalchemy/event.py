@@ -200,11 +200,8 @@ def _remove_dispatcher(cls):
             if not _registrars[k]:
                 del _registrars[k]
 
-
-class Events(object):
+class Events(util.with_metaclass(_EventMeta, object)):
     """Define event listening functions for a particular target type."""
-
-    __metaclass__ = _EventMeta
 
     @classmethod
     def _accept_with(cls, target):
@@ -377,8 +374,10 @@ class _EmptyListener(object):
     def __iter__(self):
         return iter(self.parent_listeners)
 
-    def __nonzero__(self):
+    def __bool__(self):
         return bool(self.parent_listeners)
+
+    __nonzero__ = __bool__
 
 
 class _CompoundListener(object):
@@ -414,9 +413,10 @@ class _CompoundListener(object):
     def __iter__(self):
         return chain(self.parent_listeners, self.listeners)
 
-    def __nonzero__(self):
+    def __bool__(self):
         return bool(self.listeners or self.parent_listeners)
 
+    __nonzero__ = __bool__
 
 class _ListenerCollection(_CompoundListener):
     """Instance-level attributes on instances of :class:`._Dispatch`.

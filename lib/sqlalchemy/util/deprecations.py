@@ -10,7 +10,7 @@ functionality."""
 from .. import exc
 import warnings
 import re
-from langhelpers import decorator
+from .langhelpers import decorator
 
 
 def warn_deprecated(msg, stacklevel=3):

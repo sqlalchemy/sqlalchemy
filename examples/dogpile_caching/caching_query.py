@@ -136,15 +136,15 @@ def _key_from_query(query, qualifier=None):
 
     """
 
-    stmt = query.statement
+    stmt = query.with_labels().statement
     compiled = stmt.compile()
     params = compiled.params
 
     # here we return the key as a long string.  our "key mangler"
     # set up with the region will boil it down to an md5.
     return " ".join(
-                    [unicode(compiled)] +
-                    [unicode(params[k]) for k in sorted(params)])
+                    [str(compiled)] +
+                    [str(params[k]) for k in sorted(params)])
 
 class FromCache(MapperOption):
     """Specifies that a Query should load results from a cache."""

@@ -102,5 +102,5 @@ session.commit()
 
 for customer in session.query(Customer):
     for address in customer.addresses:
-        print address
+        print(address)
         # no parent here

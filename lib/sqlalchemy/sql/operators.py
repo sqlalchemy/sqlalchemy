@@ -9,16 +9,19 @@
 
 """Defines operators used in SQL expressions."""
 
+from .. import util
+
+
 from operator import (
     and_, or_, inv, add, mul, sub, mod, truediv, lt, le, ne, gt, ge, eq, neg,
     getitem, lshift, rshift
     )
 
-# Py2K
-from operator import (div,)
-# end Py2K
+if util.py2k:
+    from operator import div
+else:
+    div = truediv
 
-from ..util import symbol
 
 
 class Operators(object):
@@ -781,17 +784,15 @@ parenthesize (a op b).
 
 """
 
-_smallest = symbol('_smallest', canonical=-100)
-_largest = symbol('_largest', canonical=100)
+_smallest = util.symbol('_smallest', canonical=-100)
+_largest = util.symbol('_largest', canonical=100)
 
 _PRECEDENCE = {
     from_: 15,
     getitem: 15,
     mul: 8,
     truediv: 8,
-    # Py2K
     div: 8,
-    # end Py2K
     mod: 8,
     neg: 8,
     add: 7,

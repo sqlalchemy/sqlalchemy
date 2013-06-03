@@ -7,6 +7,8 @@ from sqlalchemy.testing import ComparesTables, \
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import testing
+from sqlalchemy.util import ue
+
 
 metadata, users = None, None
 
@@ -808,7 +810,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         try:
             m4.reflect(only=['rt_a', 'rt_f'])
             self.assert_(False)
-        except sa.exc.InvalidRequestError, e:
+        except sa.exc.InvalidRequestError as e:
             self.assert_(e.args[0].endswith('(rt_f)'))
 
         m5 = MetaData(testing.db)
@@ -830,7 +832,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         )
 
         if existing:
-            print "Other tables present in database, skipping some checks."
+            print("Other tables present in database, skipping some checks.")
         else:
             baseline.drop_all()
             m9 = MetaData(testing.db)
@@ -1039,19 +1041,19 @@ class UnicodeReflectionTest(fixtures.TestBase):
         cls.metadata = metadata = MetaData()
 
         no_multibyte_period = set([
-            (u'plain', u'col_plain', u'ix_plain')
+            ('plain', 'col_plain', 'ix_plain')
         ])
         no_has_table = [
-            (u'no_has_table_1', u'col_Unit\u00e9ble', u'ix_Unit\u00e9ble'),
-            (u'no_has_table_2', u'col_\u6e2c\u8a66', u'ix_\u6e2c\u8a66'),
+            ('no_has_table_1', ue('col_Unit\u00e9ble'), ue('ix_Unit\u00e9ble')),
+            ('no_has_table_2', ue('col_\u6e2c\u8a66'), ue('ix_\u6e2c\u8a66')),
         ]
         no_case_sensitivity = [
-            (u'\u6e2c\u8a66', u'col_\u6e2c\u8a66', u'ix_\u6e2c\u8a66'),
-            (u'unit\u00e9ble', u'col_unit\u00e9ble', u'ix_unit\u00e9ble'),
+            (ue('\u6e2c\u8a66'), ue('col_\u6e2c\u8a66'), ue('ix_\u6e2c\u8a66')),
+            (ue('unit\u00e9ble'), ue('col_unit\u00e9ble'), ue('ix_unit\u00e9ble')),
         ]
         full = [
-            (u'Unit\u00e9ble', u'col_Unit\u00e9ble', u'ix_Unit\u00e9ble'),
-            (u'\u6e2c\u8a66', u'col_\u6e2c\u8a66', u'ix_\u6e2c\u8a66'),
+            (ue('Unit\u00e9ble'), ue('col_Unit\u00e9ble'), ue('ix_Unit\u00e9ble')),
+            (ue('\u6e2c\u8a66'), ue('col_\u6e2c\u8a66'), ue('ix_\u6e2c\u8a66')),
         ]
 
         # as you can see, our options for this kind of thing

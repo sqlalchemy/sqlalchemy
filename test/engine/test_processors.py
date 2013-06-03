@@ -53,7 +53,7 @@ class PyDateProcessorTest(_DateProcessorTest):
         cls.module = type("util", (object,),
                 dict(
                     (k, staticmethod(v))
-                        for k, v in processors.py_fallback().items()
+                        for k, v in list(processors.py_fallback().items())
                 )
             )
 
@@ -156,7 +156,7 @@ class PyDistillArgsTest(_DistillArgsTest):
         cls.module = type("util", (object,),
                 dict(
                     (k, staticmethod(v))
-                        for k, v in util.py_fallback().items()
+                        for k, v in list(util.py_fallback().items())
                 )
         )
 

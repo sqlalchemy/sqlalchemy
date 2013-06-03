@@ -47,7 +47,7 @@ class EmitDDLTest(fixtures.TestBase):
 
         return (m, ) + tuple(
                             Table('t%d' % i, m, Column('x', Integer))
-                            for i in xrange(1, 6)
+                            for i in range(1, 6)
                         )
 
     def _table_seq_fixture(self):

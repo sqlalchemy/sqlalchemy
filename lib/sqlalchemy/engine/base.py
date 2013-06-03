@@ -3,13 +3,13 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-
+from __future__ import with_statement
 
 """Defines :class:`.Connection` and :class:`.Engine`.
 
 """
 
-from __future__ import with_statement
+
 import sys
 from .. import exc, schema, util, log, interfaces
 from ..sql import expression, util as sql_util
@@ -460,7 +460,7 @@ class Connection(Connectable):
 
         try:
             self.engine.dialect.do_begin(self.connection)
-        except Exception, e:
+        except Exception as e:
             self._handle_dbapi_exception(e, None, None, None, None)
 
     def _rollback_impl(self):
@@ -473,7 +473,7 @@ class Connection(Connectable):
             try:
                 self.engine.dialect.do_rollback(self.connection)
                 self.__transaction = None
-            except Exception, e:
+            except Exception as e:
                 self._handle_dbapi_exception(e, None, None, None, None)
         else:
             self.__transaction = None
@@ -487,7 +487,7 @@ class Connection(Connectable):
         try:
             self.engine.dialect.do_commit(self.connection)
             self.__transaction = None
-        except Exception, e:
+        except Exception as e:
             self._handle_dbapi_exception(e, None, None, None, None)
 
     def _savepoint_impl(self, name=None):
@@ -688,7 +688,7 @@ class Connection(Connectable):
             dialect = self.dialect
             ctx = dialect.execution_ctx_cls._init_default(
                                 dialect, self, conn)
-        except Exception, e:
+        except Exception as e:
             self._handle_dbapi_exception(e, None, None, None, None)
 
         ret = ctx._exec_default(default, None)
@@ -734,6 +734,8 @@ class Connection(Connectable):
 
         distilled_params = _distill_params(multiparams, params)
         if distilled_params:
+            # note this is usually dict but we support RowProxy
+            # as well; but dict.keys() as an iterator is OK
             keys = distilled_params[0].keys()
         else:
             keys = []
@@ -822,7 +824,7 @@ class Connection(Connectable):
                 conn = self._revalidate_connection()
 
             context = constructor(dialect, self, conn, *args)
-        except Exception, e:
+        except Exception as e:
             self._handle_dbapi_exception(e,
                         str(statement), parameters,
                         None, None)
@@ -865,7 +867,7 @@ class Connection(Connectable):
                                     statement,
                                     parameters,
                                     context)
-        except Exception, e:
+        except Exception as e:
             self._handle_dbapi_exception(
                                 e,
                                 statement,
@@ -939,7 +941,7 @@ class Connection(Connectable):
                                 cursor,
                                 statement,
                                 parameters)
-        except Exception, e:
+        except Exception as e:
             self._handle_dbapi_exception(
                                 e,
                                 statement,
@@ -954,17 +956,11 @@ class Connection(Connectable):
         """
         try:
             cursor.close()
-        except Exception, e:
-            try:
-                ex_text = str(e)
-            except TypeError:
-                ex_text = repr(e)
-            if not self.closed:
-                self.connection._logger.warn(
-                            "Error closing cursor: %s", ex_text)
-
-            if isinstance(e, (SystemExit, KeyboardInterrupt)):
-                raise
+        except (SystemExit, KeyboardInterrupt):
+            raise
+        except Exception:
+            self.connection._logger.error(
+                                    "Error closing cursor", exc_info=True)
 
     _reentrant_error = False
     _is_disconnect = False
@@ -1045,7 +1041,7 @@ class Connection(Connectable):
         Compiled: _execute_compiled,
         schema.SchemaItem: _execute_default,
         schema.DDLElement: _execute_ddl,
-        basestring: _execute_text
+        util.string_types[0]: _execute_text
     }
 
     def default_schema_name(self):

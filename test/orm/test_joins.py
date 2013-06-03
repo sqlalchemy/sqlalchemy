@@ -774,14 +774,14 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         eq_(
             sess.query(User).join(Address.user).\
                             filter(Address.email_address=='ed@wood.com').all(),
-            [User(id=8,name=u'ed')]
+            [User(id=8,name='ed')]
         )
 
         # its actually not so controversial if you view it in terms
         # of multiple entities.
         eq_(
             sess.query(User, Address).join(Address.user).filter(Address.email_address=='ed@wood.com').all(),
-            [(User(id=8,name=u'ed'), Address(email_address='ed@wood.com'))]
+            [(User(id=8,name='ed'), Address(email_address='ed@wood.com'))]
         )
 
         # this was the controversial part.  now, raise an error if the feature is abused.
@@ -1066,7 +1066,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         # same with an explicit select_from()
         eq_(
-            sess.query(User).select_from(select([users]).
+            sess.query(User).select_entity_from(select([users]).
                                 order_by(User.id).offset(2).alias()).
                                 join(Order, User.id==Order.user_id).
                                 all(),
@@ -1162,9 +1162,9 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             sess.query(OrderAlias).join('items').filter_by(description='item 3').\
                 order_by(OrderAlias.id).all(),
             [
-                Order(address_id=1,description=u'order 1',isopen=0,user_id=7,id=1),
-                Order(address_id=4,description=u'order 2',isopen=0,user_id=9,id=2),
-                Order(address_id=1,description=u'order 3',isopen=1,user_id=7,id=3)
+                Order(address_id=1,description='order 1',isopen=0,user_id=7,id=1),
+                Order(address_id=4,description='order 2',isopen=0,user_id=9,id=2),
+                Order(address_id=1,description='order 3',isopen=1,user_id=7,id=3)
             ]
         )
 
@@ -1175,9 +1175,9 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
                         filter_by(description='item 3').\
                 order_by(User.id, OrderAlias.id).all(),
             [
-                (User(name=u'jack',id=7), Order(address_id=1,description=u'order 1',isopen=0,user_id=7,id=1), u'item 3'),
-                (User(name=u'jack',id=7), Order(address_id=1,description=u'order 3',isopen=1,user_id=7,id=3), u'item 3'),
-                (User(name=u'fred',id=9), Order(address_id=4,description=u'order 2',isopen=0,user_id=9,id=2), u'item 3')
+                (User(name='jack',id=7), Order(address_id=1,description='order 1',isopen=0,user_id=7,id=1), 'item 3'),
+                (User(name='jack',id=7), Order(address_id=1,description='order 3',isopen=1,user_id=7,id=3), 'item 3'),
+                (User(name='fred',id=9), Order(address_id=4,description='order 2',isopen=0,user_id=9,id=2), 'item 3')
             ]
         )
 
@@ -1334,12 +1334,12 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         eq_(
             sess.query(User, ualias).filter(User.id > ualias.id).order_by(desc(ualias.id), User.name).all(),
             [
-                (User(id=10,name=u'chuck'), User(id=9,name=u'fred')),
-                (User(id=10,name=u'chuck'), User(id=8,name=u'ed')),
-                (User(id=9,name=u'fred'), User(id=8,name=u'ed')),
-                (User(id=10,name=u'chuck'), User(id=7,name=u'jack')),
-                (User(id=8,name=u'ed'), User(id=7,name=u'jack')),
-                (User(id=9,name=u'fred'), User(id=7,name=u'jack'))
+                (User(id=10,name='chuck'), User(id=9,name='fred')),
+                (User(id=10,name='chuck'), User(id=8,name='ed')),
+                (User(id=9,name='fred'), User(id=8,name='ed')),
+                (User(id=10,name='chuck'), User(id=7,name='jack')),
+                (User(id=8,name='ed'), User(id=7,name='jack')),
+                (User(id=9,name='fred'), User(id=7,name='jack'))
             ]
         )
 
@@ -1351,7 +1351,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         eq_(
             sess.query(User.name).join(addresses, User.id==addresses.c.user_id).order_by(User.id).all(),
-            [(u'jack',), (u'ed',), (u'ed',), (u'ed',), (u'fred',)]
+            [('jack',), ('ed',), ('ed',), ('ed',), ('fred',)]
         )
 
     def test_no_joinpoint_expr(self):
@@ -2066,13 +2066,13 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         # using 'n1.parent' implicitly joins to unaliased Node
         eq_(
             sess.query(n1).join(n1.parent).filter(Node.data=='n1').all(),
-            [Node(parent_id=1,data=u'n11',id=2), Node(parent_id=1,data=u'n12',id=3), Node(parent_id=1,data=u'n13',id=4)]
+            [Node(parent_id=1,data='n11',id=2), Node(parent_id=1,data='n12',id=3), Node(parent_id=1,data='n13',id=4)]
         )
 
         # explicit (new syntax)
         eq_(
             sess.query(n1).join(Node, n1.parent).filter(Node.data=='n1').all(),
-            [Node(parent_id=1,data=u'n11',id=2), Node(parent_id=1,data=u'n12',id=3), Node(parent_id=1,data=u'n13',id=4)]
+            [Node(parent_id=1,data='n11',id=2), Node(parent_id=1,data='n12',id=3), Node(parent_id=1,data='n13',id=4)]
         )
 
 

@@ -279,7 +279,7 @@ class ClassManager(dict):
 
     @property
     def attributes(self):
-        return self.itervalues()
+        return iter(self.values())
 
     ## InstanceState management
 
@@ -325,9 +325,11 @@ class ClassManager(dict):
         """TODO"""
         return self.get_impl(key).hasparent(state, optimistic=optimistic)
 
-    def __nonzero__(self):
+    def __bool__(self):
         """All ClassManagers are non-zero regardless of attribute state."""
         return True
+
+    __nonzero__ = __bool__
 
     def __repr__(self):
         return '<%s of %r at %x>' % (
@@ -444,21 +446,23 @@ def __init__(%(apply_pos)s):
     func_vars = util.format_argspec_init(original__init__, grouped=False)
     func_text = func_body % func_vars
 
-    # Py3K
-    #func_defaults = getattr(original__init__, '__defaults__', None)
-    #func_kw_defaults = getattr(original__init__, '__kwdefaults__', None)
-    # Py2K
-    func = getattr(original__init__, 'im_func', original__init__)
-    func_defaults = getattr(func, 'func_defaults', None)
-    # end Py2K
+# start Py3K
+    func_defaults = getattr(original__init__, '__defaults__', None)
+    func_kw_defaults = getattr(original__init__, '__kwdefaults__', None)
+# end Py3K
+# start Py2K
+#    func = getattr(original__init__, 'im_func', original__init__)
+#    func_defaults = getattr(func, 'func_defaults', None)
+# end Py2K
 
     env = locals().copy()
-    exec func_text in env
+    exec(func_text, env)
     __init__ = env['__init__']
     __init__.__doc__ = original__init__.__doc__
     if func_defaults:
-        __init__.func_defaults = func_defaults
-    # Py3K
-    #if func_kw_defaults:
-    #    __init__.__kwdefaults__ = func_kw_defaults
+        __init__.__defaults__ = func_defaults
+# start Py3K
+    if func_kw_defaults:
+        __init__.__kwdefaults__ = func_kw_defaults
+# end Py3K
     return __init__

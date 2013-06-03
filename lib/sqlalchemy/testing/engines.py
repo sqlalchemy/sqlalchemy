@@ -8,7 +8,7 @@ from .util import decorator
 from .. import event, pool
 import re
 import warnings
-
+from .. import util
 
 class ConnectionKiller(object):
 
@@ -31,18 +31,18 @@ class ConnectionKiller(object):
             fn()
         except (SystemExit, KeyboardInterrupt):
             raise
-        except Exception, e:
+        except Exception as e:
             warnings.warn(
                     "testing_reaper couldn't "
                     "rollback/close connection: %s" % e)
 
     def rollback_all(self):
-        for rec in self.proxy_refs.keys():
+        for rec in list(self.proxy_refs):
             if rec is not None and rec.is_valid:
                 self._safe(rec.rollback)
 
     def close_all(self):
-        for rec in self.proxy_refs.keys():
+        for rec in list(self.proxy_refs):
             if rec is not None:
                 self._safe(rec._close)
 
@@ -66,7 +66,7 @@ class ConnectionKiller(object):
 
         self.conns = set()
 
-        for rec in self.testing_engines.keys():
+        for rec in list(self.testing_engines):
             if rec is not config.db:
                 rec.dispose()
 
@@ -75,7 +75,7 @@ class ConnectionKiller(object):
         for conn in self.conns:
             self._safe(conn.close)
         self.conns = set()
-        for rec in self.testing_engines.keys():
+        for rec in list(self.testing_engines):
             rec.dispose()
 
     def assert_all_closed(self):
@@ -160,7 +160,7 @@ class ReconnectFixture(object):
             fn()
         except (SystemExit, KeyboardInterrupt):
             raise
-        except Exception, e:
+        except Exception as e:
             warnings.warn(
                     "ReconnectFixture couldn't "
                     "close connection: %s" % e)
@@ -353,23 +353,22 @@ class ReplayableSession(object):
     Callable = object()
     NoAttribute = object()
 
-    # Py3K
-    #Natives = set([getattr(types, t)
-    #               for t in dir(types) if not t.startswith('_')]). \
-    #               union([type(t) if not isinstance(t, type)
-    #                        else t for t in __builtins__.values()]).\
-    #               difference([getattr(types, t)
-    #                        for t in ('FunctionType', 'BuiltinFunctionType',
-    #                                  'MethodType', 'BuiltinMethodType',
-    #                                  'LambdaType', )])
-    # Py2K
-    Natives = set([getattr(types, t)
-                   for t in dir(types) if not t.startswith('_')]). \
+    if util.py2k:
+        Natives = set([getattr(types, t)
+                   for t in dir(types) if not t.startswith('_')]).\
                    difference([getattr(types, t)
                            for t in ('FunctionType', 'BuiltinFunctionType',
                                      'MethodType', 'BuiltinMethodType',
                                      'LambdaType', 'UnboundMethodType',)])
-    # end Py2K
+    else:
+        Natives = set([getattr(types, t)
+                       for t in dir(types) if not t.startswith('_')]).\
+                       union([type(t) if not isinstance(t, type)
+                                else t for t in __builtins__.values()]).\
+                       difference([getattr(types, t)
+                                for t in ('FunctionType', 'BuiltinFunctionType',
+                                          'MethodType', 'BuiltinMethodType',
+                                          'LambdaType', )])
 
     def __init__(self):
         self.buffer = deque()

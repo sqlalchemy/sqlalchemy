@@ -190,7 +190,7 @@ class ClsLevelListenTest(fixtures.TestBase):
     def test_lis_subcalss_lis(self):
         @event.listens_for(self.TargetOne, "event_one")
         def handler1(x, y):
-            print 'handler1'
+            print('handler1')
 
         class SubTarget(self.TargetOne):
             pass
@@ -207,7 +207,7 @@ class ClsLevelListenTest(fixtures.TestBase):
     def test_lis_multisub_lis(self):
         @event.listens_for(self.TargetOne, "event_one")
         def handler1(x, y):
-            print 'handler1'
+            print('handler1')
 
         class SubTarget(self.TargetOne):
             pass

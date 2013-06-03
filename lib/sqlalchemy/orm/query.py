@@ -47,7 +47,7 @@ def _generative(*assertions):
     def generate(fn, *args, **kw):
         self = args[0]._clone()
         for assertion in assertions:
-            assertion(self, fn.func_name)
+            assertion(self, fn.__name__)
         fn(self, *args[1:], **kw)
         return self
     return generate
@@ -162,15 +162,19 @@ class Query(object):
             for m in m2.iterate_to_root():
                 self._polymorphic_adapters[m.local_table] = adapter
 
-    def _set_select_from(self, *obj):
+    def _set_select_from(self, obj, set_base_alias):
         fa = []
         select_from_alias = None
+
         for from_obj in obj:
             info = inspect(from_obj)
 
             if hasattr(info, 'mapper') and \
                 (info.is_mapper or info.is_aliased_class):
-                self._select_from_entity = from_obj
+                if set_base_alias:
+                    raise sa_exc.ArgumentError(
+                            "A selectable (FromClause) instance is "
+                            "expected when the base alias is being set.")
                 fa.append(info.selectable)
             elif not info.is_selectable:
                 raise sa_exc.ArgumentError(
@@ -179,12 +183,14 @@ class Query(object):
             else:
                 if isinstance(from_obj, expression.SelectBase):
                     from_obj = from_obj.alias()
-                select_from_alias = from_obj
+                if set_base_alias:
+                    select_from_alias = from_obj
                 fa.append(from_obj)
 
         self._from_obj = tuple(fa)
 
-        if len(self._from_obj) == 1 and \
+        if set_base_alias and \
+            len(self._from_obj) == 1 and \
             isinstance(select_from_alias, expression.Alias):
             equivs = self.__all_equivs()
             self._from_obj_alias = sql_util.ColumnAdapter(
@@ -953,7 +959,7 @@ class Query(object):
                 '_prefixes',
         ):
             self.__dict__.pop(attr, None)
-        self._set_select_from(fromclause)
+        self._set_select_from([fromclause], True)
 
         # this enables clause adaptation for non-ORM
         # expressions.
@@ -981,11 +987,7 @@ class Query(object):
         """Return a scalar result corresponding to the given
         column expression."""
         try:
-            # Py3K
-            #return self.values(column).__next__()[0]
-            # Py2K
-            return self.values(column).next()[0]
-            # end Py2K
+            return next(self.values(column))[0]
         except StopIteration:
             return None
 
@@ -1231,7 +1233,7 @@ class Query(object):
         """
 
         clauses = [_entity_descriptor(self._joinpoint_zero(), key) == value
-            for key, value in kwargs.iteritems()]
+            for key, value in kwargs.items()]
         return self.filter(sql.and_(*clauses))
 
     @_generative(_no_statement_condition, _no_limit_offset)
@@ -1296,7 +1298,7 @@ class Query(object):
 
         """
 
-        if isinstance(criterion, basestring):
+        if isinstance(criterion, util.string_types):
             criterion = sql.text(criterion)
 
         if criterion is not None and \
@@ -1655,7 +1657,7 @@ class Query(object):
                                     kwargs.pop('from_joinpoint', False)
         if kwargs:
             raise TypeError("unknown arguments: %s" %
-                                ','.join(kwargs.iterkeys()))
+                                ','.join(kwargs.keys))
         return self._join(props,
                             outerjoin=False, create_aliases=aliased,
                             from_joinpoint=from_joinpoint)
@@ -1671,7 +1673,7 @@ class Query(object):
                                 kwargs.pop('from_joinpoint', False)
         if kwargs:
             raise TypeError("unknown arguments: %s" %
-                    ','.join(kwargs.iterkeys()))
+                    ','.join(kwargs))
         return self._join(props,
                             outerjoin=True, create_aliases=aliased,
                             from_joinpoint=from_joinpoint)
@@ -1701,7 +1703,7 @@ class Query(object):
         if len(keys) == 2 and \
             isinstance(keys[0], (expression.FromClause,
                                     type, AliasedClass)) and \
-            isinstance(keys[1], (basestring, expression.ClauseElement,
+            isinstance(keys[1], (str, expression.ClauseElement,
                                         interfaces.PropComparator)):
             # detect 2-arg form of join and
             # convert to a tuple.
@@ -1721,14 +1723,14 @@ class Query(object):
             # is a little bit of legacy behavior still at work here
             # which means they might be in either order.  may possibly
             # lock this down to (right_entity, onclause) in 0.6.
-            if isinstance(arg1, (interfaces.PropComparator, basestring)):
+            if isinstance(arg1, (interfaces.PropComparator, util.string_types)):
                 right_entity, onclause = arg2, arg1
             else:
                 right_entity, onclause = arg1, arg2
 
             left_entity = prop = None
 
-            if isinstance(onclause, basestring):
+            if isinstance(onclause, util.string_types):
                 left_entity = self._joinpoint_zero()
 
                 descriptor = _entity_descriptor(left_entity, onclause)
@@ -1922,7 +1924,7 @@ class Query(object):
                     clause = orm_join(clause,
                                     right,
                                     onclause, isouter=outerjoin)
-                except sa_exc.ArgumentError, ae:
+                except sa_exc.ArgumentError as ae:
                     raise sa_exc.InvalidRequestError(
                             "Could not find a FROM clause to join from.  "
                             "Tried joining to %s, but got: %s" % (right, ae))
@@ -1947,7 +1949,7 @@ class Query(object):
 
         try:
             clause = orm_join(clause, right, onclause, isouter=outerjoin)
-        except sa_exc.ArgumentError, ae:
+        except sa_exc.ArgumentError as ae:
             raise sa_exc.InvalidRequestError(
                     "Could not find a FROM clause to join from.  "
                     "Tried joining to %s, but got: %s" % (right, ae))
@@ -1974,21 +1976,134 @@ class Query(object):
     def select_from(self, *from_obj):
         """Set the FROM clause of this :class:`.Query` explicitly.
 
-        Sending a mapped class or entity here effectively replaces the
+        :meth:`.Query.select_from` is often used in conjunction with
+        :meth:`.Query.join` in order to control which entity is selected
+        from on the "left" side of the join.
+
+        The entity or selectable object here effectively replaces the
         "left edge" of any calls to :meth:`~.Query.join`, when no
         joinpoint is otherwise established - usually, the default "join
         point" is the leftmost entity in the :class:`~.Query` object's
         list of entities to be selected.
 
-        Mapped entities or plain :class:`~.Table` or other selectables
-        can be sent here which will form the default FROM clause.
+        A typical example::
 
-        See the example in :meth:`~.Query.join` for a typical
-        usage of :meth:`~.Query.select_from`.
+            q = session.query(Address).select_from(User).\\
+                join(User.addresses).\\
+                filter(User.name == 'ed')
+
+        Which produces SQL equivalent to::
+
+            SELECT address.* FROM user
+            JOIN address ON user.id=address.user_id
+            WHERE user.name = :name_1
+
+        :param \*from_obj: collection of one or more entities to apply
+         to the FROM clause.  Entities can be mapped classes,
+         :class:`.AliasedClass` objects, :class:`.Mapper` objects
+         as well as core :class:`.FromClause` elements like subqueries.
+
+        .. versionchanged:: 0.9
+            This method no longer applies the given FROM object
+            to be the selectable from which matching entities
+            select from; the :meth:`.select_entity_from` method
+            now accomplishes this.  See that method for a description
+            of this behavior.
+
+        .. seealso::
+
+            :meth:`~.Query.join`
+
+            :meth:`.Query.select_entity_from`
 
         """
 
-        self._set_select_from(*from_obj)
+        self._set_select_from(from_obj, False)
+
+    @_generative(_no_clauseelement_condition)
+    def select_entity_from(self, from_obj):
+        """Set the FROM clause of this :class:`.Query` to a
+        core selectable, applying it as a replacement FROM clause
+        for corresponding mapped entities.
+
+        This method is similar to the :meth:`.Query.select_from`
+        method, in that it sets the FROM clause of the query.  However,
+        where :meth:`.Query.select_from` only affects what is placed
+        in the FROM, this method also applies the given selectable
+        to replace the FROM which the selected entities would normally
+        select from.
+
+        The given ``from_obj`` must be an instance of a :class:`.FromClause`,
+        e.g. a :func:`.select` or :class:`.Alias` construct.
+
+        An example would be a :class:`.Query` that selects ``User`` entities,
+        but uses :meth:`.Query.select_entity_from` to have the entities
+        selected from a :func:`.select` construct instead of the
+        base ``user`` table::
+
+            select_stmt = select([User]).where(User.id == 7)
+
+            q = session.query(User).\\
+                    select_entity_from(select_stmt).\\
+                    filter(User.name == 'ed')
+
+        The query generated will select ``User`` entities directly
+        from the given :func:`.select` construct, and will be::
+
+            SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name
+            FROM (SELECT "user".id AS id, "user".name AS name
+            FROM "user"
+            WHERE "user".id = :id_1) AS anon_1
+            WHERE anon_1.name = :name_1
+
+        Notice above that even the WHERE criterion was "adapted" such that
+        the ``anon_1`` subquery effectively replaces all references to the
+        ``user`` table, except for the one that it refers to internally.
+
+        Compare this to :meth:`.Query.select_from`, which as of
+        version 0.9, does not affect existing entities.  The
+        statement below::
+
+            q = session.query(User).\\
+                    select_from(select_stmt).\\
+                    filter(User.name == 'ed')
+
+        Produces SQL where both the ``user`` table as well as the
+        ``select_stmt`` construct are present as separate elements
+        in the FROM clause.  No "adaptation" of the ``user`` table
+        is applied::
+
+            SELECT "user".id AS user_id, "user".name AS user_name
+            FROM "user", (SELECT "user".id AS id, "user".name AS name
+            FROM "user"
+            WHERE "user".id = :id_1) AS anon_1
+            WHERE "user".name = :name_1
+
+        :meth:`.Query.select_entity_from` maintains an older
+        behavior of :meth:`.Query.select_from`.  In modern usage,
+        similar results can also be achieved using :func:`.aliased`::
+
+            select_stmt = select([User]).where(User.id == 7)
+            user_from_select = aliased(User, select_stmt.alias())
+
+            q = session.query(user_from_select)
+
+        :param from_obj: a :class:`.FromClause` object that will replace
+         the FROM clause of this :class:`.Query`.
+
+        .. seealso::
+
+            :meth:`.Query.select_from`
+
+        .. versionadded:: 0.8
+            :meth:`.Query.select_entity_from` was added to specify
+            the specific behavior of entity replacement, however
+            the :meth:`.Query.select_from` maintains this behavior
+            as well until 0.9.
+
+        """
+
+        self._set_select_from([from_obj], True)
 
     def __getitem__(self, item):
         if isinstance(item, slice):
@@ -2115,7 +2230,7 @@ class Query(object):
         appropriate to the entity class represented by this ``Query``.
 
         """
-        if isinstance(statement, basestring):
+        if isinstance(statement, util.string_types):
             statement = sql.text(statement)
 
         if not isinstance(statement,
@@ -2697,7 +2812,7 @@ class _QueryEntity(object):
     def __new__(cls, *args, **kwargs):
         if cls is _QueryEntity:
             entity = args[1]
-            if not isinstance(entity, basestring) and \
+            if not isinstance(entity, util.string_types) and \
                         _is_mapped_class(entity):
                 cls = _MapperEntity
             else:
@@ -2905,7 +3020,7 @@ class _ColumnEntity(_QueryEntity):
         self.expr = column
         self.namespace = namespace
 
-        if isinstance(column, basestring):
+        if isinstance(column, util.string_types):
             column = sql.literal_column(column)
             self._label_name = column.name
         elif isinstance(column, (
@@ -3071,7 +3186,7 @@ class QueryContext(object):
         self.create_eager_joins = []
         self.propagate_options = set(o for o in query._with_options if
                                         o.propagate_to_loaders)
-        self.attributes = self._attributes = query._attributes.copy()
+        self.attributes = query._attributes.copy()
 
 
 class AliasOption(interfaces.MapperOption):
@@ -3080,7 +3195,7 @@ class AliasOption(interfaces.MapperOption):
         self.alias = alias
 
     def process_query(self, query):
-        if isinstance(self.alias, basestring):
+        if isinstance(self.alias, util.string_types):
             alias = query._mapper_zero().mapped_table.alias(self.alias)
         else:
             alias = self.alias

@@ -386,8 +386,8 @@ def create_proxied_attribute(descriptor):
                     return getattr(self.comparator, attribute)
                 except AttributeError:
                     raise AttributeError(
-                    'Neither %r object nor %r object associated with %s '
-                    'has an attribute %r' % (
+                        'Neither %r object nor %r object associated with %s '
+                        'has an attribute %r' % (
                     type(descriptor).__name__,
                     type(self.comparator).__name__,
                     self,
@@ -866,7 +866,7 @@ class CollectionAttributeImpl(AttributeImpl):
         self.collection_factory = typecallable
 
     def __copy(self, item):
-        return [y for y in list(collections.collection_adapter(item))]
+        return [y for y in collections.collection_adapter(item)]
 
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
         current = self.get(state, dict_, passive=passive)
@@ -1214,8 +1214,9 @@ class History(History):
 
     """
 
-    def __nonzero__(self):
+    def __bool__(self):
         return self != HISTORY_BLANK
+    __nonzero__ = __bool__
 
     def empty(self):
         """Return True if this :class:`.History` has no changes

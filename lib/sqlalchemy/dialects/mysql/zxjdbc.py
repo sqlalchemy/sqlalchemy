@@ -37,7 +37,7 @@ class _ZxJDBCBit(BIT):
                 return value
             if isinstance(value, bool):
                 return int(value)
-            v = 0L
+            v = 0
             for i in value:
                 v = v << 8 | (i & 0xff)
             value = v

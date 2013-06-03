@@ -143,6 +143,7 @@ effect for other DBAPIs.
 
 """
 from __future__ import absolute_import
+
 import re
 import logging
 
@@ -190,22 +191,20 @@ class _PGNumeric(sqltypes.Numeric):
 class _PGEnum(ENUM):
     def __init__(self, *arg, **kw):
         super(_PGEnum, self).__init__(*arg, **kw)
-        # Py2K
-        if self.convert_unicode:
-            self.convert_unicode = "force"
-        # end Py2K
+        if util.py2k:
+            if self.convert_unicode:
+                self.convert_unicode = "force"
 
 
 class _PGArray(ARRAY):
     def __init__(self, *arg, **kw):
         super(_PGArray, self).__init__(*arg, **kw)
-        # Py2K
-        # FIXME: this check won't work for setups that
-        # have convert_unicode only on their create_engine().
-        if isinstance(self.item_type, sqltypes.String) and \
-                    self.item_type.convert_unicode:
-            self.item_type.convert_unicode = "force"
-        # end Py2K
+        if util.py2k:
+            # FIXME: this check won't work for setups that
+            # have convert_unicode only on their create_engine().
+            if isinstance(self.item_type, sqltypes.String) and \
+                        self.item_type.convert_unicode:
+                self.item_type.convert_unicode = "force"
 
 
 class _PGHStore(HSTORE):
@@ -294,9 +293,9 @@ class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
 
 class PGDialect_psycopg2(PGDialect):
     driver = 'psycopg2'
-    # Py2K
-    supports_unicode_statements = False
-    # end Py2K
+    if util.py2k:
+        supports_unicode_statements = False
+
     default_paramstyle = 'pyformat'
     supports_sane_multi_rowcount = False
     execution_ctx_cls = PGExecutionContext_psycopg2
@@ -393,7 +392,13 @@ class PGDialect_psycopg2(PGDialect):
                 hstore_oids = self._hstore_oids(conn)
                 if hstore_oids is not None:
                     oid, array_oid = hstore_oids
-                    extras.register_hstore(conn, oid=oid, array_oid=array_oid)
+                    if util.py2k:
+                        extras.register_hstore(conn, oid=oid,
+                                        array_oid=array_oid,
+                                           unicode=True)
+                    else:
+                        extras.register_hstore(conn, oid=oid,
+                                        array_oid=array_oid)
             fns.append(on_connect)
 
         if fns:

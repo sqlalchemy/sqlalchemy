@@ -52,10 +52,10 @@ class AliasedClassTest(fixtures.TestBase):
         alias = aliased(Point)
 
         assert Point.zero
-        # Py2K
-        # TODO: what is this testing ??
-        assert not getattr(alias, 'zero')
-        # end Py2K
+# start Py2K
+#        # TODO: what is this testing ??
+#        assert not getattr(alias, 'zero')
+# end Py2K
 
     def test_classmethods(self):
         class Point(object):
@@ -123,17 +123,19 @@ class AliasedClassTest(fixtures.TestBase):
                 self.func = func
             def __get__(self, instance, owner):
                 if instance is None:
-                    # Py3K
-                    #args = (self.func, owner)
-                    # Py2K
-                    args = (self.func, owner, owner.__class__)
-                    # end Py2K
+# start Py3K
+                    args = (self.func, owner)
+# end Py3K
+# start Py2K
+#                    args = (self.func, owner, owner.__class__)
+# end Py2K
                 else:
-                    # Py3K
-                    #args = (self.func, instance)
-                    # Py2K
-                    args = (self.func, instance, owner)
-                    # end Py2K
+# start Py3K
+                    args = (self.func, instance)
+# end Py3K
+# start Py2K
+#                    args = (self.func, instance, owner)
+# end Py2K
                 return types.MethodType(*args)
 
         class PropertyDescriptor(object):
@@ -368,13 +370,6 @@ class PathRegistryTest(_fixtures.FixtureTest):
         assert p1.contains_mapper(umapper)
         assert not p1.contains_mapper(amapper)
 
-    def _registry(self):
-        class Reg(dict):
-            @property
-            def _attributes(self):
-                return self
-        return Reg()
-
     def test_path(self):
         umapper = inspect(self.classes.User)
         amapper = inspect(self.classes.Address)
@@ -394,7 +389,7 @@ class PathRegistryTest(_fixtures.FixtureTest):
         )
 
     def test_registry_set(self):
-        reg = self._registry()
+        reg = {}
         umapper = inspect(self.classes.User)
         amapper = inspect(self.classes.Address)
 
@@ -415,7 +410,7 @@ class PathRegistryTest(_fixtures.FixtureTest):
         )
 
     def test_registry_get(self):
-        reg = self._registry()
+        reg = {}
         umapper = inspect(self.classes.User)
         amapper = inspect(self.classes.Address)
 
@@ -437,7 +432,7 @@ class PathRegistryTest(_fixtures.FixtureTest):
         eq_(p3.get(reg, "p1key"), None)
 
     def test_registry_contains(self):
-        reg = self._registry()
+        reg = {}
         umapper = inspect(self.classes.User)
         amapper = inspect(self.classes.Address)
 
@@ -457,7 +452,7 @@ class PathRegistryTest(_fixtures.FixtureTest):
         assert not p2.contains(reg, "fake")
 
     def test_registry_setdefault(self):
-        reg = self._registry()
+        reg = {}
         umapper = inspect(self.classes.User)
         amapper = inspect(self.classes.Address)
 

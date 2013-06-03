@@ -315,7 +315,7 @@ class UOWTransaction(object):
         # see if the graph of mapper dependencies has cycles.
         self.cycles = cycles = topological.find_cycles(
                                         self.dependencies,
-                                        self.postsort_actions.values())
+                                        list(self.postsort_actions.values()))
 
         if cycles:
             # if yes, break the per-mapper actions into
@@ -381,7 +381,7 @@ class UOWTransaction(object):
         """
         states = set(self.states)
         isdel = set(
-            s for (s, (isdelete, listonly)) in self.states.iteritems()
+            s for (s, (isdelete, listonly)) in self.states.items()
             if isdelete
         )
         other = states.difference(isdel)

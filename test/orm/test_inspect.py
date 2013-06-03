@@ -142,7 +142,7 @@ class TestORMInspection(_fixtures.FixtureTest):
             [insp.get_property('id'), insp.get_property('name')]
         )
         eq_(
-            insp.column_attrs.keys(),
+            list(insp.column_attrs.keys()),
             ['id', 'name']
         )
         is_(
@@ -274,7 +274,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         insp = inspect(SomeSubClass)
         eq_(
             dict((k, v.extension_type)
-                for k, v in insp.all_orm_descriptors.items()
+                for k, v in list(insp.all_orm_descriptors.items())
             ),
             {
                 'id': NOT_EXTENSION,

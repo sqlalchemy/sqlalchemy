@@ -287,7 +287,7 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
     def _five_obj_fixture(self):
         sess = Session()
         e1, e2, e3, e4, e5 = [
-            Engineer(name='e%d' % (i + 1)) for i in xrange(5)
+            Engineer(name='e%d' % (i + 1)) for i in range(5)
         ]
         e3.reports_to = e1
         e4.reports_to = e2
