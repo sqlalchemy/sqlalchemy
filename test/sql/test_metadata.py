@@ -1211,6 +1211,30 @@ class ConstraintTest(fixtures.TestBase):
             schema.CreateTable(t1).compile
         )
 
+    def test_constraint_copied_to_proxy_ok(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('id', Integer, primary_key=True))
+        t2 = Table('t2', m, Column('id', Integer, ForeignKey('t1.id'),
+                        primary_key=True))
+
+        s = tsa.select([t2])
+        t2fk = list(t2.c.id.foreign_keys)[0]
+        sfk = list(s.c.id.foreign_keys)[0]
+
+        # the two FKs share the ForeignKeyConstraint
+        is_(
+            t2fk.constraint,
+            sfk.constraint
+        )
+
+        # but the ForeignKeyConstraint isn't
+        # aware of the select's FK
+        eq_(
+            t2fk.constraint.elements,
+            [t2fk]
+        )
+
+
 class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
     """Test Column() construction."""
 

@@ -781,15 +781,21 @@ class JoinConditionTest(fixtures.TestBase, AssertsExecutionResults):
     def test_join_condition(self):
         m = MetaData()
         t1 = Table('t1', m, Column('id', Integer))
-        t2 = Table('t2', m, Column('id', Integer), Column('t1id',
-                   ForeignKey('t1.id')))
-        t3 = Table('t3', m, Column('id', Integer), Column('t1id',
-                   ForeignKey('t1.id')), Column('t2id',
-                   ForeignKey('t2.id')))
-        t4 = Table('t4', m, Column('id', Integer), Column('t2id',
-                   ForeignKey('t2.id')))
+        t2 = Table('t2', m, Column('id', Integer),
+                    Column('t1id', ForeignKey('t1.id')))
+        t3 = Table('t3', m,
+                    Column('id', Integer),
+                    Column('t1id', ForeignKey('t1.id')),
+                    Column('t2id', ForeignKey('t2.id')))
+        t4 = Table('t4', m, Column('id', Integer),
+                    Column('t2id', ForeignKey('t2.id')))
+        t5 = Table('t5', m,
+                    Column('t1id1', ForeignKey('t1.id')),
+                    Column('t1id2', ForeignKey('t1.id')),
+            )
         t1t2 = t1.join(t2)
         t2t3 = t2.join(t3)
+
         for (left, right, a_subset, expected) in [
             (t1, t2, None, t1.c.id == t2.c.t1id),
             (t1t2, t3, t2, t1t2.c.t2_id == t3.c.t2id),
@@ -803,12 +809,15 @@ class JoinConditionTest(fixtures.TestBase, AssertsExecutionResults):
             assert expected.compare(sql_util.join_condition(left,
                                     right, a_subset=a_subset))
 
+
         # these are ambiguous, or have no joins
         for left, right, a_subset in [
             (t1t2, t3, None),
             (t2t3, t1, None),
             (t1, t4, None),
             (t1t2, t2t3, None),
+            (t5, t1, None),
+            (t5.select(use_labels=True), t1, None)
         ]:
             assert_raises(
                 exc.ArgumentError,
