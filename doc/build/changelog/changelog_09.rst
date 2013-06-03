@@ -7,6 +7,21 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2726
+
+        Removed the "not implemented" ``__iter__()`` call from the base
+        :class:`.ColumnOperators` class, while this was introduced
+        in 0.8.0 to prevent an endless, memory-growing loop when one also
+        implements a ``__getitem__()`` method on a custom
+        operator and then calls erroneously ``list()`` on that object,
+        it had the effect of causing column elements to report that they
+        were in fact iterable types which then throw an error when you try
+        to iterate.   There's no real way to have both sides here so we
+        stick with Python best practices.  Careful with implementing
+        ``__getitem__()`` on your custom operators! Also in 0.8.2.
+
+    .. change::
         :tags: feature, sql
         :tickets: 1068
 
