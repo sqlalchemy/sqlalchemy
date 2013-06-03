@@ -616,6 +616,10 @@ class MutableDict(Mutable, dict):
         dict.__delitem__(self, key)
         self.changed()
 
+    def clear(self):
+        dict.clear(self)
+        self.changed()
+
     @classmethod
     def coerce(cls, key, value):
         """Convert plain dictionary to MutableDict."""
