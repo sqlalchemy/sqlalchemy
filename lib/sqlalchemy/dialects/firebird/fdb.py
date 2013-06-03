@@ -15,11 +15,11 @@
 
     .. versionadded:: 0.8 - Support for the fdb Firebird driver.
 
-Status
-------
+    .. versionchanged:: 0.9 - The fdb dialect is now the default dialect
+       under the ``firebird://`` URL space, as ``fdb`` is now the official
+       Python driver for Firebird.
 
-The fdb dialect is new and not yet tested (can't get fdb to build).
-
+The dialect currently accepts the same arguments as the Kinterbasdb driver.
 
 """
 

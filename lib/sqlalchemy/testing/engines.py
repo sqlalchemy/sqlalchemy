@@ -47,13 +47,13 @@ class ConnectionKiller(object):
                 self._safe(rec._close)
 
     def _after_test_ctx(self):
-        pass
         # this can cause a deadlock with pg8000 - pg8000 acquires
         # prepared statment lock inside of rollback() - if async gc
         # is collecting in finalize_fairy, deadlock.
-        # not sure if this should be if pypy/jython only
-        #for conn in self.conns:
-        #    self._safe(conn.rollback)
+        # not sure if this should be if pypy/jython only.
+        # note that firebird/fdb definitely needs this though
+        for conn in self.conns:
+            self._safe(conn.rollback)
 
     def _stop_test_ctx(self):
         if config.options.low_connections:
