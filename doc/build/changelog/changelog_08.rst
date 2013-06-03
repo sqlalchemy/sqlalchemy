@@ -7,6 +7,17 @@
     :version: 0.8.2
 
     .. change::
+        :tags: bug, mysql
+        :tickets: 2721
+
+        The ``deferrable`` keyword argument on :class:`.ForeignKey` and
+        :class:`.ForeignKeyConstraint` will not render the ``DEFERRABLE`` keyword
+        on the MySQL dialect.  For a long time we left this in place because
+        a non-deferrable foreign key would act very differently than a deferrable
+        one, but some environments just disable FKs on MySQL, so we'll be less
+        opinionated here.
+
+    .. change::
         :tags: bug, ext, orm
         :tickets: 2730
 
