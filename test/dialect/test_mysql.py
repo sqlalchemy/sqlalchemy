@@ -82,6 +82,19 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "PRIMARY KEY (data) USING btree)",
             dialect=mysql.dialect())
 
+    def test_skip_deferrable_kw(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('id', Integer, primary_key=True))
+        t2 = Table('t2', m, Column('id', Integer,
+                        ForeignKey('t1.id', deferrable=True),
+                            primary_key=True))
+
+        self.assert_compile(
+            schema.CreateTable(t2),
+            "CREATE TABLE t2 (id INTEGER NOT NULL, "
+            "PRIMARY KEY (id), FOREIGN KEY(id) REFERENCES t1 (id))"
+        )
+
 class DialectTest(fixtures.TestBase):
     __only_on__ = 'mysql'
 

@@ -1567,6 +1567,8 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
                     (self.preparer.format_table(constraint.table),
                     qual, const)
 
+    def define_constraint_deferrability(self, constraint):
+        return ""
 
 class MySQLTypeCompiler(compiler.GenericTypeCompiler):
     def _extend_numeric(self, type_, spec):
