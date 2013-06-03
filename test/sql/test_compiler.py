@@ -748,7 +748,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 'foo || :param_1')
 
 
-    def test_labels_in_expressions(self):
+    def test_order_by_labels_enabled(self):
         lab1 = (table1.c.myid + 12).label('foo')
         lab2 = func.somefunc(table1.c.name).label('bar')
         dialect = default.DefaultDialect()
@@ -799,6 +799,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=dialect
             )
 
+    def test_order_by_labels_disabled(self):
+        lab1 = (table1.c.myid + 12).label('foo')
+        lab2 = func.somefunc(table1.c.name).label('bar')
         dialect = default.DefaultDialect()
         dialect.supports_simple_order_by_label = False
         self.assert_compile(select([lab1, lab2]).order_by(lab1, desc(lab2)),
