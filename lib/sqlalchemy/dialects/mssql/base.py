@@ -1172,6 +1172,7 @@ class MSDialect(default.DefaultDialect):
         columns = ischema.columns
 
         whereclause = self._unicode_cast(columns.c.table_name) == tablename
+
         if owner:
             whereclause = sql.and_(whereclause,
                                    columns.c.table_schema == owner)
