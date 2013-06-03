@@ -15,7 +15,7 @@ from sqlalchemy.dialects import mysql, firebird, postgresql, oracle, \
         sqlite, mssql
 from sqlalchemy import util
 import datetime
-
+import collections
 from sqlalchemy import text, literal_column
 
 class LoopOperate(operators.ColumnOperators):
@@ -352,17 +352,16 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "x -> :x_1"
         )
 
-    def test_no_endless_list_call(self):
+    @testing.requires.python26
+    def test_op_not_an_iterator(self):
+        # see [ticket:2726]
         class MyType(UserDefinedType):
             class comparator_factory(UserDefinedType.Comparator):
                 def __getitem__(self, index):
                     return self.op("->")(index)
 
-        assert_raises_message(
-            NotImplementedError,
-            "Class <class 'sqlalchemy.schema.Column'> is not iterable",
-            list, Column('x', MyType())
-        )
+        col = Column('x', MyType())
+        assert not isinstance(col, collections.Iterable)
 
     def test_lshift(self):
         class MyType(UserDefinedType):

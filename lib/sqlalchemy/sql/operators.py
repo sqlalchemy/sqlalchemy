@@ -310,11 +310,6 @@ class ColumnOperators(Operators):
         """
         return self.operate(neg)
 
-    def __iter__(self):
-        """Block calls to list() from calling __getitem__() endlessly."""
-
-        raise NotImplementedError("Class %s is not iterable" % self.__class__)
-
     def __getitem__(self, index):
         """Implement the [] operator.
 
