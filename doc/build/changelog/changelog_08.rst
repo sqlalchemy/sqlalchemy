@@ -7,6 +7,16 @@
     :version: 0.8.2
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2738
+
+        Fixed bug whereby joining a select() of a table "A" with multiple
+        foreign key paths to a table "B", to that table "B", would fail
+        to produce the "ambiguous join condition" error that would be
+        reported if you join table "A" directly to "B"; it would instead
+        produce a join condition with multiple criteria.
+
+    .. change::
         :tags: bug, sql, reflection
         :tickets: 2728
 
