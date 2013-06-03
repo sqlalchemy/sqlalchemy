@@ -49,6 +49,8 @@ class DefaultDialect(interfaces.Dialect):
     postfetch_lastrowid = True
     implicit_returning = False
 
+    supports_right_nested_joins = True
+
     supports_native_enum = False
     supports_native_boolean = False
 

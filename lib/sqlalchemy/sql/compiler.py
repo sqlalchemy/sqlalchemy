@@ -1079,7 +1079,10 @@ class SQLCompiler(engine.Compiled):
 
     def _transform_select_for_nested_joins(self, select):
         adapters = []
+        stop_on = []
 
+        # test for "unconditional" - any statement with
+        # no_replacement_traverse setup, i.e. query.statement, from_self(), etc.
         traverse_options = {"cloned": {}, "unconditional": True}
 
         def visit_join(elem):
@@ -1090,6 +1093,12 @@ class SQLCompiler(engine.Compiled):
                 while adapters:
                     adapt = adapters.pop(-1)
                     selectable = adapt.traverse(selectable)
+                #stop_on.append(selectable)
+
+                # test: see test_subquery_relations:
+                # CyclicalInheritingEagerTestTwo.test_integrate
+                stop_on.append(elem.left)
+
 
                 for c in selectable.c:
                     c._label = c._key_label = c.name
@@ -1097,6 +1106,7 @@ class SQLCompiler(engine.Compiled):
                 elem.right = selectable
                 adapter = sql_util.ClauseAdapter(selectable,
                                         traverse_options=traverse_options)
+                adapter.__traverse_options__['stop_on'].extend(stop_on)
                 adapters.append(adapter)
 
         select = visitors.cloned_traverse(select,
@@ -1119,7 +1129,9 @@ class SQLCompiler(engine.Compiled):
                             positional_names=None,
                             nested_join_translation=False, **kwargs):
 
-        #nested_join_translation = True
+
+        if self.dialect.supports_right_nested_joins:
+            nested_join_translation = True
         if not nested_join_translation:
             transformed_select = self._transform_select_for_nested_joins(select)
             text = self.visit_select(

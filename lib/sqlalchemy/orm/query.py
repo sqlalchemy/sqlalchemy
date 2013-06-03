@@ -1797,6 +1797,15 @@ class Query(object):
                                 right_entity, onclause,
                                 outerjoin, create_aliases, prop)
 
+    def _tables_overlap(self, left, right):
+        """Return True if parent/child tables have some overlap."""
+
+        return  bool(
+            set(sql_util.find_tables(left)).intersection(
+                sql_util.find_tables(right)
+            )
+        )
+
     def _join_left_to_right(self, left, right,
                             onclause, outerjoin, create_aliases, prop):
         """append a JOIN to the query's from clause."""
@@ -1816,10 +1825,16 @@ class Query(object):
                         "are the same entity" %
                         (left, right))
 
+        # TODO: get the l_info, r_info passed into
+        # the methods so inspect() doesnt need to be called again
+        l_info = inspect(left)
+        r_info = inspect(right)
+        overlap = self._tables_overlap(l_info.selectable, r_info.selectable)
+
         right, onclause = self._prepare_right_side(
                                             right, onclause,
                                             create_aliases,
-                                            prop)
+                                            prop, overlap)
 
         # if joining on a MapperProperty path,
         # track the path to prevent redundant joins
@@ -1833,7 +1848,7 @@ class Query(object):
 
         self._join_to_left(left, right, onclause, outerjoin)
 
-    def _prepare_right_side(self, right, onclause, create_aliases, prop):
+    def _prepare_right_side(self, right, onclause, create_aliases, prop, overlap):
         info = inspect(right)
 
         right_mapper, right_selectable, right_is_aliased = \
@@ -1875,9 +1890,10 @@ class Query(object):
                             not right_is_aliased and \
                             (
                                 right_mapper.with_polymorphic
-                                #isinstance(
-                                #    right_mapper.mapped_table,
-                                #    expression.Join)
+                                or
+                                overlap # test for overlap:
+                                        # orm/inheritance/relationships.py
+                                        # SelfReferentialM2MTest
                             )
 
         if not need_adapter and (create_aliases or aliased_entity):
