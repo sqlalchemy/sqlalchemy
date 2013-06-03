@@ -2723,13 +2723,22 @@ class MetaData(SchemaItem):
                     bind.dialect.get_view_names(conn, schema)
                 )
 
-            current = set(self.tables.iterkeys())
+            if schema is not None:
+                available_w_schema = util.OrderedSet(["%s.%s" % (schema, name)
+                                        for name in available])
+            else:
+                available_w_schema = available
+
+            current = set(self.tables)
 
             if only is None:
-                load = [name for name in available if name not in current]
+                load = [name for name, schname in
+                            zip(available, available_w_schema)
+                            if schname not in current]
             elif util.callable(only):
-                load = [name for name in available
-                    if name not in current and only(name, self)]
+                load = [name for name, schname in
+                            zip(available, available_w_schema)
+                            if schname not in current and only(name, self)]
             else:
                 missing = [name for name in only if name not in available]
                 if missing:
