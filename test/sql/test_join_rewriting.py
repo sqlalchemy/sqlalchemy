@@ -188,6 +188,57 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
             "ON a_1.id = anon_1.b_a_id ORDER BY anon_1.b_id"
         )
 
+class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
+    @util.classproperty
+    def __dialect__(cls):
+        dialect = default.DefaultDialect()
+        dialect.supports_right_nested_joins = False
+        return dialect
+
+    def _test(self, s, assert_):
+        s.use_labels = False
+        self.assert_compile(
+            s,
+            assert_
+        )
+
+    _a__b_dc = (
+            "SELECT a.id, b.id, "
+            "b.a_id, c.id, "
+            "c.b_id, d.id, "
+            "d.c_id "
+            "FROM a JOIN (b JOIN (c JOIN d ON c.id = d.c_id) "
+            "ON b.id = c.b_id) ON a.id = b.a_id "
+            "WHERE b.id = :id_1 AND c.id = :id_2 AND "
+            "d.id = :id_3 "
+            "ORDER BY a.id, b.id, c.id, d.id"
+            )
+
+    _a_bc = (
+            "SELECT a.id, b.id, "
+            "b.a_id, c.id, "
+            "c.b_id FROM a JOIN "
+            "(b JOIN c ON b.id = c.b_id) "
+            "ON a.id = b.a_id "
+            "WHERE b.id = :id_1 AND c.id = :id_2 "
+            "ORDER BY a.id, b.id, c.id"
+            )
+
+    _a_bc_comma_a1_selbc = (
+            "SELECT a.id, a_1.id, b.id, "
+            "b.a_id, c.id, "
+            "c.b_id, anon_1.b_id, "
+            "anon_1.b_a_id, anon_1.c_id, "
+            "anon_1.c_b_id FROM a "
+            "JOIN (b JOIN c ON b.id = c.b_id) "
+            "ON a.id = b.a_id, "
+            "a AS a_1 JOIN "
+                "(SELECT b.id AS b_id, b.a_id AS b_a_id, "
+                "c.id AS c_id, c.b_id AS c_b_id "
+                "FROM b JOIN c ON b.id = c.b_id) AS anon_1 "
+            "ON a_1.id = anon_1.b_a_id ORDER BY anon_1.b_id"
+        )
+
 class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
     """invoke the SQL on the current backend to ensure compatibility"""
 

@@ -1164,6 +1164,7 @@ class SQLCompiler(engine.Compiled):
                             nested_join_translation=False, **kwargs):
 
         needs_nested_translation = \
+                            select.use_labels and \
                             not nested_join_translation and \
                             not self.stack and \
                             not self.dialect.supports_right_nested_joins
