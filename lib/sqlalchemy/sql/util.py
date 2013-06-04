@@ -200,15 +200,28 @@ def clause_is_present(clause, search):
 
     """
 
-    stack = [search]
-    while stack:
-        elem = stack.pop()
+    for elem in surface_selectables(search):
         if clause == elem:  # use == here so that Annotated's compare
             return True
-        elif isinstance(elem, expression.Join):
-            stack.extend((elem.left, elem.right))
-    return False
+    else:
+        return False
 
+def surface_selectables(clause):
+    stack = [clause]
+    while stack:
+        elem = stack.pop()
+        yield elem
+        if isinstance(elem, expression.Join):
+            stack.extend((elem.left, elem.right))
+
+def selectables_overlap(left, right):
+    """Return True if left/right have some overlapping selectable"""
+
+    return bool(
+                set(surface_selectables(left)).intersection(
+                        surface_selectables(right)
+                    )
+            )
 
 def bind_values(clause):
     """Return an ordered list of "bound" values in the given clause.

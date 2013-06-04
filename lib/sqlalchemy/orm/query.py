@@ -1797,14 +1797,6 @@ class Query(object):
                                 right_entity, onclause,
                                 outerjoin, create_aliases, prop)
 
-    def _tables_overlap(self, left, right):
-        """Return True if parent/child tables have some overlap."""
-
-        return  bool(
-            set(sql_util.find_tables(left)).intersection(
-                sql_util.find_tables(right)
-            )
-        )
 
     def _join_left_to_right(self, left, right,
                             onclause, outerjoin, create_aliases, prop):
@@ -1825,14 +1817,19 @@ class Query(object):
                         "are the same entity" %
                         (left, right))
 
-        # TODO: get the l_info, r_info passed into
-        # the methods so inspect() doesnt need to be called again
         l_info = inspect(left)
         r_info = inspect(right)
-        overlap = self._tables_overlap(l_info.selectable, r_info.selectable)
+
+        overlap = not create_aliases and \
+                        sql_util.selectables_overlap(l_info.selectable,
+                            r_info.selectable)
+        if overlap and l_info.selectable is r_info.selectable:
+            raise sa_exc.InvalidRequestError(
+                    "Can't join table/selectable '%s' to itself" %
+                        l_info.selectable)
 
         right, onclause = self._prepare_right_side(
-                                            right, onclause,
+                                r_info, right, onclause,
                                             create_aliases,
                                             prop, overlap)
 
@@ -1846,10 +1843,11 @@ class Query(object):
         else:
             self._joinpoint = {'_joinpoint_entity': right}
 
-        self._join_to_left(left, right, onclause, outerjoin)
+        self._join_to_left(l_info, left, right, onclause, outerjoin)
 
-    def _prepare_right_side(self, right, onclause, create_aliases, prop, overlap):
-        info = inspect(right)
+    def _prepare_right_side(self, r_info, right, onclause, create_aliases,
+                                    prop, overlap):
+        info = r_info
 
         right_mapper, right_selectable, right_is_aliased = \
             getattr(info, 'mapper', None), \
@@ -1931,8 +1929,8 @@ class Query(object):
 
         return right, onclause
 
-    def _join_to_left(self, left, right, onclause, outerjoin):
-        info = inspect(left)
+    def _join_to_left(self, l_info, left, right, onclause, outerjoin):
+        info = l_info
         left_mapper = getattr(info, 'mapper', None)
         left_selectable = info.selectable
 

@@ -4001,7 +4001,8 @@ class Join(FromClause):
         """
         if flat:
             assert name is None, "Can't send name argument with flat"
-            left_a, right_a = self.left.alias(), self.right.alias()
+            left_a, right_a = self.left.alias(flat=True), \
+                                self.right.alias(flat=True)
             adapter = sqlutil.ClauseAdapter(left_a).\
                         chain(sqlutil.ClauseAdapter(right_a))
 

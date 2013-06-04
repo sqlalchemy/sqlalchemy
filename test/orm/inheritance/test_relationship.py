@@ -546,11 +546,10 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
             "SELECT child2.id AS child2_id, parent.id AS parent_id, "
             "parent.cls AS parent_cls FROM secondary AS secondary_1, "
             "parent JOIN child2 ON parent.id = child2.id JOIN secondary AS "
-            "secondary_2 ON parent.id = secondary_2.left_id JOIN (SELECT "
-            "parent.id AS parent_id, parent.cls AS parent_cls, child1.id AS "
-            "child1_id FROM parent JOIN child1 ON parent.id = child1.id) AS "
-            "anon_1 ON anon_1.parent_id = secondary_2.right_id WHERE "
-            "anon_1.parent_id = secondary_1.right_id AND :param_1 = "
+            "secondary_2 ON parent.id = secondary_2.left_id JOIN "
+            "(parent AS parent_1 JOIN child1 AS child1_1 ON parent_1.id = child1_1.id) "
+            "ON parent_1.id = secondary_2.right_id WHERE "
+            "parent_1.id = secondary_1.right_id AND :param_1 = "
             "secondary_1.left_id",
             dialect=default.DefaultDialect()
         )

@@ -17,7 +17,7 @@ from .. import sql, util, exc as sa_exc, schema
 from ..sql.util import (
     ClauseAdapter,
     join_condition, _shallow_annotate, visit_binary_product,
-    _deep_deannotate, find_tables
+    _deep_deannotate, find_tables, selectables_overlap
     )
 from ..sql import operators, expression, visitors
 from .interfaces import MANYTOMANY, MANYTOONE, ONETOMANY
@@ -404,11 +404,7 @@ class JoinCondition(object):
     def _tables_overlap(self):
         """Return True if parent/child tables have some overlap."""
 
-        return  bool(
-            set(find_tables(self.parent_selectable)).intersection(
-                find_tables(self.child_selectable)
-            )
-        )
+        return selectables_overlap(self.parent_selectable, self.child_selectable)
 
     def _annotate_remote(self):
         """Annotate the primaryjoin and secondaryjoin

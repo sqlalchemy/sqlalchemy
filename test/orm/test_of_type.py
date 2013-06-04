@@ -86,7 +86,7 @@ class _PolymorphicTestBase(object):
 
     def test_with_polymorphic_join_compile_one(self):
         sess = Session()
-
+# MARKMARK
         self.assert_compile(
             sess.query(Company).join(
                     Company.employees.of_type(
@@ -194,13 +194,14 @@ class PolymorphicPolymorphicTest(_PolymorphicTestBase, _PolymorphicPolymorphic):
     def _polymorphic_join_target(self, cls):
         from sqlalchemy.orm import class_mapper
 
+        from sqlalchemy.sql.expression import FromGrouping
         m, sel = class_mapper(Person)._with_polymorphic_args(cls)
-        sel = sel.alias()
+        sel = FromGrouping(sel.alias(flat=True))
         comp_sel = sel.compile(dialect=default.DefaultDialect())
 
         return \
             comp_sel.process(sel, asfrom=True).replace("\n", "") + \
-            " ON companies.company_id = anon_1.people_company_id"
+            " ON companies.company_id = people_1.company_id"
 
 class PolymorphicUnionsTest(_PolymorphicTestBase, _PolymorphicUnions):
 
@@ -228,13 +229,14 @@ class PolymorphicAliasedJoinsTest(_PolymorphicTestBase, _PolymorphicAliasedJoins
 class PolymorphicJoinsTest(_PolymorphicTestBase, _PolymorphicJoins):
     def _polymorphic_join_target(self, cls):
         from sqlalchemy.orm import class_mapper
+        from sqlalchemy.sql.expression import FromGrouping
 
-        sel = class_mapper(Person)._with_polymorphic_selectable.alias()
+        sel = FromGrouping(class_mapper(Person)._with_polymorphic_selectable.alias(flat=True))
         comp_sel = sel.compile(dialect=default.DefaultDialect())
 
         return \
             comp_sel.process(sel, asfrom=True).replace("\n", "") + \
-            " ON companies.company_id = anon_1.people_company_id"
+            " ON companies.company_id = people_1.company_id"
 
 
 class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeMappedTest):
@@ -453,6 +455,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
                             DataContainer.jobs.of_type(Job_P).\
                                 any(Job_P.id < Job.id)
                         )
+
         self.assert_compile(q,
             "SELECT job.id AS job_id, job.type AS job_type, "
             "job.container_id "
@@ -460,11 +463,10 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
             "FROM data_container "
             "JOIN job ON data_container.id = job.container_id "
             "WHERE EXISTS (SELECT 1 "
-            "FROM (SELECT job.id AS job_id, job.type AS job_type, "
-            "job.container_id AS job_container_id, "
-            "subjob.id AS subjob_id, subjob.attr AS subjob_attr "
-            "FROM job LEFT OUTER JOIN subjob ON job.id = subjob.id) AS anon_1 "
-            "WHERE data_container.id = anon_1.job_container_id AND job.id > anon_1.job_id)"
+            "FROM job AS job_1 LEFT OUTER JOIN subjob AS subjob_1 "
+                "ON job_1.id = subjob_1.id "
+            "WHERE data_container.id = job_1.container_id "
+            "AND job.id > job_1.id)"
         )
 
     def test_any_walias(self):
@@ -506,11 +508,10 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
         self.assert_compile(q,
             "SELECT data_container.id AS data_container_id, "
             "data_container.name AS data_container_name "
-            "FROM data_container JOIN (SELECT job.id AS job_id, "
-            "job.type AS job_type, job.container_id AS job_container_id, "
-            "subjob.id AS subjob_id, subjob.attr AS subjob_attr "
-            "FROM job LEFT OUTER JOIN subjob ON job.id = subjob.id) "
-            "AS anon_1 ON data_container.id = anon_1.job_container_id")
+            "FROM data_container JOIN "
+            "(job AS job_1 LEFT OUTER JOIN subjob AS subjob_1 "
+                "ON job_1.id = subjob_1.id) "
+            "ON data_container.id = job_1.container_id")
 
     def test_join_wsubclass(self):
         ParentThing, DataContainer, Job, SubJob = \
@@ -547,11 +548,9 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
         self.assert_compile(q,
             "SELECT data_container.id AS data_container_id, "
             "data_container.name AS data_container_name "
-            "FROM data_container JOIN (SELECT job.id AS job_id, "
-            "job.type AS job_type, job.container_id AS job_container_id, "
-            "subjob.id AS subjob_id, subjob.attr AS subjob_attr "
-            "FROM job JOIN subjob ON job.id = subjob.id) "
-            "AS anon_1 ON data_container.id = anon_1.job_container_id")
+            "FROM data_container JOIN "
+            "(job AS job_1 JOIN subjob AS subjob_1 ON job_1.id = subjob_1.id) "
+            "ON data_container.id = job_1.container_id")
 
     def test_join_walias(self):
         ParentThing, DataContainer, Job, SubJob = \
@@ -584,9 +583,8 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
         self.assert_compile(q,
             "SELECT data_container.id AS data_container_id, "
             "data_container.name AS data_container_name "
-            "FROM data_container JOIN (SELECT job.id AS job_id, "
-            "job.type AS job_type, job.container_id AS job_container_id, "
-            "subjob.id AS subjob_id, subjob.attr AS subjob_attr "
-            "FROM job LEFT OUTER JOIN subjob ON job.id = subjob.id) "
-            "AS anon_1 ON data_container.id = anon_1.job_container_id")
+            "FROM data_container JOIN "
+            "(job AS job_1 LEFT OUTER JOIN subjob AS subjob_1 "
+            "ON job_1.id = subjob_1.id) "
+            "ON data_container.id = job_1.container_id")
 
