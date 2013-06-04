@@ -1109,17 +1109,32 @@ class SQLCompiler(engine.Compiled):
                 newelem._reset_exported()
                 newelem.left = visit(newelem.left, **kw)
 
+                right = visit(newelem.right, **kw)
+
                 selectable = sql.select(
-                                    [newelem.right.element],
+                                    [right.element],
                                     use_labels=True).alias()
 
                 for c in selectable.c:
                     c._label = c._key_label = c.name
                 translate_dict = dict(
-                        zip(newelem.right.element.c, selectable.c)
+                        zip(right.element.c, selectable.c)
                     )
-                translate_dict[newelem.right.element.left] = selectable
-                translate_dict[newelem.right.element.right] = selectable
+                translate_dict[right.element.left] = selectable
+                translate_dict[right.element.right] = selectable
+
+                # propagate translations that we've gained
+                # from nested visit(newelem.right) outwards
+                # to the enclosing select here.  this happens
+                # only when we have more than one level of right
+                # join nesting, i.e. "a JOIN (b JOIN (c JOIN d))"
+                for k, v in list(column_translate[-1].items()):
+                    if v in translate_dict:
+                        # remarkably, no current ORM tests (May 2013)
+                        # hit this condition, only test_join_rewriting
+                        # does.
+                        column_translate[-1][k] = translate_dict[v]
+
                 column_translate[-1].update(translate_dict)
 
                 newelem.right = selectable
