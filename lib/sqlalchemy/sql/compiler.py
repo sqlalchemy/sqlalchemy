@@ -1083,7 +1083,49 @@ class SQLCompiler(engine.Compiled):
 
         # test for "unconditional" - any statement with
         # no_replacement_traverse setup, i.e. query.statement, from_self(), etc.
-        traverse_options = {"cloned": {}, "unconditional": True}
+        #traverse_options = {"cloned": {}, "unconditional": True}
+        traverse_options = {"unconditional": True}
+
+        cloned = {}
+        def thing(element, **kw):
+            if element in cloned:
+                return cloned[element]
+
+            newelem = cloned[element] = element._clone()
+
+            if newelem.__visit_name__ == 'join' and \
+                isinstance(newelem.right, sql.FromGrouping):
+                selectable = sql.select([newelem.right.element], use_labels=True)
+                selectable = selectable.alias()
+                newelem.right = selectable
+                stop_on.append(selectable)
+                for c in selectable.c:
+                    c._label = c._key_label = c.name
+                adapter = sql_util.ClauseAdapter(selectable,
+                                        traverse_options=traverse_options)
+                adapter.magic_flag = True
+                adapters.append(adapter)
+            else:
+                newelem._copy_internals(clone=thing, **kw)
+
+            return newelem
+
+        elem = thing(select)
+        while adapters:
+            adapt = adapters.pop(-1)
+            adapt.__traverse_options__['stop_on'].extend(stop_on)
+            elem = adapt.traverse(elem)
+        return elem
+
+
+    def _transform_select_for_nested_joins_orig(self, select):
+        adapters = []
+        stop_on = []
+
+        # test for "unconditional" - any statement with
+        # no_replacement_traverse setup, i.e. query.statement, from_self(), etc.
+        #traverse_options = {"cloned": {}, "unconditional": True}
+        traverse_options = {"unconditional": True}
 
         def visit_join(elem):
             if isinstance(elem.right, sql.FromGrouping):
@@ -1108,6 +1150,7 @@ class SQLCompiler(engine.Compiled):
                                         traverse_options=traverse_options)
                 adapter.__traverse_options__['stop_on'].extend(stop_on)
                 adapters.append(adapter)
+
 
         select = visitors.cloned_traverse(select,
                                     traverse_options, {"join": visit_join})

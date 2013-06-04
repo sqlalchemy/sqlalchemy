@@ -1891,10 +1891,10 @@ class Query(object):
                             (
                                 # TODO: this produces queries that fail the
                                 # compiler transformation in test_polymorphic_rel
-                                # isinstance(right_mapper._with_polymorphic_selectable, expression.Alias)
+                                isinstance(right_mapper._with_polymorphic_selectable, expression.Alias)
 
                                 # current
-                                right_mapper.with_polymorphic
+                                # right_mapper.with_polymorphic
                                 or
                                 overlap # test for overlap:
                                         # orm/inheritance/relationships.py

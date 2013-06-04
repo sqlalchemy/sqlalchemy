@@ -832,8 +832,9 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
             newcol = self.selectable.c.get(col.name)
         return newcol
 
+    magic_flag = False
     def replace(self, col):
-        if isinstance(col, expression.FromClause) and \
+        if not self.magic_flag and isinstance(col, expression.FromClause) and \
             self.selectable.is_derived_from(col):
             return self.selectable
         elif not isinstance(col, expression.ColumnElement):
