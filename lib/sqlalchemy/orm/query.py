@@ -1879,16 +1879,21 @@ class Query(object):
                     (right_selectable.description,
                     right_mapper.mapped_table.description))
 
-            if not isinstance(right_selectable, expression.Join):
-                if not isinstance(right_selectable, expression.Alias):
-                    right_selectable = right_selectable.alias()
-
+            if isinstance(right_selectable, expression.SelectBase):
+                # TODO: this isn't even covered now!
+                right_selectable = right_selectable.alias()
                 need_adapter = True
+
             right = aliased(right_mapper, right_selectable)
 
         aliased_entity = right_mapper and \
                             not right_is_aliased and \
                             (
+                                # TODO: this produces queries that fail the
+                                # compiler transformation in test_polymorphic_rel
+                                # isinstance(right_mapper._with_polymorphic_selectable, expression.Alias)
+
+                                # current
                                 right_mapper.with_polymorphic
                                 or
                                 overlap # test for overlap:
