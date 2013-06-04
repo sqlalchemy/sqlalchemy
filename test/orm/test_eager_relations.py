@@ -2634,16 +2634,15 @@ class CyclicalInheritingEagerTestTwo(fixtures.DeclarativeMappedTest,
         self.assert_compile(
             s.query(Director).options(joinedload('*')),
             "SELECT director.id AS director_id, persistent.id AS persistent_id, "
-            "director.name AS director_name, anon_1.movie_id AS anon_1_movie_id, "
-            "anon_1.persistent_id AS anon_1_persistent_id, "
-            "anon_1.movie_director_id AS anon_1_movie_director_id, "
-            "anon_1.movie_title AS anon_1_movie_title "
+            "director.name AS director_name, movie_1.id AS movie_1_id, "
+            "persistent_1.id AS persistent_1_id, "
+            "movie_1.director_id AS movie_1_director_id, "
+            "movie_1.title AS movie_1_title "
             "FROM persistent JOIN director ON persistent.id = director.id "
             "LEFT OUTER JOIN "
-            "(SELECT persistent.id AS persistent_id, movie.id AS movie_id, "
-                "movie.director_id AS movie_director_id, movie.title AS movie_title "
-                "FROM persistent JOIN movie ON persistent.id = movie.id) AS anon_1 "
-            "ON director.id = anon_1.movie_director_id"
+            "(persistent AS persistent_1 JOIN movie AS movie_1 "
+                "ON persistent_1.id = movie_1.id) "
+            "ON director.id = movie_1.director_id"
         )
 
     def test_integrate(self):
@@ -2706,15 +2705,12 @@ class CyclicalInheritingEagerTestThree(fixtures.DeclarativeMappedTest,
             sess.query(PersistentObject).options(joinedload(Director.other, join_depth=1)),
             "SELECT persistent.id AS persistent_id, director.id AS director_id, "
             "director.other_id AS director_other_id, "
-            "director.name AS director_name, anon_1.persistent_id AS "
-            "anon_1_persistent_id, anon_1.director_id AS anon_1_director_id, "
-            "anon_1.director_other_id AS anon_1_director_other_id, "
-            "anon_1.director_name AS anon_1_director_name "
+            "director.name AS director_name, persistent_1.id AS "
+            "persistent_1_id, director_1.id AS director_1_id, "
+            "director_1.other_id AS director_1_other_id, "
+            "director_1.name AS director_1_name "
             "FROM persistent LEFT OUTER JOIN director ON director.id = persistent.id "
-            "LEFT OUTER JOIN (SELECT persistent.id AS persistent_id, "
-                "director.id AS director_id, director.other_id AS director_other_id, "
-                "director.name AS director_name "
-                "FROM persistent LEFT OUTER JOIN director ON "
-                "director.id = persistent.id) "
-            "AS anon_1 ON director.other_id = anon_1.persistent_id"
+            "LEFT OUTER JOIN (persistent AS persistent_1 LEFT OUTER JOIN director AS director_1 ON "
+                "director_1.id = persistent_1.id) "
+            "ON director.other_id = persistent_1.id"
         )

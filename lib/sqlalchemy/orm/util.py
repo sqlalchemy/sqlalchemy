@@ -493,7 +493,7 @@ class AliasedClass(object):
     """
     def __init__(self, cls, alias=None,
                             name=None,
-                            flat=False,
+                            flat=True,
                             adapt_on_names=False,
                             #  TODO: None for default here?
                             with_polymorphic_mappers=(),

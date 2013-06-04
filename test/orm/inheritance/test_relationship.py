@@ -569,15 +569,14 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         self.assert_compile(q.limit(1).with_labels().statement,
             "SELECT anon_1.child1_id AS anon_1_child1_id, anon_1.parent_id "
             "AS anon_1_parent_id, anon_1.parent_cls AS anon_1_parent_cls, "
-            "anon_2.child2_id AS anon_2_child2_id, anon_2.parent_id AS "
-            "anon_2_parent_id, anon_2.parent_cls AS anon_2_parent_cls FROM "
+            "child2_1.id AS child2_1_id, parent_1.id AS "
+            "parent_1_id, parent_1.cls AS parent_1_cls FROM "
             "(SELECT child1.id AS child1_id, parent.id AS parent_id, "
             "parent.cls AS parent_cls FROM parent JOIN child1 ON parent.id = "
             "child1.id LIMIT :param_1) AS anon_1 LEFT OUTER JOIN secondary "
             "AS secondary_1 ON anon_1.parent_id = secondary_1.right_id LEFT "
-            "OUTER JOIN (SELECT parent.id AS parent_id, parent.cls AS "
-            "parent_cls, child2.id AS child2_id FROM parent JOIN child2 ON "
-            "parent.id = child2.id) AS anon_2 ON anon_2.parent_id = "
+            "OUTER JOIN (parent AS parent_1 JOIN child2 AS child2_1 ON "
+            "parent_1.id = child2_1.id) ON parent_1.id = "
             "secondary_1.left_id",
             {'param_1':1},
             dialect=default.DefaultDialect())
@@ -1224,18 +1223,13 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
                 join(Sub2.ep1).
                 join(Sub2.ep2),
             "SELECT parent.id AS parent_id, parent.data AS parent_data "
-            "FROM parent JOIN (SELECT base1.id AS base1_id, "
-            "base1.data AS base1_data, sub1.id AS sub1_id, "
-            "sub1.parent_id AS sub1_parent_id, sub1.subdata AS sub1_subdata "
-            "FROM base1 JOIN sub1 ON base1.id = sub1.id) AS anon_1 "
-            "ON parent.id = anon_1.sub1_parent_id JOIN "
-            "(SELECT base2.id AS base2_id, base2.base1_id AS base2_base1_id, "
-            "base2.data AS base2_data, sub2.id AS sub2_id, "
-            "sub2.subdata AS sub2_subdata FROM base2 JOIN sub2 "
-            "ON base2.id = sub2.id) AS anon_2 "
-            "ON anon_1.base1_id = anon_2.base2_base1_id "
-            "JOIN ep1 ON anon_2.base2_id = ep1.base2_id "
-            "JOIN ep2 ON anon_2.base2_id = ep2.base2_id"
+            "FROM parent JOIN (base1 JOIN sub1 ON base1.id = sub1.id) "
+            "ON parent.id = sub1.parent_id JOIN "
+            "(base2 JOIN sub2 "
+            "ON base2.id = sub2.id) "
+            "ON base1.id = base2.base1_id "
+            "JOIN ep1 ON base2.id = ep1.base2_id "
+            "JOIN ep2 ON base2.id = ep2.base2_id"
         )
 
     def test_two(self):
@@ -1248,16 +1242,11 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
             s.query(Parent).join(Parent.sub1).
                 join(s2a, Sub1.sub2),
             "SELECT parent.id AS parent_id, parent.data AS parent_data "
-            "FROM parent JOIN (SELECT base1.id AS base1_id, "
-            "base1.data AS base1_data, sub1.id AS sub1_id, "
-            "sub1.parent_id AS sub1_parent_id, sub1.subdata AS sub1_subdata "
-            "FROM base1 JOIN sub1 ON base1.id = sub1.id) AS anon_1 "
-            "ON parent.id = anon_1.sub1_parent_id JOIN "
-            "(SELECT base2.id AS base2_id, base2.base1_id AS base2_base1_id, "
-            "base2.data AS base2_data, sub2.id AS sub2_id, "
-            "sub2.subdata AS sub2_subdata FROM base2 JOIN sub2 "
-            "ON base2.id = sub2.id) AS anon_2 "
-            "ON anon_1.base1_id = anon_2.base2_base1_id"
+            "FROM parent JOIN (base1 JOIN sub1 ON base1.id = sub1.id) "
+            "ON parent.id = sub1.parent_id JOIN "
+            "(base2 AS base2_1 JOIN sub2 AS sub2_1 "
+            "ON base2_1.id = sub2_1.id) "
+            "ON base1.id = base2_1.base1_id"
         )
 
     def test_three(self):
@@ -1269,13 +1258,11 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
                 join(Sub2.ep1).\
                 join(Sub2.ep2),
             "SELECT base1.id AS base1_id, base1.data AS base1_data "
-            "FROM base1 JOIN (SELECT base2.id AS base2_id, base2.base1_id "
-            "AS base2_base1_id, base2.data AS base2_data, sub2.id AS sub2_id, "
-            "sub2.subdata AS sub2_subdata FROM base2 JOIN sub2 "
-            "ON base2.id = sub2.id) AS anon_1 ON base1.id = "
-            "anon_1.base2_base1_id "
-            "JOIN ep1 ON anon_1.base2_id = ep1.base2_id "
-            "JOIN ep2 ON anon_1.base2_id = ep2.base2_id"
+            "FROM base1 JOIN (base2 JOIN sub2 "
+            "ON base2.id = sub2.id) ON base1.id = "
+            "base2.base1_id "
+            "JOIN ep1 ON base2.id = ep1.base2_id "
+            "JOIN ep2 ON base2.id = ep2.base2_id"
         )
 
     def test_four(self):
@@ -1308,11 +1295,8 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
             "sub2.subdata AS sub2_subdata "
             "FROM base2 JOIN sub2 ON base2.id = sub2.id "
             "JOIN "
-            "(SELECT base1.id AS base1_id, base1.data AS base1_data, "
-                "sub1.id AS sub1_id, sub1.parent_id AS sub1_parent_id, "
-                "sub1.subdata AS sub1_subdata "
-                "FROM base1 JOIN sub1 ON base1.id = sub1.id) AS anon_1 "
-            "ON anon_1.sub1_id = base2.base1_id "
+            "(base1 JOIN sub1 ON base1.id = sub1.id) "
+            "ON sub1.id = base2.base1_id "
             "JOIN ep1 ON base2.id = ep1.base2_id "
             "JOIN ep2 ON base2.id = ep2.base2_id"
         )
@@ -1352,28 +1336,22 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
                 join(Sub2.ep2),
             "SELECT anon_1.parent_id AS anon_1_parent_id, "
             "anon_1.parent_data AS anon_1_parent_data, "
-            "anon_1.anon_2_sub2_id AS anon_1_anon_2_sub2_id, "
-            "anon_1.anon_2_base2_id AS anon_1_anon_2_base2_id, "
-            "anon_1.anon_2_base2_base1_id AS anon_1_anon_2_base2_base1_id, "
-            "anon_1.anon_2_base2_data AS anon_1_anon_2_base2_data, "
-            "anon_1.anon_2_sub2_subdata AS anon_1_anon_2_sub2_subdata "
+            "anon_1.sub2_id AS anon_1_sub2_id, "
+            "anon_1.base2_id AS anon_1_base2_id, "
+            "anon_1.base2_base1_id AS anon_1_base2_base1_id, "
+            "anon_1.base2_data AS anon_1_base2_data, "
+            "anon_1.sub2_subdata AS anon_1_sub2_subdata "
             "FROM (SELECT parent.id AS parent_id, parent.data AS parent_data, "
-            "anon_2.sub2_id AS anon_2_sub2_id, "
-            "anon_2.base2_id AS anon_2_base2_id, "
-            "anon_2.base2_base1_id AS anon_2_base2_base1_id, "
-            "anon_2.base2_data AS anon_2_base2_data, "
-            "anon_2.sub2_subdata AS anon_2_sub2_subdata "
-            "FROM parent JOIN (SELECT base1.id AS base1_id, "
-            "base1.data AS base1_data, sub1.id AS sub1_id, "
-            "sub1.parent_id AS sub1_parent_id, sub1.subdata AS sub1_subdata "
-            "FROM base1 JOIN sub1 ON base1.id = sub1.id) AS anon_3 "
-            "ON parent.id = anon_3.sub1_parent_id JOIN "
-            "(SELECT base2.id AS base2_id, base2.base1_id AS base2_base1_id, "
-            "base2.data AS base2_data, sub2.id AS sub2_id, "
+            "sub2.id AS sub2_id, "
+            "base2.id AS base2_id, "
+            "base2.base1_id AS base2_base1_id, "
+            "base2.data AS base2_data, "
             "sub2.subdata AS sub2_subdata "
-            "FROM base2 JOIN sub2 ON base2.id = sub2.id) AS anon_2 "
-            "ON anon_3.base1_id = anon_2.base2_base1_id) AS anon_1 "
-            "JOIN ep1 ON anon_1.anon_2_base2_id = ep1.base2_id "
-            "JOIN ep2 ON anon_1.anon_2_base2_id = ep2.base2_id"
+            "FROM parent JOIN (base1 JOIN sub1 ON base1.id = sub1.id) "
+            "ON parent.id = sub1.parent_id JOIN "
+            "(base2 JOIN sub2 ON base2.id = sub2.id) "
+            "ON base1.id = base2.base1_id) AS anon_1 "
+            "JOIN ep1 ON anon_1.base2_id = ep1.base2_id "
+            "JOIN ep2 ON anon_1.base2_id = ep2.base2_id"
         )
 
