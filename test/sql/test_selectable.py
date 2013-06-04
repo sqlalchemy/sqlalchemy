@@ -776,18 +776,21 @@ class AnonLabelTest(fixtures.TestBase):
         c1 = literal_column('x')
         eq_(str(select([c1.label('y')])), "SELECT x AS y")
 
-class JoinConditionTest(fixtures.TestBase, AssertsExecutionResults):
+class JoinConditionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     def test_join_condition(self):
         m = MetaData()
         t1 = Table('t1', m, Column('id', Integer))
-        t2 = Table('t2', m, Column('id', Integer), Column('t1id',
-                   ForeignKey('t1.id')))
-        t3 = Table('t3', m, Column('id', Integer), Column('t1id',
-                   ForeignKey('t1.id')), Column('t2id',
-                   ForeignKey('t2.id')))
-        t4 = Table('t4', m, Column('id', Integer), Column('t2id',
-                   ForeignKey('t2.id')))
+        t2 = Table('t2', m,
+                    Column('id', Integer),
+                    Column('t1id', ForeignKey('t1.id')))
+        t3 = Table('t3', m,
+                    Column('id', Integer),
+                    Column('t1id', ForeignKey('t1.id')),
+                    Column('t2id', ForeignKey('t2.id')))
+        t4 = Table('t4', m,
+                    Column('id', Integer),
+                    Column('t2id', ForeignKey('t2.id')))
         t1t2 = t1.join(t2)
         t2t3 = t2.join(t3)
         for (left, right, a_subset, expected) in [
@@ -832,20 +835,22 @@ class JoinConditionTest(fixtures.TestBase, AssertsExecutionResults):
                 left.join(right).onclause
             )
 
+        # these are right-nested joins
+        j = t1t2.join(t2t3)
+        assert j.onclause.compare(t2.c.id == t3.c.t2id)
+        self.assert_compile(j,
+                "t1 JOIN t2 ON t1.id = t2.t1id JOIN "
+                "(t2 JOIN t3 ON t2.id = t3.t2id) ON t2.id = t3.t2id")
 
+        st2t3 = t2t3.select(use_labels=True)
+        j = t1t2.join(st2t3)
+        assert j.onclause.compare(t2.c.id == st2t3.c.t3_t2id)
+        self.assert_compile(j,
+                "t1 JOIN t2 ON t1.id = t2.t1id JOIN "
+                "(SELECT t2.id AS t2_id, t2.t1id AS t2_t1id, "
+                "t3.id AS t3_id, t3.t1id AS t3_t1id, t3.t2id AS t3_t2id "
+                "FROM t2 JOIN t3 ON t2.id = t3.t2id) ON t2.id = t3_t2id")
 
-        # TODO: this raises due to right side being "grouped", and no
-        # longer has FKs.  Did we want to make FromGrouping friendlier
-        # ?
-
-        assert_raises_message(exc.ArgumentError,
-                              "Perhaps you meant to convert the right "
-                              "side to a subquery using alias\(\)\?",
-                              t1t2.join, t2t3)
-        assert_raises_message(exc.ArgumentError,
-                              "Perhaps you meant to convert the right "
-                              "side to a subquery using alias\(\)\?",
-                              t1t2.join, t2t3.select(use_labels=True))
 
 
     def test_join_cond_no_such_unrelated_table(self):
