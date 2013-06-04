@@ -1889,12 +1889,9 @@ class Query(object):
         aliased_entity = right_mapper and \
                             not right_is_aliased and \
                             (
-                                # TODO: this produces queries that fail the
-                                # compiler transformation in test_polymorphic_rel
-                                isinstance(right_mapper._with_polymorphic_selectable, expression.Alias)
-
-                                # current
-                                # right_mapper.with_polymorphic
+                                isinstance(
+                                    right_mapper._with_polymorphic_selectable,
+                                    expression.Alias)
                                 or
                                 overlap # test for overlap:
                                         # orm/inheritance/relationships.py

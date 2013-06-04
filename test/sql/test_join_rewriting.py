@@ -39,6 +39,12 @@ class JoinRewriteTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_one(self):
         j1 = b.join(c)
         j2 = a.join(j1)
+        # TODO: if we remove 'b' or 'c', shouldn't we get just
+        # the subset of cols from anon_1 ?
+
+        # TODO: do this test also with individual cols, things change
+        # lots based on how you go with this
+
         s = select([a, b, c], use_labels=True).\
             select_from(j2).\
             where(b.c.id == 2).\
@@ -58,6 +64,8 @@ class JoinRewriteTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_two_froms_overlapping_joins(self):
+        # test here we're emulating is
+        # test.orm.inheritance.test_polymorphic_rel:PolymorphicJoinsTest.test_multi_join
         j1 = b.join(c)
         j2 = b.join(c).select(use_labels=True).alias()
         j3 = a.join(j1)
@@ -85,35 +93,20 @@ class JoinRewriteTest(fixtures.TestBase, AssertsCompiledSQL):
         ORDER BY anon_1.b_id
         """
 
-        """
-        SELECT a.id AS a_id, a_1.id AS a_1_id, anon_1.b_id AS b_id,
-        anon_1.b_a_id AS b_a_id, anon_1.c_id AS c_id, anon_1.c_b_id AS c_b_id,
-        anon_2.b_id AS anon_2_b_id, anon_2.b_a_id AS anon_2_b_a_id,
-        anon_2.c_id AS anon_2_c_id, anon_2.c_b_id AS anon_2_c_b_id
-
-        FROM
-
-            a JOIN (
-                    SELECT b.id AS b_id, b.a_id AS b_a_id, c.id AS c_id,
-                    c.b_id AS c_b_id
-                    FROM b JOIN c ON b.id = c.b_id) AS anon_2 ON a.id = anon_2.b_a_id,
-
-            a AS a_1 JOIN (
-                        SELECT anon_2.b_id AS anon_2_b_id, anon_2.b_a_id AS anon_2_b_a_id,
-                        anon_2.c_id AS anon_2_c_id, anon_2.c_b_id AS anon_2_c_b_id
-                    FROM (
-                        SELECT b.id AS b_id, b.a_id AS b_a_id, c.id AS c_id,
-                        c.b_id AS c_b_id FROM b JOIN c ON b.id = c.b_id)
-                        AS anon_2 JOIN (
-                            SELECT b.id AS b_id, b.a_id AS b_a_id, c.id AS c_id, c.b_id AS c_b_id
-                            FROM b JOIN c ON b.id = c.b_id) AS anon_2
-                        ON anon_2.b_id = anon_2.c_b_id) AS anon_1 ON a_1.id = anon_1.b_a_id
-
-            ORDER BY anon_1.b_id
-
-        """
 
         self.assert_compile(
             s,
-            ""
+            "SELECT a.id AS a_id, a_1.id AS a_1_id, anon_1.b_id AS b_id, "
+            "anon_1.b_a_id AS b_a_id, anon_1.c_id AS c_id, "
+            "anon_1.c_b_id AS c_b_id, anon_2.b_id AS anon_2_b_id, "
+            "anon_2.b_a_id AS anon_2_b_a_id, anon_2.c_id AS anon_2_c_id, "
+            "anon_2.c_b_id AS anon_2_c_b_id FROM a "
+            "JOIN (SELECT b.id AS b_id, b.a_id AS b_a_id, c.id AS c_id, "
+            "c.b_id AS c_b_id FROM b JOIN c ON b.id = c.b_id) AS anon_1 "
+            "ON a.id = anon_1.b_a_id, "
+            "a AS a_1 JOIN "
+                "(SELECT b.id AS b_id, b.a_id AS b_a_id, "
+                "c.id AS c_id, c.b_id AS c_b_id "
+                "FROM b JOIN c ON b.id = c.b_id) AS anon_2 "
+            "ON a_1.id = anon_2.b_a_id ORDER BY anon_2.b_id"
         )
