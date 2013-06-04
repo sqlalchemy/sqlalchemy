@@ -1118,7 +1118,7 @@ class SQLCompiler(engine.Compiled):
         return elem
 
 
-    def _transform_select_for_nested_joins_orig(self, select):
+    def _transform_select_for_nested_joins(self, select):
         adapters = []
         stop_on = []
 
