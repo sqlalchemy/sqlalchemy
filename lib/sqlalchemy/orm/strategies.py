@@ -1089,7 +1089,8 @@ class JoinedLoader(AbstractRelationshipLoader):
             to_adapt = with_poly_info.entity
         else:
             to_adapt = orm_util.AliasedClass(self.mapper,
-                                use_mapper_path=True)
+                                use_mapper_path=True,
+                                flat=True)
         clauses = orm_util.ORMAdapter(
                     to_adapt,
                     equivalents=self.mapper._equivalent_columns,
