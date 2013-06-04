@@ -1087,6 +1087,10 @@ class SQLCompiler(engine.Compiled):
         cloned = {}
         column_translate = [{}]
 
+        # TODO: should we be using isinstance() for this,
+        # as this whole system won't work for custom Join/Select
+        # subclasses where compilation routines
+        # call down to compiler.visit_join(), compiler.visit_select()
         join_name = sql.Join.__visit_name__
         select_name = sql.Select.__visit_name__
 
