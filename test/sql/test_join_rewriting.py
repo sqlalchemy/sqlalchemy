@@ -3,7 +3,6 @@ from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy import util
 from sqlalchemy.engine import default
 
-
 m = MetaData()
 
 a = Table('a', m,
@@ -109,4 +108,32 @@ class JoinRewriteTest(fixtures.TestBase, AssertsCompiledSQL):
                 "c.id AS c_id, c.b_id AS c_b_id "
                 "FROM b JOIN c ON b.id = c.b_id) AS anon_2 "
             "ON a_1.id = anon_2.b_a_id ORDER BY anon_2.b_id"
+        )
+
+    def test_dialect_flag(self):
+        d1 = default.DefaultDialect(supports_right_nested_joins=True)
+        d2 = default.DefaultDialect(supports_right_nested_joins=False)
+
+        j1 = b.join(c)
+        j2 = a.join(j1)
+
+        s = select([a, b, c], use_labels=True).\
+            select_from(j2)
+
+        self.assert_compile(
+            s,
+            "SELECT a.id AS a_id, b.id AS b_id, b.a_id AS b_a_id, c.id AS c_id, "
+            "c.b_id AS c_b_id FROM a JOIN (b JOIN c ON b.id = c.b_id) "
+            "ON a.id = b.a_id",
+            dialect=d1
+        )
+        self.assert_compile(
+            s,
+            "SELECT a.id AS a_id, anon_1.b_id AS b_id, "
+            "anon_1.b_a_id AS b_a_id, "
+            "anon_1.c_id AS c_id, anon_1.c_b_id AS c_b_id "
+            "FROM a JOIN (SELECT b.id AS b_id, b.a_id AS b_a_id, c.id AS c_id, "
+            "c.b_id AS c_b_id FROM b JOIN c ON b.id = c.b_id) AS anon_1 "
+            "ON a.id = anon_1.b_a_id",
+            dialect=d2
         )
