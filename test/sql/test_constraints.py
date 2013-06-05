@@ -1,9 +1,12 @@
 from sqlalchemy.testing import assert_raises, assert_raises_message
-from sqlalchemy import *
+from sqlalchemy import Table, Integer, String, Column, PrimaryKeyConstraint,\
+    ForeignKeyConstraint, ForeignKey, UniqueConstraint, Index, MetaData, \
+    CheckConstraint, func
 from sqlalchemy import exc, schema
 from sqlalchemy.testing import fixtures, AssertsExecutionResults, \
                     AssertsCompiledSQL
 from sqlalchemy import testing
+from sqlalchemy.engine import default
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing.assertsql import AllOf, RegexSQL, ExactSQL, CompiledSQL
@@ -423,12 +426,14 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def _test_deferrable(self, constraint_factory):
+        dialect = default.DefaultDialect()
+
         t = Table('tbl', MetaData(),
                   Column('a', Integer),
                   Column('b', Integer),
                   constraint_factory(deferrable=True))
 
-        sql = str(schema.CreateTable(t).compile(bind=testing.db))
+        sql = str(schema.CreateTable(t).compile(dialect=dialect))
         assert 'DEFERRABLE' in sql, sql
         assert 'NOT DEFERRABLE' not in sql, sql
 
@@ -437,7 +442,7 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
                   Column('b', Integer),
                   constraint_factory(deferrable=False))
 
-        sql = str(schema.CreateTable(t).compile(bind=testing.db))
+        sql = str(schema.CreateTable(t).compile(dialect=dialect))
         assert 'NOT DEFERRABLE' in sql
 
 
@@ -445,7 +450,7 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
                   Column('a', Integer),
                   Column('b', Integer),
                   constraint_factory(deferrable=True, initially='IMMEDIATE'))
-        sql = str(schema.CreateTable(t).compile(bind=testing.db))
+        sql = str(schema.CreateTable(t).compile(dialect=dialect))
         assert 'NOT DEFERRABLE' not in sql
         assert 'INITIALLY IMMEDIATE' in sql
 
@@ -453,7 +458,7 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
                   Column('a', Integer),
                   Column('b', Integer),
                   constraint_factory(deferrable=True, initially='DEFERRED'))
-        sql = str(schema.CreateTable(t).compile(bind=testing.db))
+        sql = str(schema.CreateTable(t).compile(dialect=dialect))
 
         assert 'NOT DEFERRABLE' not in sql
         assert 'INITIALLY DEFERRED' in sql
