@@ -37,6 +37,7 @@ class _PolymorphicTestBase(object):
         e1, e2, e3, b1, m1 = \
             cls.e1, cls.e2, cls.e3, cls.b1, cls.m1
 
+
     def test_loads_at_once(self):
         """
         Test that all objects load from the full query, when
@@ -672,7 +673,17 @@ class _PolymorphicTestBase(object):
               expected)
         self.assert_sql_count(testing.db, go, 1)
 
+    def test_subqueryload_on_subclass(self):
         sess = create_session()
+        expected = [
+            Engineer(
+                name="dilbert",
+                engineer_name="dilbert",
+                primary_language="java",
+                status="regular engineer",
+                machines=[
+                    Machine(name="IBM ThinkPad"),
+                    Machine(name="IPhone")])]
         def go():
             # test load People with subqueryload to engineers + machines
             eq_(sess.query(Person)
@@ -725,6 +736,14 @@ class _PolymorphicTestBase(object):
                 .join(people.join(engineers), 'employees')
                 .join(Engineer.machines).all(),
             [c1, c2])
+
+    def test_join_to_subclass_six_point_five(self):
+        sess = create_session()
+        eq_(sess.query(Company)
+                .join(people.join(engineers), 'employees')
+                .join(Engineer.machines)
+                .filter(Engineer.name == 'dilbert').all(),
+            [c1])
 
     def test_join_to_subclass_seven(self):
         sess = create_session()
@@ -898,7 +917,8 @@ class _PolymorphicTestBase(object):
                 .filter(Paperwork.description.like('%#%')).all(),
             [c1, c2])
 
-    def test_explicit_polymorphic_join(self):
+
+    def test_explicit_polymorphic_join_one(self):
         sess = create_session()
 
         # join from Company to Engineer; join condition formulated by
@@ -909,6 +929,9 @@ class _PolymorphicTestBase(object):
                 .join(Engineer)
                 .filter(Engineer.engineer_name == 'vlad').one(),
             c2)
+
+    def test_explicit_polymorphic_join_two(self):
+        sess = create_session()
 
         # same, using explicit join condition.  Query.join() must
         # adapt the on clause here to match the subquery wrapped around

@@ -1533,19 +1533,18 @@ class CyclicalInheritingEagerTestTwo(fixtures.DeclarativeMappedTest,
         q = ctx.attributes[('subquery',
                         (inspect(Director), inspect(Director).attrs.movies))]
         self.assert_compile(q,
-            "SELECT anon_1.movie_id AS anon_1_movie_id, "
-            "anon_1.persistent_id AS anon_1_persistent_id, "
-            "anon_1.movie_director_id AS anon_1_movie_director_id, "
-            "anon_1.movie_title AS anon_1_movie_title, "
-            "anon_2.director_id AS anon_2_director_id FROM "
-            "(SELECT director.id AS director_id FROM persistent JOIN director "
-            "ON persistent.id = director.id) AS anon_2 "
-            "JOIN (SELECT persistent.id AS persistent_id, movie.id AS movie_id, "
+            "SELECT movie.id AS movie_id, persistent.id AS persistent_id, "
             "movie.director_id AS movie_director_id, "
-            "movie.title AS movie_title FROM persistent JOIN movie "
-            "ON persistent.id = movie.id) AS anon_1 "
-            "ON anon_2.director_id = anon_1.movie_director_id "
-            "ORDER BY anon_2.director_id")
+            "movie.title AS movie_title, "
+            "anon_1.director_id AS anon_1_director_id "
+            "FROM (SELECT director.id AS director_id "
+                "FROM persistent JOIN director "
+                "ON persistent.id = director.id) AS anon_1 "
+            "JOIN (persistent JOIN movie ON persistent.id = movie.id) "
+            "ON anon_1.director_id = movie.director_id "
+            "ORDER BY anon_1.director_id",
+            dialect="default"
+        )
 
     def test_integrate(self):
         Director = self.classes.Director

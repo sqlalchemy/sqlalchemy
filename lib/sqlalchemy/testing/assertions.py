@@ -184,14 +184,19 @@ class AssertsCompiledSQL(object):
                         allow_dialect_select=False):
         if use_default_dialect:
             dialect = default.DefaultDialect()
-        elif dialect == None and not allow_dialect_select:
-            dialect = getattr(self, '__dialect__', None)
-            if dialect == 'default':
-                dialect = default.DefaultDialect()
-            elif dialect is None:
+        elif allow_dialect_select:
+            dialect = None
+        else:
+            if dialect is None:
+                dialect = getattr(self, '__dialect__', None)
+
+            if dialect is None:
                 dialect = config.db.dialect
+            elif dialect == 'default':
+                dialect = default.DefaultDialect()
             elif isinstance(dialect, util.string_types):
                 dialect = create_engine("%s://" % dialect).dialect
+
 
         kw = {}
         if params is not None:

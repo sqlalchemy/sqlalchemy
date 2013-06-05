@@ -493,6 +493,7 @@ class AliasedClass(object):
     """
     def __init__(self, cls, alias=None,
                             name=None,
+                            flat=True,
                             adapt_on_names=False,
                             #  TODO: None for default here?
                             with_polymorphic_mappers=(),
@@ -501,7 +502,7 @@ class AliasedClass(object):
                             use_mapper_path=False):
         mapper = _class_to_mapper(cls)
         if alias is None:
-            alias = mapper._with_polymorphic_selectable.alias(name=name)
+            alias = mapper._with_polymorphic_selectable.alias(name=name, flat=flat)
         self._aliased_insp = AliasedInsp(
             self,
             mapper,
@@ -837,7 +838,7 @@ def with_polymorphic(base, classes, selectable=False,
                     _with_polymorphic_args(classes, selectable,
                                 innerjoin=innerjoin)
     if aliased:
-        selectable = selectable.alias()
+        selectable = selectable.alias(flat=True)
     return AliasedClass(base,
                 selectable,
                 with_polymorphic_mappers=mappers,

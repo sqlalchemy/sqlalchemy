@@ -795,7 +795,7 @@ def intersect_all(*selects, **kwargs):
     return CompoundSelect(CompoundSelect.INTERSECT_ALL, *selects, **kwargs)
 
 
-def alias(selectable, name=None):
+def alias(selectable, name=None, flat=False):
     """Return an :class:`.Alias` object.
 
     An :class:`.Alias` represents any :class:`.FromClause`
@@ -2636,7 +2636,7 @@ class FromClause(Selectable):
 
         return Join(self, right, onclause, True)
 
-    def alias(self, name=None):
+    def alias(self, name=None, flat=False):
         """return an alias of this :class:`.FromClause`.
 
         This is shorthand for calling::
@@ -3980,7 +3980,7 @@ class Join(FromClause):
     def bind(self):
         return self.left.bind or self.right.bind
 
-    def alias(self, name=None):
+    def alias(self, name=None, flat=False):
         """return an alias of this :class:`.Join`.
 
         Used against a :class:`.Join` object,
@@ -4008,7 +4008,17 @@ class Join(FromClause):
         aliases.
 
         """
-        return self.select(use_labels=True, correlate=False).alias(name)
+        if flat:
+            assert name is None, "Can't send name argument with flat"
+            left_a, right_a = self.left.alias(flat=True), \
+                                self.right.alias(flat=True)
+            adapter = sqlutil.ClauseAdapter(left_a).\
+                        chain(sqlutil.ClauseAdapter(right_a))
+
+            return left_a.join(right_a,
+                        adapter.traverse(self.onclause), isouter=self.isouter)
+        else:
+            return self.select(use_labels=True, correlate=False).alias(name)
 
     @property
     def _hide_froms(self):
@@ -4138,7 +4148,7 @@ class CTE(Alias):
         self._restates = _restates
         super(CTE, self).__init__(selectable, name=name)
 
-    def alias(self, name=None):
+    def alias(self, name=None, flat=False):
         return CTE(
             self.original,
             name=name,
@@ -4221,10 +4231,10 @@ class FromGrouping(FromClause):
 
     @property
     def foreign_keys(self):
-        # this could be
-        # self.element.foreign_keys
-        # see SelectableTest.test_join_condition
-        return set()
+        return self.element.foreign_keys
+
+    def is_derived_from(self, element):
+        return self.element.is_derived_from(element)
 
     @property
     def _hide_froms(self):

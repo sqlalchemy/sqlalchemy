@@ -582,20 +582,16 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self.assert_compile(
             q,
             "SELECT "
-            "anon_1.addresses_id AS anon_1_addresses_id, "
-            "anon_1.users_id AS anon_1_users_id, "
-            "anon_1.users_name AS anon_1_users_name, "
-            "anon_1.addresses_user_id AS anon_1_addresses_user_id, "
-            "anon_1.addresses_email_address AS "
-            "anon_1_addresses_email_address, "
-            "anon_1.users_name || :name_1 AS anon_2 "
-            "FROM addresses JOIN (SELECT users.id AS users_id, "
-            "users.name AS users_name, addresses.id AS addresses_id, "
-            "addresses.user_id AS addresses_user_id, "
-            "addresses.email_address AS addresses_email_address "
-            "FROM users JOIN addresses ON users.id = "
-            "addresses.user_id) AS anon_1 ON "
-            "anon_1.users_id = addresses.user_id"
+            "addresses_1.id AS addresses_1_id, "
+            "users_1.id AS users_1_id, "
+            "users_1.name AS users_1_name, "
+            "addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS "
+            "addresses_1_email_address, "
+            "users_1.name || :name_1 AS anon_1 "
+            "FROM addresses JOIN (users AS users_1 JOIN addresses AS addresses_1 ON users_1.id = "
+            "addresses_1.user_id) ON "
+            "users_1.id = addresses.user_id"
         )
 
     def test_column_prop_deannotate(self):

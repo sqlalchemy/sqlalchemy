@@ -49,6 +49,8 @@ class DefaultDialect(interfaces.Dialect):
     postfetch_lastrowid = True
     implicit_returning = False
 
+    supports_right_nested_joins = True
+
     supports_native_enum = False
     supports_native_boolean = False
 
@@ -106,6 +108,7 @@ class DefaultDialect(interfaces.Dialect):
     def __init__(self, convert_unicode=False,
                  encoding='utf-8', paramstyle=None, dbapi=None,
                  implicit_returning=None,
+                 supports_right_nested_joins=None,
                  case_sensitive=True,
                  label_length=None, **kwargs):
 
@@ -130,6 +133,8 @@ class DefaultDialect(interfaces.Dialect):
         self.positional = self.paramstyle in ('qmark', 'format', 'numeric')
         self.identifier_preparer = self.preparer(self)
         self.type_compiler = self.type_compiler(self)
+        if supports_right_nested_joins is not None:
+            self.supports_right_nested_joins = supports_right_nested_joins
 
         self.case_sensitive = case_sensitive
 

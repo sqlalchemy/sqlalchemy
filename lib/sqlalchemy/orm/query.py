@@ -447,6 +447,8 @@ class Query(object):
                         statement
         if self._params:
             stmt = stmt.params(self._params)
+
+
         # TODO: there's no tests covering effects of
         # the annotation not being there
         return stmt._annotate({'no_replacement_traverse': True})
@@ -1795,6 +1797,7 @@ class Query(object):
                                 right_entity, onclause,
                                 outerjoin, create_aliases, prop)
 
+
     def _join_left_to_right(self, left, right,
                             onclause, outerjoin, create_aliases, prop):
         """append a JOIN to the query's from clause."""
@@ -1814,10 +1817,21 @@ class Query(object):
                         "are the same entity" %
                         (left, right))
 
+        l_info = inspect(left)
+        r_info = inspect(right)
+
+        overlap = not create_aliases and \
+                        sql_util.selectables_overlap(l_info.selectable,
+                            r_info.selectable)
+        if overlap and l_info.selectable is r_info.selectable:
+            raise sa_exc.InvalidRequestError(
+                    "Can't join table/selectable '%s' to itself" %
+                        l_info.selectable)
+
         right, onclause = self._prepare_right_side(
-                                            right, onclause,
+                                r_info, right, onclause,
                                             create_aliases,
-                                            prop)
+                                            prop, overlap)
 
         # if joining on a MapperProperty path,
         # track the path to prevent redundant joins
@@ -1829,10 +1843,11 @@ class Query(object):
         else:
             self._joinpoint = {'_joinpoint_entity': right}
 
-        self._join_to_left(left, right, onclause, outerjoin)
+        self._join_to_left(l_info, left, right, onclause, outerjoin)
 
-    def _prepare_right_side(self, right, onclause, create_aliases, prop):
-        info = inspect(right)
+    def _prepare_right_side(self, r_info, right, onclause, create_aliases,
+                                    prop, overlap):
+        info = r_info
 
         right_mapper, right_selectable, right_is_aliased = \
             getattr(info, 'mapper', None), \
@@ -1862,19 +1877,23 @@ class Query(object):
                     (right_selectable.description,
                     right_mapper.mapped_table.description))
 
-            if not isinstance(right_selectable, expression.Alias):
+            if isinstance(right_selectable, expression.SelectBase):
+                # TODO: this isn't even covered now!
                 right_selectable = right_selectable.alias()
+                need_adapter = True
 
             right = aliased(right_mapper, right_selectable)
-            need_adapter = True
 
         aliased_entity = right_mapper and \
                             not right_is_aliased and \
                             (
-                                right_mapper.with_polymorphic or
                                 isinstance(
-                                    right_mapper.mapped_table,
-                                    expression.Join)
+                                    right_mapper._with_polymorphic_selectable,
+                                    expression.Alias)
+                                or
+                                overlap # test for overlap:
+                                        # orm/inheritance/relationships.py
+                                        # SelfReferentialM2MTest
                             )
 
         if not need_adapter and (create_aliases or aliased_entity):
@@ -1910,8 +1929,8 @@ class Query(object):
 
         return right, onclause
 
-    def _join_to_left(self, left, right, onclause, outerjoin):
-        info = inspect(left)
+    def _join_to_left(self, l_info, left, right, onclause, outerjoin):
+        info = l_info
         left_mapper = getattr(info, 'mapper', None)
         left_selectable = info.selectable
 
@@ -1946,7 +1965,6 @@ class Query(object):
             clause = left_selectable
 
         assert clause is not None
-
         try:
             clause = orm_join(clause, right, onclause, isouter=outerjoin)
         except sa_exc.ArgumentError as ae:
