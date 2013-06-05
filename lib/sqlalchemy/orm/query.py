@@ -2672,7 +2672,9 @@ class Query(object):
             # i.e. when select_from() or join() is used
             context.froms = list(context.from_clause)
             # this would fix...
-            # context.froms += tuple(context.from_clause)
+            #import pdb
+            #pdb.set_trace()
+            #context.froms += tuple(context.from_clause)
 
         else:
             # "load from discrete FROMs" mode,
@@ -2925,8 +2927,10 @@ class _MapperEntity(_QueryEntity):
 
         return entity.common_parent(self.entity_zero)
 
+    #_adapted_selectable = None
     def adapt_to_selectable(self, query, sel):
         query._entities.append(self)
+    #    self._adapted_selectable = sel
 
     def _get_entity_clauses(self, query, context):
 
@@ -2988,6 +2992,7 @@ class _MapperEntity(_QueryEntity):
     def setup_context(self, query, context):
         adapter = self._get_entity_clauses(query, context)
 
+        #if self._adapted_selectable is None:
         context.froms += (self.selectable,)
 
         if context.order_by is False and self.mapper.order_by:
