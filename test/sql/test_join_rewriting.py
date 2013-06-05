@@ -37,6 +37,12 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
             assert_
         )
 
+        compiled = s.compile(dialect=self.__dialect__)
+        for key, col in zip([c.key for c in s.c], s.inner_columns):
+            key = key % compiled.anon_map
+            assert col in compiled.result_map[key][1]
+
+
     def test_a_bc(self):
         j1 = b.join(c)
         j2 = a.join(j1)

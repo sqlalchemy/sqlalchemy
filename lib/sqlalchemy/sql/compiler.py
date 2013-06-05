@@ -1151,7 +1151,12 @@ class SQLCompiler(engine.Compiled):
         return visit(select)
 
     def _transform_result_map_for_nested_joins(self, select, transformed_select):
-        d = dict(zip(transformed_select.inner_columns, select.inner_columns))
+        inner_col = dict((c._key_label, c) for
+                        c in transformed_select.inner_columns)
+        d = dict(
+                    (inner_col[c._key_label], c)
+                    for c in select.inner_columns
+                )
         for key, (name, objs, typ) in list(self.result_map.items()):
             objs = tuple([d.get(col, col) for col in objs])
             self.result_map[key] = (name, objs, typ)
