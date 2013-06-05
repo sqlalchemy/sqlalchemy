@@ -1283,7 +1283,53 @@ class PolymorphicTest(_PolymorphicTestBase, _Polymorphic):
 
 
 class PolymorphicPolymorphicTest(_PolymorphicTestBase, _PolymorphicPolymorphic):
-    pass
+    __dialect__ = 'default'
+
+    def test_aliased_not_polluted_by_join(self):
+        sess = create_session()
+        palias = aliased(Person)
+        self.assert_compile(
+            sess.query(palias, Company.name)
+                .join(Person, Company.employees)
+                .filter(palias.name == 'dilbert'),
+            "SELECT people_1.person_id AS people_1_person_id, "
+            "people_1.company_id AS people_1_company_id, "
+            "people_1.name AS people_1_name, people_1.type AS people_1_type, "
+            "engineers_1.person_id AS engineers_1_person_id, "
+            "engineers_1.status AS engineers_1_status, "
+            "engineers_1.engineer_name AS engineers_1_engineer_name, "
+            "engineers_1.primary_language AS engineers_1_primary_language, "
+            "managers_1.person_id AS managers_1_person_id, "
+            "managers_1.status AS managers_1_status, "
+            "managers_1.manager_name AS managers_1_manager_name, "
+            "boss_1.boss_id AS boss_1_boss_id, "
+            "boss_1.golf_swing AS boss_1_golf_swing, "
+            "companies.name AS companies_name "
+            "FROM people AS people_1 "
+            "LEFT OUTER JOIN engineers AS engineers_1 "
+            "ON people_1.person_id = engineers_1.person_id "
+            "LEFT OUTER JOIN managers AS managers_1 "
+            "ON people_1.person_id = managers_1.person_id "
+            "LEFT OUTER JOIN boss AS boss_1 "
+            "ON managers_1.person_id = boss_1.boss_id, "
+            "companies JOIN (people LEFT OUTER JOIN engineers "
+            "ON people.person_id = engineers.person_id "
+            "LEFT OUTER JOIN managers ON people.person_id = managers.person_id "
+            "LEFT OUTER JOIN boss ON managers.person_id = boss.boss_id) "
+            "ON companies.company_id = people.company_id "
+            "WHERE people_1.name = :name_1 ORDER BY people_1.person_id"
+        )
+
+    def test_mixed_entities_compiled_four(self):
+        sess = create_session()
+        palias = aliased(Person)
+        self.assert_compile(
+            sess.query(palias, Company.name, Person)
+                .join(Company.employees)
+                .filter(Company.name == 'Elbonia, Inc.')
+                .filter(palias.name == 'dilbert'),
+            ""
+        )
 
 class PolymorphicUnionsTest(_PolymorphicTestBase, _PolymorphicUnions):
     pass

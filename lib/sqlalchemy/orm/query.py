@@ -2671,6 +2671,9 @@ class Query(object):
             # "load from explicit FROMs" mode,
             # i.e. when select_from() or join() is used
             context.froms = list(context.from_clause)
+            # this would fix...
+            # context.froms += tuple(context.from_clause)
+
         else:
             # "load from discrete FROMs" mode,
             # i.e. when each _MappedEntity has its own FROM
