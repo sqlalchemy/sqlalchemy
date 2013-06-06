@@ -2078,13 +2078,35 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
         fp.close()
         return stream
 
-class InfoCoerceUnicodeTest(fixtures.TestBase):
+from sqlalchemy.dialects.mssql.information_schema import CoerceUnicode, tables
+from sqlalchemy.dialects.mssql import base
+
+class InfoCoerceUnicodeTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_info_unicode_coercion(self):
-        from sqlalchemy.dialects.mssql.information_schema import CoerceUnicode
 
         dialect = mssql.dialect()
         value = CoerceUnicode().bind_processor(dialect)('a string')
         assert isinstance(value, util.text_type)
+
+    def test_info_unicode_cast_no_2000(self):
+        dialect = mssql.dialect()
+        dialect.server_version_info = base.MS_2000_VERSION
+        stmt = tables.c.table_name == 'somename'
+        self.assert_compile(
+            stmt,
+            "[TABLES_1].[TABLE_NAME] = :TABLE_NAME_1",
+            dialect=dialect
+        )
+
+    def test_info_unicode_cast(self):
+        dialect = mssql.dialect()
+        dialect.server_version_info = base.MS_2005_VERSION
+        stmt = tables.c.table_name == 'somename'
+        self.assert_compile(
+            stmt,
+            "[TABLES_1].[TABLE_NAME] = CAST(:TABLE_NAME_1 AS NVARCHAR(max))",
+            dialect=dialect
+        )
 
 class ReflectHugeViewTest(fixtures.TestBase):
     __only_on__ = 'mssql'

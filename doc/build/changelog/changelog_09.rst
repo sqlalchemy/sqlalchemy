@@ -7,6 +7,16 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, mssql
+        :tickets: 2747
+
+        When querying the information schema on SQL Server 2000, removed
+        a CAST call that was added in 0.8.1 to help with driver issues,
+        which apparently is not compatible on 2000.
+        The CAST remains in place for SQL Server 2005 and greater.
+        Also in 0.8.2.
+
+    .. change::
         :tags: bug, mysql
         :tickets: 2721
 
