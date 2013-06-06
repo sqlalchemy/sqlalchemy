@@ -777,6 +777,7 @@ class AnonLabelTest(fixtures.TestBase):
         eq_(str(select([c1.label('y')])), "SELECT x AS y")
 
 class JoinConditionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     def test_join_condition(self):
         m = MetaData()
