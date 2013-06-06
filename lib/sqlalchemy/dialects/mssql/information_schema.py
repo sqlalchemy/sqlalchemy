@@ -9,9 +9,11 @@
 from ... import Table, MetaData, Column
 from ...types import String, Unicode, Integer, TypeDecorator
 from ... import cast
+from ... import util
+from ...sql import expression
+from ...ext.compiler import compiles
 
 ischema = MetaData()
-
 
 class CoerceUnicode(TypeDecorator):
     impl = Unicode
@@ -24,7 +26,19 @@ class CoerceUnicode(TypeDecorator):
         return value
 
     def bind_expression(self, bindvalue):
-        return cast(bindvalue, Unicode)
+        return _cast_on_2005(bindvalue)
+
+class _cast_on_2005(expression.ColumnElement):
+    def __init__(self, bindvalue):
+        self.bindvalue = bindvalue
+
+@compiles(_cast_on_2005)
+def _compile(element, compiler, **kw):
+    from . import base
+    if compiler.dialect.server_version_info < base.MS_2005_VERSION:
+        return compiler.process(element.bindvalue, **kw)
+    else:
+        return compiler.process(cast(element.bindvalue, Unicode), **kw)
 
 schemata = Table("SCHEMATA", ischema,
     Column("CATALOG_NAME", CoerceUnicode, key="catalog_name"),
