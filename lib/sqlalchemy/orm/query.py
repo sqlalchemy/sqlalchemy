@@ -1897,7 +1897,7 @@ class Query(object):
                             )
 
         if not need_adapter and (create_aliases or aliased_entity):
-            right = aliased(right)
+            right = aliased(right, flat=True)
             need_adapter = True
 
         # if an alias() of the right side was generated here,

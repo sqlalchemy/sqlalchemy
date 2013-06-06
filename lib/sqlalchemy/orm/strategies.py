@@ -1060,6 +1060,14 @@ class JoinedLoader(AbstractRelationshipLoader):
                 column_collection=add_to_collection,
                 allow_innerjoin=allow_innerjoin)
 
+        if with_poly_info is not None and \
+            None in set(context.secondary_columns):
+            raise sa_exc.InvalidRequestError(
+                    "Detected unaliased columns when generating joined "
+                    "load.  Make sure to use aliased=True or flat=True "
+                    "when using joined loading with with_polymorphic()."
+                )
+
     def _get_user_defined_adapter(self, context, entity,
                                 path, adapter, user_defined_adapter):
 
@@ -1089,6 +1097,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             to_adapt = with_poly_info.entity
         else:
             to_adapt = orm_util.AliasedClass(self.mapper,
+                                flat=True,
                                 use_mapper_path=True)
         clauses = orm_util.ORMAdapter(
                     to_adapt,
@@ -1415,8 +1424,7 @@ class LoadEagerFromAliasOption(PropertyOption):
                                                 "path_with_polymorphic")
                 adapter = orm_util.ORMAdapter(
                             with_poly_info.entity,
-                            equivalents=prop.mapper._equivalent_columns,
-                            adapt_required=True)
+                            equivalents=prop.mapper._equivalent_columns)
             else:
                 adapter = query._polymorphic_adapters.get(prop.mapper, None)
             paths[-1].set(query._attributes,

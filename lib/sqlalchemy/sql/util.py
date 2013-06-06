@@ -905,12 +905,11 @@ class ColumnAdapter(ClauseAdapter):
             if isinstance(c, expression.Label):
                 c = c.label(None)
 
-        # adapt_required indicates that if we got the same column
-        # back which we put in (i.e. it passed through),
-        # it's not correct.  this is used by eagerloading which
-        # knows that all columns and expressions need to be adapted
-        # to a result row, and a "passthrough" is definitely targeting
-        # the wrong column.
+        # adapt_required used by eager loading to indicate that
+        # we don't trust a result row column that is not translated.
+        # this is to prevent a column from being interpreted as that
+        # of the child row in a self-referential scenario, see
+        # inheritance/test_basic.py->EagerTargetingTest.test_adapt_stringency
         if self.adapt_required and c is col:
             return None
 

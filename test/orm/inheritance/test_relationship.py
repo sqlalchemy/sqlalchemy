@@ -1234,7 +1234,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
     def test_two(self):
         Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
 
-        s2a = aliased(Sub2)
+        s2a = aliased(Sub2, flat=True)
 
         s = Session()
         self.assert_compile(

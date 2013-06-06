@@ -1767,7 +1767,7 @@ class Mapper(_InspectionAttr):
         while stack:
             item = stack.popleft()
             descendants.append(item)
-            stack.extend(item._inheriting_mappers)
+            stack.extend(sorted(item._inheriting_mappers, key=lambda m: m.class_.__name__))
         return util.WeakSequence(descendants)
 
     def polymorphic_iterator(self):
