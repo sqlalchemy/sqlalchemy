@@ -223,8 +223,8 @@ class ORMAdapter(sql_util.ColumnAdapter):
     and the AliasedClass if any is referenced.
 
     """
-    def __init__(self, entity, equivalents=None,
-                            chain_to=None, adapt_required=False):
+    def __init__(self, entity, equivalents=None, adapt_required=False,
+                            chain_to=None):
         info = inspection.inspect(entity)
 
         self.mapper = info.mapper
@@ -493,7 +493,7 @@ class AliasedClass(object):
     """
     def __init__(self, cls, alias=None,
                             name=None,
-                            flat=True,
+                            flat=False,
                             adapt_on_names=False,
                             #  TODO: None for default here?
                             with_polymorphic_mappers=(),
@@ -502,7 +502,8 @@ class AliasedClass(object):
                             use_mapper_path=False):
         mapper = _class_to_mapper(cls)
         if alias is None:
-            alias = mapper._with_polymorphic_selectable.alias(name=name, flat=flat)
+            alias = mapper._with_polymorphic_selectable.alias(
+                                            name=name, flat=flat)
         self._aliased_insp = AliasedInsp(
             self,
             mapper,
@@ -701,7 +702,7 @@ inspection._inspects(AliasedClass)(lambda target: target._aliased_insp)
 inspection._inspects(AliasedInsp)(lambda target: target)
 
 
-def aliased(element, alias=None, name=None, adapt_on_names=False):
+def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
     """Produce an alias of the given element, usually an :class:`.AliasedClass`
     instance.
 
@@ -775,13 +776,14 @@ def aliased(element, alias=None, name=None, adapt_on_names=False):
             raise sa_exc.ArgumentError(
                 "adapt_on_names only applies to ORM elements"
             )
-        return element.alias(name)
+        return element.alias(name, flat=flat)
     else:
-        return AliasedClass(element, alias=alias,
+        return AliasedClass(element, alias=alias, flat=flat,
                     name=name, adapt_on_names=adapt_on_names)
 
 
 def with_polymorphic(base, classes, selectable=False,
+                        flat=False,
                         polymorphic_on=None, aliased=False,
                         innerjoin=False, _use_mapper_path=False):
     """Produce an :class:`.AliasedClass` construct which specifies
@@ -837,8 +839,8 @@ def with_polymorphic(base, classes, selectable=False,
     mappers, selectable = primary_mapper.\
                     _with_polymorphic_args(classes, selectable,
                                 innerjoin=innerjoin)
-    if aliased:
-        selectable = selectable.alias(flat=True)
+    if aliased or flat:
+        selectable = selectable.alias(flat=flat)
     return AliasedClass(base,
                 selectable,
                 with_polymorphic_mappers=mappers,
