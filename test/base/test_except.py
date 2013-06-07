@@ -2,15 +2,14 @@
 
 
 from sqlalchemy import exc as sa_exceptions
+from sqlalchemy import util
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import eq_
 
-# start Py3K
-Exception = BaseException
-# end Py3K
-# start Py2K
-#from exceptions import StandardError, KeyboardInterrupt, SystemExit
-# end Py2K
+if util.py2k:
+    from exceptions import StandardError, KeyboardInterrupt, SystemExit
+else:
+    Exception = BaseException
 
 
 class Error(Exception):

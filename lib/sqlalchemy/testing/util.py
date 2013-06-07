@@ -1,4 +1,4 @@
-from ..util import jython, pypy, defaultdict, decorator
+from ..util import jython, pypy, defaultdict, decorator, py2k
 import decimal
 import gc
 import time
@@ -32,13 +32,13 @@ else:
 
 def picklers():
     picklers = set()
-# start Py2K
-#    try:
-#        import cPickle
-#        picklers.add(cPickle)
-#    except ImportError:
-#        pass
-# end Py2K
+    if py2k:
+        try:
+            import cPickle
+            picklers.add(cPickle)
+        except ImportError:
+            pass
+
     import pickle
     picklers.add(pickle)
 

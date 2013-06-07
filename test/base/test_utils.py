@@ -968,23 +968,21 @@ class DictlikeIteritemsTest(fixtures.TestBase):
         d = subdict(a=1, b=2, c=3)
         self._ok(d)
 
-# start Py2K
-#    def test_UserDict(self):
-#        import UserDict
-#        d = UserDict.UserDict(a=1, b=2, c=3)
-#        self._ok(d)
-# end Py2K
+    if util.py2k:
+        def test_UserDict(self):
+            import UserDict
+            d = UserDict.UserDict(a=1, b=2, c=3)
+            self._ok(d)
 
     def test_object(self):
         self._notok(object())
 
-# start Py2K
-#    def test_duck_1(self):
-#        class duck1(object):
-#            def iteritems(duck):
-#                return iter(self.baseline)
-#        self._ok(duck1())
-# end Py2K
+    if util.py2k:
+        def test_duck_1(self):
+            class duck1(object):
+                def iteritems(duck):
+                    return iter(self.baseline)
+            self._ok(duck1())
 
     def test_duck_2(self):
         class duck2(object):
@@ -992,16 +990,15 @@ class DictlikeIteritemsTest(fixtures.TestBase):
                 return list(self.baseline)
         self._ok(duck2())
 
-# start Py2K
-#    def test_duck_3(self):
-#        class duck3(object):
-#            def iterkeys(duck):
-#                return iter(['a', 'b', 'c'])
-#
-#            def __getitem__(duck, key):
-#                return dict(a=1, b=2, c=3).get(key)
-#        self._ok(duck3())
-# end Py2K
+    if util.py2k:
+        def test_duck_3(self):
+            class duck3(object):
+                def iterkeys(duck):
+                    return iter(['a', 'b', 'c'])
+
+                def __getitem__(duck, key):
+                    return dict(a=1, b=2, c=3).get(key)
+            self._ok(duck3())
 
     def test_duck_4(self):
         class duck4(object):
@@ -1028,10 +1025,6 @@ class DictlikeIteritemsTest(fixtures.TestBase):
 class DuckTypeCollectionTest(fixtures.TestBase):
 
     def test_sets(self):
-# start Py2K
-#        import sets
-# end Py2K
-
         class SetLike(object):
             def add(self):
                 pass
@@ -1040,20 +1033,13 @@ class DuckTypeCollectionTest(fixtures.TestBase):
             __emulates__ = set
 
         for type_ in (set,
-# start Py2K
-#                      sets.Set,
-# end Py2K
                       SetLike,
                       ForcedSet):
             eq_(util.duck_type_collection(type_), set)
             instance = type_()
             eq_(util.duck_type_collection(instance), set)
 
-        for type_ in (frozenset,
-# start Py2K
-#                      sets.ImmutableSet
-# end Py2K
-                      ):
+        for type_ in (frozenset, ):
             is_(util.duck_type_collection(type_), None)
             instance = type_()
             is_(util.duck_type_collection(instance), None)
@@ -1569,21 +1555,20 @@ class TestClassHierarchy(fixtures.TestBase):
         eq_(set(util.class_hierarchy(A)), set((A, B, C, object)))
         eq_(set(util.class_hierarchy(B)), set((A, B, C, object)))
 
-# start Py2K
-#    def test_oldstyle_mixin(self):
-#        class A(object):
-#            pass
-#
-#        class Mixin:
-#            pass
-#
-#        class B(A, Mixin):
-#            pass
-#
-#        eq_(set(util.class_hierarchy(B)), set((A, B, object)))
-#        eq_(set(util.class_hierarchy(Mixin)), set())
-#        eq_(set(util.class_hierarchy(A)), set((A, B, object)))
-# end Py2K
+    if util.py2k:
+        def test_oldstyle_mixin(self):
+            class A(object):
+                pass
+
+            class Mixin:
+                pass
+
+            class B(A, Mixin):
+                pass
+
+            eq_(set(util.class_hierarchy(B)), set((A, B, object)))
+            eq_(set(util.class_hierarchy(Mixin)), set())
+            eq_(set(util.class_hierarchy(A)), set((A, B, object)))
 
 
 class TestClassProperty(fixtures.TestBase):

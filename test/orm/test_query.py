@@ -1,4 +1,4 @@
-import operator
+from sqlalchemy.sql import operators
 from sqlalchemy import MetaData, null, exists, text, union, literal, \
     literal_column, func, between, Unicode, desc, and_, bindparam, \
     select, distinct, or_, collate
@@ -407,12 +407,7 @@ class GetTest(QueryTest):
             Column('data', Unicode(40)))
         try:
             metadata.create_all()
-# start Py3K
-            ustring = b'petit voix m\xe2\x80\x99a'.decode('utf-8')
-# end Py3K
-# start Py2K
-#            ustring = 'petit voix m\xe2\x80\x99a'.decode('utf-8')
-# end Py2K
+            ustring = util.b('petit voix m\xe2\x80\x99a').decode('utf-8')
 
             table.insert().execute(id=ustring, data=ustring)
             class LocalFoo(self.classes.Base):
@@ -634,13 +629,10 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
 
         create_session().query(User)
-        for (py_op, sql_op) in ((operator.add, '+'), (operator.mul, '*'),
-                                (operator.sub, '-'),
-                                # Py3k
-                                #(operator.truediv, '/'),
-# start Py2K
-#                                (operator.div, '/'),
-# end Py2K
+        for (py_op, sql_op) in ((operators.add, '+'), (operators.mul, '*'),
+                                (operators.sub, '-'),
+                                (operators.truediv, '/'),
+                                (operators.div, '/'),
                                 ):
             for (lhs, rhs, res) in (
                 (5, User.id, ':id_1 %s users.id'),
@@ -660,12 +652,12 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         create_session().query(User)
         ualias = aliased(User)
 
-        for (py_op, fwd_op, rev_op) in ((operator.lt, '<', '>'),
-                                        (operator.gt, '>', '<'),
-                                        (operator.eq, '=', '='),
-                                        (operator.ne, '!=', '!='),
-                                        (operator.le, '<=', '>='),
-                                        (operator.ge, '>=', '<=')):
+        for (py_op, fwd_op, rev_op) in ((operators.lt, '<', '>'),
+                                        (operators.gt, '>', '<'),
+                                        (operators.eq, '=', '='),
+                                        (operators.ne, '!=', '!='),
+                                        (operators.le, '<=', '>='),
+                                        (operators.ge, '>=', '<=')):
             for (lhs, rhs, l_sql, r_sql) in (
                 ('a', User.id, ':id_1', 'users.id'),
                 ('a', literal('b'), ':param_2', ':param_1'), # note swap!

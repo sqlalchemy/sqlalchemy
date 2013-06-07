@@ -1,6 +1,7 @@
 from sqlalchemy.testing import assert_raises, assert_raises_message
-from sqlalchemy.orm import util
+from sqlalchemy.orm import util as orm_util
 from sqlalchemy import Column
+from sqlalchemy import util
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import Table
@@ -52,10 +53,10 @@ class AliasedClassTest(fixtures.TestBase):
         alias = aliased(Point)
 
         assert Point.zero
-# start Py2K
-#        # TODO: what is this testing ??
-#        assert not getattr(alias, 'zero')
-# end Py2K
+
+        if util.py2k:
+            # TODO: what is this testing ??
+            assert not getattr(alias, 'zero')
 
     def test_classmethods(self):
         class Point(object):
@@ -123,19 +124,15 @@ class AliasedClassTest(fixtures.TestBase):
                 self.func = func
             def __get__(self, instance, owner):
                 if instance is None:
-# start Py3K
-                    args = (self.func, owner)
-# end Py3K
-# start Py2K
-#                    args = (self.func, owner, owner.__class__)
-# end Py2K
+                    if util.py2k:
+                        args = (self.func, owner, owner.__class__)
+                    else:
+                        args = (self.func, owner)
                 else:
-# start Py3K
-                    args = (self.func, instance)
-# end Py3K
-# start Py2K
-#                    args = (self.func, instance, owner)
-# end Py2K
+                    if util.py2k:
+                        args = (self.func, instance, owner)
+                    else:
+                        args = (self.func, instance)
                 return types.MethodType(*args)
 
         class PropertyDescriptor(object):
@@ -195,9 +192,9 @@ class IdentityKeyTest(_fixtures.FixtureTest):
 
         mapper(User, users)
 
-        key = util.identity_key(User, [1])
+        key = orm_util.identity_key(User, [1])
         eq_(key, (User, (1,)))
-        key = util.identity_key(User, ident=[1])
+        key = orm_util.identity_key(User, ident=[1])
         eq_(key, (User, (1,)))
 
     def test_identity_key_scalar(self):
@@ -205,9 +202,9 @@ class IdentityKeyTest(_fixtures.FixtureTest):
 
         mapper(User, users)
 
-        key = util.identity_key(User, 1)
+        key = orm_util.identity_key(User, 1)
         eq_(key, (User, (1,)))
-        key = util.identity_key(User, ident=1)
+        key = orm_util.identity_key(User, ident=1)
         eq_(key, (User, (1,)))
 
     def test_identity_key_2(self):
@@ -218,7 +215,7 @@ class IdentityKeyTest(_fixtures.FixtureTest):
         u = User(name='u1')
         s.add(u)
         s.flush()
-        key = util.identity_key(instance=u)
+        key = orm_util.identity_key(instance=u)
         eq_(key, (User, (u.id,)))
 
     def test_identity_key_3(self):
@@ -227,7 +224,7 @@ class IdentityKeyTest(_fixtures.FixtureTest):
         mapper(User, users)
 
         row = {users.c.id: 1, users.c.name: "Frank"}
-        key = util.identity_key(User, row=row)
+        key = orm_util.identity_key(User, row=row)
         eq_(key, (User, (1,)))
 
 
@@ -244,12 +241,12 @@ class PathRegistryTest(_fixtures.FixtureTest):
     def test_root_registry(self):
         umapper = inspect(self.classes.User)
         is_(
-            util.RootRegistry()[umapper],
+            orm_util.RootRegistry()[umapper],
             umapper._path_registry
         )
         eq_(
-            util.RootRegistry()[umapper],
-            util.PathRegistry.coerce((umapper,))
+            orm_util.RootRegistry()[umapper],
+            orm_util.PathRegistry.coerce((umapper,))
         )
 
     def test_expand(self):

@@ -884,7 +884,7 @@ def dictlike_iteritems(dictlike):
 
     if hasattr(dictlike, 'iterkeys'):
         def iterator():
-            for key in dictlike.keys():
+            for key in dictlike.iterkeys():
                 yield key, getter(key)
         return iterator()
     elif hasattr(dictlike, 'keys'):

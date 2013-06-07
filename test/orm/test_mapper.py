@@ -272,14 +272,11 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                     )
         m = mapper(Foo, foo_t)
         class DontCompareMeToString(int):
-# start Py3K
-            pass
-# end Py3K
-# start Py2K
-#            def __lt__(self, other):
-#                assert not isinstance(other, basestring)
-#                return int(self) < other
-# end Py2K
+            if util.py2k:
+                def __lt__(self, other):
+                    assert not isinstance(other, basestring)
+                    return int(self) < other
+
         foos = [Foo(id='f%d' % i) for i in range(5)]
         states = [attributes.instance_state(f) for f in foos]
 
@@ -2989,23 +2986,22 @@ class RequirementsTest(fixtures.MappedTest):
               Column('ht1b_id', Integer, ForeignKey('ht1.id'), primary_key=True),
               Column('value', String(10)))
 
-# start Py2K
-#    def test_baseclass(self):
-#        ht1 = self.tables.ht1
-#
-#        class OldStyle:
-#            pass
-#
-#        assert_raises(sa.exc.ArgumentError, mapper, OldStyle, ht1)
-#
-#        assert_raises(sa.exc.ArgumentError, mapper, 123)
-#
-#        class NoWeakrefSupport(str):
-#            pass
-#
-#        # TODO: is weakref support detectable without an instance?
-#        #self.assertRaises(sa.exc.ArgumentError, mapper, NoWeakrefSupport, t2)
-# end Py2K
+    if util.py2k:
+        def test_baseclass(self):
+            ht1 = self.tables.ht1
+
+            class OldStyle:
+                pass
+
+            assert_raises(sa.exc.ArgumentError, mapper, OldStyle, ht1)
+
+            assert_raises(sa.exc.ArgumentError, mapper, 123)
+
+            class NoWeakrefSupport(str):
+                pass
+
+            # TODO: is weakref support detectable without an instance?
+            #self.assertRaises(sa.exc.ArgumentError, mapper, NoWeakrefSupport, t2)
 
     class _ValueBase(object):
         def __init__(self, value='abc', id=None):
