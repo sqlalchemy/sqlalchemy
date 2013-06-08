@@ -730,15 +730,28 @@ def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
 
     :param element: element to be aliased.  Is normally a mapped class,
      but for convenience can also be a :class:`.FromClause` element.
+
     :param alias: Optional selectable unit to map the element to.  This should
      normally be a :class:`.Alias` object corresponding to the :class:`.Table`
      to which the class is mapped, or to a :func:`.select` construct that
      is compatible with the mapping.   By default, a simple anonymous
      alias of the mapped table is generated.
+
     :param name: optional string name to use for the alias, if not specified
      by the ``alias`` parameter.  The name, among other things, forms the
      attribute name that will be accessible via tuples returned by a
      :class:`.Query` object.
+
+    :param flat: Boolean, will be passed through to the :meth:`.FromClause.alias`
+     call so that aliases of :class:`.Join` objects don't include an enclosing
+     SELECT.  This can lead to more efficient queries in many circumstances.
+     A JOIN against a nested JOIN will be rewritten as a JOIN against an aliased
+     SELECT subquery on backends that don't support this syntax.
+
+     .. versionadded:: 0.9.0
+
+     .. seealso:: :meth:`.Join.alias`
+
     :param adapt_on_names: if True, more liberal "matching" will be used when
      mapping the mapped columns of the ORM entity to those of the
      given selectable - a name-based match will be performed if the
@@ -815,6 +828,19 @@ def with_polymorphic(base, classes, selectable=False,
         to create the target of a JOIN on a backend that does not
         support parenthesized joins, such as SQLite and older
         versions of MySQL.
+
+    :param flat: Boolean, will be passed through to the :meth:`.FromClause.alias`
+     call so that aliases of :class:`.Join` objects don't include an enclosing
+     SELECT.  This can lead to more efficient queries in many circumstances.
+     A JOIN against a nested JOIN will be rewritten as a JOIN against an aliased
+     SELECT subquery on backends that don't support this syntax.
+
+     Setting ``flat`` to ``True`` implies the ``aliased`` flag is
+     also ``True``.
+
+     .. versionadded:: 0.9.0
+
+     .. seealso:: :meth:`.Join.alias`
 
     :param selectable: a table or select() statement that will
         be used in place of the generated FROM clause. This argument is

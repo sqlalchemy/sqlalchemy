@@ -776,7 +776,80 @@ class AnonLabelTest(fixtures.TestBase):
         c1 = literal_column('x')
         eq_(str(select([c1.label('y')])), "SELECT x AS y")
 
-class JoinConditionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+class JoinAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def test_flat_ok_on_non_join(self):
+        a = table('a', column('a'))
+        s = a.select()
+        self.assert_compile(
+            s.alias(flat=True).select(),
+            "SELECT anon_1.a FROM (SELECT a.a AS a FROM a) AS anon_1"
+        )
+
+    def test_join_alias(self):
+        a = table('a', column('a'))
+        b = table('b', column('b'))
+        self.assert_compile(
+            a.join(b, a.c.a == b.c.b).alias(),
+            "SELECT a.a AS a_a, b.b AS b_b FROM a JOIN b ON a.a = b.b"
+        )
+
+    def test_join_standalone_alias(self):
+        a = table('a', column('a'))
+        b = table('b', column('b'))
+        self.assert_compile(
+            alias(a.join(b, a.c.a == b.c.b)),
+            "SELECT a.a AS a_a, b.b AS b_b FROM a JOIN b ON a.a = b.b"
+        )
+
+    def test_join_alias_flat(self):
+        a = table('a', column('a'))
+        b = table('b', column('b'))
+        self.assert_compile(
+            a.join(b, a.c.a == b.c.b).alias(flat=True),
+            "a AS a_1 JOIN b AS b_1 ON a_1.a = b_1.b"
+        )
+
+    def test_join_standalone_alias_flat(self):
+        a = table('a', column('a'))
+        b = table('b', column('b'))
+        self.assert_compile(
+            alias(a.join(b, a.c.a == b.c.b), flat=True),
+            "a AS a_1 JOIN b AS b_1 ON a_1.a = b_1.b"
+        )
+
+    def test_composed_join_alias_flat(self):
+        a = table('a', column('a'))
+        b = table('b', column('b'))
+        c = table('c', column('c'))
+        d = table('d', column('d'))
+
+        j1 = a.join(b, a.c.a == b.c.b)
+        j2 = c.join(d, c.c.c == d.c.d)
+        self.assert_compile(
+            j1.join(j2, b.c.b == c.c.c).alias(flat=True),
+            "a AS a_1 JOIN b AS b_1 ON a_1.a = b_1.b JOIN "
+            "(c AS c_1 JOIN d AS d_1 ON c_1.c = d_1.d) ON b_1.b = c_1.c"
+        )
+
+    def test_composed_join_alias(self):
+        a = table('a', column('a'))
+        b = table('b', column('b'))
+        c = table('c', column('c'))
+        d = table('d', column('d'))
+
+        j1 = a.join(b, a.c.a == b.c.b)
+        j2 = c.join(d, c.c.c == d.c.d)
+        self.assert_compile(
+            select([j1.join(j2, b.c.b == c.c.c).alias()]),
+            "SELECT anon_1.a_a, anon_1.b_b, anon_1.c_c, anon_1.d_d "
+            "FROM (SELECT a.a AS a_a, b.b AS b_b, c.c AS c_c, d.d AS d_d "
+            "FROM a JOIN b ON a.a = b.b "
+            "JOIN (c JOIN d ON c.c = d.d) ON b.b = c.c) AS anon_1"
+        )
+
+class JoinConditionTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def test_join_condition(self):

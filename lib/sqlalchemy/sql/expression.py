@@ -828,8 +828,14 @@ def alias(selectable, name=None, flat=False):
         If ``None``, a name will be deterministically generated
         at compile time.
 
+    :param flat: Will be passed through to if the given selectable
+     is an instance of :class:`.Join` - see :meth:`.Join.alias`
+     for details.
+
+     .. versionadded:: 0.9.0
+
     """
-    return Alias(selectable, name=name)
+    return selectable.alias(name=name, flat=flat)
 
 
 def literal(value, type_=None):
@@ -3983,14 +3989,23 @@ class Join(FromClause):
     def alias(self, name=None, flat=False):
         """return an alias of this :class:`.Join`.
 
-        Used against a :class:`.Join` object,
-        :meth:`~.Join.alias` calls the :meth:`~.Join.select`
-        method first so that a subquery against a
-        :func:`.select` construct is generated.
-        the :func:`~expression.select` construct also has the
-        ``correlate`` flag set to ``False`` and will not
-        auto-correlate inside an enclosing :func:`~expression.select`
-        construct.
+        The default behavior here is to first produce a SELECT
+        construct from this :class:`.Join`, then to produce a
+        :class:`.Alias` from that.  So given a join of the form::
+
+            j = table_a.join(table_b, table_a.c.id == table_b.c.a_id)
+
+        The JOIN by itself would look like::
+
+            table_a JOIN table_b ON table_a.id = table_b.a_id
+
+        Whereas the alias of the above, ``j.alias()``, would in a
+        SELECT context look like::
+
+            (SELECT table_a.id AS table_a_id, table_b.id AS table_b_id,
+                table_b.a_id AS table_b_a_id
+                FROM table_a
+                JOIN table_b ON table_a.id = table_b.a_id) AS anon_1
 
         The equivalent long-hand form, given a :class:`.Join` object
         ``j``, is::
@@ -4004,8 +4019,69 @@ class Join(FromClause):
                 name=name
             )
 
-        See :func:`~.expression.alias` for further details on
-        aliases.
+        The selectable produced by :meth:`.Join.alias` features the same
+        columns as that of the two individual selectables presented under
+        a single name - the individual columns are "auto-labeled", meaning
+        the ``.c.`` collection of the resulting :class:`.Alias` represents
+        the names of the individual columns using a ``<tablename>_<columname>``
+        scheme::
+
+            j.c.table_a_id
+            j.c.table_b_a_id
+
+        :meth:`.Join.alias` also features an alternate
+        option for aliasing joins which produces no enclosing SELECT and
+        does not normally apply labels to the column names.  The
+        ``flat=True`` option will call :meth:`.FromClause.alias`
+        against the left and right sides individually.
+        Using this option, no new ``SELECT`` is produced;
+        we instead, from a construct as below::
+
+            j = table_a.join(table_b, table_a.c.id == table_b.c.a_id)
+            j = j.alias(flat=True)
+
+        we get a result like this::
+
+            table_a AS table_a_1 JOIN table_b AS table_b_1 ON
+            table_a_1.id = table_b_1.a_id
+
+        The ``flat=True`` argument is also propagated to the contained
+        selectables, so that a composite join such as::
+
+            j = table_a.join(
+                    table_b.join(table_c,
+                            table_b.c.id == table_c.c.b_id),
+                    table_b.c.a_id == table_a.c.id
+                ).alias(flat=True)
+
+        Will produce an expression like::
+
+            table_a AS table_a_1 JOIN (
+                    table_b AS table_b_1 JOIN table_c AS table_c_1
+                    ON table_b_1.id = table_c_1.b_id
+            ) ON table_a_1.id = table_b_1.a_id
+
+        The standalone :func:`experssion.alias` function as well as the
+        base :meth:`.FromClause.alias` method also support the ``flat=True``
+        argument as a no-op, so that the argument can be passed to the
+        ``alias()`` method of any selectable.
+
+        .. versionadded:: 0.9.0 Added the ``flat=True`` option to create
+          "aliases" of joins without enclosing inside of a SELECT
+          subquery.
+
+        :param name: name given to the alias.
+
+        :param flat: if True, produce an alias of the left and right
+         sides of this :class:`.Join` and return the join of those
+         two selectables.   This produces join expression that does not
+         include an enclosing SELECT.
+
+         .. versionadded:: 0.9.0
+
+        .. seealso::
+
+            :func:`~.expression.alias`
 
         """
         if flat:
@@ -4235,6 +4311,9 @@ class FromGrouping(FromClause):
 
     def is_derived_from(self, element):
         return self.element.is_derived_from(element)
+
+    def alias(self, **kw):
+        return FromGrouping(self.element.alias(**kw))
 
     @property
     def _hide_froms(self):

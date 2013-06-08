@@ -41,6 +41,165 @@ At the moment, the C extensions are still not fully ported to
 Python 3.
 
 
+New ORM Features
+================
+
+.. _feature_joins_09:
+
+Many JOIN and LEFT OUTER JOIN expressions will no longer be wrapped in (SELECT * FROM ..) AS ANON_1
+---------------------------------------------------------------------------------------------------
+
+For many years, the SQLAlchemy ORM has been held back from being able to nest
+a JOIN inside the right side of an existing JOIN::
+
+    SELECT a.*, b.*, c.* FROM a JOIN (b JOIN c ON b.id = c.id) ON a.id
+
+This was due to the fact that SQLite, even today, cannot parse a statement of the above format::
+
+    SQLite version 3.7.15.2 2013-01-09 11:53:05
+    Enter ".help" for instructions
+    Enter SQL statements terminated with a ";"
+    sqlite> create table a(id integer);
+    sqlite> create table b(id integer);
+    sqlite> create table c(id integer);
+    sqlite> select a.id, b.id, c.id from a join (b join c on b.id=c.id) on b.id=a.id;
+    Error: no such column: b.id
+    sqlite>
+
+Back in 2005, it's possible, though not confirmed, that maybe older versions of MySQL
+(like in the 4 series) or Oracle (perhaps in the 8 or 9 series) also couldn't handle the above form;
+though today, every database tested except SQLite now supports it.   To make matters worse,
+SQLAlchemy's usual workaround of applying a SELECT often degrades performance on platforms
+like Postgresql and MySQL::
+
+    SELECT a.*, anon_1.* FROM a JOIN (
+                    SELECT b.id AS b_id, c.id AS c_id
+                    FROM b JOIN c ON b.id = c.id
+                ) AS anon_1 ON a.id=anon_1.b_id
+
+A JOIN like the above form is commonplace when working with joined-table inheritance structures;
+any time :meth:`.Query.join` is used to join from some parent to a joined-table subclass, or
+when :func:`.joinedload` is used similarly, SQLAlchemy's ORM would always make sure a nested
+JOIN was never rendered, lest the query wouldn't be able to run on SQLite.  Even though
+the Core has always supported a JOIN of the more compact form, the ORM had to avoid it.
+
+An additional issue would arise when producing joins across many-to-many relationships
+where special criteria is present in the ON clause. Consider an eager load join like the following::
+
+    session.query(Order).outerjoin(Order.items)
+
+Assuming a many-to-many from ``Order`` to ``Item`` which actually refers to a subclass
+like ``Subitem``, the SQL for the above would look like::
+
+    SELECT order.id, order.name
+    FROM order LEFT OUTER JOIN order_item ON order.id = order_item.order_id
+    LEFT OUTER JOIN item ON order_item.item_id = item.id AND item.type = 'subitem'
+
+What's wrong with the above query?  Basically, that it will load many ``order`` /
+``order_item`` rows where the criteria of ``item.type == 'subitem'`` is not true.
+
+As of SQLAlchemy 0.9, an entirely new approach has been taken.  The ORM no longer
+worries about nesting JOINs in the right side of an enclosing JOIN, and it now will
+render these as often as possible while still returning the correct results.  When
+the SQL statement is passed to be compiled, the **dialect compiler** will **rewrite the join**
+to suit the target backend, if that backend is known to not support a right-nested
+JOIN (which currently is only SQLite - if other backends have this issue please
+let us know!).
+
+So a regular ``query(Parent).join(Subclass)`` will now usually produce a simpler
+expression::
+
+    SELECT parent.id AS parent_id
+    FROM parent JOIN (
+            base_table JOIN subclass_table
+            ON base_table.id = subclass_table.id) ON parent.id = base_table.parent_id
+
+Joined eager loads like ``query(Parent).options(joinedload(Parent.subclasses))``
+will alias the individual tables instead of wrapping in an ``ANON_1``::
+
+    SELECT parent.*, base_table_1.*, subclass_table_1.* FROM parent
+        LEFT OUTER JOIN (
+            base_table AS base_table_1 JOIN subclass_table AS subclass_table_1
+            ON base_table_1.id = subclass_table_1.id)
+            ON parent.id = base_table_1.parent_id
+
+Many-to-many joins and eagerloads will right nest the "secondary" and "right" tables::
+
+    SELECT order.id, order.name
+    FROM order LEFT OUTER JOIN
+    (order_item JOIN item ON order_item.item_id = item.id AND item.type = 'subitem')
+    ON order_item.order_id = order.id
+
+All of these joins, when rendered with a :class:`.Select` statement that specifically
+specifies ``use_labels=True``, which is true for all the queries the ORM emits,
+are candidates for "join rewriting", which is the process of rewriting all those right-nested
+joins into nested SELECT statements, while maintaining the identical labeling used by
+the :class:`.Select`.  So SQLite, the one database that won't support this very
+common SQL syntax even in 2013, shoulders the extra complexity itself,
+with the above queries rewritten as::
+
+    -- sqlite only!
+    SELECT parent.id AS parent_id
+        FROM parent JOIN (
+            SELECT base_table.id AS base_table_id,
+                    base_table.parent_id AS base_table_parent_id,
+                    subclass_table.id AS subclass_table_id
+            FROM base_table JOIN subclass_table ON base_table.id = subclass_table.id
+        ) AS anon_1 ON parent.id = anon_1.base_table_parent_id
+
+    -- sqlite only!
+    SELECT parent.id AS parent_id, anon_1.subclass_table_1_id AS subclass_table_1_id,
+            anon_1.base_table_1_id AS base_table_1_id,
+            anon_1.base_table_1_parent_id AS base_table_1_parent_id
+    FROM parent LEFT OUTER JOIN (
+        SELECT base_table_1.id AS base_table_1_id,
+            base_table_1.parent_id AS base_table_1_parent_id,
+            subclass_table_1.id AS subclass_table_1_id
+        FROM base_table AS base_table_1
+        JOIN subclass_table AS subclass_table_1 ON base_table_1.id = subclass_table_1.id
+    ) AS anon_1 ON parent.id = anon_1.base_table_1_parent_id
+
+    -- sqlite only!
+    SELECT "order".id AS order_id
+    FROM "order" LEFT OUTER JOIN (
+            SELECT order_item_1.order_id AS order_item_1_order_id,
+                order_item_1.item_id AS order_item_1_item_id,
+                item.id AS item_id, item.type AS item_type
+    FROM order_item AS order_item_1
+        JOIN item ON item.id = order_item_1.item_id AND item.type IN (?)
+    ) AS anon_1 ON "order".id = anon_1.order_item_1_order_id
+
+The :meth:`.Join.alias`, :func:`.aliased` and :func:`.with_polymorphic` functions now
+support a new argument, ``flat=True``, which is used to construct aliases of joined-table
+entities without embedding into a SELECT.   This flag is not on by default, to help with
+backwards compatibility - but now a "polymorhpic" selectable can be joined as a target
+without any subqueries generated::
+
+    employee_alias = with_polymorphic(Person, [Engineer, Manager], flat=True)
+
+    session.query(Company).join(
+                        Company.employees.of_type(employee_alias)
+                    ).filter(
+                        or_(
+                            Engineer.priamry_language == 'python',
+                            Manager.golf_swing == 'fore'
+                        )
+                    )
+
+Generates (everywhere except SQLite)::
+
+    SELECT companies.company_id AS companies_company_id, companies.name AS companies_name
+    FROM companies JOIN (
+        people AS people_1
+        LEFT OUTER JOIN engineers AS engineers_1 ON people_1.person_id = engineers_1.person_id
+        LEFT OUTER JOIN managers AS managers_1 ON people_1.person_id = managers_1.person_id
+    ) ON companies.company_id = people_1.company_id
+    WHERE engineers.primary_language = %(primary_language_1)s
+        OR managers.manager_name = %(manager_name_1)s
+
+:ticket:`2369` :ticket:`2587`
+
+
 .. _behavioral_changes_09:
 
 Behavioral Changes
@@ -58,39 +217,39 @@ render.
 
 Consider the following example against the usual ``User`` mapping::
 
-	select_stmt = select([User]).where(User.id == 7).alias()
+    select_stmt = select([User]).where(User.id == 7).alias()
 
-	q = session.query(User).\
+    q = session.query(User).\
                join(select_stmt, User.id == select_stmt.c.id).\
                filter(User.name == 'ed')
 
 The above statement predictably renders SQL like the following::
 
-	SELECT "user".id AS user_id, "user".name AS user_name
-	FROM "user" JOIN (SELECT "user".id AS id, "user".name AS name
-	FROM "user"
-	WHERE "user".id = :id_1) AS anon_1 ON "user".id = anon_1.id
-	WHERE "user".name = :name_1
+    SELECT "user".id AS user_id, "user".name AS user_name
+    FROM "user" JOIN (SELECT "user".id AS id, "user".name AS name
+    FROM "user"
+    WHERE "user".id = :id_1) AS anon_1 ON "user".id = anon_1.id
+    WHERE "user".name = :name_1
 
 If we wanted to reverse the order of the left and right elements of the
 JOIN, the documentation would lead us to believe we could use
 :meth:`.Query.select_from` to do so::
 
-	q = session.query(User).\
-	        select_from(select_stmt).\
-	        join(User, User.id == select_stmt.c.id).\
-	        filter(User.name == 'ed')
+    q = session.query(User).\
+            select_from(select_stmt).\
+            join(User, User.id == select_stmt.c.id).\
+            filter(User.name == 'ed')
 
 However, in version 0.8 and earlier, the above use of :meth:`.Query.select_from`
 would apply the ``select_stmt`` to **replace** the ``User`` entity, as it
 selects from the ``user`` table which is compatible with ``User``::
 
-	-- SQLAlchemy 0.8 and earlier...
-	SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name
-	FROM (SELECT "user".id AS id, "user".name AS name
-	FROM "user"
-	WHERE "user".id = :id_1) AS anon_1 JOIN "user" ON anon_1.id = anon_1.id
-	WHERE anon_1.name = :name_1
+    -- SQLAlchemy 0.8 and earlier...
+    SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name
+    FROM (SELECT "user".id AS id, "user".name AS name
+    FROM "user"
+    WHERE "user".id = :id_1) AS anon_1 JOIN "user" ON anon_1.id = anon_1.id
+    WHERE anon_1.name = :name_1
 
 The above statement is a mess, the ON clause refers ``anon_1.id = anon_1.id``,
 our WHERE clause has been replaced with ``anon_1`` as well.
@@ -101,10 +260,10 @@ is now available by a new method known as :meth:`.Query.select_entity_from`.
 This is a lesser used behavior that in modern SQLAlchemy is roughly equivalent
 to selecting from a customized :func:`.aliased` construct::
 
-	select_stmt = select([User]).where(User.id == 7)
-	user_from_stmt = aliased(User, select_stmt.alias())
+    select_stmt = select([User]).where(User.id == 7)
+    user_from_stmt = aliased(User, select_stmt.alias())
 
-	q = session.query(user_from_stmt).filter(user_from_stmt.name == 'ed')
+    q = session.query(user_from_stmt).filter(user_from_stmt.name == 'ed')
 
 So with SQLAlchemy 0.9, our query that selects from ``select_stmt`` produces
 the SQL we expect::
@@ -140,24 +299,24 @@ reports support of this feature.
 
 E.g. an example like::
 
-	from sqlalchemy.sql import table, column, select, func
+    from sqlalchemy.sql import table, column, select, func
 
-	t = table('t', column('c1'), column('c2'))
-	expr = (func.foo(t.c.c1) + t.c.c2).label("expr")
+    t = table('t', column('c1'), column('c2'))
+    expr = (func.foo(t.c.c1) + t.c.c2).label("expr")
 
-	stmt = select([expr]).order_by(expr)
+    stmt = select([expr]).order_by(expr)
 
-	print stmt
+    print stmt
 
 Prior to 0.9 would render as::
 
-	SELECT foo(t.c1) + t.c2 AS expr
-	FROM t ORDER BY foo(t.c1) + t.c2
+    SELECT foo(t.c1) + t.c2 AS expr
+    FROM t ORDER BY foo(t.c1) + t.c2
 
-And now	renders as::
+And now renders as::
 
-	SELECT foo(t.c1) + t.c2 AS expr
-	FROM t ORDER BY expr
+    SELECT foo(t.c1) + t.c2 AS expr
+    FROM t ORDER BY expr
 
 The ORDER BY only renders the label if the label isn't further embedded into an expression within the ORDER BY, other than a simple ``ASC`` or ``DESC``.
 
