@@ -66,11 +66,12 @@ This was due to the fact that SQLite, even today, cannot parse a statement of th
     Error: no such column: b.id
     sqlite>
 
-Back in 2005, it's possible, though not confirmed, that maybe older versions of MySQL
-(like in the 4 series) or Oracle (perhaps in the 8 or 9 series) also couldn't handle the above form;
-though today, every database tested except SQLite now supports it.   To make matters worse,
-SQLAlchemy's usual workaround of applying a SELECT often degrades performance on platforms
-like Postgresql and MySQL::
+Back in 2005, it wasn't clear if other databases had trouble with this form,
+but today it seems clear every database tested except SQLite now supports it
+(Oracle 8, a very old database, doesn't support the JOIN keyword at all,
+but SQLAlchemy has always had a simple rewriting scheme in place for Oracle's syntax).
+To make matters worse, SQLAlchemy's usual workaround of applying a
+SELECT often degrades performance on platforms like Postgresql and MySQL::
 
     SELECT a.*, anon_1.* FROM a JOIN (
                     SELECT b.id AS b_id, c.id AS c_id
