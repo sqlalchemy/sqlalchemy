@@ -190,8 +190,8 @@ without any subqueries generated::
                         Company.employees.of_type(employee_alias)
                     ).filter(
                         or_(
-                            Engineer.priamry_language == 'python',
-                            Manager.golf_swing == 'fore'
+                            Engineer.primary_language == 'python',
+                            Manager.manager_name == 'dilbert'
                         )
                     )
 
