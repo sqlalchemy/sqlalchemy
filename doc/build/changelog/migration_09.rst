@@ -50,9 +50,10 @@ Many JOIN and LEFT OUTER JOIN expressions will no longer be wrapped in (SELECT *
 ---------------------------------------------------------------------------------------------------
 
 For many years, the SQLAlchemy ORM has been held back from being able to nest
-a JOIN inside the right side of an existing JOIN::
+a JOIN inside the right side of an existing JOIN (typically a LEFT OUTER JOIN,
+as INNER JOINs could always be flattened)::
 
-    SELECT a.*, b.*, c.* FROM a JOIN (b JOIN c ON b.id = c.id) ON a.id
+    SELECT a.*, b.*, c.* FROM a LEFT OUTER JOIN (b JOIN c ON b.id = c.id) ON a.id
 
 This was due to the fact that SQLite, even today, cannot parse a statement of the above format::
 
@@ -62,9 +63,16 @@ This was due to the fact that SQLite, even today, cannot parse a statement of th
     sqlite> create table a(id integer);
     sqlite> create table b(id integer);
     sqlite> create table c(id integer);
-    sqlite> select a.id, b.id, c.id from a join (b join c on b.id=c.id) on b.id=a.id;
+    sqlite> select a.id, b.id, c.id from a left outer join (b join c on b.id=c.id) on b.id=a.id;
     Error: no such column: b.id
-    sqlite>
+
+Right-outer-joins are of course another way to work around right-side
+parenthesization; this would be significantly complicated and visually unpleasant
+to implement, but fortunately SQLite doesn't support RIGHT OUTER JOIN either :)::
+
+    sqlite> select a.id, b.id, c.id from b join c on b.id=c.id
+       ...> right outer join a on b.id=a.id;
+    Error: RIGHT and FULL OUTER JOINs are not currently supported
 
 Back in 2005, it wasn't clear if other databases had trouble with this form,
 but today it seems clear every database tested except SQLite now supports it
@@ -73,7 +81,7 @@ but SQLAlchemy has always had a simple rewriting scheme in place for Oracle's sy
 To make matters worse, SQLAlchemy's usual workaround of applying a
 SELECT often degrades performance on platforms like Postgresql and MySQL::
 
-    SELECT a.*, anon_1.* FROM a JOIN (
+    SELECT a.*, anon_1.* FROM a LEFT OUTER JOIN (
                     SELECT b.id AS b_id, c.id AS c_id
                     FROM b JOIN c ON b.id = c.id
                 ) AS anon_1 ON a.id=anon_1.b_id
