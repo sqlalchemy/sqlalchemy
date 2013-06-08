@@ -150,9 +150,9 @@
     	:tags: feature, general
       	:tickets: 2671
 
-		The codebase is now "in-place" for Python
-		2 and 3, the need to run 2to3 has been removed.
-		Compatibility is now against Python 2.6 on forward.
+        The codebase is now "in-place" for Python
+        2 and 3, the need to run 2to3 has been removed.
+        Compatibility is now against Python 2.6 on forward.
 
     .. change::
     	:tags: feature, oracle, py3k
