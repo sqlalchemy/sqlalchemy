@@ -1042,6 +1042,7 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
         Table('singular', metadata,
             Column('id', Integer,
               primary_key=True, test_needs_autoincrement=True),
+            Column('value', String(50))
         )
 
     @classmethod
@@ -1058,6 +1059,10 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             # m2o -> o2m
             # nonuselist -> uselist
             singular_keywords = association_proxy('singular', 'keywords')
+
+            # m2o -> scalar
+            # nonuselist
+            singular_value = association_proxy('singular', 'value')
 
         class Keyword(cls.Comparable):
             def __init__(self, keyword):
@@ -1116,17 +1121,26 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             'fox', 'jumped', 'over',
             'the', 'lazy',
             )
-        for ii in range(4):
+        for ii in range(16):
             user = User('user%d' % ii)
-            user.singular = Singular()
+
+            if ii % 2 == 0:
+                user.singular = Singular(value=("singular%d" % ii)
+                                        if ii % 4 == 0 else None)
             session.add(user)
-            for jj in words[ii:ii + 3]:
+            for jj in words[(ii % len(words)):((ii + 3) % len(words))]:
                 k = Keyword(jj)
                 user.keywords.append(k)
-                user.singular.keywords.append(k)
+                if ii % 3 == None:
+                    user.singular.keywords.append(k)
+
         orphan = Keyword('orphan')
         orphan.user_keyword = UserKeyword(keyword=orphan, user=None)
         session.add(orphan)
+
+        keyword_with_nothing = Keyword('kwnothing')
+        session.add(keyword_with_nothing)
+
         session.commit()
         cls.u = user
         cls.kw = user.keywords[0]
@@ -1190,12 +1204,10 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
                                 self.classes.Keyword)
 
         self._equivalent(self.session.query(Keyword).
-                filter(Keyword.user.has(User.name
-                         == 'user2')),
+                filter(Keyword.user.has(User.name == 'user2')),
                          self.session.query(Keyword).
                             filter(Keyword.user_keyword.has(
-                                UserKeyword.user.has(User.name
-                         == 'user2'))))
+                                UserKeyword.user.has(User.name == 'user2'))))
 
     def test_filter_any_criterion_nul_ul(self):
         User, Keyword, Singular = (self.classes.User,
@@ -1203,12 +1215,13 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
                                 self.classes.Singular)
 
         self._equivalent(
-            self.session.query(User).\
-                        filter(User.singular_keywords.any(Keyword.keyword=='jumped')),
-            self.session.query(User).\
+            self.session.query(User).
+                        filter(User.singular_keywords.any(
+                            Keyword.keyword == 'jumped')),
+            self.session.query(User).
                         filter(
                             User.singular.has(
-                                Singular.keywords.any(Keyword.keyword=='jumped')
+                                Singular.keywords.any(Keyword.keyword == 'jumped')
                             )
                         )
         )
@@ -1246,19 +1259,134 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_filter_ne_nul_nul(self):
         Keyword = self.classes.Keyword
 
-        self._equivalent(self.session.query(Keyword).filter(Keyword.user
-                         != self.u),
+        self._equivalent(self.session.query(Keyword).filter(Keyword.user != self.u),
                          self.session.query(Keyword).
-                         filter(not_(Keyword.user_keyword.has(user=self.u))))
+                            filter(
+                                    Keyword.user_keyword.has(Keyword.user != self.u)
+                            )
+                        )
 
     def test_filter_eq_null_nul_nul(self):
         UserKeyword, Keyword = self.classes.UserKeyword, self.classes.Keyword
 
-        self._equivalent(self.session.query(Keyword).filter(Keyword.user
-                         == None),
-                         self.session.query(Keyword).
-                            filter(Keyword.user_keyword.has(UserKeyword.user
-                         == None)))
+        self._equivalent(
+                self.session.query(Keyword).filter(Keyword.user == None),
+                self.session.query(Keyword).
+                            filter(
+                                or_(
+                                    Keyword.user_keyword.has(UserKeyword.user == None),
+                                    Keyword.user_keyword == None
+                                )
+
+                            )
+                        )
+
+    def test_filter_ne_null_nul_nul(self):
+        UserKeyword, Keyword = self.classes.UserKeyword, self.classes.Keyword
+
+        self._equivalent(
+                self.session.query(Keyword).filter(Keyword.user != None),
+                self.session.query(Keyword).
+                            filter(
+                                Keyword.user_keyword.has(UserKeyword.user != None),
+                            )
+                        )
+
+    def test_filter_eq_None_nul(self):
+        User = self.classes.User
+        Singular = self.classes.Singular
+
+        self._equivalent(
+            self.session.query(User).filter(User.singular_value == None),
+            self.session.query(User).filter(
+                    or_(
+                        User.singular.has(Singular.value==None),
+                        User.singular == None
+                    )
+                )
+        )
+
+    def test_filter_eq_value_nul(self):
+        User = self.classes.User
+        Singular = self.classes.Singular
+
+        self._equivalent(
+            self.session.query(User).filter(User.singular_value == "singular4"),
+            self.session.query(User).filter(
+                        User.singular.has(Singular.value=="singular4"),
+                )
+        )
+
+    def test_filter_ne_None_nul(self):
+        User = self.classes.User
+        Singular = self.classes.Singular
+
+        self._equivalent(
+            self.session.query(User).filter(User.singular_value != None),
+            self.session.query(User).filter(
+                        User.singular.has(Singular.value != None),
+                )
+        )
+
+    def test_has_nul(self):
+        # a special case where we provide an empty has() on a
+        # non-object-targeted association proxy.
+        User = self.classes.User
+        Singular = self.classes.Singular
+
+        self._equivalent(
+            self.session.query(User).filter(User.singular_value.has()),
+            self.session.query(User).filter(
+                        User.singular.has(),
+                )
+        )
+
+    def test_nothas_nul(self):
+        # a special case where we provide an empty has() on a
+        # non-object-targeted association proxy.
+        User = self.classes.User
+        Singular = self.classes.Singular
+
+        self._equivalent(
+            self.session.query(User).filter(~User.singular_value.has()),
+            self.session.query(User).filter(
+                        ~User.singular.has(),
+                )
+        )
+
+    def test_has_criterion_nul(self):
+        # but we don't allow that with any criterion...
+        User = self.classes.User
+        Singular = self.classes.Singular
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "Non-empty has\(\) not allowed",
+            User.singular_value.has,
+            User.singular_value == "singular4"
+        )
+
+    def test_has_kwargs_nul(self):
+        # ... or kwargs
+        User = self.classes.User
+        Singular = self.classes.Singular
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "Non-empty has\(\) not allowed",
+            User.singular_value.has, singular_value="singular4"
+        )
+
+    def test_filter_ne_value_nul(self):
+        User = self.classes.User
+        Singular = self.classes.Singular
+
+        self._equivalent(
+            self.session.query(User).filter(User.singular_value != "singular4"),
+            self.session.query(User).filter(
+                        User.singular.has(Singular.value != "singular4"),
+                )
+        )
 
     def test_filter_scalar_contains_fails_nul_nul(self):
         Keyword = self.classes.Keyword

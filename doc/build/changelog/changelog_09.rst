@@ -7,6 +7,27 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, ext, associationproxy
+        :tickets: 2751
+
+        Added additional criterion to the ==, != comparators, used with
+        scalar values, for comparisons to None to also take into account
+        the association record itself being non-present, in addition to the
+        existing test for the scalar endpoint on the association record
+        being NULL.  Previously, comparing ``Cls.scalar == None`` would return
+        records for which ``Cls.associated`` were present and
+        ``Cls.associated.scalar`` is None, but not rows for which
+        ``Cls.associated`` is non-present.  More significantly, the
+        inverse operation ``Cls.scalar != None`` *would* return ``Cls``
+        rows for which ``Cls.associated`` was non-present.
+
+        Additionally, added a special use case where you
+        can call ``Cls.scalar.has()`` with no arguments,
+        when ``Cls.scalar`` is a column-based value - this returns whether or
+        not ``Cls.associated`` has any rows present, regardless of whether
+        or not ``Cls.associated.scalar`` is NULL or not.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2369
 
