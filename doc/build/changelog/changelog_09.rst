@@ -21,7 +21,13 @@
         inverse operation ``Cls.scalar != None`` *would* return ``Cls``
         rows for which ``Cls.associated`` was non-present.
 
-        Additionally, added a special use case where you
+        The case for ``Cls.scalar != 'somevalue'`` is also modified
+        to act more like a direct SQL comparison; only rows for
+        which ``Cls.associated`` is present and ``Associated.scalar``
+        is non-NULL and not equal to ``'somevalue'`` are returned.
+        Previously, this would be a simple ``NOT EXISTS``.
+
+        Also added a special use case where you
         can call ``Cls.scalar.has()`` with no arguments,
         when ``Cls.scalar`` is a column-based value - this returns whether or
         not ``Cls.associated`` has any rows present, regardless of whether

@@ -1306,6 +1306,17 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
                 )
         )
 
+    def test_filter_ne_value_nul(self):
+        User = self.classes.User
+        Singular = self.classes.Singular
+
+        self._equivalent(
+            self.session.query(User).filter(User.singular_value != "singular4"),
+            self.session.query(User).filter(
+                        User.singular.has(Singular.value != "singular4"),
+                )
+        )
+
     def test_filter_eq_value_nul(self):
         User = self.classes.User
         Singular = self.classes.Singular
@@ -1375,17 +1386,6 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             exc.ArgumentError,
             "Non-empty has\(\) not allowed",
             User.singular_value.has, singular_value="singular4"
-        )
-
-    def test_filter_ne_value_nul(self):
-        User = self.classes.User
-        Singular = self.classes.Singular
-
-        self._equivalent(
-            self.session.query(User).filter(User.singular_value != "singular4"),
-            self.session.query(User).filter(
-                        User.singular.has(Singular.value != "singular4"),
-                )
         )
 
     def test_filter_scalar_contains_fails_nul_nul(self):
