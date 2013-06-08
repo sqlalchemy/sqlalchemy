@@ -33,7 +33,7 @@ from ...pool import NullPool
 import re
 
 
-def _IsDevEnvironment():
+def _is_dev_environment():
     return os.environ.get('SERVER_SOFTWARE', '').startswith('Development/')
 
 
@@ -49,7 +49,7 @@ class MySQLDialect_gaerdbms(MySQLDialect_mysqldb):
         # see also http://stackoverflow.com/q/14224679/34549
         from google.appengine.api import apiproxy_stub_map
 
-        if _IsDevEnvironment():
+        if _is_dev_environment():
             from google.appengine.api import rdbms_mysqldb
             return rdbms_mysqldb
         elif apiproxy_stub_map.apiproxy.GetStub('rdbms'):
@@ -66,7 +66,7 @@ class MySQLDialect_gaerdbms(MySQLDialect_mysqldb):
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args()
-        if not _IsDevEnvironment():
+        if not _is_dev_environment():
             # 'dsn' and 'instance' are because we are skipping
             # the traditional google.api.rdbms wrapper
             opts['dsn'] = ''
