@@ -226,6 +226,7 @@ become part of the index. SQLAlchemy provides this feature via the
 ``mysql_length`` parameter::
 
     Index('my_index', my_table.c.data, mysql_length=10)
+
     Index('a_b_idx', my_table.c.a, my_table.c.b, mysql_length={'a': 4, 'b': 9})
 
 Prefix lengths are given in characters for nonbinary string types and in bytes
@@ -235,6 +236,9 @@ columns of the index) or a dict in which keys are column names and values are
 prefix length values for corresponding columns. MySQL only allows a length for
 a column of an index if it is for a CHAR, VARCHAR, TEXT, BINARY, VARBINARY and
 BLOB.
+
+.. versionadded:: 0.8.2 ``mysql_length`` may now be specified as a dictionary
+   for use with composite indexes.
 
 Index Types
 ~~~~~~~~~~~~~
@@ -1525,19 +1529,19 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         if 'mysql_length' in index.kwargs:
             length = index.kwargs['mysql_length']
 
-            # length value can be an integer value specifying the same
-            # prefix length for all columns of the index
-            try:
-                columns = ', '.join(
-                    '%s(%d)' % (col, length)
-                    for col in columns
-                )
-            # otherwise it's a (column_name --> integer value) mapping
-            # specifying the prefix length for each column of the index
-            except TypeError:
+            if isinstance(length, dict):
+                # length value can be a (column_name --> integer value) mapping
+                # specifying the prefix length for each column of the index
                 columns = ', '.join(
                     ('%s(%d)' % (col, length[col])
                      if col in length else '%s' % col)
+                    for col in columns
+                )
+            else:
+                # or can be an integer value specifying the same
+                # prefix length for all columns of the index
+                columns = ', '.join(
+                    '%s(%d)' % (col, length)
                     for col in columns
                 )
         else:
