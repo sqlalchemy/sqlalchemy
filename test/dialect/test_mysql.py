@@ -49,6 +49,35 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             'CREATE INDEX test_idx2 ON testtbl (data(5))',
             dialect=mysql.dialect())
 
+    def test_create_composite_index_with_length(self):
+        m = MetaData()
+        tbl = Table('testtbl', m,
+                    Column('a', String(255)),
+                    Column('b', String(255)))
+
+        idx1 = Index('test_idx1', tbl.c.a, tbl.c.b,
+                     mysql_length={'a': 10, 'b': 20})
+        idx2 = Index('test_idx2', tbl.c.a, tbl.c.b,
+                     mysql_length={'a': 15})
+        idx3 = Index('test_idx3', tbl.c.a, tbl.c.b,
+                     mysql_length=30)
+
+        self.assert_compile(
+            schema.CreateIndex(idx1),
+            'CREATE INDEX test_idx1 ON testtbl (a(10), b(20))',
+            dialect=mysql.dialect()
+        )
+        self.assert_compile(
+            schema.CreateIndex(idx2),
+            'CREATE INDEX test_idx2 ON testtbl (a(15), b)',
+            dialect=mysql.dialect()
+        )
+        self.assert_compile(
+            schema.CreateIndex(idx3),
+            'CREATE INDEX test_idx3 ON testtbl (a(30), b(30))',
+            dialect=mysql.dialect()
+        )
+
     def test_create_index_with_using(self):
         m = MetaData()
         tbl = Table('testtbl', m, Column('data', String(255)))
