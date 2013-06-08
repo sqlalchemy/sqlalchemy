@@ -33,8 +33,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         idx = Index('test_idx1', tbl.c.data)
 
         self.assert_compile(schema.CreateIndex(idx),
-            'CREATE INDEX test_idx1 ON testtbl (data)',
-            dialect=mysql.dialect())
+            'CREATE INDEX test_idx1 ON testtbl (data)')
 
     def test_create_index_with_length(self):
         m = MetaData()
@@ -43,11 +42,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         idx2 = Index('test_idx2', tbl.c.data, mysql_length=5)
 
         self.assert_compile(schema.CreateIndex(idx1),
-            'CREATE INDEX test_idx1 ON testtbl (data(10))',
-            dialect=mysql.dialect())
+            'CREATE INDEX test_idx1 ON testtbl (data(10))')
         self.assert_compile(schema.CreateIndex(idx2),
-            'CREATE INDEX test_idx2 ON testtbl (data(5))',
-            dialect=mysql.dialect())
+            'CREATE INDEX test_idx2 ON testtbl (data(5))')
 
     def test_create_composite_index_with_length(self):
         m = MetaData()
@@ -64,18 +61,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(idx1),
-            'CREATE INDEX test_idx1 ON testtbl (a(10), b(20))',
-            dialect=mysql.dialect()
+            'CREATE INDEX test_idx1 ON testtbl (a(10), b(20))'
         )
         self.assert_compile(
             schema.CreateIndex(idx2),
-            'CREATE INDEX test_idx2 ON testtbl (a(15), b)',
-            dialect=mysql.dialect()
+            'CREATE INDEX test_idx2 ON testtbl (a(15), b)'
         )
         self.assert_compile(
             schema.CreateIndex(idx3),
-            'CREATE INDEX test_idx3 ON testtbl (a(30), b(30))',
-            dialect=mysql.dialect()
+            'CREATE INDEX test_idx3 ON testtbl (a(30), b(30))'
         )
 
     def test_create_index_with_using(self):
@@ -85,11 +79,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         idx2 = Index('test_idx2', tbl.c.data, mysql_using='hash')
 
         self.assert_compile(schema.CreateIndex(idx1),
-            'CREATE INDEX test_idx1 ON testtbl (data) USING btree',
-            dialect=mysql.dialect())
+            'CREATE INDEX test_idx1 ON testtbl (data) USING btree')
         self.assert_compile(schema.CreateIndex(idx2),
-            'CREATE INDEX test_idx2 ON testtbl (data) USING hash',
-            dialect=mysql.dialect())
+            'CREATE INDEX test_idx2 ON testtbl (data) USING hash')
 
     def test_create_pk_plain(self):
         m = MetaData()
@@ -97,8 +89,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             PrimaryKeyConstraint('data'))
 
         self.assert_compile(schema.CreateTable(tbl),
-            "CREATE TABLE testtbl (data VARCHAR(255), PRIMARY KEY (data))",
-            dialect=mysql.dialect())
+            "CREATE TABLE testtbl (data VARCHAR(255), PRIMARY KEY (data))")
 
     def test_create_pk_with_using(self):
         m = MetaData()
@@ -107,8 +98,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(schema.CreateTable(tbl),
             "CREATE TABLE testtbl (data VARCHAR(255), "
-            "PRIMARY KEY (data) USING btree)",
-            dialect=mysql.dialect())
+            "PRIMARY KEY (data) USING btree)")
 
     def test_skip_deferrable_kw(self):
         m = MetaData()
@@ -1179,7 +1169,8 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
                 exc.CompileError,
                 "VARCHAR requires a length on dialect mysql",
                 type_.compile,
-            dialect=mysql.dialect())
+                dialect=mysql.dialect()
+            )
 
             t1 = Table('sometable', MetaData(),
                 Column('somecolumn', type_)
@@ -1364,8 +1355,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateIndex(ix1),
             "CREATE INDEX %s "
-            "ON %s (%s)" % (exp, tname, cname),
-            dialect=mysql.dialect()
+            "ON %s (%s)" % (exp, tname, cname)
         )
 
     def test_innodb_autoincrement(self):
