@@ -7,6 +7,14 @@
     :version: 0.8.2
 
     .. change::
+        :tags: bug, mysql
+        :tickets: 2715
+
+        Added another conditional to the ``mysql+gaerdbms`` dialect to
+        detect so-called "development" mode, where we should use the
+        ``rdbms_mysqldb`` DBAPI.  Patch courtesy Brett Slatkin.
+
+    .. change::
         :tags: feature, mysql
         :tickets: 2704
 
