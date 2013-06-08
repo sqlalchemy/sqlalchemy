@@ -464,6 +464,39 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'mytable.name) AS bar FROM mytable',
                             dialect=oracle.dialect(use_ansi=False))
 
+    def test_nonansi_nested_right_join(self):
+        a = table('a', column('a'))
+        b = table('b', column('b'))
+        c = table('c', column('c'))
+
+        j = a.join(b.join(c, b.c.b == c.c.c), a.c.a == b.c.b)
+
+        self.assert_compile(
+            select([j]),
+            "SELECT a.a, b.b, c.c FROM a, b, c "
+            "WHERE a.a = b.b AND b.b = c.c",
+            dialect=oracle.OracleDialect(use_ansi=False)
+        )
+
+
+        j = a.outerjoin(b.join(c, b.c.b == c.c.c), a.c.a == b.c.b)
+
+        self.assert_compile(
+            select([j]),
+            "SELECT a.a, b.b, c.c FROM a, b, c "
+            "WHERE a.a = b.b(+) AND b.b = c.c",
+            dialect=oracle.OracleDialect(use_ansi=False)
+        )
+
+        j = a.join(b.outerjoin(c, b.c.b == c.c.c), a.c.a == b.c.b)
+
+        self.assert_compile(
+            select([j]),
+            "SELECT a.a, b.b, c.c FROM a, b, c "
+            "WHERE a.a = b.b AND b.b = c.c(+)",
+            dialect=oracle.OracleDialect(use_ansi=False)
+        )
+
 
     def test_alias_outer_join(self):
         address_types = table('address_types', column('id'),

@@ -460,8 +460,13 @@ class OracleCompiler(compiler.SQLCompiler):
             return compiler.SQLCompiler.visit_join(self, join, **kwargs)
         else:
             kwargs['asfrom'] = True
+            if isinstance(join.right, expression.FromGrouping):
+                right = join.right.element
+            else:
+                right = join.right
             return self.process(join.left, **kwargs) + \
-                        ", " + self.process(join.right, **kwargs)
+                        ", " + self.process(right, **kwargs)
+
 
     def _get_nonansi_join_whereclause(self, froms):
         clauses = []
@@ -470,9 +475,9 @@ class OracleCompiler(compiler.SQLCompiler):
             if join.isouter:
                 def visit_binary(binary):
                     if binary.operator == sql_operators.eq:
-                        if binary.left.table is join.right:
+                        if join.right.is_derived_from(binary.left.table):
                             binary.left = _OuterJoinColumn(binary.left)
-                        elif binary.right.table is join.right:
+                        elif join.right.is_derived_from(binary.right.table):
                             binary.right = _OuterJoinColumn(binary.right)
                 clauses.append(visitors.cloned_traverse(join.onclause, {},
                                 {'binary': visit_binary}))
@@ -482,6 +487,8 @@ class OracleCompiler(compiler.SQLCompiler):
             for j in join.left, join.right:
                 if isinstance(j, expression.Join):
                     visit_join(j)
+                elif isinstance(j, expression.FromGrouping):
+                    visit_join(j.element)
 
         for f in froms:
             if isinstance(f, expression.Join):
