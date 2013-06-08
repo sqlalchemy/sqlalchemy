@@ -918,8 +918,13 @@ class _ORMJoin(expression.Join):
                             of_type=right_info.mapper)
 
             if sj is not None:
-                left = sql.join(left, secondary, pj, isouter)
-                onclause = sj
+                if isouter:
+                    # note this is an inner join from secondary->right
+                    right = sql.join(secondary, right, sj)
+                    onclause = pj
+                else:
+                    left = sql.join(left, secondary, pj, isouter)
+                    onclause = sj
             else:
                 onclause = pj
             self._target_adapter = target_adapter

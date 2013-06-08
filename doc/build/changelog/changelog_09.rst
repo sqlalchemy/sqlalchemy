@@ -7,6 +7,19 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2369
+
+        Fixed an obscure bug where the wrong results would be
+        fetched when joining/joinedloading across a many-to-many
+        relationship to a single-table-inheriting
+        subclass with a specific discriminator value, due to "secondary"
+        rows that would come back.  The "secondary" and right-side
+        tables are now inner joined inside of parenthesis for all
+        ORM joins on many-to-many relationships so that the left->right
+        join can accurately filtered.
+
+    .. change::
         :tags: bug, mssql
         :tickets: 2747
 

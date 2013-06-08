@@ -213,6 +213,8 @@ def surface_selectables(clause):
         yield elem
         if isinstance(elem, expression.Join):
             stack.extend((elem.left, elem.right))
+        elif isinstance(elem, expression.FromGrouping):
+            stack.append(elem.element)
 
 def selectables_overlap(left, right):
     """Return True if left/right have some overlapping selectable"""

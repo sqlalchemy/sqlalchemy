@@ -448,6 +448,7 @@ class M2MFilterTest(fixtures.MappedTest):
             [Organization(name='org1')])
 
 class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
+    __dialect__ = "default"
 
     @classmethod
     def define_tables(cls, metadata):
@@ -550,8 +551,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
             "(parent AS parent_1 JOIN child1 AS child1_1 ON parent_1.id = child1_1.id) "
             "ON parent_1.id = secondary_2.right_id WHERE "
             "parent_1.id = secondary_1.right_id AND :param_1 = "
-            "secondary_1.left_id",
-            dialect=default.DefaultDialect()
+            "secondary_1.left_id"
         )
 
     def test_eager_join(self):
@@ -571,14 +571,14 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
             "child2_1.id AS child2_1_id, parent_1.id AS "
             "parent_1_id, parent_1.cls AS parent_1_cls FROM "
             "(SELECT child1.id AS child1_id, parent.id AS parent_id, "
-            "parent.cls AS parent_cls FROM parent JOIN child1 ON parent.id = "
-            "child1.id LIMIT :param_1) AS anon_1 LEFT OUTER JOIN secondary "
-            "AS secondary_1 ON anon_1.parent_id = secondary_1.right_id LEFT "
-            "OUTER JOIN (parent AS parent_1 JOIN child2 AS child2_1 ON "
-            "parent_1.id = child2_1.id) ON parent_1.id = "
-            "secondary_1.left_id",
-            {'param_1':1},
-            dialect=default.DefaultDialect())
+            "parent.cls AS parent_cls "
+            "FROM parent JOIN child1 ON parent.id = child1.id "
+            "LIMIT :param_1) AS anon_1 LEFT OUTER JOIN "
+            "(secondary AS secondary_1 JOIN "
+            "(parent AS parent_1 JOIN child2 AS child2_1 "
+            "ON parent_1.id = child2_1.id) ON parent_1.id = secondary_1.left_id) "
+            "ON anon_1.parent_id = secondary_1.right_id",
+            {'param_1':1})
 
         # another way to check
         assert q.limit(1).with_labels().subquery().count().scalar() == 1

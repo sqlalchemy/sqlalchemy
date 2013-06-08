@@ -1929,7 +1929,8 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
 
 
     def test_more_joins(self):
-        users, Keyword, orders, items, order_items, Order, Item, User, keywords, item_keywords = (self.tables.users,
+        users, Keyword, orders, items, order_items, Order, Item, \
+                User, keywords, item_keywords = (self.tables.users,
                                 self.classes.Keyword,
                                 self.tables.orders,
                                 self.tables.items,
@@ -1971,6 +1972,36 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         [
             User(name='jack',id=7)
         ])
+
+    def test_very_nested_joins_with_joinedload(self):
+        users, Keyword, orders, items, order_items, Order, Item, \
+                User, keywords, item_keywords = (self.tables.users,
+                                self.classes.Keyword,
+                                self.tables.orders,
+                                self.tables.items,
+                                self.tables.order_items,
+                                self.classes.Order,
+                                self.classes.Item,
+                                self.classes.User,
+                                self.tables.keywords,
+                                self.tables.item_keywords)
+
+        mapper(User, users, properties={
+            'orders':relationship(Order, backref='user'), # o2m, m2o
+        })
+        mapper(Order, orders, properties={
+            'items':relationship(Item, secondary=order_items,
+                                        order_by=items.c.id),  #m2m
+        })
+        mapper(Item, items, properties={
+            'keywords':relationship(Keyword, secondary=item_keywords,
+                                        order_by=keywords.c.id) #m2m
+        })
+        mapper(Keyword, keywords)
+
+        sess = create_session()
+
+        sel = users.select(users.c.id.in_([7, 8]))
 
         def go():
             eq_(

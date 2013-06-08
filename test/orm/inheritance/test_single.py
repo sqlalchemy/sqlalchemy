@@ -4,7 +4,7 @@ from sqlalchemy.orm import *
 
 from sqlalchemy import testing
 from test.orm import _fixtures
-from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy.testing.schema import Table, Column
 
 
@@ -418,7 +418,8 @@ class RelationshipToSingleTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
 
 
     def test_relationship_to_subclass(self):
-        JuniorEngineer, Company, companies, Manager, Employee, employees, Engineer = (self.classes.JuniorEngineer,
+        JuniorEngineer, Company, companies, Manager, \
+                    Employee, employees, Engineer = (self.classes.JuniorEngineer,
                                 self.classes.Company,
                                 self.tables.companies,
                                 self.classes.Manager,
@@ -511,6 +512,125 @@ class RelationshipToSingleTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             )
         go()
 
+
+class ManyToManyToSingleTest(fixtures.MappedTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('parent', metadata,
+                Column('id', Integer, primary_key=True,
+                            test_needs_autoincrement=True)
+            )
+        Table('m2m', metadata,
+                Column('parent_id', Integer,
+                            ForeignKey('parent.id'), primary_key=True),
+                Column('child_id', Integer,
+                            ForeignKey('child.id'), primary_key=True),
+            )
+        Table('child', metadata,
+                Column('id', Integer, primary_key=True,
+                            test_needs_autoincrement=True),
+                Column('discriminator', String(20)),
+                Column('name', String(20))
+            )
+
+    @classmethod
+    def setup_classes(cls):
+        class Parent(cls.Comparable):
+            pass
+
+        class Child(cls.Comparable):
+            pass
+
+        class SubChild1(Child):
+            pass
+
+        class SubChild2(Child):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        mapper(cls.classes.Parent, cls.tables.parent, properties={
+                "s1": relationship(cls.classes.SubChild1,
+                        secondary=cls.tables.m2m,
+                        uselist=False),
+                "s2": relationship(cls.classes.SubChild2,
+                        secondary=cls.tables.m2m)
+            })
+        mapper(cls.classes.Child, cls.tables.child,
+                        polymorphic_on=cls.tables.child.c.discriminator)
+        mapper(cls.classes.SubChild1, inherits=cls.classes.Child,
+                    polymorphic_identity='sub1')
+        mapper(cls.classes.SubChild2, inherits=cls.classes.Child,
+                    polymorphic_identity='sub2')
+
+    @classmethod
+    def insert_data(cls):
+        Parent = cls.classes.Parent
+        SubChild1 = cls.classes.SubChild1
+        SubChild2 = cls.classes.SubChild2
+        s = Session()
+        s.add_all([
+                Parent(s1=SubChild1(name='sc1_1'),
+                    s2=[SubChild2(name="sc2_1"), SubChild2(name="sc2_2")]
+                ),
+        ])
+        s.commit()
+
+    def test_eager_join(self):
+        Parent = self.classes.Parent
+        SubChild1 = self.classes.SubChild1
+
+        s = Session()
+
+        p1 = s.query(Parent).options(joinedload(Parent.s1)).all()[0]
+        eq_(p1.__dict__['s1'], SubChild1(name='sc1_1'))
+
+    def test_manual_join(self):
+        Parent = self.classes.Parent
+        Child = self.classes.Child
+        SubChild1 = self.classes.SubChild1
+
+        s = Session()
+
+        p1, c1 = s.query(Parent, Child).outerjoin(Parent.s1).all()[0]
+        eq_(c1, SubChild1(name='sc1_1'))
+
+    def test_assert_join_sql(self):
+        Parent = self.classes.Parent
+        Child = self.classes.Child
+
+        s = Session()
+
+        self.assert_compile(
+            s.query(Parent, Child).outerjoin(Parent.s1),
+            "SELECT parent.id AS parent_id, child.id AS child_id, "
+            "child.discriminator AS child_discriminator, "
+            "child.name AS child_name "
+            "FROM parent LEFT OUTER JOIN (m2m AS m2m_1 "
+            "JOIN child ON child.id = m2m_1.child_id "
+            "AND child.discriminator IN (:discriminator_1)) "
+            "ON parent.id = m2m_1.parent_id"
+        )
+
+    def test_assert_joinedload_sql(self):
+        Parent = self.classes.Parent
+        Child = self.classes.Child
+
+        s = Session()
+
+        self.assert_compile(
+            s.query(Parent).options(joinedload(Parent.s1)),
+            "SELECT parent.id AS parent_id, child_1.id AS child_1_id, "
+            "child_1.discriminator AS child_1_discriminator, "
+            "child_1.name AS child_1_name "
+            "FROM parent LEFT OUTER JOIN "
+            "(m2m AS m2m_1 JOIN child AS child_1 "
+            "ON child_1.id = m2m_1.child_id AND child_1.discriminator "
+            "IN (:discriminator_1)) ON parent.id = m2m_1.parent_id"
+        )
+
 class SingleOnJoinedTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -536,7 +656,8 @@ class SingleOnJoinedTest(fixtures.MappedTest):
         class Manager(Employee):
             pass
 
-        mapper(Person, persons_table, polymorphic_on=persons_table.c.type, polymorphic_identity='person')
+        mapper(Person, persons_table, polymorphic_on=persons_table.c.type,
+                    polymorphic_identity='person')
         mapper(Employee, employees_table, inherits=Person,polymorphic_identity='engineer')
         mapper(Manager, inherits=Employee,polymorphic_identity='manager')
 
