@@ -26,9 +26,15 @@ default.
 
 """
 
+import os
+
 from .mysqldb import MySQLDialect_mysqldb
 from ...pool import NullPool
 import re
+
+
+def _IsDevEnvironment():
+    return os.environ.get('SERVER_SOFTWARE', '').startswith('Development/')
 
 
 class MySQLDialect_gaerdbms(MySQLDialect_mysqldb):
@@ -43,7 +49,10 @@ class MySQLDialect_gaerdbms(MySQLDialect_mysqldb):
         # see also http://stackoverflow.com/q/14224679/34549
         from google.appengine.api import apiproxy_stub_map
 
-        if apiproxy_stub_map.apiproxy.GetStub('rdbms'):
+        if _IsDevEnvironment():
+            from google.appengine.api import rdbms_mysqldb
+            return rdbms_mysqldb
+        elif apiproxy_stub_map.apiproxy.GetStub('rdbms'):
             from google.storage.speckle.python.api import rdbms_apiproxy
             return rdbms_apiproxy
         else:
@@ -57,11 +66,11 @@ class MySQLDialect_gaerdbms(MySQLDialect_mysqldb):
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args()
-        # 'dsn' and 'instance' are because we are skipping
-        # the traditional google.api.rdbms wrapper
-
-        opts['dsn'] = ''
-        opts['instance'] = url.query['instance']
+        if not _IsDevEnvironment():
+            # 'dsn' and 'instance' are because we are skipping
+            # the traditional google.api.rdbms wrapper
+            opts['dsn'] = ''
+            opts['instance'] = url.query['instance']
         return [], opts
 
     def _extract_error_code(self, exception):
