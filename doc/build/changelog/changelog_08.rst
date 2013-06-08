@@ -7,6 +7,15 @@
     :version: 0.8.2
 
     .. change::
+        :tags: feature, mysql
+        :tickets: 2704
+
+        The ``mysql_length`` parameter used with :class:`.Index` can now
+        be passed as a dictionary of column names/lengths, for use
+        with composite indexes.  Big thanks to Roman Podolyaka for the
+        patch.
+
+    .. change::
         :tags: bug, mssql
         :tickets: 2747
 
