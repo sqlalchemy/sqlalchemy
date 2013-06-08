@@ -226,12 +226,15 @@ become part of the index. SQLAlchemy provides this feature via the
 ``mysql_length`` parameter::
 
     Index('my_index', my_table.c.data, mysql_length=10)
+    Index('a_b_idx', my_table.c.a, my_table.c.b, mysql_length={'a': 4, 'b': 9})
 
 Prefix lengths are given in characters for nonbinary string types and in bytes
-for binary string types. The value passed to the keyword argument will be
-simply passed through to the underlying CREATE INDEX command, so it *must* be
-an integer. MySQL only allows a length for an index if it is for a CHAR,
-VARCHAR, TEXT, BINARY, VARBINARY and BLOB.
+for binary string types. The value passed to the keyword argument *must* be
+either an integer (and, thus, specify the same prefix length value for all
+columns of the index) or a dict in which keys are column names and values are
+prefix length values for corresponding columns. MySQL only allows a length for
+a column of an index if it is for a CHAR, VARCHAR, TEXT, BINARY, VARBINARY and
+BLOB.
 
 Index Types
 ~~~~~~~~~~~~~
@@ -1519,12 +1522,27 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             text += "UNIQUE "
         text += "INDEX %s ON %s " % (name, table)
 
-        columns = ', '.join(columns)
         if 'mysql_length' in index.kwargs:
             length = index.kwargs['mysql_length']
-            text += "(%s(%d))" % (columns, length)
+
+            # length value can be an integer value specifying the same
+            # prefix length for all columns of the index
+            try:
+                columns = ', '.join(
+                    '%s(%d)' % (col, length)
+                    for col in columns
+                )
+            # otherwise it's a (column_name --> integer value) mapping
+            # specifying the prefix length for each column of the index
+            except TypeError:
+                columns = ', '.join(
+                    ('%s(%d)' % (col, length[col])
+                     if col in length else '%s' % col)
+                    for col in columns
+                )
         else:
-            text += "(%s)" % (columns)
+            columns = ', '.join(columns)
+        text += '(%s)' % columns
 
         if 'mysql_using' in index.kwargs:
             using = index.kwargs['mysql_using']
