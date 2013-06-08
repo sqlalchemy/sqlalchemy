@@ -256,12 +256,8 @@ def cloned_traverse(obj, opts, visitors):
     """clone the given expression structure, allowing
     modifications by visitors."""
 
-
-    if "cloned" in opts:
-        cloned = opts['cloned']
-    else:
-        cloned = util.column_dict()
-    stop_on = util.column_set(opts.get('stop_on', []))
+    cloned = {}
+    stop_on = set(opts.get('stop_on', []))
 
     def clone(elem):
         if elem in stop_on:
@@ -284,14 +280,12 @@ def replacement_traverse(obj, opts, replace):
     """clone the given expression structure, allowing element
     replacement by a given replacement function."""
 
-    cloned = util.column_dict()
-    stop_on = util.column_set([id(x) for x in opts.get('stop_on', [])])
-    unconditional = opts.get('unconditional', False)
+    cloned = {}
+    stop_on = set([id(x) for x in opts.get('stop_on', [])])
 
     def clone(elem, **kw):
         if id(elem) in stop_on or \
-            (not unconditional
-                    and 'no_replacement_traverse' in elem._annotations):
+            'no_replacement_traverse' in elem._annotations:
             return elem
         else:
             newelem = replace(elem)

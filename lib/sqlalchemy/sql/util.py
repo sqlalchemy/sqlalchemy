@@ -812,11 +812,8 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
     def __init__(self, selectable, equivalents=None,
                         include=None, exclude=None,
                         include_fn=None, exclude_fn=None,
-                        adapt_on_names=False,
-                        traverse_options=None):
+                        adapt_on_names=False):
         self.__traverse_options__ = {'stop_on': [selectable]}
-        if traverse_options:
-            self.__traverse_options__.update(traverse_options)
         self.selectable = selectable
         if include:
             assert not include_fn
