@@ -1,3 +1,5 @@
+import operator
+
 import unicodedata
 import sqlalchemy as sa
 from sqlalchemy import schema, events, event, inspect
@@ -877,6 +879,41 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         assert set([t2.c.id]) == set(r1.columns)
         assert set([t2.c.name, t2.c.id]) == set(r2.columns)
         assert set([t2.c.name]) == set(r3.columns)
+
+    @testing.provide_metadata
+    def test_unique_constraints_reflection(self):
+        uniques = sorted(
+            [
+                {'name': 'unique_a_b_c', 'column_names': ['a', 'b', 'c']},
+                {'name': 'unique_a_c', 'column_names': ['a', 'c']},
+                {'name': 'unique_b_c', 'column_names': ['b', 'c']},
+            ],
+            key=operator.itemgetter('name')
+        )
+
+        try:
+            orig_meta = sa.MetaData(bind=testing.db)
+            table = Table(
+                'testtbl', orig_meta,
+                Column('a', sa.String(20)),
+                Column('b', sa.String(30)),
+                Column('c', sa.Integer),
+            )
+            for uc in uniques:
+                table.append_constraint(
+                    sa.UniqueConstraint(*uc['column_names'], name=uc['name'])
+                )
+            orig_meta.create_all()
+
+            inspector = inspect(testing.db)
+            reflected = sorted(
+                inspector.get_unique_constraints('testtbl'),
+                key=operator.itemgetter('name')
+            )
+
+            assert uniques == reflected
+        finally:
+            testing.db.execute('drop table if exists testtbl;')
 
     @testing.requires.views
     @testing.provide_metadata
