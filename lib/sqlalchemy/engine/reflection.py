@@ -311,9 +311,6 @@ class Inspector(object):
         name
           optional name of the foreign key constraint.
 
-        \**kw
-          other options passed to the dialect's get_foreign_keys() method.
-
         """
 
         return self.dialect.get_foreign_keys(self.bind, table_name, schema,
@@ -335,13 +332,30 @@ class Inspector(object):
         unique
           boolean
 
-        \**kw
-          other options passed to the dialect's get_indexes() method.
         """
 
         return self.dialect.get_indexes(self.bind, table_name,
                                                   schema,
                                             info_cache=self.info_cache, **kw)
+
+    def get_unique_constraints(self, table_name, schema=None, **kw):
+        """Return information about unique constraints in `table_name`.
+
+        Given a string `table_name` and an optional string `schema`, return
+        unique constraint information as a list of dicts with these keys:
+
+        name
+          the unique constraint's name
+
+        column_names
+          list of column names in order
+
+        .. versionadded:: 0.8.4
+
+        """
+
+        return self.dialect.get_unique_constraints(
+            self.bind, table_name, schema, info_cache=self.info_cache, **kw)
 
     def reflecttable(self, table, include_columns, exclude_columns=()):
         """Given a Table object, load its internal constructs based on

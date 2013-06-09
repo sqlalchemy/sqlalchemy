@@ -11,6 +11,15 @@
 .. changelog::
     :version: 0.8.4
 
+     .. change::
+        :tags: feature, sql
+        :tickets: 1443
+        :versions: 0.9.0b1
+
+        Added support for "unique constraint" reflection, via the
+        :meth:`.Inspector.get_unique_constraints` method.
+        Thanks for Roman Podolyaka for the patch.
+
     .. change::
         :tags: bug, oracle
         :tickets: 2864

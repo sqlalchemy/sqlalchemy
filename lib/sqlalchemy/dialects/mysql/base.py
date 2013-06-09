@@ -2285,6 +2285,21 @@ class MySQLDialect(default.DefaultDialect):
         return indexes
 
     @reflection.cache
+    def get_unique_constraints(self, connection, table_name,
+                               schema=None, **kw):
+        parsed_state = self._parsed_state_or_create(
+            connection, table_name, schema, **kw)
+
+        return [
+            {
+                'name': key['name'],
+                'column_names': [col[0] for col in key['columns']]
+            }
+            for key in parsed_state.keys
+            if key['type'] == 'UNIQUE'
+        ]
+
+    @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None, **kw):
 
         charset = self._connection_charset

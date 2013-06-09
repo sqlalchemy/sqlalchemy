@@ -924,6 +924,26 @@ class SQLiteDialect(default.DefaultDialect):
                 cols.append(row[2])
         return indexes
 
+    @reflection.cache
+    def get_unique_constraints(self, connection, table_name,
+                               schema=None, **kw):
+        UNIQUE_SQL = """
+            SELECT sql
+            FROM
+                sqlite_master
+            WHERE
+                type='table' AND
+                name=:table_name
+        """
+        c = connection.execute(UNIQUE_SQL, table_name=table_name)
+        table_data = c.fetchone()[0]
+
+        UNIQUE_PATTERN = 'CONSTRAINT (\w+) UNIQUE \(([^\)]+)\)'
+        return [
+            {'name': name, 'column_names': [c.strip() for c in cols.split(',')]}
+            for name, cols in re.findall(UNIQUE_PATTERN, table_data)
+        ]
+
 
 def _pragma_cursor(cursor):
     """work around SQLite issue whereby cursor.description

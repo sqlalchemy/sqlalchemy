@@ -338,6 +338,23 @@ class Dialect(object):
 
         raise NotImplementedError()
 
+    def get_unique_constraints(self, table_name, schema=None, **kw):
+        """Return information about unique constraints in `table_name`.
+
+        Given a string `table_name` and an optional string `schema`, return
+        unique constraint information as a list of dicts with these keys:
+
+        name
+          the unique constraint's name
+
+        column_names
+          list of column names in order
+
+
+        """
+
+        raise NotImplementedError()
+
     def normalize_name(self, name):
         """convert the given name to lowercase if it is detected as
         case insensitive.
