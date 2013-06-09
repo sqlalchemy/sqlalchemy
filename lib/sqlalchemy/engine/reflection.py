@@ -315,9 +315,6 @@ class Inspector(object):
         name
           optional name of the foreign key constraint.
 
-        \**kw
-          other options passed to the dialect's get_foreign_keys() method.
-
         """
 
         return self.dialect.get_foreign_keys(self.bind, table_name, schema,
@@ -339,8 +336,6 @@ class Inspector(object):
         unique
           boolean
 
-        \**kw
-          other options passed to the dialect's get_indexes() method.
         """
 
         return self.dialect.get_indexes(self.bind, table_name,
@@ -358,9 +353,6 @@ class Inspector(object):
 
         column_names
           list of column names in order
-
-        \**kw
-          other options passed to the dialect's get_unique_constraints() method.
 
         .. versionadded:: 0.9.0
 
