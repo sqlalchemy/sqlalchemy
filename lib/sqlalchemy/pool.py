@@ -193,8 +193,8 @@ class Pool(log.Identified):
         except (SystemExit, KeyboardInterrupt):
             raise
         except:
-            self.logger.debug("Exception closing connection %r",
-                            connection)
+            self.logger.error("Exception closing connection %r",
+                            connection, exc_info=True)
 
     @util.deprecated(
         2.7, "Pool.add_listener is deprecated.  Use event.listen()")
@@ -381,12 +381,22 @@ def _finalize_fairy(connection, connection_record, pool, ref, echo):
         return
 
     if connection is not None:
+        if connection_record and echo:
+            pool.logger.debug("Connection %r being returned to pool",
+                                    connection)
+
         try:
             if pool.dispatch.reset:
                 pool.dispatch.reset(connection, connection_record)
             if pool._reset_on_return is reset_rollback:
+                if echo:
+                    pool.logger.debug("Connection %s rollback-on-return",
+                                                    connection)
                 pool._dialect.do_rollback(connection)
             elif pool._reset_on_return is reset_commit:
+                if echo:
+                    pool.logger.debug("Conneciton %s commit-on-return",
+                                                    connection)
                 pool._dialect.do_commit(connection)
             # Immediately close detached instances
             if connection_record is None:
@@ -399,9 +409,6 @@ def _finalize_fairy(connection, connection_record, pool, ref, echo):
 
     if connection_record is not None:
         connection_record.fairy = None
-        if echo:
-            pool.logger.debug("Connection %r being returned to pool",
-                                    connection)
         if connection_record.finalize_callback:
             connection_record.finalize_callback(connection)
             del connection_record.finalize_callback
@@ -436,7 +443,7 @@ class _ConnectionFairy(object):
             self._connection_record = None
             raise
         if self._echo:
-            self._pool.logger.debug("Connection %r checked out from pool" %
+            self._pool.logger.debug("Connection %r checked out from pool",
                        self.connection)
 
     @property

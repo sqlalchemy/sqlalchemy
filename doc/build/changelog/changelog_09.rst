@@ -7,6 +7,14 @@
     :version: 0.9.0
 
     .. change::
+        :tags: feature, pool
+        :tickets: 2752
+
+        Added pool logging for "rollback-on-return" and the less used
+        "commit-on-return".  This is enabled with the rest of pool
+        "debug" logging.
+
+    .. change::
         :tags: bug, mysql
         :tickets: 2715
 
