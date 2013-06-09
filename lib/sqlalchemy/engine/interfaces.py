@@ -353,6 +353,8 @@ class Dialect(object):
         \**kw
           other options passed to the dialect's get_unique_constraints() method.
 
+        .. versionadded:: 0.9.0
+
         """
 
         raise NotImplementedError()

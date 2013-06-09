@@ -11,7 +11,7 @@ from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.testing import eq_, assert_raises_message
 from sqlalchemy import testing
 from .. import config
-
+import operator
 from sqlalchemy.schema import DDL, Index
 from sqlalchemy import event
 
@@ -355,6 +355,49 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.schemas
     def test_get_indexes_with_schema(self):
         self._test_get_indexes(schema='test_schema')
+
+
+    @testing.requires.unique_constraint_reflection
+    def test_get_unique_constraints(self):
+        self._test_get_unique_constraints()
+
+    @testing.requires.unique_constraint_reflection
+    @testing.requires.schemas
+    def test_get_unique_constraints_with_schema(self):
+        self._test_get_unique_constraints(schema='test_schema')
+
+    @testing.provide_metadata
+    def _test_get_unique_constraints(self, schema=None):
+        uniques = sorted(
+            [
+                {'name': 'unique_a_b_c', 'column_names': ['a', 'b', 'c']},
+                {'name': 'unique_a_c', 'column_names': ['a', 'c']},
+                {'name': 'unique_b_c', 'column_names': ['b', 'c']},
+            ],
+            key=operator.itemgetter('name')
+        )
+        orig_meta = self.metadata
+        table = Table(
+            'testtbl', orig_meta,
+            Column('a', sa.String(20)),
+            Column('b', sa.String(30)),
+            Column('c', sa.Integer),
+            schema=schema
+        )
+        for uc in uniques:
+            table.append_constraint(
+                sa.UniqueConstraint(*uc['column_names'], name=uc['name'])
+            )
+        orig_meta.create_all()
+
+        inspector = inspect(orig_meta.bind)
+        reflected = sorted(
+            inspector.get_unique_constraints('testtbl', schema=schema),
+            key=operator.itemgetter('name')
+        )
+
+        eq_(uniques, reflected)
+
 
     @testing.provide_metadata
     def _test_get_view_definition(self, schema=None):

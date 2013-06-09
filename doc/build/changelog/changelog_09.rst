@@ -7,6 +7,13 @@
     :version: 0.9.0
 
     .. change::
+        :tags: feature, sql
+
+        Added support for "unique constraint" reflection, via the
+        :meth:`.Inspector.get_unique_constraints` method.
+        Thanks for Roman Podolyaka for the patch.
+
+    .. change::
         :tags: feature, pool
         :tickets: 2752
 
