@@ -6,6 +6,16 @@
 .. changelog::
     :version: 0.9.0
 
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 2755
+
+        Fixed the interaction between composite attributes and
+        the :func:`.aliased` function.  Previously, composite attributes
+        wouldn't work correctly in comparison operations when aliasing
+        was applied.  Also in 0.8.2.
+
     .. change::
         :tags: feature, sql
 

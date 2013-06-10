@@ -172,17 +172,30 @@ class PointTest(fixtures.MappedTest):
         g = sess.query(Graph).first()
 
         assert sess.query(Edge).\
-                    filter(Edge.start==Point(3, 4)).one() is \
+                    filter(Edge.start == Point(3, 4)).one() is \
                     g.edges[0]
 
         assert sess.query(Edge).\
-                    filter(Edge.start!=Point(3, 4)).first() is \
+                    filter(Edge.start != Point(3, 4)).first() is \
                     g.edges[1]
 
         eq_(
-            sess.query(Edge).filter(Edge.start==None).all(),
+            sess.query(Edge).filter(Edge.start == None).all(),
             []
         )
+
+    def test_comparator_aliased(self):
+        Graph, Edge, Point = (self.classes.Graph,
+                                self.classes.Edge,
+                                self.classes.Point)
+
+        sess = self._fixture()
+
+        g = sess.query(Graph).first()
+        ea = aliased(Edge)
+        assert sess.query(ea).\
+                    filter(ea.start != Point(3, 4)).first() is \
+                    g.edges[1]
 
     def test_get_history(self):
         Edge = self.classes.Edge
@@ -587,7 +600,25 @@ class ManyToOneTest(fixtures.MappedTest):
         sess.commit()
 
         eq_(
-            sess.query(A).filter(A.c==C('a2b1', b2)).one(),
+            sess.query(A).filter(A.c == C('a2b1', b2)).one(),
+            a2
+        )
+
+    def test_query_aliased(self):
+        A, C, B = (self.classes.A,
+                                self.classes.C,
+                                self.classes.B)
+
+        sess = Session()
+        b1, b2 = B(data='b1'), B(data='b2')
+        a1 = A(c=C('a1b1', b1))
+        a2 = A(c=C('a2b1', b2))
+        sess.add_all([a1, a2])
+        sess.commit()
+
+        ae = aliased(A)
+        eq_(
+            sess.query(ae).filter(ae.c == C('a2b1', b2)).one(),
             a2
         )
 

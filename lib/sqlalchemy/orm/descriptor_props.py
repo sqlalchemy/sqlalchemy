@@ -298,7 +298,7 @@ class CompositeProperty(DescriptorProperty):
             )
 
     def _comparator_factory(self, mapper):
-        return self.comparator_factory(self)
+        return self.comparator_factory(self, mapper)
 
     class Comparator(PropComparator):
         """Produce boolean, comparison, and other operators for
@@ -318,29 +318,39 @@ class CompositeProperty(DescriptorProperty):
         :attr:`.TypeEngine.comparator_factory`
 
         """
-        def __init__(self, prop, adapter=None):
-            self.prop = self.property = prop
-            self.adapter = adapter
 
         def __clause_element__(self):
-            if self.adapter:
-                # TODO: test coverage for adapted composite comparison
-                return expression.ClauseList(
-                    *[self.adapter(x) for x in self.prop._comparable_elements])
-            else:
-                return expression.ClauseList(*self.prop._comparable_elements)
+            return expression.ClauseList(*self._comparable_elements)
 
         __hash__ = None
+
+        @util.memoized_property
+        def _comparable_elements(self):
+            if self.adapter:
+                # we need to do a little fudging here because
+                # the adapter function we're given only accepts
+                # ColumnElements, but our prop._comparable_elements is returning
+                # InstrumentedAttribute, because we support the use case
+                # of composites that refer to relationships.  The better
+                # solution here is to open up how AliasedClass interacts
+                # with PropComparators so more context is available.
+                return [self.adapter(x.__clause_element__())
+                            for x in self.prop._comparable_elements]
+            else:
+                return self.prop._comparable_elements
 
         def __eq__(self, other):
             if other is None:
                 values = [None] * len(self.prop._comparable_elements)
             else:
                 values = other.__composite_values__()
-            return sql.and_(
-                    *[a == b
-                      for a, b in zip(self.prop._comparable_elements, values)]
-                )
+            comparisons = [
+                a == b
+                for a, b in zip(self.prop._comparable_elements, values)
+            ]
+            if self.adapter:
+                comparisons = [self.adapter(x) for x in comparisons]
+            return sql.and_(*comparisons)
 
         def __ne__(self, other):
             return sql.not_(self.__eq__(other))
