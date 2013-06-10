@@ -1079,9 +1079,10 @@ class QueuePoolTest(PoolTestBase):
         assert c1.connection.id != c_id
 
     def test_recreate(self):
-        p = self._queuepool_fixture(pool_size=1, max_overflow=0)
+        p = self._queuepool_fixture(reset_on_return=None, pool_size=1, max_overflow=0)
         p2 = p.recreate()
         assert p2.size() == 1
+        assert p2._reset_on_return is pool.reset_none
         assert p2._use_threadlocal is False
         assert p2._max_overflow == 0
 
