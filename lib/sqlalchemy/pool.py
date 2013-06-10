@@ -575,6 +575,7 @@ class SingletonThreadPool(Pool):
             echo=self.echo,
             logging_name=self._orig_logging_name,
             use_threadlocal=self._use_threadlocal,
+            reset_on_return=self._reset_on_return,
             _dispatch=self.dispatch,
             _dialect=self._dialect)
 
@@ -788,6 +789,7 @@ class QueuePool(Pool):
                           recycle=self._recycle, echo=self.echo,
                           logging_name=self._orig_logging_name,
                           use_threadlocal=self._use_threadlocal,
+                          reset_on_return=self._reset_on_return,
                           _dispatch=self.dispatch,
                           _dialect=self._dialect)
 
@@ -862,6 +864,7 @@ class NullPool(Pool):
             echo=self.echo,
             logging_name=self._orig_logging_name,
             use_threadlocal=self._use_threadlocal,
+            reset_on_return=self._reset_on_return,
             _dispatch=self.dispatch,
             _dialect=self._dialect)
 
