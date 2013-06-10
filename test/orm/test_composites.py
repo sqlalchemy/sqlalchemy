@@ -712,7 +712,9 @@ class ConfigurationTest(fixtures.MappedTest):
         })
         self._test_roundtrip()
 
-class ComparatorTest(fixtures.MappedTest):
+class ComparatorTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+
     @classmethod
     def define_tables(cls, metadata):
         Table('edge', metadata,
@@ -836,4 +838,28 @@ class ComparatorTest(fixtures.MappedTest):
 
         assert edge_1 in near_edges and edge_2 in near_edges
 
+    def test_order_by(self):
+        self._fixture(False)
+        Edge = self.classes.Edge
+        s = Session()
+        self.assert_compile(
+            s.query(Edge).order_by(Edge.start, Edge.end),
+            "SELECT edge.id AS edge_id, edge.x1 AS edge_x1, "
+            "edge.y1 AS edge_y1, edge.x2 AS edge_x2, edge.y2 AS edge_y2 "
+            "FROM edge ORDER BY edge.x1, edge.y1, edge.x2, edge.y2"
+        )
+
+    def test_order_by_aliased(self):
+        self._fixture(False)
+        Edge = self.classes.Edge
+        s = Session()
+        ea = aliased(Edge)
+        self.assert_compile(
+            s.query(ea).order_by(ea.start, ea.end),
+            "SELECT edge_1.id AS edge_1_id, edge_1.x1 AS edge_1_x1, "
+            "edge_1.y1 AS edge_1_y1, edge_1.x2 AS edge_1_x2, "
+            "edge_1.y2 AS edge_1_y2 "
+            "FROM edge AS edge_1 ORDER BY edge_1.x1, edge_1.y1, "
+            "edge_1.x2, edge_1.y2"
+        )
 

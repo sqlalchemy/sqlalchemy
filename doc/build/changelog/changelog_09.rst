@@ -6,6 +6,13 @@
 .. changelog::
     :version: 0.9.0
 
+    .. change::
+        :tags: bug, orm
+        :tickets: 2754
+
+        Fixed bug where sending a composite attribute into :meth:`.Query.order_by`
+        would produce a parenthesized expression not accepted by some databases.
+        Also in 0.8.2.
 
     .. change::
         :tags: bug, orm

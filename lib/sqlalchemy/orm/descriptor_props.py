@@ -320,7 +320,7 @@ class CompositeProperty(DescriptorProperty):
         """
 
         def __clause_element__(self):
-            return expression.ClauseList(*self._comparable_elements)
+            return expression.ClauseList(group=False, *self._comparable_elements)
 
         __hash__ = None
 
