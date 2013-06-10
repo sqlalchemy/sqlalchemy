@@ -7,6 +7,14 @@
     :version: 0.8.2
 
     .. change::
+        :tags: bug, engine
+        :pullreq: 6
+
+        Fixed bug where the ``reset_on_return`` argument to various :class:`.Pool`
+        implementations would not be propagated when the pool was regenerated.
+        Courtesy Eevee.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2754
 
