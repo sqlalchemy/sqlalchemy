@@ -572,7 +572,6 @@ class AliasedClass(object):
 
     def __adapt_prop(self, existing, key):
         comparator = existing.comparator.adapted(self.__adapt_element)
-
         queryattr = attributes.QueryableAttribute(
                                 self, key,
                                 impl=existing.impl,
