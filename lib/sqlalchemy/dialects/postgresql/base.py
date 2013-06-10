@@ -426,7 +426,7 @@ class array(expression.Tuple):
 
     An instance of :class:`.array` will always have the datatype
     :class:`.ARRAY`.  The "inner" type of the array is inferred from
-    the values present, unless the "type_" keyword argument is passed::
+    the values present, unless the ``type_`` keyword argument is passed::
 
         array(['foo', 'bar'], type_=CHAR)
 

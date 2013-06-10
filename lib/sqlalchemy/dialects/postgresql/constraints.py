@@ -6,12 +6,12 @@ from sqlalchemy.schema import ColumnCollectionConstraint
 from sqlalchemy.sql import expression
 
 class ExcludeConstraint(ColumnCollectionConstraint):
-    """A table-level UNIQUE constraint.
+    """A table-level EXCLUDE constraint.
 
-    Defines a single column or composite UNIQUE constraint. For a no-frills,
-    single column constraint, adding ``unique=True`` to the ``Column``
-    definition is a shorthand equivalent for an unnamed, single column
-    UniqueConstraint.
+    Defines an EXCLUDE constraint as described in the `postgres
+    documentation`__.
+
+    __ http://www.postgresql.org/docs/9.0/static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
     """
 
     __visit_name__ = 'exclude_constraint'
