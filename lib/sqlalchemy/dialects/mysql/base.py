@@ -1351,11 +1351,6 @@ class MySQLCompiler(compiler.SQLCompiler):
             return ""
 
     def visit_join(self, join, asfrom=False, **kwargs):
-        # 'JOIN ... ON ...' for inner joins isn't available until 4.0.
-        # Apparently < 3.23.17 requires theta joins for inner joins
-        # (but not outer).  Not generating these currently, but
-        # support can be added, preferably after dialects are
-        # refactored to be version-sensitive.
         return ''.join(
             (self.process(join.left, asfrom=True, **kwargs),
              (join.isouter and " LEFT OUTER JOIN " or " INNER JOIN "),
