@@ -91,6 +91,35 @@
         not ``Cls.associated`` has any rows present, regardless of whether
         or not ``Cls.associated.scalar`` is NULL or not.
 
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 2587
+
+        A major change regarding how the ORM constructs joins where
+        the right side is itself a join or left outer join.   The ORM
+        is now configured to allow simple nesting of joins of
+        the form ``a JOIN (b JOIN c ON b.id=c.id) ON a.id=b.id``,
+        rather than forcing the right side into a ``SELECT`` subquery.
+        This should allow significant performance improvements on most
+        backends, most particularly MySQL.   The one database backend
+        that has for many years held back this change, SQLite, is now addressed by
+        moving the production of the ``SELECT`` subquery from the
+        ORM to the SQL compiler; so that a right-nested join on SQLite will still
+        ultimately render with a ``SELECT``, while all other backends
+        are no longer impacted by this workaround.
+
+        As part of this change, a new argument ``flat=True`` has been added
+        to the :func:`.orm.aliased`, :meth:`.Join.alias`, and
+        :func:`.orm.with_polymorphic` functions, which allows an "alias" of a
+        JOIN to be produced which applies an anonymous alias to each component
+        table within the join, rather than producing a subquery.
+
+        .. seealso::
+
+            :ref:`feature_joins_09`
+
+
     .. change::
         :tags: bug, orm
         :tickets: 2369
@@ -102,7 +131,13 @@
         rows that would come back.  The "secondary" and right-side
         tables are now inner joined inside of parenthesis for all
         ORM joins on many-to-many relationships so that the left->right
-        join can accurately filtered.
+        join can accurately filtered.  This change was made possible
+        by finally addressing the issue with right-nested joins
+        outlined in :ticket:`2587`.
+
+        .. seealso::
+
+            :ref:`feature_joins_09`
 
     .. change::
         :tags: bug, mssql
