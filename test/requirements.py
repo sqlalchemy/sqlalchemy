@@ -557,6 +557,14 @@ class DefaultRequirements(SuiteRequirements):
              )
 
     @property
+    def bulletproof_pickle(self):
+        from sqlalchemy.util import pickle
+        return only_if(
+            lambda: pickle.__name__ == 'cPickle' and sys.version_info < (3, 0),
+            "Needs Python 2.x cPickle"
+        )
+
+    @property
     def predictable_gc(self):
         """target platform must remove all cycles unconditionally when
         gc.collect() is called, as well as clean out unreferenced subclasses.

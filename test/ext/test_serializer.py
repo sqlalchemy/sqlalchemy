@@ -122,9 +122,9 @@ class SerializeTest(fixtures.MappedTest):
         q2 = serializer.loads(serializer.dumps(q, -1), users.metadata,
                               Session)
         eq_(q2.all(), [User(name='fred')])
-        eq_(list(q2.values(User.id, User.name)), [(9, u'fred')])
+        eq_(list(q2.values(User.id, User.name)), [(9, 'fred')])
 
-    @testing.skip_if(lambda: util.pypy, "problems with pypy pickle reported")
+    @testing.requires.bulletproof_pickle
     def test_query_three(self):
         ua = aliased(User)
         q = \
