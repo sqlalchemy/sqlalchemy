@@ -1432,17 +1432,10 @@ class MultipleAdaptUsesEntityOverTableTest(AssertsCompiledSQL, fixtures.MappedTe
 
         btoc = q._from_obj[0].left
 
-        ac_adapted = btoc.right.element.left
-        c_adapted = btoc.right.element.right
+        ac_adapted = btoc.right
 
-        is_(ac_adapted.element, a)
-        is_(c_adapted.element, c)
 
         ctod = q._from_obj[0].right
-        ad_adapted = ctod.left
-        d_adapted = ctod.right
-        is_(ad_adapted.element, a)
-        is_(d_adapted.element, d)
 
         bname, cname, dname = q._entities
 
@@ -1454,16 +1447,17 @@ class MultipleAdaptUsesEntityOverTableTest(AssertsCompiledSQL, fixtures.MappedTe
                                         q, dname.column, None)
 
         assert bool(b_name_adapted == a.c.name)
-        assert bool(c_name_adapted == ac_adapted.c.name)
-        assert bool(d_name_adapted == ad_adapted.c.name)
+        assert bool(c_name_adapted == ac_adapted.corresponding_column(a.c.name))
+        assert bool(d_name_adapted == ctod.corresponding_column(a.c.name))
 
     def test_two_joins_sql(self):
         q = self._two_join_fixture()
         self.assert_compile(q,
-            "SELECT a.name AS a_name, a_1.name AS a_1_name, "
-            "a_2.name AS a_2_name "
-            "FROM a JOIN b ON a.id = b.id JOIN "
-            "(a AS a_1 JOIN c AS c_1 ON a_1.id = c_1.id) ON c_1.bid = b.id "
-            "JOIN (a AS a_2 JOIN d AS d_1 ON a_2.id = d_1.id) "
-            "ON d_1.cid = c_1.id"
+            "SELECT a.name AS a_name, anon_1.a_name AS anon_1_a_name, "
+            "anon_2.a_name AS anon_2_a_name FROM a JOIN b ON a.id = b.id "
+            "JOIN (SELECT a.id AS a_id, a.name AS a_name, c.id AS c_id, "
+            "c.bid AS c_bid FROM a JOIN c ON a.id = c.id) AS anon_1 ON "
+            "anon_1.c_bid = b.id JOIN (SELECT a.id AS a_id, a.name AS a_name, "
+            "d.id AS d_id, d.cid AS d_cid FROM a JOIN d ON a.id = d.id) "
+            "AS anon_2 ON anon_2.d_cid = anon_1.c_id"
         )
