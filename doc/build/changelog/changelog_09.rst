@@ -7,6 +7,15 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2759
+
+        Fixed bug in polymorphic SQL generation where multiple joined-inheritance
+        entities against the same base class joined to each other as well
+        would not track columns on the base table independently of each other if
+        the string of joins were more than two entities long.  Also in 0.8.2.
+
+    .. change::
         :tags: bug, engine
         :pullreq: 6
 
