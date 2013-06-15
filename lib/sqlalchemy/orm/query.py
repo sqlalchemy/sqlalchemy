@@ -203,17 +203,22 @@ class Query(object):
                 self._polymorphic_adapters.pop(m.local_table, None)
 
     def _adapt_polymorphic_element(self, element):
+        if "parententity" in element._annotations:
+            search = element._annotations['parententity']
+            alias = self._polymorphic_adapters.get(search, None)
+            if alias:
+                return alias.adapt_clause(element)
+
         if isinstance(element, expression.FromClause):
             search = element
         elif hasattr(element, 'table'):
             search = element.table
         else:
-            search = None
+            return None
 
-        if search is not None:
-            alias = self._polymorphic_adapters.get(search, None)
-            if alias:
-                return alias.adapt_clause(element)
+        alias = self._polymorphic_adapters.get(search, None)
+        if alias:
+            return alias.adapt_clause(element)
 
     def _adapt_col_list(self, cols):
         return [
