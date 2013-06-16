@@ -61,7 +61,11 @@ The following DBAPI-specific options are respected when used with
 * isolation_level - Set the transaction isolation level for the lifespan of a
   :class:`.Connection` (can only be set on a connection, not a statement
   or query). This includes the options ``SERIALIZABLE``, ``READ COMMITTED``,
-  ``READ UNCOMMITTED`` and ``REPEATABLE READ``.
+  ``READ UNCOMMITTED``, ``REPEATABLE READ``, and ``AUTOCOMMIT``.
+
+  .. versionadded:: 0.8.2 support for AUTOCOMMIT isolation level when using
+     psycopg2.
+
 * stream_results - Enable or disable usage of server side cursors.
   If ``None`` or not set, the ``server_side_cursors`` option of the
   :class:`.Engine` is used.
