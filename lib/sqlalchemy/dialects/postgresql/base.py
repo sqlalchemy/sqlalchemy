@@ -47,7 +47,7 @@ Transaction Isolation Level
 :func:`.create_engine` accepts an ``isolation_level`` parameter which results
 in the command ``SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL
 <level>`` being invoked for every new connection. Valid values for this
-parameter are ``READ COMMITTED``, ``READ UNCOMMITTED``, ``REPEATABLE READ``,
+parameter include ``READ COMMITTED``, ``READ UNCOMMITTED``, ``REPEATABLE READ``,
 and ``SERIALIZABLE``::
 
     engine = create_engine(
@@ -57,7 +57,8 @@ and ``SERIALIZABLE``::
 
 When using the psycopg2 dialect, a psycopg2-specific method of setting
 transaction isolation level is used, but the API of ``isolation_level``
-remains the same - see :ref:`psycopg2_isolation`.
+remains the same.  The psycopg2 dialect also includes support
+for ``AUTOCOMMIT`` isolation - see :ref:`psycopg2_isolation`.
 
 
 Remote / Cross-Schema Table Introspection

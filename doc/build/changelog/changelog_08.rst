@@ -7,6 +7,14 @@
     :version: 0.8.2
 
     .. change::
+        :tags: feature, postgresql
+        :tickets: 2072
+
+        Added support for "AUTOCOMMIT" isolation when using the psycopg2
+        DBAPI.   The keyword is available via the ``isolation_level``
+        execution option.  Patch courtesy Roman Podolyaka.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2759
 
