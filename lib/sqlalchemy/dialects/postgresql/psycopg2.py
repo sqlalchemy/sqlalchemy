@@ -350,6 +350,7 @@ class PGDialect_psycopg2(PGDialect):
     def _isolation_lookup(self):
         extensions = __import__('psycopg2.extensions').extensions
         return {
+            'AUTOCOMMIT': extensions.ISOLATION_LEVEL_AUTOCOMMIT,
             'READ COMMITTED': extensions.ISOLATION_LEVEL_READ_COMMITTED,
             'READ UNCOMMITTED': extensions.ISOLATION_LEVEL_READ_UNCOMMITTED,
             'REPEATABLE READ': extensions.ISOLATION_LEVEL_REPEATABLE_READ,

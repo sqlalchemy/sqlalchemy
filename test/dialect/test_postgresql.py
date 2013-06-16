@@ -1890,6 +1890,16 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         c = e.connect()
         eq_(c.connection.connection.encoding, test_encoding)
 
+    @testing.only_on('postgresql+psycopg2', 'psycopg2-specific feature')
+    @engines.close_open_connections
+    def test_autocommit_isolation_level(self):
+        extensions = __import__('psycopg2.extensions').extensions
+
+        c = testing.db.connect()
+        c = c.execution_options(isolation_level='AUTOCOMMIT')
+        eq_(c.connection.connection.isolation_level,
+            extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+
     @testing.fails_on('+zxjdbc',
                       "Can't infer the SQL type to use for an instance "
                       "of org.python.core.PyObjectDerived.")
