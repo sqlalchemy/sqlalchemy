@@ -801,27 +801,34 @@ drop synonym test_schema.ptable;
         select([parent,
                child]).select_from(parent.join(child)).execute().fetchall()
 
-class ConstraintTest(fixtures.TestBase):
+class ConstraintTest(fixtures.TablesTest):
 
     __only_on__ = 'oracle'
+    run_deletes = None
 
-    def setup(self):
-        global metadata
-        metadata = MetaData(testing.db)
-        foo = Table('foo', metadata, Column('id', Integer,
-                    primary_key=True))
-        foo.create(checkfirst=True)
+    @classmethod
+    def define_tables(cls, metadata):
+        foo = Table('foo', metadata, Column('id', Integer, primary_key=True))
 
-    def teardown(self):
-        metadata.drop_all()
+        # temporary, trying to debug an issue on jenkins
+        try:
+            foo.create(checkfirst=True)
+        except:
+            obj = [dict(r) for r in testing.db.execute(
+                        "select * from all_objects "
+                        "where object_name='FOO'")]
+            raise Exception("objects: %r" % obj)
 
     def test_oracle_has_no_on_update_cascade(self):
-        bar = Table('bar', metadata, Column('id', Integer,
-                    primary_key=True), Column('foo_id', Integer,
+        bar = Table('bar', self.metadata,
+                Column('id', Integer, primary_key=True),
+                Column('foo_id', Integer,
                     ForeignKey('foo.id', onupdate='CASCADE')))
         assert_raises(exc.SAWarning, bar.create)
-        bat = Table('bat', metadata, Column('id', Integer,
-                    primary_key=True), Column('foo_id', Integer),
+
+        bat = Table('bat', self.metadata,
+                Column('id', Integer, primary_key=True),
+                Column('foo_id', Integer),
                     ForeignKeyConstraint(['foo_id'], ['foo.id'],
                     onupdate='CASCADE'))
         assert_raises(exc.SAWarning, bat.create)
