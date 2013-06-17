@@ -808,16 +808,7 @@ class ConstraintTest(fixtures.TablesTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        foo = Table('foo', metadata, Column('id', Integer, primary_key=True))
-
-        # temporary, trying to debug an issue on jenkins
-        try:
-            foo.create(checkfirst=True)
-        except:
-            obj = [dict(r) for r in testing.db.execute(
-                        "select * from all_objects "
-                        "where object_name='FOO'")]
-            raise Exception("objects: %r" % obj)
+        Table('foo', metadata, Column('id', Integer, primary_key=True))
 
     def test_oracle_has_no_on_update_cascade(self):
         bar = Table('bar', self.metadata,
