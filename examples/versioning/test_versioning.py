@@ -306,7 +306,7 @@ class TestVersioning(TestCase):
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
             related_id = Column(Integer, ForeignKey('somerelated.id'))
-            related = relationship("SomeRelated")
+            related = relationship("SomeRelated", backref='classes')
 
         SomeClassHistory = SomeClass.__history_mapper__.class_
 
@@ -341,3 +341,38 @@ class TestVersioning(TestCase):
 
         assert sc.version == 3
 
+    def test_backref_relationship(self):
+
+        class SomeRelated(Base, ComparableEntity):
+            __tablename__ = 'somerelated'
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            related_id = Column(Integer, ForeignKey('sometable.id'))
+            related = relationship("SomeClass", backref='related')
+
+        class SomeClass(Versioned, Base, ComparableEntity):
+            __tablename__ = 'sometable'
+
+            id = Column(Integer, primary_key=True)
+
+        self.create_tables()
+        sess = Session()
+        sc = SomeClass()
+        sess.add(sc)
+        sess.commit()
+
+        assert sc.version == 1
+
+        sr = SomeRelated(name='sr', related=sc)
+        sess.add(sr)
+        sess.commit()
+
+        assert sc.version == 1
+
+        sr.name = 'sr2'
+        sess.commit()
+
+        assert sc.version == 1
+        sess.delete(sr)
+        sess.commit()

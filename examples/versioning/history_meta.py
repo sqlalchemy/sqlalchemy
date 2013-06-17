@@ -158,8 +158,12 @@ def create_version(obj, session, deleted = False):
         for prop in obj_mapper.iterate_properties:
             if isinstance(prop, RelationshipProperty) and \
                 attributes.get_history(obj, prop.key).has_changes():
-                obj_changed = True
-                break
+                for p in prop.local_columns:
+                    if p.foreign_keys:
+                        obj_changed = True
+                        break
+                if obj_changed is True:
+                    break
 
     if not obj_changed and not deleted:
         return
