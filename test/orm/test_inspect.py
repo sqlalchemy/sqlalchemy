@@ -81,7 +81,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         ualias = aliased(Address)
         insp = inspect(ualias)
         is_(insp.mapper, inspect(Address))
-        is_(insp.selectable, ualias._AliasedClass__adapter.selectable)
+        is_(insp.selectable, ualias._aliased_insp.selectable)
         assert not insp.is_selectable
         assert insp.is_aliased_class
 

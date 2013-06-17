@@ -326,16 +326,13 @@ class CompositeProperty(DescriptorProperty):
 
         @util.memoized_property
         def _comparable_elements(self):
-            if self.adapter:
-                # we need to do a little fudging here because
-                # the adapter function we're given only accepts
-                # ColumnElements, but our prop._comparable_elements is returning
-                # InstrumentedAttribute, because we support the use case
-                # of composites that refer to relationships.  The better
-                # solution here is to open up how AliasedClass interacts
-                # with PropComparators so more context is available.
-                return [self.adapter(x.__clause_element__())
-                            for x in self.prop._comparable_elements]
+            if self._adapt_to_entity:
+                return [
+                        getattr(
+                                self._adapt_to_entity.entity,
+                                prop.key
+                        ) for prop in self.prop._comparable_elements
+                        ]
             else:
                 return self.prop._comparable_elements
 
@@ -348,7 +345,7 @@ class CompositeProperty(DescriptorProperty):
                 a == b
                 for a, b in zip(self.prop._comparable_elements, values)
             ]
-            if self.adapter:
+            if self._adapt_to_entity:
                 comparisons = [self.adapter(x) for x in comparisons]
             return sql.and_(*comparisons)
 

@@ -355,27 +355,21 @@ class RelationshipProperty(StrategizedProperty):
 
         _of_type = None
 
-        def __init__(self, prop, parentmapper, of_type=None, adapter=None):
+        def __init__(self, prop, parentmapper, adapt_to_entity=None, of_type=None):
             """Construction of :class:`.RelationshipProperty.Comparator`
             is internal to the ORM's attribute mechanics.
 
             """
             self.prop = prop
             self._parentmapper = parentmapper
-            self.adapter = adapter
+            self._adapt_to_entity = adapt_to_entity
             if of_type:
                 self._of_type = of_type
 
-        def adapted(self, adapter):
-            """Return a copy of this PropComparator which will use the
-            given adaption function on the local side of generated
-            expressions.
-
-            """
-
+        def adapt_to_entity(self, adapt_to_entity):
             return self.__class__(self.property, self._parentmapper,
-                                  getattr(self, '_of_type', None),
-                                  adapter)
+                                  adapt_to_entity=adapt_to_entity,
+                                    of_type=self._of_type)
 
         @util.memoized_property
         def mapper(self):
@@ -427,7 +421,8 @@ class RelationshipProperty(StrategizedProperty):
             return RelationshipProperty.Comparator(
                                         self.property,
                                         self._parentmapper,
-                                        cls, adapter=self.adapter)
+                                        adapt_to_entity=self._adapt_to_entity,
+                                        of_type=cls)
 
         def in_(self, other):
             """Produce an IN clause - this is not implemented

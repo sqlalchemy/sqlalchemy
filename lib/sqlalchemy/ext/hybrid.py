@@ -803,6 +803,6 @@ class Comparator(interfaces.PropComparator):
             expr = expr.__clause_element__()
         return expr
 
-    def adapted(self, adapter):
+    def adapt_to_entity(self, adapt_to_entity):
         # interesting....
         return self

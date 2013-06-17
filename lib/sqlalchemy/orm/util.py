@@ -516,88 +516,32 @@ class AliasedClass(object):
                 if with_polymorphic_discriminator is not None
                 else mapper.polymorphic_on,
             base_alias,
-            use_mapper_path
+            use_mapper_path,
+            adapt_on_names
         )
 
-        self._setup(self._aliased_insp, adapt_on_names)
-
-
-    def _setup(self, aliased_insp, adapt_on_names):
-        self.__adapt_on_names = adapt_on_names
-        mapper = aliased_insp.mapper
-        alias = aliased_insp.selectable
-        self.__target = mapper.class_
-        self.__adapt_on_names = adapt_on_names
-        self.__adapter = sql_util.ClauseAdapter(alias,
-                            equivalents=mapper._equivalent_columns,
-                            adapt_on_names=self.__adapt_on_names)
-        for poly in aliased_insp.with_polymorphic_mappers:
-            if poly is not mapper:
-                setattr(self, poly.class_.__name__,
-                    AliasedClass(poly.class_, alias, base_alias=self,
-                            use_mapper_path=self._aliased_insp._use_mapper_path))
-
-        self.__name__ = 'AliasedClass_%s' % self.__target.__name__
-
-    def __getstate__(self):
-        return {
-            'mapper': self._aliased_insp.mapper,
-            'alias': self._aliased_insp.selectable,
-            'name': self._aliased_insp.name,
-            'adapt_on_names': self.__adapt_on_names,
-            'with_polymorphic_mappers':
-                self._aliased_insp.with_polymorphic_mappers,
-            'with_polymorphic_discriminator':
-                self._aliased_insp.polymorphic_on,
-            'base_alias': self._aliased_insp._base_alias.entity,
-            'use_mapper_path': self._aliased_insp._use_mapper_path
-        }
-
-    def __setstate__(self, state):
-        self._aliased_insp = AliasedInsp(
-            self,
-            state['mapper'],
-            state['alias'],
-            state['name'],
-            state['with_polymorphic_mappers'],
-            state['with_polymorphic_discriminator'],
-            state['base_alias'],
-            state['use_mapper_path']
-        )
-        self._setup(self._aliased_insp, state['adapt_on_names'])
-
-    def __adapt_element(self, elem):
-        return self.__adapter.traverse(elem).\
-                    _annotate({
-                        'parententity': self,
-                        'parentmapper': self._aliased_insp.mapper}
-                    )
-
-    def __adapt_prop(self, existing, key):
-        comparator = existing.comparator.adapted(self.__adapt_element)
-        queryattr = attributes.QueryableAttribute(
-                                self, key,
-                                impl=existing.impl,
-                                parententity=self._aliased_insp,
-                                comparator=comparator)
-        setattr(self, key, queryattr)
-        return queryattr
+        self.__name__ = 'AliasedClass_%s' % mapper.class_.__name__
 
     def __getattr__(self, key):
-        for base in self.__target.__mro__:
-            try:
-                attr = object.__getattribute__(base, key)
-            except AttributeError:
-                continue
-            else:
-                break
+        try:
+            _aliased_insp = self.__dict__['_aliased_insp']
+        except KeyError:
+            raise AttributeError()
         else:
-            raise AttributeError(key)
+            for base in _aliased_insp._target.__mro__:
+                try:
+                    attr = object.__getattribute__(base, key)
+                except AttributeError:
+                    continue
+                else:
+                    break
+            else:
+                raise AttributeError(key)
 
         if isinstance(attr, attributes.QueryableAttribute):
-            return self.__adapt_prop(attr, key)
+            return _aliased_insp._adapt_prop(attr, key)
         elif hasattr(attr, 'func_code'):
-            is_method = getattr(self.__target, key, None)
+            is_method = getattr(_aliased_insp._target, key, None)
             if is_method and is_method.__self__ is not None:
                 return util.types.MethodType(attr.__func__, self, self)
             else:
@@ -605,14 +549,14 @@ class AliasedClass(object):
         elif hasattr(attr, '__get__'):
             ret = attr.__get__(None, self)
             if isinstance(ret, PropComparator):
-                return ret.adapted(self.__adapt_element)
+                return ret.adapt_to_entity(_aliased_insp)
             return ret
         else:
             return attr
 
     def __repr__(self):
         return '<AliasedClass at 0x%x; %s>' % (
-            id(self), self.__target.__name__)
+            id(self), self._aliased_insp._target.__name__)
 
 
 class AliasedInsp(_InspectionAttr):
@@ -653,19 +597,29 @@ class AliasedInsp(_InspectionAttr):
 
     def __init__(self, entity, mapper, selectable, name,
                     with_polymorphic_mappers, polymorphic_on,
-                    _base_alias, _use_mapper_path):
+                    _base_alias, _use_mapper_path, adapt_on_names):
         self.entity = entity
         self.mapper = mapper
         self.selectable = selectable
         self.name = name
         self.with_polymorphic_mappers = with_polymorphic_mappers
         self.polymorphic_on = polymorphic_on
-
-        # a little dance to get serialization to work
-        self._base_alias = _base_alias._aliased_insp if _base_alias \
-                            and _base_alias is not entity else self
+        self._base_alias = _base_alias or self
         self._use_mapper_path = _use_mapper_path
 
+        self._adapter = sql_util.ClauseAdapter(selectable,
+                            equivalents=mapper._equivalent_columns,
+                            adapt_on_names=adapt_on_names)
+
+        self._adapt_on_names = adapt_on_names
+        self._target = mapper.class_
+
+        for poly in self.with_polymorphic_mappers:
+            if poly is not mapper:
+                setattr(self.entity, poly.class_.__name__,
+                    AliasedClass(poly.class_, selectable, base_alias=self,
+                            adapt_on_names=adapt_on_names,
+                            use_mapper_path=_use_mapper_path))
 
     is_aliased_class = True
     "always returns True"
@@ -683,6 +637,52 @@ class AliasedInsp(_InspectionAttr):
         else:
             return PathRegistry.per_mapper(self)
 
+    def __getstate__(self):
+        return {
+            'entity': self.entity,
+            'mapper': self.mapper,
+            'alias': self.selectable,
+            'name': self.name,
+            'adapt_on_names': self._adapt_on_names,
+            'with_polymorphic_mappers':
+                self.with_polymorphic_mappers,
+            'with_polymorphic_discriminator':
+                self.polymorphic_on,
+            'base_alias': self._base_alias,
+            'use_mapper_path': self._use_mapper_path
+        }
+
+    def __setstate__(self, state):
+        self.__init__(
+            state['entity'],
+            state['mapper'],
+            state['alias'],
+            state['name'],
+            state['with_polymorphic_mappers'],
+            state['with_polymorphic_discriminator'],
+            state['base_alias'],
+            state['use_mapper_path'],
+            state['adapt_on_names']
+        )
+
+    def _adapt_element(self, elem):
+        return self._adapter.traverse(elem).\
+                    _annotate({
+                        'parententity': self.entity,
+                        'parentmapper': self.mapper}
+                    )
+
+    def _adapt_prop(self, existing, key):
+        comparator = existing.comparator.adapt_to_entity(self)
+        queryattr = attributes.QueryableAttribute(
+                                self.entity, key,
+                                impl=existing.impl,
+                                parententity=self,
+                                comparator=comparator)
+        setattr(self.entity, key, queryattr)
+        return queryattr
+
+
     def _entity_for_mapper(self, mapper):
         self_poly = self.with_polymorphic_mappers
         if mapper in self_poly:
@@ -691,6 +691,25 @@ class AliasedInsp(_InspectionAttr):
             return self
         else:
             assert False, "mapper %s doesn't correspond to %s" % (mapper, self)
+
+    def _adapt_element(self, elem):
+        return self._adapter.traverse(elem).\
+                    _annotate({
+                        'parententity': self.entity,
+                        'parentmapper': self.mapper}
+                    )
+
+    def _adapt_prop(self, existing, key):
+        comparator = existing.comparator.adapt_to_entity(self)
+        queryattr = attributes.QueryableAttribute(
+                                self.entity, key,
+                                impl=existing.impl,
+                                parententity=self,
+                                comparator=comparator)
+        setattr(self.entity, key, queryattr)
+        return queryattr
+
+
 
     def __repr__(self):
         return '<AliasedInsp at 0x%x; %s>' % (

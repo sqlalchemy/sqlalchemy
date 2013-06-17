@@ -381,21 +381,30 @@ class PropComparator(operators.ColumnOperators):
 
     """
 
-    def __init__(self, prop, parentmapper, adapter=None):
+    def __init__(self, prop, parentmapper, adapt_to_entity=None):
         self.prop = self.property = prop
         self._parentmapper = parentmapper
-        self.adapter = adapter
+        self._adapt_to_entity = adapt_to_entity
 
     def __clause_element__(self):
         raise NotImplementedError("%r" % self)
 
-    def adapted(self, adapter):
+    def adapt_to_entity(self, adapt_to_entity):
         """Return a copy of this PropComparator which will use the given
-        adaption function on the local side of generated expressions.
+        :class:`.AliasedInsp` to produce corresponding expressions.
+        """
+        return self.__class__(self.prop, self._parentmapper, adapt_to_entity)
+
+    @property
+    def adapter(self):
+        """Produce a callable that adapts column expressions
+        to suit an aliased version of this comparator.
 
         """
-
-        return self.__class__(self.prop, self._parentmapper, adapter)
+        if self._adapt_to_entity is None:
+            return None
+        else:
+            return self._adapt_to_entity._adapt_element
 
     @util.memoized_property
     def info(self):

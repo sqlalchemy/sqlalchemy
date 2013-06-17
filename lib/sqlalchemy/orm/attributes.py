@@ -335,14 +335,14 @@ def create_proxied_attribute(descriptor):
 
         def __init__(self, class_, key, descriptor,
                                 comparator,
-                                adapter=None, doc=None,
+                                adapt_to_entity=None, doc=None,
                                 original_property=None):
             self.class_ = class_
             self.key = key
             self.descriptor = descriptor
             self.original_property = original_property
             self._comparator = comparator
-            self.adapter = adapter
+            self._adapt_to_entity = adapt_to_entity
             self.__doc__ = doc
 
         @property
@@ -353,18 +353,15 @@ def create_proxied_attribute(descriptor):
         def comparator(self):
             if util.callable(self._comparator):
                 self._comparator = self._comparator()
-            if self.adapter:
-                self._comparator = self._comparator.adapted(self.adapter)
+            if self._adapt_to_entity:
+                self._comparator = self._comparator.adapt_to_entity(
+                                    self._adapt_to_entity)
             return self._comparator
 
-        def adapted(self, adapter):
-            """Proxy adapted() for the use case of AliasedClass calling
-            adapted.
-
-            """
+        def adapt_to_entity(self, adapt_to_entity):
             return self.__class__(self.class_, self.key, self.descriptor,
                                        self._comparator,
-                                       adapter)
+                                       adapt_to_entity)
 
         def __get__(self, instance, owner):
             if instance is None:
