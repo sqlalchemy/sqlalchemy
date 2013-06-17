@@ -692,25 +692,6 @@ class AliasedInsp(_InspectionAttr):
         else:
             assert False, "mapper %s doesn't correspond to %s" % (mapper, self)
 
-    def _adapt_element(self, elem):
-        return self._adapter.traverse(elem).\
-                    _annotate({
-                        'parententity': self.entity,
-                        'parentmapper': self.mapper}
-                    )
-
-    def _adapt_prop(self, existing, key):
-        comparator = existing.comparator.adapt_to_entity(self)
-        queryattr = attributes.QueryableAttribute(
-                                self.entity, key,
-                                impl=existing.impl,
-                                parententity=self,
-                                comparator=comparator)
-        setattr(self.entity, key, queryattr)
-        return queryattr
-
-
-
     def __repr__(self):
         return '<AliasedInsp at 0x%x; %s>' % (
             id(self), self.class_.__name__)
