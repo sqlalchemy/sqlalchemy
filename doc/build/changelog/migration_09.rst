@@ -124,6 +124,99 @@ to 0.9 without issue.
 
 :ticket:`2736`
 
+.. _migration_2751:
+
+Association Proxy SQL Expression Improvements and Fixes
+-------------------------------------------------------
+
+The ``==`` and ``!=`` operators as implemented by an association proxy
+that refers to a scalar value on a scalar relationship now produces
+a more complete SQL expression, intended to take into account
+the "association" row being present or not when the comparison is against
+``None``.
+
+Consider this mapping::
+
+    class A(Base):
+        __tablename__ = 'a'
+
+        id = Column(Integer, primary_key=True)
+
+        b_id = Column(Integer, ForeignKey('b.id'), primary_key=True)
+        b = relationship("B")
+        b_value = association_proxy("b", "value")
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+        value = Column(String)
+
+Up through 0.8, a query like the following::
+
+    s.query(A).filter(A.b_value == None).all()
+
+would produce::
+
+    SELECT a.id AS a_id, a.b_id AS a_b_id
+    FROM a
+    WHERE EXISTS (SELECT 1
+    FROM b
+    WHERE b.id = a.b_id AND b.value IS NULL)
+
+In 0.9, it now produces::
+
+    SELECT a.id AS a_id, a.b_id AS a_b_id
+    FROM a
+    WHERE (EXISTS (SELECT 1
+    FROM b
+    WHERE b.id = a.b_id AND b.value IS NULL)) OR a.b_id IS NULL
+
+The difference being, it not only checks ``b.value``, it also checks
+if ``a`` refers to no ``b`` row at all.  This will return different
+results versus prior versions, for a system that uses this type of
+comparison where some parent rows have no association row.
+
+More critically, a correct expression is emitted for ``A.b_value != None``.
+In 0.8, this would return ``True`` for ``A`` rows that had no ``b``::
+
+    SELECT a.id AS a_id, a.b_id AS a_b_id
+    FROM a
+    WHERE NOT (EXISTS (SELECT 1
+    FROM b
+    WHERE b.id = a.b_id AND b.value IS NULL))
+
+Now in 0.9, the check has been reworked so that it ensures
+the A.b_id row is present, in addition to ``B.value`` being
+non-NULL::
+
+    SELECT a.id AS a_id, a.b_id AS a_b_id
+    FROM a
+    WHERE EXISTS (SELECT 1
+    FROM b
+    WHERE b.id = a.b_id AND b.value IS NOT NULL)
+
+In addition, the ``has()`` operator is enhanced such that you can
+call it against a scalar column value with no criterion only,
+and it will produce criteria that checks for the association row
+being present or not::
+
+    s.query(A).filter(A.b_value.has()).all()
+
+output::
+
+    SELECT a.id AS a_id, a.b_id AS a_b_id
+    FROM a
+    WHERE EXISTS (SELECT 1
+    FROM b
+    WHERE b.id = a.b_id)
+
+This is equivalent to ``A.b.has()``, but allows one to query
+against ``b_value`` directly.
+
+:ticket:`2751`
+
+
+
 Behavioral Improvements
 =======================
 

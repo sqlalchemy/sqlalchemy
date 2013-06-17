@@ -91,7 +91,7 @@
         patch.  Also in 0.8.2.
 
     .. change::
-        :tags: bug, ext, associationproxy
+        :tags: bug, orm, associationproxy
         :tickets: 2751
 
         Added additional criterion to the ==, != comparators, used with
@@ -116,6 +116,10 @@
         when ``Cls.scalar`` is a column-based value - this returns whether or
         not ``Cls.associated`` has any rows present, regardless of whether
         or not ``Cls.associated.scalar`` is NULL or not.
+
+        .. seealso::
+
+            :ref:`migration_2751`
 
 
     .. change::
