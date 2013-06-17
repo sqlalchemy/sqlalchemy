@@ -580,13 +580,6 @@ class DefaultRequirements(SuiteRequirements):
             "Needs cPickle or newer Python 3 pickle"
         )
 
-    @property
-    def bulletproof_pickle(self):
-        from sqlalchemy.util import pickle
-        return only_if(
-            lambda: pickle.__name__ == 'cPickle' and sys.version_info < (3, 0),
-            "Needs Python 2.x cPickle"
-        )
 
     @property
     def predictable_gc(self):
