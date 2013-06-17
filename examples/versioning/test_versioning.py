@@ -374,5 +374,8 @@ class TestVersioning(TestCase):
         sess.commit()
 
         assert sc.version == 1
+
         sess.delete(sr)
         sess.commit()
+
+        assert sc.version == 1
