@@ -7,6 +7,14 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, examples
+
+        Fixed an issue with the "versioning" recipe whereby a many-to-one
+        reference could produce a meaningless version for the target,
+        even though it was not changed, when backrefs were present.
+        Patch courtesy Matt Chisholm.  Also in 0.8.2.
+
+    .. change::
         :tags: feature, postgresql
         :tickets: 2072
 
