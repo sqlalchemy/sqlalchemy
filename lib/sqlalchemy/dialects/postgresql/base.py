@@ -41,24 +41,40 @@ case.
 To force the usage of RETURNING by default off, specify the flag
 ``implicit_returning=False`` to :func:`.create_engine`.
 
+.. _postgresql_isolation_level:
+
 Transaction Isolation Level
 ---------------------------
 
-:func:`.create_engine` accepts an ``isolation_level`` parameter which results
-in the command ``SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL
-<level>`` being invoked for every new connection. Valid values for this
-parameter include ``READ COMMITTED``, ``READ UNCOMMITTED``, ``REPEATABLE READ``,
-and ``SERIALIZABLE``::
+All Postgresql dialects support setting of transaction isolation level
+both via a dialect-specific parameter ``isolation_level``
+accepted by :func:`.create_engine`,
+as well as the ``isolation_level`` argument as passed to :meth:`.Connection.execution_options`.
+When using a non-psycopg2 dialect, this feature works by issuing the
+command ``SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL
+<level>`` for each new connection.
+
+To set isolation level using :func:`.create_engine`::
 
     engine = create_engine(
                     "postgresql+pg8000://scott:tiger@localhost/test",
                     isolation_level="READ UNCOMMITTED"
                 )
 
-When using the psycopg2 dialect, a psycopg2-specific method of setting
-transaction isolation level is used, but the API of ``isolation_level``
-remains the same.  The psycopg2 dialect also includes support
-for ``AUTOCOMMIT`` isolation - see :ref:`psycopg2_isolation`.
+To set using per-connection execution options::
+
+    connection = engine.connect()
+    connection = connection.execution_options(isolation_level="READ COMMITTED")
+
+Valid values for ``isolation_level`` include:
+
+* ``READ COMMITTED``
+* ``READ UNCOMMITTED``
+* ``REPEATABLE READ``
+* ``SERIALIZABLE``
+
+The :mod:`~sqlalchemy.dialects.postgresql.psycopg2` dialect also offers the special level ``AUTOCOMMIT``.  See
+:ref:`psycopg2_isolation_level` for details.
 
 
 Remote / Cross-Schema Table Introspection
