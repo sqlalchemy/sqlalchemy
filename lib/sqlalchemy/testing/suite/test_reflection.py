@@ -396,7 +396,8 @@ class ComponentReflectionTest(fixtures.TablesTest):
             key=operator.itemgetter('name')
         )
 
-        eq_(uniques, reflected)
+        for orig, refl in zip(uniques, reflected):
+            eq_(orig, refl)
 
 
     @testing.provide_metadata
