@@ -27,7 +27,7 @@ class RangeOperators(object):
         """Define comparison operations for range types."""
 
         def __ne__(self, other):
-            "Boolean expression. Returns true if two ranges are not equal" 
+            "Boolean expression. Returns true if two ranges are not equal"
             return self.expr.op('<>')(other)
 
         def contains(self, other, **kw):
@@ -54,7 +54,7 @@ class RangeOperators(object):
             left of the right hand operand.
             """
             return self.expr.op('<<')(other)
-            
+
         __lshift__ = strictly_left_of
 
         def strictly_right_of(self, other):
@@ -62,15 +62,15 @@ class RangeOperators(object):
             right of the right hand operand.
             """
             return self.expr.op('>>')(other)
-            
+
         __rshift__ = strictly_right_of
-        
+
         def not_extend_right_of(self, other):
             """Boolean expression. Returns true if the range in the column
             does not extend right of the range in the operand.
             """
             return self.expr.op('&<')(other)
-        
+
         def not_extend_left_of(self, other):
             """Boolean expression. Returns true if the range in the column
             does not extend left of the range in the operand.
@@ -92,42 +92,42 @@ class RangeOperators(object):
 
 class INT4RANGE(RangeOperators, sqltypes.TypeEngine):
     "Represent the Postgresql INT4RANGE type."
-    
+
     __visit_name__ = 'INT4RANGE'
 
 ischema_names['int4range'] = INT4RANGE
 
 class INT8RANGE(RangeOperators, sqltypes.TypeEngine):
     "Represent the Postgresql INT8RANGE type."
-    
+
     __visit_name__ = 'INT8RANGE'
 
 ischema_names['int8range'] = INT8RANGE
 
 class NUMRANGE(RangeOperators, sqltypes.TypeEngine):
     "Represent the Postgresql NUMRANGE type."
-    
+
     __visit_name__ = 'NUMRANGE'
 
 ischema_names['numrange'] = NUMRANGE
 
 class DATERANGE(RangeOperators, sqltypes.TypeEngine):
     "Represent the Postgresql DATERANGE type."
-    
+
     __visit_name__ = 'DATERANGE'
 
 ischema_names['daterange'] = DATERANGE
 
 class TSRANGE(RangeOperators, sqltypes.TypeEngine):
     "Represent the Postgresql TSRANGE type."
-    
+
     __visit_name__ = 'TSRANGE'
 
 ischema_names['tsrange'] = TSRANGE
 
 class TSTZRANGE(RangeOperators, sqltypes.TypeEngine):
     "Represent the Postgresql TSTZRANGE type."
-    
+
     __visit_name__ = 'TSTZRANGE'
 
 ischema_names['tstzrange'] = TSTZRANGE
