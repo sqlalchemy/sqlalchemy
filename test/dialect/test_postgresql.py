@@ -186,7 +186,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_exclude_constraint_min(self):
         m = MetaData()
-        tbl = Table('testtbl', m, 
+        tbl = Table('testtbl', m,
                     Column('room', Integer, primary_key=True))
         cons = ExcludeConstraint(('room', '='))
         tbl.append_constraint(cons)
@@ -219,7 +219,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_exclude_constraint_copy(self):
         m = MetaData()
         cons = ExcludeConstraint(('room', '='))
-        tbl = Table('testtbl', m, 
+        tbl = Table('testtbl', m,
               Column('room', Integer, primary_key=True),
               cons)
         # apparently you can't copy a ColumnCollectionConstraint until
@@ -2835,14 +2835,12 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
                 )).execute().fetchall()
         eq_([3], [r.id for r in results])
 
-    @testing.requires.english_locale_on_postgresql
     def test_simple_derivative_match(self):
         results = \
             matchtable.select().where(matchtable.c.title.match('nutshells'
                 )).execute().fetchall()
         eq_([5], [r.id for r in results])
 
-    @testing.requires.english_locale_on_postgresql
     def test_or_match(self):
         results1 = \
             matchtable.select().where(or_(matchtable.c.title.match('nutshells'
@@ -2855,7 +2853,6 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
                 )).order_by(matchtable.c.id).execute().fetchall()
         eq_([3, 5], [r.id for r in results2])
 
-    @testing.requires.english_locale_on_postgresql
     def test_and_match(self):
         results1 = \
             matchtable.select().where(and_(matchtable.c.title.match('python'
@@ -2868,7 +2865,6 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
                 )).execute().fetchall()
         eq_([5], [r.id for r in results2])
 
-    @testing.requires.english_locale_on_postgresql
     def test_match_across_joins(self):
         results = matchtable.select().where(and_(cattable.c.id
                 == matchtable.c.category_id,
@@ -3302,7 +3298,7 @@ class _RangeTypeMixin(object):
         # older psycopg2 versions.
         from psycopg2 import extras
         return extras
-    
+
     @classmethod
     def define_tables(cls, metadata):
         # no reason ranges shouldn't be primary keys,
@@ -3314,7 +3310,7 @@ class _RangeTypeMixin(object):
 
     def test_actual_type(self):
         eq_(str(self._col_type()), self._col_str)
-        
+
     def test_reflect(self):
         from sqlalchemy import inspect
         insp = inspect(testing.db)
@@ -3342,7 +3338,7 @@ class _RangeTypeMixin(object):
         self._assert_data()
 
     # operator tests
-        
+
     def _test_clause(self, colclause, expected):
         dialect = postgresql.dialect()
         compiled = str(colclause.compile(dialect=dialect))
@@ -3458,7 +3454,7 @@ class _RangeTypeMixin(object):
             select([range + range])
             ).fetchall()
         eq_(data, [(self._data_obj(), )])
-        
+
 
     def test_intersection(self):
         self._test_clause(
@@ -3478,7 +3474,7 @@ class _RangeTypeMixin(object):
             select([range * range])
             ).fetchall()
         eq_(data, [(self._data_obj(), )])
-        
+
     def test_different(self):
         self._test_clause(
             self.col - self.col,
@@ -3497,7 +3493,7 @@ class _RangeTypeMixin(object):
             select([range - range])
             ).fetchall()
         eq_(data, [(self._data_obj().__class__(empty=True), )])
-        
+
 class Int4RangeTests(_RangeTypeMixin, fixtures.TablesTest):
 
     _col_type = INT4RANGE
@@ -3567,6 +3563,6 @@ class DateTimeTZRangeTests(_RangeTypeMixin, fixtures.TablesTest):
     @property
     def _data_str(self):
         return '[%s,%s)' % self.tstzs()
-    
+
     def _data_obj(self):
         return self.extras.DateTimeTZRange(*self.tstzs())

@@ -649,11 +649,6 @@ class DefaultRequirements(SuiteRequirements):
             )
 
     @property
-    def english_locale_on_postgresql(self):
-        return skip_if(lambda: against('postgresql') \
-                    and not self.db.scalar('SHOW LC_COLLATE').startswith('en'))
-
-    @property
     def selectone(self):
         """target driver must support the literal statement 'select 1'"""
         return skip_if(["oracle", "firebird"], "non-standard SELECT scalar syntax")
