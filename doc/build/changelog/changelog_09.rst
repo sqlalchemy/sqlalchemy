@@ -7,6 +7,18 @@
     :version: 0.9.0
 
     .. change::
+        :tags: feature, sql
+        :tickets: 2744, 2734
+
+        Provided a new attribute for :class:`.TypeDecorator`
+        called :attr:`.TypeDecorator.coerce_to_is_types`,
+        to make it easier to control how comparisons using
+        ``==`` or ``!=`` to ``None`` and boolean types goes
+        about producing an ``IS`` expression, or a plain
+        equality expression with a bound parameter.
+
+
+    .. change::
         :tags: feature, postgresql
 
         Support for Postgresql 9.2 range types has been added.
