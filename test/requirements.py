@@ -603,6 +603,21 @@ class DefaultRequirements(SuiteRequirements):
         return only_if(check_hstore)
 
     @property
+    def range_types(self):
+        def check_range_types():
+            if not against("postgresql+psycopg2"):
+                return False
+            try:
+                self.db.execute("select '[1,2)'::int4range;")
+                # only supported in psycopg 2.5+
+                from psycopg2.extras import NumericRange
+                return True
+            except:
+                return False
+
+        return only_if(check_range_types)
+
+    @property
     def sqlite(self):
         return skip_if(lambda: not self._has_sqlite())
 

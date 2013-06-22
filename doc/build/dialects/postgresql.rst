@@ -16,7 +16,8 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
         ARRAY, BIGINT, BIT, BOOLEAN, BYTEA, CHAR, CIDR, DATE, \
         DOUBLE_PRECISION, ENUM, FLOAT, HSTORE, INET, INTEGER, \
         INTERVAL, MACADDR, NUMERIC, REAL, SMALLINT, TEXT, TIME, \
-        TIMESTAMP, UUID, VARCHAR
+        TIMESTAMP, UUID, VARCHAR, INT4RANGE, INT8RANGE, NUMRANGE, \
+        DATERANGE, TSRANGE, TSTZRANGE
 
 Types which are specific to PostgreSQL, or have PostgreSQL-specific
 construction arguments, are as follows:
@@ -80,6 +81,54 @@ construction arguments, are as follows:
 .. autoclass:: UUID
     :members: __init__
     :show-inheritance:
+
+.. autoclass:: sqlalchemy.dialects.postgresql.ranges.RangeOperators
+    :members:
+
+.. autoclass:: INT4RANGE
+   :show-inheritance:
+
+.. autoclass:: INT8RANGE
+   :show-inheritance:
+
+.. autoclass:: NUMRANGE
+   :show-inheritance:
+
+.. autoclass:: DATERANGE
+   :show-inheritance:
+
+.. autoclass:: TSRANGE
+   :show-inheritance:
+
+.. autoclass:: TSTZRANGE
+   :show-inheritance:
+
+
+PostgreSQL Constraint Types
+---------------------------
+
+SQLAlchemy supports Postgresql EXCLUDE constraints via the
+:class:`ExcludeConstraint` class:
+
+.. autoclass:: ExcludeConstraint
+   :show-inheritance:
+   :members: __init__
+
+For example::
+
+  from sqlalchemy.dialects.postgresql import (
+      ExcludeConstraint,
+      TSRANGE as Range,
+      )
+
+  class RoomBookings(Base):
+
+      room = Column(Integer(), primary_key=True)
+      during = Column(TSRANGE())
+
+      __table_args__ = (
+          ExcludeConstraint(('room', '='), ('during', '&&')),
+      )
 
 psycopg2
 --------------

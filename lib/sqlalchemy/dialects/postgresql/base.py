@@ -443,7 +443,7 @@ class array(expression.Tuple):
 
     An instance of :class:`.array` will always have the datatype
     :class:`.ARRAY`.  The "inner" type of the array is inferred from
-    the values present, unless the "type_" keyword argument is passed::
+    the values present, unless the ``type_`` keyword argument is passed::
 
         array(['foo', 'bar'], type_=CHAR)
 
@@ -1141,6 +1141,22 @@ class PGDDLCompiler(compiler.DDLCompiler):
             text += " WHERE " + where_compiled
         return text
 
+    def visit_exclude_constraint(self, constraint):
+        text = ""
+        if constraint.name is not None:
+            text += "CONSTRAINT %s " % \
+                    self.preparer.format_constraint(constraint)
+        elements = []
+        for c in constraint.columns:
+            op = constraint.operators[c.name]
+            elements.append(self.preparer.quote(c.name, c.quote)+' WITH '+op)
+        text += "EXCLUDE USING %s (%s)" % (constraint.using, ', '.join(elements))
+        if constraint.where is not None:
+            sqltext = sql_util.expression_as_ddl(constraint.where)
+            text += ' WHERE (%s)' % self.sql_compiler.process(sqltext)
+        text += self.define_constraint_deferrability(constraint)
+        return text
+
 
 class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_INET(self, type_):
@@ -1166,6 +1182,24 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_HSTORE(self, type_):
         return "HSTORE"
+
+    def visit_INT4RANGE(self, type_):
+        return "INT4RANGE"
+
+    def visit_INT8RANGE(self, type_):
+        return "INT8RANGE"
+
+    def visit_NUMRANGE(self, type_):
+        return "NUMRANGE"
+
+    def visit_DATERANGE(self, type_):
+        return "DATERANGE"
+
+    def visit_TSRANGE(self, type_):
+        return "TSRANGE"
+
+    def visit_TSTZRANGE(self, type_):
+        return "TSTZRANGE"
 
     def visit_datetime(self, type_):
         return self.visit_TIMESTAMP(type_)
