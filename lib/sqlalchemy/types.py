@@ -591,9 +591,42 @@ class TypeDecorator(TypeEngine):
                                  "type being decorated")
         self.impl = to_instance(self.__class__.impl, *args, **kwargs)
 
+    coerce_to_is_types = (util.NoneType, )
+    """Specify those Python types which should be coerced at the expression
+    level to "IS <constant>" when compared using ``==`` (and same for
+        ``IS NOT`` in conjunction with ``!=``.
+
+    For most SQLAlchemy types, this includes ``NoneType``, as well as ``bool``.
+
+    :class:`.TypeDecorator` modifies this list to only include ``NoneType``,
+    as typedecorator implementations that deal with boolean types are common.
+
+    Custom :class:`.TypeDecorator` classes can override this attribute to
+    return an empty tuple, in which case no values will be coerced to
+    constants.
+
+    ..versionadded:: 0.8.2
+        Added :attr:`.TypeDecorator.coerce_to_is_types` to allow for easier
+        control of ``__eq__()`` ``__ne__()`` operations.
+
+    """
+
+    class Comparator(TypeEngine.Comparator):
+        def operate(self, op, *other, **kwargs):
+            kwargs['_python_is_types'] = self.expr.type.coerce_to_is_types
+            return super(TypeDecorator.Comparator, self).operate(
+                                                        op, *other, **kwargs)
+
+        def reverse_operate(self, op, other, **kwargs):
+            kwargs['_python_is_types'] = self.expr.type.coerce_to_is_types
+            return super(TypeDecorator.Comparator, self).reverse_operate(
+                                                        op, other, **kwargs)
+
     @property
     def comparator_factory(self):
-        return self.impl.comparator_factory
+        return type("TDComparator",
+                    (TypeDecorator.Comparator, self.impl.comparator_factory),
+                    {})
 
     def _gen_dialect_impl(self, dialect):
         """

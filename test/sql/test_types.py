@@ -1106,7 +1106,6 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         expr = column('foo', CHAR) == "asdf"
         eq_(expr.right.type.__class__, CHAR)
 
-
     @testing.uses_deprecated
     @testing.fails_on('firebird', 'Data type unknown on the parameter')
     @testing.fails_on('mssql', 'int is unsigned ?  not clear')
@@ -1148,6 +1147,39 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
             testing.db.execute(select([expr.label('foo')])).scalar(),
             "BIND_INfooBIND_INhiBIND_OUT"
         )
+
+    def test_typedec_is_adapt(self):
+        class CoerceNothing(TypeDecorator):
+            coerce_to_is_types = ()
+            impl = Integer
+        class CoerceBool(TypeDecorator):
+            coerce_to_is_types = (bool, )
+            impl = Boolean
+        class CoerceNone(TypeDecorator):
+            coerce_to_is_types = (type(None),)
+            impl = Integer
+
+        c1 = column('x', CoerceNothing())
+        c2 = column('x', CoerceBool())
+        c3 = column('x', CoerceNone())
+
+        self.assert_compile(
+            and_(c1 == None, c2 == None, c3 == None),
+            "x = :x_1 AND x = :x_2 AND x IS NULL"
+        )
+        self.assert_compile(
+            and_(c1 == True, c2 == True, c3 == True),
+            "x = :x_1 AND x = true AND x = :x_2"
+        )
+        self.assert_compile(
+            and_(c1 == 3, c2 == 3, c3 == 3),
+            "x = :x_1 AND x = :x_2 AND x = :x_3"
+        )
+        self.assert_compile(
+            and_(c1.is_(True), c2.is_(True), c3.is_(True)),
+            "x IS :x_1 AND x IS true AND x IS :x_2"
+        )
+
 
     def test_typedec_righthand_coercion(self):
         class MyTypeDec(types.TypeDecorator):

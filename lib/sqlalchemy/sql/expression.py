@@ -2013,8 +2013,10 @@ class _DefaultColumnComparator(operators.ColumnOperators):
         return op, other_comparator.type
 
     def _boolean_compare(self, expr, op, obj, negate=None, reverse=False,
+                        _python_is_types=(util.NoneType, bool),
                         **kwargs):
-        if isinstance(obj, (util.NoneType, bool, Null, True_, False_)):
+
+        if isinstance(obj, _python_is_types + (Null, True_, False_)):
 
             # allow x ==/!= True/False to be treated as a literal.
             # this comes out to "== / != true/false" or "1/0" if those
@@ -2056,7 +2058,8 @@ class _DefaultColumnComparator(operators.ColumnOperators):
                             type_=sqltypes.BOOLEANTYPE,
                             negate=negate, modifiers=kwargs)
 
-    def _binary_operate(self, expr, op, obj, reverse=False, result_type=None):
+    def _binary_operate(self, expr, op, obj, reverse=False, result_type=None,
+                            **kw):
         obj = self._check_literal(expr, op, obj)
 
         if reverse:
