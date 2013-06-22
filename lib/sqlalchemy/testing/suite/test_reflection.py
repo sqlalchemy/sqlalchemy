@@ -373,6 +373,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
                 {'name': 'unique_a_b_c', 'column_names': ['a', 'b', 'c']},
                 {'name': 'unique_a_c', 'column_names': ['a', 'c']},
                 {'name': 'unique_b_c', 'column_names': ['b', 'c']},
+                {'name': 'unique_asc_key', 'column_names': ['asc', 'key']},
             ],
             key=operator.itemgetter('name')
         )
@@ -382,6 +383,9 @@ class ComponentReflectionTest(fixtures.TablesTest):
             Column('a', sa.String(20)),
             Column('b', sa.String(30)),
             Column('c', sa.Integer),
+            # reserved identifiers
+            Column('asc', sa.String(30)),
+            Column('key', sa.String(30)),
             schema=schema
         )
         for uc in uniques:
