@@ -21,6 +21,9 @@ class RangeOperators(object):
     No extra support is provided for the Range Functions listed in
     Table 9-45 of the postgres documentation. For these, the normal
     :func:`~sqlalchemy.sql.expression.func` object should be used.
+
+    .. versionadded:: 0.8.2  Support for Postgresql RANGE operations.
+
     """
 
     class comparator_factory(sqltypes.Concatenable.Comparator):
@@ -91,42 +94,66 @@ class RangeOperators(object):
             return self.expr.op('+')(other)
 
 class INT4RANGE(RangeOperators, sqltypes.TypeEngine):
-    "Represent the Postgresql INT4RANGE type."
+    """Represent the Postgresql INT4RANGE type.
+
+    .. versionadded:: 0.8.2
+
+    """
 
     __visit_name__ = 'INT4RANGE'
 
 ischema_names['int4range'] = INT4RANGE
 
 class INT8RANGE(RangeOperators, sqltypes.TypeEngine):
-    "Represent the Postgresql INT8RANGE type."
+    """Represent the Postgresql INT8RANGE type.
+
+    .. versionadded:: 0.8.2
+
+    """
 
     __visit_name__ = 'INT8RANGE'
 
 ischema_names['int8range'] = INT8RANGE
 
 class NUMRANGE(RangeOperators, sqltypes.TypeEngine):
-    "Represent the Postgresql NUMRANGE type."
+    """Represent the Postgresql NUMRANGE type.
+
+    .. versionadded:: 0.8.2
+
+    """
 
     __visit_name__ = 'NUMRANGE'
 
 ischema_names['numrange'] = NUMRANGE
 
 class DATERANGE(RangeOperators, sqltypes.TypeEngine):
-    "Represent the Postgresql DATERANGE type."
+    """Represent the Postgresql DATERANGE type.
+
+    .. versionadded:: 0.8.2
+
+    """
 
     __visit_name__ = 'DATERANGE'
 
 ischema_names['daterange'] = DATERANGE
 
 class TSRANGE(RangeOperators, sqltypes.TypeEngine):
-    "Represent the Postgresql TSRANGE type."
+    """Represent the Postgresql TSRANGE type.
+
+    .. versionadded:: 0.8.2
+
+    """
 
     __visit_name__ = 'TSRANGE'
 
 ischema_names['tsrange'] = TSRANGE
 
 class TSTZRANGE(RangeOperators, sqltypes.TypeEngine):
-    "Represent the Postgresql TSTZRANGE type."
+    """Represent the Postgresql TSTZRANGE type.
+
+    .. versionadded:: 0.8.2
+
+    """
 
     __visit_name__ = 'TSTZRANGE'
 
