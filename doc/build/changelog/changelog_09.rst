@@ -7,6 +7,14 @@
     :version: 0.9.0
 
     .. change::
+        :tags: feature, postgresql
+
+        Support for Postgresql 9.2 range types has been added.
+        Currently, no type translation is provided, so works
+        directly with strings or psycopg2 2.5 range extension types
+        at the moment.  Patch courtesy Chris Withers.
+
+    .. change::
         :tags: bug, examples
 
         Fixed an issue with the "versioning" recipe whereby a many-to-one
