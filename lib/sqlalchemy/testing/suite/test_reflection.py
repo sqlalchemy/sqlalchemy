@@ -370,9 +370,9 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def _test_get_unique_constraints(self, schema=None):
         uniques = sorted(
             [
+                {'name': 'unique_a', 'column_names': ['a']},
                 {'name': 'unique_a_b_c', 'column_names': ['a', 'b', 'c']},
-                {'name': 'unique_a_c', 'column_names': ['a', 'c']},
-                {'name': 'unique_b_c', 'column_names': ['b', 'c']},
+                {'name': 'unique_c_a_b', 'column_names': ['c', 'a', 'b']},
                 {'name': 'unique_asc_key', 'column_names': ['asc', 'key']},
             ],
             key=operator.itemgetter('name')

@@ -205,6 +205,7 @@ underlying CREATE INDEX command, so it *must* be a valid index type for your
 version of PostgreSQL.
 
 """
+from collections import defaultdict
 import re
 
 from ... import sql, schema, exc, util
@@ -2010,25 +2011,31 @@ class PGDialect(default.DefaultDialect):
         UNIQUE_SQL = """
             SELECT
                 cons.conname as name,
-                ARRAY_AGG(a.attname) as column_names
+                cons.conkey as key,
+                a.attnum as col_num,
+                a.attname as col_name
             FROM
                 pg_catalog.pg_constraint cons
-                left outer join pg_attribute a
-                    on cons.conrelid = a.attrelid and a.attnum = ANY(cons.conkey)
+                join pg_attribute a
+                  on cons.conrelid = a.attrelid AND a.attnum = ANY(cons.conkey)
             WHERE
                 cons.conrelid = :table_oid AND
                 cons.contype = 'u'
-            GROUP BY
-                cons.conname
         """
 
-        t = sql.text(UNIQUE_SQL,
-                     typemap={'column_names': ARRAY(sqltypes.Unicode)})
+        t = sql.text(UNIQUE_SQL, typemap={'col_name': sqltypes.Unicode})
         c = connection.execute(t, table_oid=table_oid)
 
+        uniques = defaultdict(lambda: defaultdict(dict))
+        for row in c.fetchall():
+            uc = uniques[row.name]
+            uc["key"] = row.key
+            uc["cols"][row.col_num] = row.col_name
+
         return [
-            {'name': row.name, 'column_names': row.column_names}
-            for row in c.fetchall()
+            {'name': name,
+             'column_names': [uc["cols"][i] for i in uc["key"]]}
+            for name, uc in uniques.items()
         ]
 
     def _load_enums(self, connection):
