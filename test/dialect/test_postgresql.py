@@ -3265,17 +3265,17 @@ class HStoreRoundTripTest(fixtures.TablesTest):
 
     def _test_unicode_round_trip(self, engine):
         s = select([
-                hstore(
-                    array([u'réveillé', u'drôle', u'S’il']),
-                    array([u'réveillé', u'drôle', u'S’il'])
-                )
-            ])
+            hstore(
+                array([util.u('réveillé'), util.u('drôle'), util.u('S’il')]),
+                array([util.u('réveillé'), util.u('drôle'), util.u('S’il')])
+            )
+        ])
         eq_(
             engine.scalar(s),
             {
-                u'réveillé': u'réveillé',
-                u'drôle': u'drôle',
-                u'S’il': u'S’il'
+                util.u('réveillé'): util.u('réveillé'),
+                util.u('drôle'): util.u('drôle'),
+                util.u('S’il'): util.u('S’il')
             }
         )
 
