@@ -13,7 +13,7 @@
         with a function instead of a class, the mutable extension
         would trip up when it tried to check that column
         for being a :class:`.MutableComposite` (which it isn't).
-        Courtesy asldevi.
+        Courtesy asldevi.  Also in 0.8.2.
 
     .. change::
         :tags: bug, sql
