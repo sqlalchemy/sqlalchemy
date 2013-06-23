@@ -7,6 +7,26 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, sql
+        :tickets: 1765
+
+        The resolution of :class:`.ForeignKey` objects to their
+        target :class:`.Column` has been reworked to be as
+        immediate as possible, based on the moment that the
+        target :class:`.Column` is associated with the same
+        :class:`.MetaData` as this :class:`.ForeignKey`, rather
+        than waiting for the first time a join is constructed,
+        or similar. This along with other improvements allows
+        earlier detection of some foreign key configuration
+        issues.  Also included here is a rework of the
+        type-propagation system, so that
+        it should be reliable now to set the type as ``None``
+        on any :class:`.Column` that refers to another via
+        :class:`.ForeignKey` - the type will be copied from the
+        target column as soon as that other column is associated,
+        and now works for composite foreign keys as well.
+
+    .. change::
         :tags: feature, sql
         :tickets: 2744, 2734
 

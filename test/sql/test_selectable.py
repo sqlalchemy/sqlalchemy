@@ -985,14 +985,16 @@ class JoinConditionTest(fixtures.TestBase, AssertsCompiledSQL):
         t2 = Table('t2', m, Column('id', Integer))
         assert_raises_message(
             exc.NoReferencedColumnError,
-            "Could not create ForeignKey 't2.q' on table 't1': "
+            "Could not initialize target column for "
+            "ForeignKey 't2.q' on table 't1': "
                 "table 't2' has no column named 'q'",
             sql_util.join_condition, t1, t2
         )
 
         assert_raises_message(
             exc.NoReferencedColumnError,
-            "Could not create ForeignKey 't2.q' on table 't1': "
+            "Could not initialize target column for "
+            "ForeignKey 't2.q' on table 't1': "
                 "table 't2' has no column named 'q'",
             sql_util.join_condition, t2, t1
         )

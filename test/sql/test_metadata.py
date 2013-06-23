@@ -236,22 +236,35 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             go
         )
 
-    def test_fk_no_such_target_col_error(self):
+    def test_fk_no_such_target_col_error_upfront(self):
         meta = MetaData()
         a = Table('a', meta, Column('a', Integer))
         Table('b', meta, Column('b', Integer))
-        a.append_constraint(
-            ForeignKeyConstraint(['a'], ['b.x'])
-        )
 
-        def go():
-            list(a.c.a.foreign_keys)[0].column
+        a.append_constraint(ForeignKeyConstraint(['a'], ['b.x']))
+
         assert_raises_message(
             exc.NoReferencedColumnError,
-            "Could not create ForeignKey 'b.x' on "
+            "Could not initialize target column for ForeignKey 'b.x' on "
             "table 'a': table 'b' has no column named 'x'",
-            go
+            getattr, list(a.foreign_keys)[0], "column"
         )
+
+    def test_fk_no_such_target_col_error_delayed(self):
+        meta = MetaData()
+        a = Table('a', meta, Column('a', Integer))
+        a.append_constraint(
+            ForeignKeyConstraint(['a'], ['b.x']))
+
+        b = Table('b', meta, Column('b', Integer))
+
+        assert_raises_message(
+            exc.NoReferencedColumnError,
+            "Could not initialize target column for ForeignKey 'b.x' on "
+            "table 'a': table 'b' has no column named 'x'",
+            getattr, list(a.foreign_keys)[0], "column"
+        )
+
 
     @testing.exclude('mysql', '<', (4, 1, 1), 'early types are squirrely')
     def test_to_metadata(self):
@@ -1183,11 +1196,36 @@ class ConstraintTest(fixtures.TestBase):
         assert s1.c.a.references(t1.c.a)
         assert not s1.c.a.references(t1.c.b)
 
-    def test_invalid_composite_fk_check(self):
+    def test_related_column_not_present_atfirst_ok(self):
         m = MetaData()
-        t1 = Table('t1', m, Column('x', Integer), Column('y', Integer),
+        base_table = Table("base", m,
+            Column("id", Integer, primary_key=True)
+        )
+        fk = ForeignKey('base.q')
+        derived_table = Table("derived", m,
+            Column("id", None, fk,
+                primary_key=True),
+        )
+
+        base_table.append_column(Column('q', Integer))
+        assert fk.column is base_table.c.q
+        assert isinstance(derived_table.c.id.type, Integer)
+
+    def test_invalid_composite_fk_check_strings(self):
+        m = MetaData()
+
+        assert_raises_message(
+            exc.ArgumentError,
+            r"ForeignKeyConstraint on t1\(x, y\) refers to "
+                "multiple remote tables: t2 and t3",
+            Table,
+            't1', m, Column('x', Integer), Column('y', Integer),
             ForeignKeyConstraint(['x', 'y'], ['t2.x', 't3.y'])
         )
+
+    def test_invalid_composite_fk_check_columns(self):
+        m = MetaData()
+
         t2 = Table('t2', m, Column('x', Integer))
         t3 = Table('t3', m, Column('y', Integer))
 
@@ -1195,21 +1233,24 @@ class ConstraintTest(fixtures.TestBase):
             exc.ArgumentError,
             r"ForeignKeyConstraint on t1\(x, y\) refers to "
                 "multiple remote tables: t2 and t3",
-            t1.join, t2
-        )
-        assert_raises_message(
-            exc.ArgumentError,
-            r"ForeignKeyConstraint on t1\(x, y\) refers to "
-                "multiple remote tables: t2 and t3",
-            t1.join, t3
+            Table,
+            't1', m, Column('x', Integer), Column('y', Integer),
+            ForeignKeyConstraint(['x', 'y'], [t2.c.x, t3.c.y])
         )
 
-        assert_raises_message(
-            exc.ArgumentError,
-            r"ForeignKeyConstraint on t1\(x, y\) refers to "
-                "multiple remote tables: t2 and t3",
-            schema.CreateTable(t1).compile
-        )
+    def test_invalid_composite_fk_check_columns_notattached(self):
+        m = MetaData()
+        x = Column('x', Integer)
+        y = Column('y', Integer)
+
+        # no error is raised for this one right now.
+        # which is a minor bug.
+        Table('t1', m, Column('x', Integer), Column('y', Integer),
+                ForeignKeyConstraint(['x', 'y'], [x, y])
+            )
+
+        t2 = Table('t2', m, x)
+        t3 = Table('t3', m, y)
 
     def test_constraint_copied_to_proxy_ok(self):
         m = MetaData()
@@ -1233,6 +1274,220 @@ class ConstraintTest(fixtures.TestBase):
             t2fk.constraint.elements,
             [t2fk]
         )
+
+    def test_type_propagate_composite_fk_string(self):
+        metadata = MetaData()
+        a = Table('a', metadata,
+                  Column('key1', Integer, primary_key=True),
+                  Column('key2', String(40), primary_key=True))
+
+        b = Table('b', metadata,
+                  Column('a_key1', None),
+                  Column('a_key2', None),
+                  Column('id', Integer, primary_key=True),
+                  ForeignKeyConstraint(['a_key1', 'a_key2'],
+                                       ['a.key1', 'a.key2'])
+                  )
+
+        assert isinstance(b.c.a_key1.type, Integer)
+        assert isinstance(b.c.a_key2.type, String)
+
+    def test_type_propagate_composite_fk_col(self):
+        metadata = MetaData()
+        a = Table('a', metadata,
+                  Column('key1', Integer, primary_key=True),
+                  Column('key2', String(40), primary_key=True))
+
+        b = Table('b', metadata,
+                  Column('a_key1', None),
+                  Column('a_key2', None),
+                  Column('id', Integer, primary_key=True),
+                  ForeignKeyConstraint(['a_key1', 'a_key2'],
+                                       [a.c.key1, a.c.key2])
+                  )
+
+        assert isinstance(b.c.a_key1.type, Integer)
+        assert isinstance(b.c.a_key2.type, String)
+
+    def test_type_propagate_standalone_fk_string(self):
+        metadata = MetaData()
+        a = Table('a', metadata,
+                  Column('key1', Integer, primary_key=True))
+
+        b = Table('b', metadata,
+                  Column('a_key1', None, ForeignKey("a.key1")),
+                  )
+
+        assert isinstance(b.c.a_key1.type, Integer)
+
+    def test_type_propagate_standalone_fk_col(self):
+        metadata = MetaData()
+        a = Table('a', metadata,
+                  Column('key1', Integer, primary_key=True))
+
+        b = Table('b', metadata,
+                  Column('a_key1', None, ForeignKey(a.c.key1)),
+                  )
+
+        assert isinstance(b.c.a_key1.type, Integer)
+
+    def test_type_propagate_chained_string_source_first(self):
+        metadata = MetaData()
+        a = Table('a', metadata,
+                  Column('key1', Integer, primary_key=True))
+
+        b = Table('b', metadata,
+                  Column('a_key1', None, ForeignKey("a.key1")),
+                  )
+
+        c = Table('c', metadata,
+                  Column('b_key1', None, ForeignKey("b.a_key1")),
+                  )
+
+        assert isinstance(b.c.a_key1.type, Integer)
+        assert isinstance(c.c.b_key1.type, Integer)
+
+    def test_type_propagate_chained_string_source_last(self):
+        metadata = MetaData()
+
+        b = Table('b', metadata,
+                  Column('a_key1', None, ForeignKey("a.key1")),
+                  )
+
+        c = Table('c', metadata,
+                  Column('b_key1', None, ForeignKey("b.a_key1")),
+                  )
+
+        a = Table('a', metadata,
+                  Column('key1', Integer, primary_key=True))
+
+        assert isinstance(b.c.a_key1.type, Integer)
+        assert isinstance(c.c.b_key1.type, Integer)
+
+    def test_type_propagate_chained_col_orig_first(self):
+        metadata = MetaData()
+        a = Table('a', metadata,
+                  Column('key1', Integer, primary_key=True))
+
+        b = Table('b', metadata,
+                  Column('a_key1', None, ForeignKey(a.c.key1)),
+                  )
+
+        c = Table('c', metadata,
+                  Column('b_key1', None, ForeignKey(b.c.a_key1)),
+                  )
+
+        assert isinstance(b.c.a_key1.type, Integer)
+        assert isinstance(c.c.b_key1.type, Integer)
+
+    def test_column_accessor_col(self):
+        c1 = Column('x', Integer)
+        fk = ForeignKey(c1)
+        is_(fk.column, c1)
+
+    def test_column_accessor_clause_element(self):
+        c1 = Column('x', Integer)
+
+        class CThing(object):
+            def __init__(self, c):
+                self.c = c
+            def __clause_element__(self):
+                return self.c
+
+        fk = ForeignKey(CThing(c1))
+        is_(fk.column, c1)
+
+    def test_column_accessor_string_no_parent(self):
+        fk = ForeignKey("sometable.somecol")
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "this ForeignKey object does not yet have a parent "
+            "Column associated with it.",
+            getattr, fk, "column"
+        )
+
+    def test_column_accessor_string_no_parent_table(self):
+        fk = ForeignKey("sometable.somecol")
+        c1 = Column('x', fk)
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "this ForeignKey's parent column is not yet "
+            "associated with a Table.",
+            getattr, fk, "column"
+        )
+
+    def test_column_accessor_string_no_target_table(self):
+        fk = ForeignKey("sometable.somecol")
+        c1 = Column('x', fk)
+        t1 = Table('t', MetaData(), c1)
+        assert_raises_message(
+            exc.NoReferencedTableError,
+            "Foreign key associated with column 't.x' could not find "
+            "table 'sometable' with which to generate a "
+            "foreign key to target column 'somecol'",
+            getattr, fk, "column"
+        )
+
+    def test_column_accessor_string_no_target_column(self):
+        fk = ForeignKey("sometable.somecol")
+        c1 = Column('x', fk)
+        m = MetaData()
+        t1 = Table('t', m, c1)
+        t2 = Table("sometable", m, Column('notsomecol', Integer))
+        assert_raises_message(
+            exc.NoReferencedColumnError,
+            "Could not initialize target column for ForeignKey "
+            "'sometable.somecol' on table 't': "
+            "table 'sometable' has no column named 'somecol'",
+            getattr, fk, "column"
+        )
+
+    def test_remove_table_fk_bookkeeping(self):
+        metadata = MetaData()
+        fk = ForeignKey('t1.x')
+        t2 = Table('t2', metadata, Column('y', Integer, fk))
+        t3 = Table('t3', metadata, Column('y', Integer, ForeignKey('t1.x')))
+
+        assert t2.key in metadata.tables
+        assert ("t1", "x") in metadata._fk_memos
+
+        metadata.remove(t2)
+
+        # key is removed
+        assert t2.key not in metadata.tables
+
+        # the memo for the FK is still there
+        assert ("t1", "x") in metadata._fk_memos
+
+        # fk is not in the collection
+        assert fk not in metadata._fk_memos[("t1", "x")]
+
+        # make the referenced table
+        t1 = Table('t1', metadata, Column('x', Integer))
+
+        # t2 tells us exactly what's wrong
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Table t2 is no longer associated with its parent MetaData",
+            getattr, fk, "column"
+        )
+
+        # t3 is unaffected
+        assert t3.c.y.references(t1.c.x)
+
+        # remove twice OK
+        metadata.remove(t2)
+
+    def test_remove_failed(self):
+        metadata = MetaData()
+        fk = ForeignKey('t1.x')
+        t3 = Table('t3', metadata, Column('y', Integer, ForeignKey('t1.x')))
+
+        try:
+            Table('t2', metadata, Column('y', Integer, fk))
+        except:
+            raise
+
 
 
 class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
@@ -1541,19 +1796,48 @@ class ColumnOptionsTest(fixtures.TestBase):
         assert Column(String, default=g2).default is g2
         assert Column(String, onupdate=g2).onupdate is g2
 
-    def test_type_required(self):
-        assert_raises(exc.ArgumentError, Column)
-        assert_raises(exc.ArgumentError, Column, "foo")
-        assert_raises(exc.ArgumentError, Column, default="foo")
-        assert_raises(exc.ArgumentError, Column, Sequence("a"))
-        assert_raises(exc.ArgumentError, Column, "foo", default="foo")
-        assert_raises(exc.ArgumentError, Column, "foo", Sequence("a"))
-        Column(ForeignKey('bar.id'))
-        Column("foo", ForeignKey('bar.id'))
-        Column(ForeignKey('bar.id'), default="foo")
-        Column(ForeignKey('bar.id'), Sequence("a"))
-        Column("foo", ForeignKey('bar.id'), default="foo")
-        Column("foo", ForeignKey('bar.id'), Sequence("a"))
+    def _null_type_error(self, col):
+        t = Table('t', MetaData(), col)
+        assert_raises_message(
+            exc.CompileError,
+            r"\(in table 't', column 'foo'\): Can't generate DDL for NullType",
+            schema.CreateTable(t).compile
+        )
+
+    def _no_name_error(self, col):
+        assert_raises_message(
+            exc.ArgumentError,
+            "Column must be constructed with a non-blank name or "
+            "assign a non-blank .name",
+            Table, 't', MetaData(), col
+        )
+
+    def _no_error(self, col):
+        m = MetaData()
+        b = Table('bar', m, Column('id', Integer))
+        t = Table('t', m, col)
+        schema.CreateTable(t).compile()
+
+    def test_argument_signatures(self):
+        self._no_name_error(Column())
+        self._null_type_error(Column("foo"))
+        self._no_name_error(Column(default="foo"))
+
+        self._no_name_error(Column(Sequence("a")))
+        self._null_type_error(Column("foo", default="foo"))
+
+        self._null_type_error(Column("foo", Sequence("a")))
+
+        self._no_name_error(Column(ForeignKey('bar.id')))
+
+        self._no_error(Column("foo", ForeignKey('bar.id')))
+
+        self._no_name_error(Column(ForeignKey('bar.id'), default="foo"))
+
+        self._no_name_error(Column(ForeignKey('bar.id'), Sequence("a")))
+        self._no_error(Column("foo", ForeignKey('bar.id'), default="foo"))
+        self._no_error(Column("foo", ForeignKey('bar.id'), Sequence("a")))
+
 
     def test_column_info(self):
 

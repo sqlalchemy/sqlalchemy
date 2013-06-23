@@ -2143,7 +2143,8 @@ class InhCondTest(fixtures.TestBase):
 
         assert_raises_message(
             sa_exc.NoReferencedColumnError,
-            "Could not create ForeignKey 'base.q' on table "
+            "Could not initialize target column for ForeignKey "
+            "'base.q' on table "
             "'derived': table 'base' has no column named 'q'",
             mapper,
             Derived, derived_table,  inherits=Base

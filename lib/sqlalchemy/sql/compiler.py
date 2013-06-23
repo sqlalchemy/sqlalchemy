@@ -2415,7 +2415,9 @@ class GenericTypeCompiler(engine.TypeCompiler):
         return self.visit_VARCHAR(type_)
 
     def visit_null(self, type_):
-        raise NotImplementedError("Can't generate DDL for the null type")
+        raise exc.CompileError("Can't generate DDL for %r; "
+                            "did you forget to specify a "
+                            "type on this Column?" % type_)
 
     def visit_type_decorator(self, type_):
         return self.process(type_.type_engine(self.dialect))

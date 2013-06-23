@@ -32,6 +32,7 @@ import re
 import inspect
 from . import exc, util, dialects, event, events, inspection
 from .sql import expression, visitors
+import collections
 
 ddl = util.importlater("sqlalchemy.engine", "ddl")
 sqlutil = util.importlater("sqlalchemy.sql", "util")
@@ -728,11 +729,19 @@ class Column(SchemaItem, expression.ColumnClause):
           The ``type`` argument may be the second positional argument
           or specified by keyword.
 
-          There is partial support for automatic detection of the
-          type based on that of a :class:`.ForeignKey` associated
-          with this column, if the type is specified as ``None``.
-          However, this feature is not fully implemented and
-          may not function in all cases.
+          If the ``type`` is ``None``, it will first default to the special
+          type :class:`.NullType`.  If and when this :class:`.Column` is
+          made to refer to another column using :class:`.ForeignKey`
+          and/or :class:`.ForeignKeyConstraint`, the type of the remote-referenced
+          column will be copied to this column as well, at the moment that
+          the foreign key is resolved against that remote :class:`.Column`
+          object.
+
+          .. versionchanged:: 0.9.0
+
+            Support for propagation of type to a :class:`.Column` from its
+            :class:`.ForeignKey` object has been improved and should be
+            more reliable and timely.
 
         :param \*args: Additional positional arguments include various
           :class:`.SchemaItem` derived constructs which will be applied
@@ -914,8 +923,6 @@ class Column(SchemaItem, expression.ColumnClause):
                         "May not pass type_ positionally and as a keyword.")
                 type_ = args.pop(0)
 
-        no_type = type_ is None
-
         super(Column, self).__init__(name, None, type_)
         self.key = kwargs.pop('key', name)
         self.primary_key = kwargs.pop('primary_key', False)
@@ -969,9 +976,6 @@ class Column(SchemaItem, expression.ColumnClause):
                                             for_update=True))
         self._init_items(*args)
 
-        if not self.foreign_keys and no_type:
-            raise exc.ArgumentError("'type' is required on Column objects "
-                                        "which have no foreign keys.")
         util.set_creation_order(self)
 
         if 'info' in kwargs:
@@ -1081,6 +1085,11 @@ class Column(SchemaItem, expression.ColumnClause):
                     "the Table's list of elements, or create an explicit "
                     "Index object external to the Table.")
             table.append_constraint(UniqueConstraint(self.key))
+
+        fk_key = (table.key, self.key)
+        if fk_key in self.table.metadata._fk_memos:
+            for fk in self.table.metadata._fk_memos[fk_key]:
+                fk._set_remote_table(table)
 
     def _on_table_attach(self, fn):
         if self.table is not None:
@@ -1280,7 +1289,7 @@ class ForeignKey(SchemaItem):
         # object passes itself in when creating ForeignKey
         # markers.
         self.constraint = _constraint
-
+        self.parent = None
         self.use_alter = use_alter
         self.name = name
         self.onupdate = onupdate
@@ -1343,6 +1352,7 @@ class ForeignKey(SchemaItem):
 
         return "%s.%s" % (_column.table.fullname, _column.key)
 
+
     target_fullname = property(_get_colspec)
 
     def references(self, table):
@@ -1363,130 +1373,197 @@ class ForeignKey(SchemaItem):
         return table.corresponding_column(self.column)
 
     @util.memoized_property
-    def column(self):
-        """Return the target :class:`.Column` referenced by this
-        :class:`.ForeignKey`.
+    def _column_tokens(self):
+        """parse a string-based _colspec into its component parts."""
 
-        If this :class:`.ForeignKey` was created using a
-        string-based target column specification, this
-        attribute will on first access initiate a resolution
-        process to locate the referenced remote
-        :class:`.Column`.  The resolution process traverses
-        to the parent :class:`.Column`, :class:`.Table`, and
-        :class:`.MetaData` to proceed - if any of these aren't
-        yet present, an error is raised.
+        m = self._colspec.split('.')
+        if m is None:
+            raise exc.ArgumentError(
+                "Invalid foreign key column specification: %s" %
+                self._colspec)
+        if (len(m) == 1):
+            tname = m.pop()
+            colname = None
+        else:
+            colname = m.pop()
+            tname = m.pop()
 
-        """
-        # ForeignKey inits its remote column as late as possible, so tables
-        # can be defined without dependencies
+        # A FK between column 'bar' and table 'foo' can be
+        # specified as 'foo', 'foo.bar', 'dbo.foo.bar',
+        # 'otherdb.dbo.foo.bar'. Once we have the column name and
+        # the table name, treat everything else as the schema
+        # name. Some databases (e.g. Sybase) support
+        # inter-database foreign keys. See tickets#1341 and --
+        # indirectly related -- Ticket #594. This assumes that '.'
+        # will never appear *within* any component of the FK.
+
+        if (len(m) > 0):
+            schema = '.'.join(m)
+        else:
+            schema = None
+        return schema, tname, colname
+
+    def _table_key(self):
         if isinstance(self._colspec, util.string_types):
-            # locate the parent table this foreign key is attached to.  we
-            # use the "original" column which our parent column represents
-            # (its a list of columns/other ColumnElements if the parent
-            # table is a UNION)
-            for c in self.parent.base_columns:
-                if isinstance(c, Column):
-                    parenttable = c.table
-                    break
-            else:
-                raise exc.ArgumentError(
-                    "Parent column '%s' does not descend from a "
-                    "table-attached Column" % str(self.parent))
-
-            m = self._colspec.split('.')
-
-            if m is None:
-                raise exc.ArgumentError(
-                    "Invalid foreign key column specification: %s" %
-                    self._colspec)
-
-            # A FK between column 'bar' and table 'foo' can be
-            # specified as 'foo', 'foo.bar', 'dbo.foo.bar',
-            # 'otherdb.dbo.foo.bar'. Once we have the column name and
-            # the table name, treat everything else as the schema
-            # name. Some databases (e.g. Sybase) support
-            # inter-database foreign keys. See tickets#1341 and --
-            # indirectly related -- Ticket #594. This assumes that '.'
-            # will never appear *within* any component of the FK.
-
-            (schema, tname, colname) = (None, None, None)
-            if schema is None and parenttable.metadata.schema is not None:
-                schema = parenttable.metadata.schema
-
-            if (len(m) == 1):
-                tname = m.pop()
-            else:
-                colname = m.pop()
-                tname = m.pop()
-
-            if (len(m) > 0):
-                schema = '.'.join(m)
-
-            if _get_table_key(tname, schema) not in parenttable.metadata:
-                raise exc.NoReferencedTableError(
-                    "Foreign key associated with column '%s' could not find "
-                    "table '%s' with which to generate a "
-                    "foreign key to target column '%s'" %
-                    (self.parent, tname, colname),
-                    tname)
-            table = Table(tname, parenttable.metadata,
-                          mustexist=True, schema=schema)
-
-            if not hasattr(self.constraint, '_referred_table'):
-                self.constraint._referred_table = table
-            elif self.constraint._referred_table is not table:
-                raise exc.ArgumentError(
-                    'ForeignKeyConstraint on %s(%s) refers to '
-                    'multiple remote tables: %s and %s' % (
-                    parenttable,
-                    self.constraint._col_description,
-                    self.constraint._referred_table,
-                    table
-                ))
-
-            _column = None
-            if colname is None:
-                # colname is None in the case that ForeignKey argument
-                # was specified as table name only, in which case we
-                # match the column name to the same column on the
-                # parent.
-                key = self.parent
-                _column = table.c.get(self.parent.key, None)
-            elif self.link_to_name:
-                key = colname
-                for c in table.c:
-                    if c.name == colname:
-                        _column = c
-            else:
-                key = colname
-                _column = table.c.get(colname, None)
-
-            if _column is None:
-                raise exc.NoReferencedColumnError(
-                    "Could not create ForeignKey '%s' on table '%s': "
-                    "table '%s' has no column named '%s'" % (
-                    self._colspec, parenttable.name, table.name, key),
-                    table.name, key)
-
+            schema, tname, colname = self._column_tokens
+            return _get_table_key(tname, schema)
         elif hasattr(self._colspec, '__clause_element__'):
             _column = self._colspec.__clause_element__()
         else:
             _column = self._colspec
 
+        if _column.table is None:
+            return None
+        else:
+            return _column.table.key
+
+    def _resolve_col_tokens(self):
+        if self.parent is None:
+            raise exc.InvalidRequestError(
+                    "this ForeignKey object does not yet have a "
+                    "parent Column associated with it.")
+
+        elif self.parent.table is None:
+            raise exc.InvalidRequestError(
+                    "this ForeignKey's parent column is not yet associated "
+                    "with a Table.")
+
+        parenttable = self.parent.table
+
+        # assertion, can be commented out.
+        # basically Column._make_proxy() sends the actual
+        # target Column to the ForeignKey object, so the
+        # string resolution here is never called.
+        for c in self.parent.base_columns:
+            if isinstance(c, Column):
+                assert c.table is parenttable
+                break
+        else:
+            assert False
+        ######################
+
+        schema, tname, colname = self._column_tokens
+
+        if schema is None and parenttable.metadata.schema is not None:
+            schema = parenttable.metadata.schema
+
+        tablekey = _get_table_key(tname, schema)
+        return parenttable, tablekey, colname
+
+
+    def _link_to_col_by_colstring(self, parenttable, table, colname):
+        if not hasattr(self.constraint, '_referred_table'):
+            self.constraint._referred_table = table
+        else:
+            assert self.constraint._referred_table is table
+
+        _column = None
+        if colname is None:
+            # colname is None in the case that ForeignKey argument
+            # was specified as table name only, in which case we
+            # match the column name to the same column on the
+            # parent.
+            key = self.parent
+            _column = table.c.get(self.parent.key, None)
+        elif self.link_to_name:
+            key = colname
+            for c in table.c:
+                if c.name == colname:
+                    _column = c
+        else:
+            key = colname
+            _column = table.c.get(colname, None)
+
+        if _column is None:
+            raise exc.NoReferencedColumnError(
+                "Could not initialize target column for ForeignKey '%s' on table '%s': "
+                "table '%s' has no column named '%s'" % (
+                self._colspec, parenttable.name, table.name, key),
+                table.name, key)
+
+        self._set_target_column(_column)
+
+    def _set_target_column(self, column):
         # propagate TypeEngine to parent if it didn't have one
         if isinstance(self.parent.type, sqltypes.NullType):
-            self.parent.type = _column.type
-        return _column
+            self.parent.type = column.type
+
+        # super-edgy case, if other FKs point to our column,
+        # they'd get the type propagated out also.
+        if isinstance(self.parent.table, Table):
+            fk_key = (self.parent.table.key, self.parent.key)
+            if fk_key in self.parent.table.metadata._fk_memos:
+                for fk in self.parent.table.metadata._fk_memos[fk_key]:
+                    if isinstance(fk.parent.type, sqltypes.NullType):
+                        fk.parent.type = column.type
+
+        self.column = column
+
+    @util.memoized_property
+    def column(self):
+        """Return the target :class:`.Column` referenced by this
+        :class:`.ForeignKey`.
+
+        If no target column has been established, an exception
+        is raised.
+
+        .. versionchanged:: 0.9.0
+
+            Foreign key target column resolution now occurs as soon as both
+            the ForeignKey object and the remote Column to which it refers
+            are both associated with the same MetaData object.
+
+        """
+
+        if isinstance(self._colspec, util.string_types):
+
+            parenttable, tablekey, colname = self._resolve_col_tokens()
+
+            if tablekey not in parenttable.metadata:
+                raise exc.NoReferencedTableError(
+                    "Foreign key associated with column '%s' could not find "
+                    "table '%s' with which to generate a "
+                    "foreign key to target column '%s'" %
+                    (self.parent, tablekey, colname),
+                    tablekey)
+            elif parenttable.key not in parenttable.metadata:
+                raise exc.InvalidRequestError(
+                    "Table %s is no longer associated with its "
+                    "parent MetaData" % parenttable)
+            else:
+                raise exc.NoReferencedColumnError(
+                    "Could not initialize target column for "
+                    "ForeignKey '%s' on table '%s': "
+                    "table '%s' has no column named '%s'" % (
+                    self._colspec, parenttable.name, tablekey, colname),
+                    tablekey, colname)
+        elif hasattr(self._colspec, '__clause_element__'):
+            _column = self._colspec.__clause_element__()
+            return _column
+        else:
+            _column = self._colspec
+            return _column
 
     def _set_parent(self, column):
-        if hasattr(self, 'parent'):
-            if self.parent is column:
-                return
+        if self.parent is not None and self.parent is not column:
             raise exc.InvalidRequestError(
                     "This ForeignKey already has a parent !")
         self.parent = column
         self.parent.foreign_keys.add(self)
         self.parent._on_table_attach(self._set_table)
+
+    def _set_remote_table(self, table):
+        parenttable, tablekey, colname = self._resolve_col_tokens()
+        self._link_to_col_by_colstring(parenttable, table, colname)
+        self.constraint._validate_dest_table(table)
+
+    def _remove_from_metadata(self, metadata):
+        parenttable, table_key, colname = self._resolve_col_tokens()
+        fk_key = (table_key, colname)
+        try:
+            metadata._fk_memos[fk_key].remove(self)
+        except:
+            pass
 
     def _set_table(self, column, table):
         # standalone ForeignKey - create ForeignKeyConstraint
@@ -1501,6 +1578,27 @@ class ForeignKey(SchemaItem):
             self.constraint._elements[self.parent] = self
             self.constraint._set_parent_with_dispatch(table)
         table.foreign_keys.add(self)
+
+        # set up remote ".column" attribute, or a note to pick it
+        # up when the other Table/Column shows up
+        if isinstance(self._colspec, util.string_types):
+            parenttable, table_key, colname = self._resolve_col_tokens()
+            fk_key = (table_key, colname)
+            if table_key in parenttable.metadata.tables:
+                table = parenttable.metadata.tables[table_key]
+                try:
+                    self._link_to_col_by_colstring(parenttable, table, colname)
+                except exc.NoReferencedColumnError:
+                    # this is OK, we'll try later
+                    pass
+            parenttable.metadata._fk_memos[fk_key].append(self)
+        elif hasattr(self._colspec, '__clause_element__'):
+            _column = self._colspec.__clause_element__()
+            self._set_target_column(_column)
+        else:
+            _column = self._colspec
+            self._set_target_column(_column)
+
 
 
 class _NotAColumnExpr(object):
@@ -2239,6 +2337,19 @@ class ForeignKeyConstraint(Constraint):
                 columns[0].table is not None:
             self._set_parent_with_dispatch(columns[0].table)
 
+    def _validate_dest_table(self, table):
+        table_keys = set([elem._table_key() for elem in self._elements.values()])
+        if None not in table_keys and len(table_keys) > 1:
+            elem0, elem1 = list(table_keys)[0:2]
+            raise exc.ArgumentError(
+                'ForeignKeyConstraint on %s(%s) refers to '
+                'multiple remote tables: %s and %s' % (
+                table.fullname,
+                self._col_description,
+                elem0,
+                elem1
+            ))
+
     @property
     def _col_description(self):
         return ", ".join(self._elements)
@@ -2253,6 +2364,8 @@ class ForeignKeyConstraint(Constraint):
 
     def _set_parent(self, table):
         super(ForeignKeyConstraint, self)._set_parent(table)
+
+        self._validate_dest_table(table)
 
         for col, fk in self._elements.items():
             # string-specified column names now get
@@ -2544,6 +2657,8 @@ class MetaData(SchemaItem):
         self.quote_schema = quote_schema
         self._schemas = set()
         self._sequences = {}
+        self._fk_memos = collections.defaultdict(list)
+
         self.bind = bind
         if reflect:
             util.warn("reflect=True is deprecate; please "
@@ -2568,20 +2683,27 @@ class MetaData(SchemaItem):
         if schema:
             self._schemas.add(schema)
 
+
+
     def _remove_table(self, name, schema):
         key = _get_table_key(name, schema)
-        dict.pop(self.tables, key, None)
+        removed = dict.pop(self.tables, key, None)
+        if removed is not None:
+            for fk in removed.foreign_keys:
+                fk._remove_from_metadata(self)
         if self._schemas:
             self._schemas = set([t.schema
                                 for t in self.tables.values()
                                 if t.schema is not None])
+
 
     def __getstate__(self):
         return {'tables': self.tables,
                 'schema': self.schema,
                 'quote_schema': self.quote_schema,
                 'schemas': self._schemas,
-                'sequences': self._sequences}
+                'sequences': self._sequences,
+                'fk_memos': self._fk_memos}
 
     def __setstate__(self, state):
         self.tables = state['tables']
@@ -2590,6 +2712,7 @@ class MetaData(SchemaItem):
         self._bind = None
         self._sequences = state['sequences']
         self._schemas = state['schemas']
+        self._fk_memos = state['fk_memos']
 
     def is_bound(self):
         """True if this MetaData is bound to an Engine or Connection."""
@@ -2630,6 +2753,7 @@ class MetaData(SchemaItem):
 
         dict.clear(self.tables)
         self._schemas.clear()
+        self._fk_memos.clear()
 
     def remove(self, table):
         """Remove the given Table object from this MetaData."""
