@@ -1,6 +1,7 @@
 from .. import fixtures, config
 from ..assertions import eq_
 
+from sqlalchemy import util
 from sqlalchemy import Integer, String, select, func
 
 from ..schema import Table, Column
@@ -63,7 +64,7 @@ class OrderByLabelTest(fixtures.TablesTest):
         ly = (func.lower(table.c.q) + table.c.p).label('ly')
         self._assert_result(
             select([lx, ly]).order_by(lx, ly.desc()),
-            [(3, u'q1p3'), (5, u'q2p2'), (7, u'q3p1')]
+            [(3, util.u('q1p3')), (5, util.u('q2p2')), (7, util.u('q3p1'))]
         )
 
     def test_plain_desc(self):
