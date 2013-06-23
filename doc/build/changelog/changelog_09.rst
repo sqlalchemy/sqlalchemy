@@ -7,6 +7,15 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, ext
+
+        Fixed bug whereby if a composite type were set up
+        with a function instead of a class, the mutable extension
+        would trip up when it tried to check that column
+        for being a :class:`.MutableComposite` (which it isn't).
+        Courtesy asldevi.
+
+    .. change::
         :tags: bug, sql
         :tickets: 1765
 
