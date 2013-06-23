@@ -1478,17 +1478,6 @@ class ConstraintTest(fixtures.TestBase):
         # remove twice OK
         metadata.remove(t2)
 
-    def test_remove_failed(self):
-        metadata = MetaData()
-        fk = ForeignKey('t1.x')
-        t3 = Table('t3', metadata, Column('y', Integer, ForeignKey('t1.x')))
-
-        try:
-            Table('t2', metadata, Column('y', Integer, fk))
-        except:
-            raise
-
-
 
 class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
     """Test Column() construction."""

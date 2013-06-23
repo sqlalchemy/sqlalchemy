@@ -1560,10 +1560,10 @@ class ForeignKey(SchemaItem):
     def _remove_from_metadata(self, metadata):
         parenttable, table_key, colname = self._resolve_col_tokens()
         fk_key = (table_key, colname)
-        try:
+
+        if self in metadata._fk_memos[fk_key]:
+            # TODO: no test coverage for self not in memos
             metadata._fk_memos[fk_key].remove(self)
-        except:
-            pass
 
     def _set_table(self, column, table):
         # standalone ForeignKey - create ForeignKeyConstraint
