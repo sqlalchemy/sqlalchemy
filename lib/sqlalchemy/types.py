@@ -909,6 +909,8 @@ class Variant(TypeDecorator):
 
     .. versionadded:: 0.7.2
 
+    .. seealso:: :meth:`.TypeEngine.with_variant` for an example of use.
+
     """
 
     def __init__(self, base, mapping):
@@ -985,14 +987,23 @@ def adapt_type(typeobj, colspecs):
 class NullType(TypeEngine):
     """An unknown type.
 
-    NullTypes will stand in if :class:`~sqlalchemy.Table` reflection
-    encounters a column data type unknown to SQLAlchemy.  The
-    resulting columns are nearly fully usable: the DB-API adapter will
-    handle all translation to and from the database data type.
+    :class:`.NullType` is used as a default type for those cases where
+    a type cannot be determined, including:
 
-    NullType does not have sufficient information to particpate in a
-    ``CREATE TABLE`` statement and will raise an exception if
-    encountered during a :meth:`~sqlalchemy.Table.create` operation.
+    * During table reflection, when the type of a column is not recognized
+      by the :class:`.Dialect`
+    * When constructing SQL expressions using plain Python objects of
+      unknown types (e.g. ``somecolumn == my_special_object``)
+    * When a new :class:`.Column` is created, and the given type is passed
+      as ``None`` or is not passed at all.
+
+    The :class:`.NullType` can be used within SQL expression invocation
+    without issue, it just has no behavior either at the expression construction
+    level or at the bind-parameter/result processing level.  :class:`.NullType`
+    will result in a :class:`.CompileException` if the compiler is asked to render
+    the type itself, such as if it is used in a :func:`.cast` operation
+    or within a schema creation operation such as that invoked by
+    :meth:`.MetaData.create_all` or the :class:`.CreateTable` construct.
 
     """
     __visit_name__ = 'null'

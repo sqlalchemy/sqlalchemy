@@ -730,7 +730,7 @@ class Column(SchemaItem, expression.ColumnClause):
           The ``type`` argument may be the second positional argument
           or specified by keyword.
 
-          If the ``type`` is ``None``, it will first default to the special
+          If the ``type`` is ``None`` or is omitted, it will first default to the special
           type :class:`.NullType`.  If and when this :class:`.Column` is
           made to refer to another column using :class:`.ForeignKey`
           and/or :class:`.ForeignKeyConstraint`, the type of the remote-referenced

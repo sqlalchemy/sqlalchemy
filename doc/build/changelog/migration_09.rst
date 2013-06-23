@@ -423,6 +423,91 @@ that will disable the feature based on database version detection.
 
 :ticket:`1068`
 
+Columns can reliably get their type from a column referred to via ForeignKey
+----------------------------------------------------------------------------
+
+There's a long standing behavior which says that a :class:`.Column` can be
+declared without a type, as long as that :class:`.Column` is referred to
+by a :class:`.ForeignKeyConstraint`, and the type from the referenced column
+will be copied into this one.   The problem has been that this feature never
+worked very well and wasn't maintained.   The core issue was that the
+:class:`.ForeignKey` object doesn't know what target :class:`.Column` it
+refers to until it is asked, typically the first time the foreign key is used
+to construct a :class:`.Join`.   So until that time, the parent :class:`.Column`
+would not have a type, or more specifically, it would have a default type
+of :class:`.NullType`.
+
+While it's taken a long time, the work to reorganize the initialization of
+:class:`.ForeignKey` objects has been completed such that this feature can
+finally work acceptably.  At the core of the change is that the :attr:`.ForeignKey.column`
+attribute no longer lazily initializes the location of the target :class:`.Column`;
+the issue with this system was that the owning :class:`.Column` would be stuck
+with :class:`.NullType` as its type until the :class:`.ForeignKey` happened to
+be used.
+
+In the new version, the :class:`.ForeignKey` coordinates with the eventual
+:class:`.Column` it will refer to using internal attachment events, so that the
+moment the referencing :class:`.Column` is associated with the
+:class:`.MetaData`, all :class:`.ForeignKey` objects that
+refer to it will be sent a message that they need to initialize their parent
+column.   This system is more complicated but works more solidly; as a bonus,
+there are now tests in place for a wide variety of :class:`.Column` /
+:class:`.ForeignKey` configuration scenarios and error messages have been
+improved to be very specific to no less than seven different error conditions.
+
+Scenarios which now work correctly include:
+
+1. The type on a :class:`.Column` is immediately present as soon as the
+   target :class:`.Column` becomes associated with the same :class:`.MetaData`;
+   this works no matter which side is configured first::
+
+    >>> from sqlalchemy import Table, MetaData, Column, Integer, ForeignKey
+    >>> metadata = MetaData()
+    >>> t2 = Table('t2', metadata, Column('t1id', ForeignKey('t1.id')))
+    >>> t2.c.t1id.type
+    NullType()
+    >>> t1 = Table('t1', metadata, Column('id', Integer, primary_key=True))
+    >>> t2.c.t1id.type
+    Integer()
+
+2. The system now works with :class:`.ForeignKeyConstraint` as well::
+
+    >>> from sqlalchemy import Table, MetaData, Column, Integer, ForeignKeyConstraint
+    >>> metadata = MetaData()
+    >>> t2 = Table('t2', metadata,
+    ...     Column('t1a'), Column('t1b'),
+    ...     ForeignKeyConstraint(['t1a', 't1b'], ['t1.a', 't1.b']))
+    >>> t2.c.t1a.type
+    NullType()
+    >>> t2.c.t1b.type
+    NullType()
+    >>> t1 = Table('t1', metadata,
+    ...     Column('a', Integer, primary_key=True),
+    ...     Column('b', Integer, primary_key=True))
+    >>> t2.c.t1a.type
+    Integer()
+    >>> t2.c.t1b.type
+    Integer()
+
+3. It even works for "multiple hops" - that is, a :class:`.ForeignKey` that refers to a
+   :class:`.Column` that refers to another :class:`.Column`::
+
+    >>> from sqlalchemy import Table, MetaData, Column, Integer, ForeignKey
+    >>> metadata = MetaData()
+    >>> t2 = Table('t2', metadata, Column('t1id', ForeignKey('t1.id')))
+    >>> t3 = Table('t3', metadata, Column('t2t1id', ForeignKey('t2.t1id')))
+    >>> t2.c.t1id.type
+    NullType()
+    >>> t3.c.t2t1id.type
+    NullType()
+    >>> t1 = Table('t1', metadata, Column('id', Integer, primary_key=True))
+    >>> t2.c.t1id.type
+    Integer()
+    >>> t3.c.t2t1id.type
+    Integer()
+
+:ticket:`1765`
+
 Dialect Changes
 ===============
 
