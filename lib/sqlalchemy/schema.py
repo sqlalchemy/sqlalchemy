@@ -2340,7 +2340,7 @@ class ForeignKeyConstraint(Constraint):
     def _validate_dest_table(self, table):
         table_keys = set([elem._table_key() for elem in self._elements.values()])
         if None not in table_keys and len(table_keys) > 1:
-            elem0, elem1 = list(table_keys)[0:2]
+            elem0, elem1 = sorted(table_keys)[0:2]
             raise exc.ArgumentError(
                 'ForeignKeyConstraint on %s(%s) refers to '
                 'multiple remote tables: %s and %s' % (
