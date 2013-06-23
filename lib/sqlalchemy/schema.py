@@ -566,7 +566,8 @@ class Table(SchemaItem, expression.TableClause):
     def append_ddl_listener(self, event_name, listener):
         """Append a DDL event listener to this ``Table``.
 
-        Deprecated.  See :class:`.DDLEvents`.
+        .. deprecated:: 0.7
+            See :class:`.DDLEvents`.
 
         """
 
@@ -738,7 +739,6 @@ class Column(SchemaItem, expression.ColumnClause):
           object.
 
           .. versionchanged:: 0.9.0
-
             Support for propagation of type to a :class:`.Column` from its
             :class:`.ForeignKey` object has been improved and should be
             more reliable and timely.
@@ -1508,7 +1508,6 @@ class ForeignKey(SchemaItem):
         is raised.
 
         .. versionchanged:: 0.9.0
-
             Foreign key target column resolution now occurs as soon as both
             the ForeignKey object and the remote Column to which it refers
             are both associated with the same MetaData object.
@@ -2868,7 +2867,8 @@ class MetaData(SchemaItem):
     def append_ddl_listener(self, event_name, listener):
         """Append a DDL event listener to this ``MetaData``.
 
-        Deprecated.  See :class:`.DDLEvents`.
+        .. deprecated:: 0.7
+            See :class:`.DDLEvents`.
 
         """
         def adapt_listener(target, connection, **kw):
@@ -3298,7 +3298,8 @@ class DDL(DDLElement):
           SQL bind parameters are not available in DDL statements.
 
         :param on:
-          Deprecated.  See :meth:`.DDLElement.execute_if`.
+          .. deprecated:: 0.7
+            See :meth:`.DDLElement.execute_if`.
 
           Optional filtering criteria.  May be a string, tuple or a callable
           predicate.  If a string, it will be compared to the name of the
