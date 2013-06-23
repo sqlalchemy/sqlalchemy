@@ -79,6 +79,7 @@
 
     .. change::
         :tags: feature, sql
+        :tickets: 1443
 
         Added support for "unique constraint" reflection, via the
         :meth:`.Inspector.get_unique_constraints` method.
