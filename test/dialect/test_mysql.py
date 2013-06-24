@@ -587,7 +587,6 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                            Column('y1', mysql.MSYear),
                            Column('y2', mysql.MSYear),
                            Column('y3', mysql.MSYear),
-                           Column('y4', mysql.MSYear(2)),
                            Column('y5', mysql.MSYear(4)))
 
         for col in year_table.c:
@@ -597,12 +596,11 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                           autoload=True)
 
         for table in year_table, reflected:
-            table.insert(['1950', '50', None, 50, 1950]).execute()
+            table.insert(['1950', '50', None, 1950]).execute()
             row = table.select().execute().first()
-            eq_(list(row), [1950, 2050, None, 50, 1950])
+            eq_(list(row), [1950, 2050, None, 1950])
             table.delete().execute()
             self.assert_(colspec(table.c.y1).startswith('y1 YEAR'))
-            eq_(colspec(table.c.y4), 'y4 YEAR(2)')
             eq_(colspec(table.c.y5), 'y5 YEAR(4)')
 
     @testing.only_if('mysql')
