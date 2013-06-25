@@ -1357,6 +1357,29 @@ as the argument:
     ('wendy',)
     {stop}[(u'wendy',)]
 
+We can also control correlation via exclusion, using the :meth:`.Select.correlate_except`
+method.   Such as, we can write our SELECT for the ``users`` table
+by telling it to correlate all FROM clauses except for ``users``:
+
+.. sourcecode:: pycon+sql
+
+    >>> stmt = select([users.c.id]).\
+    ...             where(users.c.id == addresses.c.user_id).\
+    ...             where(users.c.name == 'jack').\
+    ...             correlate_except(users)
+    >>> enclosing_stmt = select(
+    ...         [users.c.name, addresses.c.email_address]).\
+    ...     select_from(users.join(addresses)).\
+    ...     where(users.c.id == stmt)
+    >>> conn.execute(enclosing_stmt).fetchall()  # doctest: +NORMALIZE_WHITESPACE
+    {opensql}SELECT users.name, addresses.email_address
+     FROM users JOIN addresses ON users.id = addresses.user_id
+     WHERE users.id = (SELECT users.id
+     FROM users
+     WHERE users.id = addresses.user_id AND users.name = ?)
+     ('jack',)
+     {stop}[(u'jack', u'jack@yahoo.com'), (u'jack', u'jack@msn.com')]
+
 Ordering, Grouping, Limiting, Offset...ing...
 ---------------------------------------------
 

@@ -263,6 +263,102 @@ Glossary
 
             :doc:`orm/session`
 
+    columns clause
+        The portion of the ``SELECT`` statement which enumerates the
+        SQL expressions to be returned in the result set.  The expressions
+        follow the ``SELECT`` keyword directly and are a comma-separated
+        list of individual expressions.
+
+        E.g.:
+
+        .. sourcecode:: sql
+
+            SELECT user_account.name, user_account.email
+            FROM user_account WHERE user_account.name = 'fred'
+
+        Above, the list of columns ``user_acount.name``,
+        ``user_account.email`` is the columns clause of the ``SELECT``.
+
+    WHERE clause
+        The portion of the ``SELECT`` statement which indicates criteria
+        by which rows should be filtered.   It is a single SQL expression
+        which follows the keyword ``WHERE``.
+
+        .. sourcecode:: sql
+
+            SELECT user_account.name, user_account.email
+            FROM user_account
+            WHERE user_account.name = 'fred' AND user_account.status = 'E'
+
+        Above, the phrase ``WHERE user_account.name = 'fred' AND user_account.status = 'E'``
+        comprises the WHERE clause of the ``SELECT``.
+
+    FROM clause
+        The portion of the ``SELECT`` statement which incicates the initial
+        source of rows.
+
+        A simple ``SELECT`` will feature one or more table names in its
+        FROM clause.  Multiple sources are separated by a comma:
+
+        .. sourcecode:: sql
+
+            SELECT user.name, address.email_address
+            FROM user, address
+            WHERE user.id=address.user_id
+
+        The FROM clause is also where explicit joins are specified.  We can
+        rewrite the above ``SELECT`` using a single ``FROM`` element which consists
+        of a ``JOIN`` of the two tables:
+
+        .. sourcecode:: sql
+
+            SELECT user.name, address.email_address
+            FROM user JOIN address ON user.id=address.user_id
+
+
+    subquery
+        Refers to a ``SELECT`` statement that is embedded within an enclosing
+        ``SELECT``.
+
+        A subquery comes in two general flavors, one known as a "scalar select"
+        which specifically must return exactly one row and one column, and the
+        other form which acts as a "derived table" and serves as a source of
+        rows for the FROM clause of another select.  A scalar select is eligble
+        to be placed in the :term:`WHERE clause`, :term:`columns clause`,
+        ORDER BY clause or HAVING clause of the enclosing select, whereas the
+        derived table form is eligible to be placed in the FROM clause of the
+        enclosing ``SELECT``.
+
+        Examples:
+
+        1. a scalar subquery placed in the :term:`columns clause` of an enclosing
+           ``SELECT``.  The subquery in this example is a :term:`correlated subquery` because part
+           of the rows which it selects from are given via the enclosing statement.
+
+           .. sourcecode:: sql
+
+            SELECT id, (SELECT name FROM address WHERE address.user_id=user.id)
+            FROM user
+
+        2. a scalar subquery placed in the :term:`WHERE clause` of an enclosing
+           ``SELECT``.  This subquery in this example is not correlated as it selects a fixed result.
+
+           .. sourcecode:: sql
+
+            SELECT id, name FROM user
+            WHERE status=(SELECT status_id FROM status_code WHERE code='C')
+
+        3. a derived table subquery placed in the :term:`FROM clause` of an enclosing
+           ``SELECT``.   Such a subquery is almost always given an alias name.
+
+           .. sourcecode:: sql
+
+            SELECT user.id, user.name, ad_subq.email_address
+            FROM
+                user JOIN
+                (select user_id, email_address FROM address WHERE address_type='Q') AS ad_subq
+                ON user.id = ad_subq.user_id
+
     correlates
     correlated subquery
     correlated subqueries
@@ -290,8 +386,28 @@ Glossary
         table is recieved from the enclosing query, where each row selected from
         ``user_account`` results in a distinct execution of the subquery.
 
-        A correlated subquery is nearly always present in the :term:`WHERE clause`
-        or :term:`columns clause` of the enclosing ``SELECT`` statement, and never
-        in the :term:`FROM clause`; this is because
-        the correlation can only proceed once the original source rows from the enclosing
-        statement's FROM clause are available.
+        A correlated subquery is in most cases present in the :term:`WHERE clause`
+        or :term:`columns clause` of the immediately enclosing ``SELECT``
+        statement, as well as in the ORDER BY or HAVING clause.
+
+        In less common cases, a correlated subquery may be present in the
+        :term:`FROM clause` of an enclosing ``SELECT``; in these cases the
+        correlation is typically due to the enclosing ``SELECT`` itself being
+        enclosed in the WHERE,
+        ORDER BY, columns or HAVING clause of another ``SELECT``, such as:
+
+        .. sourcecode:: sql
+
+            SELECT parent.id FROM parent
+            WHERE EXISTS (
+                SELECT * FROM (
+                    SELECT child.id AS id, child.parent_id AS parent_id, child.pos AS pos
+                    FROM child
+                    WHERE child.parent_id = parent.id ORDER BY child.pos
+                LIMIT 3)
+            WHERE id = 7)
+
+        Correlation from one ``SELECT`` directly to one which encloses the correlated
+        query via its ``FROM``
+        clause is not possible, because the correlation can only proceed once the
+        original source rows from the enclosing statement's FROM clause are available.

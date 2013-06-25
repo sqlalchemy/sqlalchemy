@@ -7,6 +7,41 @@
     :version: 0.8.2
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2746, 2668
+
+        Multiple fixes to the correlation behavior of
+        :class:`.Select` constructs, first introduced in 0.8.0:
+
+        * To satisfy the use case where FROM entries should be
+          correlated outwards to a SELECT that encloses another,
+          which then encloses this one, correlation now works
+          across multiple levels when explicit correlation is
+          established via :meth:`.Select.correlate`, provided
+          that the target select is somewhere along the chain
+          contained by a WHERE/ORDER BY/columns clause, not
+          just nested FROM clauses. This makes
+          :meth:`.Select.correlate` act more compatibly to
+          that of 0.7 again while still maintaining the new
+          "smart" correlation.
+
+        * When explicit correlation is not used, the usual
+          "implicit" correlation limits its behavior to just
+          the immediate enclosing SELECT, to maximize compatibility
+          with 0.7 applications, and also prevents correlation
+          across nested FROMs in this case, maintaining compatibility
+          with 0.8.0/0.8.1.
+
+        * The :meth:`.Select.correlate_except` method was not
+          preventing the given FROM clauses from correlation in
+          all cases, and also would cause FROM clauses to be incorrectly
+          omitted entirely (more like what 0.7 would do),
+          this has been fixed.
+
+        * Calling `select.correlate_except(None)` will enter
+          all FROM clauses into correlation as would be expected.
+
+    .. change::
         :tags: bug, ext
 
         Fixed bug whereby if a composite type were set up
