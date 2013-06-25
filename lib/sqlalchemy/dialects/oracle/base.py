@@ -546,12 +546,8 @@ class OracleCompiler(compiler.SQLCompiler):
 
         if not getattr(select, '_oracle_visit', None):
             if not self.dialect.use_ansi:
-                if self.stack and 'from' in self.stack[-1]:
-                    existingfroms = self.stack[-1]['from']
-                else:
-                    existingfroms = None
-
-                froms = select._get_display_froms(existingfroms)
+                froms = self._display_froms_for_select(
+                                    select, kwargs.get('asfrom', False))
                 whereclause = self._get_nonansi_join_whereclause(froms)
                 if whereclause is not None:
                     select = select.where(whereclause)

@@ -2825,11 +2825,18 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
                 "SELECT t1.a, t2.a FROM t1, t2 WHERE t2.a = "
                 "(SELECT t1.a WHERE t1.a = t2.a)")
 
-    def _assert_where_backwards_correlated(self, stmt):
-        self.assert_compile(
-                stmt,
-                "SELECT t2.a FROM t2 WHERE t2.a = "
-                "(SELECT t1.a FROM t2 WHERE t1.a = t2.a)")
+    # note there's no more "backwards" correlation after
+    # we've done #2746
+    #def _assert_where_backwards_correlated(self, stmt):
+    #    self.assert_compile(
+    #            stmt,
+    #            "SELECT t2.a FROM t2 WHERE t2.a = "
+    #            "(SELECT t1.a FROM t2 WHERE t1.a = t2.a)")
+
+    #def _assert_column_backwards_correlated(self, stmt):
+    #    self.assert_compile(stmt,
+    #            "SELECT t2.a, (SELECT t1.a FROM t2 WHERE t1.a = t2.a) "
+    #            "AS anon_1 FROM t2")
 
     def _assert_column_correlated(self, stmt):
         self.assert_compile(stmt,
@@ -2841,10 +2848,6 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
                 "SELECT t1.a, t2.a, "
                 "(SELECT t1.a WHERE t1.a = t2.a) AS anon_1 FROM t1, t2")
 
-    def _assert_column_backwards_correlated(self, stmt):
-        self.assert_compile(stmt,
-                "SELECT t2.a, (SELECT t1.a FROM t2 WHERE t1.a = t2.a) "
-                "AS anon_1 FROM t2")
 
     def _assert_having_correlated(self, stmt):
         self.assert_compile(stmt,
@@ -2907,7 +2910,7 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_correlate_except_exclusion_where(self):
         t1, t2, s1 = self._fixture()
-        self._assert_where_backwards_correlated(
+        self._assert_where_uncorrelated(
                 select([t2]).where(t2.c.a == s1.correlate_except(t2)))
 
     def test_correlate_except_inclusion_column(self):
@@ -2917,7 +2920,7 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_correlate_except_exclusion_column(self):
         t1, t2, s1 = self._fixture()
-        self._assert_column_backwards_correlated(
+        self._assert_column_uncorrelated(
                 select([t2, s1.correlate_except(t2).as_scalar()]))
 
     def test_correlate_except_inclusion_from(self):
@@ -2929,6 +2932,11 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
         t1, t2, s1 = self._fixture()
         self._assert_from_uncorrelated(
                 select([t2, s1.correlate_except(t2).alias()]))
+
+    def test_correlate_except_none(self):
+        t1, t2, s1 = self._fixture()
+        self._assert_where_all_correlated(
+                select([t1, t2]).where(t2.c.a == s1.correlate_except(None)))
 
     def test_correlate_except_having(self):
         t1, t2, s1 = self._fixture()
@@ -3035,6 +3043,86 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
         t1, t2, s1 = self._fixture()
         self.assert_compile(s1.correlate(t1, t2),
             "SELECT t1.a FROM t1, t2 WHERE t1.a = t2.a")
+
+    def test_correlate_except_froms(self):
+        # new as of #2748
+        t1 = table('t1', column('a'))
+        t2 = table('t2', column('a'), column('b'))
+        s = select([t2.c.b]).where(t1.c.a == t2.c.a)
+        s = s.correlate_except(t2).alias('s')
+
+        s2 = select([func.foo(s.c.b)]).as_scalar()
+        s3 = select([t1], order_by=s2)
+
+        self.assert_compile(s3,
+            "SELECT t1.a FROM t1 ORDER BY "
+            "(SELECT foo(s.b) AS foo_1 FROM "
+            "(SELECT t2.b AS b FROM t2 WHERE t1.a = t2.a) AS s)"
+        )
+
+    def test_multilevel_froms_correlation(self):
+        # new as of #2748
+        p = table('parent', column('id'))
+        c = table('child', column('id'), column('parent_id'), column('pos'))
+
+        s = c.select().where(c.c.parent_id == p.c.id).order_by(c.c.pos).limit(1)
+        s = s.correlate(p)
+        s = exists().select_from(s).where(s.c.id == 1)
+        s = select([p]).where(s)
+        self.assert_compile(s,
+            "SELECT parent.id FROM parent WHERE EXISTS (SELECT * "
+            "FROM (SELECT child.id AS id, child.parent_id AS parent_id, "
+            "child.pos AS pos FROM child WHERE child.parent_id = parent.id "
+            "ORDER BY child.pos LIMIT :param_1) WHERE id = :id_1)")
+
+    def test_no_contextless_correlate_except(self):
+        # new as of #2748
+
+        t1 = table('t1', column('x'))
+        t2 = table('t2', column('y'))
+        t3 = table('t3', column('z'))
+
+        s = select([t1]).where(t1.c.x == t2.c.y).\
+            where(t2.c.y == t3.c.z).correlate_except(t1)
+        self.assert_compile(s,
+            "SELECT t1.x FROM t1, t2, t3 WHERE t1.x = t2.y AND t2.y = t3.z")
+
+    def test_multilevel_implicit_correlation_disabled(self):
+        # test that implicit correlation with multilevel WHERE correlation
+        # behaves like 0.8.1, 0.7 (i.e. doesn't happen)
+        t1 = table('t1', column('x'))
+        t2 = table('t2', column('y'))
+        t3 = table('t3', column('z'))
+
+        s = select([t1.c.x]).where(t1.c.x == t2.c.y)
+        s2 = select([t3.c.z]).where(t3.c.z == s.as_scalar())
+        s3 = select([t1]).where(t1.c.x == s2.as_scalar())
+
+        self.assert_compile(s3,
+            "SELECT t1.x FROM t1 "
+            "WHERE t1.x = (SELECT t3.z "
+            "FROM t3 "
+            "WHERE t3.z = (SELECT t1.x "
+            "FROM t1, t2 "
+            "WHERE t1.x = t2.y))"
+        )
+
+    def test_from_implicit_correlation_disabled(self):
+        # test that implicit correlation with immediate and
+        # multilevel FROM clauses behaves like 0.8.1 (i.e. doesn't happen)
+        t1 = table('t1', column('x'))
+        t2 = table('t2', column('y'))
+        t3 = table('t3', column('z'))
+
+        s = select([t1.c.x]).where(t1.c.x == t2.c.y)
+        s2 = select([t2, s])
+        s3 = select([t1, s2])
+
+        self.assert_compile(s3,
+            "SELECT t1.x, y, x FROM t1, "
+            "(SELECT t2.y AS y, x FROM t2, "
+            "(SELECT t1.x AS x FROM t1, t2 WHERE t1.x = t2.y))"
+        )
 
 class CoercionTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'

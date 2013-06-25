@@ -626,8 +626,21 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
 class OperatorTest(QueryTest, AssertsCompiledSQL):
     """test sql.Comparator implementation for MapperProperties"""
 
-    def _test(self, clause, expected):
-        self.assert_compile(clause, expected, dialect=default.DefaultDialect())
+    __dialect__ = 'default'
+
+    def _test(self, clause, expected, entity=None):
+        dialect = default.DefaultDialect()
+        if entity is not None:
+            # specify a lead entity, so that when we are testing
+            # correlation, the correlation actually happens
+            sess = Session()
+            lead = sess.query(entity)
+            context = lead._compile_context()
+            context.statement.use_labels = True
+            lead = context.statement.compile(dialect=dialect)
+            expected = (str(lead) + " WHERE " + expected).replace("\n", "")
+            clause = sess.query(entity).filter(clause)
+        self.assert_compile(clause, expected)
 
     def test_arithmetic(self):
         User = self.classes.User
@@ -718,7 +731,8 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         self._test(User.addresses.any(Address.id==17),
                         "EXISTS (SELECT 1 "
                         "FROM addresses "
-                        "WHERE users.id = addresses.user_id AND addresses.id = :id_1)"
+                        "WHERE users.id = addresses.user_id AND addresses.id = :id_1)",
+                        entity=User
                     )
 
         u7 = User(id=7)
@@ -726,21 +740,16 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
 
         self._test(Address.user == u7, ":param_1 = addresses.user_id")
 
-        self._test(Address.user != u7, "addresses.user_id != :user_id_1 OR addresses.user_id IS NULL")
+        self._test(Address.user != u7,
+                "addresses.user_id != :user_id_1 OR addresses.user_id IS NULL")
 
         self._test(Address.user == None, "addresses.user_id IS NULL")
 
         self._test(Address.user != None, "addresses.user_id IS NOT NULL")
 
-    def test_foo(self):
-        Node = self.classes.Node
-        nalias = aliased(Node)
-        self._test(
-            nalias.parent.has(Node.data=='some data'),
-           "EXISTS (SELECT 1 FROM nodes WHERE nodes.id = nodes_1.parent_id AND nodes.data = :data_1)"
-        )
 
     def test_selfref_relationship(self):
+
         Node = self.classes.Node
 
         nalias = aliased(Node)
@@ -749,50 +758,62 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         self._test(
             Node.children.any(Node.data=='n1'),
                 "EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE "
-                "nodes.id = nodes_1.parent_id AND nodes_1.data = :data_1)"
+                "nodes.id = nodes_1.parent_id AND nodes_1.data = :data_1)",
+            entity=Node
         )
 
         # needs autoaliasing
         self._test(
-            Node.children==None,
-            "NOT (EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE nodes.id = nodes_1.parent_id))"
+            Node.children == None,
+            "NOT (EXISTS (SELECT 1 FROM nodes AS nodes_1 "
+                "WHERE nodes.id = nodes_1.parent_id))",
+            entity=Node
         )
 
         self._test(
-            Node.parent==None,
+            Node.parent == None,
             "nodes.parent_id IS NULL"
         )
 
         self._test(
-            nalias.parent==None,
+            nalias.parent == None,
             "nodes_1.parent_id IS NULL"
         )
 
         self._test(
-            nalias.children==None,
-            "NOT (EXISTS (SELECT 1 FROM nodes WHERE nodes_1.id = nodes.parent_id))"
+            nalias.children == None,
+            "NOT (EXISTS (SELECT 1 FROM nodes WHERE nodes_1.id = nodes.parent_id))",
+            entity=nalias
         )
 
         self._test(
                 nalias.children.any(Node.data=='some data'),
                 "EXISTS (SELECT 1 FROM nodes WHERE "
-                "nodes_1.id = nodes.parent_id AND nodes.data = :data_1)")
+                "nodes_1.id = nodes.parent_id AND nodes.data = :data_1)",
+                entity=nalias)
 
-        # fails, but I think I want this to fail
+        # this fails because self-referential any() is auto-aliasing;
+        # the fact that we use "nalias" here means we get two aliases.
         #self._test(
-        #        Node.children.any(nalias.data=='some data'),
+        #        Node.children.any(nalias.data == 'some data'),
         #        "EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE "
-        #        "nodes.id = nodes_1.parent_id AND nodes_1.data = :data_1)"
+        #        "nodes.id = nodes_1.parent_id AND nodes_1.data = :data_1)",
+        #        entity=Node
         #        )
 
         self._test(
-            nalias.parent.has(Node.data=='some data'),
-           "EXISTS (SELECT 1 FROM nodes WHERE nodes.id = nodes_1.parent_id AND nodes.data = :data_1)"
+            nalias.parent.has(Node.data == 'some data'),
+           "EXISTS (SELECT 1 FROM nodes WHERE nodes.id = nodes_1.parent_id "
+            "AND nodes.data = :data_1)",
+            entity=nalias
         )
 
+
         self._test(
-            Node.parent.has(Node.data=='some data'),
-           "EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE nodes_1.id = nodes.parent_id AND nodes_1.data = :data_1)"
+            Node.parent.has(Node.data == 'some data'),
+           "EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE "
+            "nodes_1.id = nodes.parent_id AND nodes_1.data = :data_1)",
+            entity=Node
         )
 
         self._test(
@@ -812,6 +833,27 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
 
         self._test(
             nalias.children.contains(Node(id=7)), "nodes_1.id = :param_1"
+        )
+
+    def test_multilevel_any(self):
+        User, Address, Dingaling = \
+            self.classes.User, self.classes.Address, self.classes.Dingaling
+        sess = Session()
+
+        q = sess.query(User).filter(
+                User.addresses.any(
+                    and_(Address.id == Dingaling.address_id,
+                        Dingaling.data == 'x')))
+        # new since #2746 - correlate_except() now takes context into account
+        # so its usage in any() is not as disrupting.
+        self.assert_compile(q,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users "
+            "WHERE EXISTS (SELECT 1 "
+            "FROM addresses, dingalings "
+            "WHERE users.id = addresses.user_id AND "
+            "addresses.id = dingalings.address_id AND "
+            "dingalings.data = :data_1)"
         )
 
     def test_op(self):
