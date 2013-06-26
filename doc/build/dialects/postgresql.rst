@@ -82,8 +82,11 @@ construction arguments, are as follows:
     :members: __init__
     :show-inheritance:
 
-.. autoclass:: sqlalchemy.dialects.postgresql.ranges.RangeOperators
-    :members:
+Range Types
+~~~~~~~~~~~
+
+The new range column types founds in PostgreSQL 9.2 onwards are
+catered for by the following types:
 
 .. autoclass:: INT4RANGE
    :show-inheritance:
@@ -103,6 +106,19 @@ construction arguments, are as follows:
 .. autoclass:: TSTZRANGE
    :show-inheritance:
 
+The types above get most of their functionality from the following
+mixin:
+
+.. autoclass:: sqlalchemy.dialects.postgresql.ranges.RangeOperators
+    :members:
+
+.. warning::
+
+  The range type DDL support should work with any Postgres DBAPI
+  driver, however the data types returned may vary. If you are using
+  ``psycopg2``, it's recommended to upgrade to version 2.5 or later
+  before using these column types.
+
 
 PostgreSQL Constraint Types
 ---------------------------
@@ -116,10 +132,7 @@ SQLAlchemy supports Postgresql EXCLUDE constraints via the
 
 For example::
 
-  from sqlalchemy.dialects.postgresql import (
-      ExcludeConstraint,
-      TSRANGE as Range,
-      )
+  from sqlalchemy.dialects.postgresql import ExcludeConstraint, TSRANGE
 
   class RoomBookings(Base):
 
