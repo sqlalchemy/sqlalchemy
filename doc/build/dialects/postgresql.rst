@@ -116,10 +116,7 @@ SQLAlchemy supports Postgresql EXCLUDE constraints via the
 
 For example::
 
-  from sqlalchemy.dialects.postgresql import (
-      ExcludeConstraint,
-      TSRANGE as Range,
-      )
+  from sqlalchemy.dialects.postgresql import ExcludeConstraint, TSRANGE
 
   class RoomBookings(Base):
 
