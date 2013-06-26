@@ -95,6 +95,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @classmethod
     def define_index(cls, metadata, users):
         Index("users_t_idx", users.c.test1, users.c.test2)
+        Index("users_all_idx", users.c.user_id, users.c.test2, users.c.test1)
 
     @classmethod
     def define_views(cls, metadata, schema):
@@ -339,7 +340,11 @@ class ComponentReflectionTest(fixtures.TablesTest):
         expected_indexes = [
             {'unique': False,
              'column_names': ['test1', 'test2'],
-             'name': 'users_t_idx'}]
+             'name': 'users_t_idx'},
+            {'unique': False,
+             'column_names': ['user_id', 'test2', 'test1'],
+             'name': 'users_all_idx'}
+        ]
         index_names = [d['name'] for d in indexes]
         for e_index in expected_indexes:
             assert e_index['name'] in index_names
