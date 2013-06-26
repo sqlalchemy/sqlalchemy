@@ -52,11 +52,11 @@ class QueryTest(fixtures.TestBase):
     def test_multivalues_insert(self):
         users.insert(values=[{'user_id':7, 'user_name':'jack'},
             {'user_id':8, 'user_name':'ed'}]).execute()
-        rows = users.select().execute().fetchall()
+        rows = users.select().order_by(users.c.user_id).execute().fetchall()
         self.assert_(rows[0] == (7, 'jack'))
         self.assert_(rows[1] == (8, 'ed'))
         users.insert(values=[(9, 'jack'), (10, 'ed')]).execute()
-        rows = users.select().execute().fetchall()
+        rows = users.select().order_by(users.c.user_id).execute().fetchall()
         self.assert_(rows[2] == (9, 'jack'))
         self.assert_(rows[3] == (10, 'ed'))
 
