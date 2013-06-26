@@ -6,7 +6,7 @@ from sqlalchemy import *
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, \
     AssertsExecutionResults
 from sqlalchemy import testing
-from sqlalchemy.sql import util as sql_util, visitors
+from sqlalchemy.sql import util as sql_util, visitors, expression
 from sqlalchemy import exc
 from sqlalchemy.sql import table, column, null
 from sqlalchemy import util
@@ -147,6 +147,48 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         t = table('t', c)
         s = select([t])._clone()
         assert c in s.c.bar.proxy_set
+
+    def test_cloned_intersection(self):
+        t1 = table('t1', column('x'))
+        t2 = table('t2', column('x'))
+
+        s1 = t1.select()
+        s2 = t2.select()
+        s3 = t1.select()
+
+        s1c1 = s1._clone()
+        s1c2 = s1._clone()
+        s2c1 = s2._clone()
+        s3c1 = s3._clone()
+
+        eq_(
+            expression._cloned_intersection(
+                [s1c1, s3c1], [s2c1, s1c2]
+            ),
+            set([s1c1])
+        )
+
+    def test_cloned_difference(self):
+        t1 = table('t1', column('x'))
+        t2 = table('t2', column('x'))
+
+        s1 = t1.select()
+        s2 = t2.select()
+        s3 = t1.select()
+
+        s1c1 = s1._clone()
+        s1c2 = s1._clone()
+        s2c1 = s2._clone()
+        s2c2 = s2._clone()
+        s3c1 = s3._clone()
+
+        eq_(
+            expression._cloned_difference(
+                [s1c1, s2c1, s3c1], [s2c1, s1c2]
+            ),
+            set([s3c1])
+        )
+
 
     def test_distance_on_aliases(self):
         a1 = table1.alias('a1')
