@@ -7,6 +7,14 @@
     :version: 0.8.2
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 2767
+
+        Fixed bug where the order of columns in a multi-column
+        Postgresql index would be reflected in the wrong order.
+        Courtesy Roman Podolyaka.
+
+    .. change::
         :tags: bug, ext
 
         Fixed bug whereby if a composite type were set up
