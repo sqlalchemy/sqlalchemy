@@ -206,6 +206,7 @@ version of PostgreSQL.
 
 """
 
+from collections import defaultdict
 import re
 
 from ... import sql, schema, exc, util
