@@ -1892,7 +1892,7 @@ class Query(object):
         aliased_entity = right_mapper and \
                             not right_is_aliased and \
                             (
-                                isinstance(
+                                right_mapper.with_polymorphic and isinstance(
                                     right_mapper._with_polymorphic_selectable,
                                     expression.Alias)
                                 or

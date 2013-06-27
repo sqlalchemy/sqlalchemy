@@ -1732,6 +1732,93 @@ class CreateJoinsTest(fixtures.ORMTest, AssertsCompiledSQL):
             ")))"
         )
 
+
+class JoinToNonPolyAliasesTest(fixtures.MappedTest, AssertsCompiledSQL):
+    """test joins to an aliased selectable and that we can refer to that
+    aliased selectable in filter criteria.
+
+    Basically testing that the aliasing Query applies to with_polymorphic
+    targets doesn't leak into non-polymorphic mappers.
+
+
+    """
+    __dialect__ = 'default'
+    run_create_tables = None
+    run_deletes = None
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("parent", metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50)),
+        )
+        Table("child", metadata,
+            Column('id', Integer, primary_key=True),
+            Column('parent_id', Integer, ForeignKey('parent.id')),
+            Column('data', String(50))
+        )
+
+    @classmethod
+    def setup_mappers(cls):
+        parent, child = cls.tables.parent, cls.tables.child
+        class Parent(cls.Comparable):
+            pass
+
+        class Child(cls.Comparable):
+            pass
+
+        mp = mapper(Parent, parent)
+        mapper(Child, child)
+
+        derived = select([child]).alias()
+        npc = mapper(Child, derived, non_primary=True)
+        cls.npc = npc
+        cls.derived = derived
+        mp.add_property("npc", relationship(npc))
+
+    def test_join_parent_child(self):
+        Parent = self.classes.Parent
+        npc = self.npc
+        sess = Session()
+        self.assert_compile(
+            sess.query(Parent).join(Parent.npc).filter(self.derived.c.data == 'x'),
+            "SELECT parent.id AS parent_id, parent.data AS parent_data "
+            "FROM parent JOIN (SELECT child.id AS id, child.parent_id AS parent_id, "
+            "child.data AS data "
+            "FROM child) AS anon_1 ON parent.id = anon_1.parent_id "
+            "WHERE anon_1.data = :data_1"
+        )
+
+    def test_join_parent_child_select_from(self):
+        Parent = self.classes.Parent
+        npc = self.npc
+        sess = Session()
+        self.assert_compile(
+            sess.query(npc).select_from(Parent).join(Parent.npc).\
+                filter(self.derived.c.data == 'x'),
+            "SELECT anon_1.id AS anon_1_id, anon_1.parent_id "
+            "AS anon_1_parent_id, anon_1.data AS anon_1_data "
+            "FROM parent JOIN (SELECT child.id AS id, child.parent_id AS "
+            "parent_id, child.data AS data FROM child) AS anon_1 ON "
+            "parent.id = anon_1.parent_id WHERE anon_1.data = :data_1"
+        )
+
+    def test_join_select_parent_child(self):
+        Parent = self.classes.Parent
+        npc = self.npc
+        sess = Session()
+        self.assert_compile(
+            sess.query(Parent, npc).join(Parent.npc).filter(
+                                        self.derived.c.data == 'x'),
+            "SELECT parent.id AS parent_id, parent.data AS parent_data, "
+            "anon_1.id AS anon_1_id, anon_1.parent_id AS anon_1_parent_id, "
+            "anon_1.data AS anon_1_data FROM parent JOIN "
+            "(SELECT child.id AS id, child.parent_id AS parent_id, "
+            "child.data AS data FROM child) AS anon_1 ON parent.id = "
+            "anon_1.parent_id WHERE anon_1.data = :data_1"
+        )
+
+
 class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     run_setup_mappers = 'once'
     run_inserts = 'once'

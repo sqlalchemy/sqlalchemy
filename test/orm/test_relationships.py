@@ -467,6 +467,8 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
             ['emp6', 'emp7']
         )
 
+
+
 class CompositeJoinPartialFK(fixtures.MappedTest, AssertsCompiledSQL):
     __dialect__ = 'default'
     @classmethod
