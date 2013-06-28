@@ -78,9 +78,8 @@ from sqlalchemy.engine import base, default, reflection
 from sqlalchemy.sql import compiler
 
 
-from sqlalchemy.types import (BIGINT, BLOB, BOOLEAN, DATE,
-                              FLOAT, INTEGER, NUMERIC, SMALLINT,
-                              TEXT, TIME, TIMESTAMP)
+from sqlalchemy.types import (BIGINT, BLOB, DATE, FLOAT, INTEGER, NUMERIC,
+                              SMALLINT, TEXT, TIME, TIMESTAMP, Integer)
 
 
 RESERVED_WORDS = set([
@@ -162,13 +161,13 @@ colspecs = {
 
 ischema_names = {
       'SHORT': SMALLINT,
-       'LONG': BIGINT,
+       'LONG': INTEGER,
        'QUAD': FLOAT,
       'FLOAT': FLOAT,
        'DATE': DATE,
        'TIME': TIME,
        'TEXT': TEXT,
-      'INT64': NUMERIC,
+      'INT64': BIGINT,
      'DOUBLE': FLOAT,
   'TIMESTAMP': TIMESTAMP,
     'VARYING': VARCHAR,
@@ -593,8 +592,8 @@ class FBDialect(default.DefaultDialect):
                 util.warn("Did not recognize type '%s' of column '%s'" %
                           (colspec, name))
                 coltype = sqltypes.NULLTYPE
-            elif colspec == 'INT64':
-                coltype = coltype(
+            elif issubclass(coltype, Integer) and row['fprec'] != 0:
+                coltype = NUMERIC(
                                 precision=row['fprec'],
                                 scale=row['fscale'] * -1)
             elif colspec in ('VARYING', 'CSTRING'):

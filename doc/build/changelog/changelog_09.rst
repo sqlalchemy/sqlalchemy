@@ -7,6 +7,16 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, firebird
+        :tickets: 2757
+
+        Type lookup when reflecting the Firebird types LONG and
+        INT64 has been fixed so that LONG is treated as INTEGER,
+        INT64 treated as BIGINT, unless the type has a "precision"
+        in which case it's treated as NUMERIC.  Patch courtesy
+        Russell Stuart.  Also in 0.8.2.
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 2766
 
