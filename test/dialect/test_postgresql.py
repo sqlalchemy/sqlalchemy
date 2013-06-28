@@ -2948,6 +2948,16 @@ class HStoreTest(fixtures.TestBase):
             '"key1"=>"value1", "key2"=>"value2"'
         )
 
+    def test_bind_serialize_with_slashes_and_quotes(self):
+        from sqlalchemy.engine import default
+
+        dialect = default.DefaultDialect()
+        proc = self.test_table.c.hash.type._cached_bind_processor(dialect)
+        eq_(
+            proc({'\\"a': '\\"1'}),
+            '"\\\\\\"a"=>"\\\\\\"1"'
+        )
+
     def test_parse_error(self):
         from sqlalchemy.engine import default
 
@@ -2972,6 +2982,17 @@ class HStoreTest(fixtures.TestBase):
         eq_(
             proc('"key2"=>"value2", "key1"=>"value1"'),
             {"key1": "value1", "key2": "value2"}
+        )
+
+    def test_result_deserialize_with_slashes_and_quotes(self):
+        from sqlalchemy.engine import default
+
+        dialect = default.DefaultDialect()
+        proc = self.test_table.c.hash.type._cached_result_processor(
+                    dialect, None)
+        eq_(
+            proc('"\\\\\\"a"=>"\\\\\\"1"'),
+            {'\\"a': '\\"1'}
         )
 
     def test_bind_serialize_psycopg2(self):
@@ -3287,6 +3308,22 @@ class HStoreRoundTripTest(fixtures.TablesTest):
     def test_unicode_round_trip_native(self):
         engine = testing.db
         self._test_unicode_round_trip(engine)
+
+    def test_escaped_quotes_round_trip_python(self):
+        engine = self._non_native_engine()
+        self._test_escaped_quotes_round_trip(engine)
+
+    @testing.only_on("postgresql+psycopg2")
+    def test_escaped_quotes_round_trip_native(self):
+        engine = testing.db
+        self._test_escaped_quotes_round_trip(engine)
+
+    def _test_escaped_quotes_round_trip(self, engine):
+        engine.execute(
+            self.tables.data_table.insert(),
+            {'name': 'r1', 'data': {r'key \"foo\"': r'value \"bar"\ xyz'}}
+        )
+        self._assert_data([{r'key \"foo\"': r'value \"bar"\ xyz'}])
 
 class _RangeTypeMixin(object):
     __requires__ = 'range_types',

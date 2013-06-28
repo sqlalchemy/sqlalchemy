@@ -68,11 +68,11 @@ def _parse_hstore(hstore_str):
     pair_match = HSTORE_PAIR_RE.match(hstore_str)
 
     while pair_match is not None:
-        key = pair_match.group('key')
+        key = pair_match.group('key').replace(r'\"', '"').replace("\\\\", "\\")
         if pair_match.group('value_null'):
             value = None
         else:
-            value = pair_match.group('value').replace(r'\"', '"')
+            value = pair_match.group('value').replace(r'\"', '"').replace("\\\\", "\\")
         result[key] = value
 
         pos += pair_match.end()
@@ -98,7 +98,7 @@ def _serialize_hstore(val):
         if position == 'value' and s is None:
             return 'NULL'
         elif isinstance(s, util.string_types):
-            return '"%s"' % s.replace('"', r'\"')
+            return '"%s"' % s.replace("\\", "\\\\").replace('"', r'\"')
         else:
             raise ValueError("%r in %s position is not a string." %
                              (s, position))
