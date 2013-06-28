@@ -8,6 +8,15 @@
 
     .. change::
         :tags: bug, postgresql
+        :tickets: 2766
+
+        Fixed bug in HSTORE type where keys/values that contained
+        backslashed quotes would not be escaped correctly when
+        using the "non native" (i.e. non-psycopg2) means
+        of translating HSTORE data.  Patch courtesy Ryan Kelly.
+
+    .. change::
+        :tags: bug, postgresql
         :tickets: 2767
 
         Fixed bug where the order of columns in a multi-column
