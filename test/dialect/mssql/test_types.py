@@ -1,4 +1,5 @@
 # -*- encoding: utf-8
+from __future__ import with_statement
 from sqlalchemy.testing import eq_, engines, pickleable
 import datetime
 import os
@@ -366,8 +367,8 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults, ComparesTabl
                 )]
             for value in test_items:
                 float_table.insert().execute(floatcol=value)
-        except Exception as e:
-            raise e
+        except Exception:
+            raise
 
 
     # todo this should suppress warnings, but it does not

@@ -1,5 +1,5 @@
 # coding: utf-8
-
+from __future__ import with_statement
 from sqlalchemy.testing.assertions import eq_, assert_raises, \
                 assert_raises_message, is_, AssertsExecutionResults, \
                 AssertsCompiledSQL, ComparesTables
@@ -32,7 +32,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             :
             try:
                 con.execute(ddl)
-            except exc.DBAPIError as e:
+            except exc.DBAPIError, e:
                 if not 'already exists' in str(e):
                     raise e
         con.execute('CREATE TABLE testtable (question integer, answer '

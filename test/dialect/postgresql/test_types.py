@@ -1,4 +1,5 @@
 # coding: utf-8
+from __future__ import with_statement
 from sqlalchemy.testing.assertions import eq_, assert_raises, \
                 assert_raises_message, is_, AssertsExecutionResults, \
                 AssertsCompiledSQL, ComparesTables
