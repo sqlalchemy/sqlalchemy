@@ -7,6 +7,17 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 2740
+
+        The behavior of :func:`.extract` has been simplified on the
+        Postgresql dialect to no longer inject a hardcoded ``::timestamp``
+        or similar cast into the given expression, as this interfered
+        with types such as timezone-aware datetimes, but also
+        does not appear to be at all necessary with modern versions
+        of psycopg2.  Also in 0.8.2.
+
+    .. change::
         :tags: bug, firebird
         :tickets: 2757
 

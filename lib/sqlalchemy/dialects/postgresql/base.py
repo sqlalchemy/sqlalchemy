@@ -1027,28 +1027,6 @@ class PGCompiler(compiler.SQLCompiler):
 
         return 'RETURNING ' + ', '.join(columns)
 
-    def visit_extract(self, extract, **kwargs):
-        field = self.extract_map.get(extract.field, extract.field)
-        if extract.expr.type:
-            affinity = extract.expr.type._type_affinity
-        else:
-            affinity = None
-
-        casts = {
-                    sqltypes.Date: 'date',
-                    sqltypes.DateTime: 'timestamp',
-                    sqltypes.Interval: 'interval',
-                    sqltypes.Time: 'time'
-                }
-        cast = casts.get(affinity, None)
-        if isinstance(extract.expr, sql.ColumnElement) and cast is not None:
-            expr = extract.expr.op('::', precedence=100)(
-                                        sql.literal_column(cast))
-        else:
-            expr = extract.expr
-        return "EXTRACT(%s FROM %s)" % (
-            field, self.process(expr))
-
 
     def visit_substring_func(self, func, **kw):
         s = self.process(func.clauses.clauses[0], **kw)
