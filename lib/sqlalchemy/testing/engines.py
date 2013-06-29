@@ -21,7 +21,7 @@ class ConnectionKiller(object):
         self.testing_engines[engine] = True
 
     def connect(self, dbapi_conn, con_record):
-        self.conns.add(dbapi_conn)
+        self.conns.add((dbapi_conn, con_record))
 
     def checkout(self, dbapi_con, con_record, con_proxy):
         self.proxy_refs[con_proxy] = True
@@ -52,7 +52,7 @@ class ConnectionKiller(object):
         # is collecting in finalize_fairy, deadlock.
         # not sure if this should be if pypy/jython only.
         # note that firebird/fdb definitely needs this though
-        for conn in self.conns:
+        for conn, rec in self.conns:
             self._safe(conn.rollback)
 
     def _stop_test_ctx(self):
@@ -72,8 +72,10 @@ class ConnectionKiller(object):
 
     def _stop_test_ctx_aggressive(self):
         self.close_all()
-        for conn in self.conns:
+        for conn, rec in self.conns:
             self._safe(conn.close)
+            rec.connection = None
+            
         self.conns = set()
         for rec in list(self.testing_engines):
             rec.dispose()
