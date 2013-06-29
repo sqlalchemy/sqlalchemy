@@ -1009,13 +1009,7 @@ class ForUpdateTest(fixtures.TestBase):
     def teardown_class(cls):
         counters.drop(testing.db)
 
-    def increment(
-        self,
-        count,
-        errors,
-        update_style=True,
-        delay=0.005,
-        ):
+    def increment(self, count, errors, update_style=True, delay=0.005):
         con = testing.db.connect()
         sel = counters.select(for_update=update_style,
                               whereclause=counters.c.counter_id == 1)
@@ -1066,40 +1060,27 @@ class ForUpdateTest(fixtures.TestBase):
             threads.append(thrd)
         for thrd in threads:
             thrd.join()
-        for e in errors:
-            sys.stdout.write('Failure: %s\n' % e)
-        self.assert_(len(errors) == 0)
+        assert not errors
         sel = counters.select(whereclause=counters.c.counter_id == 1)
         final = db.execute(sel).first()
-        self.assert_(final['counter_value'] == iterations
-                     * thread_count)
+        eq_(final['counter_value'], iterations * thread_count)
 
-    def overlap(
-        self,
-        ids,
-        errors,
-        update_style,
-        ):
+    def overlap(self, ids, errors, update_style):
+
         sel = counters.select(for_update=update_style,
                               whereclause=counters.c.counter_id.in_(ids))
         con = testing.db.connect()
         trans = con.begin()
         try:
             rows = con.execute(sel).fetchall()
-            time.sleep(0.25)
+            time.sleep(0.50)
             trans.commit()
         except Exception, e:
             trans.rollback()
             errors.append(e)
         con.close()
 
-    def _threaded_overlap(
-        self,
-        thread_count,
-        groups,
-        update_style=True,
-        pool=5,
-        ):
+    def _threaded_overlap(self, thread_count, groups, update_style=True, pool=5):
         db = testing.db
         for cid in range(pool - 1):
             db.execute(counters.insert(), counter_id=cid + 1,
@@ -1109,6 +1090,8 @@ class ForUpdateTest(fixtures.TestBase):
             thrd = threading.Thread(target=self.overlap,
                                     args=(groups.pop(0), errors,
                                     update_style))
+            time.sleep(0.20)  # give the previous thread a chance to start
+                              # to ensure it gets a lock
             thrd.start()
             threads.append(thrd)
         for thrd in threads:
@@ -1124,9 +1107,7 @@ class ForUpdateTest(fixtures.TestBase):
         """Simple SELECT FOR UPDATE conflict test"""
 
         errors = self._threaded_overlap(2, [(1, 2, 3), (3, 4, 5)])
-        for e in errors:
-            sys.stderr.write('Failure: %s\n' % e)
-        self.assert_(len(errors) == 0)
+        assert not errors
 
     @testing.crashes('mssql', 'FIXME: unknown')
     @testing.fails_on('mysql', 'No support for NOWAIT')
@@ -1139,7 +1120,7 @@ class ForUpdateTest(fixtures.TestBase):
 
         errors = self._threaded_overlap(2, [(1, 2, 3), (3, 4, 5)],
                 update_style='nowait')
-        self.assert_(len(errors) != 0)
+        assert errors
 
 class IsolationLevelTest(fixtures.TestBase):
     __requires__ = ('isolation_level', 'ad_hoc_engines')
