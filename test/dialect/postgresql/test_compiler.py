@@ -229,61 +229,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 
-    def test_extract(self):
-        t = table('t', column('col1', DateTime), column('col2', Date),
-                  column('col3', Time), column('col4',
-                  postgresql.INTERVAL))
-        for field in 'year', 'month', 'day', 'epoch', 'hour':
-            for expr, compiled_expr in [  # invalid, no cast. plain
-                                          # text.  no cast. addition is
-                                          # commutative subtraction is
-                                          # not invalid - no cast. dont
-                                          # crack up on entirely
-                                          # unsupported types
-                (t.c.col1, 't.col1 :: timestamp'),
-                (t.c.col2, 't.col2 :: date'),
-                (t.c.col3, 't.col3 :: time'),
-                (func.current_timestamp() - datetime.timedelta(days=5),
-                 '(CURRENT_TIMESTAMP - %(current_timestamp_1)s) :: '
-                 'timestamp'),
-                (func.current_timestamp() + func.current_timestamp(),
-                 'CURRENT_TIMESTAMP + CURRENT_TIMESTAMP'),
-                (text('foo.date + foo.time'), 'foo.date + foo.time'),
-                (func.current_timestamp() + datetime.timedelta(days=5),
-                 '(CURRENT_TIMESTAMP + %(current_timestamp_1)s) :: '
-                 'timestamp'),
-                (t.c.col2 + t.c.col3, '(t.col2 + t.col3) :: timestamp'
-                 ),
-                (t.c.col2 + datetime.timedelta(days=5),
-                 '(t.col2 + %(col2_1)s) :: timestamp'),
-                (datetime.timedelta(days=5) + t.c.col2,
-                 '(%(col2_1)s + t.col2) :: timestamp'),
-                (t.c.col1 + t.c.col4, '(t.col1 + t.col4) :: timestamp'
-                 ),
-                (t.c.col1 - datetime.timedelta(seconds=30),
-                 '(t.col1 - %(col1_1)s) :: timestamp'),
-                (datetime.timedelta(seconds=30) - t.c.col1,
-                 '%(col1_1)s - t.col1'),
-                (func.coalesce(t.c.col1, func.current_timestamp()),
-                 'coalesce(t.col1, CURRENT_TIMESTAMP) :: timestamp'),
-                (t.c.col3 + datetime.timedelta(seconds=30),
-                 '(t.col3 + %(col3_1)s) :: time'),
-                (func.current_timestamp() - func.coalesce(t.c.col1,
-                 func.current_timestamp()),
-                 '(CURRENT_TIMESTAMP - coalesce(t.col1, '
-                 'CURRENT_TIMESTAMP)) :: interval'),
-                (3 * func.foobar(type_=Interval),
-                 '(%(foobar_1)s * foobar()) :: interval'),
-                (literal(datetime.timedelta(seconds=10))
-                 - literal(datetime.timedelta(seconds=10)),
-                 '(%(param_1)s - %(param_2)s) :: interval'),
-                (t.c.col3 + 'some string', 't.col3 + %(col3_1)s'),
-                ]:
-                self.assert_compile(select([extract(field,
-                                    expr)]).select_from(t),
-                                    'SELECT EXTRACT(%s FROM %s) AS '
-                                    'anon_1 FROM t' % (field,
-                                    compiled_expr))
 
     def test_reserved_words(self):
         table = Table("pg_table", MetaData(),
