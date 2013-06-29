@@ -757,7 +757,12 @@ class ExtractTest(fixtures.TablesTest):
             def utcoffset(self, dt):
                 return datetime.timedelta(hours=4)
 
-        testing.db.execute(
+        conn = testing.db.connect()
+
+        # we aren't resetting this at the moment but we don't have
+        # any other tests that are TZ specific
+        conn.execute("SET SESSION TIME ZONE 0")
+        conn.execute(
             cls.tables.t.insert(),
             {
                 'dtme': datetime.datetime(2012, 5, 10, 12, 15, 25),
@@ -782,10 +787,8 @@ class ExtractTest(fixtures.TablesTest):
         elif field == 'all+tz':
             fields = {"year": 2012, "month": 5, "day": 10,
                                 "epoch": 1336637725.0,
-                                "hour": 4,
-                                # can't figure out how to get a specific
-                                # tz into the DB
-                                #"timezone": -14400
+                                "hour": 8,
+                                "timezone": 0
                                 }
         else:
             fields = field
@@ -827,7 +830,7 @@ class ExtractTest(fixtures.TablesTest):
     def test_five(self):
         t = self.tables.t
         self._test(func.coalesce(t.c.dtme, func.current_timestamp()),
-                    overrides={"epoch": 1336666525.0})
+                    overrides={"epoch": 1336652125.0})
 
     def test_six(self):
         t = self.tables.t
