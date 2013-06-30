@@ -7,6 +7,14 @@
     :version: 0.8.2
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2750
+
+        A warning is emitted when trying to flush an object of an inherited
+        class where the polymorphic discriminator has been assigned
+        to a value that is invalid for the class.
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 2740
 

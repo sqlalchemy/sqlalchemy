@@ -3,6 +3,7 @@ from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import *
 from sqlalchemy import exc as sa_exc, util, event
 from sqlalchemy.orm import *
+from sqlalchemy.orm.util import instance_str
 from sqlalchemy.orm import exc as orm_exc, attributes
 from sqlalchemy.testing.assertsql import AllOf, CompiledSQL
 from sqlalchemy.sql import table, column
@@ -573,6 +574,8 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
             pass
         class C(B):
             pass
+        class D(B):
+            pass
 
         mapper(A, table_a,
                         polymorphic_on=table_a.c.class_name,
@@ -582,6 +585,8 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
                         polymorphic_identity='b')
         mapper(C, table_c, inherits=B,
                         polymorphic_identity='c')
+        mapper(D, inherits=B,
+                        polymorphic_identity='d')
 
     def test_poly_configured_immediate(self):
         A, C, B = (self.classes.A,
@@ -612,15 +617,30 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
         assert isinstance(sess.query(A).first(), C)
 
     def test_assignment(self):
-        C, B = self.classes.C, self.classes.B
+        D, B = self.classes.D, self.classes.B
 
         sess = Session()
         b1 = B()
-        b1.class_name = 'c'
+        b1.class_name = 'd'
         sess.add(b1)
         sess.commit()
         sess.close()
-        assert isinstance(sess.query(B).first(), C)
+        assert isinstance(sess.query(B).first(), D)
+
+    def test_invalid_assignment(self):
+        C, B = self.classes.C, self.classes.B
+
+        sess = Session()
+        c1 = C()
+        c1.class_name = 'b'
+        sess.add(c1)
+        assert_raises_message(
+            sa_exc.SAWarning,
+            "Flushing object %s with incompatible "
+            "polymorphic identity 'b'; the object may not "
+            "refresh and/or load correctly" % instance_str(c1),
+            sess.flush
+        )
 
 class CascadeTest(fixtures.MappedTest):
     """that cascades on polymorphic relationships continue
