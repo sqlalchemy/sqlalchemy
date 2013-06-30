@@ -616,7 +616,10 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
 
         assert isinstance(sess.query(A).first(), C)
 
-    def test_assignment(self):
+    def test_valid_assignment_upwards(self):
+        """test that we can assign 'd' to a B, since B/D
+        both involve the same set of tables.
+        """
         D, B = self.classes.D, self.classes.B
 
         sess = Session()
@@ -627,8 +630,11 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
         sess.close()
         assert isinstance(sess.query(B).first(), D)
 
-    def test_invalid_assignment(self):
-        C, B = self.classes.C, self.classes.B
+    def test_invalid_assignment_downwards(self):
+        """test that we warn on assign of 'b' to a C, since this adds
+        a row to the C table we'd never load.
+        """
+        C = self.classes.C
 
         sess = Session()
         c1 = C()
@@ -639,6 +645,42 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
             "Flushing object %s with incompatible "
             "polymorphic identity 'b'; the object may not "
             "refresh and/or load correctly" % instance_str(c1),
+            sess.flush
+        )
+
+    def test_invalid_assignment_upwards(self):
+        """test that we warn on assign of 'c' to a B, since we will have a
+        "C" row that has no joined row, which will cause object
+        deleted errors.
+        """
+        B = self.classes.B
+
+        sess = Session()
+        b1 = B()
+        b1.class_name = 'c'
+        sess.add(b1)
+        assert_raises_message(
+            sa_exc.SAWarning,
+            "Flushing object %s with incompatible "
+            "polymorphic identity 'c'; the object may not "
+            "refresh and/or load correctly" % instance_str(b1),
+            sess.flush
+        )
+
+    def test_entirely_oob_assignment(self):
+        """test warn on an unknown polymorphic identity.
+        """
+        B = self.classes.B
+
+        sess = Session()
+        b1 = B()
+        b1.class_name = 'xyz'
+        sess.add(b1)
+        assert_raises_message(
+            sa_exc.SAWarning,
+            "Flushing object %s with incompatible "
+            "polymorphic identity 'xyz'; the object may not "
+            "refresh and/or load correctly" % instance_str(b1),
             sess.flush
         )
 
