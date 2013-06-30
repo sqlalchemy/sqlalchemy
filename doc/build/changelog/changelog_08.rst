@@ -7,6 +7,16 @@
     :version: 0.8.2
 
     .. change::
+        :tags: feature, firebird
+        :tickets: 2763
+
+        Added new flag ``retaining=True`` to the kinterbasdb and fdb dialects.
+        This controls the value of the ``retaining`` flag sent to the
+        ``commit()`` and ``rollback()`` methods of the DBAPI connection.
+        Due to historical concerns, this flag defaults to ``True``, however
+        in 0.9 this flag will be defaulted to ``False``.
+
+    .. change::
         :tags: requirements
 
         The Python `mock <https://pypi.python.org/pypi/mock>`_ library

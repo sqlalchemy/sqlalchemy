@@ -520,4 +520,37 @@ DBAPI which per the Firebird project is now their official Python driver.
 
 :ticket:`2504`
 
+Firebird ``fdb`` and ``kinterbasdb`` set ``retaining=False`` by default
+-----------------------------------------------------------------------
+
+Both the ``fdb`` and ``kinterbasdb`` DBAPIs support a flag ``retaining=True``
+which can be passed to the ``commit()`` and ``rollback()`` methods of its
+connection.  The documented rationale for this flag is so that the DBAPI
+can re-use internal transaction state for subsequent transactions, for the
+purposes of improving performance.   However, newer documentation refers
+to analyses of Firebird's "garbage collection" which expresses that this flag
+can have a negative effect on the database's ability to process cleanup
+tasks, and has been reported as *lowering* performance as a result.
+
+It's not clear how this flag is actually usable given this information,
+and as it appears to be only a performance enhancing feature, it now defaults
+to ``False``.  The value can be controlled by passing the flag ``retaining=True``
+to the :func:`.create_engine` call.  This is a new flag which is added as of
+0.8.2, so applications on 0.8.2 can begin setting this to ``True`` or ``False``
+as desired.
+
+.. seealso::
+
+    :mod:`sqlalchemy.dialects.firebird.fdb`
+
+    :mod:`sqlalchemy.dialects.firebird.kinterbasdb`
+
+    http://pythonhosted.org/fdb/usage-guide.html#retaining-transactions - information
+    on the "retaining" flag.
+
+:ticket:`2763`
+
+
+
+
 

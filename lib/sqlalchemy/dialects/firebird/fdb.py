@@ -19,7 +19,49 @@
        under the ``firebird://`` URL space, as ``fdb`` is now the official
        Python driver for Firebird.
 
-The dialect currently accepts the same arguments as the Kinterbasdb driver.
+Arguments
+----------
+
+The ``fdb`` dialect is based on the :mod:`sqlalchemy.dialects.firebird.kinterbasdb`
+dialect, however does not accept every argument that Kinterbasdb does.
+
+* ``enable_rowcount`` - True by default, setting this to False disables
+  the usage of "cursor.rowcount" with the
+  Kinterbasdb dialect, which SQLAlchemy ordinarily calls upon automatically
+  after any UPDATE or DELETE statement.   When disabled, SQLAlchemy's
+  ResultProxy will return -1 for result.rowcount.   The rationale here is
+  that Kinterbasdb requires a second round trip to the database when
+  .rowcount is called -  since SQLA's resultproxy automatically closes
+  the cursor after a non-result-returning statement, rowcount must be
+  called, if at all, before the result object is returned.   Additionally,
+  cursor.rowcount may not return correct results with older versions
+  of Firebird, and setting this flag to False will also cause the
+  SQLAlchemy ORM to ignore its usage. The behavior can also be controlled on a
+  per-execution basis using the ``enable_rowcount`` option with
+  :meth:`.Connection.execution_options`::
+
+      conn = engine.connect().execution_options(enable_rowcount=True)
+      r = conn.execute(stmt)
+      print r.rowcount
+
+* ``retaining`` - False by default.   Setting this to True will pass the
+  ``retaining=True`` keyword argument to the ``.commit()`` and ``.rollback()``
+  methods of the DBAPI connection, which can improve performance in some
+  situations, but apparently with significant caveats.
+  Please read the fdb and/or kinterbasdb DBAPI documentation in order to
+  understand the implications of this flag.
+
+  .. versionadded:: 0.8.2 - ``retaining`` keyword argument specifying
+     transaction retaining behavior - in 0.8 it defaults to ``True``
+     for backwards compatibility.
+
+  .. versionchanged:: 0.9.0 - the ``retaining`` flag defaults to ``False``.
+     In 0.8 it defaulted to ``True``.
+
+  .. seealso::
+
+    http://pythonhosted.org/fdb/usage-guide.html#retaining-transactions - information
+    on the "retaining" flag.
 
 """
 
@@ -28,6 +70,12 @@ from ... import util
 
 
 class FBDialect_fdb(FBDialect_kinterbasdb):
+
+    def __init__(self, enable_rowcount=True,
+                            retaining=False, **kwargs):
+        super(FBDialect_fdb, self).__init__(
+                            enable_rowcount=enable_rowcount,
+                            retaining=retaining, **kwargs)
 
     @classmethod
     def dbapi(cls):
