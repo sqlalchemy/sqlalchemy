@@ -555,11 +555,12 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
         Table('table_b', metadata,
            Column('id', Integer, ForeignKey('table_a.id'),
                                 primary_key=True),
-           Column('class_name', String(50))
+           Column('class_name', String(50)),
         )
         Table('table_c', metadata,
            Column('id', Integer, ForeignKey('table_b.id'),
-                                primary_key=True)
+                                primary_key=True),
+           Column('data', String(10))
         )
 
     @classmethod
@@ -681,6 +682,36 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
             "Flushing object %s with incompatible "
             "polymorphic identity 'xyz'; the object may not "
             "refresh and/or load correctly" % instance_str(b1),
+            sess.flush
+        )
+
+    def test_not_set_on_upate(self):
+        C = self.classes.C
+
+        sess = Session()
+        c1 = C()
+        sess.add(c1)
+        sess.commit()
+        sess.expire(c1)
+
+        c1.data = 'foo'
+        sess.flush()
+
+    def test_validate_on_upate(self):
+        C = self.classes.C
+
+        sess = Session()
+        c1 = C()
+        sess.add(c1)
+        sess.commit()
+        sess.expire(c1)
+
+        c1.class_name = 'b'
+        assert_raises_message(
+            sa_exc.SAWarning,
+            "Flushing object %s with incompatible "
+            "polymorphic identity 'b'; the object may not "
+            "refresh and/or load correctly" % instance_str(c1),
             sess.flush
         )
 

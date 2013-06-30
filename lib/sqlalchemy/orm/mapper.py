@@ -1052,7 +1052,8 @@ class Mapper(_InspectionAttr):
                         state.manager.mapper.polymorphic_identity, None)
 
             def _validate_polymorphic_identity(mapper, state, dict_):
-                if dict_[polymorphic_key] not in \
+                if polymorphic_key in dict_ and \
+                    dict_[polymorphic_key] not in \
                     mapper._acceptable_polymorphic_identities:
                     util.warn(
                                 "Flushing object %s with "
