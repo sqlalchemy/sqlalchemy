@@ -7,6 +7,15 @@
     :version: 0.8.2
 
     .. change::
+        :tags: requirements
+
+        The Python `mock <https://pypi.python.org/pypi/mock>`_ library
+        is now required in order to run the unit test suite.  While part
+        of the standard library as of Python 3.3, previous Python installations
+        will need to install this in order to run unit tests or to
+        use the ``sqlalchemy.testing`` package for external dialects.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2750
 

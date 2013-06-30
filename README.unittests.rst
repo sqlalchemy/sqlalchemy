@@ -7,11 +7,17 @@ module.  If running on Python 2.4, pysqlite must be installed.
 
 Unit tests are run using nose.  Nose is available at::
 
-    http://pypi.python.org/pypi/nose/
+    https://pypi.python.org/pypi/nose/
 
 SQLAlchemy implements a nose plugin that must be present when tests are run.
 This plugin is invoked when the test runner script provided with
 SQLAlchemy is used.
+
+The test suite as of version 0.8.2 also requires the mock library.  While
+mock is part of the Python standard library as of 3.3, previous versions
+will need to have it installed, and is available at::
+
+    https://pypi.python.org/pypi/mock
 
 **NOTE:** - the nose plugin is no longer installed by setuptools as of
 version 0.7 !  Use "python setup.py test" or "./sqla_nose.py".

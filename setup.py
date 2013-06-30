@@ -119,8 +119,7 @@ def run_setup(with_cext):
         package_dir={'': 'lib'},
         license="MIT License",
         cmdclass=cmdclass,
-
-        tests_require=['nose >= 0.11'],
+        tests_require=['nose >= 0.11', 'mock'],
         test_suite="sqla_nose",
         long_description=readme,
         classifiers=[

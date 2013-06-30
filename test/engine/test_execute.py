@@ -19,6 +19,8 @@ from sqlalchemy.dialects.oracle.zxjdbc import ReturningParam
 from sqlalchemy.engine import result as _result, default
 from sqlalchemy.engine.base import Connection, Engine
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.mock import Mock, call
+
 
 users, metadata, users_autoinc = None, None, None
 class ExecuteTest(fixtures.TestBase):
@@ -455,20 +457,22 @@ class ConvenienceExecuteTest(fixtures.TablesTest):
 
     def test_transaction_engine_ctx_begin_fails(self):
         engine = engines.testing_engine()
-        class MockConnection(Connection):
-            closed = False
-            def begin(self):
-                raise Exception("boom")
 
-            def close(self):
-                MockConnection.closed = True
-        engine._connection_cls = MockConnection
-        fn = self._trans_fn()
+        mock_connection = Mock(
+            return_value=Mock(
+                        begin=Mock(side_effect=Exception("boom"))
+                    )
+        )
+        engine._connection_cls = mock_connection
         assert_raises(
             Exception,
             engine.begin
         )
-        assert MockConnection.closed
+
+        eq_(
+            mock_connection.return_value.close.mock_calls,
+            [call()]
+        )
 
     def test_transaction_engine_ctx_rollback(self):
         fn = self._trans_rollback_fn()

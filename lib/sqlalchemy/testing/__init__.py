@@ -18,3 +18,5 @@ from .util import run_as_contextmanager, rowset, fail, provide_metadata, adict
 crashes = skip
 
 from .config import db, requirements as requires
+
+from . import mock
