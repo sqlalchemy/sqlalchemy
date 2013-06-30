@@ -2,6 +2,9 @@ from sqlalchemy import *
 from sqlalchemy.testing import fixtures, AssertsExecutionResults, profiling
 from sqlalchemy import testing
 from sqlalchemy.testing import eq_
+from sqlalchemy.engine.result import RowProxy
+import sys
+
 NUM_FIELDS = 10
 NUM_RECORDS = 1000
 
@@ -79,7 +82,6 @@ class RowProxyTest(fixtures.TestBase):
     __requires__ = 'cpython',
 
     def _rowproxy_fixture(self, keys, processors, row):
-        from sqlalchemy.engine.result import RowProxy
         class MockMeta(object):
             def __init__(self):
                 pass
@@ -95,7 +97,6 @@ class RowProxyTest(fixtures.TestBase):
         return RowProxy(metadata, row, processors, keymap)
 
     def _test_getitem_value_refcounts(self, seq_factory):
-        import sys
         col1, col2 = object(), object()
         def proc1(value):
             return value

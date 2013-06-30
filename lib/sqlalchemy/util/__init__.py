@@ -5,7 +5,8 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from .compat import callable, cmp, reduce,  \
-    threading, py3k, py2k, py3k_warning, jython, pypy, cpython, win32, set_types, \
+    threading, py3k, py33, py2k, py3k_warning, jython, pypy, cpython, win32, \
+    set_types, \
     pickle, dottedgetter, parse_qsl, namedtuple, next, WeakSet, reraise, \
     raise_from_cause, u, b, ue, string_types, text_type, int_types
 

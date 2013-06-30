@@ -3,28 +3,19 @@ from sqlalchemy.engine.ddl import SchemaGenerator, SchemaDropper
 from sqlalchemy.engine import default
 from sqlalchemy import MetaData, Table, Column, Integer, Sequence
 from sqlalchemy import schema
+from sqlalchemy.testing.mock import Mock
 
 class EmitDDLTest(fixtures.TestBase):
     def _mock_connection(self, item_exists):
-        _canary = []
+        def has_item(connection, name, schema):
+            return item_exists(name)
 
-        class MockDialect(default.DefaultDialect):
-            supports_sequences = True
-
-            def has_table(self, connection, name, schema):
-                return item_exists(name)
-
-            def has_sequence(self, connection, name, schema):
-                return item_exists(name)
-
-        class MockConnection(object):
-            dialect = MockDialect()
-            canary = _canary
-
-            def execute(self, item):
-                _canary.append(item)
-
-        return MockConnection()
+        return Mock(dialect=Mock(
+                    supports_sequences=True,
+                    has_table=Mock(side_effect=has_item),
+                    has_sequence=Mock(side_effect=has_item)
+                )
+                )
 
     def _mock_create_fixture(self, checkfirst, tables,
                     item_exists=lambda item: False):
@@ -176,7 +167,8 @@ class EmitDDLTest(fixtures.TestBase):
 
     def _assert_ddl(self, ddl_cls, elements, generator, argument):
         generator.traverse_single(argument)
-        for c in generator.connection.canary:
+        for call_ in generator.connection.execute.mock_calls:
+            c = call_[1][0]
             assert isinstance(c, ddl_cls)
             assert c.element in elements, "element %r was not expected"\
                              % c.element

@@ -16,6 +16,7 @@ from sqlalchemy import exc, schema
 from sqlalchemy.dialects.postgresql import base as postgresql
 import logging
 import logging.handlers
+from sqlalchemy.testing.mock import Mock
 
 class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
@@ -37,18 +38,12 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                       'The JDBC driver handles the version parsing')
     def test_version_parsing(self):
 
-
-        class MockConn(object):
-
-            def __init__(self, res):
-                self.res = res
-
-            def execute(self, str):
-                return self
-
-            def scalar(self):
-                return self.res
-
+        def mock_conn(res):
+            return Mock(
+                    execute=Mock(
+                            return_value=Mock(scalar=Mock(return_value=res))
+                        )
+                    )
 
         for string, version in \
             [('PostgreSQL 8.3.8 on i686-redhat-linux-gnu, compiled by '
@@ -59,7 +54,7 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
              ('EnterpriseDB 9.1.2.2 on x86_64-unknown-linux-gnu, '
              'compiled by gcc (GCC) 4.1.2 20080704 (Red Hat 4.1.2-50), '
              '64-bit', (9, 1, 2))]:
-            eq_(testing.db.dialect._get_server_version_info(MockConn(string)),
+            eq_(testing.db.dialect._get_server_version_info(mock_conn(string)),
                 version)
 
     @testing.only_on('postgresql+psycopg2', 'psycopg2-specific feature')

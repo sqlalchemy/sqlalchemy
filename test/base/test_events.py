@@ -5,6 +5,8 @@ from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, \
 from sqlalchemy import event, exc
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.util import gc_collect
+from sqlalchemy.testing.mock import Mock, call
+
 
 class EventsTest(fixtures.TestBase):
     """Test class- and instance-level event registration."""
@@ -190,7 +192,7 @@ class ClsLevelListenTest(fixtures.TestBase):
     def test_lis_subcalss_lis(self):
         @event.listens_for(self.TargetOne, "event_one")
         def handler1(x, y):
-            print 'handler1'
+            pass
 
         class SubTarget(self.TargetOne):
             pass
@@ -207,7 +209,7 @@ class ClsLevelListenTest(fixtures.TestBase):
     def test_lis_multisub_lis(self):
         @event.listens_for(self.TargetOne, "event_one")
         def handler1(x, y):
-            print 'handler1'
+            pass
 
         class SubTarget(self.TargetOne):
             pass
@@ -411,12 +413,8 @@ class ListenOverrideTest(fixtures.TestBase):
         event._remove_dispatcher(self.Target.__dict__['dispatch'].events)
 
     def test_listen_override(self):
-        result = []
-        def listen_one(x):
-            result.append(x)
-
-        def listen_two(x, y):
-            result.append((x, y))
+        listen_one = Mock()
+        listen_two = Mock()
 
         event.listen(self.Target, "event_one", listen_one, add=True)
         event.listen(self.Target, "event_one", listen_two)
@@ -425,10 +423,13 @@ class ListenOverrideTest(fixtures.TestBase):
         t1.dispatch.event_one(5, 7)
         t1.dispatch.event_one(10, 5)
 
-        eq_(result,
-            [
-                12, (5, 7), 15, (10, 5)
-            ]
+        eq_(
+            listen_one.mock_calls,
+            [call(12), call(15)]
+        )
+        eq_(
+            listen_two.mock_calls,
+            [call(5, 7), call(10, 5)]
         )
 
 class PropagateTest(fixtures.TestBase):
@@ -446,12 +447,8 @@ class PropagateTest(fixtures.TestBase):
 
 
     def test_propagate(self):
-        result = []
-        def listen_one(target, arg):
-            result.append((target, arg))
-
-        def listen_two(target, arg):
-            result.append((target, arg))
+        listen_one = Mock()
+        listen_two = Mock()
 
         t1 = self.Target()
 
@@ -464,7 +461,15 @@ class PropagateTest(fixtures.TestBase):
 
         t2.dispatch.event_one(t2, 1)
         t2.dispatch.event_two(t2, 2)
-        eq_(result, [(t2, 1)])
+
+        eq_(
+            listen_one.mock_calls,
+            [call(t2, 1)]
+        )
+        eq_(
+            listen_two.mock_calls,
+            []
+        )
 
 class JoinTest(fixtures.TestBase):
     def setUp(self):
@@ -497,12 +502,6 @@ class JoinTest(fixtures.TestBase):
             if 'dispatch' in cls.__dict__:
                 event._remove_dispatcher(cls.__dict__['dispatch'].events)
 
-    def _listener(self):
-        canary = []
-        def listen(target, arg):
-            canary.append((target, arg))
-        return listen, canary
-
     def test_neither(self):
         element = self.TargetFactory().create()
         element.run_event(1)
@@ -510,22 +509,22 @@ class JoinTest(fixtures.TestBase):
         element.run_event(3)
 
     def test_parent_class_only(self):
-        _listener, canary = self._listener()
+        l1 = Mock()
 
-        event.listen(self.TargetFactory, "event_one", _listener)
+        event.listen(self.TargetFactory, "event_one", l1)
 
         element = self.TargetFactory().create()
         element.run_event(1)
         element.run_event(2)
         element.run_event(3)
         eq_(
-            canary,
-            [(element, 1), (element, 2), (element, 3)]
+            l1.mock_calls,
+            [call(element, 1), call(element, 2), call(element, 3)]
         )
 
     def test_parent_class_child_class(self):
-        l1, c1 = self._listener()
-        l2, c2 = self._listener()
+        l1 = Mock()
+        l2 = Mock()
 
         event.listen(self.TargetFactory, "event_one", l1)
         event.listen(self.TargetElement, "event_one", l2)
@@ -535,17 +534,17 @@ class JoinTest(fixtures.TestBase):
         element.run_event(2)
         element.run_event(3)
         eq_(
-            c1,
-            [(element, 1), (element, 2), (element, 3)]
+            l1.mock_calls,
+            [call(element, 1), call(element, 2), call(element, 3)]
         )
         eq_(
-            c2,
-            [(element, 1), (element, 2), (element, 3)]
+            l2.mock_calls,
+            [call(element, 1), call(element, 2), call(element, 3)]
         )
 
     def test_parent_class_child_instance_apply_after(self):
-        l1, c1 = self._listener()
-        l2, c2 = self._listener()
+        l1 = Mock()
+        l2 = Mock()
 
         event.listen(self.TargetFactory, "event_one", l1)
         element = self.TargetFactory().create()
@@ -557,17 +556,17 @@ class JoinTest(fixtures.TestBase):
         element.run_event(3)
 
         eq_(
-            c1,
-            [(element, 1), (element, 2), (element, 3)]
+            l1.mock_calls,
+            [call(element, 1), call(element, 2), call(element, 3)]
         )
         eq_(
-            c2,
-            [(element, 2), (element, 3)]
+            l2.mock_calls,
+            [call(element, 2), call(element, 3)]
         )
 
     def test_parent_class_child_instance_apply_before(self):
-        l1, c1 = self._listener()
-        l2, c2 = self._listener()
+        l1 = Mock()
+        l2 = Mock()
 
         event.listen(self.TargetFactory, "event_one", l1)
         element = self.TargetFactory().create()
@@ -579,17 +578,17 @@ class JoinTest(fixtures.TestBase):
         element.run_event(3)
 
         eq_(
-            c1,
-            [(element, 1), (element, 2), (element, 3)]
+            l1.mock_calls,
+            [call(element, 1), call(element, 2), call(element, 3)]
         )
         eq_(
-            c2,
-            [(element, 1), (element, 2), (element, 3)]
+            l2.mock_calls,
+            [call(element, 1), call(element, 2), call(element, 3)]
         )
 
     def test_parent_instance_child_class_apply_before(self):
-        l1, c1 = self._listener()
-        l2, c2 = self._listener()
+        l1 = Mock()
+        l2 = Mock()
 
         event.listen(self.TargetElement, "event_one", l2)
 
@@ -603,17 +602,18 @@ class JoinTest(fixtures.TestBase):
         element.run_event(3)
 
         eq_(
-            c1,
-            [(element, 1), (element, 2), (element, 3)]
+            l1.mock_calls,
+            [call(element, 1), call(element, 2), call(element, 3)]
         )
         eq_(
-            c2,
-            [(element, 1), (element, 2), (element, 3)]
+            l2.mock_calls,
+            [call(element, 1), call(element, 2), call(element, 3)]
         )
 
+
     def test_parent_instance_child_class_apply_after(self):
-        l1, c1 = self._listener()
-        l2, c2 = self._listener()
+        l1 = Mock()
+        l2 = Mock()
 
         event.listen(self.TargetElement, "event_one", l2)
 
@@ -632,18 +632,16 @@ class JoinTest(fixtures.TestBase):
         # this can be changed to be "live" at the cost
         # of performance.
         eq_(
-            c1,
-            []
-            #(element, 2), (element, 3)]
+            l1.mock_calls, []
         )
         eq_(
-            c2,
-            [(element, 1), (element, 2), (element, 3)]
+            l2.mock_calls,
+            [call(element, 1), call(element, 2), call(element, 3)]
         )
 
     def test_parent_instance_child_instance_apply_before(self):
-        l1, c1 = self._listener()
-        l2, c2 = self._listener()
+        l1 = Mock()
+        l2 = Mock()
         factory = self.TargetFactory()
 
         event.listen(factory, "event_one", l1)
@@ -656,16 +654,16 @@ class JoinTest(fixtures.TestBase):
         element.run_event(3)
 
         eq_(
-            c1,
-            [(element, 1), (element, 2), (element, 3)]
+            l1.mock_calls,
+            [call(element, 1), call(element, 2), call(element, 3)]
         )
         eq_(
-            c2,
-            [(element, 1), (element, 2), (element, 3)]
+            l2.mock_calls,
+            [call(element, 1), call(element, 2), call(element, 3)]
         )
 
     def test_parent_events_child_no_events(self):
-        l1, c1 = self._listener()
+        l1 = Mock()
         factory = self.TargetFactory()
 
         event.listen(self.TargetElement, "event_one", l1)
@@ -676,6 +674,6 @@ class JoinTest(fixtures.TestBase):
         element.run_event(3)
 
         eq_(
-            c1,
-            [(element, 1), (element, 2), (element, 3)]
+            l1.mock_calls,
+            [call(element, 1), call(element, 2), call(element, 3)]
         )
