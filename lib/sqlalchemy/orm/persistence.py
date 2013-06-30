@@ -150,6 +150,9 @@ def _organize_states_for_save(base_mapper, states, uowtransaction):
         else:
             mapper.dispatch.before_update(mapper, connection, state)
 
+        if mapper._validate_polymorphic_identity:
+            mapper._validate_polymorphic_identity(mapper, state, dict_)
+
         # detect if we have a "pending" instance (i.e. has
         # no instance_key attached to it), and another instance
         # with the same identity key already exists as persistent.

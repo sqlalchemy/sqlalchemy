@@ -28,7 +28,7 @@ from .interfaces import MapperProperty, _InspectionAttr, _MappedAttribute
 
 from .util import _INSTRUMENTOR, _class_to_mapper, \
         _state_mapper, class_mapper, \
-        PathRegistry
+        PathRegistry, state_str
 import sys
 properties = util.importlater("sqlalchemy.orm", "properties")
 descriptor_props = util.importlater("sqlalchemy.orm", "descriptor_props")
@@ -1040,6 +1040,8 @@ class Mapper(_InspectionAttr):
                     if self.polymorphic_on is not None:
                         self._set_polymorphic_identity = \
                             mapper._set_polymorphic_identity
+                        self._validate_polymorphic_identity = \
+                            mapper._validate_polymorphic_identity
                     else:
                         self._set_polymorphic_identity = None
                     return
@@ -1050,9 +1052,38 @@ class Mapper(_InspectionAttr):
                 state.get_impl(polymorphic_key).set(state, dict_,
                         state.manager.mapper.polymorphic_identity, None)
 
+            def _validate_polymorphic_identity(mapper, state, dict_):
+                if dict_[polymorphic_key] not in \
+                    mapper._acceptable_polymorphic_identities:
+                    util.warn(
+                                "Flushing object %s with "
+                                "incompatible polymorphic identity %r; the "
+                                "object may not refresh and/or load correctly" % (
+                                        state_str(state),
+                                        dict_[polymorphic_key]
+                                    )
+                            )
+
             self._set_polymorphic_identity = _set_polymorphic_identity
+            self._validate_polymorphic_identity = _validate_polymorphic_identity
         else:
             self._set_polymorphic_identity = None
+
+
+    _validate_polymorphic_identity = None
+
+    @_memoized_configured_property
+    def _acceptable_polymorphic_identities(self):
+        identities = set()
+
+        stack = deque([self])
+        while stack:
+            item = stack.popleft()
+            if item.mapped_table is self.mapped_table:
+                identities.add(item.polymorphic_identity)
+                stack.extend(item._inheriting_mappers)
+
+        return identities
 
     def _adapt_inherited_property(self, key, prop, init):
         if not self.concrete:
