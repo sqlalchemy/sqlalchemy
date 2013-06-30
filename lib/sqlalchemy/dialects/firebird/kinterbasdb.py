@@ -14,38 +14,26 @@
 Arguments
 ----------
 
-Kinterbasedb backend specific keyword arguments are:
+The Kinterbasdb backend accepts the ``enable_rowcount`` and ``retaining``
+arguments accepted by the :mod:`sqlalchemy.dialects.firebird.fdb` dialect.   In addition, it
+also accepts the following:
 
-* type_conv - select the kind of mapping done on the types: by default
-  SQLAlchemy uses 200 with Unicode, datetime and decimal support (see
-  details__).
+* ``type_conv`` - select the kind of mapping done on the types: by default
+  SQLAlchemy uses 200 with Unicode, datetime and decimal support.  See
+  the linked documents below for further information.
 
-* concurrency_level - set the backend policy with regards to threading
-  issues: by default SQLAlchemy uses policy 1 (see details__).
+* ``concurrency_level`` - set the backend policy with regards to threading
+  issues: by default SQLAlchemy uses policy 1.  See the linked documents
+  below for futher information.
 
-* enable_rowcount - True by default, setting this to False disables
-  the usage of "cursor.rowcount" with the
-  Kinterbasdb dialect, which SQLAlchemy ordinarily calls upon automatically
-  after any UPDATE or DELETE statement.   When disabled, SQLAlchemy's
-  ResultProxy will return -1 for result.rowcount.   The rationale here is
-  that Kinterbasdb requires a second round trip to the database when
-  .rowcount is called -  since SQLA's resultproxy automatically closes
-  the cursor after a non-result-returning statement, rowcount must be
-  called, if at all, before the result object is returned.   Additionally,
-  cursor.rowcount may not return correct results with older versions
-  of Firebird, and setting this flag to False will also cause the
-  SQLAlchemy ORM to ignore its usage. The behavior can also be controlled on a
-  per-execution basis using the `enable_rowcount` option with
-  :meth:`execution_options()`::
+.. seealso::
 
-      conn = engine.connect().execution_options(enable_rowcount=True)
-      r = conn.execute(stmt)
-      print r.rowcount
+    http://sourceforge.net/projects/kinterbasdb
 
-__ http://sourceforge.net/projects/kinterbasdb
-__ http://firebirdsql.org/index.php?op=devel&sub=python
-__ http://kinterbasdb.sourceforge.net/dist_docs/usage.html#adv_param_conv_dynamic_type_translation
-__ http://kinterbasdb.sourceforge.net/dist_docs/usage.html#special_issue_concurrency
+    http://kinterbasdb.sourceforge.net/dist_docs/usage.html#adv_param_conv_dynamic_type_translation
+
+    http://kinterbasdb.sourceforge.net/dist_docs/usage.html#special_issue_concurrency
+
 """
 
 from .base import FBDialect, FBExecutionContext
@@ -91,17 +79,30 @@ class FBDialect_kinterbasdb(FBDialect):
     )
 
     def __init__(self, type_conv=200, concurrency_level=1,
-                            enable_rowcount=True, **kwargs):
+                            enable_rowcount=True,
+                            retaining=True, **kwargs):
         super(FBDialect_kinterbasdb, self).__init__(**kwargs)
         self.enable_rowcount = enable_rowcount
         self.type_conv = type_conv
         self.concurrency_level = concurrency_level
+        self.retaining = retaining
         if enable_rowcount:
             self.supports_sane_rowcount = True
 
     @classmethod
     def dbapi(cls):
         return __import__('kinterbasdb')
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+        # kinterbase does not accept a None, but wants an empty list
+        # when there are no arguments.
+        cursor.execute(statement, parameters or [])
+
+    def do_rollback(self, dbapi_connection):
+        dbapi_connection.rollback(self.retaining)
+
+    def do_commit(self, dbapi_connection):
+        dbapi_connection.commit(self.retaining)
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username='user')

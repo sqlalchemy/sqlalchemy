@@ -444,3 +444,76 @@ class MiscTest(fixtures.TestBase):
             (text("select 'hello % world' from rdb$database"),
              'hello % world'):
             eq_(testing.db.scalar(expr), result)
+
+from sqlalchemy.testing.mock import Mock, call
+
+
+class ArgumentTest(fixtures.TestBase):
+    def _dbapi(self):
+        return Mock(
+                    paramstyle='qmark',
+                    connect=Mock(
+                            return_value=Mock(
+                                server_version="UI-V6.3.2.18118 Firebird 2.1",
+                                cursor=Mock(return_value=Mock())
+                            )
+                    )
+                )
+
+    def _engine(self, type_, **kw):
+        dbapi = self._dbapi()
+        kw.update(
+            dict(
+                    module=dbapi,
+                    _initialize=False
+            )
+        )
+        engine = engines.testing_engine("firebird+%s://" % type_,
+                                options=kw)
+        return engine
+
+    def test_retaining_flag_default_kinterbasdb(self):
+        engine = self._engine("kinterbasdb")
+        self._assert_retaining(engine, True)
+
+    def test_retaining_flag_true_kinterbasdb(self):
+        engine = self._engine("kinterbasdb", retaining=True)
+        self._assert_retaining(engine, True)
+
+    def test_retaining_flag_false_kinterbasdb(self):
+        engine = self._engine("kinterbasdb", retaining=False)
+        self._assert_retaining(engine, False)
+
+    def test_retaining_flag_default_fdb(self):
+        engine = self._engine("fdb")
+        self._assert_retaining(engine, True)
+
+    def test_retaining_flag_true_fdb(self):
+        engine = self._engine("fdb", retaining=True)
+        self._assert_retaining(engine, True)
+
+    def test_retaining_flag_false_fdb(self):
+        engine = self._engine("fdb", retaining=False)
+        self._assert_retaining(engine, False)
+
+
+    def _assert_retaining(self, engine, flag):
+        conn = engine.connect()
+        trans = conn.begin()
+        trans.commit()
+        eq_(
+            engine.dialect.dbapi.connect.return_value.commit.mock_calls,
+            [call(flag)]
+        )
+
+        trans = conn.begin()
+        trans.rollback()
+        eq_(
+            engine.dialect.dbapi.connect.return_value.rollback.mock_calls,
+            [call(flag)]
+        )
+
+
+
+
+

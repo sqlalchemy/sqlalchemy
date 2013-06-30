@@ -717,15 +717,3 @@ class FBDialect(default.DefaultDialect):
 
         return indexes.values()
 
-    def do_execute(self, cursor, statement, parameters, context=None):
-        # kinterbase does not accept a None, but wants an empty list
-        # when there are no arguments.
-        cursor.execute(statement, parameters or [])
-
-    def do_rollback(self, dbapi_connection):
-        # Use the retaining feature, that keeps the transaction going
-        dbapi_connection.rollback(True)
-
-    def do_commit(self, dbapi_connection):
-        # Use the retaining feature, that keeps the transaction going
-        dbapi_connection.commit(True)
