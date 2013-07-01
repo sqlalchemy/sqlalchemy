@@ -1,3 +1,5 @@
+from __future__ import with_statement
+
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 import time
 from sqlalchemy import select, MetaData, Integer, String, create_engine, pool
@@ -380,7 +382,7 @@ def _assert_invalidated(fn, *args):
     try:
         fn(*args)
         assert False
-    except tsa.exc.DBAPIError as e:
+    except tsa.exc.DBAPIError, e:
         if not e.connection_invalidated:
             raise
 

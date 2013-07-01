@@ -1,3 +1,5 @@
+from __future__ import with_statement
+
 import threading
 import time
 from sqlalchemy import pool, select, event
