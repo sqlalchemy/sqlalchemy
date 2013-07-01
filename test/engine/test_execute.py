@@ -19,6 +19,8 @@ from sqlalchemy.engine import result as _result, default
 from sqlalchemy.engine.base import Connection, Engine
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.mock import Mock, call
+import StringIO
+
 
 users, metadata, users_autoinc = None, None, None
 class ExecuteTest(fixtures.TestBase):
