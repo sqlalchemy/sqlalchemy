@@ -788,6 +788,7 @@ class QueuePoolTest(PoolTestBase):
         except tsa.exc.TimeoutError:
             assert int(time.time() - now) == 2
 
+    @testing.requires.threading_with_mock
     def test_timeout_race(self):
         # test a race condition where the initial connecting threads all race
         # to queue.Empty, then block on the mutex.  each thread consumes a
@@ -863,6 +864,7 @@ class QueuePoolTest(PoolTestBase):
         lazy_gc()
         assert not pool._refs
 
+    @testing.requires.threading_with_mock
     def test_waiters_handled(self):
         """test that threads waiting for connections are
         handled when the pool is replaced.
@@ -899,6 +901,7 @@ class QueuePoolTest(PoolTestBase):
         time.sleep(2)
         eq_(len(success), 12)
 
+    @testing.requires.threading_with_mock
     @testing.requires.python26
     def test_notify_waiters(self):
         dbapi = MockDBAPI()
@@ -966,9 +969,11 @@ class QueuePoolTest(PoolTestBase):
         c3 = p.connect()
         assert c3.connection is c2_con
 
+    @testing.requires.threading_with_mock
     def test_no_overflow(self):
         self._test_overflow(40, 0)
 
+    @testing.requires.threading_with_mock
     def test_max_overflow(self):
         self._test_overflow(40, 5)
 
@@ -1146,9 +1151,11 @@ class QueuePoolTest(PoolTestBase):
 
 class SingletonThreadPoolTest(PoolTestBase):
 
+    @testing.requires.threading_with_mock
     def test_cleanup(self):
         self._test_cleanup(False)
 
+    @testing.requires.threading_with_mock
     def test_cleanup_no_gc(self):
         self._test_cleanup(True)
 
