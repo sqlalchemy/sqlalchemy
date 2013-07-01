@@ -72,6 +72,7 @@
         Postgresql index would be reflected in the wrong order.
         Courtesy Roman Podolyaka.  Also in 0.8.2.
 
+    .. change::
         :tags: bug, sql
         :tickets: 2746, 2668
 
