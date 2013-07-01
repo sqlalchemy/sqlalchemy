@@ -648,6 +648,15 @@ class DefaultRequirements(SuiteRequirements):
                 "Not supported on MySQL + Windows"
             )
 
+    def threading_with_mock(self, fn):
+        """Mark tests that use threading and mock at the same time, so they
+        can be excluded using "-a '!threading_with_mock'" - stability
+        issues have been observed with coverage + python 3.3
+
+        """
+        fn.threading_with_mock = True
+        return fn
+
     @property
     def selectone(self):
         """target driver must support the literal statement 'select 1'"""
