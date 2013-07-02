@@ -387,6 +387,8 @@ Generates (everywhere except SQLite)::
 
 :ticket:`2369` :ticket:`2587`
 
+.. _migration_1068:
+
 Label constructs can now render as their name alone in an ORDER BY
 ------------------------------------------------------------------
 
@@ -422,6 +424,8 @@ The above format works on all databases tested, but might have compatibility iss
 that will disable the feature based on database version detection.
 
 :ticket:`1068`
+
+.. _migration_1765:
 
 Columns can reliably get their type from a column referred to via ForeignKey
 ----------------------------------------------------------------------------

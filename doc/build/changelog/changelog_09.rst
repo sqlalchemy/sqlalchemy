@@ -148,6 +148,10 @@
         target column as soon as that other column is associated,
         and now works for composite foreign keys as well.
 
+        .. seealso::
+
+            :ref:`migration_1765`
+
     .. change::
         :tags: feature, sql
         :tickets: 2744, 2734
@@ -404,6 +408,10 @@
         full expression.  This gives the database a better chance to
         optimize the evaulation of the same expression in two different
         contexts.
+
+        .. seealso::
+
+            :ref:`migration_1068`
 
     .. change::
         :tags: feature, firebird
