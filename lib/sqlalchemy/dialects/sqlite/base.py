@@ -137,8 +137,9 @@ from sqlalchemy import util
 from sqlalchemy.sql import compiler
 from sqlalchemy import processors
 
-from sqlalchemy.types import BLOB, BOOLEAN, CHAR, DATE, DATETIME, DECIMAL,\
-    FLOAT, REAL, INTEGER, NUMERIC, SMALLINT, TEXT, TIME, TIMESTAMP, VARCHAR
+from sqlalchemy.types import BIGINT, BLOB, BOOLEAN, CHAR,\
+    DECIMAL, FLOAT, REAL, INTEGER, NUMERIC, SMALLINT, TEXT,\
+    TIMESTAMP, VARCHAR
 
 
 class _DateTimeMixin(object):
@@ -384,6 +385,7 @@ colspecs = {
 }
 
 ischema_names = {
+    'BIGINT': sqltypes.BIGINT,
     'BLOB': sqltypes.BLOB,
     'BOOL': sqltypes.BOOLEAN,
     'BOOLEAN': sqltypes.BOOLEAN,
