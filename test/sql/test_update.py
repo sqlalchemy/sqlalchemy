@@ -1,6 +1,7 @@
 from sqlalchemy import *
 from sqlalchemy import testing
 from sqlalchemy.dialects import mysql
+from sqlalchemy.engine import default
 from sqlalchemy.testing import AssertsCompiledSQL, eq_, fixtures
 from sqlalchemy.testing.schema import Table, Column
 
@@ -221,6 +222,44 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         assert not hasattr(expr, 'key')
         self.assert_compile(table1.update().values({expr: 'bar'}),
             'UPDATE mytable SET foo(myid)=:param_1')
+
+    def test_update_bound_ordering(self):
+        """test that bound parameters between the UPDATE and FROM clauses
+        order correctly in different SQL compilation scenarios.
+
+        """
+        table1 = self.tables.mytable
+        table2 = self.tables.myothertable
+        sel = select([table2]).where(table2.c.otherid == 5).alias()
+        upd = table1.update().\
+                    where(table1.c.name == sel.c.othername).\
+                    values(name='foo')
+
+        dialect = default.DefaultDialect()
+        dialect.positional = True
+        self.assert_compile(
+            upd,
+            "UPDATE mytable SET name=:name FROM (SELECT "
+            "myothertable.otherid AS otherid, "
+            "myothertable.othername AS othername "
+            "FROM myothertable "
+            "WHERE myothertable.otherid = :otherid_1) AS anon_1 "
+            "WHERE mytable.name = anon_1.othername",
+            checkpositional=('foo', 5),
+            dialect=dialect
+        )
+
+        self.assert_compile(
+            upd,
+            "UPDATE mytable, (SELECT myothertable.otherid AS otherid, "
+            "myothertable.othername AS othername "
+            "FROM myothertable "
+            "WHERE myothertable.otherid = %s) AS anon_1 SET mytable.name=%s "
+            "WHERE mytable.name = anon_1.othername",
+            checkpositional=(5, 'foo'),
+            dialect=mysql.dialect()
+        )
+
 
 
 class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,

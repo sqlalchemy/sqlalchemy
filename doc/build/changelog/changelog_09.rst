@@ -7,6 +7,15 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, mysql
+        :tickets: 2768
+
+        Fixed bug when using multi-table UPDATE where a supplemental
+        table is a SELECT with its own bound parameters, where the positioning
+        of the bound parameters would be reversed versus the statement
+        itself when using MySQL's special syntax.  Also in 0.8.2.
+
+    .. change::
         :tags: bug, sqlite
         :tickets: 2764
 

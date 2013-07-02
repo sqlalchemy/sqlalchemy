@@ -1606,8 +1606,6 @@ class SQLCompiler(engine.Compiled):
 
         extra_froms = update_stmt._extra_froms
 
-        colparams = self._get_colparams(update_stmt, extra_froms)
-
         text = "UPDATE "
 
         if update_stmt._prefixes:
@@ -1616,6 +1614,8 @@ class SQLCompiler(engine.Compiled):
 
         table_text = self.update_tables_clause(update_stmt, update_stmt.table,
                                                extra_froms, **kw)
+
+        colparams = self._get_colparams(update_stmt, extra_froms)
 
         if update_stmt._hints:
             dialect_hints = dict([
