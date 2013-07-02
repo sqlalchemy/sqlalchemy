@@ -46,7 +46,7 @@ class Connection(Connectable):
     def __init__(self, engine, connection=None, close_with_result=False,
                  _branch=False, _execution_options=None,
                  _dispatch=None,
-                 _has_events=False):
+                 _has_events=None):
         """Construct a new Connection.
 
         The constructor here is not public and is only called only by an
@@ -67,7 +67,8 @@ class Connection(Connectable):
             self.dispatch = _dispatch
         elif engine._has_events:
             self.dispatch = self.dispatch._join(engine.dispatch)
-        self._has_events = _has_events or engine._has_events
+        self._has_events = _has_events or (
+                                _has_events is None and engine._has_events)
 
         self._echo = self.engine._should_log_info()
         if _execution_options:
@@ -75,6 +76,9 @@ class Connection(Connectable):
                 engine._execution_options.union(_execution_options)
         else:
             self._execution_options = engine._execution_options
+
+        if self._has_events:
+            self.dispatch.engine_connect(self, _branch)
 
     def _branch(self):
         """Return a new Connection which references this Connection's
@@ -200,15 +204,10 @@ class Connection(Connectable):
         """
         c = self._clone()
         c._execution_options = c._execution_options.union(opt)
-        if 'isolation_level' in opt:
-            c._set_isolation_level()
+        if self._has_events:
+            self.dispatch.set_connection_execution_options(c, opt)
+        self.dialect.set_connection_execution_options(c, opt)
         return c
-
-    def _set_isolation_level(self):
-        self.dialect.set_isolation_level(self.connection,
-                                self._execution_options['isolation_level'])
-        self.connection._connection_record.finalize_callback = \
-                    self.dialect.reset_isolation_level
 
     @property
     def closed(self):
@@ -1336,15 +1335,10 @@ class Engine(Connectable, log.Identified):
             :meth:`.Engine.execution_options`
 
         """
-        if 'isolation_level' in opt:
-            raise exc.ArgumentError(
-                "'isolation_level' execution option may "
-                "only be specified on Connection.execution_options(). "
-                "To set engine-wide isolation level, "
-                "use the isolation_level argument to create_engine()."
-            )
         self._execution_options = \
                 self._execution_options.union(opt)
+        self.dispatch.set_engine_execution_options(self, opt)
+        self.dialect.set_engine_execution_options(self, opt)
 
     def execution_options(self, **opt):
         """Return a new :class:`.Engine` that will provide

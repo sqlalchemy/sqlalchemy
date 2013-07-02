@@ -319,6 +319,10 @@ class PoolEvents(event.Events):
         connection will be disposed and a fresh connection retrieved.
         Processing of all checkout listeners will abort and restart
         using the new connection.
+
+        .. seealso:: :meth:`.ConnectionEvents.connect` - a similar event
+           which occurs upon creation of a new :class:`.Connection`.
+
         """
 
     def checkin(self, dbapi_connection, connection_record):
@@ -612,6 +616,103 @@ class ConnectionEvents(event.Events):
          DBAPI.  The class here is specific to the DBAPI module in use.
 
         .. versionadded:: 0.7.7
+
+        """
+
+    def engine_connect(self, conn, branch):
+        """Intercept the creation of a new :class:`.Connection`.
+
+        This event is called typically as the direct result of calling
+        the :meth:`.Engine.connect` method.
+
+        It differs from the :meth:`.PoolEvents.connect` method, which
+        refers to the actual connection to a database at the DBAPI level;
+        a DBAPI connection may be pooled and reused for many operations.
+        In contrast, this event refers only to the production of a higher level
+        :class:`.Connection` wrapper around such a DBAPI connection.
+
+        It also differs from the :meth:`.PoolEvents.checkout` event
+        in that it is specific to the :class:`.Connection` object, not the
+        DBAPI connection that :meth:`.PoolEvents.checkout` deals with, although
+        this DBAPI connection is available here via the :attr:`.Connection.connection`
+        attribute.  But note there can in fact
+        be multiple :meth:`.PoolEvents.checkout` events within the lifespan
+        of a single :class:`.Connection` object, if that :class:`.Connection`
+        is invalidated and re-established.  There can also be multiple
+        :class:`.Connection` objects generated for the same already-checked-out
+        DBAPI connection, in the case that a "branch" of a :class:`.Connection`
+        is produced.
+
+        :param conn: :class:`.Connection` object.
+        :param branch: if True, this is a "branch" of an existing
+         :class:`.Connection`.  A branch is generated within the course
+         of a statement execution to invoke supplemental statements, most
+         typically to pre-execute a SELECT of a default value for the purposes
+         of an INSERT statement.
+
+        .. versionadded:: 0.9.0
+
+        .. seealso::
+
+            :meth:`.PoolEvents.checkout` the lower-level pool checkout event
+            for an individual DBAPI connection
+
+            :meth:`.ConnectionEvents.set_connection_execution_options` - a copy of a
+            :class:`.Connection` is also made when the
+            :meth:`.Connection.execution_options` method is called.
+
+        """
+
+    def set_connection_execution_options(self, conn, opts):
+        """Intercept when the :meth:`.Connection.execution_options`
+        method is called.
+
+        This method is called after the new :class:`.Connection` has been
+        produced, with the newly updated execution options collection, but
+        before the :class:`.Dialect` has acted upon any of those new options.
+
+        Note that this method is not called when a new :class:`.Connection`
+        is produced which is inheriting execution options from its parent
+        :class:`.Engine`; to intercept this condition, use the
+        :meth:`.ConnectionEvents.connect` event.
+
+        :param conn: The newly copied :class:`.Connection` object
+
+        :param opts: dictionary of options that were passed to the
+         :meth:`.Connection.execution_options` method.
+
+        .. versionadded:: 0.9.0
+
+        .. seealso::
+
+            :meth:`.ConnectionEvents.set_engine_execution_options` - event
+            which is called when :meth:`.Engine.execution_options` is called.
+
+
+        """
+
+    def set_engine_execution_options(self, engine, opts):
+        """Intercept when the :meth:`.Engine.execution_options`
+        method is called.
+
+        The :meth:`.Engine.execution_options` method produces a shallow
+        copy of the :class:`.Engine` which stores the new options.  That new
+        :class:`.Engine` is passed here.   A particular application of this
+        method is to add a :meth:`.ConnectionEvents.engine_connect` event
+        handler to the given :class:`.Engine` which will perform some per-
+        :class:`.Connection` task specific to these execution options.
+
+        :param conn: The newly copied :class:`.Engine` object
+
+        :param opts: dictionary of options that were passed to the
+         :meth:`.Connection.execution_options` method.
+
+        .. versionadded:: 0.9.0
+
+        .. seealso::
+
+            :meth:`.ConnectionEvents.set_connection_execution_options` - event
+            which is called when :meth:`.Connection.execution_options` is called.
 
         """
 

@@ -19,6 +19,7 @@ from ..sql import compiler, expression
 from .. import exc, types as sqltypes, util, pool, processors
 import codecs
 import weakref
+from .. import event
 
 AUTOCOMMIT_REGEXP = re.compile(
             r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)',
@@ -288,6 +289,24 @@ class DefaultDialect(interfaces.Dialect):
         opts = url.translate_connect_args()
         opts.update(url.query)
         return [[], opts]
+
+    def set_engine_execution_options(self, engine, opts):
+        if 'isolation_level' in opts:
+            isolation_level = opts['isolation_level']
+            @event.listens_for(engine, "engine_connect")
+            def set_isolation(connection, branch):
+                if not branch:
+                    self._set_connection_isolation(connection, isolation_level)
+
+    def set_connection_execution_options(self, connection, opts):
+        if 'isolation_level' in opts:
+            self._set_connection_isolation(connection, opts['isolation_level'])
+
+    def _set_connection_isolation(self, connection, level):
+        self.set_isolation_level(connection.connection, level)
+        connection.connection._connection_record.\
+            finalize_callback.append(self.reset_isolation_level)
+
 
     def do_begin(self, dbapi_connection):
         pass

@@ -1279,15 +1279,15 @@ class IsolationLevelTest(fixtures.TestBase):
         )
 
 
-    def test_per_engine_bzzt(self):
-        assert_raises_message(
-            exc.ArgumentError,
-            r"'isolation_level' execution option may "
-            r"only be specified on Connection.execution_options\(\). "
-            r"To set engine-wide isolation level, "
-            r"use the isolation_level argument to create_engine\(\).",
-            create_engine,
-            testing.db.url,
-                execution_options={'isolation_level':
-                            self._non_default_isolation_level}
+    def test_per_engine(self):
+        # new in 0.9
+        eng = create_engine(testing.db.url,
+                            execution_options={
+                                'isolation_level':
+                                    self._non_default_isolation_level()}
+                        )
+        conn = eng.connect()
+        eq_(
+            eng.dialect.get_isolation_level(conn.connection),
+            self._non_default_isolation_level()
         )

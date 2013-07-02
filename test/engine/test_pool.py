@@ -879,9 +879,10 @@ class QueuePoolTest(PoolTestBase):
                                    pool_size=2, timeout=timeout,
                                    max_overflow=max_overflow)
                 def waiter(p):
+                    success_key = (timeout, max_overflow)
                     conn = p.connect()
                     time.sleep(.5)
-                    success.append(True)
+                    success.append(success_key)
                     conn.close()
 
                 time.sleep(.2)
@@ -896,8 +897,8 @@ class QueuePoolTest(PoolTestBase):
                 c1.invalidate()
                 c2.invalidate()
                 p2 = p._replace()
-        time.sleep(2)
-        eq_(len(success), 12)
+        time.sleep(1)
+        eq_(len(success), 12, "successes: %s" % success)
 
     @testing.requires.threading_with_mock
     @testing.requires.python26

@@ -7,6 +7,16 @@
     :version: 0.9.0
 
     .. change::
+        :tags: feature, engine
+        :tickets: 2770
+
+        New events added to :class:`.ConnectionEvents`:
+
+        * :meth:`.ConnectionEvents.engine_connect`
+        * :meth:`.ConnectionEvents.set_connection_execution_options`
+        * :meth:`.ConnectionEvents.set_engine_execution_options`
+
+    .. change::
         :tags: feature, firebird
         :tickets: 2763
 
