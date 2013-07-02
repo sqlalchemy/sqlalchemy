@@ -21,7 +21,10 @@ from sqlalchemy.testing.util import gc_collect
 
 Base = None
 
-class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
+class DeclarativeTestBase(fixtures.TestBase,
+                            testing.AssertsExecutionResults,
+                            testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
     def setup(self):
         global Base
         Base = decl.declarative_base(testing.db)
@@ -290,7 +293,39 @@ class DeclarativeTest(DeclarativeTestBase):
         foo.rel = u1
         assert foo.rel == u1
 
-    def test_string_dependency_resolution_two(self):
+    def test_string_dependency_resolution_orm_descriptor(self):
+        from sqlalchemy.ext.hybrid import hybrid_property
+
+        class User(Base):
+            __tablename__ = 'user'
+            id = Column(Integer, primary_key=True)
+            firstname = Column(String(50))
+            lastname = Column(String(50))
+            game_id = Column(Integer, ForeignKey('game.id'))
+
+            @hybrid_property
+            def fullname(self):
+                return self.firstname + " " + self.lastname
+
+        class Game(Base):
+            __tablename__ = 'game'
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            users = relationship("User", order_by="User.fullname")
+
+        s = Session()
+        self.assert_compile(
+            s.query(Game).options(joinedload(Game.users)),
+            "SELECT game.id AS game_id, game.name AS game_name, "
+            "user_1.id AS user_1_id, user_1.firstname AS user_1_firstname, "
+            "user_1.lastname AS user_1_lastname, "
+            "user_1.game_id AS user_1_game_id "
+            "FROM game LEFT OUTER JOIN \"user\" AS user_1 ON game.id = "
+            "user_1.game_id ORDER BY "
+            "user_1.firstname || :firstname_1 || user_1.lastname"
+        )
+
+    def test_string_dependency_resolution_no_table(self):
 
         class User(Base, fixtures.ComparableEntity):
             __tablename__ = 'users'

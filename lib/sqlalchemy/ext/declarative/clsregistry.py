@@ -12,7 +12,7 @@ This system allows specification of classes and expressions used in
 from ...orm.properties import ColumnProperty, RelationshipProperty, \
                             SynonymProperty
 from ...schema import _get_table_key
-from ...orm import class_mapper
+from ...orm import class_mapper, interfaces
 from ... import util
 from ... import exc
 import weakref
@@ -190,19 +190,21 @@ class _GetColumns(object):
     def __getattr__(self, key):
         mp = class_mapper(self.cls, configure=False)
         if mp:
-            if not mp.has_property(key):
+            if key not in mp.all_orm_descriptors:
                 raise exc.InvalidRequestError(
                             "Class %r does not have a mapped column named %r"
                             % (self.cls, key))
 
-            prop = mp.get_property(key)
-            if isinstance(prop, SynonymProperty):
-                key = prop.name
-            elif not isinstance(prop, ColumnProperty):
-                raise exc.InvalidRequestError(
-                            "Property %r is not an instance of"
-                            " ColumnProperty (i.e. does not correspond"
-                            " directly to a Column)." % key)
+            desc = mp.all_orm_descriptors[key]
+            if desc.extension_type is interfaces.NOT_EXTENSION:
+                prop = desc.property
+                if isinstance(prop, SynonymProperty):
+                    key = prop.name
+                elif not isinstance(prop, ColumnProperty):
+                    raise exc.InvalidRequestError(
+                                "Property %r is not an instance of"
+                                " ColumnProperty (i.e. does not correspond"
+                                " directly to a Column)." % key)
         return getattr(self.cls, key)
 
 

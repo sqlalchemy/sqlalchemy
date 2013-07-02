@@ -7,6 +7,15 @@
     :version: 0.8.2
 
     .. change::
+        :tags: feature, orm, declarative
+        :tickets: 2761
+
+        ORM descriptors such as hybrid properties can now be referenced
+        by name in a string argument used with ``order_by``,
+        ``primaryjoin``, or similar in :func:`.relationship`,
+        in addition to column-bound attributes.
+
+    .. change::
         :tags: feature, firebird
         :tickets: 2763
 
