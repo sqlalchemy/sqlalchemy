@@ -9,7 +9,7 @@ from sqlalchemy import Table, String, select, Text, CHAR, bindparam, Column,\
     Unicode, Date, MetaData, UnicodeText, Time, Integer, TIMESTAMP, \
     Boolean, func, NUMERIC, DateTime, extract, ForeignKey, text, Numeric,\
     DefaultClause, and_, DECIMAL, TypeDecorator, create_engine, Float, \
-    INTEGER, UniqueConstraint, DATETIME, DATE, TIME, BOOLEAN
+    INTEGER, UniqueConstraint, DATETIME, DATE, TIME, BOOLEAN, BIGINT
 from sqlalchemy.util import u, ue
 from sqlalchemy import exc, sql, schema, pool, types as sqltypes, util
 from sqlalchemy.dialects.sqlite import base as sqlite, \
@@ -137,6 +137,8 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             (Numeric(10, 2), NUMERIC(10, 2)),
             (DECIMAL, DECIMAL()),
             (DECIMAL(10, 2), DECIMAL(10, 2)),
+            (INTEGER, INTEGER()),
+            (BIGINT, BIGINT()),
             (Float, Float()),
             (NUMERIC(), ),
             (TIMESTAMP, TIMESTAMP()),

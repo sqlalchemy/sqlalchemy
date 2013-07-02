@@ -7,6 +7,13 @@
     :version: 0.8.2
 
     .. change::
+        :tags: bug, sqlite
+        :tickets: 2764
+
+        Added :class:`.BIGINT` to the list of type names that can be
+        reflected by the SQLite dialect; courtesy Russell Stuart.
+
+    .. change::
         :tags: feature, orm, declarative
         :tickets: 2761
 
