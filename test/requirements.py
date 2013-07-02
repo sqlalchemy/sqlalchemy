@@ -536,6 +536,9 @@ class DefaultRequirements(SuiteRequirements):
                 ]
                 )
 
+    @property
+    def floats_to_four_decimals(self):
+        return fails_if("mysql+oursql", "Floating point error")
 
     @property
     def python2(self):

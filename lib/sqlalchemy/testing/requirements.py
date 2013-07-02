@@ -373,6 +373,15 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def floats_to_four_decimals(self):
+        """target backend can return a floating-point number with four
+        significant digits (such as 15.7563) accurately
+        (i.e. without FP inaccuracies, such as 15.75629997253418).
+
+        """
+        return exclusions.open()
+
+    @property
     def text_type(self):
         """Target database must support an unbounded Text() "
         "type such as TEXT or CLOB"""

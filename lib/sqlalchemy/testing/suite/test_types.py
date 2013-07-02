@@ -283,6 +283,7 @@ class NumericTest(fixtures.TestBase):
             [15.7563, None],
         )
 
+    @testing.requires.floats_to_four_decimals
     def test_float_as_decimal(self):
         self._do_test(
             Float(precision=8, asdecimal=True),
