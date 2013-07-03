@@ -5,6 +5,7 @@
 
 .. changelog::
     :version: 0.8.2
+    :released: July 3, 2013
 
     .. change::
         :tags: bug, mysql
