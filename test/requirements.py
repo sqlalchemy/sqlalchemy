@@ -651,14 +651,17 @@ class DefaultRequirements(SuiteRequirements):
                 "Not supported on MySQL + Windows"
             )
 
-    def threading_with_mock(self, fn):
-        """Mark tests that use threading and mock at the same time, so they
-        can be excluded using "-a '!threading_with_mock'" - stability
+    @property
+    def threading_with_mock(self):
+        """Mark tests that use threading and mock at the same time - stability
         issues have been observed with coverage + python 3.3
 
         """
-        fn.threading_with_mock = True
-        return fn
+        return skip_if(
+                lambda: util.py3k and
+                    self.config.options.enable_plugin_coverage,
+                "Stability issues with coverage + py3k"
+            )
 
     @property
     def selectone(self):
