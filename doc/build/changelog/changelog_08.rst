@@ -207,7 +207,7 @@
         Fixed the interaction between composite attributes and
         the :func:`.aliased` function.  Previously, composite attributes
         wouldn't work correctly in comparison operations when aliasing
-        was applied.  Also in 0.8.2.
+        was applied.
 
     .. change::
         :tags: bug, mysql
