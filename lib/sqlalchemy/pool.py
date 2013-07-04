@@ -359,6 +359,17 @@ class _ConnectionRecord(object):
                 self.__pool.dispatch.connect(self.connection, self)
         return self.connection
 
+    def checkin(self):
+        self.fairy = None
+        connection = self.connection
+        pool = self.__pool
+        if self.finalize_callback:
+            self.finalize_callback(connection)
+            del self.finalize_callback
+        if pool.dispatch.checkin:
+            pool.dispatch.checkin(connection, self)
+        pool._return_conn(self)
+
     def __close(self):
         self.__pool._close_connection(self.connection)
 
@@ -380,6 +391,10 @@ def _finalize_fairy(connection, connection_record, pool, ref, echo):
                 connection_record.fairy is not ref:
         return
 
+    if connection_record and echo:
+        pool.logger.debug("Connection %r being returned to pool",
+                                connection)
+
     if connection is not None:
         try:
             if pool.dispatch.reset:
@@ -397,17 +412,8 @@ def _finalize_fairy(connection, connection_record, pool, ref, echo):
             if isinstance(e, (SystemExit, KeyboardInterrupt)):
                 raise
 
-    if connection_record is not None:
-        connection_record.fairy = None
-        if echo:
-            pool.logger.debug("Connection %r being returned to pool",
-                                    connection)
-        if connection_record.finalize_callback:
-            connection_record.finalize_callback(connection)
-            del connection_record.finalize_callback
-        if pool.dispatch.checkin:
-            pool.dispatch.checkin(connection, connection_record)
-        pool._return_conn(connection_record)
+    if connection_record:
+        connection_record.checkin()
 
 
 _refs = set()
@@ -423,7 +429,11 @@ class _ConnectionFairy(object):
         self._echo = _echo = pool._should_log_debug()
         try:
             rec = self._connection_record = pool._do_get()
-            conn = self.connection = self._connection_record.get_connection()
+            try:
+                conn = self.connection = self._connection_record.get_connection()
+            except:
+                self._connection_record.checkin()
+                raise
             rec.fairy = weakref.ref(
                             self,
                             lambda ref: _finalize_fairy and \
