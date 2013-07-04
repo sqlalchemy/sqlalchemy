@@ -14,11 +14,20 @@ def MockDBAPI():
     def cursor():
         while True:
             yield Mock()
+
     def connect():
         while True:
             yield Mock(cursor=Mock(side_effect=cursor()))
 
-    return Mock(connect=Mock(side_effect=connect()))
+    def shutdown(value):
+        if value:
+            db.connect = Mock(side_effect=Exception("connect failed"))
+        else:
+            db.connect = Mock(side_effect=connect())
+
+    db = Mock(connect=Mock(side_effect=connect()),
+                    shutdown=shutdown, _shutdown=False)
+    return db
 
 class PoolTestBase(fixtures.TestBase):
     def setup(self):
@@ -1072,6 +1081,46 @@ class QueuePoolTest(PoolTestBase):
         time.sleep(4)
         c3 = p.connect()
         assert id(c3.connection) != c_id
+
+    def _assert_cleanup_on_pooled_reconnect(self, dbapi, p):
+        # p is QueuePool with size=1, max_overflow=2,
+        # and one connection in the pool that will need to
+        # reconnect when next used (either due to recycle or invalidate)
+        eq_(p.checkedout(), 0)
+        eq_(p._overflow, 0)
+        dbapi.shutdown(True)
+        assert_raises(
+            Exception,
+            p.connect
+        )
+        eq_(p._overflow, 0)
+        eq_(p.checkedout(), 0)  # and not 1
+
+        dbapi.shutdown(False)
+
+        c1 = p.connect()
+        assert p._pool.empty()  # poolsize is one, so we're empty OK
+        c2 = p.connect()
+        eq_(p._overflow, 1)  # and not 2
+
+        # this hangs if p._overflow is 2
+        c3 = p.connect()
+
+    def test_error_on_pooled_reconnect_cleanup_invalidate(self):
+        dbapi, p = self._queuepool_dbapi_fixture(pool_size=1, max_overflow=2)
+        c1 = p.connect()
+        c1.invalidate()
+        c1.close()
+        self._assert_cleanup_on_pooled_reconnect(dbapi, p)
+
+    def test_error_on_pooled_reconnect_cleanup_recycle(self):
+        dbapi, p = self._queuepool_dbapi_fixture(pool_size=1,
+                                        max_overflow=2, recycle=1)
+        c1 = p.connect()
+        c1.close()
+        time.sleep(1)
+        self._assert_cleanup_on_pooled_reconnect(dbapi, p)
+
 
     def test_invalidate(self):
         p = self._queuepool_fixture(pool_size=1, max_overflow=0)

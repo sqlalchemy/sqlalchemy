@@ -7,6 +7,14 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, engine, pool
+        :tickets: 2772
+
+        Fixed bug where :class:`.QueuePool` would lose the correct
+        checked out count if an existing pooled connection failed to reconnect
+        after an invalidate or recycle event.  Also in 0.8.3.
+
+    .. change::
         :tags: bug, mysql
         :tickets: 2768
 

@@ -328,7 +328,11 @@ class _ConnectionRecord(object):
     @classmethod
     def checkout(cls, pool):
         rec = pool._do_get()
-        dbapi_connection = rec.get_connection()
+        try:
+            dbapi_connection = rec.get_connection()
+        except:
+            rec.checkin()
+            raise
         fairy = _ConnectionFairy(dbapi_connection, rec)
         rec.fairy_ref = weakref.ref(
                         fairy,
@@ -565,6 +569,7 @@ class _ConnectionFairy(object):
             _refs.remove(self._connection_record)
             self._connection_record.fairy_ref = None
             self._connection_record.connection = None
+            # TODO: should this be _return_conn?
             self._pool._do_return_conn(self._connection_record)
             self.info = self.info.copy()
             self._connection_record = None
