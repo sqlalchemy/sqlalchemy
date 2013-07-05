@@ -144,6 +144,12 @@ class SuiteRequirements(Requirements):
                 )
 
     @property
+    def insert_from_select(self):
+        """target platform supports INSERT from a SELECT."""
+
+        return exclusions.open()
+
+    @property
     def returning(self):
         """target platform supports RETURNING."""
 

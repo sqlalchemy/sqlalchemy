@@ -1401,7 +1401,9 @@ class SQLCompiler(engine.Compiled):
             if self.returning_precedes_values:
                 text += " " + returning_clause
 
-        if not colparams and supports_default_values:
+        if insert_stmt.select is not None:
+            text += " %s" % self.process(insert_stmt.select, **kw)
+        elif not colparams and supports_default_values:
             text += " DEFAULT VALUES"
         elif insert_stmt._has_multi_parameters:
             text += " VALUES %s" % (

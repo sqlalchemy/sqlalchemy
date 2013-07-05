@@ -96,6 +96,12 @@ Produces::
 
 .. note::
 
+    The above ``InsertFromSelect`` construct is only an example, this actual
+    functionality is already available using the
+    :meth:`.Insert.from_select` method.
+
+.. note::
+
    The above ``InsertFromSelect`` construct probably wants to have "autocommit"
    enabled.  See :ref:`enabling_compiled_autocommit` for this step.
 
