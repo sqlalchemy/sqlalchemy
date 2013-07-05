@@ -121,6 +121,34 @@ class InsertBehaviorTest(fixtures.TablesTest):
 
         assert len(r.fetchall())
 
+    @requirements.insert_from_select
+    def test_insert_from_select(self):
+        table = self.tables.autoinc_pk
+        config.db.execute(
+                table.insert(),
+                [
+                    dict(data="data1"),
+                    dict(data="data2"),
+                    dict(data="data3"),
+                ]
+        )
+
+
+        config.db.execute(
+                table.insert().
+                    from_select(
+                        ("data",), select([table.c.data]).where(
+                                table.c.data.in_(["data2", "data3"]))
+                    ),
+        )
+
+        eq_(
+            config.db.execute(
+                select([table.c.data]).order_by(table.c.data)
+            ).fetchall(),
+            [("data1", ), ("data2", ), ("data2", ),
+                ("data3", ), ("data3", )]
+        )
 
 class ReturningTest(fixtures.TablesTest):
     run_deletes = 'each'

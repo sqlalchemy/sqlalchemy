@@ -1,7 +1,7 @@
 #! coding:utf-8
 
 from sqlalchemy import Column, Integer, MetaData, String, Table,\
-    bindparam, exc, func, insert
+    bindparam, exc, func, insert, select
 from sqlalchemy.dialects import mysql, postgresql
 from sqlalchemy.engine import default
 from sqlalchemy.testing import AssertsCompiledSQL,\
@@ -119,6 +119,69 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             stmt.compile,
             dialect=default.DefaultDialect()
         )
+
+    def test_insert_from_select_select(self):
+        table1 = self.tables.mytable
+        sel = select([table1.c.myid, table1.c.name]).where(table1.c.name == 'foo')
+        ins = self.tables.myothertable.insert().\
+                    from_select(("otherid", "othername"), sel)
+        self.assert_compile(
+            ins,
+            "INSERT INTO myothertable (otherid, othername) "
+            "SELECT mytable.myid, mytable.name FROM mytable "
+            "WHERE mytable.name = :name_1",
+            checkparams={"name_1": "foo"}
+        )
+
+    def test_insert_mix_select_values_exception(self):
+        table1 = self.tables.mytable
+        sel = select([table1.c.myid, table1.c.name]).where(table1.c.name == 'foo')
+        ins = self.tables.myothertable.insert().\
+                    from_select(("otherid", "othername"), sel)
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "This construct already inserts from a SELECT",
+            ins.values, othername="5"
+        )
+
+    def test_insert_mix_values_select_exception(self):
+        table1 = self.tables.mytable
+        sel = select([table1.c.myid, table1.c.name]).where(table1.c.name == 'foo')
+        ins = self.tables.myothertable.insert().values(othername="5")
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "This construct already inserts value expressions",
+            ins.from_select, ("otherid", "othername"), sel
+        )
+
+    def test_insert_from_select_table(self):
+        table1 = self.tables.mytable
+        ins = self.tables.myothertable.insert().\
+                    from_select(("otherid", "othername"), table1)
+        # note we aren't checking the number of columns right now
+        self.assert_compile(
+            ins,
+            "INSERT INTO myothertable (otherid, othername) "
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable",
+            checkparams={}
+        )
+
+
+    def test_insert_from_select_col_values(self):
+        table1 = self.tables.mytable
+        table2 = self.tables.myothertable
+        sel = select([table1.c.myid, table1.c.name]).where(table1.c.name == 'foo')
+        ins = table2.insert().\
+                    from_select((table2.c.otherid, table2.c.othername), sel)
+        self.assert_compile(
+            ins,
+            "INSERT INTO myothertable (otherid, othername) "
+            "SELECT mytable.myid, mytable.name FROM mytable "
+            "WHERE mytable.name = :name_1",
+            checkparams={"name_1": "foo"}
+        )
+
 
 class EmptyTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     __dialect__ = 'default'

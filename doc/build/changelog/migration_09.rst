@@ -215,7 +215,42 @@ against ``b_value`` directly.
 
 :ticket:`2751`
 
+New Features
+============
 
+.. _feature_722:
+
+INSERT from SELECT
+------------------
+
+After literally years of pointless procrastination this relatively minor
+syntactical feature has been added, and is also backported to 0.8.3,
+so technically isn't "new" in 0.9.   A :func:`.select` construct or other
+compatible construct can be passed to the new method :meth:`.Insert.from_select`
+where it will be used to render an ``INSERT .. SELECT`` construct::
+
+    >>> from sqlalchemy.sql import table, column
+    >>> t1 = table('t1', column('a'), column('b'))
+    >>> t2 = table('t2', column('x'), column('y'))
+    >>> print(t1.insert().from_select(['a', 'b'], t2.select().where(t2.c.y == 5)))
+    INSERT INTO t1 (a, b) SELECT t2.x, t2.y
+    FROM t2
+    WHERE t2.y = :y_1
+
+The construct is smart enough to also accommodate ORM objects such as classes
+and :class:`.Query` objects::
+
+    s = Session()
+    q = s.query(User.id, User.name).filter_by(name='ed')
+    ins = insert(Address).from_select((Address.id, Address.email_address), q)
+
+rendering::
+
+    INSERT INTO addresses (id, email_address)
+    SELECT users.id AS users_id, users.name AS users_name
+    FROM users WHERE users.name = :name_1
+
+:ticket:`722`
 
 Behavioral Improvements
 =======================

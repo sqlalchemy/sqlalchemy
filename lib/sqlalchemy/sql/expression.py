@@ -1599,6 +1599,14 @@ def _interpret_as_from(element):
         return insp.selectable
     raise exc.ArgumentError("FROM expression expected")
 
+def _interpret_as_select(element):
+    element = _interpret_as_from(element)
+    if isinstance(element, Alias):
+        element = element.original
+    if not isinstance(element, Select):
+        element = element.select()
+    return element
+
 
 def _const_expr(element):
     if isinstance(element, (Null, False_, True_)):
@@ -6237,9 +6245,10 @@ class ValuesBase(UpdateBase):
 
     _supports_multi_parameters = False
     _has_multi_parameters = False
+    select = None
 
     def __init__(self, table, values, prefixes):
-        self.table = table
+        self.table = _interpret_as_from(table)
         self.parameters, self._has_multi_parameters = \
                             self._process_colparams(values)
         if prefixes:
@@ -6338,6 +6347,9 @@ class ValuesBase(UpdateBase):
             :func:`~.expression.update` - produce an ``UPDATE`` statement
 
         """
+        if self.select is not None:
+            raise exc.InvalidRequestError(
+                        "This construct already inserts from a SELECT")
         if self._has_multi_parameters and kwargs:
             raise exc.InvalidRequestError(
                         "This construct already has multiple parameter sets.")
@@ -6418,9 +6430,44 @@ class Insert(ValuesBase):
         else:
             return ()
 
+    @_generative
+    def from_select(self, names, select):
+        """Return a new :class:`.Insert` construct which represents
+        an ``INSERT...FROM SELECT`` statement.
+
+        e.g.::
+
+            sel = select([table1.c.a, table1.c.b]).where(table1.c.c > 5)
+            ins = table2.insert().from_select(['a', 'b'], sel)
+
+        :param names: a sequence of string column names or :class:`.Column`
+         objects representing the target columns.
+        :param select: a :func:`.select` construct, :class:`.FromClause`
+         or other construct which resolves into a :class:`.FromClause`,
+         such as an ORM :class:`.Query` object, etc.  The order of
+         columns returned from this FROM clause should correspond to the
+         order of columns sent as the ``names`` parameter;  while this
+         is not checked before passing along to the database, the database
+         would normally raise an exception if these column lists don't
+         correspond.
+
+        .. versionadded:: 0.8.3
+
+        """
+        if self.parameters:
+            raise exc.InvalidRequestError(
+                        "This construct already inserts value expressions")
+
+        self.parameters, self._has_multi_parameters = \
+                self._process_colparams(dict((n, null()) for n in names))
+
+        self.select = _interpret_as_select(select)
+
     def _copy_internals(self, clone=_clone, **kw):
         # TODO: coverage
         self.parameters = self.parameters.copy()
+        if self.select is not None:
+            self.select = _clone(self.select)
 
 
 class Update(ValuesBase):
@@ -6507,7 +6554,7 @@ class Delete(UpdateBase):
             prefixes=None,
             **kwargs):
         self._bind = bind
-        self.table = table
+        self.table = _interpret_as_from(table)
         self._returning = returning
 
         if prefixes:

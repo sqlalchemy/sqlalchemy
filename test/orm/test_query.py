@@ -1,7 +1,7 @@
 from sqlalchemy.sql import operators
 from sqlalchemy import MetaData, null, exists, text, union, literal, \
     literal_column, func, between, Unicode, desc, and_, bindparam, \
-    select, distinct, or_, collate
+    select, distinct, or_, collate, insert
 from sqlalchemy import inspect
 from sqlalchemy import exc as sa_exc, util
 from sqlalchemy.sql import compiler, table, column
@@ -263,6 +263,75 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
             select([User]).select_from(join(User, Address)),
             "SELECT users.id, users.name FROM users "
             "JOIN addresses ON users.id = addresses.user_id"
+        )
+
+    def test_insert_from_query(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        s = Session()
+        q = s.query(User.id, User.name).filter_by(name='ed')
+        self.assert_compile(
+            insert(Address).from_select(('id', 'email_address'), q),
+            "INSERT INTO addresses (id, email_address) "
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users WHERE users.name = :name_1"
+        )
+
+    def test_insert_from_query_col_attr(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        s = Session()
+        q = s.query(User.id, User.name).filter_by(name='ed')
+        self.assert_compile(
+            insert(Address).from_select(
+                            (Address.id, Address.email_address), q),
+            "INSERT INTO addresses (id, email_address) "
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users WHERE users.name = :name_1"
+        )
+
+    def test_update_from_entity(self):
+        from sqlalchemy.sql import update
+        User = self.classes.User
+        self.assert_compile(
+            update(User),
+            "UPDATE users SET id=:id, name=:name"
+        )
+
+        self.assert_compile(
+            update(User).values(name='ed').where(User.id == 5),
+            "UPDATE users SET name=:name WHERE users.id = :id_1",
+            checkparams={"id_1": 5, "name": "ed"}
+        )
+
+    def test_delete_from_entity(self):
+        from sqlalchemy.sql import delete
+        User = self.classes.User
+        self.assert_compile(
+            delete(User),
+            "DELETE FROM users"
+        )
+
+        self.assert_compile(
+            delete(User).where(User.id == 5),
+            "DELETE FROM users WHERE users.id = :id_1",
+            checkparams={"id_1": 5}
+        )
+
+    def test_insert_from_entity(self):
+        from sqlalchemy.sql import insert
+        User = self.classes.User
+        self.assert_compile(
+            insert(User),
+            "INSERT INTO users (id, name) VALUES (:id, :name)"
+        )
+
+        self.assert_compile(
+            insert(User).values(name="ed"),
+            "INSERT INTO users (name) VALUES (:name)",
+            checkparams={"name": "ed"}
         )
 
 class GetTest(QueryTest):

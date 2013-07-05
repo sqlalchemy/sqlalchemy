@@ -7,6 +7,37 @@
     :version: 0.9.0
 
     .. change::
+        :tags: feature, sql
+        :tickets: 722
+
+        Added new method to the :func:`.insert` construct
+        :meth:`.Insert.from_select`.  Given a list of columns and
+        a selectable, renders ``INSERT INTO (table) (columns) SELECT ..``.
+        While this feature is highlighted as part of 0.9 it is also
+        backported to 0.8.3.
+
+        .. seealso::
+
+            :ref:`feature_722`
+
+    .. change::
+        :tags: feature, sql
+
+        The :func:`.update`, :func:`.insert`, and :func:`.delete` constructs
+        will now interpret ORM entities as FROM clauses to be operated upon,
+        e.g.::
+
+            from sqlalchemy import insert, update, delete
+
+            ins = insert(SomeMappedClass).values(x=5)
+
+            del_ = delete(SomeMappedClass).where(SomeMappedClass.id == 5)
+
+            upd = update(SomeMappedClass).where(SomeMappedClass.id == 5).values(name='ed')
+
+        Also in 0.8.3.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2773
 
