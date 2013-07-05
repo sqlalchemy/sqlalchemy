@@ -7,6 +7,15 @@
     :version: 0.8.3
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2773
+
+        Fixed bug whereby attribute history functions would fail
+        when an object we moved from "persistent" to "pending"
+        using the :func:`.make_transient` function, for operations
+        involving collection-based backrefs.
+
+    .. change::
         :tags: bug, engine, pool
         :tickets: 2772
 

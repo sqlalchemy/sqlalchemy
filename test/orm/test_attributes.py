@@ -10,6 +10,7 @@ from sqlalchemy.testing.util import gc_collect, all_partial_orderings
 from sqlalchemy.util import jython
 from sqlalchemy import event
 from sqlalchemy import testing
+from sqlalchemy.testing.mock import Mock, call
 
 # global for pickling tests
 MyTest = None
@@ -1263,9 +1264,7 @@ class CyclicBackrefAssertionTest(fixtures.TestBase):
         )
 
 class PendingBackrefTest(fixtures.ORMTest):
-    def setup(self):
-        global Post, Blog, called, lazy_load
-
+    def _fixture(self):
         class Post(object):
             def __init__(self, name):
                 self.name = name
@@ -1280,15 +1279,7 @@ class PendingBackrefTest(fixtures.ORMTest):
             def __eq__(self, other):
                 return other is not None and other.name == self.name
 
-        called = [0]
-
-        lazy_load = []
-        def lazy_posts(state, passive):
-            if passive is not attributes.PASSIVE_NO_FETCH:
-                called[0] += 1
-                return lazy_load
-            else:
-                return attributes.PASSIVE_NO_RESULT
+        lazy_posts = Mock()
 
         instrumentation.register_class(Post)
         instrumentation.register_class(Blog)
@@ -1298,30 +1289,54 @@ class PendingBackrefTest(fixtures.ORMTest):
                 backref='blog', callable_=lazy_posts, trackparent=True,
                 useobject=True)
 
+        return Post, Blog, lazy_posts
+
     def test_lazy_add(self):
-        global lazy_load
+        Post, Blog, lazy_posts = self._fixture()
 
         p1, p2, p3 = Post("post 1"), Post("post 2"), Post("post 3")
-        lazy_load = [p1, p2, p3]
+        lazy_posts.return_value = attributes.PASSIVE_NO_RESULT
 
         b = Blog("blog 1")
+        b1_state = attributes.instance_state(b)
+
         p = Post("post 4")
 
         p.blog = b
+        eq_(
+            lazy_posts.mock_calls, [
+                call(b1_state, attributes.PASSIVE_NO_FETCH)
+            ]
+        )
+
         p = Post("post 5")
+
+        # setting blog doesnt call 'posts' callable, calls with no fetch
         p.blog = b
-        # setting blog doesnt call 'posts' callable
-        assert called[0] == 0
+        eq_(
+            lazy_posts.mock_calls, [
+                call(b1_state, attributes.PASSIVE_NO_FETCH),
+                call(b1_state, attributes.PASSIVE_NO_FETCH)
+            ]
+        )
+
+        lazy_posts.return_value = [p1, p2, p3]
 
         # calling backref calls the callable, populates extra posts
-        assert b.posts == [p1, p2, p3, Post("post 4"), Post("post 5")]
-        assert called[0] == 1
+        eq_(b.posts, [p1, p2, p3, Post("post 4"), Post("post 5")])
+        eq_(
+            lazy_posts.mock_calls, [
+                call(b1_state, attributes.PASSIVE_NO_FETCH),
+                call(b1_state, attributes.PASSIVE_NO_FETCH),
+                call(b1_state, attributes.PASSIVE_OFF)
+            ]
+        )
 
     def test_lazy_history(self):
-        global lazy_load
+        Post, Blog, lazy_posts = self._fixture()
 
         p1, p2, p3 = Post("post 1"), Post("post 2"), Post("post 3")
-        lazy_load = [p1, p2, p3]
+        lazy_posts.return_value = [p1, p2, p3]
 
         b = Blog("blog 1")
         p = Post("post 4")
@@ -1329,67 +1344,136 @@ class PendingBackrefTest(fixtures.ORMTest):
 
         p4 = Post("post 5")
         p4.blog = b
-        assert called[0] == 0
+
+        eq_(lazy_posts.call_count, 1)
+
         eq_(attributes.instance_state(b).
                 get_history('posts', attributes.PASSIVE_OFF),
                             ([p, p4], [p1, p2, p3], []))
-        assert called[0] == 1
+        eq_(lazy_posts.call_count, 1)
 
-    def test_state_on_add_remove(self):
+    def test_passive_history_collection_never_set(self):
+        Post, Blog, lazy_posts = self._fixture()
+
+        lazy_posts.return_value = attributes.PASSIVE_NO_RESULT
+
         b = Blog("blog 1")
         p = Post("post 1")
-        p.blog = b
-        p.blog = None
 
-        eq_(called[0], 0)
+        state, dict_ = attributes.instance_state(b), attributes.instance_dict(b)
+
+        # this sets up NEVER_SET on b.posts
+        p.blog = b
+
+        eq_(state.committed_state, {"posts": attributes.NEVER_SET})
+        assert 'posts' not in dict_
+
+        # then suppose the object was made transient again,
+        # the lazy loader would return this
+        lazy_posts.return_value = attributes.ATTR_EMPTY
+
+        p2 = Post('asdf')
+        p2.blog = b
+
+        eq_(state.committed_state, {"posts": attributes.NEVER_SET})
+        eq_(dict_['posts'], [p2])
+
+        # then this would fail.
+        eq_(
+            Blog.posts.impl.get_history(state, dict_, passive=True),
+            ([p2], (), ())
+        )
+
+        eq_(
+            Blog.posts.impl.get_all_pending(state, dict_),
+            [(attributes.instance_state(p2), p2)]
+        )
+
+    def test_state_on_add_remove(self):
+        Post, Blog, lazy_posts = self._fixture()
+        lazy_posts.return_value = attributes.PASSIVE_NO_RESULT
+
+        b = Blog("blog 1")
+        b1_state = attributes.instance_state(b)
+        p = Post("post 1")
+        p.blog = b
+        eq_(lazy_posts.mock_calls,
+                [call(b1_state, attributes.PASSIVE_NO_FETCH)])
+        p.blog = None
+        eq_(lazy_posts.mock_calls,
+                [call(b1_state, attributes.PASSIVE_NO_FETCH),
+                call(b1_state, attributes.PASSIVE_NO_FETCH)])
+        lazy_posts.return_value = []
         eq_(b.posts, [])
-        eq_(called[0], 1)
+        eq_(lazy_posts.mock_calls,
+                [call(b1_state, attributes.PASSIVE_NO_FETCH),
+                call(b1_state, attributes.PASSIVE_NO_FETCH),
+                call(b1_state, attributes.PASSIVE_OFF)])
 
     def test_pending_combines_with_lazy(self):
-        global lazy_load
+        Post, Blog, lazy_posts = self._fixture()
+
+        lazy_posts.return_value = attributes.PASSIVE_NO_RESULT
+
         b = Blog("blog 1")
         p = Post("post 1")
         p2 = Post("post 2")
         p.blog = b
-        lazy_load = [p, p2]
+        eq_(lazy_posts.call_count, 1)
+
+        lazy_posts.return_value = [p, p2]
+
         # lazy loaded + pending get added together.
         # This isn't seen often with the ORM due
         # to usual practices surrounding the
         # load/flush/load cycle.
         eq_(b.posts, [p, p2, p])
-        eq_(called[0], 1)
+        eq_(lazy_posts.call_count, 2)
 
     def test_normal_load(self):
-        global lazy_load
-        lazy_load = (p1, p2, p3) = [Post("post 1"), Post("post 2"), Post("post 3")]
-        called[0] = 0
+        Post, Blog, lazy_posts = self._fixture()
+
+        lazy_posts.return_value = \
+            (p1, p2, p3) = [Post("post 1"), Post("post 2"), Post("post 3")]
 
         b = Blog("blog 1")
 
         # assign without using backref system
         p2.__dict__['blog'] = b
 
-        assert b.posts == [Post("post 1"), Post("post 2"), Post("post 3")]
-        assert called[0] == 1
+        eq_(b.posts, [Post("post 1"), Post("post 2"), Post("post 3")])
+
+        eq_(lazy_posts.call_count, 1)
         p2.blog = None
         p4 = Post("post 4")
         p4.blog = b
-        assert b.posts == [Post("post 1"), Post("post 3"), Post("post 4")]
-        assert called[0] == 1
+        eq_(b.posts, [Post("post 1"), Post("post 3"), Post("post 4")])
 
-        called[0] = 0
-        lazy_load = (p1, p2, p3) = [Post("post 1"), Post("post 2"), Post("post 3")]
+        b_state = attributes.instance_state(b)
+
+        eq_(lazy_posts.call_count, 1)
+        eq_(lazy_posts.mock_calls,
+            [call(b_state, attributes.PASSIVE_OFF)])
+
 
     def test_commit_removes_pending(self):
-        global lazy_load
-        lazy_load = (p1, ) = [Post("post 1"), ]
-        called[0] = 0
+        Post, Blog, lazy_posts = self._fixture()
 
+        p1 = Post("post 1")
+
+        lazy_posts.return_value = attributes.PASSIVE_NO_RESULT
         b = Blog("blog 1")
         p1.blog = b
-        attributes.instance_state(b)._commit_all(attributes.instance_dict(b))
-        attributes.instance_state(p1)._commit_all(attributes.instance_dict(p1))
-        assert b.posts == [Post("post 1")]
+
+        b_state = attributes.instance_state(b)
+        p1_state = attributes.instance_state(p1)
+        b_state._commit_all(attributes.instance_dict(b))
+        p1_state._commit_all(attributes.instance_dict(p1))
+        lazy_posts.return_value = [p1]
+        eq_(b.posts, [Post("post 1")])
+        eq_(lazy_posts.mock_calls,
+            [call(b_state, attributes.PASSIVE_NO_FETCH),
+            call(b_state, attributes.PASSIVE_OFF)])
 
 class HistoryTest(fixtures.TestBase):
 
@@ -1864,6 +1948,7 @@ class HistoryTest(fixtures.TestBase):
         f.someattr = hi
         f.someattr = there
         eq_(self._someattr_history(f), ([there], (), ()))
+
 
     def test_object_collections_set(self):
         # TODO: break into individual tests
