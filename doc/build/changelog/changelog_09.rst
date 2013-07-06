@@ -24,7 +24,7 @@
         :tags: feature, sql
 
         The :func:`.update`, :func:`.insert`, and :func:`.delete` constructs
-        will now interpret ORM entities as FROM clauses to be operated upon,
+        will now interpret ORM entities as target tables to be operated upon,
         e.g.::
 
             from sqlalchemy import insert, update, delete
