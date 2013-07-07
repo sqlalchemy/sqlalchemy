@@ -575,6 +575,13 @@ class Query(object):
 
     @property
     def selectable(self):
+        """Return the :class:`.Select` object emitted by this :class:`.Query`.
+
+        Used for :func:`.inspect` compatibility, this is equivalent to::
+
+            query.enable_eagerloads(False).with_labels().statement
+
+        """
         return self.__clause_element__()
 
     def __clause_element__(self):

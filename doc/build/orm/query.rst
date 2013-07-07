@@ -21,7 +21,6 @@ Following is the full interface for the :class:`.Query` object.
 
 .. autoclass:: sqlalchemy.orm.query.Query
    :members:
-   :undoc-members:
 
 ORM-Specific Query Constructs
 -----------------------------
