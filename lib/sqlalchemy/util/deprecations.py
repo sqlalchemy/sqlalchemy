@@ -107,17 +107,37 @@ def _decorate_with_warning(func, wtype, message, docstring_header=None):
     doc = func.__doc__ is not None and func.__doc__ or ''
     if docstring_header is not None:
         docstring_header %= dict(func=func.__name__)
-        docs = doc and doc.expandtabs().split('\n') or []
-        indent = ''
-        for line in docs[1:]:
-            text = line.lstrip()
-            if text:
-                indent = line[0:len(line) - len(text)]
-                break
-        point = min(len(docs), 1)
-        docs.insert(point, '\n' + indent + docstring_header.rstrip())
-        doc = '\n'.join(docs)
+
+        doc = inject_docstring_text(doc, docstring_header, 1)
 
     decorated = warned(func)
     decorated.__doc__ = doc
     return decorated
+
+import textwrap
+
+def _dedent_docstring(text):
+    split_text = text.split("\n", 1)
+    if len(split_text) == 1:
+        return text
+    else:
+        firstline, remaining = split_text
+    if not firstline.startswith(" "):
+        return firstline + "\n" + textwrap.dedent(remaining)
+    else:
+        return textwrap.dedent(text)
+
+def inject_docstring_text(doctext, injecttext, pos):
+    doctext = _dedent_docstring(doctext or "")
+    lines = doctext.split('\n')
+    injectlines = textwrap.dedent(injecttext).split("\n")
+    if injectlines[0]:
+        injectlines.insert(0, "")
+
+    blanks = [num for num, line in enumerate(lines) if not line.strip()]
+    blanks.insert(0, 0)
+
+    inject_pos = blanks[min(pos, len(blanks) - 1)]
+
+    lines = lines[0:inject_pos] + injectlines + lines[inject_pos:]
+    return "\n".join(lines)

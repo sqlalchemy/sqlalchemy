@@ -171,6 +171,206 @@ class EventsTest(fixtures.TestBase):
                 meth
             )
 
+class NamedCallTest(fixtures.TestBase):
+
+    def setUp(self):
+        class TargetEventsOne(event.Events):
+            def event_one(self, x, y):
+                pass
+
+            def event_two(self, x, y, **kw):
+                pass
+
+            def event_five(self, x, y, z, q):
+                pass
+
+        class TargetOne(object):
+            dispatch = event.dispatcher(TargetEventsOne)
+        self.TargetOne = TargetOne
+
+    def tearDown(self):
+        event._remove_dispatcher(self.TargetOne.__dict__['dispatch'].events)
+
+
+    def test_kw_accept(self):
+        canary = Mock()
+
+        @event.listens_for(self.TargetOne, "event_one", named=True)
+        def handler1(**kw):
+            canary(kw)
+
+        self.TargetOne().dispatch.event_one(4, 5)
+
+        eq_(
+            canary.mock_calls,
+            [call({"x": 4, "y": 5})]
+        )
+
+    def test_partial_kw_accept(self):
+        canary = Mock()
+
+        @event.listens_for(self.TargetOne, "event_five", named=True)
+        def handler1(z, y, **kw):
+            canary(z, y, kw)
+
+        self.TargetOne().dispatch.event_five(4, 5, 6, 7)
+
+        eq_(
+            canary.mock_calls,
+            [call(6, 5, {"x": 4, "q": 7})]
+        )
+
+    def test_kw_accept_plus_kw(self):
+        canary = Mock()
+
+        @event.listens_for(self.TargetOne, "event_two", named=True)
+        def handler1(**kw):
+            canary(kw)
+
+        self.TargetOne().dispatch.event_two(4, 5, z=8, q=5)
+
+        eq_(
+            canary.mock_calls,
+            [call({"x": 4, "y": 5, "z": 8, "q": 5})]
+        )
+
+
+class LegacySignatureTest(fixtures.TestBase):
+    """test adaption of legacy args"""
+
+
+    def setUp(self):
+        class TargetEventsOne(event.Events):
+
+            @event._legacy_signature("0.9", ["x", "y"])
+            def event_three(self, x, y, z, q):
+                pass
+
+            @event._legacy_signature("0.9", ["x", "y", "**kw"])
+            def event_four(self, x, y, z, q, **kw):
+                pass
+
+            @event._legacy_signature("0.9", ["x", "y", "z", "q"],
+                                lambda x, y: (x, y, x + y, x * y))
+            def event_six(self, x, y):
+                pass
+
+
+        class TargetOne(object):
+            dispatch = event.dispatcher(TargetEventsOne)
+        self.TargetOne = TargetOne
+
+    def tearDown(self):
+        event._remove_dispatcher(self.TargetOne.__dict__['dispatch'].events)
+
+    def test_legacy_accept(self):
+        canary = Mock()
+
+        @event.listens_for(self.TargetOne, "event_three")
+        def handler1(x, y):
+            canary(x, y)
+
+        self.TargetOne().dispatch.event_three(4, 5, 6, 7)
+
+        eq_(
+            canary.mock_calls,
+            [call(4, 5)]
+        )
+
+    def test_legacy_accept_kw_cls(self):
+        canary = Mock()
+
+        @event.listens_for(self.TargetOne, "event_four")
+        def handler1(x, y, **kw):
+            canary(x, y, kw)
+        self._test_legacy_accept_kw(self.TargetOne(), canary)
+
+    def test_legacy_accept_kw_instance(self):
+        canary = Mock()
+
+        inst = self.TargetOne()
+        @event.listens_for(inst, "event_four")
+        def handler1(x, y, **kw):
+            canary(x, y, kw)
+        self._test_legacy_accept_kw(inst, canary)
+
+    def _test_legacy_accept_kw(self, target, canary):
+        target.dispatch.event_four(4, 5, 6, 7, foo="bar")
+
+        eq_(
+            canary.mock_calls,
+            [call(4, 5, {"foo": "bar"})]
+        )
+
+    def test_complex_legacy_accept(self):
+        canary = Mock()
+
+        @event.listens_for(self.TargetOne, "event_six")
+        def handler1(x, y, z, q):
+            canary(x, y, z, q)
+
+        self.TargetOne().dispatch.event_six(4, 5)
+        eq_(
+            canary.mock_calls,
+            [call(4, 5, 9, 20)]
+        )
+
+    def test_legacy_accept_from_method(self):
+        canary = Mock()
+
+        class MyClass(object):
+            def handler1(self, x, y):
+                canary(x, y)
+
+        event.listen(self.TargetOne, "event_three", MyClass().handler1)
+
+        self.TargetOne().dispatch.event_three(4, 5, 6, 7)
+        eq_(
+            canary.mock_calls,
+            [call(4, 5)]
+        )
+
+    def test_standard_accept_has_legacies(self):
+        canary = Mock()
+
+        event.listen(self.TargetOne, "event_three", canary)
+
+        self.TargetOne().dispatch.event_three(4, 5)
+
+        eq_(
+            canary.mock_calls,
+            [call(4, 5)]
+        )
+
+    def test_kw_accept_has_legacies(self):
+        canary = Mock()
+
+        @event.listens_for(self.TargetOne, "event_three", named=True)
+        def handler1(**kw):
+            canary(kw)
+
+        self.TargetOne().dispatch.event_three(4, 5, 6, 7)
+
+        eq_(
+            canary.mock_calls,
+            [call({"x": 4, "y": 5, "z": 6, "q": 7})]
+        )
+
+    def test_kw_accept_plus_kw_has_legacies(self):
+        canary = Mock()
+
+        @event.listens_for(self.TargetOne, "event_four", named=True)
+        def handler1(**kw):
+            canary(kw)
+
+        self.TargetOne().dispatch.event_four(4, 5, 6, 7, foo="bar")
+
+        eq_(
+            canary.mock_calls,
+            [call({"x": 4, "y": 5, "z": 6, "q": 7, "foo": "bar"})]
+        )
+
+
 class ClsLevelListenTest(fixtures.TestBase):
 
 
@@ -507,6 +707,21 @@ class JoinTest(fixtures.TestBase):
         element.run_event(1)
         element.run_event(2)
         element.run_event(3)
+
+    def test_kw_ok(self):
+        l1 = Mock()
+        def listen(**kw):
+            l1(kw)
+
+        event.listen(self.TargetFactory, "event_one", listen, named=True)
+        element = self.TargetFactory().create()
+        element.run_event(1)
+        element.run_event(2)
+        eq_(
+            l1.mock_calls,
+            [call({"target": element, "arg": 1}),
+                call({"target": element, "arg": 2}),]
+        )
 
     def test_parent_class_only(self):
         l1 = Mock()

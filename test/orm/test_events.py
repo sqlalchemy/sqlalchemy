@@ -14,7 +14,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.util import gc_collect
 from test.orm import _fixtures
 from sqlalchemy import event
-
+from sqlalchemy.testing.mock import Mock, call
 
 class _RemoveListeners(object):
     def teardown(self):
@@ -341,12 +341,12 @@ class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
                                 self.classes.User)
 
         canary = []
-        def evt(x):
+        def evt(x, y, z):
             canary.append(x)
         event.listen(User, "before_insert", evt, raw=True)
 
         m = mapper(User, users)
-        m.dispatch.before_insert(5)
+        m.dispatch.before_insert(5, 6, 7)
         eq_(canary, [5])
 
     def test_deferred_map_event_subclass_propagate(self):
@@ -363,12 +363,12 @@ class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             pass
 
         canary = []
-        def evt(x):
+        def evt(x, y, z):
             canary.append(x)
         event.listen(User, "before_insert", evt, propagate=True, raw=True)
 
         m = mapper(SubUser, users)
-        m.dispatch.before_insert(5)
+        m.dispatch.before_insert(5, 6, 7)
         eq_(canary, [5])
 
     def test_deferred_map_event_subclass_no_propagate(self):
@@ -385,12 +385,12 @@ class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             pass
 
         canary = []
-        def evt(x):
+        def evt(x, y, z):
             canary.append(x)
         event.listen(User, "before_insert", evt, propagate=False)
 
         m = mapper(SubUser, users)
-        m.dispatch.before_insert(5)
+        m.dispatch.before_insert(5, 6, 7)
         eq_(canary, [])
 
     def test_deferred_map_event_subclass_post_mapping_propagate(self):
@@ -409,11 +409,11 @@ class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         m = mapper(SubUser, users)
 
         canary = []
-        def evt(x):
+        def evt(x, y, z):
             canary.append(x)
         event.listen(User, "before_insert", evt, propagate=True, raw=True)
 
-        m.dispatch.before_insert(5)
+        m.dispatch.before_insert(5, 6, 7)
         eq_(canary, [5])
 
     def test_deferred_instance_event_subclass_post_mapping_propagate(self):
@@ -1068,18 +1068,75 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     def test_on_bulk_update_hook(self):
         User, users = self.classes.User, self.tables.users
 
-        sess, canary = self._listener_fixture()
+        sess = Session()
+        canary = Mock()
+
+        event.listen(sess, "after_begin", canary.after_begin)
+        event.listen(sess, "after_bulk_update", canary.after_bulk_update)
+
+        def legacy(ses, qry, ctx, res):
+            canary.after_bulk_update_legacy(ses, qry, ctx, res)
+        event.listen(sess, "after_bulk_update", legacy)
+
         mapper(User, users)
+
         sess.query(User).update({'name': 'foo'})
-        eq_(canary, ['after_begin', 'after_bulk_update'])
+
+        eq_(
+            canary.after_begin.call_count,
+            1
+        )
+        eq_(
+            canary.after_bulk_update.call_count,
+            1
+        )
+
+        upd = canary.after_bulk_update.mock_calls[0][1][0]
+        eq_(
+            upd.session,
+            sess
+        )
+        eq_(
+            canary.after_bulk_update_legacy.mock_calls,
+            [call(sess, upd.query, upd.context, upd.result)]
+        )
+
 
     def test_on_bulk_delete_hook(self):
         User, users = self.classes.User, self.tables.users
 
-        sess, canary = self._listener_fixture()
+        sess = Session()
+        canary = Mock()
+
+        event.listen(sess, "after_begin", canary.after_begin)
+        event.listen(sess, "after_bulk_delete", canary.after_bulk_delete)
+
+        def legacy(ses, qry, ctx, res):
+            canary.after_bulk_delete_legacy(ses, qry, ctx, res)
+        event.listen(sess, "after_bulk_delete", legacy)
+
         mapper(User, users)
+
         sess.query(User).delete()
-        eq_(canary, ['after_begin', 'after_bulk_delete'])
+
+        eq_(
+            canary.after_begin.call_count,
+            1
+        )
+        eq_(
+            canary.after_bulk_delete.call_count,
+            1
+        )
+
+        upd = canary.after_bulk_delete.mock_calls[0][1][0]
+        eq_(
+            upd.session,
+            sess
+        )
+        eq_(
+            canary.after_bulk_delete_legacy.mock_calls,
+            [call(sess, upd.query, upd.context, upd.result)]
+        )
 
     def test_connection_emits_after_begin(self):
         sess, canary = self._listener_fixture(bind=testing.db)
@@ -1508,19 +1565,13 @@ class SessionExtensionTest(_fixtures.FixtureTest):
                 log.append('after_attach')
             def after_bulk_update(
                 self,
-                session,
-                query,
-                query_context,
-                result,
+                session, query, query_context, result
                 ):
                 log.append('after_bulk_update')
 
             def after_bulk_delete(
                 self,
-                session,
-                query,
-                query_context,
-                result,
+                session, query, query_context, result
                 ):
                 log.append('after_bulk_delete')
 

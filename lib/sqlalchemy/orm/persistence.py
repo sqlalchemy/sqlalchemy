@@ -798,6 +798,10 @@ class BulkUD(object):
     def __init__(self, query):
         self.query = query.enable_eagerloads(False)
 
+    @property
+    def session(self):
+        return self.query.session
+
     @classmethod
     def _factory(cls, lookup, synchronize_session, *arg):
         try:
@@ -915,8 +919,7 @@ class BulkUpdate(BulkUD):
 
     def _do_post(self):
         session = self.query.session
-        session.dispatch.after_bulk_update(session, self.query,
-                                self.context, self.result)
+        session.dispatch.after_bulk_update(self)
 
 
 class BulkDelete(BulkUD):
@@ -944,8 +947,7 @@ class BulkDelete(BulkUD):
 
     def _do_post(self):
         session = self.query.session
-        session.dispatch.after_bulk_delete(session, self.query,
-                        self.context, self.result)
+        session.dispatch.after_bulk_delete(self)
 
 
 class BulkUpdateEvaluate(BulkEvaluate, BulkUpdate):

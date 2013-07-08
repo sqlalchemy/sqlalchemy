@@ -22,7 +22,7 @@ pypy = hasattr(sys, 'pypy_version_info')
 win32 = sys.platform.startswith('win')
 cpython = not pypy and not jython  # TODO: something better for this ?
 
-
+import collections
 next = next
 
 if py3k:
@@ -32,6 +32,9 @@ else:
         import cPickle as pickle
     except ImportError:
         import pickle
+
+ArgSpec = collections.namedtuple("ArgSpec",
+                ["args", "varargs", "keywords", "defaults"])
 
 if py3k:
     import builtins
@@ -43,6 +46,10 @@ if py3k:
 
     from io import BytesIO as byte_buffer
 
+    def inspect_getargspec(func):
+        return ArgSpec(
+                    *inspect_getfullargspec(func)[0:4]
+                )
 
     string_types = str,
     binary_type = bytes
@@ -87,6 +94,7 @@ if py3k:
 
 else:
     from inspect import getargspec as inspect_getfullargspec
+    inspect_getargspec = inspect_getfullargspec
     from urllib import quote_plus, unquote_plus
     from urlparse import parse_qsl
     import ConfigParser as configparser

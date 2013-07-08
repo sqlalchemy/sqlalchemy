@@ -70,6 +70,8 @@ class DDLEvents(event.Events):
 
     """
 
+    _target_class_doc = "SomeSchemaClassOrObject"
+
     def before_create(self, target, connection, **kw):
         """Called before CREATE statments are emitted.
 
@@ -266,6 +268,8 @@ class PoolEvents(event.Events):
 
     """
 
+    _target_class_doc = "SomeEngineOrPool"
+
     @classmethod
     def _accept_with(cls, target):
         if isinstance(target, type):
@@ -442,6 +446,8 @@ class ConnectionEvents(event.Events):
        in addition to the existing support for :class:`.Engine`.
 
     """
+
+    _target_class_doc = "SomeEngine"
 
     @classmethod
     def _listen(cls, target, identifier, fn, retval=False):
@@ -753,7 +759,7 @@ class ConnectionEvents(event.Events):
         :param conn: :class:`.Connection` object
         """
 
-    def savepoint(self, conn, name=None):
+    def savepoint(self, conn, name):
         """Intercept savepoint() events.
 
         :param conn: :class:`.Connection` object

@@ -10,7 +10,7 @@ from .compat import callable, cmp, reduce,  \
     raise_from_cause, text_type, string_types, int_types, binary_type, \
     quote_plus, with_metaclass, print_, itertools_filterfalse, u, ue, b,\
     unquote_plus, b64decode, b64encode, byte_buffer, itertools_filter,\
-    StringIO
+    StringIO, inspect_getargspec
 
 from ._collections import KeyedTuple, ImmutableContainer, immutabledict, \
     Properties, OrderedProperties, ImmutableProperties, OrderedDict, \
@@ -30,10 +30,11 @@ from .langhelpers import iterate_attributes, class_hierarchy, \
     duck_type_collection, assert_arg_type, symbol, dictlike_iteritems,\
     classproperty, set_creation_order, warn_exception, warn, NoneType,\
     constructor_copy, methods_equivalent, chop_traceback, asint,\
-    generic_repr, counter, PluginLoader, hybridmethod, safe_reraise
+    generic_repr, counter, PluginLoader, hybridmethod, safe_reraise,\
+    get_callable_argspec
 
 from .deprecations import warn_deprecated, warn_pending_deprecation, \
-    deprecated, pending_deprecation
+    deprecated, pending_deprecation, inject_docstring_text
 
 # things that used to be not always available,
 # but are now as of current support Python versions
