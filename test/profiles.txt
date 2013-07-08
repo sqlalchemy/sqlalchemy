@@ -1,31 +1,31 @@
 # /Users/classic/dev/sqlalchemy/test/profiles.txt
 # This file is written out on a per-environment basis.
-# For each test in aaa_profiling, the corresponding function and 
+# For each test in aaa_profiling, the corresponding function and
 # environment is located within this file.  If it doesn't exist,
 # the test is skipped.
-# If a callcount does exist, it is compared to what we received. 
+# If a callcount does exist, it is compared to what we received.
 # assertions are raised if the counts do not match.
-# 
-# To add a new callcount test, apply the function_call_count 
-# decorator and re-run the tests using the --write-profiles 
+#
+# To add a new callcount test, apply the function_call_count
+# decorator and re-run the tests using the --write-profiles
 # option - this file will be rewritten including the new count.
-# 
+#
 
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_insert
 
-test.aaa_profiling.test_compiler.CompileTest.test_insert 2.6_sqlite_pysqlite_nocextensions 67
-test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_mysql_mysqldb_cextensions 67
-test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_mysql_mysqldb_nocextensions 67
-test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_oracle_cx_oracle_nocextensions 67
-test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_postgresql_psycopg2_cextensions 67
-test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_postgresql_psycopg2_nocextensions 67
-test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_sqlite_pysqlite_cextensions 67
-test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_sqlite_pysqlite_nocextensions 67
-test.aaa_profiling.test_compiler.CompileTest.test_insert 3.2_postgresql_psycopg2_nocextensions 69
-test.aaa_profiling.test_compiler.CompileTest.test_insert 3.2_sqlite_pysqlite_nocextensions 69
-test.aaa_profiling.test_compiler.CompileTest.test_insert 3.3_oracle_cx_oracle_nocextensions 71
-test.aaa_profiling.test_compiler.CompileTest.test_insert 3.3_postgresql_psycopg2_nocextensions 69
-test.aaa_profiling.test_compiler.CompileTest.test_insert 3.3_sqlite_pysqlite_nocextensions 69
+test.aaa_profiling.test_compiler.CompileTest.test_insert 2.6_sqlite_pysqlite_nocextensions 72
+test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_mysql_mysqldb_cextensions 72
+test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_mysql_mysqldb_nocextensions 72
+test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_oracle_cx_oracle_nocextensions 72
+test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_postgresql_psycopg2_cextensions 72
+test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_postgresql_psycopg2_nocextensions 72
+test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_sqlite_pysqlite_cextensions 72
+test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_sqlite_pysqlite_nocextensions 72
+test.aaa_profiling.test_compiler.CompileTest.test_insert 3.2_postgresql_psycopg2_nocextensions 74
+test.aaa_profiling.test_compiler.CompileTest.test_insert 3.2_sqlite_pysqlite_nocextensions 74
+test.aaa_profiling.test_compiler.CompileTest.test_insert 3.3_oracle_cx_oracle_nocextensions 76
+test.aaa_profiling.test_compiler.CompileTest.test_insert 3.3_postgresql_psycopg2_nocextensions 74
+test.aaa_profiling.test_compiler.CompileTest.test_insert 3.3_sqlite_pysqlite_nocextensions 674
 
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_select
 
@@ -61,19 +61,19 @@ test.aaa_profiling.test_compiler.CompileTest.test_select_labels 3.3_sqlite_pysql
 
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_update
 
-test.aaa_profiling.test_compiler.CompileTest.test_update 2.6_sqlite_pysqlite_nocextensions 70
-test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_mysql_mysqldb_cextensions 70
-test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_mysql_mysqldb_nocextensions 70
-test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_oracle_cx_oracle_nocextensions 70
-test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_postgresql_psycopg2_cextensions 70
-test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_postgresql_psycopg2_nocextensions 70
-test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_sqlite_pysqlite_cextensions 70
-test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_sqlite_pysqlite_nocextensions 70
-test.aaa_profiling.test_compiler.CompileTest.test_update 3.2_postgresql_psycopg2_nocextensions 70
-test.aaa_profiling.test_compiler.CompileTest.test_update 3.2_sqlite_pysqlite_nocextensions 70
-test.aaa_profiling.test_compiler.CompileTest.test_update 3.3_oracle_cx_oracle_nocextensions 72
-test.aaa_profiling.test_compiler.CompileTest.test_update 3.3_postgresql_psycopg2_nocextensions 70
-test.aaa_profiling.test_compiler.CompileTest.test_update 3.3_sqlite_pysqlite_nocextensions 70
+test.aaa_profiling.test_compiler.CompileTest.test_update 2.6_sqlite_pysqlite_nocextensions 75
+test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_mysql_mysqldb_cextensions 75
+test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_mysql_mysqldb_nocextensions 75
+test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_oracle_cx_oracle_nocextensions 75
+test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_postgresql_psycopg2_cextensions 75
+test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_postgresql_psycopg2_nocextensions 75
+test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_sqlite_pysqlite_cextensions 75
+test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_sqlite_pysqlite_nocextensions 75
+test.aaa_profiling.test_compiler.CompileTest.test_update 3.2_postgresql_psycopg2_nocextensions 75
+test.aaa_profiling.test_compiler.CompileTest.test_update 3.2_sqlite_pysqlite_nocextensions 75
+test.aaa_profiling.test_compiler.CompileTest.test_update 3.3_oracle_cx_oracle_nocextensions 77
+test.aaa_profiling.test_compiler.CompileTest.test_update 3.3_postgresql_psycopg2_nocextensions 75
+test.aaa_profiling.test_compiler.CompileTest.test_update 3.3_sqlite_pysqlite_nocextensions 75
 
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause
 
