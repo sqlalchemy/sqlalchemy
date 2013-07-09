@@ -7,7 +7,7 @@
 # TODO: should be using the sys. catalog with SQL Server, not information schema
 
 from ... import Table, MetaData, Column
-from ...types import String, Unicode, Integer, TypeDecorator
+from ...types import String, Unicode, UnicodeText, Integer, TypeDecorator
 from ... import cast
 from ... import util
 from ...sql import expression

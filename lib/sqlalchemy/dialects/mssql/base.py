@@ -1161,17 +1161,11 @@ class MSDialect(default.DefaultDialect):
                 pass
         return self.schema_name
 
-    def _unicode_cast(self, column):
-        if self.server_version_info >= MS_2005_VERSION:
-            return cast(column, NVARCHAR(_warn_on_bytestring=False))
-        else:
-            return column
-
     @_db_plus_owner
     def has_table(self, connection, tablename, dbname, owner, schema):
         columns = ischema.columns
 
-        whereclause = self._unicode_cast(columns.c.table_name) == tablename
+        whereclause = columns.c.table_name == tablename
 
         if owner:
             whereclause = sql.and_(whereclause,

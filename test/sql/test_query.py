@@ -1370,6 +1370,8 @@ class TableInsertTest(fixtures.TablesTest):
             inserted_primary_key=[1]
         )
 
+    @testing.crashes("mssql+pyodbc",
+            "Pyodbc + SQL Server + Py3K, some decimal handling issue")
     def test_uppercase_inline_implicit(self):
         t = self.tables.foo
         self._test(
