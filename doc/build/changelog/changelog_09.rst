@@ -411,6 +411,13 @@
             :ref:`feature_joins_09`
 
     .. change::
+        :tags: bug, mssql, pyodbc
+        :tickets: 2355
+
+        Fixes to MSSQL with Python 3 + pyodbc, including that statements
+        are passed correctly.
+
+    .. change::
         :tags: bug, mssql
         :tickets: 2747
 
