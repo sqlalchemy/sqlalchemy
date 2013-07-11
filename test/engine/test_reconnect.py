@@ -346,6 +346,28 @@ class MockReconnectTest(fixtures.TestBase):
             list, result
         )
 
+    def test_dialect_initialize_once(self):
+        from sqlalchemy.engine.base import Engine
+        from sqlalchemy.engine.url import URL
+        from sqlalchemy.engine.default import DefaultDialect
+        from sqlalchemy.pool import QueuePool
+        dbapi = self.dbapi
+
+        mock_dialect = Mock()
+        class MyURL(URL):
+            def get_dialect(self):
+                return Dialect
+        class Dialect(DefaultDialect):
+            initialize = Mock()
+
+        engine = create_engine(MyURL("foo://"), module=dbapi)
+        c1 = engine.connect()
+        engine.dispose()
+        c2 = engine.connect()
+        eq_(Dialect.initialize.call_count, 1)
+
+
+
 class CursorErrTest(fixtures.TestBase):
 
     def setup(self):
@@ -494,9 +516,15 @@ class RealReconnectTest(fixtures.TestBase):
         # raises a DBAPIError, not an AttributeError
         assert_raises(exc.DBAPIError, engine.connect)
 
-        # dispose connections so we get a new one on
-        # next go
-        engine.dispose()
+    @testing.skip_if(
+        [lambda: util.py3k, "oracle+cx_oracle"],
+        "Crashes on py3k+cx_oracle")
+    def test_explode_in_initializer_disconnect(self):
+        engine = engines.testing_engine()
+        def broken_initialize(connection):
+            connection.execute("select fake_stuff from _fake_table")
+
+        engine.dialect.initialize = broken_initialize
 
         p1 = engine.pool
 

@@ -7,6 +7,15 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, engine, oracle
+        :tickets: 2776
+
+        Dialect.initialize() is not called a second time if an :class:`.Engine`
+        is recreated, due to a disconnect error.   This fixes a particular
+        issue in the Oracle 8 dialect, but in general the dialect.initialize()
+        phase should only be once per dialect.  Also in 0.8.3.
+
+    .. change::
         :tags: feature, sql
         :tickets: 722
 

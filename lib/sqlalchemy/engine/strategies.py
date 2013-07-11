@@ -149,6 +149,7 @@ class DefaultEngineStrategy(EngineStrategy):
                 event.listen(pool, 'first_connect', on_connect)
                 event.listen(pool, 'connect', on_connect)
 
+            @util.only_once
             def first_connect(dbapi_connection, connection_record):
                 c = base.Connection(engine, connection=dbapi_connection,
                             _has_events=False)

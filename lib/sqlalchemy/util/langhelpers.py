@@ -1047,6 +1047,20 @@ _SQLA_RE = re.compile(r'sqlalchemy/([a-z_]+/){0,2}[a-z_]+\.py')
 _UNITTEST_RE = re.compile(r'unit(?:2|test2?/)')
 
 
+def only_once(fn):
+    """Decorate the given function to be a no-op after it is called exactly
+    once."""
+
+    once = [fn]
+    def go(*arg, **kw):
+        if once:
+            once_fn = once.pop()
+            return once_fn(*arg, **kw)
+
+    return update_wrapper(go, fn)
+
+
+
 def chop_traceback(tb, exclude_prefix=_UNITTEST_RE, exclude_suffix=_SQLA_RE):
     """Chop extraneous lines off beginning and end of a traceback.
 
