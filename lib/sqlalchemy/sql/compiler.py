@@ -696,8 +696,12 @@ class SQLCompiler(engine.Compiled):
         if disp:
             return disp(binary, operator, **kw)
         else:
-            return self._generate_generic_binary(binary,
-                                OPERATORS[operator], **kw)
+            try:
+                opstring = OPERATORS[operator]
+            except KeyError:
+                raise exc.UnsupportedCompilationError(self, operator)
+            else:
+                return self._generate_generic_binary(binary, opstring, **kw)
 
     def visit_custom_op_binary(self, element, operator, **kw):
         return self._generate_generic_binary(element,

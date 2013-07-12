@@ -2360,7 +2360,10 @@ class ColumnElement(ClauseElement, ColumnOperators):
         """
         if name is None:
             name = self.anon_label
-            key = str(self)
+            try:
+                key = str(self)
+            except exc.UnsupportedCompilationError:
+                key = self.anon_label
         else:
             key = name
         co = ColumnClause(_as_truncated(name) if name_is_truncatable else name,

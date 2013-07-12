@@ -7,6 +7,20 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, sql, postgresql
+        :tickets: 2780
+
+        Fixed bug where the expression system relied upon the ``str()``
+        form of a some expressions when referring to the ``.c`` collection
+        on a ``select()`` construct, but the ``str()`` form isn't available
+        since the element relies on dialect-specific compilation constructs,
+        notably the ``__getitem__()`` operator as used with a Postgresql
+        ``ARRAY`` element.  The fix also adds a new exception class
+        :class:`.UnsupportedCompilationError` which is raised in those cases
+        where a compiler is asked to compile something it doesn't know
+        how to.  Also in 0.8.3.
+
+    .. change::
         :tags: bug, engine, oracle
         :tickets: 2776
 

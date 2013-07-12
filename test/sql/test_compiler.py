@@ -2482,6 +2482,46 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
+class UnsupportedTest(fixtures.TestBase):
+    def test_unsupported_element_str_visit_name(self):
+        from sqlalchemy.sql.expression import ClauseElement
+        class SomeElement(ClauseElement):
+            __visit_name__ = 'some_element'
+
+        assert_raises_message(
+            exc.UnsupportedCompilationError,
+            r"Compiler <sqlalchemy.sql.compiler.SQLCompiler .*"
+            r"can't render element of type <class '.*SomeElement'>",
+            SomeElement().compile
+        )
+
+    def test_unsupported_element_meth_visit_name(self):
+        from sqlalchemy.sql.expression import ClauseElement
+        class SomeElement(ClauseElement):
+            @classmethod
+            def __visit_name__(cls):
+                return "some_element"
+
+        assert_raises_message(
+            exc.UnsupportedCompilationError,
+            r"Compiler <sqlalchemy.sql.compiler.SQLCompiler .*"
+            r"can't render element of type <class '.*SomeElement'>",
+            SomeElement().compile
+        )
+
+    def test_unsupported_operator(self):
+        from sqlalchemy.sql.expression import BinaryExpression
+        def myop(x, y):
+            pass
+        binary = BinaryExpression(column("foo"), column("bar"), myop)
+        assert_raises_message(
+            exc.UnsupportedCompilationError,
+            r"Compiler <sqlalchemy.sql.compiler.SQLCompiler .*"
+            r"can't render element of type <function.*",
+            binary.compile
+        )
+
+
 class KwargPropagationTest(fixtures.TestBase):
 
     @classmethod
