@@ -72,6 +72,18 @@ class CircularDependencyError(SQLAlchemyError):
 class CompileError(SQLAlchemyError):
     """Raised when an error occurs during SQL compilation"""
 
+class UnsupportedCompilationError(CompileError):
+    """Raised when an operation is not supported by the given compiler.
+
+
+    .. versionadded:: 0.8.3
+
+    """
+
+    def __init__(self, compiler, element_type):
+        super(UnsupportedCompilationError, self).__init__(
+                    "Compiler %r can't render element of type %s" %
+                                (compiler, element_type))
 
 class IdentifierError(SQLAlchemyError):
     """Raised when a schema name is beyond the max character limit"""

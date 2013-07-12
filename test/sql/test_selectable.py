@@ -148,6 +148,19 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         s = select([t])._clone()
         assert c in s.c.bar.proxy_set
 
+
+    def test_no_error_on_unsupported_expr_key(self):
+        from sqlalchemy.dialects.postgresql import ARRAY
+
+        t = table('t', column('x', ARRAY(Integer)))
+
+        expr = t.c.x[5]
+        s = select([t, expr])
+        eq_(
+            s.c.keys(),
+            ['x', expr.anon_label]
+        )
+
     def test_cloned_intersection(self):
         t1 = table('t1', column('x'))
         t2 = table('t2', column('x'))

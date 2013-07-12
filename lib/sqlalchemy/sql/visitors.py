@@ -26,6 +26,7 @@ http://techspot.zzzeek.org/2008/01/23/expression-transformations/
 from collections import deque
 from .. import util
 import operator
+from .. import exc
 
 __all__ = ['VisitableType', 'Visitable', 'ClauseVisitor',
     'CloningVisitor', 'ReplacingCloningVisitor', 'iterate',
@@ -71,14 +72,24 @@ def _generate_dispatch(cls):
             getter = operator.attrgetter("visit_%s" % visit_name)
 
             def _compiler_dispatch(self, visitor, **kw):
-                return getter(visitor)(self, **kw)
+                try:
+                    meth = getter(visitor)
+                except AttributeError:
+                    raise exc.UnsupportedCompilationError(visitor, cls)
+                else:
+                    return meth(self, **kw)
         else:
             # The optimization opportunity is lost for this case because the
             # __visit_name__ is not yet a string. As a result, the visit
             # string has to be recalculated with each compilation.
             def _compiler_dispatch(self, visitor, **kw):
                 visit_attr = 'visit_%s' % self.__visit_name__
-                return getattr(visitor, visit_attr)(self, **kw)
+                try:
+                    meth = getattr(visitor, visit_attr)
+                except AttributeError:
+                    raise exc.UnsupportedCompilationError(visitor, cls)
+                else:
+                    return meth(self, **kw)
 
         _compiler_dispatch.__doc__ = \
           """Look for an attribute named "visit_" + self.__visit_name__
