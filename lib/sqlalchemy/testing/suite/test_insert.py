@@ -135,9 +135,9 @@ class InsertBehaviorTest(fixtures.TablesTest):
 
 
         config.db.execute(
-                table.insert().
+                table.insert(inline=True).
                     from_select(
-                        ("data",), select([table.c.data]).where(
+                        ("id", "data",), select([table.c.id + 5, table.c.data]).where(
                                 table.c.data.in_(["data2", "data3"]))
                     ),
         )
