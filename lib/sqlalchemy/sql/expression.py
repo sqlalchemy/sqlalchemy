@@ -6364,6 +6364,17 @@ class Insert(ValuesBase):
          would normally raise an exception if these column lists don't
          correspond.
 
+        .. note::
+
+           Depending on backend, it may be necessary for the :class:`.Insert`
+           statement to be constructed using the ``inline=True`` flag; this
+           flag will prevent the implicit usage of ``RETURNING`` when the
+           ``INSERT`` statement is rendered, which isn't supported on a backend
+           such as Oracle in conjunction with an ``INSERT..SELECT`` combination::
+
+             sel = select([table1.c.a, table1.c.b]).where(table1.c.c > 5)
+             ins = table2.insert(inline=True).from_select(['a', 'b'], sel)
+
         .. versionadded:: 0.8.3
 
         """
