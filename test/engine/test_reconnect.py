@@ -13,6 +13,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing import is_not_
 from sqlalchemy.testing.mock import Mock, call
+from sqlalchemy import util
 
 class MockError(Exception):
     pass
