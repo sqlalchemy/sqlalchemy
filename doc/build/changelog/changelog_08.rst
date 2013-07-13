@@ -7,6 +7,15 @@
     :version: 0.8.3
 
     .. change::
+        :tags: bug, sqlite
+        :tickets: 2781
+
+        The newly added SQLite DATETIME arguments storage_format and
+        regexp apparently were not fully implemented correctly; while the
+        arguments were accepted, in practice they would have no effect;
+        this has been fixed.
+
+    .. change::
         :tags: bug, sql, postgresql
         :tickets: 2780
 

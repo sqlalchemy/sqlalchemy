@@ -93,6 +93,52 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             t.drop(engine)
             engine.dispose()
 
+    @testing.provide_metadata
+    def test_custom_datetime(self):
+        sqlite_date = sqlite.DATETIME(
+                # 2004-05-21T00:00:00
+                storage_format="%(year)04d-%(month)02d-%(day)02d"
+                    "T%(hour)02d:%(minute)02d:%(second)02d",
+                regexp=r"(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)",
+            )
+        t = Table('t', self.metadata, Column('d', sqlite_date))
+        self.metadata.create_all(testing.db)
+        testing.db.execute(t.insert().
+                        values(d=datetime.datetime(2010, 10, 15, 12, 37, 0)))
+        testing.db.execute("insert into t (d) values ('2004-05-21T00:00:00')")
+        eq_(
+            testing.db.execute("select * from t order by d").fetchall(),
+            [(u'2004-05-21T00:00:00',), (u'2010-10-15T12:37:00',)]
+        )
+        eq_(
+            testing.db.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
+            [(datetime.datetime(2004, 5, 21, 0, 0),),
+            (datetime.datetime(2010, 10, 15, 12, 37),)]
+        )
+
+    @testing.provide_metadata
+    def test_custom_date(self):
+        sqlite_date = sqlite.DATE(
+                # 2004-05-21T00:00:00
+                storage_format="%(year)04d|%(month)02d|%(day)02d",
+                regexp=r"(\d+)\|(\d+)\|(\d+)",
+            )
+        t = Table('t', self.metadata, Column('d', sqlite_date))
+        self.metadata.create_all(testing.db)
+        testing.db.execute(t.insert().
+                        values(d=datetime.date(2010, 10, 15)))
+        testing.db.execute("insert into t (d) values ('2004|05|21')")
+        eq_(
+            testing.db.execute("select * from t order by d").fetchall(),
+            [(u'2004|05|21',), (u'2010|10|15',)]
+        )
+        eq_(
+            testing.db.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
+            [(datetime.date(2004, 5, 21),),
+            (datetime.date(2010, 10, 15),)]
+        )
+
+
     def test_no_convert_unicode(self):
         """test no utf-8 encoding occurs"""
 
@@ -217,7 +263,6 @@ class DateTimeTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(bp(dt), '20080627120000000125')
         rp = sldt.result_processor(None, None)
         eq_(rp(bp(dt)), dt)
-
 
 class DateTest(fixtures.TestBase, AssertsCompiledSQL):
 
