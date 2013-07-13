@@ -605,7 +605,7 @@ class AttributeImpl(object):
 
                 if key in state.callables:
                     callable_ = state.callables[key]
-                    value = callable_(passive)
+                    value = callable_(state, passive)
                 elif self.callable_:
                     value = self.callable_(state, passive)
                 else:

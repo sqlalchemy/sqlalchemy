@@ -305,14 +305,19 @@ class InstanceState(interfaces._InspectionAttr):
         dict_.pop(key, None)
         self.callables[key] = self
 
-    def _set_callable(self, dict_, key, callable_):
-        """Remove the given attribute and set the given callable
-           as a loader."""
-
-        old = dict_.pop(key, None)
-        if old is not None and self.manager[key].impl.collection:
-            self.manager[key].impl._invalidate_collection(old)
-        self.callables[key] = callable_
+    @classmethod
+    def _row_processor(cls, manager, fn, key):
+        impl = manager[key].impl
+        if impl.collection:
+            def _set_callable(state, dict_, row):
+                old = dict_.pop(key, None)
+                if old is not None:
+                    impl._invalidate_collection(old)
+                state.callables[key] = fn
+        else:
+            def _set_callable(state, dict_, row):
+                state.callables[key] = fn
+        return _set_callable
 
     def _expire(self, dict_, modified_set):
         self.expired = True
@@ -359,7 +364,7 @@ class InstanceState(interfaces._InspectionAttr):
 
         self.manager.dispatch.expire(self, attribute_names)
 
-    def __call__(self, passive):
+    def __call__(self, state, passive):
         """__call__ allows the InstanceState to act as a deferred
         callable for loading expired attributes, which is also
         serializable (picklable).

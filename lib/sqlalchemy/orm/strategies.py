@@ -14,6 +14,7 @@ from . import (
         attributes, interfaces, exc as orm_exc, loading,
         unitofwork, util as orm_util
     )
+from .state import InstanceState
 from .util import _none_set
 from .interfaces import (
     LoaderStrategy, StrategizedOption, MapperOption, PropertyOption,
@@ -181,9 +182,9 @@ class DeferredColumnLoader(LoaderStrategy):
                                 context, path, mapper, row, adapter)
 
         elif not self.is_class_level:
-            def set_deferred_for_local_state(state, dict_, row):
-                state._set_callable(
-                    dict_, key, LoadDeferredColumns(state, key))
+            set_deferred_for_local_state = InstanceState._row_processor(
+                                                mapper.class_manager,
+                                                LoadDeferredColumns(key), key)
             return set_deferred_for_local_state, None, None
         else:
             def reset_col_for_deferred(state, dict_, row):
@@ -256,12 +257,11 @@ log.class_logger(DeferredColumnLoader)
 class LoadDeferredColumns(object):
     """serializable loader object used by DeferredColumnLoader"""
 
-    def __init__(self, state, key):
-        self.state = state
+    def __init__(self, key):
         self.key = key
 
-    def __call__(self, passive=attributes.PASSIVE_OFF):
-        state, key = self.state, self.key
+    def __call__(self, state, passive=attributes.PASSIVE_OFF):
+        key = self.key
 
         localparent = state.manager.mapper
         prop = localparent._props[key]
@@ -602,16 +602,18 @@ class LazyLoader(AbstractRelationshipLoader):
                                     mapper, row, adapter):
         key = self.key
         if not self.is_class_level:
-            def set_lazy_callable(state, dict_, row):
-                # we are not the primary manager for this attribute
-                # on this class - set up a
-                # per-instance lazyloader, which will override the
-                # class-level behavior.
-                # this currently only happens when using a
-                # "lazyload" option on a "no load"
-                # attribute - "eager" attributes always have a
-                # class-level lazyloader installed.
-                state._set_callable(dict_, key, LoadLazyAttribute(state, key))
+            # we are not the primary manager for this attribute
+            # on this class - set up a
+            # per-instance lazyloader, which will override the
+            # class-level behavior.
+            # this currently only happens when using a
+            # "lazyload" option on a "no load"
+            # attribute - "eager" attributes always have a
+            # class-level lazyloader installed.
+            set_lazy_callable = InstanceState._row_processor(
+                                        mapper.class_manager,
+                                        LoadLazyAttribute(key), key)
+
             return set_lazy_callable, None, None
         else:
             def reset_for_lazy_callable(state, dict_, row):
@@ -634,12 +636,11 @@ log.class_logger(LazyLoader)
 class LoadLazyAttribute(object):
     """serializable loader object used by LazyLoader"""
 
-    def __init__(self, state, key):
-        self.state = state
+    def __init__(self, key):
         self.key = key
 
-    def __call__(self, passive=attributes.PASSIVE_OFF):
-        state, key = self.state, self.key
+    def __call__(self, state, passive=attributes.PASSIVE_OFF):
+        key = self.key
         instance_mapper = state.manager.mapper
         prop = instance_mapper._props[key]
         strategy = prop._strategies[LazyLoader]

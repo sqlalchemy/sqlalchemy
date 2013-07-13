@@ -161,7 +161,7 @@ def get_from_identity(session, key, passive):
                 # expired state will be checked soon enough, if necessary
                 return instance
             try:
-                state(passive)
+                state(state, passive)
             except orm_exc.ObjectDeletedError:
                 session._remove_newly_deleted([state])
                 return None
