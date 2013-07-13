@@ -153,6 +153,12 @@ class _DateTimeMixin(object):
         if storage_format is not None:
             self._storage_format = storage_format
 
+    def adapt(self, cls, **kw):
+        if self._storage_format:
+            kw["storage_format"] = self._storage_format
+        if self._reg:
+            kw["regexp"] = self._reg
+        return util.constructor_copy(self, cls, **kw)
 
 class DATETIME(_DateTimeMixin, sqltypes.DateTime):
     """Represent a Python datetime object in SQLite using a string.
