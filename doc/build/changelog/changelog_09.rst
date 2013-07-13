@@ -7,6 +7,21 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2778
+
+        A performance fix related to the usage of the :func:`.defer` option
+        when loading mapped entities.   The function overhead of applying
+        a per-object deferred callable to an instance at load time was
+        significantly higher than that of just loading the data from the row
+        (note that ``defer()`` is meant to reduce DB/network overhead, not
+        necessarily function call count); the function call overhead is now
+        less than that of loading data from the column in all cases.  There
+        is also a reduction in the number of "lazy callable" objects created
+        per load from N (total deferred values in the result) to 1 (total
+        number of deferred cols).  Also in 0.8.3.
+
+    .. change::
         :tags: bug, sqlite
         :tickets: 2781
 
