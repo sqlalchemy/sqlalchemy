@@ -179,7 +179,7 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
 
         dt = DATETIME(
             storage_format="%(year)04d/%(month)02d/%(day)02d %(hour)02d:%(min)02d:%(second)02d",
-            regexp=re.compile("(\d+)/(\d+)/(\d+) (\d+)-(\d+)-(\d+)")
+            regexp=r"(\d+)/(\d+)/(\d+) (\d+)-(\d+)-(\d+)"
         )
 
     :param storage_format: format string which will be applied to the
