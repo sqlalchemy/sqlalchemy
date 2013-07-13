@@ -890,11 +890,10 @@ class QueuePoolTest(PoolTestBase):
                 def waiter(p, timeout, max_overflow):
                     success_key = (timeout, max_overflow)
                     conn = p.connect()
-                    time.sleep(.5)
                     success.append(success_key)
+                    time.sleep(.1)
                     conn.close()
 
-                time.sleep(.2)
                 c1 = p.connect()
                 c2 = p.connect()
 
@@ -907,7 +906,7 @@ class QueuePoolTest(PoolTestBase):
                 c1.invalidate()
                 c2.invalidate()
                 p2 = p._replace()
-        time.sleep(1)
+                time.sleep(.2)
 
         eq_(len(success), 12, "successes: %s" % success)
 
