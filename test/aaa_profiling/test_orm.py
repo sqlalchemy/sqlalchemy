@@ -2,7 +2,7 @@ from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message
 from sqlalchemy import exc as sa_exc, util, Integer, String, ForeignKey
 from sqlalchemy.orm import exc as orm_exc, mapper, relationship, \
-    sessionmaker, Session
+    sessionmaker, Session, defer
 from sqlalchemy import testing
 from sqlalchemy.testing import profiling
 from sqlalchemy.testing import fixtures
@@ -257,4 +257,56 @@ class MergeBackrefsTest(fixtures.MappedTest):
         ]:
             s.merge(a)
 
+class DeferOptionsTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('a', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('x', String(5)),
+            Column('y', String(5)),
+            Column('z', String(5)),
+            Column('q', String(5)),
+            Column('p', String(5)),
+            Column('r', String(5)),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        A = cls.classes.A
+        a = cls.tables.a
+        mapper(A, a)
+
+    @classmethod
+    def insert_data(cls):
+        A = cls.classes.A
+        s = Session()
+        s.add_all([
+            A(id=i,
+                **dict((letter, "%s%d" % (letter, i)) for letter in
+                        ['x', 'y', 'z', 'p', 'q', 'r'])
+            ) for i in range(1, 1001)
+        ])
+        s.commit()
+
+    @profiling.function_call_count(variance=.10)
+    def test_baseline(self):
+        # as of [ticket:2778], this is at 39025
+        A = self.classes.A
+        s = Session()
+        s.query(A).all()
+
+    @profiling.function_call_count(variance=.10)
+    def test_defer_many_cols(self):
+        # with [ticket:2778], this goes from 50805 to 32817,
+        # as it should be fewer function calls than the baseline
+        A = self.classes.A
+        s = Session()
+        s.query(A).options(
+            *[defer(letter) for letter in ['x', 'y', 'z', 'p', 'q', 'r']]).\
+            all()
 
