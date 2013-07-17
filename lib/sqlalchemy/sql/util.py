@@ -291,7 +291,9 @@ def expression_as_ddl(clause):
             return expression.literal_column(_quote_ddl_expr(element.value))
         elif isinstance(element, expression.ColumnClause) and \
                 element.table is not None:
-            return expression.column(element.name)
+            col = expression.column(element.name)
+            col.quote = element.quote
+            return col
         else:
             return None
 

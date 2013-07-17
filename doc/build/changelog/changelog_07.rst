@@ -7,6 +7,13 @@
     :version: 0.7.11
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2784
+
+        Fixed bug in :class:`.CheckConstraint` DDL where the "quote" flag from a
+        :class:`.Column` object would not be propagated.
+
+    .. change::
       :tags: bug, orm
       :tickets: 2699
 
