@@ -182,6 +182,29 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(x,
             '''SELECT "ImATable".col1, "ImATable"."from", "ImATable".louisville, "ImATable"."order" FROM "ImATable"''')
 
+    def test_quote_flag_propagate_check_constraint(self):
+        m = MetaData()
+        t = Table('t', m, Column('x', Integer, quote=True))
+        const = CheckConstraint(t.c.x > 5)
+        t.append_constraint(const)
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t ("
+            '"x" INTEGER, '
+            'CHECK ("x" > 5)'
+            ")"
+        )
+
+    def test_quote_flag_propagate_index(self):
+        m = MetaData()
+        t = Table('t', m, Column('x', Integer, quote=True))
+        idx = Index("foo", t.c.x)
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            'CREATE INDEX foo ON t ("x")'
+        )
+
+
 
 class PreparerTest(fixtures.TestBase):
     """Test the db-agnostic quoting services of IdentifierPreparer."""
