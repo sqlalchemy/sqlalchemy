@@ -542,6 +542,28 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
                 'Foo.T1'
         )
 
+    def test_quote_flag_propagate_check_constraint(self):
+        m = MetaData()
+        t = Table('t', m, Column('x', Integer, quote=True))
+        CheckConstraint(t.c.x > 5)
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t ("
+            '"x" INTEGER, '
+            'CHECK ("x" > 5)'
+            ")"
+        )
+
+    def test_quote_flag_propagate_index(self):
+        m = MetaData()
+        t = Table('t', m, Column('x', Integer, quote=True))
+        idx = Index("foo", t.c.x)
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            'CREATE INDEX foo ON t ("x")'
+        )
+
+
 
 class PreparerTest(fixtures.TestBase):
     """Test the db-agnostic quoting services of IdentifierPreparer."""
@@ -596,3 +618,4 @@ class PreparerTest(fixtures.TestBase):
         a_eq(unformat('foo.`bar`'), ['foo', 'bar'])
         a_eq(unformat('`foo`.bar'), ['foo', 'bar'])
         a_eq(unformat('`foo`.`b``a``r`.`baz`'), ['foo', 'b`a`r', 'baz'])
+
