@@ -14,7 +14,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.util import gc_collect
 from test.orm import _fixtures
 from sqlalchemy import event
-
+from sqlalchemy.testing.mock import Mock, call
 
 class _RemoveListeners(object):
     def teardown(self):
@@ -362,14 +362,25 @@ class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         class SubUser(User):
             pass
 
-        canary = []
-        def evt(x):
+        class SubSubUser(SubUser):
+            pass
+
+        canary = Mock()
+        def evt(x, y, z):
             canary.append(x)
-        event.listen(User, "before_insert", evt, propagate=True, raw=True)
+        event.listen(User, "before_insert", canary, propagate=True, raw=True)
 
         m = mapper(SubUser, users)
-        m.dispatch.before_insert(5)
-        eq_(canary, [5])
+        m.dispatch.before_insert(5, 6, 7)
+        eq_(canary.mock_calls,
+                [call(5, 6, 7)])
+
+        m2 = mapper(SubSubUser, users)
+
+        m2.dispatch.before_insert(8, 9, 10)
+        eq_(canary.mock_calls,
+                [call(5, 6, 7), call(8, 9, 10)])
+
 
     def test_deferred_map_event_subclass_no_propagate(self):
         """
@@ -415,6 +426,35 @@ class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         m.dispatch.before_insert(5)
         eq_(canary, [5])
+
+    def test_deferred_map_event_subclass_post_mapping_propagate_two(self):
+        """
+        1. map only subclass of class
+        2. mapper event listen on class, w propagate
+        3. event fire should receive event
+
+        """
+        users, User = (self.tables.users,
+                                self.classes.User)
+
+        class SubUser(User):
+            pass
+
+        class SubSubUser(SubUser):
+            pass
+
+        m = mapper(SubUser, users)
+
+        canary = Mock()
+        event.listen(User, "before_insert", canary, propagate=True, raw=True)
+
+        m2 = mapper(SubSubUser, users)
+
+        m.dispatch.before_insert(5, 6, 7)
+        eq_(canary.mock_calls, [call(5, 6, 7)])
+
+        m2.dispatch.before_insert(8, 9, 10)
+        eq_(canary.mock_calls, [call(5, 6, 7), call(8, 9, 10)])
 
     def test_deferred_instance_event_subclass_post_mapping_propagate(self):
         """
@@ -507,23 +547,25 @@ class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         class SubUser2(User):
             pass
 
-        canary = []
-        def evt(x):
-            canary.append(x)
-        event.listen(User, "load", evt, propagate=True, raw=True)
+        canary = Mock()
+        event.listen(User, "load", canary, propagate=True, raw=False)
 
+        # reversing these fixes....
         m = mapper(SubUser, users)
         m2 = mapper(User, users)
 
-        m.class_manager.dispatch.load(5)
-        eq_(canary, [5])
+        instance = Mock()
+        m.class_manager.dispatch.load(instance)
 
-        m2.class_manager.dispatch.load(5)
-        eq_(canary, [5, 5])
+        eq_(canary.mock_calls, [call(instance.obj())])
+
+        m2.class_manager.dispatch.load(instance)
+        eq_(canary.mock_calls, [call(instance.obj()), call(instance.obj())])
 
         m3 = mapper(SubUser2, users)
-        m3.class_manager.dispatch.load(5)
-        eq_(canary, [5, 5, 5])
+        m3.class_manager.dispatch.load(instance)
+        eq_(canary.mock_calls, [call(instance.obj()),
+                        call(instance.obj()), call(instance.obj())])
 
     def test_deferred_instance_event_subclass_no_propagate(self):
         """
