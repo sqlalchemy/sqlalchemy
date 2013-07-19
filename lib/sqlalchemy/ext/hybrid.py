@@ -229,7 +229,7 @@ mapping which relates a ``User`` to a ``SavingsAccount``::
                 account = Account(owner=self)
             else:
                 account = self.accounts[0]
-            account.balance = balance
+            account.balance = value
 
         @balance.expression
         def balance(cls):
@@ -269,7 +269,7 @@ Correlated Subquery Relationship Hybrid
 
 We can, of course, forego being dependent on the enclosing query's usage
 of joins in favor of the correlated subquery, which can portably be packed
-into a single colunn expression. A correlated subquery is more portable, but
+into a single column expression. A correlated subquery is more portable, but
 often performs more poorly at the SQL level. Using the same technique
 illustrated at :ref:`mapper_column_property_sql_expressions`,
 we can adjust our ``SavingsAccount`` example to aggregate the balances for
