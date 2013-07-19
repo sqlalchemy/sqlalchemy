@@ -7,6 +7,14 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2786
+
+        Fixed bug in ORM-level event registration where the "raw" or
+        "propagate" flags could potentially be mis-configured in some
+        "unmapped base class" configurations.  Also in 0.8.3.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2784
 

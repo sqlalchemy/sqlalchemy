@@ -360,14 +360,17 @@ class _EventsHold(object):
     def populate(cls, class_, subject):
         for subclass in class_.__mro__:
             if subclass in cls.all_holds:
-                if subclass is class_:
-                    collection = cls.all_holds.pop(subclass)
-                else:
-                    collection = cls.all_holds[subclass]
+                collection = cls.all_holds[subclass]
                 for ident, fn, raw, propagate in collection:
                     if propagate or subclass is class_:
+                        # since we can't be sure in what order different classes
+                        # in a hierarchy are triggered with populate(),
+                        # we rely upon _EventsHold for all event
+                        # assignment, instead of using the generic propagate
+                        # flag.
                         subject.dispatch._listen(subject, ident,
-                                                        fn, raw, propagate)
+                                                        fn, raw=raw,
+                                                        propagate=False)
 
 
 class _InstanceEventsHold(_EventsHold):
