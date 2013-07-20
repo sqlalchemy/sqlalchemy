@@ -249,17 +249,17 @@ def as_declarative(**kw):
     sent to :func:`.declarative_base`, allowing the base class
     to be converted in-place to a "declarative" base::
 
-    from sqlalchemy.ext.declarative import as_declarative
+        from sqlalchemy.ext.declarative import as_declarative
 
-    @as_declarative()
-    class Base(object)
-        @declared_attr
-        def __tablename__(cls):
-            return cls.__name__.lower()
-        id = Column(Integer, primary_key=True)
+        @as_declarative()
+        class Base(object)
+            @declared_attr
+            def __tablename__(cls):
+                return cls.__name__.lower()
+            id = Column(Integer, primary_key=True)
 
-    class MyMappedClass(Base):
-        # ...
+        class MyMappedClass(Base):
+            # ...
 
     All keyword arguments passed to :func:`.as_declarative` are passed
     along to :func:`.declarative_base`.
