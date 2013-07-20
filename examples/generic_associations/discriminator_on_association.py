@@ -3,26 +3,29 @@
 The HasAddresses mixin will provide a relationship
 to the fixed Address table based on a fixed association table.
 
-The association table will also contain a "discriminator"
+The association table contains a "discriminator"
 which determines what type of parent object associates to the
-Address row.
+Address row.  SQLAlchemy's single-table-inheritance feature is used
+to target different association types.
 
 This is a "polymorphic association".   Even though a "discriminator"
 that refers to a particular table is present, the extra association
 table is used so that traditional foreign key constraints may be used.
 
-This configuration has the advantage that a fixed set of tables
-are used, with no extra-table-per-parent needed.   The individual
-Address record can also locate its parent with no need to scan
-amongst many tables.
+This configuration attempts to simulate a so-called "generic foreign key"
+as closely as possible without actually foregoing the use of real
+foreign keys.   Unlike table-per-related and table-per-association,
+it uses a fixed number of tables to serve any number of potential parent
+objects, but is also slightly more complex.
 
 """
-from sqlalchemy.ext.declarative import declarative_base, declared_attr
+from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy import create_engine, Integer, Column, \
-                    String, ForeignKey, Table
+                    String, ForeignKey
 from sqlalchemy.orm import Session, relationship, backref
 from sqlalchemy.ext.associationproxy import association_proxy
 
+@as_declarative()
 class Base(object):
     """Base class which provides automated table name
     and surrogate primary key column.
@@ -32,7 +35,6 @@ class Base(object):
     def __tablename__(cls):
         return cls.__name__.lower()
     id = Column(Integer, primary_key=True)
-Base = declarative_base(cls=Base)
 
 class AddressAssociation(Base):
     """Associates a collection of Address objects
@@ -41,22 +43,10 @@ class AddressAssociation(Base):
     """
     __tablename__ = "address_association"
 
-    @classmethod
-    def creator(cls, discriminator):
-        """Provide a 'creator' function to use with
-        the association proxy."""
-
-        return lambda addresses:AddressAssociation(
-                                addresses=addresses,
-                                discriminator=discriminator)
-
     discriminator = Column(String)
     """Refers to the type of parent."""
 
-    @property
-    def parent(self):
-        """Return the parent object."""
-        return getattr(self, "%s_parent" % self.discriminator)
+    __mapper_args__ = {"polymorphic_on": discriminator}
 
 class Address(Base):
     """The Address class.
@@ -65,15 +55,11 @@ class Address(Base):
     single table.
 
     """
-    association_id = Column(Integer,
-                        ForeignKey("address_association.id")
-                    )
+    association_id = Column(Integer, ForeignKey("address_association.id"))
     street = Column(String)
     city = Column(String)
     zip = Column(String)
-    association = relationship(
-                    "AddressAssociation",
-                    backref="addresses")
+    association = relationship("AddressAssociation", backref="addresses")
 
     parent = association_proxy("association", "parent")
 
@@ -89,19 +75,29 @@ class HasAddresses(object):
     """
     @declared_attr
     def address_association_id(cls):
-        return Column(Integer,
-                                ForeignKey("address_association.id"))
+        return Column(Integer, ForeignKey("address_association.id"))
 
     @declared_attr
     def address_association(cls):
-        discriminator = cls.__name__.lower()
-        cls.addresses= association_proxy(
+        name = cls.__name__
+        discriminator = name.lower()
+
+        assoc_cls = type(
+                        "%sAddressAssociation" % name,
+                        (AddressAssociation, ),
+                        dict(
+                            __mapper_args__={
+                                "polymorphic_identity": discriminator
+                            }
+                        )
+                    )
+
+        cls.addresses = association_proxy(
                     "address_association", "addresses",
-                    creator=AddressAssociation.creator(discriminator)
+                    creator=lambda addresses: assoc_cls(addresses=addresses)
                 )
-        return relationship("AddressAssociation",
-                    backref=backref("%s_parent" % discriminator,
-                                        uselist=False))
+        return relationship(assoc_cls,
+                    backref=backref("parent", uselist=False))
 
 
 class Customer(HasAddresses, Base):

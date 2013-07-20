@@ -16,10 +16,12 @@ The configurations include:
   table per association.
 * ``discriminator_on_association.py`` - shared collection table and shared
   association table, including a discriminator column.
+* ``generic_fk.py`` - imitates the approach taken by popular frameworks such
+  as Django and Ruby on Rails to create a so-called "generic foreign key".
 
-The ``discriminator_on_association.py`` script in particular is a modernized
-version of the "polymorphic associations" example present in older versions of
-SQLAlchemy, originally from the blog post at
-http://techspot.zzzeek.org/2007/05/29/polymorphic-associations-with-sqlalchemy/.
+The ``discriminator_on_association.py`` and ``generic_fk.py`` scripts
+are modernized versions of recipes presented in the 2007 blog post
+`Polymorphic Associations with SQLAlchemy <http://techspot.zzzeek.org/2007/05/29/polymorphic-associations-with-sqlalchemy/>`_.
+.
 
 """
