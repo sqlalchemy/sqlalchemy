@@ -10,6 +10,8 @@ API Reference
 
 .. autofunction:: declarative_base
 
+.. autofunction:: as_declarative
+
 .. autoclass:: declared_attr
 
 .. autofunction:: sqlalchemy.ext.declarative.api._declarative_constructor

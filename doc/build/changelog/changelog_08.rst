@@ -7,6 +7,25 @@
     :version: 0.8.3
 
     .. change::
+        :tags: feature, examples
+
+        Improved the examples in ``examples/generic_associations``, including
+        that ``discriminator_on_association.py`` makes use of single table
+        inheritance do the work with the "discriminator".  Also
+        added a true "generic foreign key" example, which works similarly
+        to other popular frameworks in that it uses an open-ended integer
+        to point to any other table, foregoing traditional referential
+        integrity.  While we don't recommend this pattern, information wants
+        to be free.
+
+    .. change::
+        :tags: feature, orm, declarative
+
+        Added a convenience class decorator :func:`.as_declarative`, is
+        a wrapper for :func:`.declarative_base` which allows an existing base
+        class to be applied using a nifty class-decorated approach.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2786
 

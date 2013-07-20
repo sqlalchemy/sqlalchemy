@@ -12,11 +12,12 @@ has no dependency on the system.
 
 
 """
-from sqlalchemy.ext.declarative import declarative_base, declared_attr
+from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy import create_engine, Integer, Column, \
                     String, ForeignKey, Table
 from sqlalchemy.orm import Session, relationship
 
+@as_declarative()
 class Base(object):
     """Base class which provides automated table name
     and surrogate primary key column.
@@ -26,7 +27,6 @@ class Base(object):
     def __tablename__(cls):
         return cls.__name__.lower()
     id = Column(Integer, primary_key=True)
-Base = declarative_base(cls=Base)
 
 class Address(Base):
     """The Address class.

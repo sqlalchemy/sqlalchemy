@@ -1254,7 +1254,7 @@ Mapped instances then make usage of
 from .api import declarative_base, synonym_for, comparable_using, \
     instrument_declarative, ConcreteBase, AbstractConcreteBase, \
     DeclarativeMeta, DeferredReflection, has_inherited_table,\
-    declared_attr
+    declared_attr, as_declarative
 
 
 __all__ = ['declarative_base', 'synonym_for', 'has_inherited_table',

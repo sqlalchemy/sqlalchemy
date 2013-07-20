@@ -218,6 +218,10 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
       compatible callable to use as the meta type of the generated
       declarative base class.
 
+    .. seealso::
+
+        :func:`.as_declarative`
+
     """
     lcl_metadata = metadata or MetaData()
     if bind:
@@ -237,6 +241,42 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
 
     return metaclass(name, bases, class_dict)
 
+def as_declarative(**kw):
+    """
+    Class decorator for :func:`.declarative_base`.
+
+    Provides a syntactical shortcut to the ``cls`` argument
+    sent to :func:`.declarative_base`, allowing the base class
+    to be converted in-place to a "declarative" base::
+
+    from sqlalchemy.ext.declarative import as_declarative
+
+    @as_declarative()
+    class Base(object)
+        @declared_attr
+        def __tablename__(cls):
+            return cls.__name__.lower()
+        id = Column(Integer, primary_key=True)
+
+    class MyMappedClass(Base):
+        # ...
+
+    All keyword arguments passed to :func:`.as_declarative` are passed
+    along to :func:`.declarative_base`.
+
+    .. versionadded:: 0.8.3
+
+    .. seealso::
+
+        :func:`.declarative_base`
+
+    """
+    def decorate(cls):
+        kw['cls'] = cls
+        kw['name'] = cls.__name__
+        return declarative_base(**kw)
+
+    return decorate
 
 class ConcreteBase(object):
     """A helper class for 'concrete' declarative mappings.
