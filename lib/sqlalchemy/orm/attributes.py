@@ -398,6 +398,59 @@ def create_proxied_attribute(descriptor):
                                       from_instance=descriptor)
     return Proxy
 
+OP_REMOVE = util.symbol("REMOVE")
+OP_APPEND = util.symbol("APPEND")
+OP_REPLACE = util.symbol("REPLACE")
+
+class Event(object):
+    """A token propagated throughout the course of a chain of attribute
+    events.
+
+    Serves as an indicator of the source of the event and also provides
+    a means of controlling propagation across a chain of attribute
+    operations.
+
+    The :class:`.Event` object is sent as the ``initiator`` argument
+    when dealing with the :meth:`.AttributeEvents.append`,
+    :meth:`.AttributeEvents.set`,
+    and :meth:`.AttributeEvents.remove` events.
+
+    The :class:`.Event` object is currently interpreted by the backref
+    event handlers, and is used to control the propagation of operations
+    across two mutually-dependent attributes.
+
+    .. versionadded:: 0.9.0
+
+    """
+
+    impl = None
+    """The :class:`.AttributeImpl` which is the current event initiator.
+    """
+
+    op = None
+    """The symbol :attr:`.OP_APPEND`, :attr:`.OP_REMOVE` or :attr:`.OP_REPLACE`,
+    indicating the source operation.
+
+    """
+
+    def __init__(self, attribute_impl, op):
+        self.impl = attribute_impl
+        self.op = op
+        self.parent_token = self.impl.parent_token
+
+    @classmethod
+    def _token_gen(self, op):
+        @util.memoized_property
+        def gen(self):
+            return Event(self, op)
+        return gen
+
+    @property
+    def key(self):
+        return self.impl.key
+
+    def hasparent(self, state):
+        return self.impl.hasparent(state)
 
 class AttributeImpl(object):
     """internal implementation for instrumented attributes."""
@@ -683,7 +736,7 @@ class ScalarAttributeImpl(AttributeImpl):
             old = dict_.get(self.key, NO_VALUE)
 
         if self.dispatch.remove:
-            self.fire_remove_event(state, dict_, old, None)
+            self.fire_remove_event(state, dict_, old, self._remove_token)
         state._modified_event(dict_, self, old)
         del dict_[self.key]
 
@@ -693,9 +746,6 @@ class ScalarAttributeImpl(AttributeImpl):
 
     def set(self, state, dict_, value, initiator,
                 passive=PASSIVE_OFF, check_old=None, pop=False):
-        if initiator and initiator.parent_token is self.parent_token:
-            return
-
         if self.dispatch._active_history:
             old = self.get(state, dict_, PASSIVE_RETURN_NEVER_SET)
         else:
@@ -707,14 +757,17 @@ class ScalarAttributeImpl(AttributeImpl):
         state._modified_event(dict_, self, old)
         dict_[self.key] = value
 
+    _replace_token = _append_token = Event._token_gen(OP_REPLACE)
+    _remove_token = Event._token_gen(OP_REMOVE)
+
     def fire_replace_event(self, state, dict_, value, previous, initiator):
         for fn in self.dispatch.set:
-            value = fn(state, value, previous, initiator or self)
+            value = fn(state, value, previous, initiator or self._replace_token)
         return value
 
     def fire_remove_event(self, state, dict_, value, initiator):
         for fn in self.dispatch.remove:
-            fn(state, value, initiator or self)
+            fn(state, value, initiator or self._remove_token)
 
     @property
     def type(self):
@@ -736,7 +789,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
 
     def delete(self, state, dict_):
         old = self.get(state, dict_)
-        self.fire_remove_event(state, dict_, old, self)
+        self.fire_remove_event(state, dict_, old, self._remove_token)
         del dict_[self.key]
 
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
@@ -773,14 +826,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
                 passive=PASSIVE_OFF, check_old=None, pop=False):
         """Set a value on the given InstanceState.
 
-        `initiator` is the ``InstrumentedAttribute`` that initiated the
-        ``set()`` operation and is used to control the depth of a circular
-        setter operation.
-
         """
-        if initiator and initiator.parent_token is self.parent_token:
-            return
-
         if self.dispatch._active_history:
             old = self.get(state, dict_, passive=PASSIVE_ONLY_PERSISTENT)
         else:
@@ -801,12 +847,13 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         value = self.fire_replace_event(state, dict_, value, old, initiator)
         dict_[self.key] = value
 
+
     def fire_remove_event(self, state, dict_, value, initiator):
         if self.trackparent and value is not None:
             self.sethasparent(instance_state(value), state, False)
 
         for fn in self.dispatch.remove:
-            fn(state, value, initiator or self)
+            fn(state, value, initiator or self._remove_token)
 
         state._modified_event(dict_, self, value)
 
@@ -818,7 +865,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
                 self.sethasparent(instance_state(previous), state, False)
 
         for fn in self.dispatch.set:
-            value = fn(state, value, previous, initiator or self)
+            value = fn(state, value, previous, initiator or self._replace_token)
 
         state._modified_event(dict_, self, previous)
 
@@ -902,9 +949,12 @@ class CollectionAttributeImpl(AttributeImpl):
 
         return [(instance_state(o), o) for o in current]
 
+    _append_token = Event._token_gen(OP_APPEND)
+    _remove_token = Event._token_gen(OP_REMOVE)
+
     def fire_append_event(self, state, dict_, value, initiator):
         for fn in self.dispatch.append:
-            value = fn(state, value, initiator or self)
+            value = fn(state, value, initiator or self._append_token)
 
         state._modified_event(dict_, self, NEVER_SET, True)
 
@@ -921,7 +971,7 @@ class CollectionAttributeImpl(AttributeImpl):
             self.sethasparent(instance_state(value), state, False)
 
         for fn in self.dispatch.remove:
-            fn(state, value, initiator or self)
+            fn(state, value, initiator or self._remove_token)
 
         state._modified_event(dict_, self, NEVER_SET, True)
 
@@ -948,8 +998,6 @@ class CollectionAttributeImpl(AttributeImpl):
             self.key, state, self.collection_factory)
 
     def append(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
-        if initiator and initiator.parent_token is self.parent_token:
-            return
         collection = self.get_collection(state, dict_, passive=passive)
         if collection is PASSIVE_NO_RESULT:
             value = self.fire_append_event(state, dict_, value, initiator)
@@ -960,9 +1008,6 @@ class CollectionAttributeImpl(AttributeImpl):
             collection.append_with_event(value, initiator)
 
     def remove(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
-        if initiator and initiator.parent_token is self.parent_token:
-            return
-
         collection = self.get_collection(state, state.dict, passive=passive)
         if collection is PASSIVE_NO_RESULT:
             self.fire_remove_event(state, dict_, value, initiator)
@@ -985,13 +1030,7 @@ class CollectionAttributeImpl(AttributeImpl):
                     passive=PASSIVE_OFF, pop=False):
         """Set a value on the given object.
 
-        `initiator` is the ``InstrumentedAttribute`` that initiated the
-        ``set()`` operation and is used to control the depth of a circular
-        setter operation.
         """
-
-        if initiator and initiator.parent_token is self.parent_token:
-            return
 
         self._set_iterable(
             state, dict_, value,
@@ -1085,6 +1124,7 @@ def backref_listeners(attribute, key, uselist):
     # use easily recognizable names for stack traces
 
     parent_token = attribute.impl.parent_token
+    parent_impl = attribute.impl
 
     def _acceptable_key_err(child_state, initiator, child_impl):
         raise ValueError(
@@ -1108,10 +1148,14 @@ def backref_listeners(attribute, key, uselist):
             old_state, old_dict = instance_state(oldchild),\
                                     instance_dict(oldchild)
             impl = old_state.manager[key].impl
-            impl.pop(old_state,
-                        old_dict,
-                        state.obj(),
-                        initiator, passive=PASSIVE_NO_FETCH)
+
+            if initiator.impl is not impl or \
+                    initiator.op not in (OP_REPLACE, OP_REMOVE):
+                impl.pop(old_state,
+                            old_dict,
+                            state.obj(),
+                            parent_impl._append_token,
+                            passive=PASSIVE_NO_FETCH)
 
         if child is not None:
             child_state, child_dict = instance_state(child),\
@@ -1120,12 +1164,14 @@ def backref_listeners(attribute, key, uselist):
             if initiator.parent_token is not parent_token and \
                     initiator.parent_token is not child_impl.parent_token:
                 _acceptable_key_err(state, initiator, child_impl)
-            child_impl.append(
-                                child_state,
-                                child_dict,
-                                state.obj(),
-                                initiator,
-                                passive=PASSIVE_NO_FETCH)
+            elif initiator.impl is not child_impl or \
+                    initiator.op not in (OP_APPEND, OP_REPLACE):
+                child_impl.append(
+                                    child_state,
+                                    child_dict,
+                                    state.obj(),
+                                    initiator,
+                                    passive=PASSIVE_NO_FETCH)
         return child
 
     def emit_backref_from_collection_append_event(state, child, initiator):
@@ -1139,7 +1185,9 @@ def backref_listeners(attribute, key, uselist):
         if initiator.parent_token is not parent_token and \
                 initiator.parent_token is not child_impl.parent_token:
             _acceptable_key_err(state, initiator, child_impl)
-        child_impl.append(
+        elif initiator.impl is not child_impl or \
+                initiator.op not in (OP_APPEND, OP_REPLACE):
+            child_impl.append(
                                 child_state,
                                 child_dict,
                                 state.obj(),
@@ -1152,10 +1200,9 @@ def backref_listeners(attribute, key, uselist):
             child_state, child_dict = instance_state(child),\
                                         instance_dict(child)
             child_impl = child_state.manager[key].impl
-            # can't think of a path that would produce an initiator
-            # mismatch here, as it would require an existing collection
-            # mismatch.
-            child_impl.pop(
+            if initiator.impl is not child_impl or \
+                    initiator.op not in (OP_REMOVE, OP_REPLACE):
+                child_impl.pop(
                                 child_state,
                                 child_dict,
                                 state.obj(),

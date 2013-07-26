@@ -75,10 +75,8 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         # backref fires
         assert a1.user is u2
 
-        # doesn't extend to the previous collection tho,
-        # which was already loaded.
-        # flushing at this point means its anyone's guess.
-        assert a1 in u1.addresses
+        # a1 removed from u1.addresses as of [ticket:2789]
+        assert a1 not in u1.addresses
         assert a1 in u2.addresses
 
     def test_collection_move_notloaded(self):
@@ -699,9 +697,8 @@ class O2MStaleBackrefTest(_fixtures.FixtureTest):
         u1.addresses.append(a1)
         u2.addresses.append(a1)
 
-        # events haven't updated
-        # u1.addresses here.
-        u1.addresses.remove(a1)
+        # a1 removed from u1.addresses as of [ticket:2789]
+        assert a1 not in u1.addresses
 
         assert a1.user is u2
         assert a1 in u2.addresses

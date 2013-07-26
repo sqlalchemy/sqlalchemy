@@ -89,6 +89,31 @@
         phase should only be once per dialect.  Also in 0.8.3.
 
     .. change::
+        :tags: feature, orm
+        :tickets: 2789
+
+        The mechanism by which attribute events pass along an
+        :class:`.AttributeImpl` as an "initiator" token has been changed;
+        the object is now an event-specific object called :class:`.attributes.Event`.
+        Additionally, the attribute system no longer halts events based
+        on a matching "initiator" token; this logic has been moved to be
+        specific to ORM backref event handlers, which are the typical source
+        of the re-propagation of an attribute event onto subsequent append/set/remove
+        operations.  End user code which emulates the behavior of backrefs
+        must now ensure that recursive event propagation schemes are halted,
+        if the scheme does not use the backref handlers.   Using this new system,
+        backref handlers can now peform a
+        "two-hop" operation when an object is appended to a collection,
+        associated with a new many-to-one, de-associated with the previous
+        many-to-one, and then removed from a previous collection.   Before this
+        change, the last step of removal from the previous collection would
+        not occur.
+
+        .. seealso::
+
+            :ref:`migration_2789`
+
+    .. change::
         :tags: feature, sql
         :tickets: 722
 

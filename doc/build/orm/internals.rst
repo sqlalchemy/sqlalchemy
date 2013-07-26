@@ -27,6 +27,10 @@ sections, are listed here.
     :members:
     :show-inheritance:
 
+.. autoclass:: sqlalchemy.orm.attributes.Event
+    :members:
+    :show-inheritance:
+
 .. autoclass:: sqlalchemy.orm.interfaces._InspectionAttr
     :members:
     :show-inheritance:

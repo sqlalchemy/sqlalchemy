@@ -1561,8 +1561,15 @@ class AttributeEvents(event.Events):
           is registered with ``retval=True``, the listener
           function must return this value, or a new value which
           replaces it.
-        :param initiator: the attribute implementation object
-          which initiated this event.
+        :param initiator: An instance of :class:`.attributes.Event`
+          representing the initiation of the event.  May be modified
+          from it's original value by backref handlers in order to control
+          chained event propagation.
+
+          .. versionchanged:: 0.9.0 the ``initiator`` argument is now
+             passed as a :class:`.attributes.Event` object, and may be modified
+             by backref handlers within a chain of backref-linked events.
+
         :return: if the event was registered with ``retval=True``,
          the given value, or a new effective value, should be returned.
 
@@ -1575,8 +1582,15 @@ class AttributeEvents(event.Events):
           If the listener is registered with ``raw=True``, this will
           be the :class:`.InstanceState` object.
         :param value: the value being removed.
-        :param initiator: the attribute implementation object
-          which initiated this event.
+        :param initiator: An instance of :class:`.attributes.Event`
+          representing the initiation of the event.  May be modified
+          from it's original value by backref handlers in order to control
+          chained event propagation.
+
+          .. versionchanged:: 0.9.0 the ``initiator`` argument is now
+             passed as a :class:`.attributes.Event` object, and may be modified
+             by backref handlers within a chain of backref-linked events.
+
         :return: No return value is defined for this event.
         """
 
@@ -1596,8 +1610,15 @@ class AttributeEvents(event.Events):
           the previous value of the attribute will be loaded from
           the database if the existing value is currently unloaded
           or expired.
-        :param initiator: the attribute implementation object
-          which initiated this event.
+        :param initiator: An instance of :class:`.attributes.Event`
+          representing the initiation of the event.  May be modified
+          from it's original value by backref handlers in order to control
+          chained event propagation.
+
+          .. versionchanged:: 0.9.0 the ``initiator`` argument is now
+             passed as a :class:`.attributes.Event` object, and may be modified
+             by backref handlers within a chain of backref-linked events.
+
         :return: if the event was registered with ``retval=True``,
          the given value, or a new effective value, should be returned.
 

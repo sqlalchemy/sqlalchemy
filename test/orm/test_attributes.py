@@ -1162,12 +1162,8 @@ class BackrefTest(fixtures.ORMTest):
         p2.children.append(c1)
         assert c1.parent is p2
 
-        # note its still in p1.children -
-        # the event model currently allows only
-        # one level deep.  without the parent_token,
-        # it keeps going until a ValueError is raised
-        # and this condition changes.
-        assert c1 in p1.children
+        # event propagates to remove as of [ticket:2789]
+        assert c1 not in p1.children
 
 class CyclicBackrefAssertionTest(fixtures.TestBase):
     """test that infinite recursion due to incorrect backref assignments
