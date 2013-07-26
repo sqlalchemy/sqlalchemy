@@ -47,6 +47,7 @@ def profile_memory(times=50):
                 gc_collect()
                 samples[x] = len(get_objects_skipping_sqlite_issue())
 
+
             print("sample gc sizes:", samples)
 
             assert len(_sessions) == 0

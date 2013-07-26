@@ -450,7 +450,10 @@ class ConnectionEvents(event.Events):
     _target_class_doc = "SomeEngine"
 
     @classmethod
-    def _listen(cls, target, identifier, fn, retval=False):
+    def _listen(cls, event_key, retval=False):
+        target, identifier, fn = \
+            event_key.dispatch_target, event_key.identifier, event_key.fn
+
         target._has_events = True
 
         if not retval:
@@ -479,7 +482,7 @@ class ConnectionEvents(event.Events):
                     "'before_cursor_execute' engine "
                     "event listeners accept the 'retval=True' "
                     "argument.")
-        event.Events._listen(target, identifier, fn)
+        event_key.with_wrapper(fn).base_listen()
 
     def before_execute(self, conn, clauseelement, multiparams, params):
         """Intercept high level execute() events, receiving uncompiled

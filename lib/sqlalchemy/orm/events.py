@@ -46,14 +46,15 @@ class InstrumentationEvents(event.Events):
 
     @classmethod
     def _accept_with(cls, target):
-        # TODO: there's no coverage for this
         if isinstance(target, type):
             return _InstrumentationEventsHold(target)
         else:
             return None
 
     @classmethod
-    def _listen(cls, target, identifier, fn, propagate=True):
+    def _listen(cls, event_key, propagate=True):
+        target, identifier, fn = \
+            event_key.dispatch_target, event_key.identifier, event_key.fn
 
         def listen(target_cls, *arg):
             listen_cls = target()
@@ -63,17 +64,16 @@ class InstrumentationEvents(event.Events):
                 return fn(target_cls, *arg)
 
         def remove(ref):
-            event.Events._remove(orm.instrumentation._instrumentation_factory,
-                                            identifier, listen)
+            key = event.registry._EventKey(None, identifier, listen,
+                        orm.instrumentation._instrumentation_factory)
+            getattr(orm.instrumentation._instrumentation_factory.dispatch,
+                        identifier).remove(key)
 
         target = weakref.ref(target.class_, remove)
-        event.Events._listen(orm.instrumentation._instrumentation_factory,
-                        identifier, listen)
 
-    @classmethod
-    def _remove(cls, identifier, target, fn):
-        raise NotImplementedError("Removal of instrumentation events "
-                                    "not yet implemented")
+        event_key.\
+            with_dispatch_target(orm.instrumentation._instrumentation_factory).\
+            with_wrapper(listen).base_listen()
 
     @classmethod
     def _clear(cls):
@@ -176,23 +176,23 @@ class InstanceEvents(event.Events):
         return None
 
     @classmethod
-    def _listen(cls, target, identifier, fn, raw=False, propagate=False):
+    def _listen(cls, event_key, raw=False, propagate=False):
+        target, identifier, fn = \
+            event_key.dispatch_target, event_key.identifier, event_key.fn
+
         if not raw:
             orig_fn = fn
 
             def wrap(state, *arg, **kw):
                 return orig_fn(state.obj(), *arg, **kw)
             fn = wrap
+            event_key = event_key.with_wrapper(fn)
 
-        event.Events._listen(target, identifier, fn, propagate=propagate)
+        event_key.base_listen(propagate=propagate)
+
         if propagate:
             for mgr in target.subclass_managers(True):
-                event.Events._listen(mgr, identifier, fn, True)
-
-    @classmethod
-    def _remove(cls, identifier, target, fn):
-        msg = "Removal of instance events not yet implemented"
-        raise NotImplementedError(msg)
+                event_key.with_dispatch_target(mgr).base_listen(propagate=True)
 
     @classmethod
     def _clear(cls):
@@ -321,8 +321,7 @@ class InstanceEvents(event.Events):
 
         """
 
-
-class _EventsHold(object):
+class _EventsHold(event.RefCollection):
     """Hold onto listeners against unmapped, uninstrumented classes.
 
     Establish _listen() for that class' mapper/instrumentation when
@@ -338,13 +337,17 @@ class _EventsHold(object):
 
     class HoldEvents(object):
         @classmethod
-        def _listen(cls, target, identifier, fn, raw=False, propagate=False):
+        def _listen(cls, event_key, raw=False, propagate=False):
+            target, identifier, fn = \
+                event_key.dispatch_target, event_key.identifier, event_key.fn
+
             if target.class_ in target.all_holds:
                 collection = target.all_holds[target.class_]
             else:
-                collection = target.all_holds[target.class_] = []
+                collection = target.all_holds[target.class_] = {}
 
-            collection.append((identifier, fn, raw, propagate))
+            event.registry._stored_in_collection(event_key, target)
+            collection[event_key._key] = (event_key, raw, propagate)
 
             if propagate:
                 stack = list(target.class_.__subclasses__())
@@ -353,24 +356,30 @@ class _EventsHold(object):
                     stack.extend(subclass.__subclasses__())
                     subject = target.resolve(subclass)
                     if subject is not None:
-                        subject.dispatch._listen(subject, identifier, fn,
-                                        raw=raw, propagate=propagate)
+                        event_key.with_dispatch_target(subject).\
+                                listen(raw=raw, propagate=propagate)
+
+    def remove(self, event_key):
+        target, identifier, fn = \
+            event_key.dispatch_target, event_key.identifier, event_key.fn
+
+        collection = target.all_holds[target.class_]
+        del collection[event_key._key]
 
     @classmethod
     def populate(cls, class_, subject):
         for subclass in class_.__mro__:
             if subclass in cls.all_holds:
                 collection = cls.all_holds[subclass]
-                for ident, fn, raw, propagate in collection:
+                for event_key, raw, propagate in collection.values():
                     if propagate or subclass is class_:
                         # since we can't be sure in what order different classes
                         # in a hierarchy are triggered with populate(),
                         # we rely upon _EventsHold for all event
                         # assignment, instead of using the generic propagate
                         # flag.
-                        subject.dispatch._listen(subject, ident,
-                                                        fn, raw=raw,
-                                                        propagate=False)
+                        event_key.with_dispatch_target(subject).\
+                            listen(raw=raw, propagate=False)
 
 
 class _InstanceEventsHold(_EventsHold):
@@ -477,8 +486,10 @@ class MapperEvents(event.Events):
             return target
 
     @classmethod
-    def _listen(cls, target, identifier, fn,
+    def _listen(cls, event_key,
                             raw=False, retval=False, propagate=False):
+        target, identifier, fn = \
+            event_key.dispatch_target, event_key.identifier, event_key.fn
 
         if not raw or not retval:
             if not raw:
@@ -501,12 +512,13 @@ class MapperEvents(event.Events):
                 else:
                     return wrapped_fn(*arg, **kw)
             fn = wrap
+            event_key = event_key.with_wrapper(wrap)
 
         if propagate:
             for mapper in target.self_and_descendants:
-                event.Events._listen(mapper, identifier, fn, propagate=True)
+                event_key.with_dispatch_target(mapper).base_listen(propagate=True)
         else:
-            event.Events._listen(target, identifier, fn)
+            event_key.base_listen()
 
     @classmethod
     def _clear(cls):
@@ -1051,11 +1063,6 @@ class MapperEvents(event.Events):
 
         """
 
-    @classmethod
-    def _remove(cls, identifier, target, fn):
-        "Removal of mapper events not yet implemented"
-        raise NotImplementedError(msg)
-
 
 class _MapperEventsHold(_EventsHold):
     all_holds = weakref.WeakKeyDictionary()
@@ -1122,11 +1129,6 @@ class SessionEvents(event.Events):
             return target
         else:
             return None
-
-    @classmethod
-    def _remove(cls, identifier, target, fn):
-        msg = "Removal of session events not yet implemented"
-        raise NotImplementedError(msg)
 
     def after_transaction_create(self, session, transaction):
         """Execute when a new :class:`.SessionTransaction` is created.
@@ -1516,14 +1518,15 @@ class AttributeEvents(event.Events):
             return target
 
     @classmethod
-    def _listen(cls, target, identifier, fn, active_history=False,
+    def _listen(cls, event_key, active_history=False,
                                         raw=False, retval=False,
                                         propagate=False):
+
+        target, identifier, fn = \
+            event_key.dispatch_target, event_key.identifier, event_key.fn
+
         if active_history:
             target.dispatch._active_history = True
-
-        # TODO: for removal, need to package the identity
-        # of the wrapper with the original function.
 
         if not raw or not retval:
             orig_fn = fn
@@ -1537,19 +1540,15 @@ class AttributeEvents(event.Events):
                 else:
                     return orig_fn(target, value, *arg)
             fn = wrap
+            event_key = event_key.with_wrapper(wrap)
 
-        event.Events._listen(target, identifier, fn, propagate)
+        event_key.base_listen(propagate=propagate)
 
         if propagate:
             manager = orm.instrumentation.manager_of_class(target.class_)
 
             for mgr in manager.subclass_managers(True):
-                event.Events._listen(mgr[target.key], identifier, fn, True)
-
-    @classmethod
-    def _remove(cls, identifier, target, fn):
-        msg = "Removal of attribute events not yet implemented"
-        raise NotImplementedError(msg)
+                event_key.with_dispatch_target(mgr[target.key]).base_listen(propagate=True)
 
     def append(self, target, value, initiator):
         """Receive a collection append event.

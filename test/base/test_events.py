@@ -6,15 +6,12 @@ from sqlalchemy import event, exc
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing.mock import Mock, call
-
+from sqlalchemy import testing
 
 class EventsTest(fixtures.TestBase):
     """Test class- and instance-level event registration."""
 
     def setUp(self):
-        assert 'event_one' not in event._registrars
-        assert 'event_two' not in event._registrars
-
         class TargetEvents(event.Events):
             def event_one(self, x, y):
                 pass
@@ -30,7 +27,7 @@ class EventsTest(fixtures.TestBase):
         self.Target = Target
 
     def tearDown(self):
-        event._remove_dispatcher(self.Target.__dict__['dispatch'].events)
+        event.base._remove_dispatcher(self.Target.__dict__['dispatch'].events)
 
     def test_register_class(self):
         def listen(x, y):
@@ -84,7 +81,7 @@ class EventsTest(fixtures.TestBase):
         eq_(len(self.Target().dispatch.event_one), 2)
         eq_(len(t1.dispatch.event_one), 3)
 
-    def test_append_vs_insert(self):
+    def test_append_vs_insert_cls(self):
         def listen_one(x, y):
             pass
 
@@ -100,6 +97,26 @@ class EventsTest(fixtures.TestBase):
 
         eq_(
             list(self.Target().dispatch.event_one),
+            [listen_three, listen_one, listen_two]
+        )
+
+    def test_append_vs_insert_instance(self):
+        def listen_one(x, y):
+            pass
+
+        def listen_two(x, y):
+            pass
+
+        def listen_three(x, y):
+            pass
+
+        target = self.Target()
+        event.listen(target, "event_one", listen_one)
+        event.listen(target, "event_one", listen_two)
+        event.listen(target, "event_one", listen_three, insert=True)
+
+        eq_(
+            list(target.dispatch.event_one),
             [listen_three, listen_one, listen_two]
         )
 
@@ -189,7 +206,7 @@ class NamedCallTest(fixtures.TestBase):
         self.TargetOne = TargetOne
 
     def tearDown(self):
-        event._remove_dispatcher(self.TargetOne.__dict__['dispatch'].events)
+        event.base._remove_dispatcher(self.TargetOne.__dict__['dispatch'].events)
 
 
     def test_kw_accept(self):
@@ -261,7 +278,7 @@ class LegacySignatureTest(fixtures.TestBase):
         self.TargetOne = TargetOne
 
     def tearDown(self):
-        event._remove_dispatcher(self.TargetOne.__dict__['dispatch'].events)
+        event.base._remove_dispatcher(self.TargetOne.__dict__['dispatch'].events)
 
     def test_legacy_accept(self):
         canary = Mock()
@@ -375,7 +392,7 @@ class ClsLevelListenTest(fixtures.TestBase):
 
 
     def tearDown(self):
-        event._remove_dispatcher(self.TargetOne.__dict__['dispatch'].events)
+        event.base._remove_dispatcher(self.TargetOne.__dict__['dispatch'].events)
 
     def setUp(self):
         class TargetEventsOne(event.Events):
@@ -386,7 +403,7 @@ class ClsLevelListenTest(fixtures.TestBase):
         self.TargetOne = TargetOne
 
     def tearDown(self):
-        event._remove_dispatcher(
+        event.base._remove_dispatcher(
             self.TargetOne.__dict__['dispatch'].events)
 
     def test_lis_subcalss_lis(self):
@@ -473,8 +490,8 @@ class AcceptTargetsTest(fixtures.TestBase):
         self.TargetTwo = TargetTwo
 
     def tearDown(self):
-        event._remove_dispatcher(self.TargetOne.__dict__['dispatch'].events)
-        event._remove_dispatcher(self.TargetTwo.__dict__['dispatch'].events)
+        event.base._remove_dispatcher(self.TargetOne.__dict__['dispatch'].events)
+        event.base._remove_dispatcher(self.TargetTwo.__dict__['dispatch'].events)
 
     def test_target_accept(self):
         """Test that events of the same name are routed to the correct
@@ -543,7 +560,7 @@ class CustomTargetsTest(fixtures.TestBase):
         self.Target = Target
 
     def tearDown(self):
-        event._remove_dispatcher(self.Target.__dict__['dispatch'].events)
+        event.base._remove_dispatcher(self.Target.__dict__['dispatch'].events)
 
     def test_indirect(self):
         def listen(x, y):
@@ -593,14 +610,14 @@ class ListenOverrideTest(fixtures.TestBase):
     def setUp(self):
         class TargetEvents(event.Events):
             @classmethod
-            def _listen(cls, target, identifier, fn, add=False):
+            def _listen(cls, event_key, add=False):
+                fn = event_key.fn
                 if add:
                     def adapt(x, y):
                         fn(x + y)
-                else:
-                    adapt = fn
+                    event_key = event_key.with_wrapper(adapt)
 
-                event.Events._listen(target, identifier, adapt)
+                event_key.base_listen()
 
             def event_one(self, x, y):
                 pass
@@ -610,7 +627,7 @@ class ListenOverrideTest(fixtures.TestBase):
         self.Target = Target
 
     def tearDown(self):
-        event._remove_dispatcher(self.Target.__dict__['dispatch'].events)
+        event.base._remove_dispatcher(self.Target.__dict__['dispatch'].events)
 
     def test_listen_override(self):
         listen_one = Mock()
@@ -700,7 +717,7 @@ class JoinTest(fixtures.TestBase):
         for cls in (self.TargetElement,
                 self.TargetFactory, self.BaseTarget):
             if 'dispatch' in cls.__dict__:
-                event._remove_dispatcher(cls.__dict__['dispatch'].events)
+                event.base._remove_dispatcher(cls.__dict__['dispatch'].events)
 
     def test_neither(self):
         element = self.TargetFactory().create()
@@ -842,13 +859,19 @@ class JoinTest(fixtures.TestBase):
         element.run_event(2)
         element.run_event(3)
 
-        # c1 gets no events due to _JoinedListener
-        # fixing the "parent" at construction time.
-        # this can be changed to be "live" at the cost
-        # of performance.
+        # if _JoinedListener fixes .listeners
+        # at construction time, then we don't get
+        # the new listeners.
+        #eq_(l1.mock_calls, [])
+
+        # alternatively, if _JoinedListener shares the list
+        # using a @property, then we get them, at the arguable
+        # expense of the extra method call to access the .listeners
+        # collection
         eq_(
-            l1.mock_calls, []
+            l1.mock_calls, [call(element, 2), call(element, 3)]
         )
+
         eq_(
             l2.mock_calls,
             [call(element, 1), call(element, 2), call(element, 3)]
@@ -892,3 +915,134 @@ class JoinTest(fixtures.TestBase):
             l1.mock_calls,
             [call(element, 1), call(element, 2), call(element, 3)]
         )
+
+class RemovalTest(fixtures.TestBase):
+    def _fixture(self):
+        class TargetEvents(event.Events):
+            def event_one(self, x, y):
+                pass
+
+            def event_two(self, x):
+                pass
+
+            def event_three(self, x):
+                pass
+
+        class Target(object):
+            dispatch = event.dispatcher(TargetEvents)
+        return Target
+
+    def test_clslevel(self):
+        Target = self._fixture()
+
+        m1 = Mock()
+
+        event.listen(Target, "event_two", m1)
+
+        t1 = Target()
+        t1.dispatch.event_two("x")
+
+        event.remove(Target, "event_two", m1)
+
+        t1.dispatch.event_two("y")
+
+        eq_(m1.mock_calls, [call("x")])
+
+    def test_clslevel_subclass(self):
+        Target = self._fixture()
+        class SubTarget(Target):
+            pass
+
+        m1 = Mock()
+
+        event.listen(Target, "event_two", m1)
+
+        t1 = SubTarget()
+        t1.dispatch.event_two("x")
+
+        event.remove(Target, "event_two", m1)
+
+        t1.dispatch.event_two("y")
+
+        eq_(m1.mock_calls, [call("x")])
+
+    def test_propagate(self):
+        Target = self._fixture()
+
+        m1 = Mock()
+
+        t1 = Target()
+        t2 = Target()
+
+        event.listen(t1, "event_one", m1, propagate=True)
+        event.listen(t1, "event_two", m1, propagate=False)
+
+        t2.dispatch._update(t1.dispatch)
+
+        t1.dispatch.event_one("t1e1x")
+        t1.dispatch.event_two("t1e2x")
+        t2.dispatch.event_one("t2e1x")
+        t2.dispatch.event_two("t2e2x")
+
+        event.remove(t1, "event_one", m1)
+        event.remove(t1, "event_two", m1)
+
+        t1.dispatch.event_one("t1e1y")
+        t1.dispatch.event_two("t1e2y")
+        t2.dispatch.event_one("t2e1y")
+        t2.dispatch.event_two("t2e2y")
+
+        eq_(m1.mock_calls,
+                [call('t1e1x'), call('t1e2x'),
+                call('t2e1x')])
+
+    @testing.requires.predictable_gc
+    def test_listener_collection_removed_cleanup(self):
+        from sqlalchemy.event import registry
+
+        Target = self._fixture()
+
+        m1 = Mock()
+
+        t1 = Target()
+
+        event.listen(t1, "event_one", m1)
+
+        key = (id(t1), "event_one", id(m1))
+
+        assert key in registry._key_to_collection
+        collection_ref = list(registry._key_to_collection[key])[0]
+        assert collection_ref in registry._collection_to_key
+
+        t1.dispatch.event_one("t1")
+
+        del t1
+
+        gc_collect()
+
+        assert key not in registry._key_to_collection
+        assert collection_ref not in registry._collection_to_key
+
+    def test_remove_not_listened(self):
+        Target = self._fixture()
+
+        m1 = Mock()
+
+        t1 = Target()
+
+        event.listen(t1, "event_one", m1, propagate=True)
+        event.listen(t1, "event_three", m1)
+
+        event.remove(t1, "event_one", m1)
+        assert_raises_message(
+            exc.InvalidRequestError,
+            r"No listeners found for event <.*Target.*> / 'event_two' / <Mock.*> ",
+            event.remove, t1, "event_two", m1
+        )
+
+        event.remove(t1, "event_three", m1)
+
+
+
+
+

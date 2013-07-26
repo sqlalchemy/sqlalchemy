@@ -18,8 +18,6 @@ from sqlalchemy.testing.mock import Mock, call
 
 class _RemoveListeners(object):
     def teardown(self):
-        # TODO: need to get remove() functionality
-        # going
         events.MapperEvents._clear()
         events.InstanceEvents._clear()
         events.SessionEvents._clear()
@@ -619,21 +617,17 @@ class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         class Bar(object):
             pass
 
-        listeners = instrumentation._instrumentation_factory.dispatch.\
-                            attribute_instrument.listeners
-        assert not listeners
+        dispatch = instrumentation._instrumentation_factory.dispatch
+        assert not dispatch.attribute_instrument
 
-        canary = []
-        def evt(x):
-            canary.append(x)
-        event.listen(Bar, "attribute_instrument", evt)
+        event.listen(Bar, "attribute_instrument", lambda: None)
 
-        eq_(len(listeners), 1)
+        eq_(len(dispatch.attribute_instrument), 1)
 
         del Bar
         gc_collect()
 
-        assert not listeners
+        assert not dispatch.attribute_instrument
 
 
     def test_deferred_instrument_event_subclass_propagate(self):
@@ -719,6 +713,70 @@ class LoadTest(_fixtures.FixtureTest):
         sess.query(User).union_all(sess.query(User)).all()
         eq_(canary, ['load'])
 
+
+class RemovalTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+
+    def test_attr_propagated(self):
+        User = self.classes.User
+
+        users, addresses, User = (self.tables.users,
+                                self.tables.addresses,
+                                self.classes.User)
+
+        class AdminUser(User):
+            pass
+
+        mapper(User, users)
+        mapper(AdminUser, addresses, inherits=User)
+
+        fn = Mock()
+        event.listen(User.name, "set", fn, propagate=True)
+
+        au = AdminUser()
+        au.name = 'ed'
+
+        eq_(fn.call_count, 1)
+
+        event.remove(User.name, "set", fn)
+
+        au.name = 'jack'
+
+        eq_(fn.call_count, 1)
+
+    def test_unmapped_listen(self):
+        users = self.tables.users
+
+        class Foo(object):
+            pass
+
+        fn = Mock()
+
+        event.listen(Foo, "before_insert", fn, propagate=True)
+
+        class User(Foo):
+            pass
+
+        m = mapper(User, users)
+
+        u1 = User()
+        m.dispatch.before_insert(m, None, attributes.instance_state(u1))
+        eq_(fn.call_count, 1)
+
+        event.remove(Foo, "before_insert", fn)
+
+        # existing event is removed
+        m.dispatch.before_insert(m, None, attributes.instance_state(u1))
+        eq_(fn.call_count, 1)
+
+        # the _HoldEvents is also cleaned out
+        class Bar(Foo):
+            pass
+        m = mapper(Bar, users)
+        b1 = Bar()
+        m.dispatch.before_insert(m, None, attributes.instance_state(b1))
+        eq_(fn.call_count, 1)
 
 
 class RefreshTest(_fixtures.FixtureTest):

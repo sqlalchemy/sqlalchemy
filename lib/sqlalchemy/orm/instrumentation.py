@@ -81,6 +81,12 @@ class ClassManager(dict):
 
     dispatch = event.dispatcher(events.InstanceEvents)
 
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, other):
+        return other is self
+
     @property
     def is_mapped(self):
         return 'mapper' in self.__dict__

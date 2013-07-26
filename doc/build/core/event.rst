@@ -159,3 +159,5 @@ API Reference
 
 .. autofunction:: sqlalchemy.event.listens_for
 
+.. autofunction:: sqlalchemy.event.remove
+

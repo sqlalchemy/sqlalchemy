@@ -7,6 +7,17 @@
     :version: 0.9.0
 
     .. change::
+        :tags: feature, orm
+        :tickets: 2268
+
+        Removal of event listeners is now implemented.    The feature is
+        provided via the :func:`.event.remove` function.
+
+        .. seealso::
+
+            :ref:`feature_2268`
+
+    .. change::
         :tags: feature, examples
 
         Improved the examples in ``examples/generic_associations``, including

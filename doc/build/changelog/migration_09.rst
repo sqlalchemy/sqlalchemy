@@ -290,6 +290,40 @@ against ``b_value`` directly.
 New Features
 ============
 
+.. _feature_2268:
+
+Event Removal API
+-----------------
+
+Events established using :func:`.event.listen` or :func:`.event.listens_for`
+can now be removed using the new :func:`.event.remove` function.   The ``target``,
+``identifier`` and ``fn`` arguments sent to :func:`.event.remove` need to match
+exactly those which were sent for listening, and the event will be removed
+from all locations in which it had been established::
+
+    @event.listens_for(MyClass, "before_insert", propagate=True)
+    def my_before_insert(mapper, connection, target):
+        """listen for before_insert"""
+        # ...
+
+    event.remove(MyClass, "before_insert", my_before_insert)
+
+In the example above, the ``propagate=True`` flag is set.  This
+means ``my_before_insert()`` is established as a listener for ``MyClass``
+as well as all subclasses of ``MyClass``.
+The system tracks everywhere that the ``my_before_insert()``
+listener function had been placed as a result of this call and removes it as
+a result of calling :func:`.event.remove`.
+
+The removal system uses a registry to associate arguments passed to
+:func:`.event.listen` with collections of event listeners, which are in many
+cases wrapped versions of the original user-supplied function.   This registry
+makes heavy use of weak references in order to allow all the contained contents,
+such as listener targets, to be garbage collected when they go out of scope.
+
+:ticket:`2268`
+
+
 .. _feature_722:
 
 INSERT from SELECT
