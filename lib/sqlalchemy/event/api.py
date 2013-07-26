@@ -11,6 +11,15 @@ CANCEL = util.symbol('CANCEL')
 NO_RETVAL = util.symbol('NO_RETVAL')
 
 
+def _event_key(target, identifier, fn):
+    for evt_cls in _registrars[identifier]:
+        tgt = evt_cls._accept_with(target)
+        if tgt is not None:
+            return _EventKey(target, identifier, fn, tgt)
+    else:
+        raise exc.InvalidRequestError("No such event '%s' for target '%s'" %
+                                (identifier, target))
+
 def listen(target, identifier, fn, *args, **kw):
     """Register a listener function for the given target.
 
@@ -31,14 +40,7 @@ def listen(target, identifier, fn, *args, **kw):
 
     """
 
-    for evt_cls in _registrars[identifier]:
-        tgt = evt_cls._accept_with(target)
-        if tgt is not None:
-            _EventKey(target, identifier, fn, tgt).listen(*args, **kw)
-            break
-    else:
-        raise exc.InvalidRequestError("No such event '%s' for target '%s'" %
-                                (identifier, target))
+    _event_key(target, identifier, fn).listen(*args, **kw)
 
 
 def listens_for(target, identifier, *args, **kw):
@@ -87,13 +89,13 @@ def remove(target, identifier, fn):
     .. versionadded:: 0.9.0
 
     """
-    for evt_cls in _registrars[identifier]:
-        tgt = evt_cls._accept_with(target)
-        if tgt is not None:
-            _EventKey(target, identifier, fn, tgt).remove()
-            break
-    else:
-        raise exc.InvalidRequestError("No such event '%s' for target '%s'" %
-                                (identifier, target))
+    _event_key(target, identifier, fn).remove()
 
+def contains(target, identifier, fn):
+    """Return True if the given target/ident/fn is set up to listen.
 
+    .. versionadded:: 0.9.0
+
+    """
+
+    return _event_key(target, identifier, fn).contains()

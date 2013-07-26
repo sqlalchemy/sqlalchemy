@@ -161,3 +161,4 @@ API Reference
 
 .. autofunction:: sqlalchemy.event.remove
 
+.. autofunction:: sqlalchemy.event.contains

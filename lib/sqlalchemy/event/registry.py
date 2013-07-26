@@ -181,6 +181,10 @@ class _EventKey(object):
             if collection is not None and listener_fn is not None:
                 collection.remove(self.with_wrapper(listener_fn))
 
+    def contains(self):
+        """Return True if this event key is registered to listen.
+        """
+        return self._key in _key_to_collection
 
     def base_listen(self, propagate=False, insert=False,
                             named=False):

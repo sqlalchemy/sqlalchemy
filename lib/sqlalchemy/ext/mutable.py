@@ -595,7 +595,7 @@ def _setup_composite_listener():
                  issubclass(prop.composite_class, MutableComposite)):
                 prop.composite_class._listen_on_attribute(
                     getattr(class_, prop.key), False, class_)
-    if not Mapper.dispatch.mapper_configured._contains(Mapper, _listen_for_type):
+    if not event.contains(Mapper, "mapper_configured", _listen_for_type):
         event.listen(Mapper, 'mapper_configured', _listen_for_type)
 _setup_composite_listener()
 
