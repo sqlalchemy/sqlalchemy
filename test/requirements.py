@@ -645,9 +645,9 @@ class DefaultRequirements(SuiteRequirements):
 
         """
         return skip_if(
-                lambda: util.py3k and
+                lambda: (util.py3k or not util.py26) and
                     self.config.options.enable_plugin_coverage,
-                "Stability issues with coverage + py3k"
+                "Stability issues with coverage + py3k, py2.5"
             )
 
     @property
