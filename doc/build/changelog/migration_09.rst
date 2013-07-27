@@ -9,7 +9,7 @@ What's New in SQLAlchemy 0.9?
     and SQLAlchemy version 0.9, which is expected for release
     in late 2013.
 
-    Document date: May 29, 2013
+    Document last updated: July 26, 2013
 
 Introduction
 ============
