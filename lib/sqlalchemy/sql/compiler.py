@@ -1162,7 +1162,8 @@ class SQLCompiler(engine.Compiled):
                                     use_labels=True).alias()
 
                 for c in selectable.c:
-                    c._label = c._key_label = c.name
+                    c._key_label = c.key
+                    c._label = c.name
                 translate_dict = dict(
                         zip(right.element.c, selectable.c)
                     )
@@ -1199,6 +1200,7 @@ class SQLCompiler(engine.Compiled):
     def _transform_result_map_for_nested_joins(self, select, transformed_select):
         inner_col = dict((c._key_label, c) for
                         c in transformed_select.inner_columns)
+
         d = dict(
                     (inner_col[c._key_label], c)
                     for c in select.inner_columns
