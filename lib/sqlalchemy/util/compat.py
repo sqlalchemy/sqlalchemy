@@ -15,6 +15,7 @@ except ImportError:
 
 py33 = sys.version_info >= (3, 3)
 py32 = sys.version_info >= (3, 2)
+py26 = sys.version_info >= (2, 6)
 py3k_warning = getattr(sys, 'py3kwarning', False) or sys.version_info >= (3, 0)
 py3k = sys.version_info >= (3, 0)
 py2k = sys.version_info < (3, 0)
