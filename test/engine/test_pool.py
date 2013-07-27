@@ -989,6 +989,7 @@ class QueuePoolTest(PoolTestBase):
         self._test_overflow(40, 5)
 
     def test_mixed_close(self):
+        pool._refs.clear()
         p = self._queuepool_fixture(pool_size=3, max_overflow=-1, use_threadlocal=True)
         c1 = p.connect()
         c2 = p.connect()
