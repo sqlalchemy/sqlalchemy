@@ -41,7 +41,7 @@ ref(listenercollection) -> {
 
 def _collection_gced(ref):
     # defaultdict, so can't get a KeyError
-    if ref not in _collection_to_key:
+    if not _collection_to_key or ref not in _collection_to_key:
         return
     listener_to_key = _collection_to_key.pop(ref)
     for key in listener_to_key.values():
