@@ -1,7 +1,5 @@
-from sqlalchemy import MetaData, Table, Column, Sequence, ForeignKey,\
-                        Integer, String, create_engine
-
-from sqlalchemy.orm import sessionmaker, relationship, backref,\
+from sqlalchemy import Column, ForeignKey, Integer, String, create_engine
+from sqlalchemy.orm import Session, relationship, backref,\
                                 joinedload_all
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm.collections import attribute_mapped_collection
@@ -18,7 +16,7 @@ class TreeNode(Base):
     children = relationship("TreeNode",
 
                         # cascade deletions
-                        cascade="all",
+                        cascade="all, delete-orphan",
 
                         # many to one + adjacency list - remote_side
                         # is required to reference the 'remote'
@@ -42,11 +40,10 @@ class TreeNode(Base):
                 )
 
     def dump(self, _indent=0):
-
         return "   " * _indent + repr(self) + \
                     "\n" + \
                     "".join([
-                        c.dump(_indent +1)
+                        c.dump(_indent + 1)
                         for c in self.children.values()]
                     )
 
@@ -63,10 +60,7 @@ if __name__ == '__main__':
 
     Base.metadata.create_all(engine)
 
-    # session.  using expire_on_commit=False
-    # so that the session's contents are not expired
-    # after each transaction commit.
-    session = sessionmaker(engine, expire_on_commit=False)()
+    session = Session(engine)
 
     node = TreeNode('rootnode')
     TreeNode('node1', parent=node)
@@ -91,15 +85,12 @@ if __name__ == '__main__':
     TreeNode('subnode4', parent=node.children['node4'])
     TreeNode('subsubnode1', parent=node.children['node4'].children['subnode3'])
 
-    # mark node1 as deleted and remove
-    session.delete(node.children['node1'])
+    # remove node1 from the parent, which will trigger a delete
+    # via the delete-orphan cascade.
+    del node.children['node1']
 
     msg("Removed node1.  flush + commit:")
     session.commit()
-
-    # expire the "children" collection so that
-    # it reflects the deletion of "node1".
-    session.expire(node, ['children'])
 
     msg("Tree after save:\n %s", node.dump())
 
@@ -109,12 +100,12 @@ if __name__ == '__main__':
     node = session.query(TreeNode).\
                         options(joinedload_all("children", "children",
                                                 "children", "children")).\
-                        filter(TreeNode.name=="rootnode").\
+                        filter(TreeNode.name == "rootnode").\
                         first()
 
     msg("Full Tree:\n%s", node.dump())
 
-    msg( "Marking root node as deleted, flush + commit:" )
+    msg("Marking root node as deleted, flush + commit:")
 
     session.delete(node)
     session.commit()
