@@ -137,7 +137,7 @@ def run_setup(with_cext):
             **kwargs
           )
 
-if pypy or jython or py3k:
+if pypy or jython:
     run_setup(False)
     status_msgs(
         "WARNING: C extensions are not supported on " +

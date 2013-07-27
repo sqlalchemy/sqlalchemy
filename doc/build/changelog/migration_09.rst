@@ -37,10 +37,15 @@ Python 3.   All SQLAlchemy modules and unit tests are now interpreted
 equally well with any Python interpreter from 2.6 forward, including
 the 3.1 and 3.2 interpreters.
 
-At the moment, the C extensions are still not fully ported to
-Python 3.
+:ticket:`2671`
 
+C Extensions Supported on Python 3
+-----------------------------------
 
+The C extensions have been ported to support Python 3 and now build
+in both Python 2 and Python 3 environments.
+
+:ticket:`2161`
 
 .. _behavioral_changes_09:
 

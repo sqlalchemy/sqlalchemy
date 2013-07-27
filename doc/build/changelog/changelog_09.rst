@@ -7,6 +7,13 @@
     :version: 0.9.0
 
     .. change::
+        :tags: feature, general, py3k
+        :tickets: 2161
+
+        The C extensions are ported to Python 3 and will build under
+        any supported CPython 2 or 3 environment.
+
+    .. change::
         :tags: feature, orm
         :tickets: 2268
 
@@ -622,7 +629,7 @@
         official Python driver.
 
     .. change::
-    	:tags: feature, general
+    	:tags: feature, general, py3k
       	:tickets: 2671
 
         The codebase is now "in-place" for Python

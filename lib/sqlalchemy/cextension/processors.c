@@ -1,7 +1,7 @@
 /*
 processors.c
 Copyright (C) 2010-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
-Copyright (C) 2010 Gaetan de Menten gdementen@gmail.com
+Copyright (C) 2010-2011 Gaetan de Menten gdementen@gmail.com
 
 This module is part of SQLAlchemy and is released under
 the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -10,12 +10,14 @@ the MIT License: http://www.opensource.org/licenses/mit-license.php
 #include <Python.h>
 #include <datetime.h>
 
+#define MODULE_NAME "cprocessors"
+#define MODULE_DOC "Module containing C versions of data processing functions."
+
 #if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
 typedef int Py_ssize_t;
 #define PY_SSIZE_T_MAX INT_MAX
 #define PY_SSIZE_T_MIN INT_MIN
 #endif
-
 
 static PyObject *
 int_to_boolean(PyObject *self, PyObject *arg)
@@ -26,7 +28,12 @@ int_to_boolean(PyObject *self, PyObject *arg)
     if (arg == Py_None)
         Py_RETURN_NONE;
 
+
+#if PY_MAJOR_VERSION >= 3
+    l = PyLong_AsLong(arg);
+#else
     l = PyInt_AsLong(arg);
+#endif
     if (l == 0) {
         res = Py_False;
     } else if (l == 1) {
@@ -65,23 +72,48 @@ to_float(PyObject *self, PyObject *arg)
 static PyObject *
 str_to_datetime(PyObject *self, PyObject *arg)
 {
+#if PY_MAJOR_VERSION >= 3
+    PyObject *bytes;
+    PyObject *err_bytes;
+#endif
     const char *str;
+    int numparsed;
     unsigned int year, month, day, hour, minute, second, microsecond = 0;
     PyObject *err_repr;
 
     if (arg == Py_None)
         Py_RETURN_NONE;
 
+#if PY_MAJOR_VERSION >= 3
+    bytes = PyUnicode_AsASCIIString(arg);
+    if (bytes == NULL)
+        str = NULL;
+    else
+        str = PyBytes_AS_STRING(bytes);
+#else
     str = PyString_AsString(arg);
+#endif
     if (str == NULL) {
         err_repr = PyObject_Repr(arg);
         if (err_repr == NULL)
+            return NULL;
+#if PY_MAJOR_VERSION >= 3
+        err_bytes = PyUnicode_AsASCIIString(err_repr);
+        if (err_bytes == NULL)
             return NULL;
         PyErr_Format(
                 PyExc_ValueError,
                 "Couldn't parse datetime string '%.200s' "
                 "- value is not a string.",
+                PyBytes_AS_STRING(err_bytes));
+        Py_DECREF(err_bytes);
+#else
+        PyErr_Format(
+                PyExc_ValueError,
+                "Couldn't parse datetime string '%.200s' "
+                "- value is not a string.",
                 PyString_AsString(err_repr));
+#endif
         Py_DECREF(err_repr);
         return NULL;
     }
@@ -92,15 +124,30 @@ str_to_datetime(PyObject *self, PyObject *arg)
     not accept "2000-01-01 00:00:00.". I don't know which is better, but they
     should be coherent.
     */
-    if (sscanf(str, "%4u-%2u-%2u %2u:%2u:%2u.%6u", &year, &month, &day,
-               &hour, &minute, &second, &microsecond) < 6) {
+    numparsed = sscanf(str, "%4u-%2u-%2u %2u:%2u:%2u.%6u", &year, &month, &day,
+                       &hour, &minute, &second, &microsecond);
+#if PY_MAJOR_VERSION >= 3
+    Py_DECREF(bytes);
+#endif
+    if (numparsed < 6) {
         err_repr = PyObject_Repr(arg);
         if (err_repr == NULL)
+            return NULL;
+#if PY_MAJOR_VERSION >= 3
+        err_bytes = PyUnicode_AsASCIIString(err_repr);
+        if (err_bytes == NULL)
             return NULL;
         PyErr_Format(
                 PyExc_ValueError,
                 "Couldn't parse datetime string: %.200s",
+                PyBytes_AS_STRING(err_bytes));
+        Py_DECREF(err_bytes);
+#else
+        PyErr_Format(
+                PyExc_ValueError,
+                "Couldn't parse datetime string: %.200s",
                 PyString_AsString(err_repr));
+#endif
         Py_DECREF(err_repr);
         return NULL;
     }
@@ -111,22 +158,47 @@ str_to_datetime(PyObject *self, PyObject *arg)
 static PyObject *
 str_to_time(PyObject *self, PyObject *arg)
 {
+#if PY_MAJOR_VERSION >= 3
+    PyObject *bytes;
+    PyObject *err_bytes;
+#endif
     const char *str;
+    int numparsed;
     unsigned int hour, minute, second, microsecond = 0;
     PyObject *err_repr;
 
     if (arg == Py_None)
         Py_RETURN_NONE;
 
+#if PY_MAJOR_VERSION >= 3
+    bytes = PyUnicode_AsASCIIString(arg);
+    if (bytes == NULL)
+        str = NULL;
+    else
+        str = PyBytes_AS_STRING(bytes);
+#else
     str = PyString_AsString(arg);
+#endif
     if (str == NULL) {
         err_repr = PyObject_Repr(arg);
         if (err_repr == NULL)
             return NULL;
+
+#if PY_MAJOR_VERSION >= 3
+        err_bytes = PyUnicode_AsASCIIString(err_repr);
+        if (err_bytes == NULL)
+            return NULL;
+        PyErr_Format(
+                PyExc_ValueError,
+                "Couldn't parse time string '%.200s' - value is not a string.",
+                PyBytes_AS_STRING(err_bytes));
+        Py_DECREF(err_bytes);
+#else
         PyErr_Format(
                 PyExc_ValueError,
                 "Couldn't parse time string '%.200s' - value is not a string.",
                 PyString_AsString(err_repr));
+#endif
         Py_DECREF(err_repr);
         return NULL;
     }
@@ -137,15 +209,30 @@ str_to_time(PyObject *self, PyObject *arg)
     not accept "00:00:00.". I don't know which is better, but they should be
     coherent.
     */
-    if (sscanf(str, "%2u:%2u:%2u.%6u", &hour, &minute, &second,
-               &microsecond) < 3) {
+    numparsed = sscanf(str, "%2u:%2u:%2u.%6u", &hour, &minute, &second,
+                       &microsecond);
+#if PY_MAJOR_VERSION >= 3
+    Py_DECREF(bytes);
+#endif
+    if (numparsed < 3) {
         err_repr = PyObject_Repr(arg);
         if (err_repr == NULL)
+            return NULL;
+#if PY_MAJOR_VERSION >= 3
+        err_bytes = PyUnicode_AsASCIIString(err_repr);
+        if (err_bytes == NULL)
             return NULL;
         PyErr_Format(
                 PyExc_ValueError,
                 "Couldn't parse time string: %.200s",
+                PyBytes_AS_STRING(err_bytes));
+        Py_DECREF(err_bytes);
+#else
+        PyErr_Format(
+                PyExc_ValueError,
+                "Couldn't parse time string: %.200s",
                 PyString_AsString(err_repr));
+#endif
         Py_DECREF(err_repr);
         return NULL;
     }
@@ -155,34 +242,73 @@ str_to_time(PyObject *self, PyObject *arg)
 static PyObject *
 str_to_date(PyObject *self, PyObject *arg)
 {
+#if PY_MAJOR_VERSION >= 3
+    PyObject *bytes;
+    PyObject *err_bytes;
+#endif
     const char *str;
+    int numparsed;
     unsigned int year, month, day;
     PyObject *err_repr;
 
     if (arg == Py_None)
         Py_RETURN_NONE;
 
+#if PY_MAJOR_VERSION >= 3
+    bytes = PyUnicode_AsASCIIString(arg);
+    if (bytes == NULL)
+        str = NULL;
+    else
+        str = PyBytes_AS_STRING(bytes);
+#else
     str = PyString_AsString(arg);
+#endif
     if (str == NULL) {
         err_repr = PyObject_Repr(arg);
         if (err_repr == NULL)
             return NULL;
+#if PY_MAJOR_VERSION >= 3
+        err_bytes = PyUnicode_AsASCIIString(err_repr);
+        if (err_bytes == NULL)
+            return NULL;
+        PyErr_Format(
+                PyExc_ValueError,
+                "Couldn't parse date string '%.200s' - value is not a string.",
+                PyBytes_AS_STRING(err_bytes));
+        Py_DECREF(err_bytes);
+#else
         PyErr_Format(
                 PyExc_ValueError,
                 "Couldn't parse date string '%.200s' - value is not a string.",
                 PyString_AsString(err_repr));
+#endif
         Py_DECREF(err_repr);
         return NULL;
     }
 
-    if (sscanf(str, "%4u-%2u-%2u", &year, &month, &day) != 3) {
+    numparsed = sscanf(str, "%4u-%2u-%2u", &year, &month, &day);
+#if PY_MAJOR_VERSION >= 3
+    Py_DECREF(bytes);
+#endif
+    if (numparsed != 3) {
         err_repr = PyObject_Repr(arg);
         if (err_repr == NULL)
+            return NULL;
+#if PY_MAJOR_VERSION >= 3
+        err_bytes = PyUnicode_AsASCIIString(err_repr);
+        if (err_bytes == NULL)
             return NULL;
         PyErr_Format(
                 PyExc_ValueError,
                 "Couldn't parse date string: %.200s",
+                PyBytes_AS_STRING(err_bytes));
+        Py_DECREF(err_bytes);
+#else
+        PyErr_Format(
+                PyExc_ValueError,
+                "Couldn't parse date string: %.200s",
                 PyString_AsString(err_repr));
+#endif
         Py_DECREF(err_repr);
         return NULL;
     }
@@ -219,17 +345,35 @@ UnicodeResultProcessor_init(UnicodeResultProcessor *self, PyObject *args,
     PyObject *encoding, *errors = NULL;
     static char *kwlist[] = {"encoding", "errors", NULL};
 
+#if PY_MAJOR_VERSION >= 3
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "U|U:__init__", kwlist,
+                                     &encoding, &errors))
+        return -1;
+#else
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "S|S:__init__", kwlist,
                                      &encoding, &errors))
         return -1;
+#endif
 
+#if PY_MAJOR_VERSION >= 3
+    encoding = PyUnicode_AsASCIIString(encoding);
+#else
     Py_INCREF(encoding);
+#endif
     self->encoding = encoding;
 
     if (errors) {
+#if PY_MAJOR_VERSION >= 3
+        errors = PyUnicode_AsASCIIString(errors);
+#else
         Py_INCREF(errors);
+#endif
     } else {
+#if PY_MAJOR_VERSION >= 3
+        errors = PyBytes_FromString("strict");
+#else
         errors = PyString_FromString("strict");
+#endif
         if (errors == NULL)
             return -1;
     }
@@ -248,11 +392,19 @@ UnicodeResultProcessor_process(UnicodeResultProcessor *self, PyObject *value)
     if (value == Py_None)
         Py_RETURN_NONE;
 
+#if PY_MAJOR_VERSION >= 3
+    if (PyBytes_AsStringAndSize(value, &str, &len))
+        return NULL;
+
+    encoding = PyBytes_AS_STRING(self->encoding);
+    errors = PyBytes_AS_STRING(self->errors);
+#else
     if (PyString_AsStringAndSize(value, &str, &len))
         return NULL;
 
     encoding = PyString_AS_STRING(self->encoding);
     errors = PyString_AS_STRING(self->errors);
+#endif
 
     return PyUnicode_Decode(str, len, encoding, errors);
 }
@@ -262,7 +414,11 @@ UnicodeResultProcessor_dealloc(UnicodeResultProcessor *self)
 {
     Py_XDECREF(self->encoding);
     Py_XDECREF(self->errors);
+#if PY_MAJOR_VERSION >= 3
+    Py_TYPE(self)->tp_free((PyObject*)self);
+#else
     self->ob_type->tp_free((PyObject*)self);
+#endif
 }
 
 static PyMethodDef UnicodeResultProcessor_methods[] = {
@@ -272,8 +428,7 @@ static PyMethodDef UnicodeResultProcessor_methods[] = {
 };
 
 static PyTypeObject UnicodeResultProcessorType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                                          /* ob_size */
+    PyVarObject_HEAD_INIT(NULL, 0)
     "sqlalchemy.cprocessors.UnicodeResultProcessor",        /* tp_name */
     sizeof(UnicodeResultProcessor),             /* tp_basicsize */
     0,                                          /* tp_itemsize */
@@ -323,7 +478,11 @@ DecimalResultProcessor_init(DecimalResultProcessor *self, PyObject *args,
 {
     PyObject *type, *format;
 
+#if PY_MAJOR_VERSION >= 3
+    if (!PyArg_ParseTuple(args, "OU", &type, &format))
+#else
     if (!PyArg_ParseTuple(args, "OS", &type, &format))
+#endif
         return -1;
 
     Py_INCREF(type);
@@ -343,11 +502,21 @@ DecimalResultProcessor_process(DecimalResultProcessor *self, PyObject *value)
     if (value == Py_None)
         Py_RETURN_NONE;
 
+    /* Decimal does not accept float values directly */
+    /* SQLite can also give us an integer here (see [ticket:2432]) */
+    /* XXX: starting with Python 3.1, we could use Decimal.from_float(f),
+                 but the result wouldn't be the same */
+
     args = PyTuple_Pack(1, value);
     if (args == NULL)
         return NULL;
 
+#if PY_MAJOR_VERSION >= 3
+    str = PyUnicode_Format(self->format, args);
+#else
     str = PyString_Format(self->format, args);
+#endif
+
     Py_DECREF(args);
     if (str == NULL)
         return NULL;
@@ -362,7 +531,11 @@ DecimalResultProcessor_dealloc(DecimalResultProcessor *self)
 {
     Py_XDECREF(self->type);
     Py_XDECREF(self->format);
+#if PY_MAJOR_VERSION >= 3
+    Py_TYPE(self)->tp_free((PyObject*)self);
+#else
     self->ob_type->tp_free((PyObject*)self);
+#endif
 }
 
 static PyMethodDef DecimalResultProcessor_methods[] = {
@@ -372,8 +545,7 @@ static PyMethodDef DecimalResultProcessor_methods[] = {
 };
 
 static PyTypeObject DecimalResultProcessorType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                                          /* ob_size */
+    PyVarObject_HEAD_INIT(NULL, 0)
     "sqlalchemy.DecimalResultProcessor",        /* tp_name */
     sizeof(DecimalResultProcessor),             /* tp_basicsize */
     0,                                          /* tp_itemsize */
@@ -413,11 +585,6 @@ static PyTypeObject DecimalResultProcessorType = {
     0,                                          /* tp_new */
 };
 
-#ifndef PyMODINIT_FUNC  /* declarations for DLL import/export */
-#define PyMODINIT_FUNC void
-#endif
-
-
 static PyMethodDef module_methods[] = {
     {"int_to_boolean", int_to_boolean, METH_O,
      "Convert an integer to a boolean."},
@@ -434,23 +601,53 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
+#ifndef PyMODINIT_FUNC  /* declarations for DLL import/export */
+#define PyMODINIT_FUNC void
+#endif
+
+
+#if PY_MAJOR_VERSION >= 3
+
+static struct PyModuleDef module_def = {
+    PyModuleDef_HEAD_INIT,
+    MODULE_NAME,
+    MODULE_DOC,
+    -1,
+    module_methods
+};
+
+#define INITERROR return NULL
+
+PyObject *
+PyInit_cprocessors(void)
+
+#else
+
+#define INITERROR return
+
 PyMODINIT_FUNC
 initcprocessors(void)
+
+#endif
+
 {
     PyObject *m;
 
     UnicodeResultProcessorType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&UnicodeResultProcessorType) < 0)
-        return;
+        INITERROR;
 
     DecimalResultProcessorType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&DecimalResultProcessorType) < 0)
-        return;
+        INITERROR;
 
-    m = Py_InitModule3("cprocessors", module_methods,
-                       "Module containing C versions of data processing functions.");
+#if PY_MAJOR_VERSION >= 3
+    m = PyModule_Create(&module_def);
+#else
+    m = Py_InitModule3(MODULE_NAME, module_methods, MODULE_DOC);
+#endif
     if (m == NULL)
-        return;
+        INITERROR;
 
     PyDateTime_IMPORT;
 
@@ -461,5 +658,8 @@ initcprocessors(void)
     Py_INCREF(&DecimalResultProcessorType);
     PyModule_AddObject(m, "DecimalResultProcessor",
                        (PyObject *)&DecimalResultProcessorType);
-}
 
+#if PY_MAJOR_VERSION >= 3
+    return m;
+#endif
+}
