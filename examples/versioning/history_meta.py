@@ -44,9 +44,9 @@ def _history_mapper(local_mapper):
 
         if super_mapper:
             super_fks.append(('version', super_history_mapper.base_mapper.local_table.c.version))
-            cols.append(Column('version', Integer, primary_key=True))
+            cols.append(Column('version', Integer, primary_key=True, autoincrement=False))
         else:
-            cols.append(Column('version', Integer, primary_key=True))
+            cols.append(Column('version', Integer, primary_key=True, autoincrement=False))
 
         if super_fks:
             cols.append(ForeignKeyConstraint(*zip(*super_fks)))
