@@ -811,12 +811,17 @@ class SQLCompiler(engine.Compiled):
 
         self.ctes_by_name[cte_name] = cte
 
-        if cte.cte_alias:
-            if isinstance(cte.cte_alias, sql._truncated_label):
-                cte_alias = self._truncated_identifier("alias", cte.cte_alias)
-            else:
-                cte_alias = cte.cte_alias
-        if not cte.cte_alias and cte not in self.ctes:
+        if cte._cte_alias is not None:
+            orig_cte = cte._cte_alias
+            if orig_cte not in self.ctes:
+                self.visit_cte(orig_cte)
+            cte_alias_name = cte._cte_alias.name
+            if isinstance(cte_alias_name, sql._truncated_label):
+                cte_alias_name = self._truncated_identifier("alias", cte_alias_name)
+        else:
+            orig_cte = cte
+            cte_alias_name = None
+        if not cte_alias_name and cte not in self.ctes:
             if cte.recursive:
                 self.ctes_recursive = True
             text = self.preparer.format_alias(cte, cte_name)
@@ -839,9 +844,10 @@ class SQLCompiler(engine.Compiled):
                                 self, asfrom=True, **kwargs
                             )
             self.ctes[cte] = text
+
         if asfrom:
-            if cte.cte_alias:
-                text = self.preparer.format_alias(cte, cte_alias)
+            if cte_alias_name:
+                text = self.preparer.format_alias(cte, cte_alias_name)
                 text += " AS " + cte_name
             else:
                 return self.preparer.format_alias(cte, cte_name)
