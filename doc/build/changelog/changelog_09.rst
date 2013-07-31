@@ -7,6 +7,14 @@
     :version: 0.9.0
 
     .. change::
+        :tags: sql, bug, cte
+        :tickets: 2783
+
+        Fixed bug in common table expression system where if the CTE were
+        used only as an ``alias()`` construct, it would not render using the
+        WITH keyword.  Also in 0.8.3, 0.7.11.
+
+    .. change::
         :tags: feature, general, py3k
         :tickets: 2161
 

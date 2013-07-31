@@ -4235,10 +4235,10 @@ class CTE(Alias):
     def __init__(self, selectable,
                         name=None,
                         recursive=False,
-                        cte_alias=False,
+                        _cte_alias=None,
                         _restates=frozenset()):
         self.recursive = recursive
-        self.cte_alias = cte_alias
+        self._cte_alias = _cte_alias
         self._restates = _restates
         super(CTE, self).__init__(selectable, name=name)
 
@@ -4247,8 +4247,8 @@ class CTE(Alias):
             self.original,
             name=name,
             recursive=self.recursive,
-            cte_alias=self.name
-        )
+            _cte_alias=self,
+          )
 
     def union(self, other):
         return CTE(
