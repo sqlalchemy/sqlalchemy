@@ -121,21 +121,19 @@ class InstanceEvents(event.Events):
         def my_load_listener(target, context):
             print "on load!"
 
-        event.listen(SomeMappedClass, 'load', my_load_listener)
+        event.listen(SomeClass, 'load', my_load_listener)
 
-    Available targets include mapped classes, instances of
-    :class:`.Mapper` (i.e. returned by :func:`.mapper`,
-    :func:`.class_mapper` and similar), as well as the
-    :class:`.Mapper` class and :func:`.mapper` function itself
-    for global event reception::
+    Available targets include:
 
-        from sqlalchemy.orm import mapper
+    * mapped classes
+    * unmapped superclasses of mapped or to-be-mapped classes
+      (using the ``propagate=True`` flag)
+    * :class:`.Mapper` objects
+    * the :class:`.Mapper` class itself and the :func:`.mapper`
+      function indicate listening for all mappers.
 
-        def some_listener(target, context):
-            log.debug("Instance %s being loaded" % target)
-
-        # attach to all mappers
-        event.listen(mapper, 'load', some_listener)
+    .. versionchanged:: 0.8.0 instance events can be associated with
+       unmapped superclasses of mapped classes.
 
     Instance events are closely related to mapper events, but
     are more specific to the instance and its instrumentation,
@@ -154,7 +152,7 @@ class InstanceEvents(event.Events):
 
     """
 
-    _target_class_doc = "SomeMappedClass"
+    _target_class_doc = "SomeClass"
 
     @classmethod
     def _accept_with(cls, target):
@@ -408,24 +406,22 @@ class MapperEvents(event.Events):
                                         "select my_special_function(%d)"
                                         % target.special_number)
 
-        # associate the listener function with SomeMappedClass,
+        # associate the listener function with SomeClass,
         # to execute during the "before_insert" hook
         event.listen(
-            SomeMappedClass, 'before_insert', my_before_insert_listener)
+            SomeClass, 'before_insert', my_before_insert_listener)
 
-    Available targets include mapped classes, instances of
-    :class:`.Mapper` (i.e. returned by :func:`.mapper`,
-    :func:`.class_mapper` and similar), as well as the
-    :class:`.Mapper` class and :func:`.mapper` function itself
-    for global event reception::
+    Available targets include:
 
-        from sqlalchemy.orm import mapper
+    * mapped classes
+    * unmapped superclasses of mapped or to-be-mapped classes
+      (using the ``propagate=True`` flag)
+    * :class:`.Mapper` objects
+    * the :class:`.Mapper` class itself and the :func:`.mapper`
+      function indicate listening for all mappers.
 
-        def some_listener(mapper, connection, target):
-            log.debug("Instance %s being inserted" % target)
-
-        # attach to all mappers
-        event.listen(mapper, 'before_insert', some_listener)
+    .. versionchanged:: 0.8.0 mapper events can be associated with
+       unmapped superclasses of mapped classes.
 
     Mapper events provide hooks into critical sections of the
     mapper, including those related to object instrumentation,
@@ -467,7 +463,7 @@ class MapperEvents(event.Events):
 
     """
 
-    _target_class_doc = "SomeMappedClass"
+    _target_class_doc = "SomeClass"
 
     @classmethod
     def _accept_with(cls, target):
@@ -532,8 +528,15 @@ class MapperEvents(event.Events):
         This event is the earliest phase of mapper construction.
         Most attributes of the mapper are not yet initialized.
 
-        This listener can generally only be applied to the :class:`.Mapper`
-        class overall.
+        This listener can either be applied to the :class:`.Mapper`
+        class overall, or to any un-mapped class which serves as a base
+        for classes that will be mapped (using the ``propagate=True`` flag)::
+
+            Base = declarative_base()
+
+            @event.listens_for(Base, "instrument_class", propagate=True)
+            def on_new_class(mapper, cls_):
+                " ... "
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
