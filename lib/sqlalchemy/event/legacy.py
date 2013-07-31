@@ -82,7 +82,7 @@ def _standard_listen_example(dispatch_descriptor, sample_target, fn):
                 "current_since": " (arguments as of %s)" %
                                 current_since if current_since else "",
                 "event_name": fn.__name__,
-                "has_kw_arguments": " **kw" if dispatch_descriptor.has_kw else "",
+                "has_kw_arguments": ", **kw" if dispatch_descriptor.has_kw else "",
                 "named_event_arguments": ", ".join(dispatch_descriptor.arg_names),
                 "example_kw_arg": example_kw_arg,
                 "sample_target": sample_target
