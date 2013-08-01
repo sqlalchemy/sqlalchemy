@@ -7,6 +7,13 @@
     :version: 0.7.11
 
     .. change::
+        :tags: mysql, bug
+        :tickets: 2791
+
+        Updates to MySQL reserved words for versions 5.5, 5.6, courtesy
+        Hanno Schlichting.
+
+    .. change::
         :tags: sql, bug, cte
         :tickets: 2783
 
