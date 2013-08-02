@@ -469,6 +469,7 @@ class Session(_SessionClassMethods):
                 _enable_transaction_accounting=True,
                  autocommit=False, twophase=False,
                  weak_identity_map=True, binds=None, extension=None,
+                 info=None,
                  query_cls=query.Query):
         """Construct a new Session.
 
@@ -557,6 +558,14 @@ class Session(_SessionClassMethods):
            flush events, as well as a post-rollback event. **Deprecated.**
            Please see :class:`.SessionEvents`.
 
+        :param info: optional dictionary of arbitrary data to be associated
+           with this :class:`.Session`.  Is available via the :attr:`.Session.info`
+           attribute.  Note the dictionary is copied at construction time so
+           that modifications to the per-:class:`.Session` dictionary will be local
+           to that :class:`.Session`.
+
+           .. versionadded:: 0.9.0
+
         :param query_cls:  Class which should be used to create new Query
            objects, as returned by the ``query()`` method. Defaults to
            :class:`~sqlalchemy.orm.query.Query`.
@@ -599,6 +608,8 @@ class Session(_SessionClassMethods):
         self._enable_transaction_accounting = _enable_transaction_accounting
         self.twophase = twophase
         self._query_cls = query_cls
+        if info:
+            self.info.update(info)
 
         if extension:
             for ext in util.to_list(extension):
@@ -621,6 +632,21 @@ class Session(_SessionClassMethods):
 
     transaction = None
     """The current active or inactive :class:`.SessionTransaction`."""
+
+    @util.memoized_property
+    def info(self):
+        """A user-modifiable dictionary.
+
+        The initial value of this dictioanry can be populated using the
+        ``info`` argument to the :class:`.Session` constructor or
+        :class:`.sessionmaker` constructor or factory methods.  The dictionary
+        here is always local to this :class:`.Session` and can be modified
+        independently of all other :class:`.Session` objects.
+
+        .. versionadded:: 0.9.0
+
+        """
+        return {}
 
     def begin(self, subtransactions=False, nested=False):
         """Begin a transaction on this Session.
@@ -2196,7 +2222,8 @@ class sessionmaker(_SessionClassMethods):
 
     def __init__(self, bind=None, class_=Session, autoflush=True,
                         autocommit=False,
-                        expire_on_commit=True, **kw):
+                        expire_on_commit=True,
+                        info=None, **kw):
         """Construct a new :class:`.sessionmaker`.
 
         All arguments here except for ``class_`` correspond to arguments
@@ -2213,6 +2240,13 @@ class sessionmaker(_SessionClassMethods):
          :class:`.Session` objects.
         :param expire_on_commit=True: the expire_on_commit setting to use
          with newly created :class:`.Session` objects.
+        :param info: optional dictionary of information that will be available
+         via :attr:`.Session.info`.  Note this dictionary is *updated*, not
+         replaced, when the ``info`` parameter is specified to the specific
+         :class:`.Session` construction operation.
+
+         .. versionadded:: 0.9.0
+
         :param \**kw: all other keyword arguments are passed to the constructor
          of newly created :class:`.Session` objects.
 
@@ -2221,6 +2255,7 @@ class sessionmaker(_SessionClassMethods):
         kw['autoflush'] = autoflush
         kw['autocommit'] = autocommit
         kw['expire_on_commit'] = expire_on_commit
+        kw['info'] = info
         self.kw = kw
         # make our own subclass of the given class, so that
         # events can be associated with it specifically.
@@ -2238,7 +2273,12 @@ class sessionmaker(_SessionClassMethods):
 
         """
         for k, v in self.kw.items():
-            local_kw.setdefault(k, v)
+            if k == 'info' and 'info' in local_kw:
+                d = v.copy()
+                d.update(local_kw['info'])
+                local_kw['info'] = d
+            else:
+                local_kw.setdefault(k, v)
         return self.class_(**local_kw)
 
     def configure(self, **new_kw):

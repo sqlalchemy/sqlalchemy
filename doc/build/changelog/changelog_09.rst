@@ -7,6 +7,16 @@
     :version: 0.9.0
 
     .. change::
+        :tags: orm, feature, orm
+
+        Added a new attribute :attr:`.Session.info` to :class:`.Session`;
+        this is a dictionary where applications can store arbitrary
+        data local to a :class:`.Session`.
+        The contents of :attr:`.Session.info` can be also be initialized
+        using the ``info`` argument of :class:`.Session` or
+        :class:`.sessionmaker`.
+
+    .. change::
         :tags: mysql, bug
         :tickets: 2791
 
