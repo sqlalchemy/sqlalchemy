@@ -263,14 +263,17 @@ class DefaultDialect(interfaces.Dialect):
             cast_to = util.text_type
 
         cursor = connection.connection.cursor()
-        cursor.execute(
-            cast_to(
-                expression.select([
-                    expression.literal_column("'x'").label("some_label")
-                ]).compile(dialect=self)
+        try:
+            cursor.execute(
+                cast_to(
+                    expression.select([
+                        expression.literal_column("'x'").label("some_label")
+                    ]).compile(dialect=self)
+                )
             )
-        )
-        return isinstance(cursor.description[0][0], util.text_type)
+            return isinstance(cursor.description[0][0], util.text_type)
+        finally:
+            cursor.close()
 
     def type_descriptor(self, typeobj):
         """Provide a database-specific :class:`.TypeEngine` object, given
