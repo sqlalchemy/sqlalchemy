@@ -579,8 +579,9 @@ class DefaultRequirements(SuiteRequirements):
     def non_broken_pickle(self):
         from sqlalchemy.util import pickle
         return only_if(
-            lambda: pickle.__name__ == 'cPickle' or sys.version_info >= (3, 2),
-            "Needs cPickle or newer Python 3 pickle"
+            lambda: not util.pypy and pickle.__name__ == 'cPickle'
+                or sys.version_info >= (3, 2),
+            "Needs cPickle+cPython or newer Python 3 pickle"
         )
 
 

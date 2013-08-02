@@ -17,6 +17,7 @@ from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 from sqlalchemy.testing.assertsql import CompiledSQL
 import logging
+import logging.handlers
 
 class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     __dialect__ = 'default'

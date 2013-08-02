@@ -277,7 +277,8 @@ class Pool(log.Identified):
         except AttributeError:
             pass
         else:
-            return rec.checkout_existing()
+            if rec is not None:
+                return rec.checkout_existing()
 
         return _ConnectionFairy.checkout(self, self._threadconns)
 

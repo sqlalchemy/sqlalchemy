@@ -499,9 +499,9 @@ class CollectionsTest(fixtures.ORMTest):
         control = set()
 
         def assert_eq():
-            self.assert_(set(direct) == canary.data)
-            self.assert_(set(adapter) == canary.data)
-            self.assert_(direct == control)
+            eq_(set(direct), canary.data)
+            eq_(set(adapter), canary.data)
+            eq_(direct, control)
 
         def addall(*values):
             for item in values:
@@ -519,10 +519,6 @@ class CollectionsTest(fixtures.ORMTest):
         addall(e)
         addall(e)
 
-        if hasattr(direct, 'pop'):
-            direct.pop()
-            control.pop()
-            assert_eq()
 
         if hasattr(direct, 'remove'):
             e = creator()
@@ -597,6 +593,12 @@ class CollectionsTest(fixtures.ORMTest):
             addall(creator(), creator())
             direct.clear()
             control.clear()
+            assert_eq()
+
+        if hasattr(direct, 'pop'):
+            addall(creator())
+            direct.pop()
+            control.pop()
             assert_eq()
 
         if hasattr(direct, 'difference_update'):
@@ -738,6 +740,7 @@ class CollectionsTest(fixtures.ORMTest):
                 assert False
             except TypeError:
                 assert True
+
 
     def _test_set_bulk(self, typecallable, creator=None):
         if creator is None:

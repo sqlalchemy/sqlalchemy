@@ -56,8 +56,9 @@ class LastrowidTest(fixtures.TablesTest):
             [pk]
         )
 
-    @exclusions.fails_if(lambda: util.pypy, "lastrowid not maintained after "
-                            "connection close")
+    # failed on pypy1.9 but seems to be OK on pypy 2.1
+    #@exclusions.fails_if(lambda: util.pypy, "lastrowid not maintained after "
+    #                        "connection close")
     @requirements.dbapi_lastrowid
     def test_native_lastrowid_autoinc(self):
         r = config.db.execute(
