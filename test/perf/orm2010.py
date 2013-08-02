@@ -62,9 +62,7 @@ Base.metadata.create_all(engine)
 
 sess = Session(engine)
 
-factor = 10
-
-def runit(status):
+def runit(status, factor=1):
     num_bosses = 100 * factor
     num_grunts = num_bosses * 100
 
@@ -126,7 +124,6 @@ def runit(status):
 
 def run_with_profile():
     import cProfile
-    import os
     import pstats
     filename = "orm2010.profile"
 
@@ -150,7 +147,7 @@ def run_with_profile():
 
     #stats.sort_stats('time', 'calls')
     #stats.print_stats()
-    os.system("runsnake %s" % filename)
+    #os.system("runsnake %s" % filename)
 
     # SQLA Version: 0.7b1
     # Total calls 4956750
@@ -174,7 +171,7 @@ def run_with_time():
     def status(msg):
         print("%d - %s" % (time.time() - now, msg))
 
-    runit(status)
+    runit(status, 10)
     print("Total time: %d" % (time.time() - now))
 
 run_with_time()
