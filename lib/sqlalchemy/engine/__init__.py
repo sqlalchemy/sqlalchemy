@@ -83,7 +83,7 @@ from .util import (
     connection_memoize
     )
 
-from . import util, strategies
+from . import util, strategies, ddl
 
 default_strategy = 'plain'
 
