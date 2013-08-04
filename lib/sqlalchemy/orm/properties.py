@@ -24,6 +24,7 @@ from .util import CascadeOptions, \
 from .interfaces import MANYTOMANY, MANYTOONE, ONETOMANY,\
         PropComparator, StrategizedProperty
 
+dynamic = util.importlater("sqlalchemy.orm", "dynamic")
 mapperlib = util.importlater("sqlalchemy.orm", "mapperlib")
 NoneType = type(None)
 
@@ -300,7 +301,6 @@ class RelationshipProperty(StrategizedProperty):
         if strategy_class:
             self.strategy_class = strategy_class
         elif self.lazy == 'dynamic':
-            from sqlalchemy.orm import dynamic
             self.strategy_class = dynamic.DynaLoader
         else:
             self.strategy_class = strategies.factory(self.lazy)

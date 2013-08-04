@@ -16,6 +16,7 @@ be used directly and is also accepted directly by ``create_engine()``.
 import re
 from .. import exc, util
 from . import Dialect
+from ..dialects import registry
 
 
 class URL(object):
@@ -102,7 +103,6 @@ class URL(object):
             name = self.drivername
         else:
             name = self.drivername.replace('+', '.')
-        from sqlalchemy.dialects import registry
         cls = registry.load(name)
         # check for legacy dialects that
         # would return a module with 'dialect' as the

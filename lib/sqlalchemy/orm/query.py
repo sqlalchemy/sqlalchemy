@@ -36,6 +36,7 @@ from ..sql import (
         util as sql_util,
         expression, visitors
     )
+properties = util.importlater("sqlalchemy.orm", "properties")
 
 __all__ = ['Query', 'QueryContext', 'aliased']
 
@@ -903,7 +904,6 @@ class Query(object):
         """
 
         if property is None:
-            from sqlalchemy.orm import properties
             mapper = object_mapper(instance)
 
             for prop in mapper.iterate_properties:

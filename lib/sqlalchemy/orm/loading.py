@@ -19,6 +19,8 @@ from .interfaces import EXT_CONTINUE
 from ..sql import util as sql_util
 from .util import _none_set, state_str
 from .. import exc as sa_exc
+
+querylib = util.importlater("sqlalchemy.orm", "query")
 sessionlib = util.importlater("sqlalchemy.orm", "session")
 
 _new_runid = util.counter()
@@ -100,8 +102,6 @@ def instances(query, cursor, context):
 
 def merge_result(query, iterator, load=True):
     """Merge a result into this :class:`.Query` object's Session."""
-
-    from . import query as querylib
 
     session = query.session
     if load:

@@ -33,6 +33,7 @@ import inspect
 from . import exc, util, dialects, event, events, inspection
 from .sql import expression, visitors
 import collections
+import sqlalchemy
 
 ddl = util.importlater("sqlalchemy.engine", "ddl")
 sqlutil = util.importlater("sqlalchemy.sql", "util")
@@ -2741,8 +2742,7 @@ class MetaData(SchemaItem):
         """Bind this MetaData to an Engine, Connection, string or URL."""
 
         if isinstance(bind, util.string_types + (url.URL, )):
-            from sqlalchemy import create_engine
-            self._bind = create_engine(bind)
+            self._bind = sqlalchemy.create_engine(bind)
         else:
             self._bind = bind
     bind = property(bind, _bind_to)
@@ -2971,8 +2971,7 @@ class ThreadLocalMetaData(MetaData):
             try:
                 self.context._engine = self.__engines[bind]
             except KeyError:
-                from sqlalchemy import create_engine
-                e = create_engine(bind)
+                e = sqlalchemy.create_engine(bind)
                 self.__engines[bind] = e
                 self.context._engine = e
         else:
