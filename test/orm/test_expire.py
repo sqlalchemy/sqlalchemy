@@ -850,11 +850,11 @@ class ExpireTest(_fixtures.FixtureTest):
         assert len(u.addresses) == 3
         sess.expire(u)
         assert 'addresses' not in u.__dict__
-        print("-------------------------------------------")
         sess.query(User).filter_by(id=8).all()
         assert 'addresses' in u.__dict__
         assert len(u.addresses) == 3
 
+    @testing.requires.predictable_gc
     def test_expire_all(self):
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
@@ -869,16 +869,16 @@ class ExpireTest(_fixtures.FixtureTest):
 
         sess = create_session()
         userlist = sess.query(User).order_by(User.id).all()
-        assert self.static.user_address_result == userlist
-        assert len(list(sess)) == 9
+        eq_(self.static.user_address_result, userlist)
+        eq_(len(list(sess)), 9)
         sess.expire_all()
         gc_collect()
-        assert len(list(sess)) == 4 # since addresses were gc'ed
+        eq_(len(list(sess)), 4) # since addresses were gc'ed
 
         userlist = sess.query(User).order_by(User.id).all()
         u = userlist[1]
         eq_(self.static.user_address_result, userlist)
-        assert len(list(sess)) == 9
+        eq_(len(list(sess)), 9)
 
     def test_state_change_col_to_deferred(self):
         """Behavioral test to verify the current activity of loader callables."""

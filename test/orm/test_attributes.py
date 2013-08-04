@@ -294,6 +294,7 @@ class AttributesTest(fixtures.ORMTest):
         assert state.obj() is None
         assert state.dict == {}
 
+    @testing.requires.predictable_gc
     def test_object_dereferenced_error(self):
         class Foo(object):
             pass
@@ -317,7 +318,8 @@ class AttributesTest(fixtures.ORMTest):
         )
 
     def test_deferred(self):
-        class Foo(object):pass
+        class Foo(object):
+            pass
 
         data = {'a':'this is a', 'b':12}
         def loader(state, keys):
