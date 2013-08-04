@@ -688,15 +688,25 @@ class importlater(object):
 
     except evaluted upon attribute access to "somesubmod".
 
-    importlater() relies on sys.modules being populated with the
-    target package, and the target package containing the target module,
-    by time the attribute is evaulated.
+    importlater() currently requires that resolve_all() be
+    called, typically at the bottom of a package's __init__.py.
+    This is so that __import__ still called only at
+    module import time, and not potentially within
+    a non-main thread later on.
 
     """
+
+    _unresolved = set()
 
     def __init__(self, path, addtl):
         self._il_path = path
         self._il_addtl = addtl
+        importlater._unresolved.add(self)
+
+    @classmethod
+    def resolve_all(cls):
+        for m in list(importlater._unresolved):
+            m._resolve()
 
     @property
     def _full_path(self):
@@ -704,20 +714,24 @@ class importlater(object):
 
     @memoized_property
     def module(self):
-        try:
-            m = sys.modules[self._il_path]
-        except KeyError:
-            raise KeyError("Module %s hasn't been installed" % self._il_path)
-        else:
-            try:
-                return getattr(m, self._il_addtl)
-            except AttributeError:
-                raise KeyError(
-                        "Module %s hasn't been installed into %s" %
-                        (self._il_addtl, self._il_path)
-                    )
+        if self in importlater._unresolved:
+            raise ImportError(
+                    "importlater.resolve_all() hasn't "
+                    "been called (this is %s %s)"
+                    % (self._il_path, self._il_addtl))
+
+        return getattr(self._initial_import, self._il_addtl)
+
+    def _resolve(self):
+        importlater._unresolved.discard(self)
+        self._initial_import = compat.import_(
+                            self._il_path, globals(), locals(),
+                            [self._il_addtl])
 
     def __getattr__(self, key):
+        if key == 'module':
+            raise ImportError("Could not resolve module %s"
+                                % self._full_path)
         try:
             attr = getattr(self.module, key)
         except AttributeError:
@@ -727,7 +741,6 @@ class importlater(object):
                     )
         self.__dict__[key] = attr
         return attr
-
 
 # from paste.deploy.converters
 def asbool(obj):
