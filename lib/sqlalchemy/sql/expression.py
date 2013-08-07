@@ -2134,7 +2134,10 @@ class _DefaultColumnComparator(operators.ColumnOperators):
                       'contradiction, which nonetheless can be '
                       'expensive to evaluate.  Consider alternative '
                       'strategies for improved performance.' % expr)
-            return expr != expr
+            if op is operators.in_op:
+                return expr != expr
+            else:
+                return expr == expr
 
         return self._boolean_compare(expr, op,
                               ClauseList(*args).self_group(against=op),

@@ -7,6 +7,13 @@
     :version: 0.8.3
 
     .. change::
+        :tags: bug, sql
+
+        The :meth:`.Operators.notin_` operator added in 0.8 now properly
+        produces the negation of the expression "IN" returns
+        when used against an empty collection.
+
+    .. change::
         :tags: mysql, bug
         :tickets: 2791
 
