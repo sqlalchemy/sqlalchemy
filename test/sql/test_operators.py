@@ -768,6 +768,17 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "mytable.myid IN (NULL)"
         )
 
+    @testing.emits_warning('.*empty sequence.*')
+    def test_in_29(self):
+        self.assert_compile(self.table1.c.myid.notin_([]),
+        "mytable.myid = mytable.myid")
+
+    @testing.emits_warning('.*empty sequence.*')
+    def test_in_30(self):
+        self.assert_compile(~self.table1.c.myid.in_([]),
+        "mytable.myid = mytable.myid")
+
+
 class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 

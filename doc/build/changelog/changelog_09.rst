@@ -7,6 +7,13 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, sql
+
+        The :meth:`.Operators.notin_` operator added in 0.8 now properly
+        produces the negation of the expression "IN" returns
+        when used against an empty collection.  Also in 0.8.3.
+
+    .. change::
         :tags: orm, feature, orm
 
         Added a new attribute :attr:`.Session.info` to :class:`.Session`;
