@@ -125,7 +125,7 @@ More notes on connecting to MySQL at :ref:`mysql_toplevel`.
 Oracle
 ------
 
-cx_oracle is usualjy used here::
+cx_oracle is usually used here::
 
     engine = create_engine('oracle://scott:tiger@127.0.0.1:1521/sidname')
 
