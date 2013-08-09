@@ -690,7 +690,7 @@ to integers::
     class MyInt(Integer):
         class comparator_factory(Integer.Comparator):
             def log(self, other):
-                return func.log(self, other)
+                return func.log(self.expr, other)
 
 Using the above type::
 
