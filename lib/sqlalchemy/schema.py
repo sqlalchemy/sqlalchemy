@@ -2451,9 +2451,34 @@ class UniqueConstraint(ColumnCollectionConstraint):
 class Index(ColumnCollectionMixin, SchemaItem):
     """A table-level INDEX.
 
-    Defines a composite (one or more column) INDEX. For a no-frills, single
-    column index, adding ``index=True`` to the ``Column`` definition is
-    a shorthand equivalent for an unnamed, single column :class:`.Index`.
+    Defines a composite (one or more column) INDEX.
+
+    E.g.::
+
+        sometable = Table("sometable", metadata,
+                        Column("name", String(50)),
+                        Column("address", String(100))
+                    )
+
+        Index("some_index", sometable.c.name)
+
+    For a no-frills, single column index, adding
+    :class:`.Column` also supports ``index=True``::
+
+        sometable = Table("sometable", metadata,
+                        Column("name", String(50), index=True)
+                    )
+
+    For a composite index, multiple columns can be specified::
+
+        Index("some_index", sometable.c.name, sometable.c.address)
+
+    Functional indexes are supported as well, keeping in mind that at least
+    one :class:`.Column` must be present::
+
+        Index("some_index", func.lower(sometable.c.name))
+
+    .. versionadded:: 0.8 support for functional and expression-based indexes.
 
     .. seealso::
 
@@ -2479,13 +2504,7 @@ class Index(ColumnCollectionMixin, SchemaItem):
           The name of the index
 
         :param \*expressions:
-          Column expressions to include in the index.   The expressions
-          are normally instances of :class:`.Column`, but may also
-          be arbitrary SQL expressions which ultmately refer to a
-          :class:`.Column`.
-
-          .. versionadded:: 0.8 :class:`.Index` supports SQL expressions as
-             well as plain columns.
+          Column or SQL expressions.
 
         :param unique:
             Defaults to False: create a unique index.
