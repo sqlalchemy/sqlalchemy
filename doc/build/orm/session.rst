@@ -484,13 +484,30 @@ restaurant all eat from the same plate. The session is a local "workspace"
 that you use for a specific set of tasks; you don't want to, or need to,
 share that session with other threads who are doing some other task.
 
-If there are in fact multiple threads participating
-in the same task, then you may consider sharing the session between
-those threads, though this would be an extremely unusual scenario.
-In this case it would be necessary
-to implement a proper locking scheme so that the :class:`.Session` is still not
-exposed to concurrent access.
+Making sure the :class:`.Session` is only used in a single concurrent thread at a time
+is called a "share nothing" approach to concurrency.  But actually, not
+sharing the :class:`.Session` implies a more significant pattern; it
+means not just the :class:`.Session` object itself, but
+also **all objects that are associated with that Session**, must be kept within
+the scope of a single concurrent thread.   The set of mapped
+objects associated with a :class:`.Session` are essentially proxies for data
+within database rows accessed over a database connection, and so just like
+the :class:`.Session` itself, the whole
+set of objects is really just a large-scale proxy for a database connection
+(or connections).  Ultimately, it's mostly the DBAPI connection itself that
+we're keeping away from concurrent access; but since the :class:`.Session`
+and all the objects associated with it are all proxies for that DBAPI connection,
+the entire graph is essentially not safe for concurrent access.
 
+If there are in fact multiple threads participating
+in the same task, then you may consider sharing the session and its objects between
+those threads; however, in this extremely unusual scenario the application would
+need to ensure that a proper locking scheme is implemented so that there isn't
+*concurrent* access to the :class:`.Session` or its state.   A more common approach
+to this situation is to maintain a single :class:`.Session` per concurrent thread,
+but to instead *copy* objects from one :class:`.Session` to another, often
+using the :meth:`.Session.merge` method to copy the state of an object into
+a new object local to a different :class:`.Session`.
 
 Querying
 --------
