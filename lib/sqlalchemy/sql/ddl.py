@@ -1,4 +1,4 @@
-# schema/ddl.py
+# sql/ddl.py
 # Copyright (C) 2009-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
