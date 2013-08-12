@@ -19,7 +19,7 @@ from . import (
     )
 from .query import Query
 
-
+@log.class_logger
 class DynaLoader(strategies.AbstractRelationshipLoader):
     def init_class_attribute(self, mapper):
         self.is_class_level = True
@@ -38,9 +38,6 @@ class DynaLoader(strategies.AbstractRelationshipLoader):
             query_class=self.parent_property.query_class,
             backref=self.parent_property.back_populates,
         )
-
-log.class_logger(DynaLoader)
-
 
 class DynamicAttributeImpl(attributes.AttributeImpl):
     uses_objects = True

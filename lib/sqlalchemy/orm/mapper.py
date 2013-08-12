@@ -56,6 +56,8 @@ NO_ATTRIBUTE = util.symbol('NO_ATTRIBUTE')
 _CONFIGURE_MUTEX = util.threading.RLock()
 
 
+@inspection._self_inspects
+@log.class_logger
 class Mapper(_InspectionAttr):
     """Define the correlation of class attributes to database table
     columns.
@@ -950,7 +952,7 @@ class Mapper(_InspectionAttr):
                 prop = self.polymorphic_on
                 self.polymorphic_on = prop.columns[0]
                 polymorphic_key = prop.key
-            elif not expression.is_column(self.polymorphic_on):
+            elif not expression._is_column(self.polymorphic_on):
                 # polymorphic_on is not a Column and not a ColumnProperty;
                 # not supported right now.
                 raise sa_exc.ArgumentError(
@@ -1199,7 +1201,7 @@ class Mapper(_InspectionAttr):
         # generate a properties.ColumnProperty
         columns = util.to_list(prop)
         column = columns[0]
-        if not expression.is_column(column):
+        if not expression._is_column(column):
             raise sa_exc.ArgumentError(
                     "%s=%r is not an instance of MapperProperty or Column"
                     % (key, prop))
@@ -2064,9 +2066,9 @@ class Mapper(_InspectionAttr):
                 dep is not None and \
                 dep is not parent and \
                     dep.inherit_condition is not None:
-                cols = set(sql_util.find_columns(dep.inherit_condition))
+                cols = set(sql_util._find_columns(dep.inherit_condition))
                 if parent.inherit_condition is not None:
-                    cols = cols.union(sql_util.find_columns(
+                    cols = cols.union(sql_util._find_columns(
                                         parent.inherit_condition))
                     return fk.parent not in cols and fk.column not in cols
                 else:
@@ -2106,8 +2108,6 @@ class Mapper(_InspectionAttr):
 
         return result
 
-inspection._self_inspects(Mapper)
-log.class_logger(Mapper)
 
 
 def configure_mappers():

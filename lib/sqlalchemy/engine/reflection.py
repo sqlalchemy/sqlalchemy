@@ -25,9 +25,9 @@ methods such as get_table_names, get_columns, etc.
 """
 
 from .. import exc, sql
-from .. import schema as sa_schema
+from ..sql import schema as sa_schema
 from .. import util
-from ..types import TypeEngine
+from ..sql.type_api import TypeEngine
 from ..util import deprecated
 from ..util import topological
 from .. import inspection

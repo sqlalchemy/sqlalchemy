@@ -2232,7 +2232,7 @@ class InvalidRemoteSideTest(fixtures.MappedTest):
 
         assert_raises_message(sa.exc.ArgumentError,
             "T1.t1s and back-reference T1.parent are "
-            "both of the same direction <symbol 'ONETOMANY>.  Did you "
+            r"both of the same direction symbol\('ONETOMANY'\).  Did you "
             "mean to set remote_side on the many-to-one side ?",
             configure_mappers)
 
@@ -2247,7 +2247,7 @@ class InvalidRemoteSideTest(fixtures.MappedTest):
 
         assert_raises_message(sa.exc.ArgumentError,
             "T1.t1s and back-reference T1.parent are "
-            "both of the same direction <symbol 'MANYTOONE>.  Did you "
+            r"both of the same direction symbol\('MANYTOONE'\).  Did you "
             "mean to set remote_side on the many-to-one side ?",
             configure_mappers)
 
@@ -2261,7 +2261,7 @@ class InvalidRemoteSideTest(fixtures.MappedTest):
 
         # can't be sure of ordering here
         assert_raises_message(sa.exc.ArgumentError,
-            "both of the same direction <symbol 'ONETOMANY>.  Did you "
+            r"both of the same direction symbol\('ONETOMANY'\).  Did you "
             "mean to set remote_side on the many-to-one side ?",
             configure_mappers)
 
@@ -2277,7 +2277,7 @@ class InvalidRemoteSideTest(fixtures.MappedTest):
 
         # can't be sure of ordering here
         assert_raises_message(sa.exc.ArgumentError,
-            "both of the same direction <symbol 'MANYTOONE>.  Did you "
+            r"both of the same direction symbol\('MANYTOONE'\).  Did you "
             "mean to set remote_side on the many-to-one side ?",
             configure_mappers)
 

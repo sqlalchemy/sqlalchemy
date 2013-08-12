@@ -4,11 +4,16 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from .. import types as sqltypes, schema
-from .expression import (
-    ClauseList, Function, _literal_as_binds, literal_column, _type_from_args,
-    cast, extract
-    )
+"""SQL function API, factories, and built-in functions.
+
+"""
+from . import sqltypes, schema
+from .base import Executable
+from .elements import ClauseList, Cast, Extract, _literal_as_binds, \
+        literal_column, _type_from_args, ColumnElement, _clone,\
+        Over, BindParameter
+from .selectable import FromClause, Select
+
 from . import operators
 from .visitors import VisitableType
 from .. import util
@@ -27,6 +32,279 @@ def register_function(identifier, fn, package="_default"):
     """
     reg = _registry[package]
     reg[identifier] = fn
+
+
+class FunctionElement(Executable, ColumnElement, FromClause):
+    """Base for SQL function-oriented constructs.
+
+    .. seealso::
+
+        :class:`.Function` - named SQL function.
+
+        :data:`.func` - namespace which produces registered or ad-hoc
+        :class:`.Function` instances.
+
+        :class:`.GenericFunction` - allows creation of registered function
+        types.
+
+    """
+
+    packagenames = ()
+
+    def __init__(self, *clauses, **kwargs):
+        """Construct a :class:`.FunctionElement`.
+        """
+        args = [_literal_as_binds(c, self.name) for c in clauses]
+        self.clause_expr = ClauseList(
+                                operator=operators.comma_op,
+                                 group_contents=True, *args).\
+                                 self_group()
+
+    @property
+    def columns(self):
+        """Fulfill the 'columns' contract of :class:`.ColumnElement`.
+
+        Returns a single-element list consisting of this object.
+
+        """
+        return [self]
+
+    @util.memoized_property
+    def clauses(self):
+        """Return the underlying :class:`.ClauseList` which contains
+        the arguments for this :class:`.FunctionElement`.
+
+        """
+        return self.clause_expr.element
+
+    def over(self, partition_by=None, order_by=None):
+        """Produce an OVER clause against this function.
+
+        Used against aggregate or so-called "window" functions,
+        for database backends that support window functions.
+
+        The expression::
+
+            func.row_number().over(order_by='x')
+
+        is shorthand for::
+
+            from sqlalchemy import over
+            over(func.row_number(), order_by='x')
+
+        See :func:`~.expression.over` for a full description.
+
+        .. versionadded:: 0.7
+
+        """
+        return Over(self, partition_by=partition_by, order_by=order_by)
+
+    @property
+    def _from_objects(self):
+        return self.clauses._from_objects
+
+    def get_children(self, **kwargs):
+        return self.clause_expr,
+
+    def _copy_internals(self, clone=_clone, **kw):
+        self.clause_expr = clone(self.clause_expr, **kw)
+        self._reset_exported()
+        FunctionElement.clauses._reset(self)
+
+    def select(self):
+        """Produce a :func:`~.expression.select` construct
+        against this :class:`.FunctionElement`.
+
+        This is shorthand for::
+
+            s = select([function_element])
+
+        """
+        s = Select([self])
+        if self._execution_options:
+            s = s.execution_options(**self._execution_options)
+        return s
+
+    def scalar(self):
+        """Execute this :class:`.FunctionElement` against an embedded
+        'bind' and return a scalar value.
+
+        This first calls :meth:`~.FunctionElement.select` to
+        produce a SELECT construct.
+
+        Note that :class:`.FunctionElement` can be passed to
+        the :meth:`.Connectable.scalar` method of :class:`.Connection`
+        or :class:`.Engine`.
+
+        """
+        return self.select().execute().scalar()
+
+    def execute(self):
+        """Execute this :class:`.FunctionElement` against an embedded
+        'bind'.
+
+        This first calls :meth:`~.FunctionElement.select` to
+        produce a SELECT construct.
+
+        Note that :class:`.FunctionElement` can be passed to
+        the :meth:`.Connectable.execute` method of :class:`.Connection`
+        or :class:`.Engine`.
+
+        """
+        return self.select().execute()
+
+    def _bind_param(self, operator, obj):
+        return BindParameter(None, obj, _compared_to_operator=operator,
+                                _compared_to_type=self.type, unique=True)
+
+
+class _FunctionGenerator(object):
+    """Generate :class:`.Function` objects based on getattr calls."""
+
+    def __init__(self, **opts):
+        self.__names = []
+        self.opts = opts
+
+    def __getattr__(self, name):
+        # passthru __ attributes; fixes pydoc
+        if name.startswith('__'):
+            try:
+                return self.__dict__[name]
+            except KeyError:
+                raise AttributeError(name)
+
+        elif name.endswith('_'):
+            name = name[0:-1]
+        f = _FunctionGenerator(**self.opts)
+        f.__names = list(self.__names) + [name]
+        return f
+
+    def __call__(self, *c, **kwargs):
+        o = self.opts.copy()
+        o.update(kwargs)
+
+        tokens = len(self.__names)
+
+        if tokens == 2:
+            package, fname = self.__names
+        elif tokens == 1:
+            package, fname = "_default", self.__names[0]
+        else:
+            package = None
+
+        if package is not None and \
+            package in _registry and \
+            fname in _registry[package]:
+            func = _registry[package][fname]
+            return func(*c, **o)
+
+        return Function(self.__names[-1],
+                        packagenames=self.__names[0:-1], *c, **o)
+
+
+func = _FunctionGenerator()
+"""Generate SQL function expressions.
+
+   :data:`.func` is a special object instance which generates SQL
+   functions based on name-based attributes, e.g.::
+
+        >>> print func.count(1)
+        count(:param_1)
+
+   The element is a column-oriented SQL element like any other, and is
+   used in that way::
+
+        >>> print select([func.count(table.c.id)])
+        SELECT count(sometable.id) FROM sometable
+
+   Any name can be given to :data:`.func`. If the function name is unknown to
+   SQLAlchemy, it will be rendered exactly as is. For common SQL functions
+   which SQLAlchemy is aware of, the name may be interpreted as a *generic
+   function* which will be compiled appropriately to the target database::
+
+        >>> print func.current_timestamp()
+        CURRENT_TIMESTAMP
+
+   To call functions which are present in dot-separated packages,
+   specify them in the same manner::
+
+        >>> print func.stats.yield_curve(5, 10)
+        stats.yield_curve(:yield_curve_1, :yield_curve_2)
+
+   SQLAlchemy can be made aware of the return type of functions to enable
+   type-specific lexical and result-based behavior. For example, to ensure
+   that a string-based function returns a Unicode value and is similarly
+   treated as a string in expressions, specify
+   :class:`~sqlalchemy.types.Unicode` as the type:
+
+        >>> print func.my_string(u'hi', type_=Unicode) + ' ' + \
+        ... func.my_string(u'there', type_=Unicode)
+        my_string(:my_string_1) || :my_string_2 || my_string(:my_string_3)
+
+   The object returned by a :data:`.func` call is usually an instance of
+   :class:`.Function`.
+   This object meets the "column" interface, including comparison and labeling
+   functions.  The object can also be passed the :meth:`~.Connectable.execute`
+   method of a :class:`.Connection` or :class:`.Engine`, where it will be
+   wrapped inside of a SELECT statement first::
+
+        print connection.execute(func.current_timestamp()).scalar()
+
+   In a few exception cases, the :data:`.func` accessor
+   will redirect a name to a built-in expression such as :func:`.cast`
+   or :func:`.extract`, as these names have well-known meaning
+   but are not exactly the same as "functions" from a SQLAlchemy
+   perspective.
+
+   .. versionadded:: 0.8 :data:`.func` can return non-function expression
+      constructs for common quasi-functional names like :func:`.cast`
+      and :func:`.extract`.
+
+   Functions which are interpreted as "generic" functions know how to
+   calculate their return type automatically. For a listing of known generic
+   functions, see :ref:`generic_functions`.
+
+"""
+
+modifier = _FunctionGenerator(group=False)
+
+class Function(FunctionElement):
+    """Describe a named SQL function.
+
+    See the superclass :class:`.FunctionElement` for a description
+    of public methods.
+
+    .. seealso::
+
+        :data:`.func` - namespace which produces registered or ad-hoc
+        :class:`.Function` instances.
+
+        :class:`.GenericFunction` - allows creation of registered function
+        types.
+
+    """
+
+    __visit_name__ = 'function'
+
+    def __init__(self, name, *clauses, **kw):
+        """Construct a :class:`.Function`.
+
+        The :data:`.func` construct is normally used to construct
+        new :class:`.Function` instances.
+
+        """
+        self.packagenames = kw.pop('packagenames', None) or []
+        self.name = name
+        self._bind = kw.get('bind', None)
+        self.type = sqltypes.to_instance(kw.get('type_', None))
+
+        FunctionElement.__init__(self, *clauses, **kw)
+
+    def _bind_param(self, operator, obj):
+        return BindParameter(self.name, obj,
+                                _compared_to_operator=operator,
+                                _compared_to_type=self.type,
+                                unique=True)
 
 
 class _GenericMeta(VisitableType):
@@ -128,8 +406,8 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
             kwargs.pop("type_", None) or getattr(self, 'type', None))
 
 
-register_function("cast", cast)
-register_function("extract", extract)
+register_function("cast", Cast)
+register_function("extract", Extract)
 
 
 class next_value(GenericFunction):

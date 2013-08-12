@@ -11,8 +11,8 @@ from __future__ import with_statement
 
 
 import sys
-from .. import exc, schema, util, log, interfaces
-from ..sql import expression, util as sql_util
+from .. import exc, util, log, interfaces
+from ..sql import expression, util as sql_util, schema, ddl
 from .interfaces import Connectable, Compiled
 from .util import _distill_params
 import contextlib
@@ -1039,7 +1039,7 @@ class Connection(Connectable):
         expression.ClauseElement: _execute_clauseelement,
         Compiled: _execute_compiled,
         schema.SchemaItem: _execute_default,
-        schema.DDLElement: _execute_ddl,
+        ddl.DDLElement: _execute_ddl,
         util.string_types[0]: _execute_text
     }
 

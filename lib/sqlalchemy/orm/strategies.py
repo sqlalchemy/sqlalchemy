@@ -111,6 +111,7 @@ class UninstrumentedColumnLoader(LoaderStrategy):
         return None, None, None
 
 
+@log.class_logger
 class ColumnLoader(LoaderStrategy):
     """Provide loading behavior for a :class:`.ColumnProperty`."""
 
@@ -156,9 +157,8 @@ class ColumnLoader(LoaderStrategy):
             return expire_for_non_present_col, None, None
 
 
-log.class_logger(ColumnLoader)
 
-
+@log.class_logger
 class DeferredColumnLoader(LoaderStrategy):
     """Provide loading behavior for a deferred :class:`.ColumnProperty`."""
 
@@ -251,8 +251,6 @@ class DeferredColumnLoader(LoaderStrategy):
         return attributes.ATTR_WAS_SET
 
 
-log.class_logger(DeferredColumnLoader)
-
 
 class LoadDeferredColumns(object):
     """serializable loader object used by DeferredColumnLoader"""
@@ -304,6 +302,7 @@ class AbstractRelationshipLoader(LoaderStrategy):
 
 
 
+@log.class_logger
 class NoLoader(AbstractRelationshipLoader):
     """Provide loading behavior for a :class:`.RelationshipProperty`
     with "lazy=None".
@@ -325,9 +324,8 @@ class NoLoader(AbstractRelationshipLoader):
         return invoke_no_load, None, None
 
 
-log.class_logger(NoLoader)
 
-
+@log.class_logger
 class LazyLoader(AbstractRelationshipLoader):
     """Provide loading behavior for a :class:`.RelationshipProperty`
     with "lazy=True", that is loads when first accessed.
@@ -629,8 +627,6 @@ class LazyLoader(AbstractRelationshipLoader):
             return reset_for_lazy_callable, None, None
 
 
-log.class_logger(LazyLoader)
-
 
 class LoadLazyAttribute(object):
     """serializable loader object used by LazyLoader"""
@@ -666,6 +662,7 @@ class ImmediateLoader(AbstractRelationshipLoader):
         return None, None, load_immediate
 
 
+@log.class_logger
 class SubqueryLoader(AbstractRelationshipLoader):
     def __init__(self, parent):
         super(SubqueryLoader, self).__init__(parent)
@@ -983,9 +980,8 @@ class SubqueryLoader(AbstractRelationshipLoader):
         return load_scalar_from_subq, None, None
 
 
-log.class_logger(SubqueryLoader)
 
-
+@log.class_logger
 class JoinedLoader(AbstractRelationshipLoader):
     """Provide loading behavior for a :class:`.RelationshipProperty`
     using joined eager loading.
@@ -1201,7 +1197,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             # by the Query propagates those columns outward.
             # This has the effect
             # of "undefering" those columns.
-            for col in sql_util.find_columns(
+            for col in sql_util._find_columns(
                                 self.parent_property.primaryjoin):
                 if localparent.mapped_table.c.contains_column(col):
                     if adapter:
@@ -1333,9 +1329,6 @@ class JoinedLoader(AbstractRelationshipLoader):
         return load_scalar_from_joined_new_row, \
                 load_scalar_from_joined_existing_row, \
                 None, load_scalar_from_joined_exec
-
-
-log.class_logger(JoinedLoader)
 
 
 class EagerLazyOption(StrategizedOption):

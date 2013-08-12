@@ -1881,6 +1881,7 @@ class MySQLIdentifierPreparer(compiler.IdentifierPreparer):
         return tuple([self.quote_identifier(i) for i in ids if i is not None])
 
 
+@log.class_logger
 class MySQLDialect(default.DefaultDialect):
     """Details of the MySQL dialect.  Not used directly in application code."""
 
@@ -2404,6 +2405,7 @@ class ReflectedState(object):
         self.constraints = []
 
 
+@log.class_logger
 class MySQLTableDefinitionParser(object):
     """Parses the results of a SHOW CREATE TABLE statement."""
 
@@ -2806,8 +2808,6 @@ class MySQLTableDefinitionParser(object):
 _options_of_type_string = ('COMMENT', 'DATA DIRECTORY', 'INDEX DIRECTORY',
                            'PASSWORD', 'CONNECTION')
 
-log.class_logger(MySQLTableDefinitionParser)
-log.class_logger(MySQLDialect)
 
 
 class _DecodingRowProxy(object):

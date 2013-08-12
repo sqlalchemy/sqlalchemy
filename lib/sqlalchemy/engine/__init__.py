@@ -50,14 +50,13 @@ url.py
     within a URL.
 """
 
-# not sure what this was used for
-#import sqlalchemy.databases
-
 from .interfaces import (
-    Compiled,
     Connectable,
     Dialect,
     ExecutionContext,
+
+    # backwards compat
+    Compiled,
     TypeCompiler
 )
 
@@ -83,7 +82,11 @@ from .util import (
     connection_memoize
     )
 
-from . import util, strategies, ddl
+
+from . import util, strategies
+
+# backwards compat
+from ..sql import ddl
 
 default_strategy = 'plain'
 

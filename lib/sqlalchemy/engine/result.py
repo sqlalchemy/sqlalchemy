@@ -9,8 +9,8 @@ and :class:`.RowProxy."""
 
 
 
-from .. import exc, types, util
-from ..sql import expression
+from .. import exc, util
+from ..sql import expression, sqltypes
 import collections
 
 # This reconstructor is necessary so that pickles with the C extension or
@@ -205,10 +205,10 @@ class ResultMetaData(object):
                                                     else colname.lower()]
                 except KeyError:
                     name, obj, type_ = \
-                        colname, None, typemap.get(coltype, types.NULLTYPE)
+                        colname, None, typemap.get(coltype, sqltypes.NULLTYPE)
             else:
                 name, obj, type_ = \
-                        colname, None, typemap.get(coltype, types.NULLTYPE)
+                        colname, None, typemap.get(coltype, sqltypes.NULLTYPE)
 
             processor = context.get_result_processor(type_, colname, coltype)
 

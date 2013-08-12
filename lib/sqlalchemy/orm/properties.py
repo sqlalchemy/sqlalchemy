@@ -34,7 +34,7 @@ from .descriptor_props import CompositeProperty, SynonymProperty, \
 __all__ = ['ColumnProperty', 'CompositeProperty', 'SynonymProperty',
            'ComparableProperty', 'RelationshipProperty', 'RelationProperty']
 
-
+@log.class_logger
 class ColumnProperty(StrategizedProperty):
     """Describes an object attribute that corresponds to a table column.
 
@@ -222,9 +222,8 @@ class ColumnProperty(StrategizedProperty):
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key
 
-log.class_logger(ColumnProperty)
 
-
+@log.class_logger
 class RelationshipProperty(StrategizedProperty):
     """Describes an object property that holds a single item or list
     of items that correspond to a related database table.
@@ -1312,4 +1311,3 @@ class RelationshipProperty(StrategizedProperty):
 
 
 PropertyLoader = RelationProperty = RelationshipProperty
-log.class_logger(RelationshipProperty)

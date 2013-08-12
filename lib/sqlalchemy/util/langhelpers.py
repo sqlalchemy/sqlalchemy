@@ -107,6 +107,30 @@ def decorator(target):
     return update_wrapper(decorate, target)
 
 
+def public_factory(target):
+    """Produce a wrapping function for the given cls or classmethod.
+
+    Rationale here is so that the __init__ method of the
+    class can serve as documentation for the function.
+
+    """
+    if isinstance(target, type):
+        fn = target.__init__
+        callable_ = target
+    else:
+        fn = callable_ = target
+    spec = compat.inspect_getfullargspec(fn)
+    del spec[0][0]
+    #import pdb
+    #pdb.set_trace()
+    metadata = format_argspec_plus(spec, grouped=False)
+    code = 'lambda %(args)s: cls(%(apply_kw)s)' % metadata
+    decorated = eval(code, {'cls': callable_, 'symbol': symbol})
+    decorated.__doc__ = fn.__doc__
+    return decorated
+    #return update_wrapper(decorated, fn)
+
+
 class PluginLoader(object):
 
     def __init__(self, group, auto_fn=None):
@@ -619,7 +643,11 @@ class memoized_property(object):
         return result
 
     def _reset(self, obj):
-        obj.__dict__.pop(self.__name__, None)
+        memoized_property.reset(obj, self.__name__)
+
+    @classmethod
+    def reset(cls, obj, name):
+        obj.__dict__.pop(name, None)
 
 
 class memoized_instancemethod(object):
@@ -698,15 +726,26 @@ class importlater(object):
 
     _unresolved = set()
 
+    _by_key = {}
+
+    def __new__(cls, path, addtl):
+        key = path + "." + addtl
+        if key in importlater._by_key:
+            return importlater._by_key[key]
+        else:
+            importlater._by_key[key] = imp = object.__new__(cls)
+            return imp
+
     def __init__(self, path, addtl):
         self._il_path = path
         self._il_addtl = addtl
         importlater._unresolved.add(self)
 
     @classmethod
-    def resolve_all(cls):
+    def resolve_all(cls, path):
         for m in list(importlater._unresolved):
-            m._resolve()
+            if m._full_path.startswith(path):
+                m._resolve()
 
     @property
     def _full_path(self):
@@ -741,6 +780,61 @@ class importlater(object):
                     )
         self.__dict__[key] = attr
         return attr
+
+def dependencies(*deps):
+    """Apply imported dependencies as arguments to a function.
+
+    E.g.::
+
+        @util.dependencies(
+            "sqlalchemy.sql.widget",
+            "sqlalchemy.engine.default"
+        );
+        def some_func(self, widget, default, arg1, arg2, **kw):
+            # ...
+
+    Rationale is so that the impact of a dependency cycle can be
+    associated directly with the few functions that cause the cycle,
+    and not pollute the module-level namespace.
+
+    """
+    import_deps = []
+    for dep in deps:
+        tokens = dep.split(".")
+        import_deps.append(
+                importlater(
+                ".".join(tokens[0:-1]),
+                tokens[-1]
+            )
+        )
+
+    def decorate(fn):
+        spec = compat.inspect_getfullargspec(fn)
+
+        spec_zero = list(spec[0])
+        hasself = spec_zero[0] in ('self', 'cls')
+
+        for i in range(len(import_deps)):
+            spec[0][i + (1 if hasself else 0)] = "import_deps[%r]" % i
+
+        inner_spec = format_argspec_plus(spec, grouped=False)
+
+        for impname in import_deps:
+            del spec_zero[1 if hasself else 0]
+        spec[0][:] = spec_zero
+
+        outer_spec = format_argspec_plus(spec, grouped=False)
+
+        code = 'lambda %(args)s: fn(%(apply_kw)s)' % {
+                    "args": outer_spec['args'],
+                    "apply_kw": inner_spec['apply_kw']
+        }
+
+        decorated = eval(code, locals())
+        decorated.__defaults__ = getattr(fn, 'im_func', fn).__defaults__
+        return update_wrapper(decorated, fn)
+    return decorate
+
 
 # from paste.deploy.converters
 def asbool(obj):
@@ -943,7 +1037,7 @@ class _symbol(int):
         return repr(self)
 
     def __repr__(self):
-        return "<symbol '%s>" % self.name
+        return "symbol(%r)" % self.name
 
 _symbol.__name__ = 'symbol'
 

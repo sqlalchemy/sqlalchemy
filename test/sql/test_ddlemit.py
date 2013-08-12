@@ -1,5 +1,5 @@
 from sqlalchemy.testing import fixtures
-from sqlalchemy.engine.ddl import SchemaGenerator, SchemaDropper
+from sqlalchemy.sql.ddl import SchemaGenerator, SchemaDropper
 from sqlalchemy.engine import default
 from sqlalchemy import MetaData, Table, Column, Integer, Sequence
 from sqlalchemy import schema

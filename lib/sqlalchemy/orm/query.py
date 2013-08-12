@@ -55,7 +55,8 @@ def _generative(*assertions):
 
 _path_registry = PathRegistry.root
 
-
+@inspection._self_inspects
+@log.class_logger
 class Query(object):
     """ORM-level SQL construction object.
 
@@ -2838,8 +2839,6 @@ class Query(object):
     def __str__(self):
         return str(self._compile_context().statement)
 
-inspection._self_inspects(Query)
-
 
 class _QueryEntity(object):
     """represent an entity column returned within a Query result."""
@@ -3187,8 +3186,6 @@ class _ColumnEntity(_QueryEntity):
     def __str__(self):
         return str(self.column)
 
-
-log.class_logger(Query)
 
 
 class QueryContext(object):

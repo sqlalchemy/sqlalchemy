@@ -16,7 +16,8 @@ import re
 import random
 from . import reflection, interfaces, result
 from ..sql import compiler, expression
-from .. import exc, types as sqltypes, util, pool, processors
+from .. import types as sqltypes
+from .. import exc, util, pool, processors
 import codecs
 import weakref
 from .. import event

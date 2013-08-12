@@ -117,6 +117,7 @@ PASSIVE_ONLY_PERSISTENT = util.symbol("PASSIVE_ONLY_PERSISTENT",
 )
 
 
+@inspection._self_inspects
 class QueryableAttribute(interfaces._MappedAttribute,
                             interfaces._InspectionAttr,
                             interfaces.PropComparator):
@@ -285,8 +286,6 @@ class QueryableAttribute(interfaces._MappedAttribute,
 
         """
         return self.comparator.property
-
-inspection._self_inspects(QueryableAttribute)
 
 
 class InstrumentedAttribute(QueryableAttribute):

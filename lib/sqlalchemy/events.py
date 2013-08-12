@@ -7,8 +7,6 @@
 """Core event interfaces."""
 
 from . import event, exc, util
-engine = util.importlater('sqlalchemy', 'engine')
-pool = util.importlater('sqlalchemy', 'pool')
 
 
 class DDLEvents(event.Events):
@@ -271,7 +269,11 @@ class PoolEvents(event.Events):
     _target_class_doc = "SomeEngineOrPool"
 
     @classmethod
-    def _accept_with(cls, target):
+    @util.dependencies(
+        "sqlalchemy.engine",
+        "sqlalchemy.pool"
+    )
+    def _accept_with(cls, engine, pool, target):
         if isinstance(target, type):
             if issubclass(target, engine.Engine):
                 return pool.Pool

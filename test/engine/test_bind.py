@@ -1,7 +1,7 @@
 """tests the "bind" attribute/argument across schema and SQL,
 including the deprecated versions of these arguments"""
 
-from sqlalchemy.testing import eq_, assert_raises
+from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy import engine, exc
 from sqlalchemy import MetaData, ThreadLocalMetaData
 from sqlalchemy import Integer, text
@@ -44,7 +44,7 @@ class BindTest(fixtures.TestBase):
             testing.db.connect()
         ):
             for args in [
-                ([], {'bind':bind}),
+                ([], {'bind': bind}),
                 ([bind], {})
             ]:
                 metadata.create_all(*args[0], **args[1])
@@ -56,18 +56,13 @@ class BindTest(fixtures.TestBase):
 
     def test_create_drop_err_metadata(self):
         metadata = MetaData()
-        table = Table('test_table', metadata, Column('foo', Integer))
+        Table('test_table', metadata, Column('foo', Integer))
         for meth in [metadata.create_all, metadata.drop_all]:
-            try:
-                meth()
-                assert False
-            except exc.UnboundExecutionError as e:
-                eq_(str(e),
-                    "The MetaData is not bound to an Engine or "
-                    "Connection.  Execution can not proceed without a "
-                    "database to execute against.  Either execute with "
-                    "an explicit connection or assign the MetaData's "
-                    ".bind to enable implicit execution.")
+            assert_raises_message(
+                exc.UnboundExecutionError,
+                "MetaData object is not bound to an Engine or Connection.",
+                meth
+            )
 
     def test_create_drop_err_table(self):
         metadata = MetaData()
@@ -79,23 +74,16 @@ class BindTest(fixtures.TestBase):
             table.create,
             table.drop,
         ]:
-            try:
-                meth()
-                assert False
-            except exc.UnboundExecutionError as e:
-                eq_(
-                    str(e),
-                    "The Table 'test_table' "
-                    "is not bound to an Engine or Connection.  "
-                    "Execution can not proceed without a database to execute "
-                    "against.  Either execute with an explicit connection or "
-                    "assign this Table's .metadata.bind to enable implicit "
-                    "execution.")
+            assert_raises_message(
+                exc.UnboundExecutionError,
+                "Table object 'test_table' is not bound to an Engine or Connection.",
+                meth
+            )
 
     @testing.uses_deprecated()
     def test_create_drop_bound(self):
 
-        for meta in (MetaData,ThreadLocalMetaData):
+        for meta in (MetaData, ThreadLocalMetaData):
             for bind in (
                 testing.db,
                 testing.db.connect()
@@ -136,7 +124,7 @@ class BindTest(fixtures.TestBase):
             try:
                 for args in (
                     ([bind], {}),
-                    ([], {'bind':bind}),
+                    ([], {'bind': bind}),
                 ):
                     metadata = MetaData(*args[0], **args[1])
                     table = Table('test_table', metadata,

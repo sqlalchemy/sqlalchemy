@@ -97,7 +97,6 @@ from .schema import (
     Column,
     ColumnDefault,
     Constraint,
-    DDL,
     DefaultClause,
     FetchedValue,
     ForeignKey,
@@ -110,7 +109,9 @@ from .schema import (
     Table,
     ThreadLocalMetaData,
     UniqueConstraint,
-    )
+    DDL,
+)
+
 
 from .inspection import inspect
 
@@ -125,4 +126,4 @@ __version__ = '0.9.0'
 del _inspect, sys
 
 from . import util as _sa_util
-_sa_util.importlater.resolve_all()
+_sa_util.importlater.resolve_all("sqlalchemy")

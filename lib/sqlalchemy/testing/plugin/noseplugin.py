@@ -351,6 +351,8 @@ class NoseSQLAlchemy(Plugin):
         return ""
 
     def wantFunction(self, fn):
+        if fn.__module__ is None:
+            return False
         if fn.__module__.startswith('sqlalchemy.testing'):
             return False
 

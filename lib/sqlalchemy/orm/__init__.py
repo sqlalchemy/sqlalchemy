@@ -1782,6 +1782,5 @@ def undefer_group(name):
     """
     return strategies.UndeferGroupOption(name)
 
-
 from .. import util as _sa_util
-_sa_util.importlater.resolve_all()
+_sa_util.importlater.resolve_all("sqlalchemy.orm")

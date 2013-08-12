@@ -8,6 +8,8 @@
 
 from .. import util, event, events
 
+# backwards compat
+from ..sql.compiler import Compiled, TypeCompiler
 
 class Dialect(object):
     """Define the behavior of a specific database and DB-API combination.
@@ -767,110 +769,6 @@ class ExecutionContext(object):
         """
 
         raise NotImplementedError()
-
-
-class Compiled(object):
-    """Represent a compiled SQL or DDL expression.
-
-    The ``__str__`` method of the ``Compiled`` object should produce
-    the actual text of the statement.  ``Compiled`` objects are
-    specific to their underlying database dialect, and also may
-    or may not be specific to the columns referenced within a
-    particular set of bind parameters.  In no case should the
-    ``Compiled`` object be dependent on the actual values of those
-    bind parameters, even though it may reference those values as
-    defaults.
-    """
-
-    def __init__(self, dialect, statement, bind=None,
-                compile_kwargs=util.immutabledict()):
-        """Construct a new ``Compiled`` object.
-
-        :param dialect: ``Dialect`` to compile against.
-
-        :param statement: ``ClauseElement`` to be compiled.
-
-        :param bind: Optional Engine or Connection to compile this
-          statement against.
-
-        :param compile_kwargs: additional kwargs that will be
-         passed to the initial call to :meth:`.Compiled.process`.
-
-         .. versionadded:: 0.8
-
-        """
-
-        self.dialect = dialect
-        self.bind = bind
-        if statement is not None:
-            self.statement = statement
-            self.can_execute = statement.supports_execution
-            self.string = self.process(self.statement, **compile_kwargs)
-
-    @util.deprecated("0.7", ":class:`.Compiled` objects now compile "
-                        "within the constructor.")
-    def compile(self):
-        """Produce the internal string representation of this element."""
-        pass
-
-    @property
-    def sql_compiler(self):
-        """Return a Compiled that is capable of processing SQL expressions.
-
-        If this compiler is one, it would likely just return 'self'.
-
-        """
-
-        raise NotImplementedError()
-
-    def process(self, obj, **kwargs):
-        return obj._compiler_dispatch(self, **kwargs)
-
-    def __str__(self):
-        """Return the string text of the generated SQL or DDL."""
-
-        return self.string or ''
-
-    def construct_params(self, params=None):
-        """Return the bind params for this compiled object.
-
-        :param params: a dict of string/object pairs whose values will
-                       override bind values compiled in to the
-                       statement.
-        """
-
-        raise NotImplementedError()
-
-    @property
-    def params(self):
-        """Return the bind params for this compiled object."""
-        return self.construct_params()
-
-    def execute(self, *multiparams, **params):
-        """Execute this compiled object."""
-
-        e = self.bind
-        if e is None:
-            raise exc.UnboundExecutionError(
-                        "This Compiled object is not bound to any Engine "
-                        "or Connection.")
-        return e._execute_compiled(self, multiparams, params)
-
-    def scalar(self, *multiparams, **params):
-        """Execute this compiled object and return the result's
-        scalar value."""
-
-        return self.execute(*multiparams, **params).scalar()
-
-
-class TypeCompiler(object):
-    """Produces DDL specification for TypeEngine objects."""
-
-    def __init__(self, dialect):
-        self.dialect = dialect
-
-    def process(self, type_):
-        return type_._compiler_dispatch(self)
 
 
 class Connectable(object):
