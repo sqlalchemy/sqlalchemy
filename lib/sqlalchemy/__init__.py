@@ -4,8 +4,6 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import inspect as _inspect
-import sys
 
 from .sql import (
     alias,
@@ -114,16 +112,20 @@ from .schema import (
 
 
 from .inspection import inspect
-
 from .engine import create_engine, engine_from_config
-
-
-__all__ = sorted(name for name, obj in locals().items()
-                 if not (name.startswith('_') or _inspect.ismodule(obj)))
 
 __version__ = '0.9.0'
 
-del _inspect, sys
+def __go(lcls):
+    global __all__
 
-from . import util as _sa_util
-_sa_util.importlater.resolve_all("sqlalchemy")
+    from . import events
+    from . import util as _sa_util
+
+    import inspect as _inspect
+
+    __all__ = sorted(name for name, obj in lcls.items()
+                 if not (name.startswith('_') or _inspect.ismodule(obj)))
+
+    _sa_util.dependencies.resolve_all("sqlalchemy")
+__go(locals())

@@ -19,7 +19,9 @@ from .elements import BindParameter, ColumnClause, ColumnElement, \
 from .selectable import ScalarSelect, Join, FromClause, FromGrouping
 from .schema import Column
 
-join_condition = util.langhelpers.public_factory(Join._join_condition)
+join_condition = util.langhelpers.public_factory(
+                            Join._join_condition,
+                            ".sql.util.join_condition")
 
 # names that are still being imported from the outside
 from .annotation import _shallow_annotate, _deep_annotate, _deep_deannotate

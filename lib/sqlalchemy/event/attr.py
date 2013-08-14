@@ -363,20 +363,3 @@ class _JoinedListener(_CompoundListener):
         raise NotImplementedError()
 
 
-class dispatcher(object):
-    """Descriptor used by target classes to
-    deliver the _Dispatch class at the class level
-    and produce new _Dispatch instances for target
-    instances.
-
-    """
-    def __init__(self, events):
-        self.dispatch_cls = events.dispatch
-        self.events = events
-
-    def __get__(self, obj, cls):
-        if obj is None:
-            return self.dispatch_cls
-        obj.__dict__['dispatch'] = disp = self.dispatch_cls(cls)
-        return disp
-

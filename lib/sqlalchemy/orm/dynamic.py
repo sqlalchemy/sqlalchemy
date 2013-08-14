@@ -15,11 +15,12 @@ from .. import log, util, exc
 from ..sql import operators
 from . import (
     attributes, object_session, util as orm_util, strategies,
-    object_mapper, exc as orm_exc
+    object_mapper, exc as orm_exc, properties
     )
 from .query import Query
 
 @log.class_logger
+@properties.RelationshipProperty._strategy_for(dict(lazy="dynamic"))
 class DynaLoader(strategies.AbstractRelationshipLoader):
     def init_class_attribute(self, mapper):
         self.is_class_level = True

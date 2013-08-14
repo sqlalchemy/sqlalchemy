@@ -53,8 +53,16 @@ class _Dispatch(object):
 
     """
 
+    _events = None
+    """reference the :class:`.Events` class which this
+        :class:`._Dispatch` is created for."""
+
     def __init__(self, _parent_cls):
         self._parent_cls = _parent_cls
+
+    @util.classproperty
+    def _listen(cls):
+        return cls._events._listen
 
     def _join(self, other):
         """Create a 'join' of this :class:`._Dispatch` and another.
@@ -115,14 +123,17 @@ def _create_dispatcher_class(cls, classname, bases, dict_):
     # i.e. make a Dispatch class that shares the '_listen' method
     # of the Event class, this is the straight monkeypatch.
     dispatch_base = getattr(cls, 'dispatch', _Dispatch)
-    cls.dispatch = dispatch_cls = type("%sDispatch" % classname,
+    dispatch_cls = type("%sDispatch" % classname,
                                         (dispatch_base, ), {})
-    dispatch_cls._listen = cls._listen
+    cls._set_dispatch(cls, dispatch_cls)
 
     for k in dict_:
         if _is_event_name(k):
             setattr(dispatch_cls, k, _DispatchDescriptor(cls, dict_[k]))
             _registrars[k].append(cls)
+
+    if getattr(cls, '_dispatch_target', None):
+        cls._dispatch_target.dispatch = dispatcher(cls)
 
 
 def _remove_dispatcher(cls):
@@ -134,6 +145,17 @@ def _remove_dispatcher(cls):
 
 class Events(util.with_metaclass(_EventMeta, object)):
     """Define event listening functions for a particular target type."""
+
+    @staticmethod
+    def _set_dispatch(cls, dispatch_cls):
+        # this allows an Events subclass to define additional utility
+        # methods made available to the target via
+        # "self.dispatch._events.<utilitymethod>"
+        # @staticemethod to allow easy "super" calls while in a metaclass
+        # constructor.
+        cls.dispatch = dispatch_cls
+        dispatch_cls._events = cls
+
 
     @classmethod
     def _accept_with(cls, target):
@@ -168,4 +190,22 @@ class _JoinedDispatcher(object):
         self.local = local
         self.parent = parent
         self._parent_cls = local._parent_cls
+
+
+class dispatcher(object):
+    """Descriptor used by target classes to
+    deliver the _Dispatch class at the class level
+    and produce new _Dispatch instances for target
+    instances.
+
+    """
+    def __init__(self, events):
+        self.dispatch_cls = events.dispatch
+        self.events = events
+
+    def __get__(self, obj, cls):
+        if obj is None:
+            return self.dispatch_cls
+        obj.__dict__['dispatch'] = disp = self.dispatch_cls(cls)
+        return disp
 

@@ -6,8 +6,10 @@
 
 """Core event interfaces."""
 
-from . import event, exc, util
-
+from . import event, exc
+from .pool import Pool
+from .engine import Connectable, Engine
+from .sql.base import SchemaEventTarget
 
 class DDLEvents(event.Events):
     """
@@ -69,6 +71,7 @@ class DDLEvents(event.Events):
     """
 
     _target_class_doc = "SomeSchemaClassOrObject"
+    _dispatch_target = SchemaEventTarget
 
     def before_create(self, target, connection, **kw):
         """Called before CREATE statments are emitted.
@@ -217,25 +220,6 @@ class DDLEvents(event.Events):
         """
 
 
-class SchemaEventTarget(object):
-    """Base class for elements that are the targets of :class:`.DDLEvents`
-    events.
-
-    This includes :class:`.SchemaItem` as well as :class:`.SchemaType`.
-
-    """
-    dispatch = event.dispatcher(DDLEvents)
-
-    def _set_parent(self, parent):
-        """Associate with this SchemaEvent's parent object."""
-
-        raise NotImplementedError()
-
-    def _set_parent_with_dispatch(self, parent):
-        self.dispatch.before_parent_attach(self, parent)
-        self._set_parent(parent)
-        self.dispatch.after_parent_attach(self, parent)
-
 
 class PoolEvents(event.Events):
     """Available events for :class:`.Pool`.
@@ -267,19 +251,16 @@ class PoolEvents(event.Events):
     """
 
     _target_class_doc = "SomeEngineOrPool"
+    _dispatch_target = Pool
 
     @classmethod
-    @util.dependencies(
-        "sqlalchemy.engine",
-        "sqlalchemy.pool"
-    )
-    def _accept_with(cls, engine, pool, target):
+    def _accept_with(cls, target):
         if isinstance(target, type):
-            if issubclass(target, engine.Engine):
-                return pool.Pool
-            elif issubclass(target, pool.Pool):
+            if issubclass(target, Engine):
+                return Pool
+            elif issubclass(target, Pool):
                 return target
-        elif isinstance(target, engine.Engine):
+        elif isinstance(target, Engine):
             return target.pool
         else:
             return target
@@ -450,6 +431,8 @@ class ConnectionEvents(event.Events):
     """
 
     _target_class_doc = "SomeEngine"
+    _dispatch_target = Connectable
+
 
     @classmethod
     def _listen(cls, event_key, retval=False):

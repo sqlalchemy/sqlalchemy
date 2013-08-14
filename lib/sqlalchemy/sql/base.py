@@ -152,6 +152,24 @@ class Executable(Generative):
             return None
 
 
+class SchemaEventTarget(object):
+    """Base class for elements that are the targets of :class:`.DDLEvents`
+    events.
+
+    This includes :class:`.SchemaItem` as well as :class:`.SchemaType`.
+
+    """
+
+    def _set_parent(self, parent):
+        """Associate with this SchemaEvent's parent object."""
+
+        raise NotImplementedError()
+
+    def _set_parent_with_dispatch(self, parent):
+        self.dispatch.before_parent_attach(self, parent)
+        self._set_parent(parent)
+        self.dispatch.after_parent_attach(self, parent)
+
 class SchemaVisitor(ClauseVisitor):
     """Define the visiting for ``SchemaItem`` objects."""
 

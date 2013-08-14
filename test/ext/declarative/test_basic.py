@@ -202,10 +202,10 @@ class DeclarativeTest(DeclarativeTestBase):
             user = relationship("User", primaryjoin=user_id == User.id,
                             backref="addresses")
 
-        assert mapperlib._new_mappers is True
+        assert mapperlib.Mapper._new_mappers is True
         u = User()
         assert User.addresses
-        assert mapperlib._new_mappers is False
+        assert mapperlib.Mapper._new_mappers is False
 
     def test_string_dependency_resolution(self):
         from sqlalchemy.sql import desc

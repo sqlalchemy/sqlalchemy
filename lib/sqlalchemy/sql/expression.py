@@ -56,37 +56,37 @@ from .dml import Insert, Update, Delete
 # the functions to be available in the sqlalchemy.sql.* namespace and
 # to be auto-cross-documenting from the function to the class itself.
 
-bindparam = public_factory(BindParameter)
-select = public_factory(Select)
-text = public_factory(TextClause)
-table = public_factory(TableClause)
-column = public_factory(ColumnClause)
-over = public_factory(Over)
-label = public_factory(Label)
-case = public_factory(Case)
-cast = public_factory(Cast)
-extract = public_factory(Extract)
-tuple_ = public_factory(Tuple)
-except_ = public_factory(CompoundSelect._create_except)
-except_all = public_factory(CompoundSelect._create_except_all)
-intersect = public_factory(CompoundSelect._create_intersect)
-intersect_all = public_factory(CompoundSelect._create_intersect_all)
-union = public_factory(CompoundSelect._create_union)
-union_all = public_factory(CompoundSelect._create_union_all)
-exists = public_factory(Exists)
-nullsfirst = public_factory(UnaryExpression._create_nullsfirst)
-nullslast = public_factory(UnaryExpression._create_nullslast)
-asc = public_factory(UnaryExpression._create_asc)
-desc = public_factory(UnaryExpression._create_desc)
-distinct = public_factory(UnaryExpression._create_distinct)
-true = public_factory(True_)
-false = public_factory(False_)
-null = public_factory(Null)
-join = public_factory(Join._create_join)
-outerjoin = public_factory(Join._create_outerjoin)
-insert = public_factory(Insert)
-update = public_factory(Update)
-delete = public_factory(Delete)
+bindparam = public_factory(BindParameter, ".expression.bindparam")
+select = public_factory(Select, ".expression.select")
+text = public_factory(TextClause, ".expression.tet")
+table = public_factory(TableClause, ".expression.table")
+column = public_factory(ColumnClause, ".expression.column")
+over = public_factory(Over, ".expression.over")
+label = public_factory(Label, ".expression.label")
+case = public_factory(Case, ".expression.case")
+cast = public_factory(Cast, ".expression.cast")
+extract = public_factory(Extract, ".expression.extract")
+tuple_ = public_factory(Tuple, ".expression.tuple_")
+except_ = public_factory(CompoundSelect._create_except, ".expression.except_")
+except_all = public_factory(CompoundSelect._create_except_all, ".expression.except_all")
+intersect = public_factory(CompoundSelect._create_intersect, ".expression.intersect")
+intersect_all = public_factory(CompoundSelect._create_intersect_all, ".expression.intersect_all")
+union = public_factory(CompoundSelect._create_union, ".expression.union")
+union_all = public_factory(CompoundSelect._create_union_all, ".expression.union_all")
+exists = public_factory(Exists, ".expression.exists")
+nullsfirst = public_factory(UnaryExpression._create_nullsfirst, ".expression.nullsfirst")
+nullslast = public_factory(UnaryExpression._create_nullslast, ".expression.nullslast")
+asc = public_factory(UnaryExpression._create_asc, ".expression.asc")
+desc = public_factory(UnaryExpression._create_desc, ".expression.desc")
+distinct = public_factory(UnaryExpression._create_distinct, ".expression.distinct")
+true = public_factory(True_, ".expression.true")
+false = public_factory(False_, ".expression.false")
+null = public_factory(Null, ".expression.null")
+join = public_factory(Join._create_join, ".expression.join")
+outerjoin = public_factory(Join._create_outerjoin, ".expression.outerjoin")
+insert = public_factory(Insert, ".expression.insert")
+update = public_factory(Update, ".expression.update")
+delete = public_factory(Delete, ".expression.delete")
 
 
 
@@ -99,7 +99,6 @@ from .elements import _literal_as_text, _clause_element_as_expr,\
     _column_as_key, _literal_as_binds, _select_iterables, \
     _corresponding_column_or_error
 from .selectable import _interpret_as_from
-
 
 
 # old names for compatibility

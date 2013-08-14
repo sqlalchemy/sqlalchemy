@@ -31,7 +31,7 @@ as components in SQL expressions.
 import re
 import inspect
 from .. import exc, util, event, inspection
-from ..events import SchemaEventTarget
+from .base import SchemaEventTarget
 from . import visitors
 from . import type_api
 from .base import _bind_or_error, ColumnCollection
@@ -2509,7 +2509,18 @@ class Index(ColumnCollectionMixin, SchemaItem):
         :param name:
           The name of the index
 
+<<<<<<< HEAD
+        :param \*expressions:
+          Column expressions to include in the index.   The expressions
+          are normally instances of :class:`.Column`, but may also
+          be arbitrary SQL expressions which ultmately refer to a
+          :class:`.Column`.
+
+          .. versionadded:: 0.8 :class:`.Index` supports SQL expressions as
+             well as plain columns.
+=======
         :param \*expressions: Column or SQL expressions.
+>>>>>>> master
 
         :param unique:
             Defaults to False: create a unique index.

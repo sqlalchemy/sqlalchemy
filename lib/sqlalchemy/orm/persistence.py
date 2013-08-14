@@ -17,7 +17,7 @@ import operator
 from itertools import groupby
 from .. import sql, util, exc as sa_exc, schema
 from . import attributes, sync, exc as orm_exc, evaluator
-from .util import _state_mapper, state_str, _attr_as_key
+from .base import _state_mapper, state_str, _attr_as_key
 from ..sql import expression
 from . import loading
 

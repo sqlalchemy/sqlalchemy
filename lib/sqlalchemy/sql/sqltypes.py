@@ -14,9 +14,9 @@ import codecs
 from .type_api import TypeEngine, TypeDecorator, to_instance
 from .default_comparator import _DefaultColumnComparator
 from .. import exc, util, processors
-from .base import _bind_or_error
+from .base import _bind_or_error, SchemaEventTarget
 from . import operators
-from .. import events, event
+from .. import event
 from ..util import pickle
 import decimal
 
@@ -817,7 +817,7 @@ class Binary(LargeBinary):
 
 
 
-class SchemaType(events.SchemaEventTarget):
+class SchemaType(SchemaEventTarget):
     """Mark a type as possibly requiring schema-level DDL for usage.
 
     Supports types that must be explicitly created/dropped (i.e. PG ENUM type)

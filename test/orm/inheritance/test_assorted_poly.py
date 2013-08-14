@@ -16,6 +16,7 @@ from test.orm import _fixtures
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing.schema import Table, Column
 
+
 class AttrSettable(object):
     def __init__(self, **kwargs):
         [setattr(self, k, v) for k, v in kwargs.items()]

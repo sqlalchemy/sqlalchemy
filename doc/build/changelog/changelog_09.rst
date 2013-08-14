@@ -14,28 +14,17 @@
         when used against an empty collection.  Also in 0.8.3.
 
     .. change::
-        :tags: general, sql
+        :tags: general
 
-        A large refactoring of the ``sqlalchemy.sql`` package has reorganized
-        the import structure of many core modules.
-        ``sqlalchemy.schema`` and ``sqlalchemy.types``
-        remain in the top-level package, but are now just lists of names
-        that pull from within ``sqlalchemy.sql``.  Their implementations
-        are now broken out among ``sqlalchemy.sql.type_api``, ``sqlalchemy.sql.sqltypes``,
-        ``sqlalchemy.sql.schema`` and ``sqlalchemy.sql.ddl``, the last of which was
-        moved from ``sqlalchemy.engine``.  ``sqlalchemy.sql.expression`` is also
-        a namespace now which pulls implementations mostly from ``sqlalchemy.sql.elements``,
-        ``sqlalchemy.sql.selectable``, and ``sqlalchemy.sql.dml``.
-        Most of the "factory" functions
-        used to create SQL expression objects have been moved to classmethods
-        or constructors, which are exposed in ``sqlalchemy.sql.expression``
-        using a programmatic system.  Care has been taken such that all the
-        original import namespaces remain intact and there should be no impact
-        on any existing applications.   The rationale here was to break out these
-        very large modules into smaller ones, provide more manageable lists
-        of function names, to greatly reduce "import cycles" and clarify the
-        up-front importing of names, and to remove the need for redundant
-        functions and documentation throughout the expression package.
+        A large refactoring of packages has reorganized
+        the import structure of many Core modules as well as some aspects
+        of the ORM modules.  In particular ``sqlalchemy.sql`` has been broken
+        out into several more modules than before so that the very large size
+        of ``sqlalchemy.sql.expression`` is now pared down.   The effort
+        has focused on a large reduction in import cycles.   Additionally,
+        the system of API functions in ``sqlalchemy.sql.expression`` and
+        ``sqlalchemy.orm`` has been reorganized to eliminate redundancy
+        in documentation between the functions vs. the objects they produce.
 
     .. change::
         :tags: orm, feature, orm

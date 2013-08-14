@@ -20,7 +20,7 @@ import time
 import traceback
 import weakref
 
-from . import exc, log, event, events, interfaces, util
+from . import exc, log, event, interfaces, util
 from .util import queue as sqla_queue
 from .util import threading, memoized_property, \
     chop_traceback
@@ -184,8 +184,6 @@ class Pool(log.Identified):
                         "create_engine()) is deprecated.  Use event.listen().")
             for l in listeners:
                 self.add_listener(l)
-
-    dispatch = event.dispatcher(events.PoolEvents)
 
     def _close_connection(self, connection):
         self.logger.debug("Closing connection %r", connection)

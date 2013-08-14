@@ -24,19 +24,18 @@ from . import (
     attributes, interfaces, object_mapper, persistence,
     exc as orm_exc, loading
     )
+from .base import _entity_descriptor, _is_aliased_class, _is_mapped_class, _orm_columns
+from .path_registry import PathRegistry
 from .util import (
-    AliasedClass, ORMAdapter, _entity_descriptor, PathRegistry,
-    _is_aliased_class, _is_mapped_class, _orm_columns,
-    join as orm_join, with_parent, aliased
+    AliasedClass, ORMAdapter, join as orm_join, with_parent, aliased
     )
-from .. import sql, util, log, exc as sa_exc, inspect, inspection, \
-        types as sqltypes
+from .. import sql, util, log, exc as sa_exc, inspect, inspection
 from ..sql.expression import _interpret_as_from
 from ..sql import (
         util as sql_util,
         expression, visitors
     )
-properties = util.importlater("sqlalchemy.orm", "properties")
+from . import properties
 
 __all__ = ['Query', 'QueryContext', 'aliased']
 
@@ -908,7 +907,7 @@ class Query(object):
             mapper = object_mapper(instance)
 
             for prop in mapper.iterate_properties:
-                if isinstance(prop, properties.PropertyLoader) and \
+                if isinstance(prop, properties.RelationshipProperty) and \
                     prop.mapper is self._mapper_zero():
                     property = prop
                     break
@@ -3227,6 +3226,37 @@ class QueryContext(object):
 class AliasOption(interfaces.MapperOption):
 
     def __init__(self, alias):
+        """Return a :class:`.MapperOption` that will indicate to the query that
+        the main table has been aliased.
+
+        This is used in the very rare case that :func:`.contains_eager`
+        is being used in conjunction with a user-defined SELECT
+        statement that aliases the parent table.  E.g.::
+
+            # define an aliased UNION called 'ulist'
+            statement = users.select(users.c.user_id==7).\\
+                            union(users.select(users.c.user_id>7)).\\
+                            alias('ulist')
+
+            # add on an eager load of "addresses"
+            statement = statement.outerjoin(addresses).\\
+                            select().apply_labels()
+
+            # create query, indicating "ulist" will be an
+            # alias for the main table, "addresses"
+            # property should be eager loaded
+            query = session.query(User).options(
+                                    contains_alias('ulist'),
+                                    contains_eager('addresses'))
+
+            # then get results via the statement
+            results = query.from_statement(statement).all()
+
+        :param alias: is the string name of an alias, or a
+         :class:`~.sql.expression.Alias` object representing
+         the alias.
+
+        """
         self.alias = alias
 
     def process_query(self, query):

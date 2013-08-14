@@ -9,7 +9,7 @@ from ...schema import Table, Column
 from ...orm import mapper, class_mapper
 from ...orm.interfaces import MapperProperty
 from ...orm.properties import ColumnProperty, CompositeProperty
-from ...orm.util import _is_mapped_class
+from ...orm.base import _is_mapped_class
 from ... import util, exc
 from ...sql import expression
 from ... import event

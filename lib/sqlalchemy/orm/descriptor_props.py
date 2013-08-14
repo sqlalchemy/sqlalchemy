@@ -12,10 +12,10 @@ as actively in the load/persist ORM loop.
 
 from .interfaces import MapperProperty, PropComparator
 from .util import _none_set
-from . import attributes, strategies
+from . import attributes
 from .. import util, sql, exc as sa_exc, event, schema
 from ..sql import expression
-properties = util.importlater('sqlalchemy.orm', 'properties')
+from . import properties
 
 
 class DescriptorProperty(MapperProperty):
@@ -75,6 +75,7 @@ class DescriptorProperty(MapperProperty):
         mapper.class_manager.instrument_attribute(self.key, proxy_attr)
 
 
+@util.langhelpers.dependency_for("sqlalchemy.orm.properties")
 class CompositeProperty(DescriptorProperty):
     """Defines a "composite" mapped attribute, representing a collection
     of columns as one attribute.
@@ -88,6 +89,58 @@ class CompositeProperty(DescriptorProperty):
 
     """
     def __init__(self, class_, *attrs, **kwargs):
+        """Return a composite column-based property for use with a Mapper.
+
+        See the mapping documentation section :ref:`mapper_composite` for a full
+        usage example.
+
+        The :class:`.MapperProperty` returned by :func:`.composite`
+        is the :class:`.CompositeProperty`.
+
+        :param class\_:
+          The "composite type" class.
+
+        :param \*cols:
+          List of Column objects to be mapped.
+
+        :param active_history=False:
+          When ``True``, indicates that the "previous" value for a
+          scalar attribute should be loaded when replaced, if not
+          already loaded.  See the same flag on :func:`.column_property`.
+
+          .. versionchanged:: 0.7
+              This flag specifically becomes meaningful
+              - previously it was a placeholder.
+
+        :param group:
+          A group name for this property when marked as deferred.
+
+        :param deferred:
+          When True, the column property is "deferred", meaning that it does not
+          load immediately, and is instead loaded when the attribute is first
+          accessed on an instance.  See also :func:`~sqlalchemy.orm.deferred`.
+
+        :param comparator_factory:  a class which extends
+          :class:`.CompositeProperty.Comparator` which provides custom SQL clause
+          generation for comparison operations.
+
+        :param doc:
+          optional string that will be applied as the doc on the
+          class-bound descriptor.
+
+        :param info: Optional data dictionary which will be populated into the
+            :attr:`.MapperProperty.info` attribute of this object.
+
+            .. versionadded:: 0.8
+
+        :param extension:
+          an :class:`.AttributeExtension` instance,
+          or list of extensions, which will be prepended to the list of
+          attribute listeners for the resulting descriptor placed on the class.
+          **Deprecated.**  Please see :class:`.AttributeEvents`.
+
+        """
+
         self.attrs = attrs
         self.composite_class = class_
         self.active_history = kwargs.get('active_history', False)
@@ -205,7 +258,8 @@ class CompositeProperty(DescriptorProperty):
             prop.active_history = self.active_history
             if self.deferred:
                 prop.deferred = self.deferred
-                prop.strategy_class = strategies.DeferredColumnLoader
+                prop.strategy_class = prop._strategy_lookup(
+                                        deferred=True, instrument=True)
             prop.group = self.group
 
     def _setup_event_handlers(self):
@@ -356,6 +410,7 @@ class CompositeProperty(DescriptorProperty):
         return str(self.parent.class_.__name__) + "." + self.key
 
 
+@util.langhelpers.dependency_for("sqlalchemy.orm.properties")
 class ConcreteInheritedProperty(DescriptorProperty):
     """A 'do nothing' :class:`.MapperProperty` that disables
     an attribute on a concrete subclass that is only present
@@ -404,11 +459,49 @@ class ConcreteInheritedProperty(DescriptorProperty):
         self.descriptor = NoninheritedConcreteProp()
 
 
+@util.langhelpers.dependency_for("sqlalchemy.orm.properties")
 class SynonymProperty(DescriptorProperty):
 
     def __init__(self, name, map_column=None,
                             descriptor=None, comparator_factory=None,
                             doc=None):
+        """Denote an attribute name as a synonym to a mapped property.
+
+        .. versionchanged:: 0.7
+            :func:`.synonym` is superseded by the :mod:`~sqlalchemy.ext.hybrid`
+            extension.  See  the documentation for hybrids
+            at :ref:`hybrids_toplevel`.
+
+        Used with the ``properties`` dictionary sent to
+        :func:`~sqlalchemy.orm.mapper`::
+
+            class MyClass(object):
+                def _get_status(self):
+                    return self._status
+                def _set_status(self, value):
+                    self._status = value
+                status = property(_get_status, _set_status)
+
+            mapper(MyClass, sometable, properties={
+                "status":synonym("_status", map_column=True)
+            })
+
+        Above, the ``status`` attribute of MyClass will produce
+        expression behavior against the table column named ``status``,
+        using the Python attribute ``_status`` on the mapped class
+        to represent the underlying value.
+
+        :param name: the name of the existing mapped property, which can be
+          any other ``MapperProperty`` including column-based properties and
+          relationships.
+
+        :param map_column: if ``True``, an additional ``ColumnProperty`` is created
+          on the mapper automatically, using the synonym's name as the keyname of
+          the property, and the keyname of this ``synonym()`` as the name of the
+          column to map.
+
+        """
+
         self.name = name
         self.map_column = map_column
         self.descriptor = descriptor
@@ -462,10 +555,72 @@ class SynonymProperty(DescriptorProperty):
         self.parent = parent
 
 
+@util.langhelpers.dependency_for("sqlalchemy.orm.properties")
 class ComparableProperty(DescriptorProperty):
     """Instruments a Python property for use in query expressions."""
 
     def __init__(self, comparator_factory, descriptor=None, doc=None):
+        """Provides a method of applying a :class:`.PropComparator`
+        to any Python descriptor attribute.
+
+        .. versionchanged:: 0.7
+            :func:`.comparable_property` is superseded by
+            the :mod:`~sqlalchemy.ext.hybrid` extension.  See the example
+            at :ref:`hybrid_custom_comparators`.
+
+        Allows any Python descriptor to behave like a SQL-enabled
+        attribute when used at the class level in queries, allowing
+        redefinition of expression operator behavior.
+
+        In the example below we redefine :meth:`.PropComparator.operate`
+        to wrap both sides of an expression in ``func.lower()`` to produce
+        case-insensitive comparison::
+
+            from sqlalchemy.orm import comparable_property
+            from sqlalchemy.orm.interfaces import PropComparator
+            from sqlalchemy.sql import func
+            from sqlalchemy import Integer, String, Column
+            from sqlalchemy.ext.declarative import declarative_base
+
+            class CaseInsensitiveComparator(PropComparator):
+                def __clause_element__(self):
+                    return self.prop
+
+                def operate(self, op, other):
+                    return op(
+                        func.lower(self.__clause_element__()),
+                        func.lower(other)
+                    )
+
+            Base = declarative_base()
+
+            class SearchWord(Base):
+                __tablename__ = 'search_word'
+                id = Column(Integer, primary_key=True)
+                word = Column(String)
+                word_insensitive = comparable_property(lambda prop, mapper:
+                                CaseInsensitiveComparator(mapper.c.word, mapper)
+                            )
+
+
+        A mapping like the above allows the ``word_insensitive`` attribute
+        to render an expression like::
+
+            >>> print SearchWord.word_insensitive == "Trucks"
+            lower(search_word.word) = lower(:lower_1)
+
+        :param comparator_factory:
+          A PropComparator subclass or factory that defines operator behavior
+          for this property.
+
+        :param descriptor:
+          Optional when used in a ``properties={}`` declaration.  The Python
+          descriptor or property to layer comparison behavior on top of.
+
+          The like-named descriptor will be automatically retrieved from the
+          mapped class if left blank in a ``properties`` declaration.
+
+        """
         self.descriptor = descriptor
         self.comparator_factory = comparator_factory
         self.doc = doc or (descriptor and descriptor.__doc__) or None
@@ -473,3 +628,5 @@ class ComparableProperty(DescriptorProperty):
 
     def _comparator_factory(self, mapper):
         return self.comparator_factory(self, mapper)
+
+

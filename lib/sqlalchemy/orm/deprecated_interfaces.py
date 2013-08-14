@@ -7,7 +7,7 @@
 from .. import event, util
 from .interfaces import EXT_CONTINUE
 
-
+@util.langhelpers.dependency_for("sqlalchemy.orm.interfaces")
 class MapperExtension(object):
     """Base implementation for :class:`.Mapper` event hooks.
 
@@ -374,6 +374,7 @@ class MapperExtension(object):
         return EXT_CONTINUE
 
 
+@util.langhelpers.dependency_for("sqlalchemy.orm.interfaces")
 class SessionExtension(object):
 
     """Base implementation for :class:`.Session` event hooks.
@@ -494,6 +495,7 @@ class SessionExtension(object):
         """
 
 
+@util.langhelpers.dependency_for("sqlalchemy.orm.interfaces")
 class AttributeExtension(object):
     """Base implementation for :class:`.AttributeImpl` event hooks, events
     that fire upon attribute mutations in user code.

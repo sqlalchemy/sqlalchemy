@@ -108,8 +108,7 @@ import weakref
 
 from ..sql import expression
 from .. import util, exc as sa_exc
-orm_util = util.importlater("sqlalchemy.orm", "util")
-attributes = util.importlater("sqlalchemy.orm", "attributes")
+from . import base
 
 
 __all__ = ['collection', 'collection_adapter',
@@ -139,8 +138,8 @@ class _PlainColumnGetter(object):
         return self.cols
 
     def __call__(self, value):
-        state = attributes.instance_state(value)
-        m = orm_util._state_mapper(state)
+        state = base.instance_state(value)
+        m = base._state_mapper(state)
 
         key = [
             m._get_state_attr_by_column(state, state.dict, col)
@@ -167,8 +166,8 @@ class _SerializableColumnGetter(object):
         return _SerializableColumnGetter, (self.colkeys,)
 
     def __call__(self, value):
-        state = attributes.instance_state(value)
-        m = orm_util._state_mapper(state)
+        state = base.instance_state(value)
+        m = base._state_mapper(state)
         key = [m._get_state_attr_by_column(
                         state, state.dict,
                         m.mapped_table.columns[k])

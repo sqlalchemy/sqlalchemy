@@ -11,21 +11,37 @@ import weakref
 from .. import util, sql, engine, exc as sa_exc, event
 from ..sql import util as sql_util, expression
 from . import (
-    SessionExtension, attributes, exc, query, util as orm_util,
+    SessionExtension, attributes, exc, query,
     loading, identity
     )
-from .util import (
+from ..inspection import inspect
+from .base import (
     object_mapper, class_mapper,
     _class_to_mapper, _state_mapper, object_state,
-    _none_set
+    _none_set, state_str, instance_str
     )
 from .unitofwork import UOWTransaction
-from .mapper import Mapper
-from .events import SessionEvents
-statelib = util.importlater("sqlalchemy.orm", "state")
+#from .events import SessionEvents
+from . import state as statelib
 import sys
 
 __all__ = ['Session', 'SessionTransaction', 'SessionExtension', 'sessionmaker']
+
+_sessions = weakref.WeakValueDictionary()
+"""Weak-referencing dictionary of :class:`.Session` objects.
+"""
+
+def _state_session(state):
+    """Given an :class:`.InstanceState`, return the :class:`.Session`
+        associated, if any.
+    """
+    if state.session_id:
+        try:
+            return _sessions[state.session_id]
+        except KeyError:
+            pass
+    return None
+
 
 
 class _SessionClassMethods(object):
@@ -39,7 +55,8 @@ class _SessionClassMethods(object):
             sess.close()
 
     @classmethod
-    def identity_key(cls, *args, **kwargs):
+    @util.dependencies("sqlalchemy.orm.util")
+    def identity_key(cls, orm_util, *args, **kwargs):
         """Return an identity key.
 
         This is an alias of :func:`.util.identity_key`.
@@ -617,16 +634,18 @@ class Session(_SessionClassMethods):
 
         if binds is not None:
             for mapperortable, bind in binds.items():
-                if isinstance(mapperortable, (type, Mapper)):
+                insp = inspect(mapperortable)
+                if insp.is_selectable:
+                    self.bind_table(mapperortable, bind)
+                elif insp.is_mapper:
                     self.bind_mapper(mapperortable, bind)
                 else:
-                    self.bind_table(mapperortable, bind)
+                    assert False
+
 
         if not self.autocommit:
             self.begin()
         _sessions[self.hash_key] = self
-
-    dispatch = event.dispatcher(SessionEvents)
 
     connection_callable = None
 
@@ -1206,7 +1225,7 @@ class Session(_SessionClassMethods):
                 only_load_props=attribute_names) is None:
             raise sa_exc.InvalidRequestError(
                 "Could not refresh instance '%s'" %
-                orm_util.instance_str(instance))
+                instance_str(instance))
 
     def expire_all(self):
         """Expires all persistent instances within this Session.
@@ -1317,7 +1336,7 @@ class Session(_SessionClassMethods):
         if state.session_id is not self.hash_key:
             raise sa_exc.InvalidRequestError(
                 "Instance %s is not present in this Session" %
-                orm_util.state_str(state))
+                state_str(state))
 
         cascaded = list(state.manager.mapper.cascade_iterator(
                                     'expunge', state))
@@ -1357,7 +1376,7 @@ class Session(_SessionClassMethods):
                         "expect these generated values.  Ensure also that "
                         "this flush() is not occurring at an inappropriate "
                         "time, such aswithin a load() event."
-                        % orm_util.state_str(state)
+                        % state_str(state)
                     )
 
                 if state.key is None:
@@ -1460,7 +1479,7 @@ class Session(_SessionClassMethods):
         if state.key is None:
             raise sa_exc.InvalidRequestError(
                 "Instance '%s' is not persisted" %
-                orm_util.state_str(state))
+                state_str(state))
 
         if state in self._deleted:
             return
@@ -1624,7 +1643,7 @@ class Session(_SessionClassMethods):
                             "merging to update the most recent version."
                             % (
                                 existing_version,
-                                orm_util.state_str(merged_state),
+                                state_str(merged_state),
                                 merged_version
                             ))
 
@@ -1648,13 +1667,13 @@ class Session(_SessionClassMethods):
         if not self.identity_map.contains_state(state):
             raise sa_exc.InvalidRequestError(
                 "Instance '%s' is not persistent within this Session" %
-                orm_util.state_str(state))
+                state_str(state))
 
     def _save_impl(self, state):
         if state.key is not None:
             raise sa_exc.InvalidRequestError(
                 "Object '%s' already has an identity - it can't be registered "
-                "as pending" % orm_util.state_str(state))
+                "as pending" % state_str(state))
 
         self._before_attach(state)
         if state not in self._new:
@@ -1670,13 +1689,13 @@ class Session(_SessionClassMethods):
         if state.key is None:
             raise sa_exc.InvalidRequestError(
                 "Instance '%s' is not persisted" %
-                orm_util.state_str(state))
+                state_str(state))
 
         if state.deleted:
             raise sa_exc.InvalidRequestError(
                 "Instance '%s' has been deleted.  Use the make_transient() "
                 "function to send this object back to the transient state." %
-                orm_util.state_str(state)
+                state_str(state)
             )
         self._before_attach(state)
         self._deleted.pop(state, None)
@@ -1764,14 +1783,14 @@ class Session(_SessionClassMethods):
             raise sa_exc.InvalidRequestError("Can't attach instance "
                     "%s; another instance with key %s is already "
                     "present in this session."
-                    % (orm_util.state_str(state), state.key))
+                    % (state_str(state), state.key))
 
         if state.session_id and \
                 state.session_id is not self.hash_key and \
                 state.session_id in _sessions:
             raise sa_exc.InvalidRequestError(
                 "Object '%s' is already attached to session '%s' "
-                "(this is '%s')" % (orm_util.state_str(state),
+                "(this is '%s')" % (state_str(state),
                                     state.session_id, self.hash_key))
 
         if state.session_id != self.hash_key:
@@ -2299,7 +2318,6 @@ class sessionmaker(_SessionClassMethods):
                     ", ".join("%s=%r" % (k, v) for k, v in self.kw.items())
                 )
 
-_sessions = weakref.WeakValueDictionary()
 
 
 def make_transient(instance):
@@ -2343,13 +2361,5 @@ def object_session(instance):
     except exc.NO_STATE:
         raise exc.UnmappedInstanceError(instance)
 
-
-def _state_session(state):
-    if state.session_id:
-        try:
-            return _sessions[state.session_id]
-        except KeyError:
-            pass
-    return None
 
 _new_sessionid = util.counter()

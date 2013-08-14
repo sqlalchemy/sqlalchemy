@@ -10,7 +10,8 @@ from ...schema import Table, MetaData
 from ...orm import synonym as _orm_synonym, mapper,\
                                 comparable_property,\
                                 interfaces
-from ...orm.util import polymorphic_union, _mapper_or_none
+from ...orm.util import polymorphic_union
+from ...orm.base import _mapper_or_none
 from ... import exc
 import weakref
 

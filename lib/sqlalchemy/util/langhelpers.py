@@ -107,7 +107,7 @@ def decorator(target):
     return update_wrapper(decorate, target)
 
 
-def public_factory(target):
+def public_factory(target, location):
     """Produce a wrapping function for the given cls or classmethod.
 
     Rationale here is so that the __init__ method of the
@@ -117,18 +117,26 @@ def public_factory(target):
     if isinstance(target, type):
         fn = target.__init__
         callable_ = target
+        doc = "Construct a new :class:`.%s` object. \n\n"\
+        "This constructor is mirrored as a public API function; see :func:`~%s` "\
+        "for a full usage and argument description." % (
+                    target.__name__, location, )
     else:
         fn = callable_ = target
+        doc = "This function is mirrored; see :func:`~%s` "\
+                "for a description of arguments." % location
+
     spec = compat.inspect_getfullargspec(fn)
     del spec[0][0]
-    #import pdb
-    #pdb.set_trace()
     metadata = format_argspec_plus(spec, grouped=False)
     code = 'lambda %(args)s: cls(%(apply_kw)s)' % metadata
     decorated = eval(code, {'cls': callable_, 'symbol': symbol})
     decorated.__doc__ = fn.__doc__
+    if compat.py2k or hasattr(fn, '__func__'):
+        fn.__func__.__doc__ = doc
+    else:
+        fn.__doc__ = doc
     return decorated
-    #return update_wrapper(decorated, fn)
 
 
 class PluginLoader(object):
@@ -703,85 +711,19 @@ class group_expirable_memoized_property(object):
         return memoized_instancemethod(fn)
 
 
-class importlater(object):
-    """Deferred import object.
 
-    e.g.::
+def dependency_for(modulename):
+    def decorate(obj):
+        # TODO: would be nice to improve on this import silliness,
+        # unfortunately importlib doesn't work that great either
+        tokens = modulename.split(".")
+        mod = compat.import_(".".join(tokens[0:-1]), globals(), locals(), tokens[-1])
+        mod = getattr(mod, tokens[-1])
+        setattr(mod, obj.__name__, obj)
+        return obj
+    return decorate
 
-        somesubmod = importlater("mypackage.somemodule", "somesubmod")
-
-    is equivalent to::
-
-        from mypackage.somemodule import somesubmod
-
-    except evaluted upon attribute access to "somesubmod".
-
-    importlater() currently requires that resolve_all() be
-    called, typically at the bottom of a package's __init__.py.
-    This is so that __import__ still called only at
-    module import time, and not potentially within
-    a non-main thread later on.
-
-    """
-
-    _unresolved = set()
-
-    _by_key = {}
-
-    def __new__(cls, path, addtl):
-        key = path + "." + addtl
-        if key in importlater._by_key:
-            return importlater._by_key[key]
-        else:
-            importlater._by_key[key] = imp = object.__new__(cls)
-            return imp
-
-    def __init__(self, path, addtl):
-        self._il_path = path
-        self._il_addtl = addtl
-        importlater._unresolved.add(self)
-
-    @classmethod
-    def resolve_all(cls, path):
-        for m in list(importlater._unresolved):
-            if m._full_path.startswith(path):
-                m._resolve()
-
-    @property
-    def _full_path(self):
-        return self._il_path + "." + self._il_addtl
-
-    @memoized_property
-    def module(self):
-        if self in importlater._unresolved:
-            raise ImportError(
-                    "importlater.resolve_all() hasn't "
-                    "been called (this is %s %s)"
-                    % (self._il_path, self._il_addtl))
-
-        return getattr(self._initial_import, self._il_addtl)
-
-    def _resolve(self):
-        importlater._unresolved.discard(self)
-        self._initial_import = compat.import_(
-                            self._il_path, globals(), locals(),
-                            [self._il_addtl])
-
-    def __getattr__(self, key):
-        if key == 'module':
-            raise ImportError("Could not resolve module %s"
-                                % self._full_path)
-        try:
-            attr = getattr(self.module, key)
-        except AttributeError:
-            raise AttributeError(
-                        "Module %s has no attribute '%s'" %
-                        (self._full_path, key)
-                    )
-        self.__dict__[key] = attr
-        return attr
-
-def dependencies(*deps):
+class dependencies(object):
     """Apply imported dependencies as arguments to a function.
 
     E.g.::
@@ -798,17 +740,20 @@ def dependencies(*deps):
     and not pollute the module-level namespace.
 
     """
-    import_deps = []
-    for dep in deps:
-        tokens = dep.split(".")
-        import_deps.append(
-                importlater(
-                ".".join(tokens[0:-1]),
-                tokens[-1]
-            )
-        )
 
-    def decorate(fn):
+    def __init__(self, *deps):
+        self.import_deps = []
+        for dep in deps:
+            tokens = dep.split(".")
+            self.import_deps.append(
+                    dependencies._importlater(
+                    ".".join(tokens[0:-1]),
+                    tokens[-1]
+                )
+            )
+
+    def __call__(self, fn):
+        import_deps = self.import_deps
         spec = compat.inspect_getfullargspec(fn)
 
         spec_zero = list(spec[0])
@@ -833,7 +778,68 @@ def dependencies(*deps):
         decorated = eval(code, locals())
         decorated.__defaults__ = getattr(fn, 'im_func', fn).__defaults__
         return update_wrapper(decorated, fn)
-    return decorate
+
+    @classmethod
+    def resolve_all(cls, path):
+        for m in list(dependencies._unresolved):
+            if m._full_path.startswith(path):
+                m._resolve()
+
+    _unresolved = set()
+    _by_key = {}
+
+    class _importlater(object):
+        _unresolved = set()
+
+        _by_key = {}
+
+        def __new__(cls, path, addtl):
+            key = path + "." + addtl
+            if key in dependencies._by_key:
+                return dependencies._by_key[key]
+            else:
+                dependencies._by_key[key] = imp = object.__new__(cls)
+                return imp
+
+        def __init__(self, path, addtl):
+            self._il_path = path
+            self._il_addtl = addtl
+            dependencies._unresolved.add(self)
+
+
+        @property
+        def _full_path(self):
+            return self._il_path + "." + self._il_addtl
+
+        @memoized_property
+        def module(self):
+            if self in dependencies._unresolved:
+                raise ImportError(
+                        "importlater.resolve_all() hasn't "
+                        "been called (this is %s %s)"
+                        % (self._il_path, self._il_addtl))
+
+            return getattr(self._initial_import, self._il_addtl)
+
+        def _resolve(self):
+            dependencies._unresolved.discard(self)
+            self._initial_import = compat.import_(
+                                self._il_path, globals(), locals(),
+                                [self._il_addtl])
+
+        def __getattr__(self, key):
+            if key == 'module':
+                raise ImportError("Could not resolve module %s"
+                                    % self._full_path)
+            try:
+                attr = getattr(self.module, key)
+            except AttributeError:
+                raise AttributeError(
+                            "Module %s has no attribute '%s'" %
+                            (self._full_path, key)
+                        )
+            self.__dict__[key] = attr
+            return attr
 
 
 # from paste.deploy.converters

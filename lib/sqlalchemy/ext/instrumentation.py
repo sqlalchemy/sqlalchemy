@@ -31,7 +31,7 @@ from ..orm.instrumentation import (
     ClassManager, InstrumentationFactory, _default_state_getter,
     _default_dict_getter, _default_manager_getter
 )
-from ..orm import attributes, collections
+from ..orm import attributes, collections, base as orm_base
 from .. import util
 from ..orm import exc as orm_exc
 import weakref
@@ -399,9 +399,9 @@ def _install_lookups(lookups):
     instance_state = lookups['instance_state']
     instance_dict = lookups['instance_dict']
     manager_of_class = lookups['manager_of_class']
-    attributes.instance_state = \
+    orm_base.instance_state = attributes.instance_state = \
         orm_instrumentation.instance_state = instance_state
-    attributes.instance_dict = \
+    orm_base.instance_dict = attributes.instance_dict = \
         orm_instrumentation.instance_dict = instance_dict
-    attributes.manager_of_class = \
+    orm_base.manager_of_class = attributes.manager_of_class = \
         orm_instrumentation.manager_of_class = manager_of_class
