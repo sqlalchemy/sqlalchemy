@@ -7,6 +7,13 @@
     :version: 0.8.3
 
     .. change::
+        :tags: bug, examples
+
+        Added "autoincrement=False" to the history table created in the
+        versioning example, as this table shouldn't have autoinc on it
+        in any case, courtesy Patrick Schmid.
+
+    .. change::
         :tags: bug, sql
 
         The :meth:`.Operators.notin_` operator added in 0.8 now properly
