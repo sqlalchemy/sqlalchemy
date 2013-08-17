@@ -2,10 +2,10 @@ from unittest import TestCase
 from sqlalchemy.ext.declarative import declarative_base
 from history_meta import Versioned, versioned_session
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import clear_mappers, sessionmaker, deferred, relationship
+from sqlalchemy.orm import clear_mappers, Session, deferred, relationship
 from _lib import ComparableEntity, eq_
 
-engine = Session = None
+engine = None
 
 
 def setup():
@@ -14,27 +14,27 @@ def setup():
 
 class TestVersioning(TestCase):
     def setUp(self):
-        global Base, Session, Versioned
-        Base = declarative_base()
-        Session = sessionmaker(engine)
-        versioned_session(Session)
+        self.session = Session(engine)
+        self.Base = declarative_base()
+        versioned_session(self.session)
 
     def tearDown(self):
+        self.session.close()
         clear_mappers()
-        Base.metadata.drop_all(engine)
+        self.Base.metadata.drop_all(engine)
 
     def create_tables(self):
-        Base.metadata.create_all(engine)
+        self.Base.metadata.create_all(engine)
 
     def test_plain(self):
-        class SomeClass(Versioned, Base, ComparableEntity):
+        class SomeClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = 'sometable'
 
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
 
         self.create_tables()
-        sess = Session()
+        sess = self.session
         sc = SomeClass(name='sc1')
         sess.add(sc)
         sess.commit()
@@ -91,14 +91,14 @@ class TestVersioning(TestCase):
         )
 
     def test_from_null(self):
-        class SomeClass(Versioned, Base, ComparableEntity):
+        class SomeClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = 'sometable'
 
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
 
         self.create_tables()
-        sess = Session()
+        sess = self.session
         sc = SomeClass()
         sess.add(sc)
         sess.commit()
@@ -111,7 +111,7 @@ class TestVersioning(TestCase):
     def test_deferred(self):
         """test versioning of unloaded, deferred columns."""
 
-        class SomeClass(Versioned, Base, ComparableEntity):
+        class SomeClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = 'sometable'
 
             id = Column(Integer, primary_key=True)
@@ -119,7 +119,7 @@ class TestVersioning(TestCase):
             data = deferred(Column(String(25)))
 
         self.create_tables()
-        sess = Session()
+        sess = self.session
         sc = SomeClass(name='sc1', data='somedata')
         sess.add(sc)
         sess.commit()
@@ -142,7 +142,7 @@ class TestVersioning(TestCase):
 
 
     def test_joined_inheritance(self):
-        class BaseClass(Versioned, Base, ComparableEntity):
+        class BaseClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = 'basetable'
 
             id = Column(Integer, primary_key=True)
@@ -169,7 +169,7 @@ class TestVersioning(TestCase):
             __mapper_args__ = {'polymorphic_identity':'same'}
 
         self.create_tables()
-        sess = Session()
+        sess = self.session
 
         sep1 = SubClassSeparatePk(name='sep1', subdata1='sep1subdata')
         base1 = BaseClass(name='base1')
@@ -219,7 +219,7 @@ class TestVersioning(TestCase):
         )
 
     def test_single_inheritance(self):
-        class BaseClass(Versioned, Base, ComparableEntity):
+        class BaseClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = 'basetable'
 
             id = Column(Integer, primary_key=True)
@@ -233,7 +233,7 @@ class TestVersioning(TestCase):
             __mapper_args__ = {'polymorphic_identity':'sub'}
 
         self.create_tables()
-        sess = Session()
+        sess = self.session
 
         b1 = BaseClass(name='b1')
         sc = SubClass(name='s1', subname='sc1')
@@ -270,7 +270,7 @@ class TestVersioning(TestCase):
         sess.flush()
 
     def test_unique(self):
-        class SomeClass(Versioned, Base, ComparableEntity):
+        class SomeClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = 'sometable'
 
             id = Column(Integer, primary_key=True)
@@ -278,7 +278,7 @@ class TestVersioning(TestCase):
             data = Column(String(50))
 
         self.create_tables()
-        sess = Session()
+        sess = self.session
         sc = SomeClass(name='sc1', data='sc1')
         sess.add(sc)
         sess.commit()
@@ -295,12 +295,12 @@ class TestVersioning(TestCase):
 
     def test_relationship(self):
 
-        class SomeRelated(Base, ComparableEntity):
+        class SomeRelated(self.Base, ComparableEntity):
             __tablename__ = 'somerelated'
 
             id = Column(Integer, primary_key=True)
 
-        class SomeClass(Versioned, Base, ComparableEntity):
+        class SomeClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = 'sometable'
 
             id = Column(Integer, primary_key=True)
@@ -311,7 +311,7 @@ class TestVersioning(TestCase):
         SomeClassHistory = SomeClass.__history_mapper__.class_
 
         self.create_tables()
-        sess = Session()
+        sess = self.session
         sc = SomeClass(name='sc1')
         sess.add(sc)
         sess.commit()
@@ -343,7 +343,7 @@ class TestVersioning(TestCase):
 
     def test_backref_relationship(self):
 
-        class SomeRelated(Base, ComparableEntity):
+        class SomeRelated(self.Base, ComparableEntity):
             __tablename__ = 'somerelated'
 
             id = Column(Integer, primary_key=True)
@@ -351,13 +351,13 @@ class TestVersioning(TestCase):
             related_id = Column(Integer, ForeignKey('sometable.id'))
             related = relationship("SomeClass", backref='related')
 
-        class SomeClass(Versioned, Base, ComparableEntity):
+        class SomeClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = 'sometable'
 
             id = Column(Integer, primary_key=True)
 
         self.create_tables()
-        sess = Session()
+        sess = self.session
         sc = SomeClass()
         sess.add(sc)
         sess.commit()
