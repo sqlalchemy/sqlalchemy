@@ -172,7 +172,7 @@ class WeakInstanceDict(IdentityMap):
         if util.py2k:
             return dict.values(self)
         else:
-             return list(dict.values(self))
+            return list(dict.values(self))
 
     def discard(self, state):
         st = dict.get(self, state.key, None)

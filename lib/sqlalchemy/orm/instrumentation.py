@@ -30,7 +30,7 @@ alternate instrumentation forms.
 
 
 from . import exc, collections, interfaces, state
-from .. import event, util
+from .. import util
 from . import base
 
 class ClassManager(dict):

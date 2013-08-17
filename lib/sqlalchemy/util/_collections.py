@@ -6,7 +6,6 @@
 
 """Collection classes and helpers."""
 
-import itertools
 import weakref
 import operator
 from .compat import threading, itertools_filterfalse

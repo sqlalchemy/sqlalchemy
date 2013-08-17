@@ -16,7 +16,6 @@ from . import mapperlib, instrumentation
 from .session import Session, sessionmaker
 from .scoping import scoped_session
 from .attributes import QueryableAttribute
-from . import mapper as mapperfunc
 
 class InstrumentationEvents(event.Events):
     """Events related to class instrumentation events.

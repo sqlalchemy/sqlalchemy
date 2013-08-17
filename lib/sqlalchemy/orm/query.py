@@ -2414,10 +2414,10 @@ class Query(object):
         """
         return [
             {
-                'name':ent._label_name,
-                'type':ent.type,
-                'aliased':getattr(ent, 'is_aliased_class', False),
-                'expr':ent.expr
+                'name': ent._label_name,
+                'type': ent.type,
+                'aliased': getattr(ent, 'is_aliased_class', False),
+                'expr': ent.expr
             }
             for ent in self._entities
         ]
@@ -2937,10 +2937,8 @@ class _MapperEntity(_QueryEntity):
 
         return entity.common_parent(self.entity_zero)
 
-    #_adapted_selectable = None
     def adapt_to_selectable(self, query, sel):
         query._entities.append(self)
-    #    self._adapted_selectable = sel
 
     def _get_entity_clauses(self, query, context):
 

@@ -941,7 +941,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         collections = path.get(context.attributes, "collections")
         if collections is None:
             collections = dict(
-                    (k, [v[0] for v in v])
+                    (k, [vv[0] for vv in v])
                     for k, v in itertools.groupby(
                         subq,
                         lambda x: x[1:]
@@ -1353,26 +1353,10 @@ class EagerLazyOption(StrategizedOption):
         self.lazy = lazy
         self.chained = chained
         self.propagate_to_loaders = propagate_to_loaders
-        #self.strategy_cls = properties.RelationshipProperty._strategy_lookup(lazy=lazy)
-        self.strategy_cls = factory(lazy)
+        self.strategy_cls = properties.RelationshipProperty._strategy_lookup(lazy=lazy)
 
     def get_strategy_class(self):
         return self.strategy_cls
-
-_factory = {
-    False: JoinedLoader,
-    "joined": JoinedLoader,
-    None: NoLoader,
-    "noload": NoLoader,
-    "select": LazyLoader,
-    True: LazyLoader,
-    "subquery": SubqueryLoader,
-    "immediate": ImmediateLoader
-}
-
-
-def factory(identifier):
-    return _factory.get(identifier, LazyLoader)
 
 
 class EagerJoinOption(PropertyOption):

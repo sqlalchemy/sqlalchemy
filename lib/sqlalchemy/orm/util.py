@@ -15,6 +15,7 @@ from .base import instance_str, state_str, state_class_str, attribute_str, \
         state_attribute_str, object_mapper, object_state, _none_set
 from .base import class_mapper, _class_to_mapper
 from .base import _InspectionAttr
+from .path_registry import PathRegistry
 
 all_cascades = frozenset(("delete", "delete-orphan", "all", "merge",
                           "expunge", "save-update", "refresh-expire",
@@ -242,8 +243,6 @@ class ORMAdapter(sql_util.ColumnAdapter):
             return sql_util.ColumnAdapter.replace(self, elem)
         else:
             return None
-
-from .path_registry import _unreduce_path, PathRegistry, RootRegistry, TokenRegistry, PropRegistry, EntityRegistry
 
 class AliasedClass(object):
     """Represents an "aliased" form of a mapped class for usage with Query.

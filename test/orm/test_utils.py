@@ -10,7 +10,7 @@ from sqlalchemy.orm import mapper, create_session
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 from sqlalchemy.testing import eq_, is_
-from sqlalchemy.orm.util import PathRegistry
+from sqlalchemy.orm.path_registry import PathRegistry, RootRegistry
 from sqlalchemy import inspect
 
 class AliasedClassTest(fixtures.TestBase):
@@ -241,12 +241,12 @@ class PathRegistryTest(_fixtures.FixtureTest):
     def test_root_registry(self):
         umapper = inspect(self.classes.User)
         is_(
-            orm_util.RootRegistry()[umapper],
+            RootRegistry()[umapper],
             umapper._path_registry
         )
         eq_(
-            orm_util.RootRegistry()[umapper],
-            orm_util.PathRegistry.coerce((umapper,))
+            RootRegistry()[umapper],
+            PathRegistry.coerce((umapper,))
         )
 
     def test_expand(self):

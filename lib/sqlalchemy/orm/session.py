@@ -8,7 +8,7 @@
 
 
 import weakref
-from .. import util, sql, engine, exc as sa_exc, event
+from .. import util, sql, engine, exc as sa_exc
 from ..sql import util as sql_util, expression
 from . import (
     SessionExtension, attributes, exc, query,
@@ -21,7 +21,6 @@ from .base import (
     _none_set, state_str, instance_str
     )
 from .unitofwork import UOWTransaction
-#from .events import SessionEvents
 from . import state as statelib
 import sys
 

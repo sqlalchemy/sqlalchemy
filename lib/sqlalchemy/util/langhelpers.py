@@ -166,7 +166,6 @@ class PluginLoader(object):
                 self.impls[name] = impl.load
                 return impl.load()
 
-        from sqlalchemy import exc
         raise exc.ArgumentError(
                 "Can't load plugin: %s:%s" %
                 (self.group, name))
@@ -219,6 +218,7 @@ def get_cls_kwargs(cls, _set=None):
 
 
 try:
+    # TODO: who doesn't have this constant?
     from inspect import CO_VARKEYWORDS
 
     def inspect_func_args(fn):
