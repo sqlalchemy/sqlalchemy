@@ -12,7 +12,7 @@ from sqlalchemy.orm import mapper, relationship, create_session, \
                         strategies, state, lazyload, backref, Session
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
-
+from sqlalchemy.sql import select
 
 class ExpireTest(_fixtures.FixtureTest):
 
@@ -1195,6 +1195,11 @@ class LifecycleTest(fixtures.MappedTest):
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30), FetchedValue()),
         )
+        Table("data_defer", metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('data', String(30)),
+            Column('data2', String(30)),
+        )
 
     @classmethod
     def setup_classes(cls):
@@ -1202,11 +1207,16 @@ class LifecycleTest(fixtures.MappedTest):
             pass
         class DataFetched(cls.Comparable):
             pass
+        class DataDefer(cls.Comparable):
+            pass
 
     @classmethod
     def setup_mappers(cls):
         mapper(cls.classes.Data, cls.tables.data)
         mapper(cls.classes.DataFetched, cls.tables.data_fetched)
+        mapper(cls.classes.DataDefer, cls.tables.data_defer, properties={
+                "data": deferred(cls.tables.data_defer.c.data)
+            })
 
     def test_attr_not_inserted(self):
         Data = self.classes.Data
@@ -1273,6 +1283,52 @@ class LifecycleTest(fixtures.MappedTest):
             1
         )
 
+    def test_cols_missing_in_load(self):
+        Data = self.classes.Data
+
+        sess = create_session()
+
+        d1 = Data(data='d1')
+        sess.add(d1)
+        sess.flush()
+        sess.close()
+
+        sess = create_session()
+        d1 = sess.query(Data).from_statement(select([Data.id])).first()
+
+        # cols not present in the row are implicitly expired
+        def go():
+            eq_(d1.data, 'd1')
+
+        self.assert_sql_count(
+            testing.db, go, 1
+        )
+
+    def test_deferred_cols_missing_in_load_state_reset(self):
+        Data = self.classes.DataDefer
+
+        sess = create_session()
+
+        d1 = Data(data='d1')
+        sess.add(d1)
+        sess.flush()
+        sess.close()
+
+        sess = create_session()
+        d1 = sess.query(Data).from_statement(
+                        select([Data.id])).options(undefer(Data.data)).first()
+        d1.data = 'd2'
+
+        # the deferred loader has to clear out any state
+        # on the col, including that 'd2' here
+        d1 = sess.query(Data).populate_existing().first()
+
+        def go():
+            eq_(d1.data, 'd1')
+
+        self.assert_sql_count(
+            testing.db, go, 1
+        )
 
 class RefreshTest(_fixtures.FixtureTest):
 
