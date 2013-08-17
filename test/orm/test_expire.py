@@ -4,7 +4,7 @@ from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy.testing.util import gc_collect
 import sqlalchemy as sa
 from sqlalchemy import testing
-from sqlalchemy import Integer, String, ForeignKey, exc as sa_exc
+from sqlalchemy import Integer, String, ForeignKey, exc as sa_exc, FetchedValue
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
@@ -1182,6 +1182,96 @@ class ExpiredPendingTest(_fixtures.FixtureTest):
         sess.flush()
         sess.expire_all()
         assert len(u1.addresses) == 3
+
+
+class LifecycleTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("data", metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('data', String(30)),
+        )
+        Table("data_fetched", metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('data', String(30), FetchedValue()),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Data(cls.Comparable):
+            pass
+        class DataFetched(cls.Comparable):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        mapper(cls.classes.Data, cls.tables.data)
+        mapper(cls.classes.DataFetched, cls.tables.data_fetched)
+
+    def test_attr_not_inserted(self):
+        Data = self.classes.Data
+
+        sess = create_session()
+
+        d1 = Data()
+        sess.add(d1)
+        sess.flush()
+
+        # we didn't insert a value for 'data',
+        # so its not in dict, but also when we hit it, it isn't
+        # expired because there's no column default on it or anyhting like that
+        assert 'data' not in d1.__dict__
+        def go():
+            eq_(d1.data, None)
+
+        self.assert_sql_count(
+            testing.db,
+            go,
+            0
+        )
+
+    def test_attr_not_inserted_expired(self):
+        Data = self.classes.Data
+
+        sess = create_session()
+
+        d1 = Data()
+        sess.add(d1)
+        sess.flush()
+
+        assert 'data' not in d1.__dict__
+
+        # with an expire, we emit
+        sess.expire(d1)
+
+        def go():
+            eq_(d1.data, None)
+
+        self.assert_sql_count(
+            testing.db,
+            go,
+            1
+        )
+
+    def test_attr_not_inserted_fetched(self):
+        Data = self.classes.DataFetched
+
+        sess = create_session()
+
+        d1 = Data()
+        sess.add(d1)
+        sess.flush()
+
+        assert 'data' not in d1.__dict__
+        def go():
+            eq_(d1.data, None)
+
+        # this one is marked as "fetch" so we emit SQL
+        self.assert_sql_count(
+            testing.db,
+            go,
+            1
+        )
 
 
 class RefreshTest(_fixtures.FixtureTest):
