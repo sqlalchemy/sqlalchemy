@@ -308,7 +308,7 @@ class MemUsageTest(EnsureZeroed):
         finally:
             metadata.drop_all()
 
-    @testing.crashes('mysql+cymysql', 'blocking with cymysql >= 0.6')
+    @testing.crashes('mysql+cymysql', 'blocking')
     def test_unicode_warnings(self):
         metadata = MetaData(testing.db)
         table1 = Table('mytable', metadata, Column('col1', Integer,
@@ -604,6 +604,7 @@ class MemUsageTest(EnsureZeroed):
     # in pysqlite itself. background at:
     # http://thread.gmane.org/gmane.comp.python.db.pysqlite.user/2290
 
+    @testing.crashes('mysql+cymysql', 'blocking')
     def test_join_cache(self):
         metadata = MetaData(testing.db)
         table1 = Table('table1', metadata, Column('id', Integer,

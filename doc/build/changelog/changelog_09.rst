@@ -7,6 +7,12 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, mysql
+
+        Improved support for the cymysql driver, supporting version 0.6.5,
+        courtesy Hajime Nakagami.
+
+    .. change::
         :tags: bug, examples
 
         Added "autoincrement=False" to the history table created in the
