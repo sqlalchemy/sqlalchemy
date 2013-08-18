@@ -41,76 +41,58 @@ type is emitted in ``CREATE TABLE``, such as ``VARCHAR`` see `SQL
 Standard Types`_ and the other sections of this chapter.
 
 .. autoclass:: BigInteger
-  :show-inheritance:
-  :members:
+   :members:
 
 .. autoclass:: Boolean
-  :show-inheritance:
-  :members:
+   :members:
 
 .. autoclass:: Date
- :show-inheritance:
- :members:
+   :members:
 
 .. autoclass:: DateTime
-   :show-inheritance:
    :members:
 
 .. autoclass:: Enum
-  :show-inheritance:
   :members: __init__, create, drop
 
 .. autoclass:: Float
-  :show-inheritance:
   :members:
 
 .. autoclass:: Integer
-  :show-inheritance:
   :members:
 
 .. autoclass:: Interval
- :show-inheritance:
- :members:
+  :members:
 
 .. autoclass:: LargeBinary
- :show-inheritance:
- :members:
+  :members:
 
 .. autoclass:: Numeric
-  :show-inheritance:
   :members:
 
 .. autoclass:: PickleType
- :show-inheritance:
- :members:
+  :members:
 
 .. autoclass:: SchemaType
-  :show-inheritance:
   :members:
   :undoc-members:
 
 .. autoclass:: SmallInteger
- :show-inheritance:
- :members:
+  :members:
 
 .. autoclass:: String
-   :show-inheritance:
    :members:
 
 .. autoclass:: Text
-   :show-inheritance:
    :members:
 
 .. autoclass:: Time
-  :show-inheritance:
   :members:
 
 .. autoclass:: Unicode
-  :show-inheritance:
   :members:
 
 .. autoclass:: UnicodeText
-   :show-inheritance:
    :members:
 
 .. _types_sqlstandard:
@@ -123,70 +105,70 @@ name when ``CREATE TABLE`` is issued.  Some types may not be supported
 on all databases.
 
 .. autoclass:: BIGINT
-  :show-inheritance:
+
 
 .. autoclass:: BINARY
-  :show-inheritance:
+
 
 .. autoclass:: BLOB
-  :show-inheritance:
+
 
 .. autoclass:: BOOLEAN
-  :show-inheritance:
+
 
 .. autoclass:: CHAR
-  :show-inheritance:
+
 
 .. autoclass:: CLOB
-  :show-inheritance:
+
 
 .. autoclass:: DATE
-  :show-inheritance:
+
 
 .. autoclass:: DATETIME
-  :show-inheritance:
+
 
 .. autoclass:: DECIMAL
-  :show-inheritance:
+
 
 .. autoclass:: FLOAT
-  :show-inheritance:
+
 
 .. autoclass:: INT
-  :show-inheritance:
+
 
 .. autoclass:: sqlalchemy.types.INTEGER
-  :show-inheritance:
+
 
 .. autoclass:: NCHAR
-  :show-inheritance:
+
 
 .. autoclass:: NVARCHAR
-  :show-inheritance:
+
 
 .. autoclass:: NUMERIC
-  :show-inheritance:
+
 
 .. autoclass:: REAL
-  :show-inheritance:
+
 
 .. autoclass:: SMALLINT
-  :show-inheritance:
+
 
 .. autoclass:: TEXT
-  :show-inheritance:
+
 
 .. autoclass:: TIME
-  :show-inheritance:
+
 
 .. autoclass:: TIMESTAMP
-  :show-inheritance:
+
 
 .. autoclass:: VARBINARY
-  :show-inheritance:
+
 
 .. autoclass:: VARCHAR
-  :show-inheritance:
+
 
 .. _types_vendor:
 
@@ -194,7 +176,7 @@ Vendor-Specific Types
 ---------------------
 
 Database-specific types are also available for import from each
-database's dialect module. See the :ref:`sqlalchemy.dialects_toplevel`
+database's dialect module. See the :ref:`dialect_toplevel`
 reference for the database you're interested in.
 
 For example, MySQL has a ``BIGINT`` type and PostgreSQL has an
@@ -300,7 +282,7 @@ to and from the database is required.
 .. autoclass:: TypeDecorator
    :members:
    :inherited-members:
-   :show-inheritance:
+
 
 TypeDecorator Recipes
 ~~~~~~~~~~~~~~~~~~~~~
@@ -738,7 +720,7 @@ is needed, use :class:`.TypeDecorator` instead.
 
 .. autoclass:: UserDefinedType
    :members:
-   :show-inheritance:
+
 
 .. _types_api:
 
@@ -747,20 +729,20 @@ Base Type API
 
 .. autoclass:: AbstractType
    :members:
-   :show-inheritance:
+
 
 .. autoclass:: TypeEngine
    :members:
-   :show-inheritance:
+
 
 .. autoclass:: Concatenable
    :members:
    :inherited-members:
-   :show-inheritance:
+
 
 .. autoclass:: NullType
-   :show-inheritance:
+
 
 .. autoclass:: Variant
-   :show-inheritance:
+
    :members: with_variant, __init__

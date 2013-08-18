@@ -2048,12 +2048,10 @@ Session and sessionmaker()
 
 .. autoclass:: sessionmaker
     :members:
-    :show-inheritance:
     :inherited-members:
 
 .. autoclass:: sqlalchemy.orm.session.Session
    :members:
-   :show-inheritance:
    :inherited-members:
 
 .. autoclass:: sqlalchemy.orm.session.SessionTransaction

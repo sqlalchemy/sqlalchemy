@@ -23,51 +23,51 @@ construction arguments, are as follows:
 
 .. autoclass:: BIGINT
     :members: __init__
-    :show-inheritance:
+     
 
 .. autoclass:: CHAR
     :members: __init__
-    :show-inheritance:
+     
 
 .. autoclass:: DECIMAL
     :members: __init__
-    :show-inheritance:
+     
 
 .. autoclass:: DOUBLE
     :members: __init__
-    :show-inheritance:
+     
 
 .. autoclass:: ENUM
     :members: __init__
-    :show-inheritance:
+     
 
 .. autoclass:: FLOAT
     :members: __init__
-    :show-inheritance:
+     
 
 .. autoclass:: INTEGER
     :members: __init__
-    :show-inheritance:
+     
 
 .. autoclass:: NUMERIC
     :members: __init__
-    :show-inheritance:
+     
 
 .. autoclass:: REAL
     :members: __init__
-    :show-inheritance:
+     
 
 .. autoclass:: TEXT
     :members: __init__
-    :show-inheritance:
+     
 
 .. autoclass:: TIMESTAMP
     :members: __init__
-    :show-inheritance:
+     
 
 .. autoclass:: VARCHAR
     :members: __init__
-    :show-inheritance:
+     
 
 
 MySQL-Python

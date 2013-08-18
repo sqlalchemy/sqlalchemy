@@ -26,75 +26,75 @@ construction arguments, are as follows:
 
 .. autoclass:: BIT
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: CHAR
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: DATETIME2
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: DATETIMEOFFSET
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: IMAGE
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: MONEY
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: NCHAR
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: NTEXT
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: NVARCHAR
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: REAL
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: SMALLDATETIME
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: SMALLMONEY
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: SQL_VARIANT
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: TEXT
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: TIME
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: TINYINT
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: UNIQUEIDENTIFIER
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: VARCHAR
    :members: __init__
-   :show-inheritance:
+    
 
 
 PyODBC
