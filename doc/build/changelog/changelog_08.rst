@@ -11,7 +11,7 @@
         :tickets: 2779
 
         Backported a change from 0.9 whereby the iteration of a hierarchy
-        of mappers used in polymorphic inheritance loads is sorted on class name,
+        of mappers used in polymorphic inheritance loads is sorted,
         which allows the SELECT statements generated for polymorphic queries
         to have deterministic rendering, which in turn helps with caching
         schemes that cache on the SQL string itself.
