@@ -1153,7 +1153,7 @@ class TableClause(Immutable, FromClause):
 
 
 class SelectBase(Executable, FromClause):
-    """Base class for :class:`.Select` and ``CompoundSelects``."""
+    """Base class for :class:`.Select` and :class:`.CompoundSelect`."""
 
     _order_by_clause = ClauseList()
     _group_by_clause = ClauseList()
@@ -1446,7 +1446,24 @@ class SelectBase(Executable, FromClause):
 
 class CompoundSelect(SelectBase):
     """Forms the basis of ``UNION``, ``UNION ALL``, and other
-        SELECT-based set operations."""
+        SELECT-based set operations.
+
+
+    .. seealso::
+
+        :func:`.union`
+
+        :func:`.union_all`
+
+        :func:`.intersect`
+
+        :func:`.intersect_all`
+
+        :func:`.except`
+
+        :func:`.except_all`
+
+    """
 
     __visit_name__ = 'compound_select'
 

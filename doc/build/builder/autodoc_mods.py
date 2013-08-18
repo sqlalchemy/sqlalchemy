@@ -10,17 +10,26 @@ def autodoc_skip_member(app, what, name, obj, skip, options):
         return skip
 
 
-def _adjust_rendered_mod_name(modname, objname):
-    modname = modname.replace("sqlalchemy.sql.sqltypes", "sqlalchemy.types")
-    modname = modname.replace("sqlalchemy.sql.type_api", "sqlalchemy.types")
-    modname = modname.replace("sqlalchemy.sql.schema", "sqlalchemy.schema")
-    modname = modname.replace("sqlalchemy.sql.elements", "sqlalchemy.sql.expression")
-    modname = modname.replace("sqlalchemy.sql.selectable", "sqlalchemy.sql.expression")
-    modname = modname.replace("sqlalchemy.sql.dml", "sqlalchemy.sql.expression")
-    modname = modname.replace("sqlalchemy.sql.ddl", "sqlalchemy.schema")
-    modname = modname.replace("sqlalchemy.sql.base", "sqlalchemy.sql.expression")
+_convert_modname = {
+    "sqlalchemy.sql.sqltypes": "sqlalchemy.types",
+    "sqlalchemy.sql.type_api": "sqlalchemy.types",
+    "sqlalchemy.sql.schema": "sqlalchemy.schema",
+    "sqlalchemy.sql.elements": "sqlalchemy.sql.expression",
+    "sqlalchemy.sql.selectable": "sqlalchemy.sql.expression",
+    "sqlalchemy.sql.dml": "sqlalchemy.sql.expression",
+    "sqlalchemy.sql.ddl": "sqlalchemy.schema",
+    "sqlalchemy.sql.base": "sqlalchemy.sql.expression"
+}
 
-    return modname
+_convert_modname_w_class = {
+    ("sqlalchemy.engine.interfaces", "Connectable"): "sqlalchemy.engine"
+}
+
+def _adjust_rendered_mod_name(modname, objname):
+    if modname in _convert_modname:
+        return _convert_modname[modname]
+    elif (modname, objname) in _convert_modname_w_class:
+        return _convert_modname_w_class[(modname, objname)]
 
 # im sure this is in the app somewhere, but I don't really
 # know where, so we're doing it here.
@@ -30,6 +39,9 @@ def autodoc_process_docstring(app, what, name, obj, options, lines):
     if what == "class":
         _track_autodoced[name] = obj
 
+        # need to translate module names for bases, others
+        # as we document lots of symbols in namespace modules
+        # outside of their source
         bases = []
         for base in obj.__bases__:
             if base is not object:
@@ -38,11 +50,10 @@ def autodoc_process_docstring(app, what, name, obj, options, lines):
                         base.__name__))
 
         if bases:
-            lines.insert(0,
-                        "Bases: %s" % (
-                            ", ".join(bases)
-                        ))
-            lines.insert(1, "")
+            lines[:0] = [
+                        "Bases: %s" % (", ".join(bases)),
+                        ""
+            ]
 
 
     elif what in ("attribute", "method") and \
@@ -74,7 +85,6 @@ def autodoc_process_docstring(app, what, name, obj, options, lines):
                         ""
                     ]
 
-from docutils import nodes
 def missing_reference(app, env, node, contnode):
     if node.attributes['reftarget'] in _inherited_names:
         return node.children[0]
