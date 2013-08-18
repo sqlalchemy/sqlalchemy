@@ -1593,6 +1593,8 @@ table, or the same table:
     COMMIT
     {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
 
+.. _multi_table_updates:
+
 Multiple Table Updates
 ----------------------
 
