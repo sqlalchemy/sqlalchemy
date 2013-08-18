@@ -2571,19 +2571,37 @@ class Query(object):
             The expression evaluator currently doesn't account for differing
             string collations between the database and Python.
 
-        Returns the number of rows deleted, excluding any cascades.
+        :return: the count of rows matched as returned by the database's
+          "row count" feature.
 
-        The method does *not* offer in-Python cascading of relationships - it
-        is assumed that ON DELETE CASCADE is configured for any foreign key
-        references which require it. The Session needs to be expired (occurs
-        automatically after commit(), or call expire_all()) in order for the
-        state of dependent objects subject to delete or delete-orphan cascade
-        to be correctly represented.
+        This method has several key caveats:
 
-        Note that the :meth:`.MapperEvents.before_delete` and
-        :meth:`.MapperEvents.after_delete`
-        events are **not** invoked from this method.  It instead
-        invokes :meth:`.SessionEvents.after_bulk_delete`.
+        * The method does **not** offer in-Python cascading of relationships - it
+          is assumed that ON DELETE CASCADE/SET NULL/etc. is configured for any foreign key
+          references which require it, otherwise the database may emit an
+          integrity violation if foreign key references are being enforced.
+
+          After the DELETE, dependent objects in the :class:`.Session` which
+          were impacted by an ON DELETE may not contain the current
+          state, or may have been deleted. This issue is resolved once the
+          :class:`.Session` is expired,
+          which normally occurs upon :meth:`.Session.commit` or can be forced
+          by using :meth:`.Session.expire_all`.  Accessing an expired object
+          whose row has been deleted will invoke a SELECT to locate the
+          row; when the row is not found, an :class:`.ObjectDeletedError`
+          is raised.
+
+        * The :meth:`.MapperEvents.before_delete` and
+          :meth:`.MapperEvents.after_delete`
+          events are **not** invoked from this method.  Instead, the
+          :meth:`.SessionEvents.after_bulk_delete` method is provided to act
+          upon a mass DELETE of entity rows.
+
+        .. seealso::
+
+            :meth:`.Query.update`
+
+            :ref:`inserts_and_updates` - Core SQL tutorial
 
         """
         #TODO: cascades need handling.
@@ -2622,7 +2640,8 @@ class Query(object):
             The expression evaluator currently doesn't account for differing
             string collations between the database and Python.
 
-        Returns the number of rows matched by the update.
+        :return: the count of rows matched as returned by the database's
+          "row count" feature.
 
         This method has several key caveats:
 
@@ -2654,12 +2673,17 @@ class Query(object):
                     filter(Employee.name == 'dilbert').\\
                     update({"engineer_type": "programmer"})
 
-
         * The :meth:`.MapperEvents.before_update` and
           :meth:`.MapperEvents.after_update`
           events are **not** invoked from this method.  Instead, the
           :meth:`.SessionEvents.after_bulk_update` method is provided to act
           upon a mass UPDATE of entity rows.
+
+        .. seealso::
+
+            :meth:`.Query.delete`
+
+            :ref:`inserts_and_updates` - Core SQL tutorial
 
         """
 
