@@ -2624,18 +2624,42 @@ class Query(object):
 
         Returns the number of rows matched by the update.
 
-        The method does *not* offer in-Python cascading of relationships - it
-        is assumed that ON UPDATE CASCADE is configured for any foreign key
-        references which require it.
+        This method has several key caveats:
 
-        The Session needs to be expired (occurs automatically after commit(),
-        or call expire_all()) in order for the state of dependent objects
-        subject foreign key cascade to be correctly represented.
+        * The method does **not** offer in-Python cascading of relationships - it
+          is assumed that ON UPDATE CASCADE is configured for any foreign key
+          references which require it, otherwise the database may emit an
+          integrity violation if foreign key references are being enforced.
 
-        Note that the :meth:`.MapperEvents.before_update` and
-        :meth:`.MapperEvents.after_update`
-        events are **not** invoked from this method.  It instead
-        invokes :meth:`.SessionEvents.after_bulk_update`.
+          After the UPDATE, dependent objects in the :class:`.Session` which
+          were impacted by an ON UPDATE CASCADE may not contain the current
+          state; this issue is resolved once the :class:`.Session` is expired,
+          which normally occurs upon :meth:`.Session.commit` or can be forced
+          by using :meth:`.Session.expire_all`.
+
+        * As of 0.8, this method will support multiple table updates, as detailed
+          in :ref:`multi_table_updates`, and this behavior does extend to support
+          updates of joined-inheritance and other multiple table mappings.  However,
+          the **join condition of an inheritance mapper is currently not
+          automatically rendered**.
+          Care must be taken in any multiple-table update to explicitly include
+          the joining condition between those tables, even in mappings where
+          this is normally automatic.
+          E.g. if a class ``Engineer`` subclasses ``Employee``, an UPDATE of the
+          ``Engineer`` local table using criteria against the ``Employee``
+          local table might look like::
+
+                session.query(Engineer).\\
+                    filter(Engineer.id == Employee.id).\\
+                    filter(Employee.name == 'dilbert').\\
+                    update({"engineer_type": "programmer"})
+
+
+        * The :meth:`.MapperEvents.before_update` and
+          :meth:`.MapperEvents.after_update`
+          events are **not** invoked from this method.  Instead, the
+          :meth:`.SessionEvents.after_bulk_update` method is provided to act
+          upon a mass UPDATE of entity rows.
 
         """
 
