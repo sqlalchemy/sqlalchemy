@@ -1,10 +1,10 @@
 import copy
 
-from sqlalchemy import util, sql, exc
+from sqlalchemy import util, sql, exc, testing
 from sqlalchemy.testing import assert_raises, assert_raises_message, fixtures
 from sqlalchemy.testing import eq_, is_, ne_, fails_if
-from sqlalchemy.testing.util import picklers
-from sqlalchemy.util import classproperty
+from sqlalchemy.testing.util import picklers, gc_collect
+from sqlalchemy.util import classproperty, WeakSequence
 
 
 class KeyedTupleTest():
@@ -114,6 +114,36 @@ class KeyedTupleTest():
         def should_raise():
             keyed_tuple[0] = 100
         assert_raises(TypeError, should_raise)
+
+class WeakSequenceTest(fixtures.TestBase):
+    @testing.requires.predictable_gc
+    def test_cleanout_elements(self):
+        class Foo(object):
+            pass
+        f1, f2, f3 = Foo(), Foo(), Foo()
+        w = WeakSequence([f1, f2, f3])
+        eq_(len(w), 3)
+        eq_(len(w._storage), 3)
+        del f2
+        gc_collect()
+        eq_(len(w), 2)
+        eq_(len(w._storage), 2)
+
+    @testing.requires.predictable_gc
+    def test_cleanout_appended(self):
+        class Foo(object):
+            pass
+        f1, f2, f3 = Foo(), Foo(), Foo()
+        w = WeakSequence()
+        w.append(f1)
+        w.append(f2)
+        w.append(f3)
+        eq_(len(w), 3)
+        eq_(len(w._storage), 3)
+        del f2
+        gc_collect()
+        eq_(len(w), 2)
+        eq_(len(w._storage), 2)
 
 
 class OrderedDictTest(fixtures.TestBase):
