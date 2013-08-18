@@ -1049,7 +1049,7 @@ class SQLCompiler(Compiled):
             # we've generated a same-named CTE that we are enclosed in,
             # or this is the same CTE.  just return the name.
             if cte in existing_cte._restates or cte is existing_cte:
-                return cte_name
+                return self.preparer.format_alias(cte, cte_name)
             elif existing_cte in cte._restates:
                 # we've generated a same-named CTE that is
                 # enclosed in us - we take precedence, so

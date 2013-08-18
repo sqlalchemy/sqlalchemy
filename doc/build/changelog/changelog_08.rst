@@ -7,6 +7,14 @@
     :version: 0.8.3
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2801
+
+        Fixed regression dating back to 0.7.9 whereby the name of a CTE might
+        not be properly quoted if it was referred to in multiple FROM clauses.
+        Also in 0.7.11.
+
+    .. change::
         :tags: bug, examples
 
         Added "autoincrement=False" to the history table created in the
