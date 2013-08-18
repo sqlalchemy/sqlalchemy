@@ -6,7 +6,7 @@
 
 from .compat import callable, cmp, reduce,  \
     threading, py3k, py33, py2k, jython, pypy, cpython, win32, \
-    pickle, dottedgetter, parse_qsl, namedtuple, next, WeakSet, reraise, \
+    pickle, dottedgetter, parse_qsl, namedtuple, next, reraise, \
     raise_from_cause, text_type, string_types, int_types, binary_type, \
     quote_plus, with_metaclass, print_, itertools_filterfalse, u, ue, b,\
     unquote_plus, b64decode, b64encode, byte_buffer, itertools_filter,\
