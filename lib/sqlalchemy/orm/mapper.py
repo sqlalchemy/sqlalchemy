@@ -824,7 +824,7 @@ class Mapper(_InspectionAttr):
         being present."""
 
         # a set of all mappers which inherit from this one.
-        self._inheriting_mappers = util.WeakSet()
+        self._inheriting_mappers = util.WeakSequence()
 
         if self.inherits:
             if isinstance(self.inherits, type):
@@ -898,7 +898,7 @@ class Mapper(_InspectionAttr):
 
             self.polymorphic_map = self.inherits.polymorphic_map
             self.batch = self.inherits.batch
-            self.inherits._inheriting_mappers.add(self)
+            self.inherits._inheriting_mappers.append(self)
             self.base_mapper = self.inherits.base_mapper
             self.passive_updates = self.inherits.passive_updates
             self._all_tables = self.inherits._all_tables
@@ -965,7 +965,7 @@ class Mapper(_InspectionAttr):
         self.batch = self.inherits.batch
         for mp in self.self_and_descendants:
             mp.base_mapper = self.inherits.base_mapper
-        self.inherits._inheriting_mappers.add(self)
+        self.inherits._inheriting_mappers.append(self)
         self.passive_updates = self.inherits.passive_updates
         self._all_tables = self.inherits._all_tables
         for key, prop in mapper._props.items():
@@ -2131,8 +2131,7 @@ class Mapper(_InspectionAttr):
         while stack:
             item = stack.popleft()
             descendants.append(item)
-            stack.extend(sorted(item._inheriting_mappers,
-                        key=lambda m: m.class_.__name__))
+            stack.extend(item._inheriting_mappers)
         return util.WeakSequence(descendants)
 
     def polymorphic_iterator(self):
