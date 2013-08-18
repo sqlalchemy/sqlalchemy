@@ -7,6 +7,13 @@
     :version: 0.7.11
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2801
+
+        Fixed regression dating back to 0.7.9 whereby the name of a CTE might
+        not be properly quoted if it was referred to in multiple FROM clauses.
+
+    .. change::
         :tags: mysql, bug
         :tickets: 2791
 
