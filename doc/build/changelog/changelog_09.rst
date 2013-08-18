@@ -7,6 +7,15 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2794
+
+        Fixed a potential issue in an ordered sequence implementation used
+        by the ORM to iterate mapper hierarchies; under the Jython interpreter
+        this implementation wasn't ordered, even though cPython and Pypy
+        maintained ordering.  Also in 0.8.3.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2801
 
