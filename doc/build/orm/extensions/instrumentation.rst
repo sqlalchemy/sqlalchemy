@@ -17,7 +17,7 @@ API Reference
 .. autodata:: instrumentation_finders
 
 .. autoclass:: ExtendedInstrumentationRegistry
-    :show-inheritance:
+     
     :members:
 
 

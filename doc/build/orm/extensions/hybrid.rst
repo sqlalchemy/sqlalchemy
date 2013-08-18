@@ -15,7 +15,7 @@ API Reference
     :members:
 
 .. autoclass:: Comparator
-    :show-inheritance:
+     
 
 .. autodata:: HYBRID_METHOD
 

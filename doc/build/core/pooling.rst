@@ -293,23 +293,23 @@ API Documentation - Available Pool Implementations
    .. automethod:: recreate
 
 .. autoclass:: sqlalchemy.pool.QueuePool
-   :show-inheritance:
+
 
    .. automethod:: __init__
 
 .. autoclass:: SingletonThreadPool
-   :show-inheritance:
+
 
    .. automethod:: __init__
 
 .. autoclass:: AssertionPool
-   :show-inheritance:
+
 
 .. autoclass:: NullPool
-  :show-inheritance:
+
 
 .. autoclass:: StaticPool
-   :show-inheritance:
+
 
 
 Pooling Plain DB-API Connections

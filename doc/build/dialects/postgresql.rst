@@ -28,7 +28,7 @@ construction arguments, are as follows:
 
 .. autoclass:: ARRAY
     :members: __init__, Comparator
-    :show-inheritance:
+
 
 .. autoclass:: Any
 
@@ -36,51 +36,51 @@ construction arguments, are as follows:
 
 .. autoclass:: BIT
     :members: __init__
-    :show-inheritance:
+
 
 .. autoclass:: BYTEA
     :members: __init__
-    :show-inheritance:
+
 
 .. autoclass:: CIDR
     :members: __init__
-    :show-inheritance:
+
 
 .. autoclass:: DOUBLE_PRECISION
     :members: __init__
-    :show-inheritance:
+
 
 .. autoclass:: ENUM
     :members: __init__, create, drop
-    :show-inheritance:
+
 
 .. autoclass:: HSTORE
     :members:
-    :show-inheritance:
+
 
 .. autoclass:: hstore
     :members:
-    :show-inheritance:
+
 
 .. autoclass:: INET
     :members: __init__
-    :show-inheritance:
+
 
 .. autoclass:: INTERVAL
     :members: __init__
-    :show-inheritance:
+
 
 .. autoclass:: MACADDR
     :members: __init__
-    :show-inheritance:
+
 
 .. autoclass:: REAL
     :members: __init__
-    :show-inheritance:
+
 
 .. autoclass:: UUID
     :members: __init__
-    :show-inheritance:
+
 
 Range Types
 ~~~~~~~~~~~
@@ -89,22 +89,22 @@ The new range column types founds in PostgreSQL 9.2 onwards are
 catered for by the following types:
 
 .. autoclass:: INT4RANGE
-   :show-inheritance:
+
 
 .. autoclass:: INT8RANGE
-   :show-inheritance:
+
 
 .. autoclass:: NUMRANGE
-   :show-inheritance:
+
 
 .. autoclass:: DATERANGE
-   :show-inheritance:
+
 
 .. autoclass:: TSRANGE
-   :show-inheritance:
+
 
 .. autoclass:: TSTZRANGE
-   :show-inheritance:
+
 
 The types above get most of their functionality from the following
 mixin:
@@ -127,7 +127,6 @@ SQLAlchemy supports Postgresql EXCLUDE constraints via the
 :class:`ExcludeConstraint` class:
 
 .. autoclass:: ExcludeConstraint
-   :show-inheritance:
    :members: __init__
 
 For example::

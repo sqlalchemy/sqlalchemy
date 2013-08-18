@@ -12,12 +12,10 @@ Some key internal constructs are listed here.
 
 .. autoclass:: sqlalchemy.sql.compiler.DDLCompiler
     :members:
-    :show-inheritance:
     :inherited-members:
 
 .. autoclass:: sqlalchemy.engine.default.DefaultDialect
     :members:
-    :show-inheritance:
     :inherited-members:
 
 .. autoclass:: sqlalchemy.engine.interfaces.Dialect
@@ -25,17 +23,17 @@ Some key internal constructs are listed here.
 
 .. autoclass:: sqlalchemy.engine.default.DefaultExecutionContext
     :members:
-    :show-inheritance:
+
 
 .. autoclass:: sqlalchemy.engine.interfaces.ExecutionContext
     :members:
-    :show-inheritance:
+
 
 .. autoclass:: sqlalchemy.sql.compiler.IdentifierPreparer
     :members:
-    :show-inheritance:
+
 
 .. autoclass:: sqlalchemy.sql.compiler.SQLCompiler
     :members:
-    :show-inheritance:
+
 

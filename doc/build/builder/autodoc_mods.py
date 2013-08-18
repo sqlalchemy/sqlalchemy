@@ -9,6 +9,19 @@ def autodoc_skip_member(app, what, name, obj, skip, options):
     else:
         return skip
 
+
+def _adjust_rendered_mod_name(modname, objname):
+    modname = modname.replace("sqlalchemy.sql.sqltypes", "sqlalchemy.types")
+    modname = modname.replace("sqlalchemy.sql.type_api", "sqlalchemy.types")
+    modname = modname.replace("sqlalchemy.sql.schema", "sqlalchemy.schema")
+    modname = modname.replace("sqlalchemy.sql.elements", "sqlalchemy.sql.expression")
+    modname = modname.replace("sqlalchemy.sql.selectable", "sqlalchemy.sql.expression")
+    modname = modname.replace("sqlalchemy.sql.dml", "sqlalchemy.sql.expression")
+    modname = modname.replace("sqlalchemy.sql.ddl", "sqlalchemy.schema")
+    modname = modname.replace("sqlalchemy.sql.base", "sqlalchemy.sql.expression")
+
+    return modname
+
 # im sure this is in the app somewhere, but I don't really
 # know where, so we're doing it here.
 _track_autodoced = {}
@@ -16,6 +29,22 @@ _inherited_names = set()
 def autodoc_process_docstring(app, what, name, obj, options, lines):
     if what == "class":
         _track_autodoced[name] = obj
+
+        bases = []
+        for base in obj.__bases__:
+            if base is not object:
+                bases.append(":class:`%s.%s`" % (
+                        _adjust_rendered_mod_name(base.__module__, base.__name__),
+                        base.__name__))
+
+        if bases:
+            lines.insert(0,
+                        "Bases: %s" % (
+                            ", ".join(bases)
+                        ))
+            lines.insert(1, "")
+
+
     elif what in ("attribute", "method") and \
         options.get("inherited-members"):
         m = re.match(r'(.*?)\.([\w_]+)$', name)
@@ -35,10 +64,12 @@ def autodoc_process_docstring(app, what, name, obj, options, lines):
                         "    *inherited from the* :%s:`~%s.%s.%s` *%s of* :class:`~%s.%s`" % (
                                     "attr" if what == "attribute"
                                     else "meth",
-                                    supercls.__module__, supercls.__name__,
+                                    _adjust_rendered_mod_name(supercls.__module__, supercls.__name__),
+                                    supercls.__name__,
                                     attrname,
                                     what,
-                                    supercls.__module__, supercls.__name__
+                                    _adjust_rendered_mod_name(supercls.__module__, supercls.__name__),
+                                    supercls.__name__
                                 ),
                         ""
                     ]
@@ -49,7 +80,6 @@ def missing_reference(app, env, node, contnode):
         return node.children[0]
     else:
         return None
-
 
 
 def setup(app):

@@ -25,31 +25,31 @@ construction arguments, are as follows:
 
 .. autoclass:: BFILE
   :members: __init__
-  :show-inheritance:
+   
 
 .. autoclass:: DOUBLE_PRECISION
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: INTERVAL
   :members: __init__
-  :show-inheritance:
+   
 
 .. autoclass:: NCLOB
   :members: __init__
-  :show-inheritance:
+   
 
 .. autoclass:: NUMBER
    :members: __init__
-   :show-inheritance:
+    
 
 .. autoclass:: LONG
   :members: __init__
-  :show-inheritance:
+   
 
 .. autoclass:: RAW
   :members: __init__
-  :show-inheritance:
+   
 
 cx_Oracle
 ----------

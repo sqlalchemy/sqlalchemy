@@ -13,11 +13,10 @@ Language provides a schema-centric usage paradigm.
 
     tutorial
     expression_api
+    schema
     engines
     connections
     pooling
-    schema
-    types
     event
     events
     compiler
