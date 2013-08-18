@@ -1292,3 +1292,4 @@ def randomize_unitofwork():
     from sqlalchemy.testing.util import RandomSet
     topological.set = unitofwork.set = session.set = mapper.set = \
             dependency.set = RandomSet
+

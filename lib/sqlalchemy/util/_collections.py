@@ -618,18 +618,27 @@ class IdentitySet(object):
 
 class WeakSequence(object):
     def __init__(self, elements):
-        self._storage = weakref.WeakValueDictionary(
-            (idx, element) for idx, element in enumerate(elements)
-        )
+        self._storage = [
+            weakref.ref(element) for element in elements
+        ]
+
+    def _remove(self, ref):
+        self._storage.remove(ref)
 
     def __iter__(self):
+<<<<<<< HEAD
         return self._storage.itervalues()
+=======
+        return (obj for obj in (ref() for ref in self._storage) if obj is not None)
+>>>>>>> 676876f... Fixed a potential issue in an ordered sequence implementation used
 
     def __getitem__(self, index):
         try:
-            return self._storage[index]
+            obj = self._storage[index]
         except KeyError:
             raise IndexError("Index %s out of range" % index)
+        else:
+            return obj()
 
 
 class OrderedIdentitySet(IdentitySet):
