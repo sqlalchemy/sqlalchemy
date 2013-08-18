@@ -626,11 +626,7 @@ class WeakSequence(object):
         self._storage.remove(ref)
 
     def __iter__(self):
-<<<<<<< HEAD
-        return self._storage.itervalues()
-=======
         return (obj for obj in (ref() for ref in self._storage) if obj is not None)
->>>>>>> 676876f... Fixed a potential issue in an ordered sequence implementation used
 
     def __getitem__(self, index):
         try:
