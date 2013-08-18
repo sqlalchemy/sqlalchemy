@@ -617,16 +617,23 @@ class IdentitySet(object):
 
 
 class WeakSequence(object):
-    def __init__(self, elements):
+    def __init__(self, __elements=()):
         self._storage = [
-            weakref.ref(element) for element in elements
+            weakref.ref(element, self._remove) for element in __elements
         ]
+
+    def append(self, item):
+        self._storage.append(weakref.ref(item, self._remove))
 
     def _remove(self, ref):
         self._storage.remove(ref)
 
+    def __len__(self):
+        return len(self._storage)
+
     def __iter__(self):
-        return (obj for obj in (ref() for ref in self._storage) if obj is not None)
+        return (obj for obj in
+                    (ref() for ref in self._storage) if obj is not None)
 
     def __getitem__(self, index):
         try:
