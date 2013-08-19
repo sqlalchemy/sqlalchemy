@@ -151,7 +151,6 @@ a.headerlink:hover {
 #docs-body-container {
   background-color:#EFEFEF;
   border: solid 1px #CCC;
-
 }
 
 #docs-body,
@@ -164,6 +163,10 @@ a.headerlink:hover {
   font-size:.85em;
   line-height:1.5em;
 
+}
+
+#docs-body {
+  min-height: 400px;
 }
 
 #docs-sidebar > ul {
@@ -339,7 +342,7 @@ div.admonition, div.topic, .deprecated, .versionadded, .versionchanged {
 .deprecated .versionmodified,
 .versionadded > p:first-child > span:first-child,
 .versionchanged > p:first-child > span:first-child,
-.deprecated > p:first-child > span:first-child 
+.deprecated > p:first-child > span:first-child
 {
     background-color: #ECF0F3;
     color: #990000;
