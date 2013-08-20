@@ -1089,7 +1089,10 @@ def _list_decorators():
                 start = index.start or 0
                 if start < 0:
                     start += len(self)
-                stop = index.stop or len(self)
+                if index.stop is not None:
+                    stop = index.stop
+                else:
+                    stop = len(self)
                 if stop < 0:
                     stop += len(self)
 

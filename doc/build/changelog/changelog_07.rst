@@ -7,6 +7,16 @@
     :version: 0.7.11
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2807
+
+        Fixed bug where list instrumentation would fail to represent a
+        setslice of ``[0:0]`` correctly, which in particular could occur
+        when using ``insert(0, item)`` with the association proxy.  Due
+        to some quirk in Python collections, the issue was much more likely
+        with Python 3 rather than 2.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2801
 
