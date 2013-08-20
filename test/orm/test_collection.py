@@ -127,9 +127,9 @@ class CollectionsTest(fixtures.ORMTest):
         control = list()
 
         def assert_eq():
-            self.assert_(set(direct) == canary.data)
-            self.assert_(set(adapter) == canary.data)
-            self.assert_(direct == control)
+            eq_(set(direct), canary.data)
+            eq_(set(adapter), canary.data)
+            eq_(direct, control)
 
         # assume append() is available for list tests
         e = creator()
@@ -257,6 +257,11 @@ class CollectionsTest(fixtures.ORMTest):
             values = [creator(), creator()]
             direct[-2:-1] = values
             control[-2:-1] = values
+            assert_eq()
+
+            values = [creator()]
+            direct[0:0] = values
+            control[0:0] = values
             assert_eq()
 
 
