@@ -234,7 +234,26 @@ class MapperProperty(_MappedAttribute, _InspectionAttr):
     @property
     def class_attribute(self):
         """Return the class-bound descriptor corresponding to this
-        MapperProperty."""
+        :class:`.MapperProperty`.
+
+        This is basically a ``getattr()`` call::
+
+            return getattr(self.parent.class_, self.key)
+
+        I.e. if this :class:`.MapperProperty` were named ``addresses``,
+        and the class to which it is mapped is ``User``, this sequence
+        is possible::
+
+            >>> from sqlalchemy import inspect
+            >>> mapper = inspect(User)
+            >>> addresses_property = mapper.attrs.addresses
+            >>> addresses_property.class_attribute is User.addresses
+            True
+            >>> User.addresses.property is addresses_property
+            True
+
+
+        """
 
         return getattr(self.parent.class_, self.key)
 

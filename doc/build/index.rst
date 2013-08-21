@@ -11,6 +11,7 @@ A high level view and getting set up.
 
 :ref:`Overview <overview>` |
 :ref:`Installation Guide <installation>` |
+:doc:`Frequently Asked Questions <faq>` |
 :doc:`Migration from 0.7 <changelog/migration_08>` |
 :doc:`Glossary <glossary>` |
 :doc:`Changelog catalog <changelog/index>`

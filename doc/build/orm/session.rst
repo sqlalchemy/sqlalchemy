@@ -198,10 +198,9 @@ at the same time).
 
 .. _session_faq:
 
-.. _session_faq_whentocreate:
-
 Session Frequently Asked Questions
 -----------------------------------
+
 
 When do I make a :class:`.sessionmaker`?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -226,6 +225,8 @@ example's sake!  In reality, the :class:`.sessionmaker` would be somewhere
 at the module level.   The calls to instantiate :class:`.Session`
 would then be placed at the point in the application where database
 conversations begin.
+
+.. _session_faq_whentocreate:
 
 When do I construct a :class:`.Session`, when do I commit it, and when do I close it?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -462,6 +463,8 @@ The newer :ref:`core_inspection_toplevel` system can also be used::
 
     from sqlalchemy import inspect
     session = inspect(object).session
+
+.. _session_faq_threadsafe:
 
 Is the session thread-safe?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -798,6 +801,8 @@ into the Session's list of objects to be marked as deleted::
 
     # commit (or flush)
     session.commit()
+
+.. _session_deleting_from_collections:
 
 Deleting from Collections
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1591,6 +1596,8 @@ This technique works both for INSERT and UPDATE statements. After the
 flush/commit operation, the ``value`` attribute on ``someobject`` above is
 expired, so that when next accessed the newly generated value will be loaded
 from the database.
+
+.. _session_sql_expressions:
 
 Using SQL Expressions with Sessions
 ====================================

@@ -20,6 +20,8 @@ example, they won't work in SQLAlchemy either.
 See the official MySQL documentation for detailed information about features
 supported in any given server release.
 
+.. _mysql_connection_timeouts:
+
 Connection Timeouts
 -------------------
 

@@ -88,6 +88,8 @@ named according to the name of the column itself (specifically, the ``key``
 attribute of :class:`.Column`).  This behavior can be
 modified in several ways.
 
+.. _mapper_column_distinct_names:
+
 Naming Columns Distinctly from Attribute Names
 ----------------------------------------------
 
@@ -1054,6 +1056,9 @@ the same class multiple times, which is to instead create new mapped classes
 for each target table.    SQLAlchemy refers to this as the "entity name"
 pattern, which is described as a recipe at `Entity Name
 <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/EntityName>`_.
+
+
+.. _mapping_constructors:
 
 Constructors and Object Initialization
 =======================================
