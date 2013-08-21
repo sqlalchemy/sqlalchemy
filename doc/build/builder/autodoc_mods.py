@@ -11,14 +11,6 @@ def autodoc_skip_member(app, what, name, obj, skip, options):
 
 
 _convert_modname = {
-    "sqlalchemy.sql.sqltypes": "sqlalchemy.types",
-    "sqlalchemy.sql.type_api": "sqlalchemy.types",
-    "sqlalchemy.sql.schema": "sqlalchemy.schema",
-    "sqlalchemy.sql.elements": "sqlalchemy.sql.expression",
-    "sqlalchemy.sql.selectable": "sqlalchemy.sql.expression",
-    "sqlalchemy.sql.dml": "sqlalchemy.sql.expression",
-    "sqlalchemy.sql.ddl": "sqlalchemy.schema",
-    "sqlalchemy.sql.base": "sqlalchemy.sql.expression"
 }
 
 _convert_modname_w_class = {
