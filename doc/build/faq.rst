@@ -588,7 +588,133 @@ with any combination of subtransactions and real SAVEPOINTs. The job of
 starting/ending the "frame" is kept consistently with the code external to the
 ``flush()``, and we made a decision that this was the most consistent approach.
 
+I'm inserting 400,000 rows with the ORM and it's really slow!
+--------------------------------------------------------------
 
+The SQLAlchemy ORM uses the :term:`unit of work` pattern when synchronizing
+changes to the database. This pattern goes far beyond simple "inserts"
+of data. It includes that attributes which are assigned on objects are
+received using an attribute instrumentation system which tracks
+changes on objects as they are made, includes that all rows inserted
+are tracked in an identity map which has the effect that for each row
+SQLAlchemy must retrieve its "last inserted id" if not already given,
+and also involves that rows to be inserted are scanned and sorted for
+dependencies as needed. Objects are also subject to a fair degree of
+bookkeeping in order to keep all of this running, which for a very
+large number of rows at once can create an inordinate amount of time
+spent with large data structures, hence it's best to chunk these.
+
+Basically, unit of work is a large degree of automation in order to
+automate the task of persisting a complex object graph into a
+relational database with no explicit persistence code, and this
+automation has a price.
+
+ORMs are basically not intended for high-performance bulk inserts -
+this is the whole reason SQLAlchemy offers the Core in addition to the
+ORM as a first-class component.
+
+For the use case of fast bulk inserts, the
+SQL generation and execution system that the ORM builds on top of
+is part of the Core.  Using this system directly, we can produce an INSERT that
+is competitive with using the raw database API directly.
+
+The example below illustrates time-based tests for four different
+methods of inserting rows, going from the most automated to the least.
+Runtimes observed here are:
+
+* SQLAlchemy ORM: Total time for 100000 records 16.4133379459 secs
+* SQLAlchemy ORM pk given: Total time for 100000 records 9.77570986748 secs
+* SQLAlchemy Core: Total time for 100000 records 0.568737983704 secs
+* sqlite3: Total time for 100000 records 0.595796823502 sec
+
+Script::
+
+	import time
+	import sqlite3
+
+	from sqlalchemy.ext.declarative import declarative_base
+	from sqlalchemy import Column, Integer, String,  create_engine
+	from sqlalchemy.orm import scoped_session, sessionmaker
+
+	Base = declarative_base()
+	DBSession = scoped_session(sessionmaker())
+
+	class Customer(Base):
+	    __tablename__ = "customer"
+	    id = Column(Integer, primary_key=True)
+	    name = Column(String(255))
+
+	def init_sqlalchemy(dbname = 'sqlite:///sqlalchemy.db'):
+	    global engine
+	    engine = create_engine(dbname, echo=False)
+	    DBSession.remove()
+	    DBSession.configure(bind=engine, autoflush=False, expire_on_commit=False)
+	    Base.metadata.drop_all(engine)
+	    Base.metadata.create_all(engine)
+
+	def test_sqlalchemy_orm(n=100000):
+	    init_sqlalchemy()
+	    t0 = time.time()
+	    for i in range(n):
+	        customer = Customer()
+	        customer.name = 'NAME ' + str(i)
+	        DBSession.add(customer)
+	        if i % 1000 == 0:
+	            DBSession.flush()
+	    DBSession.commit()
+	    print("SQLAlchemy ORM: Total time for " + str(n) +
+	    		" records " + str(time.time() - t0) + " secs")
+
+	def test_sqlalchemy_orm_pk_given(n=100000):
+	    init_sqlalchemy()
+	    t0 = time.time()
+	    for i in range(n):
+	        customer = Customer(id=i+1, name="NAME " + str(i))
+	        DBSession.add(customer)
+	        if i % 1000 == 0:
+	            DBSession.flush()
+	    DBSession.commit()
+	    print(
+	    	"SQLAlchemy ORM pk given: Total time for " + str(n) +
+	    	" records " + str(time.time() - t0) + " secs")
+
+	def test_sqlalchemy_core(n=100000):
+	    init_sqlalchemy()
+	    t0 = time.time()
+	    engine.execute(
+	        Customer.__table__.insert(),
+	        [{"name":'NAME ' + str(i)} for i in range(n)]
+	    )
+	    print(
+	    	"SQLAlchemy Core: Total time for " + str(n) +
+	    	" records " + str(time.time() - t0) + " secs")
+
+	def init_sqlite3(dbname):
+	    conn = sqlite3.connect(dbname)
+	    c = conn.cursor()
+	    c.execute("DROP TABLE IF EXISTS customer")
+	    c.execute("CREATE TABLE customer (id INTEGER NOT NULL, "
+	    				"name VARCHAR(255), PRIMARY KEY(id))")
+	    conn.commit()
+	    return conn
+
+	def test_sqlite3(n=100000, dbname = 'sqlite3.db'):
+	    conn = init_sqlite3(dbname)
+	    c = conn.cursor()
+	    t0 = time.time()
+	    for i in range(n):
+	        row = ('NAME ' + str(i),)
+	        c.execute("INSERT INTO customer (name) VALUES (?)", row)
+	    conn.commit()
+	    print(
+	    	"sqlite3: Total time for " + str(n) +
+	    	" records " + str(time.time() - t0) + " sec")
+
+	if __name__ == '__main__':
+	    test_sqlalchemy_orm(100000)
+	    test_sqlalchemy_orm_pk_given(100000)
+	    test_sqlalchemy_core(100000)
+	    test_sqlite3(100000)
 How do I make a Query that always adds a certain filter to every query?
 ------------------------------------------------------------------------------------------------
 
@@ -606,7 +732,7 @@ at :func:`.mapper`.
 
 
 I'm using ``joinedload()`` or ``lazy=False`` to create a JOIN/OUTER JOIN and SQLAlchemy is not constructing the correct query when I try to add a WHERE, ORDER BY, LIMIT, etc. (which relies upon the (OUTER) JOIN)
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 The joins generated by joined eager loading are only used to fully load related
 collections, and are designed to have no impact on the primary results of the query.
