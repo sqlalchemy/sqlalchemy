@@ -567,7 +567,8 @@ class DefaultRequirements(SuiteRequirements):
     def bulletproof_pickle(self):
         from sqlalchemy.util import pickle
         return only_if(
-            lambda: pickle.__name__ == 'cPickle' and sys.version_info < (3, 0),
+            lambda: pickle.__name__ == 'cPickle' and \
+                sys.version_info < (3, 0) and not util.pypy,
             "Needs Python 2.x cPickle"
         )
 
