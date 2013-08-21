@@ -620,12 +620,21 @@ is competitive with using the raw database API directly.
 
 The example below illustrates time-based tests for four different
 methods of inserting rows, going from the most automated to the least.
-Runtimes observed here are:
+With cPython 2.7, runtimes observed::
 
-* SQLAlchemy ORM: Total time for 100000 records 16.4133379459 secs
-* SQLAlchemy ORM pk given: Total time for 100000 records 9.77570986748 secs
-* SQLAlchemy Core: Total time for 100000 records 0.568737983704 secs
-* sqlite3: Total time for 100000 records 0.595796823502 sec
+	classics-MacBook-Pro:sqlalchemy classic$ python test.py
+	SQLAlchemy ORM: Total time for 100000 records 14.3528850079 secs
+	SQLAlchemy ORM pk given: Total time for 100000 records 10.0164160728 secs
+	SQLAlchemy Core: Total time for 100000 records 0.775382995605 secs
+	sqlite3: Total time for 100000 records 0.676795005798 sec
+
+We can reduce the time by a factor of three using recent versions of `Pypy <http://pypy.org/>`_::
+
+	classics-MacBook-Pro:sqlalchemy classic$ /usr/local/src/pypy-2.1-beta2-osx64/bin/pypy test.py
+	SQLAlchemy ORM: Total time for 100000 records 5.88369488716 secs
+	SQLAlchemy ORM pk given: Total time for 100000 records 3.52294301987 secs
+	SQLAlchemy Core: Total time for 100000 records 0.613556146622 secs
+	sqlite3: Total time for 100000 records 0.442467927933 sec
 
 Script::
 
@@ -638,13 +647,14 @@ Script::
 
 	Base = declarative_base()
 	DBSession = scoped_session(sessionmaker())
+	engine = None
 
 	class Customer(Base):
 	    __tablename__ = "customer"
 	    id = Column(Integer, primary_key=True)
 	    name = Column(String(255))
 
-	def init_sqlalchemy(dbname = 'sqlite:///sqlalchemy.db'):
+	def init_sqlalchemy(dbname='sqlite:///sqlalchemy.db'):
 	    global engine
 	    engine = create_engine(dbname, echo=False)
 	    DBSession.remove()
@@ -663,7 +673,7 @@ Script::
 	            DBSession.flush()
 	    DBSession.commit()
 	    print("SQLAlchemy ORM: Total time for " + str(n) +
-	    		" records " + str(time.time() - t0) + " secs")
+	                " records " + str(time.time() - t0) + " secs")
 
 	def test_sqlalchemy_orm_pk_given(n=100000):
 	    init_sqlalchemy()
@@ -674,31 +684,29 @@ Script::
 	        if i % 1000 == 0:
 	            DBSession.flush()
 	    DBSession.commit()
-	    print(
-	    	"SQLAlchemy ORM pk given: Total time for " + str(n) +
-	    	" records " + str(time.time() - t0) + " secs")
+	    print("SQLAlchemy ORM pk given: Total time for " + str(n) +
+	        " records " + str(time.time() - t0) + " secs")
 
 	def test_sqlalchemy_core(n=100000):
 	    init_sqlalchemy()
 	    t0 = time.time()
 	    engine.execute(
 	        Customer.__table__.insert(),
-	        [{"name":'NAME ' + str(i)} for i in range(n)]
+	        [{"name": 'NAME ' + str(i)} for i in range(n)]
 	    )
-	    print(
-	    	"SQLAlchemy Core: Total time for " + str(n) +
-	    	" records " + str(time.time() - t0) + " secs")
+	    print("SQLAlchemy Core: Total time for " + str(n) +
+	        " records " + str(time.time() - t0) + " secs")
 
 	def init_sqlite3(dbname):
 	    conn = sqlite3.connect(dbname)
 	    c = conn.cursor()
 	    c.execute("DROP TABLE IF EXISTS customer")
 	    c.execute("CREATE TABLE customer (id INTEGER NOT NULL, "
-	    				"name VARCHAR(255), PRIMARY KEY(id))")
+	                                "name VARCHAR(255), PRIMARY KEY(id))")
 	    conn.commit()
 	    return conn
 
-	def test_sqlite3(n=100000, dbname = 'sqlite3.db'):
+	def test_sqlite3(n=100000, dbname='sqlite3.db'):
 	    conn = init_sqlite3(dbname)
 	    c = conn.cursor()
 	    t0 = time.time()
@@ -706,15 +714,17 @@ Script::
 	        row = ('NAME ' + str(i),)
 	        c.execute("INSERT INTO customer (name) VALUES (?)", row)
 	    conn.commit()
-	    print(
-	    	"sqlite3: Total time for " + str(n) +
-	    	" records " + str(time.time() - t0) + " sec")
+	    print("sqlite3: Total time for " + str(n) +
+	        " records " + str(time.time() - t0) + " sec")
 
 	if __name__ == '__main__':
 	    test_sqlalchemy_orm(100000)
 	    test_sqlalchemy_orm_pk_given(100000)
 	    test_sqlalchemy_core(100000)
 	    test_sqlite3(100000)
+
+
+
 How do I make a Query that always adds a certain filter to every query?
 ------------------------------------------------------------------------------------------------
 
