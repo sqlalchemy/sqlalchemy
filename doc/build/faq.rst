@@ -186,7 +186,7 @@ Does SQLAlchemy support ALTER TABLE, CREATE VIEW, CREATE TRIGGER, Schema Upgrade
 
 General ALTER support isn't present in SQLAlchemy directly.  For special DDL
 on an ad-hoc basis, the :class:`.DDL` and related constructs can be used.
-See :ref:`ddl_toplevel` for a discussion on this subject.
+See :doc:`core/ddl` for a discussion on this subject.
 
 A more comprehensive option is to use schema migration tools, such as Alembic
 or SQLAlchemy-Migrate; see :ref:`schema_migrations` for discussion on this.
