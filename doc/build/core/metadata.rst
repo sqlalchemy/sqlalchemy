@@ -225,6 +225,8 @@ To enable the "check first for the table existing" logic, add the
     employees.create(engine, checkfirst=True)
     employees.drop(engine, checkfirst=False)
 
+.. _schema_migrations:
+
 Altering Schemas through Migrations
 -----------------------------------
 

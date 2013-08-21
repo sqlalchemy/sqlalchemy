@@ -130,10 +130,10 @@ class Pool(log.Identified):
           :meth:`unique_connection` method is provided to bypass the
           threadlocal behavior installed into :meth:`connect`.
 
-        :param reset_on_return: If true, reset the database state of
-          connections returned to the pool.  This is typically a
-          ROLLBACK to release locks and transaction resources.
-          Disable at your own peril.  Defaults to True.
+        :param reset_on_return: Configures the action to take
+          on connections as they are returned to the pool.
+          See the argument description in :class:`.QueuePool` for
+          more detail.
 
         :param events: a list of 2-tuples, each of the form
          ``(callable, target)`` which will be passed to event.listen()

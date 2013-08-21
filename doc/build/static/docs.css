@@ -327,6 +327,14 @@ div.note, div.warning, p.deprecated, div.topic, div.admonition  {
 }
 
 
+div.faq {
+  background-color: #EFEFEF;
+}
+
+div.faq ul {
+  list-style: square outside none;
+}
+
 div.admonition, div.topic, .deprecated, .versionadded, .versionchanged {
     border:1px solid #CCCCCC;
     padding:5px 10px;

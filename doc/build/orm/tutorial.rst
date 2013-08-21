@@ -880,6 +880,8 @@ an error:
     ('%ed', 99)
     {stop}No row was found for one()
 
+.. _orm_tutorial_literal_sql:
+
 Using Literal SQL
 -----------------
 

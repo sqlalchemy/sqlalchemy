@@ -97,6 +97,8 @@ or result processing. Execution of "func.current_date()" will return a string.
 "func.current_timestamp()" is registered as returning a DATETIME type in
 SQLAlchemy, so this function still receives SQLAlchemy-level result processing.
 
+.. _pysqlite_threading_pooling:
+
 Threading/Pooling Behavior
 ---------------------------
 
