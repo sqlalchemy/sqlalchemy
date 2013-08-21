@@ -30,6 +30,8 @@ def _adjust_rendered_mod_name(modname, objname):
         return _convert_modname[modname]
     elif (modname, objname) in _convert_modname_w_class:
         return _convert_modname_w_class[(modname, objname)]
+    else:
+        return modname
 
 # im sure this is in the app somewhere, but I don't really
 # know where, so we're doing it here.
