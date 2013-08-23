@@ -806,7 +806,7 @@ there is no ON DELETE CASCADE configured.
 To configure SQLAlchemy to cooperate with ON DELETE CASCADE, see
 :ref:`passive_deletes`.
 
-I set the "foo_id" attribute on my instance to "7", but the "foo" attribute is still `None` - shouldn't it have loaded Foo with id #7?
+I set the "foo_id" attribute on my instance to "7", but the "foo" attribute is still ``None`` - shouldn't it have loaded Foo with id #7?
 ----------------------------------------------------------------------------------------------------------------------------------------------------
 
 The ORM is not constructed in such a way as to support
@@ -823,15 +823,15 @@ set ``o.foo`` is to do just that - set it!::
 
 Manipulation of foreign key attributes is of course entirely legal.  However,
 setting a foreign-key attribute to a new value currently does not trigger
-an "expire" event of the `relationship()` in which it's involved (this may
+an "expire" event of the :func:`.relationship` in which it's involved (this may
 be implemented in the future).  This means
-that for the following sequence:
+that for the following sequence::
 
 	o = Session.query(SomeClass).first()
 	assert o.foo is None
 	o.foo_id = 7
 
-``o.foo`` is loaded when we checked it for `None`.  Setting
+``o.foo`` is loaded when we checked it for ``None``.  Setting
 ``o.foo_id=7`` will have the value of "7" as pending, but no flush
 has occurred.
 
@@ -843,7 +843,7 @@ and expires all state::
 	assert o.foo is <Foo object with id 7>
 
 A more minimal operation is to expire the attribute individually.  The
-``flush()`` is also needed if the object is pending (hasn't been INSERTed yet),
+:meth:`.Session.flush` is also needed if the object is pending (hasn't been INSERTed yet),
 or if the relationship is many-to-one prior to 0.6.5::
 
 	Session.expire(o, ['foo'])
