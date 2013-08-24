@@ -299,11 +299,8 @@ class Query(object):
 
     @property
     def _mapper_entities(self):
-        # TODO: this is wrong, its hardcoded to "primary entity" when
-        # for the case of __all_equivs() it should not be
-        # the name of this accessor is wrong too
         for ent in self._entities:
-            if hasattr(ent, 'primary_entity'):
+            if isinstance(ent, _MapperEntity):
                 yield ent
 
     def _joinpoint_zero(self):
