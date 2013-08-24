@@ -507,13 +507,13 @@ class AttributeState(object):
     to a particular attribute on a particular mapped object.
 
     The :class:`.AttributeState` object is accessed
-    via the :attr:`.InstanceState.attr` collection
+    via the :attr:`.InstanceState.attrs` collection
     of a particular :class:`.InstanceState`::
 
         from sqlalchemy import inspect
 
         insp = inspect(some_mapped_object)
-        attr_state = insp.attr.some_attribute
+        attr_state = insp.attrs.some_attribute
 
     """
 
