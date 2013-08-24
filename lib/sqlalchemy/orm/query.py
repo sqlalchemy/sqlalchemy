@@ -119,6 +119,7 @@ class Query(object):
         if entity_wrapper is None:
             entity_wrapper = _QueryEntity
         self._entities = []
+        self._primary_entity = None
         for ent in util.to_list(entities):
             entity_wrapper(self, ent)
 
@@ -300,11 +301,8 @@ class Query(object):
 
     @property
     def _mapper_entities(self):
-        # TODO: this is wrong, its hardcoded to "primary entity" when
-        # for the case of __all_equivs() it should not be
-        # the name of this accessor is wrong too
         for ent in self._entities:
-            if hasattr(ent, 'primary_entity'):
+            if isinstance(ent, _MapperEntity):
                 yield ent
 
     def _joinpoint_zero(self):
@@ -314,9 +312,10 @@ class Query(object):
         )
 
     def _mapper_zero_or_none(self):
-        if not getattr(self._entities[0], 'primary_entity', False):
+        if self._primary_entity:
+            return self._primary_entity.mapper
+        else:
             return None
-        return self._entities[0].mapper
 
     def _only_mapper_zero(self, rationale=None):
         if len(self._entities) > 1:
@@ -328,16 +327,11 @@ class Query(object):
         return self._mapper_zero()
 
     def _only_full_mapper_zero(self, methname):
-        if len(self._entities) != 1:
+        if self._entities != [self._primary_entity]:
             raise sa_exc.InvalidRequestError(
                     "%s() can only be used against "
                     "a single mapped class." % methname)
-        entity = self._entity_zero()
-        if not hasattr(entity, 'primary_entity'):
-            raise sa_exc.InvalidRequestError(
-                    "%s() can only be used against "
-                    "a single mapped class." % methname)
-        return entity.entity_zero
+        return self._primary_entity.entity_zero
 
     def _only_entity_zero(self, rationale=None):
         if len(self._entities) > 1:
@@ -699,7 +693,7 @@ class Query(object):
 
         """
 
-        if not getattr(self._entities[0], 'primary_entity', False):
+        if not self._primary_entity:
             raise sa_exc.InvalidRequestError(
                             "No primary mapper set up for this Query.")
         entity = self._entities[0]._clone()
@@ -2910,7 +2904,8 @@ class _MapperEntity(_QueryEntity):
     """mapper/class/AliasedClass entity"""
 
     def __init__(self, query, entity):
-        self.primary_entity = not query._entities
+        if not query._primary_entity:
+            query._primary_entity = self
         query._entities.append(self)
 
         self.entities = [entity]
@@ -3024,7 +3019,7 @@ class _MapperEntity(_QueryEntity):
                 self.selectable,
                 self.mapper._equivalent_columns)
 
-        if self.primary_entity:
+        if query._primary_entity is self:
             _instance = loading.instance_processor(
                 self.mapper,
                 context,
