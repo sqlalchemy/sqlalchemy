@@ -4,7 +4,7 @@ from sqlalchemy.sql.expression import ClauseElement, ColumnClause,\
                                     FunctionElement, Select, \
                                     BindParameter
 
-from sqlalchemy.schema import DDLElement
+from sqlalchemy.schema import DDLElement, CreateColumn, CreateTable
 from sqlalchemy.ext.compiler import compiles, deregister
 from sqlalchemy import exc
 from sqlalchemy.sql import table, column, visitors
@@ -34,6 +34,22 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT >>x<<, >>y<< WHERE >>MYTHINGY!<< = :MYTHINGY!_1"
         )
 
+    def test_create_column_skip(self):
+        @compiles(CreateColumn)
+        def skip_xmin(element, compiler, **kw):
+            if element.element.name == 'xmin':
+                return None
+            else:
+                return compiler.visit_create_column(element, **kw)
+
+        t = Table('t', MetaData(), Column('a', Integer),
+                            Column('xmin', Integer),
+                            Column('c', Integer))
+
+        self.assert_compile(
+            CreateTable(t),
+            "CREATE TABLE t (a INTEGER, c INTEGER)"
+        )
     def test_types(self):
         class MyType(TypeEngine):
             pass

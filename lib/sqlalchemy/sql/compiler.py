@@ -2178,11 +2178,13 @@ class DDLCompiler(Compiled):
         for create_column in create.columns:
             column = create_column.element
             try:
-                text += separator
-                separator = ", \n"
-                text += "\t" + self.process(create_column,
+                processed = self.process(create_column,
                                     first_pk=column.primary_key
                                     and not first_pk)
+                if processed is not None:
+                    text += separator
+                    separator = ", \n"
+                    text += "\t" + processed
                 if column.primary_key:
                     first_pk = True
             except exc.CompileError as ce:

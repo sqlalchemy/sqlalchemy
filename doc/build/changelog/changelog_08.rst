@@ -7,6 +7,13 @@
     :version: 0.8.3
 
     .. change::
+        :tags: feature
+
+        The :class:`.CreateColumn` construct can be appled to a custom
+        compilation rule which allows skipping of columns, by producing
+        a rule that returns ``None``.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2807
 

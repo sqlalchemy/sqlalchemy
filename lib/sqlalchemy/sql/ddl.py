@@ -548,6 +548,35 @@ class CreateColumn(_DDLCompiles):
             PRIMARY KEY (x)
         )
 
+    The :class:`.CreateColumn` construct can also be used to skip certain
+    columns when producing a ``CREATE TABLE``.  This is accomplished by
+    creating a compilation rule that conditionally returns ``None``.
+    For example, to produce a
+    :class:`.Table` which includes the Postgresql system column ``xmin``,
+    but omits this column from the ``CREATE TABLE``::
+
+        from sqlalchemy.schema import CreateColumn
+
+        @compiles(CreateColumn)
+        def skip_xmin(element, compiler, **kw):
+            if element.element.name == 'xmin':
+                return None
+            else:
+                return compiler.visit_create_column(element, **kw)
+
+
+        my_table = Table('mytable', metadata,
+                    Column('id', Integer, primary_key=True),
+                    Column('xmin', Integer)
+                )
+
+    Above, a :class:`.CreateTable` construct will generate a ``CREATE TABLE``
+    which only includes the ``id`` column in the string; the ``xmin`` column
+    will be omitted.
+
+    .. versionadded:: 0.8.3 The :class:`.CreateColumn` construct supports
+       skipping of columns by returning ``None`` from a custom compilation rule.
+
     .. versionadded:: 0.8 The :class:`.CreateColumn` construct was added
        to support custom column creation styles.
 
