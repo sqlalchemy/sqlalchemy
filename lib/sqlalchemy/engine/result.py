@@ -621,6 +621,16 @@ class ResultProxy(object):
         else:
             return self.context.compiled_parameters[0]
 
+    @property
+    def returned_defaults(self):
+        """Return the values of default columns that were fetched using
+        the ``returned_defaults`` feature.
+
+        .. versionadded:: 0.9.0
+
+        """
+        return self.context.returned_defaults
+
     def lastrow_has_defaults(self):
         """Return ``lastrow_has_defaults()`` from the underlying
         :class:`.ExecutionContext`.

@@ -6,6 +6,7 @@ from sqlalchemy.types import TypeDecorator
 from sqlalchemy.testing import fixtures, AssertsExecutionResults, engines, \
         assert_raises_message
 from sqlalchemy import exc as sa_exc
+import itertools
 
 class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
     __requires__ = 'returning',
@@ -183,6 +184,127 @@ class KeyReturningTest(fixtures.TestBase, AssertsExecutionResults):
         result = table.select().execute().first()
         assert row[table.c.foo_id] == row['id'] == 1
 
+
+class ReturnDefaultsTest(fixtures.TablesTest):
+    __requires__ = ('returning', )
+    run_define_tables = 'each'
+
+    @classmethod
+    def define_tables(cls, metadata):
+        from sqlalchemy.sql import ColumnElement
+        from sqlalchemy.ext.compiler import compiles
+
+        counter = itertools.count()
+
+        class IncDefault(ColumnElement):
+            pass
+
+        @compiles(IncDefault)
+        def compile(element, compiler, **kw):
+            return str(counter.next())
+
+        Table("t1", metadata,
+                Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
+                Column("data", String(50)),
+                Column("insdef", Integer, default=IncDefault()),
+                Column("upddef", Integer, onupdate=IncDefault())
+            )
+
+    def test_chained_insert_pk(self):
+        t1 = self.tables.t1
+        result = testing.db.execute(
+                        t1.insert().values(upddef=1).return_defaults(t1.c.insdef)
+                    )
+        eq_(
+            dict(result.returned_defaults),
+            {"id": 1, "insdef": 0}
+        )
+
+    def test_arg_insert_pk(self):
+        t1 = self.tables.t1
+        result = testing.db.execute(
+                        t1.insert(return_defaults=[t1.c.insdef]).values(upddef=1)
+                    )
+        eq_(
+            dict(result.returned_defaults),
+            {"id": 1, "insdef": 0}
+        )
+
+    def test_chained_update_pk(self):
+        t1 = self.tables.t1
+        testing.db.execute(
+                        t1.insert().values(upddef=1)
+                    )
+        result = testing.db.execute(t1.update().values(data='d1').
+                            return_defaults(t1.c.upddef))
+        eq_(
+            dict(result.returned_defaults),
+            {"upddef": 1}
+        )
+
+    def test_arg_update_pk(self):
+        t1 = self.tables.t1
+        testing.db.execute(
+                        t1.insert().values(upddef=1)
+                    )
+        result = testing.db.execute(t1.update(return_defaults=[t1.c.upddef]).
+                            values(data='d1'))
+        eq_(
+            dict(result.returned_defaults),
+            {"upddef": 1}
+        )
+
+    def test_insert_non_default(self):
+        """test that a column not marked at all as a
+        default works with this feature."""
+
+        t1 = self.tables.t1
+        result = testing.db.execute(
+                        t1.insert().values(upddef=1).return_defaults(t1.c.data)
+                    )
+        eq_(
+            dict(result.returned_defaults),
+            {"id": 1, "data": None}
+        )
+
+    def test_update_non_default(self):
+        """test that a column not marked at all as a
+        default works with this feature."""
+
+        t1 = self.tables.t1
+        testing.db.execute(
+                        t1.insert().values(upddef=1)
+                    )
+        result = testing.db.execute(t1.update().
+                            values(upddef=2).return_defaults(t1.c.data))
+        eq_(
+            dict(result.returned_defaults),
+            {"data": None}
+        )
+
+    def test_insert_non_default_plus_default(self):
+        t1 = self.tables.t1
+        result = testing.db.execute(
+                        t1.insert().values(upddef=1).return_defaults(
+                                                    t1.c.data, t1.c.insdef)
+                    )
+        eq_(
+            dict(result.returned_defaults),
+            {"id": 1, "data": None, "insdef": 0}
+        )
+
+    def test_update_non_default_plus_default(self):
+        t1 = self.tables.t1
+        testing.db.execute(
+                        t1.insert().values(upddef=1)
+                    )
+        result = testing.db.execute(t1.update().
+                            values(insdef=2).return_defaults(
+                                                t1.c.data, t1.c.upddef))
+        eq_(
+            dict(result.returned_defaults),
+            {"data": None, 'upddef': 1}
+        )
 
 class ImplicitReturningFlag(fixtures.TestBase):
     def test_flag_turned_off(self):

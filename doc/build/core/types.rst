@@ -343,6 +343,8 @@ many decimal places.   Here's a recipe that rounds them down::
                 value = value.quantize(self.quantize)
             return value
 
+.. _custom_guid_type:
+
 Backend-agnostic GUID Type
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 

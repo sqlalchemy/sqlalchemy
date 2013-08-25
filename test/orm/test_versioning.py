@@ -11,7 +11,7 @@ from sqlalchemy.orm import mapper, relationship, Session, \
 from sqlalchemy.testing import eq_, ne_, assert_raises, assert_raises_message
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
-from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertsql import AllOf, CompiledSQL
 
 
 _uuids = [
@@ -461,12 +461,12 @@ class AlternateGeneratorTest(fixtures.MappedTest):
                                 cls.classes.P)
 
         mapper(P, p, version_id_col=p.c.version_id,
-            version_id_generator=lambda x:make_uuid(),
+            version_id_generator=lambda x: make_uuid(),
             properties={
-            'c':relationship(C, uselist=False, cascade='all, delete-orphan')
+            'c': relationship(C, uselist=False, cascade='all, delete-orphan')
         })
         mapper(C, c, version_id_col=c.c.version_id,
-                    version_id_generator=lambda x:make_uuid(),
+                    version_id_generator=lambda x: make_uuid(),
         )
 
     @testing.emits_warning_on('+zxjdbc', r'.*does not support updated rowcount')
@@ -643,3 +643,190 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
             mapper,
             Sub, sub, inherits=Base,
                 version_id_col=sub.c.version_id)
+
+
+class ServerVersioningTest(fixtures.MappedTest):
+    run_define_tables = 'each'
+
+    @classmethod
+    def define_tables(cls, metadata):
+        from sqlalchemy.sql import ColumnElement
+        from sqlalchemy.ext.compiler import compiles
+        import itertools
+
+        counter = itertools.count(1)
+
+        class IncDefault(ColumnElement):
+            pass
+
+        @compiles(IncDefault)
+        def compile(element, compiler, **kw):
+            # cache the counter value on the statement
+            # itself so the assertsql system gets the same
+            # value when it compiles the statement a second time
+            stmt = compiler.statement
+            if hasattr(stmt, "_counter"):
+                return stmt._counter
+            else:
+                stmt._counter = str(counter.next())
+                return stmt._counter
+
+        Table('version_table', metadata,
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('version_id', Integer, nullable=False,
+                            default=IncDefault(), onupdate=IncDefault()),
+              Column('value', String(40), nullable=False))
+
+    @classmethod
+    def setup_classes(cls):
+        class Foo(cls.Basic):
+            pass
+        class Bar(cls.Basic):
+            pass
+
+    def _fixture(self, expire_on_commit=True):
+        Foo, version_table = self.classes.Foo, self.tables.version_table
+
+        mapper(Foo, version_table,
+                version_id_col=version_table.c.version_id,
+                version_id_generator=False,
+            )
+
+        s1 = Session(expire_on_commit=expire_on_commit)
+        return s1
+
+    def test_insert_col(self):
+        sess = self._fixture()
+
+        f1 = self.classes.Foo(value='f1')
+        sess.add(f1)
+
+        statements = [
+                # note that the assertsql tests the rule against
+                # "default" - on a "returning" backend, the statement
+                # includes "RETURNING"
+                CompiledSQL(
+                    "INSERT INTO version_table (version_id, value) "
+                    "VALUES (1, :value)",
+                    lambda ctx: [{'value': 'f1'}]
+                )
+        ]
+        if not testing.db.dialect.implicit_returning:
+            # DBs without implicit returning, we must immediately
+            # SELECT for the new version id
+            statements.append(
+                CompiledSQL(
+                    "SELECT version_table.version_id AS version_table_version_id "
+                    "FROM version_table WHERE version_table.id = :param_1",
+                    lambda ctx: [{"param_1": 1}]
+                )
+            )
+        self.assert_sql_execution(testing.db, sess.flush, *statements)
+
+    def test_update_col(self):
+        sess = self._fixture()
+
+        f1 = self.classes.Foo(value='f1')
+        sess.add(f1)
+        sess.flush()
+
+        f1.value = 'f2'
+
+        statements = [
+                # note that the assertsql tests the rule against
+                # "default" - on a "returning" backend, the statement
+                # includes "RETURNING"
+                CompiledSQL(
+                    "UPDATE version_table SET version_id=2, value=:value "
+                    "WHERE version_table.id = :version_table_id AND "
+                    "version_table.version_id = :version_table_version_id",
+                    lambda ctx: [{"version_table_id": 1,
+                            "version_table_version_id": 1, "value": "f2"}]
+                )
+        ]
+        if not testing.db.dialect.implicit_returning:
+            # DBs without implicit returning, we must immediately
+            # SELECT for the new version id
+            statements.append(
+                CompiledSQL(
+                    "SELECT version_table.version_id AS version_table_version_id "
+                    "FROM version_table WHERE version_table.id = :param_1",
+                    lambda ctx: [{"param_1": 1}]
+                )
+            )
+        self.assert_sql_execution(testing.db, sess.flush, *statements)
+
+
+    def test_delete_col(self):
+        sess = self._fixture()
+
+        f1 = self.classes.Foo(value='f1')
+        sess.add(f1)
+        sess.flush()
+
+        sess.delete(f1)
+
+        statements = [
+                # note that the assertsql tests the rule against
+                # "default" - on a "returning" backend, the statement
+                # includes "RETURNING"
+                CompiledSQL(
+                    "DELETE FROM version_table "
+                    "WHERE version_table.id = :id AND "
+                    "version_table.version_id = :version_id",
+                    lambda ctx: [{"id": 1, "version_id": 1}]
+                )
+        ]
+        self.assert_sql_execution(testing.db, sess.flush, *statements)
+
+    def test_concurrent_mod_err_expire_on_commit(self):
+        sess = self._fixture()
+
+        f1 = self.classes.Foo(value='f1')
+        sess.add(f1)
+        sess.commit()
+
+        f1.value
+
+        s2 = Session()
+        f2 = s2.query(self.classes.Foo).first()
+        f2.value = 'f2'
+        s2.commit()
+
+        f1.value = 'f3'
+
+        assert_raises_message(
+            orm.exc.StaleDataError,
+            r"UPDATE statement on table 'version_table' expected to "
+            r"update 1 row\(s\); 0 were matched.",
+            sess.commit
+        )
+
+    def test_concurrent_mod_err_noexpire_on_commit(self):
+        sess = self._fixture(expire_on_commit=False)
+
+        f1 = self.classes.Foo(value='f1')
+        sess.add(f1)
+        sess.commit()
+
+        # here, we're not expired overall, so no load occurs and we
+        # stay without a version id, unless we've emitted
+        # a SELECT for it within the flush.
+        f1.value
+
+        s2 = Session(expire_on_commit=False)
+        f2 = s2.query(self.classes.Foo).first()
+        f2.value = 'f2'
+        s2.commit()
+
+        f1.value = 'f3'
+
+        assert_raises_message(
+            orm.exc.StaleDataError,
+            r"UPDATE statement on table 'version_table' expected to "
+            r"update 1 row\(s\); 0 were matched.",
+            sess.commit
+        )
+
+

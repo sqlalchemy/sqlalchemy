@@ -7,6 +7,37 @@
     :version: 0.9.0
 
     .. change::
+        :tags: feature, orm
+        :tickets: 2793
+
+        The ``version_id_generator`` parameter of ``Mapper`` can now be specified
+        to rely upon server generated version identifiers, using triggers
+        or other database-provided versioning features, by passing the value
+        ``False``.  The ORM will use RETURNING when available to immediately
+        load the new version identifier, else it will emit a second SELECT.
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 2793
+
+        The ``eager_defaults`` flag of :class:`.Mapper` will now allow the
+        newly generated default values to be fetched using an inline
+        RETURNING clause, rather than a second SELECT statement, for backends
+        that support RETURNING.
+
+    .. change::
+        :tags: feature, core
+        :tickets: 2793
+
+        Added a new variant to :meth:`.ValuesBase.returning` called
+        :meth:`.ValuesBase.return_defaults`; this allows arbitrary columns
+        to be added to the RETURNING clause of the statement without interfering
+        with the compilers usual "implicit returning" feature, which is used to
+        efficiently fetch newly generated primary key values.  For supporting
+        backends, a dictionary of all fetched values is present at
+        :attr:`.ResultProxy.returned_defaults`.
+
+    .. change::
         :tags: feature
 
         Added a new flag ``system=True`` to :class:`.Column`, which marks

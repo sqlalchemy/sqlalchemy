@@ -343,6 +343,21 @@ div.admonition, div.topic, .deprecated, .versionadded, .versionchanged {
     box-shadow: 2px 2px 3px #DFDFDF;
 }
 
+
+div.sidebar {
+    background-color: #FFFFEE;
+    border: 1px solid #DDDDBB;
+    float: right;
+    margin: 0 0 0.5em 1em;
+    padding: 7px 7px 0;
+    width: 40%;
+    font-size:.9em;
+}
+
+p.sidebar-title {
+    font-weight: bold;
+}
+
 /* grrr sphinx changing your document structures, removing classes.... */
 
 .versionadded .versionmodified,

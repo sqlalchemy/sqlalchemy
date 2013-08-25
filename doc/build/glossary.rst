@@ -521,3 +521,41 @@ Glossary
 
             http://en.wikipedia.org/wiki/Durability_(database_systems)
 
+    RETURNING
+        This is a non-SQL standard clause provided in various forms by
+        certain backends, which provides the service of returning a result
+        set upon execution of an INSERT, UPDATE or DELETE statement.  Any set
+        of columns from the matched rows can be returned, as though they were
+        produced from a SELECT statement.
+
+        The RETURNING clause provides both a dramatic performance boost to
+        common update/select scenarios, including retrieval of inline- or
+        default- generated primary key values and defaults at the moment they
+        were created, as well as a way to get at server-generated
+        default values in an atomic way.
+
+        An example of RETURNING, idiomatic to Postgresql, looks like::
+
+            INSERT INTO user_account (name) VALUES ('new name') RETURNING id, timestamp
+
+        Above, the INSERT statement will provide upon execution a result set
+        which includes the values of the columns ``user_account.id`` and
+        ``user_account.timestamp``, which above should have been generated as default
+        values as they are not included otherwise (but note any series of columns
+        or SQL expressions can be placed into RETURNING, not just default-value columns).
+
+        The backends that currently support
+        RETURNING or a similar construct are Postgresql, SQL Server, Oracle,
+        and Firebird.    The Postgresql and Firebird implementations are generally
+        full featured, whereas the implementations of SQL Server and Oracle
+        have caveats. On SQL Server, the clause is known as "OUTPUT INSERTED"
+        for INSERT and UPDATE statements and "OUTPUT DELETED" for DELETE statements;
+        the key caveat is that triggers are not supported in conjunction with this
+        keyword.  On Oracle, it is known as "RETURNING...INTO", and requires that the
+        value be placed into an OUT paramter, meaning not only is the syntax awkward,
+        but it can also only be used for one row at a time.
+
+        SQLAlchemy's :meth:`.UpdateBase.returning` system provides a layer of abstraction
+        on top of the RETURNING systems of these backends to provide a consistent
+        interface for returning columns.  The ORM also includes many optimizations
+        that make use of RETURNING when available.

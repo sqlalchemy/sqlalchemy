@@ -860,7 +860,11 @@ class DefaultTest(fixtures.MappedTest):
 
         session = create_session()
         session.add(h1)
-        session.flush()
+
+        if testing.db.dialect.implicit_returning:
+            self.sql_count_(1, session.flush)
+        else:
+            self.sql_count_(2, session.flush)
 
         self.sql_count_(0, lambda: eq_(h1.hoho, hohoval))
 

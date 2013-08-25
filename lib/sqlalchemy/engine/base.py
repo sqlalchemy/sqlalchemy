@@ -898,6 +898,12 @@ class Connection(Connectable):
             elif not context._is_explicit_returning:
                 result.close(_autoclose_connection=False)
                 result._metadata = None
+        elif context.isupdate:
+            if context._is_implicit_returning:
+                context._fetch_implicit_update_returning(result)
+                result.close(_autoclose_connection=False)
+                result._metadata = None
+
         elif result._metadata is None:
             # no results, get rowcount
             # (which requires open cursor on some drivers

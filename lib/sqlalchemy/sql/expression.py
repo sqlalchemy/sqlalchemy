@@ -49,7 +49,7 @@ from .selectable import Alias, Join, Select, Selectable, TableClause, \
         subquery, HasPrefixes, Exists, ScalarSelect
 
 
-from .dml import Insert, Update, Delete
+from .dml import Insert, Update, Delete, UpdateBase, ValuesBase
 
 # factory functions - these pull class-bound constructors and classmethods
 # from SQL elements and selectables into public functions.  This allows
@@ -99,6 +99,7 @@ from .elements import _literal_as_text, _clause_element_as_expr,\
     _column_as_key, _literal_as_binds, _select_iterables, \
     _corresponding_column_or_error
 from .selectable import _interpret_as_from
+
 
 
 # old names for compatibility
