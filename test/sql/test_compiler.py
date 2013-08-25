@@ -2809,6 +2809,13 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(t),
             "CREATE TABLE t (x INTEGER, z INTEGER)"
         )
+        m2 = MetaData()
+        t2 = t.tometadata(m2)
+        self.assert_compile(
+            schema.CreateTable(t2),
+            "CREATE TABLE t (x INTEGER, z INTEGER)"
+        )
+
 
 class InlineDefaultTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'

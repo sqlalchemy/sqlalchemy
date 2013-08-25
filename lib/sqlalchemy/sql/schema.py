@@ -1122,6 +1122,7 @@ class Column(SchemaItem, ColumnClause):
                 primary_key=self.primary_key,
                 nullable=self.nullable,
                 unique=self.unique,
+                system=self.system,
                 quote=self.quote,
                 index=self.index,
                 autoincrement=self.autoincrement,
