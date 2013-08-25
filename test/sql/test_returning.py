@@ -201,7 +201,7 @@ class ReturnDefaultsTest(fixtures.TablesTest):
 
         @compiles(IncDefault)
         def compile(element, compiler, **kw):
-            return str(counter.next())
+            return str(next(counter))
 
         Table("t1", metadata,
                 Column("id", Integer, primary_key=True, test_needs_autoincrement=True),

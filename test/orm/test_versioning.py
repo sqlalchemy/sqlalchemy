@@ -668,7 +668,7 @@ class ServerVersioningTest(fixtures.MappedTest):
             if hasattr(stmt, "_counter"):
                 return stmt._counter
             else:
-                stmt._counter = str(counter.next())
+                stmt._counter = str(next(counter))
                 return stmt._counter
 
         Table('version_table', metadata,

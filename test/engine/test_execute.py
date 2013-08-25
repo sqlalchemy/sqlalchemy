@@ -17,9 +17,9 @@ from sqlalchemy.testing.engines import testing_engine
 import logging.handlers
 from sqlalchemy.dialects.oracle.zxjdbc import ReturningParam
 from sqlalchemy.engine import result as _result, default
-from sqlalchemy.engine.base import Connection, Engine
+from sqlalchemy.engine.base import Engine
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.mock import Mock, call
+from sqlalchemy.testing.mock import Mock, call, patch
 
 
 users, metadata, users_autoinc = None, None, None
@@ -29,11 +29,11 @@ class ExecuteTest(fixtures.TestBase):
         global users, users_autoinc, metadata
         metadata = MetaData(testing.db)
         users = Table('users', metadata,
-            Column('user_id', INT, primary_key = True, autoincrement=False),
+            Column('user_id', INT, primary_key=True, autoincrement=False),
             Column('user_name', VARCHAR(20)),
         )
         users_autoinc = Table('users_autoinc', metadata,
-            Column('user_id', INT, primary_key = True,
+            Column('user_id', INT, primary_key=True,
                                     test_needs_autoincrement=True),
             Column('user_name', VARCHAR(20)),
         )
@@ -892,42 +892,42 @@ class ResultProxyTest(fixtures.TestBase):
     def test_no_rowcount_on_selects_inserts(self):
         """assert that rowcount is only called on deletes and updates.
 
-        This because cursor.rowcount can be expensive on some dialects
-        such as Firebird.
+        This because cursor.rowcount may can be expensive on some dialects
+        such as Firebird, however many dialects require it be called
+        before the cursor is closed.
 
         """
 
         metadata = self.metadata
 
         engine = engines.testing_engine()
-        metadata.bind = engine
 
         t = Table('t1', metadata,
             Column('data', String(10))
         )
-        metadata.create_all()
+        metadata.create_all(engine)
 
-        class BreakRowcountMixin(object):
-            @property
-            def rowcount(self):
-                assert False
+        with patch.object(engine.dialect.execution_ctx_cls, "rowcount") as mock_rowcount:
+            mock_rowcount.__get__ = Mock()
+            engine.execute(t.insert(),
+                                {'data': 'd1'},
+                                {'data': 'd2'},
+                                {'data': 'd3'})
 
-        execution_ctx_cls = engine.dialect.execution_ctx_cls
-        engine.dialect.execution_ctx_cls = type("FakeCtx",
-                                            (BreakRowcountMixin,
-                                            execution_ctx_cls),
-                                            {})
+            eq_(len(mock_rowcount.__get__.mock_calls), 0)
 
-        try:
-            r = t.insert().execute({'data': 'd1'}, {'data': 'd2'},
-                                   {'data': 'd3'})
-            eq_(t.select().execute().fetchall(), [('d1', ), ('d2', ),
-                ('d3', )])
-            assert_raises(AssertionError, t.update().execute, {'data'
-                          : 'd4'})
-            assert_raises(AssertionError, t.delete().execute)
-        finally:
-            engine.dialect.execution_ctx_cls = execution_ctx_cls
+            eq_(
+                    engine.execute(t.select()).fetchall(),
+                    [('d1', ), ('d2', ), ('d3', )]
+            )
+            eq_(len(mock_rowcount.__get__.mock_calls), 0)
+
+            engine.execute(t.update(), {'data': 'd4'})
+
+            eq_(len(mock_rowcount.__get__.mock_calls), 1)
+
+            engine.execute(t.delete())
+            eq_(len(mock_rowcount.__get__.mock_calls), 2)
 
 
     @testing.requires.python26
