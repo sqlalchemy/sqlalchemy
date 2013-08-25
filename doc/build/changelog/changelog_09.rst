@@ -9,7 +9,12 @@
     .. change::
         :tags: feature
 
-        The :class:`.CreateColumn` construct can be appled to a custom
+        Added a new flag ``system=True`` to :class:`.Column`, which marks
+        the column as a "system" column which is automatically made present
+        by the database (such as Postgresql ``oid`` or ``xmin``).  The
+        column will be omitted from the ``CREATE TABLE`` statement but will
+        otherwise be available for querying.   In addition, the
+        :class:`.CreateColumn` construct can be appled to a custom
         compilation rule which allows skipping of columns, by producing
         a rule that returns ``None``.  Also in 0.8.3.
 

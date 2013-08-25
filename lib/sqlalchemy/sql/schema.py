@@ -893,6 +893,18 @@ class Column(SchemaItem, ColumnClause):
              an explicit name, use the :class:`.UniqueConstraint` or
              :class:`.Index` constructs explicitly.
 
+        :param system: When ``True``, indicates this is a "system" column,
+             that is a column which is automatically made available by the
+             database, and should not be included in the columns list for a
+             ``CREATE TABLE`` statement.
+
+             For more elaborate scenarios where columns should be conditionally
+             rendered differently on different backends, consider custom
+             compilation rules for :class:`.CreateColumn`.
+
+             ..versionadded:: 0.8.3 Added the ``system=True`` parameter to
+               :class:`.Column`.
+
         """
 
         name = kwargs.pop('name', None)
@@ -922,6 +934,7 @@ class Column(SchemaItem, ColumnClause):
         self.server_onupdate = kwargs.pop('server_onupdate', None)
         self.index = kwargs.pop('index', None)
         self.unique = kwargs.pop('unique', None)
+        self.system = kwargs.pop('system', False)
         self.quote = kwargs.pop('quote', None)
         self.doc = kwargs.pop('doc', None)
         self.onupdate = kwargs.pop('onupdate', None)

@@ -2205,6 +2205,9 @@ class DDLCompiler(Compiled):
     def visit_create_column(self, create, first_pk=False):
         column = create.element
 
+        if column.system:
+            return None
+
         text = self.get_column_specification(
                         column,
                         first_pk=first_pk
