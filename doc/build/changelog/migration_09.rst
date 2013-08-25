@@ -363,6 +363,28 @@ rendering::
 
 :ticket:`722`
 
+Server Side Version Counting
+-----------------------------
+
+The versioning feature of the ORM (now also documented at :ref:`mapper_version_counter`)
+can now make use of server-side version counting schemes, such as those produced
+by triggers or database system columns.   By providing the value ``False``
+to the ``version_id_generator`` parameter, the ORM will fetch the version identifier
+from each row at the same time the INSERT or UPDATE is emitted.   It is strongly
+recommended that this feature be used only on a backend where RETURNING can also
+be used, else the additional SELECT statements will add significant performance
+overhead.   The example provided at :ref:`server_side_version_counter` illustrates
+the usage of the Postgresql ``xmin`` system column in order to integrate it with
+the ORM's versioning feature.
+
+As a related feature, a new method :meth:`.ValuesBase.return_defaults` has been
+added to :class:`.Insert` and :class:`.Update` which in constrast to the
+:meth:`.UpdateBase.returning` method provides RETURNING support
+that integrates with the "implicit identifier returning" feature and is automatically
+utilized or de-utilized depending on backend.
+
+:ticket:`2793`
+
 Behavioral Improvements
 =======================
 
@@ -532,6 +554,28 @@ Generates (everywhere except SQLite)::
         OR managers.manager_name = %(manager_name_1)s
 
 :ticket:`2369` :ticket:`2587`
+
+ORM can efficiently fetch just-generated INSERT/UPDATE defaults using RETURNING
+-------------------------------------------------------------------------------
+
+The :class:`.Mapper` has long supported an undocumented flag known as
+``eager_defaults=True``.  The effect of this flag is that when an INSERT or UPDATE
+proceeds, and the row is known to have server-generated default values,
+a SELECT would immediately follow it in order to "eagerly" load those new values.
+Normally, the server-generated columns are marked as "expired" on the object,
+so that no overhead is incurred unless the application actually accesses these
+columns soon after the flush.   The ``eager_defaults`` flag was therefore not
+of much use as it could only decrease performance, and was present only to support
+exotic event schemes where users needed default values to be available
+immediately within the flush process.
+
+In 0.9, as a result of the version id enhancements, ``eager_defaults`` can now
+emit a RETURNING clause for these values, so on a backend with strong RETURNING
+support in particular Postgresql, the ORM can fetch newly generated default
+and SQL expression values inline with the INSERT or UPDATE.  The feature takes
+place automatically when the target backend and :class:`.Table` supports
+"implicit returning".
+
 
 .. _migration_1068:
 
