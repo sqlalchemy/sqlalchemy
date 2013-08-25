@@ -1274,7 +1274,8 @@ automatically providing the new value of the version id counter.
 
 The ORM typically does not actively fetch the values of database-generated
 values when it emits an INSERT or UPDATE, instead leaving these columns as
-"expired" and to be fetched when they are next accessed.  However, when a
+"expired" and to be fetched when they are next accessed, unless the ``eager_defaults``
+:func:`.mapper` flag is set.  However, when a
 server side version column is used, the ORM needs to actively fetch the newly
 generated value.  This is so that the version counter is set up *before*
 any concurrent transaction may update it again.   This fetching is also
@@ -1291,10 +1292,10 @@ like this::
 Where above, the ORM can acquire any newly generated primary key values along
 with server-generated version identifiers in one statement.   When the backend
 does not support RETURNING, an additional SELECT must be emitted for **every**
-INSERT, which is much less efficient, and also introduces the possibility of
+INSERT and UPDATE, which is much less efficient, and also introduces the possibility of
 missed version counters::
 
-    INSERT INTO "user" (name) VALUES (%(name)s) RETURNING "user".id, "user".version_id
+    INSERT INTO "user" (name) VALUES (%(name)s)
     {'name': 'ed'}
 
     SELECT "user".version_id AS user_version_id FROM "user" where
