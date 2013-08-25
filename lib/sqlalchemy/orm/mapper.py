@@ -1819,7 +1819,7 @@ class Mapper(_InspectionAttr):
 
         Normally, this is equivalent to :attr:`.mapped_table`, unless
         the ``with_polymorphic`` feature is in use, in which case the
-        full "polymoprhic" selectable is returned.
+        full "polymorphic" selectable is returned.
 
         """
         return self._with_polymorphic_selectable
