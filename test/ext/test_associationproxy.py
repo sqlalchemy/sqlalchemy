@@ -422,11 +422,10 @@ class SetTest(_CollectionOperations):
 
         self.assert_(p1.children == set(['a', 'b', 'c']))
 
-        try:
-            p1.children.remove('d')
-            self.fail()
-        except KeyError:
-            pass
+        assert_raises(
+            KeyError,
+            p1.children.remove, "d"
+        )
 
         self.assert_(len(p1.children) == 3)
         p1.children.discard('d')
@@ -598,12 +597,11 @@ class CustomObjectTest(_CollectionOperations):
 
         # We didn't provide an alternate _AssociationList implementation
         # for our ObjectCollection, so indexing will fail.
+        assert_raises(
+            TypeError,
+            p.children.__getitem__, 1
+        )
 
-        try:
-            v = p.children[1]
-            self.fail()
-        except TypeError:
-            pass
 
 class ProxyFactoryTest(ListTest):
     def setup(self):
@@ -718,11 +716,10 @@ class ScalarTest(fixtures.TestBase):
         p = Parent('p')
 
         # No child
-        try:
-            v = p.foo
-            self.fail()
-        except:
-            pass
+        assert_raises(
+            AttributeError,
+            getattr, p, "foo"
+        )
 
         p.child = Child(foo='a', bar='b', baz='c')
 
@@ -744,18 +741,16 @@ class ScalarTest(fixtures.TestBase):
         p.child = None
 
         # No child again
-        try:
-            v = p.foo
-            self.fail()
-        except:
-            pass
+        assert_raises(
+            AttributeError,
+            getattr, p, "foo"
+        )
 
         # Bogus creator for this scalar type
-        try:
-            p.foo = 'zzz'
-            self.fail()
-        except TypeError:
-            pass
+        assert_raises(
+            TypeError,
+            setattr, p, "foo", "zzz"
+        )
 
         p.bar = 'yyy'
 
