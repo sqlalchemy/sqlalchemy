@@ -9,7 +9,6 @@ from sqlalchemy.ext.associationproxy import *
 from sqlalchemy.ext.associationproxy import _AssociationList
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing.util import gc_collect
-from sqlalchemy.sql import not_
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table, Column
@@ -139,7 +138,7 @@ class _CollectionOperations(fixtures.TestBase):
         self.assert_(len(p1._children) == 0)
         self.assert_(len(p1.children) == 0)
 
-        p1.children = ['a','b','c']
+        p1.children = ['a', 'b', 'c']
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
 
@@ -324,7 +323,7 @@ class CustomDictTest(DictTest):
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
 
-        self.assert_(set(p1.children) == set(['d','e','f']))
+        self.assert_(set(p1.children) == set(['d', 'e', 'f']))
 
         del ch
         p1 = self.roundtrip(p1)
@@ -407,7 +406,7 @@ class SetTest(_CollectionOperations):
         self.assert_(len(p1._children) == 0)
         self.assert_(len(p1.children) == 0)
 
-        p1.children = ['a','b','c']
+        p1.children = ['a', 'b', 'c']
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
 
@@ -421,7 +420,7 @@ class SetTest(_CollectionOperations):
         self.assert_('b' in p1.children)
         self.assert_('d' not in p1.children)
 
-        self.assert_(p1.children == set(['a','b','c']))
+        self.assert_(p1.children == set(['a', 'b', 'c']))
 
         try:
             p1.children.remove('d')
@@ -442,9 +441,9 @@ class SetTest(_CollectionOperations):
         self.assert_(len(p1.children) == 2)
         self.assert_(popped not in p1.children)
 
-        p1.children = ['a','b','c']
+        p1.children = ['a', 'b', 'c']
         p1 = self.roundtrip(p1)
-        self.assert_(p1.children == set(['a','b','c']))
+        self.assert_(p1.children == set(['a', 'b', 'c']))
 
         p1.children.discard('b')
         p1 = self.roundtrip(p1)
@@ -476,12 +475,12 @@ class SetTest(_CollectionOperations):
         Parent, Child = self.Parent, self.Child
 
         p1 = Parent('P1')
-        p1.children = ['a','b','c']
-        control = set(['a','b','c'])
+        p1.children = ['a', 'b', 'c']
+        control = set(['a', 'b', 'c'])
 
-        for other in (set(['a','b','c']), set(['a','b','c','d']),
-                      set(['a']), set(['a','b']),
-                      set(['c','d']), set(['e', 'f', 'g']),
+        for other in (set(['a', 'b', 'c']), set(['a', 'b', 'c', 'd']),
+                      set(['a']), set(['a', 'b']),
+                      set(['c', 'd']), set(['e', 'f', 'g']),
                       set()):
 
             eq_(p1.children.union(other),
@@ -499,12 +498,12 @@ class SetTest(_CollectionOperations):
             eq_(p1.children.issuperset(other),
                              control.issuperset(other))
 
-            self.assert_((p1.children == other)  ==  (control == other))
-            self.assert_((p1.children != other)  ==  (control != other))
-            self.assert_((p1.children < other)   ==  (control < other))
-            self.assert_((p1.children <= other)  ==  (control <= other))
-            self.assert_((p1.children > other)   ==  (control > other))
-            self.assert_((p1.children >= other)  ==  (control >= other))
+            self.assert_((p1.children == other) == (control == other))
+            self.assert_((p1.children != other) == (control != other))
+            self.assert_((p1.children < other) == (control < other))
+            self.assert_((p1.children <= other) == (control <= other))
+            self.assert_((p1.children > other) == (control > other))
+            self.assert_((p1.children >= other) == (control >= other))
 
     def test_set_mutation(self):
         Parent, Child = self.Parent, self.Child
@@ -513,9 +512,9 @@ class SetTest(_CollectionOperations):
         for op in ('update', 'intersection_update',
                    'difference_update', 'symmetric_difference_update'):
             for base in (['a', 'b', 'c'], []):
-                for other in (set(['a','b','c']), set(['a','b','c','d']),
-                              set(['a']), set(['a','b']),
-                              set(['c','d']), set(['e', 'f', 'g']),
+                for other in (set(['a', 'b', 'c']), set(['a', 'b', 'c', 'd']),
+                              set(['a']), set(['a', 'b']),
+                              set(['c', 'd']), set(['e', 'f', 'g']),
                               set()):
                     p = Parent('p')
                     p.children = base[:]
@@ -544,9 +543,9 @@ class SetTest(_CollectionOperations):
         # in-place mutations
         for op in ('|=', '-=', '&=', '^='):
             for base in (['a', 'b', 'c'], []):
-                for other in (set(['a','b','c']), set(['a','b','c','d']),
-                              set(['a']), set(['a','b']),
-                              set(['c','d']), set(['e', 'f', 'g']),
+                for other in (set(['a', 'b', 'c']), set(['a', 'b', 'c', 'd']),
+                              set(['a']), set(['a', 'b']),
+                              set(['c', 'd']), set(['e', 'f', 'g']),
                               frozenset(['e', 'f', 'g']),
                               set()):
                     p = Parent('p')
@@ -840,7 +839,7 @@ class LazyLoadTest(fixtures.TestBase):
                                   collection_class=list)})
 
         p = Parent('p')
-        p.children = ['a','b','c']
+        p.children = ['a', 'b', 'c']
 
         p = self.roundtrip(p)
 
@@ -858,7 +857,7 @@ class LazyLoadTest(fixtures.TestBase):
                                   collection_class=list)})
 
         p = Parent('p')
-        p.children = ['a','b','c']
+        p.children = ['a', 'b', 'c']
 
         p = self.roundtrip(p)
 
@@ -1024,7 +1023,7 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
     @classmethod
     def define_tables(cls, metadata):
         Table('userkeywords', metadata,
-          Column('keyword_id', Integer,ForeignKey('keywords.id'), primary_key=True),
+          Column('keyword_id', Integer, ForeignKey('keywords.id'), primary_key=True),
           Column('user_id', Integer, ForeignKey('users.id'))
         )
         Table('users', metadata,
@@ -1094,15 +1093,15 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
                                 cls.classes.Singular)
 
         mapper(User, users, properties={
-            'singular':relationship(Singular)
+            'singular': relationship(Singular)
         })
         mapper(Keyword, keywords, properties={
-            'user_keyword':relationship(UserKeyword, uselist=False)
+            'user_keyword': relationship(UserKeyword, uselist=False)
         })
 
         mapper(UserKeyword, userkeywords, properties={
-            'user' : relationship(User, backref='user_keywords'),
-            'keyword' : relationship(Keyword)
+            'user': relationship(User, backref='user_keywords'),
+            'keyword': relationship(Keyword)
         })
         mapper(Singular, singular, properties={
             'keywords': relationship(Keyword)
@@ -1300,7 +1299,7 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             self.session.query(User).filter(User.singular_value == None),
             self.session.query(User).filter(
                     or_(
-                        User.singular.has(Singular.value==None),
+                        User.singular.has(Singular.value == None),
                         User.singular == None
                     )
                 )
@@ -1324,7 +1323,7 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
         self._equivalent(
             self.session.query(User).filter(User.singular_value == "singular4"),
             self.session.query(User).filter(
-                        User.singular.has(Singular.value=="singular4"),
+                        User.singular.has(Singular.value == "singular4"),
                 )
         )
 
@@ -1343,7 +1342,7 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
         # a special case where we provide an empty has() on a
         # non-object-targeted association proxy.
         User = self.classes.User
-        Singular = self.classes.Singular
+        self.classes.Singular
 
         self._equivalent(
             self.session.query(User).filter(User.singular_value.has()),
@@ -1356,7 +1355,7 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
         # a special case where we provide an empty has() on a
         # non-object-targeted association proxy.
         User = self.classes.User
-        Singular = self.classes.Singular
+        self.classes.Singular
 
         self._equivalent(
             self.session.query(User).filter(~User.singular_value.has()),
@@ -1368,7 +1367,7 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_has_criterion_nul(self):
         # but we don't allow that with any criterion...
         User = self.classes.User
-        Singular = self.classes.Singular
+        self.classes.Singular
 
         assert_raises_message(
             exc.ArgumentError,
@@ -1380,7 +1379,7 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_has_kwargs_nul(self):
         # ... or kwargs
         User = self.classes.User
-        Singular = self.classes.Singular
+        self.classes.Singular
 
         assert_raises_message(
             exc.ArgumentError,
@@ -1391,32 +1390,32 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_filter_scalar_contains_fails_nul_nul(self):
         Keyword = self.classes.Keyword
 
-        assert_raises(exc.InvalidRequestError, lambda : \
-                      Keyword.user.contains(self.u))
+        assert_raises(exc.InvalidRequestError,
+                lambda: Keyword.user.contains(self.u))
 
     def test_filter_scalar_any_fails_nul_nul(self):
         Keyword = self.classes.Keyword
 
-        assert_raises(exc.InvalidRequestError, lambda : \
-                      Keyword.user.any(name='user2'))
+        assert_raises(exc.InvalidRequestError,
+                lambda: Keyword.user.any(name='user2'))
 
     def test_filter_collection_has_fails_ul_nul(self):
         User = self.classes.User
 
-        assert_raises(exc.InvalidRequestError, lambda : \
-                      User.keywords.has(keyword='quick'))
+        assert_raises(exc.InvalidRequestError,
+                lambda: User.keywords.has(keyword='quick'))
 
     def test_filter_collection_eq_fails_ul_nul(self):
         User = self.classes.User
 
-        assert_raises(exc.InvalidRequestError, lambda : \
-                      User.keywords == self.kw)
+        assert_raises(exc.InvalidRequestError,
+                lambda: User.keywords == self.kw)
 
     def test_filter_collection_ne_fails_ul_nul(self):
         User = self.classes.User
 
-        assert_raises(exc.InvalidRequestError, lambda : \
-                      User.keywords != self.kw)
+        assert_raises(exc.InvalidRequestError,
+                lambda: User.keywords != self.kw)
 
     def test_join_separate_attr(self):
         User = self.classes.User
@@ -1458,7 +1457,7 @@ class DictOfTupleUpdateTest(fixtures.TestBase):
         b = Table('b', m, Column('id', Integer, primary_key=True),
                     Column('aid', Integer, ForeignKey('a.id')))
         mapper(A, a, properties={
-            'orig':relationship(B, collection_class=attribute_mapped_collection('key'))
+            'orig': relationship(B, collection_class=attribute_mapped_collection('key'))
         })
         mapper(B, b)
         self.A = A
@@ -1467,22 +1466,22 @@ class DictOfTupleUpdateTest(fixtures.TestBase):
     def test_update_one_elem_dict(self):
         a1 = self.A()
         a1.elements.update({("B", 3): 'elem2'})
-        eq_(a1.elements, {("B",3):'elem2'})
+        eq_(a1.elements, {("B", 3): 'elem2'})
 
     def test_update_multi_elem_dict(self):
         a1 = self.A()
         a1.elements.update({("B", 3): 'elem2', ("C", 4): "elem3"})
-        eq_(a1.elements, {("B",3):'elem2', ("C", 4): "elem3"})
+        eq_(a1.elements, {("B", 3): 'elem2', ("C", 4): "elem3"})
 
     def test_update_one_elem_list(self):
         a1 = self.A()
         a1.elements.update([(("B", 3), 'elem2')])
-        eq_(a1.elements, {("B",3):'elem2'})
+        eq_(a1.elements, {("B", 3): 'elem2'})
 
     def test_update_multi_elem_list(self):
         a1 = self.A()
         a1.elements.update([(("B", 3), 'elem2'), (("C", 4), "elem3")])
-        eq_(a1.elements, {("B",3):'elem2', ("C", 4): "elem3"})
+        eq_(a1.elements, {("B", 3): 'elem2', ("C", 4): "elem3"})
 
     def test_update_one_elem_varg(self):
         a1 = self.A()
