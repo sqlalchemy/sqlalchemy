@@ -1057,6 +1057,9 @@ class UseExistingTest(fixtures.TablesTest):
                       autoload=True, keep_existing=True)
         assert isinstance(users.c.name.type, Unicode)
 
+    @testing.skip_if(
+            lambda: testing.db.dialect.requires_name_normalize,
+            "test depends on lowercase as case insensitive")
     def test_keep_existing_quote_no_orig(self):
         meta2 = self._notexisting_fixture()
         users = Table('users', meta2, quote=True,
@@ -1120,6 +1123,9 @@ class UseExistingTest(fixtures.TablesTest):
                       autoload=True, extend_existing=True)
         assert isinstance(users.c.name.type, Unicode)
 
+    @testing.skip_if(
+            lambda: testing.db.dialect.requires_name_normalize,
+            "test depends on lowercase as case insensitive")
     def test_extend_existing_quote_no_orig(self):
         meta2 = self._notexisting_fixture()
         users = Table('users', meta2, quote=True,
