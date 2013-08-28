@@ -1426,6 +1426,12 @@ class ColumnEventsTest(fixtures.TestBase):
             cls.metadata,
             Column('x', sa.Integer, primary_key=True),
         )
+        cls.related = Table(
+            'related',
+            cls.metadata,
+            Column('q', sa.Integer, sa.ForeignKey('to_reflect.x'))
+        )
+        sa.Index("some_index", cls.to_reflect.c.x)
         cls.metadata.create_all(testing.db)
 
     @classmethod
@@ -1435,7 +1441,7 @@ class ColumnEventsTest(fixtures.TestBase):
     def teardown(self):
         events.SchemaEventTarget.dispatch._clear()
 
-    def _do_test(self, col, update, assert_):
+    def _do_test(self, col, update, assert_, tablename="to_reflect"):
         # load the actual Table class, not the test
         # wrapper
         from sqlalchemy.schema import Table
@@ -1445,21 +1451,45 @@ class ColumnEventsTest(fixtures.TestBase):
             if column_info['name'] == col:
                 column_info.update(update)
 
-        t = Table('to_reflect', m, autoload=True, listeners=[
+        t = Table(tablename, m, autoload=True, listeners=[
             ('column_reflect', column_reflect),
         ])
         assert_(t)
 
         m = MetaData(testing.db)
         event.listen(Table, 'column_reflect', column_reflect)
-        t2 = Table('to_reflect', m, autoload=True)
+        t2 = Table(tablename, m, autoload=True)
         assert_(t2)
 
     def test_override_key(self):
+        def assertions(table):
+            eq_(table.c.YXZ.name, "x")
+            eq_(set(table.primary_key), set([table.c.YXZ]))
+            idx = list(table.indexes)[0]
+            eq_(idx.columns, [table.c.YXZ])
+
         self._do_test(
             "x", {"key": "YXZ"},
-            lambda table: eq_(table.c.YXZ.name, "x")
+            assertions
         )
+
+    def test_override_key_fk(self):
+        m = MetaData(testing.db)
+        def column_reflect(insp, table, column_info):
+
+            if column_info['name'] == 'q':
+                column_info['key'] = 'qyz'
+            elif column_info['name'] == 'x':
+                column_info['key'] = 'xyz'
+
+        to_reflect = Table("to_reflect", m, autoload=True, listeners=[
+            ('column_reflect', column_reflect),
+        ])
+        related = Table("related", m, autoload=True, listeners=[
+            ('column_reflect', column_reflect),
+            ])
+
+        assert related.c.qyz.references(to_reflect.c.xyz)
 
     def test_override_type(self):
         def assert_(table):

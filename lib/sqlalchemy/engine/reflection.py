@@ -368,7 +368,8 @@ class Inspector(object):
 
         # table attributes we might need.
         reflection_options = dict(
-            (k, table.kwargs.get(k)) for k in dialect.reflection_options if k in table.kwargs)
+            (k, table.kwargs.get(k))
+            for k in dialect.reflection_options if k in table.kwargs)
 
         schema = table.schema
         table_name = table.name
@@ -394,8 +395,12 @@ class Inspector(object):
 
         # columns
         found_table = False
+        cols_by_orig_name = {}
+
         for col_d in self.get_columns(table_name, schema, **tblkw):
             found_table = True
+            orig_name = col_d['name']
+
             table.dispatch.column_reflect(self, table, col_d)
 
             name = col_d['name']
@@ -433,7 +438,9 @@ class Inspector(object):
                     sequence.increment = seq['increment']
                 colargs.append(sequence)
 
-            col = sa_schema.Column(name, coltype, *colargs, **col_kw)
+            cols_by_orig_name[orig_name] = col = \
+                        sa_schema.Column(name, coltype, *colargs, **col_kw)
+
             table.append_column(col)
 
         if not found_table:
@@ -443,9 +450,9 @@ class Inspector(object):
         pk_cons = self.get_pk_constraint(table_name, schema, **tblkw)
         if pk_cons:
             pk_cols = [
-                table.c[pk]
+                cols_by_orig_name[pk]
                 for pk in pk_cons['constrained_columns']
-                if pk in table.c and pk not in exclude_columns
+                if pk in cols_by_orig_name and pk not in exclude_columns
             ]
             pk_cols += [
                 pk
@@ -463,7 +470,11 @@ class Inspector(object):
         fkeys = self.get_foreign_keys(table_name, schema, **tblkw)
         for fkey_d in fkeys:
             conname = fkey_d['name']
-            constrained_columns = fkey_d['constrained_columns']
+            constrained_columns = [
+                                    cols_by_orig_name[c].key
+                                    if c in cols_by_orig_name else c
+                                    for c in fkey_d['constrained_columns']
+                                ]
             if exclude_columns and set(constrained_columns).intersection(
                                 exclude_columns):
                 continue
@@ -503,5 +514,5 @@ class Inspector(object):
                     "Omitting %s KEY for (%s), key covers omitted columns." %
                     (flavor, ', '.join(columns)))
                 continue
-            sa_schema.Index(name, *[table.columns[c] for c in columns],
+            sa_schema.Index(name, *[cols_by_orig_name[c] for c in columns],
                          **dict(unique=unique))
