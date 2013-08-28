@@ -274,17 +274,17 @@ def function_call_count(variance=0.05):
                 deviance = int(callcount * variance)
                 failed = abs(callcount - expected_count) > deviance
 
-            if failed:
-                if _profile_stats.write:
-                    _profile_stats.replace(callcount)
-                else:
-                    raise AssertionError(
-                        "Adjusted function call count %s not within %s%% "
-                        "of expected %s. Rerun with --write-profiles to "
-                        "regenerate this callcount."
-                        % (
-                        callcount, (variance * 100),
-                        expected_count))
+                if failed:
+                    if _profile_stats.write:
+                        _profile_stats.replace(callcount)
+                    else:
+                        raise AssertionError(
+                            "Adjusted function call count %s not within %s%% "
+                            "of expected %s. Rerun with --write-profiles to "
+                            "regenerate this callcount."
+                            % (
+                            callcount, (variance * 100),
+                            expected_count))
             return fn_result
         return update_wrapper(wrap, fn)
     return decorate

@@ -391,7 +391,7 @@ test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_5_aggregates 3.3_postgr
 
 # TEST: test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_6_editing
 
-test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_6_editing 2.7_postgresql_psycopg2_cextensions 1811
+test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_6_editing 2.7_postgresql_psycopg2_cextensions 1905
 test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_6_editing 2.7_postgresql_psycopg2_nocextensions 1858
 test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_6_editing 3.2_postgresql_psycopg2_nocextensions 1731
 test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_6_editing 3.3_postgresql_psycopg2_cextensions 1846
