@@ -2143,9 +2143,15 @@ class quoted_name(util.text_type):
 
     """
 
+    #def __new__(cls, value, quote, sprcls=False):
     def __new__(cls, value, quote):
         if value is None:
             return None
+        # experimental - don't bother with quoted_name
+        # if quote flag is None.  doesn't seem to make any dent
+        # in performance however
+        # elif not sprcls and quote is None:
+        #   return value
         elif isinstance(value, cls) and (
                 quote is None or value.quote == quote
             ):
@@ -2180,6 +2186,7 @@ class _truncated_label(quoted_name):
 
     def __new__(cls, value, quote=None):
         quote = getattr(value, "quote", quote)
+        #return super(_truncated_label, cls).__new__(cls, value, quote, True)
         return super(_truncated_label, cls).__new__(cls, value, quote)
 
     def __reduce__(self):
