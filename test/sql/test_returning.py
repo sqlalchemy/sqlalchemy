@@ -282,7 +282,7 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             [None]
         )
 
-    #@testing.fails_on("oracle+cx_oracle", "seems like a cx_oracle bug")
+    @testing.fails_on("oracle+cx_oracle", "seems like a cx_oracle bug")
     def test_insert_non_default_plus_default(self):
         t1 = self.tables.t1
         result = testing.db.execute(
