@@ -8,6 +8,15 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 2811
+
+        Fixed bug where using the ``column_reflect`` event to change the ``.key``
+        of the incoming :class:`.Column` would prevent primary key constraints,
+        indexes, and foreign key constraints from being correctly reflected.
+        Also in 0.8.3.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 2812
 
         A rework to the way that "quoted" identifiers are handled, in that
