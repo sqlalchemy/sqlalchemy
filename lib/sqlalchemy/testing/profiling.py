@@ -162,6 +162,15 @@ class ProfileStatsFile(object):
         per_platform['current_count'] += 1
         return result
 
+    def replace(self, callcount):
+        test_key = _current_test
+        per_fn = self.data[test_key]
+        per_platform = per_fn[self.platform_key]
+        counts = per_platform['counts']
+        counts[-1] = callcount
+        if self.write:
+            self._write()
+
     def _header(self):
         return \
         "# %s\n"\
@@ -263,16 +272,19 @@ def function_call_count(variance=0.05):
 
             if expected_count:
                 deviance = int(callcount * variance)
-                if abs(callcount - expected_count) > deviance:
+                failed = abs(callcount - expected_count) > deviance
+
+            if failed:
+                if _profile_stats.write:
+                    _profile_stats.replace(callcount)
+                else:
                     raise AssertionError(
                         "Adjusted function call count %s not within %s%% "
-                        "of expected %s. (Delete line %d of file %s to "
-                        "regenerate this callcount, when tests are run "
-                        "with --write-profiles.)"
+                        "of expected %s. Rerun with --write-profiles to "
+                        "regenerate this callcount."
                         % (
                         callcount, (variance * 100),
-                        expected_count, line_no,
-                        _profile_stats.fname))
+                        expected_count))
             return fn_result
         return update_wrapper(wrap, fn)
     return decorate
