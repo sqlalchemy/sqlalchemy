@@ -521,7 +521,6 @@ class OracleCompiler(compiler.SQLCompiler):
             return self.process(alias.original, **kwargs)
 
     def returning_clause(self, stmt, returning_cols):
-
         columns = []
         binds = []
         for i, column in enumerate(expression._select_iterables(returning_cols)):

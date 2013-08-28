@@ -507,7 +507,6 @@ class ReturningResultProxy(_result.FullyBufferedResultProxy):
 
     def _cursor_description(self):
         returning = self.context.compiled.returning
-
         return [
             ("ret_%d" % i, None)
             for i, col in enumerate(returning)

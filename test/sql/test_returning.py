@@ -216,8 +216,8 @@ class ReturnDefaultsTest(fixtures.TablesTest):
                         t1.insert().values(upddef=1).return_defaults(t1.c.insdef)
                     )
         eq_(
-            dict(result.returned_defaults),
-            {"id": 1, "insdef": 0}
+            [result.returned_defaults[k] for k in (t1.c.id, t1.c.insdef)],
+            [1, 0]
         )
 
     def test_arg_insert_pk(self):
@@ -226,8 +226,8 @@ class ReturnDefaultsTest(fixtures.TablesTest):
                         t1.insert(return_defaults=[t1.c.insdef]).values(upddef=1)
                     )
         eq_(
-            dict(result.returned_defaults),
-            {"id": 1, "insdef": 0}
+            [result.returned_defaults[k] for k in (t1.c.id, t1.c.insdef)],
+            [1, 0]
         )
 
     def test_chained_update_pk(self):
@@ -238,8 +238,8 @@ class ReturnDefaultsTest(fixtures.TablesTest):
         result = testing.db.execute(t1.update().values(data='d1').
                             return_defaults(t1.c.upddef))
         eq_(
-            dict(result.returned_defaults),
-            {"upddef": 1}
+            [result.returned_defaults[k] for k in (t1.c.upddef,)],
+            [1]
         )
 
     def test_arg_update_pk(self):
@@ -250,8 +250,8 @@ class ReturnDefaultsTest(fixtures.TablesTest):
         result = testing.db.execute(t1.update(return_defaults=[t1.c.upddef]).
                             values(data='d1'))
         eq_(
-            dict(result.returned_defaults),
-            {"upddef": 1}
+            [result.returned_defaults[k] for k in (t1.c.upddef,)],
+            [1]
         )
 
     def test_insert_non_default(self):
@@ -263,8 +263,8 @@ class ReturnDefaultsTest(fixtures.TablesTest):
                         t1.insert().values(upddef=1).return_defaults(t1.c.data)
                     )
         eq_(
-            dict(result.returned_defaults),
-            {"id": 1, "data": None}
+            [result.returned_defaults[k] for k in (t1.c.id, t1.c.data,)],
+            [1, None]
         )
 
     def test_update_non_default(self):
@@ -278,10 +278,11 @@ class ReturnDefaultsTest(fixtures.TablesTest):
         result = testing.db.execute(t1.update().
                             values(upddef=2).return_defaults(t1.c.data))
         eq_(
-            dict(result.returned_defaults),
-            {"data": None}
+            [result.returned_defaults[k] for k in (t1.c.data,)],
+            [None]
         )
 
+    @testing.fails_on("oracle+cx_oracle", "seems like a cx_oracle bug")
     def test_insert_non_default_plus_default(self):
         t1 = self.tables.t1
         result = testing.db.execute(
@@ -293,6 +294,7 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             {"id": 1, "data": None, "insdef": 0}
         )
 
+    @testing.fails_on("oracle+cx_oracle", "seems like a cx_oracle bug")
     def test_update_non_default_plus_default(self):
         t1 = self.tables.t1
         testing.db.execute(

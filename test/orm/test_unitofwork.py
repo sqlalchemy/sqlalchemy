@@ -849,6 +849,7 @@ class DefaultTest(fixtures.MappedTest):
         eq_(h5.foober, 'im the new foober')
 
     @testing.fails_on('firebird', 'Data type unknown on the parameter')
+    @testing.fails_on("oracle+cx_oracle", "seems like a cx_oracle bug")
     def test_eager_defaults(self):
         hohoval, default_t, Hoho = (self.other.hohoval,
                                 self.tables.default_t,
