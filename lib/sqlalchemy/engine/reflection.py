@@ -534,6 +534,8 @@ class Inspector(object):
         fkeys = self.get_foreign_keys(table_name, schema, **tblkw)
         for fkey_d in fkeys:
             conname = fkey_d['name']
+            # look for columns by orig name in cols_by_orig_name,
+            # but support columns that are in-Python only as fallback
             constrained_columns = [
                                     cols_by_orig_name[c].key
                                     if c in cols_by_orig_name else c
@@ -578,5 +580,11 @@ class Inspector(object):
                     "Omitting %s KEY for (%s), key covers omitted columns." %
                     (flavor, ', '.join(columns)))
                 continue
-            sa_schema.Index(name, *[cols_by_orig_name[c] for c in columns],
+            # look for columns by orig name in cols_by_orig_name,
+            # but support columns that are in-Python only as fallback
+            sa_schema.Index(name, *[
+                                cols_by_orig_name[c] if c in cols_by_orig_name
+                                        else table.c[c]
+                                for c in columns
+                        ],
                          **dict(unique=unique))
