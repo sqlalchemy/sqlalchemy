@@ -319,7 +319,7 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 3.3
 # TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_string
 
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.6_sqlite_pysqlite_nocextensions 15447
-test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_mysqldb_cextensions 485
+test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_mysqldb_cextensions 512
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_mysqldb_nocextensions 15505
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_oracle_cx_oracle_nocextensions 35582
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_postgresql_psycopg2_cextensions 20471
@@ -337,7 +337,7 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_string 3.3_sqlite_pysqlite_
 # TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_unicode
 
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.6_sqlite_pysqlite_nocextensions 15447
-test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_mysqldb_cextensions 485
+test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_mysqldb_cextensions 512
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_mysqldb_nocextensions 45505
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_oracle_cx_oracle_nocextensions 35572
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_postgresql_psycopg2_cextensions 20471
