@@ -121,9 +121,9 @@ class Table(SchemaItem, expression.TableClause):
     a second time will return the *same* :class:`.Table` object - in this way
     the :class:`.Table` constructor acts as a registry function.
 
-    See also:
+    .. seealso::
 
-    :ref:`metadata_describing` - Introduction to database metadata
+        :ref:`metadata_describing` - Introduction to database metadata
 
     Constructor arguments are as follows:
 
@@ -603,7 +603,9 @@ class Table(SchemaItem, expression.TableClause):
         :class:`.Table`, using the given :class:`.Connectable`
         for connectivity.
 
-        See also :meth:`.MetaData.create_all`.
+        .. seealso::
+
+             :meth:`.MetaData.create_all`.
 
         """
 
@@ -618,7 +620,9 @@ class Table(SchemaItem, expression.TableClause):
         :class:`.Table`, using the given :class:`.Connectable`
         for connectivity.
 
-        See also :meth:`.MetaData.drop_all`.
+        .. seealso::
+
+            :meth:`.MetaData.drop_all`.
 
         """
         if bind is None:
@@ -1716,7 +1720,11 @@ class Sequence(DefaultGenerator):
     be emitted as well.   For platforms that don't support sequences,
     the :class:`.Sequence` construct is ignored.
 
-    See also: :class:`.CreateSequence` :class:`.DropSequence`
+    .. seealso::
+
+        :class:`.CreateSequence`
+
+        :class:`.DropSequence`
 
     """
 
@@ -2488,7 +2496,9 @@ class Index(ColumnCollectionMixin, SchemaItem):
         :class:`.Index`, using the given :class:`.Connectable`
         for connectivity.
 
-        See also :meth:`.MetaData.create_all`.
+        .. seealso::
+
+            :meth:`.MetaData.create_all`.
 
         """
         if bind is None:
@@ -2501,7 +2511,9 @@ class Index(ColumnCollectionMixin, SchemaItem):
         :class:`.Index`, using the given :class:`.Connectable`
         for connectivity.
 
-        See also :meth:`.MetaData.drop_all`.
+        .. seealso::
+
+            :meth:`.MetaData.drop_all`.
 
         """
         if bind is None:
@@ -2543,12 +2555,9 @@ class MetaData(SchemaItem):
     MetaData is a thread-safe object after tables have been explicitly defined
     or loaded via reflection.
 
-    See also:
+    .. seealso::
 
-    :ref:`metadata_describing` - Introduction to database metadata
-
-    .. index::
-      single: thread safety; MetaData
+        :ref:`metadata_describing` - Introduction to database metadata
 
     """
 
@@ -2950,7 +2959,7 @@ class DDLElement(expression.Executable, _DDLCompiles):
             AddConstraint(constraint).execute_if(dialect='postgresql')
         )
 
-    See also:
+    .. seealso::
 
         :class:`.DDL`
 
@@ -3102,7 +3111,7 @@ class DDLElement(expression.Executable, _DDLCompiles):
         :param state: any value which will be passed to the callable_
           as the ``state`` keyword argument.
 
-        See also:
+        .. seealso::
 
             :class:`.DDLEvents`
 
@@ -3266,9 +3275,10 @@ class DDL(DDLElement):
           default when ``execute()`` is invoked without a bind argument.
 
 
-        See also:
+        .. seealso::
 
             :class:`.DDLEvents`
+
             :mod:`sqlalchemy.event`
 
         """
