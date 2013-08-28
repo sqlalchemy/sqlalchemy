@@ -1012,7 +1012,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
                           for col in index.kwargs["mssql_include"]]
 
             text += " INCLUDE (%s)" \
-                % ', '.join([preparer.quote(c.name, c.quote)
+                % ', '.join([preparer.quote(c.name)
                              for c in inclusions])
 
         return text
@@ -1035,7 +1035,7 @@ class MSIdentifierPreparer(compiler.IdentifierPreparer):
     def _escape_identifier(self, value):
         return value
 
-    def quote_schema(self, schema, force=True):
+    def quote_schema(self, schema, force=None):
         """Prepare a quoted table and schema name."""
         result = '.'.join([self.quote(x, force) for x in schema.split('.')])
         return result

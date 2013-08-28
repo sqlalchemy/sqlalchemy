@@ -30,6 +30,7 @@ class Immutable(object):
         return self
 
 
+
 def _from_objects(*elements):
     return itertools.chain(*[element._from_objects for element in elements])
 

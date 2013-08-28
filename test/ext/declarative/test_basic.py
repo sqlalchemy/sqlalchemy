@@ -1276,8 +1276,10 @@ class DeclarativeTest(DeclarativeTestBase):
         # case
 
         sa.orm.configure_mappers()
-        eq_(str(list(Address.user_id.property.columns[0].foreign_keys)[0]),
-            "ForeignKey('users.id')")
+        eq_(
+            list(Address.user_id.property.columns[0].foreign_keys)[0].column,
+            User.__table__.c.id
+        )
         Base.metadata.create_all()
         u1 = User(name='u1', addresses=[Address(email='one'),
                   Address(email='two')])

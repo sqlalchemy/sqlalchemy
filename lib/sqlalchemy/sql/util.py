@@ -269,7 +269,6 @@ def expression_as_ddl(clause):
         elif isinstance(element, ColumnClause) and \
                 element.table is not None:
             col = ColumnClause(element.name)
-            col.quote = element.quote
             return col
         else:
             return None

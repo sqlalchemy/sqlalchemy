@@ -136,7 +136,6 @@ class FromClause(Selectable):
     __visit_name__ = 'fromclause'
     named_with_column = False
     _hide_froms = []
-    quote = None
     schema = None
     _memoized_property = util.group_expirable_memoized_property(["_columns"])
 

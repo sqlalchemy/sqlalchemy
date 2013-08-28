@@ -7,6 +7,28 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2812
+
+        A rework to the way that "quoted" identifiers are handled, in that
+        instead of relying upon various ``quote=True`` flags being passed around,
+        these flags are converted into rich string objects with quoting information
+        included at the point at which they are passed to common schema constructs
+        like :class:`.Table`, :class:`.Column`, etc.   This solves the issue
+        of various methods that don't correctly honor the "quote" flag such
+        as :meth:`.Engine.has_table` and related methods.  The :class:`.quoted_name`
+        object is a string subclass that can also be used explicitly if needed;
+        the object will hold onto the quoting preferences passed and will
+        also bypass the "name normalization" performed by dialects that
+        standardize on uppercase symbols, such as Oracle, Firebird and DB2.
+        The upshot is that the "uppercase" backends can now work with force-quoted
+        names, such as lowercase-quoted names and new reserved words.
+
+        .. seealso::
+
+            :ref:`change_2812`
+
+    .. change::
         :tags: feature, orm
         :tickets: 2793
 

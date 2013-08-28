@@ -12,6 +12,7 @@ import datetime as dt
 import codecs
 
 from .type_api import TypeEngine, TypeDecorator, to_instance
+from .elements import quoted_name
 from .default_comparator import _DefaultColumnComparator
 from .. import exc, util, processors
 from .base import _bind_or_error, SchemaEventTarget
@@ -840,8 +841,11 @@ class SchemaType(SchemaEventTarget):
     """
 
     def __init__(self, **kw):
-        self.name = kw.pop('name', None)
-        self.quote = kw.pop('quote', None)
+        name = kw.pop('name', None)
+        if name is not None:
+            self.name = quoted_name(name, kw.pop('quote', None))
+        else:
+            self.name = None
         self.schema = kw.pop('schema', None)
         self.metadata = kw.pop('metadata', None)
         self.inherit_schema = kw.pop('inherit_schema', False)
@@ -896,7 +900,6 @@ class SchemaType(SchemaEventTarget):
         schema = kw.pop('schema', self.schema)
         metadata = kw.pop('metadata', self.metadata)
         return impltype(name=self.name,
-                    quote=self.quote,
                     schema=schema,
                     metadata=metadata,
                     inherit_schema=self.inherit_schema,
@@ -1008,10 +1011,7 @@ class Enum(String, SchemaType):
                 owning :class:`.Table`.  If this behavior is desired,
                 set the ``inherit_schema`` flag to ``True``.
 
-        :param quote: Force quoting to be on or off on the type's name. If
-           left as the default of `None`, the usual schema-level "case
-           sensitive"/"reserved name" rules are used to determine if this
-           type's name should be quoted.
+        :param quote: Set explicit quoting preferences for the type's name.
 
         :param inherit_schema: When ``True``, the "schema" from the owning
            :class:`.Table` will be copied to the "schema" attribute of this
@@ -1071,7 +1071,6 @@ class Enum(String, SchemaType):
         metadata = kw.pop('metadata', self.metadata)
         if issubclass(impltype, Enum):
             return impltype(name=self.name,
-                        quote=self.quote,
                         schema=schema,
                         metadata=metadata,
                         convert_unicode=self.convert_unicode,

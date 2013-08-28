@@ -292,6 +292,34 @@ against ``b_value`` directly.
 
 :ticket:`2751`
 
+.. _change_2812:
+
+Schema identifiers now carry along their own quoting information
+---------------------------------------------------------------------
+
+This change simplifies the Core's usage of so-called "quote" flags, such
+as the ``quote`` flag passed to :class:`.Table` and :class:`.Column`.  The flag
+is now internalized within the string name itself, which is now represented
+as an instance of  :class:`.quoted_name`, a string subclass.   The
+:class:`.IdentifierPreparer` now relies solely on the quoting preferences
+reported by the :class:`.quoted_name` object rather than checking for any
+explicit ``quote`` flags in most cases.   The issue resolved here includes
+that various case-sensitive methods such as :meth:`.Engine.has_table` as well
+as similar methods within dialects now function with explicitly quoted names,
+without the need to complicate or introduce backwards-incompatible changes
+to those APIs (many of which are 3rd party) with the details of quoting flags -
+in particular, a wider range of identifiers now function correctly with the
+so-called "uppercase" backends like Oracle, Firebird, and DB2 (backends that
+store and report upon table and column names using all uppercase for case
+insensitive names).
+
+The :class:`.quoted_name` object is used internally as needed; however if
+other keywords require fixed quoting preferences, the class is available
+publically.
+
+:ticket:`2812`
+
+
 New Features
 ============
 

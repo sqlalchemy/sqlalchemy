@@ -1672,6 +1672,17 @@ class Engine(Connectable, log.Identified):
             return self.dialect.get_table_names(conn, schema)
 
     def has_table(self, table_name, schema=None):
+        """Return True if the given backend has a table of the given name.
+
+        .. seealso::
+
+            :ref:`metadata_reflection_inspector` - detailed schema inspection using
+            the :class:`.Inspector` interface.
+
+            :class:`.quoted_name` - used to pass quoting information along
+            with a schema identifier.
+
+        """
         return self.run_callable(self.dialect.has_table, table_name, schema)
 
     def raw_connection(self):

@@ -169,7 +169,7 @@ class Inspector(object):
          database's default schema is
          used, else the named schema is searched.  If the database does not
          support named schemas, behavior is undefined if ``schema`` is not
-         passed as ``None``.
+         passed as ``None``.  For special quoting, use :class:`.quoted_name`.
 
         :param order_by: Optional, may be the string "foreign_key" to sort
          the result on foreign key dependencies.
@@ -206,6 +206,13 @@ class Inspector(object):
 
         This currently includes some options that apply to MySQL tables.
 
+        :param table_name: string name of the table.  For special quoting,
+         use :class:`.quoted_name`.
+
+        :param schema: string schema name; if omitted, uses the default schema
+         of the database connection.  For special quoting,
+         use :class:`.quoted_name`.
+
         """
         if hasattr(self.dialect, 'get_table_options'):
             return self.dialect.get_table_options(
@@ -217,6 +224,8 @@ class Inspector(object):
         """Return all view names in `schema`.
 
         :param schema: Optional, retrieve names from a non-default schema.
+         For special quoting, use :class:`.quoted_name`.
+
         """
 
         return self.dialect.get_view_names(self.bind, schema,
@@ -226,6 +235,8 @@ class Inspector(object):
         """Return definition for `view_name`.
 
         :param schema: Optional, retrieve names from a non-default schema.
+         For special quoting, use :class:`.quoted_name`.
+
         """
 
         return self.dialect.get_view_definition(
@@ -251,6 +262,14 @@ class Inspector(object):
 
         attrs
           dict containing optional column attributes
+
+        :param table_name: string name of the table.  For special quoting,
+         use :class:`.quoted_name`.
+
+        :param schema: string schema name; if omitted, uses the default schema
+         of the database connection.  For special quoting,
+         use :class:`.quoted_name`.
+
         """
 
         col_defs = self.dialect.get_columns(self.bind, table_name, schema,
@@ -288,6 +307,13 @@ class Inspector(object):
         name
           optional name of the primary key constraint.
 
+        :param table_name: string name of the table.  For special quoting,
+         use :class:`.quoted_name`.
+
+        :param schema: string schema name; if omitted, uses the default schema
+         of the database connection.  For special quoting,
+         use :class:`.quoted_name`.
+
         """
         return self.dialect.get_pk_constraint(self.bind, table_name, schema,
                                               info_cache=self.info_cache,
@@ -315,6 +341,13 @@ class Inspector(object):
         name
           optional name of the foreign key constraint.
 
+        :param table_name: string name of the table.  For special quoting,
+         use :class:`.quoted_name`.
+
+        :param schema: string schema name; if omitted, uses the default schema
+         of the database connection.  For special quoting,
+         use :class:`.quoted_name`.
+
         """
 
         return self.dialect.get_foreign_keys(self.bind, table_name, schema,
@@ -336,6 +369,13 @@ class Inspector(object):
         unique
           boolean
 
+        :param table_name: string name of the table.  For special quoting,
+         use :class:`.quoted_name`.
+
+        :param schema: string schema name; if omitted, uses the default schema
+         of the database connection.  For special quoting,
+         use :class:`.quoted_name`.
+
         """
 
         return self.dialect.get_indexes(self.bind, table_name,
@@ -353,6 +393,13 @@ class Inspector(object):
 
         column_names
           list of column names in order
+
+        :param table_name: string name of the table.  For special quoting,
+         use :class:`.quoted_name`.
+
+        :param schema: string schema name; if omitted, uses the default schema
+         of the database connection.  For special quoting,
+         use :class:`.quoted_name`.
 
         .. versionadded:: 0.9.0
 

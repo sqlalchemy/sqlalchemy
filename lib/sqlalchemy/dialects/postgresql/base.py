@@ -1094,7 +1094,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         if 'postgresql_using' in index.kwargs:
             using = index.kwargs['postgresql_using']
-            text += "USING %s " % preparer.quote(using, index.quote)
+            text += "USING %s " % preparer.quote(using)
 
         ops = index.kwargs.get('postgresql_ops', {})
         text += "(%s)" \
@@ -1128,7 +1128,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
         elements = []
         for c in constraint.columns:
             op = constraint.operators[c.name]
-            elements.append(self.preparer.quote(c.name, c.quote)+' WITH '+op)
+            elements.append(self.preparer.quote(c.name) + ' WITH '+op)
         text += "EXCLUDE USING %s (%s)" % (constraint.using, ', '.join(elements))
         if constraint.where is not None:
             sqltext = sql_util.expression_as_ddl(constraint.where)
@@ -1250,9 +1250,9 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
         if not type_.name:
             raise exc.CompileError("Postgresql ENUM type requires a name.")
 
-        name = self.quote(type_.name, type_.quote)
+        name = self.quote(type_.name)
         if not self.omit_schema and use_schema and type_.schema is not None:
-            name = self.quote_schema(type_.schema, type_.quote) + "." + name
+            name = self.quote_schema(type_.schema) + "." + name
         return name
 
 

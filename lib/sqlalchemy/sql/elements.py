@@ -530,7 +530,6 @@ class ColumnElement(ClauseElement, operators.ColumnOperators):
     __visit_name__ = 'column'
     primary_key = False
     foreign_keys = []
-    quote = None
     _label = None
     _key_label = None
     _alt_names = ()
@@ -693,7 +692,6 @@ class BindParameter(ColumnElement):
     """
 
     __visit_name__ = 'bindparam'
-    quote = None
 
     _is_crud = False
 
@@ -778,6 +776,8 @@ class BindParameter(ColumnElement):
         if value is NO_ARG:
             value = None
 
+        if quote is not None:
+            key = quoted_name(key, quote)
 
         if unique:
             self.key = _anonymous_label('%%(%d %s)s' % (id(self), key
@@ -800,7 +800,6 @@ class BindParameter(ColumnElement):
         self.callable = callable_
         self.isoutparam = isoutparam
         self.required = required
-        self.quote = quote
         if type_ is None:
             if _compared_to_type is not None:
                 self.type = \
@@ -1838,7 +1837,6 @@ class Label(ColumnElement):
         self.key = self._label = self._key_label = self.name
         self._element = element
         self._type = type_
-        self.quote = element.quote
         self._proxies = [element]
 
     @util.memoized_property
@@ -2027,6 +2025,12 @@ class ColumnClause(Immutable, ColumnElement):
             else:
                 label = t.name + "_" + name
 
+            # propagate name quoting rules for labels.
+            if getattr(name, "quote", None) is not None:
+                label = quoted_name(label, name.quote)
+            elif getattr(t.name, "quote", None) is not None:
+                label = quoted_name(label, t.name.quote)
+
             # ensure the label name doesn't conflict with that
             # of an existing column
             if label in t.c:
@@ -2078,7 +2082,6 @@ class _IdentifiedClause(Executable, ClauseElement):
     __visit_name__ = 'identified'
     _execution_options = \
         Executable._execution_options.union({'autocommit': False})
-    quote = None
 
     def __init__(self, ident):
         self.ident = ident
@@ -2096,9 +2099,91 @@ class ReleaseSavepointClause(_IdentifiedClause):
     __visit_name__ = 'release_savepoint'
 
 
-class _truncated_label(util.text_type):
+class quoted_name(util.text_type):
+    """Represent a SQL identifier combined with quoting preferences.
+
+    :class:`.quoted_name` is a Python unicode/str subclass which
+    represents a particular identifier name along with a
+    ``quote`` flag.  This ``quote`` flag, when set to
+    ``True`` or ``False``, overrides automatic quoting behavior
+    for this identifier in order to either unconditionally quote
+    or to not quote the name.  If left at its default of ``None``,
+    quoting behavior is applied to the identifier on a per-backend basis
+    based on an examination of the token itself.
+
+    A :class:`.quoted_name` object with ``quote=True`` is also
+    prevented from being modified in the case of a so-called
+    "name normalize" option.  Certain database backends, such as
+    Oracle, Firebird, and DB2 "normalize" case-insensitive names
+    as uppercase.  The SQLAlchemy dialects for these backends
+    convert from SQLAlchemy's lower-case-means-insensitive convention
+    to the upper-case-means-insensitive conventions of those backends.
+    The ``quote=True`` flag here will prevent this conversion from occurring
+    to support an identifier that's quoted as all lower case against
+    such a backend.
+
+    The :class:`.quoted_name` object is normally created automatically
+    when specifying the name for key schema constructs such as :class:`.Table`,
+    :class:`.Column`, and others.   The class can also be passed explicitly
+    as the name to any function that receives a name which can be quoted.
+    Such as to use the :meth:`.Engine.has_table` method with an unconditionally
+    quoted name::
+
+        from sqlaclchemy import create_engine
+        from sqlalchemy.sql.elements import quoted_name
+
+        engine = create_engine("oracle+cx_oracle://some_dsn")
+        engine.has_table(quoted_name("some_table", True))
+
+    The above logic will run the "has table" logic against the Oracle backend,
+    passing the name exactly as ``"some_table"`` without converting to
+    upper case.
+
+    .. versionadded:: 0.9.0
+
+    """
+
+    def __new__(cls, value, quote):
+        if value is None:
+            return None
+        elif isinstance(value, cls) and (
+                quote is None or value.quote == quote
+            ):
+            return value
+        self = super(quoted_name, cls).__new__(cls, value)
+        self.quote = quote
+        return self
+
+    def __reduce__(self):
+        return quoted_name, (util.text_type(self), self.quote)
+
+    @util.memoized_instancemethod
+    def lower(self):
+        if self.quote:
+            return self
+        else:
+            return util.text_type(self).lower()
+
+    @util.memoized_instancemethod
+    def upper(self):
+        if self.quote:
+            return self
+        else:
+            return util.text_type(self).upper()
+
+    def __repr__(self):
+        return "'%s'" % self
+
+class _truncated_label(quoted_name):
     """A unicode subclass used to identify symbolic "
     "names that may require truncation."""
+
+    def __new__(cls, value, quote=None):
+        quote = getattr(value, "quote", quote)
+        return super(_truncated_label, cls).__new__(cls, value, quote)
+
+    def __reduce__(self):
+        return self.__class__, (util.text_type(self), self.quote)
 
     def apply_map(self, map_):
         return self
@@ -2116,16 +2201,25 @@ class _anonymous_label(_truncated_label):
 
     def __add__(self, other):
         return _anonymous_label(
-                    util.text_type(self) +
-                    util.text_type(other))
+                    quoted_name(
+                        util.text_type.__add__(self, util.text_type(other)),
+                        self.quote)
+                )
 
     def __radd__(self, other):
         return _anonymous_label(
-                    util.text_type(other) +
-                    util.text_type(self))
+                    quoted_name(
+                        util.text_type.__add__(util.text_type(other), self),
+                        self.quote)
+                    )
 
     def apply_map(self, map_):
-        return self % map_
+        if self.quote is not None:
+            # preserve quoting only if necessary
+            return quoted_name(self % map_, self.quote)
+        else:
+            # else skip the constructor call
+            return self % map_
 
 
 def _as_truncated(value):

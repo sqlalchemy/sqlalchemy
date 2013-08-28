@@ -105,6 +105,8 @@ used to construct any kind of typed SQL expression.
    :members:
    :special-members:
 
+.. autoclass:: sqlalchemy.sql.elements.quoted_name
+
 .. autoclass:: UnaryExpression
    :members:
 

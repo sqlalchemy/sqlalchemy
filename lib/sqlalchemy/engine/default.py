@@ -27,6 +27,7 @@ AUTOCOMMIT_REGEXP = re.compile(
             re.I | re.UNICODE)
 
 
+
 class DefaultDialect(interfaces.Dialect):
     """Default implementation of Dialect"""
 
@@ -159,6 +160,7 @@ class DefaultDialect(interfaces.Dialect):
                                     )
         self._encoder = codecs.getencoder(self.encoding)
         self._decoder = processors.to_unicode_processor_factory(self.encoding)
+
 
     @util.memoized_property
     def _type_memos(self):

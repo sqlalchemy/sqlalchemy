@@ -112,6 +112,8 @@ object's dictionary of tables::
     for table in reversed(meta.sorted_tables):
         someengine.execute(table.delete())
 
+.. _metadata_reflection_inspector:
+
 Fine Grained Reflection with Inspector
 --------------------------------------
 
@@ -128,5 +130,5 @@ database is also available. This is known as the "Inspector"::
 .. autoclass:: sqlalchemy.engine.reflection.Inspector
     :members:
     :undoc-members:
-     
+
 

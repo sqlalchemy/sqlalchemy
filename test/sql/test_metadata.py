@@ -581,11 +581,13 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                 kw['quote_schema'] = quote_schema
             t = Table(name, metadata, **kw)
             eq_(t.schema, exp_schema, "test %d, table schema" % i)
-            eq_(t.quote_schema, exp_quote_schema,
+            eq_(t.schema.quote if t.schema is not None else None,
+                            exp_quote_schema,
                             "test %d, table quote_schema" % i)
             seq = Sequence(name, metadata=metadata, **kw)
             eq_(seq.schema, exp_schema, "test %d, seq schema" % i)
-            eq_(seq.quote_schema, exp_quote_schema,
+            eq_(seq.schema.quote if seq.schema is not None else None,
+                            exp_quote_schema,
                             "test %d, seq quote_schema" % i)
 
     def test_manual_dependencies(self):
@@ -1039,7 +1041,7 @@ class UseExistingTest(fixtures.TablesTest):
         meta2 = self._useexisting_fixture()
         users = Table('users', meta2, quote=True, autoload=True,
                       keep_existing=True)
-        assert not users.quote
+        assert not users.name.quote
 
     def test_keep_existing_add_column(self):
         meta2 = self._useexisting_fixture()
@@ -1060,7 +1062,7 @@ class UseExistingTest(fixtures.TablesTest):
         users = Table('users', meta2, quote=True,
                         autoload=True,
                       keep_existing=True)
-        assert users.quote
+        assert users.name.quote
 
     def test_keep_existing_add_column_no_orig(self):
         meta2 = self._notexisting_fixture()
@@ -1080,7 +1082,7 @@ class UseExistingTest(fixtures.TablesTest):
         meta2 = self._useexisting_fixture()
         users = Table('users', meta2, quote=True,
                       keep_existing=True)
-        assert not users.quote
+        assert not users.name.quote
 
     def test_keep_existing_add_column_no_reflection(self):
         meta2 = self._useexisting_fixture()
@@ -1097,9 +1099,12 @@ class UseExistingTest(fixtures.TablesTest):
 
     def test_extend_existing_quote(self):
         meta2 = self._useexisting_fixture()
-        users = Table('users', meta2, quote=True, autoload=True,
-                      extend_existing=True)
-        assert users.quote
+        assert_raises_message(
+            tsa.exc.ArgumentError,
+            "Can't redefine 'quote' or 'quote_schema' arguments",
+            Table, 'users', meta2, quote=True, autoload=True,
+                      extend_existing=True
+        )
 
     def test_extend_existing_add_column(self):
         meta2 = self._useexisting_fixture()
@@ -1120,7 +1125,7 @@ class UseExistingTest(fixtures.TablesTest):
         users = Table('users', meta2, quote=True,
                         autoload=True,
                       extend_existing=True)
-        assert users.quote
+        assert users.name.quote
 
     def test_extend_existing_add_column_no_orig(self):
         meta2 = self._notexisting_fixture()
@@ -1138,9 +1143,12 @@ class UseExistingTest(fixtures.TablesTest):
 
     def test_extend_existing_quote_no_reflection(self):
         meta2 = self._useexisting_fixture()
-        users = Table('users', meta2, quote=True,
-                      extend_existing=True)
-        assert users.quote
+        assert_raises_message(
+            tsa.exc.ArgumentError,
+            "Can't redefine 'quote' or 'quote_schema' arguments",
+            Table, 'users', meta2, quote=True,
+                      extend_existing=True
+        )
 
     def test_extend_existing_add_column_no_reflection(self):
         meta2 = self._useexisting_fixture()

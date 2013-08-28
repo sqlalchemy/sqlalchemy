@@ -1,11 +1,14 @@
 .. _metadata_toplevel:
+
 .. _metadata_describing_toplevel:
+
 .. _metadata_describing:
-.. module:: sqlalchemy.schema
 
 ==================================
 Describing Databases with MetaData
 ==================================
+
+.. module:: sqlalchemy.schema
 
 This section discusses the fundamental :class:`.Table`, :class:`.Column`
 and :class:`.MetaData` objects.

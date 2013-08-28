@@ -1,9 +1,10 @@
 from sqlalchemy import *
 from sqlalchemy import sql, schema
 from sqlalchemy.sql import compiler
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL
+from sqlalchemy.testing import fixtures, AssertsCompiledSQL, eq_
 from sqlalchemy import testing
-
+from sqlalchemy.sql.elements import quoted_name, _truncated_label, _anonymous_label
+from sqlalchemy.testing.util import picklers
 
 class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
@@ -60,6 +61,49 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         assert 'ASC' in t2.c
 
         assert 'MixedCase' in t2.c
+
+    @testing.provide_metadata
+    def test_has_table_case_sensitive(self):
+        preparer = testing.db.dialect.identifier_preparer
+        if testing.db.dialect.requires_name_normalize:
+            testing.db.execute("CREATE TABLE TAB1 (id INTEGER)")
+        else:
+            testing.db.execute("CREATE TABLE tab1 (id INTEGER)")
+        testing.db.execute('CREATE TABLE %s (id INTEGER)' %
+                    preparer.quote_identifier("tab2"))
+        testing.db.execute('CREATE TABLE %s (id INTEGER)' %
+                    preparer.quote_identifier("TAB3"))
+        testing.db.execute('CREATE TABLE %s (id INTEGER)' %
+                    preparer.quote_identifier("TAB4"))
+
+        t1 = Table('tab1', self.metadata,
+                        Column('id', Integer, primary_key=True),
+                        )
+        t2 = Table('tab2', self.metadata,
+                        Column('id', Integer, primary_key=True),
+                         quote=True
+                         )
+        t3 = Table('TAB3', self.metadata,
+                        Column('id', Integer, primary_key=True),
+                        )
+        t4 = Table('TAB4', self.metadata,
+                        Column('id', Integer, primary_key=True),
+                        quote=True)
+
+        insp = inspect(testing.db)
+        assert testing.db.has_table(t1.name)
+        eq_([c['name'] for c in insp.get_columns(t1.name)], ['id'])
+
+        assert testing.db.has_table(t2.name)
+        eq_([c['name'] for c in insp.get_columns(t2.name)], ['id'])
+
+        assert testing.db.has_table(t3.name)
+        eq_([c['name'] for c in insp.get_columns(t3.name)], ['id'])
+
+        assert testing.db.has_table(t4.name)
+        eq_([c['name'] for c in insp.get_columns(t4.name)], ['id'])
+
+
 
     def test_basic(self):
         table1.insert().execute(
@@ -299,7 +343,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             'FROM create.foreign'
         )
 
-    def test_subquery(self):
+    def test_subquery_one(self):
         # Lower case names, should not quote
         metadata = MetaData()
         t1 = Table('t1', metadata,
@@ -318,6 +362,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             'WHERE anon.col1 = :col1_1'
         )
 
+    def test_subquery_two(self):
         # Lower case names, quotes on, should quote
         metadata = MetaData()
         t1 = Table('t1', metadata,
@@ -336,6 +381,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             'WHERE anon."col1" = :col1_1'
         )
 
+    def test_subquery_three(self):
         # Not lower case names, should quote
         metadata = MetaData()
         t1 = Table('T1', metadata,
@@ -354,6 +400,8 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             'WHERE '
                 '"Anon"."Col1" = :Col1_1'
         )
+
+    def test_subquery_four(self):
 
         # Not lower case names, quotes off, should not quote
         metadata = MetaData()
@@ -513,7 +561,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             ') AS "Alias1"'
         )
 
-    def test_apply_labels(self):
+    def test_apply_labels_should_quote(self):
         # Not lower case names, should quote
         metadata = MetaData()
         t1 = Table('T1', metadata,
@@ -527,6 +575,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
                 '"Foo"."T1"'
         )
 
+    def test_apply_labels_shouldnt_quote(self):
         # Not lower case names, quotes off
         metadata = MetaData()
         t1 = Table('T1', metadata,
@@ -618,4 +667,96 @@ class PreparerTest(fixtures.TestBase):
         a_eq(unformat('foo.`bar`'), ['foo', 'bar'])
         a_eq(unformat('`foo`.bar'), ['foo', 'bar'])
         a_eq(unformat('`foo`.`b``a``r`.`baz`'), ['foo', 'b`a`r', 'baz'])
+
+class QuotedIdentTest(fixtures.TestBase):
+    def test_concat_quotetrue(self):
+        q1 = quoted_name("x", True)
+        self._assert_not_quoted("y" + q1)
+
+    def test_concat_quotefalse(self):
+        q1 = quoted_name("x", False)
+        self._assert_not_quoted("y" + q1)
+
+    def test_concat_quotenone(self):
+        q1 = quoted_name("x", None)
+        self._assert_not_quoted("y" + q1)
+
+    def test_rconcat_quotetrue(self):
+        q1 = quoted_name("x", True)
+        self._assert_not_quoted("y" + q1)
+
+    def test_rconcat_quotefalse(self):
+        q1 = quoted_name("x", False)
+        self._assert_not_quoted("y" + q1)
+
+    def test_rconcat_quotenone(self):
+        q1 = quoted_name("x", None)
+        self._assert_not_quoted("y" + q1)
+
+    def test_concat_anon(self):
+        q1 = _anonymous_label(quoted_name("x", True))
+        assert isinstance(q1, _anonymous_label)
+        value = q1 + "y"
+        assert isinstance(value, _anonymous_label)
+        self._assert_quoted(value, True)
+
+    def test_rconcat_anon(self):
+        q1 = _anonymous_label(quoted_name("x", True))
+        assert isinstance(q1, _anonymous_label)
+        value = "y" + q1
+        assert isinstance(value, _anonymous_label)
+        self._assert_quoted(value, True)
+
+    def test_coerce_quoted_switch(self):
+        q1 = quoted_name("x", False)
+        q2 = quoted_name(q1, True)
+        eq_(q2.quote, True)
+
+    def test_coerce_quoted_none(self):
+        q1 = quoted_name("x", False)
+        q2 = quoted_name(q1, None)
+        eq_(q2.quote, False)
+
+    def test_coerce_quoted_retain(self):
+        q1 = quoted_name("x", False)
+        q2 = quoted_name(q1, False)
+        eq_(q2.quote, False)
+
+    def test_coerce_none(self):
+        q1 = quoted_name(None, False)
+        eq_(q1, None)
+
+    def test_apply_map_quoted(self):
+        q1 = _anonymous_label(quoted_name("x%s", True))
+        q2 = q1.apply_map(('bar'))
+        eq_(q2, "xbar")
+        eq_(q2.quote, True)
+
+    def test_apply_map_plain(self):
+        q1 = _anonymous_label(quoted_name("x%s", None))
+        q2 = q1.apply_map(('bar'))
+        eq_(q2, "xbar")
+        self._assert_not_quoted(q2)
+
+    def test_pickle_quote(self):
+        q1 = quoted_name("x", True)
+        for loads, dumps in picklers():
+            q2 = loads(dumps(q1))
+            eq_(str(q1), str(q2))
+            eq_(q1.quote, q2.quote)
+
+    def test_pickle_anon_label(self):
+        q1 = _anonymous_label(quoted_name("x", True))
+        for loads, dumps in picklers():
+            q2 = loads(dumps(q1))
+            assert isinstance(q2, _anonymous_label)
+            eq_(str(q1), str(q2))
+            eq_(q1.quote, q2.quote)
+
+    def _assert_quoted(self, value, quote):
+        assert isinstance(value, quoted_name)
+        eq_(value.quote, quote)
+
+    def _assert_not_quoted(self, value):
+        assert not isinstance(value, quoted_name)
 

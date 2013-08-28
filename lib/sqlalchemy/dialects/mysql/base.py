@@ -1451,7 +1451,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
                 constraint_string += ", \n\t"
             constraint_string += "KEY %s (%s)" % (
                         self.preparer.quote(
-                            "idx_autoinc_%s" % auto_inc_column.name, None
+                            "idx_autoinc_%s" % auto_inc_column.name
                         ),
                         self.preparer.format_column(auto_inc_column)
                     )
@@ -1557,7 +1557,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
         if 'mysql_using' in index.kwargs:
             using = index.kwargs['mysql_using']
-            text += " USING %s" % (preparer.quote(using, index.quote))
+            text += " USING %s" % (preparer.quote(using))
 
         return text
 
@@ -1566,8 +1566,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             visit_primary_key_constraint(constraint)
         if "mysql_using" in constraint.kwargs:
             using = constraint.kwargs['mysql_using']
-            text += " USING %s" % (
-                self.preparer.quote(using, constraint.quote))
+            text += " USING %s" % (self.preparer.quote(using))
         return text
 
     def visit_drop_index(self, drop):
