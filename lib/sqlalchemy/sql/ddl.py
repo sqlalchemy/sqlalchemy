@@ -43,7 +43,7 @@ class DDLElement(Executable, _DDLCompiles):
             AddConstraint(constraint).execute_if(dialect='postgresql')
         )
 
-    See also:
+    .. seealso::
 
         :class:`.DDL`
 
@@ -195,7 +195,7 @@ class DDLElement(Executable, _DDLCompiles):
         :param state: any value which will be passed to the callable_
           as the ``state`` keyword argument.
 
-        See also:
+        .. seealso::
 
             :class:`.DDLEvents`
 
@@ -360,9 +360,10 @@ class DDL(DDLElement):
           default when ``execute()`` is invoked without a bind argument.
 
 
-        See also:
+        .. seealso::
 
             :class:`.DDLEvents`
+
             :mod:`sqlalchemy.event`
 
         """
