@@ -1425,11 +1425,13 @@ class ColumnEventsTest(fixtures.TestBase):
             'to_reflect',
             cls.metadata,
             Column('x', sa.Integer, primary_key=True),
+            test_needs_fk=True
         )
         cls.related = Table(
             'related',
             cls.metadata,
-            Column('q', sa.Integer, sa.ForeignKey('to_reflect.x'))
+            Column('q', sa.Integer, sa.ForeignKey('to_reflect.x')),
+            test_needs_fk=True
         )
         sa.Index("some_index", cls.to_reflect.c.x)
         cls.metadata.create_all(testing.db)
