@@ -65,6 +65,27 @@ of the encoding to be used.
 Note that this behavior is disabled when Oracle 8 is detected, as it has been
 observed that issues remain when passing Python unicodes to cx_oracle with Oracle 8.
 
+.. _cx_oracle_returning:
+
+RETURNING Support
+-----------------
+
+cx_oracle supports a limited subset of Oracle's already limited RETURNING support.
+Typically, results can only be guaranteed for at most one column being returned;
+this is the typical case when SQLAlchemy uses RETURNING to get just the value of a
+primary-key-associated sequence value.    Additional column expressions will
+cause problems in a non-determinative way, due to cx_oracle's lack of support for
+the OCI_DATA_AT_EXEC API which is required for more complex RETURNING scenarios.
+
+.. seealso::
+
+    http://docs.oracle.com/cd/B10501_01/appdev.920/a96584/oci05bnd.htm#420693 - OCI documentation for RETURNING
+
+    http://sourceforge.net/mailarchive/message.php?msg_id=31338136 - cx_oracle developer commentary
+
+
+
+
 LOB Objects
 -----------
 

@@ -16,12 +16,12 @@ Connect Arguments
 The dialect supports several :func:`~sqlalchemy.create_engine()` arguments which
 affect the behavior of the dialect regardless of driver in use.
 
-* *use_ansi* - Use ANSI JOIN constructs (see the section on Oracle 8).  Defaults
+* ``use_ansi`` - Use ANSI JOIN constructs (see the section on Oracle 8).  Defaults
   to ``True``.  If ``False``, Oracle-8 compatible constructs are used for joins.
 
-* *optimize_limits* - defaults to ``False``. see the section on LIMIT/OFFSET.
+* ``optimize_limits`` - defaults to ``False``. see the section on LIMIT/OFFSET.
 
-* *use_binds_for_limits* - defaults to ``True``.  see the section on LIMIT/OFFSET.
+* ``use_binds_for_limits`` - defaults to ``True``.  see the section on LIMIT/OFFSET.
 
 Auto Increment Behavior
 -----------------------
@@ -98,6 +98,41 @@ method used for LIMIT/OFFSET can be replaced entirely.  See the recipe at
 http://www.sqlalchemy.org/trac/wiki/UsageRecipes/WindowFunctionsByDefault
 which installs a select compiler that overrides the generation of limit/offset with
 a window function.
+
+RETURNING Support
+-----------------
+
+The Oracle database supports a limited form of RETURNING, in order to retrieve result
+sets of matched rows from INSERT, UPDATE and DELETE statements.  Oracle's
+RETURNING..INTO syntax only supports one row being returned, as it relies upon
+OUT parameters in order to function.  In addition, supported DBAPIs have further
+limitations (see :ref:`cx_oracle_returning`).
+
+SQLAlchemy's "implicit returning" feature, which employs RETURNING within an INSERT
+and sometimes an UPDATE statement in order to fetch newly generated primary key values
+and other SQL defaults and expressions, is normally enabled on the Oracle
+backend.  By default, "implicit returning" typically only fetches the value of a
+single ``nextval(some_seq)`` expression embedded into an INSERT in order to increment
+a sequence within an INSERT statement and get the value back at the same time.
+To disable this feature across the board, specify ``implicit_returning=False`` to
+:func:`.create_engine`::
+
+    engine = create_engine("oracle://scott:tiger@dsn", implicit_returning=False)
+
+Implicit returning can also be disabled on a table-by-table basis as a table option::
+
+    # Core Table
+    my_table = Table("my_table", metadata, ..., implicit_returning=False)
+
+
+    # declarative
+    class MyClass(Base):
+        __tablename__ = 'my_table'
+        __table_args__ = {"implicit_returning": False}
+
+.. seealso::
+
+    :ref:`cx_oracle_returning` - additional cx_oracle-specific restrictions on implicit returning.
 
 ON UPDATE CASCADE
 -----------------
