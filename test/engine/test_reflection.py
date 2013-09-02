@@ -1418,6 +1418,7 @@ class CaseSensitiveTest(fixtures.TablesTest):
 
 
 class ColumnEventsTest(fixtures.TestBase):
+
     @classmethod
     def setup_class(cls):
         cls.metadata = MetaData()
@@ -1425,6 +1426,7 @@ class ColumnEventsTest(fixtures.TestBase):
             'to_reflect',
             cls.metadata,
             Column('x', sa.Integer, primary_key=True),
+            Column('y', sa.Integer),
             test_needs_fk=True
         )
         cls.related = Table(
@@ -1433,7 +1435,7 @@ class ColumnEventsTest(fixtures.TestBase):
             Column('q', sa.Integer, sa.ForeignKey('to_reflect.x')),
             test_needs_fk=True
         )
-        sa.Index("some_index", cls.to_reflect.c.x)
+        sa.Index("some_index", cls.to_reflect.c.y)
         cls.metadata.create_all(testing.db)
 
     @classmethod
@@ -1467,11 +1469,19 @@ class ColumnEventsTest(fixtures.TestBase):
         def assertions(table):
             eq_(table.c.YXZ.name, "x")
             eq_(set(table.primary_key), set([table.c.YXZ]))
+
+        self._do_test(
+            "x", {"key": "YXZ"},
+            assertions
+        )
+
+    def test_override_index(self):
+        def assertions(table):
             idx = list(table.indexes)[0]
             eq_(idx.columns, [table.c.YXZ])
 
         self._do_test(
-            "x", {"key": "YXZ"},
+            "y", {"key": "YXZ"},
             assertions
         )
 
