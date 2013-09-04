@@ -1730,8 +1730,17 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
     def test_exists(self):
         User = self.classes.User
         sess = create_session()
-        q1 = sess.query(User).filter(User.name == 'fred')
+
+        q1 = sess.query(User)
         self.assert_compile(sess.query(q1.exists()),
+            'SELECT EXISTS ('
+                'SELECT 1 FROM users'
+            ') AS anon_1',
+            dialect=default.DefaultDialect()
+        )
+
+        q2 = sess.query(User).filter(User.name == 'fred')
+        self.assert_compile(sess.query(q2.exists()),
             'SELECT EXISTS ('
                 'SELECT 1 FROM users WHERE users.name = :name_1'
             ') AS anon_1',

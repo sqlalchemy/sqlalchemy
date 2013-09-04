@@ -7,6 +7,14 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2818
+
+        Fixed bug where :meth:`.Query.exists` failed to work correctly
+        without any WHERE criterion.  Courtesy Vladimir Magamedov.
+        Also in 0.8.3.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2811
 
