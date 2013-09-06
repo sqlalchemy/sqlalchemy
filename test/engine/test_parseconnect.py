@@ -277,6 +277,10 @@ pool_timeout=10
         assert e.url.drivername == e2.url.drivername == 'mysql'
         assert e.url.username == e2.url.username == 'scott'
         assert e2.url is u
+        assert str(u) == 'mysql://scott:tiger@localhost/test'
+        assert repr(u) == 'mysql://scott:***@localhost/test'
+        assert repr(e) == 'Engine(mysql://scott:***@localhost/test)'
+        assert repr(e2) == 'Engine(mysql://scott:***@localhost/test)'
 
     def test_poolargs(self):
         """test that connection pool args make it thru"""

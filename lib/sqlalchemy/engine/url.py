@@ -62,12 +62,13 @@ class URL(object):
         self.database = database
         self.query = query or {}
 
-    def __str__(self):
+    def __to_string__(self, hide_password=True):
         s = self.drivername + "://"
         if self.username is not None:
             s += self.username
             if self.password is not None:
-                s += ':' + util.quote_plus(self.password)
+                s += ':' + ('***' if hide_password
+                            else util.quote_plus(self.password))
             s += "@"
         if self.host is not None:
             s += self.host
@@ -80,6 +81,12 @@ class URL(object):
             keys.sort()
             s += '?' + "&".join("%s=%s" % (k, self.query[k]) for k in keys)
         return s
+
+    def __str__(self):
+        return self.__to_string__(hide_password=False)
+
+    def __repr__(self):
+        return self.__to_string__()
 
     def __hash__(self):
         return hash(str(self))
