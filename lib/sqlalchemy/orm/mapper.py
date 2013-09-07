@@ -459,8 +459,9 @@ class Mapper(_InspectionAttr):
               def generate_version(version):
                   return next_version
 
-          Alternatively, server-side versioning functions such as triggers
-          may be used as well, by specifying the value ``False``.
+          Alternatively, server-side versioning functions such as triggers,
+          or programmatic versioning schemes outside of the version id generator
+          may be used, by specifying the value ``False``.
           Please see :ref:`server_side_version_counter` for a discussion
           of important points when using this option.
 

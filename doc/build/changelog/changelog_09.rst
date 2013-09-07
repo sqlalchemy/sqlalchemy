@@ -51,9 +51,11 @@
 
         The ``version_id_generator`` parameter of ``Mapper`` can now be specified
         to rely upon server generated version identifiers, using triggers
-        or other database-provided versioning features, by passing the value
-        ``False``.  The ORM will use RETURNING when available to immediately
-        load the new version identifier, else it will emit a second SELECT.
+        or other database-provided versioning features, or via an optional programmatic
+        value, by setting ``version_id_generator=False``.
+        When using a server-generated version identfier, the ORM will use RETURNING when
+        available to immediately
+        load the new version value, else it will emit a second SELECT.
 
     .. change::
         :tags: feature, orm

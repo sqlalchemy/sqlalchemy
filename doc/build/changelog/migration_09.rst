@@ -396,9 +396,12 @@ Server Side Version Counting
 
 The versioning feature of the ORM (now also documented at :ref:`mapper_version_counter`)
 can now make use of server-side version counting schemes, such as those produced
-by triggers or database system columns.   By providing the value ``False``
-to the ``version_id_generator`` parameter, the ORM will fetch the version identifier
-from each row at the same time the INSERT or UPDATE is emitted.   It is strongly
+by triggers or database system columns, as well as conditional programmatic schemes outside
+of the version_id_counter function itself.  By providing the value ``False``
+to the ``version_id_generator`` parameter, the ORM will use the already-set version
+identifier, or alternatively fetch the version identifier
+from each row at the same time the INSERT or UPDATE is emitted.   When using a
+server-generated version identifier, it is strongly
 recommended that this feature be used only on a backend where RETURNING can also
 be used, else the additional SELECT statements will add significant performance
 overhead.   The example provided at :ref:`server_side_version_counter` illustrates

@@ -133,7 +133,8 @@ class ColumnLoader(LoaderStrategy):
         coltype = self.columns[0].type
         # TODO: check all columns ?  check for foreign key as well?
         active_history = self.parent_property.active_history or \
-                            self.columns[0].primary_key
+                            self.columns[0].primary_key or \
+                            mapper.version_id_col in set(self.columns)
 
         _register_attribute(self, mapper, useobject=False,
             compare_function=coltype.compare_values,

@@ -248,10 +248,10 @@ def _collect_insert_commands(base_mapper, uowtransaction, table,
         has_all_pks = True
         has_all_defaults = True
         for col in mapper._cols_by_table[table]:
-            if col is mapper.version_id_col:
-                if mapper.version_id_generator is not False:
-                    val = mapper.version_id_generator(None)
-                    params[col.key] = val
+            if col is mapper.version_id_col and \
+                mapper.version_id_generator is not False:
+                val = mapper.version_id_generator(None)
+                params[col.key] = val
             else:
                 # pull straight from the dict for
                 # pending objects
@@ -417,6 +417,7 @@ def _collect_post_update_commands(base_mapper, uowtransaction, table,
                         mapper._get_state_attr_by_column(
                                         state,
                                         state_dict, col)
+
             elif col in post_update_cols:
                 prop = mapper._columntoproperty[col]
                 history = attributes.get_state_history(

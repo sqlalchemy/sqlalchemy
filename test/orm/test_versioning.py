@@ -829,4 +829,90 @@ class ServerVersioningTest(fixtures.MappedTest):
             sess.commit
         )
 
+class ManualVersionTest(fixtures.MappedTest):
+    run_define_tables = 'each'
 
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("a", metadata,
+                Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+                Column('data', String(30)),
+                Column('vid', Integer)
+            )
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Basic):
+            pass
+
+
+    @classmethod
+    def setup_mappers(cls):
+        mapper(cls.classes.A, cls.tables.a,
+                        version_id_col=cls.tables.a.c.vid,
+                        version_id_generator=False)
+
+    def test_insert(self):
+        sess = Session()
+        a1 = self.classes.A()
+
+        a1.vid = 1
+        sess.add(a1)
+        sess.commit()
+
+        eq_(a1.vid, 1)
+
+    def test_update(self):
+        sess = Session()
+        a1 = self.classes.A()
+
+        a1.vid = 1
+        a1.data = 'd1'
+        sess.add(a1)
+        sess.commit()
+
+        a1.vid = 2
+        a1.data = 'd2'
+
+        sess.commit()
+
+        eq_(a1.vid, 2)
+
+    def test_update_concurrent_check(self):
+        sess = Session()
+        a1 = self.classes.A()
+
+        a1.vid = 1
+        a1.data = 'd1'
+        sess.add(a1)
+        sess.commit()
+
+        a1.vid = 2
+        sess.execute(self.tables.a.update().values(vid=3))
+        a1.data = 'd2'
+        assert_raises(
+            orm_exc.StaleDataError,
+            sess.commit
+        )
+
+    def test_update_version_conditional(self):
+        sess = Session()
+        a1 = self.classes.A()
+
+        a1.vid = 1
+        a1.data = 'd1'
+        sess.add(a1)
+        sess.commit()
+
+        # change the data and UPDATE without
+        # incrementing version id
+        a1.data = 'd2'
+        sess.commit()
+
+        eq_(a1.vid, 1)
+
+        a1.data = 'd3'
+        a1.vid = 2
+        sess.commit()
+
+        eq_(a1.vid, 2)
