@@ -384,7 +384,7 @@ Keep the lifecycle of the session (and usually the transaction)
             session.query(FooBar).update({"x": 5})
 
     class ThingTwo(object):
-        def go(self):
+        def go(self, session):
             session.query(Widget).update({"q": 18})
 
     def run_my_program():
