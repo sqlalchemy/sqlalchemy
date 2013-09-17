@@ -31,10 +31,12 @@ class EnvDirective(object):
     def env(self):
         return self.state.document.settings.env
 
+    @classmethod
+    def changes(cls, env):
+        return env.temp_data['ChangeLogDirective_changes']
+
 class ChangeLogDirective(EnvDirective, Directive):
     has_content = True
-
-    type_ = "change"
 
     default_section = 'misc'
 
@@ -45,6 +47,8 @@ class ChangeLogDirective(EnvDirective, Directive):
         bysection = collections.defaultdict(list)
         all_sections = set()
         for rec in changes:
+            if self.version not in rec['versions']:
+                continue
             inner_tag = rec['tags'].intersection(self.inner_tag_sort)
             if inner_tag:
                 inner_tag = inner_tag.pop()
@@ -68,26 +72,29 @@ class ChangeLogDirective(EnvDirective, Directive):
                     bysection[(self.default_section, inner_tag)].append(rec)
         return bysection, all_sections
 
-    @classmethod
-    def changes(cls, env):
-        return env.temp_data['ChangeLogDirective_%s_changes' % cls.type_]
-
     def _setup_run(self):
         self.sections = self.env.config.changelog_sections
         self.inner_tag_sort = self.env.config.changelog_inner_tag_sort + [""]
-        self.env.temp_data['ChangeLogDirective_%s_changes' % self.type_] = []
+        if 'ChangeLogDirective_changes' not in self.env.temp_data:
+            self.env.temp_data['ChangeLogDirective_changes'] = []
         self._parsed_content = _parse_content(self.content)
+
+        self.version = version = self._parsed_content.get('version', '')
+        self.env.temp_data['ChangeLogDirective_version'] = version
 
         p = nodes.paragraph('', '',)
         self.state.nested_parse(self.content[1:], 0, p)
 
     def run(self):
         self._setup_run()
+
+        if 'ChangeLogDirective_includes' in self.env.temp_data:
+            return []
+
         changes = self.changes(self.env)
         output = []
 
-        self.version = version = self._parsed_content.get('version', '')
-        id_prefix = "%s-%s" % (self.type_, version)
+        id_prefix = "change-%s" % (self.version, )
         topsection = self._run_top(id_prefix)
         output.append(topsection)
 
@@ -161,7 +168,7 @@ class ChangeLogDirective(EnvDirective, Directive):
         text = _text_rawsource_from_node(para)
 
         to_hash = "%s %s" % (self.version, text[0:100])
-        targetid = "%s-%s" % (self.type_,
+        targetid = "change-%s" % (
                         md5.md5(to_hash.encode('ascii', 'ignore')
                             ).hexdigest())
         targetnode = nodes.target('', '', ids=[targetid])
@@ -172,6 +179,16 @@ class ChangeLogDirective(EnvDirective, Directive):
                         classes=['changeset-link']
                     )
         para.append(permalink)
+
+        if len(rec['versions']) > 1:
+
+            backported_changes = rec['sorted_versions'][rec['sorted_versions'].index(self.version) + 1:]
+            if backported_changes:
+                backported = nodes.paragraph('')
+                backported.append(nodes.Text("This change is also ", ""))
+                backported.append(nodes.strong("", "backported"))
+                backported.append(nodes.Text(" to: %s" % ", ".join(backported_changes), ""))
+                para.append(backported)
 
         insert_ticket = nodes.paragraph('')
         para.append(insert_ticket)
@@ -187,7 +204,7 @@ class ChangeLogDirective(EnvDirective, Directive):
                 if i > 0:
                     insert_ticket.append(nodes.Text(", ", ", "))
                 else:
-                    insert_ticket.append(nodes.Text(" ", " "))
+                    insert_ticket.append(nodes.Text("References: """))
                 i += 1
                 if render is not None:
                     refuri = render % refname
@@ -218,33 +235,69 @@ class ChangeLogDirective(EnvDirective, Directive):
             )
         )
 
+class ChangeLogImportDirective(EnvDirective, Directive):
+    has_content = True
+
+    def _setup_run(self):
+        if 'ChangeLogDirective_changes' not in self.env.temp_data:
+            self.env.temp_data['ChangeLogDirective_changes'] = []
+
+    def run(self):
+        self._setup_run()
+
+        # tell ChangeLogDirective we're here, also prevent
+        # nested .. include calls
+        if 'ChangeLogDirective_includes' not in self.env.temp_data:
+            self.env.temp_data['ChangeLogDirective_includes'] = True
+            p = nodes.paragraph('', '',)
+            self.state.nested_parse(self.content, 0, p)
+            del self.env.temp_data['ChangeLogDirective_includes']
+
+        return []
 
 class ChangeDirective(EnvDirective, Directive):
     has_content = True
-
-    type_ = "change"
-    parent_cls = ChangeLogDirective
 
     def run(self):
         content = _parse_content(self.content)
         p = nodes.paragraph('', '',)
         sorted_tags = _comma_list(content.get('tags', ''))
+        declared_version = self.env.temp_data['ChangeLogDirective_version']
+        versions = set(_comma_list(content.get("versions", ""))).difference(['']).\
+                            union([declared_version])
+
+        # if we don't refer to any other versions and we're in an include,
+        # skip
+        if len(versions) == 1 and 'ChangeLogDirective_includes' in self.env.temp_data:
+            return []
+
+        def int_ver(ver):
+            out = []
+            for dig in ver.split("."):
+                try:
+                    out.append(int(dig))
+                except ValueError:
+                    out.append(0)
+            return tuple(out)
+
         rec = {
             'tags': set(sorted_tags).difference(['']),
             'tickets': set(_comma_list(content.get('tickets', ''))).difference(['']),
             'pullreq': set(_comma_list(content.get('pullreq', ''))).difference(['']),
             'changeset': set(_comma_list(content.get('changeset', ''))).difference(['']),
             'node': p,
-            'type': self.type_,
+            'type': "change",
             "title": content.get("title", None),
-            'sorted_tags': sorted_tags
+            'sorted_tags': sorted_tags,
+            "versions": versions,
+            "sorted_versions": list(reversed(sorted(versions, key=int_ver)))
         }
 
         if "declarative" in rec['tags']:
             rec['tags'].add("orm")
 
         self.state.nested_parse(content['text'], 0, p)
-        self.parent_cls.changes(self.env).append(rec)
+        ChangeLogDirective.changes(self.env).append(rec)
 
         return []
 
@@ -279,6 +332,7 @@ def make_ticket_link(name, rawtext, text, lineno, inliner,
 def setup(app):
     app.add_directive('changelog', ChangeLogDirective)
     app.add_directive('change', ChangeDirective)
+    app.add_directive('changelog_imports', ChangeLogImportDirective)
     app.add_config_value("changelog_sections", [], 'env')
     app.add_config_value("changelog_inner_tag_sort", [], 'env')
     app.add_config_value("changelog_render_ticket",

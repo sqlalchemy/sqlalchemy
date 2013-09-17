@@ -3,12 +3,17 @@
 0.8 Changelog
 ==============
 
+.. changelog_imports::
+
+    .. include:: changelog_07.rst
+
 .. changelog::
     :version: 0.8.3
 
     .. change::
         :tags: bug, orm
         :tickets: 2818
+        :versions: 0.9.0
 
         Fixed bug where :meth:`.Query.exists` failed to work correctly
         without any WHERE criterion.  Courtesy Vladimir Magamedov.
@@ -16,6 +21,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 2811
+        :versions: 0.9.0
 
         Fixed bug where using the ``column_reflect`` event to change the ``.key``
         of the incoming :class:`.Column` would prevent primary key constraints,
@@ -23,6 +29,7 @@
 
     .. change::
         :tags: feature
+        :versions: 0.9.0
 
         Added a new flag ``system=True`` to :class:`.Column`, which marks
         the column as a "system" column which is automatically made present
@@ -32,16 +39,6 @@
         :class:`.CreateColumn` construct can be appled to a custom
         compilation rule which allows skipping of columns, by producing
         a rule that returns ``None``.
-
-    .. change::
-        :tags: bug, orm
-        :tickets: 2807
-
-        Fixed bug where list instrumentation would fail to represent a
-        setslice of ``[0:0]`` correctly, which in particular could occur
-        when using ``insert(0, item)`` with the association proxy.  Due
-        to some quirk in Python collections, the issue was much more likely
-        with Python 3 rather than 2.  Also in 0.7.11.
 
     .. change::
         :tags: bug, orm
@@ -56,6 +53,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 2794
+        :versions: 0.9.0
 
         Fixed a potential issue in an ordered sequence implementation used
         by the ORM to iterate mapper hierarchies; under the Jython interpreter
@@ -63,15 +61,8 @@
         maintained ordering.
 
     .. change::
-        :tags: bug, sql
-        :tickets: 2801
-
-        Fixed regression dating back to 0.7.9 whereby the name of a CTE might
-        not be properly quoted if it was referred to in multiple FROM clauses.
-        Also in 0.7.11.
-
-    .. change::
         :tags: bug, examples
+        :versions: 0.9.0
 
         Added "autoincrement=False" to the history table created in the
         versioning example, as this table shouldn't have autoinc on it
@@ -79,28 +70,15 @@
 
     .. change::
         :tags: bug, sql
+        :versions: 0.9.0
 
         The :meth:`.Operators.notin_` operator added in 0.8 now properly
         produces the negation of the expression "IN" returns
         when used against an empty collection.
 
     .. change::
-        :tags: mysql, bug
-        :tickets: 2791
-
-        Updates to MySQL reserved words for versions 5.5, 5.6, courtesy
-        Hanno Schlichting.  Also in 0.7.11.
-
-    .. change::
-        :tags: sql, bug, cte
-        :tickets: 2783
-
-        Fixed bug in common table expression system where if the CTE were
-        used only as an ``alias()`` construct, it would not render using the
-        WITH keyword.  Also in 0.7.11.
-
-    .. change::
         :tags: feature, examples
+        :versions: 0.9.0
 
         Improved the examples in ``examples/generic_associations``, including
         that ``discriminator_on_association.py`` makes use of single table
@@ -113,6 +91,7 @@
 
     .. change::
         :tags: feature, orm, declarative
+        :versions: 0.9.0
 
         Added a convenience class decorator :func:`.as_declarative`, is
         a wrapper for :func:`.declarative_base` which allows an existing base
@@ -121,21 +100,16 @@
     .. change::
         :tags: bug, orm
         :tickets: 2786
+        :versions: 0.9.0
 
         Fixed bug in ORM-level event registration where the "raw" or
         "propagate" flags could potentially be mis-configured in some
         "unmapped base class" configurations.
 
     .. change::
-        :tags: bug, sql
-        :tickets: 2784
-
-        Fixed bug in :class:`.CheckConstraint` DDL where the "quote" flag from a
-        :class:`.Column` object would not be propagated.  Also in 0.7.11.
-
-    .. change::
         :tags: bug, orm
         :tickets: 2778
+        :versions: 0.9.0
 
         A performance fix related to the usage of the :func:`.defer` option
         when loading mapped entities.   The function overhead of applying
@@ -151,6 +125,7 @@
     .. change::
         :tags: bug, sqlite
         :tickets: 2781
+        :versions: 0.9.0
 
         The newly added SQLite DATETIME arguments storage_format and
         regexp apparently were not fully implemented correctly; while the
@@ -160,6 +135,7 @@
     .. change::
         :tags: bug, sql, postgresql
         :tickets: 2780
+        :versions: 0.9.0
 
         Fixed bug where the expression system relied upon the ``str()``
         form of a some expressions when referring to the ``.c`` collection
@@ -174,6 +150,7 @@
     .. change::
         :tags: bug, engine, oracle
         :tickets: 2776
+        :versions: 0.9.0
 
         Dialect.initialize() is not called a second time if an :class:`.Engine`
         is recreated, due to a disconnect error.   This fixes a particular
@@ -190,6 +167,7 @@
 
     .. change::
         :tags: feature, sql
+        :versions: 0.9.0
 
         The :func:`.update`, :func:`.insert`, and :func:`.delete` constructs
         will now interpret ORM entities as target tables to be operated upon,
@@ -206,6 +184,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 2773
+        :versions: 0.9.0
 
         Fixed bug whereby attribute history functions would fail
         when an object we moved from "persistent" to "pending"
@@ -215,6 +194,7 @@
     .. change::
         :tags: bug, engine, pool
         :tickets: 2772
+        :versions: 0.9.0
 
         Fixed bug where :class:`.QueuePool` would lose the correct
         checked out count if an existing pooled connection failed to reconnect
@@ -227,6 +207,7 @@
     .. change::
         :tags: bug, mysql
         :tickets: 2768
+        :versions: 0.9.0
 
         Fixed bug when using multi-table UPDATE where a supplemental
         table is a SELECT with its own bound parameters, where the positioning
@@ -236,6 +217,7 @@
     .. change::
         :tags: bug, sqlite
         :tickets: 2764
+        :versions: 0.9.0
 
         Added :class:`.BIGINT` to the list of type names that can be
         reflected by the SQLite dialect; courtesy Russell Stuart.
@@ -243,6 +225,7 @@
     .. change::
         :tags: feature, orm, declarative
         :tickets: 2761
+        :versions: 0.9.0
 
         ORM descriptors such as hybrid properties can now be referenced
         by name in a string argument used with ``order_by``,
@@ -252,15 +235,17 @@
     .. change::
         :tags: feature, firebird
         :tickets: 2763
+        :versions: 0.9.0
 
         Added new flag ``retaining=True`` to the kinterbasdb and fdb dialects.
         This controls the value of the ``retaining`` flag sent to the
         ``commit()`` and ``rollback()`` methods of the DBAPI connection.
-        Due to historical concerns, this flag defaults to ``True``, however
-        in 0.9 this flag will be defaulted to ``False``.
+        Due to historical concerns, this flag defaults to ``True`` in 0.8.2,
+        however in 0.9.0 this flag defaults to ``False``.
 
     .. change::
         :tags: requirements
+        :versions: 0.9.0
 
         The Python `mock <https://pypi.python.org/pypi/mock>`_ library
         is now required in order to run the unit test suite.  While part
@@ -271,6 +256,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 2750
+        :versions: 0.9.0
 
         A warning is emitted when trying to flush an object of an inherited
         class where the polymorphic discriminator has been assigned
@@ -279,6 +265,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 2740
+        :versions: 0.9.0
 
         The behavior of :func:`.extract` has been simplified on the
         Postgresql dialect to no longer inject a hardcoded ``::timestamp``
@@ -291,6 +278,7 @@
     .. change::
         :tags: bug, firebird
         :tickets: 2757
+        :versions: 0.9.0
 
         Type lookup when reflecting the Firebird types LONG and
         INT64 has been fixed so that LONG is treated as INTEGER,
@@ -301,6 +289,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 2766
+        :versions: 0.9.0
 
         Fixed bug in HSTORE type where keys/values that contained
         backslashed quotes would not be escaped correctly when
@@ -310,6 +299,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 2767
+        :versions: 0.9.0
 
         Fixed bug where the order of columns in a multi-column
         Postgresql index would be reflected in the wrong order.
@@ -318,6 +308,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 2746, 2668
+        :versions: 0.9.0
 
         Multiple fixes to the correlation behavior of
         :class:`.Select` constructs, first introduced in 0.8.0:
@@ -352,6 +343,7 @@
 
     .. change::
         :tags: bug, ext
+        :versions: 0.9.0
 
         Fixed bug whereby if a composite type were set up
         with a function instead of a class, the mutable extension
@@ -372,6 +364,7 @@
 
     .. change::
         :tags: feature, postgresql
+        :versions: 0.9.0
 
         Support for Postgresql 9.2 range types has been added.
         Currently, no type translation is provided, so works
@@ -380,6 +373,7 @@
 
     .. change::
         :tags: bug, examples
+        :versions: 0.9.0
 
         Fixed an issue with the "versioning" recipe whereby a many-to-one
         reference could produce a meaningless version for the target,
@@ -389,6 +383,7 @@
     .. change::
         :tags: feature, postgresql
         :tickets: 2072
+        :versions: 0.9.0
 
         Added support for "AUTOCOMMIT" isolation when using the psycopg2
         DBAPI.   The keyword is available via the ``isolation_level``
@@ -397,6 +392,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 2759
+        :versions: 0.9.0
 
         Fixed bug in polymorphic SQL generation where multiple joined-inheritance
         entities against the same base class joined to each other as well
@@ -406,6 +402,7 @@
     .. change::
         :tags: bug, engine
         :pullreq: 6
+        :versions: 0.9.0
 
         Fixed bug where the ``reset_on_return`` argument to various :class:`.Pool`
         implementations would not be propagated when the pool was regenerated.
@@ -414,6 +411,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 2754
+        :versions: 0.9.0
 
         Fixed bug where sending a composite attribute into :meth:`.Query.order_by`
         would produce a parenthesized expression not accepted by some databases.
@@ -421,6 +419,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 2755
+        :versions: 0.9.0
 
         Fixed the interaction between composite attributes and
         the :func:`.aliased` function.  Previously, composite attributes
@@ -430,6 +429,7 @@
     .. change::
         :tags: bug, mysql
         :tickets: 2715
+        :versions: 0.9.0
 
         Added another conditional to the ``mysql+gaerdbms`` dialect to
         detect so-called "development" mode, where we should use the
@@ -438,6 +438,7 @@
     .. change::
         :tags: feature, mysql
         :tickets: 2704
+        :versions: 0.9.0
 
         The ``mysql_length`` parameter used with :class:`.Index` can now
         be passed as a dictionary of column names/lengths, for use
@@ -447,6 +448,7 @@
     .. change::
         :tags: bug, mssql
         :tickets: 2747
+        :versions: 0.9.0
 
         When querying the information schema on SQL Server 2000, removed
         a CAST call that was added in 0.8.1 to help with driver issues,
@@ -456,6 +458,7 @@
     .. change::
         :tags: bug, mysql
         :tickets: 2721
+        :versions: 0.9.0
 
         The ``deferrable`` keyword argument on :class:`.ForeignKey` and
         :class:`.ForeignKeyConstraint` will not render the ``DEFERRABLE`` keyword
@@ -467,6 +470,7 @@
     .. change::
         :tags: bug, ext, orm
         :tickets: 2730
+        :versions: 0.9.0
 
         Fixed bug where :class:`.MutableDict` didn't report a change event
         when ``clear()`` was called.
@@ -474,6 +478,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 2738
+        :versions: 0.9.0
 
         Fixed bug whereby joining a select() of a table "A" with multiple
         foreign key paths to a table "B", to that table "B", would fail
@@ -484,6 +489,7 @@
     .. change::
         :tags: bug, sql, reflection
         :tickets: 2728
+        :versions: 0.9.0
 
         Fixed bug whereby using :meth:`.MetaData.reflect` across a remote
         schema as well as a local schema could produce wrong results
@@ -492,6 +498,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 2726
+        :versions: 0.9.0
 
         Removed the "not implemented" ``__iter__()`` call from the base
         :class:`.ColumnOperators` class, while this was introduced
@@ -832,30 +839,6 @@
       (obviously assuming the state of the superclass).
 
     .. change::
-      :tags: bug, orm
-      :tickets: 2699
-
-      Fixed bug when a query of the form:
-      ``query(SubClass).options(subqueryload(Baseclass.attrname))``,
-      where ``SubClass`` is a joined inh of ``BaseClass``,
-      would fail to apply the ``JOIN`` inside the subquery
-      on the attribute load, producing a cartesian product.
-      The populated results still tended to be correct as additional
-      rows are just ignored, so this issue may be present as a
-      performance degradation in applications that are
-      otherwise working correctly.  Also in 0.7.11.
-
-    .. change::
-      :tags: bug, orm
-      :tickets: 2689
-
-      Fixed bug in unit of work whereby a joined-inheritance
-      subclass could insert the row for the "sub" table
-      before the parent table, if the two tables had no
-      ForeignKey constraints set up between them.
-      Also in 0.7.11.
-
-    .. change::
       :tags: bug, mssql
       :pullreq: 47
 
@@ -908,15 +891,6 @@
       * :ref:`metadata_create_drop_tables`
 
       * :ref:`correlation_context_specific`
-
-    .. change::
-        :tags: feature, postgresql
-        :tickets: 2676
-
-      Added support for Postgresql's traditional SUBSTRING
-      function syntax, renders as "SUBSTRING(x FROM y FOR z)"
-      when regular ``func.substring()`` is used.
-      Also in 0.7.11.  Courtesy Gunnlaugur Þór Briem.
 
     .. change::
         :tags: feature, orm
@@ -1305,16 +1279,6 @@
     :released: December 14, 2012
 
     .. change::
-        :tags: sqlite, bug
-        :tickets: 2568
-
-      More adjustment to this SQLite related issue which was released in
-      0.7.9, to intercept legacy SQLite quoting characters when reflecting
-      foreign keys.  In addition to intercepting double quotes, other
-      quoting characters such as brackets, backticks, and single quotes
-      are now also intercepted.  Also in 0.7.10.
-
-    .. change::
         :tags: orm, bug
         :tickets: 2635
 
@@ -1382,19 +1346,6 @@
       Added :meth:`.KeyedTuple._asdict` and :attr:`.KeyedTuple._fields`
       to the :class:`.KeyedTuple` class to provide some degree of compatibility
       with the Python standard library ``collections.namedtuple()``.
-
-    .. change::
-        :tags: sql, bug
-        :tickets: 2631
-
-      Fixed bug where using server_onupdate=<FetchedValue|DefaultClause>
-      without passing the "for_update=True" flag would apply the default
-      object to the server_default, blowing away whatever was there.
-      The explicit for_update=True argument shouldn't be needed with this usage
-      (especially since the documentation shows an example without it being
-      used) so it is now arranged internally using a copy of the given default
-      object, if the flag isn't set to what corresponds to that argument.
-      Also in 0.7.10.
 
     .. change::
         :tags: sql, bug
