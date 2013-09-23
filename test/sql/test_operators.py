@@ -352,7 +352,6 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "x -> :x_1"
         )
 
-    @testing.requires.python26
     def test_op_not_an_iterator(self):
         # see [ticket:2726]
         class MyType(UserDefinedType):

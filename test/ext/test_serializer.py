@@ -77,7 +77,6 @@ class SerializeTest(fixtures.MappedTest):
         assert serializer.loads(serializer.dumps(User.name, -1), None,
                                 None) is User.name
 
-    @testing.requires.python26  # crashes in 2.5
     def test_expression(self):
         expr = \
             select([users]).select_from(users.join(addresses)).limit(5)
@@ -149,7 +148,6 @@ class SerializeTest(fixtures.MappedTest):
         assert j2.right is j.right
         assert j2._target_adapter._next
 
-    @testing.requires.python26 # namedtuple workaround not serializable in 2.5
     @testing.exclude('sqlite', '<=', (3, 5, 9),
                      'id comparison failing on the buildbot')
     def test_aliases(self):

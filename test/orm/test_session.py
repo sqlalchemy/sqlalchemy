@@ -435,7 +435,6 @@ class SessionStateTest(_fixtures.FixtureTest):
         eq_(bind.connect().execute("select count(1) from users").scalar(), 1)
         sess.close()
 
-    @testing.requires.python26
     def test_with_no_autoflush(self):
         User, users = self.classes.User, self.tables.users
 

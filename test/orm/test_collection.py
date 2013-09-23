@@ -981,11 +981,10 @@ class CollectionsTest(fixtures.ORMTest):
             control.update(d)
             assert_eq()
 
-            if sys.version_info >= (2, 4):
-                kw = dict([(ee.a, ee) for ee in [e, creator()]])
-                direct.update(**kw)
-                control.update(**kw)
-                assert_eq()
+            kw = dict([(ee.a, ee) for ee in [e, creator()]])
+            direct.update(**kw)
+            control.update(**kw)
+            assert_eq()
 
     def _test_dict_bulk(self, typecallable, creator=None):
         if creator is None:

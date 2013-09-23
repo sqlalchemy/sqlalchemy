@@ -187,10 +187,6 @@ class DontWrapMixin(object):
                     raise MyCustomException("invalid!")
 
     """
-import sys
-if sys.version_info < (2, 5):
-    class DontWrapMixin:
-        pass
 
 # Moved to orm.exc; compatibility definition installed by orm import until 0.6
 UnmappedColumnError = None

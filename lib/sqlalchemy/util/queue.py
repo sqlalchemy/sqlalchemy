@@ -25,14 +25,7 @@ within QueuePool.
 from collections import deque
 from time import time as _time
 from .compat import threading
-import sys
 
-if sys.version_info < (2, 6):
-    def notify_all(condition):
-        condition.notify()
-else:
-    def notify_all(condition):
-        condition.notify_all()
 
 __all__ = ['Empty', 'Full', 'Queue', 'SAAbort']
 
@@ -195,7 +188,7 @@ class Queue:
         if not self.not_full.acquire(False):
             return
         try:
-            notify_all(self.not_empty)
+            self.not_empty.notify_all()
         finally:
             self.not_full.release()
 

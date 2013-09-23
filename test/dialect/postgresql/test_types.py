@@ -918,7 +918,6 @@ class UUIDTest(fixtures.TestBase):
 
     __only_on__ = 'postgresql'
 
-    @testing.requires.python25
     @testing.fails_on('postgresql+zxjdbc',
                       'column "data" is of type uuid but expression is of type character varying')
     @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
@@ -932,7 +931,6 @@ class UUIDTest(fixtures.TestBase):
             str(uuid.uuid4())
         )
 
-    @testing.requires.python25
     @testing.fails_on('postgresql+zxjdbc',
                       'column "data" is of type uuid but expression is of type character varying')
     @testing.fails_on('postgresql+pg8000', 'No support for UUID type')

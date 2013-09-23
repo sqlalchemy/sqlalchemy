@@ -32,7 +32,6 @@ class ZooMarkTest(fixtures.TestBase):
 
     __requires__ = 'cpython',
     __only_on__ = 'postgresql+psycopg2'
-    __skip_if__ = lambda : sys.version_info < (2, 5),
 
     def test_baseline_0_setup(self):
         global metadata, session

@@ -911,7 +911,6 @@ class QueuePoolTest(PoolTestBase):
         eq_(len(success), 12, "successes: %s" % success)
 
     @testing.requires.threading_with_mock
-    @testing.requires.python26
     def test_notify_waiters(self):
         dbapi = MockDBAPI()
         canary = []

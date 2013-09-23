@@ -555,20 +555,6 @@ class DefaultRequirements(SuiteRequirements):
                 )
 
     @property
-    def python26(self):
-        return skip_if(
-                lambda: sys.version_info < (2, 6),
-                "Python version 2.6 or greater is required"
-            )
-
-    @property
-    def python25(self):
-        return skip_if(
-                lambda: sys.version_info < (2, 5),
-                "Python version 2.5 or greater is required"
-            )
-
-    @property
     def cpython(self):
         return only_if(lambda: util.cpython,
                "cPython interpreter needed"

@@ -153,9 +153,6 @@ class MutableWithScalarPickleTest(_MutableDictTestBase, fixtures.MappedTest):
         self._test_non_mutable()
 
 class MutableWithScalarJSONTest(_MutableDictTestBase, fixtures.MappedTest):
-    # json introduced in 2.6
-    __skip_if__ = lambda: sys.version_info < (2, 6),
-
     @classmethod
     def define_tables(cls, metadata):
         import json
@@ -245,9 +242,6 @@ class MutableAssociationScalarPickleTest(_MutableDictTestBase, fixtures.MappedTe
         )
 
 class MutableAssociationScalarJSONTest(_MutableDictTestBase, fixtures.MappedTest):
-    # json introduced in 2.6
-    __skip_if__ = lambda: sys.version_info < (2, 6),
-
     @classmethod
     def define_tables(cls, metadata):
         import json

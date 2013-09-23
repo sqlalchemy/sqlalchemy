@@ -2785,10 +2785,6 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(t1).compile
         )
 
-    # there's some unicode issue in the assertion
-    # regular expression that appears to be resolved
-    # in 2.6, not exactly sure what it is
-    @testing.requires.python26
     def test_reraise_of_column_spec_issue_unicode(self):
         MyType = self._illegal_type_fixture()
         t1 = Table('t', MetaData(),

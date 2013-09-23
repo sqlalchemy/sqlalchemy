@@ -930,7 +930,6 @@ class ResultProxyTest(fixtures.TestBase):
             eq_(len(mock_rowcount.__get__.mock_calls), 2)
 
 
-    @testing.requires.python26
     def test_rowproxy_is_sequence(self):
         import collections
         from sqlalchemy.engine import RowProxy
