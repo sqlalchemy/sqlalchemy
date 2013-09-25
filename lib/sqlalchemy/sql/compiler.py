@@ -200,6 +200,9 @@ class Compiled(object):
         """Produce the internal string representation of this element."""
         pass
 
+    def _execute_on_connection(self, connection, multiparams, params):
+        return connection._execute_compiled(self, multiparams, params)
+
     @property
     def sql_compiler(self):
         """Return a Compiled that is capable of processing SQL expressions.

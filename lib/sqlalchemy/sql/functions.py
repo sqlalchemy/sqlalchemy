@@ -60,6 +60,9 @@ class FunctionElement(Executable, ColumnElement, FromClause):
                                  group_contents=True, *args).\
                                  self_group()
 
+    def _execute_on_connection(self, connection, multiparams, params):
+        return connection._execute_function(self, multiparams, params)
+
     @property
     def columns(self):
         """Fulfill the 'columns' contract of :class:`.ColumnElement`.
