@@ -652,17 +652,16 @@ class Connection(Connectable):
          DBAPI-agnostic way, use the :func:`~.expression.text` construct.
 
         """
-        for c in type(object).__mro__:
-            if c in Connection.executors:
-                return Connection.executors[c](
-                                                self,
-                                                object,
-                                                multiparams,
-                                                params)
-        else:
+        if isinstance(object, util.string_types[0]):
+            return self._execute_text(object, multiparams, params)
+        try:
+            meth = object._execute_on_connection
+        except AttributeError:
             raise exc.InvalidRequestError(
                                 "Unexecutable object type: %s" %
                                 type(object))
+        else:
+            return meth(self, multiparams, params)
 
     def _execute_function(self, func, multiparams, params):
         """Execute a sql.FunctionElement object."""
@@ -1037,16 +1036,6 @@ class Connection(Connectable):
                     self.engine.dispose()
             if self.should_close_with_result:
                 self.close()
-
-    # poor man's multimethod/generic function thingy
-    executors = {
-        expression.FunctionElement: _execute_function,
-        expression.ClauseElement: _execute_clauseelement,
-        Compiled: _execute_compiled,
-        schema.SchemaItem: _execute_default,
-        ddl.DDLElement: _execute_ddl,
-        util.string_types[0]: _execute_text
-    }
 
     def default_schema_name(self):
         return self.engine.dialect.get_default_schema_name(self)

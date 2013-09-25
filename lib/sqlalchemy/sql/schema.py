@@ -68,6 +68,9 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
 
     __visit_name__ = 'schema_item'
 
+    def _execute_on_connection(self, connection, multiparams, params):
+        return connection._execute_default(self, multiparams, params)
+
     def _init_items(self, *args):
         """Initialize the list of child items for this SchemaItem."""
 
