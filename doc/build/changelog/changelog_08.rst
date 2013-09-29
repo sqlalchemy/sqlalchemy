@@ -11,7 +11,7 @@
     :version: 0.8.3
 
     .. change::
-        :tags: feature, sql
+        :tags: feature, engine
         :tickets: 2821
         :versions: 0.9.0
 
