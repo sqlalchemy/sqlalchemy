@@ -11,6 +11,15 @@
     :version: 0.8.3
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 2819
+        :versions: 0.9.0
+
+        Fixed bug where Postgresql version strings that had a prefix preceding
+        the words "Postgresql" or "EnterpriseDB" would not parse.
+        Courtesy Scott Schaefer.
+
+    .. change::
         :tags: feature, engine
         :tickets: 2821
         :versions: 0.9.0
