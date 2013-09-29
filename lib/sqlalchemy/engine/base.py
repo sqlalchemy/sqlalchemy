@@ -1433,7 +1433,7 @@ class Engine(Connectable, log.Identified):
     echo = log.echo_property()
 
     def __repr__(self):
-        return 'Engine(%s)' % str(self.url)
+        return 'Engine(%r)' % self.url
 
     def dispose(self):
         """Dispose of the connection pool used by this :class:`.Engine`.
