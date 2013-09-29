@@ -11,6 +11,15 @@
     :version: 0.8.3
 
     .. change::
+        :tags: feature, sql
+        :tickets: 2821
+        :versions: 0.9.0
+
+        ``repr()`` for the :class:`.URL` of an :class:`.Engine`
+        will now conceal the password using asterisks.
+        Courtesy Gunnlaugur Þór Briem.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2818
         :versions: 0.9.0
