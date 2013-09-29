@@ -53,7 +53,12 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
              'compiled by GCC gcc (GCC) 4.4.2, 64-bit', (8, 5)),
              ('EnterpriseDB 9.1.2.2 on x86_64-unknown-linux-gnu, '
              'compiled by gcc (GCC) 4.1.2 20080704 (Red Hat 4.1.2-50), '
-             '64-bit', (9, 1, 2))]:
+             '64-bit', (9, 1, 2)),
+             ('VMWare EnterpriseDB 9.1.2.2 on x86_64-unknown-linux-gnu, '
+             'compiled by gcc (GCC) 4.1.2 20080704 (Red Hat 4.1.2-50), '
+             '64-bit', (9, 1, 2))
+
+             ]:
             eq_(testing.db.dialect._get_server_version_info(mock_conn(string)),
                 version)
 
