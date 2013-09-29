@@ -54,9 +54,8 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
              ('EnterpriseDB 9.1.2.2 on x86_64-unknown-linux-gnu, '
              'compiled by gcc (GCC) 4.1.2 20080704 (Red Hat 4.1.2-50), '
              '64-bit', (9, 1, 2)),
-             ('VMWare EnterpriseDB 9.1.2.2 on x86_64-unknown-linux-gnu, '
-             'compiled by gcc (GCC) 4.1.2 20080704 (Red Hat 4.1.2-50), '
-             '64-bit', (9, 1, 2))
+             ('[PostgreSQL 9.2.4 ] VMware vFabric Postgres 9.2.4.0 '
+                'release build 1080137', (9, 2, 4))
 
              ]:
             eq_(testing.db.dialect._get_server_version_info(mock_conn(string)),
