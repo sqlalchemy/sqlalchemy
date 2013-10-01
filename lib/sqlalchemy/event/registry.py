@@ -12,6 +12,7 @@ from __future__ import absolute_import
 
 import weakref
 import collections
+import types
 from .. import exc
 
 
@@ -130,13 +131,16 @@ class _EventKey(object):
         self.target = target
         self.identifier = identifier
         self.fn = fn
+        if isinstance(fn, types.MethodType):
+            self.fn_key = id(fn.__func__), id(fn.__self__)
+        else:
+            self.fn_key = id(fn)
         self.fn_wrap = _fn_wrap
         self.dispatch_target = dispatch_target
 
     @property
     def _key(self):
-        return (id(self.target), self.identifier, id(self.fn))
-
+        return (id(self.target), self.identifier, self.fn_key)
 
     def with_wrapper(self, fn_wrap):
         if fn_wrap is self._listen_fn:
