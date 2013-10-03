@@ -16,6 +16,7 @@ from . import attributes
 from .. import util, sql, exc as sa_exc, event, schema
 from ..sql import expression
 from . import properties
+from . import query
 
 
 class DescriptorProperty(MapperProperty):
@@ -83,9 +84,9 @@ class CompositeProperty(DescriptorProperty):
     :class:`.CompositeProperty` is constructed using the :func:`.composite`
     function.
 
-    See also:
+    .. seealso::
 
-    :ref:`mapper_composite`
+        :ref:`mapper_composite`
 
     """
     def __init__(self, class_, *attrs, **kwargs):
@@ -153,6 +154,7 @@ class CompositeProperty(DescriptorProperty):
 
         util.set_creation_order(self)
         self._create_descriptor()
+
 
     def instrument_class(self, mapper):
         super(CompositeProperty, self).instrument_class(mapper)
@@ -354,6 +356,18 @@ class CompositeProperty(DescriptorProperty):
     def _comparator_factory(self, mapper):
         return self.comparator_factory(self, mapper)
 
+    class CompositeBundle(query.Bundle):
+        def __init__(self, property, expr):
+            self.property = property
+            super(CompositeProperty.CompositeBundle, self).__init__(
+                        property.key, *expr)
+
+        def create_row_processor(self, query, procs, labels):
+            def proc(row, result):
+                return self.property.composite_class(*[proc(row, result) for proc in procs])
+            return proc
+
+
     class Comparator(PropComparator):
         """Produce boolean, comparison, and other operators for
         :class:`.CompositeProperty` attributes.
@@ -373,10 +387,18 @@ class CompositeProperty(DescriptorProperty):
 
         """
 
+
+        __hash__ = None
+
+        @property
+        def clauses(self):
+            return self.__clause_element__()
+
         def __clause_element__(self):
             return expression.ClauseList(group=False, *self._comparable_elements)
 
-        __hash__ = None
+        def _query_clause_element(self):
+            return CompositeProperty.CompositeBundle(self.prop, self.__clause_element__())
 
         @util.memoized_property
         def _comparable_elements(self):

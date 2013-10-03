@@ -143,6 +143,12 @@ class QueryableAttribute(interfaces._MappedAttribute,
     def __clause_element__(self):
         return self.comparator.__clause_element__()
 
+    def _query_clause_element(self):
+        """like __clause_element__(), but called specifically
+        by :class:`.Query` to allow special behavior."""
+
+        return self.comparator._query_clause_element()
+
     def of_type(self, cls):
         return QueryableAttribute(
                     self.class_,
@@ -153,7 +159,7 @@ class QueryableAttribute(interfaces._MappedAttribute,
                     of_type=cls)
 
     def label(self, name):
-        return self.__clause_element__().label(name)
+        return self._query_clause_element().label(name)
 
     def operate(self, op, *other, **kwargs):
         return op(self.comparator, *other, **kwargs)

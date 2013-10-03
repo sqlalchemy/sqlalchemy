@@ -13,6 +13,39 @@
     :version: 0.9.0
 
     .. change::
+        :tags: feature, orm
+        :tickets: 2824
+
+        The :func:`.composite` construct now maintains the return object
+        when used in a column-oriented :class:`.Query`, rather than expanding
+        out into individual columns.  This makes use of the new :class:`.Bundle`
+        feature internally.  This behavior is backwards incompatible; to
+        select from a composite column which will expand out, use
+        ``MyClass.some_composite.clauses``.
+
+        .. seealso::
+
+            :ref:`migration_2824`
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 2824
+
+        A new construct :class:`.Bundle` is added, which allows for specification
+        of groups of column expressions to a :class:`.Query` construct.
+        The group of columns are returned as a single tuple by default.  The
+        behavior of :class:`.Bundle` can be overridden however to provide
+        any sort of result processing to the returned row.  The behavior
+        of :class:`.Bundle` is also embedded into composite attributes now
+        when they are used in a column-oriented :class:`.Query`.
+
+        .. seealso::
+
+            :ref:`change_2824`
+
+            :ref:`migration_2824`
+
+    .. change::
         :tags: bug, sql
         :tickets: 2812
 

@@ -62,7 +62,7 @@ from .scoping import (
     scoped_session
 )
 from . import mapper as mapperlib
-from .query import AliasOption, Query
+from .query import AliasOption, Query, Bundle
 from ..util.langhelpers import public_factory
 from .. import util as _sa_util
 from . import strategies as _strategies

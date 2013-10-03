@@ -772,6 +772,10 @@ class you provide.
     in-place mutation is no longer automatic; see the section below on
     enabling mutability to support tracking of in-place changes.
 
+.. versionchanged:: 0.9
+    Composites will return their object-form, rather than as individual columns,
+    when used in a column-oriented :class:`.Query` construct.  See :ref:`migration_2824`.
+
 A simple example represents pairs of columns as a ``Point`` object.
 ``Point`` represents such a pair as ``.x`` and ``.y``::
 
@@ -910,6 +914,54 @@ the same expression that the base "greater than" does::
                             comparator_factory=PointComparator)
         end = composite(Point, x2, y2,
                             comparator_factory=PointComparator)
+
+.. _bundles:
+
+Column Bundles
+===============
+
+The :class:`.Bundle` may be used to query for groups of columns under one
+namespace.
+
+.. versionadded:: 0.9.0
+
+The bundle allows columns to be grouped together::
+
+    from sqlalchemy.orm import Bundle
+
+    bn = Bundle('mybundle', MyClass.data1, MyClass.data2)
+    for row in session.query(bn).filter(bn.c.data1 == 'd1'):
+        print row.mybundle.data1, row.mybundle.data2
+
+The bundle can be subclassed to provide custom behaviors when results
+are fetched.  The method :meth:`.Bundle.create_row_processor` is given
+the :class:`.Query` and a set of "row processor" functions at query execution
+time; these processor functions when given a result row will return the
+individual attribute value, which can then be adapted into any kind of
+return data structure.  Below illustrates replacing the usual :class:`.KeyedTuple`
+return structure with a straight Python dictionary::
+
+    from sqlalchemy.orm import Bundle
+
+    class DictBundle(Bundle):
+        def create_row_processor(self, query, procs, labels):
+            """Override create_row_processor to return values as dictionaries"""
+            def proc(row, result):
+                return dict(
+                            zip(labels, (proc(row, result) for proc in procs))
+                        )
+            return proc
+
+A result from the above bundle will return dictionary values::
+
+    bn = DictBundle('mybundle', MyClass.data1, MyClass.data2)
+    for row in session.query(bn).filter(bn.c.data1 == 'd1'):
+        print row.mybundle['data1'], row.mybundle['data2']
+
+The :class:`.Bundle` construct is also integrated into the behavior
+of :func:`.composite`, where it is used to return composite attributes as objects
+when queried as individual attributes.
+
 
 .. _maptojoin:
 

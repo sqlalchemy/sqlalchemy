@@ -52,6 +52,35 @@ in both Python 2 and Python 3 environments.
 Behavioral Changes
 ==================
 
+.. _migration_2824:
+
+Composite attributes are now returned as their object form when queried on a per-attribute basis
+------------------------------------------------------------------------------------------------
+
+Using a :class:`.Query` in conjunction with a composite attribute now returns the object
+type maintained by that composite, rather than being broken out into individual
+columns.   Using the mapping setup at :ref:`mapper_composite`::
+
+    >>> session.query(Vertex.start, Vertex.end).\
+    ...     filter(Vertex.start == Point(3, 4)).all()
+    [(Point(x=3, y=4), Point(x=5, y=6))]
+
+This change is backwards-incompatible with code that expects the indivdual attribute
+to be expanded into individual columns.  To get that behavior, use the ``.clauses``
+accessor::
+
+
+    >>> session.query(Vertex.start.clauses, Vertex.end.clauses).\
+    ...     filter(Vertex.start == Point(3, 4)).all()
+    [(3, 4, 5, 6)]
+
+.. seealso::
+
+    :ref:`change_2824`
+
+:ticket:`2824`
+
+
 .. _migration_2736:
 
 :meth:`.Query.select_from` no longer applies the clause to corresponding entities
@@ -390,6 +419,28 @@ rendering::
     FROM users WHERE users.name = :name_1
 
 :ticket:`722`
+
+.. _change_2824:
+
+Column Bundles for ORM queries
+------------------------------
+
+The :class:`.Bundle` allows for querying of sets of columns, which are then
+grouped into one name under the tuple returned by the query.  The initial
+purposes of :class:`.Bundle` are 1. to allow "composite" ORM columns to be
+returned as a single value in a column-based result set, rather than expanding
+them out into individual columns and 2. to allow the creation of custom result-set
+constructs within the ORM, using ad-hoc columns and return types, without involving
+the more heavyweight mechanics of mapped classes.
+
+.. seealso::
+
+    :ref:`migration_2824`
+
+    :ref:`bundles`
+
+:ticket:`2824`
+
 
 Server Side Version Counting
 -----------------------------

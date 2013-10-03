@@ -35,6 +35,8 @@ from ..sql import (
         util as sql_util,
         expression, visitors
     )
+from ..sql.base import ColumnCollection
+from ..sql import operators
 from . import properties
 
 __all__ = ['Query', 'QueryContext', 'aliased']
@@ -2890,6 +2892,8 @@ class _QueryEntity(object):
             if not isinstance(entity, util.string_types) and \
                         _is_mapped_class(entity):
                 cls = _MapperEntity
+            elif isinstance(entity, Bundle):
+                cls = _BundleEntity
             else:
                 cls = _ColumnEntity
         return object.__new__(cls)
@@ -3089,6 +3093,163 @@ class _MapperEntity(_QueryEntity):
     def __str__(self):
         return str(self.mapper)
 
+@inspection._self_inspects
+class Bundle(object):
+    """A grouping of SQL expressions that are returned by a :class:`.Query`
+    under one namespace.
+
+    The :class:`.Bundle` essentially allows nesting of the tuple-based
+    results returned by a column-oriented :class:`.Query` object.  It also
+    is extensible via simple subclassing, where the primary capability
+    to override is that of how the set of expressions should be returned,
+    allowing post-processing as well as custom return types, without
+    involving ORM identity-mapped classes.
+
+    .. versionadded:: 0.9.0
+
+    .. seealso::
+
+        :ref:`bundles`
+
+    """
+
+    def __init__(self, name, *exprs):
+        """Construct a new :class:`.Bundle`.
+
+        e.g.::
+
+            bn = Bundle("mybundle", MyClass.x, MyClass.y)
+
+            for row in session.query(bn).filter(bn.c.x == 5).filter(bn.c.y == 4):
+                print(row.mybundle.x, row.mybundle.y)
+
+        """
+        self.name = self._label = name
+        self.exprs = exprs
+        self.c = self.columns = ColumnCollection()
+        self.columns.update((getattr(col, "key", col._label), col)
+                    for col in exprs)
+
+    columns = None
+    """A namespace of SQL expressions referred to by this :class:`.Bundle`.
+
+        e.g.::
+
+            bn = Bundle("mybundle", MyClass.x, MyClass.y)
+
+            q = sess.query(bn).filter(bn.c.x == 5)
+
+        Nesting of bundles is also supported::
+
+            b1 = Bundle("b1",
+                    Bundle('b2', MyClass.a, MyClass.b),
+                    Bundle('b3', MyClass.x, MyClass.y)
+                )
+
+            q = sess.query(b1).filter(b1.c.b2.c.a == 5).filter(b1.c.b3.c.y == 9)
+
+    .. seealso::
+
+        :attr:`.Bundle.c`
+
+    """
+
+    c = None
+    """An alias for :attr:`.Bundle.columns`."""
+
+    def _clone(self):
+        cloned = self.__class__.__new__(self.__class__)
+        cloned.__dict__.update(self.__dict__)
+        return cloned
+
+    def __clause_element__(self):
+        return expression.ClauseList(group=False, *self.c)
+
+    @property
+    def clauses(self):
+        return self.__clause_element__().clauses
+
+    def label(self, name):
+        """Provide a copy of this :class:`.Bundle` passing a new label."""
+
+        cloned = self._clone()
+        cloned.name = name
+        return cloned
+
+    def create_row_processor(self, query, procs, labels):
+        """Produce the "row processing" function for this :class:`.Bundle`.
+
+        May be overridden by subclasses.
+
+        .. seealso::
+
+            :ref:`bundles` - includes an example of subclassing.
+
+        """
+        def proc(row, result):
+            return util.KeyedTuple([proc(row, None) for proc in procs], labels)
+        return proc
+
+
+class _BundleEntity(_QueryEntity):
+    def __init__(self, query, bundle, setup_entities=True):
+        query._entities.append(self)
+        self.bundle = self.entity_zero = bundle
+        self.type = type(bundle)
+        self._label_name = bundle.name
+        self._entities = []
+
+        if setup_entities:
+            for expr in bundle.exprs:
+                if isinstance(expr, Bundle):
+                    _BundleEntity(self, expr)
+                else:
+                    _ColumnEntity(self, expr, namespace=self)
+
+        self.entities = ()
+
+        self.filter_fn = lambda item: item
+
+    def corresponds_to(self, entity):
+        # TODO: this seems to have no effect for
+        # _ColumnEntity either
+        return False
+
+    @property
+    def entity_zero_or_selectable(self):
+        for ent in self._entities:
+            ezero = ent.entity_zero_or_selectable
+            if ezero is not None:
+                return ezero
+        else:
+            return None
+
+    def adapt_to_selectable(self, query, sel):
+        c = _BundleEntity(query, self.bundle, setup_entities=False)
+        #c._label_name = self._label_name
+        #c.entity_zero = self.entity_zero
+        #c.entities = self.entities
+
+        for ent in self._entities:
+            ent.adapt_to_selectable(c, sel)
+
+    def setup_entity(self, ext_info, aliased_adapter):
+        for ent in self._entities:
+            ent.setup_entity(ext_info, aliased_adapter)
+
+    def setup_context(self, query, context):
+        for ent in self._entities:
+            ent.setup_context(query, context)
+
+    def row_processor(self, query, context, custom_rows):
+        procs, labels = zip(
+                *[ent.row_processor(query, context, custom_rows)
+                for ent in self._entities]
+            )
+
+        proc = self.bundle.create_row_processor(query, procs, labels)
+
+        return proc, self._label_name
 
 class _ColumnEntity(_QueryEntity):
     """Column/expression based entity."""
@@ -3105,7 +3266,7 @@ class _ColumnEntity(_QueryEntity):
                                     interfaces.PropComparator
                                 )):
             self._label_name = column.key
-            column = column.__clause_element__()
+            column = column._query_clause_element()
         else:
             self._label_name = getattr(column, 'key', None)
 
@@ -3118,6 +3279,9 @@ class _ColumnEntity(_QueryEntity):
 
             if c is not column:
                 return
+        elif isinstance(column, Bundle):
+            _BundleEntity(query, column)
+            return
 
         if not isinstance(column, sql.ColumnElement):
             raise sa_exc.InvalidRequestError(
@@ -3125,7 +3289,7 @@ class _ColumnEntity(_QueryEntity):
                 "expected - got '%r'" % (column, )
             )
 
-        type_ = column.type
+        self.type = type_ = column.type
         if type_.hashable:
             self.filter_fn = lambda item: item
         else:
@@ -3177,10 +3341,6 @@ class _ColumnEntity(_QueryEntity):
         else:
             return None
 
-    @property
-    def type(self):
-        return self.column.type
-
     def adapt_to_selectable(self, query, sel):
         c = _ColumnEntity(query, sel.corresponding_column(self.column))
         c._label_name = self._label_name
@@ -3193,6 +3353,8 @@ class _ColumnEntity(_QueryEntity):
         self.froms.add(ext_info.selectable)
 
     def corresponds_to(self, entity):
+        # TODO: just returning False here,
+        # no tests fail
         if self.entity_zero is None:
             return False
         elif _is_aliased_class(entity):

@@ -320,6 +320,9 @@ class PropComparator(operators.ColumnOperators):
     def __clause_element__(self):
         raise NotImplementedError("%r" % self)
 
+    def _query_clause_element(self):
+        return self.__clause_element__()
+
     def adapt_to_entity(self, adapt_to_entity):
         """Return a copy of this PropComparator which will use the given
         :class:`.AliasedInsp` to produce corresponding expressions.
