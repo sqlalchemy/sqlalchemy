@@ -3194,7 +3194,7 @@ class Bundle(object):
 class _BundleEntity(_QueryEntity):
     def __init__(self, query, bundle, setup_entities=True):
         query._entities.append(self)
-        self.bundle = self.entity_zero = bundle
+        self.bundle = bundle
         self.type = type(bundle)
         self._label_name = bundle.name
         self._entities = []
@@ -3209,6 +3209,15 @@ class _BundleEntity(_QueryEntity):
         self.entities = ()
 
         self.filter_fn = lambda item: item
+
+    @property
+    def entity_zero(self):
+        for ent in self._entities:
+            ezero = ent.entity_zero
+            if ezero is not None:
+                return ezero
+        else:
+            return None
 
     def corresponds_to(self, entity):
         # TODO: this seems to have no effect for

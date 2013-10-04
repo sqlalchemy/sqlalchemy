@@ -224,6 +224,19 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
             ((9, 'd8d1', 'd8d2'),), ((10, 'd9d1', 'd9d2'),)]
         )
 
+    def test_filter_by(self):
+        Data = self.classes.Data
+
+        b1 = Bundle('b1', Data.id, Data.d1, Data.d2)
+
+        sess = Session()
+
+        self.assert_compile(
+            sess.query(b1).filter_by(d1='d1'),
+            "SELECT data.id AS data_id, data.d1 AS data_d1, "
+            "data.d2 AS data_d2 FROM data WHERE data.d1 = :d1_1"
+        )
+
     def test_clause_expansion(self):
         Data = self.classes.Data
 
