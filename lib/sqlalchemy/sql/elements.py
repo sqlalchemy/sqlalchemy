@@ -2018,6 +2018,7 @@ class ColumnClause(Immutable, ColumnElement):
 
     def _gen_label(self, name):
         t = self.table
+
         if self.is_literal:
             return None
 
@@ -2030,8 +2031,14 @@ class ColumnClause(Immutable, ColumnElement):
 
             # propagate name quoting rules for labels.
             if getattr(name, "quote", None) is not None:
-                label = quoted_name(label, name.quote)
+                if isinstance(label, quoted_name):
+                    label.quote = name.quote
+                else:
+                    label = quoted_name(label, name.quote)
             elif getattr(t.name, "quote", None) is not None:
+                # can't get this situation to occur, so let's
+                # assert false on it for now
+                assert not isinstance(label, quoted_name)
                 label = quoted_name(label, t.name.quote)
 
             # ensure the label name doesn't conflict with that

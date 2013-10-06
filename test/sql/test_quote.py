@@ -612,7 +612,20 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             'CREATE INDEX foo ON t ("x")'
         )
 
+    def test_quote_flag_propagate_anon_label(self):
+        m = MetaData()
+        t = Table('t', m, Column('x', Integer, quote=True))
 
+        self.assert_compile(
+            select([t.alias()]).apply_labels(),
+            'SELECT t_1."x" AS "t_1_x" FROM t AS t_1'
+        )
+
+        t2 = Table('t2', m, Column('x', Integer), quote=True)
+        self.assert_compile(
+            select([t2.c.x]).apply_labels(),
+            'SELECT "t2".x AS "t2_x" FROM "t2"'
+        )
 
 class PreparerTest(fixtures.TestBase):
     """Test the db-agnostic quoting services of IdentifierPreparer."""
