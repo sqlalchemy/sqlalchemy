@@ -117,7 +117,8 @@ class Load(Generative, MapperOption):
             if attr.endswith(_WILDCARD_TOKEN) or attr.endswith(_DEFAULT_TOKEN):
                 if wildcard_key:
                     attr = "%s:%s" % (wildcard_key, attr)
-                self.propagate_to_loaders = False
+                if attr.endswith(_DEFAULT_TOKEN):
+                    self.propagate_to_loaders = False
                 return path.token(attr)
 
             try:
@@ -256,7 +257,8 @@ class _UnboundLoad(Load):
         if wildcard_key and isinstance(attr, util.string_types) and \
                 attr in (_WILDCARD_TOKEN, _DEFAULT_TOKEN):
             attr = "%s:%s" % (wildcard_key, attr)
-            self.propagate_to_loaders = False
+            if attr == _DEFAULT_TOKEN:
+                self.propagate_to_loaders = False
 
         return path + (attr, )
 
@@ -340,6 +342,7 @@ class _UnboundLoad(Load):
         current_path = query._current_path
         if current_path:
             start_path = self._chop_path(start_path, current_path)
+
         if not start_path:
             return None
 

@@ -430,9 +430,6 @@ class StrategizedProperty(MapperProperty):
         # that the path is stated in terms of our base
         search_path = dict.__getitem__(path, self)
 
-        #if self.key == "email_address":
-        #    import pdb
-        #    pdb.set_trace()
         # search among: exact match, "attr.*", "default" strategy
         # if any.
         for path_key in (
