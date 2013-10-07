@@ -117,6 +117,37 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
                 (('d3d1', 'd3d2'), ('d3d1', 'd3o4'))]
         )
 
+    def test_single_entity(self):
+        Data = self.classes.Data
+        sess = Session()
+
+        b1 = Bundle('b1', Data.d1, Data.d2, single_entity=True)
+
+        eq_(
+            sess.query(b1).
+                filter(b1.c.d1.between('d3d1', 'd5d1')).
+                all(),
+            [('d3d1', 'd3d2'), ('d4d1', 'd4d2'), ('d5d1', 'd5d2')]
+        )
+
+    def test_single_entity_flag_but_multi_entities(self):
+        Data = self.classes.Data
+        sess = Session()
+
+        b1 = Bundle('b1', Data.d1, Data.d2, single_entity=True)
+        b2 = Bundle('b1', Data.d3, single_entity=True)
+
+        eq_(
+            sess.query(b1, b2).
+                filter(b1.c.d1.between('d3d1', 'd5d1')).
+                all(),
+           [
+            (('d3d1', 'd3d2'), ('d3d3',)),
+            (('d4d1', 'd4d2'), ('d4d3',)),
+            (('d5d1', 'd5d2'), ('d5d3',))
+            ]
+        )
+
     def test_bundle_nesting(self):
         Data = self.classes.Data
         sess = Session()

@@ -33,7 +33,8 @@ def instances(query, cursor, context):
                 for ent in query._entities]
     filtered = id in filter_fns
 
-    single_entity = filtered and len(query._entities) == 1
+    single_entity = len(query._entities) == 1 and \
+                        query._entities[0].supports_single_entity
 
     if filtered:
         if single_entity:
@@ -43,7 +44,7 @@ def instances(query, cursor, context):
                 return tuple(fn(x) for x, fn in zip(row, filter_fns))
 
     custom_rows = single_entity and \
-                    query._entities[0].mapper.dispatch.append_result
+                    query._entities[0].custom_rows
 
     (process, labels) = \
                 list(zip(*[

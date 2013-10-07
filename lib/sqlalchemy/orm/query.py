@@ -2904,6 +2904,8 @@ class _MapperEntity(_QueryEntity):
         self.entities = [entity]
         self.expr = entity
 
+    supports_single_entity = True
+
     def setup_entity(self, ext_info, aliased_adapter):
         self.mapper = ext_info.mapper
         self.aliased_adapter = aliased_adapter
@@ -2918,6 +2920,7 @@ class _MapperEntity(_QueryEntity):
         else:
             self._label_name = self.mapper.class_.__name__
         self.path = self.entity_zero._path_registry
+        self.custom_rows = bool(self.mapper.dispatch.append_result)
 
     def set_with_polymorphic(self, query, cls_or_mappers,
                                 selectable, polymorphic_on):
@@ -3102,7 +3105,11 @@ class Bundle(object):
 
     """
 
-    def __init__(self, name, *exprs):
+    single_entity = False
+    """If True, queries for a single Bundle will be returned as a single
+    entity, rather than an element within a keyed tuple."""
+
+    def __init__(self, name, *exprs, **kw):
         """Construct a new :class:`.Bundle`.
 
         e.g.::
@@ -3112,12 +3119,19 @@ class Bundle(object):
             for row in session.query(bn).filter(bn.c.x == 5).filter(bn.c.y == 4):
                 print(row.mybundle.x, row.mybundle.y)
 
+        :param name: name of the bundle.
+        :param \*exprs: columns or SQL expressions comprising the bundle.
+        :param single_entity=False: if True, rows for this :class:`.Bundle`
+         can be returned as a "single entity" outside of any enclosing tuple
+         in the same manner as a mapped entity.
+
         """
         self.name = self._label = name
         self.exprs = exprs
         self.c = self.columns = ColumnCollection()
         self.columns.update((getattr(col, "key", col._label), col)
                     for col in exprs)
+        self.single_entity = kw.pop('single_entity', self.single_entity)
 
     columns = None
     """A namespace of SQL expressions referred to by this :class:`.Bundle`.
@@ -3198,6 +3212,10 @@ class _BundleEntity(_QueryEntity):
         self.entities = ()
 
         self.filter_fn = lambda item: item
+
+        self.supports_single_entity = self.bundle.single_entity
+
+    custom_rows = False
 
     @property
     def entity_zero(self):
@@ -3329,6 +3347,9 @@ class _ColumnEntity(_QueryEntity):
             self.entity_zero = self.namespace
         else:
             self.entity_zero = None
+
+    supports_single_entity = False
+    custom_rows = False
 
     @property
     def entity_zero_or_selectable(self):
