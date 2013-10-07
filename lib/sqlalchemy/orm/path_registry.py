@@ -9,11 +9,16 @@
 
 from .. import inspection
 from .. import util
+from .. import exc
 from itertools import chain
 from .base import class_mapper
 
 def _unreduce_path(path):
     return PathRegistry.deserialize(path)
+
+
+_WILDCARD_TOKEN = "*"
+_DEFAULT_TOKEN = "_sa_default"
 
 class PathRegistry(object):
     """Represent query load paths and registry functions.
@@ -116,9 +121,13 @@ class PathRegistry(object):
     def coerce(cls, raw):
         return util.reduce(lambda prev, next: prev[next], raw, cls.root)
 
-    @classmethod
-    def token(cls, token):
-        return TokenRegistry(cls.root, token)
+    def token(self, token):
+        if token.endswith(':' + _WILDCARD_TOKEN):
+            return TokenRegistry(self, token)
+        elif token.endswith(":" + _DEFAULT_TOKEN):
+            return TokenRegistry(self.root, token)
+        else:
+            raise exc.ArgumentError("invalid token: %s" % token)
 
     def __add__(self, other):
         return util.reduce(
@@ -135,9 +144,10 @@ class RootRegistry(PathRegistry):
 
     """
     path = ()
-
+    has_entity = False
     def __getitem__(self, entity):
         return entity._path_registry
+
 PathRegistry.root = RootRegistry()
 
 class TokenRegistry(PathRegistry):
@@ -145,6 +155,8 @@ class TokenRegistry(PathRegistry):
         self.token = token
         self.parent = parent
         self.path = parent.path + (token,)
+
+    has_entity = False
 
     def __getitem__(self, entity):
         raise NotImplementedError()
@@ -166,6 +178,47 @@ class PropRegistry(PathRegistry):
         self.parent = parent
         self.path = parent.path + (prop,)
 
+    @util.memoized_property
+    def has_entity(self):
+        return hasattr(self.prop, "mapper")
+
+    @util.memoized_property
+    def entity(self):
+        return self.prop.mapper
+
+    @util.memoized_property
+    def _wildcard_path_loader_key(self):
+        """Given a path (mapper A, prop X), replace the prop with the wildcard,
+        e.g. (mapper A, 'relationship:.*') or (mapper A, 'column:.*'), then
+        return within the ("loader", path) structure.
+
+        """
+        return ("loader",
+                self.parent.token(
+                    "%s:%s" % (self.prop.strategy_wildcard_key, _WILDCARD_TOKEN)
+                    ).path
+                )
+
+    @util.memoized_property
+    def _default_path_loader_key(self):
+        return ("loader",
+                self.parent.token(
+                    "%s:%s" % (self.prop.strategy_wildcard_key, _DEFAULT_TOKEN)
+                    ).path
+                )
+
+    @util.memoized_property
+    def _loader_key(self):
+        return ("loader", self.path)
+
+    @property
+    def mapper(self):
+        return self.entity
+
+    @property
+    def entity_path(self):
+        return self[self.entity]
+
     def __getitem__(self, entity):
         if isinstance(entity, (int, slice)):
             return self.path[entity]
@@ -174,16 +227,21 @@ class PropRegistry(PathRegistry):
                 self, entity
             )
 
-
 class EntityRegistry(PathRegistry, dict):
     is_aliased_class = False
+    has_entity = True
 
     def __init__(self, parent, entity):
         self.key = entity
         self.parent = parent
         self.is_aliased_class = entity.is_aliased_class
-
+        self.entity = entity
         self.path = parent.path + (entity,)
+        self.entity_path = self
+
+    @property
+    def mapper(self):
+        return inspection.inspect(self.entity).mapper
 
     def __bool__(self):
         return True
@@ -195,26 +253,9 @@ class EntityRegistry(PathRegistry, dict):
         else:
             return dict.__getitem__(self, entity)
 
-    def _inlined_get_for(self, prop, context, key):
-        """an inlined version of:
-
-        cls = path[mapperproperty].get(context, key)
-
-        Skips the isinstance() check in __getitem__
-        and the extra method call for get().
-        Used by StrategizedProperty for its
-        very frequent lookup.
-
-        """
-        path = dict.__getitem__(self, prop)
-        path_key = (key, path.path)
-        if path_key in context.attributes:
-            return context.attributes[path_key]
-        else:
-            return None
-
     def __missing__(self, key):
         self[key] = item = PropRegistry(self, key)
         return item
+
 
 

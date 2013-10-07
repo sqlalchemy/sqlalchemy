@@ -478,8 +478,11 @@ Below we load ``Company`` rows while eagerly loading related ``Engineer``
 objects, querying the ``employee`` and ``engineer`` tables simultaneously::
 
     session.query(Company).\
-        options(subqueryload_all(Company.employees.of_type(Engineer),
-                        Engineer.machines))
+        options(
+            subqueryload(Company.employees.of_type(Engineer)).
+            subqueryload("machines")
+            )
+        )
 
 .. versionadded:: 0.8
     :func:`.joinedload` and :func:`.subqueryload` support

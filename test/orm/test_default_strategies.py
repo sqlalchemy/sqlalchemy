@@ -149,11 +149,13 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
     def test_star_must_be_alone(self):
         sess = self._downgrade_fixture()
         User = self.classes.User
+        opt = sa.orm.subqueryload('*', User.addresses)
         assert_raises_message(
             sa.exc.ArgumentError,
-            "Wildcard identifier '\*' must be specified alone.",
-            sa.orm.subqueryload, '*', User.addresses
+            "Wildcard token cannot be followed by another entity",
+            sess.query(User).options, opt
         )
+
     def test_select_with_joinedload(self):
         """Mapper load strategy defaults can be downgraded with
         lazyload('*') option, while explicit joinedload() option
@@ -283,6 +285,23 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         # verify everything loaded, with no additional sql needed
         self._assert_fully_loaded(users)
 
+    def test_joined_path_wildcards(self):
+        sess = self._upgrade_fixture()
+        users = []
+
+        # test upgrade all to joined: 1 sql
+        def go():
+            users[:] = sess.query(self.classes.User)\
+                .options(sa.orm.joinedload('.*'))\
+                .options(sa.orm.joinedload("addresses.*"))\
+                .options(sa.orm.joinedload("orders.*"))\
+                .options(sa.orm.joinedload("orders.items.*"))\
+                .order_by(self.classes.User.id)\
+                .all()
+
+        self.assert_sql_count(testing.db, go, 1)
+        self._assert_fully_loaded(users)
+
     def test_joined_with_lazyload(self):
         """Mapper load strategy defaults can be upgraded with
         joinedload('*') option, while explicit lazyload() option
@@ -343,6 +362,24 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         def go():
             users[:] = sess.query(self.classes.User)\
                 .options(sa.orm.subqueryload('*'))\
+                .order_by(self.classes.User.id)\
+                .all()
+        self.assert_sql_count(testing.db, go, 5)
+
+        # verify everything loaded, with no additional sql needed
+        self._assert_fully_loaded(users)
+
+    def test_subquery_path_wildcards(self):
+        sess = self._upgrade_fixture()
+        users = []
+
+        # test upgrade all to subquery: 1 sql + 4 relationships = 5
+        def go():
+            users[:] = sess.query(self.classes.User)\
+                .options(sa.orm.subqueryload('.*'))\
+                .options(sa.orm.subqueryload('addresses.*'))\
+                .options(sa.orm.subqueryload('orders.*'))\
+                .options(sa.orm.subqueryload('orders.items.*'))\
                 .order_by(self.classes.User.id)\
                 .all()
         self.assert_sql_count(testing.db, go, 5)

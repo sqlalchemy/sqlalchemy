@@ -385,6 +385,150 @@ such as listener targets, to be garbage collected when they go out of scope.
 
 :ticket:`2268`
 
+.. _feature_1418:
+
+New Query Options API; ``load_only()`` option
+---------------------------------------------
+
+The system of loader options such as :func:`.orm.joinedload`,
+:func:`.orm.subqueryload`, :func:`.orm.lazyload`, :func:`.orm.defer`, etc.
+all build upon a new system known as :class:`.Load`.  :class:`.Load` provides
+a "method chained" (a.k.a. :term:`generative`) approach to loader options, so that
+instead of joining together long paths using dots or multiple attribute names,
+an explicit loader style is given for each path.
+
+While the new way is slightly more verbose, it is simpler to understand
+in that there is no ambiguity in what options are being applied to which paths;
+it simplifies the method signatures of the options and provides greater flexibility
+particularly for column-based options.  The old systems are to remain functional
+indefinitely as well and all styles can be mixed.
+
+**Old Way**
+
+To set a certain style of loading along every link in a multi-element path, the ``_all()``
+option has to be used::
+
+    query(User).options(joinedload_all("orders.items.keywords"))
+
+**New Way**
+
+Loader options are now chainable, so the same ``joinedload(x)`` method is applied
+equally to each link, without the need to keep straight between
+:func:`.joinedload` and :func:`.joinedload_all`::
+
+    query(User).options(joinedload("orders").joinedload("items").joinedload("keywords"))
+
+**Old Way**
+
+Setting an option on path that is based on a subclass requires that all
+links in the path be spelled out as class bound attributes, since the
+:meth:`.PropComparator.of_type` method needs to be called::
+
+    session.query(Company).\
+        options(
+            subqueryload_all(
+                Company.employees.of_type(Engineer),
+                Engineer.machines
+            )
+        )
+
+**New Way**
+
+Only those elements in the path that actually need :meth:`.PropComparator.of_type`
+need to be set as a class-bound attribute, string-based names can be resumed
+afterwards::
+
+    session.query(Company).\
+        options(
+            subqueryload(Company.employees.of_type(Engineer)).
+            subqueryload("machines")
+            )
+        )
+
+**Old Way**
+
+Setting the loader option on the last link in a long path uses a syntax
+that looks a lot like it should be setting the option for all links in the
+path, causing confusion::
+
+    query(User).options(subqueryload("orders.items.keywords"))
+
+**New Way**
+
+A path can now be spelled out using :func:`.defaultload` for entries in the
+path where the existing loader style should be unchanged.  More verbose
+but the intent is clearer::
+
+    query(User).options(defaultload("orders").defaultload("items").subqueryload("keywords"))
+
+
+The dotted style can still be taken advantage of, particularly in the case
+of skipping over several path elements::
+
+    query(User).options(defaultload("orders.items").subqueryload("keywords"))
+
+**Old Way**
+
+The :func:`.defer` option on a path needed to be spelled out with the full
+path for each column::
+
+    query(User).options(defer("orders.description"), defer("orders.isopen"))
+
+**New Way**
+
+A single :class:`.Load` object that arrives at the target path can have
+:meth:`.Load.defer` called upon it repeatedly::
+
+    query(User).options(defaultload("orders").defer("description").defer("isopen"))
+
+The Load Class
+^^^^^^^^^^^^^^^
+
+The :class:`.Load` class can be used directly to provide a "bound" target,
+especially when multiple parent entities are present::
+
+    from sqlalchemy.orm import Load
+
+    query(User, Address).options(Load(Address).joinedload("entries"))
+
+Load Only
+^^^^^^^^^
+
+A new option :func:`.load_only` achieves a "defer everything but" style of load,
+loading only the given columns and deferring the rest::
+
+    from sqlalchemy.orm import load_only
+
+    query(User).options(load_only("name", "fullname"))
+
+    # specify explicit parent entity
+    query(User, Address).options(Load(User).load_only("name", "fullname"))
+
+    # specify path
+    query(User).options(joinedload(User.addresses).load_only("email_address"))
+
+Class-specific Wildcards
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Using :class:`.Load`, a wildcard may be used to set the loading for all
+relationships (or perhaps columns) on a given entity, without affecting any
+others::
+
+    # lazyload all User relationships
+    query(User).options(Load(User).lazyload("*"))
+
+    # undefer all User columns
+    query(User).options(Load(User).undefer("*"))
+
+    # lazyload all Address relationships
+    query(User).options(defaultload(User.addresses).lazyload("*"))
+
+    # undefer all Address columns
+    query(User).options(defaultload(User.addresses).undefer("*"))
+
+
+:ticket:`1418`
+
 
 .. _feature_722:
 

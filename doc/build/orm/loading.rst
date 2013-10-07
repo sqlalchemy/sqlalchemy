@@ -1,3 +1,5 @@
+.. _loading_toplevel:
+
 .. currentmodule:: sqlalchemy.orm
 
 Relationship Loading Techniques
@@ -82,24 +84,25 @@ The default **loader strategy** for any :func:`~sqlalchemy.orm.relationship`
 is configured by the ``lazy`` keyword argument, which defaults to ``select`` - this indicates
 a "select" statement .
 Below we set it as ``joined`` so that the ``children`` relationship is eager
-loading, using a join:
-
-.. sourcecode:: python+sql
+loaded using a JOIN::
 
     # load the 'children' collection using LEFT OUTER JOIN
-    mapper(Parent, parent_table, properties={
-        'children': relationship(Child, lazy='joined')
-    })
+    class Parent(Base):
+        __tablename__ = 'parent'
+
+        id = Column(Integer, primary_key=True)
+        children = relationship("Child", lazy='joined')
 
 We can also set it to eagerly load using a second query for all collections,
-using ``subquery``:
+using ``subquery``::
 
-.. sourcecode:: python+sql
+    # load the 'children' collection using a second query which
+    # JOINS to a subquery of the original
+    class Parent(Base):
+        __tablename__ = 'parent'
 
-    # load the 'children' attribute using a join to a subquery
-    mapper(Parent, parent_table, properties={
-        'children': relationship(Child, lazy='subquery')
-    })
+        id = Column(Integer, primary_key=True)
+        children = relationship("Child", lazy='subquery')
 
 When querying, all three choices of loader strategy are available on a
 per-query basis, using the :func:`~sqlalchemy.orm.joinedload`,
@@ -117,42 +120,38 @@ query options:
     # set children to load eagerly with a second statement
     session.query(Parent).options(subqueryload('children')).all()
 
-To reference a relationship that is deeper than one level, separate the names by periods:
+Loading Along Paths
+-------------------
 
-.. sourcecode:: python+sql
+To reference a relationship that is deeper than one level, method chaining
+may be used.  The object returned by all loader options is an instance of
+the :class:`.Load` class, which provides a so-called "generative" interface::
 
-    session.query(Parent).options(joinedload('foo.bar.bat')).all()
+    session.query(Parent).options(
+                                joinedload('foo').
+                                    joinedload('bar').
+                                    joinedload('bat')
+                                ).all()
 
-When using dot-separated names with :func:`~sqlalchemy.orm.joinedload` or
-:func:`~sqlalchemy.orm.subqueryload`, the option applies **only** to the actual
-attribute named, and **not** its ancestors. For example, suppose a mapping
-from ``A`` to ``B`` to ``C``, where the relationships, named ``atob`` and
-``btoc``, are both lazy-loading. A statement like the following:
+Using method chaining, the loader style of each link in the path is explicitly
+stated.  To navigate along a path without changing the existing loader style
+of a particular attribute, the :func:`.defaultload` method/function may be used::
 
-.. sourcecode:: python+sql
+    session.query(A).options(
+                        defaultload("atob").joinedload("btoc")
+                    ).all()
 
-    session.query(A).options(joinedload('atob.btoc')).all()
+.. versionchanged:: 0.9.0
 
-will load only ``A`` objects to start. When the ``atob`` attribute on each
-``A`` is accessed, the returned ``B`` objects will *eagerly* load their ``C``
-objects.
-
-Therefore, to modify the eager load to load both ``atob`` as well as ``btoc``,
-place joinedloads for both:
-
-.. sourcecode:: python+sql
-
-    session.query(A).options(joinedload('atob'), joinedload('atob.btoc')).all()
-
-or more succinctly just use :func:`~sqlalchemy.orm.joinedload_all` or
-:func:`~sqlalchemy.orm.subqueryload_all`:
-
-.. sourcecode:: python+sql
-
-    session.query(A).options(joinedload_all('atob.btoc')).all()
-
-There are two other loader strategies available, **dynamic loading** and **no
-loading**; these are described in :ref:`largecollections`.
+    The previous approach of specifying dot-separated paths within loader
+    options has been superseded by the less ambiguous approach of the
+    :class:`.Load` object and related methods.   With this system, the user
+    specifies the style of loading for each link along the chain explicitly,
+    rather than guessing between options like ``joinedload()`` vs. ``joinedload_all()``.
+    The :func:`.orm.defaultload` is provided to allow path navigation without
+    modification of existing loader options.   The dot-separated path system
+    as well as the ``_all()`` functions will remain available for backwards-
+    compatibility indefinitely.
 
 Default Loading Strategies
 --------------------------
@@ -190,6 +189,22 @@ for the ``widget`` relationship::
 
 If multiple ``'*'`` options are passed, the last one overrides
 those previously passed.
+
+Per-Entity Default Loading Strategies
+-------------------------------------
+
+.. versionadded:: 0.9.0
+    Per-entity default loader strategies.
+
+A variant of the default loader strategy is the ability to set the strategy
+on a per-entity basis.  For example, if querying for ``User`` and ``Address``,
+we can instruct all relationships on ``Address`` only to use lazy loading
+by first applying the :class:`.Load` object, then specifying the ``*`` as a
+chained option::
+
+    session.query(User, Address).options(Load(Address).lazyload('*'))
+
+Above, all relationships on ``Address`` will be set to a lazy load.
 
 .. _zen_of_eager_loading:
 
@@ -402,31 +417,27 @@ For this SQLAlchemy supplies the :func:`~sqlalchemy.orm.contains_eager()`
 option. This option is used in the same manner as the
 :func:`~sqlalchemy.orm.joinedload()` option except it is assumed that the
 :class:`~sqlalchemy.orm.query.Query` will specify the appropriate joins
-explicitly. Below it's used with a ``from_statement`` load::
+explicitly. Below, we specify a join between ``User`` and ``Address``
+and addtionally establish this as the basis for eager loading of ``User.addresses``::
 
-    # mapping is the users->addresses mapping
-    mapper(User, users_table, properties={
-        'addresses': relationship(Address, addresses_table)
-    })
+    class User(Base):
+        __tablename__ = 'user'
+        id = Column(Integer, primary_key=True)
+        addresses = relationship("Address")
 
-    # define a query on USERS with an outer join to ADDRESSES
-    statement = users_table.outerjoin(addresses_table).select().apply_labels()
+    class Address(Base):
+        __tablename__ = 'address'
 
-    # construct a Query object which expects the "addresses" results
-    query = session.query(User).options(contains_eager('addresses'))
+        # ...
 
-    # get results normally
-    r = query.from_statement(statement)
+    q = session.query(User).join(User.addresses).\
+                options(contains_eager(User.addresses))
 
-It works just as well with an inline :meth:`.Query.join` or
-:meth:`.Query.outerjoin`::
-
-    session.query(User).outerjoin(User.addresses).options(contains_eager(User.addresses)).all()
 
 If the "eager" portion of the statement is "aliased", the ``alias`` keyword
 argument to :func:`~sqlalchemy.orm.contains_eager` may be used to indicate it.
-This is a string alias name or reference to an actual
-:class:`~sqlalchemy.sql.expression.Alias` (or other selectable) object:
+This is sent as a reference to an :func:`.aliased` or :class:`.Alias`
+construct:
 
 .. sourcecode:: python+sql
 
@@ -444,10 +455,23 @@ This is a string alias name or reference to an actual
     adalias.user_id AS adalias_user_id, adalias.email_address AS adalias_email_address, (...other columns...)
     FROM users LEFT OUTER JOIN email_addresses AS email_addresses_1 ON users.user_id = email_addresses_1.user_id
 
-The ``alias`` argument is used only as a source of columns to match up to the
-result set. You can use it to match up the result to arbitrary label
-names in a string SQL statement, by passing a :func:`.select` which links those
-labels to the mapped :class:`.Table`::
+The path given as the argument to :func:`.contains_eager` needs
+to be a full path from the starting entity. For example if we were loading
+``Users->orders->Order->items->Item``, the string version would look like::
+
+    query(User).options(contains_eager('orders').contains_eager('items'))
+
+Or using the class-bound descriptor::
+
+    query(User).options(contains_eager(User.orders).contains_eager(Order.items))
+
+Advanced Usage with Arbitrary Statements
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``alias`` argument can be more creatively used, in that it can be made
+to represent any set of arbitrary names to match up into a statement.
+Below it is linked to a :func:`.select` which links a set of column objects
+to a string SQL statement::
 
     # label the columns of the addresses table
     eager_columns = select([
@@ -463,23 +487,16 @@ labels to the mapped :class:`.Table`::
                 "from users left outer join addresses on users.user_id=addresses.user_id").\
         options(contains_eager(User.addresses, alias=eager_columns))
 
-The path given as the argument to :func:`.contains_eager` needs
-to be a full path from the starting entity. For example if we were loading
-``Users->orders->Order->items->Item``, the string version would look like::
-
-    query(User).options(contains_eager('orders', 'items'))
-
-Or using the class-bound descriptor::
-
-    query(User).options(contains_eager(User.orders, Order.items))
 
 
-Relation Loader API
---------------------
+Relationship Loader API
+------------------------
 
 .. autofunction:: contains_alias
 
 .. autofunction:: contains_eager
+
+.. autofunction:: defaultload
 
 .. autofunction:: eagerload
 

@@ -14,6 +14,30 @@
 
     .. change::
         :tags: feature, orm
+        :tickets: 1418
+
+        Added a new load option :func:`.orm.load_only`.  This allows a series
+        of column names to be specified as loading "only" those attributes,
+        deferring the rest.
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 1418
+
+        The system of loader options has been entirely rearchitected to build
+        upon a much more comprehensive base, the :class:`.Load` object.  This
+        base allows any common loader option like :func:`.joinedload`,
+        :func:`.defer`, etc. to be used in a "chained" style for the purpose
+        of specifying options down a path, such as ``joinedload("foo").subqueryload("bar")``.
+        The new system supersedes the usage of dot-separated path names,
+        multiple attributes within options, and the usage of ``_all()`` options.
+
+        .. seealso::
+
+            :ref:`feature_1418`
+
+    .. change::
+        :tags: feature, orm
         :tickets: 2824
 
         The :func:`.composite` construct now maintains the return object

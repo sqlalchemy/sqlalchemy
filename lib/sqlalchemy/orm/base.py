@@ -129,6 +129,19 @@ NOT_EXTENSION = util.symbol('NOT_EXTENSION')
 _none_set = frozenset([None])
 
 
+def _generative(*assertions):
+    """Mark a method as generative, e.g. method-chained."""
+
+    @util.decorator
+    def generate(fn, *args, **kw):
+        self = args[0]._clone()
+        for assertion in assertions:
+            assertion(self, fn.__name__)
+        fn(self, *args[1:], **kw)
+        return self
+    return generate
+
+
 # these can be replaced by sqlalchemy.ext.instrumentation
 # if augmented class instrumentation is enabled.
 def manager_of_class(cls):

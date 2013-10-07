@@ -310,22 +310,67 @@ separately when it is accessed::
         photo3 = deferred(Column(Binary), group='photos')
 
 You can defer or undefer columns at the :class:`~sqlalchemy.orm.query.Query`
-level using the :func:`.orm.defer` and :func:`.orm.undefer` query options::
+level using options, including :func:`.orm.defer` and :func:`.orm.undefer`::
 
     from sqlalchemy.orm import defer, undefer
 
     query = session.query(Book)
-    query.options(defer('summary')).all()
-    query.options(undefer('excerpt')).all()
+    query = query.options(defer('summary'))
+    query = query.options(undefer('excerpt'))
+    query.all()
 
-And an entire "deferred group", i.e. which uses the ``group`` keyword argument
-to :func:`.orm.deferred`, can be undeferred using
-:func:`.orm.undefer_group`, sending in the group name::
+An arbitrary set of columns can be selected as "load only" columns, which will
+be loaded while deferring all other columns on a given entity, using :func:`.orm.load_only`::
+
+    from sqlalchemy.orm import load_only
+
+    session.query(Book).options(load_only("summary", "excerpt"))
+
+:func:`.orm.deferred` attributes which are marked with a "group" can be undeferred
+using :func:`.orm.undefer_group`, sending in the group name::
 
     from sqlalchemy.orm import undefer_group
 
     query = session.query(Book)
     query.options(undefer_group('photos')).all()
+
+Deferred Loading with Multiple Entities
+---------------------------------------
+
+To specify column deferral options within a :class:`.Query` that loads multiple types
+of entity, the :class:`.Load` object can specify which parent entity to start with::
+
+    from sqlalchemy.orm import Load
+
+    query = session.query(Book, Author).join(Book.author)
+    query = query.options(
+                Load(Book).load_only("summary", "excerpt"),
+                Load(Author).defer("bio")
+            )
+
+To specify column deferral options along the path of various relationships,
+the options support chaining, where the loading style of each relationship
+is specified first, then is chained to the deferral options.  Such as, to load
+``Book`` instances, then joined-eager-load the ``Author``, then apply deferral
+options to the ``Author`` entity::
+
+    from sqlalchemy.orm import joinedload
+
+    query = session.query(Book)
+    query = query.options(
+                joinedload(Book.author).load_only("summary", "excerpt"),
+            )
+
+In the case where the loading style of parent relationships should be left
+unchanged, use :func:`.orm.defaultload`::
+
+    from sqlalchemy.orm import defaultload
+
+    query = session.query(Book)
+    query = query.options(
+                defaultload(Book.author).load_only("summary", "excerpt"),
+            )
+
 
 Column Deferral API
 -------------------
@@ -333,6 +378,8 @@ Column Deferral API
 .. autofunction:: deferred
 
 .. autofunction:: defer
+
+.. autofunction:: load_only
 
 .. autofunction:: undefer
 

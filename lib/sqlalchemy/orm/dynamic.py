@@ -20,7 +20,7 @@ from . import (
 from .query import Query
 
 @log.class_logger
-@properties.RelationshipProperty._strategy_for(dict(lazy="dynamic"))
+@properties.RelationshipProperty.strategy_for(lazy="dynamic")
 class DynaLoader(strategies.AbstractRelationshipLoader):
     def init_class_attribute(self, mapper):
         self.is_class_level = True

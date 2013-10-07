@@ -1715,7 +1715,7 @@ class M2MCascadeTest(fixtures.MappedTest):
 
         a1.bs.remove(b1)
         sess.flush()
-        assert atob.count().scalar() ==0
+        assert atob.count().scalar() == 0
         assert b.count().scalar() == 0
         assert a.count().scalar() == 1
 

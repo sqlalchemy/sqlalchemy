@@ -261,7 +261,8 @@ class CompositeProperty(DescriptorProperty):
             if self.deferred:
                 prop.deferred = self.deferred
                 prop.strategy_class = prop._strategy_lookup(
-                                        deferred=True, instrument=True)
+                                                ("deferred", True),
+                                                ("instrument", True))
             prop.group = self.group
 
     def _setup_event_handlers(self):

@@ -31,6 +31,8 @@ class ColumnProperty(StrategizedProperty):
 
     """
 
+    strategy_wildcard_key = 'column'
+
     def __init__(self, *columns, **kwargs):
         """Provide a column-level property for use with a Mapper.
 
@@ -142,8 +144,9 @@ class ColumnProperty(StrategizedProperty):
         util.set_creation_order(self)
 
         self.strategy_class = self._strategy_lookup(
-                                    deferred=self.deferred,
-                                    instrument=self.instrument)
+                                    ("deferred", self.deferred),
+                                    ("instrument", self.instrument)
+                                    )
 
     @property
     def expression(self):

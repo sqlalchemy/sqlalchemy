@@ -267,7 +267,7 @@ class PickleTest(fixtures.MappedTest):
             sa.orm.joinedload("addresses", Address.dingaling),
         ]:
             opt2 = pickle.loads(pickle.dumps(opt))
-            eq_(opt.key, opt2.key)
+            eq_(opt.path, opt2.path)
 
         u1 = sess.query(User).options(opt).first()
         u2 = pickle.loads(pickle.dumps(u1))

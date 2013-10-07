@@ -83,7 +83,7 @@ class RelationshipProperty(StrategizedProperty):
 
     """
 
-    strategy_wildcard_key = 'relationship:*'
+    strategy_wildcard_key = 'relationship'
 
     _dependency_processor = None
 
@@ -638,8 +638,7 @@ class RelationshipProperty(StrategizedProperty):
         if strategy_class:
             self.strategy_class = strategy_class
         else:
-            self.strategy_class = self._strategy_lookup(lazy=self.lazy)
-        self._lazy_strategy = self._strategy_lookup(lazy="select")
+            self.strategy_class = self._strategy_lookup(("lazy", self.lazy))
 
         self._reverse_property = set()
 
@@ -1149,7 +1148,7 @@ class RelationshipProperty(StrategizedProperty):
                                     alias_secondary=True):
         if value is not None:
             value = attributes.instance_state(value)
-        return self._get_strategy(self._lazy_strategy).lazy_clause(value,
+        return self._lazy_strategy.lazy_clause(value,
                 reverse_direction=not value_is_parent,
                 alias_secondary=alias_secondary,
                 adapt_source=adapt_source)
@@ -1361,6 +1360,8 @@ class RelationshipProperty(StrategizedProperty):
         self._post_init()
         self._generate_backref()
         super(RelationshipProperty, self).do_init()
+        self._lazy_strategy = self._get_strategy((("lazy", "select"),))
+
 
     def _process_dependent_arguments(self):
         """Convert incoming configuration arguments to their
@@ -1602,7 +1603,7 @@ class RelationshipProperty(StrategizedProperty):
         """memoize the 'use_get' attribute of this RelationshipLoader's
         lazyloader."""
 
-        strategy = self._get_strategy(self._lazy_strategy)
+        strategy = self._lazy_strategy
         return strategy.use_get
 
     @util.memoized_property
