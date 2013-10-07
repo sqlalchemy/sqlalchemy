@@ -319,13 +319,6 @@ level using options, including :func:`.orm.defer` and :func:`.orm.undefer`::
     query = query.options(undefer('excerpt'))
     query.all()
 
-An arbitrary set of columns can be selected as "load only" columns, which will
-be loaded while deferring all other columns on a given entity, using :func:`.orm.load_only`::
-
-    from sqlalchemy.orm import load_only
-
-    session.query(Book).options(load_only("summary", "excerpt"))
-
 :func:`.orm.deferred` attributes which are marked with a "group" can be undeferred
 using :func:`.orm.undefer_group`, sending in the group name::
 
@@ -333,6 +326,18 @@ using :func:`.orm.undefer_group`, sending in the group name::
 
     query = session.query(Book)
     query.options(undefer_group('photos')).all()
+
+Load Only Cols
+---------------
+
+An arbitrary set of columns can be selected as "load only" columns, which will
+be loaded while deferring all other columns on a given entity, using :func:`.orm.load_only`::
+
+    from sqlalchemy.orm import load_only
+
+    session.query(Book).options(load_only("summary", "excerpt"))
+
+.. versionadded:: 0.9.0
 
 Deferred Loading with Multiple Entities
 ---------------------------------------
@@ -371,6 +376,8 @@ unchanged, use :func:`.orm.defaultload`::
                 defaultload(Book.author).load_only("summary", "excerpt"),
             )
 
+.. versionadded:: 0.9.0 support for :class:`.Load` and other options which
+   allow for better targeting of deferral options.
 
 Column Deferral API
 -------------------

@@ -92,7 +92,14 @@ class Load(Generative, MapperOption):
         self._process(query, False)
 
     def _process(self, query, raiseerr):
-        query._attributes.update(self.context)
+        current_path = query._current_path
+        if current_path:
+            for (token, start_path), loader in self.context.items():
+                chopped_start_path = self._chop_path(start_path, current_path)
+                if chopped_start_path is not None:
+                    query._attributes[(token, chopped_start_path)] = loader
+        else:
+            query._attributes.update(self.context)
 
     def _generate_path(self, path, attr, wildcard_key, raiseerr=True):
         if raiseerr and not path.has_entity:
@@ -205,6 +212,25 @@ class Load(Generative, MapperOption):
         self.__dict__.update(state)
         self.path = PathRegistry.deserialize(self.path)
 
+    def _chop_path(self, to_chop, path):
+        i = -1
+
+        for i, (c_token, p_token) in enumerate(zip(to_chop, path.path)):
+            if isinstance(c_token, util.string_types):
+                # TODO: this is approximated from the _UnboundLoad
+                # version and probably has issues, not fully covered.
+
+                if i == 0 and c_token.endswith(':' + _DEFAULT_TOKEN):
+                    return to_chop
+                elif c_token != 'relationship:%s' % (_WILDCARD_TOKEN,) and c_token != p_token.key:
+                    return None
+
+            if c_token is p_token:
+                continue
+            else:
+                return None
+        return to_chop[i+1:]
+
 
 class _UnboundLoad(Load):
     """Represent a loader option that isn't tied to a root entity.
@@ -289,6 +315,23 @@ class _UnboundLoad(Load):
         return opt
 
 
+    def _chop_path(self, to_chop, path):
+        i = -1
+        for i, (c_token, (p_mapper, p_prop)) in enumerate(zip(to_chop, path.pairs())):
+            if isinstance(c_token, util.string_types):
+                if i == 0 and c_token.endswith(':' + _DEFAULT_TOKEN):
+                    return to_chop
+                elif c_token != 'relationship:%s' % (_WILDCARD_TOKEN,) and c_token != p_prop.key:
+                    return None
+            elif isinstance(c_token, PropComparator):
+                if c_token.property is not p_prop:
+                    return None
+        else:
+            i += 1
+
+        return to_chop[i:]
+
+
     def _bind_loader(self, query, context, raiseerr):
         start_path = self.path
         # _current_path implies we're in a
@@ -348,22 +391,6 @@ class _UnboundLoad(Load):
             effective_path.setdefault(context, "loader", loader)
         else:
             effective_path.set(context, "loader", loader)
-
-    def _chop_path(self, to_chop, path):
-        i = -1
-        for i, (c_token, (p_mapper, p_prop)) in enumerate(zip(to_chop, path.pairs())):
-            if isinstance(c_token, util.string_types):
-                if i == 0 and c_token.endswith(':' + _DEFAULT_TOKEN):
-                    return to_chop
-                elif c_token != 'relationship:%s' % (_WILDCARD_TOKEN,) and c_token != p_prop.key:
-                    return None
-            elif isinstance(c_token, PropComparator):
-                if c_token.property is not p_prop:
-                    return None
-        else:
-            i += 1
-
-        return to_chop[i:]
 
     def _find_entity_prop_comparator(self, query, token, mapper, raiseerr):
         if _is_aliased_class(mapper):
@@ -749,7 +776,7 @@ def defaultload(*keys):
     return _UnboundLoad._from_keys(_UnboundLoad.defaultload, keys, False, {})
 
 @loader_option()
-def defer(loadopt, key, *addl_attrs):
+def defer(loadopt, key):
     """Indicate that the given column-oriented attribute should be deferred, e.g.
     not loaded until accessed.
 
@@ -801,17 +828,17 @@ def defer(loadopt, key, *addl_attrs):
 
     """
     return loadopt.set_column_strategy(
-                (key, ) + addl_attrs,
+                (key, ),
                 {"deferred": True, "instrument": True}
             )
 
 
 @defer._add_unbound_fn
-def defer(*key):
-    return _UnboundLoad._from_keys(_UnboundLoad.defer, key, False, {})
+def defer(key, *addl_attrs):
+    return _UnboundLoad._from_keys(_UnboundLoad.defer, (key, ) + addl_attrs, False, {})
 
 @loader_option()
-def undefer(loadopt, key, *addl_attrs):
+def undefer(loadopt, key):
     """Indicate that the given column-oriented attribute should be undeferred, e.g.
     specified within the SELECT statement of the entity as a whole.
 
@@ -845,13 +872,13 @@ def undefer(loadopt, key, *addl_attrs):
 
     """
     return loadopt.set_column_strategy(
-                (key, ) + addl_attrs,
+                (key, ),
                 {"deferred": False, "instrument": True}
             )
 
 @undefer._add_unbound_fn
-def undefer(*key):
-    return _UnboundLoad._from_keys(_UnboundLoad.undefer, key, False, {})
+def undefer(key, *addl_attrs):
+    return _UnboundLoad._from_keys(_UnboundLoad.undefer, (key, ) + addl_attrs, False, {})
 
 @loader_option()
 def undefer_group(loadopt, name):

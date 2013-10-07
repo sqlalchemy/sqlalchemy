@@ -374,6 +374,43 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         self.sql_count_(0, go)
         eq_(item.description, 'item 4')
 
+    def test_path_entity(self):
+        """test the legacy *addl_attrs argument."""
+
+        User = self.classes.User
+        Order = self.classes.Order
+        Item = self.classes.Item
+
+        users = self.tables.users
+        orders = self.tables.orders
+        items = self.tables.items
+        order_items = self.tables.order_items
+
+        mapper(User, users, properties={
+                "orders": relationship(Order, lazy="joined")
+            })
+        mapper(Order, orders, properties={
+                "items": relationship(Item, secondary=order_items, lazy="joined")
+            })
+        mapper(Item, items)
+
+        sess = create_session()
+
+        exp = ("SELECT users.id AS users_id, users.name AS users_name, "
+            "items_1.id AS items_1_id, orders_1.id AS orders_1_id, "
+            "orders_1.user_id AS orders_1_user_id, orders_1.address_id "
+            "AS orders_1_address_id, orders_1.description AS "
+            "orders_1_description, orders_1.isopen AS orders_1_isopen "
+            "FROM users LEFT OUTER JOIN orders AS orders_1 "
+            "ON users.id = orders_1.user_id LEFT OUTER JOIN "
+            "(order_items AS order_items_1 JOIN items AS items_1 "
+                "ON items_1.id = order_items_1.item_id) "
+            "ON orders_1.id = order_items_1.order_id")
+
+        q = sess.query(User).options(defer(User.orders, Order.items, Item.description))
+        self.assert_compile(q, exp)
+
+
     def test_chained_multi_col_options(self):
         users, User = self.tables.users, self.classes.User
         orders, Order = self.tables.orders, self.classes.Order
@@ -421,6 +458,48 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             "SELECT orders.description AS orders_description, "
             "orders.user_id AS orders_user_id, "
             "orders.isopen AS orders_isopen FROM orders")
+
+    def test_load_only_propagate_unbound(self):
+        self._test_load_only_propagate(False)
+
+    def test_load_only_propagate_bound(self):
+        self._test_load_only_propagate(True)
+
+    def _test_load_only_propagate(self, use_load):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        users = self.tables.users
+        addresses = self.tables.addresses
+
+        mapper(User, users, properties={
+                "addresses": relationship(Address)
+            })
+        mapper(Address, addresses)
+
+        sess = create_session()
+        expected = [
+            ("SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users WHERE users.id IN (:id_1, :id_2)", {'id_2': 8, 'id_1': 7}),
+            ("SELECT addresses.id AS addresses_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses WHERE :param_1 = addresses.user_id", {'param_1': 7}),
+            ("SELECT addresses.id AS addresses_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses WHERE :param_1 = addresses.user_id", {'param_1': 8}),
+        ]
+
+        if use_load:
+            opt = Load(User).defaultload(User.addresses).load_only("id", "email_address")
+        else:
+            opt = defaultload(User.addresses).load_only("id", "email_address")
+        q = sess.query(User).options(opt).filter(User.id.in_([7, 8]))
+        def go():
+            for user in q:
+                user.addresses
+
+        self.sql_eq_(go, expected)
+
 
     def test_load_only_parent_specific(self):
         User = self.classes.User
