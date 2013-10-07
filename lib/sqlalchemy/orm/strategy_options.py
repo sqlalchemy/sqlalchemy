@@ -114,11 +114,12 @@ class Load(Generative, MapperOption):
                 )
 
         if isinstance(attr, util.string_types):
-            if attr.endswith(_WILDCARD_TOKEN) or attr.endswith(_DEFAULT_TOKEN):
+            default_token = attr.endswith(_DEFAULT_TOKEN)
+            if attr.endswith(_WILDCARD_TOKEN) or default_token:
+                if default_token:
+                    self.propagate_to_loaders = False
                 if wildcard_key:
                     attr = "%s:%s" % (wildcard_key, attr)
-                if attr.endswith(_DEFAULT_TOKEN):
-                    self.propagate_to_loaders = False
                 return path.token(attr)
 
             try:
@@ -256,9 +257,9 @@ class _UnboundLoad(Load):
     def _generate_path(self, path, attr, wildcard_key):
         if wildcard_key and isinstance(attr, util.string_types) and \
                 attr in (_WILDCARD_TOKEN, _DEFAULT_TOKEN):
-            attr = "%s:%s" % (wildcard_key, attr)
             if attr == _DEFAULT_TOKEN:
                 self.propagate_to_loaders = False
+            attr = "%s:%s" % (wildcard_key, attr)
 
         return path + (attr, )
 
