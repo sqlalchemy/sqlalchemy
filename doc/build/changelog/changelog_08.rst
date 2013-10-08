@@ -11,6 +11,17 @@
     :version: 0.8.3
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2813
+        :versions: 0.9.0
+
+        Fixed bug where using an annotation such as :func:`.remote` or
+        :func:`.foreign` on a :class:`.Column` before association with a parent
+        :class:`.Table` could produce issues related to the parent table not
+        rendering within joins, due to the inherent copy operation performed
+        by an annotation.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2831
 

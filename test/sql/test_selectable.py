@@ -10,6 +10,7 @@ from sqlalchemy.sql import util as sql_util, visitors, expression
 from sqlalchemy import exc
 from sqlalchemy.sql import table, column, null
 from sqlalchemy import util
+from sqlalchemy.schema import Column, Table, MetaData
 
 metadata = MetaData()
 table1 = Table('table1', metadata,
@@ -1459,6 +1460,12 @@ class AnnotationsTest(fixtures.TestBase):
         c1_a = c1._annotate({"foo": "bar"})
         c1.name = 'somename'
         eq_(c1_a.name, 'somename')
+
+    def test_late_table_add(self):
+        c1 = Column("foo", Integer)
+        c1_a = c1._annotate({"foo": "bar"})
+        t = Table('t', MetaData(), c1)
+        is_(c1_a.table, t)
 
     def test_custom_constructions(self):
         from sqlalchemy.schema import Column

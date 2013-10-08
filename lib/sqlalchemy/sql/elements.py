@@ -2466,7 +2466,7 @@ class AnnotatedColumnElement(Annotated):
     def __init__(self, element, values):
         Annotated.__init__(self, element, values)
         ColumnElement.comparator._reset(self)
-        for attr in ('name', 'key'):
+        for attr in ('name', 'key', 'table'):
             if self.__dict__.get(attr, False) is None:
                 self.__dict__.pop(attr)
 
@@ -2479,6 +2479,11 @@ class AnnotatedColumnElement(Annotated):
     def name(self):
         """pull 'name' from parent, if not present"""
         return self._Annotated__element.name
+
+    @util.memoized_property
+    def table(self):
+        """pull 'table' from parent, if not present"""
+        return self._Annotated__element.table
 
     @util.memoized_property
     def key(self):
