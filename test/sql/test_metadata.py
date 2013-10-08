@@ -212,6 +212,13 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         assert b.c.a_id.references(a.c.id)
         eq_(len(b.constraints), 2)
 
+    def test_fk_erroneous_schema_arg(self):
+        assert_raises_message(
+            exc.SADeprecationWarning,
+            "'schema' argument on ForeignKey has no effect.",
+            ForeignKey, "foo.bar", schema='myschema'
+        )
+
     def test_fk_construct(self):
         c1 = Column('foo', Integer)
         c2 = Column('bar', Integer)

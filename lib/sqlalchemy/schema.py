@@ -1300,6 +1300,8 @@ class ForeignKey(SchemaItem):
             DDL for this constraint. Typical values include SIMPLE, PARTIAL
             and FULL.
 
+        :param schema: Deprecated; this flag does nothing and will be removed
+            in 0.9.
         """
 
         self._colspec = column
@@ -1319,6 +1321,12 @@ class ForeignKey(SchemaItem):
         self.initially = initially
         self.link_to_name = link_to_name
         self.match = match
+
+        if schema:
+            util.warn_deprecated(
+                "'schema' argument on ForeignKey has no effect - "
+                "please specify the target as "
+                "<schemaname>.<tablename>.<colname>.")
 
     def __repr__(self):
         return "ForeignKey(%r)" % self._get_colspec()

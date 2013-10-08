@@ -11,6 +11,13 @@
     :version: 0.8.3
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2831
+
+        Non-working "schema" argument on :class:`.ForeignKey` is deprecated;
+        raises a warning.  Removed in 0.9.
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 2819
         :versions: 0.9.0
