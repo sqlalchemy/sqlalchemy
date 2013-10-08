@@ -5,7 +5,7 @@ from sqlalchemy.orm import mapper, deferred, defer, undefer, Load, \
     joinedload, defaultload
 from sqlalchemy.testing import eq_, AssertsCompiledSQL
 from test.orm import _fixtures
-
+from sqlalchemy.orm import strategies
 
 class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
 
@@ -536,10 +536,11 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         addresses = self.tables.addresses
         orders = self.tables.orders
 
-        mapper(User, users, properties={
-                "addresses": relationship(Address, lazy="joined"),
-                "orders": relationship(Order, lazy="joined")
-            })
+        mapper(User, users, properties=util.OrderedDict([
+                ("addresses", relationship(Address, lazy="joined")),
+                ("orders", relationship(Order, lazy="joined"))
+            ]))
+
         mapper(Address, addresses)
         mapper(Order, orders)
 

@@ -399,7 +399,7 @@ test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_6_editing 3.3_postgresq
 
 # TEST: test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_7_multiview
 
-test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_7_multiview 2.7_postgresql_psycopg2_cextensions 2300
+test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_7_multiview 2.7_postgresql_psycopg2_cextensions 2424
 test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_7_multiview 2.7_postgresql_psycopg2_nocextensions 2559
 test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_7_multiview 3.2_postgresql_psycopg2_nocextensions 2483
 test.aaa_profiling.test_zoomark.ZooMarkTest.test_profile_7_multiview 3.3_postgresql_psycopg2_cextensions 2460

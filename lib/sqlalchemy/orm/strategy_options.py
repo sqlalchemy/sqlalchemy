@@ -171,7 +171,7 @@ class Load(Generative, MapperOption):
 
     def _coerce_strat(self, strategy):
         if strategy is not None:
-            strategy = tuple(strategy.items())
+            strategy = tuple(sorted(strategy.items()))
         return strategy
 
     @_generative

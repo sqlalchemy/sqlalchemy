@@ -141,7 +141,7 @@ class LoadTest(PathTest, QueryTest):
 
         l1 = Load(User)
         l2 = l1.defer("name")
-        l3 = l2.context.values()[0]
+        l3 = list(l2.context.values())[0]
         eq_(
             l1.context,
             {
