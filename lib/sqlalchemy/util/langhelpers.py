@@ -680,7 +680,7 @@ class importlater(object):
 
         from mypackage.somemodule import somesubmod
 
-    except evaluted upon attribute access to "somesubmod".
+    except evaluated upon attribute access to "somesubmod".
 
     importlater() currently requires that resolve_all() be
     called, typically at the bottom of a package's __init__.py.
