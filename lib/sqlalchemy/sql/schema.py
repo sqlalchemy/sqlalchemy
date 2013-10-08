@@ -1279,7 +1279,6 @@ class ForeignKey(SchemaItem):
 
     def __init__(self, column, _constraint=None, use_alter=False, name=None,
                     onupdate=None, ondelete=None, deferrable=None,
-                    schema=None,
                     initially=None, link_to_name=False, match=None):
         """
         Construct a column-level FOREIGN KEY.

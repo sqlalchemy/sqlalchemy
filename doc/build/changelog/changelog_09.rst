@@ -13,6 +13,14 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2831
+
+        The erroneous kw arg "schema" has been removed from the :class:`.ForeignKey`
+        object. this was an accidental commit that did nothing; a warning is raised
+        in 0.8.3 when this kw arg is used.
+
+    .. change::
         :tags: feature, orm
         :tickets: 1418
 
