@@ -11,6 +11,15 @@
     :version: 0.8.3
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2815
+        :versions: 0.9.0
+
+        A :func:`.select` that is made to refer to itself in its FROM clause,
+        typically via in-place mutation, will raise an informative error
+        message rather than causing a recursion overflow.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2813
         :versions: 0.9.0

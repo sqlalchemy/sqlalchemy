@@ -1936,6 +1936,9 @@ class Select(HasPrefixes, SelectBase):
 
         def add(items):
             for item in items:
+                if item is self:
+                    raise exc.InvalidRequestError(
+                            "select() construct refers to itself as a FROM")
                 if translate and item in translate:
                     item = translate[item]
                 if not seen.intersection(item._cloned_set):
