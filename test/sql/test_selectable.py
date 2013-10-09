@@ -514,6 +514,18 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
             "SELECT c FROM (SELECT (SELECT (SELECT table1.col1 AS a FROM table1) AS b) AS c)"
         )
 
+    def test_self_referential_select_raises(self):
+        t = table('t', column('x'))
+
+        s = select([t])
+
+        s.append_whereclause(s.c.x > 5)
+        assert_raises_message(
+            exc.InvalidRequestError,
+            r"select\(\) construct refers to itself as a FROM",
+            s.compile
+        )
+
     def test_unusual_column_elements_text(self):
         """test that .c excludes text()."""
 
