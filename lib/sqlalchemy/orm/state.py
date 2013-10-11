@@ -393,6 +393,15 @@ class InstanceState(interfaces._InspectionAttr):
                     difference(self.dict)
 
     @property
+    def _unloaded_non_object(self):
+        return self.unloaded.difference(self._uses_objects)
+
+    @property
+    def _uses_objects(self):
+        return (attr for attr in self.manager
+                    if self.manager[attr].impl.uses_objects)
+
+    @property
     def expired_attributes(self):
         """Return the set of keys which are 'expired' to be loaded by
            the manager's deferred scalar loader, assuming no pending

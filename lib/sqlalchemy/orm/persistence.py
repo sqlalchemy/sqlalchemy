@@ -728,8 +728,8 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction,
         # it isn't expired.
         toload_now = []
 
-        if base_mapper.eager_defaults and state.unloaded:
-            toload_now.extend(state.unloaded)
+        if base_mapper.eager_defaults:
+            toload_now.extend(state._unloaded_non_object)
         elif mapper.version_id_col is not None and \
             mapper.version_id_generator is False:
             prop = mapper._columntoproperty[mapper.version_id_col]

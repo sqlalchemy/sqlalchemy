@@ -854,9 +854,13 @@ class DefaultTest(fixtures.MappedTest):
         hohoval, default_t, Hoho = (self.other.hohoval,
                                 self.tables.default_t,
                                 self.classes.Hoho)
+        Secondary = self.classes.Secondary
 
-        mapper(Hoho, default_t, eager_defaults=True)
+        mapper(Hoho, default_t, eager_defaults=True, properties={
+                "sec": relationship(Secondary)
+            })
 
+        mapper(Secondary, self.tables.secondary_table)
         h1 = Hoho()
 
         session = create_session()
@@ -868,6 +872,14 @@ class DefaultTest(fixtures.MappedTest):
             self.sql_count_(2, session.flush)
 
         self.sql_count_(0, lambda: eq_(h1.hoho, hohoval))
+
+        # no actual eager defaults, make sure error isn't raised
+        h2 = Hoho(hoho='fas', counter=5)
+        session.add(h2)
+        session.flush()
+        eq_(h2.hoho, 'fas')
+        eq_(h2.counter, 5)
+
 
     def test_insert_nopostfetch(self):
         default_t, Hoho = self.tables.default_t, self.classes.Hoho
