@@ -13,6 +13,16 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, engine
+        :tickets: 2748
+
+        The method signature of :meth:`.Dialect.reflecttable`, which in
+        all known cases is provided by :class:`.DefaultDialect`, has been
+        tightened to expect ``include_columns`` and ``exclude_columns``
+        arguments without any kw option, reducing ambiguity - previously
+        ``exclude_columns`` was missing.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2831
 

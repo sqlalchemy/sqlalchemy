@@ -289,8 +289,7 @@ class DefaultDialect(interfaces.Dialect):
         """
         return sqltypes.adapt_type(typeobj, self.colspecs)
 
-    def reflecttable(self, connection, table, include_columns,
-                    exclude_columns=None):
+    def reflecttable(self, connection, table, include_columns, exclude_columns):
         insp = reflection.Inspector.from_engine(connection)
         return insp.reflecttable(table, include_columns, exclude_columns)
 

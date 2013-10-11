@@ -193,19 +193,21 @@ class Dialect(object):
 
         pass
 
-    def reflecttable(self, connection, table, include_columns=None):
+    def reflecttable(self, connection, table, include_columns, exclude_columns):
         """Load table description from the database.
 
         Given a :class:`.Connection` and a
         :class:`~sqlalchemy.schema.Table` object, reflect its columns and
-        properties from the database.  If include_columns (a list or
-        set) is specified, limit the autoload to the given column
-        names.
+        properties from the database.
 
-        The default implementation uses the
-        :class:`~sqlalchemy.engine.reflection.Inspector` interface to
-        provide the output, building upon the granular table/column/
-        constraint etc. methods of :class:`.Dialect`.
+        The implementation of this method is provided by
+        :meth:`.DefaultDialect.reflecttable`, which makes use of
+        :class:`.Inspector` to retrieve column information.
+
+        Dialects should **not** seek to implement this method, and should
+        instead implement individual schema inspection operations such as
+        :meth:`.Dialect.get_columns`, :meth:`.Dialect.get_pk_constraint`,
+        etc.
 
         """
 
@@ -248,7 +250,7 @@ class Dialect(object):
 
         Deprecated.  This method is only called by the default
         implementation of :meth:`.Dialect.get_pk_constraint`.  Dialects should
-        instead implement this method directly.
+        instead implement the :meth:`.Dialect.get_pk_constraint` method directly.
 
         """
 
