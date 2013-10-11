@@ -2600,14 +2600,15 @@ class Index(ColumnCollectionMixin, SchemaItem):
                     columns.append(expr)
 
         self.expressions = expressions
+        self.name = quoted_name(name, kw.pop("quote", None))
+        self.unique = kw.pop('unique', False)
+        self.kwargs = kw
 
         # will call _set_parent() if table-bound column
         # objects are present
         ColumnCollectionMixin.__init__(self, *columns)
 
-        self.name = quoted_name(name, kw.pop("quote", None))
-        self.unique = kw.pop('unique', False)
-        self.kwargs = kw
+
 
     def _set_parent(self, table):
         ColumnCollectionMixin._set_parent(self, table)

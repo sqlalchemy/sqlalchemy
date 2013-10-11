@@ -1904,6 +1904,7 @@ class CatchAllEventsTest(fixtures.TestBase):
                                         parent.__class__.__name__))
 
             def after_attach(obj, parent):
+                assert hasattr(obj, 'name')  # so we can change it
                 canary.append("%s->%s" % (target.__name__, parent))
             event.listen(target, "before_parent_attach", before_attach)
             event.listen(target, "after_parent_attach", after_attach)
@@ -1911,14 +1912,15 @@ class CatchAllEventsTest(fixtures.TestBase):
         for target in [
             schema.ForeignKeyConstraint, schema.PrimaryKeyConstraint,
             schema.UniqueConstraint,
-            schema.CheckConstraint
+            schema.CheckConstraint,
+            schema.Index
         ]:
             evt(target)
 
         m = MetaData()
         Table('t1', m,
             Column('id', Integer, Sequence('foo_id'), primary_key=True),
-            Column('bar', String, ForeignKey('t2.id')),
+            Column('bar', String, ForeignKey('t2.id'), index=True),
             Column('bat', Integer, unique=True),
         )
         Table('t2', m,
@@ -1926,17 +1928,20 @@ class CatchAllEventsTest(fixtures.TestBase):
             Column('bar', Integer),
             Column('bat', Integer),
             CheckConstraint("bar>5"),
-            UniqueConstraint('bar', 'bat')
+            UniqueConstraint('bar', 'bat'),
+            Index(None, 'bar', 'bat')
         )
         eq_(
             canary,
             [
                 'PrimaryKeyConstraint->Table', 'PrimaryKeyConstraint->t1',
+                'Index->Table', 'Index->t1',
                 'ForeignKeyConstraint->Table', 'ForeignKeyConstraint->t1',
                 'UniqueConstraint->Table', 'UniqueConstraint->t1',
                 'PrimaryKeyConstraint->Table', 'PrimaryKeyConstraint->t2',
                 'CheckConstraint->Table', 'CheckConstraint->t2',
-                'UniqueConstraint->Table', 'UniqueConstraint->t2'
+                'UniqueConstraint->Table', 'UniqueConstraint->t2',
+                'Index->Table', 'Index->t2'
             ]
         )
 

@@ -13,6 +13,15 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2835
+
+        The "name" attribute is set on :class:`.Index` before the "attach"
+        events are called, so that attachment events can be used to dynamically
+        generate a name for the index based on the parent table and/or
+        columns.
+
+    .. change::
         :tags: bug, engine
         :tickets: 2748
 
