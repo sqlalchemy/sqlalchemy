@@ -394,12 +394,10 @@ class InstanceState(interfaces._InspectionAttr):
 
     @property
     def _unloaded_non_object(self):
-        return self.unloaded.difference(self._uses_objects)
-
-    @property
-    def _uses_objects(self):
-        return (attr for attr in self.manager
-                    if self.manager[attr].impl.uses_objects)
+        return self.unloaded.intersection(
+                attr for attr in self.manager
+                    if self.manager[attr].impl.accepts_scalar_loader
+            )
 
     @property
     def expired_attributes(self):

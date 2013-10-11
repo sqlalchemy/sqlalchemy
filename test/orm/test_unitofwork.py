@@ -857,8 +857,10 @@ class DefaultTest(fixtures.MappedTest):
         Secondary = self.classes.Secondary
 
         mapper(Hoho, default_t, eager_defaults=True, properties={
-                "sec": relationship(Secondary)
+                "sec": relationship(Secondary),
+                "syn": sa.orm.synonym(default_t.c.counter)
             })
+
 
         mapper(Secondary, self.tables.secondary_table)
         h1 = Hoho()
