@@ -48,6 +48,11 @@ class DefaultTest(fixtures.TestBase):
         use_function_defaults = testing.against('postgresql', 'mssql', 'maxdb')
         is_oracle = testing.against('oracle')
 
+        class MyClass(object):
+            @classmethod
+            def gen_default(cls, ctx):
+                return "hi"
+
         # select "count(1)" returns different results on different DBs also
         # correct for "current_date" compatible as column default, value
         # differences
@@ -125,7 +130,12 @@ class DefaultTest(fixtures.TestBase):
             # combo
             Column('col9', String(20),
                    default='py',
-                   server_default='ddl'))
+                   server_default='ddl'),
+
+            # python method w/ context
+            Column('col10', String(20), default=MyClass.gen_default)
+        )
+
         t.create()
 
     @classmethod
@@ -285,7 +295,7 @@ class DefaultTest(fixtures.TestBase):
         today = datetime.date.today()
         eq_(l.fetchall(), [
             (x, 'imthedefault', f, ts, ts, ctexec, True, False,
-             12, today, 'py')
+             12, today, 'py', 'hi')
             for x in range(51, 54)])
 
         t.insert().execute(col9=None)
@@ -295,7 +305,7 @@ class DefaultTest(fixtures.TestBase):
 
         eq_(t.select(t.c.col1 == 54).execute().fetchall(),
             [(54, 'imthedefault', f, ts, ts, ctexec, True, False,
-              12, today, None)])
+              12, today, None, 'hi')])
 
     @testing.fails_on('firebird', 'Data type unknown')
     def test_insertmany(self):
@@ -311,11 +321,11 @@ class DefaultTest(fixtures.TestBase):
         today = datetime.date.today()
         eq_(l.fetchall(),
             [(51, 'imthedefault', f, ts, ts, ctexec, True, False,
-              12, today, 'py'),
+              12, today, 'py', 'hi'),
              (52, 'imthedefault', f, ts, ts, ctexec, True, False,
-              12, today, 'py'),
+              12, today, 'py', 'hi'),
              (53, 'imthedefault', f, ts, ts, ctexec, True, False,
-              12, today, 'py')])
+              12, today, 'py', 'hi')])
 
     def test_no_embed_in_sql(self):
         """Using a DefaultGenerator, Sequence, DefaultClause
@@ -379,11 +389,11 @@ class DefaultTest(fixtures.TestBase):
         today = datetime.date.today()
         eq_(l.fetchall(),
             [(51, 'im the update', f2, ts, ts, ctexec, False, False,
-              13, today, 'py'),
+              13, today, 'py', 'hi'),
              (52, 'im the update', f2, ts, ts, ctexec, True, False,
-              13, today, 'py'),
+              13, today, 'py', 'hi'),
              (53, 'im the update', f2, ts, ts, ctexec, True, False,
-              13, today, 'py')])
+              13, today, 'py', 'hi')])
 
     @testing.fails_on('firebird', 'Data type unknown')
     def test_update(self):
@@ -395,7 +405,7 @@ class DefaultTest(fixtures.TestBase):
         l = l.first()
         eq_(l,
             (pk, 'im the update', f2, None, None, ctexec, True, False,
-             13, datetime.date.today(), 'py'))
+             13, datetime.date.today(), 'py', 'hi'))
         eq_(11, f2)
 
     @testing.fails_on('firebird', 'Data type unknown')

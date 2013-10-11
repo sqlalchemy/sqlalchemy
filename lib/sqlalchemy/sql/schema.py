@@ -1776,7 +1776,7 @@ class ColumnDefault(DefaultGenerator):
         on everyone.
 
         """
-        if inspect.isfunction(fn):
+        if inspect.isfunction(fn) or inspect.ismethod(fn):
             inspectable = fn
         elif inspect.isclass(fn):
             inspectable = fn.__init__

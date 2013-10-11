@@ -13,6 +13,13 @@
     :version: 0.9.0
 
     .. change::
+        :tags: feature, sql
+
+        The ``default`` argument of :class:`.Column` now accepts a class
+        or object method as an argument, in addition to a standalone function;
+        will properly detect if the "context" argument is accepted or not.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2835
 
