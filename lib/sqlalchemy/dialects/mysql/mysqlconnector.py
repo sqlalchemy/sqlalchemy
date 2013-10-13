@@ -79,12 +79,13 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username='user')
+
         opts.update(url.query)
 
         util.coerce_kw_type(opts, 'buffered', bool)
         util.coerce_kw_type(opts, 'raise_on_warnings', bool)
-        opts['buffered'] = True
-        opts['raise_on_warnings'] = True
+        opts.setdefault('buffered', True)
+        opts.setdefault('raise_on_warnings', True)
 
         # FOUND_ROWS must be set in ClientFlag to enable
         # supports_sane_rowcount.

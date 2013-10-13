@@ -11,6 +11,15 @@
     :version: 0.8.3
 
     .. change::
+        :tags: bug, mysql
+        :tickets: 2515
+        :versions: 0.9.0
+
+        MySQL-connector dialect now allows options in the create_engine
+        query string to override those defaults set up in the connect,
+        including "buffered" and "raise_on_warnings".
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 2742
         :versions: 0.9.0

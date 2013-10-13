@@ -9,12 +9,17 @@ from sqlalchemy.testing import engines
 import datetime
 
 class DialectTest(fixtures.TestBase):
-    __only_on__ = 'mysql'
+    def test_ssl_arguments_mysqldb(self):
+        from sqlalchemy.dialects.mysql import mysqldb
+        dialect = mysqldb.dialect()
+        self._test_ssl_arguments(dialect)
 
-    @testing.only_on(['mysql+mysqldb', 'mysql+oursql'],
-                    'requires particular SSL arguments')
-    def test_ssl_arguments(self):
-        dialect = testing.db.dialect
+    def test_ssl_arguments_oursql(self):
+        from sqlalchemy.dialects.mysql import oursql
+        dialect = oursql.dialect()
+        self._test_ssl_arguments(dialect)
+
+    def _test_ssl_arguments(self, dialect):
         kwarg = dialect.create_connect_args(
             make_url("mysql://scott:tiger@localhost:3306/test"
                 "?ssl_ca=/ca.pem&ssl_cert=/cert.pem&ssl_key=/key.pem")
@@ -32,6 +37,50 @@ class DialectTest(fixtures.TestBase):
                 'port': 3306
             }
         )
+
+    def test_mysqlconnector_buffered_arg(self):
+        from sqlalchemy.dialects.mysql import mysqlconnector
+        dialect = mysqlconnector.dialect()
+        kw = dialect.create_connect_args(
+                make_url("mysql+mysqlconnector://u:p@host/db?buffered=true")
+            )[1]
+        eq_(kw['buffered'], True)
+
+        kw = dialect.create_connect_args(
+                make_url("mysql+mysqlconnector://u:p@host/db?buffered=false")
+            )[1]
+        eq_(kw['buffered'], False)
+
+        kw = dialect.create_connect_args(
+                make_url("mysql+mysqlconnector://u:p@host/db")
+            )[1]
+        eq_(kw['buffered'], True)
+
+    def test_mysqlconnector_raise_on_warnings_arg(self):
+        from sqlalchemy.dialects.mysql import mysqlconnector
+        dialect = mysqlconnector.dialect()
+        kw = dialect.create_connect_args(
+                make_url("mysql+mysqlconnector://u:p@host/db?raise_on_warnings=true")
+            )[1]
+        eq_(kw['raise_on_warnings'], True)
+
+        kw = dialect.create_connect_args(
+                make_url("mysql+mysqlconnector://u:p@host/db?raise_on_warnings=false")
+            )[1]
+        eq_(kw['raise_on_warnings'], False)
+
+        kw = dialect.create_connect_args(
+                make_url("mysql+mysqlconnector://u:p@host/db")
+            )[1]
+        eq_(kw['raise_on_warnings'], True)
+
+    @testing.only_on('mysql')
+    def test_random_arg(self):
+        dialect = testing.db.dialect
+        kw = dialect.create_connect_args(
+                make_url("mysql://u:p@host/db?foo=true")
+            )[1]
+        eq_(kw['foo'], "true")
 
 class SQLModeDetectionTest(fixtures.TestBase):
     __only_on__ = 'mysql'
