@@ -11,6 +11,14 @@
     :version: 0.8.3
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 2742
+        :versions: 0.9.0
+
+        Parenthesis will be applied to a compound SQL expression as
+        rendered in the column list of a CREATE INDEX statement.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2742
         :versions: 0.9.0
