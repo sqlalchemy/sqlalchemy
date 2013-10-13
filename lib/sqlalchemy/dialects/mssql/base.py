@@ -1001,7 +1001,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
                         preparer.format_table(index.table),
                        ', '.join(
                             self.sql_compiler.process(expr,
-                                include_table=False) for
+                                include_table=False, literal_binds=True) for
                                 expr in index.expressions)
                         )
 

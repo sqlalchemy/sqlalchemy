@@ -270,6 +270,8 @@ def expression_as_ddl(clause):
      into detached column constructs so that the parent table
      identifier is not included.
 
+     .. deprecated:: this function is removed in 0.9.0.
+
     """
     def repl(element):
         if isinstance(element, expression.BindParameter):

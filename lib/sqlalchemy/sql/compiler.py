@@ -2031,7 +2031,7 @@ class DDLCompiler(engine.Compiled):
                                     use_schema=include_table_schema),
                        ', '.join(
                             self.sql_compiler.process(expr,
-                                include_table=False) for
+                                include_table=False, literal_binds=True) for
                                 expr in index.expressions)
                         )
         return text
@@ -2121,8 +2121,9 @@ class DDLCompiler(engine.Compiled):
         if constraint.name is not None:
             text += "CONSTRAINT %s " % \
                         self.preparer.format_constraint(constraint)
-        sqltext = sql_util.expression_as_ddl(constraint.sqltext)
-        text += "CHECK (%s)" % self.sql_compiler.process(sqltext)
+        text += "CHECK (%s)" % self.sql_compiler.process(constraint.sqltext,
+                                                            include_table=False,
+                                                            literal_binds=True)
         text += self.define_constraint_deferrability(constraint)
         return text
 

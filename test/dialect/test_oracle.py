@@ -552,6 +552,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateIndex(Index("bar", t1.c.x)),
             "CREATE INDEX alt_schema.bar ON alt_schema.foo (x)"
         )
+
+    def test_create_index_expr(self):
+        m = MetaData()
+        t1 = Table('foo', m,
+                Column('x', Integer)
+            )
+        self.assert_compile(
+            schema.CreateIndex(Index("bar", t1.c.x > 5)),
+            "CREATE INDEX bar ON foo (x > 5)"
+        )
+
 class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
 
