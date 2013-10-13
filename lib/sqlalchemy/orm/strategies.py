@@ -709,7 +709,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
             elif subq_path.contains_mapper(self.mapper):
                 return
 
-        subq_mapper, leftmost_mapper, leftmost_attr = \
+        subq_mapper, leftmost_mapper, leftmost_attr, leftmost_relationship = \
                 self._get_leftmost(subq_path)
 
         orig_query = context.attributes.get(
@@ -720,7 +720,8 @@ class SubqueryLoader(AbstractRelationshipLoader):
         # produce a subquery from it.
         left_alias = self._generate_from_original_query(
                             orig_query, leftmost_mapper,
-                            leftmost_attr, entity.mapper
+                            leftmost_attr, leftmost_relationship,
+                            entity.mapper
         )
 
         # generate another Query that will join the
@@ -769,11 +770,12 @@ class SubqueryLoader(AbstractRelationshipLoader):
             leftmost_mapper._columntoproperty[c].class_attribute
             for c in leftmost_cols
         ]
-        return subq_mapper, leftmost_mapper, leftmost_attr
+        return subq_mapper, leftmost_mapper, leftmost_attr, leftmost_prop
 
     def _generate_from_original_query(self,
             orig_query, leftmost_mapper,
-            leftmost_attr, entity_mapper
+            leftmost_attr, leftmost_relationship,
+            entity_mapper
     ):
         # reformat the original query
         # to look only for significant columns
@@ -784,8 +786,22 @@ class SubqueryLoader(AbstractRelationshipLoader):
         if not q._from_obj and entity_mapper.isa(leftmost_mapper):
             q._set_select_from([entity_mapper], False)
 
+        target_cols = q._adapt_col_list(leftmost_attr)
+
         # select from the identity columns of the outer
-        q._set_entities(q._adapt_col_list(leftmost_attr))
+        q._set_entities(target_cols)
+
+        distinct_target_key = leftmost_relationship.distinct_target_key
+
+        if distinct_target_key is True:
+            q._distinct = True
+        elif distinct_target_key is None:
+            # if target_cols refer to a non-primary key or only
+            # part of a composite primary key, set the q as distinct
+            for t in set(c.table for c in target_cols):
+                if not set(target_cols).issuperset(t.primary_key):
+                    q._distinct = True
+                    break
 
         if q._order_by is False:
             q._order_by = leftmost_mapper.order_by

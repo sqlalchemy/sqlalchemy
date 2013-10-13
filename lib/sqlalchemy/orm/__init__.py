@@ -431,6 +431,23 @@ def relationship(argument, secondary=None, **kwargs):
       or when the reference is one-to-one or a collection that is guaranteed
       to have one or at least one entry.
 
+    :param distinct_target_key=False:
+      Indicate if a "subquery" eager load should apply the DISTINCT
+      keyword to the innermost SELECT statement.  When set to ``None``,
+      the DISTINCT keyword will be applied in those cases when the target
+      columns do not comprise the full primary key of the target table.
+      When set to ``True``, the DISTINCT keyword is applied to the innermost
+      SELECT unconditionally.
+
+      This flag defaults as False in 0.8 but will default to None in 0.9.
+      It may be desirable to set this flag to False when the DISTINCT is
+      reducing performance of the innermost subquery beyond that of what
+      duplicate innermost rows may be causing.
+
+      .. versionadded:: 0.8.3 - distinct_target_key allows the
+         subquery eager loader to apply a DISTINCT modifier to the
+         innermost SELECT.
+
     :param join_depth:
       when non-``None``, an integer value indicating how many levels
       deep "eager" loaders should join on a self-referring or cyclical

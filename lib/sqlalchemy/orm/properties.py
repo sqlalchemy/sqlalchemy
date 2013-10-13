@@ -256,6 +256,7 @@ class RelationshipProperty(StrategizedProperty):
         enable_typechecks=True, join_depth=None,
         comparator_factory=None,
         single_parent=False, innerjoin=False,
+        distinct_target_key=False,
         doc=None,
         active_history=False,
         cascade_backrefs=True,
@@ -283,6 +284,7 @@ class RelationshipProperty(StrategizedProperty):
         self.enable_typechecks = enable_typechecks
         self.query_class = query_class
         self.innerjoin = innerjoin
+        self.distinct_target_key = distinct_target_key
         self.doc = doc
         self.active_history = active_history
         self.join_depth = join_depth
