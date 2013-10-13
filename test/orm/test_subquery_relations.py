@@ -1563,3 +1563,197 @@ class CyclicalInheritingEagerTestTwo(fixtures.DeclarativeMappedTest,
         d = session.query(Director).options(subqueryload('*')).first()
         assert len(list(session)) == 3
 
+
+class SubqueryloadDistinctTest(fixtures.DeclarativeMappedTest,
+                               testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    run_inserts = 'once'
+    run_deletes = None
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Director(Base):
+            __tablename__ = 'director'
+            id = Column(Integer, primary_key=True,
+                                    test_needs_autoincrement=True)
+            name = Column(String(50))
+
+        class DirectorPhoto(Base):
+            __tablename__ = 'director_photo'
+            id = Column(Integer, primary_key=True,
+                                    test_needs_autoincrement=True)
+            path = Column(String(255))
+            director_id = Column(Integer, ForeignKey('director.id'))
+            director = relationship(Director, backref="photos")
+
+        class Movie(Base):
+            __tablename__ = 'movie'
+            id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
+            director_id = Column(Integer, ForeignKey('director.id'))
+            director = relationship(Director, backref="movies")
+            title = Column(String(50))
+            credits = relationship("Credit", backref="movie")
+
+        class Credit(Base):
+            __tablename__ = 'credit'
+            id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
+            movie_id = Column(Integer, ForeignKey('movie.id'))
+
+    @classmethod
+    def insert_data(cls):
+        Movie = cls.classes.Movie
+        Director = cls.classes.Director
+        DirectorPhoto = cls.classes.DirectorPhoto
+        Credit = cls.classes.Credit
+
+        d = Director(name='Woody Allen')
+        d.photos = [DirectorPhoto(path='/1.jpg'),
+                    DirectorPhoto(path='/2.jpg')]
+        d.movies = [Movie(title='Manhattan', credits=[Credit(), Credit()]),
+                    Movie(title='Sweet and Lowdown', credits=[Credit()])]
+        sess = create_session()
+        sess.add_all([d])
+        sess.flush()
+
+    def test_distinct_strategy_opt_m2o(self):
+        self._run_test_m2o(True, None)
+        self._run_test_m2o(False, None)
+
+    def test_distinct_unrelated_opt_m2o(self):
+        self._run_test_m2o(None, True)
+        self._run_test_m2o(None, False)
+
+    def _run_test_m2o(self,
+            director_strategy_level,
+            photo_strategy_level):
+
+        # test where the innermost is m2o, e.g.
+        # Movie->director
+
+        Movie = self.classes.Movie
+        Director = self.classes.Director
+
+        Movie.director.property.distinct_target_key = director_strategy_level
+        Director.photos.property.distinct_target_key = photo_strategy_level
+
+        # the DISTINCT is controlled by
+        # only the Movie->director relationship, *not* the
+        # Director.photos
+        expect_distinct = director_strategy_level in (True, None)
+
+        s = create_session()
+
+        q = (
+            s.query(Movie)
+            .options(
+                subqueryload(Movie.director)
+                .subqueryload(Director.photos)
+            )
+        )
+        ctx = q._compile_context()
+
+        q2 = ctx.attributes[
+            ('subquery', (inspect(Movie), inspect(Movie).attrs.director))
+        ]
+        self.assert_compile(
+            q2,
+            'SELECT director.id AS director_id, '
+            'director.name AS director_name, '
+            'anon_1.movie_director_id AS anon_1_movie_director_id '
+            'FROM (SELECT%s movie.director_id AS movie_director_id '
+            'FROM movie) AS anon_1 '
+            'JOIN director ON director.id = anon_1.movie_director_id '
+            'ORDER BY anon_1.movie_director_id' % (
+                    " DISTINCT" if expect_distinct else "")
+        )
+
+        ctx2 = q2._compile_context()
+        result = s.execute(q2)
+        rows = result.fetchall()
+
+        if expect_distinct:
+            eq_(rows, [
+                (1, 'Woody Allen', 1),
+            ])
+        else:
+            eq_(rows, [
+                (1, 'Woody Allen', 1), (1, 'Woody Allen', 1),
+            ])
+
+        q3 = ctx2.attributes[
+            ('subquery', (inspect(Director), inspect(Director).attrs.photos))
+        ]
+
+        self.assert_compile(
+            q3,
+            'SELECT director_photo.id AS director_photo_id, '
+            'director_photo.path AS director_photo_path, '
+            'director_photo.director_id AS director_photo_director_id, '
+            'director_1.id AS director_1_id '
+            'FROM (SELECT%s movie.director_id AS movie_director_id '
+            'FROM movie) AS anon_1 '
+            'JOIN director AS director_1 ON director_1.id = anon_1.movie_director_id '
+            'JOIN director_photo ON director_1.id = director_photo.director_id '
+            'ORDER BY director_1.id' % (
+                    " DISTINCT" if expect_distinct else "")
+        )
+        result = s.execute(q3)
+        rows = result.fetchall()
+        if expect_distinct:
+            eq_(rows, [
+                (1, u'/1.jpg', 1, 1),
+                (2, u'/2.jpg', 1, 1),
+            ])
+        else:
+            eq_(rows, [
+                (1, u'/1.jpg', 1, 1),
+                (2, u'/2.jpg', 1, 1),
+                (1, u'/1.jpg', 1, 1),
+                (2, u'/2.jpg', 1, 1),
+            ])
+
+
+        movies = q.all()
+
+        # check number of persistent objects in session
+        eq_(len(list(s)), 5)
+
+    def test_cant_do_distinct_in_joins(self):
+        """the DISTINCT feature here works when the m2o is in the innermost
+        mapper, but when we are just joining along relationships outside
+        of that, we can still have dupes, and there's no solution to that.
+
+        """
+        Movie = self.classes.Movie
+        Credit = self.classes.Credit
+
+        s = create_session()
+
+        q = (
+            s.query(Credit)
+            .options(
+                subqueryload(Credit.movie)
+                .subqueryload(Movie.director)
+            )
+        )
+
+        ctx = q._compile_context()
+
+        q2 = ctx.attributes[
+            ('subquery', (inspect(Credit), Credit.movie.property))
+        ]
+        ctx2 = q2._compile_context()
+        q3 = ctx2.attributes[
+            ('subquery', (inspect(Movie), Movie.director.property))
+        ]
+
+        result = s.execute(q3)
+        eq_(
+            result.fetchall(),
+            [
+                (1, 'Woody Allen', 1), (1, 'Woody Allen', 1),
+            ]
+        )

@@ -103,6 +103,7 @@ class RelationshipProperty(StrategizedProperty):
         enable_typechecks=True, join_depth=None,
         comparator_factory=None,
         single_parent=False, innerjoin=False,
+        distinct_target_key=None,
         doc=None,
         active_history=False,
         cascade_backrefs=True,
@@ -372,6 +373,27 @@ class RelationshipProperty(StrategizedProperty):
           or when the reference is one-to-one or a collection that is guaranteed
           to have one or at least one entry.
 
+        :param distinct_target_key=None:
+          Indicate if a "subquery" eager load should apply the DISTINCT
+          keyword to the innermost SELECT statement.  When left as ``None``,
+          the DISTINCT keyword will be applied in those cases when the target
+          columns do not comprise the full primary key of the target table.
+          When set to ``True``, the DISTINCT keyword is applied to the innermost
+          SELECT unconditionally.
+
+          It may be desirable to set this flag to False when the DISTINCT is
+          reducing performance of the innermost subquery beyond that of what
+          duplicate innermost rows may be causing.
+
+          .. versionadded:: 0.8.3 - distinct_target_key allows the
+             subquery eager loader to apply a DISTINCT modifier to the
+             innermost SELECT.
+
+          .. versionchanged:: 0.9.0 - distinct_target_key now defaults to
+             ``None``, so that the feature enables itself automatically for
+             those cases where the innermost query targets a non-unique
+             key.
+
         :param join_depth:
           when non-``None``, an integer value indicating how many levels
           deep "eager" loaders should join on a self-referring or cyclical
@@ -621,6 +643,7 @@ class RelationshipProperty(StrategizedProperty):
         self.enable_typechecks = enable_typechecks
         self.query_class = query_class
         self.innerjoin = innerjoin
+        self.distinct_target_key = distinct_target_key
         self.doc = doc
         self.active_history = active_history
         self.join_depth = join_depth
