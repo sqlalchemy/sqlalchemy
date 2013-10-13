@@ -1101,7 +1101,10 @@ class PGDDLCompiler(compiler.DDLCompiler):
                 % (
                     ', '.join([
                         self.sql_compiler.process(
-                                expr, include_table=False, literal_binds=True) +
+                                expr.self_group()
+                                if not isinstance(expr, expression.ColumnClause)
+                                    else expr,
+                                include_table=False, literal_binds=True) +
                         (c.key in ops and (' ' + ops[c.key]) or '')
                         for expr, c in zip(index.expressions, index.columns)])
                     )
