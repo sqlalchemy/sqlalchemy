@@ -802,6 +802,47 @@ and SQL expression values inline with the INSERT or UPDATE.  The feature takes
 place automatically when the target backend and :class:`.Table` supports
 "implicit returning".
 
+.. _change_2836:
+
+Subquery Eager Loading will apply DISTINCT to the innermost SELECT for some queries
+------------------------------------------------------------------------------------
+
+In an effort to reduce the number of duplicate rows that can be generated
+by subquery eager loading when a many-to-one relationship is involved, a
+DISTINCT keyword will be applied to the innermost SELECT when the join is
+targeting columns that do not comprise the primary key, as in when loading
+along a many to one.
+
+That is, when subquery loading on a many-to-one from A->B::
+
+    SELECT b.id AS b_id, b.name AS b_name, anon_1.b_id AS a_b_id
+    FROM (SELECT DISTINCT a_b_id FROM a) AS anon_1
+    JOIN b ON b.id = anon_1.a_b_id
+
+Since ``a.b_id`` is a non-distinct foreign key, DISTINCT is applied so that
+redundant ``a.b_id`` are eliminated.  The behavior can be turned on or off
+unconditionally for a particular :func:`.relationship` using the flag
+``distinct_target_key``, setting the value to ``True`` for unconditionally
+on, ``False`` for unconditionally off, and ``None`` for the feature to take
+effect when the target SELECT is against columns that do not comprise a full
+primary key.  In 0.9, ``None`` is the default.
+
+The option is also backported to 0.8 where the ``distinct_target_key``
+option defaults to ``False``.
+
+While the feature here is designed to help performance by eliminating
+duplicate rows, the ``DISTINCT`` keyword in SQL itself can have a negative
+performance impact.  If columns in the SELECT are not indexed, ``DISTINCT``
+will likely perform an ``ORDER BY`` on the rowset which can be expensive.
+By keeping the feature limited just to foreign keys which are hopefully
+indexed in any case, it's expected that the new defaults are reasonable.
+
+The feature also does not eliminate every possible dupe-row scenario; if
+a many-to-one is present elsewhere in the chain of joins, dupe rows may still
+be present.
+
+:ticket:`2836`
+
 
 .. _migration_1068:
 

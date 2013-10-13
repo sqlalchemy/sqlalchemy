@@ -29,6 +29,10 @@
         None in 0.9 (e.g. automatic by default).   Thanks to Alexander Koval
         for help with this.
 
+        .. seealso::
+
+            :ref:`change_2836`
+
     .. change::
         :tags: bug, mysql
         :tickets: 2515
