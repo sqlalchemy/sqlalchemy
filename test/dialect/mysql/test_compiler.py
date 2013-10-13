@@ -94,6 +94,16 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TABLE testtbl (data VARCHAR(255), "
             "PRIMARY KEY (data) USING btree)")
 
+    def test_create_index_expr(self):
+        m = MetaData()
+        t1 = Table('foo', m,
+                Column('x', Integer)
+            )
+        self.assert_compile(
+            schema.CreateIndex(Index("bar", t1.c.x > 5)),
+            "CREATE INDEX bar ON foo (x > 5)"
+        )
+
     def test_skip_deferrable_kw(self):
         m = MetaData()
         t1 = Table('t1', m, Column('id', Integer, primary_key=True))

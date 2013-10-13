@@ -12,6 +12,16 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 2742
+        :versions: 0.9.0
+
+        Fixed bug in default compiler plus those of postgresql, mysql, and
+        mssql to ensure that any literal SQL expression values are
+        rendered directly as literals, instead of as bound parameters,
+        within a CREATE INDEX statement.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 2815
         :versions: 0.9.0
 

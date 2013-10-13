@@ -1100,12 +1100,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
         text += "(%s)" \
                 % (
                     ', '.join([
-                        self.sql_compiler.process(expr, include_table=False) +
-
-
+                        self.sql_compiler.process(
+                                expr, include_table=False, literal_binds=True) +
                         (c.key in ops and (' ' + ops[c.key]) or '')
-
-
                         for expr, c in zip(index.expressions, index.columns)])
                     )
 
@@ -1115,8 +1112,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
             whereclause = None
 
         if whereclause is not None:
-            whereclause = sql_util.expression_as_ddl(whereclause)
-            where_compiled = self.sql_compiler.process(whereclause)
+            where_compiled = self.sql_compiler.process(
+                                    whereclause, include_table=False,
+                                    literal_binds=True)
             text += " WHERE " + where_compiled
         return text
 
@@ -1131,8 +1129,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
             elements.append(self.preparer.quote(c.name) + ' WITH '+op)
         text += "EXCLUDE USING %s (%s)" % (constraint.using, ', '.join(elements))
         if constraint.where is not None:
-            sqltext = sql_util.expression_as_ddl(constraint.where)
-            text += ' WHERE (%s)' % self.sql_compiler.process(sqltext)
+            text += ' WHERE (%s)' % self.sql_compiler.process(
+                                            constraint.where,
+                                            literal_binds=True)
         text += self.define_constraint_deferrability(constraint)
         return text
 

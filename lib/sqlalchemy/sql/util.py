@@ -254,26 +254,6 @@ class _repr_params(object):
             return repr(self.params)
 
 
-def expression_as_ddl(clause):
-    """Given a SQL expression, convert for usage in DDL, such as
-     CREATE INDEX and CHECK CONSTRAINT.
-
-     Converts bind params into quoted literals, column identifiers
-     into detached column constructs so that the parent table
-     identifier is not included.
-
-    """
-    def repl(element):
-        if isinstance(element, BindParameter):
-            return literal_column(_quote_ddl_expr(element.value))
-        elif isinstance(element, ColumnClause) and \
-                element.table is not None:
-            col = ColumnClause(element.name)
-            return col
-        else:
-            return None
-
-    return visitors.replacement_traverse(clause, {}, repl)
 
 
 def adapt_criterion_to_null(crit, nulls):

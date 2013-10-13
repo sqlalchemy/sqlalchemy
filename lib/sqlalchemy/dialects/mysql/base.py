@@ -1523,7 +1523,8 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         self._verify_index_table(index)
         preparer = self.preparer
         table = preparer.format_table(index.table)
-        columns = [self.sql_compiler.process(expr, include_table=False)
+        columns = [self.sql_compiler.process(expr, include_table=False,
+                        literal_binds=True)
                 for expr in index.expressions]
 
         name = self._prepared_index_name(index)

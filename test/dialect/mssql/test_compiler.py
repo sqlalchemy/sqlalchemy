@@ -528,6 +528,16 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             "CREATE INDEX foo ON test (x DESC, y)"
                             )
 
+    def test_create_index_expr(self):
+        m = MetaData()
+        t1 = Table('foo', m,
+                Column('x', Integer)
+            )
+        self.assert_compile(
+            schema.CreateIndex(Index("bar", t1.c.x > 5)),
+            "CREATE INDEX bar ON foo (x > 5)"
+        )
+
     def test_index_extra_include_1(self):
         metadata = MetaData()
         tbl = Table('test', metadata,

@@ -173,6 +173,16 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'USING hash (data)',
                             dialect=postgresql.dialect())
 
+    def test_create_index_literals(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', Integer))
+
+        idx1 = Index('test_idx1', tbl.c.data + 5)
+        self.assert_compile(
+            schema.CreateIndex(idx1),
+            "CREATE INDEX test_idx1 ON testtbl (data + 5)"
+        )
+
     def test_exclude_constraint_min(self):
         m = MetaData()
         tbl = Table('testtbl', m,

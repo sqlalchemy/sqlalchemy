@@ -726,6 +726,27 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             "ALTER TABLE tbl ADD PRIMARY KEY (a)"
         )
 
+    def test_render_check_constraint_sql_literal(self):
+        t, t2 = self._constraint_create_fixture()
+
+        constraint = CheckConstraint(t.c.a > 5)
+
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE tbl ADD CHECK (a > 5)"
+        )
+
+    def test_render_index_sql_literal(self):
+        t, t2 = self._constraint_create_fixture()
+
+        constraint = Index('name', t.c.a + 5)
+
+        self.assert_compile(
+            schema.CreateIndex(constraint),
+            "CREATE INDEX name ON tbl (a + 5)"
+        )
+
+
 class ConstraintAPITest(fixtures.TestBase):
     def test_double_fk_usage_raises(self):
         f = ForeignKey('b.id')
