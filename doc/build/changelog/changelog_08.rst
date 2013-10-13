@@ -26,7 +26,7 @@
         it is set to ``None``, DISTINCT is rendered if the innermost relationship
         targets columns that do not comprise a full primary key.
         The option defaults to False in 0.8 (e.g. off by default in all cases),
-        None in 0.9 (e.g. automatic by default).   Thanks to Alexander
+        None in 0.9 (e.g. automatic by default).   Thanks to Alexander Koval
         for help with this.
 
     .. change::
