@@ -876,10 +876,10 @@ class DefaultTest(fixtures.MappedTest):
         self.sql_count_(0, lambda: eq_(h1.hoho, hohoval))
 
         # no actual eager defaults, make sure error isn't raised
-        h2 = Hoho(hoho='fas', counter=5)
+        h2 = Hoho(hoho=hohoval, counter=5)
         session.add(h2)
         session.flush()
-        eq_(h2.hoho, 'fas')
+        eq_(h2.hoho, hohoval)
         eq_(h2.counter, 5)
 
 
