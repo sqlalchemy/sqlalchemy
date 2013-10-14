@@ -1708,12 +1708,13 @@ class SubqueryloadDistinctTest(fixtures.DeclarativeMappedTest,
                 (2, u'/2.jpg', 1, 1),
             ])
         else:
-            eq_(rows, [
+            # oracle might not order the way we expect here
+            eq_(set(tuple(t) for t in rows), set([
                 (1, u'/1.jpg', 1, 1),
                 (2, u'/2.jpg', 1, 1),
                 (1, u'/1.jpg', 1, 1),
                 (2, u'/2.jpg', 1, 1),
-            ])
+            ]))
 
 
         movies = q.all()
