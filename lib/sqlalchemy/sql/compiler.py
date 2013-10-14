@@ -978,6 +978,13 @@ class SQLCompiler(Compiled):
             return repr(value)
         elif isinstance(value, decimal.Decimal):
             return str(value)
+        elif isinstance(value, util.binary_type):
+            # only would occur on py3k b.c. on 2k the string_types
+            # directive above catches this.
+            # see #2838
+            value = value.decode(self.dialect.encoding).replace("'", "''")
+            return "'%s'" % value
+
         else:
             raise NotImplementedError(
                         "Don't know how to literal-quote value %r" % value)
