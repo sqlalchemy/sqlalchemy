@@ -1560,6 +1560,28 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         assert c.name == 'named'
         assert c.name == c.key
 
+    def test_unique_index_flags_default_to_none(self):
+        c = Column(Integer)
+        eq_(c.unique, None)
+        eq_(c.index, None)
+
+        c = Column('c', Integer, index=True)
+        eq_(c.unique, None)
+        eq_(c.index, True)
+
+        t = Table('t', MetaData(), c)
+        eq_(list(t.indexes)[0].unique, False)
+
+        c = Column(Integer, unique=True)
+        eq_(c.unique, True)
+        eq_(c.index, None)
+
+        c = Column('c', Integer, index=True, unique=True)
+        eq_(c.unique, True)
+        eq_(c.index, True)
+
+        t = Table('t', MetaData(), c)
+        eq_(list(t.indexes)[0].unique, True)
 
     def test_bogus(self):
         assert_raises(exc.ArgumentError, Column, 'foo', name='bar')

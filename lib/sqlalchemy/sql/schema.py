@@ -977,8 +977,13 @@ class Column(SchemaItem, ColumnClause):
         self.default = kwargs.pop('default', None)
         self.server_default = kwargs.pop('server_default', None)
         self.server_onupdate = kwargs.pop('server_onupdate', None)
+
+        # these default to None because .index and .unique is *not*
+        # an informational flag about Column - there can still be an
+        # Index or UniqueConstraint referring to this Column.
         self.index = kwargs.pop('index', None)
         self.unique = kwargs.pop('unique', None)
+
         self.system = kwargs.pop('system', False)
         self.doc = kwargs.pop('doc', None)
         self.onupdate = kwargs.pop('onupdate', None)
@@ -1126,7 +1131,7 @@ class Column(SchemaItem, ColumnClause):
                     "To create indexes with a specific name, create an "
                     "explicit Index object external to the Table.")
             Index(_truncated_label('ix_%s' % self._label),
-                                    self, unique=self.unique)
+                                    self, unique=bool(self.unique))
         elif self.unique:
             if isinstance(self.unique, util.string_types):
                 raise exc.ArgumentError(
