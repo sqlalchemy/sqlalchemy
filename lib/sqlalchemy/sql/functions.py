@@ -195,11 +195,10 @@ class _FunctionGenerator(object):
         else:
             package = None
 
-        if package is not None and \
-            package in _registry and \
-            fname in _registry[package]:
-            func = _registry[package][fname]
-            return func(*c, **o)
+        if package is not None:
+            func = _registry[package].get(fname)
+            if func is not None:
+                return func(*c, **o)
 
         return Function(self.__names[-1],
                         packagenames=self.__names[0:-1], *c, **o)
