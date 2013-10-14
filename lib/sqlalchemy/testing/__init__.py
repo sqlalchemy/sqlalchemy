@@ -11,7 +11,7 @@ from .exclusions import db_spec, _is_excluded, fails_if, skip_if, future,\
 from .assertions import emits_warning, emits_warning_on, uses_deprecated, \
         eq_, ne_, is_, is_not_, startswith_, assert_raises, \
         assert_raises_message, AssertsCompiledSQL, ComparesTables, \
-        AssertsExecutionResults
+        AssertsExecutionResults, expect_deprecated
 
 from .util import run_as_contextmanager, rowset, fail, provide_metadata, adict
 

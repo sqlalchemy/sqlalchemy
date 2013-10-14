@@ -13,6 +13,16 @@
     :version: 0.9.0
 
     .. change::
+        :tags: feature, mysql
+        :tickets: 2817
+
+        The MySQL :class:`.mysql.SET` type now features the same auto-quoting
+        behavior as that of :class:`.mysql.ENUM`.  Quotes are not required when
+        setting up the value, but quotes that are present will be auto-detected
+        along with a warning.  This also helps with Alembic where
+        the SET type doesn't render with quotes.
+
+    .. change::
         :tags: feature, sql
 
         The ``default`` argument of :class:`.Column` now accepts a class

@@ -92,29 +92,35 @@ def uses_deprecated(*messages):
 
     @decorator
     def decorate(fn, *args, **kw):
-        # todo: should probably be strict about this, too
-        filters = [dict(action='ignore',
-                        category=sa_exc.SAPendingDeprecationWarning)]
-        if not messages:
-            filters.append(dict(action='ignore',
-                                category=sa_exc.SADeprecationWarning))
-        else:
-            filters.extend(
-                [dict(action='ignore',
-                      message=message,
-                      category=sa_exc.SADeprecationWarning)
-                 for message in
-                 [(m.startswith('//') and
-                    ('Call to deprecated function ' + m[2:]) or m)
-                   for m in messages]])
-
-        for f in filters:
-            warnings.filterwarnings(**f)
-        try:
+        with expect_deprecated(*messages):
             return fn(*args, **kw)
-        finally:
-            resetwarnings()
     return decorate
+
+@contextlib.contextmanager
+def expect_deprecated(*messages):
+    # todo: should probably be strict about this, too
+    filters = [dict(action='ignore',
+                    category=sa_exc.SAPendingDeprecationWarning)]
+    if not messages:
+        filters.append(dict(action='ignore',
+                            category=sa_exc.SADeprecationWarning))
+    else:
+        filters.extend(
+            [dict(action='ignore',
+                  message=message,
+                  category=sa_exc.SADeprecationWarning)
+             for message in
+             [(m.startswith('//') and
+                ('Call to deprecated function ' + m[2:]) or m)
+               for m in messages]])
+
+    for f in filters:
+        warnings.filterwarnings(**f)
+    try:
+        yield
+    finally:
+        resetwarnings()
+
 
 
 def global_cleanup_assertions():
