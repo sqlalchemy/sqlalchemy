@@ -11,6 +11,16 @@
     :version: 0.8.3
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2825
+        :versions: 0.9.0
+
+        The ``.unique`` flag on :class:`.Index` could be produced as ``None``
+        if it was generated from a :class:`.Column` that didn't specify ``unique``
+        (where it defaults to ``None``).  The flag will now always be ``True`` or
+        ``False``.
+
+    .. change::
         :tags: feature, orm
         :tickets: 2836
         :versions: 0.9.0
