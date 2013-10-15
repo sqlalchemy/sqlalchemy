@@ -1039,12 +1039,15 @@ class PGCompiler(compiler.SQLCompiler):
 
 class PGDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
+
         colspec = self.preparer.format_column(column)
         impl_type = column.type.dialect_impl(self.dialect)
         if column.primary_key and \
             column is column.table._autoincrement_column and \
-            not isinstance(impl_type, sqltypes.SmallInteger) and \
             (
+                self.dialect.supports_smallserial or
+                not isinstance(impl_type, sqltypes.SmallInteger)
+            ) and (
                 column.default is None or
                 (
                     isinstance(column.default, schema.Sequence) and
@@ -1052,6 +1055,8 @@ class PGDDLCompiler(compiler.DDLCompiler):
                 )):
             if isinstance(impl_type, sqltypes.BigInteger):
                 colspec += " BIGSERIAL"
+            elif isinstance(impl_type, sqltypes.SmallInteger):
+                colspec += " SMALLSERIAL"
             else:
                 colspec += " SERIAL"
         else:
@@ -1330,6 +1335,7 @@ class PGDialect(default.DefaultDialect):
 
     supports_native_enum = True
     supports_native_boolean = True
+    supports_smallserial = True
 
     supports_sequences = True
     sequences_optional = True
@@ -1369,6 +1375,10 @@ class PGDialect(default.DefaultDialect):
             self.colspecs.pop(sqltypes.Enum, None)
             # psycopg2, others may have placed ENUM here as well
             self.colspecs.pop(ENUM, None)
+
+        # http://www.postgresql.org/docs/9.3/static/release-9-2.html#AEN116689
+        self.supports_smallserial = self.server_version_info >= (9, 2)
+
 
     def on_connect(self):
         if self.isolation_level is not None:

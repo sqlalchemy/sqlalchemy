@@ -203,17 +203,30 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         assert_raises(exc.InvalidRequestError, testing.db.execute, stmt)
 
     def test_serial_integer(self):
-        for type_, expected in [
-            (Integer, 'SERIAL'),
-            (BigInteger, 'BIGSERIAL'),
-            (SmallInteger, 'SMALLINT'),
-            (postgresql.INTEGER, 'SERIAL'),
-            (postgresql.BIGINT, 'BIGSERIAL'),
+
+        for version, type_, expected in [
+            (None, Integer, 'SERIAL'),
+            (None, BigInteger, 'BIGSERIAL'),
+            ((9, 1), SmallInteger, 'SMALLINT'),
+            ((9, 2), SmallInteger, 'SMALLSERIAL'),
+            (None, postgresql.INTEGER, 'SERIAL'),
+            (None, postgresql.BIGINT, 'BIGSERIAL'),
         ]:
             m = MetaData()
 
             t = Table('t', m, Column('c', type_, primary_key=True))
-            ddl_compiler = testing.db.dialect.ddl_compiler(testing.db.dialect, schema.CreateTable(t))
+
+            if version:
+                dialect = postgresql.dialect()
+                dialect._get_server_version_info = Mock(return_value=version)
+                dialect.initialize(testing.db.connect())
+            else:
+                dialect = testing.db.dialect
+
+            ddl_compiler = dialect.ddl_compiler(
+                                dialect,
+                                schema.CreateTable(t)
+                            )
             eq_(
                 ddl_compiler.get_column_specification(t.c.c),
                 "c %s NOT NULL" % expected

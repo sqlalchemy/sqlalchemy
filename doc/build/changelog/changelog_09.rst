@@ -13,6 +13,14 @@
     :version: 0.9.0
 
     .. change::
+        :tags: feature, postgresql
+        :tickets: 2840
+
+        Added support for rendering ``SMALLSERIAL`` when a :class:`.SmallInteger`
+        type is used on a primary key autoincrement column, based on server
+        version detection of Postgresql version 9.2 or greater.
+
+    .. change::
         :tags: feature, mysql
         :tickets: 2817
 
