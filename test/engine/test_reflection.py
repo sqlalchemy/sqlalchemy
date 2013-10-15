@@ -608,21 +608,29 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         """test that foreign key reflection includes options (on
         backends with {dialect}.get_foreign_keys() support)"""
 
-        # fk whose attributes we're testing on reflection
-        addresses_user_id_fkey = sa.ForeignKey(
-            'users.id',
-            name = 'addresses_user_id_fkey',
-            match='FULL',
-            onupdate='RESTRICT',
-            ondelete='RESTRICT',
-            deferrable=True,
-            initially='DEFERRED'
-        )
-
-        # only test implemented attrs
         if testing.against('postgresql'):
             test_attrs = ('match', 'onupdate', 'ondelete', 'deferrable', 'initially')
+            addresses_user_id_fkey = sa.ForeignKey(
+                # Each option is specifically not a Postgres default, or
+                # it won't be returned by PG's inspection
+                'users.id',
+                name = 'addresses_user_id_fkey',
+                match='FULL',
+                onupdate='RESTRICT',
+                ondelete='RESTRICT',
+                deferrable=True,
+                initially='DEFERRED'
+            )
         elif testing.against('mysql'):
+            # MATCH, DEFERRABLE, and INITIALLY cannot be defined for MySQL
+            # ON UPDATE and ON DELETE have defaults of RESTRICT, which are
+            # elided by MySQL's inspection
+            addresses_user_id_fkey = sa.ForeignKey(
+                'users.id',
+                name = 'addresses_user_id_fkey',
+                onupdate='CASCADE',
+                ondelete='CASCADE'
+            )
             test_attrs = ('onupdate', 'ondelete')
 
         meta = self.metadata
