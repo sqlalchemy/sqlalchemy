@@ -144,8 +144,10 @@ class HSTORE(sqltypes.Concatenable, sqltypes.TypeEngine):
     For usage with the SQLAlchemy ORM, it may be desirable to combine
     the usage of :class:`.HSTORE` with :class:`.MutableDict` dictionary
     now part of the :mod:`sqlalchemy.ext.mutable`
-    extension.  This extension will allow in-place changes to dictionary
-    values to be detected by the unit of work::
+    extension.  This extension will allow "in-place" changes to the
+    dictionary, e.g. addition of new keys or replacement/removal of existing
+    keys to/from the current dictionary, to produce events which will be detected
+    by the unit of work::
 
         from sqlalchemy.ext.mutable import MutableDict
 
@@ -162,6 +164,11 @@ class HSTORE(sqltypes.Concatenable, sqltypes.TypeEngine):
         my_object.data['some_key'] = 'some value'
 
         session.commit()
+
+    When the :mod:`sqlalchemy.ext.mutable` extension is not used, the ORM
+    will not be alerted to any changes to the contents of an existing dictionary,
+    unless that dictionary value is re-assigned to the HSTORE-attribute itself,
+    thus generating a change event.
 
     .. versionadded:: 0.8
 
