@@ -131,4 +131,38 @@ database is also available. This is known as the "Inspector"::
     :members:
     :undoc-members:
 
+Limitations of Reflection
+-------------------------
+
+It's important to note that the reflection process recreates :class:`.Table`
+metadata using only information which is represented in the relational database.
+This process by definition cannot restore aspects of a schema that aren't
+actually stored in the database.   State which is not available from reflection
+includes but is not limited to:
+
+* Client side defaults, either Python functions or SQL expressions defined using
+  the ``default`` keyword of :class:`.Column` (note this is separate from ``server_default``,
+  which specifically is what's available via reflection).
+
+* Column information, e.g. data that might have been placed into the
+  :attr:`.Column.info` dictionary
+
+* The value of the ``.quote`` setting for :class:`.Column` or :class:`.Table`
+
+* The assocation of a particular :class:`.Sequence` with a given :class:`.Column`
+
+The relational database also in many cases reports on table metadata in a
+different format than what was specified in SQLAlchemy.   The :class:`.Table`
+objects returned from reflection cannot be always relied upon to produce the identical
+DDL as the original Python-defined :class:`.Table` objects.   Areas where
+this occurs includes server defaults, column-associated sequences and various
+idosyncrasies regarding constraints and datatypes.   Server side defaults may
+be returned with cast directives (typically Postgresql will include a ``::<type>``
+cast) or different quoting patterns than originally specified.
+
+Another category of limitation includes schema structures for which reflection
+is only partially or not yet defined.  Recent improvements to reflection allow
+things like views, indexes and foreign key options to be reflected.  As of this
+writing, structures like CHECK constraints, table comments, and triggers are
+not reflected.
 
