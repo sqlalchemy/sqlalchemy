@@ -104,17 +104,65 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE INDEX bar ON foo (x > 5)"
         )
 
-    def test_skip_deferrable_kw(self):
+    def test_deferrable_emits_warning(self):
         m = MetaData()
         t1 = Table('t1', m, Column('id', Integer, primary_key=True))
         t2 = Table('t2', m, Column('id', Integer,
                         ForeignKey('t1.id', deferrable=True),
                             primary_key=True))
 
-        self.assert_compile(
+        assert_raises_message(
+            exc.SAWarning,
+            "The 'deferrable' keyword will no longer be ignored by the MySQL "
+            "backend in 0.9 - please adjust so that this keyword is not used in "
+            "conjunction with MySQL.",
+            schema.CreateTable(t2).compile, dialect=mysql.dialect()
+        )
+
+        @testing.emits_warning("The 'deferrable' keyword")
+        def go():
+            self.assert_compile(
             schema.CreateTable(t2),
             "CREATE TABLE t2 (id INTEGER NOT NULL, "
-            "PRIMARY KEY (id), FOREIGN KEY(id) REFERENCES t1 (id))"
+            "PRIMARY KEY (id), FOREIGN KEY(id) REFERENCES t1 (id))")
+        go()
+
+    def test_initially_emits_warning(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('id', Integer, primary_key=True))
+        t2 = Table('t2', m, Column('id', Integer,
+                        ForeignKey('t1.id', initially="XYZ"),
+                            primary_key=True))
+
+        assert_raises_message(
+            exc.SAWarning,
+            "The 'initially' keyword will no longer be ignored by the MySQL "
+            "backend in 0.9 - please adjust so that this keyword is not used "
+            "in conjunction with MySQL.",
+            schema.CreateTable(t2).compile, dialect=mysql.dialect()
+        )
+
+        @testing.emits_warning("The 'initially' keyword ")
+        def go():
+            self.assert_compile(
+            schema.CreateTable(t2),
+            "CREATE TABLE t2 (id INTEGER NOT NULL, "
+            "PRIMARY KEY (id), FOREIGN KEY(id) REFERENCES t1 (id))")
+        go()
+
+
+    def test_match_kw_raises(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('id', Integer, primary_key=True))
+        t2 = Table('t2', m, Column('id', Integer,
+                        ForeignKey('t1.id', match="XYZ"),
+                            primary_key=True))
+
+        assert_raises_message(
+            exc.SAWarning,
+            "MySQL ignores the 'MATCH' keyword while at the same time causes "
+            "ON UPDATE/ON DELETE clauses to be ignored.",
+            schema.CreateTable(t2).compile, dialect=mysql.dialect()
         )
 
 class SQLTest(fixtures.TestBase, AssertsCompiledSQL):

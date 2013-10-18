@@ -265,6 +265,45 @@ http://dev.mysql.com/doc/refman/5.0/en/create-index.html
 
 http://dev.mysql.com/doc/refman/5.0/en/create-table.html
 
+.. _mysql_foreign_keys:
+
+MySQL Foreign Key Options
+-------------------------
+
+MySQL does not support the foreign key arguments "DEFERRABLE", "INITIALLY",
+or "MATCH".  Using the ``deferrable`` or ``initially`` keyword argument with
+:class:`.ForeignKeyConstraint` or :class:`.ForeignKey` will have the effect of
+these keywords being ignored in a DDL expression along with a warning, however this behavior
+**will change** in a future release.
+
+In order to use these keywords on a foreign key while having them ignored
+on a MySQL backend, use a custom compile rule::
+
+    from sqlalchemy.ext.compiler import compiles
+    from sqlalchemy.schema import ForeignKeyConstraint
+
+    @compiles(ForeignKeyConstraint, "mysql")
+    def process(element, compiler, **kw):
+        element.deferrable = element.initially = None
+        return compiler.visit_foreign_key_constraint(element, **kw)
+
+.. versionchanged:: 0.8.3 - the MySQL backend will emit a warning when the
+   the ``deferrable`` or ``initially`` keyword arguments of :class:`.ForeignKeyConstraint`
+   and :class:`.ForeignKey` are used.  The arguments will no longer be
+   ignored in 0.9.
+
+The "MATCH" keyword is in fact more insidious, and in a future release will be
+explicitly disallowed
+by SQLAlchemy in conjunction with the MySQL backend.  This argument is silently
+ignored by MySQL, but in addition has the effect of ON UPDATE and ON DELETE options
+also being ignored by the backend.   Therefore MATCH should never be used with the
+MySQL backend; as is the case with DEFERRABLE and INITIALLY, custom compilation
+rules can be used to correct a MySQL ForeignKeyConstraint at DDL definition time.
+
+.. versionadded:: 0.8.3 - the MySQL backend will emit a warning when
+   the ``match`` keyword is used with :class:`.ForeignKeyConstraint`
+   or :class:`.ForeignKey`.  This will be a :class:`.CompileError` in 0.9.
+
 """
 
 import datetime
@@ -1607,6 +1646,23 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
                     qual, const)
 
     def define_constraint_deferrability(self, constraint):
+        if constraint.deferrable is not None:
+            util.warn("The 'deferrable' keyword will no longer be ignored by the "
+                "MySQL backend in 0.9 - please adjust so that this keyword is "
+                "not used in conjunction with MySQL.")
+        if constraint.initially is not None:
+            util.warn("The 'initially' keyword will no longer be ignored by the "
+                "MySQL backend in 0.9 - please adjust so that this keyword is "
+                "not used in conjunction with MySQL.")
+
+        return ""
+
+
+    def define_constraint_match(self, constraint):
+        if constraint.match is not None:
+            util.warn("MySQL ignores the 'MATCH' keyword while at the same time "
+                    "causes ON UPDATE/ON DELETE clauses to be ignored - "
+                    "this will be an exception in 0.9.")
         return ""
 
 class MySQLTypeCompiler(compiler.GenericTypeCompiler):

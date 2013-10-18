@@ -11,6 +11,26 @@
     :version: 0.8.3
 
     .. change::
+        :tags: bug, mysql
+        :tickets: 2721, 2839
+        :versions: 0.9.0
+
+        The change in :ticket:`2721`, which is that the ``deferrable`` keyword
+        of :class:`.ForeignKeyConstraint` is silently ignored on the MySQL
+        backend, will be reverted as of 0.9; this keyword will now render again, raising
+        errors on MySQL as it is not understood - the same behavior will also
+        apply to the ``initially`` keyword.  In 0.8, the keywords will remain
+        ignored but a warning is emitted.   Additionally, the ``match`` keyword
+        now raises a :class:`.CompileError` on 0.9 and emits a warning on 0.8;
+        this keyword is not only silently ignored by MySQL but also breaks
+        the ON UPDATE/ON DELETE options.
+
+        To use a :class:`.ForeignKeyConstraint`
+        that does not render or renders differently on MySQL, use a custom
+        compilation option.  An example of this usage has been added to the
+        documentation, see :ref:`mysql_foreign_keys`.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2825
         :versions: 0.9.0
