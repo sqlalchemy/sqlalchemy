@@ -219,6 +219,7 @@ have a way to "postfetch" the ID, and the statement is not "inlined", the SQL
 expression is pre-executed; otherwise, SQLAlchemy lets the default fire off on
 the database side normally.
 
+
 .. _triggered_columns:
 
 Triggered Columns
