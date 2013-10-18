@@ -1704,17 +1704,17 @@ class SubqueryloadDistinctTest(fixtures.DeclarativeMappedTest,
         result = s.execute(q3)
         rows = result.fetchall()
         if expect_distinct:
-            eq_(rows, [
+            eq_(set(tuple(r) for r in rows), set([
                 (1, u'/1.jpg', 1, 1),
                 (2, u'/2.jpg', 1, 1),
-            ])
+            ]))
         else:
-            eq_(rows, [
+            eq_(set(tuple(r) for r in rows), set([
                 (1, u'/1.jpg', 1, 1),
                 (2, u'/2.jpg', 1, 1),
                 (1, u'/1.jpg', 1, 1),
                 (2, u'/2.jpg', 1, 1),
-            ])
+            ]))
 
 
         movies = q.all()
