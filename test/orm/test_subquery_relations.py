@@ -1703,10 +1703,10 @@ class SubqueryloadDistinctTest(fixtures.DeclarativeMappedTest,
         result = s.execute(q3)
         rows = result.fetchall()
         if expect_distinct:
-            eq_(rows, [
+            eq_(set(tuple(t) for t in rows), set([
                 (1, u'/1.jpg', 1, 1),
                 (2, u'/2.jpg', 1, 1),
-            ])
+            ]))
         else:
             # oracle might not order the way we expect here
             eq_(set(tuple(t) for t in rows), set([
