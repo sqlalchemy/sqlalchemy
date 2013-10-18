@@ -159,6 +159,17 @@ class ReflectionTest(fixtures.TestBase):
                         subject.join(referer).onclause))
 
     @testing.provide_metadata
+    def test_reflect_default_over_128_chars(self):
+        Table('t', self.metadata,
+                Column('x', String(200), server_default="abcd" * 40)
+            ).create(testing.db)
+
+        m = MetaData()
+        t = Table('t', m, autoload=True, autoload_with=testing.db)
+        eq_(
+            t.c.x.server_default.arg.text, "'%s'::character varying" % ("abcd" * 40)
+        )
+    @testing.provide_metadata
     def test_renamed_sequence_reflection(self):
         metadata = self.metadata
         t = Table('t', metadata, Column('id', Integer, primary_key=True))

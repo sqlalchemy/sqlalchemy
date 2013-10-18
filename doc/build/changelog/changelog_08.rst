@@ -11,6 +11,15 @@
     :version: 0.8.3
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 2844
+        :versions: 0.9.0
+
+        Removed a 128-character truncation from the reflection of the
+        server default for a column; this code was original from
+        PG system views which truncated the string for readability.
+
+    .. change::
         :tags: bug, mysql
         :tickets: 2721, 2839
         :versions: 0.9.0
