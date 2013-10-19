@@ -13,6 +13,18 @@
     :version: 0.9.0
 
     .. change::
+        :tags: feature, sql
+        :tickets: 2716
+
+        The :meth:`.Table.tometadata` method now produces copies of
+        all :attr:`.SchemaItem.info` dictionaries from all :class:`.SchemaItem`
+        objects within the structure including columns, constraints,
+        foreign keys, etc.   As these dictionaries
+        are copies, they are independent of the original dictionary.
+        Previously, only the ``.info`` dictionary of :class:`.Column` was transferred
+        within this operation, and it was only linked in place, not copied.
+
+    .. change::
         :tags: feature, postgresql
         :tickets: 2840
 

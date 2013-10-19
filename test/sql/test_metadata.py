@@ -494,6 +494,47 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         eq_(str(table_c.join(table2_c).onclause),
             'myschema.mytable.myid = myschema.othertable.myid')
 
+    def test_tometadata_copy_info(self):
+        m = MetaData()
+        fk = ForeignKey('t2.id')
+        c = Column('c', Integer, fk)
+        ck = CheckConstraint('c > 5')
+        t = Table('t', m, c, ck)
+
+        m.info['minfo'] = True
+        fk.info['fkinfo'] = True
+        c.info['cinfo'] = True
+        ck.info['ckinfo'] = True
+        t.info['tinfo'] = True
+        t.primary_key.info['pkinfo'] = True
+        fkc = [const for const in t.constraints if
+                    isinstance(const, ForeignKeyConstraint)][0]
+        fkc.info['fkcinfo'] = True
+
+        m2 = MetaData()
+        t2 = t.tometadata(m2)
+
+        m.info['minfo'] = False
+        fk.info['fkinfo'] = False
+        c.info['cinfo'] = False
+        ck.info['ckinfo'] = False
+        t.primary_key.info['pkinfo'] = False
+        fkc.info['fkcinfo'] = False
+
+        eq_(m2.info, {})
+        eq_(t2.info, {"tinfo": True})
+        eq_(t2.c.c.info, {"cinfo": True})
+        eq_(list(t2.c.c.foreign_keys)[0].info, {"fkinfo": True})
+        eq_(t2.primary_key.info, {"pkinfo": True})
+
+        fkc2 = [const for const in t2.constraints
+                    if isinstance(const, ForeignKeyConstraint)][0]
+        eq_(fkc2.info, {"fkcinfo": True})
+
+        ck2 = [const for const in
+                    t2.constraints if isinstance(const, CheckConstraint)][0]
+        eq_(ck2.info, {"ckinfo": True})
+
 
     def test_tometadata_kwargs(self):
         meta = MetaData()
@@ -1876,7 +1917,6 @@ class ColumnOptionsTest(fixtures.TestBase):
         for c in (c1, c2, c3):
             c.info['bar'] = 'zip'
             assert c.info['bar'] == 'zip'
-
 
 class CatchAllEventsTest(fixtures.TestBase):
 

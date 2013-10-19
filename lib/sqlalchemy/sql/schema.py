@@ -108,6 +108,11 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
         """
         return {}
 
+    def _schema_item_copy(self, schema_item):
+        if 'info' in self.__dict__:
+            schema_item.info = self.info.copy()
+        schema_item.dispatch._update(self.dispatch)
+        return schema_item
 
 
 class Table(SchemaItem, TableClause):
@@ -718,8 +723,7 @@ class Table(SchemaItem, TableClause):
                   unique=index.unique,
                   *[table.c[col] for col in index.columns.keys()],
                   **index.kwargs)
-        table.dispatch._update(self.dispatch)
-        return table
+        return self._schema_item_copy(table)
 
 
 class Column(SchemaItem, ColumnClause):
@@ -1183,12 +1187,10 @@ class Column(SchemaItem, ColumnClause):
                 server_default=self.server_default,
                 onupdate=self.onupdate,
                 server_onupdate=self.server_onupdate,
-                info=self.info,
                 doc=self.doc,
                 *args
                 )
-        c.dispatch._update(self.dispatch)
-        return c
+        return self._schema_item_copy(c)
 
     def _make_proxy(self, selectable, name=None, key=None,
                             name_is_truncatable=False, **kw):
@@ -1384,8 +1386,7 @@ class ForeignKey(SchemaItem):
                 link_to_name=self.link_to_name,
                 match=self.match
                 )
-        fk.dispatch._update(self.dispatch)
-        return fk
+        return self._schema_item_copy(fk)
 
     def _get_colspec(self, schema=None):
         """Return a string based 'column specification' for this
@@ -2228,8 +2229,7 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
     def copy(self, **kw):
         c = self.__class__(name=self.name, deferrable=self.deferrable,
                               initially=self.initially, *self.columns.keys())
-        c.dispatch._update(self.dispatch)
-        return c
+        return self._schema_item_copy(c)
 
     def contains_column(self, col):
         return self.columns.contains_column(col)
@@ -2310,8 +2310,7 @@ class CheckConstraint(Constraint):
                                 _create_rule=self._create_rule,
                                 table=target_table,
                                 _autoattach=False)
-        c.dispatch._update(self.dispatch)
-        return c
+        return self._schema_item_copy(c)
 
 
 class ForeignKeyConstraint(Constraint):
@@ -2480,8 +2479,11 @@ class ForeignKeyConstraint(Constraint):
                     link_to_name=self.link_to_name,
                     match=self.match
                 )
-        fkc.dispatch._update(self.dispatch)
-        return fkc
+        for self_fk, other_fk in zip(
+                                self._elements.values(),
+                                fkc._elements.values()):
+            self_fk._schema_item_copy(other_fk)
+        return self._schema_item_copy(fkc)
 
 
 class PrimaryKeyConstraint(ColumnCollectionConstraint):
