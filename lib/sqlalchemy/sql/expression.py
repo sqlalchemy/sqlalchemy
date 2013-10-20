@@ -4347,6 +4347,9 @@ class Label(ColumnElement):
         self.quote = element.quote
         self._proxies = [element]
 
+    def __reduce__(self):
+        return self.__class__, (self.name, self._element, self._type)
+
     @util.memoized_property
     def type(self):
         return sqltypes.to_instance(

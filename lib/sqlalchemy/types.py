@@ -24,7 +24,7 @@ import datetime as dt
 import codecs
 
 from . import exc, schema, util, processors, events, event
-from .sql import operators
+from .sql import operators, type_coerce
 from .sql.expression import _DefaultColumnComparator
 from .util import pickle
 from .sql.visitors import Visitable
@@ -2061,7 +2061,7 @@ class Enum(String, SchemaType):
             SchemaType._set_table(self, column, table)
 
         e = schema.CheckConstraint(
-                        column.in_(self.enums),
+                        type_coerce(column, self).in_(self.enums),
                         name=self.name,
                         _create_rule=util.portable_instancemethod(
                                         self._should_create_constraint)
@@ -2198,7 +2198,7 @@ class Boolean(TypeEngine, SchemaType):
             return
 
         e = schema.CheckConstraint(
-                        column.in_([0, 1]),
+                        type_coerce(column, self).in_([0, 1]),
                         name=self.name,
                         _create_rule=util.portable_instancemethod(
                                     self._should_create_constraint)

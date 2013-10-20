@@ -8,6 +8,7 @@ from sqlalchemy import exc, types, util, dialects
 for name in dialects.__all__:
     __import__("sqlalchemy.dialects.%s" % name)
 from sqlalchemy.sql import operators, column, table
+from sqlalchemy.schema import CheckConstraint, AddConstraint
 from sqlalchemy.engine import default
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy import testing
@@ -787,7 +788,7 @@ class UnicodeTest(fixtures.TestBase):
         )
 
 
-class EnumTest(fixtures.TestBase):
+class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
     @classmethod
     def setup_class(cls):
         global enum_table, non_native_enum_table, metadata
@@ -869,6 +870,42 @@ class EnumTest(fixtures.TestBase):
             enum_table.insert().execute,
             {'id': 4, 'someenum': 'four'}
         )
+
+    def test_non_native_constraint_custom_type(self):
+        class Foob(object):
+            def __init__(self, name):
+                self.name = name
+
+        class MyEnum(types.SchemaType, TypeDecorator):
+            def __init__(self, values):
+                self.impl = Enum(
+                                *[v.name for v in values],
+                                name="myenum",
+                                native_enum=False
+                            )
+
+
+            def _set_table(self, table, column):
+                self.impl._set_table(table, column)
+
+            # future method
+            def process_literal_param(self, value, dialect):
+                return value.name
+
+            def process_bind_param(self, value, dialect):
+                return value.name
+
+        m = MetaData()
+        t1 = Table('t', m, Column('x', MyEnum([Foob('a'), Foob('b')])))
+        const = [c for c in t1.constraints if isinstance(c, CheckConstraint)][0]
+
+        self.assert_compile(
+            AddConstraint(const),
+            "ALTER TABLE t ADD CONSTRAINT myenum CHECK (x IN ('a', 'b'))",
+            dialect=default.DefaultDialect()
+        )
+
+
 
     @testing.fails_on('mysql',
                     "the CHECK constraint doesn't raise an exception for unknown reason")
@@ -1472,7 +1509,7 @@ class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(row['non_native_interval'], None)
 
 
-class BooleanTest(fixtures.TestBase, AssertsExecutionResults):
+class BooleanTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     @classmethod
     def setup_class(cls):
         global bool_table
@@ -1533,6 +1570,35 @@ class BooleanTest(fixtures.TestBase, AssertsExecutionResults):
     def test_unconstrained(self):
         testing.db.execute(
             "insert into booltest (id, unconstrained_value) values (1, 5)")
+
+    def test_non_native_constraint_custom_type(self):
+        class Foob(object):
+            def __init__(self, value):
+                self.value = value
+
+        class MyBool(types.SchemaType, TypeDecorator):
+            impl = Boolean()
+
+            def _set_table(self, table, column):
+                self.impl._set_table(table, column)
+
+            # future method
+            def process_literal_param(self, value, dialect):
+                return value.value
+
+            def process_bind_param(self, value, dialect):
+                return value.value
+
+        m = MetaData()
+        t1 = Table('t', m, Column('x', MyBool()))
+        const = [c for c in t1.constraints if isinstance(c, CheckConstraint)][0]
+
+        self.assert_compile(
+            AddConstraint(const),
+            "ALTER TABLE t ADD CHECK (x IN (0, 1))",
+            dialect=dialects.sqlite.dialect()
+        )
+
 
 class PickleTest(fixtures.TestBase):
     def test_eq_comparison(self):
