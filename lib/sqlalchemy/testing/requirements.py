@@ -296,6 +296,15 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def datetime_literals(self):
+        """target dialect supports rendering of a date, time, or datetime as a
+        literal string, e.g. via the TypeEngine.literal_processor() method.
+
+        """
+
+        return exclusions.closed()
+
+    @property
     def datetime(self):
         """target dialect supports representation of Python
         datetime.datetime() objects."""

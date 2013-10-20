@@ -75,6 +75,19 @@ class TypeEngine(Visitable):
     def copy_value(self, value):
         return value
 
+    def literal_processor(self, dialect):
+        """Return a conversion function for processing literal values that are
+        to be rendered directly without using binds.
+
+        This function is used when the compiler makes use of the
+        "literal_binds" flag, typically used in DDL generation as well
+        as in certain scenarios where backends don't accept bound parameters.
+
+        .. versionadded:: 0.9.0
+
+        """
+        return None
+
     def bind_processor(self, dialect):
         """Return a conversion function for processing bind values.
 
@@ -264,6 +277,16 @@ class TypeEngine(Visitable):
             return dialect._type_memos[self]['impl']
         except KeyError:
             return self._dialect_info(dialect)['impl']
+
+
+    def _cached_literal_processor(self, dialect):
+        """Return a dialect-specific literal processor for this type."""
+        try:
+            return dialect._type_memos[self]['literal']
+        except KeyError:
+            d = self._dialect_info(dialect)
+            d['literal'] = lp = d['impl'].literal_processor(dialect)
+            return lp
 
     def _cached_bind_processor(self, dialect):
         """Return a dialect-specific bind processor for this type."""
@@ -673,6 +696,22 @@ class TypeDecorator(TypeEngine):
         implementation."""
         return getattr(self.impl, key)
 
+    def process_literal_param(self, value, dialect):
+        """Receive a literal parameter value to be rendered inline within
+        a statement.
+
+        This method is used when the compiler renders a
+        literal value without using binds, typically within DDL
+        such as in the "server default" of a column or an expression
+        within a CHECK constraint.
+
+        The returned string will be rendered into the output string.
+
+        .. versionadded:: 0.9.0
+
+        """
+        raise NotImplementedError()
+
     def process_bind_param(self, value, dialect):
         """Receive a bound parameter value to be converted.
 
@@ -736,6 +775,40 @@ class TypeDecorator(TypeEngine):
 
         return self.__class__.process_bind_param.__code__ \
             is not TypeDecorator.process_bind_param.__code__
+
+    @util.memoized_property
+    def _has_literal_processor(self):
+        """memoized boolean, check if process_literal_param is implemented.
+
+
+        """
+
+        return self.__class__.process_literal_param.__code__ \
+            is not TypeDecorator.process_literal_param.__code__
+
+    def literal_processor(self, dialect):
+        """Provide a literal processing function for the given
+        :class:`.Dialect`.
+
+        Subclasses here will typically override :meth:`.TypeDecorator.process_literal_param`
+        instead of this method directly.
+
+        .. versionadded:: 0.9.0
+
+        """
+        if self._has_literal_processor:
+            process_param = self.process_literal_param
+            impl_processor = self.impl.literal_processor(dialect)
+            if impl_processor:
+                def process(value):
+                    return impl_processor(process_param(value, dialect))
+            else:
+                def process(value):
+                    return process_param(value, dialect)
+
+            return process
+        else:
+            return self.impl.literal_processor(dialect)
 
     def bind_processor(self, dialect):
         """Provide a bound value processing function for the

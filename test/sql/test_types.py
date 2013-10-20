@@ -273,6 +273,20 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
             for col in row[3], row[4]:
                 assert isinstance(col, util.text_type)
 
+    def test_typedecorator_literal_render(self):
+        class MyType(types.TypeDecorator):
+            impl = String
+
+            def process_literal_param(self, value, dialect):
+                return "HI->%s<-THERE" % value
+
+        self.assert_compile(
+            select([literal("test", MyType)]),
+            "SELECT 'HI->test<-THERE' AS anon_1",
+            dialect='default',
+            literal_binds=True
+        )
+
     def test_typedecorator_impl(self):
         for impl_, exp, kw in [
             (Float, "FLOAT", {}),

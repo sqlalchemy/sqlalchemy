@@ -210,7 +210,7 @@ import re
 
 from ... import sql, schema, exc, util
 from ...engine import default, reflection
-from ...sql import compiler, expression, util as sql_util, operators
+from ...sql import compiler, expression, operators
 from ... import types as sqltypes
 
 try:
@@ -954,25 +954,30 @@ class PGCompiler(compiler.SQLCompiler):
 
     def visit_ilike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
+
         return '%s ILIKE %s' % \
                 (self.process(binary.left, **kw),
                     self.process(binary.right, **kw)) \
-                + (escape and
-                        (' ESCAPE ' + self.render_literal_value(escape, None))
-                        or '')
+            + (
+                ' ESCAPE ' +
+                self.render_literal_value(escape, sqltypes.STRINGTYPE)
+                if escape else ''
+            )
 
     def visit_notilike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
         return '%s NOT ILIKE %s' % \
                 (self.process(binary.left, **kw),
                     self.process(binary.right, **kw)) \
-                + (escape and
-                        (' ESCAPE ' + self.render_literal_value(escape, None))
-                        or '')
+            + (
+                ' ESCAPE ' +
+                self.render_literal_value(escape, sqltypes.STRINGTYPE)
+                if escape else ''
+            )
 
     def render_literal_value(self, value, type_):
         value = super(PGCompiler, self).render_literal_value(value, type_)
-        # TODO: need to inspect "standard_conforming_strings"
+
         if self.dialect._backslash_escapes:
             value = value.replace('\\', '\\\\')
         return value
@@ -1357,7 +1362,6 @@ class PGDialect(default.DefaultDialect):
     inspector = PGInspector
     isolation_level = None
 
-    # TODO: need to inspect "standard_conforming_strings"
     _backslash_escapes = True
 
     def __init__(self, isolation_level=None, **kwargs):
@@ -1379,6 +1383,9 @@ class PGDialect(default.DefaultDialect):
         # http://www.postgresql.org/docs/9.3/static/release-9-2.html#AEN116689
         self.supports_smallserial = self.server_version_info >= (9, 2)
 
+        self._backslash_escapes = connection.scalar(
+                                    "show standard_conforming_strings"
+                                    ) == 'off'
 
     def on_connect(self):
         if self.isolation_level is not None:

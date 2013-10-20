@@ -160,6 +160,13 @@ class _DateTimeMixin(object):
             kw["regexp"] = self._reg
         return util.constructor_copy(self, cls, **kw)
 
+    def literal_processor(self, dialect):
+        bp = self.bind_processor(dialect)
+        def process(value):
+            return "'%s'" % bp(value)
+        return process
+
+
 class DATETIME(_DateTimeMixin, sqltypes.DateTime):
     """Represent a Python datetime object in SQLite using a string.
 
@@ -210,6 +217,7 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
                 "%(year)04d-%(month)02d-%(day)02d "
                 "%(hour)02d:%(minute)02d:%(second)02d"
             )
+
 
     def bind_processor(self, dialect):
         datetime_datetime = datetime.datetime

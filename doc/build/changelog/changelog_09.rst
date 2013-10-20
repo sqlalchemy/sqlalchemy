@@ -14,6 +14,19 @@
 
     .. change::
         :tags: feature, sql
+        :tickets: 2838
+
+        The typing system now handles the task of rendering "literal bind" values,
+        e.g. values that are normally bound parameters but due to context must
+        be rendered as strings, typically within DDL constructs such as
+        CHECK constraints and indexes (note that "literal bind" values
+        become used by DDL as of :ticket:`2742`).  A new method
+        :meth:`.TypeEngine.literal_processor` serves as the base, and
+        :meth:`.TypeDecorator.process_literal_param` is added to allow wrapping
+        of a native literal rendering method.
+
+    .. change::
+        :tags: feature, sql
         :tickets: 2716
 
         The :meth:`.Table.tometadata` method now produces copies of

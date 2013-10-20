@@ -154,6 +154,12 @@ class String(Concatenable, TypeEngine):
         self.unicode_error = unicode_error
         self._warn_on_bytestring = _warn_on_bytestring
 
+    def literal_processor(self, dialect):
+        def process(value):
+            value = value.replace("'", "''")
+            return "'%s'" % value
+        return process
+
     def bind_processor(self, dialect):
         if self.convert_unicode or dialect.convert_unicode:
             if dialect.supports_unicode_binds and \
@@ -345,6 +351,11 @@ class Integer(_DateAffinity, TypeEngine):
     def python_type(self):
         return int
 
+    def literal_processor(self, dialect):
+        def process(value):
+            return str(value)
+        return process
+
     @util.memoized_property
     def _expression_adaptations(self):
         # TODO: need a dictionary object that will
@@ -480,6 +491,11 @@ class Numeric(_DateAffinity, TypeEngine):
 
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
+
+    def literal_processor(self, dialect):
+        def process(value):
+            return str(value)
+        return process
 
     @property
     def python_type(self):
@@ -727,6 +743,12 @@ class _Binary(TypeEngine):
 
     def __init__(self, length=None):
         self.length = length
+
+    def literal_processor(self, dialect):
+        def process(value):
+            value = value.decode(self.dialect.encoding).replace("'", "''")
+            return "'%s'" % value
+        return process
 
     @property
     def python_type(self):
@@ -1499,6 +1521,11 @@ class NullType(TypeEngine):
     __visit_name__ = 'null'
 
     _isnull = True
+
+    def literal_processor(self, dialect):
+        def process(value):
+            return "NULL"
+        return process
 
     class Comparator(TypeEngine.Comparator):
         def _adapt_expression(self, op, other_comparator):

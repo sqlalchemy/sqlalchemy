@@ -827,7 +827,7 @@ class SQLCompiler(Compiled):
 
     @util.memoized_property
     def _like_percent_literal(self):
-        return elements.literal_column("'%'", type_=sqltypes.String())
+        return elements.literal_column("'%'", type_=sqltypes.STRINGTYPE)
 
     def visit_contains_op_binary(self, binary, operator, **kw):
         binary = binary._clone()
@@ -871,39 +871,49 @@ class SQLCompiler(Compiled):
 
     def visit_like_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
+
+        # TODO: use ternary here, not "and"/ "or"
         return '%s LIKE %s' % (
                             binary.left._compiler_dispatch(self, **kw),
                             binary.right._compiler_dispatch(self, **kw)) \
-            + (escape and
-                    (' ESCAPE ' + self.render_literal_value(escape, None))
-                    or '')
+            + (
+                ' ESCAPE ' +
+                self.render_literal_value(escape, sqltypes.STRINGTYPE)
+                if escape else ''
+            )
 
     def visit_notlike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
         return '%s NOT LIKE %s' % (
                             binary.left._compiler_dispatch(self, **kw),
                             binary.right._compiler_dispatch(self, **kw)) \
-            + (escape and
-                    (' ESCAPE ' + self.render_literal_value(escape, None))
-                    or '')
+            + (
+                ' ESCAPE ' +
+                self.render_literal_value(escape, sqltypes.STRINGTYPE)
+                if escape else ''
+            )
 
     def visit_ilike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
         return 'lower(%s) LIKE lower(%s)' % (
                             binary.left._compiler_dispatch(self, **kw),
                             binary.right._compiler_dispatch(self, **kw)) \
-            + (escape and
-                    (' ESCAPE ' + self.render_literal_value(escape, None))
-                    or '')
+            + (
+                ' ESCAPE ' +
+                self.render_literal_value(escape, sqltypes.STRINGTYPE)
+                if escape else ''
+            )
 
     def visit_notilike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
         return 'lower(%s) NOT LIKE lower(%s)' % (
                             binary.left._compiler_dispatch(self, **kw),
                             binary.right._compiler_dispatch(self, **kw)) \
-            + (escape and
-                    (' ESCAPE ' + self.render_literal_value(escape, None))
-                    or '')
+            + (
+                ' ESCAPE ' +
+                self.render_literal_value(escape, sqltypes.STRINGTYPE)
+                if escape else ''
+            )
 
     def visit_bindparam(self, bindparam, within_columns_clause=False,
                                             literal_binds=False,
@@ -954,9 +964,6 @@ class SQLCompiler(Compiled):
 
     def render_literal_bindparam(self, bindparam, **kw):
         value = bindparam.value
-        processor = bindparam.type._cached_bind_processor(self.dialect)
-        if processor:
-            value = processor(value)
         return self.render_literal_value(value, bindparam.type)
 
     def render_literal_value(self, value, type_):
@@ -969,22 +976,10 @@ class SQLCompiler(Compiled):
         of the DBAPI.
 
         """
-        if isinstance(value, util.string_types):
-            value = value.replace("'", "''")
-            return "'%s'" % value
-        elif value is None:
-            return "NULL"
-        elif isinstance(value, (float, ) + util.int_types):
-            return repr(value)
-        elif isinstance(value, decimal.Decimal):
-            return str(value)
-        elif isinstance(value, util.binary_type):
-            # only would occur on py3k b.c. on 2k the string_types
-            # directive above catches this.
-            # see #2838
-            value = value.decode(self.dialect.encoding).replace("'", "''")
-            return "'%s'" % value
 
+        processor = type_._cached_literal_processor(self.dialect)
+        if processor:
+            return processor(value)
         else:
             raise NotImplementedError(
                         "Don't know how to literal-quote value %r" % value)
@@ -1599,7 +1594,7 @@ class SQLCompiler(Compiled):
 
     def visit_insert(self, insert_stmt, **kw):
         self.isinsert = True
-        colparams = self._get_colparams(insert_stmt)
+        colparams = self._get_colparams(insert_stmt, **kw)
 
         if not colparams and \
                 not self.dialect.supports_default_values and \
@@ -1732,7 +1727,7 @@ class SQLCompiler(Compiled):
         table_text = self.update_tables_clause(update_stmt, update_stmt.table,
                                                extra_froms, **kw)
 
-        colparams = self._get_colparams(update_stmt, extra_froms)
+        colparams = self._get_colparams(update_stmt, extra_froms, **kw)
 
         if update_stmt._hints:
             dialect_hints = dict([
@@ -1801,7 +1796,7 @@ class SQLCompiler(Compiled):
         bindparam._is_crud = True
         return bindparam._compiler_dispatch(self)
 
-    def _get_colparams(self, stmt, extra_tables=None):
+    def _get_colparams(self, stmt, extra_tables=None, **kw):
         """create a set of tuples representing column/string pairs for use
         in an INSERT or UPDATE statement.
 
@@ -1853,9 +1848,9 @@ class SQLCompiler(Compiled):
                     # add it to values() in an "as-is" state,
                     # coercing right side to bound param
                     if elements._is_literal(v):
-                        v = self.process(elements.BindParameter(None, v, type_=k.type))
+                        v = self.process(elements.BindParameter(None, v, type_=k.type), **kw)
                     else:
-                        v = self.process(v.self_group())
+                        v = self.process(v.self_group(), **kw)
 
                     values.append((k, v))
 
@@ -1903,7 +1898,7 @@ class SQLCompiler(Compiled):
                                 c, value, required=value is REQUIRED)
                         else:
                             self.postfetch.append(c)
-                            value = self.process(value.self_group())
+                            value = self.process(value.self_group(), **kw)
                         values.append((c, value))
             # determine tables which are actually
             # to be updated - process onupdate and
@@ -1915,7 +1910,7 @@ class SQLCompiler(Compiled):
                     elif c.onupdate is not None and not c.onupdate.is_sequence:
                         if c.onupdate.is_clause_element:
                             values.append(
-                                (c, self.process(c.onupdate.arg.self_group()))
+                                (c, self.process(c.onupdate.arg.self_group(), **kw))
                             )
                             self.postfetch.append(c)
                         else:
@@ -1941,14 +1936,14 @@ class SQLCompiler(Compiled):
                                     )
                 elif c.primary_key and implicit_returning:
                     self.returning.append(c)
-                    value = self.process(value.self_group())
+                    value = self.process(value.self_group(), **kw)
                 elif implicit_return_defaults and \
                     c in implicit_return_defaults:
                     self.returning.append(c)
-                    value = self.process(value.self_group())
+                    value = self.process(value.self_group(), **kw)
                 else:
                     self.postfetch.append(c)
-                    value = self.process(value.self_group())
+                    value = self.process(value.self_group(), **kw)
                 values.append((c, value))
 
             elif self.isinsert:
@@ -1966,13 +1961,13 @@ class SQLCompiler(Compiled):
                                 if self.dialect.supports_sequences and \
                                     (not c.default.optional or \
                                     not self.dialect.sequences_optional):
-                                    proc = self.process(c.default)
+                                    proc = self.process(c.default, **kw)
                                     values.append((c, proc))
                                 self.returning.append(c)
                             elif c.default.is_clause_element:
                                 values.append(
                                     (c,
-                                    self.process(c.default.arg.self_group()))
+                                    self.process(c.default.arg.self_group(), **kw))
                                 )
                                 self.returning.append(c)
                             else:
@@ -2000,7 +1995,7 @@ class SQLCompiler(Compiled):
                         if self.dialect.supports_sequences and \
                             (not c.default.optional or \
                             not self.dialect.sequences_optional):
-                            proc = self.process(c.default)
+                            proc = self.process(c.default, **kw)
                             values.append((c, proc))
                             if implicit_return_defaults and \
                                 c in implicit_return_defaults:
@@ -2009,7 +2004,7 @@ class SQLCompiler(Compiled):
                                 self.postfetch.append(c)
                     elif c.default.is_clause_element:
                         values.append(
-                            (c, self.process(c.default.arg.self_group()))
+                            (c, self.process(c.default.arg.self_group(), **kw))
                         )
 
                         if implicit_return_defaults and \
@@ -2037,7 +2032,7 @@ class SQLCompiler(Compiled):
                 if c.onupdate is not None and not c.onupdate.is_sequence:
                     if c.onupdate.is_clause_element:
                         values.append(
-                            (c, self.process(c.onupdate.arg.self_group()))
+                            (c, self.process(c.onupdate.arg.self_group(), **kw))
                         )
                         if implicit_return_defaults and \
                             c in implicit_return_defaults:

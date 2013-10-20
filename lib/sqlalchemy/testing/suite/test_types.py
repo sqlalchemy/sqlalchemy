@@ -5,7 +5,7 @@ from ..assertions import eq_
 from ..config import requirements
 from sqlalchemy import Integer, Unicode, UnicodeText, select
 from sqlalchemy import Date, DateTime, Time, MetaData, String, \
-            Text, Numeric, Float
+            Text, Numeric, Float, literal
 from ..schema import Table, Column
 from ... import testing
 import decimal
@@ -13,7 +13,31 @@ import datetime
 from ...util import u
 from ... import util
 
-class _UnicodeFixture(object):
+
+class _LiteralRoundTripFixture(object):
+    @testing.provide_metadata
+    def _literal_round_trip(self, type_, input_, output):
+        """test literal rendering """
+
+        # for literal, we test the literal render in an INSERT
+        # into a typed column.  we can then SELECT it back as it's
+        # official type; ideally we'd be able to use CAST here
+        # but MySQL in particular can't CAST fully
+        t = Table('t', self.metadata, Column('x', type_))
+        t.create()
+
+        for value in input_:
+            ins = t.insert().values(x=literal(value)).compile(
+                            dialect=testing.db.dialect,
+                            compile_kwargs=dict(literal_binds=True)
+                        )
+            testing.db.execute(ins)
+
+        for row in t.select().execute():
+            assert row[0] in output
+
+
+class _UnicodeFixture(_LiteralRoundTripFixture):
     __requires__ = 'unicode_data',
 
     data = u("Alors vous imaginez ma surprise, au lever du jour, "\
@@ -87,6 +111,9 @@ class _UnicodeFixture(object):
                 ).first()
         eq_(row, (u(''),))
 
+    def test_literal(self):
+        self._literal_round_trip(self.datatype, [self.data], [self.data])
+
 
 class UnicodeVarcharTest(_UnicodeFixture, fixtures.TablesTest):
     __requires__ = 'unicode_data',
@@ -107,7 +134,7 @@ class UnicodeTextTest(_UnicodeFixture, fixtures.TablesTest):
     def test_empty_strings_text(self):
         self._test_empty_strings()
 
-class TextTest(fixtures.TablesTest):
+class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('text_table', metadata,
@@ -140,8 +167,18 @@ class TextTest(fixtures.TablesTest):
                 ).first()
         eq_(row, ('',))
 
+    def test_literal(self):
+        self._literal_round_trip(Text, ["some text"], ["some text"])
 
-class StringTest(fixtures.TestBase):
+    def test_literal_quoting(self):
+        data = '''some 'text' hey "hi there" that's text'''
+        self._literal_round_trip(Text, [data], [data])
+
+    def test_literal_backslashes(self):
+        data = r'backslash one \ backslash two \\ end'
+        self._literal_round_trip(Text, [data], [data])
+
+class StringTest(_LiteralRoundTripFixture, fixtures.TestBase):
     @requirements.unbounded_varchar
     def test_nolength_string(self):
         metadata = MetaData()
@@ -152,8 +189,19 @@ class StringTest(fixtures.TestBase):
         foo.create(config.db)
         foo.drop(config.db)
 
+    def test_literal(self):
+        self._literal_round_trip(String(40), ["some text"], ["some text"])
 
-class _DateFixture(object):
+    def test_literal_quoting(self):
+        data = '''some 'text' hey "hi there" that's text'''
+        self._literal_round_trip(String(40), [data], [data])
+
+    def test_literal_backslashes(self):
+        data = r'backslash one \ backslash two \\ end'
+        self._literal_round_trip(Text, [data], [data])
+
+
+class _DateFixture(_LiteralRoundTripFixture):
     compare = None
 
     @classmethod
@@ -197,6 +245,12 @@ class _DateFixture(object):
                     ])
                 ).first()
         eq_(row, (None,))
+
+    @testing.requires.datetime_literals
+    def test_literal(self):
+        compare = self.compare or self.data
+        self._literal_round_trip(self.datatype, [self.data], [compare])
+
 
 
 class DateTimeTest(_DateFixture, fixtures.TablesTest):
@@ -247,7 +301,12 @@ class DateHistoricTest(_DateFixture, fixtures.TablesTest):
     datatype = Date
     data = datetime.date(1727, 4, 1)
 
-class NumericTest(fixtures.TestBase):
+
+class IntegerTest(_LiteralRoundTripFixture, fixtures.TestBase):
+    def test_literal(self):
+        self._literal_round_trip(Integer, [5], [5])
+
+class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
 
     @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
     @testing.provide_metadata
@@ -268,6 +327,30 @@ class NumericTest(fixtures.TestBase):
                 [str(x) for x in result],
                 [str(x) for x in output],
             )
+
+
+    @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
+    def test_render_literal_numeric(self):
+        self._literal_round_trip(
+            Numeric(precision=8, scale=4),
+            [15.7563, decimal.Decimal("15.7563")],
+            [decimal.Decimal("15.7563")],
+        )
+
+    @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
+    def test_render_literal_numeric_asfloat(self):
+        self._literal_round_trip(
+            Numeric(precision=8, scale=4, asdecimal=False),
+            [15.7563, decimal.Decimal("15.7563")],
+            [15.7563],
+        )
+
+    def test_render_literal_float(self):
+        self._literal_round_trip(
+            Float(4),
+            [15.7563, decimal.Decimal("15.7563")],
+            [15.7563],
+        )
 
     def test_numeric_as_decimal(self):
         self._do_test(
@@ -291,6 +374,7 @@ class NumericTest(fixtures.TestBase):
             [decimal.Decimal("15.7563"), None],
         )
 
+
     def test_float_as_float(self):
         self._do_test(
             Float(precision=8),
@@ -298,6 +382,7 @@ class NumericTest(fixtures.TestBase):
             [15.7563],
             filter_=lambda n: n is not None and round(n, 5) or None
         )
+
 
     @testing.requires.precision_numerics_general
     def test_precision_decimal(self):
@@ -312,6 +397,7 @@ class NumericTest(fixtures.TestBase):
             numbers,
             numbers,
         )
+
 
     @testing.requires.precision_numerics_enotation_large
     def test_enotation_decimal(self):
@@ -341,6 +427,7 @@ class NumericTest(fixtures.TestBase):
             numbers,
             numbers
         )
+
 
     @testing.requires.precision_numerics_enotation_large
     def test_enotation_decimal_large(self):
@@ -389,7 +476,7 @@ class NumericTest(fixtures.TestBase):
 
 __all__ = ('UnicodeVarcharTest', 'UnicodeTextTest',
             'DateTest', 'DateTimeTest', 'TextTest',
-            'NumericTest',
+            'NumericTest', 'IntegerTest',
             'DateTimeHistoricTest', 'DateTimeCoercedToDateTimeTest',
             'TimeMicrosecondsTest', 'TimeTest', 'DateTimeMicrosecondsTest',
             'DateHistoricTest', 'StringTest')

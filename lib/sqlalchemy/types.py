@@ -62,6 +62,7 @@ from .sql.sqltypes import (
     SMALLINT,
     SmallInteger,
     String,
+    STRINGTYPE,
     TEXT,
     TIME,
     TIMESTAMP,
