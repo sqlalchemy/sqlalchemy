@@ -11,6 +11,17 @@
     :version: 0.8.3
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2842
+        :versions: 0.9.0
+
+        The :class:`.Enum` and :class:`.Boolean` types now bypass
+        any custom (e.g. TypeDecorator) type in use when producing the
+        CHECK constraint for the "non native" type.  This so that the custom type
+        isn't involved in the expression within the CHECK, since this
+        expression is against the "impl" value and not the "decorated" value.
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 2844
         :versions: 0.9.0
@@ -97,7 +108,8 @@
         Fixed bug in default compiler plus those of postgresql, mysql, and
         mssql to ensure that any literal SQL expression values are
         rendered directly as literals, instead of as bound parameters,
-        within a CREATE INDEX statement.
+        within a CREATE INDEX statement.  This also changes the rendering
+        scheme for other DDL such as constraints.
 
     .. change::
         :tags: bug, sql

@@ -1842,6 +1842,9 @@ class Label(ColumnElement):
         self._type = type_
         self._proxies = [element]
 
+    def __reduce__(self):
+        return self.__class__, (self.name, self._element, self._type)
+
     @util.memoized_property
     def _order_by_label_element(self):
         return self
