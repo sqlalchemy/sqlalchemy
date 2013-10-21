@@ -1057,6 +1057,8 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
                 def process(value):
                     return value / 10
                 return process
+
+        class MyOldCustomType(MyCustomType):
             def adapt_operator(self, op):
                 return {operators.add: operators.sub,
                     operators.sub: operators.add}.get(op, op)
@@ -1132,6 +1134,26 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
             [(1, 'somedata',
                 datetime.date(2007, 10, 15), 25, 'BIND_INfooBIND_OUT')]
         )
+
+    def test_bind_adapt_update(self):
+        bp = bindparam("somevalue")
+        stmt = test_table.update().values(avalue=bp)
+        compiled = stmt.compile()
+        eq_(bp.type._type_affinity, types.NullType)
+        eq_(compiled.binds['somevalue'].type._type_affinity, MyCustomType)
+
+    def test_bind_adapt_insert(self):
+        bp = bindparam("somevalue")
+        stmt = test_table.insert().values(avalue=bp)
+        compiled = stmt.compile()
+        eq_(bp.type._type_affinity, types.NullType)
+        eq_(compiled.binds['somevalue'].type._type_affinity, MyCustomType)
+
+    def test_bind_adapt_expression(self):
+        bp = bindparam("somevalue")
+        stmt = test_table.c.avalue == bp
+        eq_(bp.type._type_affinity, types.NullType)
+        eq_(stmt.right.type._type_affinity, MyCustomType)
 
     def test_literal_adapt(self):
         # literals get typed based on the types dictionary, unless
@@ -1264,7 +1286,9 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         assert expr.right.type._type_affinity is MyFoobarType
 
         # untyped bind - it gets assigned MyFoobarType
-        expr = column("foo", MyFoobarType) + bindparam("foo")
+        bp = bindparam("foo")
+        expr = column("foo", MyFoobarType) + bp
+        assert bp.type._type_affinity is types.NullType
         assert expr.right.type._type_affinity is MyFoobarType
 
         expr = column("foo", MyFoobarType) + bindparam("foo", type_=Integer)

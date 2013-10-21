@@ -321,6 +321,56 @@ against ``b_value`` directly.
 
 :ticket:`2751`
 
+.. _migration_2850:
+
+A bindparam() construct with no type gets upgraded via copy when a type is available
+------------------------------------------------------------------------------------
+
+The logic which "upgrades" a :func:`.bindparam` construct to take on the
+type of the enclosing expression has been improved in two ways.  First, the
+:func:`.bindparam` object is **copied** before the new type is assigned, so that
+the given :func:`.bindparam` is not mutated in place.  Secondly, this same
+operation occurs within the :meth:`.Values.values` method of :class:`.Insert`
+and :class:`.Update`.
+
+If given an untyped :func:`.bindparam`::
+
+    bp = bindparam("some_col")
+
+If we use this parameter as follows::
+
+    expr = mytable.c.col == bp
+
+The type for ``bp`` remains as ``NullType``, however if ``mytable.c.col``
+is of type ``String``, then ``expr.right``, that is the right side of the
+binary expression, will take on the ``String`` type.   Previously, ``bp`` itself
+would have been changed in place to have ``String`` as its type.
+
+Similarly, this operation occurs in an :class:`.Insert` or :class:`.Update`::
+
+    stmt = mytable.update().values(col=bp)
+
+Above, ``bp`` remains unchanged, but the ``String`` type will be used when
+the statement is executed, which we can see by examining the ``binds`` dictionary::
+
+    >>> compiled = stmt.compile()
+    >>> compiled.binds['some_col'].type
+    String
+
+The feature allows custom types to take their expected effect within INSERT/UPDATE
+statements without needing to explicitly specify those types within every
+:func:`.bindparam` expression.
+
+The potentially backwards-compatible changes involve two unlikely
+scenarios.  Since the the bound parameter is
+**cloned**, users should not be relying upon making in-place changes to a
+:func:`.bindparam` construct once created.   Additionally, code which uses
+:func:`.bindparam` within an :class:`.Insert` or :class:`.Update` statement
+which is relying on the fact that the :func:`.bindparam` is not typed according
+to the column being assigned towards will no longer function in that way.
+
+:ticket:`2850`
+
 .. _change_2812:
 
 Schema identifiers now carry along their own quoting information

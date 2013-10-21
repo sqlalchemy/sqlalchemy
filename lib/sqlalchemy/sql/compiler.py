@@ -1934,16 +1934,22 @@ class SQLCompiler(Compiled):
                                         if not stmt._has_multi_parameters
                                         else "%s_0" % c.key
                                     )
-                elif c.primary_key and implicit_returning:
-                    self.returning.append(c)
-                    value = self.process(value.self_group(), **kw)
-                elif implicit_return_defaults and \
-                    c in implicit_return_defaults:
-                    self.returning.append(c)
-                    value = self.process(value.self_group(), **kw)
                 else:
-                    self.postfetch.append(c)
-                    value = self.process(value.self_group(), **kw)
+                    if isinstance(value, elements.BindParameter) and \
+                        value.type._isnull:
+                        value = value._clone()
+                        value.type = c.type
+
+                    if c.primary_key and implicit_returning:
+                        self.returning.append(c)
+                        value = self.process(value.self_group(), **kw)
+                    elif implicit_return_defaults and \
+                        c in implicit_return_defaults:
+                        self.returning.append(c)
+                        value = self.process(value.self_group(), **kw)
+                    else:
+                        self.postfetch.append(c)
+                        value = self.process(value.self_group(), **kw)
                 values.append((c, value))
 
             elif self.isinsert:

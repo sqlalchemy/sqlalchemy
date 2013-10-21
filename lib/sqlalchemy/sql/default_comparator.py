@@ -261,10 +261,7 @@ class _DefaultColumnComparator(operators.ColumnOperators):
         if isinstance(other, (ColumnElement, TextClause)):
             if isinstance(other, BindParameter) and \
                     other.type._isnull:
-                # TODO: perhaps we should not mutate the incoming
-                # bindparam() here and instead make a copy of it.
-                # this might be the only place that we're mutating
-                # an incoming construct.
+                other = other._clone()
                 other.type = expr.type
             return other
         elif hasattr(other, '__clause_element__'):
