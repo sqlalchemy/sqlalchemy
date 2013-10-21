@@ -21,8 +21,9 @@
         new copy is assigned the actual type of the compared column.  Previously,
         this logic would occur on the given :func:`.bindparam` in place.
         Additionally, a similar process now occurs for :func:`.bindparam` constructs
-        passed to :meth:`.ValuesBase.values` for a :class:`.Insert` or
-        :class:`.Update` construct.
+        passed to :meth:`.ValuesBase.values` for an :class:`.Insert` or
+        :class:`.Update` construct, within the compilation phase of the
+        construct.
 
         These are both subtle behavioral changes which may impact some
         usages.

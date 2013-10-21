@@ -330,8 +330,9 @@ The logic which "upgrades" a :func:`.bindparam` construct to take on the
 type of the enclosing expression has been improved in two ways.  First, the
 :func:`.bindparam` object is **copied** before the new type is assigned, so that
 the given :func:`.bindparam` is not mutated in place.  Secondly, this same
-operation occurs within the :meth:`.Values.values` method of :class:`.Insert`
-and :class:`.Update`.
+operation occurs when an :class:`.Insert` or :class:`.Update` construct is compiled,
+regarding the "values" that were set in the statement via the :meth:`.ValuesBase.values`
+method.
 
 If given an untyped :func:`.bindparam`::
 
