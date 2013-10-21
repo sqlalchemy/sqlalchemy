@@ -879,9 +879,9 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
         class MyEnum(types.SchemaType, TypeDecorator):
             def __init__(self, values):
                 self.impl = Enum(
-                                *[v.name for v in values],
                                 name="myenum",
-                                native_enum=False
+                                native_enum=False,
+                                *[v.name for v in values]
                             )
 
 
