@@ -466,6 +466,17 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
             'd1BIND_OUT'
         )
 
+        class MyFoob(object):
+            def __clause_element__(self):
+                return t.c.data
+
+        eq_(
+            testing.db.execute(
+                select([t.c.data, type_coerce(MyFoob(), MyType)])
+            ).fetchall(),
+            [('d1', 'd1BIND_OUT')]
+        )
+
     @classmethod
     def define_tables(cls, metadata):
         class MyType(types.UserDefinedType):

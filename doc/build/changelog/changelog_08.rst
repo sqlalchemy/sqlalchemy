@@ -12,6 +12,14 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 2849
+        :versions: 0.9.0
+
+        Fixed bug where :func:`.type_coerce` would not interpret ORM
+        elements with a ``__clause_element__()`` method properly.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 2842
         :versions: 0.9.0
 

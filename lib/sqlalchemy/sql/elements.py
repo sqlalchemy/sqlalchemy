@@ -117,8 +117,8 @@ def type_coerce(expr, type_):
     """
     type_ = type_api.to_instance(type_)
 
-    if hasattr(expr, '__clause_expr__'):
-        return type_coerce(expr.__clause_expr__())
+    if hasattr(expr, '__clause_element__'):
+        return type_coerce(expr.__clause_element__(), type_)
     elif isinstance(expr, BindParameter):
         bp = expr._clone()
         bp.type = type_
