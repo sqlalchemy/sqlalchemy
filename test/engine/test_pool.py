@@ -906,7 +906,7 @@ class QueuePoolTest(PoolTestBase):
                 c1.invalidate()
                 c2.invalidate()
                 p2 = p._replace()
-                time.sleep(.2)
+                time.sleep(.5)
 
         eq_(len(success), 12, "successes: %s" % success)
 
