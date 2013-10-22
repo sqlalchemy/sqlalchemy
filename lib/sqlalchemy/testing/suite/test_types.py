@@ -16,7 +16,7 @@ from ... import util
 
 class _LiteralRoundTripFixture(object):
     @testing.provide_metadata
-    def _literal_round_trip(self, type_, input_, output):
+    def _literal_round_trip(self, type_, input_, output, filter_=None):
         """test literal rendering """
 
         # for literal, we test the literal render in an INSERT
@@ -34,7 +34,10 @@ class _LiteralRoundTripFixture(object):
             testing.db.execute(ins)
 
         for row in t.select().execute():
-            assert row[0] in output
+            value = row[0]
+            if filter_ is not None:
+                value = filter_(value)
+            assert value in output
 
 
 class _UnicodeFixture(_LiteralRoundTripFixture):
@@ -345,12 +348,12 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             [15.7563],
         )
 
-    @testing.requires.floats_to_four_decimals
     def test_render_literal_float(self):
         self._literal_round_trip(
             Float(4),
             [15.7563, decimal.Decimal("15.7563")],
             [15.7563,],
+            filter_=lambda n: n is not None and round(n, 5) or None
         )
 
     def test_numeric_as_decimal(self):
