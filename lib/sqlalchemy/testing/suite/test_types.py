@@ -345,11 +345,12 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             [15.7563],
         )
 
+    @testing.requires.floats_to_four_decimals
     def test_render_literal_float(self):
         self._literal_round_trip(
             Float(4),
             [15.7563, decimal.Decimal("15.7563")],
-            [15.7563],
+            [15.7563,],
         )
 
     def test_numeric_as_decimal(self):
