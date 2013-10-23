@@ -12,6 +12,7 @@ class ParseConnectTest(fixtures.TestBase):
         for text in (
             'dbtype://username:password@hostspec:110//usr/db_file.db',
             'dbtype://username:password@hostspec/database',
+            'dbtype+apitype://username:password@hostspec/database',
             'dbtype://username:password@hostspec',
             'dbtype://username:password@/database',
             'dbtype://username@hostspec',
@@ -19,25 +20,31 @@ class ParseConnectTest(fixtures.TestBase):
             'dbtype://hostspec/database',
             'dbtype://hostspec',
             'dbtype://hostspec/?arg1=val1&arg2=val2',
-            'dbtype:///database',
+            'dbtype+apitype:///database',
             'dbtype:///:memory:',
             'dbtype:///foo/bar/im/a/file',
             'dbtype:///E:/work/src/LEM/db/hello.db',
             'dbtype:///E:/work/src/LEM/db/hello.db?foo=bar&hoho=lala',
             'dbtype://',
-            'dbtype://username:password@/db',
-            'dbtype:////usr/local/mailman/lists/_xtest@example.com/memb'
-                'ers.db',
-            'dbtype://username:apples%2Foranges@hostspec/mydatabase',
+            'dbtype://username:password@/database',
+            'dbtype:////usr/local/_xtest@example.com/members.db',
+            'dbtype://username:apples%2Foranges@hostspec/database',
+            'dbtype://username:password@[2001:da8:2004:1000:202:116:160:90]/database?foo=bar',
+            'dbtype://username:password@[2001:da8:2004:1000:202:116:160:90]:80/database?foo=bar'
             ):
             u = url.make_url(text)
-            assert u.drivername == 'dbtype'
-            assert u.username == 'username' or u.username is None
-            assert u.password == 'password' or u.password \
-                == 'apples/oranges' or u.password is None
-            assert u.host == 'hostspec' or u.host == '127.0.0.1' \
-                or not u.host
-            assert str(u) == text
+
+            assert u.drivername in ('dbtype', 'dbtype+apitype')
+            assert u.username in ('username', None)
+            assert u.password in ('password', 'apples/oranges', None)
+            assert u.host in ('hostspec', '127.0.0.1',
+                        '2001:da8:2004:1000:202:116:160:90', '', None), u.host
+            assert u.database in ('database',
+                    '/usr/local/_xtest@example.com/members.db',
+                    '/usr/db_file.db', ':memory:', '',
+                    'foo/bar/im/a/file',
+                    'E:/work/src/LEM/db/hello.db', None), u.database
+            eq_(str(u), text)
 
 class DialectImportTest(fixtures.TestBase):
     def test_import_base_dialects(self):

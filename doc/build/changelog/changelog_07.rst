@@ -7,6 +7,14 @@
     :version: 0.7.11
 
     .. change::
+        :tags: bug, engine
+        :tickets: 2851
+        :versions: 0.8.3, 0.9.0
+
+        The regexp used by the :func:`.url.make_url` function now parses
+        ipv6 addresses, e.g. surrounded by brackets.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2807
         :versions: 0.8.3, 0.9.0
