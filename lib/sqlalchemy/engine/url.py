@@ -71,7 +71,10 @@ class URL(object):
                             else urllib.quote_plus(self.password))
             s += "@"
         if self.host is not None:
-            s += self.host
+            if ':' in self.host:
+                s += "[%s]" % self.host
+            else:
+                s += self.host
         if self.port is not None:
             s += ':' + str(self.port)
         if self.database is not None:
@@ -171,7 +174,10 @@ def _parse_rfc1738_args(name):
                 (?::(?P<password>[^/]*))?
             @)?
             (?:
-                (?P<host>[^/:]*)
+                (?:
+                    \[(?P<ipv6host>[^/]+)\] |
+                    (?P<ipv4host>[^/:]+)
+                )?
                 (?::(?P<port>[^/]*))?
             )?
             (?:/(?P<database>.*))?
@@ -196,6 +202,9 @@ def _parse_rfc1738_args(name):
             components['password'] = \
                 urllib.unquote_plus(components['password'])
 
+        ipv4host = components.pop('ipv4host')
+        ipv6host = components.pop('ipv6host')
+        components['host'] = ipv4host or ipv6host
         name = components.pop('name')
         return URL(name, **components)
     else:
