@@ -9,14 +9,18 @@ from sqlalchemy.sql import operators, table
 import operator
 from sqlalchemy import String, Integer
 from sqlalchemy import exc
+from sqlalchemy.engine import default
+from sqlalchemy.sql.elements import _literal_as_text
 from sqlalchemy.schema import Column, Table, MetaData
-from sqlalchemy.types import TypeEngine, TypeDecorator, UserDefinedType
+from sqlalchemy.types import TypeEngine, TypeDecorator, UserDefinedType, Boolean
 from sqlalchemy.dialects import mysql, firebird, postgresql, oracle, \
         sqlite, mssql
 from sqlalchemy import util
 import datetime
 import collections
 from sqlalchemy import text, literal_column
+from sqlalchemy import and_, not_, between, or_
+from sqlalchemy.sql import true, false, null
 
 class LoopOperate(operators.ColumnOperators):
     def operate(self, op, *other, **kwargs):
@@ -35,11 +39,11 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         left = column('left')
 
         assert left.comparator.operate(operator, right).compare(
-            BinaryExpression(left, right, operator)
+            BinaryExpression(_literal_as_text(left), _literal_as_text(right), operator)
         )
 
         assert operator(left, right).compare(
-            BinaryExpression(left, right, operator)
+            BinaryExpression(_literal_as_text(left), _literal_as_text(right), operator)
         )
 
         self._loop_test(operator, right)
@@ -384,7 +388,205 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "x -> :x_1"
         )
 
-from sqlalchemy import and_, not_, between
+
+class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    """test standalone booleans being wrapped in an AsBoolean, as well
+    as true/false compilation."""
+
+    def _dialect(self, native_boolean):
+        d = default.DefaultDialect()
+        d.supports_native_boolean = native_boolean
+        return d
+
+    def test_one(self):
+        c = column('x', Boolean)
+        self.assert_compile(
+            select([c]).where(c),
+            "SELECT x WHERE x",
+            dialect=self._dialect(True)
+        )
+
+    def test_two(self):
+        c = column('x', Boolean)
+        self.assert_compile(
+            select([c]).where(c),
+            "SELECT x WHERE x = 1",
+            dialect=self._dialect(False)
+        )
+
+    def test_three(self):
+        c = column('x', Boolean)
+        self.assert_compile(
+            select([c]).where(~c),
+            "SELECT x WHERE x = 0",
+            dialect=self._dialect(False)
+        )
+
+    def test_four(self):
+        c = column('x', Boolean)
+        self.assert_compile(
+            select([c]).where(~c),
+            "SELECT x WHERE NOT x",
+            dialect=self._dialect(True)
+        )
+
+    def test_five(self):
+        c = column('x', Boolean)
+        self.assert_compile(
+            select([c]).having(c),
+            "SELECT x HAVING x = 1",
+            dialect=self._dialect(False)
+        )
+
+    def test_six(self):
+        self.assert_compile(
+            or_(false(), true()),
+            "1 = 1",
+            dialect=self._dialect(False)
+        )
+
+    def test_eight(self):
+        self.assert_compile(
+            and_(false(), true()),
+            "false",
+            dialect=self._dialect(True)
+        )
+
+    def test_nine(self):
+        self.assert_compile(
+            and_(false(), true()),
+            "0 = 1",
+            dialect=self._dialect(False)
+        )
+
+    def test_ten(self):
+        c = column('x', Boolean)
+        self.assert_compile(
+            c == 1,
+            "x = :x_1",
+            dialect=self._dialect(False)
+        )
+
+    def test_eleven(self):
+        c = column('x', Boolean)
+        self.assert_compile(
+            c.is_(true()),
+            "x IS true",
+            dialect=self._dialect(True)
+        )
+
+    def test_twelve(self):
+        c = column('x', Boolean)
+        # I don't have a solution for this one yet,
+        # other than adding some heavy-handed conditionals
+        # into compiler
+        self.assert_compile(
+            c.is_(true()),
+            "x IS 1",
+            dialect=self._dialect(False)
+        )
+
+
+class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    """test interaction of and_()/or_() with boolean , null constants
+    """
+    __dialect__ = default.DefaultDialect(supports_native_boolean=True)
+
+    def test_one(self):
+        self.assert_compile(~and_(true()), "false")
+
+    def test_two(self):
+        self.assert_compile(or_(~and_(true())), "false")
+
+    def test_three(self):
+        self.assert_compile(or_(and_()), "")
+
+    def test_four(self):
+        x = column('x')
+        self.assert_compile(
+                and_(or_(x == 5), or_(x == 7)),
+                "x = :x_1 AND x = :x_2")
+
+
+    def test_five(self):
+        x = column("x")
+        self.assert_compile(
+            and_(true()._ifnone(None), x == 7),
+            "x = :x_1"
+        )
+
+    def test_six(self):
+        x = column("x")
+        self.assert_compile(or_(true(), x == 7), "true")
+        self.assert_compile(or_(x == 7, true()), "true")
+        self.assert_compile(~or_(x == 7, true()), "false")
+
+    def test_six_pt_five(self):
+        x = column("x")
+        self.assert_compile(select([x]).where(or_(x == 7, true())),
+                "SELECT x WHERE true")
+
+        self.assert_compile(select([x]).where(or_(x == 7, true())),
+                "SELECT x WHERE 1 = 1",
+                dialect=default.DefaultDialect(supports_native_boolean=False))
+
+    def test_seven(self):
+        x = column("x")
+        self.assert_compile(
+                and_(true(), x == 7, true(), x == 9),
+                "x = :x_1 AND x = :x_2")
+
+    def test_eight(self):
+        x = column("x")
+        self.assert_compile(
+                or_(false(), x == 7, false(), x == 9),
+                "x = :x_1 OR x = :x_2")
+
+    def test_nine(self):
+        x = column("x")
+        self.assert_compile(
+            and_(x == 7, x == 9, false(), x == 5),
+            "false"
+        )
+        self.assert_compile(
+            ~and_(x == 7, x == 9, false(), x == 5),
+            "true"
+        )
+
+    def test_ten(self):
+        self.assert_compile(
+            and_(None, None),
+            "NULL AND NULL"
+        )
+
+    def test_eleven(self):
+        x = column("x")
+        self.assert_compile(
+            select([x]).where(None).where(None),
+            "SELECT x WHERE NULL AND NULL"
+        )
+
+    def test_twelve(self):
+        x = column("x")
+        self.assert_compile(
+            select([x]).where(and_(None, None)),
+            "SELECT x WHERE NULL AND NULL"
+        )
+
+    def test_thirteen(self):
+        x = column("x")
+        self.assert_compile(
+            select([x]).where(~and_(None, None)),
+            "SELECT x WHERE NOT (NULL AND NULL)"
+        )
+
+    def test_fourteen(self):
+        x = column("x")
+        self.assert_compile(
+            select([x]).where(~null()),
+            "SELECT x WHERE NOT NULL"
+        )
+
 
 class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'

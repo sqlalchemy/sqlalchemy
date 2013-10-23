@@ -18,7 +18,7 @@ from sqlalchemy import Integer, String, MetaData, Table, Column, select, \
     literal, and_, null, type_coerce, alias, or_, literal_column,\
     Float, TIMESTAMP, Numeric, Date, Text, collate, union, except_,\
     intersect, union_all, Boolean, distinct, join, outerjoin, asc, desc,\
-    over, subquery, case
+    over, subquery, case, true
 import decimal
 from sqlalchemy.util import u
 from sqlalchemy import exc, sql, util, types, schema
@@ -272,9 +272,10 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT foo() AS foo_1"
         )
 
+        # this is native_boolean=False for default dialect
         self.assert_compile(
             select([not_(True)], use_labels=True),
-            "SELECT NOT :param_1"
+            "SELECT :param_1 = 0"
         )
 
         self.assert_compile(
@@ -872,6 +873,26 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             select([t]).where(and_(or_(or_(t.c.x == 12),
                 and_(or_(), or_(and_(t.c.x == 8)), and_())))),
             "SELECT t.x FROM t WHERE t.x = :x_1 OR t.x = :x_2"
+        )
+
+    def test_true_short_circuit(self):
+        t = table('t', column('x'))
+
+        self.assert_compile(
+            select([t]).where(true()),
+            "SELECT t.x FROM t WHERE 1 = 1",
+            dialect=default.DefaultDialect(supports_native_boolean=False)
+        )
+        self.assert_compile(
+            select([t]).where(true()),
+            "SELECT t.x FROM t WHERE true",
+            dialect=default.DefaultDialect(supports_native_boolean=True)
+        )
+
+        self.assert_compile(
+            select([t]),
+            "SELECT t.x FROM t",
+            dialect=default.DefaultDialect(supports_native_boolean=True)
         )
 
     def test_distinct(self):
@@ -2921,6 +2942,7 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
                     "(:rem_id, :datatype_id, :value)")
 
 
+
 class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
@@ -3250,12 +3272,33 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
 class CoercionTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = 'default'
+    __dialect__ = default.DefaultDialect(supports_native_boolean=True)
 
     def _fixture(self):
         m = MetaData()
         return Table('foo', m,
             Column('id', Integer))
+
+    bool_table = table('t', column('x', Boolean))
+
+    def test_coerce_bool_where(self):
+        self.assert_compile(
+            select([self.bool_table]).where(self.bool_table.c.x),
+            "SELECT t.x FROM t WHERE t.x"
+        )
+
+    def test_coerce_bool_where_non_native(self):
+        self.assert_compile(
+            select([self.bool_table]).where(self.bool_table.c.x),
+            "SELECT t.x FROM t WHERE t.x = 1",
+            dialect=default.DefaultDialect(supports_native_boolean=False)
+        )
+
+        self.assert_compile(
+            select([self.bool_table]).where(~self.bool_table.c.x),
+            "SELECT t.x FROM t WHERE t.x = 0",
+            dialect=default.DefaultDialect(supports_native_boolean=False)
+        )
 
     def test_null_constant(self):
         self.assert_compile(_literal_as_text(None), "NULL")
@@ -3269,12 +3312,12 @@ class CoercionTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_val_and_false(self):
         t = self._fixture()
         self.assert_compile(and_(t.c.id == 1, False),
-                            "foo.id = :id_1 AND false")
+                            "false")
 
     def test_val_and_true_coerced(self):
         t = self._fixture()
         self.assert_compile(and_(t.c.id == 1, True),
-                            "foo.id = :id_1 AND true")
+                            "foo.id = :id_1")
 
     def test_val_is_null_coerced(self):
         t = self._fixture()
@@ -3282,26 +3325,21 @@ class CoercionTest(fixtures.TestBase, AssertsCompiledSQL):
                             "foo.id IS NULL")
 
     def test_val_and_None(self):
-        # current convention is None in and_() or
-        # other clauselist is ignored.  May want
-        # to revise this at some point.
         t = self._fixture()
         self.assert_compile(and_(t.c.id == 1, None),
-                            "foo.id = :id_1")
+                            "foo.id = :id_1 AND NULL")
 
     def test_None_and_val(self):
-        # current convention is None in and_() or
-        # other clauselist is ignored.  May want
-        # to revise this at some point.
         t = self._fixture()
-        self.assert_compile(and_(t.c.id == 1, None),
-                            "foo.id = :id_1")
+        self.assert_compile(and_(None, t.c.id == 1),
+                            "NULL AND foo.id = :id_1")
 
     def test_None_and_nothing(self):
         # current convention is None in and_()
         # returns None May want
         # to revise this at some point.
-        assert and_(None) is None
+        self.assert_compile(
+            and_(None), "NULL")
 
     def test_val_and_null(self):
         t = self._fixture()

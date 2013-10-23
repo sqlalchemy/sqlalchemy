@@ -415,7 +415,6 @@ class M2MFilterTest(fixtures.MappedTest):
         sess = create_session()
         e1 = sess.query(Person).filter(Engineer.name == 'e1').one()
 
-        # this works
         eq_(sess.query(Organization)
                 .filter(~Organization.engineers
                     .of_type(Engineer)

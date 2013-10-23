@@ -149,30 +149,6 @@ def outparam(key, type_=None):
                 key, None, type_=type_, unique=False, isoutparam=True)
 
 
-def and_(*clauses):
-    """Join a list of clauses together using the ``AND`` operator.
-
-    The ``&`` operator is also overloaded on all :class:`.ColumnElement`
-    subclasses to produce the
-    same result.
-
-    """
-    if len(clauses) == 1:
-        return clauses[0]
-    return BooleanClauseList(operator=operators.and_, *clauses)
-
-
-def or_(*clauses):
-    """Join a list of clauses together using the ``OR`` operator.
-
-    The ``|`` operator is also overloaded on all
-    :class:`.ColumnElement` subclasses to produce the
-    same result.
-
-    """
-    if len(clauses) == 1:
-        return clauses[0]
-    return BooleanClauseList(operator=operators.or_, *clauses)
 
 
 def not_(clause):
@@ -465,7 +441,10 @@ class ClauseElement(Visitable):
         return or_(self, other)
 
     def __invert__(self):
-        return self._negate()
+        if hasattr(self, 'negation_clause'):
+            return self.negation_clause
+        else:
+            return self._negate()
 
     def __bool__(self):
         raise TypeError("Boolean value of this clause is not defined")
@@ -473,13 +452,10 @@ class ClauseElement(Visitable):
     __nonzero__ = __bool__
 
     def _negate(self):
-        if hasattr(self, 'negation_clause'):
-            return self.negation_clause
-        else:
-            return UnaryExpression(
-                        self.self_group(against=operators.inv),
-                        operator=operators.inv,
-                        negate=None)
+        return UnaryExpression(
+                    self.self_group(against=operators.inv),
+                    operator=operators.inv,
+                    negate=None)
 
     def __repr__(self):
         friendly = getattr(self, 'description', None)
@@ -536,6 +512,19 @@ class ColumnElement(ClauseElement, operators.ColumnOperators):
     _label = None
     _key_label = None
     _alt_names = ()
+
+    def self_group(self, against=None):
+        if against in (operators.and_, operators.or_, operators._asbool) and \
+            self.type._type_affinity is type_api.BOOLEANTYPE._type_affinity:
+            return AsBoolean(self, operators.istrue, operators.isfalse)
+        else:
+            return self
+
+    def _negate(self):
+        if self.type._type_affinity is type_api.BOOLEANTYPE._type_affinity:
+            return AsBoolean(self, operators.isfalse, operators.istrue)
+        else:
+            return super(ColumnElement, self)._negate()
 
     @util.memoized_property
     def type(self):
@@ -1062,52 +1051,153 @@ class TextClause(Executable, ClauseElement):
 class Null(ColumnElement):
     """Represent the NULL keyword in a SQL statement.
 
+    :class:`.Null` is accessed as a constant via the
+    :func:`.null` function.
+
     """
 
     __visit_name__ = 'null'
 
-    def __init__(self):
-        """Return a :class:`Null` object, which compiles to ``NULL``.
+    @util.memoized_property
+    def type(self):
+        return type_api.NULLTYPE
 
-        """
-        self.type = type_api.NULLTYPE
+    @classmethod
+    def _singleton(cls):
+        """Return a constant :class:`.Null` construct."""
+
+        return NULL
 
     def compare(self, other):
         return isinstance(other, Null)
 
 
 class False_(ColumnElement):
-    """Represent the ``false`` keyword in a SQL statement.
+    """Represent the ``false`` keyword, or equivalent, in a SQL statement.
+
+    :class:`.False_` is accessed as a constant via the
+    :func:`.false` function.
 
     """
 
     __visit_name__ = 'false'
 
-    def __init__(self):
-        """Return a :class:`False_` object.
+    @util.memoized_property
+    def type(self):
+        return type_api.BOOLEANTYPE
+
+    def _negate(self):
+        return TRUE
+
+    @classmethod
+    def _singleton(cls):
+        """Return a constant :class:`.False_` construct.
+
+        E.g.::
+
+            >>> from sqlalchemy import false
+            >>> print select([t.c.x]).where(false())
+            SELECT x FROM t WHERE false
+
+        A backend which does not support true/false constants will render as
+        an expression against 1 or 0::
+
+            >>> print select([t.c.x]).where(false())
+            SELECT x FROM t WHERE 0 = 1
+
+        The :func:`.true` and :func:`.false` constants also feature
+        "short circuit" operation within an :func:`.and_` or :func:`.or_`
+        conjunction::
+
+            >>> print select([t.c.x]).where(or_(t.c.x > 5, true()))
+            SELECT x FROM t WHERE true
+
+            >>> print select([t.c.x]).where(and_(t.c.x > 5, false()))
+            SELECT x FROM t WHERE false
+
+        .. versionchanged:: 0.9 :func:`.true` and :func:`.false` feature
+           better integrated behavior within conjunctions and on dialects
+           that don't support true/false constants.
+
+        .. seealso::
+
+            :func:`.true`
 
         """
-        self.type = type_api.BOOLEANTYPE
+
+        return FALSE
 
     def compare(self, other):
         return isinstance(other, False_)
 
 class True_(ColumnElement):
-    """Represent the ``true`` keyword in a SQL statement.
+    """Represent the ``true`` keyword, or equivalent, in a SQL statement.
+
+    :class:`.True_` is accessed as a constant via the
+    :func:`.true` function.
 
     """
 
     __visit_name__ = 'true'
 
-    def __init__(self):
-        """Return a :class:`True_` object.
+    @util.memoized_property
+    def type(self):
+        return type_api.BOOLEANTYPE
+
+    def _negate(self):
+        return FALSE
+
+    @classmethod
+    def _ifnone(cls, other):
+        if other is None:
+            return cls._singleton()
+        else:
+            return other
+
+    @classmethod
+    def _singleton(cls):
+        """Return a constant :class:`.True_` construct.
+
+        E.g.::
+
+            >>> from sqlalchemy import true
+            >>> print select([t.c.x]).where(true())
+            SELECT x FROM t WHERE true
+
+        A backend which does not support true/false constants will render as
+        an expression against 1 or 0::
+
+            >>> print select([t.c.x]).where(true())
+            SELECT x FROM t WHERE 1 = 1
+
+        The :func:`.true` and :func:`.false` constants also feature
+        "short circuit" operation within an :func:`.and_` or :func:`.or_`
+        conjunction::
+
+            >>> print select([t.c.x]).where(or_(t.c.x > 5, true()))
+            SELECT x FROM t WHERE true
+
+            >>> print select([t.c.x]).where(and_(t.c.x > 5, false()))
+            SELECT x FROM t WHERE false
+
+        .. versionchanged:: 0.9 :func:`.true` and :func:`.false` feature
+           better integrated behavior within conjunctions and on dialects
+           that don't support true/false constants.
+
+        .. seealso::
+
+            :func:`.false`
 
         """
-        self.type = type_api.BOOLEANTYPE
+
+        return TRUE
 
     def compare(self, other):
         return isinstance(other, True_)
 
+NULL = Null()
+FALSE = False_()
+TRUE = True_()
 
 class ClauseList(ClauseElement):
     """Describe a list of clauses, separated by an operator.
@@ -1124,11 +1214,11 @@ class ClauseList(ClauseElement):
         if self.group_contents:
             self.clauses = [
                 _literal_as_text(clause).self_group(against=self.operator)
-                for clause in clauses if clause is not None]
+                for clause in clauses]
         else:
             self.clauses = [
                 _literal_as_text(clause)
-                for clause in clauses if clause is not None]
+                for clause in clauses]
 
     def __iter__(self):
         return iter(self.clauses)
@@ -1141,10 +1231,6 @@ class ClauseList(ClauseElement):
         return iter(self)
 
     def append(self, clause):
-        # TODO: not sure if i like the 'group_contents' flag.  need to
-        # define the difference between a ClauseList of ClauseLists,
-        # and a "flattened" ClauseList of ClauseLists.  flatten()
-        # method ?
         if self.group_contents:
             self.clauses.append(_literal_as_text(clause).\
                                 self_group(against=self.operator))
@@ -1185,13 +1271,65 @@ class ClauseList(ClauseElement):
             return False
 
 
+
 class BooleanClauseList(ClauseList, ColumnElement):
     __visit_name__ = 'clauselist'
 
-    def __init__(self, *clauses, **kwargs):
-        super(BooleanClauseList, self).__init__(*clauses, **kwargs)
-        self.type = type_api.to_instance(kwargs.get('type_',
-                type_api.BOOLEANTYPE))
+    def __init__(self, *arg, **kw):
+        raise NotImplementedError(
+                "BooleanClauseList has a private constructor")
+
+    @classmethod
+    def _construct(cls, operator, continue_on, skip_on, *clauses, **kw):
+        convert_clauses = []
+
+        for clause in clauses:
+            clause = _literal_as_text(clause)
+
+            if isinstance(clause, continue_on):
+                continue
+            elif isinstance(clause, skip_on):
+                return clause.self_group(against=operators._asbool)
+
+            convert_clauses.append(clause)
+
+        if len(convert_clauses) == 1:
+            return convert_clauses[0].self_group(against=operators._asbool)
+        elif not convert_clauses and clauses:
+            return clauses[0].self_group(against=operators._asbool)
+
+        convert_clauses = [c.self_group(against=operator)
+                                for c in convert_clauses]
+
+        self = cls.__new__(cls)
+        self.clauses = convert_clauses
+        self.group = True
+        self.operator = operator
+        self.group_contents = True
+        self.type = type_api.BOOLEANTYPE
+        return self
+
+    @classmethod
+    def and_(cls, *clauses):
+        """Join a list of clauses together using the ``AND`` operator.
+
+        The ``&`` operator is also overloaded on all :class:`.ColumnElement`
+        subclasses to produce the
+        same result.
+
+        """
+        return cls._construct(operators.and_, True_, False_, *clauses)
+
+    @classmethod
+    def or_(cls, *clauses):
+        """Join a list of clauses together using the ``OR`` operator.
+
+        The ``|`` operator is also overloaded on all
+        :class:`.ColumnElement` subclasses to produce the
+        same result.
+
+        """
+        return cls._construct(operators.or_, False_, True_, *clauses)
 
     @property
     def _select_iterable(self):
@@ -1203,6 +1341,12 @@ class BooleanClauseList(ClauseList, ColumnElement):
         else:
             return super(BooleanClauseList, self).self_group(against=against)
 
+    def _negate(self):
+        return ClauseList._negate(self)
+
+
+and_ = BooleanClauseList.and_
+or_ = BooleanClauseList.or_
 
 class Tuple(ClauseList, ColumnElement):
     """Represent a SQL tuple."""
@@ -1465,9 +1609,7 @@ class UnaryExpression(ColumnElement):
                             type_=None, negate=None):
         self.operator = operator
         self.modifier = modifier
-
-        self.element = _literal_as_text(element).\
-                    self_group(against=self.operator or self.modifier)
+        self.element = element.self_group(against=self.operator or self.modifier)
         self.type = type_api.to_instance(type_)
         self.negate = negate
 
@@ -1484,7 +1626,8 @@ class UnaryExpression(ColumnElement):
           ORDER BY mycol DESC NULLS FIRST
 
         """
-        return UnaryExpression(column, modifier=operators.nullsfirst_op)
+        return UnaryExpression(
+                _literal_as_text(column), modifier=operators.nullsfirst_op)
 
 
     @classmethod
@@ -1500,7 +1643,8 @@ class UnaryExpression(ColumnElement):
             ORDER BY mycol DESC NULLS LAST
 
         """
-        return UnaryExpression(column, modifier=operators.nullslast_op)
+        return UnaryExpression(
+            _literal_as_text(column), modifier=operators.nullslast_op)
 
 
     @classmethod
@@ -1516,7 +1660,8 @@ class UnaryExpression(ColumnElement):
             ORDER BY mycol DESC
 
         """
-        return UnaryExpression(column, modifier=operators.desc_op)
+        return UnaryExpression(
+            _literal_as_text(column), modifier=operators.desc_op)
 
     @classmethod
     def _create_asc(cls, column):
@@ -1531,7 +1676,8 @@ class UnaryExpression(ColumnElement):
           ORDER BY mycol ASC
 
         """
-        return UnaryExpression(column, modifier=operators.asc_op)
+        return UnaryExpression(
+            _literal_as_text(column), modifier=operators.asc_op)
 
     @classmethod
     def _create_distinct(cls, expr):
@@ -1587,14 +1733,29 @@ class UnaryExpression(ColumnElement):
                 modifier=self.modifier,
                 type_=self.type)
         else:
-            return super(UnaryExpression, self)._negate()
+            return ClauseElement._negate(self)
 
     def self_group(self, against=None):
-        if self.operator and operators.is_precedent(self.operator,
-                against):
+        if self.operator and operators.is_precedent(self.operator, against):
             return Grouping(self)
         else:
             return self
+
+
+class AsBoolean(UnaryExpression):
+
+    def __init__(self, element, operator, negate):
+        self.element = element
+        self.type = type_api.BOOLEANTYPE
+        self.operator = operator
+        self.negate = negate
+        self.modifier = None
+
+    def self_group(self, against=None):
+        return self
+
+    def _negate(self):
+        return self.element._negate()
 
 
 class BinaryExpression(ColumnElement):
@@ -1620,8 +1781,8 @@ class BinaryExpression(ColumnElement):
         if isinstance(operator, util.string_types):
             operator = operators.custom_op(operator)
         self._orig = (left, right)
-        self.left = _literal_as_text(left).self_group(against=operator)
-        self.right = _literal_as_text(right).self_group(against=operator)
+        self.left = left.self_group(against=operator)
+        self.right = right.self_group(against=operator)
         self.operator = operator
         self.type = type_api.to_instance(type_)
         self.negate = negate
@@ -1701,6 +1862,9 @@ class Grouping(ColumnElement):
     def __init__(self, element):
         self.element = element
         self.type = getattr(element, 'type', type_api.NULLTYPE)
+
+    def self_group(self, against=None):
+        return self
 
     @property
     def _label(self):

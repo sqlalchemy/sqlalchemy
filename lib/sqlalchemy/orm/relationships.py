@@ -900,7 +900,7 @@ class RelationshipProperty(StrategizedProperty):
                 criterion = criterion._annotate(
                     {'no_replacement_traverse': True})
 
-            crit = j & criterion
+            crit = j & sql.True_._ifnone(criterion)
 
             ex = sql.exists([1], crit, from_obj=dest).correlate_except(dest)
             if secondary is not None:

@@ -113,6 +113,7 @@ OPERATORS = {
     operators.asc_op: ' ASC',
     operators.nullsfirst_op: ' NULLS FIRST',
     operators.nullslast_op: ' NULLS LAST',
+
 }
 
 FUNCTIONS = {
@@ -608,10 +609,16 @@ class SQLCompiler(Compiled):
         return 'NULL'
 
     def visit_true(self, expr, **kw):
-        return 'true'
+        if self.dialect.supports_native_boolean:
+            return 'true'
+        else:
+            return "1"
 
     def visit_false(self, expr, **kw):
-        return 'false'
+        if self.dialect.supports_native_boolean:
+            return 'false'
+        else:
+            return "0"
 
     def visit_clauselist(self, clauselist, order_by_select=None, **kw):
         if order_by_select is not None:
@@ -782,6 +789,18 @@ class SQLCompiler(Compiled):
         else:
             raise exc.CompileError(
                             "Unary expression has no operator or modifier")
+
+    def visit_istrue_unary_operator(self, element, operator, **kw):
+        if self.dialect.supports_native_boolean:
+            return self.process(element.element, **kw)
+        else:
+            return "%s = 1" % self.process(element.element, **kw)
+
+    def visit_isfalse_unary_operator(self, element, operator, **kw):
+        if self.dialect.supports_native_boolean:
+            return "NOT %s" % self.process(element.element, **kw)
+        else:
+            return "%s = 0" % self.process(element.element, **kw)
 
     def visit_binary(self, binary, **kw):
         # don't allow "? = ?" to render

@@ -33,7 +33,7 @@ from .elements import ClauseElement, ColumnElement,\
   BindParameter, UnaryExpression, BooleanClauseList, \
   Label, Cast, Case, ColumnClause, TextClause, Over, Null, \
   True_, False_, BinaryExpression, Tuple, TypeClause, Extract, \
-  Grouping, and_, or_, not_, \
+  Grouping, not_, \
   collate, literal_column, between,\
   literal, outparam, type_coerce, ClauseList
 
@@ -56,6 +56,8 @@ from .dml import Insert, Update, Delete, UpdateBase, ValuesBase
 # the functions to be available in the sqlalchemy.sql.* namespace and
 # to be auto-cross-documenting from the function to the class itself.
 
+and_ = public_factory(BooleanClauseList.and_, ".expression.and_")
+or_ = public_factory(BooleanClauseList.or_, ".expression.or_")
 bindparam = public_factory(BindParameter, ".expression.bindparam")
 select = public_factory(Select, ".expression.select")
 text = public_factory(TextClause, ".expression.tet")
@@ -79,15 +81,14 @@ nullslast = public_factory(UnaryExpression._create_nullslast, ".expression.nulls
 asc = public_factory(UnaryExpression._create_asc, ".expression.asc")
 desc = public_factory(UnaryExpression._create_desc, ".expression.desc")
 distinct = public_factory(UnaryExpression._create_distinct, ".expression.distinct")
-true = public_factory(True_, ".expression.true")
-false = public_factory(False_, ".expression.false")
-null = public_factory(Null, ".expression.null")
+true = public_factory(True_._singleton, ".expression.true")
+false = public_factory(False_._singleton, ".expression.false")
+null = public_factory(Null._singleton, ".expression.null")
 join = public_factory(Join._create_join, ".expression.join")
 outerjoin = public_factory(Join._create_outerjoin, ".expression.outerjoin")
 insert = public_factory(Insert, ".expression.insert")
 update = public_factory(Update, ".expression.update")
 delete = public_factory(Delete, ".expression.delete")
-
 
 
 # internal functions still being called from tests and the ORM,

@@ -14,7 +14,7 @@ from .elements import ClauseElement, TextClause, ClauseList, \
 from .elements import _clone, \
         _literal_as_text, _interpret_as_column_or_from, _expand_cloned,\
         _select_iterables, _anonymous_label, _clause_element_as_expr,\
-        _cloned_intersection, _cloned_difference
+        _cloned_intersection, _cloned_difference, True_
 from .base import Immutable, Executable, _generative, \
             ColumnCollection, ColumnSet, _from_objects, Generative
 from . import type_api
@@ -2519,13 +2519,9 @@ class Select(HasPrefixes, SelectBase):
         :term:`method chaining`.
 
         """
-        self._reset_exported()
-        whereclause = _literal_as_text(whereclause)
 
-        if self._whereclause is not None:
-            self._whereclause = and_(self._whereclause, whereclause)
-        else:
-            self._whereclause = whereclause
+        self._reset_exported()
+        self._whereclause = and_(True_._ifnone(self._whereclause), whereclause)
 
     def append_having(self, having):
         """append the given expression to this select() construct's HAVING
@@ -2538,10 +2534,8 @@ class Select(HasPrefixes, SelectBase):
         :term:`method chaining`.
 
         """
-        if self._having is not None:
-            self._having = and_(self._having, _literal_as_text(having))
-        else:
-            self._having = _literal_as_text(having)
+        self._reset_exported()
+        self._having = and_(True_._ifnone(self._having), having)
 
     def append_from(self, fromclause):
         """append the given FromClause expression to this select() construct's

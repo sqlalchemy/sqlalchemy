@@ -1234,15 +1234,18 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         )
         self.assert_compile(
             and_(c1 == True, c2 == True, c3 == True),
-            "x = :x_1 AND x = true AND x = :x_2"
+            "x = :x_1 AND x = true AND x = :x_2",
+            dialect=default.DefaultDialect(supports_native_boolean=True)
         )
         self.assert_compile(
             and_(c1 == 3, c2 == 3, c3 == 3),
-            "x = :x_1 AND x = :x_2 AND x = :x_3"
+            "x = :x_1 AND x = :x_2 AND x = :x_3",
+            dialect=default.DefaultDialect(supports_native_boolean=True)
         )
         self.assert_compile(
             and_(c1.is_(True), c2.is_(True), c3.is_(True)),
-            "x IS :x_1 AND x IS true AND x IS :x_2"
+            "x IS :x_1 AND x IS true AND x IS :x_2",
+            dialect=default.DefaultDialect(supports_native_boolean=True)
         )
 
 

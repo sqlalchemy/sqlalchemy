@@ -113,6 +113,7 @@ class DefaultDialect(interfaces.Dialect):
                  implicit_returning=None,
                  supports_right_nested_joins=None,
                  case_sensitive=True,
+                 supports_native_boolean=None,
                  label_length=None, **kwargs):
 
         if not getattr(self, 'ported_sqla_06', True):
@@ -138,7 +139,8 @@ class DefaultDialect(interfaces.Dialect):
         self.type_compiler = self.type_compiler(self)
         if supports_right_nested_joins is not None:
             self.supports_right_nested_joins = supports_right_nested_joins
-
+        if supports_native_boolean is not None:
+            self.supports_native_boolean = supports_native_boolean
         self.case_sensitive = case_sensitive
 
         if label_length and label_length > self.max_identifier_length:

@@ -654,6 +654,12 @@ def exists():
     raise NotImplementedError()
 
 
+def istrue(a):
+    raise NotImplementedError()
+
+def isfalse(a):
+    raise NotImplementedError()
+
 def is_(a, b):
     return a.is_(b)
 
@@ -779,6 +785,7 @@ parenthesize (a op b).
 
 """
 
+_asbool = util.symbol('_asbool', canonical=-10)
 _smallest = util.symbol('_smallest', canonical=-100)
 _largest = util.symbol('_largest', canonical=100)
 
@@ -816,12 +823,15 @@ _PRECEDENCE = {
     between_op: 5,
     distinct_op: 5,
     inv: 5,
+    istrue: 5,
+    isfalse: 5,
     and_: 3,
     or_: 2,
     comma_op: -1,
     collate: 7,
     as_: -1,
     exists: 0,
+    _asbool: -10,
     _smallest: _smallest,
     _largest: _largest
 }

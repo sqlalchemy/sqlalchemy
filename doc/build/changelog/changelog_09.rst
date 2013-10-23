@@ -34,6 +34,23 @@
 
     .. change::
         :tags: feature, sql
+        :tickets: 2804, 2823, 2734
+
+        An overhaul of expression handling for special symbols particularly
+        with conjunctions, e.g.
+        ``None`` :func:`.expression.null` :func:`.expression.true`
+        :func:`.expression.false`, including consistency in rendering NULL
+        in conjunctions, "short-circuiting" of :func:`.and_` and :func:`.or_`
+        expressions which contain boolean constants, and rendering of
+        boolean constants and expressions as compared to "1" or "0" for backends
+        that don't feature ``true``/``false`` constants.
+
+        .. seealso::
+
+            :ref:`migration_2804`
+
+    .. change::
+        :tags: feature, sql
         :tickets: 2838
 
         The typing system now handles the task of rendering "literal bind" values,

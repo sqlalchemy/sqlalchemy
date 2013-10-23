@@ -2865,8 +2865,9 @@ class Query(object):
                 if adapter:
                     single_crit = adapter.traverse(single_crit)
                 single_crit = self._adapt_clause(single_crit, False, False)
-                context.whereclause = sql.and_(context.whereclause,
-                                            single_crit)
+                context.whereclause = sql.and_(
+                                    sql.True_._ifnone(context.whereclause),
+                                    single_crit)
 
     def __str__(self):
         return str(self._compile_context().statement)

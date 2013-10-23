@@ -399,6 +399,66 @@ publically.
 
 :ticket:`2812`
 
+.. _migration_2804:
+
+Improved rendering of Boolean constants, NULL constants, conjunctions
+----------------------------------------------------------------------
+
+New capabilities have been added to the :func:`.true` and :func:`.false`
+constants, in particular in conjunction with :func:`.and_` and :func:`.or_`
+functions as well as the behavior of the WHERE/HAVING clauses in conjunction
+with these types, boolean types overall, and the :func:`.null` constant.
+
+Starting with a table such as this::
+
+    from sqlalchemy import Table, Boolean, Integer, Column, MetaData
+
+    t1 = Table('t', MetaData(), Column('x', Boolean()), Column('y', Integer))
+
+A select construct will now render the boolean column as a binary expression
+on backends that don't feature ``true``/``false`` constant beahvior::
+
+    >>> from sqlalchemy import select, and_, false, true
+    >>> from sqlalchemy.dialects import mysql, postgresql
+
+    >>> print select([t1]).where(t1.c.x).compile(dialect=mysql.dialect())
+    SELECT t.x, t.y  FROM t WHERE t.x = 1
+
+The :func:`.and_` and :func:`.or_` constructs will now exhibit quasi
+"short circuit" behavior, that is truncating a rendered expression, when a
+:func:`.true` or :func:`.false` constant is present::
+
+    >>> print select([t1]).where(and_(t1.c.y > 5, false())).compile(
+    ...     dialect=postgresql.dialect())
+    SELECT t.x, t.y FROM t WHERE false
+
+:func:`.true` can be used as the base to build up an expression::
+
+    >>> expr = true()
+    >>> expr = expr & (t1.c.y > 5)
+    >>> print select([t1]).where(expr)
+    SELECT t.x, t.y FROM t WHERE t.y > :y_1
+
+The boolean constants :func:`.true` and :func:`.false` themselves render as
+``0 = 1`` and ``1 = 1`` for a backend with no boolean constants::
+
+    >>> print select([t1]).where(and_(t1.c.y > 5, false())).compile(
+    ...     dialect=mysql.dialect())
+    SELECT t.x, t.y FROM t WHERE 0 = 1
+
+Interpretation of ``None``, while not particularly valid SQL, is at least
+now consistent::
+
+    >>> print select([t1.c.x]).where(None)
+    SELECT t.x FROM t WHERE NULL
+
+    >>> print select([t1.c.x]).where(None).where(None)
+    SELECT t.x FROM t WHERE NULL AND NULL
+
+    >>> print select([t1.c.x]).where(and_(None, None))
+    SELECT t.x FROM t WHERE NULL AND NULL
+
+:ticket:`2804`
 
 New Features
 ============

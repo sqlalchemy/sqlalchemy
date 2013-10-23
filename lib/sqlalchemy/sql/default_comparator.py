@@ -13,7 +13,7 @@ from . import type_api
 from .elements import BindParameter, True_, False_, BinaryExpression, \
         Null, _const_expr, _clause_element_as_expr, \
         ClauseList, ColumnElement, TextClause, UnaryExpression, \
-        collate, _is_literal
+        collate, _is_literal, _literal_as_text
 from .selectable import SelectBase, Alias, Selectable, ScalarSelect
 
 class _DefaultColumnComparator(operators.ColumnOperators):
@@ -75,7 +75,7 @@ class _DefaultColumnComparator(operators.ColumnOperators):
             if op in (operators.eq, operators.ne) and \
                     isinstance(obj, (bool, True_, False_)):
                 return BinaryExpression(expr,
-                                obj,
+                                _literal_as_text(obj),
                                 op,
                                 type_=type_api.BOOLEANTYPE,
                                 negate=negate, modifiers=kwargs)
@@ -209,7 +209,7 @@ class _DefaultColumnComparator(operators.ColumnOperators):
                     self._check_literal(expr, operators.and_, cleft),
                     self._check_literal(expr, operators.and_, cright),
                     operator=operators.and_,
-                    group=False),
+                    group=False, group_contents=False),
                 operators.between_op)
 
     def _collate_impl(self, expr, op, other, **kw):
