@@ -708,17 +708,17 @@ to the ``version_id_generator`` parameter, the ORM will use the already-set vers
 identifier, or alternatively fetch the version identifier
 from each row at the same time the INSERT or UPDATE is emitted.   When using a
 server-generated version identifier, it is strongly
-recommended that this feature be used only on a backend where RETURNING can also
-be used, else the additional SELECT statements will add significant performance
+recommended that this feature be used only on a backend with strong RETURNING
+support (Postgresql, SQL Server; Oracle also supports RETURNING but the cx_oracle
+driver has only limited support), else the additional SELECT statements will
+add significant performance
 overhead.   The example provided at :ref:`server_side_version_counter` illustrates
 the usage of the Postgresql ``xmin`` system column in order to integrate it with
 the ORM's versioning feature.
 
-As a related feature, a new method :meth:`.ValuesBase.return_defaults` has been
-added to :class:`.Insert` and :class:`.Update` which in constrast to the
-:meth:`.UpdateBase.returning` method provides RETURNING support
-that integrates with the "implicit identifier returning" feature and is automatically
-utilized or de-utilized depending on backend.
+.. seealso::
+
+    :ref:`server_side_version_counter`
 
 :ticket:`2793`
 
@@ -909,9 +909,9 @@ immediately within the flush process.
 In 0.9, as a result of the version id enhancements, ``eager_defaults`` can now
 emit a RETURNING clause for these values, so on a backend with strong RETURNING
 support in particular Postgresql, the ORM can fetch newly generated default
-and SQL expression values inline with the INSERT or UPDATE.  The feature takes
-place automatically when the target backend and :class:`.Table` supports
-"implicit returning".
+and SQL expression values inline with the INSERT or UPDATE.  ``eager_defaults``,
+when enabled, makes use of RETURNING automatically when the target backend
+and :class:`.Table` supports "implicit returning".
 
 .. _change_2836:
 
