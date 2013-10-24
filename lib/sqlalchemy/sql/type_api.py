@@ -793,11 +793,29 @@ class TypeDecorator(TypeEngine):
         Subclasses here will typically override :meth:`.TypeDecorator.process_literal_param`
         instead of this method directly.
 
+        By default, this method makes use of :meth:`.TypeDecorator.process_bind_param`
+        if that method is implemented, where :meth:`.TypeDecorator.process_literal_param`
+        is not.  The rationale here is that :class:`.TypeDecorator` typically deals
+        with Python conversions of data that are above the layer of database
+        presentation.  With the value converted by :meth:`.TypeDecorator.process_bind_param`,
+        the underlying type will then handle whether it needs to be presented to the
+        DBAPI as a bound parameter or to the database as an inline SQL value.
+
         .. versionadded:: 0.9.0
 
         """
         if self._has_literal_processor:
             process_param = self.process_literal_param
+        elif self._has_bind_processor:
+            # the bind processor should normally be OK
+            # for TypeDecorator since it isn't doing DB-level
+            # handling, the handling here won't be different for bound vs.
+            # literals.
+            process_param = self.process_bind_param
+        else:
+            process_param = None
+
+        if process_param:
             impl_processor = self.impl.literal_processor(dialect)
             if impl_processor:
                 def process(value):

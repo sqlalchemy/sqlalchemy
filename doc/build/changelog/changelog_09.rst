@@ -62,6 +62,10 @@
         :meth:`.TypeDecorator.process_literal_param` is added to allow wrapping
         of a native literal rendering method.
 
+        .. seealso::
+
+            :ref:`change_2838`
+
     .. change::
         :tags: feature, sql
         :tickets: 2716

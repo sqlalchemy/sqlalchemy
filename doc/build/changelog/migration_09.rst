@@ -372,6 +372,32 @@ to the column being assigned towards will no longer function in that way.
 
 :ticket:`2850`
 
+.. _change_2838:
+
+The typing system now handles the task of rendering "literal bind" values
+-------------------------------------------------------------------------
+
+A new method is added to :class:`.TypeEngine` :meth:`.TypeEngine.literal_processor`
+as well as :meth:`.TypeDecorator.process_literal_param` for :class:`.TypeDecorator`
+which take on the task of rendering so-called "inline literal paramters" - parameters
+that normally render as "bound" values, but are instead being rendered inline
+into the SQL statement due to the compiler configuration.  This feature is used
+when generating DDL for constructs such as :class:`.CheckConstraint`, as well
+as by Alembic when using constructs such as ``op.inline_literal()``.   Previously,
+a simple "isinstance" check checked for a few basic types, and the "bind processor"
+was used unconditionally, leading to such issues as strings being encoded into utf-8
+prematurely.
+
+Custom types written with :class:`.TypeDecorator` should continue to work in
+"inline literal" scenarios, as the :meth:`.TypeDecorator.process_literal_param`
+falls back to :meth:`.TypeDecorator.process_bind_param` by default, as these methods
+usually handle a data manipulation, not as much how the data is presented to the
+database.  :meth:`.TypeDecorator.process_literal_param` can be specified to
+specifically produce a string representing how a value should be rendered
+into an inline DDL statement.
+
+:ticket:`2838`
+
 .. _change_2812:
 
 Schema identifiers now carry along their own quoting information
