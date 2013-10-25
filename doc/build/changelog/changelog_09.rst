@@ -13,6 +13,32 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2787
+
+        :func:`.attributes.get_history()` when used with a scalar column-mapped
+        attribute will now honor the "passive" flag
+        passed to it; as this defaults to ``PASSIVE_OFF``, the function will
+        by default query the database if the value is not present.
+        This is a behavioral change vs. 0.8.
+
+        .. seealso::
+
+            :ref:`change_2787`
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 2787
+
+        Added new method :meth:`.AttributeState.load_history`, works like
+        :attr:`.AttributeState.history` but also fires loader callables.
+
+        .. seealso::
+
+            :ref:`change_2787`
+
+
+    .. change::
         :tags: feature, sql
         :tickets: 2850
 

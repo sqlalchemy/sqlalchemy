@@ -486,6 +486,53 @@ now consistent::
 
 :ticket:`2804`
 
+.. _change_2787:
+
+attributes.get_history() will query from the DB by default if value not present
+-------------------------------------------------------------------------------
+
+A bugfix regarding :func:`.attributes.get_history` allows a column-based attribute
+to query out to the database for an unloaded value, assuming the ``passive``
+flag is left at its default of ``PASSIVE_OFF``.  Previously, this flag would
+not be honored.  Additionally, a new method :meth:`.AttributeState.load_history`
+is added to complement the :attr:`.AttributeState.history` attribute, which
+will emit loader callables for an unloaded attribute.
+
+This is a small change demonstrated as follows::
+
+    from sqlalchemy import Column, Integer, String, create_engine, inspect
+    from sqlalchemy.orm import Session, attributes
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+        data = Column(String)
+
+    e = create_engine("sqlite://", echo=True)
+    Base.metadata.create_all(e)
+
+    sess = Session(e)
+
+    a1 = A(data='a1')
+    sess.add(a1)
+    sess.commit()  # a1 is now expired
+
+    # history doesn't emit loader callables
+    assert inspect(a1).attrs.data.history == (None, None, None)
+
+    # in 0.8, this would fail to load the unloaded state.
+    assert attributes.get_history(a1, 'data') == ((), ['a1',], ())
+
+    # load_history() is now equiavlent to get_history() with
+    # passive=PASSIVE_OFF ^ INIT_OK
+    assert inspect(a1).attrs.data.load_history() == ((), ['a1',], ())
+
+:ticket:`2787`
+
+
 New Features
 ============
 

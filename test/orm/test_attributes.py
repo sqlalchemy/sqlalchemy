@@ -1339,7 +1339,7 @@ class PendingBackrefTest(fixtures.ORMTest):
             ]
         )
 
-    def test_lazy_history(self):
+    def test_lazy_history_collection(self):
         Post, Blog, lazy_posts = self._fixture()
 
         p1, p2, p3 = Post("post 1"), Post("post 2"), Post("post 3")
@@ -1511,6 +1511,12 @@ class HistoryTest(fixtures.TestBase):
         return Foo, Bar
 
     def _someattr_history(self, f, **kw):
+        passive = kw.pop('passive', None)
+        if passive is True:
+            kw['passive'] = attributes.PASSIVE_NO_INITIALIZE
+        elif passive is False:
+            kw['passive'] = attributes.PASSIVE_OFF
+
         return attributes.get_state_history(
                     attributes.instance_state(f),
                     'someattr', **kw)
@@ -1685,19 +1691,19 @@ class HistoryTest(fixtures.TestBase):
         Foo = self._fixture(uselist=True, useobject=True,
                                 active_history=True)
         f = Foo()
-        eq_(self._someattr_history(f, passive=True), ((), (), ()))
+        eq_(self._someattr_history(f, passive=True), (None, None, None))
 
     def test_scalar_obj_never_set(self):
         Foo = self._fixture(uselist=False, useobject=True,
                                 active_history=True)
         f = Foo()
-        eq_(self._someattr_history(f, passive=True), ((), (), ()))
+        eq_(self._someattr_history(f, passive=True), (None, None, None))
 
     def test_scalar_never_set(self):
         Foo = self._fixture(uselist=False, useobject=False,
                                 active_history=True)
         f = Foo()
-        eq_(self._someattr_history(f, passive=True), ((), (), ()))
+        eq_(self._someattr_history(f, passive=True), (None, None, None))
 
     def test_scalar_active_set(self):
         Foo = self._fixture(uselist=False, useobject=False,
@@ -1793,6 +1799,24 @@ class HistoryTest(fixtures.TestBase):
         eq_(self._someattr_history(f), (['two'], (), ()))
 
 
+    def test_scalar_passive_flag(self):
+        Foo = self._fixture(uselist=False, useobject=False,
+                                active_history=True)
+        f = Foo()
+        f.someattr = 'one'
+        eq_(self._someattr_history(f), (['one'], (), ()))
+
+        self._commit_someattr(f)
+
+        state = attributes.instance_state(f)
+        state._expire_attribute_pre_commit(state.dict, 'someattr')
+
+        def scalar_loader(state, toload):
+            state.dict['someattr'] = 'one'
+        state.manager.deferred_scalar_loader = scalar_loader
+
+        eq_(self._someattr_history(f), ((), ['one'], ()))
+
 
     def test_scalar_inplace_mutation_set(self):
         Foo = self._fixture(uselist=False, useobject=False,
@@ -1847,6 +1871,7 @@ class HistoryTest(fixtures.TestBase):
         eq_(self._someattr_history(f), ([{'a': 'b'}], (), ()))
         f.someattr = ['a']
         eq_(self._someattr_history(f), ([['a']], (), ()))
+
 
     def test_use_object_init(self):
         Foo, Bar = self._two_obj_fixture(uselist=False)
