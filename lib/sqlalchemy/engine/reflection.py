@@ -564,9 +564,14 @@ class Inspector(object):
                                 )
                 for column in referred_columns:
                     refspec.append(".".join([referred_table, column]))
+            if 'options' in fkey_d:
+                options = fkey_d['options']
+            else:
+                options = {}
             table.append_constraint(
                 sa_schema.ForeignKeyConstraint(constrained_columns, refspec,
-                                               conname, link_to_name=True))
+                                               conname, link_to_name=True,
+                                               **options))
         # Indexes
         indexes = self.get_indexes(table_name, schema)
         for index_d in indexes:

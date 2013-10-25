@@ -2236,7 +2236,7 @@ class MySQLDialect(default.DefaultDialect):
             ref_names = spec['foreign']
 
             con_kw = {}
-            for opt in ('name', 'onupdate', 'ondelete'):
+            for opt in ('onupdate', 'ondelete'):
                 if spec.get(opt, False):
                     con_kw[opt] = spec[opt]
 

@@ -17,6 +17,7 @@ from sqlalchemy.dialects.postgresql import base as postgresql
 import logging
 import logging.handlers
 from sqlalchemy.testing.mock import Mock
+from sqlalchemy.engine.reflection import Inspector
 
 class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
@@ -231,3 +232,83 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 ddl_compiler.get_column_specification(t.c.c),
                 "c %s NOT NULL" % expected
             )
+
+class InspectionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+
+    __only_on__ = 'postgresql'
+
+    def test_get_foreign_keys(self):
+        """
+        PGDialect.get_foreign_keys()
+        """
+        metadata = MetaData(testing.db)
+        person = Table('person', metadata,
+            Column('id', String(length=32), nullable=False, primary_key=True),
+            Column('company_id', ForeignKey('company.id',
+                name='person_company_id_fkey',
+                match='FULL', onupdate='RESTRICT', ondelete='RESTRICT',
+                deferrable=True, initially='DEFERRED'
+                )
+            )
+        )
+        company = Table('company', metadata,
+            Column('id', String(length=32), nullable=False, primary_key=True),
+            Column('name', String(length=255)),
+            Column('industry_id', ForeignKey('industry.id',
+                name='company_industry_id_fkey',
+                onupdate='CASCADE', ondelete='CASCADE',
+                deferrable=False, # PG default
+                initially='IMMEDIATE' # PG default
+                )
+            )
+        )
+        industry = Table('industry', metadata,
+            Column('id', Integer(), nullable=False, primary_key=True),
+            Column('name', String(length=255))
+        )
+        fk_ref = {
+            'person_company_id_fkey': {
+                'name': 'person_company_id_fkey',
+                'constrained_columns': ['company_id'],
+                'referred_columns': ['id'],
+                'referred_table': 'company',
+                'referred_schema': None,
+                'options': {
+                    'onupdate': 'RESTRICT',
+                    'deferrable': True,
+                    'ondelete': 'RESTRICT',
+                    'initially': 'DEFERRED',
+                    'match': 'FULL'
+                    }
+                },
+            'company_industry_id_fkey': {
+                'name': 'company_industry_id_fkey',
+                'constrained_columns': ['industry_id'],
+                'referred_columns': ['id'],
+                'referred_table': 'industry',
+                'referred_schema': None,
+                'options': {
+                    'onupdate': 'CASCADE',
+                    'deferrable': None,
+                    'ondelete': 'CASCADE',
+                    'initially': None,
+                    'match': None
+                }
+            }
+        }
+        try:
+            connection = testing.db.connect()
+            industry.create()
+            company.create()
+            person.create()
+            inspector = Inspector.from_engine(connection)
+            fks = inspector.get_foreign_keys('person') + \
+                inspector.get_foreign_keys('company')
+            for fk in fks:
+                ref = fk_ref[fk['name']]
+                for key, val in fk.items():
+                    eq_(val, ref[key])
+        finally:
+            person.drop()
+            company.drop()
+            industry.drop()

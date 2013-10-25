@@ -602,6 +602,55 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             is a2.c.user_id
         assert u2.join(a2).onclause.compare(u2.c.id == a2.c.user_id)
 
+    @testing.only_on(['postgresql', 'mysql'])
+    @testing.provide_metadata
+    def test_fk_options(self):
+        """test that foreign key reflection includes options (on
+        backends with {dialect}.get_foreign_keys() support)"""
+
+        if testing.against('postgresql'):
+            test_attrs = ('match', 'onupdate', 'ondelete', 'deferrable', 'initially')
+            addresses_user_id_fkey = sa.ForeignKey(
+                # Each option is specifically not a Postgres default, or
+                # it won't be returned by PG's inspection
+                'users.id',
+                name = 'addresses_user_id_fkey',
+                match='FULL',
+                onupdate='RESTRICT',
+                ondelete='RESTRICT',
+                deferrable=True,
+                initially='DEFERRED'
+            )
+        elif testing.against('mysql'):
+            # MATCH, DEFERRABLE, and INITIALLY cannot be defined for MySQL
+            # ON UPDATE and ON DELETE have defaults of RESTRICT, which are
+            # elided by MySQL's inspection
+            addresses_user_id_fkey = sa.ForeignKey(
+                'users.id',
+                name = 'addresses_user_id_fkey',
+                onupdate='CASCADE',
+                ondelete='CASCADE'
+            )
+            test_attrs = ('onupdate', 'ondelete')
+
+        meta = self.metadata
+        Table('users', meta,
+            Column('id', sa.Integer, primary_key=True),
+            Column('name', sa.String(30)),
+            test_needs_fk=True)
+        Table('addresses', meta,
+            Column('id', sa.Integer, primary_key=True),
+            Column('user_id', sa.Integer, addresses_user_id_fkey),
+            test_needs_fk=True)
+        meta.create_all()
+
+        meta2 = MetaData()
+        meta2.reflect(testing.db)
+        for fk in meta2.tables['addresses'].foreign_keys:
+            ref = locals()[fk.name]
+            for attr in test_attrs:
+                assert getattr(fk, attr) == getattr(ref, attr)
+
     def test_pks_not_uniques(self):
         """test that primary key reflection not tripped up by unique
         indexes"""

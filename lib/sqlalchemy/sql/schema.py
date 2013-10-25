@@ -2400,7 +2400,9 @@ class ForeignKeyConstraint(Constraint):
                     ondelete=self.ondelete,
                     use_alter=self.use_alter,
                     link_to_name=self.link_to_name,
-                    match=self.match
+                    match=self.match,
+                    deferrable=self.deferrable,
+                    initially=self.initially
                 )
 
         if table is not None:

@@ -1901,6 +1901,15 @@ class PGDialect(default.DefaultDialect):
                 n.oid = c.relnamespace
           ORDER BY 1
         """
+        # http://www.postgresql.org/docs/9.0/static/sql-createtable.html
+        FK_REGEX = re.compile(
+            r'FOREIGN KEY \((.*?)\) REFERENCES (?:(.*?)\.)?(.*?)\((.*?)\)'
+            r'[\s]?(MATCH (FULL|PARTIAL|SIMPLE)+)?'
+            r'[\s]?(ON UPDATE (CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT)+)?'
+            r'[\s]?(ON DELETE (CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT)+)?'
+            r'[\s]?(DEFERRABLE|NOT DEFERRABLE)?'
+            r'[\s]?(INITIALLY (DEFERRED|IMMEDIATE)+)?'
+        )
 
         t = sql.text(FK_SQL, typemap={
                                 'conname': sqltypes.Unicode,
@@ -1908,15 +1917,18 @@ class PGDialect(default.DefaultDialect):
         c = connection.execute(t, table=table_oid)
         fkeys = []
         for conname, condef, conschema in c.fetchall():
-            m = re.search('FOREIGN KEY \((.*?)\) REFERENCES '
-                            '(?:(.*?)\.)?(.*?)\((.*?)\)', condef).groups()
+            m = re.search(FK_REGEX, condef).groups()
             constrained_columns, referred_schema, \
-                    referred_table, referred_columns = m
+                    referred_table, referred_columns, \
+                    _, match, _, onupdate, _, ondelete, \
+                    deferrable, _, initially = m
+            if deferrable is not None:
+                deferrable = True if deferrable == 'DEFERRABLE' else False
             constrained_columns = [preparer._unquote_identifier(x)
                         for x in re.split(r'\s*,\s*', constrained_columns)]
 
             if referred_schema:
-                referred_schema =\
+                referred_schema = \
                                 preparer._unquote_identifier(referred_schema)
             elif schema is not None and schema == conschema:
                 # no schema was returned by pg_get_constraintdef().  This
@@ -1934,7 +1946,14 @@ class PGDialect(default.DefaultDialect):
                 'constrained_columns': constrained_columns,
                 'referred_schema': referred_schema,
                 'referred_table': referred_table,
-                'referred_columns': referred_columns
+                'referred_columns': referred_columns,
+                'options': {
+                    'onupdate': onupdate,
+                    'ondelete': ondelete,
+                    'deferrable': deferrable,
+                    'initially': initially,
+                    'match': match
+                }
             }
             fkeys.append(fkey_d)
         return fkeys
