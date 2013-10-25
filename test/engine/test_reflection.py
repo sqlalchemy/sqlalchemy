@@ -647,9 +647,9 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         meta2 = MetaData()
         meta2.reflect(testing.db)
         for fk in meta2.tables['addresses'].foreign_keys:
-            ref = locals()[fk.name]
+            ref = addresses_user_id_fkey
             for attr in test_attrs:
-                assert getattr(fk, attr) == getattr(ref, attr)
+                eq_(getattr(fk, attr), getattr(ref, attr))
 
     def test_pks_not_uniques(self):
         """test that primary key reflection not tripped up by unique

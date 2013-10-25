@@ -5,6 +5,7 @@ from sqlalchemy.testing.assertions import eq_, assert_raises, \
                 AssertsCompiledSQL, ComparesTables
 from sqlalchemy.testing import engines, fixtures
 from sqlalchemy import testing
+from sqlalchemy import inspect
 from sqlalchemy import Table, Column, select, MetaData, text, Integer, \
             String, Sequence, ForeignKey, join, Numeric, \
             PrimaryKeyConstraint, DateTime, tuple_, Float, BigInteger, \
@@ -426,6 +427,70 @@ class ReflectionTest(fixtures.TestBase):
         ind = testing.db.dialect.get_indexes(conn, "t", None)
         eq_(ind, [{'unique': False, 'column_names': ['y'], 'name': 'idx1'}])
         conn.close()
+
+    @testing.provide_metadata
+    def test_foreign_key_option_inspection(self):
+        metadata = self.metadata
+        Table('person', metadata,
+            Column('id', String(length=32), nullable=False, primary_key=True),
+            Column('company_id', ForeignKey('company.id',
+                name='person_company_id_fkey',
+                match='FULL', onupdate='RESTRICT', ondelete='RESTRICT',
+                deferrable=True, initially='DEFERRED'
+                )
+            )
+        )
+        Table('company', metadata,
+            Column('id', String(length=32), nullable=False, primary_key=True),
+            Column('name', String(length=255)),
+            Column('industry_id', ForeignKey('industry.id',
+                name='company_industry_id_fkey',
+                onupdate='CASCADE', ondelete='CASCADE',
+                deferrable=False,  # PG default
+                initially='IMMEDIATE'  # PG default
+                )
+            )
+        )
+        Table('industry', metadata,
+            Column('id', Integer(), nullable=False, primary_key=True),
+            Column('name', String(length=255))
+        )
+        fk_ref = {
+            'person_company_id_fkey': {
+                'name': 'person_company_id_fkey',
+                'constrained_columns': ['company_id'],
+                'referred_columns': ['id'],
+                'referred_table': 'company',
+                'referred_schema': None,
+                'options': {
+                    'onupdate': 'RESTRICT',
+                    'deferrable': True,
+                    'ondelete': 'RESTRICT',
+                    'initially': 'DEFERRED',
+                    'match': 'FULL'
+                    }
+                },
+            'company_industry_id_fkey': {
+                'name': 'company_industry_id_fkey',
+                'constrained_columns': ['industry_id'],
+                'referred_columns': ['id'],
+                'referred_table': 'industry',
+                'referred_schema': None,
+                'options': {
+                    'onupdate': 'CASCADE',
+                    'deferrable': None,
+                    'ondelete': 'CASCADE',
+                    'initially': None,
+                    'match': None
+                }
+            }
+        }
+        metadata.create_all()
+        inspector = inspect(testing.db)
+        fks = inspector.get_foreign_keys('person') + \
+            inspector.get_foreign_keys('company')
+        for fk in fks:
+            eq_(fk, fk_ref[fk['name']])
 
 class CustomTypeReflectionTest(fixtures.TestBase):
 
