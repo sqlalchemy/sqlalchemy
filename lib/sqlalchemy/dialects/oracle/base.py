@@ -133,9 +133,10 @@ Synonym/DBLINK Reflection
 -------------------------
 
 When using reflection with Table objects, the dialect can optionally search for tables
-indicated by synonyms that reference DBLINK-ed tables by passing the flag
-oracle_resolve_synonyms=True as a keyword argument to the Table construct.  If DBLINK
-is not in use this flag should be left off.
+indicated by synonyms, either in local or remote schemas or accessed over DBLINK,
+by passing the flag oracle_resolve_synonyms=True as a
+keyword argument to the Table construct.   If synonyms are not in use
+this flag should be left off.
 
 """
 
@@ -795,14 +796,15 @@ class OracleDialect(default.DefaultDialect):
         returns the actual name, owner, dblink name, and synonym name if found.
         """
 
-        q = "SELECT owner, table_owner, table_name, db_link, synonym_name FROM all_synonyms WHERE "
+        q = "SELECT owner, table_owner, table_name, db_link, "\
+                    "synonym_name FROM all_synonyms WHERE "
         clauses = []
         params = {}
         if desired_synonym:
             clauses.append("synonym_name = :synonym_name")
             params['synonym_name'] = desired_synonym
         if desired_owner:
-            clauses.append("table_owner = :desired_owner")
+            clauses.append("owner = :desired_owner")
             params['desired_owner'] = desired_owner
         if desired_table:
             clauses.append("table_name = :tname")
