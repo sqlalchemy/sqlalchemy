@@ -20,6 +20,7 @@ from sqlalchemy.testing.pickleable import User, Address, Dingaling, Order, \
 
 
 class PickleTest(fixtures.MappedTest):
+
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
@@ -170,6 +171,7 @@ class PickleTest(fixtures.MappedTest):
         sess.add(u2)
         assert u2.addresses
 
+    @testing.requires.non_broken_pickle
     def test_instance_deferred_cols(self):
         users, addresses = (self.tables.users,
                                 self.tables.addresses)
@@ -240,6 +242,7 @@ class PickleTest(fixtures.MappedTest):
             eq_(u1, u2)
 
 
+    @testing.requires.non_broken_pickle
     def test_options_with_descriptors(self):
         users, addresses, dingalings = (self.tables.users,
                                 self.tables.addresses,
