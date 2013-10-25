@@ -11,6 +11,15 @@
     :version: 0.8.3
 
     .. change::
+        :tags: bug, oracle
+        :tickets: 2853
+        :versions: 0.9.0
+
+        Fixed bug where Oracle table reflection using synonyms would fail
+        if the synonym and the table were in different remote schemas.
+        Patch to fix courtesy Kyle Derr.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2849
         :versions: 0.9.0

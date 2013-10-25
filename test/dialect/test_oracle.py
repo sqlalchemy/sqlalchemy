@@ -675,8 +675,17 @@ create table test_schema.child(
     parent_id integer references test_schema.parent(id)
 );
 
+create table local_table(
+    id integer primary key,
+    data varchar2(50)
+);
+
 create synonym test_schema.ptable for test_schema.parent;
 create synonym test_schema.ctable for test_schema.child;
+
+create synonym test_schema_ptable for test_schema.parent;
+
+create synonym test_schema.local_table for local_table;
 
 -- can't make a ref from local schema to the
 -- remote schema's table without this,
@@ -693,8 +702,12 @@ grant references on test_schema.child to public;
         for stmt in """
 drop table test_schema.child;
 drop table test_schema.parent;
+drop table local_table;
 drop synonym test_schema.ctable;
 drop synonym test_schema.ptable;
+drop synonym test_schema_ptable;
+drop synonym test_schema.local_table;
+
 """.split(";"):
             if stmt.strip():
                 testing.db.execute(stmt)
@@ -718,6 +731,22 @@ drop synonym test_schema.ptable;
             eq_(child.select().execute().fetchall(), [(1, 1)])
         finally:
             meta.drop_all()
+
+    def test_reflect_alt_table_owner_local_synonym(self):
+        meta = MetaData(testing.db)
+        parent = Table('test_schema_ptable', meta, autoload=True, oracle_resolve_synonyms=True)
+        self.assert_compile(parent.select(),
+                "SELECT test_schema_ptable.id, "
+                "test_schema_ptable.data FROM test_schema_ptable")
+        select([parent]).execute().fetchall()
+
+    def test_reflect_alt_synonym_owner_local_table(self):
+        meta = MetaData(testing.db)
+        parent = Table('local_table', meta, autoload=True, oracle_resolve_synonyms=True, schema="test_schema")
+        self.assert_compile(parent.select(),
+                "SELECT test_schema.local_table.id, "
+                "test_schema.local_table.data FROM test_schema.local_table")
+        select([parent]).execute().fetchall()
 
     def test_create_same_names_implicit_schema(self):
         meta = MetaData(testing.db)
