@@ -13,6 +13,14 @@
     :version: 0.9.0
 
     .. change::
+        :tags: feature, sql, postgresql, mysql
+        :tickets: 2183
+
+        The Postgresql and MySQL dialects now support reflection/inspection
+        of foreign key options, including ON UPDATE, ON DELETE.  Postgresql
+        also reflects MATCH, DEFERRABLE, and INITIALLY.  Coutesy ijl.
+
+    .. change::
         :tags: bug, mysql
         :tickets: 2839
 
