@@ -666,8 +666,9 @@ class ProxyFactoryTest(ListTest):
 
 
 class ScalarTest(fixtures.TestBase):
+    @testing.provide_metadata
     def test_scalar_proxy(self):
-        metadata = MetaData(testing.db)
+        metadata = self.metadata
 
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True,
@@ -715,11 +716,8 @@ class ScalarTest(fixtures.TestBase):
 
         p = Parent('p')
 
-        # No child
-        assert_raises(
-            AttributeError,
-            getattr, p, "foo"
-        )
+        eq_(p.child, None)
+        eq_(p.foo, None)
 
         p.child = Child(foo='a', bar='b', baz='c')
 
@@ -740,11 +738,7 @@ class ScalarTest(fixtures.TestBase):
 
         p.child = None
 
-        # No child again
-        assert_raises(
-            AttributeError,
-            getattr, p, "foo"
-        )
+        eq_(p.foo, None)
 
         # Bogus creator for this scalar type
         assert_raises(
@@ -779,6 +773,48 @@ class ScalarTest(fixtures.TestBase):
         # Ensure an immediate __set__ works.
         p2 = Parent('p2')
         p2.bar = 'quux'
+
+    @testing.provide_metadata
+    def test_empty_scalars(self):
+        metadata = self.metadata
+
+        a = Table('a', metadata,
+                Column('id', Integer, primary_key=True),
+                Column('name', String(50))
+            )
+        a2b = Table('a2b', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('id_a', Integer, ForeignKey('a.id')),
+            Column('id_b', Integer, ForeignKey('b.id')),
+            Column('name', String(50))
+        )
+        b = Table('b', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('name', String(50))
+        )
+        class A(object):
+            a2b_name = association_proxy("a2b_single", "name")
+            b_single = association_proxy("a2b_single", "b")
+
+        class A2B(object):
+            pass
+
+        class B(object):
+            pass
+
+        mapper(A, a, properties=dict(
+            a2b_single=relationship(A2B, uselist=False)
+        ))
+
+        mapper(A2B, a2b, properties=dict(
+            b=relationship(B)
+        ))
+        mapper(B, b)
+
+        a1 = A()
+        assert a1.a2b_name is None
+        assert a1.b_single is None
+
 
 
 class LazyLoadTest(fixtures.TestBase):

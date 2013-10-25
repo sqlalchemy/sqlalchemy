@@ -13,6 +13,18 @@
     :version: 0.9.0
 
     .. change::
+        :tags: feature, orm
+        :tickets: 2810
+
+        The association proxy now returns ``None`` when fetching a scalar
+        attribute off of a scalar relationship, where the scalar relationship
+        itself points to ``None``, instead of raising an ``AttributeError``.
+
+        .. seealso::
+
+            :ref:`migration_2810`
+
+    .. change::
         :tags: feature, sql, postgresql, mysql
         :tickets: 2183
 

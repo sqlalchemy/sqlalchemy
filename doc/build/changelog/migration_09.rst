@@ -321,6 +321,49 @@ against ``b_value`` directly.
 
 :ticket:`2751`
 
+.. _migration_2810:
+
+Association Proxy Missing Scalar returns None
+---------------------------------------------
+
+An association proxy from a scalar attribute to a scalar will now return
+``None`` if the proxied object isn't present.  This is consistent with the
+fact that missing many-to-ones return None in SQLAlchemy, so should the
+proxied value.  E.g.::
+
+    from sqlalchemy import *
+    from sqlalchemy.orm import *
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.ext.associationproxy import association_proxy
+
+    Base = declarative_base()
+
+    class A(Base):
+        __tablename__ = 'a'
+
+        id = Column(Integer, primary_key=True)
+        b = relationship("B", uselist=False)
+
+        bname = association_proxy("b", "name")
+
+    class B(Base):
+        __tablename__ = 'b'
+
+        id = Column(Integer, primary_key=True)
+        a_id = Column(Integer, ForeignKey('a.id'))
+        name = Column(String)
+
+    a1 = A()
+
+    # this is how m2o's always have worked
+    assert a1.b is None
+
+    # but prior to 0.9, this would raise AttributeError,
+    # now returns None just like the proxied value.
+    assert a1.bname is None
+
+:ticket:`2810`
+
 .. _migration_2850:
 
 A bindparam() construct with no type gets upgraded via copy when a type is available

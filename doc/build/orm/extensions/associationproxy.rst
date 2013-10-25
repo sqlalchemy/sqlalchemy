@@ -15,6 +15,7 @@ the construction of sophisticated collections and dictionary
 views of virtually any geometry, persisted to the database using
 standard, transparently configured relational patterns.
 
+
 Simplifying Scalar Collections
 ------------------------------
 

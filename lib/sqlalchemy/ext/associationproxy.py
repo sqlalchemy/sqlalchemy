@@ -242,7 +242,11 @@ class AssociationProxy(interfaces._InspectionAttr):
             return self
 
         if self.scalar:
-            return self._scalar_get(getattr(obj, self.target_collection))
+            target = getattr(obj, self.target_collection)
+            if target is not None:
+                return self._scalar_get(target)
+            else:
+                return None
         else:
             try:
                 # If the owning instance is reborn (orm session resurrect,
