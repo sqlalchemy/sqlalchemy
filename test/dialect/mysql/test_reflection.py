@@ -298,3 +298,22 @@ class RawReflectionTest(fixtures.TestBase):
         assert regex.match('  PRIMARY KEY USING BTREE (`id`)')
         assert regex.match('  PRIMARY KEY (`id`) USING BTREE')
 
+    def test_fk_reflection(self):
+        regex = self.parser._re_constraint
+
+        m = regex.match('  CONSTRAINT `addresses_user_id_fkey` '
+                        'FOREIGN KEY (`user_id`) '
+                        'REFERENCES `users` (`id`) '
+                        'ON DELETE CASCADE ON UPDATE CASCADE')
+        eq_(m.groups(), ('addresses_user_id_fkey', '`user_id`',
+                            '`users`', '`id`', None, 'CASCADE', 'CASCADE'))
+
+
+        m = regex.match('  CONSTRAINT `addresses_user_id_fkey` '
+                        'FOREIGN KEY (`user_id`) '
+                        'REFERENCES `users` (`id`) '
+                        'ON DELETE CASCADE ON UPDATE SET NULL')
+        eq_(m.groups(), ('addresses_user_id_fkey', '`user_id`',
+                            '`users`', '`id`', None, 'CASCADE', 'SET NULL'))
+
+

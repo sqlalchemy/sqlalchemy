@@ -13,6 +13,15 @@
     :version: 0.9.0
 
     .. change::
+        :tags: bug, mysql
+        :tickets: 2839
+
+        Fix and test parsing of MySQL foreign key options within reflection;
+        this complements the work in :ticket:`2183` where we begin to support
+        reflection of foreign key options such as ON UPDATE/ON DELETE
+        cascade.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2787
 

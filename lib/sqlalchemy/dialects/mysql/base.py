@@ -2807,7 +2807,7 @@ class MySQLTableDefinitionParser(object):
         #
         # unique constraints come back as KEYs
         kw = quotes.copy()
-        kw['on'] = 'RESTRICT|CASCASDE|SET NULL|NOACTION'
+        kw['on'] = 'RESTRICT|CASCADE|SET NULL|NOACTION'
         self._re_constraint = _re_compile(
             r'  '
             r'CONSTRAINT +'
