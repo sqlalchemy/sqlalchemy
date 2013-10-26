@@ -9,6 +9,7 @@
 
 .. changelog::
     :version: 0.8.3
+    :released: October 26, 2013
 
     .. change::
         :tags: bug, oracle
