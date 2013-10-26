@@ -74,13 +74,12 @@ Supported Platforms
 
 SQLAlchemy has been tested against the following platforms:
 
-* cPython since version 2.5, through the 2.xx series
+* cPython since version 2.6, through the 2.xx series
 * cPython version 3, throughout all 3.xx series
-* `Jython <http://www.jython.org/>`_ 2.5 or greater
-* `Pypy <http://pypy.org/>`_ 1.5 or greater
+* `Pypy <http://pypy.org/>`_ 2.1 or greater
 
-.. versionchanged:: 0.8
-   Python 2.5 is now the minimum Python version supported.
+.. versionchanged:: 0.9
+   Python 2.6 is now the minimum Python version supported.
 
 Supported Installation Methods
 -------------------------------
@@ -172,7 +171,7 @@ the available DBAPIs for each database, including external links.
 Checking the Installed SQLAlchemy Version
 ------------------------------------------
 
-This documentation covers SQLAlchemy version 0.8. If you're working on a
+This documentation covers SQLAlchemy version 0.9. If you're working on a
 system that already has SQLAlchemy installed, check the version from your
 Python prompt like this:
 
@@ -180,11 +179,11 @@ Python prompt like this:
 
      >>> import sqlalchemy
      >>> sqlalchemy.__version__ # doctest: +SKIP
-     0.8.0
+     0.9.0
 
 .. _migration:
 
-0.7 to 0.8 Migration
+0.8 to 0.9 Migration
 =====================
 
-Notes on what's changed from 0.7 to 0.8 is available here at :doc:`changelog/migration_08`.
+Notes on what's changed from 0.8 to 0.9 is available here at :doc:`changelog/migration_09`.
