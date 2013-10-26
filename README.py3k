@@ -1,6 +1,0 @@
-=================
-PYTHON 3 SUPPORT
-=================
-
-As of SQLAlchemy 0.9, SQLAlchemy installs and runs with
-Python 3 directly, with no code changes.
