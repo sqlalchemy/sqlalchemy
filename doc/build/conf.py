@@ -85,7 +85,7 @@ version = "0.9"
 # The full version, including alpha/beta/rc tags.
 release = "0.9.0b1"
 
-release_date = "(not released)"
+release_date = "October 26, 2013"
 
 site_base = "http://www.sqlalchemy.org"
 
