@@ -11,6 +11,7 @@
 
 .. changelog::
     :version: 0.9.0b1
+    :released: October 26, 2013
 
     .. change::
         :tags: feature, orm
