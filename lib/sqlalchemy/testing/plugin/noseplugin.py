@@ -1,3 +1,9 @@
+# plugin/noseplugin.py
+# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
+
 """Enhance nose with extra options and behaviors for running SQLAlchemy tests.
 
 When running ./sqla_nose.py, this module is imported relative to the
