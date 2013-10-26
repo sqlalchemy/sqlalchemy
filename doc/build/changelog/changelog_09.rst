@@ -10,7 +10,7 @@
     .. include:: changelog_07.rst
 
 .. changelog::
-    :version: 0.9.0
+    :version: 0.9.0b1
 
     .. change::
         :tags: feature, orm
