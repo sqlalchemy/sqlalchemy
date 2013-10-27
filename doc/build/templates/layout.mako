@@ -6,9 +6,9 @@
 
 <%doc>
     Structural elements are all prefixed with "docs-"
-    to prevent conflicts when the structure is integrated into the 
+    to prevent conflicts when the structure is integrated into the
     main site.
-    
+
     docs-container ->
         docs-header ->
             docs-search
@@ -31,7 +31,7 @@ withsidebar = bool(toc) and current_page_name != 'index'
 
 <%block name="head_title">
     % if current_page_name != 'index':
-    ${capture(self.show_title) | util.striptags} &mdash; 
+    ${capture(self.show_title) | util.striptags} &mdash;
     % endif
     ${docstitle|h}
 </%block>
@@ -39,6 +39,9 @@ withsidebar = bool(toc) and current_page_name != 'index'
 <div id="docs-container">
 
 <%block name="headers">
+    ${parent.headers()}
+
+    <!-- begin layout.mako headers -->
     <link rel="stylesheet" href="${pathto('_static/pygments.css', 1)}" type="text/css" />
     <link rel="stylesheet" href="${pathto('_static/docs.css', 1)}" type="text/css" />
 
@@ -50,9 +53,13 @@ withsidebar = bool(toc) and current_page_name != 'index'
           FILE_SUFFIX: '${file_suffix}'
       };
     </script>
+
+    <!-- begin iterate through sphinx environment script_files -->
     % for scriptfile in script_files + self.attr.local_script_files:
         <script type="text/javascript" src="${pathto(scriptfile, 1)}"></script>
     % endfor
+    <!-- end iterate through sphinx environment script_files -->
+
     <script type="text/javascript" src="${pathto('_static/init.js', 1)}"></script>
     % if hasdoc('about'):
         <link rel="author" title="${_('About these documents')}" href="${pathto('about')}" />
@@ -72,6 +79,8 @@ withsidebar = bool(toc) and current_page_name != 'index'
     % if prevtopic:
         <link rel="prev" title="${prevtopic['title']|util.striptags}" href="${prevtopic['link']|h}" />
     % endif
+    <!-- end layout.mako headers -->
+
 </%block>
 
 <div id="docs-header">
@@ -129,7 +138,7 @@ withsidebar = bool(toc) and current_page_name != 'index'
             % endfor
         % endif
         % if current_page_name != 'index':
-        » ${self.show_title()} 
+        » ${self.show_title()}
         % endif
 
         <h2>

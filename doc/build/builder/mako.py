@@ -23,49 +23,31 @@ class MakoBridge(TemplateBridge):
         )
 
         if rtd:
+            # RTD layout, imported from sqlalchemy.org
             import urllib2
-            template_url = builder.config['site_base'] + "/docs_base.mako"
-            template = urllib2.urlopen(template_url).read()
-            self.lookup.put_string("/rtd_base.mako", template)
+            template = urllib2.urlopen(builder.config['site_base'] + "/docs_adapter.mako").read()
+            self.lookup.put_string("docs_adapter.mako", template)
+
+            setup_ctx = urllib2.urlopen(builder.config['site_base'] + "/docs_adapter.py").read()
+            lcls = {}
+            exec(setup_ctx, lcls)
+            self.setup_ctx = lcls['setup_context']
+
+    def setup_ctx(self, context):
+        pass
 
     def render(self, template, context):
         template = template.replace(".html", ".mako")
         context['prevtopic'] = context.pop('prev', None)
         context['nexttopic'] = context.pop('next', None)
 
-        # RTD layout
-        if rtd:
-            # add variables if not present, such
-            # as if local test of READTHEDOCS variable
-            if 'MEDIA_URL' not in context:
-                context['MEDIA_URL'] = "http://media.readthedocs.org/"
-            if 'slug' not in context:
-                context['slug'] = context['project'].lower()
-            if 'url' not in context:
-                context['url'] = "/some/test/url"
-            if 'current_version' not in context:
-                context['current_version'] = "latest"
-
-            if 'name' not in context:
-                context['name'] = context['project'].lower()
-
-            context['rtd'] = True
-            context['toolbar'] = True
-            context['layout'] = "rtd_layout.mako"
-            context['base'] = "rtd_base.mako"
-
-            context['pdf_url'] = "%spdf/%s/%s/%s.pdf" % (
-                    context['MEDIA_URL'],
-                    context['slug'],
-                    context['current_version'],
-                    context['slug']
-            )
         # local docs layout
-        else:
-            context['rtd'] = False
-            context['toolbar'] = False
-            context['layout'] = "layout.mako"
-            context['base'] = "static_base.mako"
+        context['rtd'] = False
+        context['toolbar'] = False
+        context['base'] = "static_base.mako"
+
+        # override context attributes
+        self.setup_ctx(context)
 
         context.setdefault('_', lambda x: x)
         return self.lookup.get_template(template).render_unicode(**context)
