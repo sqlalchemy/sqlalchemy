@@ -10,6 +10,9 @@
     .. include:: changelog_07.rst
 
 .. changelog::
+    :version: 0.9.0b2
+
+.. changelog::
     :version: 0.9.0b1
     :released: October 26, 2013
 
