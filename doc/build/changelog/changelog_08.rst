@@ -8,6 +8,18 @@
     .. include:: changelog_07.rst
 
 .. changelog::
+    :version: 0.8.4
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 2855
+        :versions: 0.9.0b2
+
+        Fixed bug where index reflection would mis-interpret indkey values
+        when using the pypostgresql adapter, which returns these values
+        as lists vs. psycopg2's return type of string.
+
+.. changelog::
     :version: 0.8.3
     :released: October 26, 2013
 

@@ -1929,11 +1929,14 @@ class PGDialect(default.DefaultDialect):
         table_oid = self.get_table_oid(connection, table_name, schema,
                                        info_cache=kw.get('info_cache'))
 
+        # cast indkey as varchar since it's an int2vector,
+        # returned as a list by some drivers such as pypostgresql
+
         IDX_SQL = """
           SELECT
               i.relname as relname,
               ix.indisunique, ix.indexprs, ix.indpred,
-              a.attname, a.attnum, ix.indkey
+              a.attname, a.attnum, ix.indkey::varchar
           FROM
               pg_class t
                     join pg_index ix on t.oid = ix.indrelid

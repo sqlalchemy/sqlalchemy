@@ -120,7 +120,7 @@ from .engine import create_engine, engine_from_config
 __all__ = sorted(name for name, obj in locals().items()
                  if not (name.startswith('_') or _inspect.ismodule(obj)))
 
-__version__ = '0.8.3'
+__version__ = '0.8.4'
 
 del _inspect, sys
 
