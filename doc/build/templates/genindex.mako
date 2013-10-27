@@ -1,4 +1,4 @@
-<%inherit file="${context['layout']}"/>
+<%inherit file="layout.mako"/>
 
 <%block name="show_title" filter="util.striptags">
     ${_('Index')}
