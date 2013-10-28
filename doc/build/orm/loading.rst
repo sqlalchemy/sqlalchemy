@@ -142,7 +142,6 @@ of a particular attribute, the :func:`.defaultload` method/function may be used:
                     ).all()
 
 .. versionchanged:: 0.9.0
-
     The previous approach of specifying dot-separated paths within loader
     options has been superseded by the less ambiguous approach of the
     :class:`.Load` object and related methods.   With this system, the user
