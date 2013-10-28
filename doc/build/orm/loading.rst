@@ -175,8 +175,9 @@ of all :func:`.relationship` constructs in use for that query,
 except for those which use the ``'dynamic'`` style of loading.
 If some relationships specify
 ``lazy='joined'`` or ``lazy='subquery'``, for example,
-using ``default_strategy(lazy='select')`` will unilaterally
-cause all those relationships to use ``'select'`` loading.
+using ``lazyload('*')`` will unilaterally
+cause all those relationships to use ``'select'`` loading, e.g. emit a
+SELECT statement when each attribute is accessed.
 
 The option does not supercede loader options stated in the
 query, such as :func:`.eagerload`,
