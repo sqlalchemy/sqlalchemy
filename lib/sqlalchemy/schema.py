@@ -861,7 +861,7 @@ class Column(SchemaItem, expression.ColumnClause):
             A :func:`~sqlalchemy.sql.expression.text` expression will be
             rendered as-is, without quotes::
 
-                Column('y', DateTime, server_default=text('NOW()'))0
+                Column('y', DateTime, server_default=text('NOW()'))
 
                 y DATETIME DEFAULT NOW()
 
