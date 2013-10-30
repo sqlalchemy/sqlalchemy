@@ -1733,6 +1733,7 @@ class AggregateTest(QueryTest):
 
 
 class ExistsTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     def test_exists(self):
         User = self.classes.User
@@ -1742,16 +1743,27 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(sess.query(q1.exists()),
             'SELECT EXISTS ('
                 'SELECT 1 FROM users'
-            ') AS anon_1',
-            dialect=default.DefaultDialect()
+            ') AS anon_1'
         )
 
         q2 = sess.query(User).filter(User.name == 'fred')
         self.assert_compile(sess.query(q2.exists()),
             'SELECT EXISTS ('
                 'SELECT 1 FROM users WHERE users.name = :name_1'
-            ') AS anon_1',
-            dialect=default.DefaultDialect()
+            ') AS anon_1'
+        )
+
+    def test_exists_col_warning(self):
+        User = self.classes.User
+        Address = self.classes.Address
+        sess = create_session()
+
+        q1 = sess.query(User, Address).filter(User.id == Address.user_id)
+        self.assert_compile(sess.query(q1.exists()),
+            'SELECT EXISTS ('
+                'SELECT 1 FROM users, addresses '
+                'WHERE users.id = addresses.user_id'
+            ') AS anon_1'
         )
 
 

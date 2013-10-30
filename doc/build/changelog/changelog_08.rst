@@ -11,6 +11,16 @@
     :version: 0.8.4
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2818
+        :versions: 0.9.0b2
+
+        Fixed a regression introduced by :ticket:`2818` where the EXISTS
+        query being generated would produce a "columns being replaced"
+        warning for a statement with two same-named columns,
+        as the internal SELECT wouldn't have use_labels set.
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 2855
         :versions: 0.9.0b2

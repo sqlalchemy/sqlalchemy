@@ -2492,7 +2492,7 @@ class Query(object):
         .. versionadded:: 0.8.1
 
         """
-        return sql.exists(self.statement.with_only_columns(['1']))
+        return sql.exists(self.with_labels().statement.with_only_columns(['1']))
 
     def count(self):
         """Return a count of rows this Query would return.
