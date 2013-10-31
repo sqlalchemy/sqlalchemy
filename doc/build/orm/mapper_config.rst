@@ -94,9 +94,13 @@ Naming Columns Distinctly from Attribute Names
 ----------------------------------------------
 
 A mapping by default shares the same name for a
-:class:`.Column` as that of the mapped attribute.
-The name assigned to the :class:`.Column` can be different,
-as we illustrate here in a Declarative mapping::
+:class:`.Column` as that of the mapped attribute - specifically
+it matches the :attr:`.Column.key` attribute on :class:`.Column`, which
+by default is the same as the :attr:`.Column.name`.
+
+The name assigned to the Python attribute which maps to
+:class:`.Column` can be different from either :attr:`.Column.name` or :attr:`.Column.key`
+just by assigning it that way, as we illustrate here in a Declarative mapping::
 
     class User(Base):
         __tablename__ = 'user'
@@ -122,14 +126,50 @@ with the desired key::
        'name': user_table.c.user_name,
     })
 
+In the next section we'll examine the usage of ``.key`` more closely.
+
+.. _mapper_automated_reflection_schemes:
+
+Automating Column Naming Schemes from Reflected Tables
+------------------------------------------------------
+
+In the previous section :ref:`mapper_column_distinct_names`, we showed how
+a :class:`.Column` explicitly mapped to a class can have a different attribute
+name than the column.  But what if we aren't listing out :class:`.Column`
+objects explicitly, and instead are automating the production of :class:`.Table`
+objects using reflection (e.g. as described in :ref:`metadata_reflection_toplevel`)?
+In this case we can make use of the :meth:`.DDLEvents.column_reflect` event
+to intercept the production of :class:`.Column` objects and provide them
+with the :attr:`.Column.key` of our choice::
+
+    @event.listens_for(Table, "column_reflect")
+    def column_reflect(inspector, table, column_info):
+        # set column.key = "attr_<lower_case_name>"
+        column_info['key'] = "attr_%s" % column_info['name'].lower()
+
+With the above event, the reflection of :class:`.Column` objects will be intercepted
+with our event that adds a new ".key" element, such as in a mapping as below::
+
+    class MyClass(Base):
+        __table__ = Table("some_table", Base.metadata,
+                    autoload=True, autoload_with=some_engine)
+
+If we want to qualify our event to only react for the specific :class:`.MetaData`
+object above, we can check for it in our event::
+
+    @event.listens_for(Table, "column_reflect")
+    def column_reflect(inspector, table, column_info):
+        if table.metadata is Base.metadata:
+            # set column.key = "attr_<lower_case_name>"
+            column_info['key'] = "attr_%s" % column_info['name'].lower()
+
 .. _column_prefix:
 
 Naming All Columns with a Prefix
 --------------------------------
 
-A way to automate the assignment of a prefix to
-the mapped attribute names relative to the column name
-is to use ``column_prefix``::
+A quick approach to prefix column names, typically when mapping
+to an existing :class:`.Table` object, is to use ``column_prefix``::
 
     class User(Base):
         __table__ = user_table
@@ -138,9 +178,10 @@ is to use ``column_prefix``::
 The above will place attribute names such as ``_user_id``, ``_user_name``,
 ``_password`` etc. on the mapped ``User`` class.
 
-The classical version of the above::
+This approach is uncommon in modern usage.   For dealing with reflected
+tables, a more flexible approach is to use that described in
+:ref:`mapper_automated_reflection_schemes`.
 
-    mapper(User, user_table, column_prefix='_')
 
 Using column_property for column level options
 -----------------------------------------------

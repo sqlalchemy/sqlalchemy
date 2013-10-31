@@ -1,7 +1,7 @@
+.. module:: sqlalchemy.schema
+
 .. _metadata_reflection_toplevel:
 .. _metadata_reflection:
-
-.. module:: sqlalchemy.schema
 
 
 Reflecting Database Objects
