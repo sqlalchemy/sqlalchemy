@@ -12,6 +12,16 @@
 .. changelog::
     :version: 0.9.0b2
 
+    .. change::
+        :tags: bug, orm, sql, sqlite
+        :tickets: 2858
+
+        Fixed a regression introduced by the join rewriting feature of
+        :ticket:`2369` and :ticket:`2587` where a nested join with one side
+        already an aliased select would fail to translate the ON clause on the
+        outside correctly; in the ORM this could be seen when using a
+        SELECT statement as a "secondary" table.
+
 .. changelog::
     :version: 0.9.0b1
     :released: October 26, 2013

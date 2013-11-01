@@ -55,6 +55,15 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
             key = key % compiled.anon_map
             assert col in compiled.result_map[key][1]
 
+    _a_bkeyselect_bkey = ""
+
+    def test_a_bkeyselect_bkey(self):
+        assoc = a_to_b_key.select().alias()
+        j1 = assoc.join(b_key)
+        j2 = a.join(j1)
+
+        s = select([a, b_key], use_labels=True).select_from(j2)
+        self._test(s, self._a_bkeyselect_bkey)
 
     def test_a_bc(self):
         j1 = b.join(c)
@@ -202,6 +211,18 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
         "anon_1 ON a.id = anon_1.a_to_b_key_1_aid"
         )
 
+    _a_bkeyselect_bkey = (
+        "SELECT a.id AS a_id, anon_2.anon_1_aid AS anon_1_aid, "
+        "anon_2.anon_1_bid AS anon_1_bid, anon_2.b_key_id AS b_key_id "
+        "FROM a JOIN (SELECT anon_1.aid AS anon_1_aid, anon_1.bid AS anon_1_bid, "
+            "b_key.id AS b_key_id "
+            "FROM (SELECT a_to_b_key.aid AS aid, a_to_b_key.bid AS bid "
+                "FROM a_to_b_key) AS anon_1 "
+        "JOIN b_key ON b_key.id = anon_1.bid) AS anon_2 ON a.id = anon_2.anon_1_aid"
+    )
+
+
+
 class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
     """test rendering of each join with normal nesting."""
     @util.classproperty
@@ -209,6 +230,12 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
         dialect = default.DefaultDialect()
         return dialect
 
+    _a_bkeyselect_bkey = (
+        "SELECT a.id AS a_id, b_key.id AS b_key_id FROM a JOIN "
+        "((SELECT a_to_b_key.aid AS aid, a_to_b_key.bid AS bid "
+            "FROM a_to_b_key) AS anon_1 JOIN b_key ON b_key.id = anon_1.bid) "
+        "ON a.id = anon_1.aid"
+    )
     _a__b_dc = (
             "SELECT a.id AS a_id, b.id AS b_id, "
             "b.a_id AS b_a_id, c.id AS c_id, "
@@ -273,6 +300,12 @@ class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
             s,
             assert_
         )
+
+    _a_bkeyselect_bkey = (
+        "SELECT a.id, b_key.id FROM a JOIN ((SELECT a_to_b_key.aid AS aid, "
+            "a_to_b_key.bid AS bid FROM a_to_b_key) AS anon_1 "
+            "JOIN b_key ON b_key.id = anon_1.bid) ON a.id = anon_1.aid"
+    )
 
     _a__b_dc = (
             "SELECT a.id, b.id, "

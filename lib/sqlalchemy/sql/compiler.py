@@ -1289,9 +1289,11 @@ class SQLCompiler(Compiled):
                 for c in selectable_.c:
                     c._key_label = c.key
                     c._label = c.name
+
                 translate_dict = dict(
-                        zip(right.element.c, selectable_.c)
-                    )
+                    zip(newelem.right.element.c, selectable_.c)
+                )
+
                 translate_dict[right.element.left] = selectable_
                 translate_dict[right.element.right] = selectable_
 
@@ -1310,6 +1312,7 @@ class SQLCompiler(Compiled):
                 column_translate[-1].update(translate_dict)
 
                 newelem.right = selectable_
+
                 newelem.onclause = visit(newelem.onclause, **kw)
             elif newelem.__visit_name__ is select_name:
                 column_translate.append({})
