@@ -1,7 +1,7 @@
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import mapper, class_mapper, attributes, object_mapper
 from sqlalchemy.orm.exc import UnmappedClassError, UnmappedColumnError
-from sqlalchemy import Table, Column, ForeignKeyConstraint, Integer
+from sqlalchemy import Table, Column, ForeignKeyConstraint, Integer, DateTime
 from sqlalchemy import event
 from sqlalchemy.orm.properties import RelationshipProperty
 
@@ -46,14 +46,16 @@ def _history_mapper(local_mapper):
         if super_mapper:
             super_fks.append(('version', super_history_mapper.local_table.c.version))
             cols.append(Column('version', Integer, primary_key=True, autoincrement=False))
+            cols.append(Column('changed', DateTime, default=datetime.datetime.now))
         else:
             cols.append(Column('version', Integer, primary_key=True, autoincrement=False))
+            cols.append(Column('changed', DateTime, default=datetime.datetime.now))
 
         if super_fks:
             cols.append(ForeignKeyConstraint(*zip(*super_fks)))
 
         table = Table(local_mapper.local_table.name + '_history', local_mapper.local_table.metadata,
-           *cols
+           *cols, schema=local_mapper.local_table.schema
         )
     else:
         # single table inheritance.  take any additional columns that may have
@@ -118,7 +120,7 @@ def create_version(obj, session, deleted = False):
             continue
 
         for hist_col in hm.local_table.c:
-            if hist_col.key == 'version':
+            if hist_col.key == 'version' or hist_col.key == 'changed':
                 continue
 
             obj_col = om.local_table.c[hist_col.key]
