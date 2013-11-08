@@ -46,10 +46,10 @@ def _history_mapper(local_mapper):
         if super_mapper:
             super_fks.append(('version', super_history_mapper.local_table.c.version))
             cols.append(Column('version', Integer, primary_key=True, autoincrement=False))
-            cols.append(Column('changed', DateTime, default=datetime.datetime.now))
+            cols.append(Column('changed', DateTime, default=datetime.datetime.utcnow))
         else:
             cols.append(Column('version', Integer, primary_key=True, autoincrement=False))
-            cols.append(Column('changed', DateTime, default=datetime.datetime.now))
+            cols.append(Column('changed', DateTime, default=datetime.datetime.utcnow))
 
         if super_fks:
             cols.append(ForeignKeyConstraint(*zip(*super_fks)))
