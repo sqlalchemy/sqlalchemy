@@ -3,8 +3,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from .history_meta import Versioned, versioned_session
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import clear_mappers, Session, deferred, relationship
-from sqlalchemy.testing import AssertsCompiledSQL, eq_
+from sqlalchemy.testing import AssertsCompiledSQL, eq_, assert_raises
 from sqlalchemy.testing.entities import BasicEntity, ComparableEntity
+from sqlalchemy.orm import exc as orm_exc
 
 engine = None
 
@@ -91,6 +92,35 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
                 SomeClassHistory(version=2, name='sc1modified'),
                 SomeClassHistory(version=3, name='sc1modified2')
             ]
+        )
+
+    def test_w_mapper_versioning(self):
+        class SomeClass(Versioned, self.Base, ComparableEntity):
+            __tablename__ = 'sometable'
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+
+        SomeClass.__mapper__.version_id_col = SomeClass.__table__.c.version
+
+        self.create_tables()
+        sess = self.session
+        sc = SomeClass(name='sc1')
+        sess.add(sc)
+        sess.commit()
+
+        s2 = Session(sess.bind)
+        sc2 = s2.query(SomeClass).first()
+        sc2.name = 'sc1modified'
+
+        sc.name = 'sc1modified_again'
+        sess.commit()
+
+        eq_(sc.version, 2)
+
+        assert_raises(
+            orm_exc.StaleDataError,
+            s2.flush
         )
 
     def test_from_null(self):
