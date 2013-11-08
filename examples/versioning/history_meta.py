@@ -25,6 +25,7 @@ def _history_mapper(local_mapper):
 
     polymorphic_on = None
     super_fks = []
+
     if not super_mapper or local_mapper.local_table is not super_mapper.local_table:
         cols = []
         for column in local_mapper.local_table.c:
@@ -43,7 +44,7 @@ def _history_mapper(local_mapper):
                 polymorphic_on = col
 
         if super_mapper:
-            super_fks.append(('version', super_history_mapper.base_mapper.local_table.c.version))
+            super_fks.append(('version', super_history_mapper.local_table.c.version))
             cols.append(Column('version', Integer, primary_key=True, autoincrement=False))
         else:
             cols.append(Column('version', Integer, primary_key=True, autoincrement=False))

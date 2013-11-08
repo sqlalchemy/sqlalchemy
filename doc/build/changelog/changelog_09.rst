@@ -13,6 +13,12 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: bug, examples
+
+        Fixed bug which prevented history_meta recipe from working with
+        joined inheritance schemes more than one level deep.
+
+    .. change::
         :tags: bug, orm, sql, sqlite
         :tickets: 2858
 

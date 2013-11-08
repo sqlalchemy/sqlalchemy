@@ -3,7 +3,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from .history_meta import Versioned, versioned_session
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import clear_mappers, Session, deferred, relationship
-from ._lib import ComparableEntity, eq_
+from sqlalchemy.testing import AssertsCompiledSQL, eq_
+from sqlalchemy.testing.entities import BasicEntity, ComparableEntity
 
 engine = None
 
@@ -12,7 +13,9 @@ def setup():
     global engine
     engine = create_engine('sqlite://', echo=True)
 
-class TestVersioning(TestCase):
+class TestVersioning(TestCase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
     def setUp(self):
         self.session = Session(engine)
         self.Base = declarative_base()
@@ -217,6 +220,80 @@ class TestVersioning(TestCase):
                 SubClassSamePkHistory(id=3, name='same1', type='same', version=2)
             ]
         )
+
+    def test_joined_inheritance_multilevel(self):
+        class BaseClass(Versioned, self.Base, ComparableEntity):
+            __tablename__ = 'basetable'
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            type = Column(String(20))
+
+            __mapper_args__ = {'polymorphic_on': type,
+                                'polymorphic_identity': 'base'}
+
+        class SubClass(BaseClass):
+            __tablename__ = 'subtable'
+
+            id = Column(Integer, primary_key=True)
+            base_id = Column(Integer, ForeignKey('basetable.id'))
+            subdata1 = Column(String(50))
+
+            __mapper_args__ = {'polymorphic_identity': 'sub'}
+
+        class SubSubClass(SubClass):
+            __tablename__ = 'subsubtable'
+
+            id = Column(Integer, ForeignKey('subtable.id'), primary_key=True)
+            subdata2 = Column(String(50))
+
+            __mapper_args__ = {'polymorphic_identity': 'subsub'}
+
+        self.create_tables()
+
+        SubSubHistory = SubSubClass.__history_mapper__.class_
+        sess = self.session
+        q = sess.query(SubSubHistory)
+        self.assert_compile(
+            q,
+            "SELECT subsubtable_history.id AS subsubtable_history_id, "
+            "subtable_history.id AS subtable_history_id, "
+            "basetable_history.id AS basetable_history_id, "
+            "basetable_history.name AS basetable_history_name, "
+            "basetable_history.type AS basetable_history_type, "
+            "subsubtable_history.version AS subsubtable_history_version, "
+            "subtable_history.version AS subtable_history_version, "
+            "basetable_history.version AS basetable_history_version, "
+            "subtable_history.base_id AS subtable_history_base_id, "
+            "subtable_history.subdata1 AS subtable_history_subdata1, "
+            "subsubtable_history.subdata2 AS subsubtable_history_subdata2 "
+            "FROM basetable_history "
+            "JOIN subtable_history "
+            "ON basetable_history.id = subtable_history.base_id "
+            "AND basetable_history.version = subtable_history.version "
+            "JOIN subsubtable_history ON subtable_history.id = "
+            "subsubtable_history.id AND subtable_history.version = subsubtable_history.version"
+        )
+
+        ssc = SubSubClass(name='ss1', subdata1='sd1', subdata2='sd2')
+        sess.add(ssc)
+        sess.commit()
+        eq_(
+            sess.query(SubSubHistory).all(),
+            []
+        )
+        ssc.subdata1 = 'sd11'
+        ssc.subdata2 = 'sd22'
+        sess.commit()
+        eq_(
+            sess.query(SubSubHistory).all(),
+            [SubSubHistory(name='ss1', subdata1='sd1',
+                                subdata2='sd2', type='subsub', version=1)]
+        )
+        eq_(ssc, SubSubClass(name='ss1', subdata1='sd11',
+                    subdata2='sd22', version=2))
+
+
 
     def test_single_inheritance(self):
         class BaseClass(Versioned, self.Base, ComparableEntity):
