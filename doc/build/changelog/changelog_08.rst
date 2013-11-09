@@ -587,7 +587,7 @@
 
     .. change::
         :tags: bug, engine
-        :pullreq: 6
+        :pullreq: github:6
         :versions: 0.9.0b1
 
         Fixed bug where the ``reset_on_return`` argument to various :class:`.Pool`
@@ -719,6 +719,7 @@
 
     .. change::
       :tags: bug, postgresql
+      :pullreq: github:2
       :tickets: 2735
 
       Fixed the HSTORE type to correctly encode/decode for unicode.
@@ -854,7 +855,6 @@
 
     .. change::
       :tags: bug, mysql
-      :pullreq: 55
 
       Fixes to support the latest cymysql DBAPI, courtesy
       Hajime Nakagami.
@@ -916,7 +916,6 @@
 
     .. change::
       :tags: bug, mysql
-      :pullreq: 54
 
       Updated a regexp to correctly extract error code on
       google app engine v1.7.5 and newer.  Courtesy
@@ -1026,7 +1025,6 @@
 
     .. change::
       :tags: bug, mssql
-      :pullreq: 47
 
       Added support for additional "disconnect" messages
       to the pymssql dialect.  Courtesy John Anderson.
@@ -1050,7 +1048,6 @@
     .. change::
       :tags: bug, mssql
       :tickets: 2683
-      :pullreq: 46
 
       Fixed Py3K bug regarding "binary" types and
       pymssql.  Courtesy Marc Abramowitz.
@@ -1104,7 +1101,6 @@
 
     .. change::
         :tags: feature, mysql
-        :pullreq: 42
 
       New dialect for CyMySQL added, courtesy Hajime Nakagami.
 
@@ -1160,7 +1156,6 @@
     .. change::
         :tags: bug, tests
         :tickets: 2669
-        :pullreq: 41
 
       Fixed an import of "logging" in test_execute which was not
       working on some linux platforms.  Also in 0.7.11.
@@ -1267,7 +1262,6 @@
 
     .. change::
         :tags: feature, postgresql
-        :pullreq: 40
 
       Added :meth:`.postgresql.ARRAY.Comparator.any` and
       :meth:`.postgresql.ARRAY.Comparator.all`
@@ -1341,7 +1335,6 @@
 
     .. change::
         :tags: mssql, feature
-        :pullreq: 35
 
       Added ``mssql_include`` and ``mssql_clustered`` options to
       :class:`.Index`, renders the ``INCLUDE`` and ``CLUSTERED`` keywords,
@@ -1390,7 +1383,6 @@
     .. change::
         :tags: mssql, feature
         :tickets: 2644
-        :pullreq: 32
 
       DDL for IDENTITY columns is now supported on
       non-primary key columns, by establishing a
@@ -1439,14 +1431,12 @@
 
     .. change::
         :tags: mysql, feature
-        :pullreq: 33
 
       GAE dialect now accepts username/password arguments in the URL,
       courtesy Owen Nelson.
 
     .. change::
         :tags: mysql, bug
-        :pullreq: 33
 
       GAE dialect won't fail on None match if the error code can't be extracted
       from the exception throw; courtesy Owen Nelson.
@@ -1839,7 +1829,6 @@
 
     .. change::
         :tags: sqlite
-        :pullreq: 23
         :changeset: c3addcc9ffad
 
       Added :class:`.types.NCHAR`, :class:`.types.NVARCHAR`
