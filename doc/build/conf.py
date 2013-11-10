@@ -64,14 +64,11 @@ changelog_inner_tag_sort = ["feature", "bug", "moved", "changed", "removed"]
 # how to render changelog links
 changelog_render_ticket = "http://www.sqlalchemy.org/trac/ticket/%s"
 
-def changelog_render_pullreq(refname):
-    url = "https://bitbucket.org/zzzeek/sqlalchemy/pull-request/%s"
-    if refname.startswith("github:"):
-        url = "https://github.com/zzzeek/sqlalchemy/pull/%s"
-        refname = refname.split(":")[1]
-    elif refname.startswith("bitbucket:"):
-        refname = refname.split(":")[1]
-    return url % refname
+changelog_render_pullreq = {
+    "bitbucket": "https://bitbucket.org/zzzeek/sqlalchemy/pull-request/%s",
+    "default": "https://bitbucket.org/zzzeek/sqlalchemy/pull-request/%s",
+    "github": "https://github.com/zzzeek/sqlalchemy/pull/%s",
+}
 
 changelog_render_changeset = "http://www.sqlalchemy.org/trac/changeset/%s"
 
