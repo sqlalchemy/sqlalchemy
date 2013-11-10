@@ -1,2 +1,2 @@
 mako
-changelog
+changelog>=0.3.2
