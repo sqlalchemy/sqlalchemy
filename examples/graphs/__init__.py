@@ -8,4 +8,6 @@ and querying for lower- and upper- neighbors are illustrated::
     n2.add_neighbor(n5)
     print n2.higher_neighbors()
 
+.. autosource::
+
 """

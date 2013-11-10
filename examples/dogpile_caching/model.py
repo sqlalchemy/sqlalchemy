@@ -1,6 +1,7 @@
-"""Model.   We are modeling Person objects with a collection
-of Address objects.  Each Address has a PostalCode, which
-in turn references a City and then a Country:
+"""model.py
+
+The datamodel, which represents Person that has multiple
+Address objects, each with PostalCode, City, Country.
 
 Person --(1..n)--> Address
 Address --(has a)--> PostalCode

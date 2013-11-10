@@ -1,7 +1,9 @@
-"""This script duplicates adjacency_list.py, but optimizes the loading
-of XML nodes to be based on a "flattened" datamodel. Any number of XML documents,
-each of arbitrary complexity, can be loaded in their entirety via a single query
-which joins on only three tables.
+"""Uses the same strategy as
+  ``adjacency_list.py``, but associates each   DOM row with its owning
+  document row, so that a full document of DOM nodes can be loaded
+  using O(1) queries - the construction of the "hierarchy" is performed
+  after the load in a non-recursive fashion and is more
+  efficient.
 
 """
 

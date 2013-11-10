@@ -1,7 +1,8 @@
 """caching_query.py
 
-Represent persistence structures which allow the usage of
-dogpile.cache caching with SQLAlchemy.
+Represent functions and classes
+which allow the usage of Dogpile caching with SQLAlchemy.
+Introduces a query option called FromCache.
 
 The three new concepts introduced here are:
 

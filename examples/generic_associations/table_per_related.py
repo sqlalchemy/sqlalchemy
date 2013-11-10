@@ -1,7 +1,8 @@
 """table_per_related.py
 
-The HasAddresses mixin will provide a new "address" table for
-each parent class, as well as a distinct "Address" subclass.
+Illustrates a generic association which persists association
+objects within individual tables, each one generated to persist
+those objects on behalf of a particular parent class.
 
 This configuration has the advantage that each type of parent
 maintains its "Address" rows separately, so that collection

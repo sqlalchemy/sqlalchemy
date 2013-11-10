@@ -1,3 +1,5 @@
+"""Single-table inheritance example."""
+
 from sqlalchemy import MetaData, Table, Column, Integer, String, \
     ForeignKey, create_engine
 from sqlalchemy.orm import mapper, relationship, sessionmaker

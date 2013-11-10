@@ -1,4 +1,4 @@
-"""this example illustrates a polymorphic load of two classes"""
+"""Joined-table (table-per-subclass) inheritance example."""
 
 from sqlalchemy import Table, Column, Integer, String, \
     ForeignKey, create_engine, inspect, or_

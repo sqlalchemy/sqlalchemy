@@ -9,4 +9,6 @@ objects is very large, including:
   ``passive_deletes=True`` to greatly improve the performance of
   related collection deletion.
 
+.. autosource::
+
 """

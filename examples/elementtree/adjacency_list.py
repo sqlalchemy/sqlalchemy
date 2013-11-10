@@ -1,9 +1,17 @@
-"""illustrates an explicit way to persist an XML document expressed using ElementTree.
+"""Illustrates an explicit way to persist an XML document expressed using ElementTree.
+
+Each DOM node is stored in an individual
+table row, with attributes   represented in a separate table.  The
+nodes are associated in a hierarchy using an adjacency list
+structure.  A query function is introduced which can search for nodes
+along any path with a given   structure of attributes, basically a
+(very narrow) subset of xpath.
 
 This example explicitly marshals/unmarshals the ElementTree document into
 mapped entities which have their own tables.  Compare to pickle.py which
 uses pickle to accomplish the same task.  Note that the usage of both
 styles of persistence are identical, as is the structure of the main Document class.
+
 """
 
 ################################# PART I - Imports/Coniguration ####################################

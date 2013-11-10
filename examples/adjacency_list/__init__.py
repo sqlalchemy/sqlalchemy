@@ -12,5 +12,7 @@ E.g.::
 
     dump_tree(node)
 
+.. autosource::
+
 """
 

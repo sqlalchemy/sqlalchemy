@@ -1,3 +1,5 @@
+"""Concrete (table-per-class) inheritance example."""
+
 from sqlalchemy import create_engine, MetaData, Table, Column, Integer, \
     String
 from sqlalchemy.orm import mapper, sessionmaker, polymorphic_union

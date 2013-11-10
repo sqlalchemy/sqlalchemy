@@ -1,16 +1,14 @@
 """discriminator_on_related.py
 
-The HasAddresses mixin will provide a relationship
-to the fixed Address table based on a fixed association table.
+Illustrates a mixin which provides a generic association
+using a single target table and a single association table,
+referred to by all parent tables.  The association table
+contains a "discriminator" column which determines what type of
+parent object associates to each particular row in the association
+table.
 
-The association table contains a "discriminator"
-which determines what type of parent object associates to the
-Address row.  SQLAlchemy's single-table-inheritance feature is used
+SQLAlchemy's single-table-inheritance feature is used
 to target different association types.
-
-This is a "polymorphic association".   Even though a "discriminator"
-that refers to a particular table is present, the extra association
-table is used so that traditional foreign key constraints may be used.
 
 This configuration attempts to simulate a so-called "generic foreign key"
 as closely as possible without actually foregoing the use of real

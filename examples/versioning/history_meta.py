@@ -1,3 +1,5 @@
+"""Versioned mixin class and other utilities."""
+
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import mapper, class_mapper, attributes, object_mapper
 from sqlalchemy.orm.exc import UnmappedClassError, UnmappedColumnError

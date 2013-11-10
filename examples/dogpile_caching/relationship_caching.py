@@ -1,5 +1,8 @@
 """relationship_caching.py
 
+Illustrates how to add cache options on
+relationship endpoints, so that lazyloads load from cache.
+
 Load a set of Person and Address objects, specifying that
 related PostalCode, City, Country objects should be pulled from long
 term cache.

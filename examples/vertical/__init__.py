@@ -29,5 +29,6 @@ Example::
                 AnimalFact.value == True))))
     print 'weasel-like animals', q.all()
 
+.. autosource::
 
 """

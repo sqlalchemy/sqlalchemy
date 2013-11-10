@@ -1,4 +1,8 @@
-"""A basic example of using the association object pattern.
+"""basic_association.py
+
+illustrate a many-to-many relationship between an
+"Order" and a collection of "Item" objects, associating a purchase price
+with each via an association object called "OrderItem"
 
 The association object pattern is a form of many-to-many which
 associates additional data with each association between parent/child.

@@ -3,4 +3,6 @@
 string keys) can operate upon a large collection without loading the
 full collection at once.
 
+.. autosource::
+
 """

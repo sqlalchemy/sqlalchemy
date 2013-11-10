@@ -1,3 +1,5 @@
+"""Unit tests illustrating usage of the ``history_meta.py`` module functions."""
+
 from unittest import TestCase
 from sqlalchemy.ext.declarative import declarative_base
 from .history_meta import Versioned, versioned_session

@@ -1,12 +1,11 @@
 """generic_fk.py
 
-This example will emulate key aspects of the system used by popular
-frameworks such as Django, ROR, etc.
-
-It approaches the issue by bypassing standard referential integrity
-practices, and producing a so-called "generic foreign key", which means
-a database column that is not constrained to refer to any particular table.
-In-application logic is used to determine which table is referenced.
+Illustrates a so-called "generic foreign key", in a similar fashion
+to that of popular frameworks such as Django, ROR, etc.  This
+approach bypasses standard referential integrity
+practices, in that the "foreign key" column is not actually
+constrained to refer to any particular table; instead,
+in-application logic is used to determine which table is referenced.
 
 This approach is not in line with SQLAlchemy's usual style, as foregoing
 foreign key integrity means that the tables can easily contain invalid

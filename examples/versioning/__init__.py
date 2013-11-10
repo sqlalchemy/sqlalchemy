@@ -57,4 +57,6 @@ can be applied::
 
     SomeHistoryClass = SomeClass.__history_mapper__.class_
 
+.. autosource::
+
 """

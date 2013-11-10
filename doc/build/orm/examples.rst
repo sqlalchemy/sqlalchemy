@@ -12,23 +12,20 @@ each of which are listed below.
 Additional SQLAlchemy examples, some user contributed, are available on the
 wiki at `<http://www.sqlalchemy.org/trac/wiki/UsageRecipes>`_.
 
+
 .. _examples_adjacencylist:
 
 Adjacency List
 --------------
 
-Location: /examples/adjacency_list/
-
-.. automodule:: adjacency_list
+.. automodule:: examples.adjacency_list
 
 .. _examples_associations:
 
 Associations
 ------------
 
-Location: /examples/association/
-
-.. automodule:: association
+.. automodule:: examples.association
 
 
 .. _examples_instrumentation:
@@ -36,105 +33,74 @@ Location: /examples/association/
 Attribute Instrumentation
 -------------------------
 
-Location: /examples/custom_attributes/
-
-.. automodule:: custom_attributes
+.. automodule:: examples.custom_attributes
 
 .. _examples_caching:
 
 Dogpile Caching
 ---------------
 
-Location: /examples/dogpile_caching/
-
-.. automodule:: dogpile_caching
+.. automodule:: examples.dogpile_caching
 
 Directed Graphs
 ---------------
 
-Location: /examples/graphs/
-
-.. automodule:: graphs
+.. automodule:: examples.graphs
 
 Dynamic Relations as Dictionaries
 ----------------------------------
 
-Location: /examples/dynamic_dict/
-
-.. automodule:: dynamic_dict
+.. automodule:: examples.dynamic_dict
 
 .. _examples_generic_associations:
 
 Generic Associations
 --------------------
 
-Location: /examples/generic_associations
-
-.. automodule:: generic_associations
+.. automodule:: examples.generic_associations
 
 .. _examples_sharding:
 
 Horizontal Sharding
 -------------------
 
-Location: /examples/sharding
-
-.. automodule:: sharding
+.. automodule:: examples.sharding
 
 Inheritance Mappings
 --------------------
 
-Location: /examples/inheritance/
-
-.. automodule:: inheritance
+.. automodule:: examples.inheritance
 
 Large Collections
 -----------------
 
-Location: /examples/large_collection/
-
-.. automodule:: large_collection
+.. automodule:: examples.large_collection
 
 Nested Sets
 -----------
 
-Location: /examples/nested_sets/
-
-.. automodule:: nested_sets
-
-Polymorphic Associations
-------------------------
-
-See :ref:`examples_generic_associations` for a modern version of polymorphic associations.
+.. automodule:: examples.nested_sets
 
 .. _examples_postgis:
 
 PostGIS Integration
 -------------------
 
-Location: /examples/postgis
-
-.. automodule:: postgis
+.. automodule:: examples.postgis
 
 Versioned Objects
 -----------------
 
-Location: /examples/versioning
-
-.. automodule:: versioning
+.. automodule:: examples.versioning
 
 Vertical Attribute Mapping
 --------------------------
 
-Location: /examples/vertical
-
-.. automodule:: vertical
+.. automodule:: examples.vertical
 
 .. _examples_xmlpersistence:
 
 XML Persistence
 ---------------
 
-Location: /examples/elementtree/
-
-.. automodule:: elementtree
+.. automodule:: examples.elementtree
