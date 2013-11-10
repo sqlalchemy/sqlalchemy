@@ -294,8 +294,39 @@ using the Python warnings filter (see http://docs.python.org/library/warnings.ht
 ORM Configuration
 ==================
 
+.. _faq_mapper_primary_key:
+
 How do I map a table that has no primary key?
 ---------------------------------------------
+
+The SQLAlchemy ORM, in order to map to a particular table, needs there to be
+at least one column denoted as a primary key column; multiple-column,
+i.e. composite, primary keys are of course entirely feasible as well.  These
+columns do **not** need to be actually known to the database as primary key
+columns, though it's a good idea that they are.  It's only necessary that the columns
+*behave* as a primary key does, e.g. as a unique and not nullable identifier
+for a row.
+
+Most ORMs require that objects have some kind of primary key defined at the
+because the object in memory must correspond to a uniquely identifiable
+row in the database table; at the very least, this allows the
+object can be targeted for UPDATE and DELETE statements which will affect only
+that object's row and no other.   However, the importance of the primary key
+goes far beyond that.  In SQLAlchemy, all ORM-mapped objects are at all times
+linked uniquely within a :class:`.Session`
+to their specific database row using a pattern called the :term:`identity map`,
+a pattern that's central to the unit of work system employed by SQLAlchemy,
+and is also key to the most common (and not-so-common) patterns of ORM usage.
+
+
+.. note::
+
+	It's important to note that we're only talking about the SQLAlchemy ORM; an
+	application which builds on Core and deals only with :class:`.Table` objects,
+	:func:`.select` constructs and the like, **does not** need any primary key
+	to be present on or associated with a table in any way (though again, in SQL, all tables
+	should really have some kind of primary key, lest you need to actually
+	update or delete specific rows).
 
 In almost all cases, a table does have a so-called :term:`candidate key`, which is a column or series
 of columns that uniquely identify a row.  If a table truly doesn't have this, and has actual

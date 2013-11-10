@@ -322,10 +322,16 @@ th.field-name {
     text-align:right;
 }
 
+div.section {
+  clear:right;
+}
 div.note, div.warning, p.deprecated, div.topic, div.admonition  {
     background-color:#EEFFEF;
 }
 
+.footnote {
+  font-size: .95em;
+}
 
 div.faq {
   background-color: #EFEFEF;
@@ -348,7 +354,7 @@ div.sidebar {
     background-color: #FFFFEE;
     border: 1px solid #DDDDBB;
     float: right;
-    margin: 0 0 0.5em 1em;
+    margin: 10px 0 10px 1em;
     padding: 7px 7px 0;
     width: 40%;
     font-size:.9em;
