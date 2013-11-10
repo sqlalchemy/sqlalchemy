@@ -9,6 +9,14 @@ import os
 from docutils.statemachine import StringList
 from sphinx.environment import NoUri
 
+import sys
+
+py2k = sys.version_info < (3, 0)
+if py2k:
+    text_type = unicode
+else:
+    text_type = str
+
 def view_source(name, rawtext, text, lineno, inliner,
                       options={}, content=[]):
 
@@ -56,7 +64,7 @@ def _view_source_node(env, text, state):
     analyzer = ModuleAnalyzer.for_file(pathname, modname)
     # copied from viewcode
     analyzer.find_tags()
-    if not isinstance(analyzer.code, unicode):
+    if not isinstance(analyzer.code, text_type):
         code = analyzer.code.decode(analyzer.encoding)
     else:
         code = analyzer.code
