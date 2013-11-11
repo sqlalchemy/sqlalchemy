@@ -238,7 +238,7 @@ A synopsis is as follows:
       class timestamp(ColumnElement):
           type = TIMESTAMP()
 
-* :class:`~sqlalchemy.sql.expression.FunctionElement` - This is a hybrid of a
+* :class:`~sqlalchemy.sql.functions.FunctionElement` - This is a hybrid of a
   ``ColumnElement`` and a "from clause" like object, and represents a SQL
   function or stored procedure type of call. Since most databases support
   statements along the line of "SELECT FROM <some function>"

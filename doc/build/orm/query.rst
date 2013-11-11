@@ -13,7 +13,7 @@ For an in-depth introduction to querying with the SQLAlchemy ORM, please see the
 The Query Object
 ----------------
 
-:class:`~.Query` is produced in terms of a given :class:`~.Session`, using the :func:`~.Query.query` function::
+:class:`~.Query` is produced in terms of a given :class:`~.Session`, using the :meth:`~.Session.query` method::
 
     q = session.query(SomeMappedClass)
 

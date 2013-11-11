@@ -328,7 +328,7 @@ connect it to the :class:`~sqlalchemy.orm.session.Session` using
 This custom-made :class:`~sqlalchemy.orm.session.Session` class will create
 new :class:`~sqlalchemy.orm.session.Session` objects which are bound to our
 database. Other transactional characteristics may be defined when calling
-:func:`~.sessionmaker` as well; these are described in a later
+:class:`~.sessionmaker` as well; these are described in a later
 chapter. Then, whenever you need to have a conversation with the database, you
 instantiate a :class:`~sqlalchemy.orm.session.Session`::
 
@@ -628,7 +628,7 @@ class:
     <User(name='fred', fullname='Fred Flinstone', password='blah')> fred
 
 You can control the names of individual column expressions using the
-:meth:`~.CompareMixin.label` construct, which is available from
+:meth:`~.ColumnElement.label` construct, which is available from
 any :class:`.ColumnElement`-derived object, as well as any class attribute which
 is mapped to one (such as ``User.name``):
 
@@ -646,7 +646,7 @@ is mapped to one (such as ``User.name``):
 
 The name given to a full entity such as ``User``, assuming that multiple
 entities are present in the call to :meth:`~.Session.query`, can be controlled using
-:class:`~.orm.aliased` :
+:func:`~.sqlalchemy.orm.aliased` :
 
 .. sourcecode:: python+sql
 
