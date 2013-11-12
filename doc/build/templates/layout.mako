@@ -2,7 +2,13 @@
 
 <%!
     local_script_files = []
+
+    default_css_files = [
+        '_static/pygments.css',
+        '_static/docs.css',
+    ]
 %>
+
 
 <%doc>
     Structural elements are all prefixed with "docs-"
@@ -38,12 +44,12 @@ withsidebar = bool(toc) and current_page_name != 'index'
 
 <div id="docs-container">
 
+
 <%block name="headers">
+
     ${parent.headers()}
 
     <!-- begin layout.mako headers -->
-    <link rel="stylesheet" href="${pathto('_static/pygments.css', 1)}" type="text/css" />
-    <link rel="stylesheet" href="${pathto('_static/docs.css', 1)}" type="text/css" />
 
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
