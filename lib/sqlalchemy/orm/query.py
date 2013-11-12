@@ -70,6 +70,7 @@ class Query(object):
     _criterion = None
     _yield_per = None
     _lockmode = None
+    _lockmode_of = None
     _order_by = False
     _group_by = False
     _having = None
@@ -1124,7 +1125,7 @@ class Query(object):
         self._execution_options = self._execution_options.union(kwargs)
 
     @_generative()
-    def with_lockmode(self, mode):
+    def with_lockmode(self, mode, of=None):
         """Return a new Query object with the specified locking mode.
 
         :param mode: a string representing the desired locking mode. A
@@ -1148,9 +1149,13 @@ class Query(object):
 
             .. versionadded:: 0.7.7
                 ``FOR SHARE`` and ``FOR SHARE NOWAIT`` (PostgreSQL).
+        :param of: a table descriptor representing the optional OF
+            part of the clause. This passes ``for_update_of=table'``
+            which translates to ``FOR UPDATE OF table [NOWAIT]``.
         """
 
         self._lockmode = mode
+        self._lockmode_of = of
 
     @_generative()
     def params(self, *args, **kwargs):
@@ -2705,6 +2710,9 @@ class Query(object):
             except KeyError:
                 raise sa_exc.ArgumentError(
                                 "Unknown lockmode %r" % self._lockmode)
+            if self._lockmode_of is not None:
+                context.for_update_of = self._lockmode_of
+
         for entity in self._entities:
             entity.setup_context(self, context)
 
@@ -2789,6 +2797,7 @@ class Query(object):
         statement = sql.select(
                             [inner] + context.secondary_columns,
                             for_update=context.for_update,
+                            for_update_of=context.for_update_of,
                             use_labels=context.labels)
 
         from_clause = inner
@@ -2834,6 +2843,7 @@ class Query(object):
                         from_obj=context.froms,
                         use_labels=context.labels,
                         for_update=context.for_update,
+                        for_update_of=context.for_update_of,
                         order_by=context.order_by,
                         **self._select_args
                     )
@@ -3415,6 +3425,7 @@ class QueryContext(object):
     adapter = None
     froms = ()
     for_update = False
+    for_update_of = None
 
     def __init__(self, query):
 

@@ -1571,6 +1571,8 @@ class SQLCompiler(Compiled):
 
     def for_update_clause(self, select):
         if select.for_update:
+            if select.for_update_of is not None:
+                return " FOR UPDATE OF " + select.for_update_of
             return " FOR UPDATE"
         else:
             return ""
