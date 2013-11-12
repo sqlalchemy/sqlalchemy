@@ -732,7 +732,7 @@ class RelationshipProperty(StrategizedProperty):
         @util.memoized_property
         def mapper(self):
             """The target :class:`.Mapper` referred to by this
-            :class:`.RelationshipProperty.Comparator.
+            :class:`.RelationshipProperty.Comparator`.
 
             This is the "target" or "remote" side of the
             :func:`.relationship`.
@@ -1372,7 +1372,8 @@ class RelationshipProperty(StrategizedProperty):
     def table(self):
         """Return the selectable linked to this
         :class:`.RelationshipProperty` object's target
-        :class:`.Mapper`."""
+        :class:`.Mapper`.
+        """
         return self.target
 
     def do_init(self):

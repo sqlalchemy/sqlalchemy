@@ -246,11 +246,11 @@ class FromClause(Selectable):
         :param column: the target :class:`.ColumnElement` to be matched
 
         :param require_embedded: only return corresponding columns for
-        the given :class:`.ColumnElement`, if the given :class:`.ColumnElement` 
-        is actually present within a sub-element
-        of this :class:`.FromClause`.  Normally the column will match if
-        it merely shares a common ancestor with one of the exported
-        columns of this :class:`.FromClause`.
+         the given :class:`.ColumnElement`, if the given :class:`.ColumnElement` 
+         is actually present within a sub-element
+         of this :class:`.FromClause`.  Normally the column will match if
+         it merely shares a common ancestor with one of the exported
+         columns of this :class:`.FromClause`.
 
         """
 

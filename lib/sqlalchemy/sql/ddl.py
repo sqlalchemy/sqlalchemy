@@ -195,7 +195,7 @@ class DDLElement(Executable, _DDLCompiles):
           If the callable returns a true value, the DDL statement will be
           executed.
 
-        :param state: any value which will be passed to the callable_
+        :param state: any value which will be passed to the callable\_
           as the ``state`` keyword argument.
 
         .. seealso::

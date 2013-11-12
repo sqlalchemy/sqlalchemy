@@ -364,7 +364,8 @@ class Table(SchemaItem, TableClause):
     @util.deprecated('0.9', 'Use ``table.schema.quote``')
     def quote_schema(self):
         """Return the value of the ``quote_schema`` flag passed
-        to this :class:`.Table`."""
+        to this :class:`.Table`.
+        """
 
         return self.schema.quote
 
