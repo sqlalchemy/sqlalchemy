@@ -9,6 +9,15 @@
             <%block name="head_title">
             </%block>
         </title>
+
+        <%block name="css">
+            <!-- begin iterate through SQLA + sphinx environment css_files -->
+            % for cssfile in self.attr.default_css_files + css_files:
+                <link rel="stylesheet" href="${pathto(cssfile, 1)}" type="text/css" />
+            % endfor
+            <!-- end iterate through SQLA + sphinx environment css_files -->
+        </%block>
+
         <%block name="headers"/>
     </head>
     <body>
