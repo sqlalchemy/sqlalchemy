@@ -44,16 +44,8 @@ withsidebar = bool(toc) and current_page_name != 'index'
 
 <div id="docs-container">
 
-<%block name="css">
-    <!-- begin iterate through SQLA + sphinx environment css_files -->
-    % for cssfile in default_css_files + css_files:
-        <link rel="stylesheet" href="${pathto(cssfile, 1)}" type="text/css" />
-    % endfor
-    <!-- end iterate through SQLA + sphinx environment css_files -->
-</%block>
 
 <%block name="headers">
-
 
     ${parent.headers()}
 
