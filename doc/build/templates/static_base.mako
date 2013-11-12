@@ -9,6 +9,7 @@
             <%block name="head_title">
             </%block>
         </title>
+        <%block name="css"/>
         <%block name="headers"/>
     </head>
     <body>
