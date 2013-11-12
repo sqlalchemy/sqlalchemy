@@ -83,14 +83,11 @@
         :tickets: 
 
       Added "add()" and "add_all()" to scoped_session
-      methods.  Workaround for 0.4.7:
+      methods.  Workaround for 0.4.7::
       
-        from sqlalchemy.orm.scoping import ScopedSession,\
-        instrument
-        setattr(
-            ScopedSession, "add", instrument("add"))
-        setattr(
-            ScopedSession, "add_all", instrument("add_all"))
+        from sqlalchemy.orm.scoping import ScopedSession, instrument
+        setattr(ScopedSession, "add", instrument("add"))
+        setattr(ScopedSession, "add_all", instrument("add_all"))
 
     .. change::
         :tags: orm
@@ -344,7 +341,7 @@
         :tags: orm
         :tickets: 
 
-      set-based collections |=, -=, ^= and &= are stricter about
+      set-based collections \|=, -=, ^= and &= are stricter about
       their operands and only operate on sets, frozensets or
       subclasses of the collection type. Previously, they would
       accept any duck-typed set.
@@ -424,7 +421,7 @@
         :tags: ext
         :tickets: 
 
-      set-based association proxies |=, -=, ^= and &= are
+      set-based association proxies \|=, -=, ^= and &= are
       stricter about their operands and only operate on sets,
       frozensets or other association proxies. Previously, they
       would accept any duck-typed set.
@@ -541,11 +538,12 @@
       
       The new approach also automatically allows eager loads
       to work for subclasses, if they are present, for
-      example
+      example::
+
         sess.query(Company).options(
          eagerload_all(
-         
         ))
+
       to load Company objects, their employees, and the
       'machines' collection of employees who happen to be
       Engineers. A "with_polymorphic" Query option should be
@@ -561,7 +559,7 @@
       is not carved in stone just yet:  _values() and
       _from_self().  We'd like feedback on these.
       
-      - _values(*columns) is given a list of column
+      - _values(\*columns) is given a list of column
         expressions, and returns a new Query that only
         returns those columns. When evaluated, the return
         value is a list of tuples just like when using
@@ -594,7 +592,7 @@
         :tickets: 
 
       query.order_by() and query.group_by() will accept
-      multiple arguments using *args (like select()
+      multiple arguments using \*args (like select()
       already does).
 
     .. change::
@@ -1780,7 +1778,7 @@
         :tags: ext
         :tickets: 
 
-      '+', '*', '+=' and '*=' support for association
+      '+', '*', '+=' and '\*=' support for association
       proxied lists.
 
     .. change::
@@ -1866,7 +1864,7 @@
         :tickets: 
 
       added new flag to String and create_engine(),
-      assert_unicode=(True|False|'warn'|None). Defaults to `False` or `None` on
+      assert_unicode=(True|False|'warn'\|None). Defaults to `False` or `None` on
       create_engine() and String, `'warn'` on the Unicode type. When `True`,
       results in all unicode conversion operations raising an exception when a
       non-unicode bytestring is passed as a bind parameter. 'warn' results
@@ -2010,8 +2008,8 @@
         :tickets: 908
 
       mapped classes which extend "object" and do not provide an
-      __init__() method will now raise TypeError if non-empty *args
-      or **kwargs are present at instance construction time (and are
+      __init__() method will now raise TypeError if non-empty \*args
+      or \**kwargs are present at instance construction time (and are
       not consumed by any extensions such as the scoped_session mapper),
       consistent with the behavior of normal Python classes
 
@@ -2818,10 +2816,10 @@
         :tickets: 
 
       Improvements and fixes on Firebird reflection:
-      . FBDialect now mimics OracleDialect, regarding case-sensitivity of TABLE and
-        COLUMN names (see 'case_sensitive remotion' topic on this current file).
-      . FBDialect.table_names() doesn't bring system tables (ticket:796).
-      . FB now reflects Column's nullable property correctly.
+        * FBDialect now mimics OracleDialect, regarding case-sensitivity of TABLE and
+          COLUMN names (see 'case_sensitive remotion' topic on this current file).
+        * FBDialect.table_names() doesn't bring system tables (ticket:796).
+        * FB now reflects Column's nullable property correctly.
 
     .. change::
         :tags: 
@@ -2963,7 +2961,7 @@
         :tags: 
         :tickets: 
 
-      Changed the API for the in_ operator. in_() now accepts a single argument
+      Changed the API for the in\_ operator. in_() now accepts a single argument
       that is a sequence of values or a selectable. The old API of passing in
       values as varargs still works but is deprecated.
 
@@ -3246,7 +3244,7 @@
         :tags: 
         :tickets: 
 
-      Tidied up what ends up in your namespace when you 'from sqlalchemy import *':
+      Tidied up what ends up in your namespace when you 'from sqlalchemy import \*':
 
     .. change::
         :tags: 
@@ -3816,10 +3814,10 @@
       is represented by more than one column, when using the ORM.  Objects of
       the new type are fully functional in query expressions, comparisons,
       query.get() clauses, etc. and act as though they are regular single-column
-      scalars... except they're not!  Use the function composite(cls, *columns)
+      scalars... except they're not!  Use the function composite(cls, \*columns)
       inside of the mapper's "properties" dict, and instances of cls will be
       created/mapped to a single attribute, comprised of the values correponding
-      to *columns.
+      to \*columns.
 
     .. change::
         :tags: orm
@@ -3912,7 +3910,7 @@
         :tickets: 
 
       All "type" keyword arguments, such as those to bindparam(), column(),
-      Column(), and func.<something>(), renamed to "type_".  Those objects still
+      Column(), and func.<something>(), renamed to "type\_".  Those objects still
       name their "type" attribute as "type".
 
     .. change::

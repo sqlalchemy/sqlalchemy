@@ -695,7 +695,7 @@
         :tags: orm
         :tickets: 
 
-      session.get() and session.load() propagate **kwargs through to
+      session.get() and session.load() propagate \**kwargs through to
       query
 
     .. change::
@@ -979,7 +979,7 @@
         :tickets: 
 
       query strings in unicode URLs get keys encoded to ascii
-      for **kwargs compat
+      for \**kwargs compat
 
     .. change::
         :tags: sql
@@ -1113,7 +1113,7 @@
         :tickets: 
 
       support for SSL arguments given as inline within URL query string,
-      prefixed with "ssl_", courtesy terjeros@gmail.com.
+      prefixed with "ssl\_", courtesy terjeros@gmail.com.
 
     .. change::
         :tags: <schemaname>, mysql
@@ -1266,7 +1266,7 @@
         :tags: sql
         :tickets: 
 
-      the "else_" parameter to the case statement now properly works when
+      the "else\_" parameter to the case statement now properly works when
       set to zero.
 
     .. change::
@@ -1279,16 +1279,15 @@
       and a new one returned with additional criterion added.
       The new methods include:
       
-          filter() - applies select criterion to the query
-          filter_by() - applies "by"-style criterion to the query
-          avg() - return the avg() function on the given column
-          join() - join to a property (or across a list of properties)
-          outerjoin() - like join() but uses LEFT OUTER JOIN
-          limit()/offset() - apply LIMIT/OFFSET
-          range-based access which applies limit/offset:
-             session.query(Foo)[3:5]
-          distinct() - apply DISTINCT
-          list() - evaluate the criterion and return results
+          * filter() - applies select criterion to the query
+          * filter_by() - applies "by"-style criterion to the query
+          * avg() - return the avg() function on the given column
+          * join() - join to a property (or across a list of properties)
+          * outerjoin() - like join() but uses LEFT OUTER JOIN
+          * limit()/offset() - apply LIMIT/OFFSET range-based access 
+            which applies limit/offset: session.query(Foo)[3:5]
+          * distinct() - apply DISTINCT
+          * list() - evaluate the criterion and return results
       
       no incompatible changes have been made to Query's API and no methods
       have been deprecated.  Existing methods like select(), select_by(),
@@ -1321,7 +1320,7 @@
         :tags: orm
         :tickets: 
 
-      strings and columns can also be sent to the *args of instances()
+      strings and columns can also be sent to the \*args of instances()
       where those exact result columns will be part of the result tuples.
 
     .. change::
@@ -1488,7 +1487,7 @@
         :tags: mysql
         :tickets: 
 
-      added a catchall **kwargs to MSString, to help reflection of
+      added a catchall \**kwargs to MSString, to help reflection of
       obscure types (like "varchar() binary" in MS 4.0)
 
     .. change::
@@ -1526,7 +1525,7 @@
         :tickets: 
 
       fixed argument passing to straight textual execute() on engine,
-      connection. can handle *args or a list instance for positional, **kwargs
+      connection. can handle \*args or a list instance for positional, \**kwargs
       or a dict instance for named args, or a list of list or dicts to invoke
       executemany()
 
@@ -2364,7 +2363,7 @@
         :tags: engine/pool
         :tickets: 
 
-      create_engine() reworked to be strict about incoming **kwargs.  all keyword
+      create_engine() reworked to be strict about incoming \**kwargs.  all keyword
       arguments must be consumed by one of the dialect, connection pool, and engine
       constructors, else a TypeError is thrown which describes the full set of
       invalid kwargs in relation to the selected dialect/pool/engine configuration.

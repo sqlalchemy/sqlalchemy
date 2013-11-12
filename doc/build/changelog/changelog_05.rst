@@ -1093,7 +1093,7 @@
 
       Session.scalar() now converts raw SQL strings to text()
       the same way Session.execute() does and accepts same
-      alternative **kw args.
+      alternative \**kw args.
 
     .. change::
         :tags: orm
@@ -1506,7 +1506,7 @@
         :tickets: 
 
       ColumnProperty (and front-end helpers such as ``deferred``) no
-      longer ignores unknown **keyword arguments.
+      longer ignores unknown \**keyword arguments.
 
     .. change::
         :tags: orm
@@ -2903,7 +2903,7 @@
         :tags: orm
         :tickets: 
 
-      The RowTuple object returned by Query(*cols) now features
+      The RowTuple object returned by Query(\*cols) now features
       keynames which prefer mapped attribute names over column keys,
       column keys over column names, i.e.  Query(Class.foo,
       Class.bar) will have names "foo" and "bar" even if those are
@@ -2984,7 +2984,7 @@
         :tickets: 1140
 
       class.someprop.in_() raises NotImplementedError pending the
-      implementation of "in_" for relation
+      implementation of "in\_" for relation
 
     .. change::
         :tags: orm
@@ -3499,7 +3499,7 @@
 
       Unicode, UnicodeText types now set "assert_unicode" and
       "convert_unicode" by default, but accept overriding
-      **kwargs for these values.
+      \**kwargs for these values.
 
     .. change::
         :tags: sql
