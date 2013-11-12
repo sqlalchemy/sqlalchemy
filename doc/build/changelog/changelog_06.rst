@@ -1013,7 +1013,7 @@
       New Query methods: query.label(name), query.as_scalar(),
       return the query's statement as a scalar subquery
       with /without label;
-      query.with_entities(*ent), replaces the SELECT list of
+      query.with_entities(\*ent), replaces the SELECT list of
       the query with new entities.
       Roughly equivalent to a generative form of query.values()
       which accepts mapped entities as well as column
@@ -1246,7 +1246,7 @@
         :tags: sql
         :tickets: 
 
-      Added type_coerce(expr, type_) expression element.
+      Added type_coerce(expr, type\_) expression element.
       Treats the given expression as the given type when evaluating
       expressions and processing result rows, but does not
       affect the generation of SQL, other than an anonymous
@@ -3005,7 +3005,7 @@
         :tags: orm
         :tickets: 
 
-      Query gains an add_columns(*columns) method which is a multi-
+      Query gains an add_columns(\*columns) method which is a multi-
       version of add_column(col).  add_column(col) is future
       deprecated.
 
@@ -3641,9 +3641,9 @@
         :tags: declarative
         :tickets: 
 
-      DeclarativeMeta exclusively uses cls.__dict__ (not dict_)
+      DeclarativeMeta exclusively uses cls.__dict__ (not dict\_)
       as the source of class information; _as_declarative exclusively
-      uses the  dict_ passed to it as the source of class information
+      uses the  dict\_ passed to it as the source of class information
       (which when using DeclarativeMeta is cls.__dict__).  This should
       in theory make it easier for custom metaclasses to modify
       the state passed into _as_declarative.
@@ -4190,10 +4190,10 @@
        * Passing a single list of elements to eagerload(),
          eagerload_all(), contains_eager(), lazyload(),
          defer(), and undefer() instead of multiple positional
-         *args is deprecated.
+         \*args is deprecated.
        * Passing a single list of elements to query.order_by(),
          query.group_by(), query.join(), or query.outerjoin()
-         instead of multiple positional *args is deprecated.
+         instead of multiple positional \*args is deprecated.
        * query.iterate_instances() is removed.  Use query.instances().
        * Query.query_from_parent() is removed.  Use the
          sqlalchemy.orm.with_parent() function to produce a
@@ -4363,7 +4363,7 @@
       "expr != expr" can be very expensive, and it's preferred
       that the user not issue in_() if the list is empty,
       instead simply not querying, or modifying the criterion
-       as appropriate for more complex situations.
+      as appropriate for more complex situations.
 
     .. change::
         :tags: sql
@@ -4523,7 +4523,7 @@
         * the "connection" argument from engine.transaction() and
           engine.run_callable() is removed - Connection itself
           now has those methods.   All four methods accept
-          *args and **kwargs which are passed to the given callable,
+          \*args and \**kwargs which are passed to the given callable,
           as well as the operating connection.
 
     .. change::
@@ -4570,11 +4570,13 @@
 
       Removed public mutability from Index and Constraint
       objects:
-        - ForeignKeyConstraint.append_element()
-        - Index.append_column()
-        - UniqueConstraint.append_column()
-        - PrimaryKeyConstraint.add()
-        - PrimaryKeyConstraint.remove()
+
+        * ForeignKeyConstraint.append_element()
+        * Index.append_column()
+        * UniqueConstraint.append_column()
+        * PrimaryKeyConstraint.add()
+        * PrimaryKeyConstraint.remove()
+
       These should be constructed declaratively (i.e. in one
       construction).
 
@@ -4682,18 +4684,22 @@
       The signature of the "on" callable passed to DDL() and
       DDLElement() is revised as follows:
       
-        "ddl" - the DDLElement object itself.
-        "event" - the string event name.
-        "target" - previously "schema_item", the Table or
-        MetaData object triggering the event.
-        "connection" - the Connection object in use for the operation.
-        **kw - keyword arguments.  In the case of MetaData before/after
-          create/drop, the list of Table objects for which
-          CREATE/DROP DDL is to be issued is passed as the kw
-          argument "tables". This is necessary for metadata-level
-          DDL that is dependent on the presence of specific tables.
+        ddl
+            the DDLElement object itself
+        event
+            the string event name.
+        target
+            previously "schema_item", the Table or MetaData object triggering the event.
+        connection
+            the Connection object in use for the operation.
+        \**kw
+            keyword arguments.  In the case of MetaData before/after
+            create/drop, the list of Table objects for which
+            CREATE/DROP DDL is to be issued is passed as the kw
+            argument "tables". This is necessary for metadata-level
+            DDL that is dependent on the presence of specific tables.
       
-      - the "schema_item" attribute of DDL has been renamed to
+      The "schema_item" attribute of DDL has been renamed to
         "target".
 
     .. change::

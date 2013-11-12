@@ -170,7 +170,7 @@
         :tags: 
         :tickets: 287
 
-      fix to using query.count() with distinct, **kwargs with SelectResults
+      fix to using query.count() with distinct, \**kwargs with SelectResults
       count()
 
     .. change::

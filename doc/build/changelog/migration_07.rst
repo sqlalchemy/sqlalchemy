@@ -288,8 +288,7 @@ events back to the owning parent or parents.   The extension
 includes an approach for scalar database values, such as
 those managed by ``PickleType``, ``postgresql.ARRAY``, or
 other custom ``MutableType`` classes, as well as an approach
-for ORM "composites", those configured using :ref:`composite()
-<mapper_composite>`_.
+for ORM "composites", those configured using :func:`~.sqlalchemy.orm.composite`.
 
 .. seealso::
 
