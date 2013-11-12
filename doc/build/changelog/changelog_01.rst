@@ -182,7 +182,7 @@
         :tickets: 
 
       added a "mods" system which allows pluggable modules that modify/augment
-      core functionality, using the function "install_mods(*modnames)".
+      core functionality, using the function "install_mods(\*modnames)".
 
     .. change::
         :tags: 
@@ -421,7 +421,7 @@
         :tags: 
         :tickets: 
 
-      added *args, **kwargs pass-thru to engine.transaction(func) allowing easier
+      added \*args, \**kwargs pass-thru to engine.transaction(func) allowing easier
       creation of transactionalizing decorator functions
 
     .. change::
@@ -520,7 +520,7 @@
 
       create_engine() now uses genericized parameters; host/hostname,
       db/dbname/database, password/passwd, etc. for all engine connections. makes
-       engine URIs much more "universal"
+      engine URIs much more "universal"
 
     .. change::
         :tags: 
@@ -672,7 +672,7 @@
         :tags: 
         :tickets: 
 
-      added 'get_session().invalidate(*obj)' method to objectstore, instances will
+      added 'get_session().invalidate(\*obj)' method to objectstore, instances will
       refresh() themselves upon the next attribute access.
 
     .. change::
@@ -805,7 +805,7 @@
         :tags: 
         :tickets: 
 
-      added "refresh(*obj)" method to objectstore / Session to reload the attributes of
+      added "refresh(\*obj)" method to objectstore / Session to reload the attributes of
       any set of objects from the database unconditionally
 
 .. changelog::
@@ -856,14 +856,15 @@
 
       two issues related to postgres, which doesnt want to give you the "lastrowid"
       since oids are deprecated:
-         * postgres database-side defaults that are on primary key cols *do* execute
-      explicitly beforehand, even though thats not the idea of a PassiveDefault.  this is
-      because sequences on columns get reflected as PassiveDefaults, but need to be explicitly
-      executed on a primary key col so we know what we just inserted.
-         * if you did add a row that has a bunch of database-side defaults on it,
-      and the PassiveDefault thing was working the old way, i.e. they just execute on
-      the DB side, the "cant get the row back without an OID" exception that occurred
-      also will not happen unless someone (usually the ORM) explicitly asks for it.
+
+        * postgres database-side defaults that are on primary key cols *do* execute
+          explicitly beforehand, even though thats not the idea of a PassiveDefault.  this is
+          because sequences on columns get reflected as PassiveDefaults, but need to be explicitly
+          executed on a primary key col so we know what we just inserted.
+        * if you did add a row that has a bunch of database-side defaults on it,
+          and the PassiveDefault thing was working the old way, i.e. they just execute on
+          the DB side, the "cant get the row back without an OID" exception that occurred
+          also will not happen unless someone (usually the ORM) explicitly asks for it.
 
     .. change::
         :tags: 

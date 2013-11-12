@@ -11,7 +11,7 @@
         :tickets: 2851
         :versions: 0.8.3, 0.9.0b1
 
-        The regexp used by the :func:`.url.make_url` function now parses
+        The regexp used by the :func:`~.sqlalchemy.engine.url.make_url` function now parses
         ipv6 addresses, e.g. surrounded by brackets.
 
     .. change::
@@ -1188,12 +1188,12 @@
         :tickets:
 
       Added some decent context managers
-      to Engine, Connection:
+      to Engine, Connection::
 
           with engine.begin() as conn:
               <work with conn in a transaction>
 
-      and:
+      and::
 
           with engine.connect() as conn:
               <work with conn>
@@ -1778,10 +1778,10 @@
       polymorphic_on now accepts many
       new kinds of values:
 
-        - standalone expressions that aren't
+        * standalone expressions that aren't
           otherwise mapped
-        - column_property() objects
-        - string names of any column_property()
+        * column_property() objects
+        * string names of any column_property()
           or attribute name of a mapped Column
 
       The docs include an example using
@@ -2174,7 +2174,7 @@
 
       Enhanced the instrumentation in the ORM to support
       Py3K's new argument style of "required kw arguments",
-      i.e. fn(a, b, *, c, d), fn(a, b, *args, c, d).
+      i.e. fn(a, b, \*, c, d), fn(a, b, \*args, c, d).
       Argument signatures of mapped object's __init__
       method will be preserved, including required kw rules.
 
@@ -2196,8 +2196,9 @@
 
       Fixed a variety of synonym()-related regressions
       from 0.6:
-          - making a synonym against a synonym now works.
-          - synonyms made against a relationship() can
+
+          * making a synonym against a synonym now works.
+          * synonyms made against a relationship() can
             be passed to query.join(), options sent
             to query.options(), passed by name
             to query.with_parent().
@@ -2306,19 +2307,20 @@
         :tickets: 2239
 
       New declarative features:
-          - __declare_last__() method, establishes an event
-          listener for the class method that will be called
-          when mappers are completed with the final "configure"
-          step.
-          - __abstract__ flag.   The class will not be mapped
-          at all when this flag is present on the class.
-          - New helper classes ConcreteBase, AbstractConcreteBase.
-          Allow concrete mappings using declarative which automatically
-          set up the "polymorphic_union" when the "configure"
-          mapper step is invoked.
-          - The mapper itself has semi-private methods that allow
-          the "with_polymorphic" selectable to be assigned
-          to the mapper after it has already been configured.
+
+          * __declare_last__() method, establishes an event
+            listener for the class method that will be called
+            when mappers are completed with the final "configure"
+            step.
+          * __abstract__ flag.   The class will not be mapped
+            at all when this flag is present on the class.
+          * New helper classes ConcreteBase, AbstractConcreteBase.
+            Allow concrete mappings using declarative which automatically
+            set up the "polymorphic_union" when the "configure"
+            mapper step is invoked.
+          * The mapper itself has semi-private methods that allow
+            the "with_polymorphic" selectable to be assigned
+            to the mapper after it has already been configured.
 
     .. change::
         :tags: orm
@@ -2856,7 +2858,7 @@
         :tickets: 2206
 
       Fixed bug whereby adaptation of old append_ddl_listener()
-      function was passing unexpected **kw through
+      function was passing unexpected \**kw through
       to the Table event.   Table gets no kws, the MetaData
       event in 0.6 would get "tables=somecollection",
       this behavior is preserved.
@@ -4321,7 +4323,7 @@
         :tickets: 1069
 
       Query.distinct() now accepts column expressions
-      as *args, interpreted by the Postgresql dialect
+      as \*args, interpreted by the Postgresql dialect
       as DISTINCT ON (<expr>).
 
     .. change::
@@ -4421,7 +4423,7 @@
         :tickets: 1069
 
       select.distinct() now accepts column expressions
-      as *args, interpreted by the Postgresql dialect
+      as \*args, interpreted by the Postgresql dialect
       as DISTINCT ON (<expr>).  Note this was already
       available via passing a list to the `distinct`
       keyword argument to select().
@@ -4431,7 +4433,7 @@
         :tickets:
 
       select.prefix_with() accepts multiple expressions
-      (i.e. *expr), 'prefix' keyword argument to select()
+      (i.e. \*expr), 'prefix' keyword argument to select()
       accepts a list or tuple.
 
     .. change::
