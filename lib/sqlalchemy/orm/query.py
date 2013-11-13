@@ -1639,7 +1639,7 @@ class Query(object):
         example :ref:`examples_xmlpersistence` which illustrates
         an XPath-like query system using algorithmic joins.
 
-        :param *props: A collection of one or more join conditions,
+        :param \*props: A collection of one or more join conditions,
          each consisting of a relationship-bound attribute or string
          relationship name representing an "on clause", or a single
          target entity, or a tuple in the form of ``(target, onclause)``.
@@ -2211,7 +2211,7 @@ class Query(object):
         ``Query``.
 
         :param \*prefixes: optional prefixes, typically strings,
-        not using any commas.   In particular is useful for MySQL keywords.
+         not using any commas.   In particular is useful for MySQL keywords.
 
         e.g.::
 
