@@ -59,6 +59,9 @@ elements are themselves :class:`.ColumnElement` subclasses).
    :members:
    :inherited-members:
 
+.. autoclass:: ScalarSelect
+   :members:
+
 .. autoclass:: Select
    :members:
    :inherited-members:
