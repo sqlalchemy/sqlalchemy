@@ -246,11 +246,11 @@ class FromClause(Selectable):
         :param column: the target :class:`.ColumnElement` to be matched
 
         :param require_embedded: only return corresponding columns for
-        the given :class:`.ColumnElement`, if the given
-        :class:`.ColumnElement` is actually present within a sub-element
-        of this :class:`.FromClause`.  Normally the column will match if
-        it merely shares a common ancestor with one of the exported
-        columns of this :class:`.FromClause`.
+         the given :class:`.ColumnElement`, if the given :class:`.ColumnElement` 
+         is actually present within a sub-element
+         of this :class:`.FromClause`.  Normally the column will match if
+         it merely shares a common ancestor with one of the exported
+         columns of this :class:`.FromClause`.
 
         """
 
@@ -756,7 +756,7 @@ class Join(FromClause):
                     ON table_b_1.id = table_c_1.b_id
             ) ON table_a_1.id = table_b_1.a_id
 
-        The standalone :func:`experssion.alias` function as well as the
+        The standalone :func:`~.expression.alias` function as well as the
         base :meth:`.FromClause.alias` method also support the ``flat=True``
         argument as a no-op, so that the argument can be passed to the
         ``alias()`` method of any selectable.
@@ -1352,7 +1352,8 @@ class SelectBase(Executable, FromClause):
                      "'autocommit' flag.")
     def autocommit(self):
         """return a new selectable with the 'autocommit' flag set to
-        True."""
+        True.
+        """
 
         self._execution_options = \
             self._execution_options.union({'autocommit': True})

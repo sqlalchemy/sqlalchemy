@@ -645,9 +645,9 @@ class DateTime(_DateAffinity, TypeEngine):
         """Construct a new :class:`.DateTime`.
 
         :param timezone: boolean.  If True, and supported by the
-        backend, will produce 'TIMESTAMP WITH TIMEZONE'. For backends
-        that don't support timezone aware timestamps, has no
-        effect.
+         backend, will produce 'TIMESTAMP WITH TIMEZONE'. For backends
+         that don't support timezone aware timestamps, has no
+         effect.
 
         """
         self.timezone = timezone

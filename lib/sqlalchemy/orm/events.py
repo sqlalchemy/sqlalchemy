@@ -1295,9 +1295,9 @@ class SessionEvents(event.Events):
 
         :param session: The target :class:`.Session`.
         :param previous_transaction: The :class:`.SessionTransaction`
-        transactional marker object which was just closed.   The current
-        :class:`.SessionTransaction` for the given :class:`.Session` is
-        available via the :attr:`.Session.transaction` attribute.
+         transactional marker object which was just closed.   The current
+         :class:`.SessionTransaction` for the given :class:`.Session` is
+         available via the :attr:`.Session.transaction` attribute.
 
         .. versionadded:: 0.7.3
 

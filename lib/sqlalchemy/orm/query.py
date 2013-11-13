@@ -921,7 +921,7 @@ class Query(object):
 
     @_generative()
     def with_session(self, session):
-        """Return a :class:`Query` that will use the given :class:`.Session`.
+        """Return a :class:`.Query` that will use the given :class:`.Session`.
 
         """
 
@@ -1285,7 +1285,7 @@ class Query(object):
         """apply a HAVING criterion to the query and return the
         newly resulting :class:`.Query`.
 
-        :meth:`having` is used in conjunction with :meth:`group_by`.
+        :meth:`~.Query.having` is used in conjunction with :meth:`~.Query.group_by`.
 
         HAVING criterion makes it possible to use filters on aggregate
         functions like COUNT, SUM, AVG, MAX, and MIN, eg.::
@@ -1463,7 +1463,7 @@ class Query(object):
 
             q = session.query(User).join(Address)
 
-        The above calling form of :meth:`.join` will raise an error if
+        The above calling form of :meth:`~.Query.join` will raise an error if
         either there are no foreign keys between the two entities, or if
         there are multiple foreign key linkages between them.   In the
         above calling form, :meth:`~.Query.join` is called upon to
@@ -1632,7 +1632,7 @@ class Query(object):
          A special two-argument calling form of the form ``target, onclause``
          is also accepted.
         :param aliased=False: If True, indicate that the JOIN target should be
-         anonymously aliased.  Subsequent calls to :class:`~.Query.filter`
+         anonymously aliased.  Subsequent calls to :meth:`~.Query.filter`
          and similar will adapt the incoming criterion to the target
          alias, until :meth:`~.Query.reset_joinpoint` is called.
         :param from_joinpoint=False: When using ``aliased=True``, a setting
@@ -2573,7 +2573,7 @@ class Query(object):
           which normally occurs upon :meth:`.Session.commit` or can be forced
           by using :meth:`.Session.expire_all`.  Accessing an expired object
           whose row has been deleted will invoke a SELECT to locate the
-          row; when the row is not found, an :class:`.ObjectDeletedError`
+          row; when the row is not found, an :class:`~sqlalchemy.orm.exc.ObjectDeletedError`
           is raised.
 
         * The :meth:`.MapperEvents.before_delete` and

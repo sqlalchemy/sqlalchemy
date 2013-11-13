@@ -749,10 +749,10 @@ Just like it says:
 
        b = bindparam('foo', type_=String)
 
-in_ Function Changed to Accept Sequence or Selectable
------------------------------------------------------
+in\_ Function Changed to Accept Sequence or Selectable
+------------------------------------------------------
 
-The in_ function now takes a sequence of values or a
+The in\_ function now takes a sequence of values or a
 selectable as its sole argument. The previous API of passing
 in values as positional arguments still works, but is now
 deprecated. This means that

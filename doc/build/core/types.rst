@@ -9,7 +9,7 @@ SQLAlchemy provides abstractions for most common database data types,
 and a mechanism for specifying your own custom data types.
 
 The methods and attributes of type objects are rarely used directly.
-Type objects are supplied to :class:`~sqlalchemy.Table` definitions
+Type objects are supplied to :class:`~sqlalchemy.schema.Table` definitions
 and can be supplied as type hints to `functions` for occasions where
 the database driver returns an incorrect type.
 
@@ -24,7 +24,7 @@ the database driver returns an incorrect type.
 SQLAlchemy will use the ``Integer`` and ``String(32)`` type
 information when issuing a ``CREATE TABLE`` statement and will use it
 again when reading back rows ``SELECTed`` from the database.
-Functions that accept a type (such as :func:`~sqlalchemy.Column`) will
+Functions that accept a type (such as :func:`~sqlalchemy.schema.Column`) will
 typically accept a type class or instance; ``Integer`` is equivalent
 to ``Integer()`` with no construction arguments in this case.
 

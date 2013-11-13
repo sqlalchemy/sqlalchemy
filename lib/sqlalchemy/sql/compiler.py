@@ -198,7 +198,8 @@ class Compiled(object):
     @util.deprecated("0.7", ":class:`.Compiled` objects now compile "
                         "within the constructor.")
     def compile(self):
-        """Produce the internal string representation of this element."""
+        """Produce the internal string representation of this element.
+        """
         pass
 
     def _execute_on_connection(self, connection, multiparams, params):

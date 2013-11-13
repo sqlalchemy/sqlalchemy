@@ -594,7 +594,7 @@ class TypeDecorator(TypeEngine):
     coerce_to_is_types = (util.NoneType, )
     """Specify those Python types which should be coerced at the expression
     level to "IS <constant>" when compared using ``==`` (and same for
-        ``IS NOT`` in conjunction with ``!=``.
+    ``IS NOT`` in conjunction with ``!=``.
 
     For most SQLAlchemy types, this includes ``NoneType``, as well as ``bool``.
 

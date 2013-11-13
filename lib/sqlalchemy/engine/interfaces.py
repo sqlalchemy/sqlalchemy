@@ -812,7 +812,8 @@ class Connectable(object):
                      "object directly, i.e. :meth:`.Table.create`, "
                      ":meth:`.Index.create`, :meth:`.MetaData.create_all`")
     def create(self, entity, **kwargs):
-        """Emit CREATE statements for the given schema entity."""
+        """Emit CREATE statements for the given schema entity.
+        """
 
         raise NotImplementedError()
 
@@ -821,7 +822,8 @@ class Connectable(object):
                      "object directly, i.e. :meth:`.Table.drop`, "
                      ":meth:`.Index.drop`, :meth:`.MetaData.drop_all`")
     def drop(self, entity, **kwargs):
-        """Emit DROP statements for the given schema entity."""
+        """Emit DROP statements for the given schema entity.
+        """
 
         raise NotImplementedError()
 
