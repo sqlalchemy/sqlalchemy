@@ -11,7 +11,7 @@
         :tickets: 2851
         :versions: 0.8.3, 0.9.0
 
-        The regexp used by the :func:`~.sqlalchemy.engine.url.make_url` function now parses
+        The regexp used by the :func:`~sqlalchemy.engine.url.make_url` function now parses
         ipv6 addresses, e.g. surrounded by brackets.
 
     .. change::
