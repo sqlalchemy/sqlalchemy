@@ -82,7 +82,7 @@
         errors on MySQL as it is not understood - the same behavior will also
         apply to the ``initially`` keyword.  In 0.8, the keywords will remain
         ignored but a warning is emitted.   Additionally, the ``match`` keyword
-        now raises a :class:`.CompileError` on 0.9 and emits a warning on 0.8;
+        now raises a :exc:`.CompileError` on 0.9 and emits a warning on 0.8;
         this keyword is not only silently ignored by MySQL but also breaks
         the ON UPDATE/ON DELETE options.
 
@@ -259,7 +259,7 @@
         :tags: bug, sql
         :versions: 0.9.0b1
 
-        The :meth:`.Operators.notin_` operator added in 0.8 now properly
+        The :meth:`.ColumnOperators.notin_` operator added in 0.8 now properly
         produces the negation of the expression "IN" returns
         when used against an empty collection.
 
@@ -330,7 +330,7 @@
         since the element relies on dialect-specific compilation constructs,
         notably the ``__getitem__()`` operator as used with a Postgresql
         ``ARRAY`` element.  The fix also adds a new exception class
-        :class:`.UnsupportedCompilationError` which is raised in those cases
+        :exc:`.UnsupportedCompilationError` which is raised in those cases
         where a compiler is asked to compile something it doesn't know
         how to.
 
@@ -406,7 +406,7 @@
         :tickets: 2764
         :versions: 0.9.0b1
 
-        Added :class:`.BIGINT` to the list of type names that can be
+        Added :class:`sqlalchemy.types.BIGINT` to the list of type names that can be
         reflected by the SQLite dialect; courtesy Russell Stuart.
 
     .. change::
@@ -1416,7 +1416,7 @@
     .. change::
         :tags: postgresql, bug
 
-      Fixed bug in :func:`.postgresql.array` construct whereby using it
+      Fixed bug in :class:`~sqlalchemy.dialects.postgresql.array()` construct whereby using it
       inside of an :func:`.expression.insert` construct would produce an
       error regarding a parameter issue in the ``self_group()`` method.
 
@@ -1568,7 +1568,7 @@
         :tags: sql, bug
         :tickets: 2618
 
-      The :class:`.DECIMAL` type now honors the "precision" and
+      The :class:`~sqlalchemy.types.DECIMAL` type now honors the "precision" and
       "scale" arguments when rendering DDL.
 
     .. change::
@@ -1684,7 +1684,7 @@
     .. change::
         :tags: engine
 
-      The "reflect=True" argument to :class:`MetaData` is deprecated.
+      The "reflect=True" argument to :class:`~sqlalchemy.schema.MetaData` is deprecated.
       Please use the :meth:`.MetaData.reflect` method.
 
     .. change::
@@ -1821,7 +1821,7 @@
         :tickets: 2595
 
       The auto-correlation feature of :func:`.select`, and
-      by proxy that of :class:`.orm.Query`, will not
+      by proxy that of :class:`.Query`, will not
       take effect for a SELECT statement that is being
       rendered directly in the FROM list of the enclosing
       SELECT.  Correlation in SQL only applies to column

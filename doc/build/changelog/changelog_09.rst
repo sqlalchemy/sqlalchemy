@@ -311,7 +311,7 @@
         :tags: feature, core
         :tickets: 2793
 
-        Added a new variant to :meth:`.ValuesBase.returning` called
+        Added a new variant to :meth:`.UpdateBase.returning` called
         :meth:`.ValuesBase.return_defaults`; this allows arbitrary columns
         to be added to the RETURNING clause of the statement without interfering
         with the compilers usual "implicit returning" feature, which is used to
@@ -557,7 +557,7 @@
         :tags: feature, sql
         :tickets: 1068
 
-        A :class:`.Label` construct will now render as its name alone
+        A :func:`~sqlalchemy.sql.expression.label` construct will now render as its name alone
         in an ``ORDER BY`` clause, if that label is also referred to
         in the columns clause of the select, instead of rewriting the
         full expression.  This gives the database a better chance to
@@ -595,13 +595,13 @@
         :tags: bug, orm
         :tickets: 2736
 
-        The "auto-aliasing" behavior of the :class:`.Query.select_from`
+        The "auto-aliasing" behavior of the :meth:`.Query.select_from`
         method has been turned off.  The specific behavior is now
-        availble via a new method :class:`.Query.select_entity_from`.
+        availble via a new method :meth:`.Query.select_entity_from`.
         The auto-aliasing behavior here was never well documented and
-        is generally not what's desired, as :class:`.Query.select_from`
+        is generally not what's desired, as :meth:`.Query.select_from`
         has become more oriented towards controlling how a JOIN is
-        rendered.  :class:`.Query.select_entity_from` will also be made
+        rendered.  :meth:`.Query.select_entity_from` will also be made
         available in 0.8 so that applications which rely on the auto-aliasing
         can shift their applications to use this method.
 
