@@ -19,7 +19,7 @@ from sqlalchemy.testing.assertions import eq_, assert_raises, assert_raises_mess
 from sqlalchemy.testing import AssertsCompiledSQL
 from test.orm import _fixtures
 from sqlalchemy.testing import fixtures, engines
-
+from sqlalchemy.orm import Bundle
 from sqlalchemy.orm.util import join, outerjoin, with_parent
 
 class QueryTest(_fixtures.FixtureTest):
@@ -74,6 +74,7 @@ class RowTupleTest(QueryTest):
         address_alias = aliased(Address, name='aalias')
         fn = func.count(User.id)
         name_label = User.name.label('uname')
+        bundle = Bundle('b1', User.id, User.name)
         for q, asserted in [
             (
                 sess.query(User),
@@ -112,12 +113,22 @@ class RowTupleTest(QueryTest):
                         'expr':fn
                     },
                 ]
+            ),
+            (
+                sess.query(bundle),
+                [
+                    {'aliased': False,
+                    'expr': bundle,
+                    'type': Bundle,
+                    'name': 'b1'}
+                ]
             )
         ]:
             eq_(
                 q.column_descriptions,
                 asserted
             )
+
 
     def test_unhashable_type(self):
         from sqlalchemy.types import TypeDecorator, Integer

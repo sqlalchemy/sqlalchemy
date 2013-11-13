@@ -3198,7 +3198,7 @@ class Bundle(object):
 class _BundleEntity(_QueryEntity):
     def __init__(self, query, bundle, setup_entities=True):
         query._entities.append(self)
-        self.bundle = bundle
+        self.bundle = self.expr = bundle
         self.type = type(bundle)
         self._label_name = bundle.name
         self._entities = []

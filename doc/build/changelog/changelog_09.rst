@@ -15,6 +15,12 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: bug, orm
+
+        Fixed bug where usage of new :class:`.Bundle` object would cause
+        the :attr:`.Query.column_descriptions` attribute to fail.
+
+    .. change::
         :tags: bug, examples
 
         Fixed bug which prevented history_meta recipe from working with
