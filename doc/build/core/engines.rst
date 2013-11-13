@@ -87,6 +87,8 @@ known driver available for that backend (i.e. cx_oracle, pysqlite/sqlite3,
 psycopg2, mysqldb). For Jython connections, specify the `zxjdbc` driver, which
 is the JDBC-DBAPI bridge included with Jython.
 
+.. autofunction:: sqlalchemy.engine.url.make_url
+
 Postgresql
 ----------
 
