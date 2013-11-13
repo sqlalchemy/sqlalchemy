@@ -24,8 +24,11 @@ from ..util import symbol
 class Operators(object):
     """Base of comparison and logical operators.
 
-    Implements base methods :meth:`operate` and :meth:`reverse_operate`,
-    as well as :meth:`__and__`, :meth:`__or__`, :meth:`__invert__`.
+    Implements base methods :meth:`~sqlalchemy.sql.operators.Operators.operate` and
+    :meth:`~sqlalchemy.sql.operators.Operators.reverse_operate`, as well as
+    :meth:`~sqlalchemy.sql.operators.Operators.__and__`,
+    :meth:`~sqlalchemy.sql.operators.Operators.__or__`,
+    :meth:`~sqlalchemy.sql.operators.Operators.__invert__`.
 
     Usually is used via its most common subclass
     :class:`.ColumnOperators`.
