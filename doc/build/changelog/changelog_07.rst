@@ -1444,10 +1444,10 @@
         :tickets: 2361
 
       Dialect-specific compilers now raise
-      CompileException for all type/statement compilation
+      CompileError for all type/statement compilation
       issues, instead of InvalidRequestError or ArgumentError.
       The DDL for CREATE TABLE will re-raise
-      CompileExceptions to include table/column information
+      CompileError to include table/column information
       for the problematic column.
 
     .. change::
