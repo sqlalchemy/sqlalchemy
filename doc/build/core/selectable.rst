@@ -54,6 +54,8 @@ elements are themselves :class:`.ColumnElement` subclasses).
 .. autoclass:: FromClause
    :members:
 
+.. autoclass:: HasPrefixes
+   :members:
 
 .. autoclass:: Join
    :members:
