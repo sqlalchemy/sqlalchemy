@@ -1947,7 +1947,7 @@
         :tickets: 1679
 
       a "has_schema" method has been implemented
-        on dialect, but only works on Postgresql so far.
+      on dialect, but only works on Postgresql so far.
       Courtesy Manlio Perillo.
 
     .. change::
