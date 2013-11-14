@@ -550,7 +550,7 @@ class Query(object):
         :class:`.Query`, converted
         to a scalar subquery with a label of the given name.
 
-        Analogous to :meth:`sqlalchemy.sql.SelectBaseMixin.label`.
+        Analogous to :meth:`sqlalchemy.sql.expression.SelectBase.label`.
 
         .. versionadded:: 0.6.5
 
@@ -562,7 +562,7 @@ class Query(object):
         """Return the full SELECT statement represented by this
         :class:`.Query`, converted to a scalar subquery.
 
-        Analogous to :meth:`sqlalchemy.sql.SelectBaseMixin.as_scalar`.
+        Analogous to :meth:`sqlalchemy.sql.expression.SelectBase.as_scalar`.
 
         .. versionadded:: 0.6.5
 
