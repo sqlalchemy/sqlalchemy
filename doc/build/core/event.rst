@@ -75,7 +75,7 @@ as long as the names match up::
         print("New DBAPI connection:", dbapi_connection)
         print("Connection record:", kw['connection_record'])
 
-Above, the presence of ``**kw`` tells :func:`.event.listen_for` that
+Above, the presence of ``**kw`` tells :func:`.listens_for` that
 arguments should be passed to the function by name, rather than positionally.
 
 .. versionadded:: 0.9.0 Added optional ``named`` argument dispatch to
