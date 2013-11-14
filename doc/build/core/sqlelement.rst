@@ -97,6 +97,7 @@ used to construct any kind of typed SQL expression.
 .. autoclass:: ColumnElement
    :members:
    :inherited-members:
+   :undoc-members:
 
 .. autoclass:: sqlalchemy.sql.operators.ColumnOperators
    :members:
