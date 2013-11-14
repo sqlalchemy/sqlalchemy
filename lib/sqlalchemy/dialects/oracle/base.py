@@ -661,8 +661,18 @@ class OracleCompiler(compiler.SQLCompiler):
     def for_update_clause(self, select):
         if self.is_subquery():
             return ""
-        elif select.for_update == "nowait":
-            return " FOR UPDATE NOWAIT"
+
+        tmp = ' FOR UPDATE'
+
+        if isinstance(select.for_update_of, list):
+            tmp += ' OF ' + ', '.join(['.'.join(of) for of in select.for_update_of])
+        elif isinstance(select.for_update_of, tuple):
+            tmp += ' OF ' + '.'.join(select.for_update_of)
+
+        if select.for_update == 'nowait':
+            return tmp + ' NOWAIT'
+        elif select.for_update:
+            return tmp
         else:
             return super(OracleCompiler, self).for_update_clause(select)
 

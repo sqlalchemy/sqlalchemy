@@ -1149,13 +1149,29 @@ class Query(object):
 
             .. versionadded:: 0.7.7
                 ``FOR SHARE`` and ``FOR SHARE NOWAIT`` (PostgreSQL).
-        :param of: a table descriptor representing the optional OF
-            part of the clause. This passes ``for_update_of=table'``
-            which translates to ``FOR UPDATE OF table [NOWAIT]``.
+        :param of: either a column descriptor, or list of column
+            descriptors, representing the optional OF part of the
+            clause. This passes ``for_update_of=descriptor(s)'`` which
+            translates to ``FOR UPDATE OF table [NOWAIT]`` respectively
+            ``FOR UPDATE OF table, table [NOWAIT]`` (PostgreSQL), or
+            ``FOR UPDATE OF table.column [NOWAIT]`` respectively
+            ``FOR UPDATE OF table.column, table.column [NOWAIT]`` (Oracle).
+
+            .. versionadded:: 0.9.0
         """
 
         self._lockmode = mode
-        self._lockmode_of = of
+
+        # do not drag the ORM layer into the dialect,
+        # we only need the table name and column name
+        if isinstance(of, attributes.QueryableAttribute):
+            self._lockmode_of = (of.expression.table.name,
+                                 of.expression.name)
+        elif isinstance(of, (tuple, list)):
+            self._lockmode_of = [(o.expression.table.name,
+                                  o.expression.name) for o in of]
+        elif of is not None:
+            raise TypeError('OF parameter is not a column(list)')
 
     @_generative()
     def params(self, *args, **kwargs):
