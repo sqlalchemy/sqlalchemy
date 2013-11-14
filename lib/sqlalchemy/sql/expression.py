@@ -44,7 +44,7 @@ from .base import ColumnCollection, Generative, Executable, \
           PARSE_AUTOCOMMIT
 
 from .selectable import Alias, Join, Select, Selectable, TableClause, \
-        CompoundSelect, FromClause, FromGrouping, SelectBase, \
+        CompoundSelect, CTE, FromClause, FromGrouping, SelectBase, \
         alias, \
         subquery, HasPrefixes, Exists, ScalarSelect
 
