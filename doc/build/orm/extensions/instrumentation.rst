@@ -10,6 +10,8 @@ API Reference
 
 .. autodata:: INSTRUMENTATION_MANAGER
 
+.. autoclass:: sqlalchemy.orm.instrumentation.InstrumentationFactory
+
 .. autoclass:: InstrumentationManager
     :members:
     :undoc-members:
@@ -17,7 +19,6 @@ API Reference
 .. autodata:: instrumentation_finders
 
 .. autoclass:: ExtendedInstrumentationRegistry
-     
     :members:
 
 

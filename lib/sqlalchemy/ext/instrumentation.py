@@ -22,7 +22,7 @@ see the example :ref:`examples_instrumentation`.
    :mod:`sqlalchemy.orm.instrumentation` so that it
    takes effect, including recognition of
    ``__sa_instrumentation_manager__`` on mapped classes, as
-   well :attr:`.instrumentation_finders`
+   well :data:`.instrumentation_finders`
    being used to determine class instrumentation resolution.
 
 """
