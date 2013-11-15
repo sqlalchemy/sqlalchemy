@@ -39,6 +39,8 @@ Session Events
 Instrumentation Events
 -----------------------
 
+.. automodule:: sqlalchemy.orm.instrumentation
+
 .. autoclass:: sqlalchemy.orm.events.InstrumentationEvents
    :members:
 
