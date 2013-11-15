@@ -1238,7 +1238,7 @@ Sessions
 Note that ``declarative`` does nothing special with sessions, and is
 only intended as an easier way to configure mappers and
 :class:`~sqlalchemy.schema.Table` objects.  A typical application
-setup using :class:`~sqlalchemy.orm.scoped_session` might look like::
+setup using :class:`~sqlalchemy.orm.scoping.scoped_session` might look like::
 
     engine = create_engine('postgresql://scott:tiger@localhost/test')
     Session = scoped_session(sessionmaker(autocommit=False,

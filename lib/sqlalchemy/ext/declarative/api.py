@@ -174,16 +174,16 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
     of the class.
 
     :param bind: An optional
-      :class:`~sqlalchemy.engine.base.Connectable`, will be assigned
-      the ``bind`` attribute on the :class:`~sqlalchemy.MetaData`
+      :class:`~sqlalchemy.engine.Connectable`, will be assigned
+      the ``bind`` attribute on the :class:`~sqlalchemy.schema.MetaData`
       instance.
 
     :param metadata:
-      An optional :class:`~sqlalchemy.MetaData` instance.  All
+      An optional :class:`~sqlalchemy.schema.MetaData` instance.  All
       :class:`~sqlalchemy.schema.Table` objects implicitly declared by
       subclasses of the base will share this MetaData.  A MetaData instance
       will be created if none is provided.  The
-      :class:`~sqlalchemy.MetaData` instance will be available via the
+      :class:`~sqlalchemy.schema.MetaData` instance will be available via the
       `metadata` attribute of the generated declarative base class.
 
     :param mapper:
@@ -286,7 +286,7 @@ class ConcreteBase(object):
     function automatically, against all tables mapped as a subclass
     to this class.   The function is called via the
     ``__declare_last__()`` function, which is essentially
-    a hook for the :func:`.MapperEvents.after_configured` event.
+    a hook for the :meth:`.after_configured` event.
 
     :class:`.ConcreteBase` produces a mapped
     table for the class itself.  Compare to :class:`.AbstractConcreteBase`,
@@ -341,7 +341,7 @@ class AbstractConcreteBase(ConcreteBase):
     function automatically, against all tables mapped as a subclass
     to this class.   The function is called via the
     ``__declare_last__()`` function, which is essentially
-    a hook for the :func:`.MapperEvents.after_configured` event.
+    a hook for the :meth:`.after_configured` event.
 
     :class:`.AbstractConcreteBase` does not produce a mapped
     table for the class itself.  Compare to :class:`.ConcreteBase`,
@@ -421,7 +421,7 @@ class DeferredReflection(object):
     Above, ``MyClass`` is not yet mapped.   After a series of
     classes have been defined in the above fashion, all tables
     can be reflected and mappings created using
-    :meth:`.DeferredReflection.prepare`::
+    :meth:`.prepare`::
 
         engine = create_engine("someengine://...")
         DeferredReflection.prepare(engine)
