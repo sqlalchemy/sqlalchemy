@@ -129,6 +129,27 @@
     :released: Thu Feb 7 2013
 
     .. change::
+        :tags: engine, bug
+        :tickets: 2604
+        :versions: 0.8.0b2
+
+      Fixed :meth:`.MetaData.reflect` to correctly use
+      the given :class:`.Connection`, if given, without
+      opening a second connection from that connection's
+      :class:`.Engine`.
+
+    .. change::
+        :tags: mssql, bug
+        :tickets:2607
+        :versions: 0.8.0b2
+
+      Fixed bug whereby using "key" with Column
+      in conjunction with "schema" for the owning
+      Table would fail to locate result rows due
+      to the MSSQL dialect's "schema rendering"
+      logic's failure to take .key into account.
+
+    .. change::
         :tags: sql, mysql, gae
         :tickets: 2649
 
