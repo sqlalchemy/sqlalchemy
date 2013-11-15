@@ -361,7 +361,7 @@ class ClauseElement(Visitable):
         as well as by :func:`.select` constructs when placed into
         the FROM clause of another :func:`.select`.  (Note that
         subqueries should be normally created using the
-        :func:`.Select.alias` method, as many platforms require
+        :meth:`.Select.alias` method, as many platforms require
         nested SELECT statements to be named).
 
         As expressions are composed together, the application of

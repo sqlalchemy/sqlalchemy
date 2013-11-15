@@ -161,7 +161,7 @@ class Inspector(object):
         """Return all table names in referred to within a particular schema.
 
         The names are expected to be real tables only, not views.
-        Views are instead returned using the :meth:`.get_view_names`
+        Views are instead returned using the :meth:`.Inspector.get_view_names`
         method.
 
 

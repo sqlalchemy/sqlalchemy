@@ -1512,7 +1512,7 @@ class NullType(TypeEngine):
     The :class:`.NullType` can be used within SQL expression invocation
     without issue, it just has no behavior either at the expression construction
     level or at the bind-parameter/result processing level.  :class:`.NullType`
-    will result in a :class:`.CompileException` if the compiler is asked to render
+    will result in a :exc:`.CompileError` if the compiler is asked to render
     the type itself, such as if it is used in a :func:`.cast` operation
     or within a schema creation operation such as that invoked by
     :meth:`.MetaData.create_all` or the :class:`.CreateTable` construct.

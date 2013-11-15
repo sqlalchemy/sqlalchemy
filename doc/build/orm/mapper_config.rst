@@ -1337,7 +1337,7 @@ If a transaction elsewhere has modifed the row independently, this version id
 will no longer match, and the UPDATE statement will report that no rows matched;
 this is the condition that SQLAlchemy tests, that exactly one row matched our
 UPDATE (or DELETE) statement.  If zero rows match, that indicates our version
-of the data is stale, and a :class:`.StaleDataError` is raised.
+of the data is stale, and a :exc:`.StaleDataError` is raised.
 
 .. _custom_version_counter:
 

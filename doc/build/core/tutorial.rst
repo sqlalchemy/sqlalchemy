@@ -238,7 +238,7 @@ we use the ``connect()`` method::
     >>> conn #doctest: +ELLIPSIS
     <sqlalchemy.engine.base.Connection object at 0x...>
 
-The :class:`~sqlalchemy.engine.base.Connection` object represents an actively
+The :class:`~sqlalchemy.engine.Connection` object represents an actively
 checked out DBAPI connection resource. Lets feed it our
 :class:`~sqlalchemy.sql.expression.Insert` object and see what happens:
 
@@ -252,7 +252,7 @@ checked out DBAPI connection resource. Lets feed it our
 So the INSERT statement was now issued to the database. Although we got
 positional "qmark" bind parameters instead of "named" bind parameters in the
 output. How come ? Because when executed, the
-:class:`~sqlalchemy.engine.base.Connection` used the SQLite **dialect** to
+:class:`~sqlalchemy.engine.Connection` used the SQLite **dialect** to
 help generate the statement; when we use the ``str()`` function, the statement
 isn't aware of this dialect, and falls back onto a default which uses named
 parameters. We can view this manually as follows:
@@ -264,9 +264,9 @@ parameters. We can view this manually as follows:
     'INSERT INTO users (name, fullname) VALUES (?, ?)'
 
 What about the ``result`` variable we got when we called ``execute()`` ? As
-the SQLAlchemy :class:`~sqlalchemy.engine.base.Connection` object references a
+the SQLAlchemy :class:`~sqlalchemy.engine.Connection` object references a
 DBAPI connection, the result, known as a
-:class:`~sqlalchemy.engine.result.ResultProxy` object, is analogous to the DBAPI
+:class:`~sqlalchemy.engine.ResultProxy` object, is analogous to the DBAPI
 cursor object. In the case of an INSERT, we can get important information from
 it, such as the primary key values which were generated from our statement:
 
@@ -292,7 +292,7 @@ Our insert example above was intentionally a little drawn out to show some
 various behaviors of expression language constructs. In the usual case, an
 :class:`~sqlalchemy.sql.expression.Insert` statement is usually compiled
 against the parameters sent to the ``execute()`` method on
-:class:`~sqlalchemy.engine.base.Connection`, so that there's no need to use
+:class:`~sqlalchemy.engine.Connection`, so that there's no need to use
 the ``values`` keyword with :class:`~sqlalchemy.sql.expression.Insert`. Lets
 create a generic :class:`~sqlalchemy.sql.expression.Insert` statement again
 and use it in the "normal" way:
@@ -363,10 +363,10 @@ Above, we issued a basic :func:`.select` call, placing the ``users`` table
 within the COLUMNS clause of the select, and then executing. SQLAlchemy
 expanded the ``users`` table into the set of each of its columns, and also
 generated a FROM clause for us. The result returned is again a
-:class:`~sqlalchemy.engine.result.ResultProxy` object, which acts much like a
+:class:`~sqlalchemy.engine.ResultProxy` object, which acts much like a
 DBAPI cursor, including methods such as
-:func:`~sqlalchemy.engine.result.ResultProxy.fetchone` and
-:func:`~sqlalchemy.engine.result.ResultProxy.fetchall`. The easiest way to get
+:func:`~sqlalchemy.engine.ResultProxy.fetchone` and
+:func:`~sqlalchemy.engine.ResultProxy.fetchall`. The easiest way to get
 rows from it is to just iterate:
 
 .. sourcecode:: pycon+sql
@@ -414,7 +414,7 @@ But another way, whose usefulness will become apparent later on, is to use the
 
 Result sets which have pending rows remaining should be explicitly closed
 before discarding. While the cursor and connection resources referenced by the
-:class:`~sqlalchemy.engine.result.ResultProxy` will be respectively closed and
+:class:`~sqlalchemy.engine.ResultProxy` will be respectively closed and
 returned to the connection pool when the object is garbage collected, it's
 better to make it explicit as some database APIs are very picky about such
 things:

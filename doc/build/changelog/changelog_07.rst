@@ -11,7 +11,7 @@
         :tickets: 2851
         :versions: 0.8.3, 0.9.0b1
 
-        The regexp used by the :func:`~.sqlalchemy.engine.url.make_url` function now parses
+        The regexp used by the :func:`~sqlalchemy.engine.url.make_url` function now parses
         ipv6 addresses, e.g. surrounded by brackets.
 
     .. change::
@@ -1444,10 +1444,10 @@
         :tickets: 2361
 
       Dialect-specific compilers now raise
-      CompileException for all type/statement compilation
+      CompileError for all type/statement compilation
       issues, instead of InvalidRequestError or ArgumentError.
       The DDL for CREATE TABLE will re-raise
-      CompileExceptions to include table/column information
+      CompileError to include table/column information
       for the problematic column.
 
     .. change::
@@ -1947,7 +1947,7 @@
         :tickets: 1679
 
       a "has_schema" method has been implemented
-        on dialect, but only works on Postgresql so far.
+      on dialect, but only works on Postgresql so far.
       Courtesy Manlio Perillo.
 
     .. change::

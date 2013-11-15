@@ -307,7 +307,7 @@ class PoolEvents(event.Events):
         Processing of all checkout listeners will abort and restart
         using the new connection.
 
-        .. seealso:: :meth:`.ConnectionEvents.connect` - a similar event
+        .. seealso:: :meth:`.ConnectionEvents.engine_connect` - a similar event
            which occurs upon creation of a new :class:`.Connection`.
 
         """
@@ -668,7 +668,7 @@ class ConnectionEvents(event.Events):
         Note that this method is not called when a new :class:`.Connection`
         is produced which is inheriting execution options from its parent
         :class:`.Engine`; to intercept this condition, use the
-        :meth:`.ConnectionEvents.connect` event.
+        :meth:`.ConnectionEvents.engine_connect` event.
 
         :param conn: The newly copied :class:`.Connection` object
 

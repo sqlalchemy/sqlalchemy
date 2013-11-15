@@ -541,7 +541,7 @@ class Query(object):
         :class:`.Query`, converted
         to a scalar subquery with a label of the given name.
 
-        Analogous to :meth:`sqlalchemy.sql.SelectBaseMixin.label`.
+        Analogous to :meth:`sqlalchemy.sql.expression.SelectBase.label`.
 
         .. versionadded:: 0.6.5
 
@@ -553,7 +553,7 @@ class Query(object):
         """Return the full SELECT statement represented by this
         :class:`.Query`, converted to a scalar subquery.
 
-        Analogous to :meth:`sqlalchemy.sql.SelectBaseMixin.as_scalar`.
+        Analogous to :meth:`sqlalchemy.sql.expression.SelectBase.as_scalar`.
 
         .. versionadded:: 0.6.5
 
@@ -1625,7 +1625,7 @@ class Query(object):
         example :ref:`examples_xmlpersistence` which illustrates
         an XPath-like query system using algorithmic joins.
 
-        :param *props: A collection of one or more join conditions,
+        :param \*props: A collection of one or more join conditions,
          each consisting of a relationship-bound attribute or string
          relationship name representing an "on clause", or a single
          target entity, or a tuple in the form of ``(target, onclause)``.
@@ -2204,7 +2204,7 @@ class Query(object):
         ``Query``.
 
         :param \*prefixes: optional prefixes, typically strings,
-        not using any commas.   In particular is useful for MySQL keywords.
+         not using any commas.   In particular is useful for MySQL keywords.
 
         e.g.::
 

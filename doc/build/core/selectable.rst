@@ -54,10 +54,15 @@ elements are themselves :class:`.ColumnElement` subclasses).
 .. autoclass:: FromClause
    :members:
 
+.. autoclass:: HasPrefixes
+   :members:
 
 .. autoclass:: Join
    :members:
    :inherited-members:
+
+.. autoclass:: ScalarSelect
+   :members:
 
 .. autoclass:: Select
    :members:

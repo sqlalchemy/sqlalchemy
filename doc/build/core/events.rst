@@ -8,6 +8,9 @@ SQLAlchemy Core.
 For an introduction to the event listening API, see :ref:`event_toplevel`.
 ORM events are described in :ref:`orm_event_toplevel`.
 
+.. autoclass:: sqlalchemy.event.base.Events
+   :members:
+
 .. versionadded:: 0.7
     The event system supercedes the previous system of "extension", "listener",
     and "proxy" classes.
