@@ -28,6 +28,7 @@ constructs build on the intermediary :class:`.ValuesBase`.
 
 .. autoclass:: sqlalchemy.sql.expression.UpdateBase
   :members:
+  :inherited-members:
 
 .. autoclass:: sqlalchemy.sql.expression.ValuesBase
    :members:

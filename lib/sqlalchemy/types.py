@@ -8,7 +8,7 @@
 
 """
 
-__all__ = ['TypeEngine', 'TypeDecorator', 'AbstractType', 'UserDefinedType',
+__all__ = ['TypeEngine', 'TypeDecorator', 'UserDefinedType',
             'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'NVARCHAR', 'TEXT', 'Text',
             'FLOAT', 'NUMERIC', 'REAL', 'DECIMAL', 'TIMESTAMP', 'DATETIME',
             'CLOB', 'BLOB', 'BINARY', 'VARBINARY', 'BOOLEAN', 'BIGINT',

@@ -622,7 +622,7 @@ class Mapper(_InspectionAttr):
     def entity(self):
         """Part of the inspection API.
 
-        Returns self.class_.
+        Returns self.class\_.
 
         """
         return self.class_

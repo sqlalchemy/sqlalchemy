@@ -12,7 +12,6 @@ API Reference
     :members: _parents, coerce
 
 .. autoclass:: Mutable
-     
     :members:
 
 .. autoclass:: MutableComposite

@@ -6,9 +6,9 @@
 
 """Exceptions used with SQLAlchemy.
 
-The base exception class is :class:`.SQLAlchemyError`.  Exceptions which are
+The base exception class is :exc:`.SQLAlchemyError`.  Exceptions which are
 raised as a result of DBAPI exceptions are all subclasses of
-:class:`.DBAPIError`.
+:exc:`.DBAPIError`.
 
 """
 
@@ -169,7 +169,7 @@ class UnboundExecutionError(InvalidRequestError):
 
 class DontWrapMixin(object):
     """A mixin class which, when applied to a user-defined Exception class,
-    will not be wrapped inside of :class:`.StatementError` if the error is
+    will not be wrapped inside of :exc:`.StatementError` if the error is
     emitted within the process of executing a statement.
 
     E.g.::

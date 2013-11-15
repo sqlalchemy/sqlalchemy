@@ -1347,8 +1347,8 @@ class SelectBase(Executable, FromClause):
 
     @_generative
     @util.deprecated('0.6',
-                     message=":func:`.autocommit` is deprecated. Use "
-                     ":func:`.Executable.execution_options` with the "
+                     message="``autocommit()`` is deprecated. Use "
+                     ":meth:`.Executable.execution_options` with the "
                      "'autocommit' flag.")
     def autocommit(self):
         """return a new selectable with the 'autocommit' flag set to

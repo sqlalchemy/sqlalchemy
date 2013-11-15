@@ -729,10 +729,6 @@ is needed, use :class:`.TypeDecorator` instead.
 Base Type API
 --------------
 
-.. autoclass:: AbstractType
-   :members:
-
-
 .. autoclass:: TypeEngine
    :members:
 

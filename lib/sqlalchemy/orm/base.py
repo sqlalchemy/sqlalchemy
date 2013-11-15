@@ -338,8 +338,8 @@ def class_mapper(class_, configure=True):
     """Given a class, return the primary :class:`.Mapper` associated
     with the key.
 
-    Raises :class:`.UnmappedClassError` if no mapping is configured
-    on the given class, or :class:`.ArgumentError` if a non-class
+    Raises :exc:`.UnmappedClassError` if no mapping is configured
+    on the given class, or :exc:`.ArgumentError` if a non-class
     object is passed.
 
     Equivalent functionality is available via the :func:`.inspect`
