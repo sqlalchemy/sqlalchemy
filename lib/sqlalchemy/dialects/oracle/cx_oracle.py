@@ -17,11 +17,11 @@ Additional Connect Arguments
 
 When connecting with ``dbname`` present, the host, port, and dbname tokens are
 converted to a TNS name using
-the cx_oracle :func:`makedsn()` function.  Otherwise, the host token is taken
+the cx_oracle ``makedsn()`` function.  Otherwise, the host token is taken
 directly as a TNS name.
 
 Additional arguments which may be specified either as query string arguments
-on the URL, or as keyword arguments to :func:`~sqlalchemy.create_engine()` are:
+on the URL, or as keyword arguments to :func:`.create_engine()` are:
 
 * allow_twophase - enable two-phase transactions.  Defaults to ``True``.
 
@@ -96,7 +96,7 @@ like result.fetchmany() and result.fetchall().   This means that by default, LOB
 objects are fully fetched unconditionally by SQLAlchemy, and the linkage to a live
 cursor is broken.
 
-To disable this processing, pass ``auto_convert_lobs=False`` to :func:`create_engine()`.
+To disable this processing, pass ``auto_convert_lobs=False`` to :func:`.create_engine()`.
 
 Two Phase Transaction Support
 -----------------------------
@@ -129,7 +129,7 @@ the application can make one of several choices:
 
 * For ad-hoc two-phase operations without disabling pooling, the DBAPI
   connection in use can be evicted from the connection pool using the
-  :class:`.Connection.detach` method.
+  :meth:`.Connection.detach` method.
 
 .. versionchanged:: 0.8.0b2,0.7.10
     Support for cx_oracle prepared transactions has been implemented
