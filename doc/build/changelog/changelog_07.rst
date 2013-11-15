@@ -9,15 +9,15 @@
     .. change::
         :tags: bug, engine
         :tickets: 2851
-        :versions: 0.8.3, 0.9.0
+        :versions: 0.8.3, 0.9.0b1
 
-        The regexp used by the :func:`~.sqlalchemy.engine.url.make_url` function now parses
+        The regexp used by the :func:`~sqlalchemy.engine.url.make_url` function now parses
         ipv6 addresses, e.g. surrounded by brackets.
 
     .. change::
         :tags: bug, orm
         :tickets: 2807
-        :versions: 0.8.3, 0.9.0
+        :versions: 0.8.3, 0.9.0b1
 
         Fixed bug where list instrumentation would fail to represent a
         setslice of ``[0:0]`` correctly, which in particular could occur
@@ -28,7 +28,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 2801
-        :versions: 0.8.3, 0.9.0
+        :versions: 0.8.3, 0.9.0b1
 
         Fixed regression dating back to 0.7.9 whereby the name of a CTE might
         not be properly quoted if it was referred to in multiple FROM clauses.
@@ -36,7 +36,7 @@
     .. change::
         :tags: mysql, bug
         :tickets: 2791
-        :versions: 0.8.3, 0.9.0
+        :versions: 0.8.3, 0.9.0b1
 
         Updates to MySQL reserved words for versions 5.5, 5.6, courtesy
         Hanno Schlichting.
@@ -44,7 +44,7 @@
     .. change::
         :tags: sql, bug, cte
         :tickets: 2783
-        :versions: 0.8.3, 0.9.0
+        :versions: 0.8.3, 0.9.0b1
 
         Fixed bug in common table expression system where if the CTE were
         used only as an ``alias()`` construct, it would not render using the
@@ -53,7 +53,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 2784
-        :versions: 0.8.3, 0.9.0
+        :versions: 0.8.3, 0.9.0b1
 
         Fixed bug in :class:`.CheckConstraint` DDL where the "quote" flag from a
         :class:`.Column` object would not be propagated.
@@ -128,7 +128,7 @@
     :version: 0.7.10
     :released: Thu Feb 7 2013
 
-    .. change:
+    .. change::
         :tags: sql, mysql, gae
         :tickets: 2649
 
@@ -156,25 +156,6 @@
         alternate ".key" name for the column.
 
     .. change::
-        :tags: engine, bug
-        :tickets: 2604
-
-      Fixed :meth:`.MetaData.reflect` to correctly use
-      the given :class:`.Connection`, if given, without
-      opening a second connection from that connection's
-      :class:`.Engine`.
-
-    .. change::
-        :tags: mssql, bug
-        :tickets:2607
-
-      Fixed bug whereby using "key" with Column
-      in conjunction with "schema" for the owning
-      Table would fail to locate result rows due
-      to the MSSQL dialect's "schema rendering"
-      logic's failure to take .key into account.
-
-    .. change::
         :tags: mssql, bug
         :tickets: 2638
 
@@ -187,7 +168,7 @@
         :tickets: 2650
 
       Fixed potential memory leak which could occur if an
-      arbitrary number of :func:`.sessionmaker` objects
+      arbitrary number of :class:`.sessionmaker` objects
       were created.   The anonymous subclass created by
       the sessionmaker, when dereferenced, would not be garbage
       collected due to remaining class-level references from the
@@ -1463,10 +1444,10 @@
         :tickets: 2361
 
       Dialect-specific compilers now raise
-      CompileException for all type/statement compilation
+      CompileError for all type/statement compilation
       issues, instead of InvalidRequestError or ArgumentError.
       The DDL for CREATE TABLE will re-raise
-      CompileExceptions to include table/column information
+      CompileError to include table/column information
       for the problematic column.
 
     .. change::
@@ -1966,7 +1947,7 @@
         :tickets: 1679
 
       a "has_schema" method has been implemented
-        on dialect, but only works on Postgresql so far.
+      on dialect, but only works on Postgresql so far.
       Courtesy Manlio Perillo.
 
     .. change::
