@@ -823,7 +823,7 @@ class Session(_SessionClassMethods):
             etc.) which will be used to locate a bind, if a bind
             cannot otherwise be identified.
 
-        :param close_with_result: Passed to :meth:`Engine.connect`, indicating
+        :param close_with_result: Passed to :meth:`.Engine.connect`, indicating
           the :class:`.Connection` should be considered "single use",
           automatically closing when the first result set is closed.  This
           flag only has an effect if this :class:`.Session` is configured with
