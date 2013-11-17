@@ -68,7 +68,7 @@ Community members interested in these dialects should feel free to pick up on
 their current codebase and fork off into working libraries.
 
 * `sqlalchemy-access <https://bitbucket.org/zzzeek/sqlalchemy-access>`_ - driver for Microsoft Access.
-* `sqlalchemy-informixdb <https://bitbucket.org/zzzeek/sqlalchemy_informixdb>`_ - driver for the informixdb DBAPI.
+* `sqlalchemy-informixdb <https://bitbucket.org/zzzeek/sqlalchemy-informixdb>`_ - driver for the informixdb DBAPI.
 * `sqlalchemy-maxdb <https://bitbucket.org/zzzeek/sqlalchemy-maxdb>`_ - driver for the MaxDB database
 
 
