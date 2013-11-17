@@ -600,7 +600,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         assert 'orders' not in noeagers[0].__dict__
         assert 'addresses' not in noeagers[0].__dict__
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_limit(self):
         """Limit operations combined with lazy-load relationships."""
 
@@ -655,7 +654,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             eq_(self.static.user_address_result, l)
         self.assert_sql_count(testing.db, go, 1)
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_limit_2(self):
         keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
                                 self.tables.items,
@@ -677,7 +675,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         eq_(self.static.item_keyword_result[1:3], l)
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_limit_3(self):
         """test that the ORDER BY is propagated from the inner
         select to the outer select, when using the
@@ -709,7 +706,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         q = sess.query(User)
 
-        if not testing.against('maxdb', 'mssql'):
+        if not testing.against('mssql'):
             l = q.join('orders').order_by(Order.user_id.desc()).limit(2).offset(1)
             eq_([
                 User(id=9,
@@ -944,7 +941,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             eq_([User(id=7, address=Address(id=1))], l)
         self.assert_sql_count(testing.db, go, 1)
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_many_to_one(self):
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
@@ -1922,7 +1918,6 @@ class SelfReferentialEagerTest(fixtures.MappedTest):
             Column('parent_id', Integer, ForeignKey('nodes.id')),
             Column('data', String(30)))
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_basic(self):
         nodes = self.tables.nodes
 
@@ -2108,7 +2103,6 @@ class SelfReferentialEagerTest(fixtures.MappedTest):
             )
         )
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_no_depth(self):
         nodes = self.tables.nodes
 

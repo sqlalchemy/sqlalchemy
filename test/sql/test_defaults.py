@@ -45,7 +45,7 @@ class DefaultTest(fixtures.TestBase):
                 # since its a "branched" connection
                 conn.close()
 
-        use_function_defaults = testing.against('postgresql', 'mssql', 'maxdb')
+        use_function_defaults = testing.against('postgresql', 'mssql')
         is_oracle = testing.against('oracle')
 
         class MyClass(object):
@@ -73,9 +73,7 @@ class DefaultTest(fixtures.TestBase):
             f2 = sa.select([func.length('abcdefghijk')], bind=db).scalar()
             def1 = currenttime
             deftype = sa.Date
-            if testing.against('maxdb'):
-                def2 = sa.text("curdate")
-            elif testing.against('mssql'):
+            if testing.against('mssql'):
                 def2 = sa.text("getdate()")
             else:
                 def2 = sa.text("current_date")

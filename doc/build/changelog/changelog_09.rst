@@ -15,6 +15,14 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: removed
+
+        The "informix" and "informixdb" dialects have been removed; the code
+        is now available as a separate repository on Bitbucket.   The IBM-DB
+        project has provided production-level Informix support since the
+        informixdb dialect was first added.
+
+    .. change::
         :tags: bug, orm
 
         Fixed bug where usage of new :class:`.Bundle` object would cause

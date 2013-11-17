@@ -413,8 +413,6 @@ class RealReconnectTest(fixtures.TestBase):
     def teardown(self):
         self.engine.dispose()
 
-    @testing.fails_on('+informixdb',
-                      "Wrong error thrown, fix in informixdb?")
     def test_reconnect(self):
         conn = self.engine.connect()
 
@@ -539,8 +537,6 @@ class RealReconnectTest(fixtures.TestBase):
         # pool was recreated
         assert engine.pool is not p1
 
-    @testing.fails_on('+informixdb',
-                      "Wrong error thrown, fix in informixdb?")
     def test_null_pool(self):
         engine = \
             engines.reconnecting_engine(options=dict(poolclass=pool.NullPool))
@@ -554,8 +550,6 @@ class RealReconnectTest(fixtures.TestBase):
         eq_(conn.execute(select([1])).scalar(), 1)
         assert not conn.invalidated
 
-    @testing.fails_on('+informixdb',
-                      "Wrong error thrown, fix in informixdb?")
     def test_close(self):
         conn = self.engine.connect()
         eq_(conn.execute(select([1])).scalar(), 1)
@@ -569,8 +563,6 @@ class RealReconnectTest(fixtures.TestBase):
         conn = self.engine.connect()
         eq_(conn.execute(select([1])).scalar(), 1)
 
-    @testing.fails_on('+informixdb',
-                      "Wrong error thrown, fix in informixdb?")
     def test_with_transaction(self):
         conn = self.engine.connect()
         trans = conn.begin()
@@ -651,8 +643,6 @@ class InvalidateDuringResultTest(fixtures.TestBase):
                     '+cymysql', '+pymysql', '+pg8000'
                     ], "Buffers the result set and doesn't check for "
                         "connection close")
-    @testing.fails_on('+informixdb',
-                      "Wrong error thrown, fix in informixdb?")
     def test_invalidate_on_results(self):
         conn = self.engine.connect()
         result = conn.execute('select * from sometable')

@@ -32,7 +32,6 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
         info_table.drop()
 
     @testing.fails_on('firebird', 'FIXME: unknown')
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.requires.subqueries
     def test_case(self):
         inner = select([case([
@@ -130,7 +129,6 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
     @testing.fails_on('firebird', 'FIXME: unknown')
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def testcase_with_dict(self):
         query = select([case({
                     info_table.c.pk < 3: 'lessthan3',

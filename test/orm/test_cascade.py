@@ -1217,7 +1217,6 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
         sess.flush()
         sess.close()
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_orphan(self):
         prefs, User, extra = (self.tables.prefs,
                                 self.classes.User,
@@ -1282,7 +1281,6 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
         assert p2 in sess
         sess.commit()
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_orphan_on_update(self):
         prefs, User, extra = (self.tables.prefs,
                                 self.classes.User,

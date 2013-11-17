@@ -1110,7 +1110,6 @@ class QueryTest(fixtures.TestBase):
 
     @testing.crashes('oracle', 'FIXME: unknown, varify not fails_on()')
     @testing.crashes('firebird', 'An identifier must begin with a letter')
-    @testing.crashes('maxdb', 'FIXME: unknown, verify not fails_on()')
     def test_column_accessor_shadow(self):
         meta = MetaData(testing.db)
         shadowed = Table('test_shadowed', meta,
@@ -1900,7 +1899,6 @@ class CompoundTest(fixtures.TestBase):
         eq_(u.execute().fetchall(), wanted)
 
     @testing.fails_on('firebird', "doesn't like ORDER BY with UNIONs")
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.requires.subqueries
     def test_union_ordered_alias(self):
         (s1, s2) = (
@@ -1919,7 +1917,6 @@ class CompoundTest(fixtures.TestBase):
     @testing.fails_on('firebird', "has trouble extracting anonymous column from union subquery")
     @testing.fails_on('mysql', 'FIXME: unknown')
     @testing.fails_on('sqlite', 'FIXME: unknown')
-    @testing.fails_on('informix', "FIXME: unknown (maybe the second alias isn't allows)")
     def test_union_all(self):
         e = union_all(
             select([t1.c.col3]),

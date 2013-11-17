@@ -178,7 +178,7 @@ class LazyTest(_fixtures.FixtureTest):
         sess = create_session()
         q = sess.query(User)
 
-        if testing.against('maxdb', 'mssql'):
+        if testing.against('mssql'):
             l = q.limit(2).all()
             assert self.static.user_all_result[:2] == l
         else:

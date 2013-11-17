@@ -115,19 +115,15 @@ class PolymorphicCircularTest(fixtures.MappedTest):
         configure_mappers()
         assert table1_mapper.primary_key == (table1.c.id,), table1_mapper.primary_key
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def testone(self):
         self._testlist([Table1, Table2, Table1, Table2])
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def testtwo(self):
         self._testlist([Table3])
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def testthree(self):
         self._testlist([Table2, Table1, Table1B, Table3, Table3, Table1B, Table1B, Table2, Table1])
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def testfour(self):
         self._testlist([
                 Table2('t2', [Data('data1'), Data('data2')]),

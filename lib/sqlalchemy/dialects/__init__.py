@@ -7,7 +7,6 @@
 __all__ = (
     'drizzle',
     'firebird',
-#    'informix',
     'mssql',
     'mysql',
     'oracle',

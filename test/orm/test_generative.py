@@ -43,7 +43,6 @@ class GenerativeQueryTest(fixtures.MappedTest):
         assert res.order_by(Foo.bar)[0].bar == 5
         assert res.order_by(sa.desc(Foo.bar))[0].bar == 95
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_slice(self):
         Foo = self.classes.Foo
 

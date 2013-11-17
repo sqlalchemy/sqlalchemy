@@ -632,7 +632,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             ], q.all())
         self.assert_sql_count(testing.db, go, 6)
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_limit(self):
         """Limit operations combined with lazy-load relationships."""
 
@@ -706,7 +705,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             eq_([User(id=7, address=Address(id=1))], l)
         self.assert_sql_count(testing.db, go, 2)
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_many_to_one(self):
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
@@ -1144,7 +1142,6 @@ class SelfReferentialTest(fixtures.MappedTest):
             Column('parent_id', Integer, ForeignKey('nodes.id')),
             Column('data', String(30)))
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_basic(self):
         nodes = self.tables.nodes
 
@@ -1309,7 +1306,6 @@ class SelfReferentialTest(fixtures.MappedTest):
             ]), d)
         self.assert_sql_count(testing.db, go, 3)
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_no_depth(self):
         """no join depth is set, so no eager loading occurs."""
 

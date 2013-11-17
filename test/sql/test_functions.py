@@ -21,13 +21,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         functions._registry.clear()
 
     def test_compile(self):
-        for dialect in all_dialects(exclude=('sybase', 'access',
-                                                'informix', 'maxdb')):
+        for dialect in all_dialects(exclude=('sybase', )):
             bindtemplate = BIND_TEMPLATES[dialect.paramstyle]
             self.assert_compile(func.current_timestamp(),
                                         "CURRENT_TIMESTAMP", dialect=dialect)
             self.assert_compile(func.localtime(), "LOCALTIME", dialect=dialect)
-            if dialect.name in ('firebird', 'maxdb'):
+            if dialect.name in ('firebird',):
                 self.assert_compile(func.nosuchfunction(),
                                             "nosuchfunction", dialect=dialect)
             else:

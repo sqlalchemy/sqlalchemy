@@ -59,10 +59,9 @@ class ExecuteTest(fixtures.TestBase):
                 scalar(stmt)
         eq_(result, '%')
 
-    @testing.fails_on_everything_except('firebird', 'maxdb',
+    @testing.fails_on_everything_except('firebird',
                                         'sqlite', '+pyodbc',
-                                        '+mxodbc', '+zxjdbc', 'mysql+oursql',
-                                        'informix+informixdb')
+                                        '+mxodbc', '+zxjdbc', 'mysql+oursql')
     def test_raw_qmark(self):
         def go(conn):
             conn.execute('insert into users (user_id, user_name) '
@@ -182,7 +181,7 @@ class ExecuteTest(fixtures.TestBase):
         finally:
             conn.close()
 
-    @testing.fails_on_everything_except('sqlite', 'oracle+cx_oracle', 'informix+informixdb')
+    @testing.fails_on_everything_except('sqlite', 'oracle+cx_oracle')
     def test_raw_named(self):
         def go(conn):
             conn.execute('insert into users (user_id, user_name) '

@@ -201,7 +201,6 @@ class InheritTest3(fixtures.MappedTest):
         found = [repr(l[0])] + sorted([repr(o) for o in l[0].foos])
         eq_(found, compare)
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def testadvanced(self):
         class Foo(object):
             def __init__(self, data=None):
