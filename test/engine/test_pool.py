@@ -12,6 +12,8 @@ from sqlalchemy.testing import fixtures
 
 from sqlalchemy.testing.mock import Mock, call
 
+join_timeout = 10
+
 def MockDBAPI():
     def cursor():
         while True:
@@ -829,7 +831,7 @@ class QueuePoolTest(PoolTestBase):
             th.start()
             threads.append(th)
         for th in threads:
-            th.join()
+            th.join(join_timeout)
 
         assert len(timeouts) > 0
         for t in timeouts:
@@ -866,7 +868,7 @@ class QueuePoolTest(PoolTestBase):
             th.start()
             threads.append(th)
         for th in threads:
-            th.join()
+            th.join(join_timeout)
 
         self.assert_(max(peaks) <= max_overflow)
 
@@ -899,16 +901,19 @@ class QueuePoolTest(PoolTestBase):
                 c1 = p.connect()
                 c2 = p.connect()
 
+                threads = set()
                 for i in range(2):
                     t = threading.Thread(target=waiter,
                                     args=(p, timeout, max_overflow))
-                    t.setDaemon(True)  # so the tests dont hang if this fails
                     t.start()
+                    threads.add(t)
 
                 c1.invalidate()
                 c2.invalidate()
                 p2 = p._replace()
-                time.sleep(.2)
+
+                for t in threads:
+                    t.join(join_timeout)
 
         eq_(len(success), 12, "successes: %s" % success)
 
@@ -1248,7 +1253,7 @@ class SingletonThreadPoolTest(PoolTestBase):
             th.start()
             threads.append(th)
         for th in threads:
-            th.join()
+            th.join(join_timeout)
         assert len(p._all_conns) == 3
 
         if strong_refs:
