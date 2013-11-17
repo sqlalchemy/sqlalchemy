@@ -286,7 +286,6 @@ class EagerTest2(fixtures.MappedTest):
                            lazy='joined',
                            backref=backref('middle', lazy='joined')))),
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_eager_terminate(self):
         """Eager query generation does not include the same mapper's table twice.
 
@@ -339,7 +338,6 @@ class EagerTest3(fixtures.MappedTest):
         class Stat(cls.Basic):
             pass
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_nesting_with_functions(self):
         Stat, Foo, stats, foo, Data, datas = (self.classes.Stat,
                                 self.classes.Foo,
@@ -423,7 +421,6 @@ class EagerTest4(fixtures.MappedTest):
         class Employee(cls.Basic):
             pass
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_basic(self):
         Department, Employee, employees, departments = (self.classes.Department,
                                 self.classes.Employee,
@@ -774,7 +771,6 @@ class EagerTest8(fixtures.MappedTest):
         class Joined(cls.Comparable):
             pass
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_nested_joins(self):
         task, Task_Type, Joined, prj, task_type, msg = (self.tables.task,
                                 self.classes.Task_Type,
@@ -867,7 +863,6 @@ class EagerTest9(fixtures.MappedTest):
                                  backref=backref('entries', lazy='joined',
                                                  order_by=entries.c.entry_id))))
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_joinedload_on_path(self):
         Entry, Account, Transaction = (self.classes.Entry,
                                 self.classes.Account,

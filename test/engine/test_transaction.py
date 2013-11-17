@@ -1035,7 +1035,6 @@ class ForUpdateTest(fixtures.TestBase):
     @testing.crashes('mssql', 'FIXME: unknown')
     @testing.crashes('firebird', 'FIXME: unknown')
     @testing.crashes('sybase', 'FIXME: unknown')
-    @testing.crashes('access', 'FIXME: unknown')
     @testing.requires.independent_connections
     def test_queued_update(self):
         """Test SELECT FOR UPDATE with concurrent modifications.
@@ -1100,7 +1099,6 @@ class ForUpdateTest(fixtures.TestBase):
     @testing.crashes('mssql', 'FIXME: unknown')
     @testing.crashes('firebird', 'FIXME: unknown')
     @testing.crashes('sybase', 'FIXME: unknown')
-    @testing.crashes('access', 'FIXME: unknown')
     @testing.requires.independent_connections
     def test_queued_select(self):
         """Simple SELECT FOR UPDATE conflict test"""
@@ -1112,7 +1110,6 @@ class ForUpdateTest(fixtures.TestBase):
     @testing.fails_on('mysql', 'No support for NOWAIT')
     @testing.crashes('firebird', 'FIXME: unknown')
     @testing.crashes('sybase', 'FIXME: unknown')
-    @testing.crashes('access', 'FIXME: unknown')
     @testing.requires.independent_connections
     def test_nowait_select(self):
         """Simple SELECT FOR UPDATE NOWAIT conflict test"""

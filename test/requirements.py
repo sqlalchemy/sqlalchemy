@@ -85,8 +85,6 @@ class DefaultRequirements(SuiteRequirements):
             no_support('oracle', 'not supported by database'),
             no_support('mssql', 'not supported by database'),
             no_support('sybase', 'not supported by database'),
-            no_support('maxdb', 'FIXME: verify not supported by database'),
-            no_support('informix', 'not supported by database'),
         ])
 
     @property
@@ -226,7 +224,6 @@ class DefaultRequirements(SuiteRequirements):
                     "sqlite",
                     "sybase",
                     ("mysql", "<", (5, 0, 3)),
-                    ("informix", "<", (11, 55, "xC3"))
                     ], "savepoints not supported")
 
 
@@ -283,14 +280,14 @@ class DefaultRequirements(SuiteRequirements):
         """Target database must support INTERSECT or equivalent."""
 
         return fails_if([
-                "firebird", "mysql", "sybase", "informix"
+                "firebird", "mysql", "sybase",
             ], 'no support for INTERSECT')
 
     @property
     def except_(self):
         """Target database must support EXCEPT or equivalent (i.e. MINUS)."""
         return fails_if([
-                "firebird", "mysql", "sybase", "informix"
+                "firebird", "mysql", "sybase",
             ], 'no support for EXCEPT')
 
     @property
@@ -313,7 +310,6 @@ class DefaultRequirements(SuiteRequirements):
 
         return skip_if([
             no_support('firebird', 'no SA implementation'),
-            no_support('maxdb', 'two-phase xact not supported by database'),
             no_support('mssql', 'two-phase xact not supported by drivers'),
             no_support('oracle', 'two-phase xact not implemented in SQLA/oracle'),
             no_support('drizzle', 'two-phase xact not supported by database'),
@@ -366,7 +362,6 @@ class DefaultRequirements(SuiteRequirements):
         """Target driver must support some degree of non-ascii symbol names."""
         # TODO: expand to exclude MySQLdb versions w/ broken unicode
         return skip_if([
-            no_support('maxdb', 'database support flakey'),
             no_support('oracle', 'FIXME: no support in database?'),
             no_support('sybase', 'FIXME: guessing, needs confirmation'),
             no_support('mssql+pymssql', 'no FreeTDS support'),

@@ -18,7 +18,6 @@ Included Dialects
 
     drizzle
     firebird
-    informix
     mssql
     mysql
     oracle
@@ -45,17 +44,31 @@ Current external dialect projects for SQLAlchemy include:
 Production Ready
 ^^^^^^^^^^^^^^^^
 
-* `ibm_db_sa <http://code.google.com/p/ibm-db/wiki/README>`_ - driver for IBM DB2, developed jointly by IBM and SQLAlchemy developers.
+* `ibm_db_sa <http://code.google.com/p/ibm-db/wiki/README>`_ - driver for IBM DB2 and Informix, developed jointly by IBM and SQLAlchemy developers.
 * `sqlalchemy-sqlany <https://code.google.com/p/sqlalchemy-sqlany/>`_ - driver for SAP Sybase SQL Anywhere, developed by SAP.
 * `sqlalchemy-monetdb <https://github.com/gijzelaerr/sqlalchemy-monetdb>`_ - driver for MonetDB.
 
 Experimental / Incomplete
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-* `sqlalchemy-access <https://bitbucket.org/zzzeek/sqlalchemy-access>`_ - driver for Microsoft Access.
+Dialects that were started but are not in a completed state.  Code contributions
+welcome here.
+
 * `CALCHIPAN <https://bitbucket.org/zzzeek/calchipan/>`_ - Adapts `Pandas <http://pandas.pydata.org/>`_ dataframes to SQLAlchemy.
 * `sqlalchemy-akiban <https://github.com/zzzeek/sqlalchemy_akiban>`_ - driver and ORM extensions for the `Akiban <http://www.akiban.com>`_ database.
 * `sqlalchemy-cubrid <https://bitbucket.org/zzzeek/sqlalchemy-cubrid>`_ - driver for the CUBRID database.
+
+Attic
+^^^^^
+
+Dialects in the "attic" are those that were contributed for SQLAlchemy long ago
+but have received little attention or demand since then, and are now moved out to
+their own repositories in at best a semi-working state.
+Community members interested in these dialects should feel free to pick up on
+their current codebase and fork off into working libraries.
+
+* `sqlalchemy-access <https://bitbucket.org/zzzeek/sqlalchemy-access>`_ - driver for Microsoft Access.
+* `sqlalchemy-informixdb <https://bitbucket.org/zzzeek/sqlalchemy_informixdb>`_ - driver for the informixdb DBAPI.
 * `sqlalchemy-maxdb <https://bitbucket.org/zzzeek/sqlalchemy-maxdb>`_ - driver for the MaxDB database
 
 

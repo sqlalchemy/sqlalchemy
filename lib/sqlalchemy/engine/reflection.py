@@ -493,7 +493,7 @@ class Inspector(object):
                 )
 
             if 'sequence' in col_d:
-                # TODO: mssql, maxdb and sybase are using this.
+                # TODO: mssql and sybase are using this.
                 seq = col_d['sequence']
                 sequence = sa_schema.Sequence(seq['name'], 1, 1)
                 if 'start' in seq:

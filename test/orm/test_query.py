@@ -1336,7 +1336,6 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
 
         assert [User(id=10)] == sess.query(User).outerjoin("addresses", aliased=True).filter(~User.addresses.any()).all()
 
-    @testing.crashes('maxdb', 'can dump core')
     def test_has(self):
         Dingaling, User, Address = (self.classes.Dingaling,
                                 self.classes.User,

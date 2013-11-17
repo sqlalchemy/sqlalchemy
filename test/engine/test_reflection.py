@@ -754,10 +754,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
 
     @testing.crashes('oracle', 'FIXME: unknown, confirm not fails_on')
-    @testing.fails_on('+informixdb',
-                        "FIXME: should be supported via the "
-                        "DELIMITED env var but that breaks "
-                        "everything else for now")
     @testing.provide_metadata
     def test_reserved(self):
 
@@ -774,7 +770,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         # There's currently no way to calculate identifier case
         # normalization in isolation, so...
 
-        if testing.against('firebird', 'oracle', 'maxdb'):
+        if testing.against('firebird', 'oracle'):
             check_col = 'TRUE'
         else:
             check_col = 'true'

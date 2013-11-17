@@ -964,7 +964,6 @@ class EagerLazyTest(fixtures.MappedTest):
                         Column('foo_id', Integer, ForeignKey('foo.id'))
         )
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_basic(self):
         class Foo(object): pass
         class Bar(Foo): pass

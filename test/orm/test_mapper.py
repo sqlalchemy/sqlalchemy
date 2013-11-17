@@ -1749,7 +1749,6 @@ class OptionsTest(_fixtures.FixtureTest):
             eq_(l, self.static.user_address_result)
         self.sql_count_(0, go)
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_eager_options_with_limit(self):
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
@@ -1775,7 +1774,6 @@ class OptionsTest(_fixtures.FixtureTest):
         eq_(u.id, 8)
         eq_(len(u.addresses), 3)
 
-    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_lazy_options_with_limit(self):
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
