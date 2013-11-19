@@ -163,7 +163,7 @@ def makeprop(name):
     return property(get, set)
 
 for prop in ('bind', 'dirty', 'deleted', 'new', 'identity_map',
-             'is_active', 'autoflush', 'no_autoflush'):
+             'is_active', 'autoflush', 'no_autoflush', 'info'):
     setattr(scoped_session, prop, makeprop(prop))
 
 

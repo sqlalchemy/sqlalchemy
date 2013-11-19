@@ -15,6 +15,12 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: bug, orm
+
+        Added support for new :attr:`.Session.info` attribute to
+        :class:`.scoped_session`.
+
+    .. change::
         :tags: removed
 
         The "informix" and "informixdb" dialects have been removed; the code
