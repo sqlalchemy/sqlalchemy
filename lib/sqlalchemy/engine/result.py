@@ -125,8 +125,11 @@ class RowProxy(BaseRowProxy):
 
     __hash__ = None
 
+    def __lt__(self, other):
+        return tuple(self) < tuple(other)
+
     def __eq__(self, other):
-        return other is self or other == tuple(self)
+        return other is self or tuple(other) == tuple(self)
 
     def __ne__(self, other):
         return not self.__eq__(other)

@@ -15,6 +15,19 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: bug, engine
+        :tickets: 2848
+
+        The :class:`.RowProxy` object is now sortable in Python as a regular
+        tuple is; this is accomplished via ensuring tuple() conversion on
+        both sides within the ``__eq__()`` method as well as
+        the addition of a ``__lt__()`` method.
+
+        .. seealso::
+
+            :ref:`migration_2848`
+
+    .. change::
         :tags: bug, orm
         :tickets: 2833
 

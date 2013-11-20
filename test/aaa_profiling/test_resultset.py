@@ -53,6 +53,7 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
             c1 in row
         go()
 
+
 class ExecutionTest(fixtures.TestBase):
 
     def test_minimal_connection_execute(self):

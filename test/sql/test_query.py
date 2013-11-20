@@ -1090,6 +1090,19 @@ class QueryTest(fixtures.TestBase):
         eq_(len(r), 1)
 
 
+    def test_sorting_in_python(self):
+        users.insert().execute(
+                dict(user_id=1, user_name='foo'),
+                dict(user_id=2, user_name='bar'),
+                dict(user_id=3, user_name='def'),
+            )
+
+        rows = users.select().order_by(users.c.user_name).execute().fetchall()
+
+        eq_(rows, [(2, 'bar'), (3, 'def'), (1, 'foo')])
+
+        eq_(sorted(rows), [(1, 'foo'), (2, 'bar'), (3, 'def')])
+
     def test_column_order_with_simple_query(self):
         # should return values in column definition order
         users.insert().execute(user_id=1, user_name='foo')

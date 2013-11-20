@@ -287,6 +287,30 @@ The change is illustrated as follows::
 
 :ticket:`2833`
 
+.. _migration_2848:
+
+``RowProxy`` now has tuple-sorting behavior
+-------------------------------------------
+
+The :class:`.RowProxy` object acts much like a tuple, but up until now
+would not sort as a tuple if a list of them were sorted using ``sorted()``.
+The ``__eq__()`` method now compares both sides as a tuple and also
+an ``__lt__()`` method has been added::
+
+    users.insert().execute(
+            dict(user_id=1, user_name='foo'),
+            dict(user_id=2, user_name='bar'),
+            dict(user_id=3, user_name='def'),
+        )
+
+    rows = users.select().order_by(users.c.user_name).execute().fetchall()
+
+    eq_(rows, [(2, 'bar'), (3, 'def'), (1, 'foo')])
+
+    eq_(sorted(rows), [(1, 'foo'), (2, 'bar'), (3, 'def')])
+
+:ticket:`2848`
+
 .. _migration_2751:
 
 Association Proxy SQL Expression Improvements and Fixes
