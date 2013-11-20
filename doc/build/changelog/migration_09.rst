@@ -49,8 +49,8 @@ in both Python 2 and Python 3 environments.
 
 .. _behavioral_changes_09:
 
-Behavioral Changes
-==================
+Behavioral Changes - ORM
+========================
 
 .. _migration_2824:
 
@@ -287,30 +287,6 @@ The change is illustrated as follows::
 
 :ticket:`2833`
 
-.. _migration_2848:
-
-``RowProxy`` now has tuple-sorting behavior
--------------------------------------------
-
-The :class:`.RowProxy` object acts much like a tuple, but up until now
-would not sort as a tuple if a list of them were sorted using ``sorted()``.
-The ``__eq__()`` method now compares both sides as a tuple and also
-an ``__lt__()`` method has been added::
-
-    users.insert().execute(
-            dict(user_id=1, user_name='foo'),
-            dict(user_id=2, user_name='bar'),
-            dict(user_id=3, user_name='def'),
-        )
-
-    rows = users.select().order_by(users.c.user_name).execute().fetchall()
-
-    eq_(rows, [(2, 'bar'), (3, 'def'), (1, 'foo')])
-
-    eq_(sorted(rows), [(1, 'foo'), (2, 'bar'), (3, 'def')])
-
-:ticket:`2848`
-
 .. _migration_2751:
 
 Association Proxy SQL Expression Improvements and Fixes
@@ -444,6 +420,57 @@ proxied value.  E.g.::
     assert a1.bname is None
 
 :ticket:`2810`
+
+
+.. _change_2787:
+
+attributes.get_history() will query from the DB by default if value not present
+-------------------------------------------------------------------------------
+
+A bugfix regarding :func:`.attributes.get_history` allows a column-based attribute
+to query out to the database for an unloaded value, assuming the ``passive``
+flag is left at its default of ``PASSIVE_OFF``.  Previously, this flag would
+not be honored.  Additionally, a new method :meth:`.AttributeState.load_history`
+is added to complement the :attr:`.AttributeState.history` attribute, which
+will emit loader callables for an unloaded attribute.
+
+This is a small change demonstrated as follows::
+
+    from sqlalchemy import Column, Integer, String, create_engine, inspect
+    from sqlalchemy.orm import Session, attributes
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+        data = Column(String)
+
+    e = create_engine("sqlite://", echo=True)
+    Base.metadata.create_all(e)
+
+    sess = Session(e)
+
+    a1 = A(data='a1')
+    sess.add(a1)
+    sess.commit()  # a1 is now expired
+
+    # history doesn't emit loader callables
+    assert inspect(a1).attrs.data.history == (None, None, None)
+
+    # in 0.8, this would fail to load the unloaded state.
+    assert attributes.get_history(a1, 'data') == ((), ['a1',], ())
+
+    # load_history() is now equiavlent to get_history() with
+    # passive=PASSIVE_OFF ^ INIT_OK
+    assert inspect(a1).attrs.data.load_history() == ((), ['a1',], ())
+
+:ticket:`2787`
+
+
+Behavioral Changes - Core
+=========================
 
 .. _migration_2850:
 
@@ -610,51 +637,29 @@ now consistent::
 
 :ticket:`2804`
 
-.. _change_2787:
+.. _migration_2848:
 
-attributes.get_history() will query from the DB by default if value not present
--------------------------------------------------------------------------------
+``RowProxy`` now has tuple-sorting behavior
+-------------------------------------------
 
-A bugfix regarding :func:`.attributes.get_history` allows a column-based attribute
-to query out to the database for an unloaded value, assuming the ``passive``
-flag is left at its default of ``PASSIVE_OFF``.  Previously, this flag would
-not be honored.  Additionally, a new method :meth:`.AttributeState.load_history`
-is added to complement the :attr:`.AttributeState.history` attribute, which
-will emit loader callables for an unloaded attribute.
+The :class:`.RowProxy` object acts much like a tuple, but up until now
+would not sort as a tuple if a list of them were sorted using ``sorted()``.
+The ``__eq__()`` method now compares both sides as a tuple and also
+an ``__lt__()`` method has been added::
 
-This is a small change demonstrated as follows::
+    users.insert().execute(
+            dict(user_id=1, user_name='foo'),
+            dict(user_id=2, user_name='bar'),
+            dict(user_id=3, user_name='def'),
+        )
 
-    from sqlalchemy import Column, Integer, String, create_engine, inspect
-    from sqlalchemy.orm import Session, attributes
-    from sqlalchemy.ext.declarative import declarative_base
+    rows = users.select().order_by(users.c.user_name).execute().fetchall()
 
-    Base = declarative_base()
+    eq_(rows, [(2, 'bar'), (3, 'def'), (1, 'foo')])
 
-    class A(Base):
-        __tablename__ = 'a'
-        id = Column(Integer, primary_key=True)
-        data = Column(String)
+    eq_(sorted(rows), [(1, 'foo'), (2, 'bar'), (3, 'def')])
 
-    e = create_engine("sqlite://", echo=True)
-    Base.metadata.create_all(e)
-
-    sess = Session(e)
-
-    a1 = A(data='a1')
-    sess.add(a1)
-    sess.commit()  # a1 is now expired
-
-    # history doesn't emit loader callables
-    assert inspect(a1).attrs.data.history == (None, None, None)
-
-    # in 0.8, this would fail to load the unloaded state.
-    assert attributes.get_history(a1, 'data') == ((), ['a1',], ())
-
-    # load_history() is now equiavlent to get_history() with
-    # passive=PASSIVE_OFF ^ INIT_OK
-    assert inspect(a1).attrs.data.load_history() == ((), ['a1',], ())
-
-:ticket:`2787`
+:ticket:`2848`
 
 
 New Features
