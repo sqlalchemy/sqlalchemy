@@ -16,6 +16,23 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 2833
+
+        The ``viewonly`` flag on :func:`.relationship` will now prevent
+        attribute history from being written on behalf of the target attribute.
+        This has the effect of the object not being written to the
+        Session.dirty list if it is mutated.  Previously, the object would
+        be present in Session.dirty, but no change would take place on behalf
+        of the modified attribute during flush.   The attribute still emits
+        events such as backref events and user-defined events and will still
+        receive mutations from backrefs.
+
+        .. seealso::
+
+            :ref:`migration_2833`
+
+    .. change::
+        :tags: bug, orm
 
         Added support for new :attr:`.Session.info` attribute to
         :class:`.scoped_session`.

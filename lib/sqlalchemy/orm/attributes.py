@@ -370,6 +370,7 @@ class AttributeImpl(object):
                     callable_, dispatch, trackparent=False, extension=None,
                     compare_function=None, active_history=False,
                     parent_token=None, expire_missing=True,
+                    send_modified_events=True,
                     **kwargs):
         """Construct an AttributeImpl.
 
@@ -413,6 +414,10 @@ class AttributeImpl(object):
           during state.expire_attributes(None), if no value is present
           for this key.
 
+        send_modified_events
+          if False, the InstanceState._modified_event method will have no effect;
+          this means the attribute will never show up as changed in a
+          history entry.
         """
         self.class_ = class_
         self.key = key
@@ -420,6 +425,7 @@ class AttributeImpl(object):
         self.dispatch = dispatch
         self.trackparent = trackparent
         self.parent_token = parent_token or self
+        self.send_modified_events = send_modified_events
         if compare_function is None:
             self.is_equal = operator.eq
         else:

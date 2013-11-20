@@ -229,6 +229,63 @@ new ``initiator`` value for some operations.
 
 :ticket:`2789`
 
+.. _migration_2833:
+
+``viewonly=True`` on ``relationship()`` prevents history from taking effect
+---------------------------------------------------------------------------
+
+The ``viewonly`` flag on :func:`.relationship` is applied to prevent changes
+to the target attribute from having any effect within the flush process.
+This is achieved by eliminating the attribute from being considered during
+the flush.  However, up until now, changes to the attribute would still
+register the parent object as "dirty" and trigger a potential flush.  The change
+is that the ``viewonly`` flag now prevents history from being set for the
+target attribute as well.  Attribute events like backrefs and user-defined events
+still continue to function normally.
+
+The change is illustrated as follows::
+
+    from sqlalchemy import Column, Integer, ForeignKey, create_engine
+    from sqlalchemy.orm import backref, relationship, Session
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy import inspect
+
+    Base = declarative_base()
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+
+    class B(Base):
+        __tablename__ = 'b'
+
+        id = Column(Integer, primary_key=True)
+        a_id = Column(Integer, ForeignKey('a.id'))
+        a = relationship("A", backref=backref("bs", viewonly=True))
+
+    e = create_engine("sqlite://")
+    Base.metadata.create_all(e)
+
+    a = A()
+    b = B()
+
+    sess = Session(e)
+    sess.add_all([a, b])
+    sess.commit()
+
+    b.a = a
+
+    assert b in sess.dirty
+
+    # before 0.9.0b2
+    # assert a in sess.dirty
+    # assert inspect(a).attrs.bs.history.has_changes()
+
+    # after 0.9.0b2
+    assert a not in sess.dirty
+    assert not inspect(a).attrs.bs.history.has_changes()
+
+:ticket:`2833`
 
 .. _migration_2751:
 

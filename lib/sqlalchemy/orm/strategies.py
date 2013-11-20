@@ -80,6 +80,7 @@ def _register_attribute(strategy, mapper, useobject,
                 callable_=callable_,
                 active_history=active_history,
                 impl_class=impl_class,
+                send_modified_events=not useobject or not prop.viewonly,
                 doc=prop.doc,
                 **kw
                 )

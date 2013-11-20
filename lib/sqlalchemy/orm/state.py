@@ -415,6 +415,8 @@ class InstanceState(interfaces._InspectionAttr):
         return None
 
     def _modified_event(self, dict_, attr, previous, collection=False):
+        if not attr.send_modified_events:
+            return
         if attr.key not in self.committed_state:
             if collection:
                 if previous is NEVER_SET:

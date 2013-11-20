@@ -14,6 +14,7 @@ from sqlalchemy.testing import eq_, startswith_, AssertsCompiledSQL, is_
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 from sqlalchemy import exc
+from sqlalchemy import inspect
 
 class _RelationshipErrors(object):
     def _assert_raises_no_relevant_fks(self, fn, expr, relname,
@@ -1516,6 +1517,117 @@ class TypedAssociationTable(fixtures.MappedTest):
 
         assert t3.count().scalar() == 1
 
+class ViewOnlyHistoryTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("t1", metadata,
+            Column('id', Integer, primary_key=True,
+                                    test_needs_autoincrement=True),
+            Column('data', String(40)))
+        Table("t2", metadata,
+            Column('id', Integer, primary_key=True,
+                                    test_needs_autoincrement=True),
+            Column('data', String(40)),
+            Column('t1id', Integer, ForeignKey('t1.id')))
+
+    def _assert_fk(self, a1, b1, is_set):
+        s = Session(testing.db)
+        s.add_all([a1, b1])
+        s.flush()
+
+        if is_set:
+            eq_(b1.t1id, a1.id)
+        else:
+            eq_(b1.t1id, None)
+
+        return s
+
+    def test_o2m_viewonly_oneside(self):
+        class A(fixtures.ComparableEntity):
+            pass
+        class B(fixtures.ComparableEntity):
+            pass
+
+        mapper(A, self.tables.t1, properties={
+            "bs": relationship(B, viewonly=True,
+                            backref=backref("a", viewonly=False))
+        })
+        mapper(B, self.tables.t2)
+
+        a1 = A()
+        b1 = B()
+        a1.bs.append(b1)
+        assert b1.a is a1
+        assert not inspect(a1).attrs.bs.history.has_changes()
+        assert inspect(b1).attrs.a.history.has_changes()
+
+        sess = self._assert_fk(a1, b1, True)
+
+        a1.bs.remove(b1)
+        assert a1 not in sess.dirty
+        assert b1 in sess.dirty
+
+    def test_m2o_viewonly_oneside(self):
+        class A(fixtures.ComparableEntity):
+            pass
+        class B(fixtures.ComparableEntity):
+            pass
+
+        mapper(A, self.tables.t1, properties={
+            "bs": relationship(B, viewonly=False,
+                            backref=backref("a", viewonly=True))
+        })
+        mapper(B, self.tables.t2)
+
+        a1 = A()
+        b1 = B()
+        b1.a = a1
+        assert b1 in a1.bs
+        assert inspect(a1).attrs.bs.history.has_changes()
+        assert not inspect(b1).attrs.a.history.has_changes()
+
+        sess = self._assert_fk(a1, b1, True)
+
+        a1.bs.remove(b1)
+        assert a1 in sess.dirty
+        assert b1 not in sess.dirty
+
+    def test_o2m_viewonly_only(self):
+        class A(fixtures.ComparableEntity):
+            pass
+        class B(fixtures.ComparableEntity):
+            pass
+
+        mapper(A, self.tables.t1, properties={
+            "bs": relationship(B, viewonly=True)
+        })
+        mapper(B, self.tables.t2)
+
+        a1 = A()
+        b1 = B()
+        a1.bs.append(b1)
+        assert not inspect(a1).attrs.bs.history.has_changes()
+
+        self._assert_fk(a1, b1, False)
+
+    def test_m2o_viewonly_only(self):
+        class A(fixtures.ComparableEntity):
+            pass
+        class B(fixtures.ComparableEntity):
+            pass
+
+        mapper(A, self.tables.t1)
+        mapper(B, self.tables.t2, properties={
+            'a': relationship(A, viewonly=True)
+            })
+
+        a1 = A()
+        b1 = B()
+        b1.a = a1
+        assert not inspect(b1).attrs.a.history.has_changes()
+
+        self._assert_fk(a1, b1, False)
+
 class ViewOnlyM2MBackrefTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -1550,6 +1662,8 @@ class ViewOnlyM2MBackrefTest(fixtures.MappedTest):
         sess = create_session()
         a1 = A()
         b1 = B(as_=[a1])
+
+        assert not inspect(b1).attrs.as_.history.has_changes()
 
         sess.add(a1)
         sess.flush()
