@@ -119,11 +119,13 @@ class UnicodeSchemaTest(fixtures.TestBase):
         m = MetaData()
         t = Table(ue('\u6e2c\u8a66'), m, Column(ue('\u6e2c\u8a66_id'), Integer))
 
+        # I hardly understand what's going on with the backslashes in
+        # this one on py2k vs. py3k
         eq_(
             repr(t),
             (
-                "Table(u'\\u6e2c\\u8a66', MetaData(bind=None), "
-                "Column(u'\\u6e2c\\u8a66_id', Integer(), table=<\\u6e2c\\u8a66>), "
+                "Table('\\u6e2c\\u8a66', MetaData(bind=None), "
+                "Column('\\u6e2c\\u8a66_id', Integer(), table=<\u6e2c\u8a66>), "
                 "schema=None)"))
 
 class EscapesDefaultsTest(fixtures.TestBase):

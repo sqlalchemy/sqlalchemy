@@ -2320,7 +2320,6 @@ class quoted_name(util.text_type):
 
     """
 
-    #def __new__(cls, value, quote, sprcls=False):
     def __new__(cls, value, quote):
         if value is None:
             return None
@@ -2355,7 +2354,10 @@ class quoted_name(util.text_type):
             return util.text_type(self).upper()
 
     def __repr__(self):
-        return util.text_type.__repr__(self)
+        backslashed = self.encode('ascii', 'backslashreplace')
+        if not util.py2k:
+            backslashed = backslashed.decode('ascii')
+        return "'%s'" % backslashed
 
 class _truncated_label(quoted_name):
     """A unicode subclass used to identify symbolic "
