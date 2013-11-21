@@ -124,12 +124,13 @@ class UnicodeSchemaTest(fixtures.TestBase):
         m = MetaData()
         t = Table(u'\u6e2c\u8a66', m, Column(u'\u6e2c\u8a66_id', Integer))
 
-        eq_(
-            repr(t),
-            (
-                "Table(u'\\u6e2c\\u8a66', MetaData(bind=None), "
-                "Column(u'\\u6e2c\\u8a66_id', Integer(), table=<\\u6e2c\\u8a66>), "
-                "schema=None)"))
+        if util.py2k:
+            eq_(
+                repr(t),
+                (
+                    "Table(u'\\u6e2c\\u8a66', MetaData(bind=None), "
+                    "Column(u'\\u6e2c\\u8a66_id', Integer(), table=<\\u6e2c\\u8a66>), "
+                    "schema=None)"))
 
 class EscapesDefaultsTest(fixtures.TestBase):
     def test_default_exec(self):
