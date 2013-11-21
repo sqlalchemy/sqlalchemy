@@ -2355,7 +2355,7 @@ class quoted_name(util.text_type):
             return util.text_type(self).upper()
 
     def __repr__(self):
-        return "'%s'" % self
+        return util.text_type.__repr__(self)
 
 class _truncated_label(quoted_name):
     """A unicode subclass used to identify symbolic "

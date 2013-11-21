@@ -15,6 +15,14 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: bug, schema
+        :tickets: 2868
+
+        Fixed a regression caused by :ticket:`2812` where the repr() for
+        table and column names would fail if the name contained non-ascii
+        characters.
+
+    .. change::
         :tags: bug, engine
         :tickets: 2848
 
