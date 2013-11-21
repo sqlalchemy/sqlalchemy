@@ -58,7 +58,7 @@ from ..orm.interfaces import MapperProperty
 from ..orm.attributes import QueryableAttribute
 from .. import Table, Column
 from ..engine import Engine
-from ..util import pickle, byte_buffer, b64encode, b64decode
+from ..util import pickle, byte_buffer, b64encode, b64decode, text_type
 import re
 
 
@@ -80,9 +80,9 @@ def Serializer(*args, **kw):
             id = "mapperprop:" + b64encode(pickle.dumps(obj.parent.class_)) + \
                                     ":" + obj.key
         elif isinstance(obj, Table):
-            id = "table:" + str(obj)
+            id = "table:" + text_type(obj.key)
         elif isinstance(obj, Column) and isinstance(obj.table, Table):
-            id = "column:" + str(obj.table) + ":" + obj.key
+            id = "column:" + text_type(obj.table.key) + ":" + text_type(obj.key)
         elif isinstance(obj, Session):
             id = "session:"
         elif isinstance(obj, Engine):
@@ -112,7 +112,7 @@ def Deserializer(file, metadata=None, scoped_session=None, engine=None):
             return None
 
     def persistent_load(id):
-        m = our_ids.match(str(id))
+        m = our_ids.match(text_type(id))
         if not m:
             return None
         else:

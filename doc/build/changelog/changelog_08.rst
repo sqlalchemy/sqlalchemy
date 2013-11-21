@@ -12,6 +12,15 @@
     :version: 0.8.4
 
     .. change::
+        :tags: bug, ext
+        :tickets: 2869
+        :versions: 0.9.0b2
+
+        Fixed bug which prevented the ``serializer`` extension from working
+        correctly with table or column names that contain non-ASCII
+        characters.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2818
         :versions: 0.9.0b2
