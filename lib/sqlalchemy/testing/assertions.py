@@ -234,8 +234,10 @@ class AssertsCompiledSQL(object):
 
         if util.py3k:
             param_str = param_str.encode('utf-8').decode('ascii', 'ignore')
+            print(("\nSQL String:\n" + util.text_type(c) + param_str).encode('utf-8'))
+        else:
+            print("\nSQL String:\n" + util.text_type(c).encode('utf-8') + param_str)
 
-        print("\nSQL String:\n" + util.text_type(c).encode('utf-8') + param_str)
 
         cc = re.sub(r'[\n\t]', '', util.text_type(c))
 
