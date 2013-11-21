@@ -1,13 +1,16 @@
+# coding: utf-8
 
 from sqlalchemy.ext import serializer
 from sqlalchemy import testing
 from sqlalchemy import Integer, String, ForeignKey, select, \
-    desc, func, util
+    desc, func, util, MetaData
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.orm import relationship, sessionmaker, scoped_session, \
     class_mapper, mapper, joinedload, configure_mappers, aliased
-from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_, AssertsCompiledSQL
+from sqlalchemy.util import u, ue
+from sqlalchemy.engine import default
 
 from sqlalchemy.testing import fixtures
 
@@ -19,7 +22,7 @@ class Address(fixtures.ComparableEntity):
 
 users = addresses = Session = None
 
-class SerializeTest(fixtures.MappedTest):
+class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
 
     run_setup_mappers = 'once'
     run_inserts = 'once'
@@ -172,6 +175,22 @@ class SerializeTest(fixtures.MappedTest):
         ser = serializer.dumps(r, -1)
         x = serializer.loads(ser, users.metadata)
         eq_(str(r), str(x))
+
+    def test_unicode(self):
+        m = MetaData()
+        t = Table(ue('\u6e2c\u8a66'), m,
+                Column(ue('\u6e2c\u8a66_id'), Integer))
+
+        expr = select([t]).where(t.c[ue('\u6e2c\u8a66_id')] == 5)
+
+        expr2 = serializer.loads(serializer.dumps(expr, -1), m)
+
+        self.assert_compile(
+            expr2,
+            ue('SELECT "\u6e2c\u8a66"."\u6e2c\u8a66_id" FROM "\u6e2c\u8a66" '
+                'WHERE "\u6e2c\u8a66"."\u6e2c\u8a66_id" = :\u6e2c\u8a66_id_1'),
+            dialect=default.DefaultDialect()
+        )
 
 
 if __name__ == '__main__':
