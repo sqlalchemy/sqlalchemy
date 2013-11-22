@@ -68,7 +68,7 @@ class QueryTest(fixtures.TestBase):
             r"A value is required for bind parameter 'user_name', in "
             "parameter group 2 \(original cause: (sqlalchemy.exc.)?InvalidRequestError: A "
             "value is required for bind parameter 'user_name', in "
-            "parameter group 2\) 'INSERT INTO query_users",
+            "parameter group 2\) u?'INSERT INTO query_users",
             users.insert().execute,
             {'user_id':7, 'user_name':'jack'},
             {'user_id':8, 'user_name':'ed'},

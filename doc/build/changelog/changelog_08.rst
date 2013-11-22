@@ -12,6 +12,17 @@
     :version: 0.8.4
 
     .. change::
+        :tags: bug, engine
+        :tickets: 2871
+        :versions: 0.9.0b2
+
+        Fixed bug where SQL statement would be improperly ASCII-encoded
+        when a pre-DBAPI :class:`.StatementError` were raised within
+        :meth:`.Connection.execute`, causing encoding errors for
+        non-ASCII statements.  The stringification now remains within
+        Python unicode thus avoiding encoding errors.
+
+    .. change::
         :tags: bug, oracle
         :tickets: 2870
         :versions: 0.9.0b2

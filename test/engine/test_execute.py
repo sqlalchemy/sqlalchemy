@@ -1,4 +1,4 @@
-
+# coding: utf-8
 
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, \
     config, is_
@@ -226,7 +226,7 @@ class ExecuteTest(fixtures.TestBase):
         def _go(conn):
             assert_raises_message(
                 tsa.exc.StatementError,
-                r"nope \(original cause: Exception: nope\) 'SELECT 1 ",
+                r"nope \(original cause: Exception: nope\) u?'SELECT 1 ",
                 conn.execute,
                     select([1]).\
                         where(
@@ -239,6 +239,24 @@ class ExecuteTest(fixtures.TestBase):
             _go(conn)
         finally:
             conn.close()
+
+    def test_stmt_exception_non_ascii(self):
+        name = util.u('méil')
+        assert_raises_message(
+            tsa.exc.StatementError,
+            util.u(
+                "A value is required for bind parameter 'uname'"
+                r'.*SELECT users.user_name AS "m\\xe9il"') if util.py2k
+            else
+                util.u(
+                    "A value is required for bind parameter 'uname'"
+                    '.*SELECT users.user_name AS "méil"')
+                ,
+            testing.db.execute,
+            select([users.c.user_name.label(name)]).where(
+                            users.c.user_name == bindparam("uname")),
+            {'uname_incorrect': 'foo'}
+        )
 
     def test_stmt_exception_pickleable_no_dbapi(self):
         self._test_stmt_exception_pickleable(Exception("hello world"))
