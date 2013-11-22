@@ -824,7 +824,7 @@ class Connection(Connectable):
             context = constructor(dialect, self, conn, *args)
         except Exception, e:
             self._handle_dbapi_exception(e,
-                        str(statement), parameters,
+                        util.text_type(statement), parameters,
                         None, None)
 
         if context.compiled:
