@@ -363,7 +363,9 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         return self._visit_varchar(type_, '', '')
 
     def _visit_varchar(self, type_, n, num):
-        if not n and self.dialect._supports_char_length:
+        if not type_.length:
+            return "%(n)sVARCHAR%(two)s" % {'two': num, 'n': n}
+        elif not n and self.dialect._supports_char_length:
             varchar = "VARCHAR%(two)s(%(length)s CHAR)"
             return varchar % {'length': type_.length, 'two': num}
         else:

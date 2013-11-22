@@ -12,6 +12,15 @@
     :version: 0.8.4
 
     .. change::
+        :tags: bug, oracle
+        :tickets: 2870
+        :versions: 0.9.0b2
+
+        Fixed bug where Oracle ``VARCHAR`` types given with no length
+        (e.g. for a ``CAST`` or similar) would incorrectly render ``None CHAR``
+        or similar.
+
+    .. change::
         :tags: bug, ext
         :tickets: 2869
         :versions: 0.9.0b2
