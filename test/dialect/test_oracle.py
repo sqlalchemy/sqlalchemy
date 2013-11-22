@@ -1013,6 +1013,12 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
             (VARCHAR(50), "VARCHAR(50 CHAR)"),
             (oracle.NVARCHAR2(50), "NVARCHAR2(50)"),
             (oracle.VARCHAR2(50), "VARCHAR2(50 CHAR)"),
+            (String(), "VARCHAR2"),
+            (Unicode(), "NVARCHAR2"),
+            (NVARCHAR(), "NVARCHAR2"),
+            (VARCHAR(), "VARCHAR"),
+            (oracle.NVARCHAR2(), "NVARCHAR2"),
+            (oracle.VARCHAR2(), "VARCHAR2"),
         ]:
             self.assert_compile(typ, exp, dialect=dialect)
 
