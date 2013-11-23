@@ -331,8 +331,10 @@ class AliasedClass(object):
             else:
                 raise AttributeError(key)
 
-        if isinstance(attr, attributes.QueryableAttribute):
-            return _aliased_insp._adapt_prop(attr, key)
+        if isinstance(attr, PropComparator):
+            ret = attr.adapt_to_entity(_aliased_insp)
+            setattr(self, key, ret)
+            return ret
         elif hasattr(attr, 'func_code'):
             is_method = getattr(_aliased_insp._target, key, None)
             if is_method and is_method.__self__ is not None:
@@ -343,7 +345,8 @@ class AliasedClass(object):
             ret = attr.__get__(None, self)
             if isinstance(ret, PropComparator):
                 return ret.adapt_to_entity(_aliased_insp)
-            return ret
+            else:
+                return ret
         else:
             return attr
 
@@ -464,17 +467,6 @@ class AliasedInsp(_InspectionAttr):
                         'parententity': self.entity,
                         'parentmapper': self.mapper}
                     )
-
-    def _adapt_prop(self, existing, key):
-        comparator = existing.comparator.adapt_to_entity(self)
-        queryattr = attributes.QueryableAttribute(
-                                self.entity, key,
-                                impl=existing.impl,
-                                parententity=self,
-                                comparator=comparator)
-        setattr(self.entity, key, queryattr)
-        return queryattr
-
 
     def _entity_for_mapper(self, mapper):
         self_poly = self.with_polymorphic_mappers

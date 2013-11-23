@@ -5,27 +5,31 @@ from sqlalchemy import util
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import Table
-from sqlalchemy.orm import aliased, with_polymorphic
-from sqlalchemy.orm import mapper, create_session
+from sqlalchemy.orm import aliased, with_polymorphic, synonym
+from sqlalchemy.orm import mapper, create_session, Session
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 from sqlalchemy.testing import eq_, is_
 from sqlalchemy.orm.path_registry import PathRegistry, RootRegistry
 from sqlalchemy import inspect
+from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
+from sqlalchemy.testing import AssertsCompiledSQL
 
-class AliasedClassTest(fixtures.TestBase):
-    def point_map(self, cls):
+class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def _fixture(self, cls, properties={}):
         table = Table('point', MetaData(),
                     Column('id', Integer(), primary_key=True),
                     Column('x', Integer),
                     Column('y', Integer))
-        mapper(cls, table)
+        mapper(cls, table, properties=properties)
         return table
 
     def test_simple(self):
         class Point(object):
             pass
-        table = self.point_map(Point)
+        table = self._fixture(Point)
 
         alias = aliased(Point)
 
@@ -36,48 +40,51 @@ class AliasedClassTest(fixtures.TestBase):
         assert Point.id.__clause_element__().table is table
         assert alias.id.__clause_element__().table is not table
 
-    def test_notcallable(self):
+    def test_not_instantiatable(self):
         class Point(object):
             pass
-        table = self.point_map(Point)
+        table = self._fixture(Point)
         alias = aliased(Point)
 
         assert_raises(TypeError, alias)
 
-    def test_instancemethods(self):
+    def test_instancemethod(self):
         class Point(object):
             def zero(self):
                 self.x, self.y = 0, 0
 
-        table = self.point_map(Point)
+        table = self._fixture(Point)
         alias = aliased(Point)
 
         assert Point.zero
 
+        # TODO: I don't quite understand this
+        # still
         if util.py2k:
-            # TODO: what is this testing ??
             assert not getattr(alias, 'zero')
+        else:
+            assert getattr(alias, 'zero')
 
-    def test_classmethods(self):
+    def test_classmethod(self):
         class Point(object):
             @classmethod
             def max_x(cls):
                 return 100
 
-        table = self.point_map(Point)
+        table = self._fixture(Point)
         alias = aliased(Point)
 
         assert Point.max_x
         assert alias.max_x
-        assert Point.max_x() == alias.max_x()
+        assert Point.max_x() == alias.max_x() == 100
 
-    def test_simpleproperties(self):
+    def test_simple_property(self):
         class Point(object):
             @property
             def max_x(self):
                 return 100
 
-        table = self.point_map(Point)
+        table = self._fixture(Point)
         alias = aliased(Point)
 
         assert Point.max_x
@@ -86,7 +93,6 @@ class AliasedClassTest(fixtures.TestBase):
         assert Point.max_x is alias.max_x
 
     def test_descriptors(self):
-        """Tortured..."""
 
         class descriptor(object):
             def __init__(self, fn):
@@ -105,7 +111,7 @@ class AliasedClassTest(fixtures.TestBase):
             def thing(self, arg):
                 return arg.center
 
-        table = self.point_map(Point)
+        table = self._fixture(Point)
         alias = aliased(Point)
 
         assert Point.thing != (0, 0)
@@ -115,74 +121,106 @@ class AliasedClassTest(fixtures.TestBase):
         assert alias.thing != (0, 0)
         assert alias.thing.method() == 'method'
 
-    def test_hybrid_descriptors(self):
+    def _assert_has_table(self, expr, table):
         from sqlalchemy import Column  # override testlib's override
-        import types
+        for child in expr.get_children():
+            if isinstance(child, Column):
+                assert child.table is table
 
-        class MethodDescriptor(object):
-            def __init__(self, func):
-                self.func = func
-            def __get__(self, instance, owner):
-                if instance is None:
-                    if util.py2k:
-                        args = (self.func, owner, owner.__class__)
-                    else:
-                        args = (self.func, owner)
-                else:
-                    if util.py2k:
-                        args = (self.func, instance, owner)
-                    else:
-                        args = (self.func, instance)
-                return types.MethodType(*args)
-
-        class PropertyDescriptor(object):
-            def __init__(self, fget, fset, fdel):
-                self.fget = fget
-                self.fset = fset
-                self.fdel = fdel
-            def __get__(self, instance, owner):
-                if instance is None:
-                    return self.fget(owner)
-                else:
-                    return self.fget(instance)
-            def __set__(self, instance, value):
-                self.fset(instance, value)
-            def __delete__(self, instance):
-                self.fdel(instance)
-        hybrid = MethodDescriptor
-        def hybrid_property(fget, fset=None, fdel=None):
-            return PropertyDescriptor(fget, fset, fdel)
-
-        def assert_table(expr, table):
-            for child in expr.get_children():
-                if isinstance(child, Column):
-                    assert child.table is table
-
+    def test_hybrid_descriptor_one(self):
         class Point(object):
             def __init__(self, x, y):
                 self.x, self.y = x, y
-            @hybrid
+
+            @hybrid_method
             def left_of(self, other):
                 return self.x < other.x
 
-            double_x = hybrid_property(lambda self: self.x * 2)
-
-        table = self.point_map(Point)
+        self._fixture(Point)
         alias = aliased(Point)
-        alias_table = alias.x.__clause_element__().table
-        assert table is not alias_table
+        sess = Session()
 
-        p1 = Point(-10, -10)
-        p2 = Point(20, 20)
+        self.assert_compile(
+            sess.query(alias).filter(alias.left_of(Point)),
+            "SELECT point_1.id AS point_1_id, point_1.x AS point_1_x, "
+            "point_1.y AS point_1_y FROM point AS point_1, point "
+            "WHERE point_1.x < point.x"
+        )
 
-        assert p1.left_of(p2)
-        assert p1.double_x == -20
+    def test_hybrid_descriptor_two(self):
+        class Point(object):
+            def __init__(self, x, y):
+                self.x, self.y = x, y
 
-        assert_table(Point.double_x, table)
-        assert_table(alias.double_x, alias_table)
+            @hybrid_property
+            def double_x(self):
+                return self.x * 2
 
-        assert_table(Point.left_of(p2), table)
-        assert_table(alias.left_of(p2), alias_table)
+        self._fixture(Point)
+        alias = aliased(Point)
+
+        eq_(str(Point.double_x), "point.x * :x_1")
+        eq_(str(alias.double_x), "point_1.x * :x_1")
+
+        sess = Session()
+
+        self.assert_compile(
+            sess.query(alias).filter(alias.double_x > Point.x),
+            "SELECT point_1.id AS point_1_id, point_1.x AS point_1_x, "
+            "point_1.y AS point_1_y FROM point AS point_1, point "
+            "WHERE point_1.x * :x_1 > point.x"
+        )
+
+    def test_hybrid_descriptor_three(self):
+        class Point(object):
+            def __init__(self, x, y):
+                self.x, self.y = x, y
+
+            @hybrid_property
+            def x_alone(self):
+                return self.x
+
+        self._fixture(Point)
+        alias = aliased(Point)
+
+        eq_(str(Point.x_alone), "Point.x")
+        eq_(str(alias.x_alone), "AliasedClass_Point.x")
+
+        assert Point.x_alone is Point.x
+
+        eq_(str(alias.x_alone == alias.x), "point_1.x = point_1.x")
+
+        a2 = aliased(Point)
+        eq_(str(a2.x_alone == alias.x), "point_1.x = point_2.x")
+
+        sess = Session()
+
+        self.assert_compile(
+            sess.query(alias).filter(alias.x_alone > Point.x),
+            "SELECT point_1.id AS point_1_id, point_1.x AS point_1_x, "
+            "point_1.y AS point_1_y FROM point AS point_1, point "
+            "WHERE point_1.x > point.x"
+        )
+
+    def test_proxy_descriptor_one(self):
+        class Point(object):
+            def __init__(self, x, y):
+                self.x, self.y = x, y
+
+        self._fixture(Point, properties={
+            'x_syn': synonym("x")
+        })
+        alias = aliased(Point)
+
+        eq_(str(Point.x_syn), "Point.x_syn")
+        eq_(str(alias.x_syn), "AliasedClass_Point.x_syn")
+
+        sess = Session()
+        self.assert_compile(
+            sess.query(alias.x_syn).filter(alias.x_syn > Point.x_syn),
+            "SELECT point_1.x AS point_1_x FROM point AS point_1, point "
+            "WHERE point_1.x > point.x"
+        )
 
 class IdentityKeyTest(_fixtures.FixtureTest):
     run_inserts = None

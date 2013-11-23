@@ -149,6 +149,12 @@ class QueryableAttribute(interfaces._MappedAttribute,
 
         return self.comparator._query_clause_element()
 
+    def adapt_to_entity(self, adapt_to_entity):
+        assert not self._of_type
+        return self.__class__(adapt_to_entity.entity, self.key, impl=self.impl,
+                           comparator=self.comparator.adapt_to_entity(adapt_to_entity),
+                           parententity=adapt_to_entity)
+
     def of_type(self, cls):
         return QueryableAttribute(
                     self.class_,
@@ -270,7 +276,7 @@ def create_proxied_attribute(descriptor):
             return self._comparator
 
         def adapt_to_entity(self, adapt_to_entity):
-            return self.__class__(self.class_, self.key, self.descriptor,
+            return self.__class__(adapt_to_entity.entity, self.key, self.descriptor,
                                        self._comparator,
                                        adapt_to_entity)
 

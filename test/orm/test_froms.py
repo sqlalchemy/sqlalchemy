@@ -1817,7 +1817,6 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
 
         users, User = self.tables.users, self.classes.User
 
-
         mapper(User, users)
 
         sess = create_session()
@@ -1826,21 +1825,21 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         ualias = aliased(User)
 
         self.assert_compile(
-            sess.query(User).join(sel, User.id>sel.c.id),
+            sess.query(User).join(sel, User.id > sel.c.id),
             "SELECT users.id AS users_id, users.name AS users_name FROM "
             "users JOIN (SELECT users.id AS id, users.name AS name FROM "
             "users WHERE users.id IN (:id_1, :id_2)) AS anon_1 ON users.id > anon_1.id",
         )
 
         self.assert_compile(
-            sess.query(ualias).select_entity_from(sel).filter(ualias.id>sel.c.id),
+            sess.query(ualias).select_entity_from(sel).filter(ualias.id > sel.c.id),
             "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name FROM "
             "users AS users_1, (SELECT users.id AS id, users.name AS name FROM "
             "users WHERE users.id IN (:id_1, :id_2)) AS anon_1 WHERE users_1.id > anon_1.id",
         )
 
         self.assert_compile(
-            sess.query(ualias).select_entity_from(sel).join(ualias, ualias.id>sel.c.id),
+            sess.query(ualias).select_entity_from(sel).join(ualias, ualias.id > sel.c.id),
             "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
             "FROM (SELECT users.id AS id, users.name AS name "
             "FROM users WHERE users.id IN (:id_1, :id_2)) AS anon_1 "
@@ -1848,29 +1847,26 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            sess.query(ualias).select_entity_from(sel).join(ualias, ualias.id>User.id),
+            sess.query(ualias).select_entity_from(sel).join(ualias, ualias.id > User.id),
             "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
             "FROM (SELECT users.id AS id, users.name AS name FROM "
             "users WHERE users.id IN (:id_1, :id_2)) AS anon_1 "
-            "JOIN users AS users_1 ON anon_1.id < users_1.id"
+            "JOIN users AS users_1 ON users_1.id > anon_1.id"
         )
 
         salias = aliased(User, sel)
         self.assert_compile(
-            sess.query(salias).join(ualias, ualias.id>salias.id),
+            sess.query(salias).join(ualias, ualias.id > salias.id),
             "SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name FROM "
             "(SELECT users.id AS id, users.name AS name FROM users WHERE users.id "
             "IN (:id_1, :id_2)) AS anon_1 JOIN users AS users_1 ON users_1.id > anon_1.id",
         )
 
-
-        # this one uses an explicit join(left, right, onclause) so works
         self.assert_compile(
-            sess.query(ualias).select_entity_from(join(sel, ualias, ualias.id>sel.c.id)),
+            sess.query(ualias).select_entity_from(join(sel, ualias, ualias.id > sel.c.id)),
             "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name FROM "
             "(SELECT users.id AS id, users.name AS name FROM users WHERE users.id "
-            "IN (:id_1, :id_2)) AS anon_1 JOIN users AS users_1 ON users_1.id > anon_1.id",
-            use_default_dialect=True
+            "IN (:id_1, :id_2)) AS anon_1 JOIN users AS users_1 ON users_1.id > anon_1.id"
         )
 
 
@@ -1884,25 +1880,31 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             sess.query(User).select_from(ua).join(User, ua.name > User.name),
             "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users AS users_1 JOIN users ON users.name < users_1.name"
+            "FROM users AS users_1 JOIN users ON users_1.name > users.name"
         )
 
         self.assert_compile(
             sess.query(User.name).select_from(ua).join(User, ua.name > User.name),
             "SELECT users.name AS users_name FROM users AS users_1 "
-            "JOIN users ON users.name < users_1.name"
+            "JOIN users ON users_1.name > users.name"
         )
 
         self.assert_compile(
             sess.query(ua.name).select_from(ua).join(User, ua.name > User.name),
             "SELECT users_1.name AS users_1_name FROM users AS users_1 "
-            "JOIN users ON users.name < users_1.name"
+            "JOIN users ON users_1.name > users.name"
         )
 
         self.assert_compile(
             sess.query(ua).select_from(User).join(ua, ua.name > User.name),
             "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
-            "FROM users JOIN users AS users_1 ON users.name < users_1.name"
+            "FROM users JOIN users AS users_1 ON users_1.name > users.name"
+        )
+
+        self.assert_compile(
+            sess.query(ua).select_from(User).join(ua, User.name > ua.name),
+            "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
+            "FROM users JOIN users AS users_1 ON users.name > users_1.name"
         )
 
         # this is tested in many other places here, just adding it

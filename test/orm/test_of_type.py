@@ -506,7 +506,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
             "FROM job AS job_1 LEFT OUTER JOIN subjob AS subjob_1 "
                 "ON job_1.id = subjob_1.id "
             "WHERE data_container.id = job_1.container_id "
-            "AND job.id > job_1.id)"
+            "AND job_1.id < job.id)"
         )
 
     def test_any_walias(self):
@@ -531,7 +531,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
             "WHERE EXISTS (SELECT 1 "
             "FROM job AS job_1 "
             "WHERE data_container.id = job_1.container_id "
-            "AND job.id > job_1.id AND job_1.type = :type_1)"
+            "AND job_1.id < job.id AND job_1.type = :type_1)"
         )
 
     def test_join_wpoly(self):

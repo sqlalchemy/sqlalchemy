@@ -15,6 +15,24 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2872
+
+        Some refinements to the :class:`.AliasedClass` construct with regards
+        to descriptors, like hybrids, synonyms, composites, user-defined
+        descriptors, etc.  The attribute
+        adaptation which goes on has been made more robust, such that if a descriptor
+        returns another instrumented attribute, rather than a compound SQL
+        expression element, the operation will still proceed.
+        Addtionally, the "adapted" operator will retain its class; previously,
+        a change in class from ``InstrumentedAttribute`` to ``QueryableAttribute``
+        (a superclass) would interact with Python's operator system such that
+        an expression like ``aliased(MyClass.x) > MyClass.x`` would reverse itself
+        to read ``myclass.x < myclass_1.x``.   The adapted attribute will also
+        refer to the new :class:`.AliasedClass` as its parent which was not
+        always the case before.
+
+    .. change::
         :tags: feature, sql
         :tickets: 2867
 

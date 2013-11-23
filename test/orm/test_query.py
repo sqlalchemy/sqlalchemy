@@ -227,10 +227,13 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
                     where(uu.id == Address.user_id).\
                     correlate(uu).as_scalar()
             ]),
-            # curious, "address.user_id = uu.id" is reversed here
+            # for a long time, "uu.id = address.user_id" was reversed;
+            # this was resolved as of #2872 and had to do with
+            # InstrumentedAttribute.__eq__() taking precedence over
+            # QueryableAttribute.__eq__()
             "SELECT uu.name, addresses.id, "
             "(SELECT count(addresses.id) AS count_1 "
-                "FROM addresses WHERE addresses.user_id = uu.id) AS anon_1 "
+                "FROM addresses WHERE uu.id = addresses.user_id) AS anon_1 "
             "FROM users AS uu, addresses"
         )
 
@@ -1986,7 +1989,7 @@ class HintsTest(QueryTest, AssertsCompiledSQL):
             "SELECT users.id AS users_id, users.name AS users_name, "
             "users_1.id AS users_1_id, users_1.name AS users_1_name "
             "FROM users INNER JOIN users AS users_1 USE INDEX (col1_index,col2_index) "
-            "ON users.id < users_1.id",
+            "ON users_1.id > users.id",
             dialect=dialect
         )
 
