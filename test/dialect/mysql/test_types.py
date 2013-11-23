@@ -147,11 +147,14 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 res
             )
 
+    @testing.only_if('mysql')
     @testing.provide_metadata
     def test_precision_float_roundtrip(self):
         t = Table('t', self.metadata,
-                    Column('scale_value', mysql.DOUBLE(precision=15, scale=12, asdecimal=True)),
-                    Column('unscale_value', mysql.DOUBLE(decimal_return_scale=12, asdecimal=True))
+                    Column('scale_value', mysql.DOUBLE(
+                                        precision=15, scale=12, asdecimal=True)),
+                    Column('unscale_value', mysql.DOUBLE(
+                                        decimal_return_scale=12, asdecimal=True))
             )
         t.create(testing.db)
         testing.db.execute(
