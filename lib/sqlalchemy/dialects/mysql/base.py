@@ -398,8 +398,6 @@ class _FloatType(_NumericType, sqltypes.Float):
             raise exc.ArgumentError(
                 "You must specify both precision and scale or omit "
                 "both altogether.")
-        if scale is not None:
-            kw.setdefault('decimal_return_scale', scale)
         super(_FloatType, self).__init__(precision=precision, asdecimal=asdecimal, **kw)
         self.scale = scale
 

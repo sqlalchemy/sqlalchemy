@@ -232,7 +232,7 @@ class _OracleNumeric(sqltypes.Numeric):
 
         if dialect.supports_native_decimal:
             if self.asdecimal:
-                fstring = "%%.%df" % self.decimal_return_scale
+                fstring = "%%.%df" % self._effective_decimal_return_scale
 
                 def to_decimal(value):
                     if value is None:

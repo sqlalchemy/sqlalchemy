@@ -503,11 +503,17 @@ class Numeric(_DateAffinity, TypeEngine):
         """
         self.precision = precision
         self.scale = scale
-        self.decimal_return_scale = decimal_return_scale \
-                                    if decimal_return_scale is not None \
-                                    else self.scale if self.scale is not None \
-                                    else self._default_decimal_return_scale
+        self.decimal_return_scale = decimal_return_scale
         self.asdecimal = asdecimal
+
+    @property
+    def _effective_decimal_return_scale(self):
+        if self.decimal_return_scale is not None:
+            return self.decimal_return_scale
+        elif getattr(self, "scale", None) is not None:
+            return self.scale
+        else:
+            return self._default_decimal_return_scale
 
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
@@ -626,9 +632,7 @@ class Float(Numeric):
         """
         self.precision = precision
         self.asdecimal = asdecimal
-        self.decimal_return_scale = decimal_return_scale \
-                                    if decimal_return_scale is not None \
-                                    else self._default_decimal_return_scale
+        self.decimal_return_scale = decimal_return_scale
         if kwargs:
             util.warn_deprecated("Additional keyword arguments "
                                 "passed to Float ignored.")
@@ -636,7 +640,8 @@ class Float(Numeric):
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
             return processors.to_decimal_processor_factory(
-                                    decimal.Decimal, self.decimal_return_scale)
+                                    decimal.Decimal,
+                                    self._effective_decimal_return_scale)
         else:
             return None
 
