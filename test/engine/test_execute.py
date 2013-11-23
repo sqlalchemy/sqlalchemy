@@ -249,11 +249,11 @@ class ExecuteTest(fixtures.TestBase):
             tsa.exc.StatementError,
             util.u(
                 "A value is required for bind parameter 'uname'"
-                r'.*SELECT users.user_name AS "m\\xe9il"') if util.py2k
+                r'.*SELECT users.user_name AS .m\\xe9il.') if util.py2k
             else
                 util.u(
                     "A value is required for bind parameter 'uname'"
-                    '.*SELECT users.user_name AS "méil"'),
+                    '.*SELECT users.user_name AS .méil.'),
             testing.db.execute,
             select([users.c.user_name.label(name)]).where(
                             users.c.user_name == bindparam("uname")),
