@@ -398,7 +398,8 @@ class _FloatType(_NumericType, sqltypes.Float):
             raise exc.ArgumentError(
                 "You must specify both precision and scale or omit "
                 "both altogether.")
-
+        if scale is not None:
+            kw.setdefault('decimal_return_scale', scale)
         super(_FloatType, self).__init__(precision=precision, asdecimal=asdecimal, **kw)
         self.scale = scale
 
@@ -490,6 +491,14 @@ class DOUBLE(_FloatType):
     def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
         """Construct a DOUBLE.
 
+        .. note::
+
+            The :class:`.DOUBLE` type by default converts from float
+            to Decimal, using a truncation that defaults to 10 digits.  Specify
+            either ``scale=n`` or ``decimal_return_scale=n`` in order to change
+            this scale, or ``asdecimal=False`` to return values directly as
+            Python floating points.
+
         :param precision: Total digits in this number.  If scale and precision
           are both None, values are stored to limits allowed by the server.
 
@@ -514,6 +523,14 @@ class REAL(_FloatType, sqltypes.REAL):
 
     def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
         """Construct a REAL.
+
+        .. note::
+
+            The :class:`.REAL` type by default converts from float
+            to Decimal, using a truncation that defaults to 10 digits.  Specify
+            either ``scale=n`` or ``decimal_return_scale=n`` in order to change
+            this scale, or ``asdecimal=False`` to return values directly as
+            Python floating points.
 
         :param precision: Total digits in this number.  If scale and precision
           are both None, values are stored to limits allowed by the server.

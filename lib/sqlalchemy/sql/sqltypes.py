@@ -409,6 +409,7 @@ class BigInteger(Integer):
     __visit_name__ = 'big_integer'
 
 
+
 class Numeric(_DateAffinity, TypeEngine):
     """A type for fixed precision numbers.
 
@@ -453,7 +454,10 @@ class Numeric(_DateAffinity, TypeEngine):
 
     __visit_name__ = 'numeric'
 
-    def __init__(self, precision=None, scale=None, asdecimal=True):
+    _default_decimal_return_scale = 10
+
+    def __init__(self, precision=None, scale=None,
+                  decimal_return_scale=None, asdecimal=True):
         """
         Construct a Numeric.
 
@@ -467,6 +471,18 @@ class Numeric(_DateAffinity, TypeEngine):
           as floats.   Different DBAPIs send one or the other based on
           datatypes - the Numeric type will ensure that return values
           are one or the other across DBAPIs consistently.
+
+        :param decimal_return_scale: Default scale to use when converting
+         from floats to Python decimals.  Floating point values will typically
+         be much longer due to decimal inaccuracy, and most floating point
+         database types don't have a notion of "scale", so by default the
+         float type looks for the first ten decimal places when converting.
+         Specfiying this value will override that length.  Types which
+         do include an explicit ".scale" value, such as the base :class:`.Numeric`
+         as well as the MySQL float types, will use the value of ".scale"
+         as the default for decimal_return_scale, if not otherwise specified.
+
+         .. versionadded:: 0.9.0
 
         When using the ``Numeric`` type, care should be taken to ensure
         that the asdecimal setting is apppropriate for the DBAPI in use -
@@ -487,6 +503,10 @@ class Numeric(_DateAffinity, TypeEngine):
         """
         self.precision = precision
         self.scale = scale
+        self.decimal_return_scale = decimal_return_scale \
+                                    if decimal_return_scale is not None \
+                                    else self.scale if self.scale is not None \
+                                    else self._default_decimal_return_scale
         self.asdecimal = asdecimal
 
     def get_dbapi_type(self, dbapi):
@@ -525,12 +545,10 @@ class Numeric(_DateAffinity, TypeEngine):
                           'storage.' % (dialect.name, dialect.driver))
 
                 # we're a "numeric", DBAPI returns floats, convert.
-                if self.scale is not None:
-                    return processors.to_decimal_processor_factory(
-                                decimal.Decimal, self.scale)
-                else:
-                    return processors.to_decimal_processor_factory(
-                                decimal.Decimal)
+                return processors.to_decimal_processor_factory(
+                            decimal.Decimal,
+                            self.scale if self.scale is not None
+                            else self._default_decimal_return_scale)
         else:
             if dialect.supports_native_decimal:
                 return processors.to_float
@@ -576,7 +594,8 @@ class Float(Numeric):
 
     scale = None
 
-    def __init__(self, precision=None, asdecimal=False, **kwargs):
+    def __init__(self, precision=None, asdecimal=False,
+                        decimal_return_scale=None, **kwargs):
         """
         Construct a Float.
 
@@ -587,6 +606,17 @@ class Float(Numeric):
           defaults to ``False``.   Note that setting this flag to ``True``
           results in floating point conversion.
 
+        :param decimal_return_scale: Default scale to use when converting
+         from floats to Python decimals.  Floating point values will typically
+         be much longer due to decimal inaccuracy, and most floating point
+         database types don't have a notion of "scale", so by default the
+         float type looks for the first ten decimal places when converting.
+         Specfiying this value will override that length.  Note that the
+         MySQL float types, which do include "scale", will use "scale"
+         as the default for decimal_return_scale, if not otherwise specified.
+
+         .. versionadded:: 0.9.0
+
         :param \**kwargs: deprecated.  Additional arguments here are ignored
          by the default :class:`.Float` type.  For database specific
          floats that support additional arguments, see that dialect's
@@ -596,13 +626,17 @@ class Float(Numeric):
         """
         self.precision = precision
         self.asdecimal = asdecimal
+        self.decimal_return_scale = decimal_return_scale \
+                                    if decimal_return_scale is not None \
+                                    else self._default_decimal_return_scale
         if kwargs:
             util.warn_deprecated("Additional keyword arguments "
                                 "passed to Float ignored.")
 
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
-            return processors.to_decimal_processor_factory(decimal.Decimal)
+            return processors.to_decimal_processor_factory(
+                                    decimal.Decimal, self.decimal_return_scale)
         else:
             return None
 

@@ -15,6 +15,23 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: feature, sql
+        :tickets: 2867
+
+        The precision used when coercing a returned floating point value to
+        Python ``Decimal`` via string is now configurable.  The
+        flag ``decimal_return_scale`` is now supported by all :class:`.Numeric`
+        and :class:`.Float` types, which will ensure this many digits are taken
+        from the native floating point value when it is converted to string.
+        If not present, the type will make use of the value of ``.scale``, if
+        the type supports this setting and it is non-None.  Otherwise the original
+        default length of 10 is used.
+
+        .. seealso::
+
+            :ref:`feature_2867`
+
+    .. change::
         :tags: bug, schema
         :tickets: 2868
 

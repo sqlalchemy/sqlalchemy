@@ -877,6 +877,50 @@ rendering::
 
 :ticket:`722`
 
+.. _feature_2867:
+
+Floating Point String-Conversion Precision Configurable for Native Floating Point Types
+---------------------------------------------------------------------------------------
+
+The conversion which SQLAlchemy does whenever a DBAPI returns a Python
+floating point type which is to be converted into a Python ``Decimal()``
+necessarily involves an intermediary step which converts the floating point
+value to a string.  The scale used for this string conversion was previously
+hardcoded to 10, and is now configurable.  The setting is available on
+both the :class:`.Numeric` as well as the :class:`.Float`
+type, as well as all SQL- and dialect-specific descendant types, using the
+parameter ``decimal_return_scale``.    If the type supports a ``.scale`` parameter,
+as is the case with :class:`.Numeric` and some float types such as
+:class:`.mysql.DOUBLE`, the value of ``.scale`` is used as the default
+for ``.decimal_return_scale`` if it is not otherwise specified.   If both
+``.scale`` and ``.decimal_return_scale`` are absent, then the default of
+10 takes place.  E.g.::
+
+    from sqlalchemy.dialects.mysql import DOUBLE
+    import decimal
+
+    data = Table('data', metadata,
+        Column('double_value',
+                    mysql.DOUBLE(decimal_return_scale=12, asdecimal=True))
+    )
+
+    conn.execute(
+        data.insert(),
+        double_value=45.768392065789,
+    )
+    result = conn.scalar(select([data.c.double_value]))
+
+    # previously, this would typically be Decimal("45.7683920658"),
+    # e.g. trimmed to 10 decimal places
+
+    # now we get 12, as requested, as MySQL can support this
+    # much precision for DOUBLE
+    assert result == decimal.Decimal("45.768392065789")
+
+
+:ticket:`2867`
+
+
 .. _change_2824:
 
 Column Bundles for ORM queries

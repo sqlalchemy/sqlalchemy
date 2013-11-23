@@ -10,7 +10,7 @@ from sqlalchemy.testing import fixtures, AssertsCompiledSQL, AssertsExecutionRes
 from sqlalchemy import testing
 from sqlalchemy.testing.engines import utf8_engine
 import datetime
-
+import decimal
 
 class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     "Test MySQL column types"
@@ -146,6 +146,23 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 type_(*args, **kw),
                 res
             )
+
+    @testing.provide_metadata
+    def test_precision_float_roundtrip(self):
+        t = Table('t', self.metadata,
+                    Column('scale_value', mysql.DOUBLE(precision=15, scale=12, asdecimal=True)),
+                    Column('unscale_value', mysql.DOUBLE(decimal_return_scale=12, asdecimal=True))
+            )
+        t.create(testing.db)
+        testing.db.execute(
+            t.insert(), scale_value=45.768392065789,
+            unscale_value=45.768392065789
+        )
+        result = testing.db.scalar(select([t.c.scale_value]))
+        eq_(result, decimal.Decimal("45.768392065789"))
+
+        result = testing.db.scalar(select([t.c.unscale_value]))
+        eq_(result, decimal.Decimal("45.768392065789"))
 
     @testing.exclude('mysql', '<', (4, 1, 1), 'no charset support')
     def test_charset(self):

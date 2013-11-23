@@ -356,6 +356,16 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             filter_=lambda n: n is not None and round(n, 5) or None
         )
 
+
+    @testing.requires.precision_generic_float_type
+    def test_float_custom_scale(self):
+        self._do_test(
+            Float(None, decimal_return_scale=7, asdecimal=True),
+            [15.7563827, decimal.Decimal("15.7563827")],
+            [decimal.Decimal("15.7563827"),],
+            check_scale=True
+        )
+
     def test_numeric_as_decimal(self):
         self._do_test(
             Numeric(precision=8, scale=4),
