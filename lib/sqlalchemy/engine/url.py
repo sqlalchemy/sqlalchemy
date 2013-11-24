@@ -67,8 +67,7 @@ class URL(object):
         if self.username is not None:
             s += self.username
             if self.password is not None:
-                s += ':' + ('***' if hide_password
-                            else util.quote_plus(self.password))
+                s += ':' + ('***' if hide_password else self.password)
             s += "@"
         if self.host is not None:
             if ':' in self.host:
@@ -170,7 +169,7 @@ def _parse_rfc1738_args(name):
             (?P<name>[\w\+]+)://
             (?:
                 (?P<username>[^:/]*)
-                (?::(?P<password>[^/]*))?
+                (?::(?P<password>.*))?
             @)?
             (?:
                 (?:
@@ -194,10 +193,6 @@ def _parse_rfc1738_args(name):
         else:
             query = None
         components['query'] = query
-
-        if components['password'] is not None:
-            components['password'] = \
-                util.unquote_plus(components['password'])
 
         ipv4host = components.pop('ipv4host')
         ipv6host = components.pop('ipv6host')

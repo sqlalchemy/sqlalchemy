@@ -9,7 +9,7 @@ What's New in SQLAlchemy 0.9?
     and SQLAlchemy version 0.9, which is expected for release
     in late 2013.
 
-    Document last updated: October 23, 2013
+    Document last updated: November 24, 2013
 
 Introduction
 ============
@@ -18,9 +18,8 @@ This guide introduces what's new in SQLAlchemy version 0.9,
 and also documents changes which affect users migrating
 their applications from the 0.8 series of SQLAlchemy to 0.9.
 
-Version 0.9 is a faster-than-usual push from version 0.8,
-featuring a more versatile codebase with regards to modern
-Python versions.   See :ref:`behavioral_changes_09` for
+Please carefully review
+:ref:`behavioral_changes_orm_09` and :ref:`behavioral_changes_core_09` for
 potentially backwards-incompatible changes.
 
 Platform Support
@@ -47,7 +46,7 @@ in both Python 2 and Python 3 environments.
 
 :ticket:`2161`
 
-.. _behavioral_changes_09:
+.. _behavioral_changes_orm_09:
 
 Behavioral Changes - ORM
 ========================
@@ -468,9 +467,43 @@ This is a small change demonstrated as follows::
 
 :ticket:`2787`
 
+.. _behavioral_changes_core_09:
 
 Behavioral Changes - Core
 =========================
+
+.. _migration_2873:
+
+The "password" portion of a ``create_engine()`` URL is no longer URL encoded
+----------------------------------------------------------------------------
+
+For whatever reason, the Python function ``unquote_plus()`` was applied to the
+"password" field of a URL, likely as a means of allowing the usage of escapes
+(e.g. "%2F" or similar) to be used, and perhaps as some way of allowing spaces
+to be present.  However, this is not complaint with `RFC 1738 <http://www.ietf.org/rfc/rfc1738.txt>`_
+which has no reserved characters within the password field and does not specify
+URL quoting - so the quote_plus routines are **no longer applied** to the password
+field.
+
+Examples of URLs with characters such as colons, @ symbols, spaces, and plus signs
+include::
+
+    # password: "pass word + other:words"
+    dbtype://user:pass word + other:words@host/dbname
+
+    # password: "apples%2Foranges"
+    dbtype://username:apples%2Foranges@hostspec/database
+
+    # password: "apples@oranges@@"
+    dbtype://username:apples@oranges@@@hostspec/database
+
+    # password: '', username is "username@"
+    dbtype://username@:@hostspec/database
+
+
+:ticket:`2873`
+
+
 
 .. _migration_2850:
 

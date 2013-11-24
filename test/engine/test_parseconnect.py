@@ -31,7 +31,7 @@ class ParseConnectTest(fixtures.TestBase):
             'dbtype://',
             'dbtype://username:password@/database',
             'dbtype:////usr/local/_xtest@example.com/members.db',
-            'dbtype://username:apples%2Foranges@hostspec/database',
+            'dbtype://username:apples/oranges@hostspec/database',
             'dbtype://username:password@[2001:da8:2004:1000:202:116:160:90]/database?foo=bar',
             'dbtype://username:password@[2001:da8:2004:1000:202:116:160:90]:80/database?foo=bar'
             ):
@@ -48,6 +48,28 @@ class ParseConnectTest(fixtures.TestBase):
                     'foo/bar/im/a/file',
                     'E:/work/src/LEM/db/hello.db', None), u.database
             eq_(str(u), text)
+
+    def test_rfc1738_password(self):
+        u = url.make_url("dbtype://user:pass word + other:words@host/dbname")
+        eq_(u.password, "pass word + other:words")
+        eq_(str(u), "dbtype://user:pass word + other:words@host/dbname")
+
+        u = url.make_url('dbtype://username:apples%2Foranges@hostspec/database')
+        eq_(u.password, "apples%2Foranges")
+        eq_(str(u), 'dbtype://username:apples%2Foranges@hostspec/database')
+
+        u = url.make_url('dbtype://username:apples@oranges@@@hostspec/database')
+        eq_(u.password, "apples@oranges@@")
+        eq_(str(u), 'dbtype://username:apples@oranges@@@hostspec/database')
+
+        u = url.make_url('dbtype://username@:@hostspec/database')
+        eq_(u.password, '')
+        eq_(u.username, "username@")
+        eq_(str(u), 'dbtype://username@:@hostspec/database')
+
+        u = url.make_url('dbtype://username:pass/word@hostspec/database')
+        eq_(u.password, 'pass/word')
+        eq_(str(u), 'dbtype://username:pass/word@hostspec/database')
 
 class DialectImportTest(fixtures.TestBase):
     def test_import_base_dialects(self):
