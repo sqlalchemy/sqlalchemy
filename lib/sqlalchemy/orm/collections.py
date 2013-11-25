@@ -1163,7 +1163,6 @@ def _list_decorators():
 
     def clear(fn):
         def clear(self, index=-1):
-            __before_delete(self)
             for item in self:
                 __del(self, item)
             fn(self)
