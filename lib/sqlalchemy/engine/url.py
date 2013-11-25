@@ -65,9 +65,10 @@ class URL(object):
     def __to_string__(self, hide_password=True):
         s = self.drivername + "://"
         if self.username is not None:
-            s += self.username
+            s += _rfc_1738_quote(self.username)
             if self.password is not None:
-                s += ':' + ('***' if hide_password else self.password)
+                s += ':' + ('***' if hide_password
+                            else _rfc_1738_quote(self.password))
             s += "@"
         if self.host is not None:
             if ':' in self.host:
@@ -194,6 +195,12 @@ def _parse_rfc1738_args(name):
             query = None
         components['query'] = query
 
+        if components['username'] is not None:
+            components['username'] = _rfc_1738_unquote(components['username'])
+
+        if components['password'] is not None:
+            components['password'] = _rfc_1738_unquote(components['password'])
+
         ipv4host = components.pop('ipv4host')
         ipv6host = components.pop('ipv6host')
         components['host'] = ipv4host or ipv6host
@@ -203,6 +210,12 @@ def _parse_rfc1738_args(name):
         raise exc.ArgumentError(
             "Could not parse rfc1738 URL from string '%s'" % name)
 
+
+def _rfc_1738_quote(text):
+    return re.sub(r'[:@/]', lambda m: "%%%X" % ord(m.group(0)), text)
+
+def _rfc_1738_unquote(text):
+    return util.unquote(text)
 
 def _parse_keyvalue_args(name):
     m = re.match(r'(\w+)://(.*)', name)

@@ -19,10 +19,11 @@
         :tickets: 2873
 
         The :func:`.create_engine` routine and the related
-        :func:`.make_url` function **no longer URL encode the password**.
-        Database passwords that include characters like spaces, plus signs
-        and anything else should now represent these characters directly,
-        without any URL escaping.
+        :func:`.make_url` function no longer considers the ``+`` sign
+        to be a space within the password field.  The parsing has been
+        adjuted to match RFC 1738 exactly, in that both ``username``
+        and ``password`` expect only ``:``, ``@``, and ``/`` to be
+        encoded.
 
         .. seealso::
 

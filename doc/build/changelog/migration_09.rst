@@ -474,31 +474,29 @@ Behavioral Changes - Core
 
 .. _migration_2873:
 
-The "password" portion of a ``create_engine()`` URL is no longer URL encoded
-----------------------------------------------------------------------------
+The "password" portion of a ``create_engine()`` no longer considers the ``+`` sign as an encoded space
+------------------------------------------------------------------------------------------------------
 
 For whatever reason, the Python function ``unquote_plus()`` was applied to the
-"password" field of a URL, likely as a means of allowing the usage of escapes
-(e.g. "%2F" or similar) to be used, and perhaps as some way of allowing spaces
-to be present.  However, this is not complaint with `RFC 1738 <http://www.ietf.org/rfc/rfc1738.txt>`_
-which has no reserved characters within the password field and does not specify
-URL quoting - so the quote_plus routines are **no longer applied** to the password
-field.
-
-Examples of URLs with characters such as colons, @ symbols, spaces, and plus signs
-include::
+"password" field of a URL, which is an incorrect application of the
+encoding rules described in `RFC 1738 <http://www.ietf.org/rfc/rfc1738.txt>`_
+in that it escaped spaces as plus signs.  The stringiciation of a URL
+now only encodes ":", "@", or "/" and nothing else, and is now applied to both the
+``username`` and ``password`` fields (previously it only applied to the
+password).   On parsing, encoded characters are converted, but plus signs and
+spaces are passed through as is::
 
     # password: "pass word + other:words"
-    dbtype://user:pass word + other:words@host/dbname
+    dbtype://user:pass word + other%3Awords@host/dbname
 
-    # password: "apples%2Foranges"
+    # password: "apples/oranges"
     dbtype://username:apples%2Foranges@hostspec/database
 
     # password: "apples@oranges@@"
-    dbtype://username:apples@oranges@@@hostspec/database
+    dbtype://username:apples%40oranges%40%40@hostspec/database
 
     # password: '', username is "username@"
-    dbtype://username@:@hostspec/database
+    dbtype://username%40:@hostspec/database
 
 
 :ticket:`2873`

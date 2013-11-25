@@ -31,7 +31,7 @@ class ParseConnectTest(fixtures.TestBase):
             'dbtype://',
             'dbtype://username:password@/database',
             'dbtype:////usr/local/_xtest@example.com/members.db',
-            'dbtype://username:apples/oranges@hostspec/database',
+            'dbtype://username:apples%2Foranges@hostspec/database',
             'dbtype://username:password@[2001:da8:2004:1000:202:116:160:90]/database?foo=bar',
             'dbtype://username:password@[2001:da8:2004:1000:202:116:160:90]:80/database?foo=bar'
             ):
@@ -50,26 +50,26 @@ class ParseConnectTest(fixtures.TestBase):
             eq_(str(u), text)
 
     def test_rfc1738_password(self):
-        u = url.make_url("dbtype://user:pass word + other:words@host/dbname")
+        u = url.make_url("dbtype://user:pass word + other%3Awords@host/dbname")
         eq_(u.password, "pass word + other:words")
-        eq_(str(u), "dbtype://user:pass word + other:words@host/dbname")
+        eq_(str(u), "dbtype://user:pass word + other%3Awords@host/dbname")
 
         u = url.make_url('dbtype://username:apples%2Foranges@hostspec/database')
-        eq_(u.password, "apples%2Foranges")
+        eq_(u.password, "apples/oranges")
         eq_(str(u), 'dbtype://username:apples%2Foranges@hostspec/database')
 
-        u = url.make_url('dbtype://username:apples@oranges@@@hostspec/database')
+        u = url.make_url('dbtype://username:apples%40oranges%40%40@hostspec/database')
         eq_(u.password, "apples@oranges@@")
-        eq_(str(u), 'dbtype://username:apples@oranges@@@hostspec/database')
+        eq_(str(u), 'dbtype://username:apples%40oranges%40%40@hostspec/database')
 
-        u = url.make_url('dbtype://username@:@hostspec/database')
+        u = url.make_url('dbtype://username%40:@hostspec/database')
         eq_(u.password, '')
         eq_(u.username, "username@")
-        eq_(str(u), 'dbtype://username@:@hostspec/database')
+        eq_(str(u), 'dbtype://username%40:@hostspec/database')
 
-        u = url.make_url('dbtype://username:pass/word@hostspec/database')
+        u = url.make_url('dbtype://username:pass%2Fword@hostspec/database')
         eq_(u.password, 'pass/word')
-        eq_(str(u), 'dbtype://username:pass/word@hostspec/database')
+        eq_(str(u), 'dbtype://username:pass%2Fword@hostspec/database')
 
 class DialectImportTest(fixtures.TestBase):
     def test_import_base_dialects(self):
