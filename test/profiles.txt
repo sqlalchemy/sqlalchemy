@@ -99,6 +99,14 @@ test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 3.3_postgre
 test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 3.3_postgresql_psycopg2_nocextensions 151
 test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 3.3_sqlite_pysqlite_cextensions 151
 
+# TEST: test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set
+
+test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set 2.7_sqlite_pysqlite_cextensions 4265
+
+# TEST: test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove
+
+test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove 2.7_sqlite_pysqlite_cextensions 6525
+
 # TEST: test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline
 
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_mysql_mysqldb_cextensions 30052

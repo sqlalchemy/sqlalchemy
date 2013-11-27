@@ -355,12 +355,6 @@ class Event(object):
         self.op = op
         self.parent_token = self.impl.parent_token
 
-    @classmethod
-    def _token_gen(self, op):
-        @util.memoized_property
-        def gen(self):
-            return Event(self, op)
-        return gen
 
     @property
     def key(self):
@@ -687,8 +681,17 @@ class ScalarAttributeImpl(AttributeImpl):
         state._modified_event(dict_, self, old)
         dict_[self.key] = value
 
-    _replace_token = _append_token = Event._token_gen(OP_REPLACE)
-    _remove_token = Event._token_gen(OP_REMOVE)
+    @util.memoized_property
+    def _replace_token(self):
+        return Event(self, OP_REPLACE)
+
+    @util.memoized_property
+    def _append_token(self):
+        return Event(self, OP_REPLACE)
+
+    @util.memoized_property
+    def _remove_token(self):
+        return Event(self, OP_REMOVE)
 
     def fire_replace_event(self, state, dict_, value, previous, initiator):
         for fn in self.dispatch.set:
@@ -879,8 +882,13 @@ class CollectionAttributeImpl(AttributeImpl):
 
         return [(instance_state(o), o) for o in current]
 
-    _append_token = Event._token_gen(OP_APPEND)
-    _remove_token = Event._token_gen(OP_REMOVE)
+    @util.memoized_property
+    def _append_token(self):
+        return Event(self, OP_APPEND)
+
+    @util.memoized_property
+    def _remove_token(self):
+        return Event(self, OP_REMOVE)
 
     def fire_append_event(self, state, dict_, value, initiator):
         for fn in self.dispatch.append:

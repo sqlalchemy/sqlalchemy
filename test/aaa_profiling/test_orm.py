@@ -310,3 +310,63 @@ class DeferOptionsTest(fixtures.MappedTest):
             *[defer(letter) for letter in ['x', 'y', 'z', 'p', 'q', 'r']]).\
             all()
 
+
+class AttributeOverheadTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('parent', metadata, Column('id', Integer,
+                       primary_key=True,
+                       test_needs_autoincrement=True), Column('data',
+                       String(20)))
+        Table('child', metadata, Column('id', Integer,
+                      primary_key=True, test_needs_autoincrement=True),
+                      Column('data', String(20)), Column('parent_id',
+                      Integer, ForeignKey('parent.id'), nullable=False))
+
+    @classmethod
+    def setup_classes(cls):
+        class Parent(cls.Basic):
+            pass
+
+        class Child(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Child, Parent, parent, child = (cls.classes.Child,
+                                cls.classes.Parent,
+                                cls.tables.parent,
+                                cls.tables.child)
+
+        mapper(Parent, parent, properties={'children':
+                        relationship(Child, backref='parent')})
+        mapper(Child, child)
+
+
+    def test_attribute_set(self):
+        Parent, Child = self.classes.Parent, self.classes.Child
+        p1 = Parent()
+        c1 = Child()
+
+        @profiling.function_call_count()
+        def go():
+            for i in range(30):
+                c1.parent = p1
+                c1.parent = None
+                c1.parent = p1
+                del c1.parent
+        go()
+
+    def test_collection_append_remove(self):
+        Parent, Child = self.classes.Parent, self.classes.Child
+        p1 = Parent()
+        children = [Child() for i in range(100)]
+
+        @profiling.function_call_count()
+        def go():
+            for child in children:
+                p1.children.append(child)
+            for child in children:
+                p1.children.remove(child)
+        go()
+

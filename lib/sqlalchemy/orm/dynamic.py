@@ -76,8 +76,13 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             history = self._get_collection_history(state, passive)
             return history.added_plus_unchanged
 
-    _append_token = attributes.Event._token_gen(attributes.OP_APPEND)
-    _remove_token = attributes.Event._token_gen(attributes.OP_REMOVE)
+    @util.memoized_property
+    def _append_token(self):
+        return attributes.Event(self, attributes.OP_APPEND)
+
+    @util.memoized_property
+    def _remove_token(self):
+        return attributes.Event(self, attributes.OP_REMOVE)
 
     def fire_append_event(self, state, dict_, value, initiator,
                                                     collection_history=None):

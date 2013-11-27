@@ -103,9 +103,8 @@ def runit(status, factor=1):
     sess.commit()
     status("Associated grunts w/ bosses and committed")
 
-
     # do some heavier reading
-    for i in range(5):
+    for i in range(int(round(factor / 2.0))):
         status("Heavy query run #%d" % (i + 1))
 
         report = []
@@ -147,7 +146,7 @@ def run_with_profile():
 
     #stats.sort_stats('time', 'calls')
     #stats.print_stats()
-    #os.system("runsnake %s" % filename)
+#    os.system("runsnake %s" % filename)
 
     # SQLA Version: 0.7b1
     # Total calls 4956750
@@ -174,4 +173,5 @@ def run_with_time():
     runit(status, 10)
     print("Total time: %d" % (time.time() - now))
 
-run_with_time()
+run_with_profile()
+#run_with_time()
