@@ -1127,6 +1127,8 @@ class Query(object):
     def with_lockmode(self, mode, of=None):
         """Return a new Query object with the specified locking mode.
 
+        .. deprecated:: 0.9.0b2 superseded by :meth:`.Query.for_update`.
+
         :param mode: a string representing the desired locking mode. A
             corresponding :meth:`~sqlalchemy.orm.query.LockmodeArgs` object
             is passed to the ``for_update`` parameter of
@@ -3493,60 +3495,3 @@ class AliasOption(interfaces.MapperOption):
         query._from_obj_alias = sql_util.ColumnAdapter(alias)
 
 
-class LockmodeArgs(object):
-
-    lockmodes = [None,
-                 'read', 'read_nowait',
-                 'update', 'update_nowait'
-    ]
-
-    mode = None
-    of = None
-
-    def __init__(self, mode=None, of=None):
-        """ORM-level Lockmode
-
-        :class:`.LockmodeArgs` defines the locking strategy for the
-        dialects as given by ``FOR UPDATE [OF] [NOWAIT]``. The optional
-        OF component is translated by the dialects into the supported
-        tablename and columnname descriptors.
-
-        :param mode: Defines the lockmode to use.
-
-            ``None`` - translates to no lockmode
-
-            ``'update'`` - translates to ``FOR UPDATE``
-            (standard SQL, supported by most dialects)
-
-            ``'update_nowait'`` - translates to ``FOR UPDATE NOWAIT``
-            (supported by Oracle, PostgreSQL 8.1 upwards)
-
-            ``'read'`` - translates to ``LOCK IN SHARE MODE`` (for MySQL),
-            and ``FOR SHARE`` (for PostgreSQL)
-
-            ``'read_nowait'`` - translates to ``FOR SHARE NOWAIT``
-            (supported by PostgreSQL). ``FOR SHARE`` and
-            ``FOR SHARE NOWAIT`` (PostgreSQL).
-
-        :param of: either a column descriptor, or list of column
-            descriptors, representing the optional OF part of the
-            clause. This passes the descriptor to the
-            corresponding :meth:`~sqlalchemy.orm.query.LockmodeArgs` object,
-            and translates to ``FOR UPDATE OF table [NOWAIT]`` respectively
-            ``FOR UPDATE OF table, table [NOWAIT]`` (PostgreSQL), or
-            ``FOR UPDATE OF table.column [NOWAIT]`` respectively
-            ``FOR UPDATE OF table.column, table.column [NOWAIT]`` (Oracle).
-
-        .. versionadded:: 0.9.0b2
-        """
-
-        if isinstance(mode, bool) and mode:
-            mode = 'update'
-
-        self.mode = mode
-
-        # extract table names and column names
-        if isinstance(of, attributes.QueryableAttribute):
-            self.of = (of.expression.table.name, of.expression.name)
-        elif isinstance(of, (tuple, list)) and of != []:
-            self.of = [(o.expression.table.name, o.expression.name) for o in of]

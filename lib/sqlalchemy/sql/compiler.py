@@ -1515,7 +1515,7 @@ class SQLCompiler(Compiled):
                             order_by_select=order_by_select, **kwargs)
         if select._limit is not None or select._offset is not None:
             text += self.limit_clause(select)
-        if select.for_update:
+        if select._for_update_arg:
             text += self.for_update_clause(select)
 
         if self.ctes and \
@@ -1571,15 +1571,7 @@ class SQLCompiler(Compiled):
             return ""
 
     def for_update_clause(self, select):
-        # backwards compatibility
-        if isinstance(select.for_update, bool):
-            return " FOR UPDATE" if select.for_update else ""
-        elif isinstance(select.for_update, str):
-            return " FOR UPDATE"
-        elif select.for_update.mode is not None:
-            return " FOR UPDATE"
-        else:
-            return ""
+        return " FOR UPDATE"
 
     def returning_clause(self, stmt, returning_cols):
         raise exc.CompileError(

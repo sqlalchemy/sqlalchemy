@@ -632,7 +632,7 @@ class OracleCompiler(compiler.SQLCompiler):
 
                 # If needed, add the ora_rn, and wrap again with offset.
                 if select._offset is None:
-                    limitselect.for_update = select.for_update
+                    limitselect._for_update_arg = select._for_update_arg
                     select = limitselect
                 else:
                     limitselect = limitselect.column(
@@ -651,7 +651,7 @@ class OracleCompiler(compiler.SQLCompiler):
                     offsetselect.append_whereclause(
                              sql.literal_column("ora_rn") > offset_value)
 
-                    offsetselect.for_update = select.for_update
+                    offsetselect._for_update_arg = select._for_update_arg
                     select = offsetselect
 
         kwargs['iswrapper'] = getattr(select, '_is_wrapper', False)
@@ -666,27 +666,16 @@ class OracleCompiler(compiler.SQLCompiler):
 
         tmp = ' FOR UPDATE'
 
-        # backwards compatibility
-        if isinstance(select.for_update, bool):
-            if select.for_update:
-                return tmp
-        elif isinstance(select.for_update, str):
-            if select.for_update == 'nowait':
-                return tmp + ' NOWAIT'
-            else:
-                return tmp
+        if select._for_update_arg.nowait:
+            tmp += " NOWAIT"
 
-        if isinstance(select.for_update.of, list):
-            tmp += ' OF ' + ', '.join(['.'.join(of) for of in select.for_update.of])
-        elif isinstance(select.for_update.of, tuple):
-            tmp += ' OF ' + '.'.join(select.for_update.of)
+        if select._for_update_arg.of:
+            tmp += ' OF ' + ', '.join(
+                                    self._process(elem) for elem in
+                                    select._for_update_arg.of
+                                )
 
-        if select.for_update.mode == 'update_nowait':
-            return tmp + ' NOWAIT'
-        elif select.for_update.mode == 'update':
-            return tmp
-        else:
-            return super(OracleCompiler, self).for_update_clause(select)
+        return tmp
 
 
 class OracleDDLCompiler(compiler.DDLCompiler):

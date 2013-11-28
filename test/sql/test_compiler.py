@@ -1120,6 +1120,12 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM mytable WHERE mytable.myid = %(myid_1)s FOR SHARE NOWAIT",
             dialect=postgresql.dialect())
 
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).with_for_update(of=table1.c.myid),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s FOR UPDATE OF mytable",
+            dialect=postgresql.dialect())
+
     def test_alias(self):
         # test the alias for a table1.  column names stay the same,
         # table name "changes" to "foo".

@@ -14,7 +14,7 @@ from .elements import ClauseElement, TextClause, ClauseList, \
 from .elements import _clone, \
         _literal_as_text, _interpret_as_column_or_from, _expand_cloned,\
         _select_iterables, _anonymous_label, _clause_element_as_expr,\
-        _cloned_intersection, _cloned_difference, True_
+        _cloned_intersection, _cloned_difference, True_, _only_column_elements
 from .base import Immutable, Executable, _generative, \
             ColumnCollection, ColumnSet, _from_objects, Generative
 from . import type_api
@@ -1151,6 +1151,68 @@ class TableClause(Immutable, FromClause):
         return [self]
 
 
+class ForUpdateArg(object):
+
+    @classmethod
+    def parse_legacy_select(self, arg):
+        """Parse the for_update arugment of :func:`.select`.
+
+        :param mode: Defines the lockmode to use.
+
+            ``None`` - translates to no lockmode
+
+            ``'update'`` - translates to ``FOR UPDATE``
+            (standard SQL, supported by most dialects)
+
+            ``'nowait'`` - translates to ``FOR UPDATE NOWAIT``
+            (supported by Oracle, PostgreSQL 8.1 upwards)
+
+            ``'read'`` - translates to ``LOCK IN SHARE MODE`` (for MySQL),
+            and ``FOR SHARE`` (for PostgreSQL)
+
+            ``'read_nowait'`` - translates to ``FOR SHARE NOWAIT``
+            (supported by PostgreSQL). ``FOR SHARE`` and
+            ``FOR SHARE NOWAIT`` (PostgreSQL).
+
+        """
+        if arg is None:
+            return None
+
+        nowait = read = False
+        if arg == 'nowait':
+            nowait = True
+        elif arg == 'read':
+            read = True
+        elif arg == 'read_nowait':
+            read = nowait = True
+
+        return ForUpdateArg(read=read, nowait=nowait)
+
+    @property
+    def legacy_for_update_value(self):
+        if self.read and not self.nowait:
+            return "read"
+        elif self.read and self.nowait:
+            return "read_nowait"
+        elif self.nowait:
+            return "update_nowait"
+        else:
+            return "update"
+
+    def __init__(self, nowait=False, read=False, of=None):
+        """Represents arguments specified to :meth:`.Select.for_update`.
+
+        .. versionadded:: 0.9.0b2
+        """
+
+        self.nowait = nowait
+        self.read = read
+        if of is not None:
+            self.of = [_only_column_elements(of, "of")
+                        for elem in util.to_list(of)]
+        else:
+            self.of = None
+
 class SelectBase(Executable, FromClause):
     """Base class for :class:`.Select` and :class:`.CompoundSelect`."""
 
@@ -1158,6 +1220,7 @@ class SelectBase(Executable, FromClause):
     _group_by_clause = ClauseList()
     _limit = None
     _offset = None
+    _for_update_arg = None
 
     def __init__(self,
             use_labels=False,
@@ -1169,7 +1232,10 @@ class SelectBase(Executable, FromClause):
             bind=None,
             autocommit=None):
         self.use_labels = use_labels
-        self.for_update = for_update
+
+        if for_update is not False:
+            self._for_update_arg = ForUpdateArg.parse_legacy_select(for_update)
+
         if autocommit is not None:
             util.warn_deprecated('autocommit on select() is '
                                  'deprecated.  Use .execution_options(a'
@@ -1187,6 +1253,46 @@ class SelectBase(Executable, FromClause):
             self._order_by_clause = ClauseList(*util.to_list(order_by))
         if group_by is not None:
             self._group_by_clause = ClauseList(*util.to_list(group_by))
+
+    @property
+    def for_update(self):
+        """Provide legacy dialect support for the ``for_update`` attribute
+           as a getter.
+
+        """
+        if self._for_update_arg is not None:
+            return self._for_update_arg.legacy_for_update_value
+        else:
+            return None
+
+    @_generative
+    def with_for_update(self, nowait=False, read=False, of=None):
+        """apply FOR UPDATE to this :class:`.SelectBase`.
+
+        E.g.::
+
+            stmt = select([table]).with_for_update(nowait=True)
+
+        Additional keyword arguments are provided for common database-specific
+        variants.
+
+        :param nowait: boolean; will render ``FOR UPDATE NOWAIT`` on Oracle and
+         Postgresql dialects.
+
+        :param read: boolean; will render ``LOCK IN SHARE MODE`` on MySQL,
+         ``FOR SHARE`` on Postgresql.  On Postgresql, when combined with
+         ``nowait``, will render ``FOR SHARE NOWAIT``.
+
+        :param of: SQL expression or list of SQL expression elements which
+         will render into a ``FOR UPDATE OF`` clause; supported by PostgreSQL
+         and Oracle.    May render as a table or as a column depending on
+         backend.
+
+
+        .. versionadded:: 0.9.0b2
+
+        """
+        self._for_update_arg = ForUpdateArg(nowait=nowait, read=read, of=of)
 
     def as_scalar(self):
         """return a 'scalar' representation of this selectable, which can be
@@ -1724,6 +1830,8 @@ class HasPrefixes(object):
         self._prefixes = self._prefixes + tuple(
                             [(_literal_as_text(p), dialect) for p in prefixes])
 
+
+
 class Select(HasPrefixes, SelectBase):
     """Represents a ``SELECT`` statement.
 
@@ -1828,17 +1936,28 @@ class Select(HasPrefixes, SelectBase):
           when ``True``, applies ``FOR UPDATE`` to the end of the
           resulting statement.
 
-          Certain database dialects also support
-          alternate values for this parameter:
+          .. deprecated:: 0.9.0 - use :meth:`.SelectBase.with_for_update`
+             to specify for update arguments.
 
-          * With the MySQL dialect, the value ``"read"`` translates to
-            ``LOCK IN SHARE MODE``.
-          * With the Oracle and Postgresql dialects, the value ``"nowait"``
-            translates to ``FOR UPDATE NOWAIT``.
-          * With the Postgresql dialect, the values "read" and ``"read_nowait"``
-            translate to ``FOR SHARE`` and ``FOR SHARE NOWAIT``, respectively.
+          Additional values are accepted here, including:
 
-            .. versionadded:: 0.7.7
+            ``None`` - translates to no lockmode
+
+            ``'update'`` - translates to ``FOR UPDATE``
+            (standard SQL, supported by most dialects)
+
+            ``'update_nowait'`` - translates to ``FOR UPDATE NOWAIT``
+            (supported by Oracle, PostgreSQL 8.1 upwards)
+
+            ``'read'`` - translates to ``LOCK IN SHARE MODE`` (for MySQL),
+            and ``FOR SHARE`` (for PostgreSQL)
+
+            ``'read_nowait'`` - translates to ``FOR SHARE NOWAIT``
+            (supported by PostgreSQL). ``FOR SHARE`` and
+            ``FOR SHARE NOWAIT`` (PostgreSQL).
+
+          The :meth:`.SelectBase.with_for_update` method should be preferred as
+          a means to specify FOR UPDATE more simply.
 
         :param group_by:
           a list of :class:`.ClauseElement` objects which will comprise the

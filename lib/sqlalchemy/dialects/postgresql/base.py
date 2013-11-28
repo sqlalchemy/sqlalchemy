@@ -1015,35 +1015,23 @@ class PGCompiler(compiler.SQLCompiler):
 
     def for_update_clause(self, select):
 
-        tmp = ' FOR UPDATE'
-
-        # backwards compatibility
-        if isinstance(select.for_update, bool):
-            return tmp
-        elif isinstance(select.for_update, str):
-            if select.for_update == 'nowait':
-                return tmp + ' NOWAIT'
-            elif select.for_update == 'read':
-                return ' FOR SHARE'
-            elif select.for_update == 'read_nowait':
-                return ' FOR SHARE NOWAIT'
-
-        if select.for_update.mode == 'read':
-            return ' FOR SHARE'
-        elif select.for_update.mode == 'read_nowait':
-            return ' FOR SHARE NOWAIT'
-
-        if isinstance(select.for_update.of, list):
-            tmp += ' OF ' + ', '.join([of[0] for of in select.for_update.of])
-        elif isinstance(select.for_update.of, tuple):
-            tmp += ' OF ' + select.for_update.of[0]
-
-        if select.for_update.mode == 'update_nowait':
-            return tmp + ' NOWAIT'
-        elif select.for_update.mode == 'update':
-            return tmp
+        if select._for_update_arg.read:
+            tmp = " FOR SHARE"
         else:
-            return super(PGCompiler, self).for_update_clause(select)
+            tmp = " FOR UPDATE"
+
+        if select._for_update_arg.nowait:
+            tmp += " NOWAIT"
+
+        if select._for_update_arg.of:
+            # TODO: assuming simplistic c.table here
+            tables = set(c.table for c in select._for_update_arg.of)
+            tmp += " OF " + ", ".join(
+                                self.process(table, asfrom=True)
+                                for table in tables
+                            )
+
+        return tmp
 
     def returning_clause(self, stmt, returning_cols):
 
