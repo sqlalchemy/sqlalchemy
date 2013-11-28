@@ -1124,33 +1124,42 @@ class Query(object):
         self._execution_options = self._execution_options.union(kwargs)
 
     @_generative()
-    def with_lockmode(self, mode):
+    def with_lockmode(self, mode, of=None):
         """Return a new Query object with the specified locking mode.
 
         :param mode: a string representing the desired locking mode. A
-            corresponding value is passed to the ``for_update`` parameter of
-            :meth:`~sqlalchemy.sql.expression.select` when the query is
-            executed. Valid values are:
+            corresponding :meth:`~sqlalchemy.orm.query.LockmodeArgs` object
+            is passed to the ``for_update`` parameter of
+            :meth:`~sqlalchemy.sql.expression.select` when the
+            query is executed. Valid values are:
 
-            ``'update'`` - passes ``for_update=True``, which translates to
-            ``FOR UPDATE`` (standard SQL, supported by most dialects)
+            ``None`` - translates to no lockmode
 
-            ``'update_nowait'`` - passes ``for_update='nowait'``, which
-            translates to ``FOR UPDATE NOWAIT`` (supported by Oracle,
-            PostgreSQL 8.1 upwards)
+            ``'update'`` - translates to ``FOR UPDATE``
+            (standard SQL, supported by most dialects)
 
-            ``'read'`` - passes ``for_update='read'``, which translates to
-            ``LOCK IN SHARE MODE`` (for MySQL), and ``FOR SHARE`` (for
-            PostgreSQL)
+            ``'update_nowait'`` - translates to ``FOR UPDATE NOWAIT``
+            (supported by Oracle, PostgreSQL 8.1 upwards)
 
-            ``'read_nowait'`` - passes ``for_update='read_nowait'``, which
-            translates to ``FOR SHARE NOWAIT`` (supported by PostgreSQL).
+            ``'read'`` - translates to ``LOCK IN SHARE MODE`` (for MySQL),
+            and ``FOR SHARE`` (for PostgreSQL)
 
             .. versionadded:: 0.7.7
                 ``FOR SHARE`` and ``FOR SHARE NOWAIT`` (PostgreSQL).
+
+         :param of: either a column descriptor, or list of column
+            descriptors, representing the optional OF part of the
+            clause. This passes the descriptor to the
+            corresponding :meth:`~sqlalchemy.orm.query.LockmodeArgs` object,
+            and translates to ``FOR UPDATE OF table [NOWAIT]`` respectively
+            ``FOR UPDATE OF table, table [NOWAIT]`` (PostgreSQL), or
+            ``FOR UPDATE OF table.column [NOWAIT]`` respectively
+            ``FOR UPDATE OF table.column, table.column [NOWAIT]`` (Oracle).
+
+            .. versionadded:: 0.9.0b2
         """
 
-        self._lockmode = mode
+        self._lockmode = LockmodeArgs(mode=mode, of=of)
 
     @_generative()
     def params(self, *args, **kwargs):
@@ -2683,13 +2692,6 @@ class Query(object):
         update_op.exec_()
         return update_op.rowcount
 
-    _lockmode_lookup = {
-            'read': 'read',
-              'read_nowait': 'read_nowait',
-              'update': True,
-              'update_nowait': 'nowait',
-              None: False
-    }
 
     def _compile_context(self, labels=True):
         context = QueryContext(self)
@@ -2699,12 +2701,13 @@ class Query(object):
 
         context.labels = labels
 
-        if self._lockmode:
-            try:
-                context.for_update = self._lockmode_lookup[self._lockmode]
-            except KeyError:
-                raise sa_exc.ArgumentError(
-                                "Unknown lockmode %r" % self._lockmode)
+        if isinstance(self._lockmode, bool) and self._lockmode:
+            context.for_update = LockmodeArgs(mode='update')
+        elif isinstance(self._lockmode, LockmodeArgs):
+            if self._lockmode.mode not in LockmodeArgs.lockmodes:
+                raise sa_exc.ArgumentError('Unknown lockmode %r' % self._lockmode.mode)
+            context.for_update = self._lockmode
+
         for entity in self._entities:
             entity.setup_context(self, context)
 
@@ -3409,12 +3412,11 @@ class _ColumnEntity(_QueryEntity):
         return str(self.column)
 
 
-
 class QueryContext(object):
     multi_row_eager_loaders = False
     adapter = None
     froms = ()
-    for_update = False
+    for_update = None
 
     def __init__(self, query):
 
@@ -3489,3 +3491,62 @@ class AliasOption(interfaces.MapperOption):
         else:
             alias = self.alias
         query._from_obj_alias = sql_util.ColumnAdapter(alias)
+
+
+class LockmodeArgs(object):
+
+    lockmodes = [None,
+                 'read', 'read_nowait',
+                 'update', 'update_nowait'
+    ]
+
+    mode = None
+    of = None
+
+    def __init__(self, mode=None, of=None):
+        """ORM-level Lockmode
+
+        :class:`.LockmodeArgs` defines the locking strategy for the
+        dialects as given by ``FOR UPDATE [OF] [NOWAIT]``. The optional
+        OF component is translated by the dialects into the supported
+        tablename and columnname descriptors.
+
+        :param mode: Defines the lockmode to use.
+
+            ``None`` - translates to no lockmode
+
+            ``'update'`` - translates to ``FOR UPDATE``
+            (standard SQL, supported by most dialects)
+
+            ``'update_nowait'`` - translates to ``FOR UPDATE NOWAIT``
+            (supported by Oracle, PostgreSQL 8.1 upwards)
+
+            ``'read'`` - translates to ``LOCK IN SHARE MODE`` (for MySQL),
+            and ``FOR SHARE`` (for PostgreSQL)
+
+            ``'read_nowait'`` - translates to ``FOR SHARE NOWAIT``
+            (supported by PostgreSQL). ``FOR SHARE`` and
+            ``FOR SHARE NOWAIT`` (PostgreSQL).
+
+        :param of: either a column descriptor, or list of column
+            descriptors, representing the optional OF part of the
+            clause. This passes the descriptor to the
+            corresponding :meth:`~sqlalchemy.orm.query.LockmodeArgs` object,
+            and translates to ``FOR UPDATE OF table [NOWAIT]`` respectively
+            ``FOR UPDATE OF table, table [NOWAIT]`` (PostgreSQL), or
+            ``FOR UPDATE OF table.column [NOWAIT]`` respectively
+            ``FOR UPDATE OF table.column, table.column [NOWAIT]`` (Oracle).
+
+        .. versionadded:: 0.9.0b2
+        """
+
+        if isinstance(mode, bool) and mode:
+            mode = 'update'
+
+        self.mode = mode
+
+        # extract table names and column names
+        if isinstance(of, attributes.QueryableAttribute):
+            self.of = (of.expression.table.name, of.expression.name)
+        elif isinstance(of, (tuple, list)) and of != []:
+            self.of = [(o.expression.table.name, o.expression.name) for o in of]

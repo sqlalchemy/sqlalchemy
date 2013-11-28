@@ -230,7 +230,7 @@ RESERVED_WORDS = set(
     "default", "deferrable", "desc", "distinct", "do", "else", "end",
     "except", "false", "fetch", "for", "foreign", "from", "grant", "group",
     "having", "in", "initially", "intersect", "into", "leading", "limit",
-    "localtime", "localtimestamp", "new", "not", "null", "off", "offset",
+    "localtime", "localtimestamp", "new", "not", "null", "of", "off", "offset",
     "old", "on", "only", "or", "order", "placing", "primary", "references",
     "returning", "select", "session_user", "some", "symmetric", "table",
     "then", "to", "trailing", "true", "union", "unique", "user", "using",
@@ -1014,12 +1014,34 @@ class PGCompiler(compiler.SQLCompiler):
             return ""
 
     def for_update_clause(self, select):
-        if select.for_update == 'nowait':
-            return " FOR UPDATE NOWAIT"
-        elif select.for_update == 'read':
-            return " FOR SHARE"
-        elif select.for_update == 'read_nowait':
-            return " FOR SHARE NOWAIT"
+
+        tmp = ' FOR UPDATE'
+
+        # backwards compatibility
+        if isinstance(select.for_update, bool):
+            return tmp
+        elif isinstance(select.for_update, str):
+            if select.for_update == 'nowait':
+                return tmp + ' NOWAIT'
+            elif select.for_update == 'read':
+                return ' FOR SHARE'
+            elif select.for_update == 'read_nowait':
+                return ' FOR SHARE NOWAIT'
+
+        if select.for_update.mode == 'read':
+            return ' FOR SHARE'
+        elif select.for_update.mode == 'read_nowait':
+            return ' FOR SHARE NOWAIT'
+
+        if isinstance(select.for_update.of, list):
+            tmp += ' OF ' + ', '.join([of[0] for of in select.for_update.of])
+        elif isinstance(select.for_update.of, tuple):
+            tmp += ' OF ' + select.for_update.of[0]
+
+        if select.for_update.mode == 'update_nowait':
+            return tmp + ' NOWAIT'
+        elif select.for_update.mode == 'update':
+            return tmp
         else:
             return super(PGCompiler, self).for_update_clause(select)
 

@@ -1437,7 +1437,14 @@ class MySQLCompiler(compiler.SQLCompiler):
              self.process(join.onclause, **kwargs)))
 
     def for_update_clause(self, select):
-        if select.for_update == 'read':
+        # backwards compatibility
+        if isinstance(select.for_update, bool):
+            return ' FOR UPDATE'
+        elif isinstance(select.for_update, str):
+            if select.for_update == 'read':
+                return ' LOCK IN SHARE MODE'
+
+        if select.for_update.mode == 'read':
             return ' LOCK IN SHARE MODE'
         else:
             return super(MySQLCompiler, self).for_update_clause(select)

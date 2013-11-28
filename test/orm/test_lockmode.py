@@ -73,11 +73,44 @@ class LockModeTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             dialect=postgresql.dialect()
         )
 
+    def test_postgres_update_of(self):
+        User = self.classes.User
+        sess = Session()
+        self.assert_compile(sess.query(User.id).with_lockmode('update', of=User.id),
+            "SELECT users.id AS users_id FROM users FOR UPDATE OF users",
+            dialect=postgresql.dialect()
+        )
+
+    def test_postgres_update_of_list(self):
+        User = self.classes.User
+        sess = Session()
+        self.assert_compile(sess.query(User.id).with_lockmode('update', of=[User.id, User.id, User.id]),
+            "SELECT users.id AS users_id FROM users FOR UPDATE OF users, users, users",
+            dialect=postgresql.dialect()
+        )
+
+
     def test_postgres_update_nowait(self):
         User = self.classes.User
         sess = Session()
         self.assert_compile(sess.query(User.id).with_lockmode('update_nowait'),
             "SELECT users.id AS users_id FROM users FOR UPDATE NOWAIT",
+            dialect=postgresql.dialect()
+        )
+
+    def test_postgres_update_nowait_of(self):
+        User = self.classes.User
+        sess = Session()
+        self.assert_compile(sess.query(User.id).with_lockmode('update_nowait', of=User.id),
+            "SELECT users.id AS users_id FROM users FOR UPDATE OF users NOWAIT",
+            dialect=postgresql.dialect()
+        )
+
+    def test_postgres_update_nowait_of_list(self):
+        User = self.classes.User
+        sess = Session()
+        self.assert_compile(sess.query(User.id).with_lockmode('update_nowait', of=[User.id, User.id, User.id]),
+            "SELECT users.id AS users_id FROM users FOR UPDATE OF users, users, users NOWAIT",
             dialect=postgresql.dialect()
         )
 
@@ -89,11 +122,43 @@ class LockModeTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             dialect=oracle.dialect()
         )
 
+    def test_oracle_update_of(self):
+        User = self.classes.User
+        sess = Session()
+        self.assert_compile(sess.query(User.id).with_lockmode('update', of=User.id),
+            "SELECT users.id AS users_id FROM users FOR UPDATE OF users.id",
+            dialect=oracle.dialect()
+        )
+
+    def test_oracle_update_of_list(self):
+        User = self.classes.User
+        sess = Session()
+        self.assert_compile(sess.query(User.id).with_lockmode('update', of=[User.id, User.id, User.id]),
+            "SELECT users.id AS users_id FROM users FOR UPDATE OF users.id, users.id, users.id",
+            dialect=oracle.dialect()
+        )
+
     def test_oracle_update_nowait(self):
         User = self.classes.User
         sess = Session()
         self.assert_compile(sess.query(User.id).with_lockmode('update_nowait'),
             "SELECT users.id AS users_id FROM users FOR UPDATE NOWAIT",
+            dialect=oracle.dialect()
+        )
+
+    def test_oracle_update_nowait_of(self):
+        User = self.classes.User
+        sess = Session()
+        self.assert_compile(sess.query(User.id).with_lockmode('update_nowait', of=User.id),
+            "SELECT users.id AS users_id FROM users FOR UPDATE OF users.id NOWAIT",
+            dialect=oracle.dialect()
+        )
+
+    def test_oracle_update_nowait_of_list(self):
+        User = self.classes.User
+        sess = Session()
+        self.assert_compile(sess.query(User.id).with_lockmode('update_nowait', of=[User.id, User.id, User.id]),
+            "SELECT users.id AS users_id FROM users FOR UPDATE OF users.id, users.id, users.id NOWAIT",
             dialect=oracle.dialect()
         )
 

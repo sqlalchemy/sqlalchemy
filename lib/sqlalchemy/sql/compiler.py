@@ -1571,7 +1571,12 @@ class SQLCompiler(Compiled):
             return ""
 
     def for_update_clause(self, select):
-        if select.for_update:
+        # backwards compatibility
+        if isinstance(select.for_update, bool):
+            return " FOR UPDATE" if select.for_update else ""
+        elif isinstance(select.for_update, str):
+            return " FOR UPDATE"
+        elif select.for_update.mode is not None:
             return " FOR UPDATE"
         else:
             return ""

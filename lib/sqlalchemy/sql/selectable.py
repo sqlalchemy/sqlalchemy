@@ -2786,4 +2786,3 @@ class AnnotatedFromClause(Annotated):
         Annotated.__init__(self, element, values)
 
 
-
