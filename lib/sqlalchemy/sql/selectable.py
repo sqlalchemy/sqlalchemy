@@ -1162,7 +1162,6 @@ class SelectBase(Executable, FromClause):
     def __init__(self,
             use_labels=False,
             for_update=False,
-            for_update_of=None,
             limit=None,
             offset=None,
             order_by=None,
@@ -1171,7 +1170,6 @@ class SelectBase(Executable, FromClause):
             autocommit=None):
         self.use_labels = use_labels
         self.for_update = for_update
-        self.for_update_of = for_update_of
         if autocommit is not None:
             util.warn_deprecated('autocommit on select() is '
                                  'deprecated.  Use .execution_options(a'
@@ -2785,6 +2783,5 @@ class AnnotatedFromClause(Annotated):
         # collections into __dict__
         element.c
         Annotated.__init__(self, element, values)
-
 
 

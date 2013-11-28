@@ -664,14 +664,24 @@ class OracleCompiler(compiler.SQLCompiler):
 
         tmp = ' FOR UPDATE'
 
-        if isinstance(select.for_update_of, list):
-            tmp += ' OF ' + ', '.join(['.'.join(of) for of in select.for_update_of])
-        elif isinstance(select.for_update_of, tuple):
-            tmp += ' OF ' + '.'.join(select.for_update_of)
+        # backwards compatibility
+        if isinstance(select.for_update, bool):
+            if select.for_update:
+                return tmp
+        elif isinstance(select.for_update, str):
+            if select.for_update == 'nowait':
+                return tmp + ' NOWAIT'
+            else:
+                return tmp
 
-        if select.for_update == 'nowait':
+        if isinstance(select.for_update.of, list):
+            tmp += ' OF ' + ', '.join(['.'.join(of) for of in select.for_update.of])
+        elif isinstance(select.for_update.of, tuple):
+            tmp += ' OF ' + '.'.join(select.for_update.of)
+
+        if select.for_update.mode == 'update_nowait':
             return tmp + ' NOWAIT'
-        elif select.for_update:
+        elif select.for_update.mode == 'update':
             return tmp
         else:
             return super(OracleCompiler, self).for_update_clause(select)
