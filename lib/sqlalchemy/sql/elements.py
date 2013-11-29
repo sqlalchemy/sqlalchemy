@@ -1160,7 +1160,7 @@ class TextClause(Executable, ClauseElement):
 
     @util.dependencies('sqlalchemy.sql.selectable')
     def columns(self, selectable, *cols, **types):
-        """Turn this :class:`.Text` object into a :class:`.FromClause`
+        """Turn this :class:`.TextClause` object into a :class:`.TextAsFrom`
         object that can be embedded into another statement.
 
         This function essentially bridges the gap between an entirely
