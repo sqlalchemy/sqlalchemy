@@ -1219,100 +1219,16 @@ class ForUpdateArg(ClauseElement):
         else:
             self.of = None
 
+
 class SelectBase(Executable, FromClause):
-    """Base class for :class:`.Select` and :class:`.CompoundSelect`."""
+    """Base class for SELECT statements.
 
-    _order_by_clause = ClauseList()
-    _group_by_clause = ClauseList()
-    _limit = None
-    _offset = None
-    _for_update_arg = None
 
-    def __init__(self,
-            use_labels=False,
-            for_update=False,
-            limit=None,
-            offset=None,
-            order_by=None,
-            group_by=None,
-            bind=None,
-            autocommit=None):
-        self.use_labels = use_labels
+    This includes :class:`.Select`, :class:`.CompoundSelect` and
+    :class:`.TextAsFrom`.
 
-        if for_update is not False:
-            self._for_update_arg = ForUpdateArg.parse_legacy_select(for_update)
 
-        if autocommit is not None:
-            util.warn_deprecated('autocommit on select() is '
-                                 'deprecated.  Use .execution_options(a'
-                                 'utocommit=True)')
-            self._execution_options = \
-                self._execution_options.union(
-                  {'autocommit': autocommit})
-        if limit is not None:
-            self._limit = util.asint(limit)
-        if offset is not None:
-            self._offset = util.asint(offset)
-        self._bind = bind
-
-        if order_by is not None:
-            self._order_by_clause = ClauseList(*util.to_list(order_by))
-        if group_by is not None:
-            self._group_by_clause = ClauseList(*util.to_list(group_by))
-
-    @property
-    def for_update(self):
-        """Provide legacy dialect support for the ``for_update`` attribute.
-        """
-        if self._for_update_arg is not None:
-            return self._for_update_arg.legacy_for_update_value
-        else:
-            return None
-
-    @for_update.setter
-    def for_update(self, value):
-        self._for_update_arg = ForUpdateArg.parse_legacy_select(value)
-
-    @_generative
-    def with_for_update(self, nowait=False, read=False, of=None):
-        """Specify a ``FOR UPDATE`` clause for this :class:`.SelectBase`.
-
-        E.g.::
-
-            stmt = select([table]).with_for_update(nowait=True)
-
-        On a database like Postgresql or Oracle, the above would render a
-        statement like::
-
-            SELECT table.a, table.b FROM table FOR UPDATE NOWAIT
-
-        on other backends, the ``nowait`` option is ignored and instead
-        would produce::
-
-            SELECT table.a, table.b FROM table FOR UPDATE
-
-        When called with no arguments, the statement will render with
-        the suffix ``FOR UPDATE``.   Additional arguments can then be
-        provided which allow for common database-specific
-        variants.
-
-        :param nowait: boolean; will render ``FOR UPDATE NOWAIT`` on Oracle and
-         Postgresql dialects.
-
-        :param read: boolean; will render ``LOCK IN SHARE MODE`` on MySQL,
-         ``FOR SHARE`` on Postgresql.  On Postgresql, when combined with
-         ``nowait``, will render ``FOR SHARE NOWAIT``.
-
-        :param of: SQL expression or list of SQL expression elements
-         (typically :class:`.Column` objects or a compatible expression) which
-         will render into a ``FOR UPDATE OF`` clause; supported by PostgreSQL
-         and Oracle.  May render as a table or as a column depending on
-         backend.
-
-        .. versionadded:: 0.9.0b2
-
-        """
-        self._for_update_arg = ForUpdateArg(nowait=nowait, read=read, of=of)
+    """
 
     def as_scalar(self):
         """return a 'scalar' representation of this selectable, which can be
@@ -1327,18 +1243,6 @@ class SelectBase(Executable, FromClause):
         """
         return ScalarSelect(self)
 
-    @_generative
-    def apply_labels(self):
-        """return a new selectable with the 'use_labels' flag set to True.
-
-        This will result in column expressions being generated using labels
-        against their table name, such as "SELECT somecolumn AS
-        tablename_somecolumn". This allows selectables which contain multiple
-        FROM clauses to produce a unique set of column names regardless of
-        name conflicts among the individual FROM clauses.
-
-        """
-        self.use_labels = True
 
     def label(self, name):
         """return a 'scalar' representation of this selectable, embedded as a
@@ -1493,6 +1397,132 @@ class SelectBase(Executable, FromClause):
         s._reset_exported()
         return s
 
+    @property
+    def _from_objects(self):
+        return [self]
+
+class GenerativeSelect(SelectBase):
+    """Base class for SELECT statements where additional elements can be
+    added.
+
+    This serves as the base for :class:`.Select` and :class:`.CompoundSelect`
+    where elements such as ORDER BY, GROUP BY can be added and column rendering
+    can be controlled.  Compare to :class:`.TextAsFrom`, which, while it
+    subclasses :class:`.SelectBase` and is also a SELECT construct, represents
+    a fixed textual string which cannot be altered at this level, only
+    wrapped as a subquery.
+
+    .. versionadded:: 0.9.0b2 :class:`.GenerativeSelect` was added to
+       provide functionality specific to :class:`.Select` and :class:`.CompoundSelect`
+       while allowing :class:`.SelectBase` to be used for other SELECT-like
+       objects, e.g. :class:`.TextAsFrom`.
+
+    """
+    _order_by_clause = ClauseList()
+    _group_by_clause = ClauseList()
+    _limit = None
+    _offset = None
+    _for_update_arg = None
+
+    def __init__(self,
+            use_labels=False,
+            for_update=False,
+            limit=None,
+            offset=None,
+            order_by=None,
+            group_by=None,
+            bind=None,
+            autocommit=None):
+        self.use_labels = use_labels
+
+        if for_update is not False:
+            self._for_update_arg = ForUpdateArg.parse_legacy_select(for_update)
+
+        if autocommit is not None:
+            util.warn_deprecated('autocommit on select() is '
+                                 'deprecated.  Use .execution_options(a'
+                                 'utocommit=True)')
+            self._execution_options = \
+                self._execution_options.union(
+                  {'autocommit': autocommit})
+        if limit is not None:
+            self._limit = util.asint(limit)
+        if offset is not None:
+            self._offset = util.asint(offset)
+        self._bind = bind
+
+        if order_by is not None:
+            self._order_by_clause = ClauseList(*util.to_list(order_by))
+        if group_by is not None:
+            self._group_by_clause = ClauseList(*util.to_list(group_by))
+
+    @property
+    def for_update(self):
+        """Provide legacy dialect support for the ``for_update`` attribute.
+        """
+        if self._for_update_arg is not None:
+            return self._for_update_arg.legacy_for_update_value
+        else:
+            return None
+
+    @for_update.setter
+    def for_update(self, value):
+        self._for_update_arg = ForUpdateArg.parse_legacy_select(value)
+
+    @_generative
+    def with_for_update(self, nowait=False, read=False, of=None):
+        """Specify a ``FOR UPDATE`` clause for this :class:`.GenerativeSelect`.
+
+        E.g.::
+
+            stmt = select([table]).with_for_update(nowait=True)
+
+        On a database like Postgresql or Oracle, the above would render a
+        statement like::
+
+            SELECT table.a, table.b FROM table FOR UPDATE NOWAIT
+
+        on other backends, the ``nowait`` option is ignored and instead
+        would produce::
+
+            SELECT table.a, table.b FROM table FOR UPDATE
+
+        When called with no arguments, the statement will render with
+        the suffix ``FOR UPDATE``.   Additional arguments can then be
+        provided which allow for common database-specific
+        variants.
+
+        :param nowait: boolean; will render ``FOR UPDATE NOWAIT`` on Oracle and
+         Postgresql dialects.
+
+        :param read: boolean; will render ``LOCK IN SHARE MODE`` on MySQL,
+         ``FOR SHARE`` on Postgresql.  On Postgresql, when combined with
+         ``nowait``, will render ``FOR SHARE NOWAIT``.
+
+        :param of: SQL expression or list of SQL expression elements
+         (typically :class:`.Column` objects or a compatible expression) which
+         will render into a ``FOR UPDATE OF`` clause; supported by PostgreSQL
+         and Oracle.  May render as a table or as a column depending on
+         backend.
+
+        .. versionadded:: 0.9.0b2
+
+        """
+        self._for_update_arg = ForUpdateArg(nowait=nowait, read=read, of=of)
+
+    @_generative
+    def apply_labels(self):
+        """return a new selectable with the 'use_labels' flag set to True.
+
+        This will result in column expressions being generated using labels
+        against their table name, such as "SELECT somecolumn AS
+        tablename_somecolumn". This allows selectables which contain multiple
+        FROM clauses to produce a unique set of column names regardless of
+        name conflicts among the individual FROM clauses.
+
+        """
+        self.use_labels = True
+
     @_generative
     def limit(self, limit):
         """return a new selectable with the given LIMIT criterion
@@ -1537,7 +1567,7 @@ class SelectBase(Executable, FromClause):
         The criterion will be appended to any pre-existing ORDER BY criterion.
 
         This is an **in-place** mutation method; the
-        :meth:`~.SelectBase.order_by` method is preferred, as it provides standard
+        :meth:`~.GenerativeSelect.order_by` method is preferred, as it provides standard
         :term:`method chaining`.
 
         """
@@ -1554,7 +1584,7 @@ class SelectBase(Executable, FromClause):
         The criterion will be appended to any pre-existing GROUP BY criterion.
 
         This is an **in-place** mutation method; the
-        :meth:`~.SelectBase.group_by` method is preferred, as it provides standard
+        :meth:`~.GenerativeSelect.group_by` method is preferred, as it provides standard
         :term:`method chaining`.
 
         """
@@ -1565,12 +1595,8 @@ class SelectBase(Executable, FromClause):
                 clauses = list(self._group_by_clause) + list(clauses)
             self._group_by_clause = ClauseList(*clauses)
 
-    @property
-    def _from_objects(self):
-        return [self]
 
-
-class CompoundSelect(SelectBase):
+class CompoundSelect(GenerativeSelect):
     """Forms the basis of ``UNION``, ``UNION ALL``, and other
         SELECT-based set operations.
 
@@ -1622,7 +1648,7 @@ class CompoundSelect(SelectBase):
 
             self.selects.append(s.self_group(self))
 
-        SelectBase.__init__(self, **kwargs)
+        GenerativeSelect.__init__(self, **kwargs)
 
     @classmethod
     def _create_union(cls, *selects, **kwargs):
@@ -1852,7 +1878,7 @@ class HasPrefixes(object):
 
 
 
-class Select(HasPrefixes, SelectBase):
+class Select(HasPrefixes, GenerativeSelect):
     """Represents a ``SELECT`` statement.
 
     """
@@ -1956,7 +1982,7 @@ class Select(HasPrefixes, SelectBase):
           when ``True``, applies ``FOR UPDATE`` to the end of the
           resulting statement.
 
-          .. deprecated:: 0.9.0 - use :meth:`.SelectBase.with_for_update`
+          .. deprecated:: 0.9.0 - use :meth:`.GenerativeSelect.with_for_update`
              to specify the structure of the ``FOR UPDATE`` clause.
 
           ``for_update`` accepts various string values interpreted by
@@ -1971,7 +1997,7 @@ class Select(HasPrefixes, SelectBase):
 
          .. seealso::
 
-            :meth:`.SelectBase.with_for_update` - improved API for
+            :meth:`.GenerativeSelect.with_for_update` - improved API for
             specifying the ``FOR UPDATE`` clause.
 
         :param group_by:
@@ -2007,7 +2033,7 @@ class Select(HasPrefixes, SelectBase):
           collection of the resulting :class:`.Select` object will use these
           names as well for targeting column members.
 
-          use_labels is also available via the :meth:`~.SelectBase.apply_labels`
+          use_labels is also available via the :meth:`~.GenerativeSelect.apply_labels`
           generative method.
 
         """
@@ -2057,7 +2083,7 @@ class Select(HasPrefixes, SelectBase):
         if prefixes:
             self._setup_prefixes(prefixes)
 
-        SelectBase.__init__(self, **kwargs)
+        GenerativeSelect.__init__(self, **kwargs)
 
     @property
     def _froms(self):
@@ -2911,6 +2937,47 @@ class Exists(UnaryExpression):
         e.element = self.element.where(clause).self_group()
         return e
 
+
+class TextAsFrom(SelectBase):
+    """Wrap a :class:`.TextClause` construct within a :class:`.SelectBase`
+    interface.
+
+    This allows the :class:`.Text` object to gain a ``.c`` collection and
+    other FROM-like capabilities such as :meth:`.FromClause.alias`,
+    :meth:`.SelectBase.cte`, etc.
+
+    The :class:`.TextAsFrom` construct is produced via the
+    :meth:`.TextClause.columns` method - see that method for details.
+
+    .. versionadded:: 0.9.0b2
+
+    .. seealso::
+
+        :func:`.text`
+
+        :meth:`.TextClause.columns`
+
+    """
+    __visit_name__ = "text_as_from"
+
+    def __init__(self, text, columns):
+        self.element = text
+        self.column_args = columns
+
+    @property
+    def _bind(self):
+        return self.element._bind
+
+    def _populate_column_collection(self):
+        for c in self.column_args:
+            c._make_proxy(self)
+
+    def _copy_internals(self, clone=_clone, **kw):
+        self._reset_exported()
+        self.element = clone(self.element, **kw)
+
+    def _scalar_type(self):
+        return self.column_args[0].type
 
 class AnnotatedFromClause(Annotated):
     def __init__(self, element, values):

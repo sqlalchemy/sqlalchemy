@@ -586,17 +586,10 @@ class SQLCompiler(Compiled):
         return text
 
     def visit_textclause(self, textclause, **kwargs):
-        if textclause.typemap is not None:
-            for colname, type_ in textclause.typemap.items():
-                self.result_map[colname
-                                if self.dialect.case_sensitive
-                                else colname.lower()] = \
-                                (colname, None, type_)
-
         def do_bindparam(m):
             name = m.group(1)
-            if name in textclause.bindparams:
-                return self.process(textclause.bindparams[name])
+            if name in textclause._bindparams:
+                return self.process(textclause._bindparams[name])
             else:
                 return self.bindparam_string(name, **kwargs)
 
@@ -605,6 +598,33 @@ class SQLCompiler(Compiled):
             BIND_PARAMS.sub(do_bindparam,
              self.post_process_text(textclause.text))
         )
+
+    def visit_text_as_from(self, taf, iswrapper=False,
+                                compound_index=0, force_result_map=False,
+                                asfrom=False,
+                                parens=True, **kw):
+
+        toplevel = not self.stack
+        entry = self._default_stack_entry if toplevel else self.stack[-1]
+
+        populate_result_map = force_result_map or (
+                                        compound_index == 0 and (
+                                            toplevel or \
+                                            entry['iswrapper']
+                                        )
+                                    )
+
+        if populate_result_map:
+            for c in taf.c:
+                self._add_to_result_map(
+                        c.key, c.key, (c,), c.type
+                )
+
+        text = self.process(taf.element, **kw)
+        if asfrom and parens:
+            text = "(%s)" % text
+        return text
+
 
     def visit_null(self, expr, **kw):
         return 'NULL'
@@ -725,6 +745,7 @@ class SQLCompiler(Compiled):
 
     def function_argspec(self, func, **kwargs):
         return func.clause_expr._compiler_dispatch(self, **kwargs)
+
 
     def visit_compound_select(self, cs, asfrom=False,
                             parens=True, compound_index=0, **kwargs):

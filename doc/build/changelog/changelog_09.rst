@@ -16,10 +16,24 @@
 
     .. change::
         :tags: feature, sql
+        :tickets: 2877
+
+        New improvements to the :func:`.text` construct, including
+        more flexible ways to set up bound parameters and return types;
+        in particular, a :func:`.text` can now be turned into a full
+        FROM-object, embeddable in other statements as an alias or CTE
+        using the new method :meth:`.TextClause.columns`.
+
+        .. seealso::
+
+            :ref:`feature_2877`
+
+    .. change::
+        :tags: feature, sql
         :pullreq: github:42
 
         A new API for specifying the ``FOR UPDATE`` clause of a ``SELECT``
-        is added with the new :meth:`.SelectBase.with_for_update` method.
+        is added with the new :meth:`.GenerativeSelect.with_for_update` method.
         This method supports a more straightforward system of setting
         dialect-specific options compared to the ``for_update`` keyword
         argument of :func:`.select`, and also includes support for the
@@ -37,7 +51,7 @@
 
         A new API for specifying the ``FOR UPDATE`` clause of a ``SELECT``
         is added with the new :meth:`.Query.with_for_update` method,
-        to complement the new :meth:`.SelectBase.with_for_update` method.
+        to complement the new :meth:`.GenerativeSelect.with_for_update` method.
         Pull request courtesy Mario Lassnig.
 
         .. seealso::

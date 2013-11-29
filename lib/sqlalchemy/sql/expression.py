@@ -46,7 +46,7 @@ from .base import ColumnCollection, Generative, Executable, \
 from .selectable import Alias, Join, Select, Selectable, TableClause, \
         CompoundSelect, CTE, FromClause, FromGrouping, SelectBase, \
         alias, \
-        subquery, HasPrefixes, Exists, ScalarSelect
+        subquery, HasPrefixes, Exists, ScalarSelect, TextAsFrom
 
 
 from .dml import Insert, Update, Delete, UpdateBase, ValuesBase
@@ -60,7 +60,7 @@ and_ = public_factory(BooleanClauseList.and_, ".expression.and_")
 or_ = public_factory(BooleanClauseList.or_, ".expression.or_")
 bindparam = public_factory(BindParameter, ".expression.bindparam")
 select = public_factory(Select, ".expression.select")
-text = public_factory(TextClause, ".expression.tet")
+text = public_factory(TextClause._create_text, ".expression.text")
 table = public_factory(TableClause, ".expression.table")
 column = public_factory(ColumnClause, ".expression.column")
 over = public_factory(Over, ".expression.over")

@@ -874,6 +874,49 @@ others::
 :ticket:`1418`
 
 
+.. _feature_2877:
+
+New ``text()`` Capabilities
+---------------------------
+
+The :func:`.text` construct gains new methods:
+
+* :meth:`.TextClause.bindparams` allows bound parameter types and values
+  to be set flexibly::
+
+      # setup values
+      stmt = text("SELECT id, name FROM user "
+            "WHERE name=:name AND timestamp=:timestamp").\
+            bindparams(name="ed", timestamp=datetime(2012, 11, 10, 15, 12, 35))
+
+      # setup types and/or values
+      stmt = text("SELECT id, name FROM user "
+            "WHERE name=:name AND timestamp=:timestamp").\
+            bindparams(
+                bindparam("name", value="ed"),
+                bindparam("timestamp", type_=DateTime()
+            ).bindparam(timestamp=datetime(2012, 11, 10, 15, 12, 35))
+
+* :meth:`.TextClause.columns` supersedes the ``typemap`` option
+  of :func:`.text`, returning a new construct :class:`.TextAsFrom`::
+
+      # turn a text() into an alias(), with a .c. collection:
+      stmt = text("SELECT id, name FROM user").columns(id=Integer, name=String)
+      stmt = stmt.alias()
+
+      stmt = select([addresses]).select_from(
+                    addresses.join(stmt), addresses.c.user_id == stmt.c.id)
+
+
+      # or into a cte():
+      stmt = text("SELECT id, name FROM user").columns(id=Integer, name=String)
+      stmt = stmt.cte("x")
+
+      stmt = select([addresses]).select_from(
+                    addresses.join(stmt), addresses.c.user_id == stmt.c.id)
+
+:ticket:`2877`
+
 .. _feature_722:
 
 INSERT from SELECT
@@ -917,7 +960,7 @@ An attempt is made to simplify the specification of the ``FOR UPDATE``
 clause on ``SELECT`` statements made within Core and ORM, and support is added
 for the ``FOR UPDATE OF`` SQL supported by Postgresql and Oracle.
 
-Using the core :meth:`.SelectBase.with_for_update`, options like ``FOR SHARE`` and
+Using the core :meth:`.GenerativeSelect.with_for_update`, options like ``FOR SHARE`` and
 ``NOWAIT`` can be specified individually, rather than linking to arbitrary
 string codes::
 

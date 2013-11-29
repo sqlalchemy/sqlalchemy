@@ -50,9 +50,12 @@ elements are themselves :class:`.ColumnElement` subclasses).
 .. autoclass:: Executable
    :members:
 
-
 .. autoclass:: FromClause
    :members:
+
+.. autoclass:: GenerativeSelect
+   :members:
+   :inherited-members:
 
 .. autoclass:: HasPrefixes
    :members:
@@ -71,11 +74,12 @@ elements are themselves :class:`.ColumnElement` subclasses).
 .. autoclass:: Selectable
    :members:
 
-
 .. autoclass:: SelectBase
    :members:
-
 
 .. autoclass:: TableClause
    :members:
    :inherited-members:
+
+.. autoclass:: TextAsFrom
+   :members:

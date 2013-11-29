@@ -18,6 +18,8 @@ from .visitors import Visitable, cloned_traverse, traverse
 from .annotation import Annotated
 import itertools
 from .base import Executable, PARSE_AUTOCOMMIT, Immutable, NO_ARG
+from .base import _generative, Generative
+
 import re
 import operator
 
@@ -805,6 +807,17 @@ class BindParameter(ColumnElement):
         else:
             self.type = type_
 
+    def _with_value(self, value):
+        """Return a copy of this :class:`.BindParameter` with the given value set."""
+        cloned = self._clone()
+        cloned.value = value
+        cloned.callable = None
+        cloned.required = False
+        if cloned.type is type_api.NULLTYPE:
+            cloned.type = type_api._type_map.get(type(value),
+                        type_api.NULLTYPE)
+        return cloned
+
     @property
     def effective_value(self):
         """Return the value of this bound parameter,
@@ -896,12 +909,24 @@ class TextClause(Executable, ClauseElement):
 
     def __init__(
                     self,
-                    text='',
-                    bind=None,
-                    bindparams=None,
-                    typemap=None,
-                    autocommit=None):
-        """Construct a new :class:`.TextClause` clause.
+                    text,
+                    bind=None):
+        self._bind = bind
+        self._bindparams = {}
+
+        def repl(m):
+            self._bindparams[m.group(1)] = BindParameter(m.group(1))
+            return ':%s' % m.group(1)
+
+        # scan the string and search for bind parameter names, add them
+        # to the list of bindparams
+        self.text = self._bind_params_regex.sub(repl, text)
+
+    @classmethod
+    def _create_text(self, text, bind=None, bindparams=None,
+                                    typemap=None, autocommit=None):
+        """Construct a new :class:`.TextClause` clause, representing
+        a textual SQL string directly.
 
         E.g.::
 
@@ -915,7 +940,9 @@ class TextClause(Executable, ClauseElement):
         execution options, as well as
         bind parameter and result-column typing behavior, allowing
         SQLAlchemy type constructs to play a role when executing
-        a statement that is specified literally.
+        a statement that is specified literally.  The construct can also
+        be provided with a ``.c`` collection of column elements, allowing
+        it to be embedded in other SQL expression constructs as a subquery.
 
         Bind parameters are specified by name, using the format ``:name``.
         E.g.::
@@ -923,48 +950,47 @@ class TextClause(Executable, ClauseElement):
             t = text("SELECT * FROM users WHERE id=:user_id")
             result = connection.execute(t, user_id=12)
 
-        To invoke SQLAlchemy typing logic for bind parameters, the
-        ``bindparams`` list allows specification of :func:`bindparam`
-        constructs which specify the type for a given name::
+        For SQL statements where a colon is required verbatim, as within
+        an inline string, use a backslash to escape::
 
-            t = text("SELECT id FROM users WHERE updated_at>:updated",
-                        bindparams=[bindparam('updated', DateTime())]
-                    )
+            t = text("SELECT * FROM users WHERE name='\\:username'")
 
-        Typing during result row processing is also an important concern.
-        Result column types
-        are specified using the ``typemap`` dictionary, where the keys
-        match the names of columns.  These names are taken from what
-        the DBAPI returns as ``cursor.description``::
+        The :class:`.TextClause` construct includes methods which can
+        provide information about the bound parameters as well as the column
+        values which would be returned from the textual statement, assuming
+        it's an executable SELECT type of statement.  The :meth:`.TextClause.bindparams`
+        method is used to provide bound parameter detail, and
+        :meth:`.TextClause.columns` method allows specification of
+        return columns including names and types::
 
-            t = text("SELECT id, name FROM users",
-                    typemap={
-                        'id':Integer,
-                        'name':Unicode
-                    }
-            )
+            t = text("SELECT * FROM users WHERE id=:user_id").\\
+                    bindparams(user_id=7).\\
+                    columns(id=Integer, name=String)
 
-        The :func:`text` construct is used internally for most cases when
+            for id, name in connection.execute(t):
+                print(id, name)
+
+        The :func:`.text` construct is used internally in cases when
         a literal string is specified for part of a larger query, such as
-        within :func:`select()`, :func:`update()`,
-        :func:`insert()` or :func:`delete()`.   In those cases, the same
+        when a string is specified to the :meth:`.Select.where` method of
+        :class:`.Select`.  In those cases, the same
         bind parameter syntax is applied::
 
             s = select([users.c.id, users.c.name]).where("id=:user_id")
             result = connection.execute(s, user_id=12)
 
-        Using :func:`text` explicitly usually implies the construction
+        Using :func:`.text` explicitly usually implies the construction
         of a full, standalone statement.   As such, SQLAlchemy refers
         to it as an :class:`.Executable` object, and it supports
         the :meth:`Executable.execution_options` method.  For example,
-        a :func:`text` construct that should be subject to "autocommit"
+        a :func:`.text` construct that should be subject to "autocommit"
         can be set explicitly so using the ``autocommit`` option::
 
             t = text("EXEC my_procedural_thing()").\\
                     execution_options(autocommit=True)
 
         Note that SQLAlchemy's usual "autocommit" behavior applies to
-        :func:`text` constructs - that is, statements which begin
+        :func:`.text` constructs implicitly - that is, statements which begin
         with a phrase such as ``INSERT``, ``UPDATE``, ``DELETE``,
         or a variety of other phrases specific to certain backends, will
         be eligible for autocommit if no transaction is in progress.
@@ -982,53 +1008,228 @@ class TextClause(Executable, ClauseElement):
           an optional connection or engine to be used for this text query.
 
         :param bindparams:
-          a list of :func:`bindparam()` instances which can be used to define
-          the types and/or initial values for the bind parameters within
-          the textual statement; the keynames of the bindparams must match
-          those within the text of the statement.  The types will be used
-          for pre-processing on bind values.
+          Deprecated.  A list of :func:`.bindparam` instances used to
+          provide information about parameters embedded in the statement.
+          This argument now invokes the :meth:`.TextClause.bindparams`
+          method on the construct before returning it.  E.g.::
+
+              stmt = text("SELECT * FROM table WHERE id=:id",
+                        bindparams=[bindparam('id', value=5, type_=Integer)])
+
+          Is equivalent to::
+
+              stmt = text("SELECT * FROM table WHERE id=:id").\\
+                        bindparams(bindparam('id', value=5, type_=Integer))
+
+          .. deprecated:: 0.9.0 the :meth:`.TextClause.bindparams` method
+             supersedes the ``bindparams`` argument to :func:`.text`.
 
         :param typemap:
-          a dictionary mapping the names of columns represented in the
-          columns clause of a ``SELECT`` statement  to type objects,
+          Deprecated.  A dictionary mapping the names of columns
+          represented in the columns clause of a ``SELECT`` statement
+          to type objects,
           which will be used to perform post-processing on columns within
-          the result set.   This argument applies to any expression
-          that returns result sets.
+          the result set.  This parameter now invokes the :meth:`.TextClause.columns`
+          method, which returns a :class:`.TextAsFrom` construct that gains
+          a ``.c`` collection and can be embedded in other expressions.  E.g.::
+
+              stmt = text("SELECT * FROM table",
+                            typemap={'id': Integer, 'name': String},
+                        )
+
+          Is equivalent to::
+
+              stmt = text("SELECT * FROM table").columns(id=Integer, name=String)
+
+          Or alternatively::
+
+              from sqlalchemy.sql import column
+              stmt = text("SELECT * FROM table").columns(
+                                    column('id', Integer),
+                                    column('name', String)
+                                )
+
+          .. deprecated:: 0.9.0 the :meth:`.TextClause.columns` method
+             supersedes the ``typemap`` argument to :func:`.text`.
+
+        """
+        stmt = TextClause(text, bind=bind)
+        if bindparams:
+            stmt = stmt.bindparams(*bindparams)
+        if typemap:
+            stmt = stmt.columns(**typemap)
+        if autocommit is not None:
+            util.warn_deprecated('autocommit on text() is deprecated.  '
+                                 'Use .execution_options(autocommit=True)')
+            stmt = stmt.execution_options(autocommit=autocommit)
+
+        return stmt
+
+    @_generative
+    def bindparams(self, *binds, **names_to_values):
+        """Establish the values and/or types of bound parameters within
+        this :class:`.TextClause` construct.
+
+        Given a text construct such as::
+
+            from sqlalchemy import text
+            stmt = text("SELECT id, name FROM user WHERE name=:name "
+                        "AND timestamp=:timestamp")
+
+        the :meth:`.TextClause.bindparams` method can be used to establish
+        the initial value of ``:name`` and ``:timestamp``,
+        using simple keyword arguments::
+
+            stmt = stmt.bindparams(name='jack',
+                        timestamp=datetime.datetime(2012, 10, 8, 15, 12, 5))
+
+        Where above, new :class:`.BindParameter` objects
+        will be generated with the names ``name`` and ``timestamp``, and
+        values of ``jack`` and ``datetime.datetime(2012, 10, 8, 15, 12, 5)``,
+        respectively.  The types will be
+        inferred from the values given, in this case :class:`.String` and
+        :class:`.DateTime`.
+
+        When specific typing behavior is needed, the positional ``*binds``
+        argument can be used in which to specify :func:`.bindparam` constructs
+        directly.  These constructs must include at least the ``key`` argument,
+        then an optional value and type::
+
+            from sqlalchemy import bindparam
+            stmt = stmt.bindparams(
+                            bindparam('name', value='jack', type_=String),
+                            bindparam('timestamp', type_=DateTime)
+                        )
+
+        Above, we specified the type of :class:`.DateTime` for the ``timestamp``
+        bind, and the type of :class:`.String` for the ``name`` bind.  In
+        the case of ``name`` we also set the default value of ``"jack"``.
+
+        Additional bound parameters can be supplied at statement execution
+        time, e.g.::
+
+            result = connection.execute(stmt,
+                        timestamp=datetime.datetime(2012, 10, 8, 15, 12, 5))
+
+        The :meth:`.TextClause.bindparams` method can be called repeatedly, where
+        it will re-use existing :class:`.BindParameter` objects to add new information.
+        For example, we can call :meth:`.TextClause.bindparams` first with
+        typing information, and a second time with value information, and it
+        will be combined::
+
+            stmt = text("SELECT id, name FROM user WHERE name=:name "
+                        "AND timestamp=:timestamp")
+            stmt = stmt.bindparams(
+                            bindparam('name', type_=String),
+                            bindparam('timestamp', type_=DateTime)
+                        )
+            stmt = stmt.bindparams(
+                            name='jack',
+                            timestamp=datetime.datetime(2012, 10, 8, 15, 12, 5)
+                        )
+
+
+        .. versionadded:: 0.9.0 The :meth:`.TextClause.bindparams` method supersedes
+           the argument ``bindparams`` passed to :func:`~.expression.text`.
+
+
+        """
+        self._bindparams = new_params = self._bindparams.copy()
+
+        for bind in binds:
+            try:
+                existing = new_params[bind.key]
+            except KeyError:
+                raise exc.ArgumentError(
+                            "This text() construct doesn't define a "
+                            "bound parameter named %r" % bind.key)
+            else:
+                new_params[existing.key] = bind
+
+        for key, value in names_to_values.items():
+            try:
+                existing = new_params[key]
+            except KeyError:
+                raise exc.ArgumentError(
+                            "This text() construct doesn't define a "
+                            "bound parameter named %r" % key)
+            else:
+                new_params[key] = existing._with_value(value)
+
+
+
+    @util.dependencies('sqlalchemy.sql.selectable')
+    def columns(self, selectable, *cols, **types):
+        """Turn this :class:`.Text` object into a :class:`.FromClause`
+        object that can be embedded into another statement.
+
+        This function essentially bridges the gap between an entirely
+        textual SELECT statement and the SQL expression language concept
+        of a "selectable"::
+
+            from sqlalchemy.sql import column, text
+
+            stmt = text("SELECT id, name FROM some_table")
+            stmt = stmt.columns(column('id'), column('name')).alias('st')
+
+            stmt = select([mytable]).\\
+                    select_from(
+                        mytable.join(stmt, mytable.c.name == stmt.c.name)
+                    ).where(stmt.c.id > 5)
+
+        Above, we used untyped :func:`.column` elements.  These can also have
+        types specified, which will impact how the column behaves in expressions
+        as well as determining result set behavior::
+
+            stmt = text("SELECT id, name, timestamp FROM some_table")
+            stmt = stmt.columns(
+                        column('id', Integer),
+                        column('name', Unicode),
+                        column('timestamp', DateTime)
+                    )
+
+            for id, name, timestamp in connection.execute(stmt):
+                print(id, name, timestamp)
+
+        Keyword arguments allow just the names and types of columns to be specified,
+        where the :func:`.column` elements will be generated automatically::
+
+            stmt = text("SELECT id, name, timestamp FROM some_table")
+            stmt = stmt.columns(
+                        id=Integer,
+                        name=Unicode,
+                        timestamp=DateTime
+                    )
+
+            for id, name, timestamp in connection.execute(stmt):
+                print(id, name, timestamp)
+
+        The :meth:`.TextClause.columns` method provides a direct
+        route to calling :meth:`.FromClause.alias` as well as :meth:`.SelectBase.cte`
+        against a textual SELECT statement::
+
+            stmt = stmt.columns(id=Integer, name=String).cte('st')
+
+            stmt = select([sometable]).where(sometable.c.id == stmt.c.id)
+
+        .. versionadded:: 0.9.0 :func:`.text` can now be converted into a fully
+           featured "selectable" construct using the :meth:`.TextClause.columns`
+           method.  This method supersedes the ``typemap`` argument to
+           :func:`.text`.
 
         """
 
-        self._bind = bind
-        self.bindparams = {}
-        self.typemap = typemap
-        if autocommit is not None:
-            util.warn_deprecated('autocommit on text() is deprecated.  '
-                                 'Use .execution_options(autocommit=Tru'
-                                 'e)')
-            self._execution_options = \
-                self._execution_options.union(
-                    {'autocommit': autocommit})
-        if typemap is not None:
-            for key in typemap:
-                typemap[key] = type_api.to_instance(typemap[key])
+        col_by_name = dict(
+            (col.key, col) for col in cols
+        )
+        for key, type_ in types.items():
+            col_by_name[key] = ColumnClause(key, type_)
 
-        def repl(m):
-            self.bindparams[m.group(1)] = BindParameter(m.group(1))
-            return ':%s' % m.group(1)
-
-        # scan the string and search for bind parameter names, add them
-        # to the list of bindparams
-
-        self.text = self._bind_params_regex.sub(repl, text)
-        if bindparams is not None:
-            for b in bindparams:
-                self.bindparams[b.key] = b
+        return selectable.TextAsFrom(self, col_by_name.values())
 
     @property
     def type(self):
-        if self.typemap is not None and len(self.typemap) == 1:
-            return list(self.typemap)[0]
-        else:
-            return type_api.NULLTYPE
+        return type_api.NULLTYPE
 
     @property
     def comparator(self):
@@ -1041,11 +1242,11 @@ class TextClause(Executable, ClauseElement):
             return self
 
     def _copy_internals(self, clone=_clone, **kw):
-        self.bindparams = dict((b.key, clone(b, **kw))
-                               for b in self.bindparams.values())
+        self._bindparams = dict((b.key, clone(b, **kw))
+                               for b in self._bindparams.values())
 
     def get_children(self, **kwargs):
-        return list(self.bindparams.values())
+        return list(self._bindparams.values())
 
 
 class Null(ColumnElement):

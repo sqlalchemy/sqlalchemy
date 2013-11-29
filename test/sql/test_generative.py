@@ -428,13 +428,13 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         class Vis(CloningVisitor):
             def visit_textclause(self, text):
                 text.text = text.text + " SOME MODIFIER=:lala"
-                text.bindparams['lala'] = bindparam('lala')
+                text._bindparams['lala'] = bindparam('lala')
 
         clause2 = Vis().traverse(clause)
         assert c1 == str(clause)
         assert str(clause2) == c1 + " SOME MODIFIER=:lala"
-        assert list(clause.bindparams.keys()) == ['bar']
-        assert set(clause2.bindparams.keys()) == set(['bar', 'lala'])
+        assert list(clause._bindparams.keys()) == ['bar']
+        assert set(clause2._bindparams.keys()) == set(['bar', 'lala'])
 
     def test_select(self):
         s2 = select([t1])
