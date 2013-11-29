@@ -2311,7 +2311,7 @@ class sessionmaker(_SessionClassMethods):
         self.kw.update(new_kw)
 
     def __repr__(self):
-        return "%s(class_=%r%s)" % (
+        return "%s(class_=%r,%s)" % (
                     self.__class__.__name__,
                     self.class_.__name__,
                     ", ".join("%s=%r" % (k, v) for k, v in self.kw.items())
