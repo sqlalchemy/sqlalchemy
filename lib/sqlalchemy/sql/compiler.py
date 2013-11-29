@@ -1513,9 +1513,11 @@ class SQLCompiler(Compiled):
 
             text += self.order_by_clause(select,
                             order_by_select=order_by_select, **kwargs)
+
         if select._limit is not None or select._offset is not None:
             text += self.limit_clause(select)
-        if select._for_update_arg:
+
+        if select._for_update_arg is not None:
             text += self.for_update_clause(select)
 
         if self.ctes and \

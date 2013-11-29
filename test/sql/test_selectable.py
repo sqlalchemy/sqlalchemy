@@ -1903,3 +1903,57 @@ class WithLabelsTest(fixtures.TestBase):
             ['t1_x', 't2_x']
         )
         self._assert_result_keys(sel, ['t1_a', 't2_b'])
+
+class ForUpdateTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def _assert_legacy(self, leg, read=False, nowait=False):
+        t = table('t', column('c'))
+        s1 = select([t], for_update=leg)
+        if leg is False:
+            assert s1._for_update_arg is None
+            assert s1.for_update is None
+        else:
+            eq_(
+                s1._for_update_arg.read, read
+            )
+            eq_(
+                s1._for_update_arg.nowait, nowait
+            )
+            eq_(s1.for_update, leg)
+
+    def test_false_legacy(self):
+        self._assert_legacy(False)
+
+    def test_plain_true_legacy(self):
+        self._assert_legacy(True)
+
+    def test_read_legacy(self):
+        self._assert_legacy("read", read=True)
+
+    def test_nowait_legacy(self):
+        self._assert_legacy("nowait", nowait=True)
+
+    def test_read_nowait_legacy(self):
+        self._assert_legacy("read_nowait", read=True, nowait=True)
+
+    def test_basic_clone(self):
+        t = table('t', column('c'))
+        s = select([t]).with_for_update(read=True, of=t.c.c)
+        s2 = visitors.ReplacingCloningVisitor().traverse(s)
+        assert s2._for_update_arg is not s._for_update_arg
+        eq_(s2._for_update_arg.read, True)
+        eq_(s2._for_update_arg.of, [t.c.c])
+        self.assert_compile(s2,
+            "SELECT t.c FROM t FOR SHARE OF t",
+            dialect="postgresql")
+
+    def test_adapt(self):
+        t = table('t', column('c'))
+        s = select([t]).with_for_update(read=True, of=t.c.c)
+        a = t.alias()
+        s2 = sql_util.ClauseAdapter(a).traverse(s)
+        eq_(s2._for_update_arg.of, [a.c.c])
+        self.assert_compile(s2,
+            "SELECT t_1.c FROM t AS t_1 FOR SHARE OF t_1",
+            dialect="postgresql")

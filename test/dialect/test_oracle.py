@@ -217,6 +217,49 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             ':ROWNUM_1) WHERE ora_rn > :ora_rn_1 FOR '
                             'UPDATE')
 
+    def test_for_update(self):
+        table1 = table('mytable',
+                    column('myid'), column('name'), column('description'))
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).with_for_update(),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).with_for_update(of=table1.c.myid),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE OF mytable.myid")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).with_for_update(nowait=True),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE NOWAIT")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).
+                                with_for_update(nowait=True, of=table1.c.myid),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = :myid_1 "
+            "FOR UPDATE OF mytable.myid NOWAIT")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).
+                with_for_update(nowait=True, of=[table1.c.myid, table1.c.name]),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE OF "
+            "mytable.myid, mytable.name NOWAIT")
+
+        ta = table1.alias()
+        self.assert_compile(
+            ta.select(ta.c.myid == 7).
+                with_for_update(of=[ta.c.myid, ta.c.name]),
+            "SELECT mytable_1.myid, mytable_1.name, mytable_1.description "
+            "FROM mytable mytable_1 "
+            "WHERE mytable_1.myid = :myid_1 FOR UPDATE OF "
+            "mytable_1.myid, mytable_1.name"
+        )
+
     def test_limit_preserves_typing_information(self):
         class MyType(TypeDecorator):
             impl = Integer

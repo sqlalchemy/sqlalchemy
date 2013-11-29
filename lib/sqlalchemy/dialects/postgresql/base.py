@@ -1020,16 +1020,16 @@ class PGCompiler(compiler.SQLCompiler):
         else:
             tmp = " FOR UPDATE"
 
-        if select._for_update_arg.nowait:
-            tmp += " NOWAIT"
-
         if select._for_update_arg.of:
             # TODO: assuming simplistic c.table here
             tables = set(c.table for c in select._for_update_arg.of)
             tmp += " OF " + ", ".join(
-                                self.process(table, asfrom=True)
+                                self.process(table, ashint=True)
                                 for table in tables
                             )
+
+        if select._for_update_arg.nowait:
+            tmp += " NOWAIT"
 
         return tmp
 

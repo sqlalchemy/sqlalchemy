@@ -76,7 +76,7 @@ class LockModeTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_postgres_update_of(self):
         User = self.classes.User
         sess = Session()
-        self.assert_compile(sess.query(User.id).with_lockmode('update', of=User.id),
+        self.assert_compile(sess.query(User.id).for_update(of=User.id),
             "SELECT users.id AS users_id FROM users FOR UPDATE OF users",
             dialect=postgresql.dialect()
         )
@@ -84,8 +84,8 @@ class LockModeTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_postgres_update_of_list(self):
         User = self.classes.User
         sess = Session()
-        self.assert_compile(sess.query(User.id).with_lockmode('update', of=[User.id, User.id, User.id]),
-            "SELECT users.id AS users_id FROM users FOR UPDATE OF users, users, users",
+        self.assert_compile(sess.query(User.id).for_update(of=[User.id, User.id, User.id]),
+            "SELECT users.id AS users_id FROM users FOR UPDATE OF users",
             dialect=postgresql.dialect()
         )
 
@@ -93,7 +93,7 @@ class LockModeTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_postgres_update_nowait(self):
         User = self.classes.User
         sess = Session()
-        self.assert_compile(sess.query(User.id).with_lockmode('update_nowait'),
+        self.assert_compile(sess.query(User.id).for_updatewith_lockmode('update_nowait'),
             "SELECT users.id AS users_id FROM users FOR UPDATE NOWAIT",
             dialect=postgresql.dialect()
         )

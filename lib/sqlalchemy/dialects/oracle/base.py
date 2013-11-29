@@ -666,14 +666,14 @@ class OracleCompiler(compiler.SQLCompiler):
 
         tmp = ' FOR UPDATE'
 
-        if select._for_update_arg.nowait:
-            tmp += " NOWAIT"
-
         if select._for_update_arg.of:
             tmp += ' OF ' + ', '.join(
-                                    self._process(elem) for elem in
+                                    self.process(elem) for elem in
                                     select._for_update_arg.of
                                 )
+
+        if select._for_update_arg.nowait:
+            tmp += " NOWAIT"
 
         return tmp
 

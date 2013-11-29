@@ -1124,10 +1124,10 @@ class Query(object):
         self._execution_options = self._execution_options.union(kwargs)
 
     @_generative()
-    def with_lockmode(self, mode, of=None):
+    def with_lockmode(self, mode):
         """Return a new Query object with the specified locking mode.
 
-        .. deprecated:: 0.9.0b2 superseded by :meth:`.Query.for_update`.
+        .. deprecated:: 0.9.0b2 superseded by :meth:`.Query.with_for_update`.
 
         :param mode: a string representing the desired locking mode. A
             corresponding :meth:`~sqlalchemy.orm.query.LockmodeArgs` object

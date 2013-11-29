@@ -1151,7 +1151,7 @@ class TableClause(Immutable, FromClause):
         return [self]
 
 
-class ForUpdateArg(object):
+class ForUpdateArg(ClauseElement):
 
     @classmethod
     def parse_legacy_select(self, arg):
@@ -1185,6 +1185,8 @@ class ForUpdateArg(object):
             read = True
         elif arg == 'read_nowait':
             read = nowait = True
+        elif arg is not True:
+            raise exc.ArgumentError("Unknown for_update argument: %r" % arg)
 
         return ForUpdateArg(read=read, nowait=nowait)
 
@@ -1195,9 +1197,13 @@ class ForUpdateArg(object):
         elif self.read and self.nowait:
             return "read_nowait"
         elif self.nowait:
-            return "update_nowait"
+            return "nowait"
         else:
-            return "update"
+            return True
+
+    def _copy_internals(self, clone=_clone, **kw):
+        if self.of is not None:
+            self.of = [clone(col, **kw) for col in self.of]
 
     def __init__(self, nowait=False, read=False, of=None):
         """Represents arguments specified to :meth:`.Select.for_update`.
@@ -1208,7 +1214,7 @@ class ForUpdateArg(object):
         self.nowait = nowait
         self.read = read
         if of is not None:
-            self.of = [_only_column_elements(of, "of")
+            self.of = [_only_column_elements(elem, "of")
                         for elem in util.to_list(of)]
         else:
             self.of = None
@@ -1770,7 +1776,7 @@ class CompoundSelect(SelectBase):
         self.selects = [clone(s, **kw) for s in self.selects]
         if hasattr(self, '_col_map'):
             del self._col_map
-        for attr in ('_order_by_clause', '_group_by_clause'):
+        for attr in ('_order_by_clause', '_group_by_clause', '_for_update_arg'):
             if getattr(self, attr) is not None:
                 setattr(self, attr, clone(getattr(self, attr), **kw))
 
@@ -2255,7 +2261,7 @@ class Select(HasPrefixes, SelectBase):
         # present here.
         self._raw_columns = [clone(c, **kw) for c in self._raw_columns]
         for attr in '_whereclause', '_having', '_order_by_clause', \
-            '_group_by_clause':
+            '_group_by_clause', '_for_update_arg':
             if getattr(self, attr) is not None:
                 setattr(self, attr, clone(getattr(self, attr), **kw))
 

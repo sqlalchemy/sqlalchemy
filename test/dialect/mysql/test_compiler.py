@@ -6,6 +6,7 @@ from sqlalchemy import sql, exc, schema, types as sqltypes
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy import testing
+from sqlalchemy.sql import table, column
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
@@ -130,6 +131,20 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "ON UPDATE/ON DELETE clauses to be ignored.",
             schema.CreateTable(t2).compile, dialect=mysql.dialect()
         )
+
+    def test_for_update(self):
+        table1 = table('mytable',
+                    column('myid'), column('name'), column('description'))
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).with_for_update(),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %s FOR UPDATE")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).with_for_update(read=True),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %s LOCK IN SHARE MODE")
 
 class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
     """Tests MySQL-dialect specific compilation."""

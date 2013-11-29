@@ -249,6 +249,61 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'SUBSTRING(%(substring_1)s FROM %(substring_2)s)')
 
 
+    def test_for_update(self):
+        table1 = table('mytable',
+                    column('myid'), column('name'), column('description'))
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).with_for_update(),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s FOR UPDATE")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).with_for_update(nowait=True),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s FOR UPDATE NOWAIT")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).with_for_update(read=True),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s FOR SHARE")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).
+                    with_for_update(read=True, nowait=True),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s FOR SHARE NOWAIT")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).
+                    with_for_update(of=table1.c.myid),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s "
+            "FOR UPDATE OF mytable")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).
+                with_for_update(read=True, nowait=True, of=table1.c.myid),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s "
+            "FOR SHARE OF mytable NOWAIT")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).
+                with_for_update(read=True, nowait=True,
+                        of=[table1.c.myid, table1.c.name]),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s "
+            "FOR SHARE OF mytable NOWAIT")
+
+        ta = table1.alias()
+        self.assert_compile(
+            ta.select(ta.c.myid == 7).
+                with_for_update(of=[ta.c.myid, ta.c.name]),
+            "SELECT mytable_1.myid, mytable_1.name, mytable_1.description "
+            "FROM mytable AS mytable_1 "
+            "WHERE mytable_1.myid = %(myid_1)s FOR UPDATE OF mytable_1"
+        )
 
 
     def test_reserved_words(self):
