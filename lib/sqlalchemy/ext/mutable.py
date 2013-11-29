@@ -7,13 +7,9 @@
 """Provide support for tracking of in-place changes to scalar values,
 which are propagated into ORM change events on owning parent objects.
 
-The :mod:`sqlalchemy.ext.mutable` extension replaces SQLAlchemy's legacy
-approach to in-place mutations of scalar values, established by the
-:class:`.types.MutableType` class as well as the ``mutable=True`` type flag,
-with a system that allows change events to be propagated from the value to
-the owning parent, thereby removing the need for the ORM to maintain copies
-of values as well as the very expensive requirement of scanning through all
-"mutable" values on each flush call, looking for changes.
+.. versionadded:: 0.7 :mod:`sqlalchemy.ext.mutable` replaces SQLAlchemy's
+   legacy approach to in-place mutations of scalar values; see
+   :ref:`07_migration_mutation_extension`.
 
 .. _mutable_scalars:
 
