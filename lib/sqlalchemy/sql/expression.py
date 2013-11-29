@@ -45,7 +45,7 @@ from .base import ColumnCollection, Generative, Executable, \
 
 from .selectable import Alias, Join, Select, Selectable, TableClause, \
         CompoundSelect, CTE, FromClause, FromGrouping, SelectBase, \
-        alias, \
+        alias, GenerativeSelect, \
         subquery, HasPrefixes, Exists, ScalarSelect, TextAsFrom
 
 
