@@ -1021,8 +1021,9 @@ class PGCompiler(compiler.SQLCompiler):
             tmp = " FOR UPDATE"
 
         if select._for_update_arg.of:
-            # TODO: assuming simplistic c.table here
-            tables = set(c.table for c in select._for_update_arg.of)
+            tables = util.OrderedSet(
+                            c.table if isinstance(c, expression.ColumnClause)
+                            else c for c in select._for_update_arg.of)
             tmp += " OF " + ", ".join(
                                 self.process(table, ashint=True)
                                 for table in tables

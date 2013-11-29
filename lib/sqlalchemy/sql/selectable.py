@@ -1175,7 +1175,7 @@ class ForUpdateArg(ClauseElement):
             ``FOR SHARE NOWAIT`` (PostgreSQL).
 
         """
-        if arg is None:
+        if arg in (None, False):
             return None
 
         nowait = read = False
@@ -1214,7 +1214,7 @@ class ForUpdateArg(ClauseElement):
         self.nowait = nowait
         self.read = read
         if of is not None:
-            self.of = [_only_column_elements(elem, "of")
+            self.of = [_interpret_as_column_or_from(elem)
                         for elem in util.to_list(of)]
         else:
             self.of = None
@@ -1262,24 +1262,38 @@ class SelectBase(Executable, FromClause):
 
     @property
     def for_update(self):
-        """Provide legacy dialect support for the ``for_update`` attribute
-           as a getter.
-
+        """Provide legacy dialect support for the ``for_update`` attribute.
         """
         if self._for_update_arg is not None:
             return self._for_update_arg.legacy_for_update_value
         else:
             return None
 
+    @for_update.setter
+    def for_update(self, value):
+        self._for_update_arg = ForUpdateArg.parse_legacy_select(value)
+
     @_generative
     def with_for_update(self, nowait=False, read=False, of=None):
-        """apply FOR UPDATE to this :class:`.SelectBase`.
+        """Specify a ``FOR UPDATE`` clause for this :class:`.SelectBase`.
 
         E.g.::
 
             stmt = select([table]).with_for_update(nowait=True)
 
-        Additional keyword arguments are provided for common database-specific
+        On a database like Postgresql or Oracle, the above would render a
+        statement like::
+
+            SELECT table.a, table.b FROM table FOR UPDATE NOWAIT
+
+        on other backends, the ``nowait`` option is ignored and instead
+        would produce::
+
+            SELECT table.a, table.b FROM table FOR UPDATE
+
+        When called with no arguments, the statement will render with
+        the suffix ``FOR UPDATE``.   Additional arguments can then be
+        provided which allow for common database-specific
         variants.
 
         :param nowait: boolean; will render ``FOR UPDATE NOWAIT`` on Oracle and
@@ -1289,11 +1303,11 @@ class SelectBase(Executable, FromClause):
          ``FOR SHARE`` on Postgresql.  On Postgresql, when combined with
          ``nowait``, will render ``FOR SHARE NOWAIT``.
 
-        :param of: SQL expression or list of SQL expression elements which
+        :param of: SQL expression or list of SQL expression elements
+         (typically :class:`.Column` objects or a compatible expression) which
          will render into a ``FOR UPDATE OF`` clause; supported by PostgreSQL
-         and Oracle.    May render as a table or as a column depending on
+         and Oracle.  May render as a table or as a column depending on
          backend.
-
 
         .. versionadded:: 0.9.0b2
 
@@ -1943,27 +1957,22 @@ class Select(HasPrefixes, SelectBase):
           resulting statement.
 
           .. deprecated:: 0.9.0 - use :meth:`.SelectBase.with_for_update`
-             to specify for update arguments.
+             to specify the structure of the ``FOR UPDATE`` clause.
 
-          Additional values are accepted here, including:
+          ``for_update`` accepts various string values interpreted by
+          specific backends, including:
 
-            ``None`` - translates to no lockmode
+          * ``"read"`` - on MySQL, translates to ``LOCK IN SHARE MODE``;
+            on Postgresql, translates to ``FOR SHARE``.
+          * ``"nowait"`` - on Postgresql and Oracle, translates to
+            ``FOR UPDATE NOWAIT``.
+          * ``"read_nowait"`` - on Postgresql, translates to
+            ``FOR SHARE NOWAIT``.
 
-            ``'update'`` - translates to ``FOR UPDATE``
-            (standard SQL, supported by most dialects)
+         .. seealso::
 
-            ``'update_nowait'`` - translates to ``FOR UPDATE NOWAIT``
-            (supported by Oracle, PostgreSQL 8.1 upwards)
-
-            ``'read'`` - translates to ``LOCK IN SHARE MODE`` (for MySQL),
-            and ``FOR SHARE`` (for PostgreSQL)
-
-            ``'read_nowait'`` - translates to ``FOR SHARE NOWAIT``
-            (supported by PostgreSQL). ``FOR SHARE`` and
-            ``FOR SHARE NOWAIT`` (PostgreSQL).
-
-          The :meth:`.SelectBase.with_for_update` method should be preferred as
-          a means to specify FOR UPDATE more simply.
+            :meth:`.SelectBase.with_for_update` - improved API for
+            specifying the ``FOR UPDATE`` clause.
 
         :param group_by:
           a list of :class:`.ClauseElement` objects which will comprise the

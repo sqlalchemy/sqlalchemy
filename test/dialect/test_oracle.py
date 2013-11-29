@@ -106,7 +106,7 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = oracle.dialect()
+    __dialect__ = "oracle" #oracle.dialect()
 
     def test_true_false(self):
         self.assert_compile(

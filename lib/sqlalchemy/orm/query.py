@@ -37,7 +37,6 @@ from ..sql import (
         expression, visitors
     )
 from ..sql.base import ColumnCollection
-from ..sql import operators
 from . import properties
 
 __all__ = ['Query', 'QueryContext', 'aliased']
@@ -69,7 +68,6 @@ class Query(object):
     _with_labels = False
     _criterion = None
     _yield_per = None
-    _lockmode = None
     _order_by = False
     _group_by = False
     _having = None
@@ -77,6 +75,7 @@ class Query(object):
     _prefixes = None
     _offset = None
     _limit = None
+    _for_update_arg = None
     _statement = None
     _correlate = frozenset()
     _populate_existing = False
@@ -797,7 +796,7 @@ class Query(object):
 
         if not self._populate_existing and \
                 not mapper.always_refresh and \
-                self._lockmode is None:
+                self._for_update_arg is None:
 
             instance = loading.get_from_identity(
                 self.session, key, attributes.PASSIVE_OFF)
@@ -1125,43 +1124,63 @@ class Query(object):
 
     @_generative()
     def with_lockmode(self, mode):
-        """Return a new Query object with the specified locking mode.
+        """Return a new :class:`.Query` object with the specified "locking mode",
+        which essentially refers to the ``FOR UPDATE`` clause.
 
         .. deprecated:: 0.9.0b2 superseded by :meth:`.Query.with_for_update`.
 
-        :param mode: a string representing the desired locking mode. A
-            corresponding :meth:`~sqlalchemy.orm.query.LockmodeArgs` object
-            is passed to the ``for_update`` parameter of
-            :meth:`~sqlalchemy.sql.expression.select` when the
-            query is executed. Valid values are:
+        :param mode: a string representing the desired locking mode.
+         Valid values are:
 
-            ``None`` - translates to no lockmode
+         * ``None`` - translates to no lockmode
 
-            ``'update'`` - translates to ``FOR UPDATE``
-            (standard SQL, supported by most dialects)
+         * ``'update'`` - translates to ``FOR UPDATE``
+           (standard SQL, supported by most dialects)
 
-            ``'update_nowait'`` - translates to ``FOR UPDATE NOWAIT``
-            (supported by Oracle, PostgreSQL 8.1 upwards)
+         * ``'update_nowait'`` - translates to ``FOR UPDATE NOWAIT``
+           (supported by Oracle, PostgreSQL 8.1 upwards)
 
-            ``'read'`` - translates to ``LOCK IN SHARE MODE`` (for MySQL),
-            and ``FOR SHARE`` (for PostgreSQL)
+         * ``'read'`` - translates to ``LOCK IN SHARE MODE`` (for MySQL),
+           and ``FOR SHARE`` (for PostgreSQL)
 
-            .. versionadded:: 0.7.7
-                ``FOR SHARE`` and ``FOR SHARE NOWAIT`` (PostgreSQL).
+        .. seealso::
 
-         :param of: either a column descriptor, or list of column
-            descriptors, representing the optional OF part of the
-            clause. This passes the descriptor to the
-            corresponding :meth:`~sqlalchemy.orm.query.LockmodeArgs` object,
-            and translates to ``FOR UPDATE OF table [NOWAIT]`` respectively
-            ``FOR UPDATE OF table, table [NOWAIT]`` (PostgreSQL), or
-            ``FOR UPDATE OF table.column [NOWAIT]`` respectively
-            ``FOR UPDATE OF table.column, table.column [NOWAIT]`` (Oracle).
+            :meth:`.Query.with_for_update` - improved API for
+            specifying the ``FOR UPDATE`` clause.
 
-            .. versionadded:: 0.9.0b2
         """
+        self._for_update_arg = LockmodeArg.parse_legacy_query(mode)
 
-        self._lockmode = LockmodeArgs(mode=mode, of=of)
+    @_generative()
+    def with_for_update(self, read=False, nowait=False, of=None):
+        """return a new :class:`.Query` with the specified options for the
+        ``FOR UPDATE`` clause.
+
+        The behavior of this method is identical to that of
+        :meth:`.SelectBase.with_for_update`.  When called with no arguments,
+        the resulting ``SELECT`` statement will have a ``FOR UPDATE`` clause
+        appended.  When additional arguments are specified, backend-specific
+        options such as ``FOR UPDATE NOWAIT`` or ``LOCK IN SHARE MODE``
+        can take effect.
+
+        E.g.::
+
+            q = sess.query(User).with_for_update(nowait=True, of=User)
+
+        The above query on a Postgresql backend will render like::
+
+            SELECT users.id AS users_id FROM users FOR UPDATE OF users NOWAIT
+
+        .. versionadded:: 0.9.0b2 :meth:`.Query.with_for_update` supersedes
+           the :meth:`.Query.with_lockmode` method.
+
+        .. seealso::
+
+            :meth:`.SelectBase.with_for_update` - Core level method with
+            full argument and behavioral description.
+
+        """
+        self._for_update_arg = LockmodeArg(read=read, nowait=nowait, of=of)
 
     @_generative()
     def params(self, *args, **kwargs):
@@ -2703,12 +2722,7 @@ class Query(object):
 
         context.labels = labels
 
-        if isinstance(self._lockmode, bool) and self._lockmode:
-            context.for_update = LockmodeArgs(mode='update')
-        elif isinstance(self._lockmode, LockmodeArgs):
-            if self._lockmode.mode not in LockmodeArgs.lockmodes:
-                raise sa_exc.ArgumentError('Unknown lockmode %r' % self._lockmode.mode)
-            context.for_update = self._lockmode
+        context._for_update_arg = self._for_update_arg
 
         for entity in self._entities:
             entity.setup_context(self, context)
@@ -2793,8 +2807,9 @@ class Query(object):
 
         statement = sql.select(
                             [inner] + context.secondary_columns,
-                            for_update=context.for_update,
                             use_labels=context.labels)
+
+        statement._for_update_arg = context._for_update_arg
 
         from_clause = inner
         for eager_join in context.eager_joins.values():
@@ -2838,10 +2853,11 @@ class Query(object):
                         context.whereclause,
                         from_obj=context.froms,
                         use_labels=context.labels,
-                        for_update=context.for_update,
                         order_by=context.order_by,
                         **self._select_args
                     )
+
+        statement._for_update_arg = context._for_update_arg
 
         for hint in self._with_hints:
             statement = statement.with_hint(*hint)
@@ -2877,6 +2893,27 @@ class Query(object):
     def __str__(self):
         return str(self._compile_context().statement)
 
+from ..sql.selectable import ForUpdateArg
+
+class LockmodeArg(ForUpdateArg):
+    @classmethod
+    def parse_legacy_query(self, mode):
+        if mode in (None, False):
+            return None
+
+        if mode == "read":
+            read = True
+            nowait = False
+        elif mode == "update":
+            read = nowait = False
+        elif mode == "update_nowait":
+            nowait = True
+            read = False
+        else:
+            raise sa_exc.ArgumentError(
+                        "Unknown with_lockmode argument: %r" % mode)
+
+        return LockmodeArg(read=read, nowait=nowait)
 
 class _QueryEntity(object):
     """represent an entity column returned within a Query result."""

@@ -1910,6 +1910,7 @@ class ForUpdateTest(fixtures.TestBase, AssertsCompiledSQL):
     def _assert_legacy(self, leg, read=False, nowait=False):
         t = table('t', column('c'))
         s1 = select([t], for_update=leg)
+
         if leg is False:
             assert s1._for_update_arg is None
             assert s1.for_update is None
@@ -1936,6 +1937,12 @@ class ForUpdateTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_read_nowait_legacy(self):
         self._assert_legacy("read_nowait", read=True, nowait=True)
+
+    def test_legacy_setter(self):
+        t = table('t', column('c'))
+        s = select([t])
+        s.for_update = 'nowait'
+        eq_(s._for_update_arg.nowait, True)
 
     def test_basic_clone(self):
         t = table('t', column('c'))

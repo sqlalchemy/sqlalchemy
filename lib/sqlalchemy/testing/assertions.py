@@ -8,7 +8,7 @@ from __future__ import absolute_import
 
 from . import util as testutil
 from sqlalchemy import pool, orm, util
-from sqlalchemy.engine import default, create_engine
+from sqlalchemy.engine import default, create_engine, url
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.util import decorator
 from sqlalchemy import types as sqltypes, schema
@@ -208,7 +208,7 @@ class AssertsCompiledSQL(object):
             elif dialect == 'default':
                 dialect = default.DefaultDialect()
             elif isinstance(dialect, util.string_types):
-                dialect = create_engine("%s://" % dialect).dialect
+                dialect = url.URL(dialect).get_dialect()()
 
 
         kw = {}

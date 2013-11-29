@@ -702,6 +702,7 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
                 meth, q, *arg, **kw
             )
 
+
 class OperatorTest(QueryTest, AssertsCompiledSQL):
     """test sql.Comparator implementation for MapperProperties"""
 
