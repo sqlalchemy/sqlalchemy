@@ -30,150 +30,101 @@ accessing them like a Python dict can be very convenient.  The example below
 can be used with many common vertical schemas as-is or with minor adaptations.
 
 """
-
-class VerticalProperty(object):
-    """A key/value pair.
-
-    This class models rows in the vertical table.
-    """
-
-    def __init__(self, key, value):
-        self.key = key
-        self.value = value
-
-    def __repr__(self):
-        return '<%s %r=%r>' % (self.__class__.__name__, self.key, self.value)
+from __future__ import unicode_literals
+from sqlalchemy.util.compat import with_metaclass
+from collections import MutableMapping
+from abc import ABCMeta
+from sqlalchemy.ext.declarative import DeclarativeMeta
 
 
-class VerticalPropertyDictMixin(object):
+class ProxiedDictMixin(MutableMapping):
     """Adds obj[key] access to a mapped class.
 
-    This is a mixin class.  It can be inherited from directly, or included
-    with multiple inheritence.
+    This class basically proxies dictionary access to an attribute
+    called ``_proxied``.  The class which inherits this class
+    should have an attribute called ``_proxied`` which points to a dictionary.
 
-    Classes using this mixin must define two class properties::
-
-    _property_type:
-      The mapped type of the vertical key/value pair instances.  Will be
-      invoked with two positional arugments: key, value
-
-    _property_mapping:
-      A string, the name of the Python attribute holding a dict-based
-      relationship of _property_type instances.
-
-    Using the VerticalProperty class above as an example,::
-
-      class MyObj(VerticalPropertyDictMixin):
-          _property_type = VerticalProperty
-          _property_mapping = 'props'
-
-      mapper(MyObj, sometable, properties={
-        'props': relationship(VerticalProperty,
-                          collection_class=attribute_mapped_collection('key'))})
-
-    Dict-like access to MyObj is proxied through to the 'props' relationship::
-
-      myobj['key'] = 'value'
-      # ...is shorthand for:
-      myobj.props['key'] = VerticalProperty('key', 'value')
-
-      myobj['key'] = 'updated value']
-      # ...is shorthand for:
-      myobj.props['key'].value = 'updated value'
-
-      print myobj['key']
-      # ...is shorthand for:
-      print myobj.props['key'].value
+    The use of this class is optional, as it requires some
+    elaborate metaclass arithmetic in order to use it with declarative.
 
     """
 
-    _property_type = VerticalProperty
-    _property_mapping = None
-
-    __map = property(lambda self: getattr(self, self._property_mapping))
-
-    def __getitem__(self, key):
-        return self.__map[key].value
-
-    def __setitem__(self, key, value):
-        property = self.__map.get(key, None)
-        if property is None:
-            self.__map[key] = self._property_type(key, value)
-        else:
-            property.value = value
-
-    def __delitem__(self, key):
-        del self.__map[key]
-
-    def __contains__(self, key):
-        return key in self.__map
-
-    # Implement other dict methods to taste.  Here are some examples:
-    def keys(self):
-        return self.__map.keys()
-
-    def values(self):
-        return [prop.value for prop in self.__map.values()]
-
-    def items(self):
-        return [(key, prop.value) for key, prop in self.__map.items()]
+    def __len__(self):
+        return len(self._proxied)
 
     def __iter__(self):
-        return iter(self.keys())
+        return iter(self._proxied)
 
+    def __getitem__(self, key):
+        return self._proxied[key]
+
+    def __contains__(self, key):
+        return key in self._proxied
+
+    def __setitem__(self, key, value):
+        self._proxied[key] = value
+
+    def __delitem__(self, key):
+        del self._proxied[key]
+
+    @classmethod
+    def _base_class(cls, base):
+        """Perform the requisite metaclass trickery in order
+        to get DeclarativeMeta and ABCMeta to play nicely together,
+        while also remaining Python 2/3 agnostic.
+
+        """
+        return with_metaclass(
+                        type(str("MutableBase"), (ABCMeta, DeclarativeMeta), {}),
+                        base, cls)
 
 if __name__ == '__main__':
-    from sqlalchemy import (MetaData, Table, Column, Integer, Unicode,
-        ForeignKey, UnicodeText, and_, not_, create_engine)
-    from sqlalchemy.orm import mapper, relationship, Session
+    from sqlalchemy import (Column, Integer, Unicode,
+        ForeignKey, UnicodeText, and_, create_engine)
+    from sqlalchemy.orm import relationship, Session
     from sqlalchemy.orm.collections import attribute_mapped_collection
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.ext.associationproxy import association_proxy
 
-    metadata = MetaData()
+    Base = declarative_base()
 
-    # Here we have named animals, and a collection of facts about them.
-    animals = Table('animal', metadata,
-                    Column('id', Integer, primary_key=True),
-                    Column('name', Unicode(100)))
-
-    facts = Table('facts', metadata,
-                  Column('animal_id', Integer, ForeignKey('animal.id'),
-                         primary_key=True),
-                  Column('key', Unicode(64), primary_key=True),
-                  Column('value', UnicodeText, default=None),)
-
-    class AnimalFact(VerticalProperty):
+    class AnimalFact(Base):
         """A fact about an animal."""
 
-    class Animal(VerticalPropertyDictMixin):
-        """An animal.
+        __tablename__ = 'animal_fact'
 
-        Animal facts are available via the 'facts' property or by using
-        dict-like accessors on an Animal instance::
+        animal_id = Column(ForeignKey('animal.id'), primary_key=True)
+        key = Column(Unicode(64), primary_key=True)
+        value = Column(UnicodeText)
 
-          cat['color'] = 'calico'
-          # or, equivalently:
-          cat.facts['color'] = AnimalFact('color', 'calico')
-        """
+    class Animal(ProxiedDictMixin._base_class(Base)):
+        """an Animal"""
 
-        _property_type = AnimalFact
-        _property_mapping = 'facts'
+        __tablename__ = 'animal'
+
+        id = Column(Integer, primary_key=True)
+        name = Column(Unicode(100))
+
+        facts = relationship("AnimalFact",
+                    collection_class=attribute_mapped_collection('key'))
+
+        _proxied = association_proxy("facts", "value",
+                            creator=
+                            lambda key, value: AnimalFact(key=key, value=value))
 
         def __init__(self, name):
             self.name = name
 
         def __repr__(self):
-            return '<%s %r>' % (self.__class__.__name__, self.name)
+            return "Animal(%r)" % self.name
 
-
-    mapper(Animal, animals, properties={
-        'facts': relationship(
-            AnimalFact, backref='animal',
-            collection_class=attribute_mapped_collection('key')),
-        })
-    mapper(AnimalFact, facts)
+        @classmethod
+        def with_characteristic(self, key, value):
+            return self.facts.any(key=key, value=value)
 
     engine = create_engine("sqlite://")
-    metadata.create_all(engine)
+    Base.metadata.create_all(engine)
+
     session = Session(bind=engine)
 
     stoat = Animal('stoat')
@@ -194,9 +145,6 @@ if __name__ == '__main__':
     critter['cuteness'] = 'very'
 
     print('changing cuteness:')
-    engine.echo = True
-    session.commit()
-    engine.echo = False
 
     marten = Animal('marten')
     marten['color'] = 'brown'
@@ -212,7 +160,6 @@ if __name__ == '__main__':
     loris['cuteness'] = 'fairly'
     loris['poisonous-part'] = 'elbows'
     session.add(loris)
-    session.commit()
 
     q = (session.query(Animal).
          filter(Animal.facts.any(
@@ -220,27 +167,17 @@ if __name__ == '__main__':
                 AnimalFact.value == 'reddish'))))
     print('reddish animals', q.all())
 
-    # Save some typing by wrapping that up in a function:
-    with_characteristic = lambda key, value: and_(AnimalFact.key == key,
-                                                  AnimalFact.value == value)
-
-    q = (session.query(Animal).
-         filter(Animal.facts.any(
-           with_characteristic('color', 'brown'))))
+    q = session.query(Animal).\
+            filter(Animal.with_characteristic("color", 'brown'))
     print('brown animals', q.all())
 
-    q = (session.query(Animal).
-           filter(not_(Animal.facts.any(
-                         with_characteristic('poisonous-part', 'elbows')))))
+    q = session.query(Animal).\
+           filter(~Animal.with_characteristic("poisonous-part", 'elbows'))
     print('animals without poisonous-part == elbows', q.all())
 
     q = (session.query(Animal).
-         filter(Animal.facts.any(AnimalFact.value == 'somewhat')))
+         filter(Animal.facts.any(value='somewhat')))
     print('any animal with any .value of "somewhat"', q.all())
 
-    # Facts can be queried as well.
-    q = (session.query(AnimalFact).
-         filter(with_characteristic('cuteness', 'very')))
-    print('just the facts', q.all())
 
 

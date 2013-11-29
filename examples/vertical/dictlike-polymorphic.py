@@ -1,10 +1,7 @@
 """Mapping a polymorphic-valued vertical table as a dictionary.
 
-This example illustrates accessing and modifying a "vertical" (or
-"properties", or pivoted) table via a dict-like interface.  The 'dictlike.py'
-example explains the basics of vertical tables and the general approach.  This
-example adds a twist- the vertical table holds several "value" columns, one
-for each type of data that can be stored.  For example::
+Builds upon the dictlike.py example to also add differently typed
+columns to the "fact" table, e.g.::
 
   Table('properties', metadata
         Column('owner_id', Integer, ForeignKey('owner.id'),
@@ -25,54 +22,22 @@ we'll use a @hybrid_property to build a smart '.value' attribute that wraps up
 reading and writing those various '_value' columns and keeps the '.type' up to
 date.
 
-Class decorators are used, so Python 2.6 or greater is required.
 """
 
 from sqlalchemy.orm.interfaces import PropComparator
-from sqlalchemy.orm import comparable_property
 from sqlalchemy.ext.hybrid import hybrid_property
-
-# Using the VerticalPropertyDictMixin from the base example
-from .dictlike import VerticalPropertyDictMixin
+from sqlalchemy import event
+from sqlalchemy import literal_column
+from .dictlike import ProxiedDictMixin
 
 class PolymorphicVerticalProperty(object):
     """A key/value pair with polymorphic value storage.
 
-    Supplies a smart 'value' attribute that provides convenient read/write
-    access to the row's current value without the caller needing to worry
-    about the 'type' attribute or multiple columns.
+    The class which is mapped should indicate typing information
+    within the "info" dictionary of mapped Column objects; see
+    the AnimalFact mapping below for an example.
 
-    The 'value' attribute can also be used for basic comparisons in queries,
-    allowing the row's logical value to be compared without foreknowledge of
-    which column it might be in.  This is not going to be a very efficient
-    operation on the database side, but it is possible.  If you're mapping to
-    an existing database and you have some rows with a value of str('1') and
-    others of int(1), then this could be useful.
-
-    Subclasses must provide a 'type_map' class attribute with the following
-    form::
-
-      type_map = {
-         <python type> : ('type column value', 'column name'),
-         # ...
-      }
-
-    For example,::
-
-      type_map = {
-        int: ('integer', 'integer_value'),
-        str: ('varchar', 'varchar_value'),
-      }
-
-    Would indicate that a Python int value should be stored in the
-    'integer_value' column and the .type set to 'integer'.  Conversely, if the
-    value of '.type' is 'integer, then the 'integer_value' column is consulted
-    for the current value.
     """
-
-    type_map = {
-        type(None): (None, None),
-        }
 
     def __init__(self, key, value=None):
         self.key = key
@@ -80,25 +45,20 @@ class PolymorphicVerticalProperty(object):
 
     @hybrid_property
     def value(self):
-        for discriminator, field in self.type_map.values():
-            if self.type == discriminator:
-                return getattr(self, field)
-        return None
+        fieldname, discriminator = self.type_map[self.type]
+        if fieldname is None:
+            return None
+        else:
+            return getattr(self, fieldname)
 
     @value.setter
     def value(self, value):
         py_type = type(value)
-        if py_type not in self.type_map:
-            raise TypeError(py_type)
+        fieldname, discriminator = self.type_map[py_type]
 
-        for field_type in self.type_map:
-            discriminator, field = self.type_map[field_type]
-            field_value = None
-            if py_type == field_type:
-                self.type = discriminator
-                field_value = value
-            if field is not None:
-                setattr(self, field, field_value)
+        self.type = discriminator
+        if fieldname is not None:
+            setattr(self, fieldname, value)
 
     @value.deleter
     def value(self):
@@ -113,9 +73,14 @@ class PolymorphicVerticalProperty(object):
             self.cls = cls
 
         def _case(self):
-            whens = [(text("'%s'" % p[0]), cast(getattr(self.cls, p[1]), String))
-                     for p in self.cls.type_map.values()
-                     if p[1] is not None]
+            pairs = set(self.cls.type_map.values())
+            whens = [
+                (
+                    literal_column("'%s'" % discriminator),
+                    cast(getattr(self.cls, attribute), String)
+                ) for attribute, discriminator in pairs
+                if attribute is not None
+            ]
             return case(whens, self.cls.type, null())
         def __eq__(self, other):
             return self._case() == cast(other, String)
@@ -125,69 +90,78 @@ class PolymorphicVerticalProperty(object):
     def __repr__(self):
         return '<%s %r=%r>' % (self.__class__.__name__, self.key, self.value)
 
+@event.listens_for(PolymorphicVerticalProperty, "mapper_configured", propagate=True)
+def on_new_class(mapper, cls_):
+    """Look for Column objects with type info in them, and work up
+    a lookup table."""
+
+    info_dict = {}
+    info_dict[type(None)] = (None, 'none')
+    info_dict['none'] = (None, 'none')
+
+    for k in mapper.c.keys():
+        col = mapper.c[k]
+        if 'type' in col.info:
+            python_type, discriminator = col.info['type']
+            info_dict[python_type] = (k, discriminator)
+            info_dict[discriminator] = (k, discriminator)
+    cls_.type_map = info_dict
 
 if __name__ == '__main__':
-    from sqlalchemy import (MetaData, Table, Column, Integer, Unicode,
-        ForeignKey, UnicodeText, and_, not_, or_, String, Boolean, cast, text,
+    from sqlalchemy import (Column, Integer, Unicode,
+        ForeignKey, UnicodeText, and_, or_, String, Boolean, cast,
         null, case, create_engine)
-    from sqlalchemy.orm import mapper, relationship, Session
+    from sqlalchemy.orm import relationship, Session
     from sqlalchemy.orm.collections import attribute_mapped_collection
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.ext.associationproxy import association_proxy
 
-    metadata = MetaData()
+    Base = declarative_base()
 
-    animals = Table('animal', metadata,
-                    Column('id', Integer, primary_key=True),
-                    Column('name', Unicode(100)))
 
-    chars = Table('facts', metadata,
-                  Column('animal_id', Integer, ForeignKey('animal.id'),
-                         primary_key=True),
-                  Column('key', Unicode(64), primary_key=True),
-                  Column('type', Unicode(16), default=None),
-                  Column('int_value', Integer, default=None),
-                  Column('char_value', UnicodeText, default=None),
-                  Column('boolean_value', Boolean, default=None))
+    class AnimalFact(PolymorphicVerticalProperty, Base):
+        """A fact about an animal."""
 
-    class AnimalFact(PolymorphicVerticalProperty):
-        type_map = {
-            int: ('integer', 'int_value'),
-            str: ('char', 'char_value'),
-            bool: ('boolean', 'boolean_value'),
-            type(None): (None, None),
-            }
+        __tablename__ = 'animal_fact'
 
-    class Animal(VerticalPropertyDictMixin):
-        """An animal.
+        animal_id = Column(ForeignKey('animal.id'), primary_key=True)
+        key = Column(Unicode(64), primary_key=True)
+        type = Column(Unicode(16))
 
-        Animal facts are available via the 'facts' property or by using
-        dict-like accessors on an Animal instance::
+        # add information about storage for different types
+        # in the info dictionary of Columns
+        int_value = Column(Integer, info={'type': (int, 'integer')})
+        char_value = Column(UnicodeText, info={'type': (str, 'string')})
+        boolean_value = Column(Boolean, info={'type': (bool, 'boolean')})
 
-          cat['color'] = 'calico'
-          # or, equivalently:
-          cat.facts['color'] = AnimalFact('color', 'calico')
-        """
+    class Animal(ProxiedDictMixin._base_class(Base)):
+        """an Animal"""
 
-        _property_type = AnimalFact
-        _property_mapping = 'facts'
+        __tablename__ = 'animal'
+
+        id = Column(Integer, primary_key=True)
+        name = Column(Unicode(100))
+
+        facts = relationship("AnimalFact",
+                    collection_class=attribute_mapped_collection('key'))
+
+        _proxied = association_proxy("facts", "value",
+                            creator=
+                            lambda key, value: AnimalFact(key=key, value=value))
 
         def __init__(self, name):
             self.name = name
 
         def __repr__(self):
-            return '<%s %r>' % (self.__class__.__name__, self.name)
+            return "Animal(%r)" % self.name
 
-
-    mapper(Animal, animals, properties={
-        'facts': relationship(
-            AnimalFact, backref='animal',
-            collection_class=attribute_mapped_collection('key')),
-        })
-
-    mapper(AnimalFact, chars)
+        @classmethod
+        def with_characteristic(self, key, value):
+            return self.facts.any(key=key, value=value)
 
     engine = create_engine('sqlite://', echo=True)
 
-    metadata.create_all(engine)
+    Base.metadata.create_all(engine)
     session = Session(engine)
 
     stoat = Animal('stoat')
@@ -227,30 +201,24 @@ if __name__ == '__main__':
                 AnimalFact.value == True))))
     print('weasel-like animals', q.all())
 
-    # Save some typing by wrapping that up in a function:
-    with_characteristic = lambda key, value: and_(AnimalFact.key == key,
-                                                  AnimalFact.value == value)
-
     q = (session.query(Animal).
-         filter(Animal.facts.any(
-           with_characteristic('weasel-like', True))))
+         filter(Animal.with_characteristic('weasel-like', True)))
     print('weasel-like animals again', q.all())
 
     q = (session.query(Animal).
-           filter(Animal.facts.any(with_characteristic('poisonous', False))))
+           filter(Animal.with_characteristic('poisonous', False)))
     print('animals with poisonous=False', q.all())
 
     q = (session.query(Animal).
-         filter(or_(Animal.facts.any(
-                      with_characteristic('poisonous', False)),
-                    not_(Animal.facts.any(AnimalFact.key == 'poisonous')))))
+         filter(or_(
+                    Animal.with_characteristic('poisonous', False),
+                    ~Animal.facts.any(AnimalFact.key == 'poisonous')
+                    )
+                )
+        )
     print('non-poisonous animals', q.all())
 
     q = (session.query(Animal).
          filter(Animal.facts.any(AnimalFact.value == 5)))
     print('any animal with a .value of 5', q.all())
 
-    # Facts can be queried as well.
-    q = (session.query(AnimalFact).
-         filter(with_characteristic('cuteness', 'very cute')))
-    print(q.all())

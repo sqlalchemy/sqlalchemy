@@ -1,8 +1,6 @@
 """
 Illustrates an extension which creates version tables for entities and stores
-records for each change. The same idea as Elixir's versioned extension, but
-more efficient (uses attribute API to get history) and handles class
-inheritance. The given extensions generate an anonymous "history" class which
+records for each change. The given extensions generate an anonymous "history" class which
 represents historical versions of the target object.
 
 Usage is illustrated via a unit test module ``test_versioning.py``, which can
