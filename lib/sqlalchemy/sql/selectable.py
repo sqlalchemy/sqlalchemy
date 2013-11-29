@@ -2942,7 +2942,7 @@ class TextAsFrom(SelectBase):
     """Wrap a :class:`.TextClause` construct within a :class:`.SelectBase`
     interface.
 
-    This allows the :class:`.Text` object to gain a ``.c`` collection and
+    This allows the :class:`.TextClause` object to gain a ``.c`` collection and
     other FROM-like capabilities such as :meth:`.FromClause.alias`,
     :meth:`.SelectBase.cte`, etc.
 
