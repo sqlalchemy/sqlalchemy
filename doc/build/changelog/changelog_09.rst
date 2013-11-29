@@ -15,6 +15,13 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: bug, orm, declarative
+
+        Fixed bug where in Py2K a unicode literal would not be accepted
+        as the string name of a class or other argument within
+        declarative using :func:`.relationship`.
+
+    .. change::
         :tags: feature, sql
         :tickets: 2877
 

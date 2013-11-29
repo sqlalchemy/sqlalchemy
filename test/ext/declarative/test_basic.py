@@ -4,7 +4,7 @@ from sqlalchemy.testing import eq_, assert_raises, \
 from sqlalchemy.ext import declarative as decl
 from sqlalchemy import exc
 import sqlalchemy as sa
-from sqlalchemy import testing
+from sqlalchemy import testing, util
 from sqlalchemy import MetaData, Integer, String, ForeignKey, \
     ForeignKeyConstraint, Index
 from sqlalchemy.testing.schema import Table, Column
@@ -76,6 +76,26 @@ class DeclarativeTest(DeclarativeTestBase):
         a1 = sess.query(Address).filter(Address.email == 'two').one()
         eq_(a1, Address(email='two'))
         eq_(a1.user, User(name='u1'))
+
+    def test_unicode_string_resolve(self):
+        class User(Base, fixtures.ComparableEntity):
+            __tablename__ = 'users'
+
+            id = Column('id', Integer, primary_key=True,
+                                        test_needs_autoincrement=True)
+            name = Column('name', String(50))
+            addresses = relationship(util.u("Address"), backref="user")
+
+        class Address(Base, fixtures.ComparableEntity):
+            __tablename__ = 'addresses'
+
+            id = Column(Integer, primary_key=True,
+                                        test_needs_autoincrement=True)
+            email = Column(String(50), key='_email')
+            user_id = Column('user_id', Integer, ForeignKey('users.id'),
+                             key='_user_id')
+
+        assert User.addresses.property.mapper.class_ is Address
 
     def test_no_table(self):
         def go():

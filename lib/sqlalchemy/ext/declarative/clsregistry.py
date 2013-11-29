@@ -277,7 +277,7 @@ def _deferred_relationship(cls, prop):
         for attr in ('argument', 'order_by', 'primaryjoin', 'secondaryjoin',
                      'secondary', '_user_defined_foreign_keys', 'remote_side'):
             v = getattr(prop, attr)
-            if isinstance(v, str):
+            if isinstance(v, util.string_types):
                 setattr(prop, attr, resolve_arg(v))
 
         if prop.backref and isinstance(prop.backref, tuple):
