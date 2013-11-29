@@ -278,15 +278,16 @@ unchanged:
 
 :ticket:`1923`
 
+.. _07_migration_mutation_extension:
+
 Mutation event extension, supersedes "mutable=True"
 ---------------------------------------------------
 
-A new extension, `Mutation Tracking <http://www.sqlalchemy.o
-rg/docs/07/orm/extensions/mutable.html>`_, provides a
+A new extension, :ref:`mutable_toplevel`, provides a
 mechanism by which user-defined datatypes can provide change
 events back to the owning parent or parents.   The extension
 includes an approach for scalar database values, such as
-those managed by ``PickleType``, ``postgresql.ARRAY``, or
+those managed by :class:`.PickleType`, ``postgresql.ARRAY``, or
 other custom ``MutableType`` classes, as well as an approach
 for ORM "composites", those configured using :func:`~.sqlalchemy.orm.composite`.
 

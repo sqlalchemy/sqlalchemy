@@ -4181,6 +4181,10 @@
 
       Mutation Event Extension, supercedes "mutable=True"
 
+      .. seealso::
+
+          :ref:`07_migration_mutation_extension`
+
     .. change::
         :tags: orm
         :tickets: 1980
