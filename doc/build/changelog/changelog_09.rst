@@ -15,6 +15,36 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: feature, sql
+        :pullreq: github:42
+
+        A new API for specifying the ``FOR UPDATE`` clause of a ``SELECT``
+        is added with the new :meth:`.SelectBase.with_for_update` method.
+        This method supports a more straightforward system of setting
+        dialect-specific options compared to the ``for_update`` keyword
+        argument of :func:`.select`, and also includes support for the
+        SQL standard ``FOR UPDATE OF`` clause.   The ORM also includes
+        a new corresponding method :meth:`.Query.with_for_update`.
+        Pull request courtesy Mario Lassnig.
+
+        .. seealso::
+
+            :ref:`feature_github_42`
+
+    .. change::
+        :tags: feature, orm
+        :pullreq: github:42
+
+        A new API for specifying the ``FOR UPDATE`` clause of a ``SELECT``
+        is added with the new :meth:`.Query.with_for_update` method,
+        to complement the new :meth:`.SelectBase.with_for_update` method.
+        Pull request courtesy Mario Lassnig.
+
+        .. seealso::
+
+            :ref:`feature_github_42`
+
+    .. change::
         :tags: bug, engine
         :tickets: 2873
 

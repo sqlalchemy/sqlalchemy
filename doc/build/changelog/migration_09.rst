@@ -908,6 +908,32 @@ rendering::
 
 :ticket:`722`
 
+.. _feature_github_42:
+
+New FOR UPDATE support on ``select()``, ``Query()``
+---------------------------------------------------
+
+An attempt is made to simplify the specification of the ``FOR UPDATE``
+clause on ``SELECT`` statements made within Core and ORM, and support is added
+for the ``FOR UPDATE OF`` SQL supported by Postgresql and Oracle.
+
+Using the core :meth:`.SelectBase.with_for_update`, options like ``FOR SHARE`` and
+``NOWAIT`` can be specified individually, rather than linking to arbitrary
+string codes::
+
+    stmt = select([table]).with_for_update(read=True, nowait=True, of=table)
+
+On Posgtresql the above statement might render like::
+
+    SELECT table.a, table.b FROM table FOR SHARE OF table NOWAIT
+
+The :class:`.Query` object gains a similar method :meth:`.Query.with_for_update`
+which behaves in the same way.  This method supersedes the existing
+:meth:`.Query.with_lockmode` method, which translated ``FOR UPDATE`` clauses
+using a different system.   At the moment, the "lockmode" string argument is still
+accepted by the :meth:`.Session.refresh` method.
+
+
 .. _feature_2867:
 
 Floating Point String-Conversion Precision Configurable for Native Floating Point Types
