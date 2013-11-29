@@ -9,7 +9,7 @@ which are propagated into ORM change events on owning parent objects.
 
 The :mod:`sqlalchemy.ext.mutable` extension replaces SQLAlchemy's legacy
 approach to in-place mutations of scalar values, established by the
-:class:`.types.MutableType` class as well as the ``mutable=True`` type flag,
+``types.MutableType`` class as well as the ``mutable=True`` type flag,
 with a system that allows change events to be propagated from the value to
 the owning parent, thereby removing the need for the ORM to maintain copies
 of values as well as the very expensive requirement of scanning through all
@@ -182,7 +182,7 @@ callbacks. In our case, this is a good thing, since if this dictionary were
 picklable, it could lead to an excessively large pickle size for our value
 objects that are pickled by themselves outside of the context of the parent.
 The developer responsibility here is only to provide a ``__getstate__`` method
-that excludes the :meth:`~.MutableBase._parents` collection from the pickle
+that excludes the :meth:`~MutableBase._parents` collection from the pickle
 stream::
 
     class MyMutableType(Mutable):
@@ -332,7 +332,7 @@ Supporting Pickling
 
 As is the case with :class:`.Mutable`, the :class:`.MutableComposite` helper
 class uses a ``weakref.WeakKeyDictionary`` available via the
-:meth:`.MutableBase._parents` attribute which isn't picklable. If we need to
+:meth:`MutableBase._parents` attribute which isn't picklable. If we need to
 pickle instances of ``Point`` or its owning class ``Vertex``, we at least need
 to define a ``__getstate__`` that doesn't include the ``_parents`` dictionary.
 Below we define both a ``__getstate__`` and a ``__setstate__`` that package up
@@ -349,7 +349,7 @@ the minimal form of our ``Point`` class::
 
 As with :class:`.Mutable`, the :class:`.MutableComposite` augments the
 pickling process of the parent's object-relational state so that the
-:meth:`.MutableBase._parents` collection is restored to all ``Point`` objects.
+:meth:`MutableBase._parents` collection is restored to all ``Point`` objects.
 
 """
 from ..orm.attributes import flag_modified
@@ -542,7 +542,7 @@ class Mutable(MutableBase):
 
         To associate a particular mutable type with all occurrences of a
         particular type, use the :meth:`.Mutable.associate_with` classmethod
-        of the particular :meth:`.Mutable` subclass to establish a global
+        of the particular :class:`.Mutable` subclass to establish a global
         association.
 
         .. warning::

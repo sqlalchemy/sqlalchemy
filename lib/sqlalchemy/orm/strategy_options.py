@@ -619,7 +619,7 @@ def joinedload(loadopt, attr, innerjoin=None):
         :class:`.Query` refer to these joins in any way, including ordering.
 
         To produce a specific SQL JOIN which is explicitly available, use
-        :class:`.Query.join`.   To combine explicit JOINs with eager loading
+        :meth:`.Query.join`.   To combine explicit JOINs with eager loading
         of collections, use :func:`.orm.contains_eager`; see :ref:`contains_eager`.
 
     .. seealso::

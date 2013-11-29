@@ -14,7 +14,7 @@ from .sql.base import SchemaEventTarget
 class DDLEvents(event.Events):
     """
     Define event listeners for schema objects,
-    that is, :class:`.SchemaItem` and :class:`.SchemaEvent`
+    that is, :class:`.SchemaItem` and other :class:`.SchemaEventTarget`
     subclasses, including :class:`.MetaData`, :class:`.Table`,
     :class:`.Column`.
 

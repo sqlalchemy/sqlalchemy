@@ -119,7 +119,7 @@ class String(Concatenable, TypeEngine):
           unicode objects, this flag generally does not
           need to be set.  For columns that are explicitly
           intended to store non-ASCII data, the :class:`.Unicode`
-          or :class:`UnicodeText`
+          or :class:`.UnicodeText`
           types should be used regardless, which feature
           the same behavior of ``convert_unicode`` but
           also indicate an underlying column type that

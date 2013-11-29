@@ -1116,7 +1116,7 @@ class SessionEvents(event.Events):
 
     The :func:`~.event.listen` function will accept
     :class:`.Session` objects as well as the return result
-    of :func:`.sessionmaker` and :func:`.scoped_session`.
+    of :class:`~.sessionmaker()` and :class:`~.scoped_session()`.
 
     Additionally, it accepts the :class:`.Session` class which
     will apply listeners to all :class:`.Session` instances
@@ -1203,7 +1203,7 @@ class SessionEvents(event.Events):
 
         .. note::
 
-            The :meth:`.before_commit` hook is *not* per-flush,
+            The :meth:`~.SessionEvents.before_commit` hook is *not* per-flush,
             that is, the :class:`.Session` can emit SQL to the database
             many times within the scope of a transaction.
             For interception of these events, use the :meth:`~.SessionEvents.before_flush`,
@@ -1389,7 +1389,7 @@ class SessionEvents(event.Events):
         This is called before an add, delete or merge causes
         the object to be part of the session.
 
-        .. versionadded:: 0.8.  Note that :meth:`.after_attach` now
+        .. versionadded:: 0.8.  Note that :meth:`~.SessionEvents.after_attach` now
            fires off after the item is part of the session.
            :meth:`.before_attach` is provided for those cases where
            the item should not yet be part of the session state.
@@ -1504,7 +1504,7 @@ class AttributeEvents(event.Events):
         listen(UserContact.phone, 'set', validate_phone, retval=True)
 
     A validation function like the above can also raise an exception
-    such as :class:`.ValueError` to halt the operation.
+    such as :exc:`ValueError` to halt the operation.
 
     Several modifiers are available to the :func:`~.event.listen` function.
 

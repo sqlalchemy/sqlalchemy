@@ -1950,7 +1950,7 @@ class Select(HasPrefixes, GenerativeSelect):
           to set the autocommit option.
 
         :param bind=None:
-          an :class:`~.base.Engine` or :class:`~.base.Connection` instance
+          an :class:`~.Engine` or :class:`~.Connection` instance
           to which the
           resulting :class:`.Select` object will be bound.  The :class:`.Select`
           object will otherwise automatically bind to whatever

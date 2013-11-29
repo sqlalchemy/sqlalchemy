@@ -71,5 +71,8 @@ sections, are listed here.
 
 .. autoclass:: sqlalchemy.orm.attributes.QueryableAttribute
     :members:
-     
     :inherited-members:
+
+.. autoclass:: sqlalchemy.orm.session.UOWTransaction
+    :members:
+
