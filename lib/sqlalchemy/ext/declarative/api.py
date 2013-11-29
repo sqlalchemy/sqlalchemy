@@ -252,7 +252,7 @@ def as_declarative(**kw):
         from sqlalchemy.ext.declarative import as_declarative
 
         @as_declarative()
-        class Base(object)
+        class Base(object):
             @declared_attr
             def __tablename__(cls):
                 return cls.__name__.lower()
