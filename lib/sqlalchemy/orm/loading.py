@@ -174,8 +174,6 @@ def load_on_ident(query, key,
                         only_load_props=None):
     """Load the given identity key from the database."""
 
-    lockmode = lockmode or query._lockmode
-
     if key is not None:
         ident = key[1]
     else:
@@ -213,10 +211,17 @@ def load_on_ident(query, key,
         q._params = params
 
     if lockmode is not None:
-        q._lockmode = lockmode
+        version_check = True
+        q = q.with_lockmode(lockmode)
+    elif query._for_update_arg is not None:
+        version_check = True
+        q._for_update_arg = query._for_update_arg
+    else:
+        version_check = False
+
     q._get_options(
         populate_existing=bool(refresh_state),
-        version_check=(lockmode is not None),
+        version_check=version_check,
         only_load_props=only_load_props,
         refresh_state=refresh_state)
     q._order_by = None
