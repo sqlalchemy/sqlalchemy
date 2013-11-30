@@ -8,8 +8,7 @@ The SQLAlchemy Object Relational Mapper presents a method of associating
 user-defined Python classes with database tables, and instances of those
 classes (objects) with rows in their corresponding tables. It includes a
 system that transparently synchronizes all changes in state between objects
-and their related rows, called a `unit of work
-<http://martinfowler.com/eaaCatalog/unitOfWork.html>`_, as well as a system
+and their related rows, called a :term:`unit of work`, as well as a system
 for expressing database queries in terms of the user defined classes and their
 defined relationships between each other.
 
@@ -23,8 +22,7 @@ example of applied usage of the Expression Language.
 While there is overlap among the usage patterns of the ORM and the Expression
 Language, the similarities are more superficial than they may at first appear.
 One approaches the structure and content of data from the perspective of a
-user-defined `domain model
-<http://en.wikipedia.org/wiki/Domain_model>`_ which is transparently
+user-defined :term:`domain model` which is transparently
 persisted and refreshed from its underlying storage model. The other
 approaches it from the perspective of literal schema and SQL expression
 representations which are explicitly composed into messages consumed
@@ -387,7 +385,7 @@ that which we just added::
     >>> ed_user is our_user
     True
 
-The ORM concept at work here is known as an `identity map <http://martinfowler.com/eaaCatalog/identityMap.html>`_
+The ORM concept at work here is known as an :term:`identity map`
 and ensures that
 all operations upon a particular row within a
 :class:`~sqlalchemy.orm.session.Session` operate upon the same set of data.
@@ -736,7 +734,8 @@ users named "ed" with a full name of "Ed Jones", you can call
 Common Filter Operators
 -----------------------
 
-Here's a rundown of some of the most common operators used in :func:`~sqlalchemy.orm.query.Query.filter`:
+Here's a rundown of some of the most common operators used in
+:func:`~sqlalchemy.orm.query.Query.filter`:
 
 * equals::
 
@@ -755,8 +754,9 @@ Here's a rundown of some of the most common operators used in :func:`~sqlalchemy
     query.filter(User.name.in_(['ed', 'wendy', 'jack']))
 
     # works with query objects too:
-
-    query.filter(User.name.in_(session.query(User.name).filter(User.name.like('%ed%'))))
+    query.filter(User.name.in_(
+            session.query(User.name).filter(User.name.like('%ed%'))
+    ))
 
 * NOT IN::
 
@@ -764,24 +764,28 @@ Here's a rundown of some of the most common operators used in :func:`~sqlalchemy
 
 * IS NULL::
 
-    filter(User.name == None)
+    query.filter(User.name == None)
 
 * IS NOT NULL::
 
-    filter(User.name != None)
+    query.filter(User.name != None)
 
 * AND::
 
+    # use and_()
     from sqlalchemy import and_
-    filter(and_(User.name == 'ed', User.fullname == 'Ed Jones'))
+    query.filter(and_(User.name == 'ed', User.fullname == 'Ed Jones'))
 
-    # or call filter()/filter_by() multiple times
-    filter(User.name == 'ed').filter(User.fullname == 'Ed Jones')
+    # or send multiple expressions to .filter()
+    query.filter(User.name == 'ed', User.fullname == 'Ed Jones')
+
+    # or chain multiple filter()/filter_by() calls
+    query.filter(User.name == 'ed').filter(User.fullname == 'Ed Jones')
 
 * OR::
 
     from sqlalchemy import or_
-    filter(or_(User.name == 'ed', User.name == 'wendy'))
+    query.filter(or_(User.name == 'ed', User.name == 'wendy'))
 
 * match::
 
@@ -792,76 +796,99 @@ Here's a rundown of some of the most common operators used in :func:`~sqlalchemy
 Returning Lists and Scalars
 ---------------------------
 
-The :meth:`~sqlalchemy.orm.query.Query.all()`,
-:meth:`~sqlalchemy.orm.query.Query.one()`, and
-:meth:`~sqlalchemy.orm.query.Query.first()` methods of
-:class:`~sqlalchemy.orm.query.Query` immediately issue SQL and return a
-non-iterator value. :meth:`~sqlalchemy.orm.query.Query.all()` returns a list:
+A number of methods on :class:`.Query`
+immediately issue SQL and return a value containing loaded
+database results.  Here's a brief tour:
 
-.. sourcecode:: python+sql
+* :meth:`~.Query.all()` returns a list:
 
-    >>> query = session.query(User).filter(User.name.like('%ed')).order_by(User.id)
-    {sql}>>> query.all() #doctest: +NORMALIZE_WHITESPACE
-    SELECT users.id AS users_id,
-            users.name AS users_name,
-            users.fullname AS users_fullname,
-            users.password AS users_password
-    FROM users
-    WHERE users.name LIKE ? ORDER BY users.id
-    ('%ed',)
-    {stop}[<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>, <User(name='fred', fullname='Fred Flinstone', password='blah')>]
+  .. sourcecode:: python+sql
 
-:meth:`~sqlalchemy.orm.query.Query.first()` applies a limit of one and returns
-the first result as a scalar:
+      >>> query = session.query(User).filter(User.name.like('%ed')).order_by(User.id)
+      {sql}>>> query.all() #doctest: +NORMALIZE_WHITESPACE
+      SELECT users.id AS users_id,
+              users.name AS users_name,
+              users.fullname AS users_fullname,
+              users.password AS users_password
+      FROM users
+      WHERE users.name LIKE ? ORDER BY users.id
+      ('%ed',)
+      {stop}[<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>,
+            <User(name='fred', fullname='Fred Flinstone', password='blah')>]
 
-.. sourcecode:: python+sql
+* :meth:`~.Query.first()` applies a limit of one and returns
+  the first result as a scalar:
 
-    {sql}>>> query.first() #doctest: +NORMALIZE_WHITESPACE
-    SELECT users.id AS users_id,
-            users.name AS users_name,
-            users.fullname AS users_fullname,
-            users.password AS users_password
-    FROM users
-    WHERE users.name LIKE ? ORDER BY users.id
-     LIMIT ? OFFSET ?
-    ('%ed', 1, 0)
-    {stop}<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>
+  .. sourcecode:: python+sql
 
-:meth:`~sqlalchemy.orm.query.Query.one()`, fully fetches all rows, and if not
-exactly one object identity or composite row is present in the result, raises
-an error:
+      {sql}>>> query.first() #doctest: +NORMALIZE_WHITESPACE
+      SELECT users.id AS users_id,
+              users.name AS users_name,
+              users.fullname AS users_fullname,
+              users.password AS users_password
+      FROM users
+      WHERE users.name LIKE ? ORDER BY users.id
+       LIMIT ? OFFSET ?
+      ('%ed', 1, 0)
+      {stop}<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>
 
-.. sourcecode:: python+sql
+* :meth:`~.Query.one()`, fully fetches all rows, and if not
+  exactly one object identity or composite row is present in the result, raises
+  an error.  With multiple rows found:
 
-    {sql}>>> from sqlalchemy.orm.exc import MultipleResultsFound
-    >>> try: #doctest: +NORMALIZE_WHITESPACE
-    ...     user = query.one()
-    ... except MultipleResultsFound, e:
-    ...     print e
-    SELECT users.id AS users_id,
-            users.name AS users_name,
-            users.fullname AS users_fullname,
-            users.password AS users_password
-    FROM users
-    WHERE users.name LIKE ? ORDER BY users.id
-    ('%ed',)
-    {stop}Multiple rows were found for one()
+  .. sourcecode:: python+sql
 
-.. sourcecode:: python+sql
+      {sql}>>> from sqlalchemy.orm.exc import MultipleResultsFound
+      >>> try: #doctest: +NORMALIZE_WHITESPACE
+      ...     user = query.one()
+      ... except MultipleResultsFound, e:
+      ...     print e
+      SELECT users.id AS users_id,
+              users.name AS users_name,
+              users.fullname AS users_fullname,
+              users.password AS users_password
+      FROM users
+      WHERE users.name LIKE ? ORDER BY users.id
+      ('%ed',)
+      {stop}Multiple rows were found for one()
 
-    {sql}>>> from sqlalchemy.orm.exc import NoResultFound
-    >>> try: #doctest: +NORMALIZE_WHITESPACE
-    ...     user = query.filter(User.id == 99).one()
-    ... except NoResultFound, e:
-    ...     print e
-    SELECT users.id AS users_id,
-            users.name AS users_name,
-            users.fullname AS users_fullname,
-            users.password AS users_password
-    FROM users
-    WHERE users.name LIKE ? AND users.id = ? ORDER BY users.id
-    ('%ed', 99)
-    {stop}No row was found for one()
+  With no rows found:
+
+  .. sourcecode:: python+sql
+
+      {sql}>>> from sqlalchemy.orm.exc import NoResultFound
+      >>> try: #doctest: +NORMALIZE_WHITESPACE
+      ...     user = query.filter(User.id == 99).one()
+      ... except NoResultFound, e:
+      ...     print e
+      SELECT users.id AS users_id,
+              users.name AS users_name,
+              users.fullname AS users_fullname,
+              users.password AS users_password
+      FROM users
+      WHERE users.name LIKE ? AND users.id = ? ORDER BY users.id
+      ('%ed', 99)
+      {stop}No row was found for one()
+
+  The :meth:`~.Query.one` method is great for systems that expect to handle
+  "no items found" versus "multiple items found" differently; such as a RESTful
+  web service, which may want to raise a "404 not found" when no results are found,
+  but raise an application error when multiple results are found.
+
+* :meth:`~.Query.scalar` invokes the :meth:`~.Query.one` method, and upon
+  success returns the first column of the row:
+
+  .. sourcecode:: python+sql
+
+      >>> query = session.query(User.id).filter(User.name.like('%ed')).\
+      ...    order_by(User.id)
+      {sql}>>> query.scalar() #doctest: +NORMALIZE_WHITESPACE
+      SELECT users.id AS users_id
+      FROM users
+      WHERE users.name LIKE ? ORDER BY users.id
+       LIMIT ? OFFSET ?
+      ('%ed', 1, 0)
+      {stop}7
 
 .. _orm_tutorial_literal_sql:
 
@@ -1123,7 +1150,7 @@ declarative, we define this table along with its mapped class, ``Address``:
 
 The above class introduces the :class:`.ForeignKey` construct, which is a
 directive applied to :class:`.Column` that indicates that values in this
-column should be **constrained** to be values present in the named remote
+column should be :term:`constrained` to be values present in the named remote
 column. This is a core feature of relational databases, and is the "glue" that
 transforms an otherwise unconnected collection of tables to have rich
 overlapping relationships. The :class:`.ForeignKey` above expresses that
@@ -1135,17 +1162,17 @@ tells the ORM that the ``Address`` class itself should be linked
 to the ``User`` class, using the attribute ``Address.user``.
 :func:`.relationship` uses the foreign key
 relationships between the two tables to determine the nature of
-this linkage, determining that ``Address.user`` will be **many-to-one**.
+this linkage, determining that ``Address.user`` will be :term:`many to one`.
 A subdirective of :func:`.relationship` called :func:`.backref` is
 placed inside of :func:`.relationship`, providing details about
 the relationship as expressed in reverse, that of a collection of ``Address``
 objects on ``User`` referenced by ``User.addresses``.  The reverse
-side of a many-to-one relationship is always **one-to-many**.
+side of a many-to-one relationship is always :term:`one to many`.
 A full catalog of available :func:`.relationship` configurations
 is at :ref:`relationship_patterns`.
 
 The two complementing relationships ``Address.user`` and ``User.addresses``
-are referred to as a **bidirectional relationship**, and is a key
+are referred to as a :term:`bidirectional relationship`, and is a key
 feature of the SQLAlchemy ORM.   The section :ref:`relationships_backref`
 discusses the "backref" feature in detail.
 
@@ -1285,7 +1312,7 @@ Let's look at the ``addresses`` collection.  Watch the SQL:
     {stop}[<Address(email_address='jack@google.com')>, <Address(email_address='j25@yahoo.com')>]
 
 When we accessed the ``addresses`` collection, SQL was suddenly issued. This
-is an example of a **lazy loading relationship**.  The ``addresses`` collection
+is an example of a :term:`lazy loading` relationship.  The ``addresses`` collection
 is now loaded and behaves just like an ordinary list.  We'll cover ways
 to optimize the loading of this collection in a bit.
 
@@ -1607,13 +1634,13 @@ and behavior:
 Eager Loading
 =============
 
-Recall earlier that we illustrated a **lazy loading** operation, when
+Recall earlier that we illustrated a :term:`lazy loading` operation, when
 we accessed the ``User.addresses`` collection of a ``User`` and SQL
 was emitted.  If you want to reduce the number of queries (dramatically, in many cases),
-we can apply an **eager load** to the query operation.   SQLAlchemy
+we can apply an :term:`eager load` to the query operation.   SQLAlchemy
 offers three types of eager loading, two of which are automatic, and a third
 which involves custom criterion.   All three are usually invoked via functions known
-as **query options** which give additional instructions to the :class:`.Query` on how
+as :term:`query options` which give additional instructions to the :class:`.Query` on how
 we would like various attributes to be loaded, via the :meth:`.Query.options` method.
 
 Subquery Load

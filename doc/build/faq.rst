@@ -309,7 +309,7 @@ columns, though it's a good idea that they are.  It's only necessary that the co
 *behave* as a primary key does, e.g. as a unique and not nullable identifier
 for a row.
 
-Most ORMs require that objects have some kind of primary key defined at the
+Most ORMs require that objects have some kind of primary key defined
 because the object in memory must correspond to a uniquely identifiable
 row in the database table; at the very least, this allows the
 object can be targeted for UPDATE and DELETE statements which will affect only

@@ -116,6 +116,7 @@ Glossary
 
     lazy load
     lazy loads
+    lazy loading
         In object relational mapping, a "lazy load" refers to an
         attribute that does not contain its database-side value
         for some period of time, typically when the object is
@@ -268,6 +269,15 @@ Glossary
 
             `PEP 249 - Python Database API Specification v2.0 <http://www.python.org/dev/peps/pep-0249/>`_
 
+    domain model
+
+        A domain model in problem solving and software engineering is a conceptual model of all the topics related to a specific problem. It describes the various entities, their attributes, roles, and relationships, plus the constraints that govern the problem domain.
+
+        (via Wikipedia)
+
+        .. seealso::
+
+            `Domain Model (wikipedia) <http://en.wikipedia.org/wiki/Domain_model>`_
 
     unit of work
         This pattern is where the system transparently keeps
@@ -441,6 +451,7 @@ Glossary
         clause is not possible, because the correlation can only proceed once the
         original source rows from the enclosing statement's FROM clause are available.
 
+
     ACID
     ACID model
         An acronym for "Atomicity, Consistency, Isolation,
@@ -561,3 +572,422 @@ Glossary
         on top of the RETURNING systems of these backends to provide a consistent
         interface for returning columns.  The ORM also includes many optimizations
         that make use of RETURNING when available.
+
+    one to many
+        A style of :func:`~sqlalchemy.orm.relationship` which links
+        the primary key of the parent mapper's table to the foreign
+        key of a related table.   Each unique parent object can
+        then refer to zero or more unique related objects.
+
+        The related objects in turn will have an implicit or
+        explicit :term:`many to one` relationship to their parent
+        object.
+
+        An example one to many schema (which, note, is identical
+        to the :term:`many to one` schema):
+
+        .. sourcecode:: sql
+
+            CREATE TABLE department (
+                id INTEGER PRIMARY KEY,
+                name VARCHAR(30)
+            )
+
+            CREATE TABLE employee (
+                id INTEGER PRIMARY KEY,
+                name VARCHAR(30),
+                dep_id INTEGER REFERENCES department(id)
+            )
+
+        The relationship from ``department`` to ``employee`` is
+        one to many, since many employee records can be associated with a
+        single department.  A SQLAlchemy mapping might look like::
+
+            class Department(Base):
+                __tablename__ = 'department'
+                id = Column(Integer, primary_key=True)
+                name = Column(String(30))
+                employees = relationship("Employee")
+
+            class Employee(Base):
+                __tablename__ = 'employee'
+                id = Column(Integer, primary_key=True)
+                name = Column(String(30))
+                dep_id = Column(Integer, ForeignKey('department.id'))
+
+        .. seealso::
+
+            :term:`relationship`
+
+            :term:`many to one`
+
+            :term:`backref`
+
+    many to one
+        A style of :func:`~sqlalchemy.orm.relationship` which links
+        a foreign key in the parent mapper's table to the primary
+        key of a related table.   Each parent object can
+        then refer to exactly zero or one related object.
+
+        The related objects in turn will have an implicit or
+        explicit :term:`one to many` relationship to any number
+        of parent objects that refer to them.
+
+        An example many to one schema (which, note, is identical
+        to the :term:`one to many` schema):
+
+        .. sourcecode:: sql
+
+            CREATE TABLE department (
+                id INTEGER PRIMARY KEY,
+                name VARCHAR(30)
+            )
+
+            CREATE TABLE employee (
+                id INTEGER PRIMARY KEY,
+                name VARCHAR(30),
+                dep_id INTEGER REFERENCES department(id)
+            )
+
+
+        The relationship from ``employee`` to ``department`` is
+        many to one, since many employee records can be associated with a
+        single department.  A SQLAlchemy mapping might look like::
+
+            class Department(Base):
+                __tablename__ = 'department'
+                id = Column(Integer, primary_key=True)
+                name = Column(String(30))
+
+            class Employee(Base):
+                __tablename__ = 'employee'
+                id = Column(Integer, primary_key=True)
+                name = Column(String(30))
+                dep_id = Column(Integer, ForeignKey('department.id'))
+                department = relationship("Department")
+
+        .. seealso::
+
+            :term:`relationship`
+
+            :term:`one to many`
+
+            :term:`backref`
+
+    backref
+    bidirectional relationship
+        An extension to the :term:`relationship` system whereby two
+        distinct :func:`~sqlalchemy.orm.relationship` objects can be
+        mutually associated with each other, such that they coordinate
+        in memory as changes occur to either side.   The most common
+        way these two relationships are constructed is by using
+        the :func:`~sqlalchemy.orm.relationship` function explicitly
+        for one side and specifying the ``backref`` keyword to it so that
+        the other :func:`~sqlalchemy.orm.relationship` is created
+        automatically.  We can illustrate this against the example we've
+        used in :term:`one to many` as follows::
+
+            class Department(Base):
+                __tablename__ = 'department'
+                id = Column(Integer, primary_key=True)
+                name = Column(String(30))
+                employees = relationship("Employee", backref="department")
+
+            class Employee(Base):
+                __tablename__ = 'employee'
+                id = Column(Integer, primary_key=True)
+                name = Column(String(30))
+                dep_id = Column(Integer, ForeignKey('department.id'))
+
+        A backref can be applied to any relationship, including one to many,
+        many to one, and :term:`many to many`.
+
+        .. seealso::
+
+            :term:`relationship`
+
+            :term:`one to many`
+
+            :term:`many to one`
+
+            :term:`many to many`
+
+    many to many
+        A style of :func:`sqlalchemy.orm.relationship` which links two tables together
+        via an intermediary table in the middle.   Using this configuration,
+        any number of rows on the left side may refer to any number of
+        rows on the right, and vice versa.
+
+        A schema where employees can be associated with projects:
+
+        .. sourcecode:: sql
+
+            CREATE TABLE employee (
+                id INTEGER PRIMARY KEY,
+                name VARCHAR(30)
+            )
+
+            CREATE TABLE project (
+                id INTEGER PRIMARY KEY,
+                name VARCHAR(30)
+            )
+
+            CREATE TABLE employee_project (
+                employee_id INTEGER PRIMARY KEY,
+                project_id INTEGER PRIMARY KEY,
+                FOREIGN KEY employee_id REFERENCES employee(id),
+                FOREIGN KEY project_id REFERENCES project(id)
+            )
+
+        Above, the ``employee_project`` table is the many-to-many table,
+        which naturally forms a composite primary key consisting
+        of the primary key from each related table.
+
+        In SQLAlchemy, the :func:`sqlalchemy.orm.relationship` function
+        can represent this style of relationship in a mostly
+        transparent fashion, where the many-to-many table is
+        specified using plain table metadata::
+
+            class Employee(Base):
+                __tablename__ = 'employee'
+
+                id = Column(Integer, primary_key)
+                name = Column(String(30))
+
+                projects = relationship(
+                    "Project",
+                    secondary=Table('employee_project', Base.metadata,
+                                Column("employee_id", Integer, ForeignKey('employee.id'),
+                                            primary_key=True),
+                                Column("project_id", Integer, ForeignKey('project.id'),
+                                            primary_key=True)
+                            ),
+                    backref="employees"
+                    )
+
+            class Project(Base):
+                __tablename__ = 'project'
+
+                id = Column(Integer, primary_key)
+                name = Column(String(30))
+
+        Above, the ``Employee.projects`` and back-referencing ``Project.employees``
+        collections are defined::
+
+            proj = Project(name="Client A")
+
+            emp1 = Employee(name="emp1")
+            emp2 = Employee(name="emp2")
+
+            proj.employees.extend([emp1, emp2])
+
+        .. seealso::
+
+            :term:`association relationship`
+
+            :term:`relationship`
+
+            :term:`one to many`
+
+            :term:`many to one`
+
+    relationship
+    relationships
+        A connecting unit between two mapped classes, corresponding
+        to some relationship between the two tables in the database.
+
+        The relationship is defined using the SQLAlchemy function
+        :func:`~sqlalchemy.orm.relationship`.   Once created, SQLAlchemy
+        inspects the arguments and underlying mappings involved
+        in order to classify the relationship as one of three types:
+        :term:`one to many`, :term:`many to one`, or :term:`many to many`.
+        With this classification, the relationship construct
+        handles the task of persisting the appropriate linkages
+        in the database in response to in-memory object associations,
+        as well as the job of loading object references and collections
+        into memory based on the current linkages in the
+        database.
+
+        .. seealso::
+
+            :ref:`relationship_config_toplevel`
+
+    association relationship
+        A two-tiered :term:`relationship` which links two tables
+        together using an association table in the middle.  The
+        association relationship differs from a :term:`many to many`
+        relationship in that the many-to-many table is mapped
+        by a full class, rather than invisibly handled by the
+        :func:`sqlalchemy.orm.relationship` construct as in the case
+        with many-to-many, so that additional attributes are
+        explicitly available.
+
+        For example, if we wanted to associate employees with
+        projects, also storing the specific role for that employee
+        with the project, the relational schema might look like:
+
+        .. sourcecode:: sql
+
+            CREATE TABLE employee (
+                id INTEGER PRIMARY KEY,
+                name VARCHAR(30)
+            )
+
+            CREATE TABLE project (
+                id INTEGER PRIMARY KEY,
+                name VARCHAR(30)
+            )
+
+            CREATE TABLE employee_project (
+                employee_id INTEGER PRIMARY KEY,
+                project_id INTEGER PRIMARY KEY,
+                role_name VARCHAR(30),
+                FOREIGN KEY employee_id REFERENCES employee(id),
+                FOREIGN KEY project_id REFERENCES project(id)
+            )
+
+        A SQLAlchemy declarative mapping for the above might look like::
+
+            class Employee(Base):
+                __tablename__ = 'employee'
+
+                id = Column(Integer, primary_key)
+                name = Column(String(30))
+
+
+            class Project(Base):
+                __tablename__ = 'project'
+
+                id = Column(Integer, primary_key)
+                name = Column(String(30))
+
+
+            class EmployeeProject(Base):
+                __tablename__ = 'employee_project'
+
+                employee_id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+                project_id = Column(Integer, ForeignKey('project.id'), primary_key=True)
+                role_name = Column(String(30))
+
+                project = relationship("Project", backref="project_employees")
+                employee = relationship("Employee", backref="employee_projects")
+
+
+        Employees can be added to a project given a role name::
+
+            proj = Project(name="Client A")
+
+            emp1 = Employee(name="emp1")
+            emp2 = Employee(name="emp2")
+
+            proj.project_employees.extend([
+                EmployeeProject(employee=emp1, role="tech lead"),
+                EmployeeProject(employee=emp2, role="account executive")
+            ])
+
+        .. seealso::
+
+            :term:`many to many`
+
+    constraint
+    constraints
+    constrained
+        Rules established within a relational database that ensure
+        the validity and consistency of data.   Common forms
+        of constraint include :term:`primary key constraint`,
+        :term:`foreign key constraint`, and :term:`check constraint`.
+
+    candidate key
+
+        A :term:`relational algebra` term referring to an attribute or set
+        of attributes that form a uniquely identifying key for a
+        row.  A row may have more than one candidate key, each of which
+        is suitable for use as the primary key of that row.
+        The primary key of a table is always a candidate key.
+
+        .. seealso::
+
+            :term:`primary key`
+
+            http://en.wikipedia.org/wiki/Candidate_key
+
+    primary key
+    primary key constraint
+
+        A :term:`constraint` that uniquely defines the characteristics
+        of each :term:`row`. The primary key has to consist of
+        characteristics that cannot be duplicated by any other row.
+        The primary key may consist of a single attribute or
+        multiple attributes in combination.
+        (via Wikipedia)
+
+        The primary key of a table is typically, though not always,
+        defined within the ``CREATE TABLE`` :term:`DDL`:
+
+        .. sourcecode:: sql
+
+            CREATE TABLE employee (
+                 emp_id INTEGER,
+                 emp_name VARCHAR(30),
+                 dep_id INTEGER,
+                 PRIMARY KEY (emp_id)
+            )
+
+        .. seealso::
+
+            http://en.wikipedia.org/wiki/Primary_Key
+
+    foreign key constraint
+        A referential constraint between two tables.  A foreign key is a field or set of fields in a
+        relational table that matches a :term:`candidate key` of another table.
+        The foreign key can be used to cross-reference tables.
+        (via Wikipedia)
+
+        A foreign key constraint can be added to a table in standard
+        SQL using :term:`DDL` like the following:
+
+        .. sourcecode:: sql
+
+            ALTER TABLE employee ADD CONSTRAINT dep_id_fk
+            FOREIGN KEY (employee) REFERENCES department (dep_id)
+
+        .. seealso::
+
+            http://en.wikipedia.org/wiki/Foreign_key_constraint
+
+    check constraint
+
+        A check constraint is a
+        condition that defines valid data when adding or updating an
+        entry in a table of a relational database. A check constraint
+        is applied to each row in the table.
+
+        (via Wikipedia)
+
+        A check constraint can be added to a table in standard
+        SQL using :term:`DDL` like the following:
+
+        .. sourcecode:: sql
+
+            ALTER TABLE distributors ADD CONSTRAINT zipchk CHECK (char_length(zipcode) = 5);
+
+        .. seealso::
+
+            http://en.wikipedia.org/wiki/Check_constraint
+
+    unique constraint
+    unique key index
+        A unique key index can uniquely identify each row of data
+        values in a database table. A unique key index comprises a
+        single column or a set of columns in a single database table.
+        No two distinct rows or data records in a database table can
+        have the same data value (or combination of data values) in
+        those unique key index columns if NULL values are not used.
+        Depending on its design, a database table may have many unique
+        key indexes but at most one primary key index.
+
+        (via Wikipedia)
+
+        .. seealso::
+
+            http://en.wikipedia.org/wiki/Unique_key#Defining_unique_keys
