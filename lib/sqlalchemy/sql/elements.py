@@ -1225,7 +1225,7 @@ class TextClause(Executable, ClauseElement):
         for key, type_ in types.items():
             col_by_name[key] = ColumnClause(key, type_)
 
-        return selectable.TextAsFrom(self, col_by_name.values())
+        return selectable.TextAsFrom(self, list(col_by_name.values()))
 
     @property
     def type(self):
