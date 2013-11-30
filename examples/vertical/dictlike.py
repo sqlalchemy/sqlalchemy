@@ -31,21 +31,13 @@ can be used with many common vertical schemas as-is or with minor adaptations.
 
 """
 from __future__ import unicode_literals
-from sqlalchemy.util.compat import with_metaclass
-from collections import MutableMapping
-from abc import ABCMeta
-from sqlalchemy.ext.declarative import DeclarativeMeta
 
-
-class ProxiedDictMixin(MutableMapping):
+class ProxiedDictMixin(object):
     """Adds obj[key] access to a mapped class.
 
     This class basically proxies dictionary access to an attribute
     called ``_proxied``.  The class which inherits this class
     should have an attribute called ``_proxied`` which points to a dictionary.
-
-    The use of this class is optional, as it requires some
-    elaborate metaclass arithmetic in order to use it with declarative.
 
     """
 
@@ -67,16 +59,6 @@ class ProxiedDictMixin(MutableMapping):
     def __delitem__(self, key):
         del self._proxied[key]
 
-    @classmethod
-    def _base_class(cls, base):
-        """Perform the requisite metaclass trickery in order
-        to get DeclarativeMeta and ABCMeta to play nicely together,
-        while also remaining Python 2/3 agnostic.
-
-        """
-        return with_metaclass(
-                        type(str("MutableBase"), (ABCMeta, DeclarativeMeta), {}),
-                        base, cls)
 
 if __name__ == '__main__':
     from sqlalchemy import (Column, Integer, Unicode,
@@ -97,7 +79,7 @@ if __name__ == '__main__':
         key = Column(Unicode(64), primary_key=True)
         value = Column(UnicodeText)
 
-    class Animal(ProxiedDictMixin._base_class(Base)):
+    class Animal(ProxiedDictMixin, Base):
         """an Animal"""
 
         __tablename__ = 'animal'
