@@ -90,7 +90,7 @@ Next, we can issue CREATE TABLE statements derived from our table metadata, by c
     ()
     COMMIT
 
-.. note:: 
+.. note::
 
     Users familiar with the syntax of CREATE TABLE may notice that the
     VARCHAR columns were generated without a length; on SQLite and Postgresql,
@@ -195,7 +195,7 @@ A large number of applications don't require this degree of
 separation, and for those SQLAlchemy offers an alternate "shorthand"
 configurational style called :mod:`~.sqlalchemy.ext.declarative`.
 For many applications, this is the only style of configuration needed.
-Our above example using this style is as follows:: 
+Our above example using this style is as follows::
 
     >>> from sqlalchemy.ext.declarative import declarative_base
 
@@ -220,11 +220,11 @@ Above, the :func:`~sqlalchemy.ext.declarative.declarative_base` function defines
 we name ``Base``, from which all of our ORM-enabled classes will
 derive.  Note that we define :class:`~sqlalchemy.schema.Column`
 objects with no "name" field, since it's inferred from the given
-attribute name. 
+attribute name.
 
 The underlying :class:`~sqlalchemy.schema.Table` object created by our
 :func:`~sqlalchemy.ext.declarative.declarative_base` version of ``User`` is accessible via the
-``__table__`` attribute:: 
+``__table__`` attribute::
 
     >>> users_table = User.__table__
 
@@ -345,7 +345,7 @@ We can add more ``User`` objects at once using
     ...     User('mary', 'Mary Contrary', 'xxg527'),
     ...     User('fred', 'Fred Flinstone', 'blah')])
 
-Also, Ed has already decided his password isn't too secure, so lets change it:
+Also, we've decided the password for Ed isn't too secure, so lets change it:
 
 .. sourcecode:: python+sql
 
@@ -986,9 +986,10 @@ in memory, without using any SQL:
     >>> jack.addresses[1].user
     <User('jack','Jack Bean', 'gjffdd')>
 
-Let's add and commit ``Jack Bean`` to the database. ``jack`` as well as the
-two ``Address`` members in his ``addresses`` collection are both added to the
-session at once, using a process known as **cascading**:
+Let's add and commit ``Jack Bean`` to the database. ``jack`` as well
+as the two ``Address`` members in the corresponding ``addresses``
+collection are both added to the session at once, using a process
+known as **cascading**:
 
 .. sourcecode:: python+sql
 
@@ -1009,7 +1010,7 @@ Querying for Jack, we get just Jack back.  No SQL is yet issued for Jack's addre
     {sql}>>> jack = session.query(User).\
     ... filter_by(name='jack').one() #doctest: +NORMALIZE_WHITESPACE
     BEGIN (implicit)
-    SELECT users.id AS users_id, users.name AS users_name, 
+    SELECT users.id AS users_id, users.name AS users_name,
     users.fullname AS users_fullname, users.password AS users_password
     FROM users
     WHERE users.name = ?
@@ -1023,7 +1024,7 @@ Let's look at the ``addresses`` collection.  Watch the SQL:
 .. sourcecode:: python+sql
 
     {sql}>>> jack.addresses #doctest: +NORMALIZE_WHITESPACE
-    SELECT addresses.id AS addresses_id, addresses.email_address AS 
+    SELECT addresses.id AS addresses_id, addresses.email_address AS
     addresses_email_address, addresses.user_id AS addresses_user_id
     FROM addresses
     WHERE ? = addresses.user_id ORDER BY addresses.id
@@ -1068,17 +1069,17 @@ See :ref:`loading_toplevel` for information on
 :func:`~sqlalchemy.orm.subqueryload`. We'll also see another way to "eagerly"
 load in the next section.
 
-.. note:: 
+.. note::
 
    The join created by :func:`.joinedload` is anonymously aliased such that
    it **does not affect the query results**.   An :meth:`.Query.order_by`
    or :meth:`.Query.filter` call **cannot** reference these aliased
-   tables - so-called "user space" joins are constructed using 
+   tables - so-called "user space" joins are constructed using
    :meth:`.Query.join`.   The rationale for this is that :func:`.joinedload` is only
    applied in order to affect how related objects or collections are loaded
    as an optimizing detail - it can be added or removed with no impact
-   on actual results.   See the section :ref:`zen_of_eager_loading` for 
-   a detailed description of how this is used, including how to use a single 
+   on actual results.   See the section :ref:`zen_of_eager_loading` for
+   a detailed description of how this is used, including how to use a single
    explicit JOIN for filtering/ordering and eager loading simultaneously.
 
 .. _ormtutorial_joins:
@@ -1129,7 +1130,7 @@ Or we can make a real JOIN construct; the most common way is to use
 Note that when :meth:`~sqlalchemy.orm.query.Query.join` is called with an explicit target as well as an ON clause, we use a tuple as the argument.  This is so that multiple joins can be chained together, as in::
 
     session.query(Foo).join(
-                            Foo.bars, 
+                            Foo.bars,
                             (Bat, bar.bats),
                             (Widget, Bat.widget_id==Widget.id)
                             )
@@ -1179,9 +1180,9 @@ additional queries and without the "automatic" join embedded by the
     ...                options(contains_eager(Address.user)): #doctest: +NORMALIZE_WHITESPACE
     ...         print address, address.user
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname,
-     users.password AS users_password, addresses.id AS addresses_id, 
-     addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
-    FROM addresses JOIN users ON users.id = addresses.user_id 
+     users.password AS users_password, addresses.id AS addresses_id,
+     addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id
+    FROM addresses JOIN users ON users.id = addresses.user_id
     WHERE users.name = ?
     ('jack',)
     {stop}<Address('jack@google.com')> <User('jack','Jack Bean', 'gjffdd')>
@@ -1453,7 +1454,7 @@ relationships to mappings at any point in time, in this case the existing
 relationship needs to be removed, so we need to tear down the mappings
 completely and start again.
 
-.. note:: 
+.. note::
 
     Tearing down mappers with :func:`~.orm.clear_mappers` is not a typical
     operation, and normal applications do not need to use this function. It is
@@ -1485,9 +1486,10 @@ their parent:
     >>> mapper(Address, addresses_table) # doctest: +ELLIPSIS
     <Mapper at 0x...; Address>
 
-Now when we load Jack (below using :meth:`~.Query.get`, which loads by primary key),
-removing an address from his ``addresses`` collection will result in that
-``Address`` being deleted:
+Now when we load the user ``jack`` (below using :meth:`~.Query.get`,
+which loads by primary key), removing an address from the
+corresponding ``addresses`` collection will result in that ``Address``
+being deleted:
 
 .. sourcecode:: python+sql
 
@@ -1520,7 +1522,8 @@ removing an address from his ``addresses`` collection will result in that
     ('jack@google.com', 'j25@yahoo.com')
     {stop}1
 
-Deleting Jack will delete both Jack and his remaining ``Address``:
+Deleting Jack will delete both Jack and the remaining ``Address`` associated
+with the user:
 
 .. sourcecode:: python+sql
 
@@ -1711,8 +1714,8 @@ keyword string 'firstpost'":
     ('firstpost',)
     {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User('wendy','Wendy Williams', 'foobar')>)]
 
-If we want to look up just Wendy's posts, we can tell the query to narrow down
-to her as a parent:
+If we want to look up posts owned by the user ``wendy``, we can tell
+the query to narrow down to that ``User`` object as a parent:
 
 .. sourcecode:: python+sql
 
