@@ -214,3 +214,42 @@ DEVELOPING AND TESTING NEW DIALECTS
 
 See the new file README.dialects.rst for detail on dialects.
 
+
+TESTING WITH MULTIPLE PYTHON VERSIONS USING TOX
+-----------------------------------------------
+
+If you want to test across multiple versions of Python, you may find `tox
+<http://tox.testrun.org/>`_ useful. To use it:
+
+1. Create a ``tox.ini`` file with the following:
+
+.. code-block:: ini
+
+    # Tox (http://tox.testrun.org/) is a tool for running tests
+    # in multiple virtualenvs. This configuration file will run the
+    # test suite on all supported python versions. To use it, "pip install tox"
+    # and then run "tox" from this directory.
+
+    [tox]
+    envlist = py26, py27, py33, py34, pypy
+
+    [testenv]
+    deps =
+        mock
+        nose
+    commands = {envpython} ./sqla_nose.py
+
+2. Run::
+
+    pip install tox
+
+3. Run::
+
+    tox
+
+This will run the test suite on all the Python versions listed in the
+``envlist`` in the ``tox.ini`` file. You can also manually specify the versions
+to test against::
+
+    tox -e py26,py27,py33
+
