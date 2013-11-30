@@ -689,13 +689,13 @@ described at :class:`~.AttributeEvents`.
 
 .. autofunction:: validates
 
-.. _synonyms:
+.. _mapper_hybrids:
 
 Using Descriptors and Hybrids
 -----------------------------
 
 A more comprehensive way to produce modified behavior for an attribute is to
-use descriptors. These are commonly used in Python using the ``property()``
+use :term:`descriptors`.  These are commonly used in Python using the ``property()``
 function. The standard SQLAlchemy technique for descriptors is to create a
 plain descriptor, and to have it read/write from a mapped attribute with a
 different name. Below we illustrate this using Python 2.6-style properties::
@@ -819,14 +819,88 @@ attribute, a SQL function is rendered which produces the same effect:
 
 Read more about Hybrids at :ref:`hybrids_toplevel`.
 
+.. _synonyms:
+
 Synonyms
 --------
 
-Synonyms are a mapper-level construct that applies expression behavior to a descriptor
-based attribute.
+Synonyms are a mapper-level construct that allow any attribute on a class
+to "mirror" another attribute that is mapped.
 
-.. versionchanged:: 0.7
-    The functionality of synonym is superceded as of 0.7 by hybrid attributes.
+In the most basic sense, the synonym is an easy way to make a certain
+attribute available by an additional name::
+
+    class MyClass(Base):
+        __tablename__ = 'my_table'
+
+        id = Column(Integer, primary_key=True)
+        job_status = Column(String(50))
+
+        status = synonym("job_status")
+
+The above class ``MyClass`` has two attributes, ``.job_status`` and
+``.status`` that will behave as one attribute, both at the expression
+level::
+
+    >>> print MyClass.job_status == 'some_status'
+    my_table.job_status = :job_status_1
+
+    >>> print MyClass.status == 'some_status'
+    my_table.job_status = :job_status_1
+
+and at the instance level::
+
+    >>> m1 = MyClass(status='x')
+    >>> m1.status, m1.job_status
+    ('x', 'x')
+
+    >>> m1.job_status = 'y'
+    >>> m1.status, m1.job_status
+    ('y', 'y')
+
+The :func:`.synonym` can be used for any kind of mapped attribute that
+subclasses :class:`.MapperProperty`, including mapped columns and relationships,
+as well as synonyms themselves.
+
+Beyond a simple mirror, :func:`.synonym` can also be made to reference
+a user-defined :term:`descriptor`.  We can supply our
+``status`` synonym with a ``@property``::
+
+    class MyClass(Base):
+        __tablename__ = 'my_table'
+
+        id = Column(Integer, primary_key=True)
+        status = Column(String(50))
+
+        @property
+        def job_status(self):
+            return "Status: " + self.status
+
+        job_status = synonym("status", descriptor=job_status)
+
+When using Declarative, the above pattern can be expressed more succinctly
+using the :func:`.synonym_for` decorator::
+
+    from sqlalchemy.ext.declarative import synonym_for
+
+    class MyClass(Base):
+        __tablename__ = 'my_table'
+
+        id = Column(Integer, primary_key=True)
+        status = Column(String(50))
+
+        @synonym_for("status")
+        @property
+        def job_status(self):
+            return "Status: " + self.status
+
+While the :func:`.synonym` is useful for simple mirroring, the use case
+of augmenting attribute behavior with descriptors is better handled in modern
+usage using the :ref:`hybrid attribute <mapper_hybrids>` feature, which
+is more oriented towards Python descriptors.   Techically, a :func:`.synonym`
+can do everything that a :class:`.hybrid_property` can do, as it also supports
+injection of custom SQL capabilities, but the hybrid is more straightforward
+to use in more complex situations.
 
 .. autofunction:: synonym
 
