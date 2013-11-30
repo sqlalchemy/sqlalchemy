@@ -88,13 +88,13 @@ session.commit()
 
 print(session.query(Employee).all())
 
-# 1. Find an employee and all his/her supervisors, no matter how deep the tree.
+# 1. Find an employee and all their supervisors, no matter how deep the tree.
 ealias = aliased(Employee)
 print(session.query(Employee).\
             filter(ealias.left.between(Employee.left, Employee.right)).\
             filter(ealias.emp == 'Eddie').all())
 
-#2. Find the employee and all his/her subordinates.
+#2. Find the employee and all their subordinates.
 # (This query has a nice symmetry with the first query.)
 print(session.query(Employee).\
     filter(Employee.left.between(ealias.left, ealias.right)).\

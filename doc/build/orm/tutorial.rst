@@ -424,7 +424,7 @@ We can add more ``User`` objects at once using
     ...     User('mary', 'Mary Contrary', 'xxg527'),
     ...     User('fred', 'Fred Flinstone', 'blah')])
 
-Also, Ed has already decided his password isn't too secure, so lets change it:
+Also, we've decided the password for Ed isn't too secure, so lets change it:
 
 .. sourcecode:: python+sql
 
@@ -1246,9 +1246,10 @@ using any SQL:
     >>> jack.addresses[1].user
     <User('jack','Jack Bean', 'gjffdd')>
 
-Let's add and commit ``Jack Bean`` to the database. ``jack`` as well as the
-two ``Address`` members in his ``addresses`` collection are both added to the
-session at once, using a process known as **cascading**:
+Let's add and commit ``Jack Bean`` to the database. ``jack`` as well
+as the two ``Address`` members in the corresponding ``addresses``
+collection are both added to the session at once, using a process
+known as **cascading**:
 
 .. sourcecode:: python+sql
 
@@ -1842,8 +1843,8 @@ including the cascade configuration (we'll leave the constructor out too)::
     ...     def __repr__(self):
     ...        return "<User('%s','%s', '%s')>" % (self.name, self.fullname, self.password)
 
-Then we recreate ``Address``, noting that in this case we've created the ``Address.user`` relationship
-via the ``User`` class already::
+Then we recreate ``Address``, noting that in this case we've created
+the ``Address.user`` relationship via the ``User`` class already::
 
     >>> class Address(Base):
     ...     __tablename__ = 'addresses'
@@ -1854,9 +1855,10 @@ via the ``User`` class already::
     ...     def __repr__(self):
     ...         return "<Address('%s')>" % self.email_address
 
-Now when we load Jack (below using :meth:`~.Query.get`, which loads by primary key),
-removing an address from his ``addresses`` collection will result in that
-``Address`` being deleted:
+Now when we load the user ``jack`` (below using :meth:`~.Query.get`,
+which loads by primary key), removing an address from the
+corresponding ``addresses`` collection will result in that ``Address``
+being deleted:
 
 .. sourcecode:: python+sql
 
@@ -1897,7 +1899,8 @@ removing an address from his ``addresses`` collection will result in that
     ('jack@google.com', 'j25@yahoo.com')
     {stop}1
 
-Deleting Jack will delete both Jack and his remaining ``Address``:
+Deleting Jack will delete both Jack and the remaining ``Address`` associated
+with the user:
 
 .. sourcecode:: python+sql
 
@@ -2116,8 +2119,8 @@ keyword string 'firstpost'":
     ('firstpost',)
     {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User('wendy','Wendy Williams', 'foobar')>)]
 
-If we want to look up just Wendy's posts, we can tell the query to narrow down
-to her as a parent:
+If we want to look up posts owned by the user ``wendy``, we can tell
+the query to narrow down to that ``User`` object as a parent:
 
 .. sourcecode:: python+sql
 
