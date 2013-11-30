@@ -23,7 +23,7 @@ def load_name_range(start, end, invalidate=False):
     The `Person.addresses` collections are also cached.  Its basically
     another level of tuning here, as that particular cache option
     can be transparently replaced with joinedload(Person.addresses).
-    The effect is that each Person and his/her Address collection
+    The effect is that each Person and their Address collection
     is cached either together or separately, affecting the kind of
     SQL that emits for unloaded Person objects as well as the distribution
     of data within the cache.

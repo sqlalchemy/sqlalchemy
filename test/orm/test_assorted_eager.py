@@ -120,8 +120,8 @@ class EagerTest(fixtures.MappedTest):
                                 self.tables.categories)
 
         # I want to display a list of tests owned by owner 1
-        # if someoption is false or he hasn't specified it yet (null)
-        # but not if he set it to true (example someoption is for hiding)
+        # if someoption is false or they haven't specified it yet (null)
+        # but not if they set it to true (example someoption is for hiding)
 
         # desired output for owner 1
         # test_id, cat_name

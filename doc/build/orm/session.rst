@@ -252,7 +252,7 @@ one at a time.   We refer to these two concepts as **transaction scope**
 and **session scope**.
 
 The implication here is that the SQLAlchemy ORM is encouraging the
-developer to establish these two scopes in his or her application,
+developer to establish these two scopes in their application,
 including not only when the scopes begin and end, but also the
 expanse of those scopes, for example should a single
 :class:`.Session` instance be local to the execution flow within a
