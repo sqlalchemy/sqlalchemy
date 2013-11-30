@@ -6,12 +6,6 @@
 Glossary
 ========
 
-.. note::
-
-	The Glossary is a brand new addition to the documentation.  While
-	sparse at the moment we hope to fill it up with plenty of new
-	terms soon!
-
 .. glossary::
     :sorted:
 
