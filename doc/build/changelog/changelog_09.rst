@@ -15,6 +15,14 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: bug, orm, collections, py3k
+        :pullreq: github:40
+
+        Added support for the Python 3 method ``list.clear()`` within
+        the ORM collection instrumentation system; pull request
+        courtesy Eduardo Schettino.
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 2878
 

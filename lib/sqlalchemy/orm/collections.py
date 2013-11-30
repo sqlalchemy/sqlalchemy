@@ -1161,13 +1161,14 @@ def _list_decorators():
         _tidy(pop)
         return pop
 
-    def clear(fn):
-        def clear(self, index=-1):
-            for item in self:
-                __del(self, item)
-            fn(self)
-        _tidy(clear)
-        return clear
+    if not util.py2k:
+        def clear(fn):
+            def clear(self, index=-1):
+                for item in self:
+                    __del(self, item)
+                fn(self)
+            _tidy(clear)
+            return clear
 
     # __imul__ : not wrapping this.  all members of the collection are already
     # present, so no need to fire appends... wrapping it with an explicit
