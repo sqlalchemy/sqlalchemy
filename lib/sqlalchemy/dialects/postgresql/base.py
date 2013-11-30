@@ -1545,12 +1545,6 @@ class PGDialect(default.DefaultDialect):
         return bool(cursor.first())
 
     def has_type(self, connection, type_name, schema=None):
-        bindparams = [
-            sql.bindparam('typname',
-                util.text_type(type_name), type_=sqltypes.Unicode),
-            sql.bindparam('nspname',
-                util.text_type(schema), type_=sqltypes.Unicode),
-            ]
         if schema is not None:
             query = """
             SELECT EXISTS (
@@ -1560,6 +1554,7 @@ class PGDialect(default.DefaultDialect):
                 AND n.nspname = :nspname
                 )
                 """
+            query = sql.text(query)
         else:
             query = """
             SELECT EXISTS (
@@ -1568,7 +1563,17 @@ class PGDialect(default.DefaultDialect):
                 AND pg_type_is_visible(t.oid)
                 )
                 """
-        cursor = connection.execute(sql.text(query, bindparams=bindparams))
+            query = sql.text(query)
+        query = query.bindparams(
+                sql.bindparam('typname',
+                    util.text_type(type_name), type_=sqltypes.Unicode),
+                )
+        if schema is not None:
+            query = query.bindparams(
+                    sql.bindparam('nspname',
+                        util.text_type(schema), type_=sqltypes.Unicode),
+                    )
+        cursor = connection.execute(query)
         return bool(cursor.scalar())
 
     def _get_server_version_info(self, connection):
@@ -1608,12 +1613,10 @@ class PGDialect(default.DefaultDialect):
         table_name = util.text_type(table_name)
         if schema is not None:
             schema = util.text_type(schema)
-        s = sql.text(query, bindparams=[
-            sql.bindparam('table_name', type_=sqltypes.Unicode),
-            sql.bindparam('schema', type_=sqltypes.Unicode)
-            ],
-            typemap={'oid': sqltypes.Integer}
-        )
+        s = sql.text(query).bindparams(table_name=sqltypes.Unicode)
+        s = s.columns(oid=sqltypes.Integer)
+        if schema:
+            s = s.bindparams(sql.bindparam('schema', type_=sqltypes.Unicode))
         c = connection.execute(s, table_name=table_name, schema=schema)
         table_oid = c.scalar()
         if table_oid is None:

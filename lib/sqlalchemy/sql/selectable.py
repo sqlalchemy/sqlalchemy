@@ -2968,6 +2968,10 @@ class TextAsFrom(SelectBase):
     def _bind(self):
         return self.element._bind
 
+    @_generative
+    def bindparams(self, *binds, **bind_as_values):
+        self.element = self.element.bindparams(*binds, **bind_as_values)
+
     def _populate_column_collection(self):
         for c in self.column_args:
             c._make_proxy(self)

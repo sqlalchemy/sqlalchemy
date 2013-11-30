@@ -346,3 +346,15 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.myid, (select id from user) AS anon_1 "
             "FROM mytable WHERE mytable.myid = (select id from user)"
         )
+
+    def test_build_bindparams(self):
+        t = text("select id from user :foo :bar :bat")
+        t = t.bindparams(bindparam("foo", type_=Integer))
+        t = t.columns(id=Integer)
+        t = t.bindparams(bar=String)
+        t = t.bindparams(bindparam('bat', value='bat'))
+
+        eq_(
+            set(t.element._bindparams),
+            set(["bat", "foo", "bar"])
+        )
