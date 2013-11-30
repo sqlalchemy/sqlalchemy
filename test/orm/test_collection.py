@@ -284,6 +284,16 @@ class CollectionsTest(fixtures.ORMTest):
             del control[:]
             assert_eq()
 
+        if hasattr(direct, 'clear'):
+            for i in range(1, 4):
+                e = creator()
+                direct.append(e)
+                control.append(e)
+
+            direct.clear()
+            control.clear()
+            assert_eq()
+
         if hasattr(direct, 'extend'):
             values = [creator(), creator(), creator()]
 
