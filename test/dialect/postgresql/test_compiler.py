@@ -107,7 +107,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'AS length_1', dialect=dialect)
 
 
-    def test_create_enum(self):
+    def test_create_drop_enum(self):
         # test escaping and unicode within CREATE TYPE for ENUM
         typ = postgresql.ENUM(
                     "val1", "val2", "val's 3", u('méil'), name="myname")
@@ -121,6 +121,30 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TYPE \"PleaseQuoteMe\" AS ENUM "
                 "('val1', 'val2', 'val''s 3')"
         )
+
+    def test_generic_enum(self):
+        e1 = Enum('x', 'y', 'z', name='somename')
+        e2 = Enum('x', 'y', 'z', name='somename', schema='someschema')
+        self.assert_compile(postgresql.CreateEnumType(e1),
+                            "CREATE TYPE somename AS ENUM ('x', 'y', 'z')"
+                            )
+        self.assert_compile(postgresql.CreateEnumType(e2),
+                            "CREATE TYPE someschema.somename AS ENUM "
+                            "('x', 'y', 'z')")
+        self.assert_compile(postgresql.DropEnumType(e1),
+                            'DROP TYPE somename')
+        self.assert_compile(postgresql.DropEnumType(e2),
+                            'DROP TYPE someschema.somename')
+        t1 = Table('sometable', MetaData(), Column('somecolumn', e1))
+        self.assert_compile(schema.CreateTable(t1),
+                            'CREATE TABLE sometable (somecolumn '
+                            'somename)')
+        t1 = Table('sometable', MetaData(), Column('somecolumn',
+                   Enum('x', 'y', 'z', native_enum=False)))
+        self.assert_compile(schema.CreateTable(t1),
+                            "CREATE TABLE sometable (somecolumn "
+                            "VARCHAR(1), CHECK (somecolumn IN ('x', "
+                            "'y', 'z')))")
 
     def test_create_partial_index(self):
         m = MetaData()

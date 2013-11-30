@@ -96,34 +96,10 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
             ([5], [5], [6], [decimal.Decimal("6.4")])
         )
 
-class EnumTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+class EnumTest(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = 'postgresql'
-    __dialect__ = postgresql.dialect()
 
-    def test_compile(self):
-        e1 = Enum('x', 'y', 'z', name='somename')
-        e2 = Enum('x', 'y', 'z', name='somename', schema='someschema')
-        self.assert_compile(postgresql.CreateEnumType(e1),
-                            "CREATE TYPE somename AS ENUM ('x','y','z')"
-                            )
-        self.assert_compile(postgresql.CreateEnumType(e2),
-                            "CREATE TYPE someschema.somename AS ENUM "
-                            "('x','y','z')")
-        self.assert_compile(postgresql.DropEnumType(e1),
-                            'DROP TYPE somename')
-        self.assert_compile(postgresql.DropEnumType(e2),
-                            'DROP TYPE someschema.somename')
-        t1 = Table('sometable', MetaData(), Column('somecolumn', e1))
-        self.assert_compile(schema.CreateTable(t1),
-                            'CREATE TABLE sometable (somecolumn '
-                            'somename)')
-        t1 = Table('sometable', MetaData(), Column('somecolumn',
-                   Enum('x', 'y', 'z', native_enum=False)))
-        self.assert_compile(schema.CreateTable(t1),
-                            "CREATE TABLE sometable (somecolumn "
-                            "VARCHAR(1), CHECK (somecolumn IN ('x', "
-                            "'y', 'z')))")
 
     @testing.fails_on('postgresql+zxjdbc',
                       'zxjdbc fails on ENUM: column "XXX" is of type '
