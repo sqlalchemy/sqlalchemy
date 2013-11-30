@@ -692,6 +692,24 @@ an ``__lt__()`` method has been added::
 
 :ticket:`2848`
 
+.. _migration_2878:
+
+Postgresql CREATE TYPE <x> AS ENUM now applies quoting to values
+----------------------------------------------------------------
+
+The :class:`.postgresql.ENUM` type will now apply escaping to single quote
+signs within the enumerated values::
+
+    >>> from sqlalchemy.dialects import postgresql
+    >>> type = postgresql.ENUM('one', 'two', "three's", name="myenum")
+    >>> from sqlalchemy.dialects.postgresql import base
+    >>> print base.CreateEnumType(type).compile(dialect=postgresql.dialect())
+    CREATE TYPE myenum AS ENUM ('one','two','three''s')
+
+Existing workarounds which already escape single quote signs will need to be
+modified, else they will now double-escape.
+
+:ticket:`2878`
 
 New Features
 ============

@@ -1090,7 +1090,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         return "CREATE TYPE %s AS ENUM (%s)" % (
             self.preparer.format_type(type_),
-            ",".join("'%s'" % e for e in type_.enums)
+            ", ".join(
+                self.sql_compiler.process(sql.literal(e), literal_binds=True)
+                        for e in type_.enums)
         )
 
     def visit_drop_enum_type(self, drop):

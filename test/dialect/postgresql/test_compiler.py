@@ -16,6 +16,7 @@ from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.orm import mapper, aliased, Session
 from sqlalchemy.sql import table, column, operators
+from sqlalchemy.util import u
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
 
@@ -105,6 +106,21 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             '(%(name)s) RETURNING length(mytable.name) '
                             'AS length_1', dialect=dialect)
 
+
+    def test_create_enum(self):
+        # test escaping and unicode within CREATE TYPE for ENUM
+        typ = postgresql.ENUM(
+                    "val1", "val2", "val's 3", u('méil'), name="myname")
+        self.assert_compile(postgresql.CreateEnumType(typ),
+            u("CREATE TYPE myname AS ENUM ('val1', 'val2', 'val''s 3', 'méil')")
+        )
+
+        typ = postgresql.ENUM(
+                    "val1", "val2", "val's 3", name="PleaseQuoteMe")
+        self.assert_compile(postgresql.CreateEnumType(typ),
+            "CREATE TYPE \"PleaseQuoteMe\" AS ENUM "
+                "('val1', 'val2', 'val''s 3')"
+        )
 
     def test_create_partial_index(self):
         m = MetaData()

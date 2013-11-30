@@ -15,6 +15,18 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 2878
+
+        Fixed bug where values within an ENUM weren't escaped for single
+        quote signs.   Note that this is backwards-incompatible for existing
+        workarounds that manually escape the single quotes.
+
+        .. seealso::
+
+            :ref:`migration_2878`
+
+    .. change::
         :tags: bug, orm, declarative
 
         Fixed bug where in Py2K a unicode literal would not be accepted
