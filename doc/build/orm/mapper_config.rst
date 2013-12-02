@@ -667,7 +667,7 @@ issued when the ORM is populating the object::
             assert '@' in address
             return address
 
-Validators also receive collection events, when items are added to a
+Validators also receive collection append events, when items are added to a
 collection::
 
     from sqlalchemy.orm import validates
@@ -681,6 +681,51 @@ collection::
         def validate_address(self, key, address):
             assert '@' in address.email
             return address
+
+
+The validation function by default does not get emitted for collection
+remove events, as the typical expectation is that a value being discarded
+doesn't require validation.  However, :func:`.validates` supports reception
+of these events by specifying ``include_removes=True`` to the decorator.  When
+this flag is set, the validation function must receive an additional boolean
+argument which if ``True`` indicates that the operation is a removal::
+
+    from sqlalchemy.orm import validates
+
+    class User(Base):
+        # ...
+
+        addresses = relationship("Address")
+
+        @validates('addresses', include_removes=True)
+        def validate_address(self, key, address, is_remove):
+            if is_remove:
+                raise ValueError(
+                        "not allowed to remove items from the collection")
+            else:
+                assert '@' in address.email
+                return address
+
+The case where mutually dependent validators are linked via a backref
+can also be tailored, using the ``include_backrefs=False`` option; this option,
+when set to ``False``, prevents a validation function from emitting if the
+event occurs as a result of a backref::
+
+    from sqlalchemy.orm import validates
+
+    class User(Base):
+        # ...
+
+        addresses = relationship("Address", backref='user')
+
+        @validates('addresses', include_backrefs=False)
+        def validate_address(self, key, address):
+            assert '@' in address.email
+            return address
+
+Above, if we were to assign to ``Address.user`` as in ``some_address.user = some_user``,
+the ``validate_address()`` function would *not* be emitted, even though an append
+occurs to ``some_user.addresses`` - the event is caused by a backref.
 
 Note that the :func:`~.validates` decorator is a convenience function built on
 top of attribute events.   An application that requires more control over

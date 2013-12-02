@@ -15,6 +15,19 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: feature, orm, backrefs
+        :tickets: 1535
+
+        Added new argument ``include_backrefs=True`` to the
+        :func:`.validates` function; when set to False, a validation event
+        will not be triggered if the event was initated as a backref to
+        an attribute operation from the other side.
+
+        .. seealso::
+
+            :ref:`feature_1535`
+
+    .. change::
         :tags: bug, orm, collections, py3k
         :pullreq: github:40
 

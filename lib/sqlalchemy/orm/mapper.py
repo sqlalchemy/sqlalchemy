@@ -1103,11 +1103,10 @@ class Mapper(_InspectionAttr):
                     self._reconstructor = method
                     event.listen(manager, 'load', _event_on_load, raw=True)
                 elif hasattr(method, '__sa_validators__'):
-                    include_removes = getattr(method,
-                                            "__sa_include_removes__", False)
+                    validation_opts = method.__sa_validation_opts__
                     for name in method.__sa_validators__:
                         self.validators = self.validators.union(
-                            {name: (method, include_removes)}
+                            {name: (method, validation_opts)}
                         )
 
         manager.info[_INSTRUMENTOR] = self
@@ -2582,13 +2581,28 @@ def validates(*names, **kw):
      argument "is_remove" which will be a boolean.
 
      .. versionadded:: 0.7.7
+    :param include_backrefs: defaults to ``True``; if ``False``, the
+     validation function will not emit if the originator is an attribute
+     event related via a backref.  This can be used for bi-directional
+     :func:`.validates` usage where only one validator should emit per
+     attribute operation.
+
+     .. versionadded:: 0.9.0b2
+
+    .. seealso::
+
+      :ref:`simple_validators` - usage examples for :func:`.validates`
 
     """
     include_removes = kw.pop('include_removes', False)
+    include_backrefs = kw.pop('include_backrefs', True)
 
     def wrap(fn):
         fn.__sa_validators__ = names
-        fn.__sa_include_removes__ = include_removes
+        fn.__sa_validation_opts__ = {
+                  "include_removes": include_removes,
+                  "include_backrefs": include_backrefs
+                }
         return fn
     return wrap
 

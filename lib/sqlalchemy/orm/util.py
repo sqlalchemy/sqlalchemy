@@ -70,24 +70,43 @@ class CascadeOptions(frozenset):
         )
 
 
-def _validator_events(desc, key, validator, include_removes):
+def _validator_events(desc, key, validator, include_removes, include_backrefs):
     """Runs a validation method on an attribute value to be set or appended."""
+
+    if not include_backrefs:
+        def detect_is_backref(state, initiator):
+            impl = state.manager[key].impl
+            return initiator.impl is not impl
 
     if include_removes:
         def append(state, value, initiator):
-            return validator(state.obj(), key, value, False)
+            if include_backrefs or not detect_is_backref(state, initiator):
+                return validator(state.obj(), key, value, False)
+            else:
+                return value
 
         def set_(state, value, oldvalue, initiator):
-            return validator(state.obj(), key, value, False)
+            if include_backrefs or not detect_is_backref(state, initiator):
+                return validator(state.obj(), key, value, False)
+            else:
+                return value
 
         def remove(state, value, initiator):
-            validator(state.obj(), key, value, True)
+            if include_backrefs or not detect_is_backref(state, initiator):
+                validator(state.obj(), key, value, True)
+
     else:
         def append(state, value, initiator):
-            return validator(state.obj(), key, value)
+            if include_backrefs or not detect_is_backref(state, initiator):
+                return validator(state.obj(), key, value)
+            else:
+                return value
 
         def set_(state, value, oldvalue, initiator):
-            return validator(state.obj(), key, value)
+            if include_backrefs or not detect_is_backref(state, initiator):
+                return validator(state.obj(), key, value)
+            else:
+                return value
 
     event.listen(desc, 'append', append, raw=True, retval=True)
     event.listen(desc, 'set', set_, raw=True, retval=True)

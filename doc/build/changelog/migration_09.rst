@@ -1086,6 +1086,49 @@ the ORM's versioning feature.
 
 :ticket:`2793`
 
+.. _feature_1535:
+
+``include_backrefs=False`` option for ``@validates``
+---------------------------------------------------
+
+The :func:`.validates` function now accepts an option ``enable_backrefs=False``,
+which will bypass firing the validator for the case where the event initiated
+from a backref::
+
+    from sqlalchemy import Column, Integer, ForeignKey
+    from sqlalchemy.orm import relationship, validates
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+    class A(Base):
+        __tablename__ = 'a'
+
+        id = Column(Integer, primary_key=True)
+        bs = relationship("B", backref="a")
+
+        @validates("bs")
+        def validate_bs(self, key, item):
+            print("A.bs validator")
+            return item
+
+    class B(Base):
+        __tablename__ = 'b'
+
+        id = Column(Integer, primary_key=True)
+        a_id = Column(Integer, ForeignKey('a.id'))
+
+        @validates("a", include_backrefs=False)
+        def validate_a(self, key, item):
+            print("B.a validator")
+            return item
+
+    a1 = A()
+    a1.bs.append(B())  # prints only "A.bs validator"
+
+
+:ticket:`1535`
+
 Behavioral Improvements
 =======================
 

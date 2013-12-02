@@ -44,10 +44,10 @@ def _register_attribute(strategy, mapper, useobject,
         listen_hooks.append(single_parent_validator)
 
     if prop.key in prop.parent.validators:
-        fn, include_removes = prop.parent.validators[prop.key]
+        fn, opts = prop.parent.validators[prop.key]
         listen_hooks.append(
             lambda desc, prop: orm_util._validator_events(desc,
-                                prop.key, fn, include_removes)
+                                prop.key, fn, **opts)
             )
 
     if useobject:
