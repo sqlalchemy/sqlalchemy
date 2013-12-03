@@ -12,6 +12,14 @@
     :version: 0.8.4
 
     .. change::
+        :tags: bug, oracle
+        :tickets: 2864
+        :versions: 0.9.0b2
+
+        Added ORA-02396 "maximum idle time" error code to list of
+        "is disconnect" codes with cx_oracle.
+
+    .. change::
         :tags: bug, engine
         :tickets: 2871
         :versions: 0.9.0b2
