@@ -15,6 +15,18 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: bug, orm, declarative
+        :tickets: 2865
+
+        The :class:`.DeferredReflection` class has been enhanced to provide
+        automatic reflection support for the "secondary" table referred
+        to by a :func:`.relationship`.   "secondary", when specified
+        either as a string table name, or as a :class:`.Table` object with
+        only a name and :class:`.MetaData` object will also be included
+        in the reflection process when :meth:`.DeferredReflection.prepare`
+        is called.
+
+    .. change::
         :tags: feature, orm, backrefs
         :tickets: 1535
 
