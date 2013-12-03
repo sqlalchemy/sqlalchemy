@@ -401,7 +401,7 @@ class Inspector(object):
          of the database connection.  For special quoting,
          use :class:`.quoted_name`.
 
-        .. versionadded:: 0.9.0
+        .. versionadded:: 0.8.4
 
         """
 

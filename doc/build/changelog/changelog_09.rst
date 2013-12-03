@@ -657,14 +657,6 @@
         equality expression with a bound parameter.
 
     .. change::
-        :tags: feature, sql
-        :tickets: 1443
-
-        Added support for "unique constraint" reflection, via the
-        :meth:`.Inspector.get_unique_constraints` method.
-        Thanks for Roman Podolyaka for the patch.
-
-    .. change::
         :tags: feature, pool
         :tickets: 2752
 
