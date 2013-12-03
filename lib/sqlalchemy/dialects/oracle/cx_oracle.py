@@ -805,8 +805,9 @@ class OracleDialect_cx_oracle(OracleDialect):
             # ORA-03113: end-of-file on communication channel
             # ORA-03135: connection lost contact
             # ORA-01033: ORACLE initialization or shutdown in progress
+            # ORA-02396: exceeded maximum idle time, please connect again
             # TODO: Others ?
-            return error.code in (28, 3114, 3113, 3135, 1033)
+            return error.code in (28, 3114, 3113, 3135, 1033, 2396)
         else:
             return False
 
