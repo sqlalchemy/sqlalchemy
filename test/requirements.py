@@ -249,6 +249,14 @@ class DefaultRequirements(SuiteRequirements):
                 ])
 
     @property
+    def unique_constraint_reflection(self):
+        return fails_on_everything_except(
+                    "postgresql",
+                    "mysql",
+                    "sqlite"
+                )
+
+    @property
     def update_nowait(self):
         """Target database must support SELECT...FOR UPDATE NOWAIT"""
         return skip_if(["firebird", "mssql", "mysql", "sqlite", "sybase"],
