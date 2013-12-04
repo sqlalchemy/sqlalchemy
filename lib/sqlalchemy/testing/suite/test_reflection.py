@@ -391,7 +391,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
         )
         for uc in uniques:
             table.append_constraint(
-                sa.UniqueConstraint(*uc['column_names'], name=uc['name'])
+                sa.UniqueConstraint(name=uc['name'], *uc['column_names'])
             )
         orig_meta.create_all()
 
