@@ -1089,7 +1089,7 @@ the ORM's versioning feature.
 .. _feature_1535:
 
 ``include_backrefs=False`` option for ``@validates``
----------------------------------------------------
+----------------------------------------------------
 
 The :func:`.validates` function now accepts an option ``enable_backrefs=False``,
 which will bypass firing the validator for the case where the event initiated
