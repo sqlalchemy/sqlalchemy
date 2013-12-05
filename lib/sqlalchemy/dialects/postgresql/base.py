@@ -368,6 +368,10 @@ class UUID(sqltypes.TypeEngine):
 
 PGUuid = UUID
 
+class TSVECTOR(sqltypes.TypeEngine):
+    __visit_name__ = 'TSVECTOR'
+
+
 
 class _Slice(expression.ColumnElement):
     __visit_name__ = 'slice'
@@ -1163,6 +1167,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
 
 class PGTypeCompiler(compiler.GenericTypeCompiler):
+    def visit_TSVECTOR(self, type):
+        return "TSVECTOR"
+    
     def visit_INET(self, type_):
         return "INET"
 
