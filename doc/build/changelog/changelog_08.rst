@@ -12,6 +12,17 @@
     :version: 0.8.4
 
      .. change::
+        :tags: bug, mssql
+        :versions: 0.9.0b2
+        :pullreq: bitbucket:7
+
+        Fixed bug introduced in 0.8.0 where the ``DROP INDEX``
+        statement for an index in MSSQL would render incorrectly if the
+        index were in an alternate schema; the schemaname/tablename
+        would be reversed.  The format has been also been revised to
+        match current MSSQL documentation.  Courtesy Derek Harland.
+
+     .. change::
         :tags: feature, sql
         :tickets: 1443
         :versions: 0.9.0b1
