@@ -17,7 +17,7 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
         DOUBLE_PRECISION, ENUM, FLOAT, HSTORE, INET, INTEGER, \
         INTERVAL, MACADDR, NUMERIC, REAL, SMALLINT, TEXT, TIME, \
         TIMESTAMP, UUID, VARCHAR, INT4RANGE, INT8RANGE, NUMRANGE, \
-        DATERANGE, TSRANGE, TSTZRANGE
+        DATERANGE, TSRANGE, TSTZRANGE, TSVECTOR
 
 Types which are specific to PostgreSQL, or have PostgreSQL-specific
 construction arguments, are as follows:
@@ -77,6 +77,8 @@ construction arguments, are as follows:
 .. autoclass:: REAL
     :members: __init__
 
+.. autoclass:: TSVECTOR
+    :members: __init__
 
 .. autoclass:: UUID
     :members: __init__
