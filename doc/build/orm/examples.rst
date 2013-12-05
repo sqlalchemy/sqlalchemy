@@ -57,6 +57,13 @@ Nested Sets
 
 .. automodule:: examples.nested_sets
 
+.. _examples_relationships:
+
+Relationship Join Conditions
+----------------------------
+
+.. automodule:: examples.join_conditions
+
 .. _examples_xmlpersistence:
 
 XML Persistence
