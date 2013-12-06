@@ -158,7 +158,6 @@ class Queue:
         return an item if one is immediately available, else raise the
         ``Empty`` exception (`timeout` is ignored in that case).
         """
-
         self.not_empty.acquire()
         try:
             if not block:
@@ -166,7 +165,11 @@ class Queue:
                     raise Empty
             elif timeout is None:
                 while self._empty():
-                    self.not_empty.wait()
+                    # wait for only half a second, then
+                    # loop around, so that we can see a change in
+                    # _sqla_abort_context in case we missed the notify_all()
+                    # called by abort()
+                    self.not_empty.wait(.5)
                     if self._sqla_abort_context:
                         raise SAAbort(self._sqla_abort_context)
             else:
@@ -195,6 +198,9 @@ class Queue:
         if not self.not_full.acquire(False):
             return
         try:
+            # note that this is now optional
+            # as the waiters in get() both loop around
+            # to check the _sqla_abort_context flag periodically
             notify_all(self.not_empty)
         finally:
             self.not_full.release()

@@ -881,9 +881,14 @@ class QueuePoolTest(PoolTestBase):
         handled when the pool is replaced.
 
         """
+        mutex = threading.Lock()
         dbapi = MockDBAPI()
         def creator():
-            return dbapi.connect()
+            mutex.acquire()
+            try:
+                return dbapi.connect()
+            finally:
+                mutex.release()
 
         success = []
         for timeout in (None, 30):
@@ -905,11 +910,15 @@ class QueuePoolTest(PoolTestBase):
                 for i in range(2):
                     t = threading.Thread(target=waiter,
                                     args=(p, timeout, max_overflow))
+                    t.daemon = True
                     t.start()
                     threads.add(t)
 
-                c1.invalidate()
-                c2.invalidate()
+                # this sleep makes sure that the
+                # two waiter threads hit upon wait()
+                # inside the queue, before we invalidate the other
+                # two conns
+                time.sleep(.2)
                 p2 = p._replace()
 
                 for t in threads:
@@ -931,9 +940,7 @@ class QueuePoolTest(PoolTestBase):
         p1 = pool.QueuePool(creator=creator1,
                            pool_size=1, timeout=None,
                            max_overflow=0)
-        p2 = pool.QueuePool(creator=creator2,
-                           pool_size=1, timeout=None,
-                           max_overflow=-1)
+        p2 = pool.NullPool(creator=creator2)
         def waiter(p):
             conn = p.connect()
             time.sleep(.5)

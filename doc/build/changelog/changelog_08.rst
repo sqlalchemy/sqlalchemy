@@ -12,6 +12,21 @@
     :version: 0.8.4
 
      .. change::
+        :tags: bug, engine, pool
+        :versions: 0.9.0b2
+        :tickets: 2522
+
+        Made a slight adjustment to the logic which waits for a pooled
+        connection to be available, such that for a connection pool
+        with no timeout specified, it will every half a second break out of
+        the wait to check for the so-called "abort" flag, which allows the
+        waiter to break out in case the whole connection pool was dumped;
+        normally the waiter should break out due to a notify_all() but it's
+        possible this notify_all() is missed in very slim cases.
+        This is an extension of logic first introduced in 0.8.0, and the
+        issue has only been observed occasionally in stress tests.
+
+     .. change::
         :tags: bug, mssql
         :versions: 0.9.0b2
         :pullreq: bitbucket:7
