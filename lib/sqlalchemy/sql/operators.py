@@ -831,7 +831,11 @@ _PRECEDENCE = {
     and_: 3,
     or_: 2,
     comma_op: -1,
-    collate: 7,
+
+    desc_op: 3,
+    asc_op: 3,
+    collate: 4,
+
     as_: -1,
     exists: 0,
     _asbool: -10,

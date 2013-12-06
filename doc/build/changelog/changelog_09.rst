@@ -15,6 +15,24 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2879
+
+        The precedence rules for the :meth:`.ColumnOperators.collate` operator
+        have been modified, such that the COLLATE operator is now of lower
+        precedence than the comparison operators.  This has the effect that
+        a COLLATE applied to a comparison will not render parenthesis
+        around the comparison, which is not parsed by backends such as
+        MSSQL.  The change is backwards incompatible for those setups that
+        were working around the issue by applying :meth:`.Operators.collate`
+        to an individual element of the comparison expression,
+        rather than the comparison expression as a whole.
+
+        .. seelalso::
+
+            :ref:`migration_2879`
+
+    .. change::
         :tags: bug, orm, declarative
         :tickets: 2865
 
