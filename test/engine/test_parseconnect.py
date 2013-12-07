@@ -235,16 +235,37 @@ pool_timeout=10
 
     @testing.requires.sqlite
     def test_wraps_connect_in_dbapi(self):
-        # sqlite uses SingletonThreadPool which doesnt have max_overflow
+        e = create_engine('sqlite://')
+        sqlite3 = e.dialect.dbapi
 
-        assert_raises(TypeError, create_engine, 'sqlite://',
-                      max_overflow=5, module=mock_sqlite_dbapi)
-        e = create_engine('sqlite://', connect_args={'use_unicode'
-                          : True}, convert_unicode=True)
+        dbapi = MockDBAPI()
+        dbapi.Error = sqlite3.Error,
+        dbapi.ProgrammingError = sqlite3.ProgrammingError
+        dbapi.connect = Mock(side_effect=sqlite3.ProgrammingError("random error"))
         try:
-            e.connect()
+            create_engine('sqlite://', module=dbapi).connect()
+            assert False
         except tsa.exc.DBAPIError, de:
             assert not de.connection_invalidated
+
+
+    @testing.requires.sqlite
+    def test_dont_touch_non_dbapi_exception_on_connect(self):
+        e = create_engine('sqlite://')
+        sqlite3 = e.dialect.dbapi
+
+        dbapi = MockDBAPI()
+        dbapi.Error = sqlite3.Error,
+        dbapi.ProgrammingError = sqlite3.ProgrammingError
+        dbapi.connect = Mock(side_effect=TypeError("I'm not a DBAPI error"))
+        e = create_engine('sqlite://', module=dbapi)
+        e.dialect.is_disconnect = is_disconnect = Mock()
+        assert_raises_message(
+            TypeError,
+            "I'm not a DBAPI error",
+            e.connect
+        )
+        eq_(is_disconnect.call_count, 0)
 
     def test_ensure_dialect_does_is_disconnect_no_conn(self):
         """test that is_disconnect() doesn't choke if no connection, cursor given."""

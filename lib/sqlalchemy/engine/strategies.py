@@ -78,7 +78,7 @@ class DefaultEngineStrategy(EngineStrategy):
             def connect():
                 try:
                     return dialect.connect(*cargs, **cparams)
-                except Exception, e:
+                except dialect.dbapi.Error, e:
                     invalidated = dialect.is_disconnect(e, None, None)
                     # Py3K
                     #raise exc.DBAPIError.instance(None, None,
