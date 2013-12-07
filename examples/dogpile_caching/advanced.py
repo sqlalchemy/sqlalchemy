@@ -1,15 +1,13 @@
 """advanced.py
 
 Illustrate usage of Query combined with the FromCache option,
-including front-end loading, cache invalidation, namespace techniques
-and collection caching.
+including front-end loading, cache invalidation and collection caching.
 
 """
 
-from environment import Session
-from model import Person, Address, cache_address_bits
-from caching_query import FromCache, RelationshipCache
-from sqlalchemy.orm import joinedload
+from .environment import Session
+from .model import Person, cache_address_bits
+from .caching_query import FromCache, RelationshipCache
 
 def load_name_range(start, end, invalidate=False):
     """Load Person objects on a range of names.

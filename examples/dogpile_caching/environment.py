@@ -10,7 +10,12 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from dogpile.cache.region import make_region
 import os
-import md5
+from hashlib import md5
+import sys
+py2k = sys.version_info < (3, 0)
+
+if py2k:
+    input = raw_input
 
 # dogpile cache regions.  A home base for cache configurations.
 regions = {}
@@ -47,7 +52,7 @@ def md5_key_mangler(key):
     distill them into an md5 hash.
 
     """
-    return md5.md5(key).hexdigest()
+    return md5(key.encode('ascii')).hexdigest()
 
 # configure the "default" cache region.
 regions['default'] = make_region(
