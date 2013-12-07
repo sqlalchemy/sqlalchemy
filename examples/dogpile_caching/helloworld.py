@@ -8,27 +8,27 @@ from .environment import Session
 from .model import Person
 from .caching_query import FromCache
 
-# load Person objects.  cache the result under the namespace "all_people".
+# load Person objects.  cache the result in the "default" cache region
 print("loading people....")
 people = Session.query(Person).options(FromCache("default")).all()
 
 # remove the Session.  next query starts from scratch.
 Session.remove()
 
-# load again, using the same FromCache option. now they're cached
-# under "all_people", no SQL is emitted.
+# load again, using the same FromCache option. now they're cached,
+# so no SQL is emitted.
 print("loading people....again!")
 people = Session.query(Person).options(FromCache("default")).all()
 
-# want to load on some different kind of query ?  change the namespace
-# you send to FromCache
+# Specifying a different query produces a different cache key, so
+# these results are independently cached.
 print("loading people two through twelve")
 people_two_through_twelve = Session.query(Person).\
                             options(FromCache("default")).\
                             filter(Person.name.between("person 02", "person 12")).\
                             all()
 
-# the data is cached under the "namespace" you send to FromCache, *plus*
+# the data is cached under string structure of the SQL statement, *plus*
 # the bind parameters of the query.    So this query, having
 # different literal parameters under "Person.name.between()" than the
 # previous one, issues new SQL...
