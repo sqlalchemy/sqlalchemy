@@ -154,10 +154,10 @@ class Mapper(_InspectionAttr):
                     'alt':my_table.c.some_alt
                 })
 
-        See also:
+        .. seealso::
 
-        :ref:`classical_mapping` - discussion of direct usage of
-        :func:`.mapper`
+            :ref:`classical_mapping` - discussion of direct usage of
+            :func:`.mapper`
 
         :param class\_: The class to be mapped.  When using Declarative,
           this argument is automatically passed as the declared class
@@ -246,9 +246,9 @@ class Mapper(_InspectionAttr):
           is passed automatically as a result of the natural class
           hierarchy of the declared classes.
 
-          See also:
+          .. seealso::
 
-          :ref:`inheritance_toplevel`
+            :ref:`inheritance_toplevel`
 
         :param inherit_condition: For joined table inheritance, a SQL
            expression which will
@@ -315,10 +315,10 @@ class Mapper(_InspectionAttr):
            emit an UPDATE statement for the dependent columns during a
            primary key change.
 
-           See also:
+           ..seealso::
 
-           :ref:`passive_updates` - description of a similar feature as
-           used with :func:`.relationship`
+               :ref:`passive_updates` - description of a similar feature as
+               used with :func:`.relationship`
 
         :param polymorphic_on: Specifies the column, attribute, or
           SQL expression used to determine the target class for an
@@ -642,7 +642,9 @@ class Mapper(_InspectionAttr):
     this :class:`.Mapper` represents.  If this mapper is a
     single-table inheriting mapper, local_table will be ``None``.
 
-    See also :attr:`~.Mapper.mapped_table`.
+    .. seealso::
+
+        :attr:`~.Mapper.mapped_table`.
 
     """
 
@@ -660,7 +662,9 @@ class Mapper(_InspectionAttr):
     subclass.  For single-table inheritance mappers, mapped_table
     references the base table.
 
-    See also :attr:`~.Mapper.local_table`.
+    .. seealso::
+
+        :attr:`~.Mapper.local_table`.
 
     """
 
@@ -679,7 +683,9 @@ class Mapper(_InspectionAttr):
     This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
 
-    See also :func:`.configure_mappers`.
+    .. seealso::
+
+        :func:`.configure_mappers`.
 
     """
 
@@ -1976,10 +1982,10 @@ class Mapper(_InspectionAttr):
         """Return a namespace of all :class:`.SynonymProperty`
         properties maintained by this :class:`.Mapper`.
 
-        See also:
+        .. seealso::
 
-        :attr:`.Mapper.attrs` - namespace of all :class:`.MapperProperty`
-        objects.
+            :attr:`.Mapper.attrs` - namespace of all :class:`.MapperProperty`
+            objects.
 
         """
         return self._filter_properties(properties.SynonymProperty)
@@ -1989,10 +1995,10 @@ class Mapper(_InspectionAttr):
         """Return a namespace of all :class:`.ColumnProperty`
         properties maintained by this :class:`.Mapper`.
 
-        See also:
+        .. seealso::
 
-        :attr:`.Mapper.attrs` - namespace of all :class:`.MapperProperty`
-        objects.
+            :attr:`.Mapper.attrs` - namespace of all :class:`.MapperProperty`
+            objects.
 
         """
         return self._filter_properties(properties.ColumnProperty)
@@ -2002,10 +2008,10 @@ class Mapper(_InspectionAttr):
         """Return a namespace of all :class:`.RelationshipProperty`
         properties maintained by this :class:`.Mapper`.
 
-        See also:
+        .. seealso::
 
-        :attr:`.Mapper.attrs` - namespace of all :class:`.MapperProperty`
-        objects.
+            :attr:`.Mapper.attrs` - namespace of all :class:`.MapperProperty`
+            objects.
 
         """
         return self._filter_properties(properties.RelationshipProperty)
@@ -2015,10 +2021,10 @@ class Mapper(_InspectionAttr):
         """Return a namespace of all :class:`.CompositeProperty`
         properties maintained by this :class:`.Mapper`.
 
-        See also:
+        .. seealso::
 
-        :attr:`.Mapper.attrs` - namespace of all :class:`.MapperProperty`
-        objects.
+            :attr:`.Mapper.attrs` - namespace of all :class:`.MapperProperty`
+            objects.
 
         """
         return self._filter_properties(properties.CompositeProperty)
@@ -2200,10 +2206,11 @@ class Mapper(_InspectionAttr):
         """Return an identity-map key for use in storing/retrieving an
         item from the identity map.
 
-        row
-          A ``sqlalchemy.engine.RowProxy`` instance or a
-          dictionary corresponding result-set ``ColumnElement``
-          instances to their values within a row.
+        :param row: A :class:`.RowProxy` instance.  The columns which are mapped
+         by this :class:`.Mapper` should be locatable in the row, preferably
+         via the :class:`.Column` object directly (as is the case when a
+         :func:`.select` construct is executed), or via string names of the form
+         ``<tablename>_<colname>``.
 
         """
         pk_cols = self.primary_key
@@ -2217,8 +2224,7 @@ class Mapper(_InspectionAttr):
         """Return an identity-map key for use in storing/retrieving an
         item from an identity map.
 
-        primary_key
-          A list of values indicating the identifier.
+        :param primary_key: A list of values indicating the identifier.
 
         """
         return self._identity_class, tuple(primary_key)
@@ -2226,6 +2232,11 @@ class Mapper(_InspectionAttr):
     def identity_key_from_instance(self, instance):
         """Return the identity key for the given instance, based on
         its primary key attributes.
+
+        If the instance's state is expired, calling this method
+        will result in a database check to see if the object has been deleted.
+        If the row no longer exists,
+        :class:`~sqlalchemy.orm.exc.ObjectDeletedError` is raised.
 
         This value is typically also found on the instance state under the
         attribute name `key`.
@@ -2246,6 +2257,11 @@ class Mapper(_InspectionAttr):
     def primary_key_from_instance(self, instance):
         """Return the list of primary key values for the given
         instance.
+
+        If the instance's state is expired, calling this method
+        will result in a database check to see if the object has been deleted.
+        If the row no longer exists,
+        :class:`~sqlalchemy.orm.exc.ObjectDeletedError` is raised.
 
         """
         state = attributes.instance_state(instance)
