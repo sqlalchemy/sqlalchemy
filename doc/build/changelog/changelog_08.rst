@@ -14,6 +14,17 @@
      .. change::
         :tags: bug, engine, pool
         :versions: 0.9.0b2
+        :tickets: 2880
+
+        The :class:`.QueuePool` has been enhanced to not block new connection
+        attempts when an existing connection attempt is blocking.  Previously,
+        the production of new connections was serialized within the block
+        that monitored overflow; the overflow counter is now altered within
+        it's own critical section outside of the connection process itself.
+
+     .. change::
+        :tags: bug, engine, pool
+        :versions: 0.9.0b2
         :tickets: 2522
 
         Made a slight adjustment to the logic which waits for a pooled
