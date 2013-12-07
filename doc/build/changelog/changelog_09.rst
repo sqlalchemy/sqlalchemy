@@ -15,6 +15,16 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: feature, engine
+        :tickets: 2875
+
+        The :func:`.engine_from_config` function has been improved so that
+        we will be able to parse dialect-specific arguments from string
+        configuration dictionaries.  Dialect classes can now provide their
+        own list of parameter types and string-conversion routines.
+        The feature is not yet used by the built-in dialects, however.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2879
 

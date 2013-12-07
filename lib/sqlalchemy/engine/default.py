@@ -59,6 +59,18 @@ class DefaultDialect(interfaces.Dialect):
 
     supports_simple_order_by_label = True
 
+    engine_config_types = util.immutabledict([
+        ('convert_unicode', util.bool_or_str('force')),
+        ('pool_timeout', int),
+        ('echo', util.bool_or_str('debug')),
+        ('echo_pool', util.bool_or_str('debug')),
+        ('pool_recycle', int),
+        ('pool_size', int),
+        ('max_overflow', int),
+        ('pool_threadlocal', bool),
+        ('use_native_unicode', bool),
+    ])
+
     # if the NUMERIC type
     # returns decimal.Decimal.
     # *not* the FLOAT type however.
