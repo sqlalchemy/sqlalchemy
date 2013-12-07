@@ -875,6 +875,88 @@ class QueuePoolTest(PoolTestBase):
         lazy_gc()
         assert not pool._refs
 
+
+    def test_overflow_reset_on_failed_connect(self):
+        dbapi = Mock()
+
+        def failing_dbapi():
+            time.sleep(2)
+            raise Exception("connection failed")
+
+        creator = dbapi.connect
+        def create():
+            return creator()
+
+        p = pool.QueuePool(creator=create, pool_size=2, max_overflow=3)
+        c1 = p.connect()
+        c2 = p.connect()
+        c3 = p.connect()
+        eq_(p._overflow, 1)
+        creator = failing_dbapi
+        assert_raises(Exception, p.connect)
+        eq_(p._overflow, 1)
+
+    @testing.requires.threading_with_mock
+    def test_hanging_connect_within_overflow(self):
+        """test that a single connect() call which is hanging
+        does not block other connections from proceeding."""
+
+        dbapi = Mock()
+        mutex = threading.Lock()
+
+        def hanging_dbapi():
+            time.sleep(2)
+            with mutex:
+                return dbapi.connect()
+
+        def fast_dbapi():
+            with mutex:
+                return dbapi.connect()
+
+        creator = threading.local()
+
+        def create():
+            return creator.mock_connector()
+
+        def run_test(name, pool, should_hang):
+            if should_hang:
+                creator.mock_connector = hanging_dbapi
+            else:
+                creator.mock_connector = fast_dbapi
+
+            conn = pool.connect()
+            conn.operation(name)
+            time.sleep(1)
+            conn.close()
+
+        p = pool.QueuePool(creator=create, pool_size=2, max_overflow=3)
+
+        threads = [
+            threading.Thread(
+                        target=run_test, args=("success_one", p, False)),
+            threading.Thread(
+                        target=run_test, args=("success_two", p, False)),
+            threading.Thread(
+                        target=run_test, args=("overflow_one", p, True)),
+            threading.Thread(
+                        target=run_test, args=("overflow_two", p, False)),
+            threading.Thread(
+                        target=run_test, args=("overflow_three", p, False))
+        ]
+        for t in threads:
+            t.start()
+            time.sleep(.2)
+
+        for t in threads:
+            t.join(timeout=join_timeout)
+        eq_(
+            dbapi.connect().operation.mock_calls,
+            [call("success_one"), call("success_two"),
+                call("overflow_two"), call("overflow_three"),
+                call("overflow_one")]
+        )
+
+
     @testing.requires.threading_with_mock
     def test_waiters_handled(self):
         """test that threads waiting for connections are
