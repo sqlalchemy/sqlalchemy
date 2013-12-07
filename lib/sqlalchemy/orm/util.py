@@ -160,31 +160,59 @@ def polymorphic_union(table_map, typecolname,
 
 
 def identity_key(*args, **kwargs):
-    """Get an identity key.
+    """Generate "identity key" tuples, as are used as keys in the
+    :attr:`.Session.identity_map` dictionary.
 
-    Valid call signatures:
+    This function has several call styles:
 
     * ``identity_key(class, ident)``
 
-      class
-          mapped class (must be a positional argument)
+      This form receives a mapped class and a primary key scalar or
+      tuple as an argument.
 
-      ident
-          primary key, if the key is composite this is a tuple
+      E.g.::
+
+        >>> identity_key(MyClass, (1, 2))
+        (<class '__main__.MyClass'>, (1, 2))
+
+      :param class: mapped class (must be a positional argument)
+      :param ident: primary key, may be a scalar or tuple argument.
 
 
     * ``identity_key(instance=instance)``
 
-      instance
-          object instance (must be given as a keyword arg)
+      This form will produce the identity key for a given instance.  The
+      instance need not be persistent, only that its primary key attributes
+      are populated (else the key will contain ``None`` for those missing
+      values).
+
+      E.g.::
+
+        >>> instance = MyClass(1, 2)
+        >>> identity_key(instance=instance)
+        (<class '__main__.MyClass'>, (1, 2))
+
+      In this form, the given instance is ultimately run though
+      :meth:`.Mapper.identity_key_from_instance`, which will have the
+      effect of performing a database check for the corresponding row
+      if the object is expired.
+
+      :param instance: object instance (must be given as a keyword arg)
 
     * ``identity_key(class, row=row)``
 
-      class
-          mapped class (must be a positional argument)
+      This form is similar to the class/tuple form, except is passed a
+      database result row as a :class:`.RowProxy` object.
 
-      row
-          result proxy row (must be given as a keyword arg)
+      E.g.::
+
+        >>> row = engine.execute("select * from table where a=1 and b=2").first()
+        >>> identity_key(MyClass, row=row)
+        (<class '__main__.MyClass'>, (1, 2))
+
+      :param class: mapped class (must be a positional argument)
+      :param row: :class:`.RowProxy` row returned by a :class:`.ResultProxy`
+       (must be given as a keyword arg)
 
     """
     if args:

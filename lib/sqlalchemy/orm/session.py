@@ -2090,9 +2090,10 @@ class Session(_SessionClassMethods):
     access to the full set of persistent objects (i.e., those
     that have row identity) currently in the session.
 
-    See also:
+    .. seealso::
 
-    :func:`.identity_key` - operations involving identity keys.
+        :func:`.identity_key` - helper function to produce the keys used
+        in this dictionary.
 
     """
 
