@@ -771,8 +771,10 @@ class QueuePool(Pool):
         try:
             self._pool.put(conn, False)
         except sqla_queue.Full:
-            self._dec_overflow()
-            conn.close()
+            try:
+                conn.close()
+            finally:
+                self._dec_overflow()
 
     def _do_get(self):
         use_overflow = self._max_overflow > -1
