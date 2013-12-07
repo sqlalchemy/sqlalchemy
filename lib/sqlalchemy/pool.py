@@ -658,15 +658,6 @@ class SingletonThreadPool(Pool):
         return c
 
 
-class DummyLock(object):
-
-    def acquire(self, wait=True):
-        return True
-
-    def release(self):
-        pass
-
-
 class QueuePool(Pool):
     """A :class:`.Pool` that imposes a limit on the number of open connections.
 
@@ -774,30 +765,25 @@ class QueuePool(Pool):
         self._overflow = 0 - pool_size
         self._max_overflow = max_overflow
         self._timeout = timeout
-        self._overflow_lock = threading.Lock() if self._max_overflow > -1 \
-                                    else DummyLock()
+        self._overflow_lock = threading.Lock()
 
     def _do_return_conn(self, conn):
         try:
             self._pool.put(conn, False)
         except sqla_queue.Full:
+            self._dec_overflow()
             conn.close()
-            self._overflow_lock.acquire()
-            try:
-                self._overflow -= 1
-            finally:
-                self._overflow_lock.release()
 
     def _do_get(self):
+        use_overflow = self._max_overflow > -1
+
         try:
-            wait = self._max_overflow > -1 and \
-                        self._overflow >= self._max_overflow
+            wait = use_overflow and self._overflow >= self._max_overflow
             return self._pool.get(wait, self._timeout)
         except sqla_queue.SAAbort as aborted:
             return aborted.context._do_get()
         except sqla_queue.Empty:
-            if self._max_overflow > -1 and \
-                        self._overflow >= self._max_overflow:
+            if use_overflow and self._overflow >= self._max_overflow:
                 if not wait:
                     return self._do_get()
                 else:
@@ -806,17 +792,33 @@ class QueuePool(Pool):
                             "connection timed out, timeout %d" %
                             (self.size(), self.overflow(), self._timeout))
 
-            self._overflow_lock.acquire()
-            try:
-                if self._max_overflow > -1 and \
-                            self._overflow >= self._max_overflow:
-                    return self._do_get()
-                else:
-                    con = self._create_connection()
-                    self._overflow += 1
-                    return con
-            finally:
-                self._overflow_lock.release()
+            if self._inc_overflow():
+                try:
+                    return self._create_connection()
+                except:
+                    self._dec_overflow()
+                    raise
+            else:
+                return self._do_get()
+
+    def _inc_overflow(self):
+        if self._max_overflow == -1:
+            self._overflow += 1
+            return True
+        with self._overflow_lock:
+            if self._overflow < self._max_overflow:
+                self._overflow += 1
+                return True
+            else:
+                return False
+
+    def _dec_overflow(self):
+        if self._max_overflow == -1:
+            self._overflow -= 1
+            return True
+        with self._overflow_lock:
+            self._overflow -= 1
+            return True
 
     def recreate(self):
         self.logger.info("Pool recreating")
