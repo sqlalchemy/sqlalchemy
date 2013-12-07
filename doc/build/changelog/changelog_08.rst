@@ -12,6 +12,20 @@
     :version: 0.8.4
 
      .. change::
+        :tags: bug, engine
+        :versions: 0.9.0b2
+        :tickets: 2881
+
+        A DBAPI that raises an error on ``connect()`` which is not a subclass
+        of dbapi.Error (such as ``TypeError``, ``NotImplementedError``, etc.)
+        will propagate the exception unchanged.  Previously,
+        the error handling specific to the ``connect()`` routine would both
+        inappropriately run the exception through the dialect's
+        :meth:`.Dialect.is_disconnect` routine as well as wrap it in
+        a :class:`sqlalchemy.exc.DBAPIError`.  It is now propagated unchanged
+        in the same way as occurs within the execute process.
+
+     .. change::
         :tags: bug, engine, pool
         :versions: 0.9.0b2
         :tickets: 2880

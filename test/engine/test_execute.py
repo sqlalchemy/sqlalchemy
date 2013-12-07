@@ -203,19 +203,37 @@ class ExecuteTest(fixtures.TestBase):
         finally:
             conn.close()
 
+    @testing.engines.close_open_connections
     def test_exception_wrapping_dbapi(self):
-        def go(conn):
+        conn = testing.db.connect()
+        for _c in testing.db, conn:
             assert_raises_message(
                 tsa.exc.DBAPIError,
                 r"not_a_valid_statement",
-                conn.execute, 'not_a_valid_statement'
+                _c.execute, 'not_a_valid_statement'
             )
-        go(testing.db)
-        conn = testing.db.connect()
-        try:
-            go(conn)
-        finally:
-            conn.close()
+
+    @testing.requires.sqlite
+    def test_exception_wrapping_non_dbapi_error(self):
+        e = create_engine('sqlite://')
+        e.dialect.is_disconnect = is_disconnect = Mock()
+
+        c = e.connect()
+
+        c.connection.cursor = Mock(
+                return_value=Mock(
+                    execute=Mock(
+                            side_effect=TypeError("I'm not a DBAPI error")
+                    ))
+                )
+
+        assert_raises_message(
+            TypeError,
+            "I'm not a DBAPI error",
+            c.execute, "select "
+        )
+        eq_(is_disconnect.call_count, 0)
+
 
     def test_exception_wrapping_non_dbapi_statement(self):
         class MyType(TypeDecorator):
