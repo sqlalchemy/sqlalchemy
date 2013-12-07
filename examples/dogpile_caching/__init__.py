@@ -40,15 +40,16 @@ exactly one SQL statement against two tables will be emitted - the
 displayed result however will utilize dozens of lazyloads that all
 pull from cache.
 
-The demo scripts themselves, in order of complexity, are run as follows::
+The demo scripts themselves, in order of complexity, are run as Python
+modules so that relative imports work::
 
-   python examples/dogpile_caching/helloworld.py
+   python -m examples.dogpile_caching.helloworld
 
-   python examples/dogpile_caching/relationship_caching.py
+   python -m examples.dogpile_caching.relationship_caching
 
-   python examples/dogpile_caching/advanced.py
+   python -m examples.dogpile_caching.advanced
 
-   python examples/dogpile_caching/local_session_caching.py
+   python -m examples.dogpile_caching.local_session_caching
 
 
 Listing of files:
