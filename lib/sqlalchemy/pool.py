@@ -15,7 +15,7 @@ Also provides a DB-API 2.0 connection proxying mechanism allowing
 regular DB-API connect() methods to be transparently managed by a
 SQLAlchemy connection pool.
 """
-
+from __future__ import with_statement
 import time
 import traceback
 import weakref
