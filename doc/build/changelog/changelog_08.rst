@@ -10,6 +10,7 @@
 
 .. changelog::
     :version: 0.8.4
+    :released: December 8, 2013
 
      .. change::
         :tags: bug, engine
