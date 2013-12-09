@@ -1018,12 +1018,10 @@ class MSDDLCompiler(compiler.DDLCompiler):
         return text
 
     def visit_drop_index(self, drop):
-        return "\nDROP INDEX %s.%s" % (
-            self.preparer.quote_identifier(drop.element.table.name),
-            self._prepared_index_name(drop.element,
-                                        include_schema=True)
+        return "\nDROP INDEX %s ON %s" % (
+            self._prepared_index_name(drop.element, include_schema=False),
+            self.preparer.format_table(drop.element.table)
             )
-
 
 class MSIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = RESERVED_WORDS

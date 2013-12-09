@@ -538,6 +538,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE INDEX bar ON foo (x > 5)"
         )
 
+    def test_drop_index_w_schema(self):
+        m = MetaData()
+        t1 = Table('foo', m,
+                Column('x', Integer),
+                schema='bar'
+            )
+        self.assert_compile(
+            schema.DropIndex(Index("idx_foo", t1.c.x)),
+            "DROP INDEX idx_foo ON bar.foo"
+        )
+
     def test_index_extra_include_1(self):
         metadata = MetaData()
         tbl = Table('test', metadata,

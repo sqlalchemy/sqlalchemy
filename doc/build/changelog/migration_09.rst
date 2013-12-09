@@ -501,7 +501,55 @@ spaces are passed through as is::
 
 :ticket:`2873`
 
+.. _migration_2879:
 
+The precedence rules for COLLATE have been changed
+--------------------------------------------------
+
+Previously, an expression like the following::
+
+    print (column('x') == 'somevalue').collate("en_EN")
+
+would produce an expression like this::
+
+    -- 0.8 behavior
+    (x = :x_1) COLLATE en_EN
+
+The above is misunderstood by MSSQL and is generally not the syntax suggested
+for any database.  The expression will now produce the syntax illustrated
+by that of most database documentation::
+
+    -- 0.9 behavior
+    x = :x_1 COLLATE en_EN
+
+The potentially backwards incompatible change arises if the :meth:`.collate`
+operator is being applied to the right-hand column, as follows::
+
+    print column('x') == literal('somevalue').collate("en_EN")
+
+In 0.8, this produces::
+
+    x = :param_1 COLLATE en_EN
+
+However in 0.9, will now produce the more accurate, but probably not what you
+want, form of::
+
+    x = (:param_1 COLLATE en_EN)
+
+The :meth:`.ColumnOperators.collate` operator now works more appropriately within an
+``ORDER BY`` expression as well, as a specific precedence has been given to the
+``ASC`` and ``DESC`` operators which will again ensure no parentheses are
+generated::
+
+    >>> # 0.8
+    >>> print column('x').collate('en_EN').desc()
+    (x COLLATE en_EN) DESC
+
+    >>> # 0.9
+    >>> print column('x').collate('en_EN').desc()
+    x COLLATE en_EN DESC
+
+:ticket:`2879`
 
 .. _migration_2850:
 

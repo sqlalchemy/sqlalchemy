@@ -1219,58 +1219,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 "/ values.val1 > :param_1"
          )
 
-    def test_collate(self):
-        for expr in (select([table1.c.name.collate('latin1_german2_ci')]),
-                     select([collate(table1.c.name, 'latin1_german2_ci')])):
-            self.assert_compile(
-                expr, "SELECT mytable.name COLLATE latin1_german2_ci "
-                "AS anon_1 FROM mytable")
-
-        assert table1.c.name.collate('latin1_german2_ci').type is \
-            table1.c.name.type
-
-        expr = select([table1.c.name.collate('latin1_german2_ci').\
-                    label('k1')]).order_by('k1')
-        self.assert_compile(expr,
-            "SELECT mytable.name "
-            "COLLATE latin1_german2_ci AS k1 FROM mytable ORDER BY k1")
-
-        expr = select([collate('foo', 'latin1_german2_ci').label('k1')])
-        self.assert_compile(expr,
-                    "SELECT :param_1 COLLATE latin1_german2_ci AS k1")
-
-        expr = select([table1.c.name.collate('latin1_german2_ci').like('%x%')])
-        self.assert_compile(expr,
-                            "SELECT mytable.name COLLATE latin1_german2_ci "
-                            "LIKE :param_1 AS anon_1 FROM mytable")
-
-        expr = select([table1.c.name.like(collate('%x%',
-                                'latin1_german2_ci'))])
-        self.assert_compile(expr,
-                        "SELECT mytable.name "
-                        "LIKE :param_1 COLLATE latin1_german2_ci AS anon_1 "
-                        "FROM mytable")
-
-        expr = select([table1.c.name.collate('col1').like(
-            collate('%x%', 'col2'))])
-        self.assert_compile(expr,
-                            "SELECT mytable.name COLLATE col1 "
-                            "LIKE :param_1 COLLATE col2 AS anon_1 "
-                            "FROM mytable")
-
-        expr = select([func.concat('a', 'b').\
-                collate('latin1_german2_ci').label('x')])
-        self.assert_compile(expr,
-                            "SELECT concat(:param_1, :param_2) "
-                            "COLLATE latin1_german2_ci AS x")
-
-
-        expr = select([table1.c.name]).\
-                        order_by(table1.c.name.collate('latin1_german2_ci'))
-        self.assert_compile(expr,
-                            "SELECT mytable.name FROM mytable ORDER BY "
-                            "mytable.name COLLATE latin1_german2_ci")
-
     def test_percent_chars(self):
         t = table("table%name",
             column("percent%"),
