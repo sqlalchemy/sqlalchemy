@@ -1187,6 +1187,9 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_HSTORE(self, type_):
         return "HSTORE"
 
+    def visit_JSON(self, type_):
+        return "JSON"
+
     def visit_INT4RANGE(self, type_):
         return "INT4RANGE"
 
