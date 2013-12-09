@@ -942,6 +942,7 @@ ischema_names = {
     'interval': INTERVAL,
     'interval year to month': INTERVAL,
     'interval day to second': INTERVAL,
+    'tsvector' : TSVECTOR
 }
 
 
