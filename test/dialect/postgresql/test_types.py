@@ -836,7 +836,8 @@ class SpecialTypesTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             Column('plain_interval', postgresql.INTERVAL),
             Column('year_interval', y2m()),
             Column('month_interval', d2s()),
-            Column('precision_interval', postgresql.INTERVAL(precision=3))
+            Column('precision_interval', postgresql.INTERVAL(precision=3)),
+            Column('tsvector_document', postgresql.TSVECTOR)
         )
 
         metadata.create_all()
@@ -867,6 +868,17 @@ class SpecialTypesTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                 ]
         for type_, expected in pairs:
             self.assert_compile(type_, expected)
+
+    @testing.provide_metadata
+    def test_tsvector_round_trip(self):
+        t = Table('t1', self.metadata, Column('data', postgresql.TSVECTOR))
+        t.create()
+        testing.db.execute(t.insert(), data="a fat cat sat")
+        eq_(testing.db.scalar(select([t.c.data])), "'a' 'cat' 'fat' 'sat'")
+
+        testing.db.execute(t.update(), data="'a' 'cat' 'fat' 'mat' 'sat'")
+
+        eq_(testing.db.scalar(select([t.c.data])), "'a' 'cat' 'fat' 'mat' 'sat'")
 
     @testing.provide_metadata
     def test_bit_reflection(self):
