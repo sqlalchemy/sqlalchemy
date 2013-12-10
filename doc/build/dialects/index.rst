@@ -45,8 +45,8 @@ Current external dialect projects for SQLAlchemy include:
 Production Ready
 ^^^^^^^^^^^^^^^^
 
-* `ibm_db_sa <http://code.google.com/p/ibm-db/wiki/README>`_ - driver for IBM DB2, developed jointly by IBM and SQLAlchemy developers.
-* `sqlalchemy-sqlany <https://code.google.com/p/sqlalchemy-sqlany/>`_ - driver for SAP Sybase SQL Anywhere, developed by SAP.
+* `ibm_db_sa <http://code.google.com/p/ibm-db/wiki/README>`_ - driver for IBM DB2 and Informix, developed jointly by IBM and SQLAlchemy developers.
+* `sqlalchemy-sqlany <https://github.com/sqlanywhere/sqlalchemy-sqlany>`_ - driver for SAP Sybase SQL Anywhere, developed by SAP.
 * `sqlalchemy-monetdb <https://github.com/gijzelaerr/sqlalchemy-monetdb>`_ - driver for MonetDB.
 
 Experimental / Incomplete
