@@ -368,6 +368,35 @@ class UUID(sqltypes.TypeEngine):
 
 PGUuid = UUID
 
+class TSVECTOR(sqltypes.TypeEngine):
+    """The TSVECTOR type implements the Postgresql text search type
+    TSVECTOR.
+
+    It can be used to do full text queries on natural language
+    *documents*.
+
+    Search queries are performed using the ``@@`` operator in
+    postgresql. This is made available with the ``match`` method
+    available on the column.
+
+    This means that if you have a table ``Example`` with a column
+    ``text`` of type ``TSVECTOR``, you can create a search clause like
+    so
+
+    ::
+
+        Example.text.match("search string")
+
+    which will be compiled to
+
+    ::
+
+        text @@ to_tsquery('search string')
+
+    """
+    __visit_name__ = 'TSVECTOR'
+
+
 
 class _Slice(expression.ColumnElement):
     __visit_name__ = 'slice'
@@ -913,6 +942,7 @@ ischema_names = {
     'interval': INTERVAL,
     'interval year to month': INTERVAL,
     'interval day to second': INTERVAL,
+    'tsvector' : TSVECTOR
 }
 
 
@@ -1163,6 +1193,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
 
 class PGTypeCompiler(compiler.GenericTypeCompiler):
+    def visit_TSVECTOR(self, type):
+        return "TSVECTOR"
+
     def visit_INET(self, type_):
         return "INET"
 

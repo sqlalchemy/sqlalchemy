@@ -836,7 +836,8 @@ class SpecialTypesTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             Column('plain_interval', postgresql.INTERVAL),
             Column('year_interval', y2m()),
             Column('month_interval', d2s()),
-            Column('precision_interval', postgresql.INTERVAL(precision=3))
+            Column('precision_interval', postgresql.INTERVAL(precision=3)),
+            Column('tsvector_document', postgresql.TSVECTOR)
         )
 
         metadata.create_all()
