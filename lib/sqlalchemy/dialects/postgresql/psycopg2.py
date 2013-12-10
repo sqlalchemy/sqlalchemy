@@ -168,8 +168,6 @@ from __future__ import absolute_import
 import re
 import logging
 
-import psycopg2.extensions as ext
-
 from ... import util, exc
 import decimal
 from ... import processors
