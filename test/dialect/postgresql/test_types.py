@@ -1768,7 +1768,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
 
     def _non_native_engine(self):
         if testing.against("postgresql+psycopg2"):
-            engine = engines.testing_engine(options=dict(use_native_hstore=False))
+            engine = engines.testing_engine()
         else:
             engine = testing.db
         engine.connect()

@@ -16,7 +16,7 @@ __all__ = ('JSON', 'json')
 
 
 class JSON(sqltypes.TypeEngine):
-    """Represent the Postgresql HSTORE type.
+    """Represent the Postgresql JSON type.
 
     The :class:`.JSON` type stores arbitrary JSON format data, e.g.::
 
@@ -41,7 +41,7 @@ class JSON(sqltypes.TypeEngine):
 
         data_table.c.data.get_path('{key_1, key_2, ..., key_n}']
 
-    Please be aware that when used with the SQL Alchemy ORM, you will need to
+    Please be aware that when used with the SQLAlchemy ORM, you will need to
     replace the JSON object present on an attribute with a new object in order
     for any changes to be properly persisted.
 
