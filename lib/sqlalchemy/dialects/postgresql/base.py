@@ -131,6 +131,44 @@ use the :meth:`._UpdateBase.returning` method on a per-statement basis::
         where(table.c.name=='foo')
     print result.fetchall()
 
+.. _postgresql_match:
+
+Full Text Search
+----------------
+
+SQLAlchemy makes available the Postgresql ``@@`` operator via the
+:meth:`.ColumnElement.match` method on any textual column expression.
+On a Postgresql dialect, an expression like the following::
+
+    select([sometable.c.text.match("search string")])
+
+will emit to the database::
+
+    SELECT text @@ to_tsquery('search string') FROM table
+
+The Postgresql text search functions such as ``to_tsquery()``
+and ``to_tsvector()`` are available
+explicitly using the standard :attr:`.func` construct.  For example::
+
+    select([
+        func.to_tsvector('fat cats ate rats').match('cat & rat')
+    ])
+
+Emits the equivalent of::
+
+    SELECT to_tsvector('fat cats ate rats') @@ to_tsquery('cat & rat')
+
+The :class:`.postgresql.TSVECTOR` type can provide for explicit CAST::
+
+    from sqlalchemy.dialects.postgresql import TSVECTOR
+    from sqlalchemy import select, cast
+    select([cast("some text", TSVECTOR)])
+
+produces a statement equivalent to::
+
+    SELECT CAST('some text' AS TSVECTOR) AS anon_1
+
+
 FROM ONLY ...
 ------------------------
 
@@ -369,29 +407,17 @@ class UUID(sqltypes.TypeEngine):
 PGUuid = UUID
 
 class TSVECTOR(sqltypes.TypeEngine):
-    """The TSVECTOR type implements the Postgresql text search type
-    TSVECTOR.
+    """The :class:`.postgresql.TSVECTOR` type implements the Postgresql
+    text search type TSVECTOR.
 
     It can be used to do full text queries on natural language
-    *documents*.
+    documents.
 
-    Search queries are performed using the ``@@`` operator in
-    postgresql. This is made available with the ``match`` method
-    available on the column.
+    .. versionadded:: 0.9.0
 
-    This means that if you have a table ``Example`` with a column
-    ``text`` of type ``TSVECTOR``, you can create a search clause like
-    so
+    .. seealso::
 
-    ::
-
-        Example.text.match("search string")
-
-    which will be compiled to
-
-    ::
-
-        text @@ to_tsquery('search string')
+        :ref:`postgresql_match`
 
     """
     __visit_name__ = 'TSVECTOR'

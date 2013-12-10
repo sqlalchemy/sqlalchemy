@@ -15,6 +15,14 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: feature, postgresql
+        :pullreq: bitbucket:8
+
+        Added support for Postgresql TSVECTOR via the
+        :class:`.postgresql.TSVECTOR` type.  Pull request courtesy
+        Noufal Ibrahim.
+
+    .. change::
         :tags: feature, engine
         :tickets: 2875
 

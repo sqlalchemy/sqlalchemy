@@ -870,6 +870,17 @@ class SpecialTypesTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             self.assert_compile(type_, expected)
 
     @testing.provide_metadata
+    def test_tsvector_round_trip(self):
+        t = Table('t1', self.metadata, Column('data', postgresql.TSVECTOR))
+        t.create()
+        testing.db.execute(t.insert(), data="a fat cat sat")
+        eq_(testing.db.scalar(select([t.c.data])), "'a' 'cat' 'fat' 'sat'")
+
+        testing.db.execute(t.update(), data="'a' 'cat' 'fat' 'mat' 'sat'")
+
+        eq_(testing.db.scalar(select([t.c.data])), "'a' 'cat' 'fat' 'mat' 'sat'")
+
+    @testing.provide_metadata
     def test_bit_reflection(self):
         metadata = self.metadata
         t1 = Table('t1', metadata,
