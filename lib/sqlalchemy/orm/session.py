@@ -1180,7 +1180,18 @@ class Session(_SessionClassMethods):
 
     def _autoflush(self):
         if self.autoflush and not self._flushing:
-            self.flush()
+            try:
+                self.flush()
+            except sa_exc.StatementError as e:
+                # note we are reraising StatementError as opposed to
+                # raising FlushError with "chaining" to remain compatible
+                # with code that catches StatementError, IntegrityError,
+                # etc.
+                e.add_detail(
+                        "raised as a result of Query-invoked autoflush; "
+                        "consider using a session.no_autoflush block if this "
+                        "flush is occuring prematurely")
+                util.raise_from_cause(e)
 
     def refresh(self, instance, attribute_names=None, lockmode=None):
         """Expire and refresh the attributes on the given instance.
