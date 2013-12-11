@@ -31,15 +31,23 @@ class JSON(sqltypes.TypeEngine):
                 data = {"key1": "value1", "key2": "value2"}
             )
 
-    :class:`.JSON` provides two operations:
+    :class:`.JSON` provides several operations:
 
     * Index operations::
 
-        data_table.c.data['some key'] == 'some value'
+        data_table.c.data['some key']
 
-    * Path Index operations::
+    * Index operations returning text (required for text comparison or casting)::
 
-        data_table.c.data.get_path("'{key_1, key_2, ..., key_n}'"]
+        data_table.c.data.get_item_as_text('some key') == 'some value'
+
+    * Path index operations::
+
+        data_table.c.data.get_path("{key_1, key_2, ..., key_n}")
+
+    * Path index operations returning text (required for text comparison or casting)::
+
+        data_table.c.data.get_path("{key_1, key_2, ..., key_n}") == 'some value'
 
     Please be aware that when used with the SQLAlchemy ORM, you will need to
     replace the JSON object present on an attribute with a new object in order
@@ -85,9 +93,8 @@ class JSON(sqltypes.TypeEngine):
 
         def get_path_as_text(self, other):
             """Text expression.  Get the value at a given path, as text.
-            Paths are of the form '{key_1, key_2, ..., key_n}' (quotes are
-            required).  Use this when you need to cast the type of the
-            returned value."""
+            Paths are of the form {key_1, key_2, ..., key_n}.  Use this when
+            you need to cast the type of the returned value."""
             return self.expr.op('#>>', precedence=5)(other)
 
         def _adapt_expression(self, op, other_comparator):
