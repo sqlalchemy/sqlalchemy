@@ -1713,19 +1713,31 @@ class JSONTest(fixtures.TestBase):
     def test_where_getitem(self):
         self._test_where(
             self.jsoncol['bar'] == None,
-            "(test_table.test_column ->> %(test_column_1)s) IS NULL"
+            "(test_table.test_column -> %(test_column_1)s) IS NULL"
         )
 
     def test_where_path(self):
         self._test_where(
             self.jsoncol.get_path('{"foo", 1}') == None,
+            "(test_table.test_column #> %(test_column_1)s) IS NULL"
+        )
+
+    def test_where_getitem_as_text(self):
+        self._test_where(
+            self.jsoncol.get_item_as_text('bar') == None,
+            "(test_table.test_column ->> %(test_column_1)s) IS NULL"
+        )
+
+    def test_where_path_as_text(self):
+        self._test_where(
+            self.jsoncol.get_path_as_text('{"foo", 1}') == None,
             "(test_table.test_column #>> %(test_column_1)s) IS NULL"
         )
 
     def test_cols_get(self):
         self._test_cols(
             self.jsoncol['foo'],
-            "test_table.test_column ->> %(test_column_1)s AS anon_1",
+            "test_table.test_column -> %(test_column_1)s AS anon_1",
             True
         )
 
@@ -1800,9 +1812,31 @@ class JSONRoundTripTest(fixtures.TablesTest):
         self._fixture_data(engine)
         self._test_criterion(engine)
 
+    def test_path_query(self):
+        engine = testing.db
+        self._fixture_data(engine)
+        data_table = self.tables.data_table
+        result = engine.execute(
+            select([data_table.c.data]).where(
+                data_table.c.data.get_path_as_text('{k1}') == 'r3v1'
+            )
+        ).first()
+        eq_(result, ({'k1': 'r3v1', 'k2': 'r3v2'},))
+
+    def test_query_returned_as_text(self):
+        engine = testing.db
+        self._fixture_data(engine)
+        data_table = self.tables.data_table
+        result = engine.execute(
+            select([data_table.c.data.get_item_as_text('k1')])
+        ).first()
+        assert isinstance(result[0], basestring)
+
     def _test_criterion(self, engine):
         data_table = self.tables.data_table
         result = engine.execute(
-            select([data_table.c.data]).where(data_table.c.data['k1'] == 'r3v1')
+            select([data_table.c.data]).where(
+                data_table.c.data.get_item_as_text('k1') == 'r3v1'
+            )
         ).first()
         eq_(result, ({'k1': 'r3v1', 'k2': 'r3v2'},))

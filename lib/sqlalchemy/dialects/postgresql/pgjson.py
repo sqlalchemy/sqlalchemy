@@ -39,7 +39,7 @@ class JSON(sqltypes.TypeEngine):
 
     * Path Index operations::
 
-        data_table.c.data.get_path('{key_1, key_2, ..., key_n}']
+        data_table.c.data.get_path("'{key_1, key_2, ..., key_n}'"]
 
     Please be aware that when used with the SQLAlchemy ORM, you will need to
     replace the JSON object present on an attribute with a new object in order
@@ -71,11 +71,23 @@ class JSON(sqltypes.TypeEngine):
             # The only downside to this is that you cannot dereference more
             # than one level deep in json structures, though comparator
             # support for multi-level dereference is lacking anyhow.
+            return self.expr.op('->', precedence=5)(other)
+
+        def get_item_as_text(self, other):
+            """Text expression.  Get the value at the given key as text.  Use
+            this when you need to cast the type of the returned value."""
             return self.expr.op('->>', precedence=5)(other)
 
         def get_path(self, other):
-            """Text expression.  Get the value at a given path.  Paths are of
+            """Text expression.  Get the value at a given path. Paths are of
             the form {key_1, key_2, ..., key_n}."""
+            return self.expr.op('#>', precedence=5)(other)
+
+        def get_path_as_text(self, other):
+            """Text expression.  Get the value at a given path, as text.
+            Paths are of the form '{key_1, key_2, ..., key_n}' (quotes are
+            required).  Use this when you need to cast the type of the
+            returned value."""
             return self.expr.op('#>>', precedence=5)(other)
 
         def _adapt_expression(self, op, other_comparator):
