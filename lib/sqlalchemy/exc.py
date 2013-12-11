@@ -219,6 +219,10 @@ class StatementError(SQLAlchemyError):
         self.statement = statement
         self.params = params
         self.orig = orig
+        self.detail = []
+
+    def add_detail(self, msg):
+        self.detail.append(msg)
 
     def __reduce__(self):
         return self.__class__, (self.args[0], self.statement,
@@ -227,8 +231,13 @@ class StatementError(SQLAlchemyError):
     def __str__(self):
         from sqlalchemy.sql import util
         params_repr = util._repr_params(self.params, 10)
-        return ' '.join((SQLAlchemyError.__str__(self),
-                         repr(self.statement), repr(params_repr)))
+
+        return ' '.join([
+                            "(%s)" % det for det in self.detail
+                        ] + [
+                            SQLAlchemyError.__str__(self),
+                             repr(self.statement), repr(params_repr)
+                        ])
 
     def __unicode__(self):
         return self.__str__()

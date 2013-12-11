@@ -15,6 +15,18 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: feature, orm
+
+        The :class:`.exc.StatementError` or DBAPI-related subclass
+        now can accomodate additional information about the "reason" for
+        the exception; the :class:`.Session` now adds some detail to it
+        when the exception occurs within an autoflush.  This approach
+        is taken as opposed to combining :class:`.FlushError` with
+        a Python 3 style "chained exception" approach so as to maintain
+        compatibility both with Py2K code as well as code that already
+        catches ``IntegrityError`` or similar.
+
+    .. change::
         :tags: feature, postgresql
         :pullreq: bitbucket:8
 
