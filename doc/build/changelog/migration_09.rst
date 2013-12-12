@@ -157,76 +157,6 @@ to 0.9 without issue.
 
 :ticket:`2736`
 
-.. _migration_2789:
-
-Backref handlers can now propagate more than one level deep
------------------------------------------------------------
-
-The mechanism by which attribute events pass along their "initiator", that is
-the object associated with the start of the event, has been changed; instead
-of a :class:`.AttributeImpl` being passed, a new object :class:`.attributes.Event`
-is passed instead; this object refers to the :class:`.AttributeImpl` as well as
-to an "operation token", representing if the operation is an append, remove,
-or replace operation.
-
-The attribute event system no longer looks at this "initiator" object in order to halt a
-recursive series of attribute events.  Instead, the system of preventing endless
-recursion due to mutually-dependent backref handlers has been moved
-to the ORM backref event handlers specifically, which now take over the role
-of ensuring that a chain of mutually-dependent events (such as append to collection
-A.bs, set many-to-one attribute B.a in response) doesn't go into an endless recursion
-stream.  The rationale here is that the backref system, given more detail and control
-over event propagation, can finally allow operations more than one level deep
-to occur; the typical scenario is when a collection append results in a many-to-one
-replacement operation, which in turn should cause the item to be removed from a
-previous collection::
-
-    class Parent(Base):
-        __tablename__ = 'parent'
-
-        id = Column(Integer, primary_key=True)
-        children = relationship("Child", backref="parent")
-
-    class Child(Base):
-        __tablename__ = 'child'
-
-        id = Column(Integer, primary_key=True)
-        parent_id = Column(ForeignKey('parent.id'))
-
-    p1 = Parent()
-    p2 = Parent()
-    c1 = Child()
-
-    p1.children.append(c1)
-
-    assert c1.parent is p1  # backref event establishes c1.parent as p1
-
-    p2.children.append(c1)
-
-    assert c1.parent is p2  # backref event establishes c1.parent as p2
-    assert c1 not in p1.children  # second backref event removes c1 from p1.children
-
-Above, prior to this change, the ``c1`` object would still have been present
-in ``p1.children``, even though it is also present in ``p2.children`` at the
-same time; the backref handlers would have stopped at replacing ``c1.parent`` with
-``p2`` instead of ``p1``.   In 0.9, using the more detailed :class:`.Event`
-object as well as letting the backref handlers make more detailed decisions about
-these objects, the propagation can continue onto removing ``c1`` from ``p1.children``
-while maintaining a check against the propagation from going into an endless
-recursive loop.
-
-End-user code which a. makes use of the :meth:`.AttributeEvents.set`,
-:meth:`.AttributeEvents.append`, or :meth:`.AttributeEvents.remove` events,
-and b. initiates further attribute modification operations as a result of these
-events may need to be modified to prevent recursive loops, as the attribute system
-no longer stops a chain of events from propagating endlessly in the absense of the backref
-event handlers.   Additionally, code which depends upon the value of the ``initiator``
-will need to be adjusted to the new API, and furthermore must be ready for the
-value of ``initiator`` to change from its original value within a string of
-backref-initiated events, as the backref handlers may now swap in a
-new ``initiator`` value for some operations.
-
-:ticket:`2789`
 
 .. _migration_2833:
 
@@ -551,194 +481,7 @@ generated::
 
 :ticket:`2879`
 
-.. _migration_2850:
 
-A bindparam() construct with no type gets upgraded via copy when a type is available
-------------------------------------------------------------------------------------
-
-The logic which "upgrades" a :func:`.bindparam` construct to take on the
-type of the enclosing expression has been improved in two ways.  First, the
-:func:`.bindparam` object is **copied** before the new type is assigned, so that
-the given :func:`.bindparam` is not mutated in place.  Secondly, this same
-operation occurs when an :class:`.Insert` or :class:`.Update` construct is compiled,
-regarding the "values" that were set in the statement via the :meth:`.ValuesBase.values`
-method.
-
-If given an untyped :func:`.bindparam`::
-
-    bp = bindparam("some_col")
-
-If we use this parameter as follows::
-
-    expr = mytable.c.col == bp
-
-The type for ``bp`` remains as ``NullType``, however if ``mytable.c.col``
-is of type ``String``, then ``expr.right``, that is the right side of the
-binary expression, will take on the ``String`` type.   Previously, ``bp`` itself
-would have been changed in place to have ``String`` as its type.
-
-Similarly, this operation occurs in an :class:`.Insert` or :class:`.Update`::
-
-    stmt = mytable.update().values(col=bp)
-
-Above, ``bp`` remains unchanged, but the ``String`` type will be used when
-the statement is executed, which we can see by examining the ``binds`` dictionary::
-
-    >>> compiled = stmt.compile()
-    >>> compiled.binds['some_col'].type
-    String
-
-The feature allows custom types to take their expected effect within INSERT/UPDATE
-statements without needing to explicitly specify those types within every
-:func:`.bindparam` expression.
-
-The potentially backwards-compatible changes involve two unlikely
-scenarios.  Since the the bound parameter is
-**cloned**, users should not be relying upon making in-place changes to a
-:func:`.bindparam` construct once created.   Additionally, code which uses
-:func:`.bindparam` within an :class:`.Insert` or :class:`.Update` statement
-which is relying on the fact that the :func:`.bindparam` is not typed according
-to the column being assigned towards will no longer function in that way.
-
-:ticket:`2850`
-
-.. _change_2838:
-
-The typing system now handles the task of rendering "literal bind" values
--------------------------------------------------------------------------
-
-A new method is added to :class:`.TypeEngine` :meth:`.TypeEngine.literal_processor`
-as well as :meth:`.TypeDecorator.process_literal_param` for :class:`.TypeDecorator`
-which take on the task of rendering so-called "inline literal paramters" - parameters
-that normally render as "bound" values, but are instead being rendered inline
-into the SQL statement due to the compiler configuration.  This feature is used
-when generating DDL for constructs such as :class:`.CheckConstraint`, as well
-as by Alembic when using constructs such as ``op.inline_literal()``.   Previously,
-a simple "isinstance" check checked for a few basic types, and the "bind processor"
-was used unconditionally, leading to such issues as strings being encoded into utf-8
-prematurely.
-
-Custom types written with :class:`.TypeDecorator` should continue to work in
-"inline literal" scenarios, as the :meth:`.TypeDecorator.process_literal_param`
-falls back to :meth:`.TypeDecorator.process_bind_param` by default, as these methods
-usually handle a data manipulation, not as much how the data is presented to the
-database.  :meth:`.TypeDecorator.process_literal_param` can be specified to
-specifically produce a string representing how a value should be rendered
-into an inline DDL statement.
-
-:ticket:`2838`
-
-.. _change_2812:
-
-Schema identifiers now carry along their own quoting information
----------------------------------------------------------------------
-
-This change simplifies the Core's usage of so-called "quote" flags, such
-as the ``quote`` flag passed to :class:`.Table` and :class:`.Column`.  The flag
-is now internalized within the string name itself, which is now represented
-as an instance of  :class:`.quoted_name`, a string subclass.   The
-:class:`.IdentifierPreparer` now relies solely on the quoting preferences
-reported by the :class:`.quoted_name` object rather than checking for any
-explicit ``quote`` flags in most cases.   The issue resolved here includes
-that various case-sensitive methods such as :meth:`.Engine.has_table` as well
-as similar methods within dialects now function with explicitly quoted names,
-without the need to complicate or introduce backwards-incompatible changes
-to those APIs (many of which are 3rd party) with the details of quoting flags -
-in particular, a wider range of identifiers now function correctly with the
-so-called "uppercase" backends like Oracle, Firebird, and DB2 (backends that
-store and report upon table and column names using all uppercase for case
-insensitive names).
-
-The :class:`.quoted_name` object is used internally as needed; however if
-other keywords require fixed quoting preferences, the class is available
-publically.
-
-:ticket:`2812`
-
-.. _migration_2804:
-
-Improved rendering of Boolean constants, NULL constants, conjunctions
-----------------------------------------------------------------------
-
-New capabilities have been added to the :func:`.true` and :func:`.false`
-constants, in particular in conjunction with :func:`.and_` and :func:`.or_`
-functions as well as the behavior of the WHERE/HAVING clauses in conjunction
-with these types, boolean types overall, and the :func:`.null` constant.
-
-Starting with a table such as this::
-
-    from sqlalchemy import Table, Boolean, Integer, Column, MetaData
-
-    t1 = Table('t', MetaData(), Column('x', Boolean()), Column('y', Integer))
-
-A select construct will now render the boolean column as a binary expression
-on backends that don't feature ``true``/``false`` constant beahvior::
-
-    >>> from sqlalchemy import select, and_, false, true
-    >>> from sqlalchemy.dialects import mysql, postgresql
-
-    >>> print select([t1]).where(t1.c.x).compile(dialect=mysql.dialect())
-    SELECT t.x, t.y  FROM t WHERE t.x = 1
-
-The :func:`.and_` and :func:`.or_` constructs will now exhibit quasi
-"short circuit" behavior, that is truncating a rendered expression, when a
-:func:`.true` or :func:`.false` constant is present::
-
-    >>> print select([t1]).where(and_(t1.c.y > 5, false())).compile(
-    ...     dialect=postgresql.dialect())
-    SELECT t.x, t.y FROM t WHERE false
-
-:func:`.true` can be used as the base to build up an expression::
-
-    >>> expr = true()
-    >>> expr = expr & (t1.c.y > 5)
-    >>> print select([t1]).where(expr)
-    SELECT t.x, t.y FROM t WHERE t.y > :y_1
-
-The boolean constants :func:`.true` and :func:`.false` themselves render as
-``0 = 1`` and ``1 = 1`` for a backend with no boolean constants::
-
-    >>> print select([t1]).where(and_(t1.c.y > 5, false())).compile(
-    ...     dialect=mysql.dialect())
-    SELECT t.x, t.y FROM t WHERE 0 = 1
-
-Interpretation of ``None``, while not particularly valid SQL, is at least
-now consistent::
-
-    >>> print select([t1.c.x]).where(None)
-    SELECT t.x FROM t WHERE NULL
-
-    >>> print select([t1.c.x]).where(None).where(None)
-    SELECT t.x FROM t WHERE NULL AND NULL
-
-    >>> print select([t1.c.x]).where(and_(None, None))
-    SELECT t.x FROM t WHERE NULL AND NULL
-
-:ticket:`2804`
-
-.. _migration_2848:
-
-``RowProxy`` now has tuple-sorting behavior
--------------------------------------------
-
-The :class:`.RowProxy` object acts much like a tuple, but up until now
-would not sort as a tuple if a list of them were sorted using ``sorted()``.
-The ``__eq__()`` method now compares both sides as a tuple and also
-an ``__lt__()`` method has been added::
-
-    users.insert().execute(
-            dict(user_id=1, user_name='foo'),
-            dict(user_id=2, user_name='bar'),
-            dict(user_id=3, user_name='def'),
-        )
-
-    rows = users.select().order_by(users.c.user_name).execute().fetchall()
-
-    eq_(rows, [(2, 'bar'), (3, 'def'), (1, 'foo')])
-
-    eq_(sorted(rows), [(1, 'foo'), (2, 'bar'), (3, 'def')])
-
-:ticket:`2848`
 
 .. _migration_2878:
 
@@ -1180,8 +923,9 @@ from a backref::
 Behavioral Improvements
 =======================
 
-Improvements that should produce no compatibility issues, but are good
-to be aware of in case there are unexpected issues.
+Improvements that should produce no compatibility issues except in exceedingly
+rare and unusual hypothetical cases, but are good to be aware of in case there are
+unexpected issues.
 
 .. _feature_joins_09:
 
@@ -1409,6 +1153,191 @@ be present.
 
 :ticket:`2836`
 
+.. _migration_2789:
+
+Backref handlers can now propagate more than one level deep
+-----------------------------------------------------------
+
+The mechanism by which attribute events pass along their "initiator", that is
+the object associated with the start of the event, has been changed; instead
+of a :class:`.AttributeImpl` being passed, a new object :class:`.attributes.Event`
+is passed instead; this object refers to the :class:`.AttributeImpl` as well as
+to an "operation token", representing if the operation is an append, remove,
+or replace operation.
+
+The attribute event system no longer looks at this "initiator" object in order to halt a
+recursive series of attribute events.  Instead, the system of preventing endless
+recursion due to mutually-dependent backref handlers has been moved
+to the ORM backref event handlers specifically, which now take over the role
+of ensuring that a chain of mutually-dependent events (such as append to collection
+A.bs, set many-to-one attribute B.a in response) doesn't go into an endless recursion
+stream.  The rationale here is that the backref system, given more detail and control
+over event propagation, can finally allow operations more than one level deep
+to occur; the typical scenario is when a collection append results in a many-to-one
+replacement operation, which in turn should cause the item to be removed from a
+previous collection::
+
+    class Parent(Base):
+        __tablename__ = 'parent'
+
+        id = Column(Integer, primary_key=True)
+        children = relationship("Child", backref="parent")
+
+    class Child(Base):
+        __tablename__ = 'child'
+
+        id = Column(Integer, primary_key=True)
+        parent_id = Column(ForeignKey('parent.id'))
+
+    p1 = Parent()
+    p2 = Parent()
+    c1 = Child()
+
+    p1.children.append(c1)
+
+    assert c1.parent is p1  # backref event establishes c1.parent as p1
+
+    p2.children.append(c1)
+
+    assert c1.parent is p2  # backref event establishes c1.parent as p2
+    assert c1 not in p1.children  # second backref event removes c1 from p1.children
+
+Above, prior to this change, the ``c1`` object would still have been present
+in ``p1.children``, even though it is also present in ``p2.children`` at the
+same time; the backref handlers would have stopped at replacing ``c1.parent`` with
+``p2`` instead of ``p1``.   In 0.9, using the more detailed :class:`.Event`
+object as well as letting the backref handlers make more detailed decisions about
+these objects, the propagation can continue onto removing ``c1`` from ``p1.children``
+while maintaining a check against the propagation from going into an endless
+recursive loop.
+
+End-user code which a. makes use of the :meth:`.AttributeEvents.set`,
+:meth:`.AttributeEvents.append`, or :meth:`.AttributeEvents.remove` events,
+and b. initiates further attribute modification operations as a result of these
+events may need to be modified to prevent recursive loops, as the attribute system
+no longer stops a chain of events from propagating endlessly in the absense of the backref
+event handlers.   Additionally, code which depends upon the value of the ``initiator``
+will need to be adjusted to the new API, and furthermore must be ready for the
+value of ``initiator`` to change from its original value within a string of
+backref-initiated events, as the backref handlers may now swap in a
+new ``initiator`` value for some operations.
+
+:ticket:`2789`
+
+.. _change_2838:
+
+The typing system now handles the task of rendering "literal bind" values
+-------------------------------------------------------------------------
+
+A new method is added to :class:`.TypeEngine` :meth:`.TypeEngine.literal_processor`
+as well as :meth:`.TypeDecorator.process_literal_param` for :class:`.TypeDecorator`
+which take on the task of rendering so-called "inline literal paramters" - parameters
+that normally render as "bound" values, but are instead being rendered inline
+into the SQL statement due to the compiler configuration.  This feature is used
+when generating DDL for constructs such as :class:`.CheckConstraint`, as well
+as by Alembic when using constructs such as ``op.inline_literal()``.   Previously,
+a simple "isinstance" check checked for a few basic types, and the "bind processor"
+was used unconditionally, leading to such issues as strings being encoded into utf-8
+prematurely.
+
+Custom types written with :class:`.TypeDecorator` should continue to work in
+"inline literal" scenarios, as the :meth:`.TypeDecorator.process_literal_param`
+falls back to :meth:`.TypeDecorator.process_bind_param` by default, as these methods
+usually handle a data manipulation, not as much how the data is presented to the
+database.  :meth:`.TypeDecorator.process_literal_param` can be specified to
+specifically produce a string representing how a value should be rendered
+into an inline DDL statement.
+
+:ticket:`2838`
+
+
+.. _change_2812:
+
+Schema identifiers now carry along their own quoting information
+---------------------------------------------------------------------
+
+This change simplifies the Core's usage of so-called "quote" flags, such
+as the ``quote`` flag passed to :class:`.Table` and :class:`.Column`.  The flag
+is now internalized within the string name itself, which is now represented
+as an instance of  :class:`.quoted_name`, a string subclass.   The
+:class:`.IdentifierPreparer` now relies solely on the quoting preferences
+reported by the :class:`.quoted_name` object rather than checking for any
+explicit ``quote`` flags in most cases.   The issue resolved here includes
+that various case-sensitive methods such as :meth:`.Engine.has_table` as well
+as similar methods within dialects now function with explicitly quoted names,
+without the need to complicate or introduce backwards-incompatible changes
+to those APIs (many of which are 3rd party) with the details of quoting flags -
+in particular, a wider range of identifiers now function correctly with the
+so-called "uppercase" backends like Oracle, Firebird, and DB2 (backends that
+store and report upon table and column names using all uppercase for case
+insensitive names).
+
+The :class:`.quoted_name` object is used internally as needed; however if
+other keywords require fixed quoting preferences, the class is available
+publically.
+
+:ticket:`2812`
+
+.. _migration_2804:
+
+Improved rendering of Boolean constants, NULL constants, conjunctions
+----------------------------------------------------------------------
+
+New capabilities have been added to the :func:`.true` and :func:`.false`
+constants, in particular in conjunction with :func:`.and_` and :func:`.or_`
+functions as well as the behavior of the WHERE/HAVING clauses in conjunction
+with these types, boolean types overall, and the :func:`.null` constant.
+
+Starting with a table such as this::
+
+    from sqlalchemy import Table, Boolean, Integer, Column, MetaData
+
+    t1 = Table('t', MetaData(), Column('x', Boolean()), Column('y', Integer))
+
+A select construct will now render the boolean column as a binary expression
+on backends that don't feature ``true``/``false`` constant beahvior::
+
+    >>> from sqlalchemy import select, and_, false, true
+    >>> from sqlalchemy.dialects import mysql, postgresql
+
+    >>> print select([t1]).where(t1.c.x).compile(dialect=mysql.dialect())
+    SELECT t.x, t.y  FROM t WHERE t.x = 1
+
+The :func:`.and_` and :func:`.or_` constructs will now exhibit quasi
+"short circuit" behavior, that is truncating a rendered expression, when a
+:func:`.true` or :func:`.false` constant is present::
+
+    >>> print select([t1]).where(and_(t1.c.y > 5, false())).compile(
+    ...     dialect=postgresql.dialect())
+    SELECT t.x, t.y FROM t WHERE false
+
+:func:`.true` can be used as the base to build up an expression::
+
+    >>> expr = true()
+    >>> expr = expr & (t1.c.y > 5)
+    >>> print select([t1]).where(expr)
+    SELECT t.x, t.y FROM t WHERE t.y > :y_1
+
+The boolean constants :func:`.true` and :func:`.false` themselves render as
+``0 = 1`` and ``1 = 1`` for a backend with no boolean constants::
+
+    >>> print select([t1]).where(and_(t1.c.y > 5, false())).compile(
+    ...     dialect=mysql.dialect())
+    SELECT t.x, t.y FROM t WHERE 0 = 1
+
+Interpretation of ``None``, while not particularly valid SQL, is at least
+now consistent::
+
+    >>> print select([t1.c.x]).where(None)
+    SELECT t.x FROM t WHERE NULL
+
+    >>> print select([t1.c.x]).where(None).where(None)
+    SELECT t.x FROM t WHERE NULL AND NULL
+
+    >>> print select([t1.c.x]).where(and_(None, None))
+    SELECT t.x FROM t WHERE NULL AND NULL
+
+:ticket:`2804`
 
 .. _migration_1068:
 
@@ -1441,12 +1370,92 @@ And now renders as::
     SELECT foo(t.c1) + t.c2 AS expr
     FROM t ORDER BY expr
 
-The ORDER BY only renders the label if the label isn't further embedded into an expression within the ORDER BY, other than a simple ``ASC`` or ``DESC``.
+The ORDER BY only renders the label if the label isn't further
+embedded into an expression within the ORDER BY, other than a simple
+``ASC`` or ``DESC``.
 
-The above format works on all databases tested, but might have compatibility issues with older database versions (MySQL 4?  Oracle 8? etc.).   Based on user reports we can add rules
-that will disable the feature based on database version detection.
+The above format works on all databases tested, but might have
+compatibility issues with older database versions (MySQL 4?  Oracle 8?
+etc.).   Based on user reports we can add rules that will disable the
+feature based on database version detection.
 
 :ticket:`1068`
+
+.. _migration_2848:
+
+``RowProxy`` now has tuple-sorting behavior
+-------------------------------------------
+
+The :class:`.RowProxy` object acts much like a tuple, but up until now
+would not sort as a tuple if a list of them were sorted using ``sorted()``.
+The ``__eq__()`` method now compares both sides as a tuple and also
+an ``__lt__()`` method has been added::
+
+    users.insert().execute(
+            dict(user_id=1, user_name='foo'),
+            dict(user_id=2, user_name='bar'),
+            dict(user_id=3, user_name='def'),
+        )
+
+    rows = users.select().order_by(users.c.user_name).execute().fetchall()
+
+    eq_(rows, [(2, 'bar'), (3, 'def'), (1, 'foo')])
+
+    eq_(sorted(rows), [(1, 'foo'), (2, 'bar'), (3, 'def')])
+
+:ticket:`2848`
+
+.. _migration_2850:
+
+A bindparam() construct with no type gets upgraded via copy when a type is available
+------------------------------------------------------------------------------------
+
+The logic which "upgrades" a :func:`.bindparam` construct to take on the
+type of the enclosing expression has been improved in two ways.  First, the
+:func:`.bindparam` object is **copied** before the new type is assigned, so that
+the given :func:`.bindparam` is not mutated in place.  Secondly, this same
+operation occurs when an :class:`.Insert` or :class:`.Update` construct is compiled,
+regarding the "values" that were set in the statement via the :meth:`.ValuesBase.values`
+method.
+
+If given an untyped :func:`.bindparam`::
+
+    bp = bindparam("some_col")
+
+If we use this parameter as follows::
+
+    expr = mytable.c.col == bp
+
+The type for ``bp`` remains as ``NullType``, however if ``mytable.c.col``
+is of type ``String``, then ``expr.right``, that is the right side of the
+binary expression, will take on the ``String`` type.   Previously, ``bp`` itself
+would have been changed in place to have ``String`` as its type.
+
+Similarly, this operation occurs in an :class:`.Insert` or :class:`.Update`::
+
+    stmt = mytable.update().values(col=bp)
+
+Above, ``bp`` remains unchanged, but the ``String`` type will be used when
+the statement is executed, which we can see by examining the ``binds`` dictionary::
+
+    >>> compiled = stmt.compile()
+    >>> compiled.binds['some_col'].type
+    String
+
+The feature allows custom types to take their expected effect within INSERT/UPDATE
+statements without needing to explicitly specify those types within every
+:func:`.bindparam` expression.
+
+The potentially backwards-compatible changes involve two unlikely
+scenarios.  Since the the bound parameter is
+**cloned**, users should not be relying upon making in-place changes to a
+:func:`.bindparam` construct once created.   Additionally, code which uses
+:func:`.bindparam` within an :class:`.Insert` or :class:`.Update` statement
+which is relying on the fact that the :func:`.bindparam` is not typed according
+to the column being assigned towards will no longer function in that way.
+
+:ticket:`2850`
+
 
 .. _migration_1765:
 
