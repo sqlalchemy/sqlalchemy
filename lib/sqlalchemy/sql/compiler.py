@@ -585,13 +585,13 @@ class SQLCompiler(Compiled):
     def post_process_text(self, text):
         return text
 
-    def visit_textclause(self, textclause, **kwargs):
+    def visit_textclause(self, textclause, **kw):
         def do_bindparam(m):
             name = m.group(1)
             if name in textclause._bindparams:
-                return self.process(textclause._bindparams[name])
+                return self.process(textclause._bindparams[name], **kw)
             else:
-                return self.bindparam_string(name, **kwargs)
+                return self.bindparam_string(name, **kw)
 
         # un-escape any \:params
         return BIND_PARAMS_ESC.sub(lambda m: m.group(1),

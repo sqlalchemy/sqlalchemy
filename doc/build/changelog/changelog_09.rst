@@ -128,13 +128,15 @@
 
     .. change::
         :tags: feature, sql
-        :tickets: 2877
+        :tickets: 2877, 2882
 
         New improvements to the :func:`.text` construct, including
         more flexible ways to set up bound parameters and return types;
         in particular, a :func:`.text` can now be turned into a full
         FROM-object, embeddable in other statements as an alias or CTE
-        using the new method :meth:`.TextClause.columns`.
+        using the new method :meth:`.TextClause.columns`.   The :func:`.text`
+        construct can also render "inline" bound parameters when the construct
+        is compiled in a "literal bound" context.
 
         .. seealso::
 
