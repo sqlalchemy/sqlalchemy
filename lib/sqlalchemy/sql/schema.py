@@ -1340,6 +1340,23 @@ class ForeignKey(SchemaItem):
         """
 
         self._colspec = column
+        if isinstance(self._colspec, util.string_types):
+            self._table_column = None
+        else:
+            if hasattr(self._colspec, '__clause_element__'):
+                self._table_column = self._colspec.__clause_element__()
+            else:
+                self._table_column = self._colspec
+
+            if not isinstance(self._table_column, ColumnClause):
+                raise exc.ArgumentError(
+                        "String, Column, or Column-bound argument "
+                        "expected, got %r" % self._table_column)
+            elif not isinstance(self._table_column.table, (util.NoneType, TableClause)):
+                raise exc.ArgumentError(
+                        "ForeignKey received Column not bound "
+                        "to a Table, got: %r" % self._table_column.table
+                    )
 
         # the linked ForeignKeyConstraint.
         # ForeignKey will create this when parent Column
@@ -1389,6 +1406,7 @@ class ForeignKey(SchemaItem):
                 )
         return self._schema_item_copy(fk)
 
+
     def _get_colspec(self, schema=None):
         """Return a string based 'column specification' for this
         :class:`.ForeignKey`.
@@ -1398,16 +1416,25 @@ class ForeignKey(SchemaItem):
 
         """
         if schema:
-            return schema + "." + self.column.table.name + \
-                                    "." + self.column.key
-        elif isinstance(self._colspec, util.string_types):
-            return self._colspec
-        elif hasattr(self._colspec, '__clause_element__'):
-            _column = self._colspec.__clause_element__()
+            _schema, tname, colname = self._column_tokens
+            return "%s.%s.%s" % (schema, tname, colname)
+        elif self._table_column is not None:
+            return "%s.%s" % (
+                    self._table_column.table.fullname, self._table_column.key)
         else:
-            _column = self._colspec
+            return self._colspec
 
-        return "%s.%s" % (_column.table.fullname, _column.key)
+
+    def _table_key(self):
+        if self._table_column is not None:
+            if self._table_column.table is None:
+                return None
+            else:
+                return self._table_column.table.key
+        else:
+            schema, tname, colname = self._column_tokens
+            return _get_table_key(tname, schema)
+
 
 
     target_fullname = property(_get_colspec)
@@ -1459,20 +1486,6 @@ class ForeignKey(SchemaItem):
         else:
             schema = None
         return schema, tname, colname
-
-    def _table_key(self):
-        if isinstance(self._colspec, util.string_types):
-            schema, tname, colname = self._column_tokens
-            return _get_table_key(tname, schema)
-        elif hasattr(self._colspec, '__clause_element__'):
-            _column = self._colspec.__clause_element__()
-        else:
-            _column = self._colspec
-
-        if _column.table is None:
-            return None
-        else:
-            return _column.table.key
 
     def _resolve_col_tokens(self):
         if self.parent is None:
