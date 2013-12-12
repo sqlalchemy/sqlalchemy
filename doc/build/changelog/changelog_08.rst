@@ -12,6 +12,16 @@
     :version: 0.8.5
 
     .. change::
+        :tags: bug, orm
+        :versions: 0.9.0b2
+        :tickets: 2889
+
+        :func:`.composite` will raise an informative error message when the
+        columns/attribute (names) passed don't resolve to a Column or mapped
+        attribute (such as an erroneous tuple); previously raised an unbound
+        local.
+
+    .. change::
         :tags: bug, declarative
         :versions: 0.9.0b2
         :tickets: 2888
