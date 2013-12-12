@@ -9,6 +9,19 @@
         :start-line: 5
 
 .. changelog::
+    :version: 0.8.5
+
+    .. change::
+        :tags: bug, declarative
+        :versions: 0.9.0b2
+        :tickets: 2888
+
+        Error message when a string arg sent to :func:`.relationship` which
+        doesn't resolve to a class or mapper has been corrected to work
+        the same way as when a non-string arg is received, which indicates
+        the name of the relationship which had the configurational error.
+
+.. changelog::
     :version: 0.8.4
     :released: December 8, 2013
 

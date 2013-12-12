@@ -997,23 +997,23 @@ class RelationshipProperty(StrategizedProperty):
         This is a lazy-initializing static attribute.
 
         """
-        if isinstance(self.argument, type):
-            mapper_ = mapper.class_mapper(self.argument,
-                    configure=False)
-        elif isinstance(self.argument, mapper.Mapper):
-            mapper_ = self.argument
-        elif util.callable(self.argument):
 
-            # accept a callable to suit various deferred-
-            # configurational schemes
+        if util.callable(self.argument) and \
+            not isinstance(self.argument, (type, mapperlib.Mapper)):
+            argument = self.argument()
+        else:
+            argument = self.argument
 
-            mapper_ = mapper.class_mapper(self.argument(),
-                    configure=False)
+        if isinstance(argument, type):
+            mapper_ = mapperlib.class_mapper(argument,
+                     configure=False)
+        elif isinstance(self.argument, mapperlib.Mapper):
+            mapper_ = argument
+
         else:
             raise sa_exc.ArgumentError("relationship '%s' expects "
                     "a class or a mapper argument (received: %s)"
-                    % (self.key, type(self.argument)))
-        assert isinstance(mapper_, mapper.Mapper), mapper_
+                    % (self.key, type(argument)))
         return mapper_
 
     @util.memoized_property
