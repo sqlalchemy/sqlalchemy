@@ -15,6 +15,18 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2883
+
+        The :class:`.ForeignKey` class more aggressively checks the given
+        column argument.   If not a string, it checks that the object is
+        at least a :class:`.ColumnClause`, or an object that resolves to one,
+        and that the ``.table`` attribute, if present, refers to a
+        :class:`.TableClause` or subclass, and not something like an
+        :class:`.Alias`.  Otherwise, a :class:`.ArgumentError` is raised.
+
+
+    .. change::
         :tags: feature, orm
 
         The :class:`.exc.StatementError` or DBAPI-related subclass
