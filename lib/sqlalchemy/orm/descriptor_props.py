@@ -192,7 +192,7 @@ class CompositeProperty(DescriptorProperty):
                 prop = attr.property
             else:
                 raise sa_exc.ArgumentError(
-                        "Composite expects Column or Column-bound "
+                        "Composite expects Column objects or mapped "
                         "attributes/attribute names as arguments, got: %r"
                         % (attr,))
             props.append(prop)
