@@ -143,6 +143,38 @@ class DeclarativeTest(DeclarativeTestBase):
         assert class_mapper(Bar).get_property('some_data').columns[0] \
             is t.c.data
 
+    def test_relationship_level_msg_for_invalid_callable(self):
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+        class B(Base):
+            __tablename__ = 'b'
+            id = Column(Integer, primary_key=True)
+            a_id = Column(Integer, ForeignKey('a.id'))
+            a = relationship('a')
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "relationship 'a' expects a class or a mapper "
+            "argument .received: .*Table",
+            configure_mappers
+        )
+
+    def test_relationship_level_msg_for_invalid_object(self):
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+        class B(Base):
+            __tablename__ = 'b'
+            id = Column(Integer, primary_key=True)
+            a_id = Column(Integer, ForeignKey('a.id'))
+            a = relationship(A.__table__)
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "relationship 'a' expects a class or a mapper "
+            "argument .received: .*Table",
+            configure_mappers
+        )
+
     def test_difficult_class(self):
         """test no getattr() errors with a customized class"""
 
