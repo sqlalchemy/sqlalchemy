@@ -165,6 +165,17 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={'bar': 4, 'whee': 7},
         )
 
+    def test_literal_binds(self):
+        t = text("select * from foo where lala=:bar and hoho=:whee")
+        t = t.bindparams(bindparam('bar', 4), whee='whee')
+
+        self.assert_compile(
+            t,
+            "select * from foo where lala=4 and hoho='whee'",
+            checkparams={},
+            literal_binds=True
+        )
+
     def _assert_type_map(self, t, compare):
         map_ = dict(
             (b.key, b.type) for b in t._bindparams.values()
