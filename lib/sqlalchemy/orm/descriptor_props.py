@@ -245,6 +245,11 @@ class CompositeProperty(DescriptorProperty):
                 prop = self.parent._columntoproperty[attr]
             elif isinstance(attr, attributes.InstrumentedAttribute):
                 prop = attr.property
+            else:
+                raise sa_exc.ArgumentError(
+                        "Composite expects Column or Column-bound "
+                        "attributes/attribute names as arguments, got: %r"
+                        % (attr,))
             props.append(prop)
 
     @property

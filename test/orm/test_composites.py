@@ -6,7 +6,7 @@ from sqlalchemy import Integer, String, ForeignKey, \
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, \
     CompositeProperty, aliased
-from sqlalchemy.orm import composite, Session
+from sqlalchemy.orm import composite, Session, configure_mappers
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 
@@ -738,6 +738,24 @@ class ConfigurationTest(fixtures.MappedTest):
                                             deferred=True)
         })
         self._test_roundtrip()
+
+    def test_check_prop_type(self):
+        edge, Edge, Point = (self.tables.edge,
+                                self.classes.Edge,
+                                self.classes.Point)
+        mapper(Edge, edge, properties={
+            'start': sa.orm.composite(Point, (edge.c.x1,), edge.c.y1),
+        })
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            # note that we also are checking that the tuple
+            # renders here, so the "%" operator in the string needs to
+            # apply the tuple also
+            r"Composite expects Column or Column-bound "
+            "attributes/attribute names as "
+            "arguments, got: \(Column",
+            configure_mappers
+        )
 
 class ComparatorTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
