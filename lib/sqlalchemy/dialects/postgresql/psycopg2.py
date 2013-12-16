@@ -212,23 +212,13 @@ class _PGNumeric(sqltypes.Numeric):
 
 
 class _PGEnum(ENUM):
-    def __init__(self, *arg, **kw):
-        super(_PGEnum, self).__init__(*arg, **kw)
-        if util.py2k:
-            if self.convert_unicode:
-                self.convert_unicode = "force"
-
-
-class _PGArray(ARRAY):
-    def __init__(self, *arg, **kw):
-        super(_PGArray, self).__init__(*arg, **kw)
-        if util.py2k:
-            # FIXME: this check won't work for setups that
-            # have convert_unicode only on their create_engine().
-            if isinstance(self.item_type, sqltypes.String) and \
-                        self.item_type.convert_unicode:
-                self.item_type.convert_unicode = "force"
-
+    def result_processor(self, dialect, coltype):
+        if util.py2k and self.convert_unicode is True:
+            # we can't easily use PG's extensions here because
+            # the OID is on the fly, and we need to give it a python
+            # function anyway - not really worth it.
+            self.convert_unicode = "force_nocheck"
+        return super(_PGEnum, self).result_processor(dialect, coltype)
 
 class _PGHStore(HSTORE):
     def bind_processor(self, dialect):
@@ -334,7 +324,6 @@ class PGDialect_psycopg2(PGDialect):
             sqltypes.Numeric: _PGNumeric,
             ENUM: _PGEnum,  # needs force_unicode
             sqltypes.Enum: _PGEnum,  # needs force_unicode
-            ARRAY: _PGArray,  # needs force_unicode
             HSTORE: _PGHStore,
         }
     )
@@ -371,7 +360,7 @@ class PGDialect_psycopg2(PGDialect):
 
     @util.memoized_property
     def _isolation_lookup(self):
-        extensions = __import__('psycopg2.extensions').extensions
+        from psycopg2 import extensions
         return {
             'AUTOCOMMIT': extensions.ISOLATION_LEVEL_AUTOCOMMIT,
             'READ COMMITTED': extensions.ISOLATION_LEVEL_READ_COMMITTED,
@@ -409,6 +398,7 @@ class PGDialect_psycopg2(PGDialect):
         if self.dbapi and self.use_native_unicode:
             def on_connect(conn):
                 extensions.register_type(extensions.UNICODE, conn)
+                extensions.register_type(extensions.UNICODEARRAY, conn)
             fns.append(on_connect)
 
         if self.dbapi and self.use_native_hstore:
