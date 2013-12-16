@@ -192,13 +192,18 @@ class String(Concatenable, TypeEngine):
         wants_unicode = self.convert_unicode or dialect.convert_unicode
         needs_convert = wants_unicode and \
                         (dialect.returns_unicode_strings is not True or
-                        self.convert_unicode == 'force')
+                        self.convert_unicode in ('force', 'force_nocheck'))
+        needs_isinstance = (
+                                needs_convert and
+                                dialect.returns_unicode_strings and
+                                self.convert_unicode != 'force_nocheck'
+                            )
 
         if needs_convert:
             to_unicode = processors.to_unicode_processor_factory(
                                     dialect.encoding, self.unicode_error)
 
-            if dialect.returns_unicode_strings:
+            if needs_isinstance:
                 # we wouldn't be here unless convert_unicode='force'
                 # was specified, or the driver has erratic unicode-returning
                 # habits.  since we will be getting back unicode

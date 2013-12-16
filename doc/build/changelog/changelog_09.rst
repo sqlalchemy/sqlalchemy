@@ -15,6 +15,13 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: bug, postgresql
+
+        Now using psycopg2 UNICODEARRAY extension for handling unicode arrays
+        with psycopg2 + normal "native unicode" mode, in the same way the
+        UNICODE extension is used.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2883
 
