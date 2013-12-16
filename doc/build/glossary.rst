@@ -985,3 +985,58 @@ Glossary
         .. seealso::
 
             http://en.wikipedia.org/wiki/Unique_key#Defining_unique_keys
+
+    transient
+        This describes one of the four major object states which
+        an object can have within a :term:`session`; a transient object
+        is a new object that doesn't have any database identity
+        and has not been associated with a session yet.  When the
+        object is added to the session, it moves to the
+        :term:`pending` state.
+
+        .. seealso::
+
+            :ref:`session_object_states`
+
+    pending
+        This describes one of the four major object states which
+        an object can have within a :term:`session`; a pending object
+        is a new object that doesn't have any database identity,
+        but has been recently associated with a session.   When
+        the session emits a flush and the row is inserted, the
+        object moves to the :term:`persistent` state.
+
+        .. seealso::
+
+            :ref:`session_object_states`
+
+    persistent
+        This describes one of the four major object states which
+        an object can have within a :term:`session`; a persistent object
+        is an object that has a database identity (i.e. a primary key)
+        and is currently associated with a session.   Any object
+        that was previously :term:`pending` and has now been inserted
+        is in the persistent state, as is any object that's
+        been loaded by the session from the database.   When a
+        persistent object is removed from a session, it is known
+        as :term:`detached`.
+
+        .. seealso::
+
+            :ref:`session_object_states`
+
+    detached
+        This describes one of the four major object states which
+        an object can have within a :term:`session`; a detached object
+        is an object that has a database identity (i.e. a primary key)
+        but is not associated with any session.  An object that
+        was previously :term:`persistent` and was removed from its
+        session either because it was expunged, or the owning
+        session was closed, moves into the detached state.
+        The detached state is generally used when objects are being
+        moved between sessions or when being moved to/from an external
+        object cache.
+
+        .. seealso::
+
+            :ref:`session_object_states`
