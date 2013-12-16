@@ -2488,7 +2488,9 @@ class Mapper(_InspectionAttr):
             for m in self.iterate_to_root():
                 if m._inherits_equated_pairs and \
                     cols.intersection(
-                        [l for l, r in m._inherits_equated_pairs]):
+                      util.reduce(set.union,
+                          [l.proxy_set for l, r in m._inherits_equated_pairs])
+                      ):
                     result[table].append((m, m._inherits_equated_pairs))
 
         return result
