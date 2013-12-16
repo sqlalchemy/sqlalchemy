@@ -519,7 +519,7 @@ def relationship(argument, secondary=None, **kwargs):
 
       .. seealso::
 
-          :meth:`.Session.load_on_pending` - this method establishes
+          :meth:`.Session.enable_relationship_loading` - this method establishes
           "load on pending" behavior for the whole object, and also allows
           loading on objects that remain transient or detached.
 
