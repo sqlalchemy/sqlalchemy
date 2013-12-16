@@ -86,6 +86,7 @@ class MSDialect_pymssql(MSDialect):
     def is_disconnect(self, e, connection, cursor):
         for msg in (
             "Adaptive Server connection timed out",
+            "Net-Lib error during Connection reset by peer",
             "message 20003",  # connection timeout
             "Error 10054",
             "Not connected to any MS SQL server",
