@@ -448,10 +448,6 @@ class RelationshipProperty(StrategizedProperty):
         :param load_on_pending=False:
           Indicates loading behavior for transient or pending parent objects.
 
-          .. versionchanged:: 0.8
-              load_on_pending is superseded by
-              :meth:`.Session.enable_relationship_loading`.
-
           When set to ``True``, causes the lazy-loader to
           issue a query for a parent object that is not persistent, meaning it has
           never been flushed.  This may take effect for a pending object when
@@ -466,6 +462,12 @@ class RelationshipProperty(StrategizedProperty):
           is not not intended for general use.
 
           .. versionadded:: 0.6.5
+
+          .. seealso::
+
+              :meth:`.Session.load_on_pending` - this method establishes
+              "load on pending" behavior for the whole object, and also allows
+              loading on objects that remain transient or detached.
 
         :param order_by:
           indicates the ordering that should be applied when loading these
