@@ -131,10 +131,11 @@ class ParseConnectTest(fixtures.TestBase):
 
         for error in [
                 'Adaptive Server connection timed out',
+                'Net-Lib error during Connection reset by peer',
                 'message 20003',
-                "Error 10054",
-                "Not connected to any MS SQL server",
-                "Connection is closed"
+                'Error 10054',
+                'Not connected to any MS SQL server',
+                'Connection is closed'
                 ]:
             eq_(dialect.is_disconnect(error, None, None), True)
 
