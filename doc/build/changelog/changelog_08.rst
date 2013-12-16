@@ -14,6 +14,16 @@
     .. change::
         :tags: bug, orm
         :versions: 0.9.0b2
+        :tickets: 2885
+
+        Fixed bug when using joined table inheritance from a table to a
+        select/alias on the base, where the PK columns were also not same
+        named; the persistence system would fail to copy primary key values
+        from the base table to the inherited table upon INSERT.
+
+    .. change::
+        :tags: bug, orm
+        :versions: 0.9.0b2
         :tickets: 2889
 
         :func:`.composite` will raise an informative error message when the
