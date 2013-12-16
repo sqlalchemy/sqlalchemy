@@ -1703,8 +1703,8 @@ class Session(_SessionClassMethods):
         may not fire off a backref event, if the effective value
         is what was already loaded from a foreign-key-holding value.
 
-        The :meth:`.Session.enable_relationship_loading` method supersedes
-        the ``load_on_pending`` flag on :func:`.relationship`.   Unlike
+        The :meth:`.Session.enable_relationship_loading` method is
+        similar to the ``load_on_pending`` flag on :func:`.relationship`.   Unlike
         that flag, :meth:`.Session.enable_relationship_loading` allows
         an object to remain transient while still being able to load
         related items.
@@ -1720,6 +1720,12 @@ class Session(_SessionClassMethods):
         proceeds.  This method is not intended for general use.
 
         .. versionadded:: 0.8
+
+        .. seealso::
+
+            ``load_on_pending`` at :func:`.relationship` - this flag
+            allows per-relationship loading of many-to-ones on items that
+            are pending.
 
         """
         state = attributes.instance_state(obj)
