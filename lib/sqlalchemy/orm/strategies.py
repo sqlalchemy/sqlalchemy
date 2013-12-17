@@ -931,6 +931,35 @@ class SubqueryLoader(AbstractRelationshipLoader):
             q = q.order_by(*eager_order_by)
         return q
 
+    class _SubqCollections(object):
+        """Given a :class:`.Query` used to emit the "subquery load",
+        provide a load interface that executes the query at the
+        first moment a value is needed.
+
+        """
+        _data = None
+
+        def __init__(self, subq):
+            self.subq = subq
+
+        def get(self, key, default):
+            if self._data is None:
+                self._load()
+            return self._data.get(key, default)
+
+        def _load(self):
+            self._data = dict(
+                (k, [vv[0] for vv in v])
+                for k, v in itertools.groupby(
+                    self.subq,
+                    lambda x: x[1:]
+                )
+            )
+
+        def loader(self, state, dict_, row):
+            if self._data is None:
+                self._load()
+
     def create_row_processor(self, context, path,
                                     mapper, row, adapter):
         if not self.parent.class_manager[self.key].impl.supports_population:
@@ -953,12 +982,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         # call upon create_row_processor again
         collections = path.get(context, "collections")
         if collections is None:
-            collections = dict(
-                    (k, [v[0] for v in v])
-                    for k, v in itertools.groupby(
-                        subq,
-                        lambda x: x[1:]
-                    ))
+            collections = self._SubqCollections(subq)
             path.set(context, 'collections', collections)
 
         if adapter:
@@ -978,7 +1002,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
             state.get_impl(self.key).\
                     set_committed_value(state, dict_, collection)
 
-        return load_collection_from_subq, None, None
+        return load_collection_from_subq, None, None, collections.loader
 
     def _create_scalar_loader(self, collections, local_cols):
         def load_scalar_from_subq(state, dict_, row):
@@ -996,7 +1020,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
             state.get_impl(self.key).\
                     set_committed_value(state, dict_, scalar)
 
-        return load_scalar_from_subq, None, None
+        return load_scalar_from_subq, None, None, collections.loader
 
 
 log.class_logger(SubqueryLoader)

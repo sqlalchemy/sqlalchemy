@@ -10,6 +10,7 @@ from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.entities import ComparableEntity
 from test.orm import _fixtures
 import sqlalchemy as sa
 
@@ -1764,3 +1765,56 @@ class SubqueryloadDistinctTest(fixtures.DeclarativeMappedTest,
                     (1, 'Woody Allen', 1)
             ]
         )
+
+
+class JoinedNoLoadConflictTest(fixtures.DeclarativeMappedTest):
+    """test for [ticket:2887]"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Parent(ComparableEntity, Base):
+            __tablename__ = 'parent'
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String(20))
+
+            children = relationship('Child',
+                                back_populates='parent',
+                                lazy='noload'
+                            )
+
+        class Child(ComparableEntity, Base):
+            __tablename__ = 'child'
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String(20))
+            parent_id = Column(Integer, ForeignKey('parent.id'))
+
+            parent = relationship('Parent', back_populates='children', lazy='joined')
+
+    @classmethod
+    def insert_data(cls):
+        Parent = cls.classes.Parent
+        Child = cls.classes.Child
+
+        s = Session()
+        s.add(Parent(name='parent', children=[Child(name='c1')]))
+        s.commit()
+
+    def test_subqueryload_on_joined_noload(self):
+        Parent = self.classes.Parent
+        Child = self.classes.Child
+
+        s = Session()
+
+        # here we have Parent->subqueryload->Child->joinedload->parent->noload->children.
+        # the actual subqueryload has to emit *after* we've started populating
+        # Parent->subqueryload->child.
+        parent = s.query(Parent).options([subqueryload('children')]).first()
+        eq_(
+            parent.children,
+            [Child(name='c1')]
+        )
+
