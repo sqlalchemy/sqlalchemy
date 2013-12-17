@@ -56,21 +56,24 @@ class JSON(sqltypes.TypeEngine):
     will be detected by the unit of work.  See the example at :class:`.HSTORE`
     for a simple example involving a dictionary.
 
+    Custom serializers and deserializers are specified at the dialect level,
+    that is using :func:`.create_engine`.  The reason for this is that when
+    using psycopg2, the DBAPI only allows serializers at the per-cursor
+    or per-connection level.   E.g.::
+
+        engine = create_engine("postgresql://scott:tiger@localhost/test",
+                                json_serializer=my_serialize_fn,
+                                json_deserializer=my_deserialize_fn
+                        )
+
+    When using the psycopg2 dialect, the json_deserializer is registered
+    against the database using ``psycopg2.extras.register_default_json``.
+
     .. versionadded:: 0.9
 
     """
 
     __visit_name__ = 'JSON'
-
-    def __init__(self, json_serializer=None, json_deserializer=None):
-        if json_serializer:
-            self.json_serializer = json_serializer
-        else:
-            self.json_serializer = json.dumps
-        if json_deserializer:
-            self.json_deserializer = json_deserializer
-        else:
-            self.json_deserializer = json.loads
 
     class comparator_factory(sqltypes.Concatenable.Comparator):
         """Define comparison operations for :class:`.JSON`."""
@@ -113,23 +116,25 @@ class JSON(sqltypes.TypeEngine):
                 _adapt_expression(self, op, other_comparator)
 
     def bind_processor(self, dialect):
+        json_serializer = dialect._json_serializer or json.dumps
         if util.py2k:
             encoding = dialect.encoding
             def process(value):
-                return self.json_serializer(value).encode(encoding)
+                return json_serializer(value).encode(encoding)
         else:
             def process(value):
-                return self.json_serializer(value)
+                return json_serializer(value)
         return process
 
     def result_processor(self, dialect, coltype):
+        json_deserializer = dialect._json_deserializer or json.loads
         if util.py2k:
             encoding = dialect.encoding
             def process(value):
-                return self.json_deserializer(value.decode(encoding))
+                return json_deserializer(value.decode(encoding))
         else:
             def process(value):
-                return self.json_deserializer(value)
+                return json_deserializer(value)
         return process
 
 
