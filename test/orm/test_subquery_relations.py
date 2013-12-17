@@ -1767,7 +1767,7 @@ class JoinedNoLoadConflictTest(fixtures.DeclarativeMappedTest):
         class Parent(ComparableEntity, Base):
             __tablename__ = 'parent'
 
-            id = Column(Integer, primary_key=True)
+            id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
             name = Column(String(20))
 
             children = relationship('Child',
@@ -1778,7 +1778,7 @@ class JoinedNoLoadConflictTest(fixtures.DeclarativeMappedTest):
         class Child(ComparableEntity, Base):
             __tablename__ = 'child'
 
-            id = Column(Integer, primary_key=True)
+            id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
             name = Column(String(20))
             parent_id = Column(Integer, ForeignKey('parent.id'))
 
