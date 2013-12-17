@@ -1304,8 +1304,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=dialect
         )
 
-        assert_raises(
+        assert_raises_message(
             exc.CompileError,
+            "Bind parameter 'foo' without a renderable value not allowed here.",
             bindparam("foo").in_([]).compile, dialect=dialect
         )
 
