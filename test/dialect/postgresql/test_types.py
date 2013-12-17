@@ -998,9 +998,8 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
     def test_bind_serialize_default(self):
-        from sqlalchemy.engine import default
 
-        dialect = default.DefaultDialect()
+        dialect = postgresql.dialect()
         proc = self.test_table.c.hash.type._cached_bind_processor(dialect)
         eq_(
             proc(util.OrderedDict([("key1", "value1"), ("key2", "value2")])),
@@ -1008,9 +1007,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
     def test_bind_serialize_with_slashes_and_quotes(self):
-        from sqlalchemy.engine import default
-
-        dialect = default.DefaultDialect()
+        dialect = postgresql.dialect()
         proc = self.test_table.c.hash.type._cached_bind_processor(dialect)
         eq_(
             proc({'\\"a': '\\"1'}),
@@ -1018,9 +1015,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
     def test_parse_error(self):
-        from sqlalchemy.engine import default
-
-        dialect = default.DefaultDialect()
+        dialect = postgresql.dialect()
         proc = self.test_table.c.hash.type._cached_result_processor(
                     dialect, None)
         assert_raises_message(
@@ -1033,9 +1028,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
     def test_result_deserialize_default(self):
-        from sqlalchemy.engine import default
-
-        dialect = default.DefaultDialect()
+        dialect = postgresql.dialect()
         proc = self.test_table.c.hash.type._cached_result_processor(
                     dialect, None)
         eq_(
@@ -1044,9 +1037,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
     def test_result_deserialize_with_slashes_and_quotes(self):
-        from sqlalchemy.engine import default
-
-        dialect = default.DefaultDialect()
+        dialect = postgresql.dialect()
         proc = self.test_table.c.hash.type._cached_result_processor(
                     dialect, None)
         eq_(
@@ -1693,9 +1684,7 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
     def test_bind_serialize_default(self):
-        from sqlalchemy.engine import default
-
-        dialect = default.DefaultDialect()
+        dialect = postgresql.dialect()
         proc = self.test_table.c.test_column.type._cached_bind_processor(dialect)
         eq_(
             proc({"A": [1, 2, 3, True, False]}),
@@ -1703,9 +1692,7 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
     def test_result_deserialize_default(self):
-        from sqlalchemy.engine import default
-
-        dialect = default.DefaultDialect()
+        dialect = postgresql.dialect()
         proc = self.test_table.c.test_column.type._cached_result_processor(
                     dialect, None)
         eq_(
@@ -1782,16 +1769,26 @@ class JSONRoundTripTest(fixtures.TablesTest):
         )
         self._assert_data([{"k1": "r1v1", "k2": "r1v2"}])
 
-    def _non_native_engine(self):
+    def _non_native_engine(self, json_serializer=None, json_deserializer=None):
+        if json_serializer is not None or json_deserializer is not None:
+            options = {
+                "json_serializer": json_serializer,
+                "json_deserializer": json_deserializer
+            }
+        else:
+            options = {}
+
         if testing.against("postgresql+psycopg2"):
             from psycopg2.extras import register_default_json
-            engine = engines.testing_engine()
+            engine = engines.testing_engine(options=options)
             @event.listens_for(engine, "connect")
             def connect(dbapi_connection, connection_record):
                 engine.dialect._has_native_json = False
                 def pass_(value):
                     return value
                 register_default_json(dbapi_connection, loads=pass_)
+        elif options:
+            engine = engines.testing_engine(options=options)
         else:
             engine = testing.db
         engine.connect()
@@ -1810,6 +1807,56 @@ class JSONRoundTripTest(fixtures.TablesTest):
     def test_insert_python(self):
         engine = self._non_native_engine()
         self._test_insert(engine)
+
+
+    def _test_custom_serialize_deserialize(self, native):
+        import json
+        def loads(value):
+            value = json.loads(value)
+            value['x'] = value['x'] + '_loads'
+            return value
+
+        def dumps(value):
+            value = dict(value)
+            value['x'] = 'dumps_y'
+            return json.dumps(value)
+
+        if native:
+            engine = engines.testing_engine(options=dict(
+                            json_serializer=dumps,
+                            json_deserializer=loads
+                        ))
+        else:
+            engine = self._non_native_engine(
+                            json_serializer=dumps,
+                            json_deserializer=loads
+                        )
+
+        s = select([
+                cast(
+                    {
+                        "key": "value",
+                        "x": "q"
+                    },
+                    JSON
+                )
+            ])
+        eq_(
+            engine.scalar(s),
+            {
+                "key": "value",
+                "x": "dumps_y_loads"
+            },
+        )
+
+    @testing.only_on("postgresql+psycopg2")
+    def test_custom_native(self):
+        self._test_custom_serialize_deserialize(True)
+
+    @testing.only_on("postgresql+psycopg2")
+    def test_custom_python(self):
+        self._test_custom_serialize_deserialize(False)
+
 
     @testing.only_on("postgresql+psycopg2")
     def test_criterion_native(self):

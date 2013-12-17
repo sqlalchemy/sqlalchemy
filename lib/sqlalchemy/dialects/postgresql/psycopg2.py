@@ -428,6 +428,11 @@ class PGDialect_psycopg2(PGDialect):
                                         array_oid=array_oid)
             fns.append(on_connect)
 
+        if self.dbapi and self._json_deserializer:
+            def on_connect(conn):
+                extras.register_default_json(conn, loads=self._json_deserializer)
+            fns.append(on_connect)
+
         if fns:
             def on_connect(conn):
                 for fn in fns:
