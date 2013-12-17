@@ -167,14 +167,6 @@ class AdaptTest(fixtures.TestBase):
                 t1 = typ()
             repr(t1)
 
-    def test_plain_init_deprecation_warning(self):
-        for typ in (Integer, Date, SmallInteger):
-            assert_raises_message(
-                exc.SADeprecationWarning,
-                "Passing arguments to type object "
-                "constructor %s is deprecated" % typ,
-                typ, 11
-            )
 
 class TypeAffinityTest(fixtures.TestBase):
     def test_type_affinity(self):
