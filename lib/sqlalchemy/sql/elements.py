@@ -1753,6 +1753,10 @@ class Cast(ColumnElement):
         """
         self.type = type_api.to_instance(totype)
         self.clause = _literal_as_binds(clause, None)
+        if isinstance(self.clause, BindParameter) and self.clause.type._isnull:
+            self.clause = self.clause._clone()
+            self.clause.type = self.type
+
         self.typeclause = TypeClause(self.type)
 
     def _copy_internals(self, clone=_clone, **kw):

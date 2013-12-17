@@ -15,7 +15,7 @@ from .base import \
     TSVECTOR
 from .constraints import ExcludeConstraint
 from .hstore import HSTORE, hstore
-from .pgjson import JSON
+from .json import JSON
 from .ranges import INT4RANGE, INT8RANGE, NUMRANGE, DATERANGE, TSRANGE, \
     TSTZRANGE
 

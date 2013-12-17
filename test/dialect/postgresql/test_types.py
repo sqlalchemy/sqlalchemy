@@ -10,7 +10,8 @@ from sqlalchemy import Table, Column, select, MetaData, text, Integer, \
             PrimaryKeyConstraint, DateTime, tuple_, Float, BigInteger, \
             func, literal_column, literal, bindparam, cast, extract, \
             SmallInteger, Enum, REAL, update, insert, Index, delete, \
-            and_, Date, TypeDecorator, Time, Unicode, Interval, or_, Text
+            and_, Date, TypeDecorator, Time, Unicode, Interval, or_, Text, \
+            type_coerce
 from sqlalchemy.orm import Session, mapper, aliased
 from sqlalchemy import exc, schema, types
 from sqlalchemy.dialects.postgresql import base as postgresql
@@ -23,6 +24,8 @@ from sqlalchemy.testing.util import round_decimal
 from sqlalchemy.sql import table, column, operators
 import logging
 import re
+from sqlalchemy import inspect
+from sqlalchemy import event
 
 class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
     __only_on__ = 'postgresql'
@@ -965,14 +968,7 @@ class UUIDTest(fixtures.TestBase):
 
 
 
-class HStoreTest(fixtures.TestBase):
-    def _assert_sql(self, construct, expected):
-        dialect = postgresql.dialect()
-        compiled = str(construct.compile(dialect=dialect))
-        compiled = re.sub(r'\s+', ' ', compiled)
-        expected = re.sub(r'\s+', ' ', expected)
-        eq_(compiled, expected)
-
+class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
     def setup(self):
         metadata = MetaData()
         self.test_table = Table('test_table', metadata,
@@ -983,7 +979,7 @@ class HStoreTest(fixtures.TestBase):
 
     def _test_where(self, whereclause, expected):
         stmt = select([self.test_table]).where(whereclause)
-        self._assert_sql(
+        self.assert_compile(
             stmt,
             "SELECT test_table.id, test_table.hash FROM test_table "
             "WHERE %s" % expected
@@ -991,7 +987,7 @@ class HStoreTest(fixtures.TestBase):
 
     def _test_cols(self, colclause, expected, from_=True):
         stmt = select([colclause])
-        self._assert_sql(
+        self.assert_compile(
             stmt,
             (
                 "SELECT %s" +
@@ -1292,7 +1288,6 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         return engine
 
     def test_reflect(self):
-        from sqlalchemy import inspect
         insp = inspect(testing.db)
         cols = insp.get_columns('data_table')
         assert isinstance(cols[2]['type'], HSTORE)
@@ -1666,13 +1661,7 @@ class DateTimeTZRangeTests(_RangeTypeMixin, fixtures.TablesTest):
         return self.extras.DateTimeTZRange(*self.tstzs())
 
 
-class JSONTest(fixtures.TestBase):
-    def _assert_sql(self, construct, expected):
-        dialect = postgresql.dialect()
-        compiled = str(construct.compile(dialect=dialect))
-        compiled = re.sub(r'\s+', ' ', compiled)
-        expected = re.sub(r'\s+', ' ', expected)
-        eq_(compiled, expected)
+class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
 
     def setup(self):
         metadata = MetaData()
@@ -1684,7 +1673,7 @@ class JSONTest(fixtures.TestBase):
 
     def _test_where(self, whereclause, expected):
         stmt = select([self.test_table]).where(whereclause)
-        self._assert_sql(
+        self.assert_compile(
             stmt,
             "SELECT test_table.id, test_table.test_column FROM test_table "
             "WHERE %s" % expected
@@ -1692,7 +1681,7 @@ class JSONTest(fixtures.TestBase):
 
     def _test_cols(self, colclause, expected, from_=True):
         stmt = select([colclause])
-        self._assert_sql(
+        self.assert_compile(
             stmt,
             (
                 "SELECT %s" +
@@ -1730,19 +1719,19 @@ class JSONTest(fixtures.TestBase):
 
     def test_where_path(self):
         self._test_where(
-            self.jsoncol.get_path('{"foo", 1}') == None,
+            self.jsoncol[("foo", 1)] == None,
             "(test_table.test_column #> %(test_column_1)s) IS NULL"
         )
 
     def test_where_getitem_as_text(self):
         self._test_where(
-            self.jsoncol.get_item_as_text('bar') == None,
+            self.jsoncol.astext['bar'] == None,
             "(test_table.test_column ->> %(test_column_1)s) IS NULL"
         )
 
     def test_where_path_as_text(self):
         self._test_where(
-            self.jsoncol.get_path_as_text('{"foo", 1}') == None,
+            self.jsoncol.astext[("foo", 1)] == None,
             "(test_table.test_column #>> %(test_column_1)s) IS NULL"
         )
 
@@ -1755,7 +1744,7 @@ class JSONTest(fixtures.TestBase):
 
 
 class JSONRoundTripTest(fixtures.TablesTest):
-    __only_on__ = 'postgresql'
+    __only_on__ = ('postgresql >= 9.3',)
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1792,14 +1781,20 @@ class JSONRoundTripTest(fixtures.TablesTest):
 
     def _non_native_engine(self):
         if testing.against("postgresql+psycopg2"):
+            from psycopg2.extras import register_default_json
             engine = engines.testing_engine()
+            @event.listens_for(engine, "connect")
+            def connect(dbapi_connection, connection_record):
+                engine.dialect._has_native_json = False
+                def pass_(value):
+                    return value
+                register_default_json(dbapi_connection, loads=pass_)
         else:
             engine = testing.db
         engine.connect()
         return engine
 
     def test_reflect(self):
-        from sqlalchemy import inspect
         insp = inspect(testing.db)
         cols = insp.get_columns('data_table')
         assert isinstance(cols[2]['type'], JSON)
@@ -1830,7 +1825,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
         data_table = self.tables.data_table
         result = engine.execute(
             select([data_table.c.data]).where(
-                data_table.c.data.get_path_as_text('{k1}') == 'r3v1'
+                data_table.c.data.astext[('k1',)] == 'r3v1'
             )
         ).first()
         eq_(result, ({'k1': 'r3v1', 'k2': 'r3v2'},))
@@ -1840,7 +1835,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
         self._fixture_data(engine)
         data_table = self.tables.data_table
         result = engine.execute(
-            select([data_table.c.data.get_item_as_text('k1')])
+            select([data_table.c.data.astext['k1']])
         ).first()
         assert isinstance(result[0], basestring)
 
@@ -1848,7 +1843,61 @@ class JSONRoundTripTest(fixtures.TablesTest):
         data_table = self.tables.data_table
         result = engine.execute(
             select([data_table.c.data]).where(
-                data_table.c.data.get_item_as_text('k1') == 'r3v1'
+                data_table.c.data.astext['k1'] == 'r3v1'
             )
         ).first()
         eq_(result, ({'k1': 'r3v1', 'k2': 'r3v2'},))
+
+    def _test_fixed_round_trip(self, engine):
+        s = select([
+                cast(
+                    {
+                        "key": "value",
+                        "key2": {"k1": "v1", "k2": "v2"}
+                    },
+                    JSON
+                )
+            ])
+        eq_(
+            engine.scalar(s),
+            {
+                "key": "value",
+                "key2": {"k1": "v1", "k2": "v2"}
+            },
+        )
+
+    def test_fixed_round_trip_python(self):
+        engine = self._non_native_engine()
+        self._test_fixed_round_trip(engine)
+
+    @testing.only_on("postgresql+psycopg2")
+    def test_fixed_round_trip_native(self):
+        engine = testing.db
+        self._test_fixed_round_trip(engine)
+
+    def _test_unicode_round_trip(self, engine):
+        s = select([
+            cast(
+                {
+                    util.u('réveillé'): util.u('réveillé'),
+                    "data": {"k1": util.u('drôle')}
+                },
+                JSON
+            )
+        ])
+        eq_(
+            engine.scalar(s),
+                {
+                    util.u('réveillé'): util.u('réveillé'),
+                    "data": {"k1": util.u('drôle')}
+                },
+        )
+
+    def test_unicode_round_trip_python(self):
+        engine = self._non_native_engine()
+        self._test_unicode_round_trip(engine)
+
+    @testing.only_on("postgresql+psycopg2")
+    def test_unicode_round_trip_native(self):
+        engine = testing.db
+        self._test_unicode_round_trip(engine)

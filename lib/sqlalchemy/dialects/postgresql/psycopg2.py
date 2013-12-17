@@ -179,7 +179,7 @@ from .base import PGDialect, PGCompiler, \
                                 ENUM, ARRAY, _DECIMAL_TYPES, _FLOAT_TYPES,\
                                 _INT_TYPES
 from .hstore import HSTORE
-from .pgjson import JSON
+from .json import JSON
 
 
 logger = logging.getLogger('sqlalchemy.dialects.postgresql')
@@ -236,9 +236,7 @@ class _PGHStore(HSTORE):
 
 
 class _PGJSON(JSON):
-    # I've omitted the bind processor here because the method of serializing
-    # involves registering specific types to auto-serialize, and the adapter
-    # just a thin wrapper over json.dumps.
+
     def result_processor(self, dialect, coltype):
         if dialect._has_native_json:
             return None

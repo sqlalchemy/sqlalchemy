@@ -3,16 +3,16 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
+from __future__ import absolute_import
 
 import json
 
-from .base import ARRAY, ischema_names
+from .base import ischema_names
 from ... import types as sqltypes
-from ...sql import functions as sqlfunc
 from ...sql.operators import custom_op
 from ... import util
 
-__all__ = ('JSON', 'json')
+__all__ = ('JSON', )
 
 
 class JSON(sqltypes.TypeEngine):
@@ -39,21 +39,25 @@ class JSON(sqltypes.TypeEngine):
 
     * Index operations returning text (required for text comparison or casting)::
 
-        data_table.c.data.get_item_as_text('some key') == 'some value'
+        data_table.c.data.astext['some key'] == 'some value'
 
     * Path index operations::
 
-        data_table.c.data.get_path("{key_1, key_2, ..., key_n}")
+        data_table.c.data[('key_1', 'key_2', ..., 'key_n')]
 
     * Path index operations returning text (required for text comparison or casting)::
 
-        data_table.c.data.get_path("{key_1, key_2, ..., key_n}") == 'some value'
+        data_table.c.data.astext[('key_1', 'key_2', ..., 'key_n')] == 'some value'
 
-    Please be aware that when used with the SQLAlchemy ORM, you will need to
-    replace the JSON object present on an attribute with a new object in order
-    for any changes to be properly persisted.
+    The :class:`.JSON` type, when used with the SQLAlchemy ORM, does not detect
+    in-place mutations to the structure.  In order to detect these, the
+    :mod:`sqlalchemy.ext.mutable` extension must be used.  This extension will
+    allow "in-place" changes to the datastructure to produce events which
+    will be detected by the unit of work.  See the example at :class:`.HSTORE`
+    for a simple example involving a dictionary.
 
     .. versionadded:: 0.9
+
     """
 
     __visit_name__ = 'JSON'
@@ -71,31 +75,35 @@ class JSON(sqltypes.TypeEngine):
     class comparator_factory(sqltypes.Concatenable.Comparator):
         """Define comparison operations for :class:`.JSON`."""
 
+        class _astext(object):
+            def __init__(self, parent):
+                self.parent = parent
+
+            def __getitem__(self, other):
+                return self.parent.expr._get_item(other, True)
+
+        def _get_item(self, other, astext):
+            if hasattr(other, '__iter__') and \
+                not isinstance(other, util.string_types):
+                op = "#>"
+                other = "{%s}" % (", ".join(util.text_type(elem) for elem in other))
+            else:
+                op = "->"
+
+            if astext:
+                op += ">"
+
+            # ops: ->, ->>, #>, #>>
+            return self.expr.op(op, precedence=5)(other)
+
         def __getitem__(self, other):
-            """Text expression.  Get the value at a given key."""
-            # I'm choosing to return text here so the result can be cast,
-            # compared with strings, etc.
-            #
-            # The only downside to this is that you cannot dereference more
-            # than one level deep in json structures, though comparator
-            # support for multi-level dereference is lacking anyhow.
-            return self.expr.op('->', precedence=5)(other)
+            """Get the value at a given key."""
 
-        def get_item_as_text(self, other):
-            """Text expression.  Get the value at the given key as text.  Use
-            this when you need to cast the type of the returned value."""
-            return self.expr.op('->>', precedence=5)(other)
+            return self._get_item(other, False)
 
-        def get_path(self, other):
-            """Text expression.  Get the value at a given path. Paths are of
-            the form {key_1, key_2, ..., key_n}."""
-            return self.expr.op('#>', precedence=5)(other)
-
-        def get_path_as_text(self, other):
-            """Text expression.  Get the value at a given path, as text.
-            Paths are of the form {key_1, key_2, ..., key_n}.  Use this when
-            you need to cast the type of the returned value."""
-            return self.expr.op('#>>', precedence=5)(other)
+        @property
+        def astext(self):
+            return self._astext(self)
 
         def _adapt_expression(self, op, other_comparator):
             if isinstance(op, custom_op):
