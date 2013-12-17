@@ -12,6 +12,14 @@
     :version: 0.8.5
 
     .. change::
+        :tags: enhancement, sql
+        :versions: 0.9.0b2
+
+        The exception raised when a :class:`.BindParameter` is present
+        in a compiled statement without a value now includes the key name
+        of the bound parameter in the error message.
+
+    .. change::
         :tags: bug, orm
         :versions: 0.9.0b2
         :tickets: 2887
