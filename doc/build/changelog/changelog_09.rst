@@ -17,7 +17,7 @@
     .. change::
         :tags: feature, postgresql
         :tickets: 2581
-        :pullreq: bitbucket:50
+        :pullreq: github:50
 
         Support for Postgresql JSON has been added, using the new
         :class:`.JSON` type.   Huge thanks to Nathan Rice for
