@@ -970,8 +970,9 @@ class SQLCompiler(Compiled):
             (within_columns_clause and \
                 self.ansi_bind_rules):
             if bindparam.value is None:
-                raise exc.CompileError("Bind parameter without a "
-                                        "renderable value not allowed here.")
+                raise exc.CompileError("Bind parameter '%s' without a "
+                                        "renderable value not allowed here."
+                                        % bindparam.key)
             return self.render_literal_bindparam(bindparam,
                             within_columns_clause=True, **kwargs)
 
