@@ -98,7 +98,14 @@ class Predicate(object):
         elif isinstance(predicate, tuple):
             return SpecPredicate(*predicate)
         elif isinstance(predicate, util.string_types):
-            return SpecPredicate(predicate, None, None)
+            tokens = predicate.split(" ", 2)
+            op = spec = None
+            db = tokens.pop(0)
+            if tokens:
+                op = tokens.pop(0)
+            if tokens:
+                spec = tuple(int(d) for d in tokens.pop(0).split("."))
+            return SpecPredicate(db, op, spec)
         elif util.callable(predicate):
             return LambdaPredicate(predicate)
         else:

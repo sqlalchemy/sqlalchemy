@@ -179,6 +179,7 @@ from .base import PGDialect, PGCompiler, \
                                 ENUM, ARRAY, _DECIMAL_TYPES, _FLOAT_TYPES,\
                                 _INT_TYPES
 from .hstore import HSTORE
+from .json import JSON
 
 
 logger = logging.getLogger('sqlalchemy.dialects.postgresql')
@@ -232,6 +233,15 @@ class _PGHStore(HSTORE):
             return None
         else:
             return super(_PGHStore, self).result_processor(dialect, coltype)
+
+
+class _PGJSON(JSON):
+
+    def result_processor(self, dialect, coltype):
+        if dialect._has_native_json:
+            return None
+        else:
+            return super(_PGJSON, self).result_processor(dialect, coltype)
 
 # When we're handed literal SQL, ensure it's a SELECT-query. Since
 # 8.3, combining cursors and "FOR UPDATE" has been fine.
@@ -317,6 +327,7 @@ class PGDialect_psycopg2(PGDialect):
     psycopg2_version = (0, 0)
 
     _has_native_hstore = False
+    _has_native_json = False
 
     colspecs = util.update_copy(
         PGDialect.colspecs,
@@ -325,6 +336,7 @@ class PGDialect_psycopg2(PGDialect):
             ENUM: _PGEnum,  # needs force_unicode
             sqltypes.Enum: _PGEnum,  # needs force_unicode
             HSTORE: _PGHStore,
+            JSON: _PGJSON
         }
     )
 
@@ -352,6 +364,7 @@ class PGDialect_psycopg2(PGDialect):
         self._has_native_hstore = self.use_native_hstore and \
                         self._hstore_oids(connection.connection) \
                             is not None
+        self._has_native_json = self.psycopg2_version >= (2, 5)
 
     @classmethod
     def dbapi(cls):

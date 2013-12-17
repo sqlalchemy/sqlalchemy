@@ -15,6 +15,7 @@ from .base import \
     TSVECTOR
 from .constraints import ExcludeConstraint
 from .hstore import HSTORE, hstore
+from .json import JSON
 from .ranges import INT4RANGE, INT8RANGE, NUMRANGE, DATERANGE, TSRANGE, \
     TSTZRANGE
 
@@ -24,5 +25,5 @@ __all__ = (
     'DOUBLE_PRECISION', 'TIMESTAMP', 'TIME', 'DATE', 'BYTEA', 'BOOLEAN',
     'INTERVAL', 'ARRAY', 'ENUM', 'dialect', 'Any', 'All', 'array', 'HSTORE',
     'hstore', 'INT4RANGE', 'INT8RANGE', 'NUMRANGE', 'DATERANGE',
-    'TSRANGE', 'TSTZRANGE', 'TSVECTOR'
+    'TSRANGE', 'TSTZRANGE', 'json', 'JSON'
 )
