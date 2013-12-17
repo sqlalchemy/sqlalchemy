@@ -14,6 +14,17 @@
     .. change::
         :tags: bug, orm
         :versions: 0.9.0b2
+        :tickets: 2887
+
+        An adjustment to the :func:`.subqueryload` strategy which ensures that
+        the query runs after the loading process has begun; this is so that
+        the subqueryload takes precedence over other loaders that may be
+        hitting the same attribute due to other eager/noload situations
+        at the wrong time.
+
+    .. change::
+        :tags: bug, orm
+        :versions: 0.9.0b2
         :tickets: 2885
 
         Fixed bug when using joined table inheritance from a table to a
