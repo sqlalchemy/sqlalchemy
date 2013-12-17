@@ -969,6 +969,8 @@ class UUIDTest(fixtures.TestBase):
 
 
 class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
+    __dialect__ = 'postgresql'
+
     def setup(self):
         metadata = MetaData()
         self.test_table = Table('test_table', metadata,
@@ -1662,6 +1664,7 @@ class DateTimeTZRangeTests(_RangeTypeMixin, fixtures.TablesTest):
 
 
 class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
+    __dialect__ = 'postgresql'
 
     def setup(self):
         metadata = MetaData()
