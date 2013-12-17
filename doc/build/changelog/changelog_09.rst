@@ -15,6 +15,15 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: feature, postgresql
+        :tickets: 2581
+        :pullreq: bitbucket:50
+
+        Support for Postgresql JSON has been added, using the new
+        :class:`.JSON` type.   Huge thanks to Nathan Rice for
+        implementing and testing this.
+
+    .. change::
         :tags: bug, sql
 
         The :func:`.cast` function, when given a plain literal value,
