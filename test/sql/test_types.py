@@ -416,12 +416,21 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
     def test_type_coerce(self):
         """test ad-hoc usage of custom types with type_coerce()."""
 
+        self._test_type_coerce_cast(type_coerce)
+
+    @testing.provide_metadata
+    def test_cast(self):
+        """test ad-hoc usage of custom types with cast()."""
+
+        self._test_type_coerce_cast(cast)
+
+    def _test_type_coerce_cast(self, coerce_fn):
         metadata = self.metadata
         class MyType(types.TypeDecorator):
             impl = String
 
             def process_bind_param(self, value, dialect):
-                return value[0:-8]
+                return util.text_type(value)[0:-8]
 
             def process_result_value(self, value, dialect):
                 return value + "BIND_OUT"
@@ -429,55 +438,68 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
         t = Table('t', metadata, Column('data', String(50)))
         metadata.create_all()
 
-        t.insert().values(data=type_coerce('d1BIND_OUT', MyType)).execute()
+        t.insert().values(data=coerce_fn('d1BIND_OUT', MyType)).execute()
 
         eq_(
-            select([type_coerce(t.c.data, MyType)]).execute().fetchall(),
+            select([coerce_fn(t.c.data, MyType)]).execute().fetchall(),
             [('d1BIND_OUT', )]
         )
 
+        # test coerce from nulltype - e.g. use an object that
+        # doens't match to a known type
+        class MyObj(object):
+            def __str__(self):
+                return "THISISMYOBJ"
+
         eq_(
-            select([t.c.data, type_coerce(t.c.data, MyType)]).execute().fetchall(),
+            testing.db.execute(
+                select([coerce_fn(MyObj(), MyType)])
+            ).fetchall(),
+            [('THIBIND_OUT',)]
+        )
+
+        eq_(
+            select([t.c.data, coerce_fn(t.c.data, MyType)]).execute().fetchall(),
             [('d1', 'd1BIND_OUT')]
         )
 
         eq_(
-            select([t.c.data, type_coerce(t.c.data, MyType)]).
+            select([t.c.data, coerce_fn(t.c.data, MyType)]).
                     alias().select().execute().fetchall(),
             [('d1', 'd1BIND_OUT')]
         )
 
         eq_(
-            select([t.c.data, type_coerce(t.c.data, MyType)]).\
-                        where(type_coerce(t.c.data, MyType) == 'd1BIND_OUT').\
+            select([t.c.data, coerce_fn(t.c.data, MyType)]).\
+                        where(coerce_fn(t.c.data, MyType) == 'd1BIND_OUT').\
                         execute().fetchall(),
             [('d1', 'd1BIND_OUT')]
         )
 
         eq_(
-            select([t.c.data, type_coerce(t.c.data, MyType)]).\
-                        where(t.c.data == type_coerce('d1BIND_OUT', MyType)).\
+            select([t.c.data, coerce_fn(t.c.data, MyType)]).\
+                        where(t.c.data == coerce_fn('d1BIND_OUT', MyType)).\
                         execute().fetchall(),
             [('d1', 'd1BIND_OUT')]
         )
 
         eq_(
-            select([t.c.data, type_coerce(t.c.data, MyType)]).\
-                        where(t.c.data == type_coerce(None, MyType)).\
+            select([t.c.data, coerce_fn(t.c.data, MyType)]).\
+                        where(t.c.data == coerce_fn(None, MyType)).\
                         execute().fetchall(),
             []
         )
 
         eq_(
-            select([t.c.data, type_coerce(t.c.data, MyType)]).\
-                        where(type_coerce(t.c.data, MyType) == None).\
+            select([t.c.data, coerce_fn(t.c.data, MyType)]).\
+                        where(coerce_fn(t.c.data, MyType) == None).\
                         execute().fetchall(),
             []
         )
 
         eq_(
             testing.db.scalar(
-                select([type_coerce(literal('d1BIND_OUT'), MyType)])
+                select([coerce_fn(literal('d1BIND_OUT'), MyType)])
             ),
             'd1BIND_OUT'
         )
@@ -488,7 +510,7 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
 
         eq_(
             testing.db.execute(
-                select([t.c.data, type_coerce(MyFoob(), MyType)])
+                select([t.c.data, coerce_fn(MyFoob(), MyType)])
             ).fetchall(),
             [('d1', 'd1BIND_OUT')]
         )
