@@ -403,12 +403,6 @@ class TypeEngine(Visitable):
         else:
             return str(self.compile())
 
-    def __init__(self, *args, **kwargs):
-        """Support implementations that were passing arguments"""
-        if args or kwargs:
-            util.warn_deprecated("Passing arguments to type object "
-                    "constructor %s is deprecated" % self.__class__)
-
     def __repr__(self):
         return util.generic_repr(self)
 
