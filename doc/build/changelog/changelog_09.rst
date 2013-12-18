@@ -15,6 +15,16 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: bug, mysql
+        :tickets: 2893
+
+        Improvements to the system by which SQL types generate within
+        ``__repr__()``, particularly with regards to the MySQL integer/numeric/
+        character types which feature a wide variety of keyword arguments.
+        The ``__repr__()`` is important for use with Alembic autogenerate
+        for when Python code is rendered in a migration script.
+
+    .. change::
         :tags: feature, postgresql
         :tickets: 2581
         :pullreq: github:50

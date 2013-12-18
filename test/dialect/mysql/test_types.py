@@ -142,8 +142,15 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
            ]
 
         for type_, args, kw, res in columns:
+            type_inst = type_(*args, **kw)
             self.assert_compile(
-                type_(*args, **kw),
+                type_inst,
+                res
+            )
+            # test that repr() copies out all arguments
+            print "mysql.%r" % type_inst
+            self.assert_compile(
+                eval("mysql.%r" % type_inst),
                 res
             )
 
@@ -233,14 +240,22 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             (mysql.ENUM, ["foo", "bar"], {'unicode':True},
              '''ENUM('foo','bar') UNICODE'''),
 
-            (String, [20], {"collation":"utf8"}, 'VARCHAR(20) COLLATE utf8')
+            (String, [20], {"collation": "utf8"}, 'VARCHAR(20) COLLATE utf8')
 
 
            ]
 
         for type_, args, kw, res in columns:
+            type_inst = type_(*args, **kw)
             self.assert_compile(
-                type_(*args, **kw),
+                type_inst,
+                res
+            )
+            # test that repr() copies out all arguments
+            self.assert_compile(
+                eval("mysql.%r" % type_inst)
+                    if type_ is not String
+                    else eval("%r" % type_inst),
                 res
             )
 
