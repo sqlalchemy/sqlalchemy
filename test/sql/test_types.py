@@ -411,6 +411,8 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
         self._test_type_coerce_cast(type_coerce)
 
     @testing.provide_metadata
+    @testing.fails_on("oracle",
+                "oracle doesn't like CAST in the VALUES of an INSERT")
     def test_cast(self):
         """test ad-hoc usage of custom types with cast()."""
 
