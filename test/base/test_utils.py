@@ -1419,6 +1419,55 @@ class GenericReprTest(fixtures.TestBase):
             "Foo(b=5, d=7)"
         )
 
+    def test_multi_kw(self):
+        class Foo(object):
+            def __init__(self, a, b, c=3, d=4):
+                self.a = a
+                self.b = b
+                self.c = c
+                self.d = d
+        class Bar(Foo):
+            def __init__(self, e, f, g=5, **kw):
+                self.e = e
+                self.f = f
+                self.g = g
+                super(Bar, self).__init__(**kw)
+
+        eq_(
+            util.generic_repr(
+                Bar('e', 'f', g=7, a=6, b=5, d=9),
+                to_inspect=[Bar, Foo]
+            ),
+            "Bar('e', 'f', g=7, a=6, b=5, d=9)"
+        )
+
+        eq_(
+            util.generic_repr(
+                Bar('e', 'f', a=6, b=5),
+                to_inspect=[Bar, Foo]
+            ),
+            "Bar('e', 'f', a=6, b=5)"
+        )
+
+    def test_multi_kw_repeated(self):
+        class Foo(object):
+            def __init__(self, a=1, b=2):
+                self.a = a
+                self.b = b
+        class Bar(Foo):
+            def __init__(self, b=3, c=4, **kw):
+                self.c = c
+                super(Bar, self).__init__(b=b, **kw)
+
+        eq_(
+            util.generic_repr(
+                Bar(a='a', b='b', c='c'),
+                to_inspect=[Bar, Foo]
+            ),
+            "Bar(b='b', c='c', a='a')"
+        )
+
+
     def test_discard_vargs(self):
         class Foo(object):
             def __init__(self, a, b, *args):

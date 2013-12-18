@@ -380,13 +380,21 @@ SET_RE = re.compile(
 
 
 class _NumericType(object):
-    """Base for MySQL numeric types."""
+    """Base for MySQL numeric types.
+
+    This is the base both for NUMERIC as well as INTEGER, hence
+    it's a mixin.
+
+    """
 
     def __init__(self, unsigned=False, zerofill=False, **kw):
         self.unsigned = unsigned
         self.zerofill = zerofill
         super(_NumericType, self).__init__(**kw)
 
+    def __repr__(self):
+        return util.generic_repr(self,
+                to_inspect=[_NumericType, sqltypes.Numeric])
 
 class _FloatType(_NumericType, sqltypes.Float):
     def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
@@ -401,18 +409,24 @@ class _FloatType(_NumericType, sqltypes.Float):
         super(_FloatType, self).__init__(precision=precision, asdecimal=asdecimal, **kw)
         self.scale = scale
 
+    def __repr__(self):
+        return util.generic_repr(self,
+                to_inspect=[_FloatType, _NumericType, sqltypes.Float])
 
 class _IntegerType(_NumericType, sqltypes.Integer):
     def __init__(self, display_width=None, **kw):
         self.display_width = display_width
         super(_IntegerType, self).__init__(**kw)
 
+    def __repr__(self):
+        return util.generic_repr(self,
+                to_inspect=[_IntegerType, _NumericType, sqltypes.Integer])
 
 class _StringType(sqltypes.String):
     """Base for MySQL string types."""
 
     def __init__(self, charset=None, collation=None,
-                 ascii=False, binary=False,
+                 ascii=False, binary=False, unicode=False,
                  national=False, **kw):
         self.charset = charset
 
@@ -420,16 +434,14 @@ class _StringType(sqltypes.String):
         kw.setdefault('collation', kw.pop('collate', collation))
 
         self.ascii = ascii
-        # We have to munge the 'unicode' param strictly as a dict
-        # otherwise 2to3 will turn it into str.
-        self.__dict__['unicode'] = kw.get('unicode', False)
-        # sqltypes.String does not accept the 'unicode' arg at all.
-        if 'unicode' in kw:
-            del kw['unicode']
+        self.unicode = unicode
         self.binary = binary
         self.national = national
         super(_StringType, self).__init__(**kw)
 
+    def __repr__(self):
+        return util.generic_repr(self,
+                to_inspect=[_StringType, sqltypes.String])
 
 class NUMERIC(_NumericType, sqltypes.NUMERIC):
     """MySQL NUMERIC type."""
@@ -1141,6 +1153,10 @@ class ENUM(sqltypes.Enum, _EnumeratedValues):
         _StringType.__init__(self, length=length, **kw)
         sqltypes.Enum.__init__(self, *values)
 
+    def __repr__(self):
+        return util.generic_repr(self,
+                to_inspect=[ENUM, _StringType, sqltypes.Enum])
+
     def bind_processor(self, dialect):
         super_convert = super(ENUM, self).bind_processor(dialect)
 
@@ -1287,6 +1303,9 @@ MSFloat = FLOAT
 MSInteger = INTEGER
 
 colspecs = {
+    _IntegerType: _IntegerType,
+    _NumericType: _NumericType,
+    _FloatType: _FloatType,
     sqltypes.Numeric: NUMERIC,
     sqltypes.Float: FLOAT,
     sqltypes.Time: TIME,

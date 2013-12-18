@@ -906,15 +906,15 @@ class SchemaType(SchemaEventTarget):
 
     """
 
-    def __init__(self, **kw):
-        name = kw.pop('name', None)
+    def __init__(self, name=None, schema=None, metadata=None,
+                inherit_schema=False, quote=None):
         if name is not None:
-            self.name = quoted_name(name, kw.pop('quote', None))
+            self.name = quoted_name(name, quote)
         else:
             self.name = None
-        self.schema = kw.pop('schema', None)
-        self.metadata = kw.pop('metadata', None)
-        self.inherit_schema = kw.pop('inherit_schema', False)
+        self.schema = schema
+        self.metadata = metadata
+        self.inherit_schema = inherit_schema
         if self.metadata:
             event.listen(
                 self.metadata,
@@ -1110,10 +1110,9 @@ class Enum(String, SchemaType):
         SchemaType.__init__(self, **kw)
 
     def __repr__(self):
-        return util.generic_repr(self, [
-                        ("native_enum", True),
-                        ("name", None)
-                    ])
+        return util.generic_repr(self,
+              to_inspect=[Enum, SchemaType],
+          )
 
     def _should_create_constraint(self, compiler):
         return not self.native_enum or \

@@ -967,6 +967,14 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
         # depending on backend.
         assert "('x'," in e.print_sql()
 
+    def test_repr(self):
+        e = Enum("x", "y", name="somename", convert_unicode=True,
+                        quote=True, inherit_schema=True)
+        eq_(
+            repr(e),
+            "Enum('x', 'y', name='somename', inherit_schema=True)"
+        )
+
 class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
     __excluded_on__ = (
         ('mysql', '<', (4, 1, 1)),  # screwy varbinary types

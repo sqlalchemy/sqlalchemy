@@ -19,6 +19,7 @@ from functools import update_wrapper
 from .. import exc
 import hashlib
 from . import compat
+from . import _collections
 
 def md5_hex(x):
     if compat.py3k:
@@ -392,44 +393,66 @@ def generic_repr(obj, additional_kw=(), to_inspect=None):
 
     """
     if to_inspect is None:
-        to_inspect = obj
+        to_inspect = [obj]
+    else:
+        to_inspect = _collections.to_list(to_inspect)
 
     missing = object()
 
-    def genargs():
+    pos_args = []
+    kw_args = _collections.OrderedDict()
+    vargs = None
+    for i, insp in enumerate(to_inspect):
         try:
-            (args, vargs, vkw, defaults) = \
-                inspect.getargspec(to_inspect.__init__)
+            (_args, _vargs, vkw, defaults) = \
+                inspect.getargspec(insp.__init__)
         except TypeError:
-            return
-
-        default_len = defaults and len(defaults) or 0
-
-        if not default_len:
-            for arg in args[1:]:
-                yield repr(getattr(obj, arg, None))
-            if vargs is not None and hasattr(obj, vargs):
-                yield ', '.join(repr(val) for val in getattr(obj, vargs))
+            continue
         else:
-            for arg in args[1:-default_len]:
-                yield repr(getattr(obj, arg, None))
-            for (arg, defval) in zip(args[-default_len:], defaults):
-                try:
-                    val = getattr(obj, arg, missing)
-                    if val is not missing and val != defval:
-                        yield '%s=%r' % (arg, val)
-                except:
-                    pass
-        if additional_kw:
-            for arg, defval in additional_kw:
-                try:
-                    val = getattr(obj, arg, missing)
-                    if val is not missing and val != defval:
-                        yield '%s=%r' % (arg, val)
-                except:
-                    pass
+            default_len = defaults and len(defaults) or 0
+            if i == 0:
+                if _vargs:
+                    vargs = _vargs
+                if default_len:
+                    pos_args.extend(_args[1:-default_len])
+                else:
+                    pos_args.extend(_args[1:])
+            else:
+                kw_args.update([
+                    (arg, missing) for arg in _args[1:-default_len]
+                ])
 
-    return "%s(%s)" % (obj.__class__.__name__, ", ".join(genargs()))
+            if default_len:
+                kw_args.update([
+                    (arg, default)
+                        for arg, default
+                        in zip(_args[-default_len:], defaults)
+                ])
+    output = []
+
+    output.extend(repr(getattr(obj, arg, None)) for arg in pos_args)
+
+    if vargs is not None and hasattr(obj, vargs):
+        output.extend([repr(val) for val in getattr(obj, vargs)])
+
+    for arg, defval in kw_args.items():
+        try:
+            val = getattr(obj, arg, missing)
+            if val is not missing and val != defval:
+                output.append('%s=%r' % (arg, val))
+        except:
+            pass
+
+    if additional_kw:
+        for arg, defval in additional_kw:
+            try:
+                val = getattr(obj, arg, missing)
+                if val is not missing and val != defval:
+                    output.append('%s=%r' % (arg, val))
+            except:
+                pass
+
+    return "%s(%s)" % (obj.__class__.__name__, ", ".join(output))
 
 
 class portable_instancemethod(object):
