@@ -148,7 +148,6 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 res
             )
             # test that repr() copies out all arguments
-            print "mysql.%r" % type_inst
             self.assert_compile(
                 eval("mysql.%r" % type_inst),
                 res
