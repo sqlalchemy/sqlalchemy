@@ -1176,7 +1176,7 @@ class Query(object):
 
         .. seealso::
 
-            :meth:`.SelectBase.with_for_update` - Core level method with
+            :meth:`.GenerativeSelect.with_for_update` - Core level method with
             full argument and behavioral description.
 
         """
