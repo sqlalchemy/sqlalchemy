@@ -12,6 +12,18 @@
     :version: 0.8.5
 
     .. change::
+        :tags: bug, sql
+        :versions: 0.9.0b2
+        :tickets: 2895
+
+        Fixed bug with :meth:`.Insert.from_select` method where the order
+        of the given names would not be taken into account when generating
+        the INSERT statement, thus producing a mismatch versus the column
+        names in the given SELECT statement.  Also noted that
+        :meth:`.Insert.from_select` implies that Python-side insert defaults
+        cannot be used, since the statement has no VALUES clause.
+
+    .. change::
         :tags: enhancement, sql
         :versions: 0.9.0b2
 

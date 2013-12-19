@@ -426,7 +426,7 @@ class Insert(ValuesBase):
         """
         ValuesBase.__init__(self, table, values, prefixes)
         self._bind = bind
-        self.select = None
+        self.select = self.select_names = None
         self.inline = inline
         self._returning = returning
         self.kwargs = kwargs
@@ -470,6 +470,13 @@ class Insert(ValuesBase):
              sel = select([table1.c.a, table1.c.b]).where(table1.c.c > 5)
              ins = table2.insert(inline=True).from_select(['a', 'b'], sel)
 
+        .. note::
+
+           A SELECT..INSERT construct in SQL has no VALUES clause.  Therefore
+           :class:`.Column` objects which utilize Python-side defaults
+           (e.g. as described at :ref:`metadata_defaults_toplevel`)
+           will **not** take effect when using :meth:`.Insert.from_select`.
+
         .. versionadded:: 0.8.3
 
         """
@@ -480,6 +487,7 @@ class Insert(ValuesBase):
         self.parameters, self._has_multi_parameters = \
                 self._process_colparams(dict((n, Null()) for n in names))
 
+        self.select_names = names
         self.select = _interpret_as_select(select)
 
     def _copy_internals(self, clone=_clone, **kw):

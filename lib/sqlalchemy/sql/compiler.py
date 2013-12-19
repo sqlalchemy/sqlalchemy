@@ -1965,10 +1965,17 @@ class SQLCompiler(Compiled):
                     elif c.server_onupdate is not None:
                         self.postfetch.append(c)
 
-        # iterating through columns at the top to maintain ordering.
-        # otherwise we might iterate through individual sets of
-        # "defaults", "primary key cols", etc.
-        for c in stmt.table.columns:
+        if self.isinsert and stmt.select_names:
+            # for an insert from select, we can only use names that
+            # are given, so only select for those names.
+            cols = (stmt.table.c[elements._column_as_key(name)]
+                        for name in stmt.select_names)
+        else:
+            # iterate through all table columns to maintain
+            # ordering, even for those cols that aren't included
+            cols = stmt.table.columns
+
+        for c in cols:
             if c.key in parameters and c.key not in check_columns:
                 value = parameters.pop(c.key)
                 if elements._is_literal(value):
