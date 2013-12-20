@@ -14,6 +14,19 @@
     .. change::
         :tags: bug, sql
         :versions: 0.9.0b2
+        :tickets: 2896
+
+        Fixed issue where a primary key column that has a Sequence on it,
+        yet the column is not the "auto increment" column, either because
+        it has a foreign key constraint or ``autoincrement=False`` set,
+        would attempt to fire the Sequence on INSERT for backends that don't
+        support sequences, when presented with an INSERT missing the primary
+        key value.  This would take place on non-sequence backends like
+        SQLite, MySQL.
+
+    .. change::
+        :tags: bug, sql
+        :versions: 0.9.0b2
         :tickets: 2895
 
         Fixed bug with :meth:`.Insert.from_select` method where the order
