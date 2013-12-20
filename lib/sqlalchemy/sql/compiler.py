@@ -2035,7 +2035,13 @@ class SQLCompiler(Compiled):
                         else:
                             self.returning.append(c)
                     else:
-                        if c.default is not None or \
+                        if (
+                                c.default is not None and
+                                (
+                                    not c.default.is_sequence or
+                                    self.dialect.supports_sequences
+                                )
+                            ) or \
                             c is stmt.table._autoincrement_column and (
                                 self.dialect.supports_sequences or
                                 self.dialect.preexecute_autoincrement_sequences
