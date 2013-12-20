@@ -603,6 +603,33 @@ class AutoIncrementTest(fixtures.TablesTest):
 
         nonai.insert().execute(id=1, data='row 1')
 
+
+    def test_col_w_sequence_non_autoinc_no_firing(self):
+        metadata = self.metadata
+        # plain autoincrement/PK table in the actual schema
+        Table("x", metadata,
+            Column("set_id", Integer, primary_key=True)
+        )
+        metadata.create_all()
+
+        # for the INSERT use a table with a Sequence
+        # and autoincrement=False.  Using a ForeignKey
+        # would have the same effect
+        dataset_no_autoinc = Table("x", MetaData(),
+            Column("set_id", Integer, Sequence("some_seq"),
+                        primary_key=True, autoincrement=False)
+            )
+
+        testing.db.execute(
+                dataset_no_autoinc.insert()
+        )
+        eq_(
+            testing.db.scalar(dataset_no_autoinc.count()), 1
+        )
+
+
+
+
 class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
@@ -874,6 +901,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         metadata.drop_all(testing.db)
         assert not self._has_sequence('s1')
         assert not self._has_sequence('s2')
+
 
 cartitems = sometable = metadata = None
 class TableBoundSequenceTest(fixtures.TestBase):
