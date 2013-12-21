@@ -627,9 +627,17 @@ class ResultProxy(object):
     @property
     def returned_defaults(self):
         """Return the values of default columns that were fetched using
-        the ``returned_defaults`` feature.
+        the :meth:`.ValuesBase.return_defaults` feature.
+
+        The value is an instance of :class:`.RowProxy`, or ``None``
+        if :meth:`.ValuesBase.return_defaults` was not used or if the
+        backend does not support RETURNING.
 
         .. versionadded:: 0.9.0
+
+        .. seealso::
+
+            :meth:`.ValuesBase.return_defaults`
 
         """
         return self.context.returned_defaults
