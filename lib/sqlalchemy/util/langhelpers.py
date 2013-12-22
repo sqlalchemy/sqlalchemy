@@ -99,14 +99,21 @@ def decorator(target):
 
         metadata = dict(target=targ_name, fn=fn_name)
         metadata.update(format_argspec_plus(spec, grouped=False))
-
-        code = 'lambda %(args)s: %(target)s(%(fn)s, %(apply_kw)s)' % (
-                metadata)
-        decorated = eval(code, {targ_name: target, fn_name: fn})
+        metadata['name'] = fn.__name__
+        code = """\
+def %(name)s(%(args)s):
+    return %(target)s(%(fn)s, %(apply_kw)s)
+""" % metadata
+        decorated = _exec_code_in_env(code,
+                            {targ_name: target, fn_name: fn},
+                            fn.__name__)
         decorated.__defaults__ = getattr(fn, 'im_func', fn).__defaults__
         return update_wrapper(decorated, fn)
     return update_wrapper(decorate, target)
 
+def _exec_code_in_env(code, env, fn_name):
+    exec(code, env)
+    return env[fn_name]
 
 def public_factory(target, location):
     """Produce a wrapping function for the given cls or classmethod.
@@ -127,11 +134,18 @@ def public_factory(target, location):
         doc = "This function is mirrored; see :func:`~%s` "\
                 "for a description of arguments." % location
 
+    location_name = location.split(".")[-1]
     spec = compat.inspect_getfullargspec(fn)
     del spec[0][0]
     metadata = format_argspec_plus(spec, grouped=False)
-    code = 'lambda %(args)s: cls(%(apply_kw)s)' % metadata
-    decorated = eval(code, {'cls': callable_, 'symbol': symbol})
+    metadata['name'] = location_name
+    code = """\
+def %(name)s(%(args)s):
+    return cls(%(apply_kw)s)
+""" % metadata
+    env = {'cls': callable_, 'symbol': symbol}
+    exec(code, env)
+    decorated = env[location_name]
     decorated.__doc__ = fn.__doc__
     if compat.py2k or hasattr(fn, '__func__'):
         fn.__func__.__doc__ = doc
