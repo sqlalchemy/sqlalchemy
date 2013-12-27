@@ -15,6 +15,18 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: bug, firebird
+        :tickets: 2898
+
+        Changed the queries used by Firebird to list table and view names
+        to query from the ``rdb$relations`` view instead of the
+        ``rdb$relation_fields`` and ``rdb$view_relations`` views.
+        Variants of both the old and new queries are mentioned on many
+        FAQ and blogs, however the new queries are taken straight from
+        the "Firebird FAQ" which appears to be the most official source
+        of info.
+
+    .. change::
         :tags: bug, mysql
         :tickets: 2893
 
