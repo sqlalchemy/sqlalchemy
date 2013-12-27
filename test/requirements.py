@@ -548,6 +548,26 @@ class DefaultRequirements(SuiteRequirements):
                 ]
                 )
 
+    @property
+    def precision_generic_float_type(self):
+        """target backend will return native floating point numbers with at
+        least seven decimal places when using the generic Float type."""
+
+        return fails_if([
+                    ('mysql', None, None,
+                                'mysql FLOAT type only returns 4 decimals'),
+                    ('firebird', None, None,
+                                "firebird FLOAT type isn't high precision"),
+                ])
+
+    @property
+    def floats_to_four_decimals(self):
+        return fails_if([
+                    ("mysql+oursql", None, None, "Floating point error"),
+                    ("firebird", None, None,
+                        "Firebird still has FP inaccuracy even "
+                        "with only four decimal places")
+                ])
 
     @property
     def python2(self):
