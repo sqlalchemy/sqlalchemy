@@ -147,6 +147,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
             table_names = insp.get_view_names(schema)
             table_names.sort()
             answer = ['email_addresses_v', 'users_v']
+            eq_(sorted(table_names), answer)
         else:
             table_names = insp.get_table_names(schema,
                                                order_by=order_by)
