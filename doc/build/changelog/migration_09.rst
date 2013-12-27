@@ -920,6 +920,19 @@ from a backref::
 
 :ticket:`1535`
 
+
+Postgresql JSON Type
+--------------------
+
+The Postgresql dialect now features a :class:`.postgresql.JSON` type to
+complement the :class:`.postgresql.HSTORE` type.
+
+.. seealso::
+
+    :class:`.postgresql.JSON`
+
+:ticket:`2581`
+
 Behavioral Improvements
 =======================
 

@@ -72,6 +72,9 @@ construction arguments, are as follows:
 .. autoclass:: JSON
     :members:
 
+.. autoclass:: JSONElement
+    :members:
+
 .. autoclass:: MACADDR
     :members: __init__
 
