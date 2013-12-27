@@ -1715,13 +1715,20 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
 
     def test_where_getitem_as_text(self):
         self._test_where(
-            self.jsoncol.astext['bar'] == None,
+            self.jsoncol['bar'].astext == None,
             "(test_table.test_column ->> %(test_column_1)s) IS NULL"
+        )
+
+    def test_where_getitem_as_cast(self):
+        self._test_where(
+            self.jsoncol['bar'].cast(Integer) == 5,
+            "CAST(test_table.test_column ->> %(test_column_1)s AS INTEGER) "
+            "= %(param_1)s"
         )
 
     def test_where_path_as_text(self):
         self._test_where(
-            self.jsoncol.astext[("foo", 1)] == None,
+            self.jsoncol[("foo", 1)].astext == None,
             "(test_table.test_column #>> %(test_column_1)s) IS NULL"
         )
 
@@ -1752,7 +1759,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
                 {'name': 'r2', 'data': {"k1": "r2v1", "k2": "r2v2"}},
                 {'name': 'r3', 'data': {"k1": "r3v1", "k2": "r3v2"}},
                 {'name': 'r4', 'data': {"k1": "r4v1", "k2": "r4v2"}},
-                {'name': 'r5', 'data': {"k1": "r5v1", "k2": "r5v2"}},
+                {'name': 'r5', 'data': {"k1": "r5v1", "k2": "r5v2", "k3": 5}},
         )
 
     def _assert_data(self, compare):
@@ -1875,7 +1882,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
         data_table = self.tables.data_table
         result = engine.execute(
             select([data_table.c.data]).where(
-                data_table.c.data.astext[('k1',)] == 'r3v1'
+                data_table.c.data[('k1',)].astext == 'r3v1'
             )
         ).first()
         eq_(result, ({'k1': 'r3v1', 'k2': 'r3v2'},))
@@ -1885,15 +1892,25 @@ class JSONRoundTripTest(fixtures.TablesTest):
         self._fixture_data(engine)
         data_table = self.tables.data_table
         result = engine.execute(
-            select([data_table.c.data.astext['k1']])
+            select([data_table.c.data['k1'].astext])
         ).first()
-        assert isinstance(result[0], basestring)
+        assert isinstance(result[0], util.text_type)
+
+    def test_query_returned_as_int(self):
+        engine = testing.db
+        self._fixture_data(engine)
+        data_table = self.tables.data_table
+        result = engine.execute(
+            select([data_table.c.data['k3'].cast(Integer)]).where(
+                    data_table.c.name == 'r5')
+        ).first()
+        assert isinstance(result[0], int)
 
     def _test_criterion(self, engine):
         data_table = self.tables.data_table
         result = engine.execute(
             select([data_table.c.data]).where(
-                data_table.c.data.astext['k1'] == 'r3v1'
+                data_table.c.data['k1'].astext == 'r3v1'
             )
         ).first()
         eq_(result, ({'k1': 'r3v1', 'k2': 'r3v2'},))
@@ -1942,6 +1959,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
                     "data": {"k1": util.u('drôle')}
                 },
         )
+
 
     def test_unicode_round_trip_python(self):
         engine = self._non_native_engine()
