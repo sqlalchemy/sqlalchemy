@@ -14,7 +14,7 @@ from ... import util, exc
 from ...sql import expression
 from ... import event
 from . import clsregistry
-
+import collections
 
 def _declared_mapping_info(cls):
     # deferred mapping
@@ -173,15 +173,19 @@ def _as_declarative(cls, classname, dict_):
 
     # extract columns from the class dict
     declared_columns = set()
+    name_to_prop_key = collections.defaultdict(set)
     for key, c in list(our_stuff.items()):
         if isinstance(c, (ColumnProperty, CompositeProperty)):
             for col in c.columns:
                 if isinstance(col, Column) and \
                     col.table is None:
                     _undefer_column_name(key, col)
+                    if not isinstance(c, CompositeProperty):
+                        name_to_prop_key[col.name].add(key)
                     declared_columns.add(col)
         elif isinstance(c, Column):
             _undefer_column_name(key, c)
+            name_to_prop_key[c.name].add(key)
             declared_columns.add(c)
             # if the column is the same name as the key,
             # remove it from the explicit properties dict.
@@ -190,6 +194,15 @@ def _as_declarative(cls, classname, dict_):
             # in multi-column ColumnProperties.
             if key == c.key:
                 del our_stuff[key]
+
+    for name, keys in name_to_prop_key.items():
+        if len(keys) > 1:
+            util.warn(
+                "On class %r, Column object %r named directly multiple times, "
+                "only one will be used: %s" %
+                (classname, name, (", ".join(sorted(keys))))
+            )
+
     declared_columns = sorted(
         declared_columns, key=lambda c: c._creation_order)
     table = None
