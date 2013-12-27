@@ -139,6 +139,20 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def fetch_rows_post_commit(self):
+        """target platform will allow cursor.fetchone() to proceed after a
+        COMMIT.
+
+        Typically this refers to an INSERT statement with RETURNING which
+        is invoked within "autocommit".   If the row can be returned
+        after the autocommit, then this rule can be open.
+
+        """
+
+        return exclusions.open()
+
+
+    @property
     def empty_inserts(self):
         """target platform supports INSERT with no values, i.e.
         INSERT DEFAULT VALUES or equivalent."""
