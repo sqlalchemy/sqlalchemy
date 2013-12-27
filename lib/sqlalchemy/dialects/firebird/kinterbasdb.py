@@ -42,7 +42,7 @@ from re import match
 import decimal
 
 
-class _FBNumeric_kinterbasdb(sqltypes.Numeric):
+class _kinterbasdb_numeric(object):
     def bind_processor(self, dialect):
         def process(value):
             if isinstance(value, decimal.Decimal):
@@ -50,6 +50,12 @@ class _FBNumeric_kinterbasdb(sqltypes.Numeric):
             else:
                 return value
         return process
+
+class _FBNumeric_kinterbasdb(_kinterbasdb_numeric, sqltypes.Numeric):
+    pass
+
+class _FBFloat_kinterbasdb(_kinterbasdb_numeric, sqltypes.Float):
+    pass
 
 
 class FBExecutionContext_kinterbasdb(FBExecutionContext):
@@ -74,6 +80,7 @@ class FBDialect_kinterbasdb(FBDialect):
         FBDialect.colspecs,
         {
             sqltypes.Numeric: _FBNumeric_kinterbasdb,
+            sqltypes.Float: _FBFloat_kinterbasdb,
         }
 
     )
