@@ -14,6 +14,14 @@
     .. change::
         :tags: bug, firebird
         :versions: 0.9.0b2
+        :tickets: 2897
+
+        The firebird dialect will quote identifiers which begin with an
+        underscore.  Courtesy Treeve Jelbert.
+
+    .. change::
+        :tags: bug, firebird
+        :versions: 0.9.0b2
 
         Fixed bug in Firebird index reflection where the columns within the
         index were not sorted correctly; they are now sorted
