@@ -700,7 +700,7 @@ class FBDialect(default.DefaultDialect):
                         ic.rdb$index_name
         WHERE ix.rdb$relation_name=? AND ix.rdb$foreign_key IS NULL
           AND rdb$relation_constraints.rdb$constraint_type IS NULL
-        ORDER BY index_name, field_name
+        ORDER BY index_name, ic.rdb$field_position
         """
         c = connection.execute(qry, [self.denormalize_name(table_name)])
 

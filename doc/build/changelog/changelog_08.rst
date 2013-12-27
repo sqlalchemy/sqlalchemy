@@ -15,6 +15,14 @@
         :tags: bug, firebird
         :versions: 0.9.0b2
 
+        Fixed bug in Firebird index reflection where the columns within the
+        index were not sorted correctly; they are now sorted
+        in order of RDB$FIELD_POSITION.
+
+    .. change::
+        :tags: bug, firebird
+        :versions: 0.9.0b2
+
         The "asdecimal" flag used with the :class:`.Float` type will now
         work with Firebird dialects; previously the decimal conversion was
         not occurring.
