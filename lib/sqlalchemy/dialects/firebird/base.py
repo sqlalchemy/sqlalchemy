@@ -475,18 +475,34 @@ class FBDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
+        # there are two queries commonly mentioned for this.
+        # this one, using view_blr, is at the Firebird FAQ among other places:
+        # http://www.firebirdfaq.org/faq174/
         s = """
-        SELECT DISTINCT rdb$relation_name
-        FROM rdb$relation_fields
-        WHERE rdb$system_flag=0 AND rdb$view_context IS NULL
+        select rdb$relation_name
+        from rdb$relations
+        where rdb$view_blr is null
+        and (rdb$system_flag is null or rdb$system_flag = 0);
         """
+
+        # the other query is this one.  It's not clear if there's really
+        # any difference between these two.  This link:
+        # http://www.alberton.info/firebird_sql_meta_info.html#.Ur3vXfZGni8
+        # states them as interchangeable.  Some discussion at [ticket:2898]
+        # SELECT DISTINCT rdb$relation_name
+        # FROM rdb$relation_fields
+        # WHERE rdb$system_flag=0 AND rdb$view_context IS NULL
+
         return [self.normalize_name(row[0]) for row in connection.execute(s)]
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
+        # see http://www.firebirdfaq.org/faq174/
         s = """
-        SELECT distinct rdb$view_name
-        FROM rdb$view_relations
+        select rdb$relation_name
+        from rdb$relations
+        where rdb$view_blr is not null
+        and (rdb$system_flag is null or rdb$system_flag = 0);
         """
         return [self.normalize_name(row[0]) for row in connection.execute(s)]
 
