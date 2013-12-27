@@ -359,6 +359,7 @@ class FBIdentifierPreparer(sql.compiler.IdentifierPreparer):
     """Install Firebird specific reserved words."""
 
     reserved_words = RESERVED_WORDS
+    illegal_initial_characters = compiler.ILLEGAL_INITIAL_CHARACTERS.union(['_'])
 
     def __init__(self, dialect):
         super(FBIdentifierPreparer, self).__init__(dialect, omit_schema=True)
