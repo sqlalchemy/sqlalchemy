@@ -171,7 +171,8 @@ class ReturningTest(fixtures.TablesTest):
                 Column('data', String(50))
             )
 
-    def test_explicit_returning_pk(self):
+    @requirements.fetch_rows_post_commit
+    def test_explicit_returning_pk_autocommit(self):
         engine = config.db
         table = self.tables.autoinc_pk
         r = engine.execute(
@@ -180,6 +181,19 @@ class ReturningTest(fixtures.TablesTest):
             data="some data"
         )
         pk = r.first()[0]
+        fetched_pk = config.db.scalar(select([table.c.id]))
+        eq_(fetched_pk, pk)
+
+    def test_explicit_returning_pk_no_autocommit(self):
+        engine = config.db
+        table = self.tables.autoinc_pk
+        with engine.begin() as conn:
+            r = conn.execute(
+                table.insert().returning(
+                                table.c.id),
+                data="some data"
+            )
+            pk = r.first()[0]
         fetched_pk = config.db.scalar(select([table.c.id]))
         eq_(fetched_pk, pk)
 
