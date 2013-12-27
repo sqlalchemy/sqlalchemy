@@ -15,6 +15,16 @@
     :version: 0.9.0b2
 
     .. change::
+        :tags: bug, orm, declarative
+        :tickets: 2828
+
+        Declarative does an extra check to detect if the same
+        :class:`.Column` is mapped multiple times under different properties
+        (which typically should be a :func:`.synonym` instead) or if two
+        or more :class:`.Column` objects are given the same name, raising
+        a warning if this condition is detected.
+
+    .. change::
         :tags: bug, firebird
         :tickets: 2898
 

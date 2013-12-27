@@ -143,6 +143,39 @@ class DeclarativeTest(DeclarativeTestBase):
         assert class_mapper(Bar).get_property('some_data').columns[0] \
             is t.c.data
 
+    def test_column_named_twice(self):
+        def go():
+            class Foo(Base):
+                __tablename__ = 'foo'
+
+                id = Column(Integer, primary_key=True)
+                x = Column('x', Integer)
+                y = Column('x', Integer)
+        assert_raises_message(
+            sa.exc.SAWarning,
+            "On class 'Foo', Column object 'x' named directly multiple times, "
+            "only one will be used: x, y",
+            go
+        )
+
+
+    def test_column_repeated_under_prop(self):
+        def go():
+            class Foo(Base):
+                __tablename__ = 'foo'
+
+                id = Column(Integer, primary_key=True)
+                x = Column('x', Integer)
+                y = column_property(x)
+                z = Column('x', Integer)
+
+        assert_raises_message(
+            sa.exc.SAWarning,
+            "On class 'Foo', Column object 'x' named directly multiple times, "
+            "only one will be used: x, y, z",
+            go
+        )
+
     def test_relationship_level_msg_for_invalid_callable(self):
         class A(Base):
             __tablename__ = 'a'
