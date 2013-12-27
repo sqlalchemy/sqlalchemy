@@ -123,6 +123,18 @@ class DefaultRequirements(SuiteRequirements):
             )
 
     @property
+    def insert_from_select(self):
+        return skip_if(
+                    ["firebird"], "crashes for unknown reason"
+                )
+
+    @property
+    def fetch_rows_post_commit(self):
+        return skip_if(
+                    ["firebird"], "not supported"
+                )
+
+    @property
     def binary_comparisons(self):
         """target database/driver can allow BLOB/BINARY fields to be compared
         against a bound parameter value.
@@ -503,10 +515,10 @@ class DefaultRequirements(SuiteRequirements):
         """target backend supports Decimal() objects using E notation
         to represent very large values."""
 
-        return fails_if(
-                ("sybase+pyodbc", None, None,
+        return skip_if(
+                [("sybase+pyodbc", None, None,
                     "Don't know how do get these values through FreeTDS + Sybase"),
-                ("firebird", None, None, "Precision must be from 1 to 18"),
+                ("firebird", None, None, "Precision must be from 1 to 18"),]
             )
 
     @property
@@ -545,11 +557,21 @@ class DefaultRequirements(SuiteRequirements):
         """target backend will return native floating point numbers with at
         least seven decimal places when using the generic Float type."""
 
-        return fails_if('mysql', 'mysql FLOAT type only returns 4 decimals')
+        return fails_if([
+                    ('mysql', None, None,
+                                'mysql FLOAT type only returns 4 decimals'),
+                    ('firebird', None, None,
+                                "firebird FLOAT type isn't high precision"),
+                ])
 
     @property
     def floats_to_four_decimals(self):
-        return fails_if("mysql+oursql", "Floating point error")
+        return fails_if([
+                    ("mysql+oursql", None, None, "Floating point error"),
+                    ("firebird", None, None,
+                        "Firebird still has FP inaccuracy even "
+                        "with only four decimal places")
+                ])
 
     @property
     def python2(self):

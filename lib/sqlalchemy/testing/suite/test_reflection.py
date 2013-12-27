@@ -180,6 +180,12 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def test_get_view_names_with_schema(self):
         self._test_get_table_names('test_schema', table_type='view')
 
+    @testing.requires.table_reflection
+    @testing.requires.view_reflection
+    def test_get_tables_and_views(self):
+        self._test_get_table_names()
+        self._test_get_table_names(table_type='view')
+
     def _test_get_columns(self, schema=None, table_type='table'):
         meta = MetaData(testing.db)
         users, addresses, dingalings = self.tables.users, \
