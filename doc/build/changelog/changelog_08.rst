@@ -12,6 +12,15 @@
     :version: 0.8.5
 
     .. change::
+        :tags: bug, mssql, pymssql
+        :versions: 0.9.0b2
+        :pullreq: github:51
+
+        Added "Net-Lib error during Connection reset by peer" message
+        to the list of messages checked for "disconnect" within the
+        pymssql dialect.  Courtesy John Anderson.
+
+    .. change::
         :tags: bug, sql
         :versions: 0.9.0b2
         :tickets: 2896
