@@ -542,6 +542,9 @@ class TypeCoerceCastTest(fixtures.TablesTest):
             [('BIND_INd1BIND_OUT', )]
         )
 
+    @testing.fails_on("oracle",
+                "ORA-00906: missing left parenthesis - "
+                "seems to be CAST(:param AS type)")
     def test_coerce_from_nulltype_cast(self):
         self._test_coerce_from_nulltype(cast)
 
@@ -685,6 +688,9 @@ class TypeCoerceCastTest(fixtures.TablesTest):
             [('BIND_INd1', 'BIND_INd1BIND_OUT')]
         )
 
+    @testing.fails_on("oracle",
+                "ORA-00906: missing left parenthesis - "
+                "seems to be CAST(:param AS type)")
     def test_cast_existing_typed(self):
         MyType = self.MyType
         coerce_fn = cast
