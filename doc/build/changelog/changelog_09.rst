@@ -60,14 +60,11 @@
 
         The :func:`.cast` function, when given a plain literal value,
         will now apply the given type to the given literal value on the
-        bind parameter side according
-        to the type given to the cast.   This essentially replaces what would
-        normally be the detected type of the literal value.   This only
-        takes effect if the auto-detected type of the literal value is either
-        "nulltype" (e.g. couldn't detect)
-        or a type that is of the same "affinity" as the cast type.
-        The net change here is that the :func:`.cast` function includes more
-        of the functionality already present in the :func:`.type_coerce` function.
+        bind parameter side according to the type given to the cast,
+        in the same manner as that of the :func:`.type_coerce` function.
+        However unlike :func:`.type_coerce`, this only takes effect if a
+        non-clauseelement value is passed to :func:`.cast`; an existing typed
+        construct will retain its type.
 
     .. change::
         :tags: bug, postgresql

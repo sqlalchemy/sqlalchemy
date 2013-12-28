@@ -404,110 +404,6 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
         eq_(a.foo, 'foo')
         eq_(a.dialect_specific_args['bar'], 'bar')
 
-    @testing.provide_metadata
-    def test_type_coerce(self):
-        """test ad-hoc usage of custom types with type_coerce()."""
-
-        self._test_type_coerce_cast(type_coerce)
-
-    @testing.provide_metadata
-    @testing.fails_on("oracle",
-                "oracle doesn't like CAST in the VALUES of an INSERT")
-    def test_cast(self):
-        """test ad-hoc usage of custom types with cast()."""
-
-        self._test_type_coerce_cast(cast)
-
-    def _test_type_coerce_cast(self, coerce_fn):
-        metadata = self.metadata
-        class MyType(types.TypeDecorator):
-            impl = String
-
-            def process_bind_param(self, value, dialect):
-                return util.text_type(value)[0:-8]
-
-            def process_result_value(self, value, dialect):
-                return value + "BIND_OUT"
-
-        t = Table('t', metadata, Column('data', String(50)))
-        metadata.create_all()
-
-        t.insert().values(data=coerce_fn('d1BIND_OUT', MyType)).execute()
-
-        eq_(
-            select([coerce_fn(t.c.data, MyType)]).execute().fetchall(),
-            [('d1BIND_OUT', )]
-        )
-
-        # test coerce from nulltype - e.g. use an object that
-        # doens't match to a known type
-        class MyObj(object):
-            def __str__(self):
-                return "THISISMYOBJ"
-
-        eq_(
-            testing.db.execute(
-                select([coerce_fn(MyObj(), MyType)])
-            ).fetchall(),
-            [('THIBIND_OUT',)]
-        )
-
-        eq_(
-            select([t.c.data, coerce_fn(t.c.data, MyType)]).execute().fetchall(),
-            [('d1', 'd1BIND_OUT')]
-        )
-
-        eq_(
-            select([t.c.data, coerce_fn(t.c.data, MyType)]).
-                    alias().select().execute().fetchall(),
-            [('d1', 'd1BIND_OUT')]
-        )
-
-        eq_(
-            select([t.c.data, coerce_fn(t.c.data, MyType)]).\
-                        where(coerce_fn(t.c.data, MyType) == 'd1BIND_OUT').\
-                        execute().fetchall(),
-            [('d1', 'd1BIND_OUT')]
-        )
-
-        eq_(
-            select([t.c.data, coerce_fn(t.c.data, MyType)]).\
-                        where(t.c.data == coerce_fn('d1BIND_OUT', MyType)).\
-                        execute().fetchall(),
-            [('d1', 'd1BIND_OUT')]
-        )
-
-        eq_(
-            select([t.c.data, coerce_fn(t.c.data, MyType)]).\
-                        where(t.c.data == coerce_fn(None, MyType)).\
-                        execute().fetchall(),
-            []
-        )
-
-        eq_(
-            select([t.c.data, coerce_fn(t.c.data, MyType)]).\
-                        where(coerce_fn(t.c.data, MyType) == None).\
-                        execute().fetchall(),
-            []
-        )
-
-        eq_(
-            testing.db.scalar(
-                select([coerce_fn(literal('d1BIND_OUT'), MyType)])
-            ),
-            'd1BIND_OUT'
-        )
-
-        class MyFoob(object):
-            def __clause_element__(self):
-                return t.c.data
-
-        eq_(
-            testing.db.execute(
-                select([t.c.data, coerce_fn(MyFoob(), MyType)])
-            ).fetchall(),
-            [('d1', 'd1BIND_OUT')]
-        )
 
     @classmethod
     def define_tables(cls, metadata):
@@ -607,6 +503,214 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
             Column('goofy8', MyNewIntType, nullable=False),
             Column('goofy9', MyNewIntSubClass, nullable=False),
         )
+
+class TypeCoerceCastTest(fixtures.TablesTest):
+
+    @classmethod
+    def define_tables(cls, metadata):
+        class MyType(types.TypeDecorator):
+            impl = String
+
+            def process_bind_param(self, value, dialect):
+                return "BIND_IN" + str(value)
+
+            def process_result_value(self, value, dialect):
+                return value + "BIND_OUT"
+
+        cls.MyType = MyType
+
+        Table('t', metadata,
+                    Column('data', String(50))
+                )
+
+    @testing.fails_on("oracle",
+                "oracle doesn't like CAST in the VALUES of an INSERT")
+    def test_insert_round_trip_cast(self):
+        self._test_insert_round_trip(cast)
+
+    def test_insert_round_trip_type_coerce(self):
+        self._test_insert_round_trip(type_coerce)
+
+    def _test_insert_round_trip(self, coerce_fn):
+        MyType = self.MyType
+        t = self.tables.t
+
+        t.insert().values(data=coerce_fn('d1', MyType)).execute()
+
+        eq_(
+            select([coerce_fn(t.c.data, MyType)]).execute().fetchall(),
+            [('BIND_INd1BIND_OUT', )]
+        )
+
+    def test_coerce_from_nulltype_cast(self):
+        self._test_coerce_from_nulltype(cast)
+
+    def test_coerce_from_nulltype_type_coerce(self):
+        self._test_coerce_from_nulltype(type_coerce)
+
+    def _test_coerce_from_nulltype(self, coerce_fn):
+        MyType = self.MyType
+
+        # test coerce from nulltype - e.g. use an object that
+        # doens't match to a known type
+        class MyObj(object):
+            def __str__(self):
+                return "THISISMYOBJ"
+
+        eq_(
+            testing.db.execute(
+                select([coerce_fn(MyObj(), MyType)])
+            ).fetchall(),
+            [('BIND_INTHISISMYOBJBIND_OUT',)]
+        )
+
+    @testing.fails_on("oracle",
+                "oracle doesn't like CAST in the VALUES of an INSERT")
+    def test_vs_non_coerced_cast(self):
+        self._test_vs_non_coerced(cast)
+
+    def test_vs_non_coerced_type_coerce(self):
+        self._test_vs_non_coerced(type_coerce)
+
+    def _test_vs_non_coerced(self, coerce_fn):
+        MyType = self.MyType
+        t = self.tables.t
+
+        t.insert().values(data=coerce_fn('d1', MyType)).execute()
+
+        eq_(
+            select([t.c.data, coerce_fn(t.c.data, MyType)]).execute().fetchall(),
+            [('BIND_INd1', 'BIND_INd1BIND_OUT')]
+        )
+
+    @testing.fails_on("oracle",
+                "oracle doesn't like CAST in the VALUES of an INSERT")
+    def test_vs_non_coerced_alias_cast(self):
+        self._test_vs_non_coerced_alias(cast)
+
+    def test_vs_non_coerced_alias_type_coerce(self):
+        self._test_vs_non_coerced_alias(type_coerce)
+
+    def _test_vs_non_coerced_alias(self, coerce_fn):
+        MyType = self.MyType
+        t = self.tables.t
+
+        t.insert().values(data=coerce_fn('d1', MyType)).execute()
+
+        eq_(
+            select([t.c.data, coerce_fn(t.c.data, MyType)]).
+                    alias().select().execute().fetchall(),
+            [('BIND_INd1', 'BIND_INd1BIND_OUT')]
+        )
+
+    @testing.fails_on("oracle",
+                "oracle doesn't like CAST in the VALUES of an INSERT")
+    def test_vs_non_coerced_where_cast(self):
+        self._test_vs_non_coerced_where(cast)
+
+    def test_vs_non_coerced_where_type_coerce(self):
+        self._test_vs_non_coerced_where(type_coerce)
+
+    def _test_vs_non_coerced_where(self, coerce_fn):
+        MyType = self.MyType
+
+        t = self.tables.t
+        t.insert().values(data=coerce_fn('d1', MyType)).execute()
+
+        # coerce on left side
+        eq_(
+            select([t.c.data, coerce_fn(t.c.data, MyType)]).\
+                        where(coerce_fn(t.c.data, MyType) == 'd1').\
+                        execute().fetchall(),
+            [('BIND_INd1', 'BIND_INd1BIND_OUT')]
+        )
+
+        # coerce on right side
+        eq_(
+            select([t.c.data, coerce_fn(t.c.data, MyType)]).\
+                        where(t.c.data == coerce_fn('d1', MyType)).\
+                        execute().fetchall(),
+            [('BIND_INd1', 'BIND_INd1BIND_OUT')]
+        )
+
+    @testing.fails_on("oracle",
+                "oracle doesn't like CAST in the VALUES of an INSERT")
+    def test_coerce_none_cast(self):
+        self._test_coerce_none(cast)
+
+    def test_coerce_none_type_coerce(self):
+        self._test_coerce_none(type_coerce)
+
+    def _test_coerce_none(self, coerce_fn):
+        MyType = self.MyType
+
+        t = self.tables.t
+        t.insert().values(data=coerce_fn('d1', MyType)).execute()
+        eq_(
+            select([t.c.data, coerce_fn(t.c.data, MyType)]).\
+                        where(t.c.data == coerce_fn(None, MyType)).\
+                        execute().fetchall(),
+            []
+        )
+
+        eq_(
+            select([t.c.data, coerce_fn(t.c.data, MyType)]).\
+                        where(coerce_fn(t.c.data, MyType) == None).\
+                        execute().fetchall(),
+            []
+        )
+
+    @testing.fails_on("oracle",
+                "oracle doesn't like CAST in the VALUES of an INSERT")
+    def test_resolve_clause_element_cast(self):
+        self._test_resolve_clause_element(cast)
+
+    def test_resolve_clause_element_type_coerce(self):
+        self._test_resolve_clause_element(type_coerce)
+
+    def _test_resolve_clause_element(self, coerce_fn):
+        MyType = self.MyType
+
+        t = self.tables.t
+        t.insert().values(data=coerce_fn('d1', MyType)).execute()
+
+        class MyFoob(object):
+            def __clause_element__(self):
+                return t.c.data
+
+        eq_(
+            testing.db.execute(
+                select([t.c.data, coerce_fn(MyFoob(), MyType)])
+            ).fetchall(),
+            [('BIND_INd1', 'BIND_INd1BIND_OUT')]
+        )
+
+    def test_cast_existing_typed(self):
+        MyType = self.MyType
+        coerce_fn = cast
+
+        # when cast() is given an already typed value,
+        # the type does not take effect on the value itself.
+        eq_(
+            testing.db.scalar(
+                select([coerce_fn(literal('d1'), MyType)])
+            ),
+            'd1BIND_OUT'
+        )
+
+    def test_type_coerce_existing_typed(self):
+        MyType = self.MyType
+        coerce_fn = type_coerce
+        # type_coerce does upgrade the given expression to the
+        # given type.
+        eq_(
+            testing.db.scalar(
+                select([coerce_fn(literal('d1'), MyType)])
+            ),
+            'BIND_INd1BIND_OUT'
+        )
+
+
 
 class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
     def setup(self):
