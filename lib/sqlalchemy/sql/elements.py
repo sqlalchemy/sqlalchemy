@@ -1766,14 +1766,7 @@ class Cast(ColumnElement):
 
         """
         self.type = type_api.to_instance(type_)
-        self.clause = _literal_as_binds(expression, None)
-        if isinstance(self.clause, BindParameter) and (
-                self.clause.type._isnull
-                or self.clause.type._type_affinity is self.type._type_affinity
-            ):
-            self.clause = self.clause._clone()
-            self.clause.type = self.type
-
+        self.clause = _literal_as_binds(expression, type_=self.type)
         self.typeclause = TypeClause(self.type)
 
     def _copy_internals(self, clone=_clone, **kw):
@@ -2784,7 +2777,6 @@ def _only_column_elements(element, name):
                 "Column-based expression object expected for argument "
                 "'%s'; got: '%s', type %s" % (name, element, type(element)))
     return element
-
 
 def _literal_as_binds(element, name=None, type_=None):
     if hasattr(element, '__clause_element__'):
