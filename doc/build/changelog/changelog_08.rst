@@ -28,12 +28,12 @@
         in order of RDB$FIELD_POSITION.
 
     .. change::
-        :tags: bug, firebird
+        :tags: bug, mssql, firebird
         :versions: 0.9.0b2
 
         The "asdecimal" flag used with the :class:`.Float` type will now
-        work with Firebird dialects; previously the decimal conversion was
-        not occurring.
+        work with Firebird as well as the mssql+pyodbc dialects; previously the
+        decimal conversion was not occurring.
 
     .. change::
         :tags: bug, mssql, pymssql

@@ -425,6 +425,16 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def fetch_null_from_numeric(self):
+        """target backend doesn't crash when you try to select a NUMERIC
+        value that has a value of NULL.
+
+        Added to support Pyodbc bug #351.
+        """
+
+        return exclusions.open()
+
+    @property
     def text_type(self):
         """Target database must support an unbounded Text() "
         "type such as TEXT or CLOB"""

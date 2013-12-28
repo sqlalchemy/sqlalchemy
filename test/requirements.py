@@ -570,8 +570,18 @@ class DefaultRequirements(SuiteRequirements):
                     ("mysql+oursql", None, None, "Floating point error"),
                     ("firebird", None, None,
                         "Firebird still has FP inaccuracy even "
-                        "with only four decimal places")
+                        "with only four decimal places"),
+                    ('mssql+pyodbc', None, None,
+                                'mssql+pyodbc has FP inaccuracy even with '
+                                'only four decimal places '
+                            )
                 ])
+
+    @property
+    def fetch_null_from_numeric(self):
+        return skip_if(
+                    ("mssql+pyodbc", None, None, "crashes due to bug #351"),
+                )
 
     @property
     def python2(self):

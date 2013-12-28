@@ -369,15 +369,31 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
     def test_numeric_as_decimal(self):
         self._do_test(
             Numeric(precision=8, scale=4),
-            [15.7563, decimal.Decimal("15.7563"), None],
-            [decimal.Decimal("15.7563"), None],
+            [15.7563, decimal.Decimal("15.7563")],
+            [decimal.Decimal("15.7563")],
         )
 
     def test_numeric_as_float(self):
         self._do_test(
             Numeric(precision=8, scale=4, asdecimal=False),
-            [15.7563, decimal.Decimal("15.7563"), None],
-            [15.7563, None],
+            [15.7563, decimal.Decimal("15.7563")],
+            [15.7563],
+        )
+
+    @testing.requires.fetch_null_from_numeric
+    def test_numeric_null_as_decimal(self):
+        self._do_test(
+            Numeric(precision=8, scale=4),
+            [None],
+            [None],
+        )
+
+    @testing.requires.fetch_null_from_numeric
+    def test_numeric_null_as_float(self):
+        self._do_test(
+            Numeric(precision=8, scale=4, asdecimal=False),
+            [None],
+            [None],
         )
 
     @testing.requires.floats_to_four_decimals
