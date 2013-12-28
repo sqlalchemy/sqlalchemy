@@ -82,6 +82,10 @@ class InsertBehaviorTest(fixtures.TablesTest):
                                 test_needs_autoincrement=True),
                 Column('data', String(50))
             )
+        Table('manual_pk', metadata,
+                Column('id', Integer, primary_key=True, autoincrement=False),
+                Column('data', String(50))
+            )
 
     def test_autoclose_on_insert(self):
         if requirements.returning.enabled:
@@ -124,13 +128,13 @@ class InsertBehaviorTest(fixtures.TablesTest):
 
     @requirements.insert_from_select
     def test_insert_from_select(self):
-        table = self.tables.autoinc_pk
+        table = self.tables.manual_pk
         config.db.execute(
                 table.insert(),
                 [
-                    dict(data="data1"),
-                    dict(data="data2"),
-                    dict(data="data3"),
+                    dict(id=1, data="data1"),
+                    dict(id=2, data="data2"),
+                    dict(id=3, data="data3"),
                 ]
         )
 
