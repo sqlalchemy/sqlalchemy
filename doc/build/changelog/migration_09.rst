@@ -206,11 +206,11 @@ The change is illustrated as follows::
 
     assert b in sess.dirty
 
-    # before 0.9.0b2
+    # before 0.9.0
     # assert a in sess.dirty
     # assert inspect(a).attrs.bs.history.has_changes()
 
-    # after 0.9.0b2
+    # after 0.9.0
     assert a not in sess.dirty
     assert not inspect(a).attrs.bs.history.has_changes()
 

@@ -2605,7 +2605,7 @@ def validates(*names, **kw):
      :func:`.validates` usage where only one validator should emit per
      attribute operation.
 
-     .. versionadded:: 0.9.0b2
+     .. versionadded:: 0.9.0
 
     .. seealso::
 

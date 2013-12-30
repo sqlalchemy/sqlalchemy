@@ -1127,7 +1127,7 @@ class Query(object):
         """Return a new :class:`.Query` object with the specified "locking mode",
         which essentially refers to the ``FOR UPDATE`` clause.
 
-        .. deprecated:: 0.9.0b2 superseded by :meth:`.Query.with_for_update`.
+        .. deprecated:: 0.9.0 superseded by :meth:`.Query.with_for_update`.
 
         :param mode: a string representing the desired locking mode.
          Valid values are:
@@ -1171,7 +1171,7 @@ class Query(object):
 
             SELECT users.id AS users_id FROM users FOR UPDATE OF users NOWAIT
 
-        .. versionadded:: 0.9.0b2 :meth:`.Query.with_for_update` supersedes
+        .. versionadded:: 0.9.0 :meth:`.Query.with_for_update` supersedes
            the :meth:`.Query.with_lockmode` method.
 
         .. seealso::

@@ -12,7 +12,7 @@
         :start-line: 5
 
 .. changelog::
-    :version: 0.9.0b2
+    :version: 0.9.0
 
     .. change::
         :tags: bug, orm, declarative

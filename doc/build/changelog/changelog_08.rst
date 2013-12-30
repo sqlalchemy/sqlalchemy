@@ -13,7 +13,7 @@
 
     .. change::
         :tags: bug, firebird
-        :versions: 0.9.0b2
+        :versions: 0.9.0
         :tickets: 2897
 
         The firebird dialect will quote identifiers which begin with an
@@ -21,7 +21,7 @@
 
     .. change::
         :tags: bug, firebird
-        :versions: 0.9.0b2
+        :versions: 0.9.0
 
         Fixed bug in Firebird index reflection where the columns within the
         index were not sorted correctly; they are now sorted
@@ -29,7 +29,7 @@
 
     .. change::
         :tags: bug, mssql, firebird
-        :versions: 0.9.0b2
+        :versions: 0.9.0
 
         The "asdecimal" flag used with the :class:`.Float` type will now
         work with Firebird as well as the mssql+pyodbc dialects; previously the
@@ -37,7 +37,7 @@
 
     .. change::
         :tags: bug, mssql, pymssql
-        :versions: 0.9.0b2
+        :versions: 0.9.0
         :pullreq: github:51
 
         Added "Net-Lib error during Connection reset by peer" message
@@ -46,7 +46,7 @@
 
     .. change::
         :tags: bug, sql
-        :versions: 0.9.0b2
+        :versions: 0.9.0
         :tickets: 2896
 
         Fixed issue where a primary key column that has a Sequence on it,
@@ -59,7 +59,7 @@
 
     .. change::
         :tags: bug, sql
-        :versions: 0.9.0b2
+        :versions: 0.9.0
         :tickets: 2895
 
         Fixed bug with :meth:`.Insert.from_select` method where the order
@@ -71,7 +71,7 @@
 
     .. change::
         :tags: enhancement, sql
-        :versions: 0.9.0b2
+        :versions: 0.9.0
 
         The exception raised when a :class:`.BindParameter` is present
         in a compiled statement without a value now includes the key name
@@ -79,7 +79,7 @@
 
     .. change::
         :tags: bug, orm
-        :versions: 0.9.0b2
+        :versions: 0.9.0
         :tickets: 2887
 
         An adjustment to the :func:`.subqueryload` strategy which ensures that
@@ -90,7 +90,7 @@
 
     .. change::
         :tags: bug, orm
-        :versions: 0.9.0b2
+        :versions: 0.9.0
         :tickets: 2885
 
         Fixed bug when using joined table inheritance from a table to a
@@ -100,7 +100,7 @@
 
     .. change::
         :tags: bug, orm
-        :versions: 0.9.0b2
+        :versions: 0.9.0
         :tickets: 2889
 
         :func:`.composite` will raise an informative error message when the
@@ -110,7 +110,7 @@
 
     .. change::
         :tags: bug, declarative
-        :versions: 0.9.0b2
+        :versions: 0.9.0
         :tickets: 2888
 
         Error message when a string arg sent to :func:`.relationship` which
@@ -123,7 +123,7 @@
 
      .. change::
         :tags: bug, engine
-        :versions: 0.9.0b2
+        :versions: 0.9.0
         :tickets: 2881
 
         A DBAPI that raises an error on ``connect()`` which is not a subclass
@@ -137,7 +137,7 @@
 
      .. change::
         :tags: bug, engine, pool
-        :versions: 0.9.0b2
+        :versions: 0.9.0
         :tickets: 2880
 
         The :class:`.QueuePool` has been enhanced to not block new connection
@@ -148,7 +148,7 @@
 
      .. change::
         :tags: bug, engine, pool
-        :versions: 0.9.0b2
+        :versions: 0.9.0
         :tickets: 2522
 
         Made a slight adjustment to the logic which waits for a pooled
@@ -163,7 +163,7 @@
 
      .. change::
         :tags: bug, mssql
-        :versions: 0.9.0b2
+        :versions: 0.9.0
         :pullreq: bitbucket:7
 
         Fixed bug introduced in 0.8.0 where the ``DROP INDEX``
@@ -184,7 +184,7 @@
     .. change::
         :tags: bug, oracle
         :tickets: 2864
-        :versions: 0.9.0b2
+        :versions: 0.9.0
 
         Added ORA-02396 "maximum idle time" error code to list of
         "is disconnect" codes with cx_oracle.
@@ -192,7 +192,7 @@
     .. change::
         :tags: bug, engine
         :tickets: 2871
-        :versions: 0.9.0b2
+        :versions: 0.9.0
 
         Fixed bug where SQL statement would be improperly ASCII-encoded
         when a pre-DBAPI :class:`.StatementError` were raised within
@@ -203,7 +203,7 @@
     .. change::
         :tags: bug, oracle
         :tickets: 2870
-        :versions: 0.9.0b2
+        :versions: 0.9.0
 
         Fixed bug where Oracle ``VARCHAR`` types given with no length
         (e.g. for a ``CAST`` or similar) would incorrectly render ``None CHAR``
@@ -212,7 +212,7 @@
     .. change::
         :tags: bug, ext
         :tickets: 2869
-        :versions: 0.9.0b2
+        :versions: 0.9.0
 
         Fixed bug which prevented the ``serializer`` extension from working
         correctly with table or column names that contain non-ASCII
@@ -221,7 +221,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 2818
-        :versions: 0.9.0b2
+        :versions: 0.9.0
 
         Fixed a regression introduced by :ticket:`2818` where the EXISTS
         query being generated would produce a "columns being replaced"
@@ -231,7 +231,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 2855
-        :versions: 0.9.0b2
+        :versions: 0.9.0
 
         Fixed bug where index reflection would mis-interpret indkey values
         when using the pypostgresql adapter, which returns these values
