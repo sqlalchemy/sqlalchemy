@@ -35,6 +35,7 @@ extensions = [
             'sphinx.ext.autodoc',
                 'builder.autodoc_mods',
                 'changelog',
+                'sphinx_paramlinks',
                 'builder.dialect_info',
                 'builder.mako',
                 'builder.sqlformatter',
