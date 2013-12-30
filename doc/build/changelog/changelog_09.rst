@@ -13,6 +13,7 @@
 
 .. changelog::
     :version: 0.9.0
+    :released: December 30, 2013
 
     .. change::
         :tags: bug, orm, declarative
