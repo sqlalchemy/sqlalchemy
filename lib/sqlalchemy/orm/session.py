@@ -2291,7 +2291,8 @@ class sessionmaker(_SessionClassMethods):
         kw['autoflush'] = autoflush
         kw['autocommit'] = autocommit
         kw['expire_on_commit'] = expire_on_commit
-        kw['info'] = info
+        if info is not None:
+            kw['info'] = info
         self.kw = kw
         # make our own subclass of the given class, so that
         # events can be associated with it specifically.
