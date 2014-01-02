@@ -303,6 +303,22 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         })
         assert User.addresses.property is m.get_property('addresses')
 
+    def test_unicode_relationship_backref_names(self):
+        # test [ticket:2901]
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
+        mapper(Address, addresses)
+        mapper(User, users, properties={
+            util.u('addresses'): relationship(Address, backref=util.u('user'))
+        })
+        u1 = User()
+        a1 = Address()
+        u1.addresses.append(a1)
+        assert a1.user is u1
+
     def test_configure_on_prop_1(self):
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,

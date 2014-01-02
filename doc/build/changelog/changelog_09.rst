@@ -15,6 +15,15 @@
     :version: 0.9.1
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2901
+
+        Fixed regression where we don't check the given name against the
+        correct string class when setting up a backref based on a name,
+        therefore causing the error "too many values to unpack".  This was
+        related to the Py3k conversion.
+
+    .. change::
         :tags: bug, orm, declarative
         :tickets: 2900
 

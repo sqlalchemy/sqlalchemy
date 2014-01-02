@@ -1560,7 +1560,7 @@ class RelationshipProperty(StrategizedProperty):
         if not self.is_primary():
             return
         if self.backref is not None and not self.back_populates:
-            if isinstance(self.backref, str):
+            if isinstance(self.backref, util.string_types):
                 backref_key, kwargs = self.backref, {}
             else:
                 backref_key, kwargs = self.backref
