@@ -24,6 +24,11 @@ class skip_if(object):
     def enabled(self):
         return not self.predicate()
 
+    def __add__(self, other):
+        def decorate(fn):
+            return other(self(fn))
+        return decorate
+
     @contextlib.contextmanager
     def fail_if(self, name='block'):
         try:

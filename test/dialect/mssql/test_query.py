@@ -232,9 +232,10 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
             con.execute("""drop trigger paj""")
             meta.drop_all()
 
+    @testing.fails_on_everything_except('mssql+pyodbc', 'pyodbc-specific feature')
     @testing.provide_metadata
     def test_disable_scope_identity(self):
-        engine = engines.testing_engine(options={"use_scope_identity":False})
+        engine = engines.testing_engine(options={"use_scope_identity": False})
         metadata = self.metadata
         metadata.bind = engine
         t1 = Table('t1', metadata,
