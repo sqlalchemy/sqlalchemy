@@ -15,6 +15,20 @@
     :version: 0.9.1
 
     .. change::
+        :tags: bug, orm, declarative
+        :tickets: 2900
+
+        A quasi-regression where apparently in 0.8 you can set a class-level
+        attribute on declarative to simply refer directly to an :class:`.InstrumentedAttribute`
+        on a superclass or on the class itself, and it
+        acts more or less like a synonym; in 0.9, this fails to set up enough
+        bookkeeping to keep up with the more liberalized backref logic
+        from :ticket:`2789`.  Even though this use case was never directly
+        considered, it is now detected by declarative at the "setattr()" level
+        as well as when setting up a subclass, and the mirrored/renamed attribute
+        is now set up as a :func:`.synonym` instead.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2903
 

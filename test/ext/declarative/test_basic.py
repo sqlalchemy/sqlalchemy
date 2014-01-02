@@ -11,7 +11,7 @@ from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import relationship, create_session, class_mapper, \
     joinedload, configure_mappers, backref, clear_mappers, \
     deferred, column_property, composite,\
-    Session
+    Session, properties
 from sqlalchemy.testing import eq_
 from sqlalchemy.util import classproperty, with_metaclass
 from sqlalchemy.ext.declarative import declared_attr, AbstractConcreteBase, \
@@ -791,6 +791,64 @@ class DeclarativeTest(DeclarativeTestBase):
         a1 = sess.query(Address).filter(Address.email == 'two').one()
         eq_(a1, Address(email='two'))
         eq_(a1.user, User(name='u1'))
+
+    def test_alt_name_attr_subclass_column_inline(self):
+        # [ticket:2900]
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column('id', Integer, primary_key=True)
+            data = Column('data')
+
+        class ASub(A):
+            brap = A.data
+        assert ASub.brap.property is A.data.property
+        assert isinstance(ASub.brap.original_property, properties.SynonymProperty)
+
+    def test_alt_name_attr_subclass_relationship_inline(self):
+        # [ticket:2900]
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column('id', Integer, primary_key=True)
+            b_id = Column(Integer, ForeignKey('b.id'))
+            b = relationship("B", backref="as_")
+
+        class B(Base):
+            __tablename__ = 'b'
+            id = Column('id', Integer, primary_key=True)
+
+        configure_mappers()
+        class ASub(A):
+            brap = A.b
+        assert ASub.brap.property is A.b.property
+        assert isinstance(ASub.brap.original_property, properties.SynonymProperty)
+        ASub(brap=B())
+
+    def test_alt_name_attr_subclass_column_attrset(self):
+        # [ticket:2900]
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column('id', Integer, primary_key=True)
+            data = Column('data')
+        A.brap = A.data
+        assert A.brap.property is A.data.property
+        assert isinstance(A.brap.original_property, properties.SynonymProperty)
+
+    def test_alt_name_attr_subclass_relationship_attrset(self):
+        # [ticket:2900]
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column('id', Integer, primary_key=True)
+            b_id = Column(Integer, ForeignKey('b.id'))
+            b = relationship("B", backref="as_")
+        A.brap = A.b
+        class B(Base):
+            __tablename__ = 'b'
+            id = Column('id', Integer, primary_key=True)
+
+        assert A.brap.property is A.b.property
+        assert isinstance(A.brap.original_property, properties.SynonymProperty)
+        A(brap=B())
+
 
     def test_eager_order_by(self):
 

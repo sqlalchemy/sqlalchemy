@@ -6,9 +6,10 @@
 """Internal implementation for declarative."""
 
 from ...schema import Table, Column
-from ...orm import mapper, class_mapper
+from ...orm import mapper, class_mapper, synonym
 from ...orm.interfaces import MapperProperty
 from ...orm.properties import ColumnProperty, CompositeProperty
+from ...orm.attributes import QueryableAttribute
 from ...orm.base import _is_mapped_class
 from ... import util, exc
 from ...sql import expression
@@ -147,6 +148,15 @@ def _as_declarative(cls, classname, dict_):
         value = dict_[k]
         if isinstance(value, declarative_props):
             value = getattr(cls, k)
+
+        elif isinstance(value, QueryableAttribute) and \
+                value.class_ is not cls and \
+                value.key != k:
+            # detect a QueryableAttribute that's already mapped being
+            # assigned elsewhere in userland, turn into a synonym()
+            value = synonym(value.key)
+            setattr(cls, k, value)
+
 
         if (isinstance(value, tuple) and len(value) == 1 and
             isinstance(value[0], (Column, MapperProperty))):
@@ -397,6 +407,7 @@ def _add_attribute(cls, key, value):
     adds it to the Mapper, adds a column to the mapped Table, etc.
 
     """
+
     if '__mapper__' in cls.__dict__:
         if isinstance(value, Column):
             _undefer_column_name(key, value)
@@ -409,6 +420,14 @@ def _add_attribute(cls, key, value):
                     cls.__table__.append_column(col)
             cls.__mapper__.add_property(key, value)
         elif isinstance(value, MapperProperty):
+            cls.__mapper__.add_property(
+                key,
+                clsregistry._deferred_relationship(cls, value)
+            )
+        elif isinstance(value, QueryableAttribute) and value.key != key:
+            # detect a QueryableAttribute that's already mapped being
+            # assigned elsewhere in userland, turn into a synonym()
+            value = synonym(value.key)
             cls.__mapper__.add_property(
                 key,
                 clsregistry._deferred_relationship(cls, value)
