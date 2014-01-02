@@ -154,6 +154,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
                         managers.c.person_id == engineers.c.reports_to_id,
                     backref='engineers')})
 
+
     def test_has(self):
         m1 = Manager(name='dogbert')
         e1 = Engineer(name='dilbert', primary_language='java', reports_to=m1)

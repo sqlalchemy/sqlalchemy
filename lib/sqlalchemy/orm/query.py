@@ -1842,14 +1842,30 @@ class Query(object):
             raise sa_exc.InvalidRequestError(
                         "Can't construct a join from %s to %s, they "
                         "are the same entity" %
-                        (left, right))
+                       (left, right))
 
         l_info = inspect(left)
         r_info = inspect(right)
 
-        overlap = not create_aliases and \
-                        sql_util.selectables_overlap(l_info.selectable,
-                            r_info.selectable)
+
+        overlap = False
+        if not create_aliases:
+            right_mapper = getattr(r_info, "mapper", None)
+            # if the target is a joined inheritance mapping,
+            # be more liberal about auto-aliasing.
+            if right_mapper and (
+                        right_mapper.with_polymorphic or
+                        isinstance(right_mapper.mapped_table, expression.Join)
+                    ):
+                for from_obj in self._from_obj or [l_info.selectable]:
+                    if sql_util.selectables_overlap(l_info.selectable, from_obj) and \
+                        sql_util.selectables_overlap(from_obj, r_info.selectable):
+                        overlap = True
+                        break
+            elif sql_util.selectables_overlap(l_info.selectable, r_info.selectable):
+                overlap = True
+
+
         if overlap and l_info.selectable is r_info.selectable:
             raise sa_exc.InvalidRequestError(
                     "Can't join table/selectable '%s' to itself" %

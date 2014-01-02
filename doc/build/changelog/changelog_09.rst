@@ -12,6 +12,21 @@
         :start-line: 5
 
 .. changelog::
+    :version: 0.9.1
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 2903
+
+        Fixed regression where we apparently still create an implicit
+        alias when saying query(B).join(B.cs), where "C" is a joined inh
+        class; however, this implicit alias was created only considering
+        the immediate left side, and not a longer chain of joins along different
+        joined-inh subclasses of the same base.   As long as we're still
+        implicitly aliasing in this case, the behavior is dialed back a bit
+        so that it will alias the right side in a wider variety of cases.
+
+.. changelog::
     :version: 0.9.0
     :released: December 30, 2013
 
