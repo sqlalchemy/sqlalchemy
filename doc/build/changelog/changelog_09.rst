@@ -16,6 +16,14 @@
 
     .. change::
         :tags: bug, orm
+        :pullreq: bitbucket:9
+
+        Fixed bug where using new :attr:`.Session.info` attribute would fail
+        if the ``.info`` argument were only passed to the :class:`.sessionmaker`
+        creation call but not to the object itself.  Courtesy Robin Schoonover.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 2901
 
         Fixed regression where we don't check the given name against the
