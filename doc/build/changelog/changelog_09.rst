@@ -15,6 +15,18 @@
     :version: 0.9.1
 
     .. change::
+        :tags: bug, orm, declarative
+
+        Fixed an extremely unlikely memory issue where when using
+        :class:`.DeferredReflection`
+        to define classes pending for reflection, if some subset of those
+        classes were discarded before the :meth:`.DeferredReflection.prepare`
+        method were called to reflect and map the class, a strong reference
+        to the class would remain held within the declarative internals.
+        This internal collection of "classes to map" now uses weak
+        references against the classes themselves.
+
+    .. change::
         :tags: bug, orm
         :pullreq: bitbucket:9
 

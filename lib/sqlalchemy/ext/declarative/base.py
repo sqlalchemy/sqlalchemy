@@ -16,11 +16,12 @@ from ...sql import expression
 from ... import event
 from . import clsregistry
 import collections
+import weakref
 
 def _declared_mapping_info(cls):
     # deferred mapping
-    if cls in _MapperConfig.configs:
-        return _MapperConfig.configs[cls]
+    if _DeferredMapperConfig.has_cls(cls):
+        return _DeferredMapperConfig.config_for_cls(cls)
     # regular mapping
     elif _is_mapped_class(cls):
         return class_mapper(cls, configure=False)
@@ -304,19 +305,24 @@ def _as_declarative(cls, classname, dict_):
                     inherited_mapped_table is not inherited_table:
                     inherited_mapped_table._refresh_for_new_column(c)
 
-    mt = _MapperConfig(mapper_cls,
+    defer_map = hasattr(cls, '_sa_decl_prepare')
+    if defer_map:
+        cfg_cls = _DeferredMapperConfig
+    else:
+        cfg_cls = _MapperConfig
+    mt = cfg_cls(mapper_cls,
                        cls, table,
                        inherits,
                        declared_columns,
                        column_copies,
                        our_stuff,
                        mapper_args_fn)
-    if not hasattr(cls, '_sa_decl_prepare'):
+    if not defer_map:
         mt.map()
 
 
 class _MapperConfig(object):
-    configs = util.OrderedDict()
+
     mapped_table = None
 
     def __init__(self, mapper_cls,
@@ -334,7 +340,7 @@ class _MapperConfig(object):
         self.mapper_args_fn = mapper_args_fn
         self.declared_columns = declared_columns
         self.column_copies = column_copies
-        self.configs[cls] = self
+
 
     def _prepare_mapper_arguments(self):
         properties = self.properties
@@ -391,13 +397,48 @@ class _MapperConfig(object):
         return result_mapper_args
 
     def map(self):
-        self.configs.pop(self.cls, None)
         mapper_args = self._prepare_mapper_arguments()
         self.cls.__mapper__ = self.mapper_cls(
             self.cls,
             self.local_table,
             **mapper_args
         )
+
+class _DeferredMapperConfig(_MapperConfig):
+    _configs = util.OrderedDict()
+
+    @property
+    def cls(self):
+        return self._cls()
+
+    @cls.setter
+    def cls(self, class_):
+        self._cls = weakref.ref(class_, self._remove_config_cls)
+        self._configs[self._cls] = self
+
+    @classmethod
+    def _remove_config_cls(cls, ref):
+        cls._configs.pop(ref, None)
+
+    @classmethod
+    def has_cls(cls, class_):
+        # 2.6 fails on weakref if class_ is an old style class
+        return isinstance(class_, type) and \
+                weakref.ref(class_) in cls._configs
+
+    @classmethod
+    def config_for_cls(cls, class_):
+        return cls._configs[weakref.ref(class_)]
+
+
+    @classmethod
+    def classes_for_base(cls, base_cls):
+        return [m for m in cls._configs.values()
+                    if issubclass(m.cls, base_cls)]
+
+    def map(self):
+        self._configs.pop(self._cls, None)
+        super(_DeferredMapperConfig, self).map()
 
 
 def _add_attribute(cls, key, value):

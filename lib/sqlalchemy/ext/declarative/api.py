@@ -18,7 +18,7 @@ import weakref
 
 from .base import _as_declarative, \
                 _declarative_constructor,\
-                _MapperConfig, _add_attribute
+                _DeferredMapperConfig, _add_attribute
 from .clsregistry import _class_resolver
 
 
@@ -468,8 +468,7 @@ class DeferredReflection(object):
         """Reflect all :class:`.Table` objects for all current
         :class:`.DeferredReflection` subclasses"""
 
-        to_map = [m for m in _MapperConfig.configs.values()
-                    if issubclass(m.cls, cls)]
+        to_map = _DeferredMapperConfig.classes_for_base(cls)
         for thingy in to_map:
             cls._sa_decl_prepare(thingy.local_table, engine)
             thingy.map()
@@ -479,7 +478,7 @@ class DeferredReflection(object):
                 if isinstance(rel, properties.RelationshipProperty) and \
                     rel.secondary is not None:
                     if isinstance(rel.secondary, Table):
-                        cls._sa_decl_prepare(rel.secondary, engine)
+                        cls._reflect_table(rel.secondary, engine)
                     elif isinstance(rel.secondary, _class_resolver):
                         rel.secondary._resolvers += (
                             cls._sa_deferred_table_resolver(engine, metadata),
@@ -489,7 +488,7 @@ class DeferredReflection(object):
     def _sa_deferred_table_resolver(cls, engine, metadata):
         def _resolve(key):
             t1 = Table(key, metadata)
-            cls._sa_decl_prepare(t1, engine)
+            cls._reflect_table(t1, engine)
             return t1
         return _resolve
 
@@ -500,10 +499,14 @@ class DeferredReflection(object):
         # will fill in db-loaded columns
         # into the existing Table object.
         if local_table is not None:
-            Table(local_table.name,
-                local_table.metadata,
-                extend_existing=True,
-                autoload_replace=False,
-                autoload=True,
-                autoload_with=engine,
-                schema=local_table.schema)
+            cls._reflect_table(local_table, engine)
+
+    @classmethod
+    def _reflect_table(cls, table, engine):
+        Table(table.name,
+            table.metadata,
+            extend_existing=True,
+            autoload_replace=False,
+            autoload=True,
+            autoload_with=engine,
+            schema=table.schema)
