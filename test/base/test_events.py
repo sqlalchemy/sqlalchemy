@@ -311,6 +311,26 @@ class LegacySignatureTest(fixtures.TestBase):
             canary(x, y, kw)
         self._test_legacy_accept_kw(inst, canary)
 
+    def test_legacy_accept_partial(self):
+        canary = Mock()
+        def evt(a, x, y, **kw):
+            canary(a, x, y, **kw)
+        from functools import partial
+        evt_partial = partial(evt, 5)
+        target = self.TargetOne()
+        event.listen(target, "event_four", evt_partial)
+        # can't do legacy accept on a partial; we can't inspect it
+        assert_raises(
+            TypeError,
+            target.dispatch.event_four, 4, 5, 6, 7, foo="bar"
+        )
+        target.dispatch.event_four(4, 5, foo="bar")
+        eq_(
+            canary.mock_calls,
+            [call(5, 4, 5, foo="bar")]
+        )
+
+
     def _test_legacy_accept_kw(self, target, canary):
         target.dispatch.event_four(4, 5, 6, 7, foo="bar")
 

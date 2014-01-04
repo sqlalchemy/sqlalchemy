@@ -62,10 +62,15 @@ class _DispatchDescriptor(RefCollection):
         self._empty_listeners = weakref.WeakKeyDictionary()
 
     def _adjust_fn_spec(self, fn, named):
-        argspec = util.get_callable_argspec(fn, no_self=True)
         if named:
             fn = self._wrap_fn_for_kw(fn)
-        fn = legacy._wrap_fn_for_legacy(self, fn, argspec)
+        if self.legacy_signatures:
+            try:
+                argspec = util.get_callable_argspec(fn, no_self=True)
+            except ValueError:
+                pass
+            else:
+                fn = legacy._wrap_fn_for_legacy(self, fn, argspec)
         return fn
 
     def _wrap_fn_for_kw(self, fn):

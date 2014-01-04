@@ -268,7 +268,9 @@ def get_callable_argspec(fn, no_self=False):
         return compat.ArgSpec(spec.args[1:], spec.varargs, spec.keywords, spec.defaults)
     elif hasattr(fn, '__func__'):
         return compat.inspect_getargspec(fn.__func__)
-    elif hasattr(fn, '__call__'):
+    elif hasattr(fn, '__call__') and \
+        not hasattr(fn.__call__, '__call__'):  # functools.partial does this;
+                                               # not much we can do
         return get_callable_argspec(fn.__call__)
     else:
         raise ValueError("Can't inspect function: %s" % fn)

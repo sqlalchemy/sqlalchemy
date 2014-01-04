@@ -4,7 +4,7 @@ from sqlalchemy import util, sql, exc, testing
 from sqlalchemy.testing import assert_raises, assert_raises_message, fixtures
 from sqlalchemy.testing import eq_, is_, ne_, fails_if
 from sqlalchemy.testing.util import picklers, gc_collect
-from sqlalchemy.util import classproperty, WeakSequence
+from sqlalchemy.util import classproperty, WeakSequence, get_callable_argspec
 
 
 class KeyedTupleTest():
@@ -1184,6 +1184,33 @@ class ArgInspectionTest(fixtures.TestBase):
         test(f3)
         test(f4)
 
+    def test_callable_argspec_fn(self):
+        def foo(x, y, **kw):
+            pass
+        eq_(
+            get_callable_argspec(foo),
+            (['x', 'y'], None, 'kw', None)
+        )
+
+    def test_callable_argspec_method(self):
+        class Foo(object):
+            def foo(self, x, y, **kw):
+                pass
+        eq_(
+            get_callable_argspec(Foo.foo),
+            (['self', 'x', 'y'], None, 'kw', None)
+        )
+
+    def test_callable_argspec_partial(self):
+        from functools import partial
+        def foo(x, y, z, **kw):
+            pass
+        bar = partial(foo, 5)
+
+        assert_raises(
+            ValueError,
+            get_callable_argspec, bar
+        )
 
 class SymbolTest(fixtures.TestBase):
 
@@ -1665,3 +1692,5 @@ class TestClassProperty(fixtures.TestBase):
                 return d
 
         eq_(B.something, {'foo': 1, 'bazz': 2})
+
+

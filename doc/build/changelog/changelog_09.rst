@@ -15,6 +15,19 @@
     :version: 0.9.1
 
     .. change::
+        :tags: bug, orm, events
+        :tickets: 2905
+
+        Fixed regression where using a ``functools.partial()`` with the event
+        system would cause a recursion overflow due to usage of inspect.getargspec()
+        on it in order to detect a legacy calling signature for certain events,
+        and apparently there's no way to do this with a partial object.  Instead
+        we skip the legacy check and assume the modern style; the check itself
+        now only occurs for the SessionEvents.after_bulk_update and
+        SessionEvents.after_bulk_delete events.  Those two events will require
+        the new signature style if assigned to a "partial" event listener.
+
+    .. change::
         :tags: bug, orm, declarative
 
         Fixed an extremely unlikely memory issue where when using
