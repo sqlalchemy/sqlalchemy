@@ -2894,7 +2894,9 @@ class MetaData(SchemaItem):
         """
         return ddl.sort_tables(self.tables.values())
 
-    def reflect(self, bind=None, schema=None, views=False, only=None):
+    def reflect(self, bind=None, schema=None, views=False, only=None,
+                                extend_existing=False,
+                                autoload_replace=True):
         """Load all available table definitions from the database.
 
         Automatically creates ``Table`` entries in this ``MetaData`` for any
@@ -2929,6 +2931,17 @@ class MetaData(SchemaItem):
           with a table name and this ``MetaData`` instance as positional
           arguments and should return a true value for any table to reflect.
 
+        :param extend_existing: Passed along to each :class:`.Table` as
+          :paramref:`.Table.extend_existing`.
+
+          .. versionadded:: 0.9.1
+
+        :param autoload_replace: Passed along to each :class:`.Table` as
+          :paramref:`.Table.autoload_replace`.
+
+          .. versionadded:: 0.9.1
+
+
         """
         if bind is None:
             bind = _bind_or_error(self)
@@ -2937,7 +2950,9 @@ class MetaData(SchemaItem):
 
             reflect_opts = {
                 'autoload': True,
-                'autoload_with': conn
+                'autoload_with': conn,
+                'extend_existing': extend_existing,
+                'autoload_replace': autoload_replace
             }
 
             if schema is None:
@@ -2963,12 +2978,13 @@ class MetaData(SchemaItem):
 
             if only is None:
                 load = [name for name, schname in
-                            zip(available, available_w_schema)
-                            if schname not in current]
+                        zip(available, available_w_schema)
+                        if extend_existing or schname not in current]
             elif util.callable(only):
                 load = [name for name, schname in
                             zip(available, available_w_schema)
-                            if schname not in current and only(name, self)]
+                            if (extend_existing or schname not in current)
+                            and only(name, self)]
             else:
                 missing = [name for name in only if name not in available]
                 if missing:
@@ -2977,7 +2993,8 @@ class MetaData(SchemaItem):
                         'Could not reflect: requested table(s) not available '
                         'in %s%s: (%s)' %
                         (bind.engine.url, s, ', '.join(missing)))
-                load = [name for name in only if name not in current]
+                load = [name for name in only if extend_existing or
+                                                    name not in current]
 
             for name in load:
                 Table(name, self, **reflect_opts)

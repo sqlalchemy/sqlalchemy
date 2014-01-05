@@ -823,6 +823,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
     def test_reflect_uses_bind_engine_reflect(self):
         self._test_reflect_uses_bind(lambda e: MetaData().reflect(e))
 
+
     @testing.provide_metadata
     def test_reflect_all(self):
         existing = testing.db.table_names()
@@ -877,6 +878,18 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             sa.exc.UnboundExecutionError,
             m8.reflect
         )
+
+        m8_e1 = MetaData(testing.db)
+        rt_c = Table('rt_c', m8_e1)
+        m8_e1.reflect(extend_existing=True)
+        eq_(set(m8_e1.tables.keys()), set(names))
+        eq_(rt_c.c.keys(), ['id'])
+
+        m8_e2 = MetaData(testing.db)
+        rt_c = Table('rt_c', m8_e2)
+        m8_e2.reflect(extend_existing=True, only=['rt_a', 'rt_c'])
+        eq_(set(m8_e2.tables.keys()), set(['rt_a', 'rt_c']))
+        eq_(rt_c.c.keys(), ['id'])
 
         if existing:
             print("Other tables present in database, skipping some checks.")

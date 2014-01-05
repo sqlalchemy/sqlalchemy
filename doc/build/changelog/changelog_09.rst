@@ -15,6 +15,13 @@
     :version: 0.9.1
 
     .. change::
+        :tags: feature, core
+
+        The :paramref:`.Table.extend_existing` and :paramref:`.Table.autoload_replace`
+        parameters are now available on the :meth:`.MetaData.reflect`
+        method.
+
+    .. change::
         :tags: bug, orm, declarative
 
         Fixed an extremely unlikely memory issue where when using
