@@ -15,6 +15,21 @@
     :version: 0.9.1
 
     .. change::
+        :tags: feature, orm, extensions
+
+        A new, **experimental** extension :mod:`sqlalchemy.ext.automap` is added.
+        This extension expands upon the functionality of Declarative as well as
+        the :class:`.DeferredReflection` class to produce a base class which
+        automatically generates mapped classes *and relationships* based on
+        table metadata.
+
+        .. seealso::
+
+            :ref:`feature_automap`
+
+            :ref:`automap_toplevel`
+
+    .. change::
         :tags: feature, core
 
         Conjunctions like :func:`.and_` and :func:`.or_` can now accept

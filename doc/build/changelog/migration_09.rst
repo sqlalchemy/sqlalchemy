@@ -9,7 +9,7 @@ What's New in SQLAlchemy 0.9?
     and SQLAlchemy version 0.9, which is expected for release
     in late 2013.
 
-    Document last updated: November 24, 2013
+    Document last updated: January 5, 2014
 
 Introduction
 ============
@@ -932,6 +932,68 @@ complement the :class:`.postgresql.HSTORE` type.
     :class:`.postgresql.JSON`
 
 :ticket:`2581`
+
+.. _feature_automap:
+
+Automap Extension
+-----------------
+
+A new extension is added in **0.9.1** known as :mod:`sqlalchemy.ext.automap`.  This is an
+**experimental** extension which expands upon the functionality of Declarative
+as well as the :class:`.DeferredReflection` class.  Essentially, the extension
+provides a base class :class:`.AutomapBase` which automatically generates
+mapped classes and relationships between them based on given table metadata.
+
+The :class:`.MetaData` in use normally might be produced via reflection, but
+there is no requirement that reflection is used.   The most basic usage
+illustrates how :mod:`sqlalchemy.ext.automap` is able to deliver mapped
+classes, including relationships, based on a reflected schema::
+
+    from sqlalchemy.ext.automap import automap_base
+    from sqlalchemy.orm import Session
+    from sqlalchemy import create_engine
+
+    Base = automap_base()
+
+    # engine, suppose it has two tables 'user' and 'address' set up
+    engine = create_engine("sqlite:///mydatabase.db")
+
+    # reflect the tables
+    Base.prepare(engine, reflect=True)
+
+    # mapped classes are now created with names matching that of the table
+    # name.
+    User = Base.classes.user
+    Address = Base.classes.address
+
+    session = Session(engine)
+
+    # rudimentary relationships are produced
+    session.add(Address(email_address="foo@bar.com", user=User(name="foo")))
+    session.commit()
+
+    # collection-based relationships are by default named "<classname>_collection"
+    print (u1.address_collection)
+
+Beyond that, the :class:`.AutomapBase` class is a declarative base, and supports
+all the features that declarative does.  The "automapping" feature can be used
+with an existing, explicitly declared schema to generate relationships and
+missing classes only.  Naming schemes and relationship-production routines
+can be dropped in using callable functions.
+
+It is hoped that the :class:`.AutomapBase` system provides a quick
+and modernized solution to the problem that the very famous
+`SQLSoup <https://sqlsoup.readthedocs.org/en/latest/>`_
+also tries to solve, that of generating a quick and rudimentary object
+model from an existing database on the fly.  By addressing the issue strictly
+at the mapper configuration level, and integrating fully with existing
+Declarative class techniques, :class:`.AutomapBase` seeks to provide
+a well-integrated approach to the issue of expediently auto-generating ad-hoc
+mappings.
+
+.. seealso::
+
+    :ref:`automap_toplevel`
 
 Behavioral Improvements
 =======================
