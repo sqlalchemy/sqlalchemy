@@ -522,6 +522,14 @@ class Table(SchemaItem, TableClause):
 
     @property
     def key(self):
+        """Return the 'key' for this :class:`.Table`.
+
+        This value is used as the dictionary key within the
+        :attr:`.MetaData.tables` collection.   It is typically the same
+        as that of :attr:`.Table.name` for a table with no :attr:`.Table.schema`
+        set; otherwise it is typically of the form ``schemaname.tablename``.
+
+        """
         return _get_table_key(self.name, self.schema)
 
     def __repr__(self):
@@ -2719,20 +2727,11 @@ class MetaData(SchemaItem):
     execution.
 
     The :class:`.Table` objects themselves are stored in the
-    ``metadata.tables`` dictionary.
+    :attr:`.MetaData.tables` dictionary.
 
-    The ``bind`` property may be assigned to dynamically.  A common pattern is
-    to start unbound and then bind later when an engine is available::
-
-      metadata = MetaData()
-      # define tables
-      Table('mytable', metadata, ...)
-      # connect to an engine later, perhaps after loading a URL from a
-      # configuration file
-      metadata.bind = an_engine
-
-    MetaData is a thread-safe object after tables have been explicitly defined
-    or loaded via reflection.
+    :class:`.MetaData` is a thread-safe object for read operations.  Construction
+    of new tables within a single :class:`.MetaData` object, either explicitly
+    or via reflection, may not be completely thread-safe.
 
     .. seealso::
 
@@ -2787,6 +2786,20 @@ class MetaData(SchemaItem):
                     "A bind must be supplied in conjunction "
                     "with reflect=True")
             self.reflect()
+
+    tables = None
+    """A dictionary of :class:`.Table` objects keyed to their name or "table key".
+
+    The exact key is that determined by the :attr:`.Table.key` attribute;
+    for a table with no :attr:`.Table.schema` attribute, this is the same
+    as :attr:`.Table.name`.  For a table with a schema, it is typically of the
+    form ``schemaname.tablename``.
+
+    .. seealso::
+
+        :attr:`.MetaData.sorted_tables`
+
+    """
 
     def __repr__(self):
         return 'MetaData(bind=%r)' % self.bind
@@ -2889,7 +2902,9 @@ class MetaData(SchemaItem):
 
         .. seealso::
 
-            :meth:`.Inspector.sorted_tables`
+            :attr:`.MetaData.tables`
+
+            :meth:`.Inspector.get_table_names`
 
         """
         return ddl.sort_tables(self.tables.values())
