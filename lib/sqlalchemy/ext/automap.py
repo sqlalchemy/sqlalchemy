@@ -8,6 +8,14 @@
 which automatically generates mapped classes and attributes from a database
 schema, typically one which is reflected.
 
+.. versionadded:: 0.9.1 Added :mod:`sqlalchemy.ext.automap`.
+
+.. note::
+
+    The :mod:`sqlalchemy.ext.automap` extension should be considered
+    **experimental** as of 0.9.1.   Featureset and API stability is
+    not guaranteed at this time.
+
 Features:
 
 * The given :class:`.MetaData` structure may or may not be reflected.
@@ -42,28 +50,33 @@ Features:
 
 """
 from sqlalchemy.ext.declarative import declarative_base, DeferredReflection
-from sqlalchemy.ext.declarative.base import _MapperConfig
+from sqlalchemy.ext.declarative.base import _DeferredMapperConfig
 from sqlalchemy.schema import ForeignKeyConstraint
 from sqlalchemy.orm import relationship, backref
-from sqlalchemy.util import Properties
+from sqlalchemy import util
 
 def _classname_for_table(table):
-    return table.name
+    return str(table.name)
 
-def automap_base(metadata, **kw):
-    Base = declarative_base()
+def automap_base(**kw):
+    Base = declarative_base(**kw)
 
     class BaseThing(DeferredReflection, Base):
-        registry = Properties({})
+        __abstract__ = True
+
+        registry = util.Properties({})
 
         @classmethod
         def prepare(cls, engine):
-            cls.metadata.reflect(engine)
+            cls.metadata.reflect(
+                        engine,
+                        extend_existing=True,
+                        autoload_replace=False
+                    )
 
             table_to_map_config = dict(
                                     (m.local_table, m)
-                                    for m in _MapperConfig.configs.values()
-                                    if issubclass(m.cls, cls)
+                                    for m in _DeferredMapperConfig.classes_for_base(cls)
                                 )
 
             for table in cls.metadata.tables.values():
@@ -71,25 +84,22 @@ def automap_base(metadata, **kw):
                     mapped_cls = type(
                         _classname_for_table(table),
                         (BaseThing, ),
-                        {}
+                        {"__table__": table}
                     )
-                    map_config = _MapperConfig.configs[mapped_cls]
+                    map_config = _DeferredMapperConfig.config_for_cls(mapped_cls)
                     table_to_map_config[table] = map_config
 
             for map_config in table_to_map_config.values():
                 _relationships_for_fks(map_config, table_to_map_config)
+                cls.registry[map_config.cls.__name__] = map_config.cls
             super(BaseThing, cls).prepare(engine)
 
-        @classmethod
-        def _reflect_table(cls, table, engine):
-            pass
 
         @classmethod
         def _sa_decl_prepare(cls, local_table, engine):
-            if engine is not None:
-                super(BaseThing, cls)._sa_decl_prepare(local_table, engine)
-            # expected that the Table is present.
-            _relationships_for_fks(cls, local_table)
+            pass
+
+    return BaseThing
 
 def _relationships_for_fks(map_config, table_to_map_config):
     local_table = map_config.local_table
@@ -98,16 +108,13 @@ def _relationships_for_fks(map_config, table_to_map_config):
         if isinstance(constraint, ForeignKeyConstraint):
             fks = constraint.elements
             referred_table = fks[0].column.table
-            referred_cls = table_to_map_config[referred_table].local_cls
+            referred_cls = table_to_map_config[referred_table].cls
 
-            setattr(
-                local_cls,
-                referred_cls.__name__.lower(),
+            map_config.properties[referred_cls.__name__.lower()] = \
                 relationship(referred_cls,
                         foreign_keys=[fk.parent for fk in constraint.elements],
                         backref=backref(
                                 local_cls.__name__.lower() + "_collection",
                             )
                         )
-                )
 
