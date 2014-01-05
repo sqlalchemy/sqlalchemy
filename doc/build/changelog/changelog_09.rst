@@ -43,7 +43,7 @@
             :ref:`automap_toplevel`
 
     .. change::
-        :tags: feature, core
+        :tags: feature, sql
 
         Conjunctions like :func:`.and_` and :func:`.or_` can now accept
         Python generators as a single argument, e.g.::
@@ -54,12 +54,11 @@
         element is an instance of ``types.GeneratorType``.
 
     .. change::
-        :tags: feature, core
+        :tags: feature, schema
 
         The :paramref:`.Table.extend_existing` and :paramref:`.Table.autoload_replace`
         parameters are now available on the :meth:`.MetaData.reflect`
         method.
->>>>>>> automap
 
     .. change::
         :tags: bug, orm, declarative
