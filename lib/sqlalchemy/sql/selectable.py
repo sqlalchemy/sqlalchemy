@@ -136,7 +136,15 @@ class FromClause(Selectable):
     __visit_name__ = 'fromclause'
     named_with_column = False
     _hide_froms = []
+
     schema = None
+    """Define the 'schema' attribute for this :class:`.FromClause`.
+
+    This is typically ``None`` for most objects except that of :class:`.Table`,
+    where it is taken as the value of the :paramref:`.Table.schema` argument.
+
+    """
+
     _memoized_property = util.group_expirable_memoized_property(["_columns"])
 
     @util.dependencies("sqlalchemy.sql.functions")

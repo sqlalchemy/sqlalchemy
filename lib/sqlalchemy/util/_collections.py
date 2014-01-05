@@ -6,10 +6,12 @@
 
 """Collection classes and helpers."""
 
+from __future__ import absolute_import
 import weakref
 import operator
 from .compat import threading, itertools_filterfalse
 from . import py2k
+import types
 
 EMPTY_SET = frozenset()
 
@@ -754,6 +756,11 @@ class UniqueAppender(object):
     def __iter__(self):
         return iter(self.data)
 
+def coerce_generator_arg(arg):
+    if len(arg) == 1 and isinstance(arg[0], types.GeneratorType):
+        return list(arg[0])
+    else:
+        return arg
 
 def to_list(x, default=None):
     if x is None:

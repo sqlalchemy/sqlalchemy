@@ -28,6 +28,40 @@
         the new signature style if assigned to a "partial" event listener.
 
     .. change::
+        :tags: feature, orm, extensions
+
+        A new, **experimental** extension :mod:`sqlalchemy.ext.automap` is added.
+        This extension expands upon the functionality of Declarative as well as
+        the :class:`.DeferredReflection` class to produce a base class which
+        automatically generates mapped classes *and relationships* based on
+        table metadata.
+
+        .. seealso::
+
+            :ref:`feature_automap`
+
+            :ref:`automap_toplevel`
+
+    .. change::
+        :tags: feature, core
+
+        Conjunctions like :func:`.and_` and :func:`.or_` can now accept
+        Python generators as a single argument, e.g.::
+
+            and_(x == y for x, y in tuples)
+
+        The logic here looks for a single argument ``*args`` where the first
+        element is an instance of ``types.GeneratorType``.
+
+    .. change::
+        :tags: feature, core
+
+        The :paramref:`.Table.extend_existing` and :paramref:`.Table.autoload_replace`
+        parameters are now available on the :meth:`.MetaData.reflect`
+        method.
+>>>>>>> automap
+
+    .. change::
         :tags: bug, orm, declarative
 
         Fixed an extremely unlikely memory issue where when using
