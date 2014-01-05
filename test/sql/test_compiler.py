@@ -853,6 +853,17 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                             'otherid_1': 9, 'myid_1': 12}
         )
 
+        # test a generator
+        self.assert_compile(
+            and_(
+                conj for conj in [
+                    table1.c.myid == 12,
+                    table1.c.name == 'asdf'
+                ]
+            ),
+            "mytable.myid = :myid_1 AND mytable.name = :name_1"
+        )
+
     def test_nested_conjunctions_short_circuit(self):
         """test that empty or_(), and_() conjunctions are collapsed by
         an enclosing conjunction."""

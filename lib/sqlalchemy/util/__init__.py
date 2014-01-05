@@ -18,7 +18,8 @@ from ._collections import KeyedTuple, ImmutableContainer, immutabledict, \
     column_dict, ordered_column_set, populate_column_dict, unique_list, \
     UniqueAppender, PopulateDict, EMPTY_SET, to_list, to_set, \
     to_column_set, update_copy, flatten_iterator, \
-    LRUCache, ScopedRegistry, ThreadLocalRegistry, WeakSequence
+    LRUCache, ScopedRegistry, ThreadLocalRegistry, WeakSequence, \
+    coerce_generator_arg
 
 from .langhelpers import iterate_attributes, class_hierarchy, \
     portable_instancemethod, unbound_method_to_callable, \

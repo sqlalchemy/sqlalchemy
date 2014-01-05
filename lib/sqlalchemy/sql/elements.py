@@ -1492,6 +1492,7 @@ class BooleanClauseList(ClauseList, ColumnElement):
     def _construct(cls, operator, continue_on, skip_on, *clauses, **kw):
         convert_clauses = []
 
+        clauses = util.coerce_generator_arg(clauses)
         for clause in clauses:
             clause = _literal_as_text(clause)
 

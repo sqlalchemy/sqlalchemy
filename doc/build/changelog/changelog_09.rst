@@ -17,6 +17,17 @@
     .. change::
         :tags: feature, core
 
+        Conjunctions like :func:`.and_` and :func:`.or_` can now accept
+        Python generators as a single argument, e.g.::
+
+            and_(x == y for x, y in tuples)
+
+        The logic here looks for a single argument ``*args`` where the first
+        element is an instance of ``types.GeneratorType``.
+
+    .. change::
+        :tags: feature, core
+
         The :paramref:`.Table.extend_existing` and :paramref:`.Table.autoload_replace`
         parameters are now available on the :meth:`.MetaData.reflect`
         method.
