@@ -13,6 +13,7 @@
 
 .. changelog::
     :version: 0.9.1
+    :released: January 5, 2014
 
     .. change::
         :tags: bug, orm, events
