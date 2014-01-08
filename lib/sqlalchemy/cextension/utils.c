@@ -198,7 +198,7 @@ static struct PyModuleDef module_def = {
 
 
 #if PY_MAJOR_VERSION >= 3
-PyObject *
+PyMODINIT_FUNC
 PyInit_cutils(void)
 #else
 PyMODINIT_FUNC
