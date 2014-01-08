@@ -618,7 +618,7 @@ static struct PyModuleDef module_def = {
 
 #define INITERROR return NULL
 
-PyObject *
+PyMODINIT_FUNC
 PyInit_cprocessors(void)
 
 #else
