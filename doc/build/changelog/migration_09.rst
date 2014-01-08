@@ -9,7 +9,7 @@ What's New in SQLAlchemy 0.9?
     and SQLAlchemy version 0.9, which is expected for release
     in late 2013.
 
-    Document last updated: January 5, 2014
+    Document last updated: January 8, 2014
 
 Introduction
 ============
@@ -401,6 +401,54 @@ This is a small change demonstrated as follows::
 
 Behavioral Changes - Core
 =========================
+
+``None`` can no longer be used as a "partial AND" constructor
+--------------------------------------------------------------
+
+``None`` can no longer be used as the "backstop" to form an AND condition piecemeal.
+This pattern was not a documented pattern even though some SQLAlchemy internals
+made use of it::
+
+    condition = None
+
+    for cond in conditions:
+        condition = condition & cond
+
+    if condition is not None:
+        stmt = stmt.where(condition)
+
+The above sequence, when ``condition`` is non-empty, will on 0.9 produce
+``SELECT .. WHERE <condition> AND NULL``.  The ``None`` is no longer implicitly
+ignored.
+
+The correct code for both 0.8 and 0.9 should read::
+
+    from sqlalchemy.sql import and_
+
+    if conditions:
+        stmt = stmt.where(and_(*conditions))
+
+Another variant that works on all backends on 0.9, but on 0.8 only works on
+backends that support boolean constants::
+
+    from sqlalchemy.sql import true
+
+    condition = true()
+
+    for cond in conditions:
+        condition = cond & condition
+
+    if condition is not None:
+        stmt = stmt.where(condition)
+
+On 0.8, this will produce a SELECT statement that always has ``AND true``
+in the WHERE clause, which is not accepted by backends that don't support
+boolean constants (MySQL, MSSQL).  On 0.9, the ``true`` constant will be dropped
+within an ``and_()`` conjunction.
+
+.. seealso::
+
+    :ref:`migration_2804`
 
 .. _migration_2873:
 
