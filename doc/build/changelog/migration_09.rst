@@ -417,9 +417,10 @@ made use of it::
     if condition is not None:
         stmt = stmt.where(condition)
 
-The above sequence, when ``condition`` is non-empty, will on 0.9 produce
+The above sequence, when ``conditions`` is non-empty, will on 0.9 produce
 ``SELECT .. WHERE <condition> AND NULL``.  The ``None`` is no longer implicitly
-ignored.
+ignored, and is instead consistent with when ``None`` is interpreted in other
+contexts besides that of a conjunction.
 
 The correct code for both 0.8 and 0.9 should read::
 
@@ -438,8 +439,7 @@ backends that support boolean constants::
     for cond in conditions:
         condition = cond & condition
 
-    if condition is not None:
-        stmt = stmt.where(condition)
+    stmt = stmt.where(condition)
 
 On 0.8, this will produce a SELECT statement that always has ``AND true``
 in the WHERE clause, which is not accepted by backends that don't support
