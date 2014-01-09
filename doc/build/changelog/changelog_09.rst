@@ -16,6 +16,17 @@
     :released: January 5, 2014
 
     .. change::
+        :tags: bug, py3k, cextensions
+        :pullreq: github:55
+
+        Fixed an issue where the C extensions in Py3K are using the wrong API
+        to specify the top-level module function, which breaks
+        in Python 3.4b2.  Py3.4b2 changes PyMODINIT_FUNC to return
+        "void" instead of "PyObject *", so we now make sure to use
+        "PyMODINIT_FUNC" instead of "PyObject *" directly.  Pull request
+        courtesy cgohlke.
+
+    .. change::
         :tags: bug, orm, events
         :tickets: 2905
 
