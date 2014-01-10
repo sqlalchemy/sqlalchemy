@@ -51,12 +51,10 @@ def profiled(target=None, **target_opts):
     if target is None:
         target = 'anonymous_target'
 
-    filename = "%s.prof" % target
-
     @decorator
     def decorate(fn, *args, **kw):
         elapsed, load_stats, result = _profile(
-            filename, fn, *args, **kw)
+            fn, *args, **kw)
 
         graphic = target_opts.get('graphic', profile_config['graphic'])
         if graphic:
@@ -66,8 +64,8 @@ def profiled(target=None, **target_opts):
             if report:
                 sort_ = target_opts.get('sort', profile_config['sort'])
                 limit = target_opts.get('limit', profile_config['limit'])
-                print(("Profile report for target '%s' (%s)" % (
-                    target, filename)
+                print(("Profile report for target '%s'" % (
+                    target, )
                     ))
 
                 stats = load_stats()
@@ -87,7 +85,6 @@ def profiled(target=None, **target_opts):
                 if print_callees:
                     stats.print_callees()
 
-        os.unlink(filename)
         return result
     return decorate
 
