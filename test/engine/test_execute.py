@@ -1050,7 +1050,7 @@ class ResultProxyTest(fixtures.TestBase):
 
 class ExecutionOptionsTest(fixtures.TestBase):
     def test_dialect_conn_options(self):
-        engine = testing_engine("sqlite://")
+        engine = testing_engine("sqlite://", options=dict(_initialize=False))
         engine.dialect = Mock()
         conn = engine.connect()
         c2 = conn.execution_options(foo="bar")

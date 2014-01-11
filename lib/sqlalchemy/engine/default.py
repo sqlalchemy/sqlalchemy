@@ -228,46 +228,55 @@ class DefaultDialect(interfaces.Dialect):
         """
         return None
 
-    def _check_unicode_returns(self, connection):
+    def _check_unicode_returns(self, connection, additional_tests=None):
         if util.py2k and not self.supports_unicode_statements:
             cast_to = util.binary_type
         else:
             cast_to = util.text_type
 
-        def check_unicode(formatstr, type_):
+        if self.positional:
+            parameters = self.execute_sequence_format()
+        else:
+            parameters = {}
+
+        def check_unicode(test):
             cursor = connection.connection.cursor()
             try:
                 try:
-                    cursor.execute(
-                        cast_to(
-                            expression.select(
-                                [expression.cast(
-                                    expression.literal_column(
-                                        "'test %s returns'" % formatstr),
-                                        type_)
-                            ]).compile(dialect=self)
-                        )
-                    )
+                    statement = cast_to(expression.select([test]).compile(dialect=self))
+                    connection._cursor_execute(cursor, statement, parameters)
                     row = cursor.fetchone()
 
                     return isinstance(row[0], util.text_type)
-                except self.dbapi.Error as de:
+                except exc.DBAPIError as de:
                     util.warn("Exception attempting to "
                             "detect unicode returns: %r" % de)
                     return False
             finally:
                 cursor.close()
 
-        # detect plain VARCHAR
-        unicode_for_varchar = check_unicode("plain", sqltypes.VARCHAR(60))
+        tests = [
+            # detect plain VARCHAR
+            expression.cast(
+                expression.literal_column("'test plain returns'"),
+                sqltypes.VARCHAR(60)
+            ),
+            # detect if there's an NVARCHAR type with different behavior available
+            expression.cast(
+                expression.literal_column("'test unicode returns'"),
+                sqltypes.Unicode(60)
+            ),
+        ]
 
-        # detect if there's an NVARCHAR type with different behavior available
-        unicode_for_unicode = check_unicode("unicode", sqltypes.Unicode(60))
+        if additional_tests:
+            tests += additional_tests
 
-        if unicode_for_unicode and not unicode_for_varchar:
+        results = set([check_unicode(test) for test in tests])
+
+        if results.issuperset([True, False]):
             return "conditional"
         else:
-            return unicode_for_varchar
+            return results == set([True])
 
     def _check_unicode_description(self, connection):
         # all DBAPIs on Py2K return cursor.description as encoded,
