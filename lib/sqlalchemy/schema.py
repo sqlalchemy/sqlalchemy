@@ -8,6 +8,10 @@
 
 """
 
+from .sql.base import (
+    SchemaVisitor
+    )
+
 
 from .sql.schema import (
     CheckConstraint,
