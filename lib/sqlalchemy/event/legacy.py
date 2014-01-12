@@ -73,7 +73,7 @@ def _standard_listen_example(dispatch_descriptor, sample_target, fn):
             "\n    # ... (event handling logic) ...\n"
     )
 
-    if len(dispatch_descriptor.arg_names) > 2:
+    if len(dispatch_descriptor.arg_names) > 3:
         text += (
 
             "\n# named argument style (new in 0.9)\n"
