@@ -12,8 +12,7 @@
         :start-line: 5
 
 .. changelog::
-    :version: 0.9.1
-    :released: January 5, 2014
+    :version: 0.9.2
 
     .. change::
         :tags: bug, py3k, cextensions
@@ -25,6 +24,10 @@
         "void" instead of "PyObject *", so we now make sure to use
         "PyMODINIT_FUNC" instead of "PyObject *" directly.  Pull request
         courtesy cgohlke.
+
+.. changelog::
+    :version: 0.9.1
+    :released: January 5, 2014
 
     .. change::
         :tags: bug, orm, events
