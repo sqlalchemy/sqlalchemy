@@ -25,6 +25,13 @@
         "PyMODINIT_FUNC" instead of "PyObject *" directly.  Pull request
         courtesy cgohlke.
 
+    .. change::
+        :tags: bug, schema
+        :pullreq: github:57
+
+        Restored :class:`sqlalchemy.schema.SchemaVisitor` to the ``.schema``
+        module.  Pullreq courtesy Sean Dague.
+
 .. changelog::
     :version: 0.9.1
     :released: January 5, 2014
