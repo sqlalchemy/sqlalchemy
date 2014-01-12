@@ -266,41 +266,52 @@ class PoolEvents(event.Events):
             return target
 
     def connect(self, dbapi_connection, connection_record):
-        """Called once for each new DB-API connection or Pool's ``creator()``.
+        """Called at the moment a particular DBAPI connection is first
+        created for a given :class:`.Pool`.
 
-        :param dbapi_con:
-          A newly connected raw DB-API connection (not a SQLAlchemy
-          ``Connection`` wrapper).
+        This event allows one to capture the point directly after which
+        the DBAPI module-level ``.connect()`` method has been used in order
+        to produce a new DBAPI connection.
 
-        :param con_record:
-          The ``_ConnectionRecord`` that persistently manages the connection
+        :param dbapi_connection: a DBAPI connection.
+
+        :param connection_record: the :class:`._ConnectionRecord` managing the
+         DBAPI connection.
 
         """
 
     def first_connect(self, dbapi_connection, connection_record):
-        """Called exactly once for the first DB-API connection.
+        """Called exactly once for the first time a DBAPI connection is
+        checked out from a particular :class:`.Pool`.
 
-        :param dbapi_con:
-          A newly connected raw DB-API connection (not a SQLAlchemy
-          ``Connection`` wrapper).
+        The rationale for :meth:`.PoolEvents.first_connect` is to determine
+        information about a particular series of database connections based
+        on the settings used for all connections.  Since a particular
+        :class:`.Pool` refers to a single "creator" function (which in terms
+        of a :class:`.Engine` refers to the URL and connection options used),
+        it is typically valid to make observations about a single connection
+        that can be safely assumed to be valid about all subsequent connections,
+        such as the database version, the server and client encoding settings,
+        collation settings, and many others.
 
-        :param con_record:
-          The ``_ConnectionRecord`` that persistently manages the connection
+        :param dbapi_connection: a DBAPI connection.
+
+        :param connection_record: the :class:`._ConnectionRecord` managing the
+         DBAPI connection.
 
         """
 
     def checkout(self, dbapi_connection, connection_record, connection_proxy):
         """Called when a connection is retrieved from the Pool.
 
-        :param dbapi_con:
-          A raw DB-API connection
+        :param dbapi_connection: a DBAPI connection.
 
-        :param con_record:
-          The ``_ConnectionRecord`` that persistently manages the connection
+        :param connection_record: the :class:`._ConnectionRecord` managing the
+         DBAPI connection.
 
-        :param con_proxy:
-          The ``_ConnectionFairy`` which manages the connection for the span of
-          the current checkout.
+        :param connection_proxy: the :class:`._ConnectionFairy` object which
+          will proxy the public interface of the DBAPI connection for the lifespan
+          of the checkout.
 
         If you raise a :class:`~sqlalchemy.exc.DisconnectionError`, the current
         connection will be disposed and a fresh connection retrieved.
@@ -319,15 +330,14 @@ class PoolEvents(event.Events):
         connection has been invalidated.  ``checkin`` will not be called
         for detached connections.  (They do not return to the pool.)
 
-        :param dbapi_con:
-          A raw DB-API connection
+        :param dbapi_connection: a DBAPI connection.
 
-        :param con_record:
-          The ``_ConnectionRecord`` that persistently manages the connection
+        :param connection_record: the :class:`._ConnectionRecord` managing the
+         DBAPI connection.
 
         """
 
-    def reset(self, dbapi_con, con_record):
+    def reset(self, dbapi_connnection, connection_record):
         """Called before the "reset" action occurs for a pooled connection.
 
         This event represents
@@ -341,11 +351,10 @@ class PoolEvents(event.Events):
         the :meth:`.PoolEvents.checkin` event is called, except in those
         cases where the connection is discarded immediately after reset.
 
-        :param dbapi_con:
-          A raw DB-API connection
+        :param dbapi_connection: a DBAPI connection.
 
-        :param con_record:
-          The ``_ConnectionRecord`` that persistently manages the connection
+        :param connection_record: the :class:`._ConnectionRecord` managing the
+         DBAPI connection.
 
         .. versionadded:: 0.8
 
@@ -357,6 +366,30 @@ class PoolEvents(event.Events):
 
         """
 
+    def invalidate(self, dbapi_connection, connection_record, exception):
+        """Called when a DBAPI connection is to be "invalidated".
+
+        This event is called any time the :meth:`._ConnectionRecord.invalidate`
+        method is invoked, either from API usage or via "auto-invalidation".
+        The event occurs before a final attempt to call ``.close()`` on the connection
+        occurs.
+
+        :param dbapi_connection: a DBAPI connection.
+
+        :param connection_record: the :class:`._ConnectionRecord` managing the
+         DBAPI connection.
+
+        :param exception: the exception object corresponding to the reason
+         for this invalidation, if any.  May be ``None``.
+
+        .. versionadded:: 0.9.2 Added support for connection invalidation
+           listening.
+
+        .. seealso::
+
+            :ref:`pool_connection_invalidation`
+
+        """
 
 
 class ConnectionEvents(event.Events):

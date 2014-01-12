@@ -303,20 +303,40 @@ class Connection(Connectable):
 
     def invalidate(self, exception=None):
         """Invalidate the underlying DBAPI connection associated with
-        this Connection.
+        this :class:`.Connection`.
 
-        The underlying DB-API connection is literally closed (if
+        The underlying DBAPI connection is literally closed (if
         possible), and is discarded.  Its source connection pool will
         typically lazily create a new connection to replace it.
 
-        Upon the next usage, this Connection will attempt to reconnect
-        to the pool with a new connection.
+        Upon the next use (where "use" typically means using the
+        :meth:`.Connection.execute` method or similar),
+        this :class:`.Connection` will attempt to
+        procure a new DBAPI connection using the services of the
+        :class:`.Pool` as a source of connectivty (e.g. a "reconnection").
 
-        Transactions in progress remain in an "opened" state (even though the
-        actual transaction is gone); these must be explicitly rolled back
-        before a reconnect on this Connection can proceed. This is to prevent
-        applications from accidentally continuing their transactional
-        operations in a non-transactional state.
+        If a transaction was in progress (e.g. the
+        :meth:`.Connection.begin` method has been called) when
+        :meth:`.Connection.invalidate` method is called, at the DBAPI
+        level all state associated with this transaction is lost, as
+        the DBAPI connection is closed.  The :class:`.Connection`
+        will not allow a reconnection to proceed until the :class:`.Transaction`
+        object is ended, by calling the :meth:`.Transaction.rollback`
+        method; until that point, any attempt at continuing to use the
+        :class:`.Connection` will raise an
+        :class:`~sqlalchemy.exc.InvalidRequestError`.
+        This is to prevent applications from accidentally
+        continuing an ongoing transactional operations despite the
+        fact that the transaction has been lost due to an
+        invalidation.
+
+        The :meth:`.Connection.invalidate` method, just like auto-invalidation,
+        will at the connection pool level invoke the :meth:`.PoolEvents.invalidate`
+        event.
+
+        .. seealso::
+
+            :ref:`pool_connection_invalidation`
 
         """
         if self.invalidated:

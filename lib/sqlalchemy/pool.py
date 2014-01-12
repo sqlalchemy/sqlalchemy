@@ -216,7 +216,7 @@ class Pool(log.Identified):
 
         """
 
-        return _ConnectionFairy.checkout(self)
+        return _ConnectionFairy._checkout(self)
 
     def _create_connection(self):
         """Called by subclasses to create a new ConnectionRecord."""
@@ -268,7 +268,7 @@ class Pool(log.Identified):
 
         """
         if not self._use_threadlocal:
-            return _ConnectionFairy.checkout(self)
+            return _ConnectionFairy._checkout(self)
 
         try:
             rec = self._threadconns.current()
@@ -276,9 +276,9 @@ class Pool(log.Identified):
             pass
         else:
             if rec is not None:
-                return rec.checkout_existing()
+                return rec._checkout_existing()
 
-        return _ConnectionFairy.checkout(self, self._threadconns)
+        return _ConnectionFairy._checkout(self, self._threadconns)
 
     def _return_conn(self, record):
         """Given a _ConnectionRecord, return it to the :class:`.Pool`.
@@ -309,6 +309,34 @@ class Pool(log.Identified):
 
 
 class _ConnectionRecord(object):
+    """Internal object which maintains an individual DBAPI connection
+    referenced by a :class:`.Pool`.
+
+    The :class:`._ConnectionRecord` object always exists for any particular
+    DBAPI connection whether or not that DBAPI connection has been
+    "checked out".  This is in contrast to the :class:`._ConnectionFairy`
+    which is only a public facade to the DBAPI connection while it is checked
+    out.
+
+    A :class:`._ConnectionRecord` may exist for a span longer than that
+    of a single DBAPI connection.  For example, if the
+    :meth:`._ConnectionRecord.invalidate`
+    method is called, the DBAPI connection associated with this
+    :class:`._ConnectionRecord`
+    will be discarded, but the :class:`._ConnectionRecord` may be used again,
+    in which case a new DBAPI connection is produced when the :class:`.Pool`
+    next uses this record.
+
+    The :class:`._ConnectionRecord` is delivered along with connection
+    pool events, including :meth:`.PoolEvents.connect` and
+    :meth:`.PoolEvents.checkout`, however :class:`._ConnectionRecord` still
+    remains an internal object whose API and internals may change.
+
+    .. seealso::
+
+        :class:`._ConnectionFairy`
+
+    """
 
     def __init__(self, pool):
         self.__pool = pool
@@ -320,8 +348,23 @@ class _ConnectionRecord(object):
                     exec_once(self.connection, self)
         pool.dispatch.connect(self.connection, self)
 
+    connection = None
+    """A reference to the actual DBAPI connection being tracked.
+
+    May be ``None`` if this :class:`._ConnectionRecord` has been marked
+    as invalidated; a new DBAPI connection may replace it if the owning
+    pool calls upon this :class:`._ConnectionRecord` to reconnect.
+
+    """
+
     @util.memoized_property
     def info(self):
+        """The ``.info`` dictionary associated with the DBAPI connection.
+
+        This dictionary is shared among the :attr:`._ConnectionFairy.info`
+        and :attr:`.Connection.info` accessors.
+
+        """
         return {}
 
     @classmethod
@@ -360,9 +403,22 @@ class _ConnectionRecord(object):
 
     def close(self):
         if self.connection is not None:
-            self.__pool._close_connection(self.connection)
+            self.__close()
 
     def invalidate(self, e=None):
+        """Invalidate the DBAPI connection held by this :class:`._ConnectionRecord`.
+
+        This method is called for all connection invalidations, including
+        when the :meth:`._ConnectionFairy.invalidate` or :meth:`.Connection.invalidate`
+        methods are called, as well as when any so-called "automatic invalidation"
+        condition occurs.
+
+        .. seealso::
+
+            :ref:`pool_connection_invalidation`
+
+        """
+        self.__pool.dispatch.invalidate(self.connection, self, e)
         if e is not None:
             self.__pool.logger.info(
                 "Invalidate connection %r (reason: %s:%s)",
@@ -453,15 +509,41 @@ _refs = set()
 
 
 class _ConnectionFairy(object):
-    """Proxies a DB-API connection and provides return-on-dereference
-    support."""
+    """Proxies a DBAPI connection and provides return-on-dereference
+    support.
+
+    This is an internal object used by the :class:`.Pool` implementation
+    to provide context management to a DBAPI connection delivered by
+    that :class:`.Pool`.
+
+    The name "fairy" is inspired by the fact that the :class:`._ConnectionFairy`
+    object's lifespan is transitory, as it lasts only for the length of a
+    specific DBAPI connection being checked out from the pool, and additionally
+    that as a transparent proxy, it is mostly invisible.
+
+    .. seealso::
+
+        :class:`._ConnectionRecord`
+
+    """
 
     def __init__(self, dbapi_connection, connection_record):
         self.connection = dbapi_connection
         self._connection_record = connection_record
 
+    connection = None
+    """A reference to the actual DBAPI connection being tracked."""
+
+    _connection_record = None
+    """A reference to the :class:`._ConnectionRecord` object associated
+    with the DBAPI connection.
+
+    This is currently an internal accessor which is subject to change.
+
+    """
+
     @classmethod
-    def checkout(cls, pool, threadconns=None, fairy=None):
+    def _checkout(cls, pool, threadconns=None, fairy=None):
         if not fairy:
             fairy = _ConnectionRecord.checkout(pool)
 
@@ -498,16 +580,16 @@ class _ConnectionFairy(object):
         fairy.invalidate()
         raise exc.InvalidRequestError("This connection is closed")
 
-    def checkout_existing(self):
-        return _ConnectionFairy.checkout(self._pool, fairy=self)
+    def _checkout_existing(self):
+        return _ConnectionFairy._checkout(self._pool, fairy=self)
 
-    def checkin(self):
+    def _checkin(self):
         _finalize_fairy(self.connection, self._connection_record,
                             self._pool, None, self._echo, fairy=self)
         self.connection = None
         self._connection_record = None
 
-    _close = checkin
+    _close = _checkin
 
     @property
     def _logger(self):
@@ -515,6 +597,9 @@ class _ConnectionFairy(object):
 
     @property
     def is_valid(self):
+        """Return True if this :class:`._ConnectionFairy` still refers
+        to an active DBAPI connection."""
+
         return self.connection is not None
 
     @util.memoized_property
@@ -525,7 +610,9 @@ class _ConnectionFairy(object):
 
         The data here will follow along with the DBAPI connection including
         after it is returned to the connection pool and used again
-        in subsequent instances of :class:`.ConnectionFairy`.
+        in subsequent instances of :class:`._ConnectionFairy`.  It is shared
+        with the :attr:`._ConnectionRecord.info` and :attr:`.Connection.info`
+        accessors.
 
         """
         return self._connection_record.info
@@ -533,8 +620,16 @@ class _ConnectionFairy(object):
     def invalidate(self, e=None):
         """Mark this connection as invalidated.
 
-        The connection will be immediately closed.  The containing
-        ConnectionRecord will create a new connection when next used.
+        This method can be called directly, and is also called as a result
+        of the :meth:`.Connection.invalidate` method.   When invoked,
+        the DBAPI connection is immediately closed and discarded from
+        further use by the pool.  The invalidation mechanism proceeds
+        via the :meth:`._ConnectionRecord.invalidate` internal method.
+
+        .. seealso::
+
+            :ref:`pool_connection_invalidation`
+
         """
 
         if self.connection is None:
@@ -542,9 +637,15 @@ class _ConnectionFairy(object):
         if self._connection_record:
             self._connection_record.invalidate(e=e)
         self.connection = None
-        self.checkin()
+        self._checkin()
 
     def cursor(self, *args, **kwargs):
+        """Return a new DBAPI cursor for the underlying connection.
+
+        This method is a proxy for the ``connection.cursor()`` DBAPI
+        method.
+
+        """
         return self.connection.cursor(*args, **kwargs)
 
     def __getattr__(self, key):
@@ -576,7 +677,7 @@ class _ConnectionFairy(object):
     def close(self):
         self._counter -= 1
         if self._counter == 0:
-            self.checkin()
+            self._checkin()
 
 
 

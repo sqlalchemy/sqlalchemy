@@ -15,6 +15,23 @@
     :version: 0.9.2
 
     .. change::
+        :tags: feature, pool, engine
+
+        Added a new pool event :meth:`.PoolEvents.invalidate`.  Called when
+        a DBAPI connection is to be marked as "invaldated" and discarded
+        from the pool.
+
+    .. change::
+        :tags: bug, pool
+
+        The argument names for the :meth:`.PoolEvents.reset` event have been
+        renamed to ``dbapi_connection`` and ``connection_record`` in order
+        to maintain consistency with all the other pool events.  It is expected
+        that any existing listeners for this relatively new and
+        seldom-used event are using positional style to receive arguments in
+        any case.
+
+    .. change::
         :tags: bug, py3k, cextensions
         :pullreq: github:55
 

@@ -282,6 +282,51 @@ server at the point at which the script pauses for input::
         print c.execute("select 1").fetchall()
         c.close()
 
+.. _pool_connection_invalidation:
+
+More on Invalidation
+^^^^^^^^^^^^^^^^^^^^
+
+The :class:`.Pool` provides "connection invalidation" services which allow
+both explicit invalidation of a connection as well as automatic invalidation
+in response to conditions that are determined to render a connection unusable.
+
+"Invalidation" means that a particular DBAPI connection is removed from the
+pool and discarded.  The ``.close()`` method is called on this connection
+if it is not clear that the connection itself might not be closed, however
+if this method fails, the exception is logged but the operation still proceeds.
+
+When using a :class:`.Engine`, the :meth:`.Connection.invalidate` method is
+the usual entrypoint to explicit invalidation.   Other conditions by which
+a DBAPI connection might be invalidated include:
+
+* a DBAPI exception such as :class:`.OperationalError`, raised when a
+  method like ``connection.execute()`` is called, is detected as indicating
+  a so-called "disconnect" condition.   As the Python DBAPI provides no
+  standard system for determining the nature of an exception, all SQLAlchemy
+  dialects include a system called ``is_disconnect()`` which will examine
+  the contents of an exception object, including the string message and
+  any potential error codes included with it, in order to determine if this
+  exception indicates that the connection is no longer usable.  If this is the
+  case, the :meth:`._ConnectionFairy.invalidate` method is called and the
+  DBAPI connection is then discarded.
+
+* When the connection is returned to the pool, and
+  calling the ``connection.rollback()`` or ``connection.commit()`` methods,
+  as dictated by the pool's "reset on return" behavior, throws an exception.
+  A final attempt at calling ``.close()`` on the connection will be made,
+  and it is then discarded.
+
+* When a listener implementing :meth:`.PoolEvents.checkout` raises the
+  :class:`~sqlalchemy.exc.DisconnectionError` exception, indicating that the connection
+  won't be usable and a new connection attempt needs to be made.
+
+All invalidations which occur will invoke the :meth:`.PoolEvents.invalidate`
+event.
+
+
+
+
 API Documentation - Available Pool Implementations
 ---------------------------------------------------
 
@@ -301,7 +346,6 @@ API Documentation - Available Pool Implementations
 
 .. autoclass:: SingletonThreadPool
 
-
    .. automethod:: __init__
 
 .. autoclass:: AssertionPool
@@ -312,6 +356,13 @@ API Documentation - Available Pool Implementations
 
 .. autoclass:: StaticPool
 
+.. autoclass:: _ConnectionFairy
+    :members:
+
+    .. autoattribute:: _connection_record
+
+.. autoclass:: _ConnectionRecord
+    :members:
 
 
 Pooling Plain DB-API Connections
