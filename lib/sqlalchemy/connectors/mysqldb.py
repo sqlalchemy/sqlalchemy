@@ -62,18 +62,6 @@ class MySQLDBConnector(Connector):
         # is overridden when pymysql is used
         return __import__('MySQLdb')
 
-    def _check_unicode_returns(self, connection):
-        # work around issue fixed in
-        # https://github.com/farcepest/MySQLdb1/commit/cd44524fef63bd3fcb71947392326e9742d520e8
-        # unicode charset fails for a table with
-        additional_tests = [
-            sql.collate(sql.cast(
-                    sql.literal_column(
-                        "'test collated returns'"),
-                        sqltypes.TEXT), 'utf8_bin')
-        ]
-        return super(MySQLDBConnector, self)._check_unicode_returns(connection, additional_tests)
-
     def do_executemany(self, cursor, statement, parameters, context=None):
         rowcount = cursor.executemany(statement, parameters)
         if context is not None:
