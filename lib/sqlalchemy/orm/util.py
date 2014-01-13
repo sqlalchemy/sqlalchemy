@@ -1147,7 +1147,7 @@ def class_mapper(class_, configure=True):
     if mapper is None:
         if not isinstance(class_, type):
             raise sa_exc.ArgumentError(
-                    "Class object expected, got '%r'." % class_)
+                    "Class object expected, got '%r'." % (class_, ))
         raise exc.UnmappedClassError(class_)
     else:
         return mapper
