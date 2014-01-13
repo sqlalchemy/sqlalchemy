@@ -342,7 +342,8 @@ class TransactionTest(fixtures.TestBase):
         transaction = connection.begin_twophase()
         connection.execute(users.insert(), user_id=1, user_name='user1')
         transaction.prepare()
-        connection.close()
+        connection.invalidate()
+
         connection2 = testing.db.connect()
         eq_(connection2.execute(select([users.c.user_id]).
             order_by(users.c.user_id)).fetchall(),

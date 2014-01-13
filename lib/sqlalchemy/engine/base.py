@@ -404,7 +404,7 @@ class Connection(Connectable):
         """
 
         if self.__transaction is None:
-            self.__transaction = self.connection._reset_agent = RootTransaction(self)
+            self.__transaction = RootTransaction(self)
             return self.__transaction
         else:
             return Transaction(self, self.__transaction)
@@ -423,9 +423,8 @@ class Connection(Connectable):
         See also :meth:`.Connection.begin`,
         :meth:`.Connection.begin_twophase`.
         """
-
         if self.__transaction is None:
-            self.__transaction = self.connection._reset_agent = RootTransaction(self)
+            self.__transaction = RootTransaction(self)
         else:
             self.__transaction = NestedTransaction(self, self.__transaction)
         return self.__transaction
@@ -453,7 +452,7 @@ class Connection(Connectable):
                 "is already in progress.")
         if xid is None:
             xid = self.engine.dialect.create_xid()
-        self.__transaction = self.connection._reset_agent = TwoPhaseTransaction(self, xid)
+        self.__transaction = TwoPhaseTransaction(self, xid)
         return self.__transaction
 
     def recover_twophase(self):
@@ -470,7 +469,7 @@ class Connection(Connectable):
 
         return self.__transaction is not None
 
-    def _begin_impl(self):
+    def _begin_impl(self, transaction):
         if self._echo:
             self.engine.logger.info("BEGIN (implicit)")
 
@@ -479,6 +478,8 @@ class Connection(Connectable):
 
         try:
             self.engine.dialect.do_begin(self.connection)
+            if self.connection._reset_agent is None:
+                self.connection._reset_agent = transaction
         except Exception as e:
             self._handle_dbapi_exception(e, None, None, None, None)
 
@@ -491,11 +492,14 @@ class Connection(Connectable):
                 self.engine.logger.info("ROLLBACK")
             try:
                 self.engine.dialect.do_rollback(self.connection)
-                self.__transaction = self.connection._reset_agent = None
             except Exception as e:
                 self._handle_dbapi_exception(e, None, None, None, None)
+            finally:
+                if self.connection._reset_agent is self.__transaction:
+                    self.connection._reset_agent = None
+                self.__transaction = None
         else:
-            self.__transaction = self.connection._reset_agent = None
+            self.__transaction = None
 
     def _commit_impl(self, autocommit=False):
         if self._has_events:
@@ -505,9 +509,12 @@ class Connection(Connectable):
             self.engine.logger.info("COMMIT")
         try:
             self.engine.dialect.do_commit(self.connection)
-            self.__transaction = self.connection._reset_agent = None
         except Exception as e:
             self._handle_dbapi_exception(e, None, None, None, None)
+        finally:
+            if self.connection._reset_agent is self.__transaction:
+                self.connection._reset_agent = None
+            self.__transaction = None
 
     def _savepoint_impl(self, name=None):
         if self._has_events:
@@ -536,14 +543,17 @@ class Connection(Connectable):
             self.engine.dialect.do_release_savepoint(self, name)
         self.__transaction = context
 
-    def _begin_twophase_impl(self, xid):
+    def _begin_twophase_impl(self, transaction):
         if self._echo:
             self.engine.logger.info("BEGIN TWOPHASE (implicit)")
         if self._has_events:
-            self.dispatch.begin_twophase(self, xid)
+            self.dispatch.begin_twophase(self, transaction.xid)
 
         if self._still_open_and_connection_is_valid:
-            self.engine.dialect.do_begin_twophase(self, xid)
+            self.engine.dialect.do_begin_twophase(self, transaction.xid)
+
+            if self.connection._reset_agent is None:
+                self.connection._reset_agent = transaction
 
     def _prepare_twophase_impl(self, xid):
         if self._has_events:
@@ -559,8 +569,14 @@ class Connection(Connectable):
 
         if self._still_open_and_connection_is_valid:
             assert isinstance(self.__transaction, TwoPhaseTransaction)
-            self.engine.dialect.do_rollback_twophase(self, xid, is_prepared)
-        self.__transaction = self.connection._reset_agent = None
+            try:
+                self.engine.dialect.do_rollback_twophase(self, xid, is_prepared)
+            finally:
+                if self.connection._reset_agent is self.__transaction:
+                    self.connection._reset_agent = None
+                self.__transaction = None
+        else:
+            self.__transaction = None
 
     def _commit_twophase_impl(self, xid, is_prepared):
         if self._has_events:
@@ -568,8 +584,14 @@ class Connection(Connectable):
 
         if self._still_open_and_connection_is_valid:
             assert isinstance(self.__transaction, TwoPhaseTransaction)
-            self.engine.dialect.do_commit_twophase(self, xid, is_prepared)
-        self.__transaction = self.connection._reset_agent = None
+            try:
+                self.engine.dialect.do_commit_twophase(self, xid, is_prepared)
+            finally:
+                if self.connection._reset_agent is self.__transaction:
+                    self.connection._reset_agent = None
+                self.__transaction = None
+        else:
+            self.__transaction = None
 
     def _autorollback(self):
         if not self.in_transaction():
@@ -601,6 +623,8 @@ class Connection(Connectable):
         else:
             if not self.__branch:
                 conn.close()
+            if conn._reset_agent is self.__transaction:
+                conn._reset_agent = None
             del self.__connection
         self.__can_reconnect = False
         self.__transaction = None
@@ -1224,7 +1248,7 @@ class Transaction(object):
 class RootTransaction(Transaction):
     def __init__(self, connection):
         super(RootTransaction, self).__init__(connection, None)
-        self.connection._begin_impl()
+        self.connection._begin_impl(self)
 
     def _do_rollback(self):
         if self.is_active:
@@ -1273,7 +1297,7 @@ class TwoPhaseTransaction(Transaction):
         super(TwoPhaseTransaction, self).__init__(connection, None)
         self._is_prepared = False
         self.xid = xid
-        self.connection._begin_twophase_impl(self.xid)
+        self.connection._begin_twophase_impl(self)
 
     def prepare(self):
         """Prepare this :class:`.TwoPhaseTransaction`.
