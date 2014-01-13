@@ -1354,6 +1354,140 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
             "JOIN ep2 ON anon_1.base2_id = ep2.base2_id"
         )
 
+class JoinAcrossJoinedInhMultiPath(fixtures.DeclarativeMappedTest,
+                                        testing.AssertsCompiledSQL):
+    """test long join paths with a joined-inh in the middle, where we go multiple
+    times across the same joined-inh to the same target but with other classes
+    in the middle.    E.g. test [ticket:2908]
+    """
+
+
+    run_setup_mappers = 'once'
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Root(Base):
+            __tablename__ = 'root'
+
+            id = Column(Integer, primary_key=True)
+            sub1_id = Column(Integer, ForeignKey('sub1.id'))
+
+            intermediate = relationship("Intermediate")
+            sub1 = relationship("Sub1")
+
+        class Intermediate(Base):
+            __tablename__ = 'intermediate'
+
+            id = Column(Integer, primary_key=True)
+            sub1_id = Column(Integer, ForeignKey('sub1.id'))
+            root_id = Column(Integer, ForeignKey('root.id'))
+            sub1 = relationship("Sub1")
+
+        class Parent(Base):
+            __tablename__ = 'parent'
+
+            id = Column(Integer, primary_key=True)
+
+        class Sub1(Parent):
+            __tablename__ = 'sub1'
+            id = Column(Integer, ForeignKey('parent.id'),
+                        primary_key=True)
+
+            target = relationship("Target")
+
+        class Target(Base):
+            __tablename__ = 'target'
+            id = Column(Integer, primary_key=True)
+            sub1_id = Column(Integer, ForeignKey('sub1.id'))
+
+    def test_join(self):
+        Root, Intermediate, Sub1, Target = \
+                    self.classes.Root, self.classes.Intermediate, \
+                    self.classes.Sub1, self.classes.Target
+        s1_alias = aliased(Sub1)
+        s2_alias = aliased(Sub1)
+        t1_alias = aliased(Target)
+        t2_alias = aliased(Target)
+
+        sess = Session()
+        q = sess.query(Root).\
+                join(s1_alias, Root.sub1).join(t1_alias, s1_alias.target).\
+                join(Root.intermediate).join(s2_alias, Intermediate.sub1).\
+                join(t2_alias, s2_alias.target)
+        self.assert_compile(q,
+            "SELECT root.id AS root_id, root.sub1_id AS root_sub1_id "
+            "FROM root "
+            "JOIN (SELECT parent.id AS parent_id, sub1.id AS sub1_id "
+                "FROM parent JOIN sub1 ON parent.id = sub1.id) AS anon_1 "
+                "ON anon_1.sub1_id = root.sub1_id "
+            "JOIN target AS target_1 ON anon_1.sub1_id = target_1.sub1_id "
+            "JOIN intermediate ON root.id = intermediate.root_id "
+            "JOIN (SELECT parent.id AS parent_id, sub1.id AS sub1_id "
+                "FROM parent JOIN sub1 ON parent.id = sub1.id) AS anon_2 "
+                "ON anon_2.sub1_id = intermediate.sub1_id "
+            "JOIN target AS target_2 ON anon_2.sub1_id = target_2.sub1_id")
+
+    def test_join_flat(self):
+        Root, Intermediate, Sub1, Target = \
+                    self.classes.Root, self.classes.Intermediate, \
+                    self.classes.Sub1, self.classes.Target
+        s1_alias = aliased(Sub1, flat=True)
+        s2_alias = aliased(Sub1, flat=True)
+        t1_alias = aliased(Target)
+        t2_alias = aliased(Target)
+
+        sess = Session()
+        q = sess.query(Root).\
+                join(s1_alias, Root.sub1).join(t1_alias, s1_alias.target).\
+                join(Root.intermediate).join(s2_alias, Intermediate.sub1).\
+                join(t2_alias, s2_alias.target)
+        self.assert_compile(q,
+            "SELECT root.id AS root_id, root.sub1_id AS root_sub1_id "
+            "FROM root "
+            "JOIN (parent AS parent_1 JOIN sub1 AS sub1_1 ON parent_1.id = sub1_1.id) "
+                "ON sub1_1.id = root.sub1_id "
+            "JOIN target AS target_1 ON sub1_1.id = target_1.sub1_id "
+            "JOIN intermediate ON root.id = intermediate.root_id "
+            "JOIN (parent AS parent_2 JOIN sub1 AS sub1_2 ON parent_2.id = sub1_2.id) "
+                "ON sub1_2.id = intermediate.sub1_id "
+            "JOIN target AS target_2 ON sub1_2.id = target_2.sub1_id"
+        )
+
+    def test_joinedload(self):
+        Root, Intermediate, Sub1, Target = \
+                    self.classes.Root, self.classes.Intermediate, \
+                    self.classes.Sub1, self.classes.Target
+
+        sess = Session()
+        q = sess.query(Root).\
+                options(
+                    joinedload(Root.sub1).joinedload(Sub1.target),
+                    joinedload(Root.intermediate).joinedload(Intermediate.sub1).\
+                        joinedload(Sub1.target),
+                )
+        self.assert_compile(q,
+            "SELECT root.id AS root_id, root.sub1_id AS root_sub1_id, "
+            "target_1.id AS target_1_id, target_1.sub1_id AS target_1_sub1_id, "
+            "sub1_1.id AS sub1_1_id, parent_1.id AS parent_1_id, "
+            "intermediate_1.id AS intermediate_1_id, "
+            "intermediate_1.sub1_id AS intermediate_1_sub1_id, "
+            "intermediate_1.root_id AS intermediate_1_root_id, "
+            "target_2.id AS target_2_id, target_2.sub1_id AS target_2_sub1_id, "
+            "sub1_2.id AS sub1_2_id, parent_2.id AS parent_2_id "
+            "FROM root "
+            "LEFT OUTER JOIN intermediate AS intermediate_1 "
+                    "ON root.id = intermediate_1.root_id "
+            "LEFT OUTER JOIN (parent AS parent_1 JOIN sub1 AS sub1_1 "
+                    "ON parent_1.id = sub1_1.id) ON sub1_1.id = intermediate_1.sub1_id "
+            "LEFT OUTER JOIN target AS target_1 ON sub1_1.id = target_1.sub1_id "
+            "LEFT OUTER JOIN (parent AS parent_2 JOIN sub1 AS sub1_2 "
+                    "ON parent_2.id = sub1_2.id) ON sub1_2.id = root.sub1_id "
+            "LEFT OUTER JOIN target AS target_2 ON sub1_2.id = target_2.sub1_id")
+
+
 class MultipleAdaptUsesEntityOverTableTest(AssertsCompiledSQL, fixtures.MappedTest):
     __dialect__ = 'default'
     run_create_tables = None

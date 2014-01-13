@@ -15,6 +15,20 @@
     :version: 0.9.2
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2908
+
+        Fixed a bug involving the new flattened JOIN structures which
+        are used with :func:`.joinedload()` (thereby causing a regression
+        in joined eager loading) as well as :func:`.aliased`
+        in conjunction with the ``flat=True`` flag and joined-table inheritance;
+        basically multiple joins across a "parent JOIN sub" entity using different
+        paths to get to a target class wouldn't form the correct ON conditions.
+        An adjustment / simplification made in the mechanics of figuring
+        out the "left side" of the join in the case of an aliased, joined-inh
+        class repairs the issue.
+
+    .. change::
         :tags: bug, mysql
 
         The MySQL CAST compilation now takes into account aspects of a string

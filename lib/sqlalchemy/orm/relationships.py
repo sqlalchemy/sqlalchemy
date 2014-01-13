@@ -747,11 +747,10 @@ class RelationshipProperty(StrategizedProperty):
             return self.property.parent
 
         def _source_selectable(self):
-            elem = self.property.parent._with_polymorphic_selectable
-            if self.adapter:
-                return self.adapter(elem)
+            if self._adapt_to_entity:
+                return self._adapt_to_entity.selectable
             else:
-                return elem
+                return self.property.parent._with_polymorphic_selectable
 
         def __clause_element__(self):
             adapt_from = self._source_selectable()
