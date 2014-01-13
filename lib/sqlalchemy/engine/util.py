@@ -1,32 +1,10 @@
 # engine/util.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from .. import util
-
-
-def _coerce_config(configuration, prefix):
-    """Convert configuration values to expected types."""
-
-    options = dict((key[len(prefix):], configuration[key])
-                   for key in configuration
-                   if key.startswith(prefix))
-    for option, type_ in (
-        ('convert_unicode', util.bool_or_str('force')),
-        ('pool_timeout', int),
-        ('echo', util.bool_or_str('debug')),
-        ('echo_pool', util.bool_or_str('debug')),
-        ('pool_recycle', int),
-        ('pool_size', int),
-        ('max_overflow', int),
-        ('pool_threadlocal', bool),
-        ('use_native_unicode', bool),
-    ):
-        util.coerce_kw_type(options, option, type_)
-    return options
-
 
 def connection_memoize(key):
     """Decorator, memoize a function in a connection.info stash.

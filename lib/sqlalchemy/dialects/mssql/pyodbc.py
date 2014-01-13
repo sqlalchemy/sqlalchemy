@@ -1,5 +1,5 @@
 # mssql/pyodbc.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -116,8 +116,8 @@ from ...connectors.pyodbc import PyODBCConnector
 from ... import types as sqltypes, util
 import decimal
 
+class _ms_numeric_pyodbc(object):
 
-class _MSNumeric_pyodbc(sqltypes.Numeric):
     """Turns Decimals with adjusted() < 0 or > 7 into strings.
 
     The routines here are needed for older pyodbc versions
@@ -127,7 +127,7 @@ class _MSNumeric_pyodbc(sqltypes.Numeric):
 
     def bind_processor(self, dialect):
 
-        super_process = super(_MSNumeric_pyodbc, self).\
+        super_process = super(_ms_numeric_pyodbc, self).\
                         bind_processor(dialect)
 
         if not dialect._need_decimal_fix:
@@ -180,6 +180,11 @@ class _MSNumeric_pyodbc(sqltypes.Numeric):
                     [str(s) for s in _int][0:value.adjusted() + 1]))
         return result
 
+class _MSNumeric_pyodbc(_ms_numeric_pyodbc, sqltypes.Numeric):
+    pass
+
+class _MSFloat_pyodbc(_ms_numeric_pyodbc, sqltypes.Float):
+    pass
 
 class MSExecutionContext_pyodbc(MSExecutionContext):
     _embedded_scope_identity = False
@@ -238,7 +243,8 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
     colspecs = util.update_copy(
         MSDialect.colspecs,
         {
-            sqltypes.Numeric: _MSNumeric_pyodbc
+            sqltypes.Numeric: _MSNumeric_pyodbc,
+            sqltypes.Float: _MSFloat_pyodbc
         }
     )
 

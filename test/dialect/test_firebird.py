@@ -352,6 +352,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         for type_, args, kw, res in columns:
             self.assert_compile(type_(*args, **kw), res)
 
+    def test_quoting_initial_chars(self):
+        self.assert_compile(
+            column("_somecol"),
+            '"_somecol"'
+        )
+        self.assert_compile(
+            column("$somecol"),
+            '"$somecol"'
+        )
 class TypesTest(fixtures.TestBase):
     __only_on__ = 'firebird'
 

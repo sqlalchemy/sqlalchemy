@@ -1,5 +1,5 @@
 # mysql/base.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -380,13 +380,21 @@ SET_RE = re.compile(
 
 
 class _NumericType(object):
-    """Base for MySQL numeric types."""
+    """Base for MySQL numeric types.
+
+    This is the base both for NUMERIC as well as INTEGER, hence
+    it's a mixin.
+
+    """
 
     def __init__(self, unsigned=False, zerofill=False, **kw):
         self.unsigned = unsigned
         self.zerofill = zerofill
         super(_NumericType, self).__init__(**kw)
 
+    def __repr__(self):
+        return util.generic_repr(self,
+                to_inspect=[_NumericType, sqltypes.Numeric])
 
 class _FloatType(_NumericType, sqltypes.Float):
     def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
@@ -401,18 +409,24 @@ class _FloatType(_NumericType, sqltypes.Float):
         super(_FloatType, self).__init__(precision=precision, asdecimal=asdecimal, **kw)
         self.scale = scale
 
+    def __repr__(self):
+        return util.generic_repr(self,
+                to_inspect=[_FloatType, _NumericType, sqltypes.Float])
 
 class _IntegerType(_NumericType, sqltypes.Integer):
     def __init__(self, display_width=None, **kw):
         self.display_width = display_width
         super(_IntegerType, self).__init__(**kw)
 
+    def __repr__(self):
+        return util.generic_repr(self,
+                to_inspect=[_IntegerType, _NumericType, sqltypes.Integer])
 
 class _StringType(sqltypes.String):
     """Base for MySQL string types."""
 
     def __init__(self, charset=None, collation=None,
-                 ascii=False, binary=False,
+                 ascii=False, binary=False, unicode=False,
                  national=False, **kw):
         self.charset = charset
 
@@ -420,16 +434,14 @@ class _StringType(sqltypes.String):
         kw.setdefault('collation', kw.pop('collate', collation))
 
         self.ascii = ascii
-        # We have to munge the 'unicode' param strictly as a dict
-        # otherwise 2to3 will turn it into str.
-        self.__dict__['unicode'] = kw.get('unicode', False)
-        # sqltypes.String does not accept the 'unicode' arg at all.
-        if 'unicode' in kw:
-            del kw['unicode']
+        self.unicode = unicode
         self.binary = binary
         self.national = national
         super(_StringType, self).__init__(**kw)
 
+    def __repr__(self):
+        return util.generic_repr(self,
+                to_inspect=[_StringType, sqltypes.String])
 
 class NUMERIC(_NumericType, sqltypes.NUMERIC):
     """MySQL NUMERIC type."""
@@ -964,6 +976,25 @@ class CHAR(_StringType, sqltypes.CHAR):
         """
         super(CHAR, self).__init__(length=length, **kwargs)
 
+    @classmethod
+    def _adapt_string_for_cast(self, type_):
+        # copy the given string type into a CHAR
+        # for the purposes of rendering a CAST expression
+        type_ = sqltypes.to_instance(type_)
+        if isinstance(type_, sqltypes.CHAR):
+            return type_
+        elif isinstance(type_, _StringType):
+            return CHAR(
+                length=type_.length,
+                charset=type_.charset,
+                collation=type_.collation,
+                ascii=type_.ascii,
+                binary=type_.binary,
+                unicode=type_.unicode,
+                national=False # not supported in CAST
+            )
+        else:
+            return CHAR(length=type_.length)
 
 class NVARCHAR(_StringType, sqltypes.NVARCHAR):
     """MySQL NVARCHAR type.
@@ -1141,6 +1172,10 @@ class ENUM(sqltypes.Enum, _EnumeratedValues):
         _StringType.__init__(self, length=length, **kw)
         sqltypes.Enum.__init__(self, *values)
 
+    def __repr__(self):
+        return util.generic_repr(self,
+                to_inspect=[ENUM, _StringType, sqltypes.Enum])
+
     def bind_processor(self, dialect):
         super_convert = super(ENUM, self).bind_processor(dialect)
 
@@ -1287,6 +1322,9 @@ MSFloat = FLOAT
 MSInteger = INTEGER
 
 colspecs = {
+    _IntegerType: _IntegerType,
+    _NumericType: _NumericType,
+    _FloatType: _FloatType,
     sqltypes.Numeric: NUMERIC,
     sqltypes.Float: FLOAT,
     sqltypes.Time: TIME,
@@ -1378,14 +1416,9 @@ class MySQLCompiler(compiler.SQLCompiler):
         elif isinstance(type_, (sqltypes.DECIMAL, sqltypes.DateTime,
                                             sqltypes.Date, sqltypes.Time)):
             return self.dialect.type_compiler.process(type_)
-        elif isinstance(type_, sqltypes.Text):
-            return 'CHAR'
-        elif (isinstance(type_, sqltypes.String) and not
-              isinstance(type_, (ENUM, SET))):
-            if getattr(type_, 'length'):
-                return 'CHAR(%s)' % type_.length
-            else:
-                return 'CHAR'
+        elif isinstance(type_, sqltypes.String) and not isinstance(type_, (ENUM, SET)):
+            adapted = CHAR._adapt_string_for_cast(type_)
+            return self.dialect.type_compiler.process(adapted)
         elif isinstance(type_, sqltypes._Binary):
             return 'BINARY'
         elif isinstance(type_, sqltypes.NUMERIC):
@@ -2146,7 +2179,6 @@ class MySQLDialect(default.DefaultDialect):
                 rs.close()
 
     def initialize(self, connection):
-        default.DefaultDialect.initialize(self, connection)
         self._connection_charset = self._detect_charset(connection)
         self._detect_ansiquotes(connection)
         if self._server_ansiquotes:
@@ -2154,6 +2186,8 @@ class MySQLDialect(default.DefaultDialect):
             # with the new setting
             self.identifier_preparer = self.preparer(self,
                                 server_ansiquotes=self._server_ansiquotes)
+
+        default.DefaultDialect.initialize(self, connection)
 
     @property
     def _supports_cast(self):
@@ -2423,6 +2457,7 @@ class MySQLDialect(default.DefaultDialect):
 
         # as of MySQL 5.0.1
         self._backslash_escapes = 'NO_BACKSLASH_ESCAPES' not in mode
+
 
     def _show_create_table(self, connection, table, charset=None,
                            full_name=None):

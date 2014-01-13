@@ -1,5 +1,5 @@
 # event/legacy.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -73,7 +73,7 @@ def _standard_listen_example(dispatch_descriptor, sample_target, fn):
             "\n    # ... (event handling logic) ...\n"
     )
 
-    if len(dispatch_descriptor.arg_names) > 2:
+    if len(dispatch_descriptor.arg_names) > 3:
         text += (
 
             "\n# named argument style (new in 0.9)\n"

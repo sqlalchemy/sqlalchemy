@@ -1,5 +1,5 @@
 # plugin/noseplugin.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -393,8 +393,9 @@ class NoseSQLAlchemy(Plugin):
                         check.reason if check.reason
                         else
                         (
-                            "'%s' unsupported on DB implementation '%s'" % (
-                                cls.__name__, config.db.name
+                            "'%s' unsupported on DB implementation '%s' == %s" % (
+                                cls.__name__, config.db.name,
+                                config.db.dialect.server_version_info
                             )
                         )
                     )
@@ -403,16 +404,18 @@ class NoseSQLAlchemy(Plugin):
             spec = exclusions.db_spec(*cls.__unsupported_on__)
             if spec(config.db):
                 raise SkipTest(
-                    "'%s' unsupported on DB implementation '%s'" % (
-                     cls.__name__, config.db.name)
+                    "'%s' unsupported on DB implementation '%s' == %s" % (
+                     cls.__name__, config.db.name,
+                        config.db.dialect.server_version_info)
                     )
 
         if getattr(cls, '__only_on__', None):
             spec = exclusions.db_spec(*util.to_list(cls.__only_on__))
             if not spec(config.db):
                 raise SkipTest(
-                    "'%s' unsupported on DB implementation '%s'" % (
-                     cls.__name__, config.db.name)
+                    "'%s' unsupported on DB implementation '%s' == %s" % (
+                     cls.__name__, config.db.name,
+                        config.db.dialect.server_version_info)
                     )
 
         if getattr(cls, '__skip_if__', False):

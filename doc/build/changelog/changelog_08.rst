@@ -9,7 +9,168 @@
         :start-line: 5
 
 .. changelog::
+    :version: 0.8.5
+
+    .. change::
+        :tags: bug, firebird
+        :versions: 0.9.0
+        :tickets: 2897
+
+        The firebird dialect will quote identifiers which begin with an
+        underscore.  Courtesy Treeve Jelbert.
+
+    .. change::
+        :tags: bug, firebird
+        :versions: 0.9.0
+
+        Fixed bug in Firebird index reflection where the columns within the
+        index were not sorted correctly; they are now sorted
+        in order of RDB$FIELD_POSITION.
+
+    .. change::
+        :tags: bug, mssql, firebird
+        :versions: 0.9.0
+
+        The "asdecimal" flag used with the :class:`.Float` type will now
+        work with Firebird as well as the mssql+pyodbc dialects; previously the
+        decimal conversion was not occurring.
+
+    .. change::
+        :tags: bug, mssql, pymssql
+        :versions: 0.9.0
+        :pullreq: github:51
+
+        Added "Net-Lib error during Connection reset by peer" message
+        to the list of messages checked for "disconnect" within the
+        pymssql dialect.  Courtesy John Anderson.
+
+    .. change::
+        :tags: bug, sql
+        :versions: 0.9.0
+        :tickets: 2896
+
+        Fixed issue where a primary key column that has a Sequence on it,
+        yet the column is not the "auto increment" column, either because
+        it has a foreign key constraint or ``autoincrement=False`` set,
+        would attempt to fire the Sequence on INSERT for backends that don't
+        support sequences, when presented with an INSERT missing the primary
+        key value.  This would take place on non-sequence backends like
+        SQLite, MySQL.
+
+    .. change::
+        :tags: bug, sql
+        :versions: 0.9.0
+        :tickets: 2895
+
+        Fixed bug with :meth:`.Insert.from_select` method where the order
+        of the given names would not be taken into account when generating
+        the INSERT statement, thus producing a mismatch versus the column
+        names in the given SELECT statement.  Also noted that
+        :meth:`.Insert.from_select` implies that Python-side insert defaults
+        cannot be used, since the statement has no VALUES clause.
+
+    .. change::
+        :tags: enhancement, sql
+        :versions: 0.9.0
+
+        The exception raised when a :class:`.BindParameter` is present
+        in a compiled statement without a value now includes the key name
+        of the bound parameter in the error message.
+
+    .. change::
+        :tags: bug, orm
+        :versions: 0.9.0
+        :tickets: 2887
+
+        An adjustment to the :func:`.subqueryload` strategy which ensures that
+        the query runs after the loading process has begun; this is so that
+        the subqueryload takes precedence over other loaders that may be
+        hitting the same attribute due to other eager/noload situations
+        at the wrong time.
+
+    .. change::
+        :tags: bug, orm
+        :versions: 0.9.0
+        :tickets: 2885
+
+        Fixed bug when using joined table inheritance from a table to a
+        select/alias on the base, where the PK columns were also not same
+        named; the persistence system would fail to copy primary key values
+        from the base table to the inherited table upon INSERT.
+
+    .. change::
+        :tags: bug, orm
+        :versions: 0.9.0
+        :tickets: 2889
+
+        :func:`.composite` will raise an informative error message when the
+        columns/attribute (names) passed don't resolve to a Column or mapped
+        attribute (such as an erroneous tuple); previously raised an unbound
+        local.
+
+    .. change::
+        :tags: bug, declarative
+        :versions: 0.9.0
+        :tickets: 2888
+
+        Error message when a string arg sent to :func:`.relationship` which
+        doesn't resolve to a class or mapper has been corrected to work
+        the same way as when a non-string arg is received, which indicates
+        the name of the relationship which had the configurational error.
+
+.. changelog::
     :version: 0.8.4
+
+     .. change::
+        :tags: bug, engine
+        :versions: 0.9.0
+        :tickets: 2881
+
+        A DBAPI that raises an error on ``connect()`` which is not a subclass
+        of dbapi.Error (such as ``TypeError``, ``NotImplementedError``, etc.)
+        will propagate the exception unchanged.  Previously,
+        the error handling specific to the ``connect()`` routine would both
+        inappropriately run the exception through the dialect's
+        :meth:`.Dialect.is_disconnect` routine as well as wrap it in
+        a :class:`sqlalchemy.exc.DBAPIError`.  It is now propagated unchanged
+        in the same way as occurs within the execute process.
+
+     .. change::
+        :tags: bug, engine, pool
+        :versions: 0.9.0
+        :tickets: 2880
+
+        The :class:`.QueuePool` has been enhanced to not block new connection
+        attempts when an existing connection attempt is blocking.  Previously,
+        the production of new connections was serialized within the block
+        that monitored overflow; the overflow counter is now altered within
+        it's own critical section outside of the connection process itself.
+
+     .. change::
+        :tags: bug, engine, pool
+        :versions: 0.9.0
+        :tickets: 2522
+
+        Made a slight adjustment to the logic which waits for a pooled
+        connection to be available, such that for a connection pool
+        with no timeout specified, it will every half a second break out of
+        the wait to check for the so-called "abort" flag, which allows the
+        waiter to break out in case the whole connection pool was dumped;
+        normally the waiter should break out due to a notify_all() but it's
+        possible this notify_all() is missed in very slim cases.
+        This is an extension of logic first introduced in 0.8.0, and the
+        issue has only been observed occasionally in stress tests.
+
+     .. change::
+        :tags: bug, mssql
+        :versions: 0.9.0
+        :pullreq: bitbucket:7
+
+        Fixed bug introduced in 0.8.0 where the ``DROP INDEX``
+        statement for an index in MSSQL would render incorrectly if the
+        index were in an alternate schema; the schemaname/tablename
+        would be reversed.  The format has been also been revised to
+        match current MSSQL documentation.  Courtesy Derek Harland.
 
      .. change::
         :tags: feature, sql
@@ -23,7 +184,7 @@
     .. change::
         :tags: bug, oracle
         :tickets: 2864
-        :versions: 0.9.0b2
+        :versions: 0.9.0
 
         Added ORA-02396 "maximum idle time" error code to list of
         "is disconnect" codes with cx_oracle.
@@ -31,7 +192,7 @@
     .. change::
         :tags: bug, engine
         :tickets: 2871
-        :versions: 0.9.0b2
+        :versions: 0.9.0
 
         Fixed bug where SQL statement would be improperly ASCII-encoded
         when a pre-DBAPI :class:`.StatementError` were raised within
@@ -42,7 +203,7 @@
     .. change::
         :tags: bug, oracle
         :tickets: 2870
-        :versions: 0.9.0b2
+        :versions: 0.9.0
 
         Fixed bug where Oracle ``VARCHAR`` types given with no length
         (e.g. for a ``CAST`` or similar) would incorrectly render ``None CHAR``
@@ -51,7 +212,7 @@
     .. change::
         :tags: bug, ext
         :tickets: 2869
-        :versions: 0.9.0b2
+        :versions: 0.9.0
 
         Fixed bug which prevented the ``serializer`` extension from working
         correctly with table or column names that contain non-ASCII
@@ -60,7 +221,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 2818
-        :versions: 0.9.0b2
+        :versions: 0.9.0
 
         Fixed a regression introduced by :ticket:`2818` where the EXISTS
         query being generated would produce a "columns being replaced"
@@ -70,7 +231,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 2855
-        :versions: 0.9.0b2
+        :versions: 0.9.0
 
         Fixed bug where index reflection would mis-interpret indkey values
         when using the pypostgresql adapter, which returns these values

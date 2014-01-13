@@ -333,7 +333,32 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
             , use_default_dialect = True
         )
 
+    def test_auto_aliasing_multi_link(self):
+        # test [ticket:2903]
+        sess = create_session()
 
+        Company, Engineer, Manager, Boss = self.classes.Company, \
+                            self.classes.Engineer, \
+                            self.classes.Manager, self.classes.Boss
+        q = sess.query(Company).\
+                    join(Company.employees.of_type(Engineer)).\
+                    join(Company.employees.of_type(Manager)).\
+                    join(Company.employees.of_type(Boss))
+
+        self.assert_compile(q,
+            "SELECT companies.company_id AS companies_company_id, "
+            "companies.name AS companies_name FROM companies "
+            "JOIN (people JOIN engineers ON people.person_id = engineers.person_id) "
+            "ON companies.company_id = people.company_id "
+            "JOIN (people AS people_1 JOIN managers AS managers_1 "
+                "ON people_1.person_id = managers_1.person_id) "
+                "ON companies.company_id = people_1.company_id "
+            "JOIN (people AS people_2 JOIN managers AS managers_2 "
+                "ON people_2.person_id = managers_2.person_id JOIN boss AS boss_1 "
+                "ON managers_2.person_id = boss_1.boss_id) "
+            "ON companies.company_id = people_2.company_id",
+            use_default_dialect=True
+        )
 
 
 class JoinTest(QueryTest, AssertsCompiledSQL):
@@ -1582,12 +1607,14 @@ class MultiplePathTest(fixtures.MappedTest, AssertsCompiledSQL):
                                 self.tables.t1t2_2,
                                 self.tables.t1)
 
-        class T1(object):pass
-        class T2(object):pass
+        class T1(object):
+            pass
+        class T2(object):
+            pass
 
         mapper(T1, t1, properties={
-            't2s_1':relationship(T2, secondary=t1t2_1),
-            't2s_2':relationship(T2, secondary=t1t2_2),
+            't2s_1': relationship(T2, secondary=t1t2_1),
+            't2s_2': relationship(T2, secondary=t1t2_2),
         })
         mapper(T2, t2)
 

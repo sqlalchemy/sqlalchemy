@@ -1,2 +1,3 @@
 mako
-changelog>=0.3.2
+changelog>=0.3.4
+sphinx-paramlinks>=0.2.0

@@ -1,5 +1,5 @@
 # orm/relationships.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -448,10 +448,6 @@ class RelationshipProperty(StrategizedProperty):
         :param load_on_pending=False:
           Indicates loading behavior for transient or pending parent objects.
 
-          .. versionchanged:: 0.8
-              load_on_pending is superseded by
-              :meth:`.Session.enable_relationship_loading`.
-
           When set to ``True``, causes the lazy-loader to
           issue a query for a parent object that is not persistent, meaning it has
           never been flushed.  This may take effect for a pending object when
@@ -466,6 +462,12 @@ class RelationshipProperty(StrategizedProperty):
           is not not intended for general use.
 
           .. versionadded:: 0.6.5
+
+          .. seealso::
+
+              :meth:`.Session.enable_relationship_loading` - this method establishes
+              "load on pending" behavior for the whole object, and also allows
+              loading on objects that remain transient or detached.
 
         :param order_by:
           indicates the ordering that should be applied when loading these
@@ -1348,23 +1350,21 @@ class RelationshipProperty(StrategizedProperty):
         This is a lazy-initializing static attribute.
 
         """
-        if isinstance(self.argument, type):
-            mapper_ = mapperlib.class_mapper(self.argument,
+        if util.callable(self.argument) and \
+            not isinstance(self.argument, (type, mapperlib.Mapper)):
+            argument = self.argument()
+        else:
+            argument = self.argument
+
+        if isinstance(argument, type):
+            mapper_ = mapperlib.class_mapper(argument,
                     configure=False)
         elif isinstance(self.argument, mapperlib.Mapper):
-            mapper_ = self.argument
-        elif util.callable(self.argument):
-
-            # accept a callable to suit various deferred-
-            # configurational schemes
-
-            mapper_ = mapperlib.class_mapper(self.argument(),
-                    configure=False)
+            mapper_ = argument
         else:
             raise sa_exc.ArgumentError("relationship '%s' expects "
                     "a class or a mapper argument (received: %s)"
-                    % (self.key, type(self.argument)))
-        assert isinstance(mapper_, mapperlib.Mapper), mapper_
+                    % (self.key, type(argument)))
         return mapper_
 
     @util.memoized_property
@@ -1560,7 +1560,7 @@ class RelationshipProperty(StrategizedProperty):
         if not self.is_primary():
             return
         if self.backref is not None and not self.back_populates:
-            if isinstance(self.backref, str):
+            if isinstance(self.backref, util.string_types):
                 backref_key, kwargs = self.backref, {}
             else:
                 backref_key, kwargs = self.backref

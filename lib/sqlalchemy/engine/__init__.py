@@ -1,5 +1,5 @@
 # engine/__init__.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -348,10 +348,13 @@ def engine_from_config(configuration, prefix='sqlalchemy.', **kwargs):
     arguments.
     """
 
-    opts = util._coerce_config(configuration, prefix)
-    opts.update(kwargs)
-    url = opts.pop('url')
-    return create_engine(url, **opts)
+    options = dict((key[len(prefix):], configuration[key])
+                   for key in configuration
+                   if key.startswith(prefix))
+    options['_coerce_config'] = True
+    options.update(kwargs)
+    url = options.pop('url')
+    return create_engine(url, **options)
 
 
 __all__ = (

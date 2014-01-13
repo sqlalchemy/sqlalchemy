@@ -1,5 +1,5 @@
 # sql/schema.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -522,6 +522,14 @@ class Table(SchemaItem, TableClause):
 
     @property
     def key(self):
+        """Return the 'key' for this :class:`.Table`.
+
+        This value is used as the dictionary key within the
+        :attr:`.MetaData.tables` collection.   It is typically the same
+        as that of :attr:`.Table.name` for a table with no :attr:`.Table.schema`
+        set; otherwise it is typically of the form ``schemaname.tablename``.
+
+        """
         return _get_table_key(self.name, self.schema)
 
     def __repr__(self):
@@ -1340,6 +1348,23 @@ class ForeignKey(SchemaItem):
         """
 
         self._colspec = column
+        if isinstance(self._colspec, util.string_types):
+            self._table_column = None
+        else:
+            if hasattr(self._colspec, '__clause_element__'):
+                self._table_column = self._colspec.__clause_element__()
+            else:
+                self._table_column = self._colspec
+
+            if not isinstance(self._table_column, ColumnClause):
+                raise exc.ArgumentError(
+                        "String, Column, or Column-bound argument "
+                        "expected, got %r" % self._table_column)
+            elif not isinstance(self._table_column.table, (util.NoneType, TableClause)):
+                raise exc.ArgumentError(
+                        "ForeignKey received Column not bound "
+                        "to a Table, got: %r" % self._table_column.table
+                    )
 
         # the linked ForeignKeyConstraint.
         # ForeignKey will create this when parent Column
@@ -1389,6 +1414,7 @@ class ForeignKey(SchemaItem):
                 )
         return self._schema_item_copy(fk)
 
+
     def _get_colspec(self, schema=None):
         """Return a string based 'column specification' for this
         :class:`.ForeignKey`.
@@ -1398,16 +1424,25 @@ class ForeignKey(SchemaItem):
 
         """
         if schema:
-            return schema + "." + self.column.table.name + \
-                                    "." + self.column.key
-        elif isinstance(self._colspec, util.string_types):
-            return self._colspec
-        elif hasattr(self._colspec, '__clause_element__'):
-            _column = self._colspec.__clause_element__()
+            _schema, tname, colname = self._column_tokens
+            return "%s.%s.%s" % (schema, tname, colname)
+        elif self._table_column is not None:
+            return "%s.%s" % (
+                    self._table_column.table.fullname, self._table_column.key)
         else:
-            _column = self._colspec
+            return self._colspec
 
-        return "%s.%s" % (_column.table.fullname, _column.key)
+
+    def _table_key(self):
+        if self._table_column is not None:
+            if self._table_column.table is None:
+                return None
+            else:
+                return self._table_column.table.key
+        else:
+            schema, tname, colname = self._column_tokens
+            return _get_table_key(tname, schema)
+
 
 
     target_fullname = property(_get_colspec)
@@ -1459,20 +1494,6 @@ class ForeignKey(SchemaItem):
         else:
             schema = None
         return schema, tname, colname
-
-    def _table_key(self):
-        if isinstance(self._colspec, util.string_types):
-            schema, tname, colname = self._column_tokens
-            return _get_table_key(tname, schema)
-        elif hasattr(self._colspec, '__clause_element__'):
-            _column = self._colspec.__clause_element__()
-        else:
-            _column = self._colspec
-
-        if _column.table is None:
-            return None
-        else:
-            return _column.table.key
 
     def _resolve_col_tokens(self):
         if self.parent is None:
@@ -2259,7 +2280,11 @@ class CheckConstraint(Constraint):
 
         :param sqltext:
           A string containing the constraint definition, which will be used
-          verbatim, or a SQL expression construct.
+          verbatim, or a SQL expression construct.   If given as a string,
+          the object is converted to a :class:`.Text` object.   If the textual
+          string includes a colon character, escape this using a backslash::
+
+            CheckConstraint(r"foo ~ E'a(?\:b|c)d")
 
         :param name:
           Optional, the in-database name of the constraint.
@@ -2702,20 +2727,11 @@ class MetaData(SchemaItem):
     execution.
 
     The :class:`.Table` objects themselves are stored in the
-    ``metadata.tables`` dictionary.
+    :attr:`.MetaData.tables` dictionary.
 
-    The ``bind`` property may be assigned to dynamically.  A common pattern is
-    to start unbound and then bind later when an engine is available::
-
-      metadata = MetaData()
-      # define tables
-      Table('mytable', metadata, ...)
-      # connect to an engine later, perhaps after loading a URL from a
-      # configuration file
-      metadata.bind = an_engine
-
-    MetaData is a thread-safe object after tables have been explicitly defined
-    or loaded via reflection.
+    :class:`.MetaData` is a thread-safe object for read operations.  Construction
+    of new tables within a single :class:`.MetaData` object, either explicitly
+    or via reflection, may not be completely thread-safe.
 
     .. seealso::
 
@@ -2770,6 +2786,20 @@ class MetaData(SchemaItem):
                     "A bind must be supplied in conjunction "
                     "with reflect=True")
             self.reflect()
+
+    tables = None
+    """A dictionary of :class:`.Table` objects keyed to their name or "table key".
+
+    The exact key is that determined by the :attr:`.Table.key` attribute;
+    for a table with no :attr:`.Table.schema` attribute, this is the same
+    as :attr:`.Table.name`.  For a table with a schema, it is typically of the
+    form ``schemaname.tablename``.
+
+    .. seealso::
+
+        :attr:`.MetaData.sorted_tables`
+
+    """
 
     def __repr__(self):
         return 'MetaData(bind=%r)' % self.bind
@@ -2872,12 +2902,16 @@ class MetaData(SchemaItem):
 
         .. seealso::
 
-            :meth:`.Inspector.sorted_tables`
+            :attr:`.MetaData.tables`
+
+            :meth:`.Inspector.get_table_names`
 
         """
         return ddl.sort_tables(self.tables.values())
 
-    def reflect(self, bind=None, schema=None, views=False, only=None):
+    def reflect(self, bind=None, schema=None, views=False, only=None,
+                                extend_existing=False,
+                                autoload_replace=True):
         """Load all available table definitions from the database.
 
         Automatically creates ``Table`` entries in this ``MetaData`` for any
@@ -2912,6 +2946,17 @@ class MetaData(SchemaItem):
           with a table name and this ``MetaData`` instance as positional
           arguments and should return a true value for any table to reflect.
 
+        :param extend_existing: Passed along to each :class:`.Table` as
+          :paramref:`.Table.extend_existing`.
+
+          .. versionadded:: 0.9.1
+
+        :param autoload_replace: Passed along to each :class:`.Table` as
+          :paramref:`.Table.autoload_replace`.
+
+          .. versionadded:: 0.9.1
+
+
         """
         if bind is None:
             bind = _bind_or_error(self)
@@ -2920,7 +2965,9 @@ class MetaData(SchemaItem):
 
             reflect_opts = {
                 'autoload': True,
-                'autoload_with': conn
+                'autoload_with': conn,
+                'extend_existing': extend_existing,
+                'autoload_replace': autoload_replace
             }
 
             if schema is None:
@@ -2946,12 +2993,13 @@ class MetaData(SchemaItem):
 
             if only is None:
                 load = [name for name, schname in
-                            zip(available, available_w_schema)
-                            if schname not in current]
+                        zip(available, available_w_schema)
+                        if extend_existing or schname not in current]
             elif util.callable(only):
                 load = [name for name, schname in
                             zip(available, available_w_schema)
-                            if schname not in current and only(name, self)]
+                            if (extend_existing or schname not in current)
+                            and only(name, self)]
             else:
                 missing = [name for name in only if name not in available]
                 if missing:
@@ -2960,7 +3008,8 @@ class MetaData(SchemaItem):
                         'Could not reflect: requested table(s) not available '
                         'in %s%s: (%s)' %
                         (bind.engine.url, s, ', '.join(missing)))
-                load = [name for name in only if name not in current]
+                load = [name for name in only if extend_existing or
+                                                    name not in current]
 
             for name in load:
                 Table(name, self, **reflect_opts)

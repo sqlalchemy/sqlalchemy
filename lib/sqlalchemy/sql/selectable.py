@@ -1,5 +1,5 @@
 # sql/selectable.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -136,7 +136,15 @@ class FromClause(Selectable):
     __visit_name__ = 'fromclause'
     named_with_column = False
     _hide_froms = []
+
     schema = None
+    """Define the 'schema' attribute for this :class:`.FromClause`.
+
+    This is typically ``None`` for most objects except that of :class:`.Table`,
+    where it is taken as the value of the :paramref:`.Table.schema` argument.
+
+    """
+
     _memoized_property = util.group_expirable_memoized_property(["_columns"])
 
     @util.dependencies("sqlalchemy.sql.functions")
@@ -1208,7 +1216,7 @@ class ForUpdateArg(ClauseElement):
     def __init__(self, nowait=False, read=False, of=None):
         """Represents arguments specified to :meth:`.Select.for_update`.
 
-        .. versionadded:: 0.9.0b2
+        .. versionadded:: 0.9.0
         """
 
         self.nowait = nowait
@@ -1412,7 +1420,7 @@ class GenerativeSelect(SelectBase):
     a fixed textual string which cannot be altered at this level, only
     wrapped as a subquery.
 
-    .. versionadded:: 0.9.0b2 :class:`.GenerativeSelect` was added to
+    .. versionadded:: 0.9.0 :class:`.GenerativeSelect` was added to
        provide functionality specific to :class:`.Select` and :class:`.CompoundSelect`
        while allowing :class:`.SelectBase` to be used for other SELECT-like
        objects, e.g. :class:`.TextAsFrom`.
@@ -1505,7 +1513,7 @@ class GenerativeSelect(SelectBase):
          and Oracle.  May render as a table or as a column depending on
          backend.
 
-        .. versionadded:: 0.9.0b2
+        .. versionadded:: 0.9.0
 
         """
         self._for_update_arg = ForUpdateArg(nowait=nowait, read=read, of=of)
@@ -2949,7 +2957,7 @@ class TextAsFrom(SelectBase):
     The :class:`.TextAsFrom` construct is produced via the
     :meth:`.TextClause.columns` method - see that method for details.
 
-    .. versionadded:: 0.9.0b2
+    .. versionadded:: 0.9.0
 
     .. seealso::
 

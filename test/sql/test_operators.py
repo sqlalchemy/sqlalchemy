@@ -673,6 +673,58 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                                 self.table2.c.field).is_(None)),
             "SELECT op.field FROM op WHERE (op.field MATCH op.field) IS NULL")
 
+    def test_operator_precedence_collate_1(self):
+        self.assert_compile(
+            self.table1.c.name == literal('foo').collate('utf-8'),
+            "mytable.name = (:param_1 COLLATE utf-8)"
+        )
+
+    def test_operator_precedence_collate_2(self):
+        self.assert_compile(
+            (self.table1.c.name == literal('foo')).collate('utf-8'),
+            "mytable.name = :param_1 COLLATE utf-8"
+        )
+
+    def test_operator_precedence_collate_3(self):
+        self.assert_compile(
+            self.table1.c.name.collate('utf-8') == 'foo',
+            "(mytable.name COLLATE utf-8) = :param_1"
+        )
+
+    def test_operator_precedence_collate_4(self):
+        self.assert_compile(
+            and_(
+                (self.table1.c.name == literal('foo')).collate('utf-8'),
+                (self.table2.c.field == literal('bar')).collate('utf-8'),
+            ),
+            "mytable.name = :param_1 COLLATE utf-8 "
+            "AND op.field = :param_2 COLLATE utf-8"
+        )
+
+    def test_operator_precedence_collate_5(self):
+        self.assert_compile(
+            select([self.table1.c.name]).order_by(
+                        self.table1.c.name.collate('utf-8').desc()),
+            "SELECT mytable.name FROM mytable "
+            "ORDER BY mytable.name COLLATE utf-8 DESC"
+        )
+
+    def test_operator_precedence_collate_6(self):
+        self.assert_compile(
+            select([self.table1.c.name]).order_by(
+                        self.table1.c.name.collate('utf-8').desc().nullslast()),
+            "SELECT mytable.name FROM mytable "
+            "ORDER BY mytable.name COLLATE utf-8 DESC NULLS LAST"
+        )
+
+    def test_operator_precedence_collate_7(self):
+        self.assert_compile(
+            select([self.table1.c.name]).order_by(
+                        self.table1.c.name.collate('utf-8').asc()),
+            "SELECT mytable.name FROM mytable "
+            "ORDER BY mytable.name COLLATE utf-8 ASC"
+        )
+
     def test_commutative_operators(self):
         self.assert_compile(
          literal("a") + literal("b") * literal("c"),

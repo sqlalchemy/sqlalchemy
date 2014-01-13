@@ -1,5 +1,5 @@
 # sql/types_api.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -402,12 +402,6 @@ class TypeEngine(Visitable):
                         encode('ascii', 'backslashreplace')
         else:
             return str(self.compile())
-
-    def __init__(self, *args, **kwargs):
-        """Support implementations that were passing arguments"""
-        if args or kwargs:
-            util.warn_deprecated("Passing arguments to type object "
-                    "constructor %s is deprecated" % self.__class__)
 
     def __repr__(self):
         return util.generic_repr(self)

@@ -1,5 +1,5 @@
 # util/__init__.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -18,7 +18,8 @@ from ._collections import KeyedTuple, ImmutableContainer, immutabledict, \
     column_dict, ordered_column_set, populate_column_dict, unique_list, \
     UniqueAppender, PopulateDict, EMPTY_SET, to_list, to_set, \
     to_column_set, update_copy, flatten_iterator, \
-    LRUCache, ScopedRegistry, ThreadLocalRegistry, WeakSequence
+    LRUCache, ScopedRegistry, ThreadLocalRegistry, WeakSequence, \
+    coerce_generator_arg
 
 from .langhelpers import iterate_attributes, class_hierarchy, \
     portable_instancemethod, unbound_method_to_callable, \

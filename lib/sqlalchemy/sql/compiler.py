@@ -1,5 +1,5 @@
 # sql/compiler.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -585,13 +585,13 @@ class SQLCompiler(Compiled):
     def post_process_text(self, text):
         return text
 
-    def visit_textclause(self, textclause, **kwargs):
+    def visit_textclause(self, textclause, **kw):
         def do_bindparam(m):
             name = m.group(1)
             if name in textclause._bindparams:
-                return self.process(textclause._bindparams[name])
+                return self.process(textclause._bindparams[name], **kw)
             else:
-                return self.bindparam_string(name, **kwargs)
+                return self.bindparam_string(name, **kw)
 
         # un-escape any \:params
         return BIND_PARAMS_ESC.sub(lambda m: m.group(1),
@@ -970,8 +970,9 @@ class SQLCompiler(Compiled):
             (within_columns_clause and \
                 self.ansi_bind_rules):
             if bindparam.value is None:
-                raise exc.CompileError("Bind parameter without a "
-                                        "renderable value not allowed here.")
+                raise exc.CompileError("Bind parameter '%s' without a "
+                                        "renderable value not allowed here."
+                                        % bindparam.key)
             return self.render_literal_bindparam(bindparam,
                             within_columns_clause=True, **kwargs)
 
@@ -1964,10 +1965,17 @@ class SQLCompiler(Compiled):
                     elif c.server_onupdate is not None:
                         self.postfetch.append(c)
 
-        # iterating through columns at the top to maintain ordering.
-        # otherwise we might iterate through individual sets of
-        # "defaults", "primary key cols", etc.
-        for c in stmt.table.columns:
+        if self.isinsert and stmt.select_names:
+            # for an insert from select, we can only use names that
+            # are given, so only select for those names.
+            cols = (stmt.table.c[elements._column_as_key(name)]
+                        for name in stmt.select_names)
+        else:
+            # iterate through all table columns to maintain
+            # ordering, even for those cols that aren't included
+            cols = stmt.table.columns
+
+        for c in cols:
             if c.key in parameters and c.key not in check_columns:
                 value = parameters.pop(c.key)
                 if elements._is_literal(value):
@@ -2027,7 +2035,13 @@ class SQLCompiler(Compiled):
                         else:
                             self.returning.append(c)
                     else:
-                        if c.default is not None or \
+                        if (
+                                c.default is not None and
+                                (
+                                    not c.default.is_sequence or
+                                    self.dialect.supports_sequences
+                                )
+                            ) or \
                             c is stmt.table._autoincrement_column and (
                                 self.dialect.supports_sequences or
                                 self.dialect.preexecute_autoincrement_sequences

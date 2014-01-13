@@ -1,6 +1,6 @@
 /*
 processors.c
-Copyright (C) 2010-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+Copyright (C) 2010-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 Copyright (C) 2010-2011 Gaetan de Menten gdementen@gmail.com
 
 This module is part of SQLAlchemy and is released under
@@ -618,7 +618,7 @@ static struct PyModuleDef module_def = {
 
 #define INITERROR return NULL
 
-PyObject *
+PyMODINIT_FUNC
 PyInit_cprocessors(void)
 
 #else

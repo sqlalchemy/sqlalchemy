@@ -1,6 +1,6 @@
 /*
 utils.c
-Copyright (C) 2012-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+Copyright (C) 2012-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 
 This module is part of SQLAlchemy and is released under
 the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -198,7 +198,7 @@ static struct PyModuleDef module_def = {
 
 
 #if PY_MAJOR_VERSION >= 3
-PyObject *
+PyMODINIT_FUNC
 PyInit_cutils(void)
 #else
 PyMODINIT_FUNC

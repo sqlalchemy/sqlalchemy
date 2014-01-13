@@ -147,6 +147,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
             table_names = insp.get_view_names(schema)
             table_names.sort()
             answer = ['email_addresses_v', 'users_v']
+            eq_(sorted(table_names), answer)
         else:
             table_names = insp.get_table_names(schema,
                                                order_by=order_by)
@@ -179,6 +180,12 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.schemas
     def test_get_view_names_with_schema(self):
         self._test_get_table_names('test_schema', table_type='view')
+
+    @testing.requires.table_reflection
+    @testing.requires.view_reflection
+    def test_get_tables_and_views(self):
+        self._test_get_table_names()
+        self._test_get_table_names(table_type='view')
 
     def _test_get_columns(self, schema=None, table_type='table'):
         meta = MetaData(testing.db)

@@ -1,5 +1,5 @@
 # orm/session.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -1180,7 +1180,18 @@ class Session(_SessionClassMethods):
 
     def _autoflush(self):
         if self.autoflush and not self._flushing:
-            self.flush()
+            try:
+                self.flush()
+            except sa_exc.StatementError as e:
+                # note we are reraising StatementError as opposed to
+                # raising FlushError with "chaining" to remain compatible
+                # with code that catches StatementError, IntegrityError,
+                # etc.
+                e.add_detail(
+                        "raised as a result of Query-invoked autoflush; "
+                        "consider using a session.no_autoflush block if this "
+                        "flush is occuring prematurely")
+                util.raise_from_cause(e)
 
     def refresh(self, instance, attribute_names=None, lockmode=None):
         """Expire and refresh the attributes on the given instance.
@@ -1747,8 +1758,8 @@ class Session(_SessionClassMethods):
         may not fire off a backref event, if the effective value
         is what was already loaded from a foreign-key-holding value.
 
-        The :meth:`.Session.enable_relationship_loading` method supersedes
-        the ``load_on_pending`` flag on :func:`.relationship`.   Unlike
+        The :meth:`.Session.enable_relationship_loading` method is
+        similar to the ``load_on_pending`` flag on :func:`.relationship`.   Unlike
         that flag, :meth:`.Session.enable_relationship_loading` allows
         an object to remain transient while still being able to load
         related items.
@@ -1764,6 +1775,12 @@ class Session(_SessionClassMethods):
         proceeds.  This method is not intended for general use.
 
         .. versionadded:: 0.8
+
+        .. seealso::
+
+            ``load_on_pending`` at :func:`.relationship` - this flag
+            allows per-relationship loading of many-to-ones on items that
+            are pending.
 
         """
         state = attributes.instance_state(obj)
@@ -2134,9 +2151,10 @@ class Session(_SessionClassMethods):
     access to the full set of persistent objects (i.e., those
     that have row identity) currently in the session.
 
-    See also:
+    .. seealso::
 
-    :func:`.identity_key` - operations involving identity keys.
+        :func:`.identity_key` - helper function to produce the keys used
+        in this dictionary.
 
     """
 
@@ -2273,7 +2291,8 @@ class sessionmaker(_SessionClassMethods):
         kw['autoflush'] = autoflush
         kw['autocommit'] = autocommit
         kw['expire_on_commit'] = expire_on_commit
-        kw['info'] = info
+        if info is not None:
+            kw['info'] = info
         self.kw = kw
         # make our own subclass of the given class, so that
         # events can be associated with it specifically.

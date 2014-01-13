@@ -123,6 +123,18 @@ class DefaultRequirements(SuiteRequirements):
             )
 
     @property
+    def insert_from_select(self):
+        return skip_if(
+                    ["firebird"], "crashes for unknown reason"
+                )
+
+    @property
+    def fetch_rows_post_commit(self):
+        return skip_if(
+                    ["firebird"], "not supported"
+                )
+
+    @property
     def binary_comparisons(self):
         """target database/driver can allow BLOB/BINARY fields to be compared
         against a bound parameter value.
@@ -389,7 +401,7 @@ class DefaultRequirements(SuiteRequirements):
         return fails_on_everything_except('mysql+mysqldb', 'mysql+oursql',
                                       'sqlite+pysqlite', 'mysql+pymysql',
                                       'mysql+cymysql',
-                                      'sybase', 'mssql+pyodbc', 'mssql+mxodbc')
+                                      'sybase', 'mssql')
 
     @property
     def implements_get_lastrowid(self):
@@ -403,7 +415,8 @@ class DefaultRequirements(SuiteRequirements):
         cursor object.
 
         """
-        return fails_on_everything_except('mysql+mysqldb', 'mysql+oursql',
+        return skip_if('mssql+pymssql', 'crashes on pymssql') + \
+                    fails_on_everything_except('mysql+mysqldb', 'mysql+oursql',
                                        'sqlite+pysqlite', 'mysql+pymysql',
                                        'mysql+cymysql')
 
@@ -490,23 +503,24 @@ class DefaultRequirements(SuiteRequirements):
     def precision_numerics_general(self):
         """target backend has general support for moderately high-precision
         numerics."""
-        return fails_if('mssql+pymssql', 'FIXME: improve pymssql dec handling')
+        return exclusions.open()
 
     @property
     def precision_numerics_enotation_small(self):
         """target backend supports Decimal() objects using E notation
         to represent very small values."""
-        return fails_if('mssql+pymssql', 'FIXME: improve pymssql dec handling')
+        # NOTE: this exclusion isn't used in current tests.
+        return exclusions.open()
 
     @property
     def precision_numerics_enotation_large(self):
         """target backend supports Decimal() objects using E notation
         to represent very large values."""
 
-        return fails_if(
-                ("sybase+pyodbc", None, None,
+        return skip_if(
+                [("sybase+pyodbc", None, None,
                     "Don't know how do get these values through FreeTDS + Sybase"),
-                ("firebird", None, None, "Precision must be from 1 to 18"),
+                ("firebird", None, None, "Precision must be from 1 to 18"),]
             )
 
     @property
@@ -545,11 +559,35 @@ class DefaultRequirements(SuiteRequirements):
         """target backend will return native floating point numbers with at
         least seven decimal places when using the generic Float type."""
 
-        return fails_if('mysql', 'mysql FLOAT type only returns 4 decimals')
+        return fails_if([
+                    ('mysql', None, None,
+                                'mysql FLOAT type only returns 4 decimals'),
+                    ('firebird', None, None,
+                                "firebird FLOAT type isn't high precision"),
+                ])
 
     @property
     def floats_to_four_decimals(self):
-        return fails_if("mysql+oursql", "Floating point error")
+        return fails_if([
+                    ("mysql+oursql", None, None, "Floating point error"),
+                    ("firebird", None, None,
+                        "Firebird still has FP inaccuracy even "
+                        "with only four decimal places"),
+                    ('mssql+pyodbc', None, None,
+                                'mssql+pyodbc has FP inaccuracy even with '
+                                'only four decimal places '
+                            ),
+                    ('mssql+pymssql', None, None,
+                                'mssql+pymssql has FP inaccuracy even with '
+                                'only four decimal places '
+                            )
+                ])
+
+    @property
+    def fetch_null_from_numeric(self):
+        return skip_if(
+                    ("mssql+pyodbc", None, None, "crashes due to bug #351"),
+                )
 
     @property
     def python2(self):

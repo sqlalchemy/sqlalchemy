@@ -1,5 +1,5 @@
 # util/langhelpers.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -19,6 +19,7 @@ from functools import update_wrapper
 from .. import exc
 import hashlib
 from . import compat
+from . import _collections
 
 def md5_hex(x):
     if compat.py3k:
@@ -98,14 +99,21 @@ def decorator(target):
 
         metadata = dict(target=targ_name, fn=fn_name)
         metadata.update(format_argspec_plus(spec, grouped=False))
-
-        code = 'lambda %(args)s: %(target)s(%(fn)s, %(apply_kw)s)' % (
-                metadata)
-        decorated = eval(code, {targ_name: target, fn_name: fn})
+        metadata['name'] = fn.__name__
+        code = """\
+def %(name)s(%(args)s):
+    return %(target)s(%(fn)s, %(apply_kw)s)
+""" % metadata
+        decorated = _exec_code_in_env(code,
+                            {targ_name: target, fn_name: fn},
+                            fn.__name__)
         decorated.__defaults__ = getattr(fn, 'im_func', fn).__defaults__
         return update_wrapper(decorated, fn)
     return update_wrapper(decorate, target)
 
+def _exec_code_in_env(code, env, fn_name):
+    exec(code, env)
+    return env[fn_name]
 
 def public_factory(target, location):
     """Produce a wrapping function for the given cls or classmethod.
@@ -126,11 +134,18 @@ def public_factory(target, location):
         doc = "This function is mirrored; see :func:`~%s` "\
                 "for a description of arguments." % location
 
+    location_name = location.split(".")[-1]
     spec = compat.inspect_getfullargspec(fn)
     del spec[0][0]
     metadata = format_argspec_plus(spec, grouped=False)
-    code = 'lambda %(args)s: cls(%(apply_kw)s)' % metadata
-    decorated = eval(code, {'cls': callable_, 'symbol': symbol})
+    metadata['name'] = location_name
+    code = """\
+def %(name)s(%(args)s):
+    return cls(%(apply_kw)s)
+""" % metadata
+    env = {'cls': callable_, 'symbol': symbol}
+    exec(code, env)
+    decorated = env[location_name]
     decorated.__doc__ = fn.__doc__
     if compat.py2k or hasattr(fn, '__func__'):
         fn.__func__.__doc__ = doc
@@ -253,7 +268,9 @@ def get_callable_argspec(fn, no_self=False):
         return compat.ArgSpec(spec.args[1:], spec.varargs, spec.keywords, spec.defaults)
     elif hasattr(fn, '__func__'):
         return compat.inspect_getargspec(fn.__func__)
-    elif hasattr(fn, '__call__'):
+    elif hasattr(fn, '__call__') and \
+        not hasattr(fn.__call__, '__call__'):  # functools.partial does this;
+                                               # not much we can do
         return get_callable_argspec(fn.__call__)
     else:
         raise ValueError("Can't inspect function: %s" % fn)
@@ -392,44 +409,66 @@ def generic_repr(obj, additional_kw=(), to_inspect=None):
 
     """
     if to_inspect is None:
-        to_inspect = obj
+        to_inspect = [obj]
+    else:
+        to_inspect = _collections.to_list(to_inspect)
 
     missing = object()
 
-    def genargs():
+    pos_args = []
+    kw_args = _collections.OrderedDict()
+    vargs = None
+    for i, insp in enumerate(to_inspect):
         try:
-            (args, vargs, vkw, defaults) = \
-                inspect.getargspec(to_inspect.__init__)
+            (_args, _vargs, vkw, defaults) = \
+                inspect.getargspec(insp.__init__)
         except TypeError:
-            return
-
-        default_len = defaults and len(defaults) or 0
-
-        if not default_len:
-            for arg in args[1:]:
-                yield repr(getattr(obj, arg, None))
-            if vargs is not None and hasattr(obj, vargs):
-                yield ', '.join(repr(val) for val in getattr(obj, vargs))
+            continue
         else:
-            for arg in args[1:-default_len]:
-                yield repr(getattr(obj, arg, None))
-            for (arg, defval) in zip(args[-default_len:], defaults):
-                try:
-                    val = getattr(obj, arg, missing)
-                    if val is not missing and val != defval:
-                        yield '%s=%r' % (arg, val)
-                except:
-                    pass
-        if additional_kw:
-            for arg, defval in additional_kw:
-                try:
-                    val = getattr(obj, arg, missing)
-                    if val is not missing and val != defval:
-                        yield '%s=%r' % (arg, val)
-                except:
-                    pass
+            default_len = defaults and len(defaults) or 0
+            if i == 0:
+                if _vargs:
+                    vargs = _vargs
+                if default_len:
+                    pos_args.extend(_args[1:-default_len])
+                else:
+                    pos_args.extend(_args[1:])
+            else:
+                kw_args.update([
+                    (arg, missing) for arg in _args[1:-default_len]
+                ])
 
-    return "%s(%s)" % (obj.__class__.__name__, ", ".join(genargs()))
+            if default_len:
+                kw_args.update([
+                    (arg, default)
+                        for arg, default
+                        in zip(_args[-default_len:], defaults)
+                ])
+    output = []
+
+    output.extend(repr(getattr(obj, arg, None)) for arg in pos_args)
+
+    if vargs is not None and hasattr(obj, vargs):
+        output.extend([repr(val) for val in getattr(obj, vargs)])
+
+    for arg, defval in kw_args.items():
+        try:
+            val = getattr(obj, arg, missing)
+            if val is not missing and val != defval:
+                output.append('%s=%r' % (arg, val))
+        except:
+            pass
+
+    if additional_kw:
+        for arg, defval in additional_kw:
+            try:
+                val = getattr(obj, arg, missing)
+                if val is not missing and val != defval:
+                    output.append('%s=%r' % (arg, val))
+            except:
+                pass
+
+    return "%s(%s)" % (obj.__class__.__name__, ", ".join(output))
 
 
 class portable_instancemethod(object):

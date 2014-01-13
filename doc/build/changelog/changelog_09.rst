@@ -12,7 +12,322 @@
         :start-line: 5
 
 .. changelog::
-    :version: 0.9.0b2
+    :version: 0.9.2
+
+    .. change::
+        :tags: bug, mysql
+
+        The MySQL CAST compilation now takes into account aspects of a string
+        type such as "charset" and "collation".  While MySQL wants all character-
+        based CAST calls to use the CHAR type, we now create a real CHAR
+        object at CAST time and copy over all the parameters it has, so that
+        an expression like ``cast(x, mysql.TEXT(charset='utf8'))`` will
+        render ``CAST(t.col AS CHAR CHARACTER SET utf8)``.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 2906
+
+        Added new "unicode returns" detection to the MySQL dialect and
+        to the default dialect system overall, such that any dialect
+        can add extra "tests" to the on-first-connect "does this DBAPI
+        return unicode directly?" detection. In this case, we are
+        adding a check specifically against the "utf8" encoding with
+        an explicit "utf8_bin" collation type (after checking that
+        this collation is available) to test for some buggy unicode
+        behavior observed with MySQLdb version 1.2.3.  While MySQLdb
+        has resolved this issue as of 1.2.4, the check here should
+        guard against regressions.  The change also allows the "unicode"
+        checks to log in the engine logs, which was not previously
+        the case.
+
+    .. change::
+        :tags: bug, mysql, pool, engine
+        :tickets: 2907
+
+        :class:`.Connection` now associates a new
+        :class:`.RootTransaction` or :class:`.TwoPhaseTransaction`
+        with its immediate :class:`._ConnectionFairy` as a "reset handler"
+        for the span of that transaction, which takes over the task
+        of calling commit() or rollback() for the "reset on return" behavior
+        of :class:`.Pool` if the transaction was not otherwise completed.
+        This resolves the issue that a picky transaction
+        like that of MySQL two-phase will be
+        properly closed out when the connection is closed without an
+        explicit rollback or commit (e.g. no longer raises "XAER_RMFAIL"
+        in this case - note this only shows up in logging as the exception
+        is not propagated within pool reset).
+        This issue would arise e.g. when using an orm
+        :class:`.Session` with ``twophase`` set, and then
+        :meth:`.Session.close` is called without an explicit rollback or
+        commit.   The change also has the effect that you will now see
+        an explicit "ROLLBACK" in the logs when using a :class:`.Session`
+        object in non-autocommit mode regardless of how that session was
+        discarded.  Thanks to Jeff Dairiki and Laurence Rowe for isolating
+        the issue here.
+
+    .. change::
+        :tags: feature, pool, engine
+
+        Added a new pool event :meth:`.PoolEvents.invalidate`.  Called when
+        a DBAPI connection is to be marked as "invaldated" and discarded
+        from the pool.
+
+    .. change::
+        :tags: bug, pool
+
+        The argument names for the :meth:`.PoolEvents.reset` event have been
+        renamed to ``dbapi_connection`` and ``connection_record`` in order
+        to maintain consistency with all the other pool events.  It is expected
+        that any existing listeners for this relatively new and
+        seldom-used event are using positional style to receive arguments in
+        any case.
+
+    .. change::
+        :tags: bug, py3k, cextensions
+        :pullreq: github:55
+
+        Fixed an issue where the C extensions in Py3K are using the wrong API
+        to specify the top-level module function, which breaks
+        in Python 3.4b2.  Py3.4b2 changes PyMODINIT_FUNC to return
+        "void" instead of "PyObject *", so we now make sure to use
+        "PyMODINIT_FUNC" instead of "PyObject *" directly.  Pull request
+        courtesy cgohlke.
+
+    .. change::
+        :tags: bug, schema
+        :pullreq: github:57
+
+        Restored :class:`sqlalchemy.schema.SchemaVisitor` to the ``.schema``
+        module.  Pullreq courtesy Sean Dague.
+
+.. changelog::
+    :version: 0.9.1
+    :released: January 5, 2014
+
+    .. change::
+        :tags: bug, orm, events
+        :tickets: 2905
+
+        Fixed regression where using a ``functools.partial()`` with the event
+        system would cause a recursion overflow due to usage of inspect.getargspec()
+        on it in order to detect a legacy calling signature for certain events,
+        and apparently there's no way to do this with a partial object.  Instead
+        we skip the legacy check and assume the modern style; the check itself
+        now only occurs for the SessionEvents.after_bulk_update and
+        SessionEvents.after_bulk_delete events.  Those two events will require
+        the new signature style if assigned to a "partial" event listener.
+
+    .. change::
+        :tags: feature, orm, extensions
+
+        A new, **experimental** extension :mod:`sqlalchemy.ext.automap` is added.
+        This extension expands upon the functionality of Declarative as well as
+        the :class:`.DeferredReflection` class to produce a base class which
+        automatically generates mapped classes *and relationships* based on
+        table metadata.
+
+        .. seealso::
+
+            :ref:`feature_automap`
+
+            :ref:`automap_toplevel`
+
+    .. change::
+        :tags: feature, sql
+
+        Conjunctions like :func:`.and_` and :func:`.or_` can now accept
+        Python generators as a single argument, e.g.::
+
+            and_(x == y for x, y in tuples)
+
+        The logic here looks for a single argument ``*args`` where the first
+        element is an instance of ``types.GeneratorType``.
+
+    .. change::
+        :tags: feature, schema
+
+        The :paramref:`.Table.extend_existing` and :paramref:`.Table.autoload_replace`
+        parameters are now available on the :meth:`.MetaData.reflect`
+        method.
+
+    .. change::
+        :tags: bug, orm, declarative
+
+        Fixed an extremely unlikely memory issue where when using
+        :class:`.DeferredReflection`
+        to define classes pending for reflection, if some subset of those
+        classes were discarded before the :meth:`.DeferredReflection.prepare`
+        method were called to reflect and map the class, a strong reference
+        to the class would remain held within the declarative internals.
+        This internal collection of "classes to map" now uses weak
+        references against the classes themselves.
+
+    .. change::
+        :tags: bug, orm
+        :pullreq: bitbucket:9
+
+        Fixed bug where using new :attr:`.Session.info` attribute would fail
+        if the ``.info`` argument were only passed to the :class:`.sessionmaker`
+        creation call but not to the object itself.  Courtesy Robin Schoonover.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 2901
+
+        Fixed regression where we don't check the given name against the
+        correct string class when setting up a backref based on a name,
+        therefore causing the error "too many values to unpack".  This was
+        related to the Py3k conversion.
+
+    .. change::
+        :tags: bug, orm, declarative
+        :tickets: 2900
+
+        A quasi-regression where apparently in 0.8 you can set a class-level
+        attribute on declarative to simply refer directly to an :class:`.InstrumentedAttribute`
+        on a superclass or on the class itself, and it
+        acts more or less like a synonym; in 0.9, this fails to set up enough
+        bookkeeping to keep up with the more liberalized backref logic
+        from :ticket:`2789`.  Even though this use case was never directly
+        considered, it is now detected by declarative at the "setattr()" level
+        as well as when setting up a subclass, and the mirrored/renamed attribute
+        is now set up as a :func:`.synonym` instead.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 2903
+
+        Fixed regression where we apparently still create an implicit
+        alias when saying query(B).join(B.cs), where "C" is a joined inh
+        class; however, this implicit alias was created only considering
+        the immediate left side, and not a longer chain of joins along different
+        joined-inh subclasses of the same base.   As long as we're still
+        implicitly aliasing in this case, the behavior is dialed back a bit
+        so that it will alias the right side in a wider variety of cases.
+
+.. changelog::
+    :version: 0.9.0
+    :released: December 30, 2013
+
+    .. change::
+        :tags: bug, orm, declarative
+        :tickets: 2828
+
+        Declarative does an extra check to detect if the same
+        :class:`.Column` is mapped multiple times under different properties
+        (which typically should be a :func:`.synonym` instead) or if two
+        or more :class:`.Column` objects are given the same name, raising
+        a warning if this condition is detected.
+
+    .. change::
+        :tags: bug, firebird
+        :tickets: 2898
+
+        Changed the queries used by Firebird to list table and view names
+        to query from the ``rdb$relations`` view instead of the
+        ``rdb$relation_fields`` and ``rdb$view_relations`` views.
+        Variants of both the old and new queries are mentioned on many
+        FAQ and blogs, however the new queries are taken straight from
+        the "Firebird FAQ" which appears to be the most official source
+        of info.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 2893
+
+        Improvements to the system by which SQL types generate within
+        ``__repr__()``, particularly with regards to the MySQL integer/numeric/
+        character types which feature a wide variety of keyword arguments.
+        The ``__repr__()`` is important for use with Alembic autogenerate
+        for when Python code is rendered in a migration script.
+
+    .. change::
+        :tags: feature, postgresql
+        :tickets: 2581
+        :pullreq: github:50
+
+        Support for Postgresql JSON has been added, using the new
+        :class:`.JSON` type.   Huge thanks to Nathan Rice for
+        implementing and testing this.
+
+    .. change::
+        :tags: bug, sql
+
+        The :func:`.cast` function, when given a plain literal value,
+        will now apply the given type to the given literal value on the
+        bind parameter side according to the type given to the cast,
+        in the same manner as that of the :func:`.type_coerce` function.
+        However unlike :func:`.type_coerce`, this only takes effect if a
+        non-clauseelement value is passed to :func:`.cast`; an existing typed
+        construct will retain its type.
+
+    .. change::
+        :tags: bug, postgresql
+
+        Now using psycopg2 UNICODEARRAY extension for handling unicode arrays
+        with psycopg2 + normal "native unicode" mode, in the same way the
+        UNICODE extension is used.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 2883
+
+        The :class:`.ForeignKey` class more aggressively checks the given
+        column argument.   If not a string, it checks that the object is
+        at least a :class:`.ColumnClause`, or an object that resolves to one,
+        and that the ``.table`` attribute, if present, refers to a
+        :class:`.TableClause` or subclass, and not something like an
+        :class:`.Alias`.  Otherwise, a :class:`.ArgumentError` is raised.
+
+
+    .. change::
+        :tags: feature, orm
+
+        The :class:`.exc.StatementError` or DBAPI-related subclass
+        now can accomodate additional information about the "reason" for
+        the exception; the :class:`.Session` now adds some detail to it
+        when the exception occurs within an autoflush.  This approach
+        is taken as opposed to combining :class:`.FlushError` with
+        a Python 3 style "chained exception" approach so as to maintain
+        compatibility both with Py2K code as well as code that already
+        catches ``IntegrityError`` or similar.
+
+    .. change::
+        :tags: feature, postgresql
+        :pullreq: bitbucket:8
+
+        Added support for Postgresql TSVECTOR via the
+        :class:`.postgresql.TSVECTOR` type.  Pull request courtesy
+        Noufal Ibrahim.
+
+    .. change::
+        :tags: feature, engine
+        :tickets: 2875
+
+        The :func:`.engine_from_config` function has been improved so that
+        we will be able to parse dialect-specific arguments from string
+        configuration dictionaries.  Dialect classes can now provide their
+        own list of parameter types and string-conversion routines.
+        The feature is not yet used by the built-in dialects, however.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 2879
+
+        The precedence rules for the :meth:`.ColumnOperators.collate` operator
+        have been modified, such that the COLLATE operator is now of lower
+        precedence than the comparison operators.  This has the effect that
+        a COLLATE applied to a comparison will not render parenthesis
+        around the comparison, which is not parsed by backends such as
+        MSSQL.  The change is backwards incompatible for those setups that
+        were working around the issue by applying :meth:`.Operators.collate`
+        to an individual element of the comparison expression,
+        rather than the comparison expression as a whole.
+
+        .. seelalso::
+
+            :ref:`migration_2879`
 
     .. change::
         :tags: bug, orm, declarative
@@ -68,13 +383,15 @@
 
     .. change::
         :tags: feature, sql
-        :tickets: 2877
+        :tickets: 2877, 2882
 
         New improvements to the :func:`.text` construct, including
         more flexible ways to set up bound parameters and return types;
         in particular, a :func:`.text` can now be turned into a full
         FROM-object, embeddable in other statements as an alias or CTE
-        using the new method :meth:`.TextClause.columns`.
+        using the new method :meth:`.TextClause.columns`.   The :func:`.text`
+        construct can also render "inline" bound parameters when the construct
+        is compiled in a "literal bound" context.
 
         .. seealso::
 

@@ -82,6 +82,10 @@ class InsertBehaviorTest(fixtures.TablesTest):
                                 test_needs_autoincrement=True),
                 Column('data', String(50))
             )
+        Table('manual_pk', metadata,
+                Column('id', Integer, primary_key=True, autoincrement=False),
+                Column('data', String(50))
+            )
 
     def test_autoclose_on_insert(self):
         if requirements.returning.enabled:
@@ -124,13 +128,13 @@ class InsertBehaviorTest(fixtures.TablesTest):
 
     @requirements.insert_from_select
     def test_insert_from_select(self):
-        table = self.tables.autoinc_pk
+        table = self.tables.manual_pk
         config.db.execute(
                 table.insert(),
                 [
-                    dict(data="data1"),
-                    dict(data="data2"),
-                    dict(data="data3"),
+                    dict(id=1, data="data1"),
+                    dict(id=2, data="data2"),
+                    dict(id=3, data="data3"),
                 ]
         )
 
@@ -172,7 +176,8 @@ class ReturningTest(fixtures.TablesTest):
                 Column('data', String(50))
             )
 
-    def test_explicit_returning_pk(self):
+    @requirements.fetch_rows_post_commit
+    def test_explicit_returning_pk_autocommit(self):
         engine = config.db
         table = self.tables.autoinc_pk
         r = engine.execute(
@@ -181,6 +186,19 @@ class ReturningTest(fixtures.TablesTest):
             data="some data"
         )
         pk = r.first()[0]
+        fetched_pk = config.db.scalar(select([table.c.id]))
+        eq_(fetched_pk, pk)
+
+    def test_explicit_returning_pk_no_autocommit(self):
+        engine = config.db
+        table = self.tables.autoinc_pk
+        with engine.begin() as conn:
+            r = conn.execute(
+                table.insert().returning(
+                                table.c.id),
+                data="some data"
+            )
+            pk = r.first()[0]
         fetched_pk = config.db.scalar(select([table.c.id]))
         eq_(fetched_pk, pk)
 

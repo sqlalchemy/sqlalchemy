@@ -35,6 +35,7 @@ extensions = [
             'sphinx.ext.autodoc',
                 'builder.autodoc_mods',
                 'changelog',
+                'sphinx_paramlinks',
                 'builder.dialect_info',
                 'builder.mako',
                 'builder.sqlformatter',
@@ -81,7 +82,7 @@ master_doc = 'contents'
 
 # General information about the project.
 project = u'SQLAlchemy'
-copyright = u'2007-2013, the SQLAlchemy authors and contributors'
+copyright = u'2007-2014, the SQLAlchemy authors and contributors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -90,9 +91,9 @@ copyright = u'2007-2013, the SQLAlchemy authors and contributors'
 # The short X.Y version.
 version = "0.9"
 # The full version, including alpha/beta/rc tags.
-release = "0.9.0b1"
+release = "0.9.1"
 
-release_date = "October 26, 2013"
+release_date = "January 5, 2014"
 
 site_base = "http://www.sqlalchemy.org"
 
@@ -287,7 +288,7 @@ man_pages = [
 epub_title = u'SQLAlchemy'
 epub_author = u'SQLAlchemy authors'
 epub_publisher = u'SQLAlchemy authors'
-epub_copyright = u'2013, SQLAlchemy authors'
+epub_copyright = u'2007-2014, SQLAlchemy authors'
 
 # The language of the text. It defaults to the language option
 # or en if the language is not set.

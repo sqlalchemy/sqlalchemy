@@ -121,7 +121,7 @@ def runit(status, factor=1):
 
         sess.close()  # close out the session
 
-def run_with_profile():
+def run_with_profile(runsnake=False, dump=False):
     import cProfile
     import pstats
     filename = "orm2010.profile"
@@ -144,24 +144,13 @@ def run_with_profile():
         % counts_by_methname.get("<method 'executemany' of 'sqlite3.Cursor' "
                              "objects>", 0))
 
-    #stats.sort_stats('time', 'calls')
-    #stats.print_stats()
-#    os.system("runsnake %s" % filename)
+    if dump:
+        stats.sort_stats('time', 'calls')
+        stats.print_stats()
 
-    # SQLA Version: 0.7b1
-    # Total calls 4956750
-    # Total execute calls: 11201
-    # Total executemany calls: 101
+    if runsnake:
+        os.system("runsnake %s" % filename)
 
-    # SQLA Version: 0.6.6
-    # Total calls 7963214
-    # Total execute calls: 22201
-    # Total executemany calls: 0
-
-    # SQLA Version: 0.5.8
-    # Total calls 10556480
-    # Total execute calls: 22201
-    # Total executemany calls: 0
 
 def run_with_time():
     import time
@@ -173,5 +162,22 @@ def run_with_time():
     runit(status, 10)
     print("Total time: %d" % (time.time() - now))
 
-run_with_profile()
-#run_with_time()
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--profile', action='store_true',
+                help='run shorter test suite w/ cprofilng')
+    parser.add_argument('--dump', action='store_true',
+                help='dump full call profile (implies --profile)')
+    parser.add_argument('--runsnake', action='store_true',
+                help='invoke runsnakerun (implies --profile)')
+
+    args = parser.parse_args()
+
+    args.profile = args.profile or args.dump or args.runsnake
+
+    if args.profile:
+        run_with_profile(runsnake=args.runsnake, dump=args.dump)
+    else:
+        run_with_time()

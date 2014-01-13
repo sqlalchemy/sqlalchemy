@@ -7,6 +7,8 @@ from sqlalchemy.orm import relationship, create_session, \
     clear_mappers, \
     Session
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.util import gc_collect
+from sqlalchemy.ext.declarative.base import _DeferredMapperConfig
 
 class DeclarativeReflectionBase(fixtures.TablesTest):
     __requires__ = 'reflectable_autoincrement',
@@ -147,8 +149,7 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
 class DeferredReflectBase(DeclarativeReflectionBase):
     def teardown(self):
         super(DeferredReflectBase, self).teardown()
-        from sqlalchemy.ext.declarative.base import _MapperConfig
-        _MapperConfig.configs.clear()
+        _DeferredMapperConfig._configs.clear()
 
 Base = None
 
@@ -291,6 +292,21 @@ class DeferredReflectionTest(DeferredReflectBase):
                 User(name='Q'),
             ]
         )
+
+    @testing.requires.predictable_gc
+    def test_cls_not_strong_ref(self):
+        class User(decl.DeferredReflection, fixtures.ComparableEntity,
+                            Base):
+            __tablename__ = 'users'
+        class Address(decl.DeferredReflection, fixtures.ComparableEntity,
+                            Base):
+            __tablename__ = 'addresses'
+        eq_(len(_DeferredMapperConfig._configs), 2)
+        del Address
+        gc_collect()
+        eq_(len(_DeferredMapperConfig._configs), 1)
+        decl.DeferredReflection.prepare(testing.db)
+        assert not _DeferredMapperConfig._configs
 
 class DeferredSecondaryReflectionTest(DeferredReflectBase):
     @classmethod

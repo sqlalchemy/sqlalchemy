@@ -133,6 +133,35 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             checkparams={"name_1": "foo"}
         )
 
+    def test_insert_from_select_select_alt_ordering(self):
+        table1 = self.tables.mytable
+        sel = select([table1.c.name, table1.c.myid]).where(table1.c.name == 'foo')
+        ins = self.tables.myothertable.insert().\
+                    from_select(("othername", "otherid"), sel)
+        self.assert_compile(
+            ins,
+            "INSERT INTO myothertable (othername, otherid) "
+            "SELECT mytable.name, mytable.myid FROM mytable "
+            "WHERE mytable.name = :name_1",
+            checkparams={"name_1": "foo"}
+        )
+
+    def test_insert_from_select_select_no_defaults(self):
+        metadata = MetaData()
+        table = Table('sometable', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('foo', Integer, default=func.foobar()))
+        table1 = self.tables.mytable
+        sel = select([table1.c.myid]).where(table1.c.name == 'foo')
+        ins = table.insert().\
+                    from_select(["id"], sel)
+        self.assert_compile(
+            ins,
+            "INSERT INTO sometable (id) SELECT mytable.myid "
+            "FROM mytable WHERE mytable.name = :name_1",
+            checkparams={"name_1": "foo"}
+        )
+
     def test_insert_mix_select_values_exception(self):
         table1 = self.tables.mytable
         sel = select([table1.c.myid, table1.c.name]).where(table1.c.name == 'foo')

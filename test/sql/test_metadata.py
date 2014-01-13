@@ -6,7 +6,7 @@ import pickle
 from sqlalchemy import Integer, String, UniqueConstraint, \
     CheckConstraint, ForeignKey, MetaData, Sequence, \
     ForeignKeyConstraint, ColumnDefault, Index, event,\
-    events, Unicode, types as sqltypes
+    events, Unicode, types as sqltypes, bindparam
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy import schema, exc
 import sqlalchemy as tsa
@@ -234,6 +234,45 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             "Can't create ForeignKeyConstraint on "
             "table 'a': no column named 'x' is present.",
             go
+        )
+
+    def test_fk_given_non_col(self):
+        not_a_col = bindparam('x')
+        assert_raises_message(
+            exc.ArgumentError,
+            "String, Column, or Column-bound argument expected, got Bind",
+            ForeignKey, not_a_col
+        )
+
+    def test_fk_given_non_col_clauseelem(self):
+        class Foo(object):
+            def __clause_element__(self):
+                return bindparam('x')
+        assert_raises_message(
+            exc.ArgumentError,
+            "String, Column, or Column-bound argument expected, got Bind",
+            ForeignKey, Foo()
+        )
+
+    def test_fk_given_col_non_table(self):
+        t = Table('t', MetaData(), Column('x', Integer))
+        xa = t.alias().c.x
+        assert_raises_message(
+            exc.ArgumentError,
+            "ForeignKey received Column not bound to a Table, got: .*Alias",
+            ForeignKey, xa
+        )
+
+    def test_fk_given_col_non_table_clauseelem(self):
+        t = Table('t', MetaData(), Column('x', Integer))
+        class Foo(object):
+            def __clause_element__(self):
+                return t.alias().c.x
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "ForeignKey received Column not bound to a Table, got: .*Alias",
+            ForeignKey, Foo()
         )
 
     def test_fk_no_such_target_col_error_upfront(self):

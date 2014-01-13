@@ -412,6 +412,10 @@ class SessionStateTest(_fixtures.FixtureTest):
         s3 = maker()
         eq_(s3.info, {"global": True, "s1": 5})
 
+        maker2 = sessionmaker()
+        s4 = maker2(info={'s4': 8})
+        eq_(s4.info, {'s4': 8})
+
     @testing.requires.independent_connections
     @engines.close_open_connections
     def test_autoflush(self):

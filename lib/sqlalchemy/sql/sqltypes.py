@@ -1,5 +1,5 @@
 # sql/sqltypes.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -192,13 +192,18 @@ class String(Concatenable, TypeEngine):
         wants_unicode = self.convert_unicode or dialect.convert_unicode
         needs_convert = wants_unicode and \
                         (dialect.returns_unicode_strings is not True or
-                        self.convert_unicode == 'force')
+                        self.convert_unicode in ('force', 'force_nocheck'))
+        needs_isinstance = (
+                                needs_convert and
+                                dialect.returns_unicode_strings and
+                                self.convert_unicode != 'force_nocheck'
+                            )
 
         if needs_convert:
             to_unicode = processors.to_unicode_processor_factory(
                                     dialect.encoding, self.unicode_error)
 
-            if dialect.returns_unicode_strings:
+            if needs_isinstance:
                 # we wouldn't be here unless convert_unicode='force'
                 # was specified, or the driver has erratic unicode-returning
                 # habits.  since we will be getting back unicode
@@ -901,15 +906,15 @@ class SchemaType(SchemaEventTarget):
 
     """
 
-    def __init__(self, **kw):
-        name = kw.pop('name', None)
+    def __init__(self, name=None, schema=None, metadata=None,
+                inherit_schema=False, quote=None):
         if name is not None:
-            self.name = quoted_name(name, kw.pop('quote', None))
+            self.name = quoted_name(name, quote)
         else:
             self.name = None
-        self.schema = kw.pop('schema', None)
-        self.metadata = kw.pop('metadata', None)
-        self.inherit_schema = kw.pop('inherit_schema', False)
+        self.schema = schema
+        self.metadata = metadata
+        self.inherit_schema = inherit_schema
         if self.metadata:
             event.listen(
                 self.metadata,
@@ -1105,10 +1110,9 @@ class Enum(String, SchemaType):
         SchemaType.__init__(self, **kw)
 
     def __repr__(self):
-        return util.generic_repr(self, [
-                        ("native_enum", True),
-                        ("name", None)
-                    ])
+        return util.generic_repr(self,
+              to_inspect=[Enum, SchemaType],
+          )
 
     def _should_create_constraint(self, compiler):
         return not self.native_enum or \

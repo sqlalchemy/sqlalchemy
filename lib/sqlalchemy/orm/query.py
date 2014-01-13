@@ -1,5 +1,5 @@
 # orm/query.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -1127,7 +1127,7 @@ class Query(object):
         """Return a new :class:`.Query` object with the specified "locking mode",
         which essentially refers to the ``FOR UPDATE`` clause.
 
-        .. deprecated:: 0.9.0b2 superseded by :meth:`.Query.with_for_update`.
+        .. deprecated:: 0.9.0 superseded by :meth:`.Query.with_for_update`.
 
         :param mode: a string representing the desired locking mode.
          Valid values are:
@@ -1171,12 +1171,12 @@ class Query(object):
 
             SELECT users.id AS users_id FROM users FOR UPDATE OF users NOWAIT
 
-        .. versionadded:: 0.9.0b2 :meth:`.Query.with_for_update` supersedes
+        .. versionadded:: 0.9.0 :meth:`.Query.with_for_update` supersedes
            the :meth:`.Query.with_lockmode` method.
 
         .. seealso::
 
-            :meth:`.SelectBase.with_for_update` - Core level method with
+            :meth:`.GenerativeSelect.with_for_update` - Core level method with
             full argument and behavioral description.
 
         """
@@ -1842,14 +1842,30 @@ class Query(object):
             raise sa_exc.InvalidRequestError(
                         "Can't construct a join from %s to %s, they "
                         "are the same entity" %
-                        (left, right))
+                       (left, right))
 
         l_info = inspect(left)
         r_info = inspect(right)
 
-        overlap = not create_aliases and \
-                        sql_util.selectables_overlap(l_info.selectable,
-                            r_info.selectable)
+
+        overlap = False
+        if not create_aliases:
+            right_mapper = getattr(r_info, "mapper", None)
+            # if the target is a joined inheritance mapping,
+            # be more liberal about auto-aliasing.
+            if right_mapper and (
+                        right_mapper.with_polymorphic or
+                        isinstance(right_mapper.mapped_table, expression.Join)
+                    ):
+                for from_obj in self._from_obj or [l_info.selectable]:
+                    if sql_util.selectables_overlap(l_info.selectable, from_obj) and \
+                        sql_util.selectables_overlap(from_obj, r_info.selectable):
+                        overlap = True
+                        break
+            elif sql_util.selectables_overlap(l_info.selectable, r_info.selectable):
+                overlap = True
+
+
         if overlap and l_info.selectable is r_info.selectable:
             raise sa_exc.InvalidRequestError(
                     "Can't join table/selectable '%s' to itself" %

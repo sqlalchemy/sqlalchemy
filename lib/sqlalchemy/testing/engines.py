@@ -1,5 +1,5 @@
 # testing/engines.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -32,6 +32,9 @@ class ConnectionKiller(object):
     def checkout(self, dbapi_con, con_record, con_proxy):
         self.proxy_refs[con_proxy] = True
 
+    def invalidate(self, dbapi_con, con_record, exception):
+        self.conns.discard((dbapi_con, con_record))
+
     def _safe(self, fn):
         try:
             fn()
@@ -49,7 +52,7 @@ class ConnectionKiller(object):
 
     def close_all(self):
         for rec in list(self.proxy_refs):
-            if rec is not None:
+            if rec is not None and rec.is_valid:
                 self._safe(rec._close)
 
     def _after_test_ctx(self):
@@ -226,6 +229,7 @@ def testing_engine(url=None, options=None):
     if use_reaper:
         event.listen(engine.pool, 'connect', testing_reaper.connect)
         event.listen(engine.pool, 'checkout', testing_reaper.checkout)
+        event.listen(engine.pool, 'invalidate', testing_reaper.invalidate)
         testing_reaper.add_engine(engine)
 
     return engine

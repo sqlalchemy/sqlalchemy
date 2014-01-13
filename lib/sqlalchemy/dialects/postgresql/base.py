@@ -1,5 +1,5 @@
 # postgresql/base.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -130,6 +130,44 @@ use the :meth:`._UpdateBase.returning` method on a per-statement basis::
     result = table.delete().returning(table.c.col1, table.c.col2).\\
         where(table.c.name=='foo')
     print result.fetchall()
+
+.. _postgresql_match:
+
+Full Text Search
+----------------
+
+SQLAlchemy makes available the Postgresql ``@@`` operator via the
+:meth:`.ColumnElement.match` method on any textual column expression.
+On a Postgresql dialect, an expression like the following::
+
+    select([sometable.c.text.match("search string")])
+
+will emit to the database::
+
+    SELECT text @@ to_tsquery('search string') FROM table
+
+The Postgresql text search functions such as ``to_tsquery()``
+and ``to_tsvector()`` are available
+explicitly using the standard :attr:`.func` construct.  For example::
+
+    select([
+        func.to_tsvector('fat cats ate rats').match('cat & rat')
+    ])
+
+Emits the equivalent of::
+
+    SELECT to_tsvector('fat cats ate rats') @@ to_tsquery('cat & rat')
+
+The :class:`.postgresql.TSVECTOR` type can provide for explicit CAST::
+
+    from sqlalchemy.dialects.postgresql import TSVECTOR
+    from sqlalchemy import select, cast
+    select([cast("some text", TSVECTOR)])
+
+produces a statement equivalent to::
+
+    SELECT CAST('some text' AS TSVECTOR) AS anon_1
+
 
 FROM ONLY ...
 ------------------------
@@ -367,6 +405,23 @@ class UUID(sqltypes.TypeEngine):
             return None
 
 PGUuid = UUID
+
+class TSVECTOR(sqltypes.TypeEngine):
+    """The :class:`.postgresql.TSVECTOR` type implements the Postgresql
+    text search type TSVECTOR.
+
+    It can be used to do full text queries on natural language
+    documents.
+
+    .. versionadded:: 0.9.0
+
+    .. seealso::
+
+        :ref:`postgresql_match`
+
+    """
+    __visit_name__ = 'TSVECTOR'
+
 
 
 class _Slice(expression.ColumnElement):
@@ -913,6 +968,7 @@ ischema_names = {
     'interval': INTERVAL,
     'interval year to month': INTERVAL,
     'interval day to second': INTERVAL,
+    'tsvector' : TSVECTOR
 }
 
 
@@ -1163,6 +1219,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
 
 class PGTypeCompiler(compiler.GenericTypeCompiler):
+    def visit_TSVECTOR(self, type):
+        return "TSVECTOR"
+
     def visit_INET(self, type_):
         return "INET"
 
@@ -1186,6 +1245,9 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_HSTORE(self, type_):
         return "HSTORE"
+
+    def visit_JSON(self, type_):
+        return "JSON"
 
     def visit_INT4RANGE(self, type_):
         return "INT4RANGE"
@@ -1377,9 +1439,12 @@ class PGDialect(default.DefaultDialect):
 
     _backslash_escapes = True
 
-    def __init__(self, isolation_level=None, **kwargs):
+    def __init__(self, isolation_level=None, json_serializer=None,
+                    json_deserializer=None, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
         self.isolation_level = isolation_level
+        self._json_deserializer = json_deserializer
+        self._json_serializer = json_serializer
 
     def initialize(self, connection):
         super(PGDialect, self).initialize(connection)

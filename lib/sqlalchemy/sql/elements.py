@@ -1,5 +1,5 @@
 # sql/elements.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -80,7 +80,7 @@ def literal(value, type_=None):
 
 
 
-def type_coerce(expr, type_):
+def type_coerce(expression, type_):
     """Coerce the given expression into the given type,
     on the Python side only.
 
@@ -116,22 +116,30 @@ def type_coerce(expr, type_):
                     )
         )
 
+    :param expression: Column-oriented expression.
+    :param type_: A :class:`.TypeEngine` class or instance indicating
+     the type to which the CAST should apply.
+
+    .. seealso::
+
+        :func:`.cast`
+
     """
     type_ = type_api.to_instance(type_)
 
-    if hasattr(expr, '__clause_element__'):
-        return type_coerce(expr.__clause_element__(), type_)
-    elif isinstance(expr, BindParameter):
-        bp = expr._clone()
+    if hasattr(expression, '__clause_element__'):
+        return type_coerce(expression.__clause_element__(), type_)
+    elif isinstance(expression, BindParameter):
+        bp = expression._clone()
         bp.type = type_
         return bp
-    elif not isinstance(expr, Visitable):
-        if expr is None:
+    elif not isinstance(expression, Visitable):
+        if expression is None:
             return Null()
         else:
-            return literal(expr, type_=type_)
+            return literal(expression, type_=type_)
     else:
-        return Label(None, expr, type_=type_)
+        return Label(None, expression, type_=type_)
 
 
 
@@ -1484,6 +1492,7 @@ class BooleanClauseList(ClauseList, ColumnElement):
     def _construct(cls, operator, continue_on, skip_on, *clauses, **kw):
         convert_clauses = []
 
+        clauses = util.coerce_generator_arg(clauses)
         for clause in clauses:
             clause = _literal_as_text(clause)
 
@@ -1734,12 +1743,12 @@ class Cast(ColumnElement):
 
     __visit_name__ = 'cast'
 
-    def __init__(self, clause, totype, **kwargs):
+    def __init__(self, expression, type_):
         """Return a :class:`.Cast` object.
 
         Equivalent of SQL ``CAST(clause AS totype)``.
 
-        Use with a :class:`~sqlalchemy.types.TypeEngine` subclass, i.e::
+        E.g.::
 
           cast(table.c.unit_price * table.c.qty, Numeric(10,4))
 
@@ -1747,12 +1756,18 @@ class Cast(ColumnElement):
 
           cast(table.c.timestamp, DATE)
 
-        :class:`.Cast` is available using :func:`.cast` or alternatively
-        ``func.cast`` from the :data:`.func` namespace.
+        :param expression: Column-oriented expression.
+        :param type_: A :class:`.TypeEngine` class or instance indicating
+         the type to which the CAST should apply.
+
+        .. seealso::
+
+            :func:`.type_coerce` - Python-side type coercion without emitting
+            CAST.
 
         """
-        self.type = type_api.to_instance(totype)
-        self.clause = _literal_as_binds(clause, None)
+        self.type = type_api.to_instance(type_)
+        self.clause = _literal_as_binds(expression, type_=self.type)
         self.typeclause = TypeClause(self.type)
 
     def _copy_internals(self, clone=_clone, **kw):
@@ -2763,7 +2778,6 @@ def _only_column_elements(element, name):
                 "Column-based expression object expected for argument "
                 "'%s'; got: '%s', type %s" % (name, element, type(element)))
     return element
-
 
 def _literal_as_binds(element, name=None, type_=None):
     if hasattr(element, '__clause_element__'):

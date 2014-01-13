@@ -203,19 +203,36 @@ class ExecuteTest(fixtures.TestBase):
         finally:
             conn.close()
 
+    @testing.engines.close_open_connections
     def test_exception_wrapping_dbapi(self):
-        def go(conn):
+        conn = testing.db.connect()
+        for _c in testing.db, conn:
             assert_raises_message(
                 tsa.exc.DBAPIError,
                 r"not_a_valid_statement",
-                conn.execute, 'not_a_valid_statement'
+                _c.execute, 'not_a_valid_statement'
             )
-        go(testing.db)
-        conn = testing.db.connect()
-        try:
-            go(conn)
-        finally:
-            conn.close()
+
+    @testing.requires.sqlite
+    def test_exception_wrapping_non_dbapi_error(self):
+        e = create_engine('sqlite://')
+        e.dialect.is_disconnect = is_disconnect = Mock()
+
+        with e.connect() as c:
+            c.connection.cursor = Mock(
+                    return_value=Mock(
+                        execute=Mock(
+                                side_effect=TypeError("I'm not a DBAPI error")
+                        ))
+                    )
+
+            assert_raises_message(
+                TypeError,
+                "I'm not a DBAPI error",
+                c.execute, "select "
+            )
+            eq_(is_disconnect.call_count, 0)
+
 
     def test_exception_wrapping_non_dbapi_statement(self):
         class MyType(TypeDecorator):
@@ -242,21 +259,22 @@ class ExecuteTest(fixtures.TestBase):
 
     def test_stmt_exception_non_ascii(self):
         name = util.u('méil')
-        assert_raises_message(
-            tsa.exc.StatementError,
-            util.u(
-                "A value is required for bind parameter 'uname'"
-                r'.*SELECT users.user_name AS .m\\xe9il.') if util.py2k
-            else
+        with testing.db.connect() as conn:
+            assert_raises_message(
+                tsa.exc.StatementError,
                 util.u(
                     "A value is required for bind parameter 'uname'"
-                    '.*SELECT users.user_name AS .méil.')
-                ,
-            testing.db.execute,
-            select([users.c.user_name.label(name)]).where(
-                            users.c.user_name == bindparam("uname")),
-            {'uname_incorrect': 'foo'}
-        )
+                    r'.*SELECT users.user_name AS .m\\xe9il.') if util.py2k
+                else
+                    util.u(
+                        "A value is required for bind parameter 'uname'"
+                        '.*SELECT users.user_name AS .méil.')
+                    ,
+                conn.execute,
+                select([users.c.user_name.label(name)]).where(
+                                users.c.user_name == bindparam("uname")),
+                {'uname_incorrect': 'foo'}
+            )
 
     def test_stmt_exception_pickleable_no_dbapi(self):
         self._test_stmt_exception_pickleable(Exception("hello world"))
@@ -343,17 +361,17 @@ class ExecuteTest(fixtures.TestBase):
     def test_engine_level_options(self):
         eng = engines.testing_engine(options={'execution_options':
                                             {'foo': 'bar'}})
-        conn = eng.contextual_connect()
-        eq_(conn._execution_options['foo'], 'bar')
-        eq_(conn.execution_options(bat='hoho')._execution_options['foo'
-            ], 'bar')
-        eq_(conn.execution_options(bat='hoho')._execution_options['bat'
-            ], 'hoho')
-        eq_(conn.execution_options(foo='hoho')._execution_options['foo'
-            ], 'hoho')
-        eng.update_execution_options(foo='hoho')
-        conn = eng.contextual_connect()
-        eq_(conn._execution_options['foo'], 'hoho')
+        with eng.contextual_connect() as conn:
+            eq_(conn._execution_options['foo'], 'bar')
+            eq_(conn.execution_options(bat='hoho')._execution_options['foo'
+                ], 'bar')
+            eq_(conn.execution_options(bat='hoho')._execution_options['bat'
+                ], 'hoho')
+            eq_(conn.execution_options(foo='hoho')._execution_options['foo'
+                ], 'hoho')
+            eng.update_execution_options(foo='hoho')
+            conn = eng.contextual_connect()
+            eq_(conn._execution_options['foo'], 'hoho')
 
     @testing.requires.ad_hoc_engines
     def test_generative_engine_execution_options(self):
@@ -400,8 +418,8 @@ class ExecuteTest(fixtures.TestBase):
         event.listen(eng, "before_execute", l2)
         event.listen(eng1, "before_execute", l3)
 
-        eng.execute(select([1]))
-        eng1.execute(select([1]))
+        eng.execute(select([1])).close()
+        eng1.execute(select([1])).close()
 
         eq_(canary, ["l1", "l2", "l3", "l1", "l2"])
 
@@ -1032,7 +1050,7 @@ class ResultProxyTest(fixtures.TestBase):
 
 class ExecutionOptionsTest(fixtures.TestBase):
     def test_dialect_conn_options(self):
-        engine = testing_engine("sqlite://")
+        engine = testing_engine("sqlite://", options=dict(_initialize=False))
         engine.dialect = Mock()
         conn = engine.connect()
         c2 = conn.execution_options(foo="bar")

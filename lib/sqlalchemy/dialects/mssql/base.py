@@ -1,5 +1,5 @@
 # mssql/base.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -1018,12 +1018,10 @@ class MSDDLCompiler(compiler.DDLCompiler):
         return text
 
     def visit_drop_index(self, drop):
-        return "\nDROP INDEX %s.%s" % (
-            self.preparer.quote_identifier(drop.element.table.name),
-            self._prepared_index_name(drop.element,
-                                        include_schema=True)
+        return "\nDROP INDEX %s ON %s" % (
+            self._prepared_index_name(drop.element, include_schema=False),
+            self.preparer.format_table(drop.element.table)
             )
-
 
 class MSIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = RESERVED_WORDS

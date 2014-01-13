@@ -3,6 +3,7 @@ from sqlalchemy.testing import eq_, assert_raises, \
 import sys
 import time
 import threading
+from sqlalchemy import event
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy import create_engine, MetaData, INT, VARCHAR, Sequence, \
     select, Integer, String, func, text, exc
@@ -341,7 +342,8 @@ class TransactionTest(fixtures.TestBase):
         transaction = connection.begin_twophase()
         connection.execute(users.insert(), user_id=1, user_name='user1')
         transaction.prepare()
-        connection.close()
+        connection.invalidate()
+
         connection2 = testing.db.connect()
         eq_(connection2.execute(select([users.c.user_id]).
             order_by(users.c.user_id)).fetchall(),
@@ -377,6 +379,138 @@ class TransactionTest(fixtures.TestBase):
                 order_by(users.c.user_id))
         eq_(result.fetchall(), [('user1', ), ('user4', )])
         conn.close()
+
+    @testing.requires.two_phase_transactions
+    def test_reset_rollback_two_phase_no_rollback(self):
+        # test [ticket:2907], essentially that the
+        # TwoPhaseTransaction is given the job of "reset on return"
+        # so that picky backends like MySQL correctly clear out
+        # their state when a connection is closed without handling
+        # the transaction explicitly.
+
+        eng = testing_engine()
+
+        # MySQL raises if you call straight rollback() on
+        # a connection with an XID present
+        @event.listens_for(eng, "invalidate")
+        def conn_invalidated(dbapi_con, con_record, exception):
+            dbapi_con.close()
+            raise exception
+
+        with eng.connect() as conn:
+            rec = conn.connection._connection_record
+            raw_dbapi_con = rec.connection
+            xa = conn.begin_twophase()
+            conn.execute(users.insert(), user_id=1, user_name='user1')
+
+        assert rec.connection is raw_dbapi_con
+
+        with eng.connect() as conn:
+            result = \
+                conn.execute(select([users.c.user_name]).
+                    order_by(users.c.user_id))
+            eq_(result.fetchall(), [])
+
+class ResetAgentTest(fixtures.TestBase):
+    def test_begin_close(self):
+        with testing.db.connect() as connection:
+            trans = connection.begin()
+            assert connection.connection._reset_agent is trans
+        assert not trans.is_active
+
+    def test_begin_rollback(self):
+        with testing.db.connect() as connection:
+            trans = connection.begin()
+            assert connection.connection._reset_agent is trans
+            trans.rollback()
+            assert connection.connection._reset_agent is None
+
+    def test_begin_commit(self):
+        with testing.db.connect() as connection:
+            trans = connection.begin()
+            assert connection.connection._reset_agent is trans
+            trans.commit()
+            assert connection.connection._reset_agent is None
+
+    @testing.requires.savepoints
+    def test_begin_nested_close(self):
+        with testing.db.connect() as connection:
+            trans = connection.begin_nested()
+            assert connection.connection._reset_agent is trans
+        assert not trans.is_active
+
+    @testing.requires.savepoints
+    def test_begin_begin_nested_close(self):
+        with testing.db.connect() as connection:
+            trans = connection.begin()
+            trans2 = connection.begin_nested()
+            assert connection.connection._reset_agent is trans
+        assert trans2.is_active  # was never closed
+        assert not trans.is_active
+
+    @testing.requires.savepoints
+    def test_begin_begin_nested_rollback_commit(self):
+        with testing.db.connect() as connection:
+            trans = connection.begin()
+            trans2 = connection.begin_nested()
+            assert connection.connection._reset_agent is trans
+            trans2.rollback()
+            assert connection.connection._reset_agent is trans
+            trans.commit()
+            assert connection.connection._reset_agent is None
+
+    @testing.requires.savepoints
+    def test_begin_begin_nested_rollback_rollback(self):
+        with testing.db.connect() as connection:
+            trans = connection.begin()
+            trans2 = connection.begin_nested()
+            assert connection.connection._reset_agent is trans
+            trans2.rollback()
+            assert connection.connection._reset_agent is trans
+            trans.rollback()
+            assert connection.connection._reset_agent is None
+
+    def test_begin_begin_rollback_rollback(self):
+        with testing.db.connect() as connection:
+            trans = connection.begin()
+            trans2 = connection.begin()
+            assert connection.connection._reset_agent is trans
+            trans2.rollback()
+            assert connection.connection._reset_agent is None
+            trans.rollback()
+            assert connection.connection._reset_agent is None
+
+    def test_begin_begin_commit_commit(self):
+        with testing.db.connect() as connection:
+            trans = connection.begin()
+            trans2 = connection.begin()
+            assert connection.connection._reset_agent is trans
+            trans2.commit()
+            assert connection.connection._reset_agent is trans
+            trans.commit()
+            assert connection.connection._reset_agent is None
+
+    @testing.requires.two_phase_transactions
+    def test_reset_via_agent_begin_twophase(self):
+        with testing.db.connect() as connection:
+            trans = connection.begin_twophase()
+            assert connection.connection._reset_agent is trans
+
+    @testing.requires.two_phase_transactions
+    def test_reset_via_agent_begin_twophase_commit(self):
+        with testing.db.connect() as connection:
+            trans = connection.begin_twophase()
+            assert connection.connection._reset_agent is trans
+            trans.commit()
+            assert connection.connection._reset_agent is None
+
+    @testing.requires.two_phase_transactions
+    def test_reset_via_agent_begin_twophase_rollback(self):
+        with testing.db.connect() as connection:
+            trans = connection.begin_twophase()
+            assert connection.connection._reset_agent is trans
+            trans.rollback()
+            assert connection.connection._reset_agent is None
 
 class AutoRollbackTest(fixtures.TestBase):
 

@@ -1,5 +1,5 @@
 # testing/requirements.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -137,6 +137,20 @@ class SuiteRequirements(Requirements):
         when insert() is executed, excluding the pk column."""
 
         return exclusions.open()
+
+    @property
+    def fetch_rows_post_commit(self):
+        """target platform will allow cursor.fetchone() to proceed after a
+        COMMIT.
+
+        Typically this refers to an INSERT statement with RETURNING which
+        is invoked within "autocommit".   If the row can be returned
+        after the autocommit, then this rule can be open.
+
+        """
+
+        return exclusions.open()
+
 
     @property
     def empty_inserts(self):
@@ -408,6 +422,16 @@ class SuiteRequirements(Requirements):
         (i.e. without FP inaccuracies, such as 15.75629997253418).
 
         """
+        return exclusions.open()
+
+    @property
+    def fetch_null_from_numeric(self):
+        """target backend doesn't crash when you try to select a NUMERIC
+        value that has a value of NULL.
+
+        Added to support Pyodbc bug #351.
+        """
+
         return exclusions.open()
 
     @property

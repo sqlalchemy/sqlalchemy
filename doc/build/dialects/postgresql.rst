@@ -15,9 +15,9 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
     from sqlalchemy.dialects.postgresql import \
         ARRAY, BIGINT, BIT, BOOLEAN, BYTEA, CHAR, CIDR, DATE, \
         DOUBLE_PRECISION, ENUM, FLOAT, HSTORE, INET, INTEGER, \
-        INTERVAL, MACADDR, NUMERIC, REAL, SMALLINT, TEXT, TIME, \
+        INTERVAL, JSON, MACADDR, NUMERIC, REAL, SMALLINT, TEXT, TIME, \
         TIMESTAMP, UUID, VARCHAR, INT4RANGE, INT8RANGE, NUMRANGE, \
-        DATERANGE, TSRANGE, TSTZRANGE
+        DATERANGE, TSRANGE, TSTZRANGE, TSVECTOR
 
 Types which are specific to PostgreSQL, or have PostgreSQL-specific
 construction arguments, are as follows:
@@ -69,6 +69,11 @@ construction arguments, are as follows:
 .. autoclass:: INTERVAL
     :members: __init__
 
+.. autoclass:: JSON
+    :members:
+
+.. autoclass:: JSONElement
+    :members:
 
 .. autoclass:: MACADDR
     :members: __init__
@@ -77,6 +82,8 @@ construction arguments, are as follows:
 .. autoclass:: REAL
     :members: __init__
 
+.. autoclass:: TSVECTOR
+    :members: __init__
 
 .. autoclass:: UUID
     :members: __init__

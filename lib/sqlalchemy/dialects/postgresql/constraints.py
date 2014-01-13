@@ -1,4 +1,4 @@
-# Copyright (C) 2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2013-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -39,7 +39,7 @@ class ExcludeConstraint(ColumnCollectionConstraint):
         :param using:
           Optional string.  If set, emit USING <index_method> when issuing DDL
           for this constraint. Defaults to 'gist'.
-          
+
         :param where:
           Optional string.  If set, emit WHERE <predicate> when issuing DDL
           for this constraint.
@@ -60,7 +60,7 @@ class ExcludeConstraint(ColumnCollectionConstraint):
         where = kw.get('where')
         if where:
             self.where =  expression._literal_as_text(where)
-            
+
     def copy(self, **kw):
         elements = [(col, self.operators[col])
                     for col in self.columns.keys()]

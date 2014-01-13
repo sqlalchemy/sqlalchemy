@@ -462,7 +462,7 @@ available on :class:`~sqlalchemy.orm.session.Session`::
 The newer :ref:`core_inspection_toplevel` system can also be used::
 
     from sqlalchemy import inspect
-    session = inspect(object).session
+    session = inspect(someobject).session
 
 .. _session_faq_threadsafe:
 

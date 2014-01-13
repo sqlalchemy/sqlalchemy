@@ -1,5 +1,5 @@
 # postgresql/psycopg2.py
-# Copyright (C) 2005-2013 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -179,6 +179,7 @@ from .base import PGDialect, PGCompiler, \
                                 ENUM, ARRAY, _DECIMAL_TYPES, _FLOAT_TYPES,\
                                 _INT_TYPES
 from .hstore import HSTORE
+from .json import JSON
 
 
 logger = logging.getLogger('sqlalchemy.dialects.postgresql')
@@ -212,23 +213,13 @@ class _PGNumeric(sqltypes.Numeric):
 
 
 class _PGEnum(ENUM):
-    def __init__(self, *arg, **kw):
-        super(_PGEnum, self).__init__(*arg, **kw)
-        if util.py2k:
-            if self.convert_unicode:
-                self.convert_unicode = "force"
-
-
-class _PGArray(ARRAY):
-    def __init__(self, *arg, **kw):
-        super(_PGArray, self).__init__(*arg, **kw)
-        if util.py2k:
-            # FIXME: this check won't work for setups that
-            # have convert_unicode only on their create_engine().
-            if isinstance(self.item_type, sqltypes.String) and \
-                        self.item_type.convert_unicode:
-                self.item_type.convert_unicode = "force"
-
+    def result_processor(self, dialect, coltype):
+        if util.py2k and self.convert_unicode is True:
+            # we can't easily use PG's extensions here because
+            # the OID is on the fly, and we need to give it a python
+            # function anyway - not really worth it.
+            self.convert_unicode = "force_nocheck"
+        return super(_PGEnum, self).result_processor(dialect, coltype)
 
 class _PGHStore(HSTORE):
     def bind_processor(self, dialect):
@@ -242,6 +233,15 @@ class _PGHStore(HSTORE):
             return None
         else:
             return super(_PGHStore, self).result_processor(dialect, coltype)
+
+
+class _PGJSON(JSON):
+
+    def result_processor(self, dialect, coltype):
+        if dialect._has_native_json:
+            return None
+        else:
+            return super(_PGJSON, self).result_processor(dialect, coltype)
 
 # When we're handed literal SQL, ensure it's a SELECT-query. Since
 # 8.3, combining cursors and "FOR UPDATE" has been fine.
@@ -327,6 +327,7 @@ class PGDialect_psycopg2(PGDialect):
     psycopg2_version = (0, 0)
 
     _has_native_hstore = False
+    _has_native_json = False
 
     colspecs = util.update_copy(
         PGDialect.colspecs,
@@ -334,8 +335,8 @@ class PGDialect_psycopg2(PGDialect):
             sqltypes.Numeric: _PGNumeric,
             ENUM: _PGEnum,  # needs force_unicode
             sqltypes.Enum: _PGEnum,  # needs force_unicode
-            ARRAY: _PGArray,  # needs force_unicode
             HSTORE: _PGHStore,
+            JSON: _PGJSON
         }
     )
 
@@ -363,6 +364,7 @@ class PGDialect_psycopg2(PGDialect):
         self._has_native_hstore = self.use_native_hstore and \
                         self._hstore_oids(connection.connection) \
                             is not None
+        self._has_native_json = self.psycopg2_version >= (2, 5)
 
     @classmethod
     def dbapi(cls):
@@ -371,7 +373,7 @@ class PGDialect_psycopg2(PGDialect):
 
     @util.memoized_property
     def _isolation_lookup(self):
-        extensions = __import__('psycopg2.extensions').extensions
+        from psycopg2 import extensions
         return {
             'AUTOCOMMIT': extensions.ISOLATION_LEVEL_AUTOCOMMIT,
             'READ COMMITTED': extensions.ISOLATION_LEVEL_READ_COMMITTED,
@@ -409,6 +411,7 @@ class PGDialect_psycopg2(PGDialect):
         if self.dbapi and self.use_native_unicode:
             def on_connect(conn):
                 extensions.register_type(extensions.UNICODE, conn)
+                extensions.register_type(extensions.UNICODEARRAY, conn)
             fns.append(on_connect)
 
         if self.dbapi and self.use_native_hstore:
@@ -423,6 +426,11 @@ class PGDialect_psycopg2(PGDialect):
                     else:
                         extras.register_hstore(conn, oid=oid,
                                         array_oid=array_oid)
+            fns.append(on_connect)
+
+        if self.dbapi and self._json_deserializer:
+            def on_connect(conn):
+                extras.register_default_json(conn, loads=self._json_deserializer)
             fns.append(on_connect)
 
         if fns:
