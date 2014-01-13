@@ -56,7 +56,8 @@ from ...connectors.mysqldb import (
                         MySQLDBIdentifierPreparer,
                         MySQLDBConnector
                     )
-
+from .base import TEXT
+from ... import sql
 
 class MySQLExecutionContext_mysqldb(MySQLDBExecutionContext, MySQLExecutionContext):
     pass
@@ -74,5 +75,28 @@ class MySQLDialect_mysqldb(MySQLDBConnector, MySQLDialect):
     execution_ctx_cls = MySQLExecutionContext_mysqldb
     statement_compiler = MySQLCompiler_mysqldb
     preparer = MySQLIdentifierPreparer_mysqldb
+
+    def _check_unicode_returns(self, connection):
+        # work around issue fixed in
+        # https://github.com/farcepest/MySQLdb1/commit/cd44524fef63bd3fcb71947392326e9742d520e8
+        # specific issue w/ the utf8_bin collation and unicode returns
+
+        has_utf8_bin = connection.scalar(
+                                "show collation where %s = 'utf8' and %s = 'utf8_bin'"
+                                    % (
+                                    self.identifier_preparer.quote("Charset"),
+                                    self.identifier_preparer.quote("Collation")
+                                ))
+        if has_utf8_bin:
+            additional_tests = [
+                sql.collate(sql.cast(
+                        sql.literal_column(
+                            "'test collated returns'"),
+                            TEXT(charset='utf8')), "utf8_bin")
+            ]
+        else:
+            additional_tests = []
+        return super(MySQLDBConnector, self)._check_unicode_returns(
+                            connection, additional_tests)
 
 dialect = MySQLDialect_mysqldb

@@ -264,14 +264,22 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     def test_charset_collate_table(self):
         t = Table('foo', self.metadata,
             Column('id', Integer),
+            Column('data', UnicodeText),
             mysql_default_charset='utf8',
-            mysql_collate='utf8_unicode_ci'
+            mysql_collate='utf8_bin'
         )
         t.create()
         m2 = MetaData(testing.db)
         t2 = Table('foo', m2, autoload=True)
-        eq_(t2.kwargs['mysql_collate'], 'utf8_unicode_ci')
+        eq_(t2.kwargs['mysql_collate'], 'utf8_bin')
         eq_(t2.kwargs['mysql_default charset'], 'utf8')
+
+        # test [ticket:2906]
+        # in order to test the condition here, need to use
+        # MySQLdb 1.2.3 and also need to pass either use_unicode=1
+        # or charset=utf8 to the URL.
+        t.insert().execute(id=1, data=u('some text'))
+        assert isinstance(testing.db.scalar(select([t.c.data])), util.text_type)
 
     def test_bit_50(self):
         """Exercise BIT types on 5.0+ (not valid for all engine types)"""

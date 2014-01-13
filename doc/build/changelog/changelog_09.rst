@@ -15,6 +15,33 @@
     :version: 0.9.2
 
     .. change::
+        :tags: bug, mysql
+
+        The MySQL CAST compilation now takes into account aspects of a string
+        type such as "charset" and "collation".  While MySQL wants all character-
+        based CAST calls to use the CHAR type, we now create a real CHAR
+        object at CAST time and copy over all the parameters it has, so that
+        an expression like ``cast(x, mysql.TEXT(charset='utf8'))`` will
+        render ``CAST(t.col AS CHAR CHARACTER SET utf8)``.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 2906
+
+        Added new "unicode returns" detection to the MySQL dialect and
+        to the default dialect system overall, such that any dialect
+        can add extra "tests" to the on-first-connect "does this DBAPI
+        return unicode directly?" detection. In this case, we are
+        adding a check specifically against the "utf8" encoding with
+        an explicit "utf8_bin" collation type (after checking that
+        this collation is available) to test for some buggy unicode
+        behavior observed with MySQLdb version 1.2.3.  While MySQLdb
+        has resolved this issue as of 1.2.4, the check here should
+        guard against regressions.  The change also allows the "unicode"
+        checks to log in the engine logs, which was not previously
+        the case.
+
+    .. change::
         :tags: bug, mysql, pool, engine
         :tickets: 2907
 

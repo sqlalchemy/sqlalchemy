@@ -62,6 +62,7 @@ class MySQLDBConnector(Connector):
         # is overridden when pymysql is used
         return __import__('MySQLdb')
 
+
     def do_executemany(self, cursor, statement, parameters, context=None):
         rowcount = cursor.executemany(statement, parameters)
         if context is not None:

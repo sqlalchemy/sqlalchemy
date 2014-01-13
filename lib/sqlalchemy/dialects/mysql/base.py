@@ -976,6 +976,25 @@ class CHAR(_StringType, sqltypes.CHAR):
         """
         super(CHAR, self).__init__(length=length, **kwargs)
 
+    @classmethod
+    def _adapt_string_for_cast(self, type_):
+        # copy the given string type into a CHAR
+        # for the purposes of rendering a CAST expression
+        type_ = sqltypes.to_instance(type_)
+        if isinstance(type_, sqltypes.CHAR):
+            return type_
+        elif isinstance(type_, _StringType):
+            return CHAR(
+                length=type_.length,
+                charset=type_.charset,
+                collation=type_.collation,
+                ascii=type_.ascii,
+                binary=type_.binary,
+                unicode=type_.unicode,
+                national=False # not supported in CAST
+            )
+        else:
+            return CHAR(length=type_.length)
 
 class NVARCHAR(_StringType, sqltypes.NVARCHAR):
     """MySQL NVARCHAR type.
@@ -1397,14 +1416,9 @@ class MySQLCompiler(compiler.SQLCompiler):
         elif isinstance(type_, (sqltypes.DECIMAL, sqltypes.DateTime,
                                             sqltypes.Date, sqltypes.Time)):
             return self.dialect.type_compiler.process(type_)
-        elif isinstance(type_, sqltypes.Text):
-            return 'CHAR'
-        elif (isinstance(type_, sqltypes.String) and not
-              isinstance(type_, (ENUM, SET))):
-            if getattr(type_, 'length'):
-                return 'CHAR(%s)' % type_.length
-            else:
-                return 'CHAR'
+        elif isinstance(type_, sqltypes.String) and not isinstance(type_, (ENUM, SET)):
+            adapted = CHAR._adapt_string_for_cast(type_)
+            return self.dialect.type_compiler.process(adapted)
         elif isinstance(type_, sqltypes._Binary):
             return 'BINARY'
         elif isinstance(type_, sqltypes.NUMERIC):
@@ -2165,7 +2179,6 @@ class MySQLDialect(default.DefaultDialect):
                 rs.close()
 
     def initialize(self, connection):
-        default.DefaultDialect.initialize(self, connection)
         self._connection_charset = self._detect_charset(connection)
         self._detect_ansiquotes(connection)
         if self._server_ansiquotes:
@@ -2173,6 +2186,8 @@ class MySQLDialect(default.DefaultDialect):
             # with the new setting
             self.identifier_preparer = self.preparer(self,
                                 server_ansiquotes=self._server_ansiquotes)
+
+        default.DefaultDialect.initialize(self, connection)
 
     @property
     def _supports_cast(self):
@@ -2442,6 +2457,7 @@ class MySQLDialect(default.DefaultDialect):
 
         # as of MySQL 5.0.1
         self._backslash_escapes = 'NO_BACKSLASH_ESCAPES' not in mode
+
 
     def _show_create_table(self, connection, table, charset=None,
                            full_name=None):
