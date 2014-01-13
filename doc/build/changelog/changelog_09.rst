@@ -15,6 +15,31 @@
     :version: 0.9.2
 
     .. change::
+        :tags: bug, mysql, pool, engine
+        :tickets: 2907
+
+        :class:`.Connection` now associates a new
+        :class:`.RootTransaction` or :class:`.TwoPhaseTransaction`
+        with its immediate :class:`._ConnectionFairy` as a "reset handler"
+        for the span of that transaction, which takes over the task
+        of calling commit() or rollback() for the "reset on return" behavior
+        of :class:`.Pool` if the transaction was not otherwise completed.
+        This resolves the issue that a picky transaction
+        like that of MySQL two-phase will be
+        properly closed out when the connection is closed without an
+        explicit rollback or commit (e.g. no longer raises "XAER_RMFAIL"
+        in this case - note this only shows up in logging as the exception
+        is not propagated within pool reset).
+        This issue would arise e.g. when using an orm
+        :class:`.Session` with ``twophase`` set, and then
+        :meth:`.Session.close` is called without an explicit rollback or
+        commit.   The change also has the effect that you will now see
+        an explicit "ROLLBACK" in the logs when using a :class:`.Session`
+        object in non-autocommit mode regardless of how that session was
+        discarded.  Thanks to Jeff Dairiki and Laurence Rowe for isolating
+        the issue here.
+
+    .. change::
         :tags: feature, pool, engine
 
         Added a new pool event :meth:`.PoolEvents.invalidate`.  Called when

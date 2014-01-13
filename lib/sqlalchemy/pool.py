@@ -479,18 +479,8 @@ def _finalize_fairy(connection, connection_record, pool, ref, echo, fairy=None):
 
         try:
             fairy = fairy or _ConnectionFairy(connection, connection_record)
-            if pool.dispatch.reset:
-                pool.dispatch.reset(fairy, connection_record)
-            if pool._reset_on_return is reset_rollback:
-                if echo:
-                    pool.logger.debug("Connection %s rollback-on-return",
-                                                    connection)
-                pool._dialect.do_rollback(fairy)
-            elif pool._reset_on_return is reset_commit:
-                if echo:
-                    pool.logger.debug("Connection %s commit-on-return",
-                                                    connection)
-                pool._dialect.do_commit(fairy)
+            assert fairy.connection is connection
+            fairy._reset(pool, echo)
 
             # Immediately close detached instances
             if not connection_record:
@@ -542,6 +532,23 @@ class _ConnectionFairy(object):
 
     """
 
+    _reset_agent = None
+    """Refer to an object with a ``.commit()`` and ``.rollback()`` method;
+    if non-None, the "reset-on-return" feature will call upon this object
+    rather than directly against the dialect-level do_rollback() and do_commit()
+    methods.
+
+    In practice, a :class:`.Connection` assigns a :class:`.Transaction` object
+    to this variable when one is in scope so that the :class:`.Transaction`
+    takes the job of committing or rolling back on return if
+    :meth:`.Connection.close` is called while the :class:`.Transaction`
+    still exists.
+
+    This is essentially an "event handler" of sorts but is simplified as an
+    instance variable both for performance/simplicity as well as that there
+    can only be one "reset agent" at a time.
+    """
+
     @classmethod
     def _checkout(cls, pool, threadconns=None, fairy=None):
         if not fairy:
@@ -590,6 +597,30 @@ class _ConnectionFairy(object):
         self._connection_record = None
 
     _close = _checkin
+
+    def _reset(self, pool, echo):
+        if pool.dispatch.reset:
+            pool.dispatch.reset(self, self._connection_record)
+        if pool._reset_on_return is reset_rollback:
+            if echo:
+                pool.logger.debug("Connection %s rollback-on-return%s",
+                                                self.connection,
+                                                ", via agent"
+                                                if self._reset_agent else "")
+            if self._reset_agent:
+                self._reset_agent.rollback()
+            else:
+                pool._dialect.do_rollback(self)
+        elif pool._reset_on_return is reset_commit:
+            if echo:
+                pool.logger.debug("Connection %s commit-on-return%s",
+                                                self.connection,
+                                                ", via agent"
+                                                if self._reset_agent else "")
+            if self._reset_agent:
+                self._reset_agent.commit()
+            else:
+                pool._dialect.do_commit(self)
 
     @property
     def _logger(self):
