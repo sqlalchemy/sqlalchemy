@@ -1357,6 +1357,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
 class MultipleAdaptUsesEntityOverTableTest(AssertsCompiledSQL, fixtures.MappedTest):
     __dialect__ = 'default'
     run_create_tables = None
+    run_deletes = None
 
     @classmethod
     def define_tables(cls, metadata):
