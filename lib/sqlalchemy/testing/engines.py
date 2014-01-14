@@ -61,7 +61,7 @@ class ConnectionKiller(object):
         # is collecting in finalize_fairy, deadlock.
         # not sure if this should be if pypy/jython only.
         # note that firebird/fdb definitely needs this though
-        for conn, rec in self.conns:
+        for conn, rec in list(self.conns):
             self._safe(conn.rollback)
 
     def _stop_test_ctx(self):
@@ -81,7 +81,7 @@ class ConnectionKiller(object):
 
     def _stop_test_ctx_aggressive(self):
         self.close_all()
-        for conn, rec in self.conns:
+        for conn, rec in list(self.conns):
             self._safe(conn.close)
             rec.connection = None
 

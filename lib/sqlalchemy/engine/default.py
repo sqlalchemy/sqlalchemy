@@ -240,20 +240,20 @@ class DefaultDialect(interfaces.Dialect):
             parameters = {}
 
         def check_unicode(test):
-            cursor = connection.connection.cursor()
+            statement = cast_to(expression.select([test]).compile(dialect=self))
             try:
-                try:
-                    statement = cast_to(expression.select([test]).compile(dialect=self))
-                    connection._cursor_execute(cursor, statement, parameters)
-                    row = cursor.fetchone()
-
-                    return isinstance(row[0], util.text_type)
-                except exc.DBAPIError as de:
-                    util.warn("Exception attempting to "
-                            "detect unicode returns: %r" % de)
-                    return False
-            finally:
+                cursor = connection.connection.cursor()
+                connection._cursor_execute(cursor, statement, parameters)
+                row = cursor.fetchone()
                 cursor.close()
+            except exc.DBAPIError as de:
+                # note that _cursor_execute() will have closed the cursor
+                # if an exception is thrown.
+                util.warn("Exception attempting to "
+                        "detect unicode returns: %r" % de)
+                return False
+            else:
+                return isinstance(row[0], util.text_type)
 
         tests = [
             # detect plain VARCHAR
