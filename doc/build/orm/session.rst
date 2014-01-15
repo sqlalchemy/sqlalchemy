@@ -1727,19 +1727,15 @@ everything is rolled back.
               # bind an individual Session to the connection
               self.session = Session(bind=self.connection)
 
-              # two events make sure a SAVEPOINT is always started
-              # for this session.  After the initial "begin"...
-              @event.listens_for(self.session, "after_begin")
-              def start_savepoint(session, transaction, connection):
-                  if not transaction.nested:
-                      session.begin_nested()
+              # start the session in a SAVEPOINT...
+              self.session.begin_nested()
 
-              # ... and after the end of each "transaction", assuming
-              # the transaction ending was the "nested" transaction
+              # then each time that SAVEPOINT ends, reopen it
               @event.listens_for(self.session, "after_transaction_end")
               def restart_savepoint(session, transaction):
                   if transaction.nested and not transaction._parent.nested:
                       session.begin_nested()
+
 
           # ... the tearDown() method stays the same
 
