@@ -1583,6 +1583,13 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             class_mapper, 5
         )
 
+    def test_unmapped_not_type_error_iter_ok(self):
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            r"Class object expected, got '\(5, 6\)'.",
+            class_mapper, (5, 6)
+        )
+
     def test_unmapped_subclass_error_postmap(self):
         users = self.tables.users
 

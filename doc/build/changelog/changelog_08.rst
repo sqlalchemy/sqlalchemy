@@ -12,6 +12,15 @@
     :version: 0.8.5
 
     .. change::
+        :tags: bug, orm
+        :versions: 0.9.2
+        :pullreq: github:58
+
+        Fixed error message when an iterator object is passed to
+        :func:`.class_mapper` or similar, where the error would fail to
+        render on string formatting.  Pullreq courtesy Kyle Stark.
+
+    .. change::
         :tags: bug, firebird
         :versions: 0.9.0
         :tickets: 2897
