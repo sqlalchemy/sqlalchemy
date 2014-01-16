@@ -107,8 +107,8 @@ Clustered Index Support
 -----------------------
 
 The MSSQL dialect supports clustered indexes (and primary keys) via the
-``mssql_clustered`` option.  This option is available to :class:`.Index`
-and :class:`.PrimaryKeyConstraint`.
+``mssql_clustered`` option.  This option is available to :class:`.Index`,
+:class:`.UniqueConstraint`. and :class:`.PrimaryKeyConstraint`.
 
 To generate a clustered index::
 
@@ -129,7 +129,16 @@ which will render the table, for example, as::
 
   CREATE TABLE my_table (x INTEGER NOT NULL, y INTEGER NOT NULL, PRIMARY KEY CLUSTERED (x, y))
 
-.. versionadded:: 0.9
+Similarly, we can generate a clustered unique constraint using::
+
+    Table('my_table', metadata,
+          Column('x', ...),
+          Column('y', ...),
+          PrimaryKeyConstraint("x"),
+          UniqueConstraint("y", mssql_clustered=True),
+          )
+
+  .. versionadded:: 0.9
 
 MSSQL-Specific Index Options
 -----------------------------
@@ -1055,7 +1064,23 @@ class MSDDLCompiler(compiler.DDLCompiler):
             text += "CLUSTERED "
 
         text += "(%s)" % ', '.join(self.preparer.quote(c.name)
-                                       for c in constraint)
+                                   for c in constraint)
+        text += self.define_constraint_deferrability(constraint)
+        return text
+
+    def visit_unique_constraint(self, constraint):
+        text = ""
+        if constraint.name is not None:
+            text += "CONSTRAINT %s " % \
+                    self.preparer.format_constraint(constraint)
+        text += "UNIQUE "
+
+        # support clustered option
+        if constraint.kwargs.get("mssql_clustered"):
+            text += "CLUSTERED "
+
+        text += "(%s)" % ', '.join(self.preparer.quote(c.name)
+                                   for c in constraint)
         text += self.define_constraint_deferrability(constraint)
         return text
 
