@@ -107,8 +107,8 @@ Clustered Index Support
 -----------------------
 
 The MSSQL dialect supports clustered indexes (and primary keys) via the
-``mssql_clustered`` option.  This option is available to :class:`.Index`,
-:class:`.Table` and :class:`.PrimaryKeyConstraint`.
+``mssql_clustered`` option.  This option is available to :class:`.Index`
+and :class:`.PrimaryKeyConstraint`.
 
 To generate a clustered index::
 
@@ -118,14 +118,7 @@ which renders the index as ``CREATE CLUSTERED INDEX my_index ON table (x)``.
 
 .. versionadded:: 0.8
 
-To generate a clustered primary key use either::
-
-    Table('my_table', metadata,
-          Column('x', ..., primary_key=True),
-          Column('y', ..., primary_key=True),
-          mssql_clustered=True)
-
-or::
+To generate a clustered primary key use::
 
     Table('my_table', metadata,
           Column('x', ...),
@@ -1057,11 +1050,8 @@ class MSDDLCompiler(compiler.DDLCompiler):
                     self.preparer.format_constraint(constraint)
         text += "PRIMARY KEY "
 
-        # we allow for mssql_clustered to have been specified directly on a
-        # PrimaryKeyConstraint, or specified upon the table object.  The latter allows
-        # users to tag columns with primary_key=True and still achieve clustering.
-        if (constraint.kwargs.get("mssql_clustered") or
-            constraint.table.kwargs.get("mssql_clustered")):
+        # support clustered option
+        if constraint.kwargs.get("mssql_clustered"):
             text += "CLUSTERED "
 
         text += "(%s)" % ', '.join(self.preparer.quote(c.name)

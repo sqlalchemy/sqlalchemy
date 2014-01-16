@@ -510,18 +510,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,1))"
                             )
 
-    def test_table_pkc_clustering_1(self):
-        metadata = MetaData()
-        tbl = Table('test', metadata,
-                    Column('x', Integer, primary_key=True, autoincrement=False),
-                    Column('y', Integer, primary_key=True, autoincrement=False),
-                    mssql_clustered=True)
-        self.assert_compile(schema.CreateTable(tbl),
-                            "CREATE TABLE test (x INTEGER NOT NULL, y INTEGER NOT NULL, "
-                            "PRIMARY KEY CLUSTERED (x, y))"
-                            )
-
-    def test_table_pkc_clustering_2(self):
+    def test_table_pkc_clustering(self):
         metadata = MetaData()
         tbl = Table('test', metadata,
                     Column('x', Integer, autoincrement=False),
