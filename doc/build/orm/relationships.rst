@@ -967,7 +967,7 @@ load those ``Address`` objects which specify a city of "Boston"::
         __tablename__ = 'user'
         id = Column(Integer, primary_key=True)
         name = Column(String)
-        addresses = relationship("Address",
+        boston_addresses = relationship("Address",
                         primaryjoin="and_(User.id==Address.user_id, "
                             "Address.city=='Boston')")
 
