@@ -853,8 +853,11 @@ class UnicodeTest(fixtures.TestBase):
                 testing.db.dialect.returns_unicode_strings,
                 True if util.py3k else False
             )
-
-
+        elif testing.against('oracle+cx_oracle'):
+            eq_(
+                testing.db.dialect.returns_unicode_strings,
+                True if util.py3k else "conditional"
+            )
         else:
             expected = (testing.db.name, testing.db.driver) in \
                 (
@@ -867,7 +870,6 @@ class UnicodeTest(fixtures.TestBase):
                     ('mysql', 'mysqlconnector'),
                     ('sqlite', 'pysqlite'),
                     ('oracle', 'zxjdbc'),
-                    ('oracle', 'cx_oracle'),
                 )
 
             eq_(
