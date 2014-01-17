@@ -409,6 +409,45 @@ UnicodeResultProcessor_process(UnicodeResultProcessor *self, PyObject *value)
     return PyUnicode_Decode(str, len, encoding, errors);
 }
 
+static PyObject *
+UnicodeResultProcessor_conditional_process(UnicodeResultProcessor *self, PyObject *value)
+{
+    const char *encoding, *errors;
+    char *str;
+    Py_ssize_t len;
+
+    if (value == Py_None)
+        Py_RETURN_NONE;
+
+#if PY_MAJOR_VERSION >= 3
+    if (PyUnicode_Check(value) == 1) {
+        Py_INCREF(value);
+        return value;
+    }
+
+    if (PyBytes_AsStringAndSize(value, &str, &len))
+        return NULL;
+
+    encoding = PyBytes_AS_STRING(self->encoding);
+    errors = PyBytes_AS_STRING(self->errors);
+#else
+
+    if (PyUnicode_Check(value) == 1) {
+        Py_INCREF(value);
+        return value;
+    }
+
+    if (PyString_AsStringAndSize(value, &str, &len))
+        return NULL;
+
+
+    encoding = PyString_AS_STRING(self->encoding);
+    errors = PyString_AS_STRING(self->errors);
+#endif
+
+    return PyUnicode_Decode(str, len, encoding, errors);
+}
+
 static void
 UnicodeResultProcessor_dealloc(UnicodeResultProcessor *self)
 {
@@ -424,6 +463,8 @@ UnicodeResultProcessor_dealloc(UnicodeResultProcessor *self)
 static PyMethodDef UnicodeResultProcessor_methods[] = {
     {"process", (PyCFunction)UnicodeResultProcessor_process, METH_O,
      "The value processor itself."},
+    {"conditional_process", (PyCFunction)UnicodeResultProcessor_conditional_process, METH_O,
+     "Conditional version of the value processor."},
     {NULL}  /* Sentinel */
 };
 

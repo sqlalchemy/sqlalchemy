@@ -15,6 +15,43 @@
     :version: 0.9.2
 
     .. change::
+        :tags: bug, oracle
+        :tickets: 2911
+
+        It's been observed that the usage of a cx_Oracle "outputtypehandler"
+        in Python 2.xx in order to coerce string values to Unicode is inordinately
+        expensive; even though cx_Oracle is written in C, when you pass the
+        Python ``unicode`` primitive to cursor.var() and associate with an output
+        handler, the library counts every conversion as a Python function call
+        with all the requisite overhead being recorded; this *despite* the fact
+        when running in Python 3, all strings are also unconditionally coerced
+        to unicode but it does *not* incur this overhead,
+        meaning that cx_Oracle is failing to use performant techniques in Py2K.
+        As SQLAlchemy cannot easily select for this style of type handler on a
+        per-column basis, the handler was assembled unconditionally thereby
+        adding the overhead to all string access.
+
+        So this logic has been replaced with SQLAlchemy's own unicode
+        conversion system, which now
+        only takes effect in Py2K for columns that are requested as unicode.
+        When C extensions are used, SQLAlchemy's system appears to be 2-3x faster than
+        cx_Oracle's.  Additionally, SQLAlchemy's unicode conversion has been
+        enhanced such that when the "conditional" converter is required
+        (now needed for the Oracle backend), the check for "already unicode" is now
+        performed in C and no longer introduces significant overhead.
+
+        This change has two impacts on the cx_Oracle backend.  One is that
+        string values in Py2K which aren't specifically requested with the
+        Unicode type or convert_unicode=True will now come back as ``str``,
+        not ``unicode`` - this behavior is similar to a backend such as
+        MySQL.  Additionally, when unicode values are requested with the cx_Oracle
+        backend, if the C extensions are *not* used, there is now an additional
+        overhead of an isinstance() check per column.  This tradeoff has been
+        made as it can be worked around and no longer places a performance burden
+        on the likely majority of Oracle result columns that are non-unicode
+        strings.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2908
 

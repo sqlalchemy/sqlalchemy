@@ -15,6 +15,7 @@ They all share one common characteristic: None is passed through unchanged.
 import codecs
 import re
 import datetime
+from . import util
 
 
 def str_to_datetime_processor_factory(regexp, type_):
@@ -59,6 +60,21 @@ def py_fallback():
         def process(value):
             if value is None:
                 return None
+            else:
+                # decoder returns a tuple: (value, len). Simply dropping the
+                # len part is safe: it is done that way in the normal
+                # 'xx'.decode(encoding) code path.
+                return decoder(value, errors)[0]
+        return process
+
+    def to_conditional_unicode_processor_factory(encoding, errors=None):
+        decoder = codecs.getdecoder(encoding)
+
+        def process(value):
+            if value is None:
+                return None
+            elif isinstance(value, util.text_type):
+                return value
             else:
                 # decoder returns a tuple: (value, len). Simply dropping the
                 # len part is safe: it is done that way in the normal
@@ -113,11 +129,16 @@ try:
                                        str_to_date
 
     def to_unicode_processor_factory(encoding, errors=None):
-        # this is cumbersome but it would be even more so on the C side
         if errors is not None:
             return UnicodeResultProcessor(encoding, errors).process
         else:
             return UnicodeResultProcessor(encoding).process
+
+    def to_conditional_unicode_processor_factory(encoding, errors=None):
+        if errors is not None:
+            return UnicodeResultProcessor(encoding, errors).conditional_process
+        else:
+            return UnicodeResultProcessor(encoding).conditional_process
 
     def to_decimal_processor_factory(target_class, scale):
         # Note that the scale argument is not taken into account for integer

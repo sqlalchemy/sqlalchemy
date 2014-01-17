@@ -204,20 +204,11 @@ class String(Concatenable, TypeEngine):
                                     dialect.encoding, self.unicode_error)
 
             if needs_isinstance:
-                # we wouldn't be here unless convert_unicode='force'
-                # was specified, or the driver has erratic unicode-returning
-                # habits.  since we will be getting back unicode
-                # in most cases, we check for it (decode will fail).
-                def process(value):
-                    if isinstance(value, util.text_type):
-                        return value
-                    else:
-                        return to_unicode(value)
-                return process
+                return processors.to_conditional_unicode_processor_factory(
+                                    dialect.encoding, self.unicode_error)
             else:
-                # here, we assume that the object is not unicode,
-                # avoiding expensive isinstance() check.
-                return to_unicode
+                return processors.to_unicode_processor_factory(
+                                    dialect.encoding, self.unicode_error)
         else:
             return None
 

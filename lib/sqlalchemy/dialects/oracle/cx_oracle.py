@@ -748,9 +748,6 @@ class OracleDialect_cx_oracle(OracleDialect):
                             255,
                             outconverter=self._detect_decimal,
                             arraysize=cursor.arraysize)
-            # allow all strings to come back natively as Unicode
-            elif defaultType in (cx_Oracle.STRING, cx_Oracle.FIXED_CHAR):
-                return cursor.var(util.text_type, size, cursor.arraysize)
 
         def on_connect(conn):
             conn.outputtypehandler = output_type_handler
