@@ -15,6 +15,22 @@
     :version: 0.9.2
 
     .. change::
+        :tags: bug, sql
+        :pullreq: bitbucket:11
+
+        A :class:`.UniqueConstraint` created inline with a :class:`.Table`
+        that has no columns within it will be skipped.  Pullreq courtesy
+        Derek Harland.
+
+    .. change::
+        :tags: feature, mssql
+        :pullreq: bitbucket:11
+
+        Added an option ``mssql_clustered`` to the :class:`.UniqueConstraint`
+        and :class:`.PrimaryKeyConstraint` constructs; on SQL Server, this adds
+        the ``CLUSTERED`` keyword to the constraint construct within DDL.
+
+    .. change::
         :tags: bug, oracle
         :tickets: 2911
 

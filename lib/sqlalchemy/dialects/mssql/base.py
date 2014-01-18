@@ -138,7 +138,7 @@ Similarly, we can generate a clustered unique constraint using::
           UniqueConstraint("y", mssql_clustered=True),
           )
 
-  .. versionadded:: 0.9
+  .. versionadded:: 0.9.2
 
 MSSQL-Specific Index Options
 -----------------------------
