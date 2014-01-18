@@ -29,6 +29,7 @@
         Added an option ``mssql_clustered`` to the :class:`.UniqueConstraint`
         and :class:`.PrimaryKeyConstraint` constructs; on SQL Server, this adds
         the ``CLUSTERED`` keyword to the constraint construct within DDL.
+        Pullreq courtesy Derek Harland.
 
     .. change::
         :tags: bug, oracle
