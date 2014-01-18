@@ -2511,6 +2511,8 @@ class DDLCompiler(Compiled):
         return preparer.format_table(table)
 
     def visit_unique_constraint(self, constraint):
+        if len(constraint) == 0:
+            return ''
         text = ""
         if constraint.name is not None:
             text += "CONSTRAINT %s " % \

@@ -544,6 +544,28 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
                 "FOREIGN KEY(foo_bar) REFERENCES foo (bar))"
         )
 
+    def test_empty_pkc(self):
+        # test that an empty primary key is ignored
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('x', Integer, autoincrement=False),
+                    Column('y', Integer, autoincrement=False),
+                    PrimaryKeyConstraint())
+        self.assert_compile(schema.CreateTable(tbl),
+                            "CREATE TABLE test (x INTEGER, y INTEGER)"
+                            )
+
+    def test_empty_uc(self):
+        # test that an empty constraint is ignored
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('x', Integer, autoincrement=False),
+                    Column('y', Integer, autoincrement=False),
+                    UniqueConstraint())
+        self.assert_compile(schema.CreateTable(tbl),
+                            "CREATE TABLE test (x INTEGER, y INTEGER)"
+                            )
+
     def test_deferrable_column_check(self):
         t = Table('tbl', MetaData(),
                   Column('a', Integer),

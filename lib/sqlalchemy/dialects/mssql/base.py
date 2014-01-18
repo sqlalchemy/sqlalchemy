@@ -103,21 +103,48 @@ for these types will be issued as DATETIME.
 
 .. _mssql_indexes:
 
-MSSQL-Specific Index Options
------------------------------
+Clustered Index Support
+-----------------------
 
-The MSSQL dialect supports special options for :class:`.Index`.
+The MSSQL dialect supports clustered indexes (and primary keys) via the
+``mssql_clustered`` option.  This option is available to :class:`.Index`,
+:class:`.UniqueConstraint`. and :class:`.PrimaryKeyConstraint`.
 
-CLUSTERED
-^^^^^^^^^^
-
-The ``mssql_clustered`` option  adds the CLUSTERED keyword to the index::
+To generate a clustered index::
 
     Index("my_index", table.c.x, mssql_clustered=True)
 
-would render the index as ``CREATE CLUSTERED INDEX my_index ON table (x)``
+which renders the index as ``CREATE CLUSTERED INDEX my_index ON table (x)``.
 
 .. versionadded:: 0.8
+
+To generate a clustered primary key use::
+
+    Table('my_table', metadata,
+          Column('x', ...),
+          Column('y', ...),
+          PrimaryKeyConstraint("x", "y", mssql_clustered=True))
+
+which will render the table, for example, as::
+
+  CREATE TABLE my_table (x INTEGER NOT NULL, y INTEGER NOT NULL, PRIMARY KEY CLUSTERED (x, y))
+
+Similarly, we can generate a clustered unique constraint using::
+
+    Table('my_table', metadata,
+          Column('x', ...),
+          Column('y', ...),
+          PrimaryKeyConstraint("x"),
+          UniqueConstraint("y", mssql_clustered=True),
+          )
+
+  .. versionadded:: 0.9
+
+MSSQL-Specific Index Options
+-----------------------------
+
+In addition to clustering, the MSSQL dialect supports other special options
+for :class:`.Index`.
 
 INCLUDE
 ^^^^^^^
@@ -1022,6 +1049,42 @@ class MSDDLCompiler(compiler.DDLCompiler):
             self._prepared_index_name(drop.element, include_schema=False),
             self.preparer.format_table(drop.element.table)
             )
+
+    def visit_primary_key_constraint(self, constraint):
+        if len(constraint) == 0:
+            return ''
+        text = ""
+        if constraint.name is not None:
+            text += "CONSTRAINT %s " % \
+                    self.preparer.format_constraint(constraint)
+        text += "PRIMARY KEY "
+
+        # support clustered option
+        if constraint.kwargs.get("mssql_clustered"):
+            text += "CLUSTERED "
+
+        text += "(%s)" % ', '.join(self.preparer.quote(c.name)
+                                   for c in constraint)
+        text += self.define_constraint_deferrability(constraint)
+        return text
+
+    def visit_unique_constraint(self, constraint):
+        if len(constraint) == 0:
+            return ''
+        text = ""
+        if constraint.name is not None:
+            text += "CONSTRAINT %s " % \
+                    self.preparer.format_constraint(constraint)
+        text += "UNIQUE "
+
+        # support clustered option
+        if constraint.kwargs.get("mssql_clustered"):
+            text += "CLUSTERED "
+
+        text += "(%s)" % ', '.join(self.preparer.quote(c.name)
+                                   for c in constraint)
+        text += self.define_constraint_deferrability(constraint)
+        return text
 
 class MSIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = RESERVED_WORDS

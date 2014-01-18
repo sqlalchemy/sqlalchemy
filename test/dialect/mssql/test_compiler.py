@@ -510,6 +510,29 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,1))"
                             )
 
+    def test_table_pkc_clustering(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('x', Integer, autoincrement=False),
+                    Column('y', Integer, autoincrement=False),
+                    PrimaryKeyConstraint("x", "y", mssql_clustered=True))
+        self.assert_compile(schema.CreateTable(tbl),
+                            "CREATE TABLE test (x INTEGER NOT NULL, y INTEGER NOT NULL, "
+                            "PRIMARY KEY CLUSTERED (x, y))"
+                            )
+
+    def test_table_uc_clustering(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('x', Integer, autoincrement=False),
+                    Column('y', Integer, autoincrement=False),
+                    PrimaryKeyConstraint("x"),
+                    UniqueConstraint("y", mssql_clustered=True))
+        self.assert_compile(schema.CreateTable(tbl),
+                            "CREATE TABLE test (x INTEGER NOT NULL, y INTEGER NULL, "
+                            "PRIMARY KEY (x), UNIQUE CLUSTERED (y))"
+                            )
+
     def test_index_clustering(self):
         metadata = MetaData()
         tbl = Table('test', metadata,
