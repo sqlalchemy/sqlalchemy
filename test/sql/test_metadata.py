@@ -2089,11 +2089,13 @@ class DialectKWArgTest(fixtures.TestBase):
         with self._fixture():
             idx = Index('a', 'b', 'c', participating_y=True)
             eq_(
+                idx.dialect_options,
+                {"participating": {"x": 5, "y": True, "z_one": None}}
+            )
+            eq_(
                 idx.dialect_kwargs,
                 {
-                    'participating_z_one': None,
                     'participating_y': True,
-                    'participating_x': 5
                 }
             )
 
@@ -2150,21 +2152,35 @@ class DialectKWArgTest(fixtures.TestBase):
         with self._fixture():
             idx = Index('a', 'b', 'c', unknown_y=True, unknown_z=5,
                                 otherunknown_foo='bar', participating_y=8)
+            eq_(
+                idx.dialect_options,
+                {
+                    "unknown": {'y': True, 'z': 5, '*': None},
+                    "otherunknown": {'foo': 'bar', '*': None},
+                    "participating": {'x': 5, 'y': 8, 'z_one': None}
+                }
+            )
             eq_(idx.dialect_kwargs,
                 {'unknown_z': 5, 'participating_y': 8,
-                'unknown_y': True, 'participating_z_one': None,
-                'otherunknown_foo': 'bar', 'participating_x': 5}
+                'unknown_y': True,
+                'otherunknown_foo': 'bar'}
             )  # still populates
 
     def test_combined(self):
         with self._fixture():
             idx = Index('a', 'b', 'c', participating_x=7,
                                     nonparticipating_y=True)
+
+            eq_(
+                idx.dialect_options,
+                {
+                    'participating': {'y': False, 'x': 7, 'z_one': None},
+                    'nonparticipating': {'y': True, '*': None}
+                }
+            )
             eq_(
                 idx.dialect_kwargs,
                 {
-                    'participating_z_one': None,
-                    'participating_y': False,
                     'participating_x': 7,
                     'nonparticipating_y': True,
                 }
@@ -2178,12 +2194,16 @@ class DialectKWArgTest(fixtures.TestBase):
                         participating2_y="lazy"
                 )
             eq_(
+                idx.dialect_options,
+                {
+                    "participating": {'x': 7, 'y': False, 'z_one': None},
+                    "participating2": {'x': 15, 'y': 'lazy', 'pp': 'default'},
+                }
+            )
+            eq_(
                 idx.dialect_kwargs,
                 {
-                    'participating_z_one': None,
                     'participating_x': 7,
-                    'participating_y': False,
-                    'participating2_pp': 'default',
                     'participating2_x': 15,
                     'participating2_y': 'lazy'
                 }
@@ -2257,29 +2277,39 @@ class DialectKWArgTest(fixtures.TestBase):
             idx = Index('a', 'b', 'c', participating_x=20)
             eq_(idx.dialect_kwargs, {
                         "participating_x": 20,
-                        'participating_z_one': None,
-                        "participating_y": False})
+                    })
             idx._validate_dialect_kwargs({
                         "participating_x": 25,
                         "participating_z_one": "default"})
+            eq_(idx.dialect_options, {
+                    "participating": {"x": 25, "y": False, "z_one": "default"}
+                    })
             eq_(idx.dialect_kwargs, {
                         "participating_x": 25,
-                        'participating_z_one': "default",
-                        "participating_y": False})
+                        'participating_z_one': "default"
+                    })
+
             idx._validate_dialect_kwargs({
                         "participating_x": 25,
                         "participating_z_one": "default"})
+
+            eq_(idx.dialect_options, {
+                    "participating": {"x": 25, "y": False, "z_one": "default"}
+                    })
             eq_(idx.dialect_kwargs, {
-                        'participating_z_one': 'default',
-                        'participating_y': False,
-                        'participating_x': 25})
+                        "participating_x": 25,
+                        'participating_z_one': "default"
+                    })
+
             idx._validate_dialect_kwargs({
                         "participating_y": True,
                         'participating2_y': "p2y"})
+            eq_(idx.dialect_options, {
+                    "participating": {"x": 25, "y": True, "z_one": "default"},
+                    "participating2": {"y": "p2y", "pp": "default", "x": 9}
+                    })
             eq_(idx.dialect_kwargs, {
                         "participating_x": 25,
-                        "participating2_x": 9,
                         "participating_y": True,
                         'participating2_y': "p2y",
-                        "participating2_pp": "default",
                         "participating_z_one": "default"})

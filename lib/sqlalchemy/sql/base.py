@@ -56,7 +56,9 @@ class DialectKWArgs(object):
         options to this construct.
 
         The arguments are present here in their original ``<dialect>_<kwarg>``
-        format.
+        format.  Only arguments that were actually passed are included;
+        unlike the :attr:`.DialectKWArgs.dialect_options` collection, which
+        contains all options known by this dialect including defaults.
 
         .. versionadded:: 0.9.2
 
@@ -66,14 +68,7 @@ class DialectKWArgs(object):
 
         """
 
-        return util.immutabledict(
-            (
-                "%s_%s" % (dialect_name, kwarg_name),
-                kw_dict[kwarg_name]
-            )
-            for dialect_name, kw_dict in self.dialect_options.items()
-            for kwarg_name in kw_dict if kwarg_name != '*'
-        )
+        return util.immutabledict()
 
     @property
     def kwargs(self):
@@ -128,7 +123,7 @@ class DialectKWArgs(object):
         if not kwargs:
             return
 
-        self.__dict__.pop('dialect_kwargs', None)
+        self.dialect_kwargs = self.dialect_kwargs.union(kwargs)
 
         for k in kwargs:
             m = re.match('^(.+?)_(.+)$', k)
