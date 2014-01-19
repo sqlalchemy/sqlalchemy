@@ -6,8 +6,8 @@ import pickle
 from sqlalchemy import Integer, String, UniqueConstraint, \
     CheckConstraint, ForeignKey, MetaData, Sequence, \
     ForeignKeyConstraint, ColumnDefault, Index, event,\
-    events, Unicode, types as sqltypes, bindparam
-from sqlalchemy.testing.schema import Table, Column
+    events, Unicode, types as sqltypes, bindparam, \
+    Table, Column
 from sqlalchemy import schema, exc
 import sqlalchemy as tsa
 from sqlalchemy.testing import fixtures
@@ -308,6 +308,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
 
     @testing.exclude('mysql', '<', (4, 1, 1), 'early types are squirrely')
     def test_to_metadata(self):
+        from sqlalchemy.testing.schema import Table
         meta = MetaData()
 
         table = Table('mytable', meta,
@@ -320,7 +321,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             Column('description', String(30),
                                     CheckConstraint("description='hi'")),
             UniqueConstraint('name'),
-            test_needs_fk=True,
+            test_needs_fk=True
         )
 
         table2 = Table('othertable', meta,
@@ -328,7 +329,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             Column('myid', Integer,
                         ForeignKey('mytable.myid'),
                     ),
-            test_needs_fk=True,
+            test_needs_fk=True
             )
 
         def test_to_metadata():
@@ -487,13 +488,11 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             Column('description', String(30),
                             CheckConstraint("description='hi'")),
             UniqueConstraint('name'),
-            test_needs_fk=True,
         )
 
         table2 = Table('othertable', meta,
             Column('id', Integer, primary_key=True),
             Column('myid', Integer, ForeignKey('mytable.myid')),
-            test_needs_fk=True,
             )
 
         meta2 = MetaData()
@@ -514,14 +513,12 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             Column('description', String(30),
                         CheckConstraint("description='hi'")),
             UniqueConstraint('name'),
-            test_needs_fk=True,
             schema='myschema',
         )
 
         table2 = Table('othertable', meta,
             Column('id', Integer, primary_key=True),
             Column('myid', Integer, ForeignKey('myschema.mytable.myid')),
-            test_needs_fk=True,
             schema='myschema',
             )
 
@@ -699,13 +696,11 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             Column('name', String(40), nullable=True),
             Column('description', String(30), CheckConstraint("description='hi'")),
             UniqueConstraint('name'),
-            test_needs_fk=True
         )
 
         table2 = Table('othertable', meta,
             Column('id', Integer, primary_key=True),
             Column('myid', Integer, ForeignKey('myschema.mytable.myid')),
-            test_needs_fk=True
             )
 
         meta2 = MetaData(schema='someschema')
@@ -726,13 +721,11 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             Column('description', String(30),
                         CheckConstraint("description='hi'")),
             UniqueConstraint('name'),
-            test_needs_fk=True,
         )
 
         table2 = Table('othertable', meta,
             Column('id', Integer, primary_key=True),
             Column('myid', Integer, ForeignKey('mytable.myid')),
-            test_needs_fk=True,
             )
 
         meta2 = MetaData()

@@ -431,25 +431,25 @@ class Inspector(object):
         """
         dialect = self.bind.dialect
 
-        # table attributes we might need.
-        reflection_options = dict(
-            (k, table.kwargs.get(k))
-            for k in dialect.reflection_options if k in table.kwargs)
-
         schema = table.schema
         table_name = table.name
 
-        # apply table options
-        tbl_opts = self.get_table_options(table_name, schema, **table.kwargs)
-        if tbl_opts:
-            table._validate_dialect_kwargs(tbl_opts)
+        # get table-level arguments that are specifically
+        # intended for reflection, e.g. oracle_resolve_synonyms.
+        # these are unconditionally passed to related Table
+        # objects
+        reflection_options = dict(
+            (k, table.dialect_kwargs.get(k))
+            for k in dialect.reflection_options
+            if k in table.dialect_kwargs
+        )
 
-        # table.kwargs will need to be passed to each reflection method.  Make
-        # sure keywords are strings.
-        tblkw = table.kwargs.copy()
-        for (k, v) in list(tblkw.items()):
-            del tblkw[k]
-            tblkw[str(k)] = v
+        # reflect table options, like mysql_engine
+        tbl_opts = self.get_table_options(table_name, schema, **table.dialect_kwargs)
+        if tbl_opts:
+            # add additional kwargs to the Table if the dialect
+            # returned them
+            table._validate_dialect_kwargs(tbl_opts)
 
         if util.py2k:
             if isinstance(schema, str):
@@ -457,11 +457,10 @@ class Inspector(object):
             if isinstance(table_name, str):
                 table_name = table_name.decode(dialect.encoding)
 
-        # columns
         found_table = False
         cols_by_orig_name = {}
 
-        for col_d in self.get_columns(table_name, schema, **tblkw):
+        for col_d in self.get_columns(table_name, schema, **table.dialect_kwargs):
             found_table = True
             orig_name = col_d['name']
 
@@ -474,12 +473,12 @@ class Inspector(object):
                 continue
 
             coltype = col_d['type']
-            col_kw = {
-                'nullable': col_d['nullable'],
-            }
-            for k in ('autoincrement', 'quote', 'info', 'key'):
-                if k in col_d:
-                    col_kw[k] = col_d[k]
+
+            col_kw = dict(
+                (k, col_d[k])
+                for k in ['nullable', 'autoincrement', 'quote', 'info', 'key']
+                if k in col_d
+            )
 
             colargs = []
             if col_d.get('default') is not None:
@@ -510,8 +509,7 @@ class Inspector(object):
         if not found_table:
             raise exc.NoSuchTableError(table.name)
 
-        # Primary keys
-        pk_cons = self.get_pk_constraint(table_name, schema, **tblkw)
+        pk_cons = self.get_pk_constraint(table_name, schema, **table.dialect_kwargs)
         if pk_cons:
             pk_cols = [
                 cols_by_orig_name[pk]
@@ -530,8 +528,7 @@ class Inspector(object):
 
             table.append_constraint(primary_key_constraint)
 
-        # Foreign keys
-        fkeys = self.get_foreign_keys(table_name, schema, **tblkw)
+        fkeys = self.get_foreign_keys(table_name, schema, **table.dialect_kwargs)
         for fkey_d in fkeys:
             conname = fkey_d['name']
             # look for columns by orig name in cols_by_orig_name,

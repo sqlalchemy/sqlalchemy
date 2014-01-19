@@ -181,7 +181,7 @@ from sqlalchemy import util, sql
 from sqlalchemy.engine import default, base, reflection
 from sqlalchemy.sql import compiler, visitors, expression
 from sqlalchemy.sql import operators as sql_operators, functions as sql_functions
-from sqlalchemy import types as sqltypes
+from sqlalchemy import types as sqltypes, schema as sa_schema
 from sqlalchemy.types import VARCHAR, NVARCHAR, CHAR, DATE, DATETIME, \
                 BLOB, CLOB, TIMESTAMP, FLOAT
 
@@ -754,7 +754,9 @@ class OracleDialect(default.DefaultDialect):
 
     reflection_options = ('oracle_resolve_synonyms', )
 
-    construct_arguments = []
+    construct_arguments = [
+        (sa_schema.Table, {"resolve_synonyms": False})
+    ]
 
     def __init__(self,
                 use_ansi=True,

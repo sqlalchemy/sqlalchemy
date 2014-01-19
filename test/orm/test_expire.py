@@ -375,7 +375,7 @@ class ExpireTest(_fixtures.FixtureTest):
         o = sess.query(Order).get(3)
         sess.expire(o)
 
-        orders.update(id=3).execute(description='order 3 modified')
+        orders.update().execute(description='order 3 modified')
         assert o.isopen == 1
         assert attributes.instance_state(o).dict['description'] == 'order 3 modified'
         def go():
