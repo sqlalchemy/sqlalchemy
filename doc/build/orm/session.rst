@@ -1800,7 +1800,7 @@ we call upon the registry a second time, we get back the **same** :class:`.Sessi
 This pattern allows disparate sections of the application to call upon a global
 :class:`.scoped_session`, so that all those areas may share the same session
 without the need to pass it explicitly.   The :class:`.Session` we've established
-in our registry will remain, until we explicitly tell our regsitry to dispose of it,
+in our registry will remain, until we explicitly tell our registry to dispose of it,
 by calling :meth:`.scoped_session.remove`::
 
     >>> Session.remove()
