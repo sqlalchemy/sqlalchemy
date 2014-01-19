@@ -181,7 +181,7 @@ class PluginLoader(object):
                 self.impls[name] = impl.load
                 return impl.load()
 
-        raise exc.ArgumentError(
+        raise exc.NoSuchModuleError(
                 "Can't load plugin: %s:%s" %
                 (self.group, name))
 

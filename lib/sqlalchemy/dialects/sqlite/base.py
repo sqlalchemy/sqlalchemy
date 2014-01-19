@@ -130,14 +130,14 @@ for new connections through the usage of events::
 import datetime
 import re
 
-from sqlalchemy import sql, exc
-from sqlalchemy.engine import default, base, reflection
-from sqlalchemy import types as sqltypes
-from sqlalchemy import util
-from sqlalchemy.sql import compiler
-from sqlalchemy import processors
+from ... import sql, exc
+from ...engine import default, reflection
+from ... import types as sqltypes, schema as sa_schema
+from ... import util
+from ...sql import compiler
+from ... import processors
 
-from sqlalchemy.types import BIGINT, BLOB, BOOLEAN, CHAR,\
+from ...types import BIGINT, BLOB, BOOLEAN, CHAR,\
     DECIMAL, FLOAT, REAL, INTEGER, NUMERIC, SMALLINT, TEXT,\
     TIMESTAMP, VARCHAR
 
@@ -499,7 +499,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
             colspec += " NOT NULL"
 
         if (column.primary_key and
-            column.table.kwargs.get('sqlite_autoincrement', False) and
+            column.table.dialect_options['sqlite']['autoincrement'] and
             len(column.table.primary_key.columns) == 1 and
             issubclass(column.type._type_affinity, sqltypes.Integer) and
             not column.foreign_keys):
@@ -514,7 +514,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         if len(constraint.columns) == 1:
             c = list(constraint)[0]
             if c.primary_key and \
-                c.table.kwargs.get('sqlite_autoincrement', False) and \
+                c.table.dialect_options['sqlite']['autoincrement'] and \
                 issubclass(c.type._type_affinity, sqltypes.Integer) and \
                 not c.foreign_keys:
                 return None
@@ -622,6 +622,12 @@ class SQLiteDialect(default.DefaultDialect):
 
     supports_cast = True
     supports_default_values = True
+
+    construct_arguments = [
+        (sa_schema.Table, {
+            "autoincrement": False
+        })
+    ]
 
     _broken_fk_pragma_quotes = False
 

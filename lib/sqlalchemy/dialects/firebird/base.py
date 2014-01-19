@@ -402,6 +402,8 @@ class FBDialect(default.DefaultDialect):
     colspecs = colspecs
     ischema_names = ischema_names
 
+    construct_arguments = []
+
     # defaults to dialect ver. 3,
     # will be autodetected off upon
     # first connect

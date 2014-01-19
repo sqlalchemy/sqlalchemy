@@ -12,7 +12,8 @@
 from .. import util, exc
 import itertools
 from .visitors import ClauseVisitor
-
+import re
+import collections
 
 PARSE_AUTOCOMMIT = util.symbol('PARSE_AUTOCOMMIT')
 NO_ARG = util.symbol('NO_ARG')
@@ -41,6 +42,122 @@ def _generative(fn, *args, **kw):
     self = args[0]._generate()
     fn(self, *args[1:], **kw)
     return self
+
+
+class DialectKWArgs(object):
+    """Establish the ability for a class to have dialect-specific arguments
+    with defaults and validation.
+
+    """
+
+    @util.memoized_property
+    def dialect_kwargs(self):
+        """A collection of keyword arguments specified as dialect-specific
+        options to this construct.
+
+        The arguments are present here in their original ``<dialect>_<kwarg>``
+        format.
+
+        .. versionadded:: 0.9.2
+
+        .. seealso::
+
+            :attr:`.DialectKWArgs.dialect_options` - nested dictionary form
+
+        """
+
+        return util.immutabledict(
+            (
+                "%s_%s" % (dialect_name, kwarg_name),
+                kw_dict[kwarg_name]
+            )
+            for dialect_name, kw_dict in self.dialect_options.items()
+            for kwarg_name in kw_dict if kwarg_name != '*'
+        )
+
+    @property
+    def kwargs(self):
+        """Deprecated; see :attr:`.DialectKWArgs.dialect_kwargs"""
+        return self.dialect_kwargs
+
+    @util.dependencies("sqlalchemy.dialects")
+    def _kw_reg_for_dialect(dialects, dialect_name):
+        dialect_cls = dialects.registry.load(dialect_name)
+        if dialect_cls.construct_arguments is None:
+            return None
+        return dict(dialect_cls.construct_arguments)
+    _kw_registry = util.PopulateDict(_kw_reg_for_dialect)
+
+    def _kw_reg_for_dialect_cls(self, dialect_name):
+        construct_arg_dictionary = DialectKWArgs._kw_registry[dialect_name]
+        if construct_arg_dictionary is None:
+            return {"*": None}
+        else:
+            d = {}
+            for cls in reversed(self.__class__.__mro__):
+                if cls in construct_arg_dictionary:
+                    d.update(construct_arg_dictionary[cls])
+            return d
+
+    @util.memoized_property
+    def dialect_options(self):
+        """A collection of keyword arguments specified as dialect-specific
+        options to this construct.
+
+        This is a two-level nested registry, keyed to ``<dialect_name>``
+        and ``<argument_name>``.  For example, the ``postgresql_where`` argument
+        would be locatable as::
+
+            arg = my_object.dialect_options['postgresql']['where']
+
+        .. versionadded:: 0.9.2
+
+        .. seealso::
+
+            :attr:`.DialectKWArgs.dialect_kwargs` - flat dictionary form
+
+        """
+
+        return util.PopulateDict(
+                    util.portable_instancemethod(self._kw_reg_for_dialect_cls)
+                    )
+
+    def _validate_dialect_kwargs(self, kwargs):
+        # validate remaining kwargs that they all specify DB prefixes
+
+        if not kwargs:
+            return
+
+        self.__dict__.pop('dialect_kwargs', None)
+
+        for k in kwargs:
+            m = re.match('^(.+?)_(.+)$', k)
+            if m is None:
+                raise TypeError("Additional arguments should be "
+                        "named <dialectname>_<argument>, got '%s'" % k)
+            dialect_name, arg_name = m.group(1, 2)
+
+            try:
+                construct_arg_dictionary = self.dialect_options[dialect_name]
+            except exc.NoSuchModuleError:
+                util.warn(
+                        "Can't validate argument %r; can't "
+                        "locate any SQLAlchemy dialect named %r" %
+                        (k, dialect_name))
+                self.dialect_options[dialect_name] = {
+                                            "*": None,
+                                            arg_name: kwargs[k]}
+            else:
+                if "*" not in construct_arg_dictionary and \
+                    arg_name not in construct_arg_dictionary:
+                    raise exc.ArgumentError(
+                            "Argument %r is not accepted by "
+                            "dialect %r on behalf of %r" % (
+                                k,
+                                dialect_name, self.__class__
+                            ))
+                else:
+                    construct_arg_dictionary[arg_name] = kwargs[k]
 
 
 class Generative(object):

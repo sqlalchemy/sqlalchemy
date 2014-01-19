@@ -8,13 +8,13 @@ Provide :class:`.Insert`, :class:`.Update` and :class:`.Delete`.
 
 """
 
-from .base import Executable, _generative, _from_objects
+from .base import Executable, _generative, _from_objects, DialectKWArgs
 from .elements import ClauseElement, _literal_as_text, Null, and_, _clone
 from .selectable import _interpret_as_from, _interpret_as_select, HasPrefixes
 from .. import util
 from .. import exc
 
-class UpdateBase(HasPrefixes, Executable, ClauseElement):
+class UpdateBase(DialectKWArgs, HasPrefixes, Executable, ClauseElement):
     """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements.
 
     """
@@ -23,7 +23,6 @@ class UpdateBase(HasPrefixes, Executable, ClauseElement):
 
     _execution_options = \
         Executable._execution_options.union({'autocommit': True})
-    kwargs = util.immutabledict()
     _hints = util.immutabledict()
     _prefixes = ()
 
@@ -417,7 +416,7 @@ class Insert(ValuesBase):
                 prefixes=None,
                 returning=None,
                 return_defaults=False,
-                **kwargs):
+                **dialect_kw):
         """Construct an :class:`.Insert` object.
 
         Similar functionality is available via the
@@ -462,7 +461,7 @@ class Insert(ValuesBase):
         self.select = self.select_names = None
         self.inline = inline
         self._returning = returning
-        self.kwargs = kwargs
+        self._validate_dialect_kwargs(dialect_kw)
         self._return_defaults = return_defaults
 
     def get_children(self, **kwargs):
@@ -547,7 +546,7 @@ class Update(ValuesBase):
                 prefixes=None,
                 returning=None,
                 return_defaults=False,
-                **kwargs):
+                **dialect_kw):
         """Construct an :class:`.Update` object.
 
         E.g.::
@@ -658,7 +657,7 @@ class Update(ValuesBase):
         else:
             self._whereclause = None
         self.inline = inline
-        self.kwargs = kwargs
+        self._validate_dialect_kwargs(dialect_kw)
         self._return_defaults = return_defaults
 
 
@@ -716,7 +715,7 @@ class Delete(UpdateBase):
             bind=None,
             returning=None,
             prefixes=None,
-            **kwargs):
+            **dialect_kw):
         """Construct :class:`.Delete` object.
 
         Similar functionality is available via the
@@ -746,7 +745,7 @@ class Delete(UpdateBase):
         else:
             self._whereclause = None
 
-        self.kwargs = kwargs
+        self._validate_dialect_kwargs(dialect_kw)
 
     def get_children(self, **kwargs):
         if self._whereclause is not None:

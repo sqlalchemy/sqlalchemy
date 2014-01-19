@@ -1537,9 +1537,9 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         constraint_string = super(
                         MySQLDDLCompiler, self).create_table_constraints(table)
 
-        engine_key = '%s_engine' % self.dialect.name
-        is_innodb = engine_key in table.kwargs and \
-                    table.kwargs[engine_key].lower() == 'innodb'
+        # why self.dialect.name and not 'mysql'?  because of drizzle
+        is_innodb = 'engine' in table.dialect_options[self.dialect.name] and \
+                    table.dialect_options[self.dialect.name]['engine'].lower() == 'innodb'
 
         auto_inc_column = table._autoincrement_column
 
@@ -1633,8 +1633,8 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             text += "UNIQUE "
         text += "INDEX %s ON %s " % (name, table)
 
-        if 'mysql_length' in index.kwargs:
-            length = index.kwargs['mysql_length']
+        length = index.dialect_options['mysql']['length']
+        if length is not None:
 
             if isinstance(length, dict):
                 # length value can be a (column_name --> integer value) mapping
@@ -1655,8 +1655,8 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             columns = ', '.join(columns)
         text += '(%s)' % columns
 
-        if 'mysql_using' in index.kwargs:
-            using = index.kwargs['mysql_using']
+        using = index.dialect_options['mysql']['using']
+        if using is not None:
             text += " USING %s" % (preparer.quote(using))
 
         return text
@@ -1664,8 +1664,8 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
     def visit_primary_key_constraint(self, constraint):
         text = super(MySQLDDLCompiler, self).\
             visit_primary_key_constraint(constraint)
-        if "mysql_using" in constraint.kwargs:
-            using = constraint.kwargs['mysql_using']
+        using = constraint.dialect_options['mysql']['using']
+        if using:
             text += " USING %s" % (self.preparer.quote(using))
         return text
 
@@ -2022,6 +2022,22 @@ class MySQLDialect(default.DefaultDialect):
     # i.e. first connect
     _backslash_escapes = True
     _server_ansiquotes = False
+
+    construct_arguments = [
+        (sa_schema.Table, {
+            "*": None
+        }),
+        (sql.Update, {
+            "limit": None
+        }),
+        (sa_schema.PrimaryKeyConstraint, {
+            "using": None
+        }),
+        (sa_schema.Index, {
+            "using": None,
+            "length": None,
+        })
+    ]
 
     def __init__(self, isolation_level=None, **kwargs):
         kwargs.pop('use_ansiquotes', None)   # legacy

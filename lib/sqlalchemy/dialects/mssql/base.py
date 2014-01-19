@@ -1018,7 +1018,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
             text += "UNIQUE "
 
         # handle clustering option
-        if index.kwargs.get("mssql_clustered"):
+        if index.dialect_options['mssql']['clustered']:
             text += "CLUSTERED "
 
         text += "INDEX %s ON %s (%s)" \
@@ -1033,10 +1033,10 @@ class MSDDLCompiler(compiler.DDLCompiler):
                         )
 
         # handle other included columns
-        if index.kwargs.get("mssql_include"):
+        if index.dialect_options['mssql']['include']:
             inclusions = [index.table.c[col]
                             if isinstance(col, util.string_types) else col
-                          for col in index.kwargs["mssql_include"]]
+                          for col in index.dialect_options['mssql']['include']]
 
             text += " INCLUDE (%s)" \
                 % ', '.join([preparer.quote(c.name)
@@ -1059,8 +1059,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
                     self.preparer.format_constraint(constraint)
         text += "PRIMARY KEY "
 
-        # support clustered option
-        if constraint.kwargs.get("mssql_clustered"):
+        if constraint.dialect_options['mssql']['clustered']:
             text += "CLUSTERED "
 
         text += "(%s)" % ', '.join(self.preparer.quote(c.name)
@@ -1077,8 +1076,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
                     self.preparer.format_constraint(constraint)
         text += "UNIQUE "
 
-        # support clustered option
-        if constraint.kwargs.get("mssql_clustered"):
+        if constraint.dialect_options['mssql']['clustered']:
             text += "CLUSTERED "
 
         text += "(%s)" % ', '.join(self.preparer.quote(c.name)
@@ -1165,6 +1163,19 @@ class MSDialect(default.DefaultDialect):
     ddl_compiler = MSDDLCompiler
     type_compiler = MSTypeCompiler
     preparer = MSIdentifierPreparer
+
+    construct_arguments = [
+        (sa_schema.PrimaryKeyConstraint, {
+            "clustered": False
+        }),
+        (sa_schema.UniqueConstraint, {
+            "clustered": False
+        }),
+        (sa_schema.Index, {
+            "clustered": False,
+            "include": None
+        })
+    ]
 
     def __init__(self,
                  query_timeout=None,

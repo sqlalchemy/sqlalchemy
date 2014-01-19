@@ -15,6 +15,30 @@
     :version: 0.9.2
 
     .. change::
+        :tags: feature, sql
+        :tickets: 2866
+
+        The system by which schema constructs and certain SQL constructs
+        accept dialect-specific keyword arguments has been enhanced.  This
+        system includes commonly the :class:`.Table` and :class:`.Index` constructs,
+        which accept a wide variety of dialect-specific arguments such as
+        ``mysql_engine`` and ``postgresql_where``, as well as the constructs
+        :class:`.PrimaryKeyConstraint`, :class:`.UniqueConstraint`,
+        :class:`.Update`, :class:`.Insert` and :class:`.Delete`, and also
+        newly added kwarg capability to :class:`.ForeignKeyConstraint`
+        and :class:`.ForeignKey`.  The change is that participating dialects
+        can now specify acceptable argument lists for these constructs, allowing
+        an argument error to be raised if an invalid keyword is specified for
+        a particular dialect.  If the dialect portion of the keyword is unrecognized,
+        a warning is emitted only; while the system will actually make use
+        of setuptools entrypoints in order to locate non-local dialects,
+        the use case where certain dialect-specific arguments are used
+        in an environment where that third-party dialect is uninstalled remains
+        supported.  Dialects also have to explicitly opt-in to this system,
+        so that external dialects which aren't making use of this system
+        will remain unaffected.
+
+    .. change::
         :tags: bug, sql
         :pullreq: bitbucket:11
 

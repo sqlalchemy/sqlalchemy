@@ -1171,11 +1171,11 @@ class PGDDLCompiler(compiler.DDLCompiler):
                     preparer.format_table(index.table)
                 )
 
-        if 'postgresql_using' in index.kwargs:
-            using = index.kwargs['postgresql_using']
+        using = index.dialect_options['postgresql']['using']
+        if using:
             text += "USING %s " % preparer.quote(using)
 
-        ops = index.kwargs.get('postgresql_ops', {})
+        ops = index.dialect_options["postgresql"]["ops"]
         text += "(%s)" \
                 % (
                     ', '.join([
@@ -1188,10 +1188,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
                         for expr, c in zip(index.expressions, index.columns)])
                     )
 
-        if 'postgresql_where' in index.kwargs:
-            whereclause = index.kwargs['postgresql_where']
-        else:
-            whereclause = None
+        whereclause = index.dialect_options["postgresql"]["where"]
 
         if whereclause is not None:
             where_compiled = self.sql_compiler.process(
@@ -1436,6 +1433,14 @@ class PGDialect(default.DefaultDialect):
     execution_ctx_cls = PGExecutionContext
     inspector = PGInspector
     isolation_level = None
+
+    construct_arguments = [
+        (schema.Index, {
+            "using": False,
+            "where": None,
+            "ops": {}
+        })
+    ]
 
     _backslash_escapes = True
 

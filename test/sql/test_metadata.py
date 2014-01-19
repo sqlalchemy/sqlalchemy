@@ -13,7 +13,8 @@ import sqlalchemy as tsa
 from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
 from sqlalchemy.testing import ComparesTables, AssertsCompiledSQL
-from sqlalchemy.testing import eq_, is_
+from sqlalchemy.testing import eq_, is_, mock
+from contextlib import contextmanager
 
 class MetaDataTest(fixtures.TestBase, ComparesTables):
     def test_metadata_connect(self):
@@ -585,6 +586,8 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
 
         meta2 = MetaData()
         table_c = table.tometadata(meta2)
+
+        eq_(table.kwargs, {"mysql_engine": "InnoDB"})
 
         eq_(table.kwargs, table_c.kwargs)
 
@@ -2046,3 +2049,244 @@ class CatchAllEventsTest(fixtures.TestBase):
             ]
         )
 
+class DialectKWArgTest(fixtures.TestBase):
+    @contextmanager
+    def _fixture(self):
+        from sqlalchemy.engine.default import DefaultDialect
+        class ParticipatingDialect(DefaultDialect):
+            construct_arguments = [
+                (schema.Index, {
+                    "x": 5,
+                    "y": False,
+                    "z_one": None
+                }),
+                (schema.ForeignKeyConstraint, {
+                    "foobar": False
+                })
+            ]
+
+        class ParticipatingDialect2(DefaultDialect):
+            construct_arguments = [
+                (schema.Index, {
+                    "x": 9,
+                    "y": True,
+                    "pp": "default"
+                }),
+                (schema.Table, {
+                    "*": None
+                })
+            ]
+
+        class NonParticipatingDialect(DefaultDialect):
+            construct_arguments = None
+
+        def load(dialect_name):
+            if dialect_name == "participating":
+                return ParticipatingDialect
+            elif dialect_name == "participating2":
+                return ParticipatingDialect2
+            elif dialect_name == "nonparticipating":
+                return NonParticipatingDialect
+            else:
+                raise exc.NoSuchModuleError("no dialect %r" % dialect_name)
+        with mock.patch("sqlalchemy.dialects.registry.load", load):
+            yield
+
+    def test_participating(self):
+        with self._fixture():
+            idx = Index('a', 'b', 'c', participating_y=True)
+            eq_(
+                idx.dialect_kwargs,
+                {
+                    'participating_z_one': None,
+                    'participating_y': True,
+                    'participating_x': 5
+                }
+            )
+
+    def test_nonparticipating(self):
+        with self._fixture():
+            idx = Index('a', 'b', 'c', nonparticipating_y=True, nonparticipating_q=5)
+            eq_(
+                idx.dialect_kwargs,
+                {
+                    'nonparticipating_y': True,
+                    'nonparticipating_q': 5
+                }
+            )
+
+    def test_unknown_dialect_warning(self):
+        with self._fixture():
+            assert_raises_message(
+                exc.SAWarning,
+                "Can't validate argument 'unknown_y'; can't locate "
+                "any SQLAlchemy dialect named 'unknown'",
+                Index, 'a', 'b', 'c', unknown_y=True
+            )
+
+    def test_participating_bad_kw(self):
+        with self._fixture():
+            assert_raises_message(
+                exc.ArgumentError,
+                "Argument 'participating_q_p_x' is not accepted by dialect "
+                "'participating' on behalf of "
+                "<class 'sqlalchemy.sql.schema.Index'>",
+                Index, 'a', 'b', 'c', participating_q_p_x=8
+            )
+
+    def test_participating_unknown_schema_item(self):
+        with self._fixture():
+            # the dialect doesn't include UniqueConstraint in
+            # its registry at all.
+            assert_raises_message(
+                exc.ArgumentError,
+                "Argument 'participating_q_p_x' is not accepted by dialect "
+                "'participating' on behalf of "
+                "<class 'sqlalchemy.sql.schema.UniqueConstraint'>",
+                UniqueConstraint, 'a', 'b', participating_q_p_x=8
+            )
+
+    @testing.emits_warning("Can't validate")
+    def test_unknown_dialect_warning_still_populates(self):
+        with self._fixture():
+            idx = Index('a', 'b', 'c', unknown_y=True)
+            eq_(idx.dialect_kwargs, {"unknown_y": True})  # still populates
+
+    @testing.emits_warning("Can't validate")
+    def test_unknown_dialect_warning_still_populates_multiple(self):
+        with self._fixture():
+            idx = Index('a', 'b', 'c', unknown_y=True, unknown_z=5,
+                                otherunknown_foo='bar', participating_y=8)
+            eq_(idx.dialect_kwargs,
+                {'unknown_z': 5, 'participating_y': 8,
+                'unknown_y': True, 'participating_z_one': None,
+                'otherunknown_foo': 'bar', 'participating_x': 5}
+            )  # still populates
+
+    def test_combined(self):
+        with self._fixture():
+            idx = Index('a', 'b', 'c', participating_x=7,
+                                    nonparticipating_y=True)
+            eq_(
+                idx.dialect_kwargs,
+                {
+                    'participating_z_one': None,
+                    'participating_y': False,
+                    'participating_x': 7,
+                    'nonparticipating_y': True,
+                }
+            )
+
+    def test_multiple_participating(self):
+        with self._fixture():
+            idx = Index('a', 'b', 'c',
+                        participating_x=7,
+                        participating2_x=15,
+                        participating2_y="lazy"
+                )
+            eq_(
+                idx.dialect_kwargs,
+                {
+                    'participating_z_one': None,
+                    'participating_x': 7,
+                    'participating_y': False,
+                    'participating2_pp': 'default',
+                    'participating2_x': 15,
+                    'participating2_y': 'lazy'
+                }
+            )
+
+    def test_foreign_key_propagate(self):
+        with self._fixture():
+            m = MetaData()
+            fk = ForeignKey('t2.id', participating_foobar=True)
+            t = Table('t', m, Column('id', Integer, fk))
+            fkc = [c for c in t.constraints if isinstance(c, ForeignKeyConstraint)][0]
+            eq_(
+                fkc.dialect_kwargs,
+                {'participating_foobar': True}
+            )
+
+    def test_foreign_key_propagate_exceptions_delayed(self):
+        with self._fixture():
+            m = MetaData()
+            fk = ForeignKey('t2.id', participating_fake=True)
+            c1 = Column('id', Integer, fk)
+            assert_raises_message(
+                exc.ArgumentError,
+                "Argument 'participating_fake' is not accepted by "
+                "dialect 'participating' on behalf of "
+                "<class 'sqlalchemy.sql.schema.ForeignKeyConstraint'>",
+                Table, 't', m, c1
+            )
+
+    def test_wildcard(self):
+        with self._fixture():
+            m = MetaData()
+            t = Table('x', m, Column('x', Integer),
+                    participating2_xyz='foo',
+                    participating2_engine='InnoDB',
+                )
+            eq_(
+                t.dialect_kwargs,
+                {
+                    'participating2_xyz': 'foo',
+                    'participating2_engine': 'InnoDB'
+                }
+            )
+
+    def test_uninit_wildcard(self):
+        with self._fixture():
+            m = MetaData()
+            t = Table('x', m, Column('x', Integer))
+            eq_(
+                t.dialect_options['participating2'], {'*': None}
+            )
+            eq_(
+                t.dialect_kwargs, {}
+            )
+
+    def test_not_contains_wildcard(self):
+        with self._fixture():
+            m = MetaData()
+            t = Table('x', m, Column('x', Integer))
+            assert 'foobar' not in t.dialect_options['participating2']
+
+    def test_contains_wildcard(self):
+        with self._fixture():
+            m = MetaData()
+            t = Table('x', m, Column('x', Integer), participating2_foobar=5)
+            assert 'foobar' in t.dialect_options['participating2']
+
+
+    def test_update(self):
+        with self._fixture():
+            idx = Index('a', 'b', 'c', participating_x=20)
+            eq_(idx.dialect_kwargs, {
+                        "participating_x": 20,
+                        'participating_z_one': None,
+                        "participating_y": False})
+            idx._validate_dialect_kwargs({
+                        "participating_x": 25,
+                        "participating_z_one": "default"})
+            eq_(idx.dialect_kwargs, {
+                        "participating_x": 25,
+                        'participating_z_one': "default",
+                        "participating_y": False})
+            idx._validate_dialect_kwargs({
+                        "participating_x": 25,
+                        "participating_z_one": "default"})
+            eq_(idx.dialect_kwargs, {
+                        'participating_z_one': 'default',
+                        'participating_y': False,
+                        'participating_x': 25})
+            idx._validate_dialect_kwargs({
+                        "participating_y": True,
+                        'participating2_y': "p2y"})
+            eq_(idx.dialect_kwargs, {
+                        "participating_x": 25,
+                        "participating2_x": 9,
+                        "participating_y": True,
+                        'participating2_y': "p2y",
+                        "participating2_pp": "default",
+                        "participating_z_one": "default"})

@@ -440,6 +440,8 @@ class SybaseDialect(default.DefaultDialect):
     preparer = SybaseIdentifierPreparer
     inspector = SybaseInspector
 
+    construct_arguments = []
+
     def _get_default_schema_name(self, connection):
         return connection.scalar(
                      text("SELECT user_name() as user_name",

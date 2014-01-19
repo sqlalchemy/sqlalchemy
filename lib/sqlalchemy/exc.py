@@ -26,6 +26,9 @@ class ArgumentError(SQLAlchemyError):
 
     """
 
+class NoSuchModuleError(ArgumentError):
+    """Raised when a dynamically-loaded module (usually a database dialect)
+    of a particular name cannot be located."""
 
 class NoForeignKeysError(ArgumentError):
     """Raised when no foreign keys can be located between two selectables

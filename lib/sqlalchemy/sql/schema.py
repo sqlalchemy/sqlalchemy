@@ -28,10 +28,9 @@ as components in SQL expressions.
 
 """
 
-import re
 import inspect
 from .. import exc, util, event, inspection
-from .base import SchemaEventTarget
+from .base import SchemaEventTarget, DialectKWArgs
 from . import visitors
 from . import type_api
 from .base import _bind_or_error, ColumnCollection
@@ -53,14 +52,6 @@ def _get_table_key(name, schema):
         return schema + "." + name
 
 
-def _validate_dialect_kwargs(kwargs, name):
-    # validate remaining kwargs that they all specify DB prefixes
-
-    for k in kwargs:
-        m = re.match('^(.+?)_.*', k)
-        if m is None:
-            raise TypeError("Additional arguments should be "
-                    "named <dialectname>_<argument>, got '%s'" % k)
 
 @inspection._self_inspects
 class SchemaItem(SchemaEventTarget, visitors.Visitable):
@@ -115,7 +106,7 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
         return schema_item
 
 
-class Table(SchemaItem, TableClause):
+class Table(DialectKWArgs, SchemaItem, TableClause):
     """Represent a table in a database.
 
     e.g.::
@@ -296,8 +287,12 @@ class Table(SchemaItem, TableClause):
         ``quote_schema=True`` to the constructor, or use the :class:`.quoted_name`
         construct to specify the name.
 
-
     :param useexisting: Deprecated.  Use extend_existing.
+
+    :param \**kw: Additional keyword arguments not mentioned above are
+        dialect specific, and passed in the form ``<dialectname>_<argname>``.
+        See the documentation regarding an individual dialect at
+        :ref:`dialect_toplevel` for detail on documented arguments.
 
     """
 
@@ -397,7 +392,6 @@ class Table(SchemaItem, TableClause):
         PrimaryKeyConstraint()._set_parent_with_dispatch(self)
         self.foreign_keys = set()
         self._extra_dependencies = set()
-        self.kwargs = {}
         if self.schema is not None:
             self.fullname = "%s.%s" % (self.schema, self.name)
         else:
@@ -502,9 +496,7 @@ class Table(SchemaItem, TableClause):
         self._init_items(*args)
 
     def _extra_kwargs(self, **kwargs):
-        # validate remaining kwargs that they all specify DB prefixes
-        _validate_dialect_kwargs(kwargs, "Table")
-        self.kwargs.update(kwargs)
+        self._validate_dialect_kwargs(kwargs)
 
     def _init_collections(self):
         pass
@@ -1254,7 +1246,7 @@ class Column(SchemaItem, ColumnClause):
             return ColumnClause.get_children(self, **kwargs)
 
 
-class ForeignKey(SchemaItem):
+class ForeignKey(DialectKWArgs, SchemaItem):
     """Defines a dependency between two columns.
 
     ``ForeignKey`` is specified as an argument to a :class:`.Column` object,
@@ -1295,7 +1287,8 @@ class ForeignKey(SchemaItem):
 
     def __init__(self, column, _constraint=None, use_alter=False, name=None,
                     onupdate=None, ondelete=None, deferrable=None,
-                    initially=None, link_to_name=False, match=None):
+                    initially=None, link_to_name=False, match=None,
+                    **dialect_kw):
         """
         Construct a column-level FOREIGN KEY.
 
@@ -1345,6 +1338,14 @@ class ForeignKey(SchemaItem):
             DDL for this constraint. Typical values include SIMPLE, PARTIAL
             and FULL.
 
+        :param \**dialect_kw:  Additional keyword arguments are dialect specific,
+            and passed in the form ``<dialectname>_<argname>``.  The arguments
+            are ultimately handled by a corresponding :class:`.ForeignKeyConstraint`.
+            See the documentation regarding an individual dialect at
+            :ref:`dialect_toplevel` for detail on documented arguments.
+
+            .. versionadded:: 0.9.2
+
         """
 
         self._colspec = column
@@ -1381,6 +1382,7 @@ class ForeignKey(SchemaItem):
         self.initially = initially
         self.link_to_name = link_to_name
         self.match = match
+        self._unvalidated_dialect_kw = dialect_kw
 
     def __repr__(self):
         return "ForeignKey(%r)" % self._get_colspec()
@@ -1410,7 +1412,8 @@ class ForeignKey(SchemaItem):
                 deferrable=self.deferrable,
                 initially=self.initially,
                 link_to_name=self.link_to_name,
-                match=self.match
+                match=self.match,
+                **self._unvalidated_dialect_kw
                 )
         return self._schema_item_copy(fk)
 
@@ -1651,6 +1654,7 @@ class ForeignKey(SchemaItem):
                 onupdate=self.onupdate, ondelete=self.ondelete,
                 deferrable=self.deferrable, initially=self.initially,
                 match=self.match,
+                **self._unvalidated_dialect_kw
                 )
             self.constraint._elements[self.parent] = self
             self.constraint._set_parent_with_dispatch(table)
@@ -2113,14 +2117,14 @@ class PassiveDefault(DefaultClause):
         DefaultClause.__init__(self, *arg, **kw)
 
 
-class Constraint(SchemaItem):
+class Constraint(DialectKWArgs, SchemaItem):
     """A table-level SQL constraint."""
 
     __visit_name__ = 'constraint'
 
     def __init__(self, name=None, deferrable=None, initially=None,
                             _create_rule=None,
-                            **kw):
+                            **dialect_kw):
         """Create a SQL constraint.
 
         :param name:
@@ -2151,9 +2155,10 @@ class Constraint(SchemaItem):
           _create_rule is used by some types to create constraints.
           Currently, its call signature is subject to change at any time.
 
-        :param \**kwargs:
-          Dialect-specific keyword parameters, see the documentation
-          for various dialects and constraints regarding options here.
+        :param \**dialect_kw:  Additional keyword arguments are dialect specific,
+            and passed in the form ``<dialectname>_<argname>``.  See the
+            documentation regarding an individual dialect at :ref:`dialect_toplevel`
+            for detail on documented arguments.
 
         """
 
@@ -2162,8 +2167,7 @@ class Constraint(SchemaItem):
         self.initially = initially
         self._create_rule = _create_rule
         util.set_creation_order(self)
-        _validate_dialect_kwargs(kw, self.__class__.__name__)
-        self.kwargs = kw
+        self._validate_dialect_kwargs(dialect_kw)
 
     @property
     def table(self):
@@ -2236,6 +2240,9 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
         :param initially:
           Optional string.  If set, emit INITIALLY <value> when issuing DDL
           for this constraint.
+
+        :param \**kw: other keyword arguments including dialect-specific
+          arguments are propagated to the :class:`.Constraint` superclass.
 
         """
         ColumnCollectionMixin.__init__(self, *columns)
@@ -2354,7 +2361,7 @@ class ForeignKeyConstraint(Constraint):
 
     def __init__(self, columns, refcolumns, name=None, onupdate=None,
             ondelete=None, deferrable=None, initially=None, use_alter=False,
-            link_to_name=False, match=None, table=None):
+            link_to_name=False, match=None, table=None, **dialect_kw):
         """Construct a composite-capable FOREIGN KEY.
 
         :param columns: A sequence of local column names. The named columns
@@ -2399,9 +2406,16 @@ class ForeignKeyConstraint(Constraint):
             DDL for this constraint. Typical values include SIMPLE, PARTIAL
             and FULL.
 
+        :param \**dialect_kw:  Additional keyword arguments are dialect specific,
+            and passed in the form ``<dialectname>_<argname>``.  See the
+            documentation regarding an individual dialect at :ref:`dialect_toplevel`
+            for detail on documented arguments.
+
+            .. versionadded:: 0.9.2
+
         """
         super(ForeignKeyConstraint, self).\
-                        __init__(name, deferrable, initially)
+                        __init__(name, deferrable, initially, **dialect_kw)
 
         self.onupdate = onupdate
         self.ondelete = ondelete
@@ -2428,7 +2442,8 @@ class ForeignKeyConstraint(Constraint):
                     link_to_name=self.link_to_name,
                     match=self.match,
                     deferrable=self.deferrable,
-                    initially=self.initially
+                    initially=self.initially,
+                    **self.dialect_kwargs
                 )
 
         if table is not None:
@@ -2552,7 +2567,7 @@ class UniqueConstraint(ColumnCollectionConstraint):
     __visit_name__ = 'unique_constraint'
 
 
-class Index(ColumnCollectionMixin, SchemaItem):
+class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
     """A table-level INDEX.
 
     Defines a composite (one or more column) INDEX.
@@ -2613,11 +2628,18 @@ class Index(ColumnCollectionMixin, SchemaItem):
           be arbitrary SQL expressions which ultmately refer to a
           :class:`.Column`.
 
-        :param unique:
-            Defaults to False: create a unique index.
+        :param unique=False:
+            Keyword only argument; if True, create a unique index.
 
-        :param \**kw:
-            Other keyword arguments may be interpreted by specific dialects.
+        :param quote=None:
+            Keyword only argument; whether to apply quoting to the name of
+            the index.  Works in the same manner as that of
+            :paramref:`.Column.quote`.
+
+        :param \**kw: Additional keyword arguments not mentioned above are
+            dialect specific, and passed in the form ``<dialectname>_<argname>``.
+            See the documentation regarding an individual dialect at
+            :ref:`dialect_toplevel` for detail on documented arguments.
 
         """
         self.table = None
@@ -2637,7 +2659,7 @@ class Index(ColumnCollectionMixin, SchemaItem):
         self.expressions = expressions
         self.name = quoted_name(name, kw.pop("quote", None))
         self.unique = kw.pop('unique', False)
-        self.kwargs = kw
+        self._validate_dialect_kwargs(kw)
 
         # will call _set_parent() if table-bound column
         # objects are present

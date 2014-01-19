@@ -442,7 +442,7 @@ class Inspector(object):
         # apply table options
         tbl_opts = self.get_table_options(table_name, schema, **table.kwargs)
         if tbl_opts:
-            table.kwargs.update(tbl_opts)
+            table._validate_dialect_kwargs(tbl_opts)
 
         # table.kwargs will need to be passed to each reflection method.  Make
         # sure keywords are strings.
