@@ -52,9 +52,11 @@ Production Ready
 Experimental / Incomplete
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-* `sqlalchemy-access <https://bitbucket.org/zzzeek/sqlalchemy-access>`_ - driver for Microsoft Access.
+Dialects that are in an incomplete state or are considered somewhat experimental.
+
+* `sqlalchemy-foundationdb <https://github.com/FoundationDB/sql-layer-adapter-sqlalchemy>`_ - driver and ORM extensions for the `Foundation DB <http://foundationdb.com/>`_ database, making use of the `FoundationDB SQL Layer <https://foundationdb.com/layers/sql/index.html>`_.
 * `CALCHIPAN <https://bitbucket.org/zzzeek/calchipan/>`_ - Adapts `Pandas <http://pandas.pydata.org/>`_ dataframes to SQLAlchemy.
-* `sqlalchemy-akiban <https://github.com/zzzeek/sqlalchemy_akiban>`_ - driver and ORM extensions for the `Akiban <http://www.akiban.com>`_ database.
+* `sqlalchemy-access <https://bitbucket.org/zzzeek/sqlalchemy-access>`_ - driver for Microsoft Access.
 * `sqlalchemy-cubrid <https://bitbucket.org/zzzeek/sqlalchemy-cubrid>`_ - driver for the CUBRID database.
 * `sqlalchemy-maxdb <https://bitbucket.org/zzzeek/sqlalchemy-maxdb>`_ - driver for the MaxDB database
 
