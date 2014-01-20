@@ -64,10 +64,13 @@ class FixtureTest(fixtures.MappedTest):
             cls.classes.CompositePk, cls.tables.nodes, \
             cls.classes.Order, cls.tables.orders, cls.tables.addresses
 
-        mapper(User, users, properties={
-            'addresses':relationship(Address, backref='user', order_by=addresses.c.id),
-            'orders':relationship(Order, backref='user', order_by=orders.c.id), # o2m, m2o
-        })
+        # use OrderedDict on this one to support some tests that
+        # assert the order of attributes (e.g. orm/test_inspect)
+        mapper(User, users, properties=util.OrderedDict(
+            [('addresses', relationship(Address, backref='user', order_by=addresses.c.id)),
+            ('orders', relationship(Order, backref='user', order_by=orders.c.id)), # o2m, m2o
+            ]
+        ))
         mapper(Address, addresses, properties={
             'dingaling':relationship(Dingaling, uselist=False, backref="address")  #o2o
         })

@@ -130,8 +130,8 @@ class TestORMInspection(_fixtures.FixtureTest):
         User = self.classes.User
         insp = inspect(User)
         eq_(
-            set(insp.attrs.keys()),
-            set(['addresses', 'orders', 'id', 'name', 'name_syn'])
+            list(insp.attrs.keys()),
+            ['addresses', 'orders', 'id', 'name', 'name_syn']
         )
 
     def test_col_filter(self):
