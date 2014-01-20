@@ -522,16 +522,9 @@ class Inspector(object):
             # update pk constraint name
             table.primary_key.name = pk_cons.get('name')
 
-            # set the primary key flag on new columns.
-            # note any existing PK cols on the table also have their
-            # flag still set.
-            for col in pk_cols:
-                col.primary_key = True
-
             # tell the PKConstraint to re-initialize
             # it's column collection
-            table.primary_key._reload()
-
+            table.primary_key._reload(pk_cols)
 
         fkeys = self.get_foreign_keys(table_name, schema, **table.dialect_kwargs)
         for fkey_d in fkeys:

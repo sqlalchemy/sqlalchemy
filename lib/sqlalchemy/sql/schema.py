@@ -2623,9 +2623,12 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
             c.primary_key = True
         self.columns.extend(table_pks)
 
-    def _reload(self):
-        """repopulate this :class:`.PrimaryKeyConstraint` based on the current
-        columns marked with primary_key=True in the table.
+    def _reload(self, columns):
+        """repopulate this :class:`.PrimaryKeyConstraint` given
+        a set of columns.
+
+        Existing columns in the table that are marked as primary_key=True
+        are maintained.
 
         Also fires a new event.
 
@@ -2633,14 +2636,20 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
         :class:`.PrimaryKeyConstraint` object on the parent
         :class:`.Table` object without actually replacing the object.
 
+        The ordering of the given list of columns is also maintained; these
+        columns will be appended to the list of columns after any which
+        are already present.
+
         """
 
-        # clear out the columns collection; we will re-populate
-        # based on current primary_key flags
-        self.columns.clear()
+        # set the primary key flag on new columns.
+        # note any existing PK cols on the table also have their
+        # flag still set.
+        for col in columns:
+            col.primary_key = True
 
-        # fire a new event; this will add all existing
-        # primary key columns based on the flag.
+        self.columns.extend(columns)
+
         self._set_parent_with_dispatch(self.table)
 
     def _replace(self, col):
