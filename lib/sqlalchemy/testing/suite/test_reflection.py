@@ -455,6 +455,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def test_get_table_oid_with_schema(self):
         self._test_get_table_oid('users', schema='test_schema')
 
+    @testing.requires.table_reflection
     @testing.provide_metadata
     def test_autoincrement_col(self):
         """test that 'autoincrement' is reflected according to sqla's policy.
