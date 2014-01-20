@@ -49,7 +49,6 @@ tracks all parents which reference it.  Below, we illustrate the a simple
 version of the :class:`.MutableDict` dictionary object, which applies
 the :class:`.Mutable` mixin to a plain Python dictionary::
 
-    import collections
     from sqlalchemy.ext.mutable import Mutable
 
     class MutableDict(Mutable, dict):
