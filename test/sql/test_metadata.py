@@ -5,7 +5,7 @@ from sqlalchemy.testing import emits_warning
 import pickle
 from sqlalchemy import Integer, String, UniqueConstraint, \
     CheckConstraint, ForeignKey, MetaData, Sequence, \
-    ForeignKeyConstraint, ColumnDefault, Index, event,\
+    ForeignKeyConstraint, PrimaryKeyConstraint, ColumnDefault, Index, event,\
     events, Unicode, types as sqltypes, bindparam, \
     Table, Column
 from sqlalchemy import schema, exc
@@ -841,6 +841,77 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
             extend_existing=True
         )
         is_(t._autoincrement_column, t.c.id)
+
+    def test_pk_args_standalone(self):
+        m = MetaData()
+        t = Table('t', m,
+                    Column('x', Integer, primary_key=True),
+                    PrimaryKeyConstraint(mssql_clustered=True)
+                )
+        eq_(
+            list(t.primary_key), [t.c.x]
+        )
+        eq_(
+            t.primary_key.dialect_kwargs, {"mssql_clustered": True}
+        )
+
+    def test_pk_cols_sets_flags(self):
+        m = MetaData()
+        t = Table('t', m,
+                    Column('x', Integer),
+                    Column('y', Integer),
+                    Column('z', Integer),
+                    PrimaryKeyConstraint('x', 'y')
+                )
+        eq_(t.c.x.primary_key, True)
+        eq_(t.c.y.primary_key, True)
+        eq_(t.c.z.primary_key, False)
+
+    def test_pk_col_mismatch_one(self):
+        m = MetaData()
+        assert_raises_message(
+            exc.SAWarning,
+            "Table 't' specifies columns 'x' as primary_key=True, "
+                "not matching locally specified columns 'q'",
+            Table, 't', m,
+                Column('x', Integer, primary_key=True),
+                Column('q', Integer),
+                PrimaryKeyConstraint('q')
+        )
+
+    def test_pk_col_mismatch_two(self):
+        m = MetaData()
+        assert_raises_message(
+            exc.SAWarning,
+            "Table 't' specifies columns 'a', 'b', 'c' as primary_key=True, "
+                "not matching locally specified columns 'b', 'c'",
+            Table, 't', m,
+           Column('a', Integer, primary_key=True),
+           Column('b', Integer, primary_key=True),
+           Column('c', Integer, primary_key=True),
+           PrimaryKeyConstraint('b', 'c')
+        )
+
+    @testing.emits_warning("Table 't'")
+    def test_pk_col_mismatch_three(self):
+        m = MetaData()
+        t = Table('t', m,
+                Column('x', Integer, primary_key=True),
+                Column('q', Integer),
+                PrimaryKeyConstraint('q')
+        )
+        eq_(list(t.primary_key), [t.c.q])
+
+    @testing.emits_warning("Table 't'")
+    def test_pk_col_mismatch_four(self):
+        m = MetaData()
+        t = Table('t', m,
+           Column('a', Integer, primary_key=True),
+           Column('b', Integer, primary_key=True),
+           Column('c', Integer, primary_key=True),
+           PrimaryKeyConstraint('b', 'c')
+        )
+        eq_(list(t.primary_key), [t.c.b, t.c.c])
 
 class SchemaTypeTest(fixtures.TestBase):
     class MyType(sqltypes.SchemaType, sqltypes.TypeEngine):

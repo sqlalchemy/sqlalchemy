@@ -361,6 +361,27 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         self.assert_(isinstance(table.c.col4.type, sa.String))
 
     @testing.provide_metadata
+    def test_override_upgrade_pk_flag(self):
+        meta = self.metadata
+        table = Table(
+            'override_test', meta,
+            Column('col1', sa.Integer),
+            Column('col2', sa.String(20)),
+            Column('col3', sa.Numeric)
+        )
+        table.create()
+
+        meta2 = MetaData(testing.db)
+        table = Table(
+            'override_test', meta2,
+            Column('col1', sa.Integer, primary_key=True),
+            autoload=True)
+
+        eq_(list(table.primary_key), [table.c.col1])
+        eq_(table.c.col1.primary_key, True)
+
+
+    @testing.provide_metadata
     def test_override_pkfk(self):
         """test that you can override columns which contain foreign keys
         to other reflected tables, where the foreign key column is also

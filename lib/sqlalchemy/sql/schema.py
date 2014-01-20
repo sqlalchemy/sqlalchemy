@@ -428,11 +428,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
     def _autoload(self, metadata, autoload_with, include_columns,
                   exclude_columns=()):
-        if self.primary_key.columns:
-            PrimaryKeyConstraint(*[
-                c for c in self.primary_key.columns
-                if c.key in exclude_columns
-            ])._set_parent_with_dispatch(self)
 
         if autoload_with:
             autoload_with.run_callable(
@@ -2532,10 +2527,69 @@ class ForeignKeyConstraint(Constraint):
 class PrimaryKeyConstraint(ColumnCollectionConstraint):
     """A table-level PRIMARY KEY constraint.
 
-    Defines a single column or composite PRIMARY KEY constraint. For a
-    no-frills primary key, adding ``primary_key=True`` to one or more
-    ``Column`` definitions is a shorthand equivalent for an unnamed single- or
-    multiple-column PrimaryKeyConstraint.
+    The :class:`.PrimaryKeyConstraint` object is present automatically
+    on any :class:`.Table` object; it is assigned a set of
+    :class:`.Column` objects corresponding to those marked with
+    the :paramref:`.Column.primary_key` flag::
+
+        >>> my_table = Table('mytable', metadata,
+        ...                 Column('id', Integer, primary_key=True),
+        ...                 Column('version_id', Integer, primary_key=True),
+        ...                 Column('data', String(50))
+        ...     )
+        >>> my_table.primary_key
+        PrimaryKeyConstraint(
+            Column('id', Integer(), table=<mytable>, primary_key=True, nullable=False),
+            Column('version_id', Integer(), table=<mytable>, primary_key=True, nullable=False)
+        )
+
+    The primary key of a :class:`.Table` can also be specified by using
+    a :class:`.PrimaryKeyConstraint` object explicitly; in this mode of usage,
+    the "name" of the constraint can also be specified, as well as other
+    options which may be recognized by dialects::
+
+        my_table = Table('mytable', metadata,
+                    Column('id', Integer),
+                    Column('version_id', Integer),
+                    Column('data', String(50)),
+                    PrimaryKeyConstraint('id', 'version_id', name='mytable_pk')
+                )
+
+    The two styles of column-specification should generally not be mixed.
+    An warning is emitted if the columns present in the
+    :class:`.PrimaryKeyConstraint`
+    don't match the columns that were marked as ``primary_key=True``, if both
+    are present; in this case, the columns are taken strictly from the
+    :class:`.PrimaryKeyConstraint` declaration, and those columns otherwise marked
+    as ``primary_key=True`` are ignored.  This behavior is intended to be
+    backwards compatible with previous behavior.
+
+    .. versionchanged:: 0.9.2  Using a mixture of columns within a
+       :class:`.PrimaryKeyConstraint` in addition to columns marked as
+       ``primary_key=True`` now emits a warning if the lists don't match.
+       The ultimate behavior of ignoring those columns marked with the flag
+       only is currently maintained for backwards compatibility; this warning
+       may raise an exception in a future release.
+
+    For the use case where specific options are to be specified on the
+    :class:`.PrimaryKeyConstraint`, but the usual style of using ``primary_key=True``
+    flags is still desirable, an empty :class:`.PrimaryKeyConstraint` may be
+    specified, which will take on the primary key column collection from
+    the :class:`.Table` based on the flags::
+
+        my_table = Table('mytable', metadata,
+                    Column('id', Integer, primary_key=True),
+                    Column('version_id', Integer, primary_key=True),
+                    Column('data', String(50)),
+                    PrimaryKeyConstraint(name='mytable_pk', mssql_clustered=True)
+                )
+
+    .. versionadded:: 0.9.2 an empty :class:`.PrimaryKeyConstraint` may now
+       be specified for the purposes of establishing keyword arguments with the
+       constraint, independently of the specification of "primary key" columns
+       within the :class:`.Table` itself; columns marked as ``primary_key=True``
+       will be gathered into the empty constraint's column collection.
+
     """
 
     __visit_name__ = 'primary_key_constraint'
@@ -2543,13 +2597,51 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     def _set_parent(self, table):
         super(PrimaryKeyConstraint, self)._set_parent(table)
 
-        if table.primary_key in table.constraints:
-            table.constraints.remove(table.primary_key)
-        table.primary_key = self
-        table.constraints.add(self)
+        if table.primary_key is not self:
+            table.constraints.discard(table.primary_key)
+            table.primary_key = self
+            table.constraints.add(self)
+
+        table_pks = [c for c in table.c if c.primary_key]
+        if self.columns and table_pks and \
+            set(table_pks) != set(self.columns.values()):
+            util.warn(
+                    "Table '%s' specifies columns %s as primary_key=True, "
+                    "not matching locally specified columns %s; setting the "
+                    "current primary key columns to %s. This warning "
+                    "may become an exception in a future release" %
+                    (
+                        table.name,
+                        ", ".join("'%s'" % c.name for c in table_pks),
+                        ", ".join("'%s'" % c.name for c in self.columns),
+                        ", ".join("'%s'" % c.name for c in self.columns)
+                    )
+                )
+            table_pks[:] = []
 
         for c in self.columns:
             c.primary_key = True
+        self.columns.extend(table_pks)
+
+    def _reload(self):
+        """repopulate this :class:`.PrimaryKeyConstraint` based on the current
+        columns marked with primary_key=True in the table.
+
+        Also fires a new event.
+
+        This is basically like putting a whole new
+        :class:`.PrimaryKeyConstraint` object on the parent
+        :class:`.Table` object without actually replacing the object.
+
+        """
+
+        # clear out the columns collection; we will re-populate
+        # based on current primary_key flags
+        self.columns.clear()
+
+        # fire a new event; this will add all existing
+        # primary key columns based on the flag.
+        self._set_parent_with_dispatch(self.table)
 
     def _replace(self, col):
         self.columns.replace(col)

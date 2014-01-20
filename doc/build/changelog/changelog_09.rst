@@ -16,6 +16,33 @@
 
     .. change::
         :tags: feature, sql
+        :tickets: 2910
+
+        Options can now be specified on a :class:`.PrimaryKeyConstraint` object
+        independently of the specification of columns in the table with
+        the ``primary_key=True`` flag; use a :class:`.PrimaryKeyConstraint`
+        object with no columns in it to achieve this result.
+
+        Previously, an explicit :class:`.PrimaryKeyConstraint` would have the
+        effect of those columns marked as ``primary_key=True`` being ignored;
+        since this is no longer the case, the :class:`.PrimaryKeyConstraint`
+        will now assert that either one style or the other is used to specify
+        the columns, or if both are present, that the column lists match
+        exactly.  If an inconsistent set of columns in the
+        :class:`.PrimaryKeyConstraint`
+        and within the :class:`.Table` marked as ``primary_key=True`` are
+        present, a warning is emitted, and the list of columns is taken
+        only from the :class:`.PrimaryKeyConstraint` alone as was the case
+        in previous releases.
+
+
+
+        .. seealso::
+
+            :class:`.PrimaryKeyConstraint`
+
+    .. change::
+        :tags: feature, sql
         :tickets: 2866
 
         The system by which schema constructs and certain SQL constructs

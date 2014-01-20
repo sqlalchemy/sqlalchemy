@@ -504,6 +504,8 @@ class Inspector(object):
             cols_by_orig_name[orig_name] = col = \
                         sa_schema.Column(name, coltype, *colargs, **col_kw)
 
+            if col.key in table.primary_key:
+                col.primary_key = True
             table.append_column(col)
 
         if not found_table:
@@ -516,17 +518,20 @@ class Inspector(object):
                 for pk in pk_cons['constrained_columns']
                 if pk in cols_by_orig_name and pk not in exclude_columns
             ]
-            pk_cols += [
-                pk
-                for pk in table.primary_key
-                if pk.key in exclude_columns
-            ]
-            primary_key_constraint = sa_schema.PrimaryKeyConstraint(
-                name=pk_cons.get('name'),
-                *pk_cols
-            )
 
-            table.append_constraint(primary_key_constraint)
+            # update pk constraint name
+            table.primary_key.name = pk_cons.get('name')
+
+            # set the primary key flag on new columns.
+            # note any existing PK cols on the table also have their
+            # flag still set.
+            for col in pk_cols:
+                col.primary_key = True
+
+            # tell the PKConstraint to re-initialize
+            # it's column collection
+            table.primary_key._reload()
+
 
         fkeys = self.get_foreign_keys(table_name, schema, **table.dialect_kwargs)
         for fkey_d in fkeys:

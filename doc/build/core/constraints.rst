@@ -178,6 +178,8 @@ unique constraints and/or those with multiple columns are created via the
 
 .. sourcecode:: python+sql
 
+    from sqlalchemy import UniqueConstraint
+
     meta = MetaData()
     mytable = Table('mytable', meta,
 
@@ -206,6 +208,8 @@ MySQL.
 
 .. sourcecode:: python+sql
 
+    from sqlalchemy import CheckConstraint
+
     meta = MetaData()
     mytable = Table('mytable', meta,
 
@@ -226,6 +230,28 @@ MySQL.
         col3 INTEGER,
         CONSTRAINT check1  CHECK (col2 > col3 + 5)
     ){stop}
+
+PRIMARY KEY Constraint
+----------------------
+
+The primary key constraint of any :class:`.Table` object is implicitly
+present, based on the :class:`.Column` objects that are marked with the
+:paramref:`.Column.primary_key` flag.   The :class:`.PrimaryKeyConstraint`
+object provides explicit access to this constraint, which includes the
+option of being configured directly::
+
+    from sqlalchemy import PrimaryKeyConstraint
+
+    my_table = Table('mytable', metadata,
+                Column('id', Integer),
+                Column('version_id', Integer),
+                Column('data', String(50)),
+                PrimaryKeyConstraint('id', 'version_id', name='mytable_pk')
+            )
+
+.. seealso::
+
+    :class:`.PrimaryKeyConstraint` - detailed API documentation.
 
 Setting up Constraints when using the Declarative ORM Extension
 ----------------------------------------------------------------
