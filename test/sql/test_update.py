@@ -192,22 +192,6 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             'UPDATE A B C D mytable SET myid=%s, name=%s, description=%s',
             dialect=mysql.dialect())
 
-    def test_alias(self):
-        table1 = self.tables.mytable
-        talias1 = table1.alias('t1')
-
-        self.assert_compile(update(talias1, talias1.c.myid == 7),
-            'UPDATE mytable AS t1 '
-            'SET name=:name '
-            'WHERE t1.myid = :myid_1',
-            params={table1.c.name: 'fred'})
-
-        self.assert_compile(update(talias1, table1.c.myid == 7),
-            'UPDATE mytable AS t1 '
-            'SET name=:name '
-            'FROM mytable '
-            'WHERE mytable.myid = :myid_1',
-            params={table1.c.name: 'fred'})
 
     def test_update_to_expression(self):
         """test update from an expression.
@@ -267,6 +251,64 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
     __dialect__ = 'default'
 
     run_create_tables = run_inserts = run_deletes = None
+
+    def test_alias_one(self):
+        table1 = self.tables.mytable
+        talias1 = table1.alias('t1')
+
+        # this case is nonsensical.  the UPDATE is entirely
+        # against the alias, but we name the table-bound column
+        # in values.   The behavior here isn't really defined
+        self.assert_compile(
+            update(talias1, talias1.c.myid == 7).
+                values({table1.c.name: "fred"}),
+            'UPDATE mytable AS t1 '
+            'SET name=:name '
+            'WHERE t1.myid = :myid_1')
+
+    def test_alias_two(self):
+        table1 = self.tables.mytable
+        talias1 = table1.alias('t1')
+
+        # Here, compared to
+        # test_alias_one(), here we actually have UPDATE..FROM,
+        # which is causing the "table1.c.name" param to be handled
+        # as an "extra table", hence we see the full table name rendered.
+        self.assert_compile(
+            update(talias1, table1.c.myid == 7).
+                values({table1.c.name: 'fred'}),
+            'UPDATE mytable AS t1 '
+            'SET name=:mytable_name '
+            'FROM mytable '
+            'WHERE mytable.myid = :myid_1',
+            checkparams={'mytable_name': 'fred', 'myid_1': 7},
+            )
+
+    def test_alias_two_mysql(self):
+        table1 = self.tables.mytable
+        talias1 = table1.alias('t1')
+
+        self.assert_compile(
+            update(talias1, table1.c.myid == 7).
+                values({table1.c.name: 'fred'}),
+            "UPDATE mytable AS t1, mytable SET mytable.name=%s "
+            "WHERE mytable.myid = %s",
+            checkparams={'mytable_name': 'fred', 'myid_1': 7},
+            dialect='mysql')
+
+    def test_update_from_multitable_same_name_mysql(self):
+        users, addresses = self.tables.users, self.tables.addresses
+
+        self.assert_compile(
+            users.update().
+                values(name='newname').\
+                values({addresses.c.name: "new address"}).\
+                where(users.c.id == addresses.c.user_id),
+            "UPDATE users, addresses SET addresses.name=%s, "
+                "users.name=%s WHERE users.id = addresses.user_id",
+            checkparams={u'addresses_name': 'new address', 'name': 'newname'},
+            dialect='mysql'
+        )
 
     def test_render_table(self):
         users, addresses = self.tables.users, self.tables.addresses
@@ -455,6 +497,36 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
             (10, 'chuck')]
         self._assert_users(users, expected)
 
+    @testing.only_on('mysql', 'Multi table update')
+    def test_exec_multitable_same_name(self):
+        users, addresses = self.tables.users, self.tables.addresses
+
+        values = {
+            addresses.c.name: 'ad_ed2',
+            users.c.name: 'ed2'
+        }
+
+        testing.db.execute(
+            addresses.update().
+                values(values).
+                where(users.c.id == addresses.c.user_id).
+                where(users.c.name == 'ed'))
+
+        expected = [
+            (1, 7, 'x', 'jack@bean.com'),
+            (2, 8, 'ad_ed2', 'ed@wood.com'),
+            (3, 8, 'ad_ed2', 'ed@bettyboop.com'),
+            (4, 8, 'ad_ed2', 'ed@lala.com'),
+            (5, 9, 'x', 'fred@fred.com')]
+        self._assert_addresses(addresses, expected)
+
+        expected = [
+            (7, 'jack'),
+            (8, 'ed2'),
+            (9, 'fred'),
+            (10, 'chuck')]
+        self._assert_users(users, expected)
+
     def _assert_addresses(self, addresses, expected):
         stmt = addresses.select().order_by(addresses.c.id)
         eq_(testing.db.execute(stmt).fetchall(), expected)
@@ -478,7 +550,16 @@ class UpdateFromMultiTableUpdateDefaultsTest(_UpdateFromTestBase,
               Column('id', Integer, primary_key=True,
                      test_needs_autoincrement=True),
               Column('user_id', None, ForeignKey('users.id')),
-              Column('email_address', String(50), nullable=False))
+              Column('email_address', String(50), nullable=False),
+            )
+
+        Table('foobar', metadata,
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('user_id', None, ForeignKey('users.id')),
+              Column('data', String(30)),
+              Column('some_update', String(30), onupdate='im the other update')
+            )
 
     @classmethod
     def fixtures(cls):
@@ -494,6 +575,12 @@ class UpdateFromMultiTableUpdateDefaultsTest(_UpdateFromTestBase,
                 (3, 8, 'ed@bettyboop.com'),
                 (4, 9, 'fred@fred.com')
             ),
+            foobar=(
+                ('id', 'user_id', 'data'),
+                (2, 8, 'd1'),
+                (3, 8, 'd2'),
+                (4, 9, 'd3')
+            )
         )
 
     @testing.only_on('mysql', 'Multi table update')
@@ -525,6 +612,37 @@ class UpdateFromMultiTableUpdateDefaultsTest(_UpdateFromTestBase,
         self._assert_users(users, expected)
 
     @testing.only_on('mysql', 'Multi table update')
+    def test_defaults_second_table_same_name(self):
+        users, foobar = self.tables.users, self.tables.foobar
+
+        values = {
+            foobar.c.data: foobar.c.data + 'a',
+            users.c.name: 'ed2'
+        }
+
+        ret = testing.db.execute(
+            users.update().
+                values(values).
+                where(users.c.id == foobar.c.user_id).
+                where(users.c.name == 'ed'))
+
+        eq_(
+            set(ret.prefetch_cols()),
+            set([users.c.some_update, foobar.c.some_update])
+        )
+
+        expected = [
+            (2, 8, 'd1a', 'im the other update'),
+            (3, 8, 'd2a', 'im the other update'),
+            (4, 9, 'd3', None)]
+        self._assert_foobar(foobar, expected)
+
+        expected = [
+            (8, 'ed2', 'im the update'),
+            (9, 'fred', 'value')]
+        self._assert_users(users, expected)
+
+    @testing.only_on('mysql', 'Multi table update')
     def test_no_defaults_second_table(self):
         users, addresses = self.tables.users, self.tables.addresses
 
@@ -547,6 +665,10 @@ class UpdateFromMultiTableUpdateDefaultsTest(_UpdateFromTestBase,
             (8, 'ed', 'value'),
             (9, 'fred', 'value')]
         self._assert_users(users, expected)
+
+    def _assert_foobar(self, foobar, expected):
+        stmt = foobar.select().order_by(foobar.c.id)
+        eq_(testing.db.execute(stmt).fetchall(), expected)
 
     def _assert_addresses(self, addresses, expected):
         stmt = addresses.select().order_by(addresses.c.id)

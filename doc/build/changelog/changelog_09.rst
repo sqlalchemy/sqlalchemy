@@ -83,6 +83,19 @@
         Pullreq courtesy Derek Harland.
 
     .. change::
+        :tags: bug, sql, orm
+        :tickets: 2912
+
+        Fixed the multiple-table "UPDATE..FROM" construct, only usable on
+        MySQL, to correctly render the SET clause among multiple columns
+        with the same name across tables.  This also changes the name used for
+        the bound parameter in the SET clause to "<tablename>_<colname>" for
+        the non-primary table only; as this parameter is typically specified
+        using the :class:`.Column` object directly this should not have an
+        impact on applications.   The fix takes effect for both
+        :meth:`.Table.update` as well as :meth:`.Query.update` in the ORM.
+
+    .. change::
         :tags: bug, oracle
         :tickets: 2911
 

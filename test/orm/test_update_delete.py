@@ -545,12 +545,14 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
     def define_tables(cls, metadata):
         Table('users', metadata,
               Column('id', Integer, primary_key=True),
+              Column('samename', String(10)),
             )
         Table('documents', metadata,
               Column('id', Integer, primary_key=True),
               Column('user_id', None, ForeignKey('users.id')),
               Column('title', String(32)),
-              Column('flag', Boolean)
+              Column('flag', Boolean),
+              Column('samename', String(10)),
         )
 
     @classmethod
@@ -657,6 +659,34 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
                     (3, False), (4, True),
                     (5, True), (6, False),
                 ])
+        )
+
+    @testing.only_on('mysql', 'Multi table update')
+    def test_update_from_multitable_same_names(self):
+        Document = self.classes.Document
+        User = self.classes.User
+
+        s = Session()
+
+        s.query(Document).\
+            filter(User.id == Document.user_id).\
+            filter(User.id == 2).update({
+                    Document.samename: 'd_samename',
+                    User.samename: 'u_samename'
+                }
+            )
+        eq_(
+            s.query(User.id, Document.samename, User.samename).
+                filter(User.id == Document.user_id).
+                order_by(User.id).all(),
+            [
+                (1, None, None),
+                (1, None, None),
+                (2, 'd_samename', 'u_samename'),
+                (2, 'd_samename', 'u_samename'),
+                (3, None, None),
+                (3, None, None),
+            ]
         )
 
 class ExpressionUpdateTest(fixtures.MappedTest):
@@ -786,3 +816,5 @@ class InheritTest(fixtures.DeclarativeMappedTest):
             set(s.query(Person.name, Engineer.engineer_name)),
             set([('e1', 'e1', ), ('e22', 'e55')])
         )
+
+

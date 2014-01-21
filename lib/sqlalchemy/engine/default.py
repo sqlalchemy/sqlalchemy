@@ -895,6 +895,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         and generate inserted_primary_key collection.
         """
 
+        key_getter = self.compiled._key_getters_for_crud_column[2]
+
         if self.executemany:
             if len(self.compiled.prefetch):
                 scalar_defaults = {}
@@ -918,7 +920,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                         else:
                             val = self.get_update_default(c)
                         if val is not None:
-                            param[c.key] = val
+                            param[key_getter(c)] = val
                 del self.current_parameters
         else:
             self.current_parameters = compiled_parameters = \
@@ -931,12 +933,12 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                     val = self.get_update_default(c)
 
                 if val is not None:
-                    compiled_parameters[c.key] = val
+                    compiled_parameters[key_getter(c)] = val
             del self.current_parameters
 
             if self.isinsert:
                 self.inserted_primary_key = [
-                                self.compiled_parameters[0].get(c.key, None)
+                                self.compiled_parameters[0].get(key_getter(c), None)
                                         for c in self.compiled.\
                                                 statement.table.primary_key
                                 ]
