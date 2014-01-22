@@ -154,11 +154,12 @@ class _DateTimeMixin(object):
             self._storage_format = storage_format
 
     def adapt(self, cls, **kw):
-        if self._storage_format:
-            kw["storage_format"] = self._storage_format
-        if self._reg:
-            kw["regexp"] = self._reg
-        return util.constructor_copy(self, cls, **kw)
+        if issubclass(cls, _DateTimeMixin):
+            if self._storage_format:
+                kw["storage_format"] = self._storage_format
+            if self._reg:
+                kw["regexp"] = self._reg
+        return super(_DateTimeMixin, self).adapt(cls, **kw)
 
     def literal_processor(self, dialect):
         bp = self.bind_processor(dialect)

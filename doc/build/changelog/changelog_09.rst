@@ -15,6 +15,20 @@
     :version: 0.9.2
 
     .. change::
+        :tags: bug, mysql, sql
+        :tickets: 2917
+
+        Added new test coverage for so-called "down adaptions" of SQL types,
+        where a more specific type is adapted to a more generic one - this
+        use case is needed by some third party tools such as ``sqlacodegen``.
+        The specific cases that needed repair within this test suite were that
+        of :class:`.mysql.ENUM` being downcast into a :class:`.types.Enum`,
+        and that of SQLite date types being cast into generic date types.
+        The ``adapt()`` method needed to become more specific here to counteract
+        the removal of a "catch all" ``**kwargs`` collection on the base
+        :class:`.TypeEngine` class that was removed in 0.9.
+
+    .. change::
         :tags: feature, sql
         :tickets: 2910
 
