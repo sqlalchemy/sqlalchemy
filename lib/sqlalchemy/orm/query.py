@@ -229,7 +229,6 @@ class Query(object):
         have been applied within this query."""
 
         adapters = []
-
         # do we adapt all expression elements or only those
         # tagged as 'ORM' constructs ?
         orm_only = getattr(self, '_orm_only_adapt', orm_only)

@@ -1497,6 +1497,29 @@ class AnnotationsTest(fixtures.TestBase):
         annot_2 = s1._annotate({})
         assert isinstance(annot_2.c.foo, Column)
 
+    def test_custom_construction_correct_anno_subclass(self):
+        # [ticket:2918]
+        from sqlalchemy.schema import Column
+        from sqlalchemy.sql.elements import AnnotatedColumnElement
+        class MyColumn(Column):
+            pass
+
+        assert isinstance(
+                    MyColumn('x', Integer)._annotate({"foo": "bar"}),
+                    AnnotatedColumnElement)
+
+    def test_custom_construction_correct_anno_expr(self):
+        # [ticket:2918]
+        from sqlalchemy.schema import Column
+        class MyColumn(Column):
+            pass
+
+        col = MyColumn('x', Integer)
+        binary_1 = col == 5
+        col_anno = MyColumn('x', Integer)._annotate({"foo": "bar"})
+        binary_2 = col_anno == 5
+        eq_(binary_2.left._annotations, {"foo": "bar"})
+
     def test_annotated_corresponding_column(self):
         table1 = table('table1', column("col1"))
 

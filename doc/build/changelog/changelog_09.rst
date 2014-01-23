@@ -15,6 +15,18 @@
     :version: 0.9.2
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2918
+
+        Fixed an 0.9 regression where the automatic aliasing applied by
+        :class:`.Query` and in other situations where selects or joins
+        were aliased (such as joined table inheritance) could fail if a
+        user-defined :class:`.Column` subclass were used in the expression.
+        In this case, the subclass would fail to propagate ORM-specific
+        "annotations" along needed by the adaptation.  The "expression
+        annotations" system has been corrected to account for this case.
+
+    .. change::
         :tags: feature, orm
 
         Support is improved for supplying a :func:`.join` construct as the

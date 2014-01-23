@@ -167,9 +167,18 @@ def _new_annotation_type(cls, base_cls):
         return cls
     elif cls in annotated_classes:
         return annotated_classes[cls]
+
+    for super_ in cls.__mro__:
+        # check if an Annotated subclass more specific than
+        # the given base_cls is already registered, such
+        # as AnnotatedColumnElement.
+        if super_ in annotated_classes:
+            base_cls = annotated_classes[super_]
+            break
+
     annotated_classes[cls] = anno_cls = type(
-                                "Annotated%s" % cls.__name__,
-                                (base_cls, cls), {})
+                            "Annotated%s" % cls.__name__,
+                            (base_cls, cls), {})
     globals()["Annotated%s" % cls.__name__] = anno_cls
     return anno_cls
 
