@@ -1520,3 +1520,40 @@ class Ticket2419Test(fixtures.DeclarativeMappedTest):
             q.all(),
             [(b, True)]
         )
+
+class ColSubclassTest(fixtures.DeclarativeMappedTest, testing.AssertsCompiledSQL):
+    """Test [ticket:2918]'s test case."""
+
+    run_create_tables = None
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_classes(cls):
+        from sqlalchemy.schema import Column
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = 'a'
+
+            id = Column(Integer, primary_key=True)
+
+        class MySpecialColumn(Column):
+            pass
+
+        class B(A):
+            __tablename__ = 'b'
+
+            id = Column(ForeignKey('a.id'), primary_key=True)
+            x = MySpecialColumn(String)
+
+    def test_polymorphic_adaptation(self):
+        A, B = self.classes.A, self.classes.B
+
+        s = Session()
+        self.assert_compile(
+            s.query(A).join(B).filter(B.x == 'test'),
+            "SELECT a.id AS a_id FROM a JOIN "
+            "(SELECT a.id AS a_id, b.id AS b_id, b.x AS b_x "
+                "FROM a JOIN b ON a.id = b.id) AS anon_1 ON a.id = anon_1.b_id "
+                "WHERE anon_1.b_x = :x_1"
+        )
