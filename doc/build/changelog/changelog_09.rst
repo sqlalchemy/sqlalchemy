@@ -15,6 +15,25 @@
     :version: 0.9.2
 
     .. change::
+        :tags: feature, orm
+
+        Support is improved for supplying a :func:`.join` construct as the
+        target of :paramref:`.relationship.secondary` for the purposes
+        of creating very complex :func:`.relationship` join conditions.
+        The change includes adjustments to query joining, joined eager loading
+        to not render a SELECT subquery, changes to lazy loading such that
+        the "secondary" target is properly included in the SELECT, and
+        changes to declarative to better support specification of a
+        join() object with classes as targets.
+
+        The new use case is somewhat experimental, but a new documentation section
+        has been added.
+
+        .. seealso::
+
+            :ref:`composite_secondary_join`
+
+    .. change::
         :tags: bug, mysql, sql
         :tickets: 2917
 

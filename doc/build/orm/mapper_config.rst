@@ -1307,11 +1307,13 @@ table metadata.
 One potential use case for another mapper to exist at the same time is if we
 wanted to load instances of our class not just from the immediate :class:`.Table`
 to which it is mapped, but from another selectable that is a derivation of that
-:class:`.Table`.   While there technically is a way to create such a :func:`.mapper`,
-using the ``non_primary=True`` option, this approach is virtually never needed.
-Instead, we use the functionality of the :class:`.Query` object to achieve this,
-using a method such as :meth:`.Query.select_from`
-or :meth:`.Query.from_statement` to specify a derived selectable.
+:class:`.Table`.   To create a second mapper that only handles querying
+when used explicitly, we can use the :paramref:`.mapper.non_primary` argument.
+In practice, this approach is usually not needed, as we
+can do this sort of thing at query time using methods such as
+:meth:`.Query.select_from`, however it is useful in the rare case that we
+wish to build a :func:`.relationship` to such a mapper.  An example of this is
+at :ref:`relationship_non_primary_mapper`.
 
 Another potential use is if we genuinely want instances of our class to
 be persisted into different tables at different times; certain kinds of

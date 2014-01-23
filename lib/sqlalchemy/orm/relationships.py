@@ -111,10 +111,13 @@ class RelationshipProperty(StrategizedProperty):
         strategy_class=None, _local_remote_pairs=None,
         query_class=None,
             info=None):
-        """Provide a relationship of a primary Mapper to a secondary Mapper.
+        """Provide a relationship between two mapped classes.
 
         This corresponds to a parent-child or associative table relationship.  The
         constructed class is an instance of :class:`.RelationshipProperty`.
+
+        For an overview of basic patterns with :func:`.relationship` as
+        used with Declarative, see :ref:`relationship_patterns`.
 
         A typical :func:`.relationship`, used in a classical mapping::
 
@@ -165,8 +168,11 @@ class RelationshipProperty(StrategizedProperty):
 
         :param secondary:
           for a many-to-many relationship, specifies the intermediary
-          table, and is an instance of :class:`.Table`.  The ``secondary`` keyword
-          argument should generally only
+          table, and is typically an instance of :class:`.Table`.
+          In less common circumstances, the argument may also be specified
+          as an :class:`.Alias` construct, or even a :class:`.Join` construct.
+
+          The ``secondary`` keyword argument should generally only
           be used for a table that is not otherwise expressed in any class
           mapping, unless this relationship is declared as view only, otherwise
           conflicting persistence operations can occur.
@@ -174,6 +180,13 @@ class RelationshipProperty(StrategizedProperty):
           ``secondary`` may
           also be passed as a callable function which is evaluated at
           mapper initialization time.
+
+          .. seealso::
+
+              :ref:`relationships_many_to_many`
+
+          .. versionadded:: 0.9.2 :paramref:`.relationship.secondary` works
+             more effectively when referring to a :class:`.Join` instance.
 
         :param active_history=False:
           When ``True``, indicates that the "previous" value for a
@@ -562,6 +575,10 @@ class RelationshipProperty(StrategizedProperty):
           which is evaluated at mapper initialization time, and may be passed as a
           Python-evaluable string when using Declarative.
 
+          .. seealso::
+
+              :ref:`relationship_primaryjoin`
+
         :param remote_side:
           used for self-referential relationships, indicates the column or
           list of columns that form the "remote side" of the relationship.
@@ -592,6 +609,10 @@ class RelationshipProperty(StrategizedProperty):
           ``secondaryjoin`` may also be passed as a callable function
           which is evaluated at mapper initialization time, and may be passed as a
           Python-evaluable string when using Declarative.
+
+          .. seealso::
+
+              :ref:`relationship_primaryjoin`
 
         :param single_parent=(True|False):
           when True, installs a validator which will prevent objects
@@ -2422,7 +2443,7 @@ class JoinCondition(object):
 
         if aliased:
             if secondary is not None:
-                secondary = secondary.alias()
+                secondary = secondary.alias(flat=True)
                 primary_aliasizer = ClauseAdapter(secondary)
                 secondary_aliasizer = \
                     ClauseAdapter(dest_selectable,

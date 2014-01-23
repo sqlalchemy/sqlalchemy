@@ -527,6 +527,10 @@ class LazyLoader(AbstractRelationshipLoader):
     def _emit_lazyload(self, strategy_options, session, state, ident_key, passive):
         q = session.query(self.mapper)._adapt_all_clauses()
 
+
+        if self.parent_property.secondary is not None:
+            q = q.select_from(self.mapper, self.parent_property.secondary)
+
         q = q._with_invoke_all_eagers(False)
 
         pending = not state.key

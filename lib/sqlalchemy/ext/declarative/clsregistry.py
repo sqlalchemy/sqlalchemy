@@ -14,6 +14,7 @@ from ...orm.properties import ColumnProperty, RelationshipProperty, \
 from ...schema import _get_table_key
 from ...orm import class_mapper, interfaces
 from ... import util
+from ... import inspection
 from ... import exc
 import weakref
 
@@ -206,6 +207,9 @@ class _GetColumns(object):
                                 " ColumnProperty (i.e. does not correspond"
                                 " directly to a Column)." % key)
         return getattr(self.cls, key)
+
+inspection._inspects(_GetColumns)(
+            lambda target: inspection.inspect(target.cls))
 
 
 class _GetTable(object):

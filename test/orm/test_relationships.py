@@ -8,7 +8,7 @@ from sqlalchemy.orm import mapper, relationship, relation, \
                     backref, create_session, configure_mappers, \
                     clear_mappers, sessionmaker, attributes,\
                     Session, composite, column_property, foreign,\
-                    remote, synonym
+                    remote, synonym, joinedload
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
 from sqlalchemy.testing import eq_, startswith_, AssertsCompiledSQL, is_
 from sqlalchemy.testing import fixtures
@@ -2522,6 +2522,191 @@ class AmbiguousFKResolutionTest(_RelationshipErrors, fixtures.MappedTest):
         mapper(B, b)
         sa.orm.configure_mappers()
 
+
+class SecondaryNestedJoinTest(fixtures.MappedTest, AssertsCompiledSQL,
+                        testing.AssertsExecutionResults):
+    """test support for a relationship where the 'secondary' table is a
+    compound join().
+
+    join() and joinedload() should use a "flat" alias, lazyloading needs
+    to ensure the join renders.
+
+    """
+    run_setup_mappers = 'once'
+    run_inserts = 'once'
+    run_deletes = None
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('a', metadata,
+                Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+                Column('name', String(30)),
+                Column('b_id', ForeignKey('b.id'))
+            )
+        Table('b', metadata,
+                Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+                Column('name', String(30)),
+                Column('d_id', ForeignKey('d.id'))
+            )
+        Table('c', metadata,
+                Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+                Column('name', String(30)),
+                Column('a_id', ForeignKey('a.id')),
+                Column('d_id', ForeignKey('d.id'))
+            )
+        Table('d', metadata,
+                Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+                Column('name', String(30)),
+            )
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Comparable):
+            pass
+        class B(cls.Comparable):
+            pass
+        class C(cls.Comparable):
+            pass
+        class D(cls.Comparable):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        A, B, C, D = cls.classes.A, cls.classes.B, cls.classes.C, cls.classes.D
+        a, b, c, d = cls.tables.a, cls.tables.b, cls.tables.c, cls.tables.d
+        j = sa.join(b, d, b.c.d_id == d.c.id).join(c, c.c.d_id == d.c.id)
+        #j = join(b, d, b.c.d_id == d.c.id).join(c, c.c.d_id == d.c.id).alias()
+        mapper(A, a, properties={
+            "b": relationship(B),
+            "d": relationship(D, secondary=j,
+                        primaryjoin=and_(a.c.b_id == b.c.id, a.c.id == c.c.a_id),
+                        secondaryjoin=d.c.id == b.c.d_id,
+                        #primaryjoin=and_(a.c.b_id == j.c.b_id, a.c.id == j.c.c_a_id),
+                        #secondaryjoin=d.c.id == j.c.b_d_id,
+                        uselist=False
+                    )
+            })
+        mapper(B, b, properties={
+                "d": relationship(D)
+            })
+        mapper(C, c, properties={
+                "a": relationship(A),
+                "d": relationship(D)
+            })
+        mapper(D, d)
+
+    @classmethod
+    def insert_data(cls):
+        A, B, C, D = cls.classes.A, cls.classes.B, cls.classes.C, cls.classes.D
+        sess = Session()
+        a1, a2, a3, a4 = A(name='a1'), A(name='a2'), A(name='a3'), A(name='a4')
+        b1, b2, b3, b4 = B(name='b1'), B(name='b2'), B(name='b3'), B(name='b4')
+        c1, c2, c3, c4 = C(name='c1'), C(name='c2'), C(name='c3'), C(name='c4')
+        d1, d2 = D(name='d1'), D(name='d2')
+
+        a1.b = b1
+        a2.b = b2
+        a3.b = b3
+        a4.b = b4
+
+        c1.a = a1
+        c2.a = a2
+        c3.a = a2
+        c4.a = a4
+
+        c1.d = d1
+        c2.d = d2
+        c3.d = d1
+        c4.d = d2
+
+        b1.d = d1
+        b2.d = d1
+        b3.d = d2
+        b4.d = d2
+
+        sess.add_all([a1, a2, a3, a4, b1, b2, b3, b4, c1, c2, c4, c4, d1, d2])
+        sess.commit()
+
+    def test_render_join(self):
+        A, D = self.classes.A, self.classes.D
+        sess = Session()
+        self.assert_compile(
+            sess.query(A).join(A.d),
+            "SELECT a.id AS a_id, a.name AS a_name, a.b_id AS a_b_id "
+            "FROM a JOIN (b AS b_1 JOIN d AS d_1 ON b_1.d_id = d_1.id "
+                "JOIN c AS c_1 ON c_1.d_id = d_1.id) ON a.b_id = b_1.id "
+                "AND a.id = c_1.a_id JOIN d ON d.id = b_1.d_id",
+            dialect="postgresql"
+        )
+
+    def test_render_joinedload(self):
+        A, D = self.classes.A, self.classes.D
+        sess = Session()
+        self.assert_compile(
+            sess.query(A).options(joinedload(A.d)),
+            "SELECT a.id AS a_id, a.name AS a_name, a.b_id AS a_b_id, "
+            "d_1.id AS d_1_id, d_1.name AS d_1_name FROM a LEFT OUTER JOIN "
+            "(b AS b_1 JOIN d AS d_2 ON b_1.d_id = d_2.id JOIN c AS c_1 "
+                "ON c_1.d_id = d_2.id JOIN d AS d_1 ON d_1.id = b_1.d_id) "
+                "ON a.b_id = b_1.id AND a.id = c_1.a_id",
+            dialect="postgresql"
+        )
+
+    def test_render_lazyload(self):
+        from sqlalchemy.testing.assertsql import CompiledSQL
+
+        A, D = self.classes.A, self.classes.D
+        sess = Session()
+        a1 = sess.query(A).filter(A.name == 'a1').first()
+
+        def go():
+            a1.d
+
+        # here, the "lazy" strategy has to ensure the "secondary"
+        # table is part of the "select_from()", since it's a join().
+        # referring to just the columns wont actually render all those
+        # join conditions.
+        self.assert_sql_execution(
+                testing.db,
+                go,
+                CompiledSQL(
+                    "SELECT d.id AS d_id, d.name AS d_name FROM b "
+                    "JOIN d ON b.d_id = d.id JOIN c ON c.d_id = d.id "
+                    "WHERE :param_1 = b.id AND :param_2 = c.a_id AND d.id = b.d_id",
+                    {'param_1': a1.id, 'param_2': a1.id}
+                )
+        )
+
+    mapping = {
+        "a1": "d1",
+        "a2": None,
+        "a3": None,
+        "a4": "d2"
+    }
+
+    def test_join(self):
+        A, D = self.classes.A, self.classes.D
+        sess = Session()
+
+        for a, d in sess.query(A, D).outerjoin(A.d):
+            eq_(self.mapping[a.name], d.name if d is not None else None)
+
+
+    def test_joinedload(self):
+        A, D = self.classes.A, self.classes.D
+        sess = Session()
+
+        for a in sess.query(A).options(joinedload(A.d)):
+            d = a.d
+            eq_(self.mapping[a.name], d.name if d is not None else None)
+
+    def test_lazyload(self):
+        A, D = self.classes.A, self.classes.D
+        sess = Session()
+
+        for a in sess.query(A):
+            d = a.d
+            eq_(self.mapping[a.name], d.name if d is not None else None)
 
 class InvalidRelationshipEscalationTest(_RelationshipErrors, fixtures.MappedTest):
 

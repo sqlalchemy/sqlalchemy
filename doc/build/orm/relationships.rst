@@ -948,9 +948,10 @@ Specifying Alternate Join Conditions
 The default behavior of :func:`.relationship` when constructing a join
 is that it equates the value of primary key columns
 on one side to that of foreign-key-referring columns on the other.
-We can change this criterion to be anything we'd like using the ``primaryjoin``
-argument, as well as the ``secondaryjoin`` argument in the case when
-a "secondary" table is used.
+We can change this criterion to be anything we'd like using the
+:paramref:`.relationship.primaryjoin`
+argument, as well as the :paramref:`.relationship.secondaryjoin`
+argument in the case when a "secondary" table is used.
 
 In the example below, using the ``User`` class
 as well as an ``Address`` class which stores a street address,  we
@@ -1148,6 +1149,163 @@ to ``node.c.id``::
 Note that in both examples, the ``backref`` keyword specifies a ``left_nodes``
 backref - when :func:`.relationship` creates the second relationship in the reverse
 direction, it's smart enough to reverse the ``primaryjoin`` and ``secondaryjoin`` arguments.
+
+.. _composite_secondary_join:
+
+Composite "Secondary" Joins
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. note::
+
+    This section features some new and experimental features of SQLAlchemy.
+
+Sometimes, when one seeks to build a :func:`.relationship` between two tables
+there is a need for more than just two or three tables to be involved in
+order to join them.  This is an area of :func:`.relationship` where one seeks
+to push the boundaries of what's possible, and often the ultimate solution to
+many of these exotic use cases needs to be hammered out on the SQLAlchemy mailing
+list.
+
+In more recent versions of SQLAlchemy, the :paramref:`.relationship.secondary`
+parameter can be used in some of these cases in order to provide a composite
+target consisting of multiple tables.   Below is an example of such a
+join condition (requires version 0.9.2 at least to function as is)::
+
+    class A(Base):
+        __tablename__ = 'a'
+
+        id = Column(Integer, primary_key=True)
+        b_id = Column(ForeignKey('b.id'))
+
+        d = relationship("D",
+                    secondary="join(B, D, B.d_id == D.id)."
+                                "join(C, C.d_id == D.id)",
+                    primaryjoin="and_(A.b_id == B.id, A.id == C.a_id)",
+                    secondaryjoin="D.id == B.d_id",
+                    uselist=False
+                    )
+
+    class B(Base):
+        __tablename__ = 'b'
+
+        id = Column(Integer, primary_key=True)
+        d_id = Column(ForeignKey('d.id'))
+
+    class C(Base):
+        __tablename__ = 'c'
+
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey('a.id'))
+        d_id = Column(ForeignKey('d.id'))
+
+    class D(Base):
+        __tablename__ = 'd'
+
+        id = Column(Integer, primary_key=True)
+
+In the above example, we provide all three of :paramref:`.relationship.secondary`,
+:paramref:`.relationship.primaryjoin`, and :paramref:`.relationship.secondaryjoin`,
+in the declarative style referring to the named tables ``a``, ``b``, ``c``, ``d``
+directly.  A query from ``A`` to ``D`` looks like:
+
+.. sourcecode:: python+sql
+
+    sess.query(A).join(A.d).all()
+
+    {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
+    FROM a JOIN (
+        b AS b_1 JOIN d AS d_1 ON b_1.d_id = d_1.id
+            JOIN c AS c_1 ON c_1.d_id = d_1.id)
+        ON a.b_id = b_1.id AND a.id = c_1.a_id JOIN d ON d.id = b_1.d_id
+
+In the above example, we take advantage of being able to stuff multiple
+tables into a "secondary" container, so that we can join across many
+tables while still keeping things "simple" for :func:`.relationship`, in that
+there's just "one" table on both the "left" and the "right" side; the
+complexity is kept within the middle.
+
+.. versionadded:: 0.9.2  Support is improved for allowing a :func:`.join()`
+   construct to be used directly as the target of the :paramref:`.relationship.secondary`
+   argument, including support for joins, eager joins and lazy loading,
+   as well as support within declarative to specify complex conditions such
+   as joins involving class names as targets.
+
+.. _relationship_non_primary_mapper:
+
+Relationship to Non Primary Mapper
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In the previous section, we illustrated a technique where we used
+:paramref:`.relationship.secondary` in order to place additional tables
+within a join condition.   There is one complex join case where even this technique is not
+sufficient; when we seek to join from ``A`` to ``B``, making use of any
+number of ``C``, ``D``, etc. in between, however there are also join conditions
+between ``A`` and ``B`` *directly*.  In this case, the join from ``A`` to ``B``
+may be difficult to express with just a complex ``primaryjoin`` condition, as the
+intermediary tables may need special handling, and it is also not expressable
+with a ``secondary`` object, since the ``A->secondary->B`` pattern does not support
+any references between ``A`` and ``B`` directly.  When this **extremely advanced**
+case arises, we can resort to creating a second mapping as a target for
+the relationship.  This is where we use :func:`.mapper` in order to make a mapping to
+a class that includes all the additional tables we need for this join.
+In order to produce this mapper as an "alternative" mapping for our class,
+we use the :paramref:`.mapper.non_primary` flag.
+
+Below illustrates a :func:`.relationship` with a simple join from ``A`` to
+``B``, however the primaryjoin condition is augmented with two additional
+entities ``C`` and ``D``, which also must have rows that line up with
+the rows in both ``A`` and ``B`` simultaneously::
+
+    class A(Base):
+        __tablename__ = 'a'
+
+        id = Column(Integer, primary_key=True)
+        b_id = Column(ForeignKey('b.id'))
+
+    class B(Base):
+        __tablename__ = 'b'
+
+        id = Column(Integer, primary_key=True)
+
+    class C(Base):
+        __tablename__ = 'c'
+
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey('a.id'))
+
+    class D(Base):
+        __tablename__ = 'd'
+
+        id = Column(Integer, primary_key=True)
+        c_id = Column(ForeignKey('c.id'))
+        b_id = Column(ForeignKey('b.id'))
+
+    # 1. set up the join() as a variable, so we can refer
+    # to it in the mapping multiple times.
+    j = join(B, D, D.b_id == B.id).join(C, C.id == D.c_id)
+
+    # 2. Create a new mapper() to B, with non_primary=True.
+    # Columns in the join with the same name must be
+    # disambiguated within the mapping, using named properties.
+    B_viacd = mapper(B, j, non_primary=True, properties={
+        "b_id": [j.c.b_id, j.c.d_b_id],
+        "d_id": j.c.d_id
+        })
+
+    A.b = relationship(B_viacd, primaryjoin=A.b_id == B_viacd.c.b_id)
+
+In the above case, our non-primary mapper for ``B`` will emit for
+additional columns when we query; these can be ignored:
+
+.. sourcecode:: python+sql
+
+    sess.query(A).join(A.b).all()
+
+    {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id, d_1.id AS d_1_id,
+            b_1.id AS b_1_id, d_1.b_id AS d_1_b_id, d_1.c_id AS d_1_c_id,
+            c_1.id AS c_1_id, c_1.a_id AS c_1_a_id
+    FROM a LEFT OUTER JOIN (b AS b_1 JOIN d AS d_1 ON d_1.b_id = b_1.id
+                JOIN c AS c_1 ON c_1.id = d_1.c_id) ON a.b_id = b_1.id
 
 
 Building Query-Enabled Properties

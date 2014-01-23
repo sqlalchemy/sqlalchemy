@@ -409,6 +409,46 @@ class DeclarativeTest(DeclarativeTestBase):
             "user_1.firstname || :firstname_1 || user_1.lastname"
         )
 
+    def test_string_dependency_resolution_asselectable(self):
+        class A(Base):
+            __tablename__ = 'a'
+
+            id = Column(Integer, primary_key=True)
+            b_id = Column(ForeignKey('b.id'))
+
+            d = relationship("D",
+                            secondary="join(B, D, B.d_id == D.id)."
+                                        "join(C, C.d_id == D.id)",
+                            primaryjoin="and_(A.b_id == B.id, A.id == C.a_id)",
+                            secondaryjoin="D.id == B.d_id",
+                        )
+
+        class B(Base):
+            __tablename__ = 'b'
+
+            id = Column(Integer, primary_key=True)
+            d_id = Column(ForeignKey('d.id'))
+
+        class C(Base):
+            __tablename__ = 'c'
+
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey('a.id'))
+            d_id = Column(ForeignKey('d.id'))
+
+        class D(Base):
+            __tablename__ = 'd'
+
+            id = Column(Integer, primary_key=True)
+        s = Session()
+        self.assert_compile(
+            s.query(A).join(A.d),
+            "SELECT a.id AS a_id, a.b_id AS a_b_id FROM a JOIN "
+                "(b AS b_1 JOIN d AS d_1 ON b_1.d_id = d_1.id "
+                "JOIN c AS c_1 ON c_1.d_id = d_1.id) ON a.b_id = b_1.id "
+                "AND a.id = c_1.a_id JOIN d ON d.id = b_1.d_id",
+        )
+
     def test_string_dependency_resolution_no_table(self):
 
         class User(Base, fixtures.ComparableEntity):

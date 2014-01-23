@@ -292,8 +292,12 @@ class Mapper(_InspectionAttr):
           mapping of the class to an alternate selectable, for loading
           only.
 
-          The ``non_primary`` feature is rarely needed with modern
-          usage.
+          :paramref:`.Mapper.non_primary` is not an often used option, but
+          is useful in some specific :func:`.relationship` cases.
+
+          .. seealso::
+
+              :ref:`relationship_non_primary_mapper`
 
         :param order_by: A single :class:`.Column` or list of :class:`.Column`
            objects for which selection operations should use as the default

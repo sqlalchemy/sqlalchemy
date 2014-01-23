@@ -2376,3 +2376,5 @@ class SelfReferentialM2MTest(fixtures.MappedTest):
              ])).order_by(Node.id).all(),
             [Node(data='n1'), Node(data='n2')]
         )
+
+
