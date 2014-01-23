@@ -1301,11 +1301,8 @@ additional columns when we query; these can be ignored:
 
     sess.query(A).join(A.b).all()
 
-    {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id, d_1.id AS d_1_id,
-            b_1.id AS b_1_id, d_1.b_id AS d_1_b_id, d_1.c_id AS d_1_c_id,
-            c_1.id AS c_1_id, c_1.a_id AS c_1_a_id
-    FROM a LEFT OUTER JOIN (b AS b_1 JOIN d AS d_1 ON d_1.b_id = b_1.id
-                JOIN c AS c_1 ON c_1.id = d_1.c_id) ON a.b_id = b_1.id
+    {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
+    FROM a JOIN (b JOIN d ON d.b_id = b.id JOIN c ON c.id = d.c_id) ON a.b_id = b.id
 
 
 Building Query-Enabled Properties
