@@ -96,25 +96,32 @@ def create_engine(*args, **kwargs):
 
     The standard calling form is to send the URL as the
     first positional argument, usually a string
-    that indicates database dialect and connection arguments.
+    that indicates database dialect and connection arguments::
+
+
+        engine = create_engine("postgresql://scott:tiger@localhost/test")
+
     Additional keyword arguments may then follow it which
     establish various options on the resulting :class:`.Engine`
     and its underlying :class:`.Dialect` and :class:`.Pool`
-    constructs.
+    constructs::
+
+        engine = create_engine("mysql://scott:tiger@hostname/dbname",
+                                    encoding='latin1', echo=True)
 
     The string form of the URL is
-    ``dialect+driver://user:password@host/dbname[?key=value..]``, where
+    ``dialect[+driver]://user:password@host/dbname[?key=value..]``, where
     ``dialect`` is a database name such as ``mysql``, ``oracle``,
     ``postgresql``, etc., and ``driver`` the name of a DBAPI, such as
     ``psycopg2``, ``pyodbc``, ``cx_oracle``, etc.  Alternatively,
     the URL can be an instance of :class:`~sqlalchemy.engine.url.URL`.
 
     ``**kwargs`` takes a wide variety of options which are routed
-    towards their appropriate components.  Arguments may be     specific
-    to the :class:`.Engine`, the underlying :class:`.Dialect`, as well as
-    the     :class:`.Pool`.  Specific dialects also accept keyword
-    arguments that     are unique to that dialect.   Here, we describe the
-    parameters     that are common to most :func:`.create_engine()` usage.
+    towards their appropriate components.  Arguments may be specific to
+    the :class:`.Engine`, the underlying :class:`.Dialect`, as well as the
+    :class:`.Pool`.  Specific dialects also accept keyword arguments that
+    are unique to that dialect.   Here, we describe the parameters
+    that are common to most :func:`.create_engine()` usage.
 
     Once established, the newly resulting :class:`.Engine` will
     request a connection from the underlying :class:`.Pool` once
@@ -124,11 +131,13 @@ def create_engine(*args, **kwargs):
     is received.   The :func:`.create_engine` call itself does **not**
     establish any actual DBAPI connections directly.
 
-    See also:
+    .. seealso::
 
-    :doc:`/core/engines`
+        :doc:`/core/engines`
 
-    :ref:`connections_toplevel`
+        :doc:`/dialects/index`
+
+        :ref:`connections_toplevel`
 
     :param case_sensitive=True: if False, result column names
        will match in a case-insensitive fashion, that is,

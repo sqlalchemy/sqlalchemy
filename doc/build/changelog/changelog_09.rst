@@ -502,7 +502,7 @@
         to an individual element of the comparison expression,
         rather than the comparison expression as a whole.
 
-        .. seelalso::
+        .. seealso::
 
             :ref:`migration_2879`
 

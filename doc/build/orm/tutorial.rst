@@ -62,10 +62,12 @@ and want less output generated, set it to ``False``. This tutorial will format
 the SQL behind a popup window so it doesn't get in our way; just click the
 "SQL" links to see what's being generated.
 
-The return value of :func:`.create_engine` is an instance of :class:`.Engine`, and it represents
-the core interface to the database, adapted through a :term:`dialect` that handles the details
-of the database and :term:`DBAPI` in use.  In this case the SQLite dialect will interpret instructions
-to the Python built-in ``sqlite3`` module.
+The return value of :func:`.create_engine` is an instance of
+:class:`.Engine`, and it represents the core interface to the
+database, adapted through a :term:`dialect` that handles the details
+of the database and :term:`DBAPI` in use.  In this case the SQLite
+dialect will interpret instructions to the Python built-in ``sqlite3``
+module.
 
 .. sidebar:: Lazy Connecting
 
@@ -78,6 +80,11 @@ is called, the :class:`.Engine` establishes a real :term:`DBAPI` connection to t
 database, which is then used to emit the SQL.  When using the ORM, we typically
 don't use the :class:`.Engine` directly once created; instead, it's used
 behind the scenes by the ORM as we'll see shortly.
+
+.. seealso::
+
+    :ref:`database_urls` - includes examples of :func:`.create_engine`
+    connecting to several kinds of databases with links to more information.
 
 Declare a Mapping
 =================
