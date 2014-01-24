@@ -77,6 +77,28 @@ and want less output generated, set it to ``False``. This tutorial will format
 the SQL behind a popup window so it doesn't get in our way; just click the
 "SQL" links to see what's being generated.
 
+The return value of :func:`.create_engine` is an instance of
+:class:`.Engine`, and it represents the core interface to the
+database, adapted through a :term:`dialect` that handles the details
+of the database and :term:`DBAPI` in use.  In this case the SQLite
+dialect will interpret instructions to the Python built-in ``sqlite3``
+module.
+
+.. sidebar:: Lazy Connecting
+
+    The :class:`.Engine`, when first returned by :func:`.create_engine`,
+    has not actually tried to connect to the database yet; that happens
+    only the first time it is asked to perform a task against the database.
+
+The first time a method like :meth:`.Engine.execute` or :meth:`.Engine.connect`
+is called, the :class:`.Engine` establishes a real :term:`DBAPI` connection to the
+database, which is then used to emit the SQL.
+
+.. seealso::
+
+    :ref:`database_urls` - includes examples of :func:`.create_engine`
+    connecting to several kinds of databases with links to more information.
+
 Define and Create Tables
 =========================
 

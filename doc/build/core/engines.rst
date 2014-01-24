@@ -39,7 +39,6 @@ covers the details of configuring an :class:`.Engine`.   The next section, :ref:
 will detail the usage API of the :class:`.Engine` and similar, typically for non-ORM
 applications.
 
-
 .. _supported_dbapis:
 
 Supported Databases
@@ -51,48 +50,36 @@ of others require an additional install of a separate dialect.
 
 See the section :ref:`dialect_toplevel` for information on the various backends available.
 
-
-
-.. _create_engine_args:
-
-Engine Creation API
-===================
-
-Keyword options can also be specified to :func:`~sqlalchemy.create_engine`,
-following the string URL as follows:
-
-.. sourcecode:: python+sql
-
-    db = create_engine('postgresql://...', encoding='latin1', echo=True)
-
-.. autofunction:: sqlalchemy.create_engine
-
-.. autofunction:: sqlalchemy.engine_from_config
+.. _database_urls:
 
 Database Urls
 =============
 
-SQLAlchemy indicates the source of an Engine strictly via `RFC-1738
-<http://rfc.net/rfc1738.html>`_ style URLs, combined with optional keyword
-arguments to specify options for the Engine. The form of the URL is::
+The :func:`.create_engine` function produces an :class:`.Engine` object based
+on a URL.  These URLs follow `RFC-1738
+<http://rfc.net/rfc1738.html>`_, and usually can include username, password,
+hostname, database name as well as optional keyword arguments for additional configuration.
+In some cases a file path is accepted, and in others a "data source name" replaces
+the "host" and "database" portions.  The typical form of a database URL is::
 
     dialect+driver://username:password@host:port/database
 
-Dialect names include the identifying name of the SQLAlchemy dialect which
-include ``sqlite``, ``mysql``, ``postgresql``, ``oracle``, ``mssql``, and
-``firebird``. The drivername is the name of the DBAPI to be used to connect to
+Dialect names include the identifying name of the SQLAlchemy dialect,
+a name such as ``sqlite``, ``mysql``, ``postgresql``, ``oracle``, or ``mssql``.
+The drivername is the name of the DBAPI to be used to connect to
 the database using all lowercase letters. If not specified, a "default" DBAPI
 will be imported if available - this default is typically the most widely
-known driver available for that backend (i.e. cx_oracle, pysqlite/sqlite3,
-psycopg2, mysqldb). For Jython connections, specify the `zxjdbc` driver, which
-is the JDBC-DBAPI bridge included with Jython.
+known driver available for that backend.
 
-.. autofunction:: sqlalchemy.engine.url.make_url
+Examples for common connection styles follow below.  For a full index of
+detailed information on all included dialects as well as links to third-party dialects, see
+:ref:`dialect_toplevel`.
 
 Postgresql
 ----------
 
-The Postgresql dialect uses psycopg2 as the default DBAPI::
+The Postgresql dialect uses psycopg2 as the default DBAPI.  pg8000 is
+also available as a pure-Python substitute::
 
     # default
     engine = create_engine('postgresql://scott:tiger@localhost/mydatabase')
@@ -103,21 +90,22 @@ The Postgresql dialect uses psycopg2 as the default DBAPI::
     # pg8000
     engine = create_engine('postgresql+pg8000://scott:tiger@localhost/mydatabase')
 
-    # Jython
-    engine = create_engine('postgresql+zxjdbc://scott:tiger@localhost/mydatabase')
-
 More notes on connecting to Postgresql at :ref:`postgresql_toplevel`.
 
 MySQL
 -----
 
-The MySQL dialect uses mysql-python as the default DBAPI::
+The MySQL dialect uses mysql-python as the default DBAPI.  There are many
+MySQL DBAPIs available, including MySQL-connector-python and OurSQL::
 
     # default
     engine = create_engine('mysql://scott:tiger@localhost/foo')
 
     # mysql-python
     engine = create_engine('mysql+mysqldb://scott:tiger@localhost/foo')
+
+    # MySQL-connector-python
+    engine = create_engine('mysql+mysqlconnector://scott:tiger@localhost/foo')
 
     # OurSQL
     engine = create_engine('mysql+oursql://scott:tiger@localhost/foo')
@@ -127,7 +115,7 @@ More notes on connecting to MySQL at :ref:`mysql_toplevel`.
 Oracle
 ------
 
-cx_oracle is usually used here::
+The Oracle dialect uses cx_oracle as the default DBAPI::
 
     engine = create_engine('oracle://scott:tiger@127.0.0.1:1521/sidname')
 
@@ -138,24 +126,33 @@ More notes on connecting to Oracle at :ref:`oracle_toplevel`.
 Microsoft SQL Server
 --------------------
 
-There are a few drivers for SQL Server, currently PyODBC is the most solid::
+The SQL Server dialect uses pyodbc as the default DBAPI.  pymssql is
+also available::
 
-    engine = create_engine('mssql+pyodbc://mydsn')
+    # pyodbc
+    engine = create_engine('mssql+pyodbc://scott:tiger@mydsn')
+
+    # pymssql
+    engine = create_engine('mssql+pymssql://scott:tiger@hostname:port/dbname')
 
 More notes on connecting to SQL Server at :ref:`mssql_toplevel`.
 
 SQLite
 ------
 
-SQLite connects to file based databases. The same URL format is used, omitting
-the hostname, and using the "file" portion as the filename of the database.
-This has the effect of four slashes being present for an absolute file path::
+SQLite connects to file-based databases, using the Python built-in
+module ``sqlite3`` by default.
+
+As SQLite connects to local files, the URL format is slightly different.
+The "file" portion of the URL is the filename of the database.
+For a relative file path, this requires three slashes::
 
     # sqlite://<nohostname>/<path>
     # where <path> is relative:
     engine = create_engine('sqlite:///foo.db')
 
-    # or absolute, starting with a slash:
+And for an absolute file path, *four* slashes are used::
+
     engine = create_engine('sqlite:////absolute/path/to/foo.db')
 
 To use a SQLite ``:memory:`` database, specify an empty URL::
@@ -167,11 +164,20 @@ More notes on connecting to SQLite at :ref:`sqlite_toplevel`.
 Others
 ------
 
-See :ref:`dialect_toplevel`, the top-level page for all dialect
+See :ref:`dialect_toplevel`, the top-level page for all additional dialect
 documentation.
 
-URL API
---------
+.. _create_engine_args:
+
+Engine Creation API
+===================
+
+.. autofunction:: sqlalchemy.create_engine
+
+.. autofunction:: sqlalchemy.engine_from_config
+
+.. autofunction:: sqlalchemy.engine.url.make_url
+
 
 .. autoclass:: sqlalchemy.engine.url.URL
     :members:
@@ -196,7 +202,6 @@ application, rather than creating a new one for each connection.
    :ref:`sqlite_toplevel` for details on SQLite connection pool usage.
 
 For more information on connection pooling, see :ref:`pooling_toplevel`.
-
 
 
 .. _custom_dbapi_args:
