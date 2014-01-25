@@ -3068,6 +3068,8 @@ class FromClause(Selectable):
 
         E.g.::
 
+            from sqlalchemy import join
+
             j = user_table.join(address_table,
                             user_table.c.id == address_table.c.user_id)
             stmt = select([user_table]).select_from(j)
@@ -3104,6 +3106,8 @@ class FromClause(Selectable):
         True.
 
         E.g.::
+
+            from sqlalchemy import outerjoin
 
             j = user_table.outerjoin(address_table,
                             user_table.c.id == address_table.c.user_id)
