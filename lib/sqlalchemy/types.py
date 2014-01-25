@@ -42,7 +42,18 @@ class AbstractType(Visitable):
 
 
 class TypeEngine(AbstractType):
-    """Base for built-in types."""
+    """The ultimate base class for all SQL datatypes.
+
+    Common subclasses of :class:`.TypeEngine` include
+    :class:`.String`, :class:`.Integer`, and :class:`.Boolean`.
+
+    For an overview of the SQLAlchemy typing system, see :ref:`types_toplevel`.
+
+    .. seealso::
+
+        :ref:`types_toplevel`
+
+    """
 
     class Comparator(_DefaultColumnComparator):
         """Base class for custom comparison operations defined at the
