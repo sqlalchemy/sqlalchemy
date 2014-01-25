@@ -782,57 +782,124 @@ def between(expr, lower_bound, upper_bound):
 
 
 def case(whens, value=None, else_=None):
-    """Produce a ``CASE`` statement.
+    """Produce a ``CASE`` expression for usage in a SQL construct.
 
-    whens
-      A sequence of pairs, or alternatively a dict,
-      to be translated into "WHEN / THEN" clauses.
+    The ``CASE`` construct in SQL is a conditional object that
+    acts somewhat analogously to an "if/then" construct in other
+    languages.  It returns an instance of :class:`.Case`.
 
-    value
-      Optional for simple case statements, produces
-      a column expression as in "CASE <expr> WHEN ..."
+    :func:`.case` in its usual form is passed a list of "when"
+    contructs, that is, a list of conditions and results as tuples::
 
-    else\_
-      Optional as well, for case defaults produces
-      the "ELSE" portion of the "CASE" statement.
+        from sqlalchemy import case
 
-    The expressions used for THEN and ELSE,
-    when specified as strings, will be interpreted
-    as bound values. To specify textual SQL expressions
-    for these, use the :func:`literal_column`
-    construct.
+        stmt = select([users_table]).\\
+                    where(
+                        case(
+                            [
+                                (users_table.c.name == 'wendy', 'W'),
+                                (users_table.c.name == 'jack', 'J')
+                            ],
+                            else_='E'
+                        )
+                    )
 
-    The expressions used for the WHEN criterion
-    may only be literal strings when "value" is
-    present, i.e. CASE table.somecol WHEN "x" THEN "y".
-    Otherwise, literal strings are not accepted
-    in this position, and either the text(<string>)
-    or literal(<string>) constructs must be used to
-    interpret raw string values.
+    The above statement will produce SQL resembling::
 
-    Usage examples::
+        SELECT id, name FROM user
+        WHERE CASE
+            WHEN (name = :name_1) THEN :param_1
+            WHEN (name = :name_2) THEN :param_2
+            ELSE :param_3
+        END
 
-      case([(orderline.c.qty > 100, item.c.specialprice),
-            (orderline.c.qty > 10, item.c.bulkprice)
-          ], else_=item.c.regularprice)
-      case(value=emp.c.type, whens={
-              'engineer': emp.c.salary * 1.1,
-              'manager':  emp.c.salary * 3,
-          })
+    When simple equality expressions of several values against a single
+    parent column are needed, :func:`.case` also has a "shorthand" format
+    used via the
+    :paramref:`.case.value` parameter, which is passed a column
+    expression to be compared.  In this form, the :paramref:`.case.whens`
+    parameter is passed as a dictionary containing expressions to be compared
+    against keyed to result expressions.  The statement below is equivalent
+    to the preceding statement::
 
-    Using :func:`literal_column()`, to allow for databases that
-    do not support bind parameters in the ``then`` clause.  The type
-    can be specified which determines the type of the :func:`case()` construct
-    overall::
+        stmt = select([users_table]).\\
+                    where(
+                        case(
+                            {"wendy": "W", "jack": "J"},
+                            value=users_table.c.name,
+                            else_='E'
+                        )
+                    )
 
-        case([(orderline.c.qty > 100,
-                literal_column("'greaterthan100'", String)),
-              (orderline.c.qty > 10, literal_column("'greaterthan10'",
-                String))
-            ], else_=literal_column("'lethan10'", String))
+    The values which are accepted as result values in
+    :paramref:`.case.whens` as well as with :paramref:`.case.else_` are
+    coerced from Python literals into :func:`.bindparam` constructs.
+    SQL expressions, e.g. :class:`.ColumnElement` constructs, are accepted
+    as well.  To coerce a literal string expression into a constant
+    expression rendered inline, use the :func:`.literal_column` construct,
+    as in::
+
+        from sqlalchemy import case, literal_column
+
+        case(
+            [
+                (
+                    orderline.c.qty > 100,
+                    literal_column("'greaterthan100'")
+                ),
+                (
+                    orderline.c.qty > 10,
+                    literal_column("'greaterthan10'")
+                )
+            ],
+            else_=literal_column("'lessthan10'")
+        )
+
+    The above will render the given constants without using bound
+    parameters for the result values (but still for the comparison
+    values), as in::
+
+        CASE
+            WHEN (orderline.qty > :qty_1) THEN 'greaterthan100'
+            WHEN (orderline.qty > :qty_2) THEN 'greaterthan10'
+            ELSE 'lessthan10'
+        END
+
+    :param whens: The criteria to be compared against, :paramref:`.case.whens`
+     accepts two different forms, based on whether or not :paramref:`.case.value`
+     is used.
+
+     In the first form, it accepts a list of 2-tuples; each 2-tuple consists
+     of ``(<sql expression>, <value>)``, where the SQL expression is a
+     boolean expression and "value" is a resulting value, e.g.::
+
+        case([
+            (users_table.c.name == 'wendy', 'W'),
+            (users_table.c.name == 'jack', 'J')
+        ])
+
+     In the second form, it accepts a Python dictionary of comparison values
+     mapped to a resulting value; this form requires :paramref:`.case.value`
+     to be present, and values will be compared using the ``==`` operator,
+     e.g.::
+
+        case(
+            {"wendy": "W", "jack": "J"},
+            value=users_table.c.name
+        )
+
+    :param value: An optional SQL expression which will be used as a
+      fixed "comparison point" for candidate values within a dictionary
+      passed to :paramref:`.case.whens`.
+
+    :param else\_: An optional SQL expression which will be the evaluated
+      result of the ``CASE`` construct if all expressions within
+      :paramref:`.case.whens` evaluate to false.  When omitted, most
+      databases will produce a result of NULL if none of the "when"
+      expressions evaulate to true.
+
 
     """
-
     return Case(whens, value=value, else_=else_)
 
 
@@ -3839,6 +3906,31 @@ class Tuple(ClauseList, ColumnElement):
 
 
 class Case(ColumnElement):
+    """Represent a ``CASE`` expression.
+
+    :class:`.Case` is produced using the :func:`.case` factory function,
+    as in::
+
+        from sqlalchemy import case
+
+        stmt = select([users_table]).\\
+                    where(
+                        case(
+                            [
+                                (users_table.c.name == 'wendy', 'W'),
+                                (users_table.c.name == 'jack', 'J')
+                            ],
+                            else_='E'
+                        )
+                    )
+
+    Details on :class:`.Case` usage is at :func:`.case`.
+
+    .. seealso::
+
+        :func:`.case`
+
+    """
     __visit_name__ = 'case'
 
     def __init__(self, whens, value=None, else_=None):
