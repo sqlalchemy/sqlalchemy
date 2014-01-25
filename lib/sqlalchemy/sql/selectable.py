@@ -175,14 +175,70 @@ class FromClause(Selectable):
         return Select([self], whereclause, **params)
 
     def join(self, right, onclause=None, isouter=False):
-        """return a join of this :class:`.FromClause` against another
-        :class:`.FromClause`."""
+        """Return a :class:`.Join` from this :class:`.FromClause`
+        to another :class:`FromClause`.
+
+        E.g.::
+
+            j = user_table.join(address_table,
+                            user_table.c.id == address_table.c.user_id)
+            stmt = select([user_table]).select_from(j)
+
+        would emit SQL along the lines of::
+
+            SELECT user.id, user.name FROM user
+            JOIN address ON user.id = address.user_id
+
+        :param right: the right side of the join; this is any :class:`.FromClause`
+         object such as a :class:`.Table` object, and may also be a selectable-compatible
+         object such as an ORM-mapped class.
+
+        :param onclause: a SQL expression representing the ON clause of the
+         join.  If left at ``None``, :meth:`.FromClause.join` will attempt to
+         join the two tables based on a foreign key relationship.
+
+        :param isouter: if True, render a LEFT OUTER JOIN, instead of JOIN.
+
+        .. seealso::
+
+            :func:`.join` - standalone function
+
+            :class:`.Join` - the type of object produced
+
+        """
 
         return Join(self, right, onclause, isouter)
 
     def outerjoin(self, right, onclause=None):
-        """return an outer join of this :class:`.FromClause` against another
-        :class:`.FromClause`."""
+        """Return a :class:`.Join` from this :class:`.FromClause`
+        to another :class:`FromClause`, with the "isouter" flag set to
+        True.
+
+        E.g.::
+
+            j = user_table.outerjoin(address_table,
+                            user_table.c.id == address_table.c.user_id)
+
+        The above is equivalent to::
+
+            j = user_table.join(address_table,
+                            user_table.c.id == address_table.c.user_id, isouter=True)
+
+        :param right: the right side of the join; this is any :class:`.FromClause`
+         object such as a :class:`.Table` object, and may also be a selectable-compatible
+         object such as an ORM-mapped class.
+
+        :param onclause: a SQL expression representing the ON clause of the
+         join.  If left at ``None``, :meth:`.FromClause.join` will attempt to
+         join the two tables based on a foreign key relationship.
+
+        .. seealso::
+
+            :meth:`.FromClause.join`
+
+            :class:`.Join`
+
+        """
 
         return Join(self, right, onclause, True)
 
@@ -428,8 +484,14 @@ class Join(FromClause):
     elements.
 
     The public constructor function for :class:`.Join` is the module-level
-    :func:`join()` function, as well as the :func:`join()` method available
-    off all :class:`.FromClause` subclasses.
+    :func:`.join()` function, as well as the :meth:`.FromClause.join` method
+    of any :class:`.FromClause` (e.g. such as :class:`.Table`).
+
+    .. seealso::
+
+        :func:`.join`
+
+        :meth:`.FromClause.join`
 
     """
     __visit_name__ = 'join'
@@ -480,31 +542,43 @@ class Join(FromClause):
 
     @classmethod
     def _create_join(cls, left, right, onclause=None, isouter=False):
-        """Return a ``JOIN`` clause element (regular inner join).
+        """Produce a :class:`.Join` object, given two :class:`.FromClause`
+        expressions.
 
-        The returned object is an instance of :class:`.Join`.
+        E.g.::
 
-        Similar functionality is also available via the
-        :meth:`~.FromClause.join()` method on any
-        :class:`.FromClause`.
+            j = join(user_table, address_table, user_table.c.id == address_table.c.user_id)
+            stmt = select([user_table]).select_from(j)
+
+        would emit SQL along the lines of::
+
+            SELECT user.id, user.name FROM user
+            JOIN address ON user.id = address.user_id
+
+        Similar functionality is available given any :class:`.FromClause` object
+        (e.g. such as a :class:`.Table`) using the :meth:`.FromClause.join`
+        method.
 
         :param left: The left side of the join.
 
-        :param right: The right side of the join.
+        :param right: the right side of the join; this is any :class:`.FromClause`
+         object such as a :class:`.Table` object, and may also be a selectable-compatible
+         object such as an ORM-mapped class.
 
-        :param onclause:  Optional criterion for the ``ON`` clause, is
-          derived from foreign key relationships established between
-          left and right otherwise.
+        :param onclause: a SQL expression representing the ON clause of the
+         join.  If left at ``None``, :meth:`.FromClause.join` will attempt to
+         join the two tables based on a foreign key relationship.
 
-        :param isouter: if True, produce an outer join; synonymous
-         with :func:`.outerjoin`.
+        :param isouter: if True, render a LEFT OUTER JOIN, instead of JOIN.
 
-        To chain joins together, use the :meth:`.FromClause.join` or
-        :meth:`.FromClause.outerjoin` methods on the resulting
-        :class:`.Join` object.
+        .. seealso::
 
+            :meth:`.FromClause.join` - method form, based on a given left side
+
+            :class:`.Join` - the type of object produced
 
         """
+
         return cls(left, right, onclause, isouter)
 
 
