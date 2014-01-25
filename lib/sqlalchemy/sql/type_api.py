@@ -20,7 +20,18 @@ NULLTYPE = None
 STRINGTYPE = None
 
 class TypeEngine(Visitable):
-    """Base for built-in types."""
+    """The ultimate base class for all SQL datatypes.
+
+    Common subclasses of :class:`.TypeEngine` include
+    :class:`.String`, :class:`.Integer`, and :class:`.Boolean`.
+
+    For an overview of the SQLAlchemy typing system, see :ref:`types_toplevel`.
+
+    .. seealso::
+
+        :ref:`types_toplevel`
+
+    """
 
     _sqla_type = True
     _isnull = False

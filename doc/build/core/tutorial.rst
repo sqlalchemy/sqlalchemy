@@ -987,6 +987,8 @@ The concepts of creating SQL expressions have been introduced. What's left are
 more variants of the same themes. So now we'll catalog the rest of the
 important things we'll need to know.
 
+.. _coretutorial_bind_param:
+
 Bind Parameter Objects
 ----------------------
 

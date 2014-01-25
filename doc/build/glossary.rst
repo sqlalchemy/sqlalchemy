@@ -30,6 +30,12 @@ Glossary
         in terms of one particular table alias or another, based on its position
         within the join expression.
 
+    crud
+        An acronym meaning "Create, Update, Delete".  The term in SQL refers to the
+        set of operations that create, modify and delete data from the database,
+        also known as :term:`DML`, and typically refers to the ``INSERT``,
+        ``UPDATE``, and ``DELETE`` statements.
+
     descriptor
     descriptors
         In Python, a descriptor is an object attribute with “binding behavior”, one whose attribute access has been overridden by methods in the `descriptor protocol <http://docs.python.org/howto/descriptor.html>`_.
