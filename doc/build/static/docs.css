@@ -526,3 +526,16 @@ div .version-warning {
   border:1px solid #BFBFBF;
 }*/
 
+/*dl div.floatything {
+    display:none;
+    position:fixed;
+    top:25px;
+    left:40px;
+    font-size:.95em;
+    font-weight: bold;
+    border:1px solid;
+    background-color: #FFF;
+}
+dl:hover div.floatything {
+    display:block;
+}*/
