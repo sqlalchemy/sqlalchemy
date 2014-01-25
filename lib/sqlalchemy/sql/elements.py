@@ -1064,7 +1064,20 @@ class TypeClause(ClauseElement):
 class TextClause(Executable, ClauseElement):
     """Represent a literal SQL text fragment.
 
-    Public constructor is the :func:`text()` function.
+    E.g.::
+
+        from sqlalchemy import text
+
+        t = text("SELECT * FROM users")
+        result = connection.execute(t)
+
+
+    The :class:`.Text` construct is produced using the :func:`.text`
+    function; see that function for full documentation.
+
+    .. seealso::
+
+        :func:`.text`
 
     """
 
@@ -1162,7 +1175,8 @@ class TextClause(Executable, ClauseElement):
         to it as an :class:`.Executable` object, and it supports
         the :meth:`Executable.execution_options` method.  For example,
         a :func:`.text` construct that should be subject to "autocommit"
-        can be set explicitly so using the ``autocommit`` option::
+        can be set explicitly so using the :paramref:`.Connection.execution_options.autocommit`
+        option::
 
             t = text("EXEC my_procedural_thing()").\\
                     execution_options(autocommit=True)
