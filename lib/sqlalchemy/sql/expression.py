@@ -1543,6 +1543,11 @@ def text(text, bind=None, *args, **kwargs):
         t = text("SELECT * FROM users WHERE id=:user_id")
         result = connection.execute(t, user_id=12)
 
+    For SQL statements where a colon is required verbatim, as within
+    an inline string, use a backslash to escape::
+
+        t = text("SELECT * FROM users WHERE name='\\:username'")
+
     To invoke SQLAlchemy typing logic for bind parameters, the
     ``bindparams`` list allows specification of :func:`bindparam`
     constructs which specify the type for a given name::
@@ -1564,10 +1569,10 @@ def text(text, bind=None, *args, **kwargs):
                 }
         )
 
-    The :func:`text` construct is used internally for most cases when
+    The :func:`.text` construct is used internally for most cases when
     a literal string is specified for part of a larger query, such as
-    within :func:`select()`, :func:`update()`,
-    :func:`insert()` or :func:`delete()`.   In those cases, the same
+    within :func:`.select()`, :func:`.update()`,
+    :func:`.insert()` or :func:`.delete()`.   In those cases, the same
     bind parameter syntax is applied::
 
         s = select([users.c.id, users.c.name]).where("id=:user_id")
@@ -1578,7 +1583,8 @@ def text(text, bind=None, *args, **kwargs):
     to it as an :class:`.Executable` object, and it supports
     the :meth:`Executable.execution_options` method.  For example,
     a :func:`text` construct that should be subject to "autocommit"
-    can be set explicitly so using the ``autocommit`` option::
+    can be set explicitly so using the :paramref:`.Connection.execution_options.autocommit`
+    option::
 
         t = text("EXEC my_procedural_thing()").\\
                 execution_options(autocommit=True)
