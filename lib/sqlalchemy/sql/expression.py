@@ -135,7 +135,7 @@ def nullslast(column):
 
 
 def desc(column):
-    """Return a descending ``ORDER BY`` clause element.
+    """Produce a descending ``ORDER BY`` clause element.
 
     e.g.::
 
@@ -172,7 +172,7 @@ def desc(column):
 
 
 def asc(column):
-    """Return an ascending ``ORDER BY`` clause element.
+    """Produce an ascending ``ORDER BY`` clause element.
 
     e.g.::
 
@@ -605,7 +605,7 @@ def delete(table, whereclause=None, **kwargs):
 
 
 def and_(*clauses):
-    """Produce a conjunction of clauses joined by ``AND``.
+    """Produce a conjunction of expressions joined by ``AND``.
 
     E.g.::
 
@@ -648,7 +648,7 @@ def and_(*clauses):
 
 
 def or_(*clauses):
-    """Produce a conjunction of clauses joined by ``OR``.
+    """Produce a conjunction of expressions joined by ``OR``.
 
     E.g.::
 
@@ -733,7 +733,7 @@ def distinct(expr):
 
 
 def between(expr, lower_bound, upper_bound):
-    """Produce ``BETWEEN`` predicate clause.
+    """Produce a ``BETWEEN`` predicate clause.
 
     E.g.::
 
@@ -782,7 +782,7 @@ def between(expr, lower_bound, upper_bound):
 
 
 def case(whens, value=None, else_=None):
-    """Produce a ``CASE`` expression for usage in a SQL construct.
+    """Produce a ``CASE`` expression.
 
     The ``CASE`` construct in SQL is a conditional object that
     acts somewhat analogously to an "if/then" construct in other
@@ -1228,31 +1228,82 @@ def label(name, obj):
 
 
 def column(text, type_=None):
-    """Return a textual column clause, as would be in the columns clause of a
-    ``SELECT`` statement.
+    """Produce a :class:`.ColumnClause` object.
 
-    The object returned is an instance of :class:`.ColumnClause`, which
-    represents the "syntactical" portion of the schema-level
-    :class:`~sqlalchemy.schema.Column` object.  It is often used directly
-    within :func:`~.expression.select` constructs or with lightweight
-    :func:`~.expression.table` constructs.
+    The :class:`.ColumnClause` is a lightweight analogue to the
+    :class:`.Column` class.  The :func:`.column` function can
+    be invoked with just a name alone, as in::
 
-    Note that the :func:`~.expression.column` function is not part of
-    the ``sqlalchemy`` namespace.  It must be imported from the
-    ``sql`` package::
+        from sqlalchemy.sql import column
+
+        id, name = column("id"), column("name")
+        stmt = select([id, name]).select_from("user")
+
+    The above statement would produce SQL like::
+
+        SELECT id, name FROM user
+
+    Once constructed, :func:`.column` may be used like any other SQL expression
+    element such as within :func:`.select` constructs::
+
+        from sqlalchemy.sql import column
+
+        id, name = column("id"), column("name")
+        stmt = select([id, name]).select_from("user")
+
+    The text handled by :func:`.column` is assumed to be handled
+    like the name of a database column; if the string contains mixed case,
+    special characters, or matches a known reserved word on the target
+    backend, the column expression will render using the quoting
+    behavior determined by the backend.  To produce a textual SQL
+    expression that is rendered exactly without any quoting,
+    use :func:`.literal_column` instead, or pass ``True`` as the
+    value of :paramref:`.column.is_literal`.   Additionally, full SQL
+    statements are best handled using the :func:`.text` construct.
+
+    :func:`.column` can be used in a table-like
+    fashion by combining it with the :func:`.table` function
+    (which is the lightweight analogue to :class:`.Table`) to produce
+    a working table construct with minimal boilerplate::
 
         from sqlalchemy.sql import table, column
 
-    :param text: the name of the column.  Quoting rules will be applied
-      to the clause like any other column name. For textual column constructs
-      that are not to be quoted, use the :func:`literal_column` function.
+        user = table("user",
+                column("id"),
+                column("name"),
+                column("description"),
+        )
 
-    :param type\_: an optional :class:`~sqlalchemy.types.TypeEngine` object
-      which will provide result-set translation for this column.
+        stmt = select([user.c.description]).where(user.c.name == 'wendy')
 
-    See :class:`.ColumnClause` for further examples.
+    A :func:`.column` / :func:`.table` construct like that illustrated
+    above can be created in an
+    ad-hoc fashion and is not associated with any :class:`.schema.MetaData`,
+    DDL, or events, unlike its :class:`.Table` counterpart.
+
+    :param text: the text of the element.
+
+    :param type: :class:`.types.TypeEngine` object which can associate
+      this :class:`.ColumnClause` with a type.
+
+    :param is_literal: if True, the :class:`.ColumnClause` is assumed to
+      be an exact expression that will be delivered to the output with no
+      quoting rules applied regardless of case sensitive settings. the
+      :func:`.literal_column()` function essentially invokes :func:`.column`
+      while passing ``is_literal=True``.
+
+    .. seealso::
+
+        :class:`.Column`
+
+        :func:`.literal_column`
+
+        :func:`.text`
+
+        :ref:`metadata_toplevel`
 
     """
+
     return ColumnClause(text, type_=type_)
 
 
@@ -1306,7 +1357,7 @@ def table(name, *columns):
 
 def bindparam(key, value=NO_ARG, type_=None, unique=False, required=NO_ARG,
                         quote=None, callable_=None):
-    """Produce a "bound expression" for usage in a SQL construct.
+    """Produce a "bound expression".
 
     The return value is an instance of :class:`.BindParameter`; this
     is a :class:`.ColumnElement` subclass which represents a so-called
@@ -3378,7 +3429,7 @@ class FromClause(Selectable):
 
 
 class BindParameter(ColumnElement):
-    """Represent a "bound expression" for usage in a SQL construct.
+    """Represent a "bound expression".
 
     :class:`.BindParameter` is invoked explicitly using the
     :func:`.bindparam` function, as in::
@@ -4911,7 +4962,20 @@ class Label(ColumnElement):
 
 
 class ColumnClause(Immutable, ColumnElement):
-    """Represents a generic column expression from any textual string.
+    """Represents a column expression from any textual string.
+
+    The :class:`.ColumnClause`, a lightweight analogue to the
+    :class:`.Column` class, is typically invoked using the
+    :func:`.column` function, as in::
+
+        from sqlalchemy.sql import column
+
+        id, name = column("id"), column("name")
+        stmt = select([id, name]).select_from("user")
+
+    The above statement would produce SQL like::
+
+        SELECT id, name FROM user
 
     :class:`.ColumnClause` is the immediate superclass of the schema-specific
     :class:`.Column` object.  While the :class:`.Column` class has all the
@@ -4922,48 +4986,13 @@ class ColumnClause(Immutable, ColumnElement):
     that :class:`.Column` does, so in that sense is a "lightweight" version
     of :class:`.Column`.
 
-    :class:`.ColumnClause` is constructed by itself typically via
-    the :func:`~.expression.column` function.  The datatype is optional.
-    It may be placed directly
-    into constructs such as :func:`.select` constructs::
-
-        from sqlalchemy.sql import column, select
-
-        c1, c2 = column("c1"), column("c2")
-        s = select([c1, c2]).where(c1==5)
-
-    There is also a variant on :func:`~.expression.column` known
-    as :func:`~.expression.literal_column` - the difference is that
-    in the latter case, the string value is assumed to be an exact
-    expression, rather than a column name, so that no quoting rules
-    or similar are applied::
-
-        from sqlalchemy.sql import literal_column, select
-
-        s = select([literal_column("5 + 7")])
-
-    :class:`.ColumnClause` can also be used in a table-like
-    fashion by combining the :func:`~.expression.column` function
-    with the :func:`~.expression.table` function, to produce
-    a "lightweight" form of table metadata::
-
-        from sqlalchemy.sql import table, column
-
-        user = table("user",
-                column("id"),
-                column("name"),
-                column("description"),
-        )
-
-    The above construct can be created in an ad-hoc fashion and is
-    not associated with any :class:`.schema.MetaData`, unlike it's
-    more full fledged :class:`.schema.Table` counterpart.
+    Full details on :class:`.ColumnClause` usage is at :func:`.column`.
 
     .. seealso::
 
-        :class:`.Column`
+        :func:`.column`
 
-        :ref:`metadata_toplevel`
+        :class:`.Column`
 
     """
     __visit_name__ = 'column'
