@@ -348,5 +348,5 @@ class DeclarativeMappedTest(MappedTest):
         cls.DeclarativeBasic = _DeclBase
         fn()
 
-        if cls.metadata.tables:
+        if cls.metadata.tables and cls.run_create_tables:
             cls.metadata.create_all(config.db)

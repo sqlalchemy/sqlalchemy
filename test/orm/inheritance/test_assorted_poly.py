@@ -1525,7 +1525,7 @@ class Ticket2419Test(fixtures.DeclarativeMappedTest):
 class ColSubclassTest(fixtures.DeclarativeMappedTest, testing.AssertsCompiledSQL):
     """Test [ticket:2918]'s test case."""
 
-    run_create_tables = None
+    run_create_tables = run_deletes = None
     __dialect__ = 'default'
 
     @classmethod
