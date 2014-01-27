@@ -66,11 +66,9 @@ used to construct any kind of typed SQL expression.
 .. autoclass:: BinaryExpression
    :members:
 
-   :inherited-members:
 
 .. autoclass:: BindParameter
    :members:
-   :inherited-members:
 
 .. autoclass:: Case
    :members:
@@ -88,7 +86,6 @@ used to construct any kind of typed SQL expression.
 
 .. autoclass:: ColumnClause
    :members:
-   :inherited-members:
 
 .. autoclass:: ColumnCollection
    :members:

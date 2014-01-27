@@ -903,21 +903,55 @@ def case(whens, value=None, else_=None):
     return Case(whens, value=value, else_=else_)
 
 
-def cast(clause, totype, **kwargs):
-    """Return a ``CAST`` function.
+def cast(expression, type_, **kw):
+    """Produce a ``CAST`` expression.
 
-    Equivalent of SQL ``CAST(clause AS totype)``.
+    :func:`.cast` returns an instance of :class:`.Cast`.
 
-    Use with a :class:`~sqlalchemy.types.TypeEngine` subclass, i.e::
+    E.g.::
 
-      cast(table.c.unit_price * table.c.qty, Numeric(10,4))
+        from sqlalchemy import cast, Numeric
 
-    or::
+        stmt = select([
+                    cast(product_table.c.unit_price, Numeric(10, 4))
+                ])
 
-      cast(table.c.timestamp, DATE)
+    The above statement will produce SQL resembling::
+
+        SELECT CAST(unit_price AS NUMERIC(10, 4)) FROM product
+
+    The :func:`.cast` function performs two distinct functions when
+    used.  The first is that it renders the ``CAST`` expression within
+    the resulting SQL string.  The second is that it associates the given
+    type (e.g. :class:`.TypeEngine` class or instance) with the column
+    expression on the Python side, which means the expression will take
+    on the expression operator behavior associated with that type
+    as well as the result-row-handling behavior of the type.
+
+    An alternative to :func:`.cast` is the :func:`.type_coerce` function.
+    This function performs the second task of associating an expression
+    with a specific type, but does not render the ``CAST`` expression
+    in SQL.
+
+    :param expression: A SQL expression, such as a :class:`.ColumnElement`
+     expression or a Python string which will be coerced into a bound
+     literal value.
+
+    :param type_: A :class:`.TypeEngine` class or instance indicating
+     the type to which the ``CAST`` should apply.
+
+    :param \**kw: additional keyword arguments are unused.
+
+      .. deprecated:: 0.8 \**kw argument to :func:`.cast` is removed
+         in 0.9.
+
+    .. seealso::
+
+        :func:`.type_coerce` - Python-side type coercion without emitting
+        CAST.
 
     """
-    return Cast(clause, totype, **kwargs)
+    return Cast(expression, type_, **kw)
 
 
 def extract(field, expr):
@@ -1154,40 +1188,49 @@ def tuple_(*expr):
 
 
 def type_coerce(expr, type_):
-    """Coerce the given expression into the given type,
-    on the Python side only.
+    """Associate a SQL expression with a particular type, without rendering
+    ``CAST``.
 
-    :func:`.type_coerce` is roughly similar to :func:`.cast`, except no
-    "CAST" expression is rendered - the given type is only applied towards
-    expression typing and against received result values.
+    E.g.::
 
-    e.g.::
+        from sqlalchemy import type_coerce
 
-        from sqlalchemy.types import TypeDecorator
-        import uuid
+        stmt = select([type_coerce(log_table.date_string, StringDateTime())])
 
-        class AsGuid(TypeDecorator):
-            impl = String
+    The above construct will produce SQL that is usually otherwise unaffected
+    by the :func:`.type_coerce` call::
 
-            def process_bind_param(self, value, dialect):
-                if value is not None:
-                    return str(value)
-                else:
-                    return None
+        SELECT date_string FROM log
 
-            def process_result_value(self, value, dialect):
-                if value is not None:
-                    return uuid.UUID(value)
-                else:
-                    return None
+    However, when result rows are fetched, the ``StringDateTime`` type
+    will be applied to result rows on behalf of the ``date_string`` column.
 
-        conn.execute(
-            select([type_coerce(mytable.c.ident, AsGuid)]).\\
-                    where(
-                        type_coerce(mytable.c.ident, AsGuid) ==
-                        uuid.uuid3(uuid.NAMESPACE_URL, 'bar')
-                    )
-        )
+    A type that features bound-value handling will also have that behavior
+    take effect when literal values or :func:`.bindparam` constructs are
+    passed to :func:`.type_coerce` as targets.
+    For example, if a type implements the :meth:`.TypeEngine.bind_expression`
+    method or :meth:`.TypeEngine.bind_processor` method or equivalent,
+    these functions will take effect at statement compliation/execution time
+    when a literal value is passed, as in::
+
+        # bound-value handling of MyStringType will be applied to the
+        # literal value "some string"
+        stmt = select([type_coerce("some string", MyStringType)])
+
+    :func:`.type_coerce` is similar to the :func:`.cast` function,
+    except that it does not render the ``CAST`` expression in the resulting
+    statement; the bind-side behavior of :func:`.type_coerce` is also not
+    present in :func:`.cast` until SQLAlchemy version 0.9.0.
+
+    :param expression: A SQL expression, such as a :class:`.ColumnElement` expression
+     or a Python string which will be coerced into a bound literal value.
+
+    :param type_: A :class:`.TypeEngine` class or instance indicating
+     the type to which the the expression is coerced.
+
+    .. seealso::
+
+        :func:`.cast`
 
     """
     type_ = sqltypes.to_instance(type_)
@@ -2720,6 +2763,41 @@ class ColumnElement(ClauseElement, ColumnOperators):
     literal expressions, keywords such as ``NULL``, etc.
     :class:`.ColumnElement` is the ultimate base class for all such elements.
 
+    A wide variety of SQLAlchemy Core functions work at the SQL expression level,
+    and are intended to accept instances of :class:`.ColumnElement` as arguments.
+    These functions will typically document that they accept a "SQL expression"
+    as an argument.  What this means in terms of SQLAlchemy usually refers
+    to an input which is either already in the form of a :class:`.ColumnElement`
+    object, or a value which can be **coerced** into one.   The coercion
+    rules followed by most, but not all, SQLAlchemy Core functions with regards
+    to SQL expressions are as follows:
+
+        * a literal Python value, such as a string, integer or floating
+          point value, boolean, datetime, ``Decimal`` object, or virtually
+          any other Python object, will be coerced into a "literal bound value".
+          This generally means that a :func:`.bindparam` will be produced
+          featuring the given value embedded into the construct; the resulting
+          :class:`.BindParameter` object is an instance of :class:`.ColumnElement`.
+          The Python value will ultimately be sent to the DBAPI at execution time as a
+          paramterized argument to the ``execute()`` or ``executemany()`` methods,
+          after SQLAlchemy type-specific converters (e.g. those provided by
+          any associated :class:`.TypeEngine` objects) are applied to the value.
+
+        * any special object value, typically ORM-level constructs, which feature
+          a method called ``__clause_element__()``.   The Core expression system
+          looks for this method when an object of otherwise unknown type is passed
+          to a function that is looking to coerce the argument into a :class:`.ColumnElement`
+          expression.  The ``__clause_element__()`` method, if present, should
+          return a :class:`.ColumnElement` instance.  The primary use of
+          ``__clause_element__()`` within SQLAlchemy is that of class-bound attributes
+          on ORM-mapped classes; a ``User`` class which contains a mapped attribute
+          named ``.name`` will have a method ``User.name.__clause_element__()``
+          which when invoked returns the :class:`.Column` called ``name`` associated
+          with the mapped table.
+
+        * The Python ``None`` value is typically interpreted as ``NULL``, which
+          in SQLAlchemy Core produces an instance of :func:`.null`.
+
     A :class:`.ColumnElement` provides the ability to generate new
     :class:`.ColumnElement`
     objects using Python expressions.  This means that Python operators
@@ -4215,6 +4293,24 @@ class Function(FunctionElement):
 
 
 class Cast(ColumnElement):
+    """Represent a ``CAST`` expression.
+
+    :class:`.Cast` is produced using the :func:`.cast` factory function,
+    as in::
+
+        from sqlalchemy import cast, Numeric
+
+        stmt = select([
+                    cast(product_table.c.unit_price, Numeric(10, 4))
+                ])
+
+    Details on :class:`.Cast` usage is at :func:`.cast`.
+
+    .. seealso::
+
+        :func:`.cast`
+
+    """
 
     __visit_name__ = 'cast'
 

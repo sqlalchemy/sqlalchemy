@@ -13,7 +13,6 @@ constructs build on the intermediary :class:`.ValuesBase`.
 
 .. autofunction:: update
 
-
 .. autoclass:: Delete
    :members:
    :inherited-members:
@@ -26,13 +25,11 @@ constructs build on the intermediary :class:`.ValuesBase`.
   :members:
   :inherited-members:
 
-
-.. autoclass:: UpdateBase
+.. autoclass:: sqlalchemy.sql.expression.UpdateBase
   :members:
+  :inherited-members:
 
-
-.. autoclass:: ValuesBase
-    :members:
-
+.. autoclass:: sqlalchemy.sql.expression.ValuesBase
+   :members:
 
 
