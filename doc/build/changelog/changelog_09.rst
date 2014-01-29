@@ -16,6 +16,16 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 2927
+
+        Fixed regression whereby the "annotation" system used by the ORM was leaking
+        into the names used by standard functions in :mod:`sqlalchemy.sql.functions`,
+        such as ``func.coalesce()`` and ``func.max()``.  Using these functions
+        in ORM attributes and thus producing annotated versions of them could
+        corrupt the actual function name rendered in the SQL.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 2924, 2848
 
         Fixed 0.9 regression where the new sortable support for :class:`.RowProxy`

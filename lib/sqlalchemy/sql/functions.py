@@ -17,6 +17,7 @@ from .selectable import FromClause, Select
 from . import operators
 from .visitors import VisitableType
 from .. import util
+from . import annotation
 
 _registry = util.defaultdict(dict)
 
@@ -308,16 +309,16 @@ class Function(FunctionElement):
                                 _compared_to_type=self.type,
                                 unique=True)
 
-
 class _GenericMeta(VisitableType):
     def __init__(cls, clsname, bases, clsdict):
-        cls.name = name = clsdict.get('name', clsname)
-        cls.identifier = identifier = clsdict.get('identifier', name)
-        package = clsdict.pop('package', '_default')
-        # legacy
-        if '__return_type__' in clsdict:
-            cls.type = clsdict['__return_type__']
-        register_function(identifier, cls, package)
+        if annotation.Annotated not in cls.__mro__:
+            cls.name = name = clsdict.get('name', clsname)
+            cls.identifier = identifier = clsdict.get('identifier', name)
+            package = clsdict.pop('package', '_default')
+            # legacy
+            if '__return_type__' in clsdict:
+                cls.type = clsdict['__return_type__']
+            register_function(identifier, cls, package)
         super(_GenericMeta, cls).__init__(clsname, bases, clsdict)
 
 
@@ -406,7 +407,6 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
                 group_contents=True, *parsed_args).self_group()
         self.type = sqltypes.to_instance(
             kwargs.pop("type_", None) or getattr(self, 'type', None))
-
 
 register_function("cast", Cast)
 register_function("extract", Extract)

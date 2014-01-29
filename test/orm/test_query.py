@@ -348,6 +348,20 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
             checkparams={"name": "ed"}
         )
 
+    def test_col_prop_builtin_function(self):
+        class Foo(object):
+            pass
+
+        mapper(Foo, self.tables.users, properties={
+                'foob': column_property(func.coalesce(self.tables.users.c.name))
+            })
+
+        self.assert_compile(
+            select([Foo]).where(Foo.foob == 'somename').order_by(Foo.foob),
+            "SELECT users.id, users.name FROM users "
+            "WHERE coalesce(users.name) = :coalesce_1 ORDER BY coalesce(users.name)"
+        )
+
 class GetTest(QueryTest):
     def test_get(self):
         User = self.classes.User
