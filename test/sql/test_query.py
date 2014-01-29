@@ -331,14 +331,21 @@ class QueryTest(fixtures.TestBase):
                 operator.eq, operator.ne, operator.gt,
                 operator.lt, operator.ge, operator.le
             ]:
-                eq_(
-                    op(equal, compare),
-                    op(rp, compare)
-                )
-                eq_(
-                    op(compare, equal),
-                    op(compare, rp)
-                )
+
+                try:
+                    control = op(equal, compare)
+                    eq_(control, op(rp, compare))
+                except TypeError:
+                    # Py3K raises TypeError for some invalid comparisons
+                    assert_raises(TypeError, op, rp, compare)
+
+                try:
+                    control = op(compare, equal)
+                    eq_(control, op(compare, rp))
+                except TypeError:
+                    # Py3K raises TypeError for some invalid comparisons
+                    assert_raises(TypeError, op, compare, rp)
+
 
 
     @testing.provide_metadata
