@@ -334,17 +334,19 @@ class QueryTest(fixtures.TestBase):
 
                 try:
                     control = op(equal, compare)
-                    eq_(control, op(rp, compare))
                 except TypeError:
                     # Py3K raises TypeError for some invalid comparisons
                     assert_raises(TypeError, op, rp, compare)
+                else:
+                    eq_(control, op(rp, compare))
 
                 try:
                     control = op(compare, equal)
-                    eq_(control, op(compare, rp))
                 except TypeError:
                     # Py3K raises TypeError for some invalid comparisons
                     assert_raises(TypeError, op, compare, rp)
+                else:
+                    eq_(control, op(compare, rp))
 
 
 
