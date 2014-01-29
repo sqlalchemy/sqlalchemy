@@ -12,6 +12,7 @@ and :class:`.RowProxy."""
 from .. import exc, util
 from ..sql import expression, sqltypes
 import collections
+import operator
 
 # This reconstructor is necessary so that pickles with the C extension or
 # without use the same Binary format.
@@ -125,14 +126,28 @@ class RowProxy(BaseRowProxy):
 
     __hash__ = None
 
+    def _op(self, other, op):
+        return op(tuple(self), tuple(other)) \
+            if isinstance(other, RowProxy) \
+            else op(tuple(self), other)
+
     def __lt__(self, other):
-        return tuple(self) < tuple(other)
+        return self._op(other, operator.lt)
+
+    def __le__(self, other):
+        return self._op(other, operator.le)
+
+    def __ge__(self, other):
+        return self._op(other, operator.ge)
+
+    def __gt__(self, other):
+        return self._op(other, operator.gt)
 
     def __eq__(self, other):
-        return other is self or tuple(other) == tuple(self)
+        return self._op(other, operator.eq)
 
     def __ne__(self, other):
-        return not self.__eq__(other)
+        return self._op(other, operator.ne)
 
     def __repr__(self):
         return repr(tuple(self))

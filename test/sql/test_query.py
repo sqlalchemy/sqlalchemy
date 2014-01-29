@@ -304,7 +304,7 @@ class QueryTest(fixtures.TestBase):
 
 
     def test_row_comparison(self):
-        users.insert().execute(user_id = 7, user_name = 'jack')
+        users.insert().execute(user_id = 7, user_name='jack')
         rp = users.select().execute().first()
 
         self.assert_(rp == rp)
@@ -316,6 +316,30 @@ class QueryTest(fixtures.TestBase):
         self.assert_(equal == rp)
         self.assert_(not (rp != equal))
         self.assert_(not (equal != equal))
+
+        def endless():
+            while True:
+                yield 1
+        self.assert_(rp != endless())
+        self.assert_(endless() != rp)
+
+        # test that everything compares the same
+        # as it would against a tuple
+        import operator
+        for compare in [False, 8, endless(), 'xyz', (7, 'jack')]:
+            for op in [
+                operator.eq, operator.ne, operator.gt,
+                operator.lt, operator.ge, operator.le
+            ]:
+                eq_(
+                    op(equal, compare),
+                    op(rp, compare)
+                )
+                eq_(
+                    op(compare, equal),
+                    op(compare, rp)
+                )
+
 
     @testing.provide_metadata
     def test_column_label_overlap_fallback(self):

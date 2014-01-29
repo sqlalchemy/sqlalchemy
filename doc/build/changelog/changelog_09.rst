@@ -15,6 +15,18 @@
     :version: 0.9.2
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2924, 2848
+
+        Fixed 0.9 regression where the new sortable support for :class:`.RowProxy`
+        would lead to ``TypeError`` when compared to non-tuple types as it attempted
+        to apply tuple() to the "other" object unconditionally.  The
+        full range of Python comparison operators have now been implemented on
+        :class:`.RowProxy`, using an approach that guarantees a comparison
+        system that is equivalent to that of a tuple, and the "other" object
+        is only coerced if it's an instance of RowProxy.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2918
 
