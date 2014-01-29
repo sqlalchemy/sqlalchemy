@@ -77,6 +77,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         ]:
             self.assert_compile(func.random(), ret, dialect=dialect)
 
+    def test_generic_annotation(self):
+        # test [ticket:2927]:
+        # this passes in 0.8 because we forget to
+        # pre-annotate the "functions.XYZ" classes in sql.util
+        fn = func.coalesce('x', 'y')._annotate({"foo": "bar"})
+        self.assert_compile(
+            fn, "coalesce(:param_1, :param_2)"
+        )
+
     def test_custom_default_namespace(self):
         class myfunc(GenericFunction):
             pass
