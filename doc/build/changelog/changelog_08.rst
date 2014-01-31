@@ -12,6 +12,15 @@
     :version: 0.8.5
 
     .. change::
+        :tags: bug, py3k
+        :pullreq: github:63
+
+        Fixed Py3K bug where a missing import would cause "literal binary"
+        mode to fail to import "util.binary_type" when rendering a bound
+        parameter.  0.9 handles this differently. Pull request courtesy
+        Andreas Zeidler.
+
+    .. change::
         :tags: bug, orm
         :versions: 0.9.2
         :pullreq: github:58
