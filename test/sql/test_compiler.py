@@ -21,6 +21,7 @@ from sqlalchemy import Integer, String, MetaData, Table, Column, select, \
     over, subquery, case
 import decimal
 from sqlalchemy import exc, sql, util, types, schema
+from sqlalchemy.util import compat
 from sqlalchemy.sql import table, column, label
 from sqlalchemy.sql.expression import ClauseList, _literal_as_text, HasPrefixes
 from sqlalchemy.engine import default
@@ -1301,6 +1302,12 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select([literal("foo").in_([])]),
             "SELECT 'foo' != 'foo' AS anon_1",
+            dialect=dialect
+        )
+
+        self.assert_compile(
+            select([literal(compat.b("foo"))]),
+            "SELECT 'foo' AS anon_1",
             dialect=dialect
         )
 
