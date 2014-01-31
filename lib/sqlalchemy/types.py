@@ -1746,6 +1746,8 @@ class _Binary(TypeEngine):
     # Python 3 - sqlite3 doesn't need the `Binary` conversion
     # here, though pg8000 does to indicate "bytea"
     def bind_processor(self, dialect):
+        if dialect.dbapi is None:
+            return None
         DBAPIBinary = dialect.dbapi.Binary
 
         def process(value):
