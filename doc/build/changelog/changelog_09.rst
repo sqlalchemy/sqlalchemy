@@ -15,6 +15,26 @@
     :version: 0.9.2
 
     .. change::
+        :tags: bug, sqlite
+
+        Fixed bug whereby SQLite compiler failed to propagate compiler arguments
+        such as "literal binds" into a CAST expression.
+
+    .. change::
+        :tags: bug, sql
+
+        Fixed bug whereby binary type would fail in some cases
+        if used with a "test" dialect, such as a DefaultDialect or other
+        dialect with no DBAPI.
+
+    .. change::
+        :tags: bug, sql, py3k
+
+        Fixed bug where "literal binds" wouldn't work with a bound parameter
+        that's a binary type.  A similar, but different, issue is fixed
+        in 0.8.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2927
 

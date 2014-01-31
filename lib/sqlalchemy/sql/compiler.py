@@ -961,7 +961,6 @@ class SQLCompiler(Compiled):
                                             literal_binds=False,
                                             skip_bind_expression=False,
                                             **kwargs):
-
         if not skip_bind_expression and bindparam.type._has_bind_expression:
             bind_expression = bindparam.type.bind_expression(bindparam)
             return self.process(bind_expression,

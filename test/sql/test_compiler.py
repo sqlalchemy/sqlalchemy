@@ -1185,6 +1185,12 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=dialect
         )
 
+        self.assert_compile(
+            select([literal(util.b("foo"))]),
+            "SELECT 'foo' AS anon_1",
+            dialect=dialect
+        )
+
         assert_raises_message(
             exc.CompileError,
             "Bind parameter 'foo' without a renderable value not allowed here.",

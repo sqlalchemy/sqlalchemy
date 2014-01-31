@@ -1203,6 +1203,17 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
                     count().scalar(), 1)
 
 
+    def test_literal_roundtrip(self):
+        compiled = select([cast(literal(util.b("foo")), LargeBinary)]).compile(
+                            dialect=testing.db.dialect,
+                            compile_kwargs={"literal_binds": True})
+        result = testing.db.execute(compiled)
+        eq_(result.scalar(), util.b("foo"))
+
+    def test_bind_processor_no_dbapi(self):
+        b = LargeBinary()
+        eq_(b.bind_processor(default.DefaultDialect()), None)
+
     def load_stream(self, name):
         f = os.path.join(os.path.dirname(__file__), "..", name)
         return open(f, mode='rb').read()

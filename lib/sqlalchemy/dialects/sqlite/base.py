@@ -456,9 +456,9 @@ class SQLiteCompiler(compiler.SQLCompiler):
 
     def visit_cast(self, cast, **kwargs):
         if self.dialect.supports_cast:
-            return super(SQLiteCompiler, self).visit_cast(cast)
+            return super(SQLiteCompiler, self).visit_cast(cast, **kwargs)
         else:
-            return self.process(cast.clause)
+            return self.process(cast.clause, **kwargs)
 
     def visit_extract(self, extract, **kw):
         try:
