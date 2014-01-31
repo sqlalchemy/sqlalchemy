@@ -1,5 +1,6 @@
 *.pyc
 *.pyo
+*.egg
 /build/
 /dist/
 /doc/build/output/
