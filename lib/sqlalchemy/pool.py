@@ -126,18 +126,70 @@ class Pool(log.Identified):
           already been retrieved from the pool and has not been
           returned yet.  Offers a slight performance advantage at the
           cost of individual transactions by default.  The
-          :meth:`unique_connection` method is provided to bypass the
-          threadlocal behavior installed into :meth:`connect`.
+          :meth:`.Pool.unique_connection` method is provided to return
+          a consistenty unique connection to bypass this behavior
+          when the flag is set.
 
-        :param reset_on_return: Configures the action to take
-          on connections as they are returned to the pool.
-          See the argument description in :class:`.QueuePool` for
-          more detail.
+          .. warning::  The :paramref:`.Pool.use_threadlocal` flag
+             **does not affect the behavior** of :meth:`.Engine.connect`.
+             :meth:`.Engine.connect` makes use of the :meth:`.Pool.unique_connection`
+             method which **does not use thread local context**.
+             To produce a :class:`.Connection` which refers to the
+             :meth:`.Pool.connect` method, use
+             :meth:`.Engine.contextual_connect`.
+
+             Note that other SQLAlchemy connectivity systems such as
+             :meth:`.Engine.execute` as well as the orm
+             :class:`.Session` make use of
+             :meth:`.Engine.contextual_connect` internally, so these functions
+             are compatible with the :paramref:`.Pool.use_threadlocal` setting.
+
+          .. seealso::
+
+            :ref:`threadlocal_strategy` - contains detail on the
+            "threadlocal" engine strategy, which provides a more comprehensive
+            approach to "threadlocal" connectivity for the specific
+            use case of using :class:`.Engine` and :class:`.Connection` objects
+            directly.
+
+        :param reset_on_return: Determine steps to take on
+          connections as they are returned to the pool.
+          reset_on_return can have any of these values:
+
+          * ``"rollback"`` - call rollback() on the connection,
+            to release locks and transaction resources.
+            This is the default value.  The vast majority
+            of use cases should leave this value set.
+          * ``True`` - same as 'rollback', this is here for
+            backwards compatibility.
+          * ``"commit"`` - call commit() on the connection,
+            to release locks and transaction resources.
+            A commit here may be desirable for databases that
+            cache query plans if a commit is emitted,
+            such as Microsoft SQL Server.  However, this
+            value is more dangerous than 'rollback' because
+            any data changes present on the transaction
+            are committed unconditionally.
+          * ``None`` - don't do anything on the connection.
+            This setting should only be made on a database
+            that has no transaction support at all,
+            namely MySQL MyISAM.   By not doing anything,
+            performance can be improved.   This
+            setting should **never be selected** for a
+            database that supports transactions,
+            as it will lead to deadlocks and stale
+            state.
+          * ``False`` - same as None, this is here for
+            backwards compatibility.
+
+          .. versionchanged:: 0.7.6
+              :paramref:`.Pool.reset_on_return` accepts ``"rollback"``
+              and ``"commit"`` arguments.
 
         :param events: a list of 2-tuples, each of the form
-         ``(callable, target)`` which will be passed to event.listen()
+         ``(callable, target)`` which will be passed to :func:`.event.listen`
          upon construction.   Provided here so that event listeners
-         can be assigned via ``create_engine`` before dialect-level
+         can be assigned via :func:`.create_engine` before dialect-level
          listeners are applied.
 
         :param listeners: Deprecated.  A list of
@@ -212,8 +264,10 @@ class Pool(log.Identified):
         """Produce a DBAPI connection that is not referenced by any
         thread-local context.
 
-        This method is different from :meth:`.Pool.connect` only if the
-        ``use_threadlocal`` flag has been set to ``True``.
+        This method is equivalent to :meth:`.Pool.connect` when the
+        :paramref:`.Pool.use_threadlocal` flag is not set to True.
+        When :paramref:`.Pool.use_threadlocal` is True, the :meth:`.Pool.unique_connection`
+        method provides a means of bypassing the threadlocal context.
 
         """
 
@@ -645,8 +699,7 @@ class QueuePool(Pool):
         Construct a QueuePool.
 
         :param creator: a callable function that returns a DB-API
-          connection object.  The function will be called with
-          parameters.
+          connection object, same as that of :paramref:`.Pool.creator`.
 
         :param pool_size: The size of the pool to be maintained,
           defaults to 5. This is the largest number of connections that
@@ -673,64 +726,9 @@ class QueuePool(Pool):
         :param timeout: The number of seconds to wait before giving up
           on returning a connection. Defaults to 30.
 
-        :param recycle: If set to non -1, number of seconds between
-          connection recycling, which means upon checkout, if this
-          timeout is surpassed the connection will be closed and
-          replaced with a newly opened connection. Defaults to -1.
-
-        :param echo: If True, connections being pulled and retrieved
-          from the pool will be logged to the standard output, as well
-          as pool sizing information.  Echoing can also be achieved by
-          enabling logging for the "sqlalchemy.pool"
-          namespace. Defaults to False.
-
-        :param use_threadlocal: If set to True, repeated calls to
-          :meth:`connect` within the same application thread will be
-          guaranteed to return the same connection object, if one has
-          already been retrieved from the pool and has not been
-          returned yet.  Offers a slight performance advantage at the
-          cost of individual transactions by default.  The
-          :meth:`unique_connection` method is provided to bypass the
-          threadlocal behavior installed into :meth:`connect`.
-
-        :param reset_on_return: Determine steps to take on
-          connections as they are returned to the pool.
-          reset_on_return can have any of these values:
-
-          * 'rollback' - call rollback() on the connection,
-            to release locks and transaction resources.
-            This is the default value.  The vast majority
-            of use cases should leave this value set.
-          * True - same as 'rollback', this is here for
-            backwards compatibility.
-          * 'commit' - call commit() on the connection,
-            to release locks and transaction resources.
-            A commit here may be desirable for databases that
-            cache query plans if a commit is emitted,
-            such as Microsoft SQL Server.  However, this
-            value is more dangerous than 'rollback' because
-            any data changes present on the transaction
-            are committed unconditionally.
-          * None - don't do anything on the connection.
-            This setting should only be made on a database
-            that has no transaction support at all,
-            namely MySQL MyISAM.   By not doing anything,
-            performance can be improved.   This
-            setting should **never be selected** for a
-            database that supports transactions,
-            as it will lead to deadlocks and stale
-            state.
-          * False - same as None, this is here for
-            backwards compatibility.
-
-          .. versionchanged:: 0.7.6
-              ``reset_on_return`` accepts values.
-
-        :param listeners: A list of
-          :class:`~sqlalchemy.interfaces.PoolListener`-like objects or
-          dictionaries of callables that receive events when DB-API
-          connections are created, checked out and checked in to the
-          pool.
+        :param \**kw: Other keyword arguments including :paramref:`.Pool.recycle`,
+         :paramref:`.Pool.echo`, :paramref:`.Pool.reset_on_return` and others
+         are passed to the :class:`.Pool` constructor.
 
         """
         Pool.__init__(self, creator, **kw)
