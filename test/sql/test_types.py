@@ -1203,6 +1203,7 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
                     count().scalar(), 1)
 
 
+    @testing.requires.binary_literals
     def test_literal_roundtrip(self):
         compiled = select([cast(literal(util.b("foo")), LargeBinary)]).compile(
                             dialect=testing.db.dialect,

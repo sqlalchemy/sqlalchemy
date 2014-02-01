@@ -144,6 +144,26 @@ class DefaultRequirements(SuiteRequirements):
             )
 
     @property
+    def binary_literals(self):
+        """target backend supports simple binary literals, e.g. an
+        expression like::
+
+            SELECT CAST('foo' AS BINARY)
+
+        Where ``BINARY`` is the type emitted from :class:`.LargeBinary`,
+        e.g. it could be ``BLOB`` or similar.
+
+        Basically fails on Oracle.
+
+        """
+        # adding mssql here since it doesn't support comparisons either,
+        # have observed generally bad behavior with binary / mssql.
+
+        return skip_if(["oracle", "mssql"],
+                "not supported by database/driver"
+            )
+
+    @property
     def independent_cursors(self):
         """Target must support simultaneous, independent database cursors
         on a single connection."""
@@ -498,6 +518,7 @@ class DefaultRequirements(SuiteRequirements):
 
         return skip_if(['mssql', 'mysql', 'firebird', '+zxjdbc',
                     'oracle', 'sybase'])
+
 
     @property
     def precision_numerics_general(self):

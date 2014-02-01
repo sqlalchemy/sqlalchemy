@@ -374,6 +374,30 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def binary_comparisons(self):
+        """target database/driver can allow BLOB/BINARY fields to be compared
+        against a bound parameter value.
+        """
+
+        return exclusions.open()
+
+    @property
+    def binary_literals(self):
+        """target backend supports simple binary literals, e.g. an
+        expression like::
+
+            SELECT CAST('foo' AS BINARY)
+
+        Where ``BINARY`` is the type emitted from :class:`.LargeBinary`,
+        e.g. it could be ``BLOB`` or similar.
+
+        Basically fails on Oracle.
+
+        """
+
+        return exclusions.open()
+
+    @property
     def precision_numerics_general(self):
         """target backend has general support for moderately high-precision
         numerics."""
