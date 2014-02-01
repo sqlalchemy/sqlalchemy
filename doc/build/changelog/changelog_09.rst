@@ -15,6 +15,19 @@
     :version: 0.9.2
 
     .. change::
+        :tags: feature, orm
+
+        Added a new parameter :paramref:`.Operators.op.is_comparison`.  This
+        flag allows a custom op from :meth:`.Operators.op` to be considered
+        as a "comparison" operator, thus usable for custom
+        :paramref:`.relationship.primaryjoin` conditions.
+
+        .. seealso::
+
+            :ref:`relationship_custom_operator`
+
+
+    .. change::
         :tags: bug, sqlite
 
         Fixed bug whereby SQLite compiler failed to propagate compiler arguments

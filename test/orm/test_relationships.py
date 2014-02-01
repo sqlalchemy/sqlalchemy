@@ -1517,6 +1517,45 @@ class TypedAssociationTable(fixtures.MappedTest):
 
         assert t3.count().scalar() == 1
 
+class CustomOperatorTest(fixtures.MappedTest, AssertsCompiledSQL):
+    """test op() in conjunction with join conditions"""
+
+    run_create_tables = run_deletes = None
+
+    __dialect__ = 'default'
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('a', metadata,
+                Column('id', Integer, primary_key=True),
+                Column('foo', String(50))
+            )
+        Table('b', metadata,
+                Column('id', Integer, primary_key=True),
+                Column('foo', String(50))
+            )
+
+    def test_join_on_custom_op(self):
+        class A(fixtures.BasicEntity):
+            pass
+        class B(fixtures.BasicEntity):
+            pass
+
+        mapper(A, self.tables.a, properties={
+                'bs': relationship(B,
+                                primaryjoin=self.tables.a.c.foo.op(
+                                                '&*', is_comparison=True
+                                            )(foreign(self.tables.b.c.foo)),
+                                viewonly=True
+                                )
+            })
+        mapper(B, self.tables.b)
+        self.assert_compile(
+            Session().query(A).join(A.bs),
+            "SELECT a.id AS a_id, a.foo AS a_foo FROM a JOIN b ON a.foo &* b.foo"
+        )
+
+
 class ViewOnlyHistoryTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):

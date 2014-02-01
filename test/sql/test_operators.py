@@ -1585,3 +1585,13 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             dialect=mysql.dialect()
         )
 
+class CustomOpTest(fixtures.TestBase):
+    def test_is_comparison(self):
+        c = column('x')
+        c2 = column('y')
+        op1 = c.op('$', is_comparison=True)(c2).operator
+        op2 = c.op('$', is_comparison=False)(c2).operator
+
+        assert operators.is_comparison(op1)
+        assert not operators.is_comparison(op2)
+

@@ -1077,6 +1077,60 @@ of these features on its own::
                         )
 
 
+.. _relationship_custom_operator:
+
+Using custom operators in join conditions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Another use case for relationships is the use of custom operators, such
+as Postgresql's "is contained within" ``<<`` operator when joining with
+types such as :class:`.postgresql.INET` and :class:`.postgresql.CIDR`.
+For custom operators we use the :meth:`.Operators.op` function::
+
+    inet_column.op("<<")(cidr_column)
+
+However, if we construct a :paramref:`.relationship.primaryjoin` using this
+operator, :func:`.relationship` will still need more information.  This is because
+when it examines our primaryjoin condition, it specifically looks for operators
+used for **comparisons**, and this is typically a fixed list containing known
+comparison operators such as ``==``, ``<``, etc.   So for our custom operator
+to participate in this system, we need it to register as a comparison operator
+using the :paramref:`.Operators.op.is_comparison` parameter::
+
+    inet_column.op("<<", is_comparison=True)(cidr_column)
+
+A complete example::
+
+    class IPA(Base):
+        __tablename__ = 'ip_address'
+
+        id = Column(Integer, primary_key=True)
+        v4address = Column(INET)
+
+        network = relationship("Network",
+                            primaryjoin="IPA.v4address.op('<<', is_comparison=True)"
+                                "(foreign(Network.v4representation))",
+                            viewonly=True
+                        )
+    class Network(Base):
+        __tablename__ = 'network'
+
+        id = Column(Integer, primary_key=True)
+        v4representation = Column(CIDR)
+
+Above, a query such as::
+
+    session.query(IPA).join(IPA.network)
+
+Will render as::
+
+    SELECT ip_address.id AS ip_address_id, ip_address.v4address AS ip_address_v4address
+    FROM ip_address JOIN network ON ip_address.v4address << network.v4representation
+
+.. versionadded:: 0.9.2 - Added the :paramref:`.Operators.op.is_comparison`
+   flag to assist in the creation of :func:`.relationship` constructs using
+   custom operators.
+
 .. _self_referential_many_to_many:
 
 Self-Referential Many-to-Many Relationship

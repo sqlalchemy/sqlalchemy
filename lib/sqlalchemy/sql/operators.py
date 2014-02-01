@@ -102,7 +102,7 @@ class Operators(object):
         """
         return self.operate(inv)
 
-    def op(self, opstring, precedence=0):
+    def op(self, opstring, precedence=0, is_comparison=False):
         """produce a generic operator function.
 
         e.g.::
@@ -134,12 +134,23 @@ class Operators(object):
 
          .. versionadded:: 0.8 - added the 'precedence' argument.
 
+        :param is_comparison: if True, the operator will be considered as a
+         "comparison" operator, that is which evaulates to a boolean true/false
+         value, like ``==``, ``>``, etc.  This flag should be set so that
+         ORM relationships can establish that the operator is a comparison
+         operator when used in a custom join condition.
+
+         .. versionadded:: 0.9.2 - added the :paramref:`.Operators.op.is_comparison`
+            flag.
+
         .. seealso::
 
             :ref:`types_operators`
 
+            :ref:`relationship_custom_operator`
+
         """
-        operator = custom_op(opstring, precedence)
+        operator = custom_op(opstring, precedence, is_comparison)
 
         def against(other):
             return operator(self, other)
@@ -200,9 +211,10 @@ class custom_op(object):
     """
     __name__ = 'custom_op'
 
-    def __init__(self, opstring, precedence=0):
+    def __init__(self, opstring, precedence=0, is_comparison=False):
         self.opstring = opstring
         self.precedence = precedence
+        self.is_comparison = is_comparison
 
     def __eq__(self, other):
         return isinstance(other, custom_op) and \
@@ -769,7 +781,8 @@ _comparison = set([eq, ne, lt, gt, ge, le, between_op])
 
 
 def is_comparison(op):
-    return op in _comparison
+    return op in _comparison or \
+        isinstance(op, custom_op) and op.is_comparison
 
 
 def is_commutative(op):
