@@ -66,7 +66,6 @@ from .expression import (
 
 from .visitors import ClauseVisitor
 
-
 def __go(lcls):
     global __all__
     from .. import util as _sa_util
@@ -84,6 +83,8 @@ def __go(lcls):
     _prepare_annotations(ClauseList, Annotated)
 
     _sa_util.dependencies.resolve_all("sqlalchemy.sql")
+
+    from . import naming
 
 __go(locals())
 

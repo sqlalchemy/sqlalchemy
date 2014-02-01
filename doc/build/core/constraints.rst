@@ -266,6 +266,166 @@ To apply table-level constraint objects such as :class:`.ForeignKeyConstraint`
 to a table defined using Declarative, use the ``__table_args__`` attribute,
 described at :ref:`declarative_table_args`.
 
+.. _constraint_naming_conventions:
+
+Configuring Constraint Naming Conventions
+-----------------------------------------
+
+Relational databases typically assign explicit names to all constraints and
+indexes.  In the common case that a table is created using ``CREATE TABLE``
+where constraints such as CHECK, UNIQUE, and PRIMARY KEY constraints are
+produced inline with the table definition, the database usually has a system
+in place in which names are automatically assigned to these constraints, if
+a name is not otherwise specified.  When an existing database table is altered
+in a database using a command such as ``ALTER TABLE``, this command typically
+needs to specify expicit names for new constraints as well as be able to
+specify the name of an existing constraint that is to be dropped or modified.
+
+Constraints can be named explicitly using the :paramref:`.Constraint.name` parameter,
+and for indexes the :paramref:`.Index.name` parameter.  However, in the
+case of constraints this parameter is optional.  There are also the use
+cases of using the :paramref:`.Column.unique` and :paramref:`.Column.index`
+parameters which create :class:`.UniqueConstraint` and :class:`.Index` objects
+without an explicit name being specified.
+
+The use case of alteration of existing tables and constraints can be handled
+by schema migration tools such as `Alembic <http://http://alembic.readthedocs.org/>`_.
+However, neither Alembic nor SQLAlchemy currently create names for constraint
+objects where the name is otherwise unspecified, leading to the case where
+being able to alter existing constraints means that one must reverse-engineer
+the naming system used by the relational database to auto-assign names,
+or that care must be taken to ensure that all constraints are named.
+
+In contrast to having to assign explicit names to all :class:`.Constraint`
+and :class:`.Index` objects, automated naming schemes can be constructed
+using events.  This approach has the advantage that constraints will get
+a consistent naming scheme without the need for explicit name parameters
+throughout the code, and also that the convention takes place just as well
+for those constraints and indexes produced by the :paramref:`.Column.unique`
+and :paramref:`.Column.index` parameters.  As of SQLAlchemy 0.9.2 this
+event-based approach is included, and can be configured using the argument
+:paramref:`.MetaData.naming_convention`.
+
+:paramref:`.MetaData.naming_convention` refers to a dictionary which accepts
+the :class:`.Index` class or individual :class:`.Constraint` classes as keys,
+and Python string templates as values.   It also accepts a series of
+string-codes as alternative keys, ``"fk"``, ``"pk"``,
+``"ix"``, ``"ck"``, ``"uq"`` for foreign key, primary key, index,
+check, and unique constraint, respectively.  The string templates in this
+dictionary are used whenever a constraint or index is associated with this
+:class:`.MetaData` object that does not have an existing name given (including
+one exception case where an existing name can be further embellished).
+
+An example naming convention that suits basic cases is as follows::
+
+    convention = {
+      "ix": 'ix_%(column_0_label)s',
+      "uq": "uq_%(table_name)s_%(column_0_name)s",
+      "ck": "ck_%(table_name)s_%(constraint_name)s",
+      "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+      "pk": "pk_%(table_name)s"
+    }
+
+    metadata = MetaData(naming_convention=convention)
+
+The above convention will establish names for all constraints within
+the target :class:`.MetaData` collection.
+For example, we can observe the name produced when we create an unnamed
+:class:`.UniqueConstraint`::
+
+    >>> user_table = Table('user', metadata,
+    ...                 Column('id', Integer, primary_key=True),
+    ...                 Column('name', String(30), nullable=False),
+    ...                 UniqueConstraint('name')
+    ... )
+    >>> list(user_table.constraints)[1].name
+    'uq_user_name'
+
+This same feature takes effect even if we just use the :paramref:`.Column.unique`
+flag::
+
+    >>> user_table = Table('user', metadata,
+    ...                  Column('id', Integer, primary_key=True),
+    ...                  Column('name', String(30), nullable=False, unique=True)
+    ...     )
+    >>> list(user_table.constraints)[1].name
+    'uq_user_name'
+
+A key advantage to the naming convention approach is that the names are established
+at Python construction time, rather than at DDL emit time.  The effect this has
+when using Alembic's ``--autogenerate`` feature is that the naming convention
+will be explicit when a new migration script is generated::
+
+    def upgrade():
+        op.create_unique_constraint("uq_user_name", "user", ["name"])
+
+The above ``"uq_user_name"`` string was copied from the :class:`.UniqueConstraint`
+object that ``--autogenerate`` located in our metadata.
+
+The default value for :paramref:`.MetaData.naming_convention` handles
+the long-standing SQLAlchemy behavior of assigning a name to a :class:`.Index`
+object that is created using the :paramref:`.Column.index` parameter::
+
+    >>> from sqlalchemy.sql.schema import DEFAULT_NAMING_CONVENTION
+    >>> DEFAULT_NAMING_CONVENTION
+    immutabledict({'ix': 'ix_%(column_0_label)s'})
+
+The tokens available include ``%(table_name)s``,
+``%(referred_table_name)s``, ``%(column_0_name)s``, ``%(column_0_label)s``,
+``%(column_0_key)s``,  ``%(referred_column_0_name)s``, and ``%(constraint_name)s``;
+the documentation for :paramref:`.MetaData.naming_convention` describes each
+individually.  New tokens can also be added, by specifying an additional
+token and a callable within the naming_convention dictionary.  For example,
+if we wanted to name our foreign key constraints using a GUID scheme,
+we could do that as follows::
+
+    import uuid
+
+    def fk_guid(constraint, table):
+        str_tokens = [
+            table.name,
+        ] + [
+            element.parent.name for element in constraint.elements
+        ] + [
+            element.target_fullname for element in constraint.elements
+        ]
+        guid = uuid.uuid5(uuid.NAMESPACE_OID, "_".join(str_tokens).encode('ascii'))
+        return str(guid)
+
+    convention = {
+        "fk_guid": fk_guid,
+        "ix": 'ix_%(column_0_label)s',
+        "fk": "fk_%(fk_guid)s",
+    }
+
+Above, when we create a new :class:`.ForeignKeyConstraint`, we will get a
+name as follows::
+
+    >>> metadata = MetaData(naming_convention=convention)
+
+    >>> user_table = Table('user', metadata,
+    ...         Column('id', Integer, primary_key=True),
+    ...         Column('version', Integer, primary_key=True),
+    ...         Column('data', String(30))
+    ...     )
+    >>> address_table = Table('address', metadata,
+    ...        Column('id', Integer, primary_key=True),
+    ...        Column('user_id', Integer),
+    ...        Column('user_version_id', Integer)
+    ...    )
+    >>> fk = ForeignKeyConstraint(['user_id', 'user_version_id'],
+    ...                ['user.id', 'user.version'])
+    >>> address_table.append_constraint(fk)
+    >>> fk.name
+    fk_0cd51ab5-8d70-56e8-a83c-86661737766d
+
+.. seealso::
+
+    :paramref:`.MetaData.naming_convention` - for additional usage details
+    as well as a listing of all avaiable naming components.
+
+.. versionadded:: 0.9.2 Added the :paramref:`.MetaData.naming_convention` argument.
+
 Constraints API
 ---------------
 .. autoclass:: Constraint

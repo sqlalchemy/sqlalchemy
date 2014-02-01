@@ -210,6 +210,24 @@ class TablesTest(TestBase):
                 [dict(zip(headers[table], column_values))
                  for column_values in rows[table]])
 
+from sqlalchemy import event
+class RemovesEvents(object):
+    @util.memoized_property
+    def _event_fns(self):
+        return set()
+
+    def event_listen(self, target, name, fn):
+        self._event_fns.add((target, name, fn))
+        event.listen(target, name, fn)
+
+    def teardown(self):
+        for key in self._event_fns:
+            event.remove(*key)
+        super_ = super(RemovesEvents, self)
+        if hasattr(super_, "teardown"):
+            super_.teardown()
+
+
 
 class _ORMTest(object):
 

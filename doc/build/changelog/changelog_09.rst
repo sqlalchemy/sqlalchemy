@@ -15,6 +15,23 @@
     :version: 0.9.2
 
     .. change::
+        :tags: feature, sql
+        :tickets: 2923
+
+        Added a new feature which allows automated naming conventions to be
+        applied to :class:`.Constraint` and :class:`.Index` objects.  Based
+        on a recipe in the wiki, the new feature uses schema-events to set up
+        names as various schema objects are associated with each other.  The
+        events then expose a configuration system through a new argument
+        :paramref:`.MetaData.naming_convention`.  This system allows production
+        of both simple and custom naming schemes for constraints and indexes
+        on a per-:class:`.MetaData` basis.
+
+        .. seealso::
+
+            :ref:`constraint_naming_conventions`
+
+    .. change::
         :tags: bug, orm
         :tickets: 2921
 

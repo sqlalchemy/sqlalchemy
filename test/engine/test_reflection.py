@@ -1501,7 +1501,7 @@ class CaseSensitiveTest(fixtures.TablesTest):
 
 
 
-class ColumnEventsTest(fixtures.TestBase):
+class ColumnEventsTest(fixtures.RemovesEvents, fixtures.TestBase):
 
     @classmethod
     def setup_class(cls):
@@ -1526,9 +1526,6 @@ class ColumnEventsTest(fixtures.TestBase):
     def teardown_class(cls):
         cls.metadata.drop_all(testing.db)
 
-    def teardown(self):
-        events.SchemaEventTarget.dispatch._clear()
-
     def _do_test(self, col, update, assert_, tablename="to_reflect"):
         # load the actual Table class, not the test
         # wrapper
@@ -1545,7 +1542,7 @@ class ColumnEventsTest(fixtures.TestBase):
         assert_(t)
 
         m = MetaData(testing.db)
-        event.listen(Table, 'column_reflect', column_reflect)
+        self.event_listen(Table, 'column_reflect', column_reflect)
         t2 = Table(tablename, m, autoload=True)
         assert_(t2)
 

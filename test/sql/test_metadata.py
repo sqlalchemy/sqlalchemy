@@ -2024,10 +2024,7 @@ class ColumnOptionsTest(fixtures.TestBase):
             c.info['bar'] = 'zip'
             assert c.info['bar'] == 'zip'
 
-class CatchAllEventsTest(fixtures.TestBase):
-
-    def teardown(self):
-        events.SchemaEventTarget.dispatch._clear()
+class CatchAllEventsTest(fixtures.RemovesEvents, fixtures.TestBase):
 
     def test_all_events(self):
         canary = []
@@ -2038,8 +2035,8 @@ class CatchAllEventsTest(fixtures.TestBase):
         def after_attach(obj, parent):
             canary.append("%s->%s" % (obj.__class__.__name__, parent))
 
-        event.listen(schema.SchemaItem, "before_parent_attach", before_attach)
-        event.listen(schema.SchemaItem, "after_parent_attach", after_attach)
+        self.event_listen(schema.SchemaItem, "before_parent_attach", before_attach)
+        self.event_listen(schema.SchemaItem, "after_parent_attach", after_attach)
 
         m = MetaData()
         Table('t1', m,
@@ -2074,8 +2071,8 @@ class CatchAllEventsTest(fixtures.TestBase):
             def after_attach(obj, parent):
                 assert hasattr(obj, 'name')  # so we can change it
                 canary.append("%s->%s" % (target.__name__, parent))
-            event.listen(target, "before_parent_attach", before_attach)
-            event.listen(target, "after_parent_attach", after_attach)
+            self.event_listen(target, "before_parent_attach", before_attach)
+            self.event_listen(target, "after_parent_attach", after_attach)
 
         for target in [
             schema.ForeignKeyConstraint, schema.PrimaryKeyConstraint,
@@ -2384,3 +2381,72 @@ class DialectKWArgTest(fixtures.TestBase):
                         "participating_y": True,
                         'participating2_y': "p2y",
                         "participating_z_one": "default"})
+
+class NamingConventionTest(fixtures.TestBase):
+    def _fixture(self, naming_convention):
+        m1 = MetaData(naming_convention=naming_convention)
+
+        u1 = Table('user', m1,
+                Column('id', Integer, primary_key=True),
+                Column('version', Integer, primary_key=True),
+                Column('data', String(30))
+            )
+
+        return u1
+
+    def test_uq_name(self):
+        u1 = self._fixture(naming_convention={
+                        "uq": "uq_%(table_name)s_%(column_0_name)s"
+                    })
+        uq = UniqueConstraint(u1.c.data)
+        eq_(uq.name, "uq_user_data")
+
+    def test_ck_name(self):
+        u1 = self._fixture(naming_convention={
+                        "ck": "ck_%(table_name)s_%(constraint_name)s"
+                    })
+        ck = CheckConstraint(u1.c.data == 'x', name='mycheck')
+        eq_(ck.name, "ck_user_mycheck")
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            r"Naming convention including %\(constraint_name\)s token "
+            "requires that constraint is explicitly named.",
+            CheckConstraint, u1.c.data == 'x'
+        )
+
+    def test_fk_attrs(self):
+        u1 = self._fixture(naming_convention={
+                "fk": "fk_%(table_name)s_%(column_0_name)s_"
+                "%(referred_table_name)s_%(referred_column_0_name)s"
+            })
+        m1 = u1.metadata
+        a1 = Table('address', m1,
+                Column('id', Integer, primary_key=True),
+                Column('user_id', Integer),
+                Column('user_version_id', Integer)
+            )
+        fk = ForeignKeyConstraint(['user_id', 'user_version_id'],
+                        ['user.id', 'user.version'])
+        a1.append_constraint(fk)
+        eq_(fk.name, "fk_address_user_id_user_id")
+
+
+    def test_custom(self):
+        def key_hash(const, table):
+            return "HASH_%s" % table.name
+
+        u1 = self._fixture(naming_convention={
+                "fk": "fk_%(table_name)s_%(key_hash)s",
+                "key_hash": key_hash
+            })
+        m1 = u1.metadata
+        a1 = Table('address', m1,
+                Column('id', Integer, primary_key=True),
+                Column('user_id', Integer),
+                Column('user_version_id', Integer)
+            )
+        fk = ForeignKeyConstraint(['user_id', 'user_version_id'],
+                        ['user.id', 'user.version'])
+        a1.append_constraint(fk)
+        eq_(fk.name, "fk_address_HASH_address")

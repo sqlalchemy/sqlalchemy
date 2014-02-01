@@ -1130,8 +1130,7 @@ class Column(SchemaItem, ColumnClause):
                     "The 'index' keyword argument on Column is boolean only. "
                     "To create indexes with a specific name, create an "
                     "explicit Index object external to the Table.")
-            Index(_truncated_label('ix_%s' % self._label),
-                                    self, unique=bool(self.unique))
+            Index(None, self, unique=bool(self.unique))
         elif self.unique:
             if isinstance(self.unique, util.string_types):
                 raise exc.ArgumentError(
@@ -2240,12 +2239,12 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
           arguments are propagated to the :class:`.Constraint` superclass.
 
         """
-        ColumnCollectionMixin.__init__(self, *columns)
         Constraint.__init__(self, **kw)
+        ColumnCollectionMixin.__init__(self, *columns)
 
     def _set_parent(self, table):
-        ColumnCollectionMixin._set_parent(self, table)
         Constraint._set_parent(self, table)
+        ColumnCollectionMixin._set_parent(self, table)
 
     def __contains__(self, x):
         return x in self.columns
@@ -2839,6 +2838,11 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
                     ))
 
 
+DEFAULT_NAMING_CONVENTION = util.immutabledict({
+    "ix": 'ix_%(column_0_label)s'
+})
+
+
 class MetaData(SchemaItem):
     """A collection of :class:`.Table` objects and their associated schema
     constructs.
@@ -2865,7 +2869,9 @@ class MetaData(SchemaItem):
     __visit_name__ = 'metadata'
 
     def __init__(self, bind=None, reflect=False, schema=None,
-                 quote_schema=None):
+                 quote_schema=None,
+                 naming_convention=DEFAULT_NAMING_CONVENTION
+            ):
         """Create a new MetaData object.
 
         :param bind:
@@ -2890,12 +2896,76 @@ class MetaData(SchemaItem):
             :class:`.Sequence`, and other objects which make usage of the
             local ``schema`` name.
 
-        .. versionadded:: 0.7.4
-            ``schema`` and ``quote_schema`` parameters.
+        :param naming_convention: a dictionary referring to values which
+          will establish default naming conventions for :class:`.Constraint`
+          and :class:`.Index` objects, for those objects which are not given
+          a name explicitly.
+
+          The keys of this dictionary may be:
+
+          * a constraint or Index class, e.g. the :class:`.UniqueConstraint`,
+            :class:`.ForeignKeyConstraint` class, the :class:`.Index` class
+
+          * a string mnemonic for one of the known constraint classes;
+            ``"fk"``, ``"pk"``, ``"ix"``, ``"ck"``, ``"uq"`` for foreign key,
+            primary key, index, check, and unique constraint, respectively.
+
+          * the string name of a user-defined "token" that can be used
+            to define new naming tokens.
+
+          The values associated with each "constraint class" or "constraint
+          mnemonic" key are string naming templates, such as
+          ``"uq_%(table_name)s_%(column_0_name)s"``,
+          which decribe how the name should be composed.  The values associated
+          with user-defined "token" keys should be callables of the form
+          ``fn(constraint, table)``, which accepts the constraint/index
+          object and :class:`.Table` as arguments, returning a string
+          result.
+
+          The built-in names are as follows, some of which may only be
+          available for certain types of constraint:
+
+            * ``%(table_name)s`` - the name of the :class:`.Table` object
+              associated with the constraint.
+
+            * ``%(referred_table_name)s`` - the name of the :class:`.Table`
+              object associated with the referencing target of a
+              :class:`.ForeignKeyConstraint`.
+
+            * ``%(column_0_name)s`` - the name of the :class:`.Column` at
+              index position "0" within the constraint.
+
+            * ``%(column_0_label)s`` - the label of the :class:`.Column` at
+              index position "0", e.g. :attr:`.Column.label`
+
+            * ``%(column_0_key)s`` - the key of the :class:`.Column` at
+              index position "0", e.g. :attr:`.Column.key`
+
+            * ``%(referred_column_0_name)s`` - the name of a :class:`.Column`
+              at index position "0" referenced by a :class:`.ForeignKeyConstraint`.
+
+            * ``%(constraint_name)s`` - a special key that refers to the existing
+              name given to the constraint.  When this key is present, the
+              :class:`.Constraint` object's existing name will be replaced with
+              one that is composed from template string that uses this token.
+              When this token is present, it is required that the :class:`.Constraint`
+              is given an expicit name ahead of time.
+
+            * user-defined: any additional token may be implemented by passing
+              it along with a ``fn(constraint, table)`` callable to the
+              naming_convention dictionary.
+
+          .. versionadded:: 0.9.2
+
+          .. seealso::
+
+                :ref:`constraint_naming_conventions` - for detailed usage
+                examples.
 
         """
         self.tables = util.immutabledict()
         self.schema = quoted_name(schema, quote_schema)
+        self.naming_convention = naming_convention
         self._schemas = set()
         self._sequences = {}
         self._fk_memos = collections.defaultdict(list)
