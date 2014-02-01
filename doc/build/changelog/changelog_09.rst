@@ -15,6 +15,16 @@
     :version: 0.9.2
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2921
+
+        Added a new directive used within the scope of an attribute "set" operation
+        to disable autoflush, in the case that the attribute needs to lazy-load
+        the "old" value, as in when replacing one-to-one values or some
+        kinds of many-to-one.  A flush at this point otherwise occurs
+        at the point that the attribute is None and can cause NULL violations.
+
+    .. change::
         :tags: feature, orm
 
         Added a new parameter :paramref:`.Operators.op.is_comparison`.  This

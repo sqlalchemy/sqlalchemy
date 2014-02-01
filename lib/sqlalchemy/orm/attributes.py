@@ -23,7 +23,7 @@ from .base import PASSIVE_NO_RESULT, ATTR_WAS_SET, ATTR_EMPTY, NO_VALUE,\
             NEVER_SET, NO_CHANGE, CALLABLES_OK, SQL_OK, RELATED_OBJECT_OK,\
             INIT_OK, NON_PERSISTENT_OK, LOAD_AGAINST_COMMITTED, PASSIVE_OFF,\
             PASSIVE_RETURN_NEVER_SET, PASSIVE_NO_INITIALIZE, PASSIVE_NO_FETCH,\
-            PASSIVE_NO_FETCH_RELATED, PASSIVE_ONLY_PERSISTENT
+            PASSIVE_NO_FETCH_RELATED, PASSIVE_ONLY_PERSISTENT, NO_AUTOFLUSH
 from .base import state_str, instance_str
 
 @inspection._self_inspects
@@ -761,7 +761,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
 
         """
         if self.dispatch._active_history:
-            old = self.get(state, dict_, passive=PASSIVE_ONLY_PERSISTENT)
+            old = self.get(state, dict_, passive=PASSIVE_ONLY_PERSISTENT | NO_AUTOFLUSH)
         else:
             old = self.get(state, dict_, passive=PASSIVE_NO_FETCH)
 

@@ -80,6 +80,10 @@ LOAD_AGAINST_COMMITTED = util.symbol("LOAD_AGAINST_COMMITTED",
 """, canonical=32
 )
 
+NO_AUTOFLUSH = util.symbol("NO_AUTOFLUSH",
+"""loader callables should disable autoflush.
+""", canonical=64)
+
 # pre-packaged sets of flags used as inputs
 PASSIVE_OFF = util.symbol("PASSIVE_OFF",
     "Callables can be emitted in all cases.",

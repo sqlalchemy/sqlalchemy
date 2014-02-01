@@ -552,6 +552,56 @@ class O2OSingleParentTest(_fixtures.FixtureTest):
         assert u1.address is not a1
         assert a1.user is None
 
+class O2OSingleParentNoFlushTest(fixtures.MappedTest):
+    run_inserts = None
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('users', metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('name', String(30), nullable=False),
+        )
+
+        Table('addresses', metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('user_id', None, ForeignKey('users.id'), nullable=False),
+              Column('email_address', String(50), nullable=False),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class User(cls.Comparable):
+            pass
+        class Address(cls.Comparable):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Address, addresses, users, User = (cls.classes.Address,
+                                cls.tables.addresses,
+                                cls.tables.users,
+                                cls.classes.User)
+
+        mapper(Address, addresses)
+        mapper(User, users, properties={'address'
+               : relationship(Address, backref=backref('user',
+               single_parent=True, cascade="all, delete-orphan"),
+               uselist=False)})
+
+    def test_replace_attribute_no_flush(self):
+        # test [ticket:2921]
+
+        User, Address = self.classes.User, self.classes.Address
+        a1 = Address(email_address='some address')
+        u1 = User(name='u1', address=a1)
+        sess = Session()
+        sess.add(u1)
+        sess.commit()
+
+        a2 = Address(email_address='asdf')
+        sess.add(a2)
+        u1.address = a2
+
 class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
     """Test related item not present in session, commit proceeds."""
 
@@ -1428,6 +1478,7 @@ class M2OCascadeDeleteOrphanTestTwo(fixtures.MappedTest):
         eq_(sess.query(T1).all(), [])
         eq_(sess.query(T2).all(), [])
         eq_(sess.query(T3).all(), [])
+
 
     def test_finds_orphans_twolevel(self):
         T2, T3, T1 = (self.classes.T2,

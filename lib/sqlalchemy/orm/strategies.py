@@ -536,8 +536,9 @@ class LazyLoader(AbstractRelationshipLoader):
         pending = not state.key
 
         # don't autoflush on pending
-        if pending:
+        if pending or passive & attributes.NO_AUTOFLUSH:
             q = q.autoflush(False)
+
 
         if state.load_path:
             q = q._with_current_path(state.load_path[self.parent_property])
@@ -567,6 +568,7 @@ class LazyLoader(AbstractRelationshipLoader):
                 return None
 
         q = q.filter(lazy_clause)
+
 
         result = q.all()
         if self.uselist:
