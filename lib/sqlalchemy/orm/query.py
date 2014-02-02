@@ -3471,6 +3471,7 @@ class QueryContext(object):
 
         if query._statement is not None:
             if isinstance(query._statement, expression.SelectBase) and \
+                                not query._statement._textual and \
                                 not query._statement.use_labels:
                 self.statement = query._statement.apply_labels()
             else:

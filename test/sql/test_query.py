@@ -1787,6 +1787,51 @@ class KeyTargetingTest(fixtures.TablesTest):
         assert bar.c.content_type not in row
         assert sql.column('content_type') not in row
 
+    def test_columnclause_schema_column_one(self):
+        keyed2 = self.tables.keyed2
+
+        # this is addressed by [ticket:2932]
+        # ColumnClause._compare_name_for_result allows the
+        # columns which the statement is against to be lightweight
+        # cols, which results in a more liberal comparison scheme
+        a, b = sql.column('a'), sql.column('b')
+        stmt = select([a, b]).select_from("keyed2")
+        row = testing.db.execute(stmt).first()
+
+        assert keyed2.c.a in row
+        assert keyed2.c.b in row
+        assert a in row
+        assert b in row
+
+    def test_columnclause_schema_column_two(self):
+        keyed2 = self.tables.keyed2
+
+        a, b = sql.column('a'), sql.column('b')
+        stmt = select([keyed2.c.a, keyed2.c.b])
+        row = testing.db.execute(stmt).first()
+
+        assert keyed2.c.a in row
+        assert keyed2.c.b in row
+        assert a in row
+        assert b in row
+
+    def test_columnclause_schema_column_three(self):
+        keyed2 = self.tables.keyed2
+
+        # this is also addressed by [ticket:2932]
+
+        a, b = sql.column('a'), sql.column('b')
+        stmt = text("select a, b from keyed2").columns(a=CHAR, b=CHAR)
+        row = testing.db.execute(stmt).first()
+
+        assert keyed2.c.a in row
+        assert keyed2.c.b in row
+        assert a in row
+        assert b in row
+        assert stmt.c.a in row
+        assert stmt.c.b in row
+
+
 
 class LimitTest(fixtures.TestBase):
 

@@ -137,6 +137,10 @@ class FromClause(Selectable):
     named_with_column = False
     _hide_froms = []
 
+    _textual = False
+    """a marker that allows us to easily distinguish a :class:`.TextAsFrom`
+    or similar object from other kinds of :class:`.FromClause` objects."""
+
     schema = None
     """Define the 'schema' attribute for this :class:`.FromClause`.
 
@@ -3045,6 +3049,8 @@ class TextAsFrom(SelectBase):
 
     """
     __visit_name__ = "text_as_from"
+
+    _textual = True
 
     def __init__(self, text, columns):
         self.element = text

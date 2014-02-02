@@ -1,7 +1,7 @@
 from sqlalchemy.sql import operators
 from sqlalchemy import MetaData, null, exists, text, union, literal, \
     literal_column, func, between, Unicode, desc, and_, bindparam, \
-    select, distinct, or_, collate, insert
+    select, distinct, or_, collate, insert, Integer, String
 from sqlalchemy import inspect
 from sqlalchemy import exc as sa_exc, util
 from sqlalchemy.sql import compiler, table, column
@@ -2079,6 +2079,43 @@ class TextTest(QueryTest):
             ).all(),
             [User(id=7), User(id=8), User(id=9), User(id=10)]
         )
+
+    def test_via_textasfrom_from_statement(self):
+        User = self.classes.User
+        s = create_session()
+
+        eq_(
+            s.query(User).from_statement(
+                text("select * from users order by id").\
+                        columns(id=Integer, name=String)
+            ).all(),
+            [User(id=7), User(id=8), User(id=9), User(id=10)]
+        )
+
+    def test_via_textasfrom_select_from(self):
+        User = self.classes.User
+        s = create_session()
+
+        eq_(
+            s.query(User).select_from(
+                text("select * from users order by id").\
+                        columns(id=Integer, name=String)
+            ).all(),
+            [User(id=7), User(id=8), User(id=9), User(id=10)]
+        )
+
+    def test_via_textasfrom_use_mapped_columns(self):
+        User = self.classes.User
+        s = create_session()
+
+        eq_(
+            s.query(User).select_from(
+                text("select * from users order by id").\
+                        columns(User.id, User.name)
+            ).all(),
+            [User(id=7), User(id=8), User(id=9), User(id=10)]
+        )
+
 
 class ParentTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = 'default'

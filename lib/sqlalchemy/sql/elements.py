@@ -2920,9 +2920,12 @@ class ColumnClause(Immutable, ColumnElement):
 
     def _compare_name_for_result(self, other):
         if self.is_literal or \
-            self.table is None or \
+            self.table is None or self.table._textual or \
             not hasattr(other, 'proxy_set') or (
-            isinstance(other, ColumnClause) and other.is_literal
+            isinstance(other, ColumnClause) and
+                (other.is_literal or
+                        other.table is None or
+                        other.table._textual)
         ):
             return super(ColumnClause, self).\
                     _compare_name_for_result(other)

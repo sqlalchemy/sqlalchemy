@@ -15,6 +15,19 @@
     :version: 0.9.2
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2932
+
+        Fixed bug in new :class:`.TextAsFrom` construct where :class:`.Column`-
+        oriented row lookups were not matching up to the ad-hoc :class:`.ColumnClause`
+        objects that :class:`.TextAsFrom` generates, thereby making it not
+        usable as a target in :meth:`.Query.from_statement`.  Also fixed
+        :meth:`.Query.from_statement` mechanics to not mistake a :class:`.TextAsFrom`
+        for a :class:`.Select` construct.  This bug is also an 0.9 regression
+        as the :meth:`.Text.columns` method is called to accommodate the
+        :paramref:`.text.typemap` argument.
+
+    .. change::
         :tags: feature, sql
         :tickets: 2923
 
