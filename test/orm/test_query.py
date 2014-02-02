@@ -2092,30 +2092,29 @@ class TextTest(QueryTest):
             [User(id=7), User(id=8), User(id=9), User(id=10)]
         )
 
-    def test_via_textasfrom_select_from(self):
-        User = self.classes.User
-        s = create_session()
-
-        eq_(
-            s.query(User).select_from(
-                text("select * from users order by id").\
-                        columns(id=Integer, name=String)
-            ).all(),
-            [User(id=7), User(id=8), User(id=9), User(id=10)]
-        )
-
     def test_via_textasfrom_use_mapped_columns(self):
         User = self.classes.User
         s = create_session()
 
         eq_(
-            s.query(User).select_from(
+            s.query(User).from_statement(
                 text("select * from users order by id").\
                         columns(User.id, User.name)
             ).all(),
             [User(id=7), User(id=8), User(id=9), User(id=10)]
         )
 
+    def test_via_textasfrom_select_from(self):
+        User = self.classes.User
+        s = create_session()
+
+        eq_(
+            s.query(User).select_from(
+                text("select * from users").\
+                        columns(id=Integer, name=String)
+            ).order_by(User.id).all(),
+            [User(id=7), User(id=8), User(id=9), User(id=10)]
+        )
 
 class ParentTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = 'default'
