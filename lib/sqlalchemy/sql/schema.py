@@ -661,31 +661,61 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                             self,
                             checkfirst=checkfirst)
 
-    def tometadata(self, metadata, schema=RETAIN_SCHEMA):
+    def tometadata(self, metadata, schema=RETAIN_SCHEMA, referred_schema_fn=None):
         """Return a copy of this :class:`.Table` associated with a different
         :class:`.MetaData`.
 
         E.g.::
 
-            some_engine = create_engine("sqlite:///some.db")
+            m1 = MetaData()
 
-            # create two metadata
-            meta1 = MetaData()
-            meta2 = MetaData()
+            user = Table('user', m1, Column('id', Integer, priamry_key=True))
 
-            # load 'users' from the sqlite engine
-            users_table = Table('users', meta1, autoload=True,
-                                    autoload_with=some_engine)
+            m2 = MetaData()
+            user_copy = user.tometadata(m2)
 
-            # create the same Table object for the plain metadata
-            users_table_2 = users_table.tometadata(meta2)
+        :param metadata: Target :class:`.MetaData` object, into which the
+         new :class:`.Table` object will be created.
 
-        :param metadata: Target :class:`.MetaData` object.
-        :param schema: Optional string name of a target schema, or
-         ``None`` for no schema.  The :class:`.Table` object will be
-         given this schema name upon copy.   Defaults to the special
-         symbol :attr:`.RETAIN_SCHEMA` which indicates no change should be
-         made to the schema name of the resulting :class:`.Table`.
+        :param schema: optional string name indicating the target schema.
+         Defaults to the special symbol :attr:`.RETAIN_SCHEMA` which indicates
+         that no change to the schema name should be made in the new
+         :class:`.Table`.  If set to a string name, the new :class:`.Table`
+         will have this new name as the ``.schema``.  If set to ``None``, the
+         schema will be set to that of the schema set on the target
+         :class:`.MetaData`, which is typically ``None`` as well, unless
+         set explicitly::
+
+            m2 = MetaData(schema='newschema')
+
+            # user_copy_one will have "newschema" as the schema name
+            user_copy_one = user.tometadata(m2, schema=None)
+
+            m3 = MetaData()  # schema defaults to None
+
+            # user_copy_two will have None as the schema name
+            user_copy_two = user.tometadata(m3, schema=None)
+
+        :param referred_schema_fn: optional callable which can be supplied
+         in order to provide for the schema name that should be assigned
+         to the referenced table of a :class:`.ForeignKeyConstraint`.
+         The callable accepts this parent :class:`.Table`, the
+         target schema that we are changing to, the :class:`.ForeignKeyConstraint`
+         object, and the existing "target schema" of that constraint.  The
+         function should return the string schema name that should be applied.
+         E.g.::
+
+                def referred_schema_fn(table, to_schema,
+                                                constraint, referred_schema):
+                    if referred_schema == 'base_tables':
+                        return referred_schema
+                    else:
+                        return to_schema
+
+                new_table = table.tometadata(m2, schema="alt_schema",
+                                        referred_schema_fn=referred_schema_fn)
+
+         .. versionadded:: 0.9.2
 
         """
 
@@ -707,8 +737,16 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             *args, **self.kwargs
             )
         for c in self.constraints:
-            table.append_constraint(c.copy(schema=schema, target_table=table))
+            if isinstance(c, ForeignKeyConstraint):
+                referred_schema = c._referred_schema
+                if referred_schema_fn:
+                    fk_constraint_schema = referred_schema_fn(self, schema, c, referred_schema)
+                else:
+                    fk_constraint_schema = schema if referred_schema == self.schema else None
+                table.append_constraint(c.copy(schema=fk_constraint_schema, target_table=table))
 
+            else:
+                table.append_constraint(c.copy(schema=schema, target_table=table))
         for index in self.indexes:
             # skip indexes that would be generated
             # by the 'index' flag on Column
@@ -1429,6 +1467,10 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         else:
             return self._colspec
 
+    @property
+    def _referred_schema(self):
+        return self._column_tokens[0]
+
 
     def _table_key(self):
         if self._table_column is not None:
@@ -1465,7 +1507,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
     def _column_tokens(self):
         """parse a string-based _colspec into its component parts."""
 
-        m = self._colspec.split('.')
+        m = self._get_colspec().split('.')
         if m is None:
             raise exc.ArgumentError(
                 "Invalid foreign key column specification: %s" %
@@ -2446,6 +2488,13 @@ class ForeignKeyConstraint(Constraint):
             isinstance(columns[0], Column) and \
                 columns[0].table is not None:
             self._set_parent_with_dispatch(columns[0].table)
+
+    @property
+    def _referred_schema(self):
+        for elem in self._elements.values():
+            return elem._referred_schema
+        else:
+            return None
 
     def _validate_dest_table(self, table):
         table_keys = set([elem._table_key() for elem in self._elements.values()])

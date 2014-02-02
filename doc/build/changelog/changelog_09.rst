@@ -15,6 +15,30 @@
     :version: 0.9.2
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2913
+
+        The behavior of :meth:`.Table.tometadata` has been adjusted such that
+        the schema target of a :class:`.ForeignKey` will not be changed unless
+        that schema matches that of the parent table.  That is, if
+        a table "schema_a.user" has a foreign key to "schema_b.order.id",
+        the "schema_b" target will be maintained whether or not the
+        "schema" argument is passed to :meth:`.Table.tometadata`.  However
+        if a table "schema_a.user" refers to "schema_a.order.id", the presence
+        of "schema_a" will be updated on both the parent and referred tables.
+        This is a behavioral change hence isn't likely to be backported to
+        0.8; it is assumed that the previous behavior is pretty buggy
+        however and that it's unlikely anyone was relying upon it.
+
+        Additionally, a new parameter has been added
+        :paramref:`.Table.tometadata.referred_schema_fn`.  This refers to a
+        callable function which will be used to determine the new referred
+        schema for any :class:`.ForeignKeyConstraint` encountered in the
+        tometadata operation.  This callable can be used to revert to the
+        previous behavior or to customize how referred schemas are treated
+        on a per-constraint basis.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2932
 
