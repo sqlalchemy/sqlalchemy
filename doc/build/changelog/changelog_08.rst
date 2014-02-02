@@ -12,6 +12,15 @@
     :version: 0.8.5
 
     .. change::
+        :tags: bug, mysql
+        :pullreq: github:61
+        :versions: 0.9.2
+
+        Some missing methods added to the cymysql dialect, including
+        _get_server_version_info() and _detect_charset().  Pullreq
+        courtesy Hajime Nakagami.
+
+    .. change::
         :tags: bug, py3k
         :pullreq: github:63
 
