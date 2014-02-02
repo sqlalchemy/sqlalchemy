@@ -33,6 +33,7 @@ import sqlalchemy
 
 extensions = [
             'sphinx.ext.autodoc',
+            'sphinx.ext.intersphinx',
                 'builder.autodoc_mods',
                 'changelog',
                 'sphinx_paramlinks',
@@ -320,3 +321,7 @@ epub_copyright = u'2007-2014, SQLAlchemy authors'
 
 # Allow duplicate toc entries.
 #epub_tocdup = True
+
+intersphinx_mapping = {
+    'alembic': ('http://alembic.readthedocs.org/en/latest/', None),
+}
