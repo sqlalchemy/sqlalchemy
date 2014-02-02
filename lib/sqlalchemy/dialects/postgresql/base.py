@@ -76,36 +76,132 @@ Valid values for ``isolation_level`` include:
 The :mod:`~sqlalchemy.dialects.postgresql.psycopg2` dialect also offers the special level ``AUTOCOMMIT``.  See
 :ref:`psycopg2_isolation_level` for details.
 
+.. _postgresql_schema_reflection:
 
-Remote / Cross-Schema Table Introspection
------------------------------------------
+Remote-Schema Table Introspection and Postgresql search_path
+------------------------------------------------------------
 
-Tables can be introspected from any accessible schema, including
-inter-schema foreign key relationships.   However, care must be taken
-when specifying the "schema" argument for a given :class:`.Table`, when
-the given schema is also present in PostgreSQL's ``search_path`` variable
-for the current connection.
+The Postgresql dialect can reflect tables from any schema.  The
+:paramref:`.Table.schema` argument, or alternatively the
+:paramref:`.MetaData.reflect.schema` argument determines which schema will
+be searched for the table or tables.   The reflected :class:`.Table` objects
+will in all cases retain this ``.schema`` attribute as was specified.  However,
+with regards to tables which these :class:`.Table` objects refer to via
+foreign key constraint, a decision must be made as to how the ``.schema``
+is represented in those remote tables, in the case where that remote
+schema name is also a member of the current
+`Postgresql search path <http://www.postgresql.org/docs/9.0/static/ddl-schemas.html#DDL-SCHEMAS-PATH>`_.
 
-If a FOREIGN KEY constraint reports that the remote table's schema is within
-the current ``search_path``, the "schema" attribute of the resulting
-:class:`.Table` will be set to ``None``, unless the actual schema of the
-remote table matches that of the referencing table, and the "schema" argument
-was explicitly stated on the referencing table.
+By default, the Postgresql dialect mimics the behavior encouraged by
+Postgresql's own ``pg_get_constraintdef()`` builtin procedure.  This function
+returns a sample definition for a particular foreign key constraint,
+omitting the referenced schema name from that definition when the name is
+also in the Postgresql schema search path.  The interaction below
+illustrates this behavior::
 
-The best practice here is to not use the ``schema`` argument
-on :class:`.Table` for any schemas that are present in ``search_path``.
-``search_path`` defaults to "public", but care should be taken
-to inspect the actual value using::
+    test=> CREATE TABLE test_schema.referred(id INTEGER PRIMARY KEY);
+    CREATE TABLE
+    test=> CREATE TABLE referring(
+    test(>         id INTEGER PRIMARY KEY,
+    test(>         referred_id INTEGER REFERENCES test_schema.referred(id));
+    CREATE TABLE
+    test=> SET search_path TO public, test_schema;
+    test=> SELECT pg_catalog.pg_get_constraintdef(r.oid, true) FROM
+    test-> pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    test-> JOIN pg_catalog.pg_constraint r  ON c.oid = r.conrelid
+    test-> WHERE c.relname='referring' AND r.contype = 'f'
+    test-> ;
+                   pg_get_constraintdef
+    ---------------------------------------------------
+     FOREIGN KEY (referred_id) REFERENCES referred(id)
+    (1 row)
 
-    SHOW search_path;
+Above, we created a table ``referred`` as a member of the remote schema ``test_schema``, however
+when we added ``test_schema`` to the PG ``search_path`` and then asked ``pg_get_constraintdef()``
+for the ``FOREIGN KEY`` syntax, ``test_schema`` was not included in the
+output of the function.
 
-.. versionchanged:: 0.7.3
-    Prior to this version, cross-schema foreign keys when the schemas
-    were also in the ``search_path`` could make an incorrect assumption
-    if the schemas were explicitly stated on each :class:`.Table`.
+On the other hand, if we set the search path back to the typical default
+of ``public``::
 
-Background on PG's ``search_path`` is at:
-http://www.postgresql.org/docs/9.0/static/ddl-schemas.html#DDL-SCHEMAS-PATH
+    test=> SET search_path TO public;
+    SET
+
+The same query against ``pg_get_constraintdef()`` now returns the fully
+schema-qualified name for us::
+
+    test=> SELECT pg_catalog.pg_get_constraintdef(r.oid, true) FROM
+    test-> pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    test-> JOIN pg_catalog.pg_constraint r  ON c.oid = r.conrelid
+    test-> WHERE c.relname='referring' AND r.contype = 'f';
+                         pg_get_constraintdef
+    ---------------------------------------------------------------
+     FOREIGN KEY (referred_id) REFERENCES test_schema.referred(id)
+    (1 row)
+
+SQLAlchemy will by default use the return value of ``pg_get_constraintdef()``
+in order to determine the remote schema name.  That is, if our ``search_path``
+were set to include ``test_schema``, and we invoked a table
+reflection process as follows::
+
+    >>> from sqlalchemy import Table, MetaData, create_engine
+    >>> engine = create_engine("postgresql://scott:tiger@localhost/test")
+    >>> with engine.connect() as conn:
+    ...     conn.execute("SET search_path TO test_schema, public")
+    ...     meta = MetaData()
+    ...     referring = Table('referring', meta, autoload=True, autoload_with=conn)
+    ...
+    <sqlalchemy.engine.result.ResultProxy object at 0x101612ed0>
+
+The above process would deliver to the :attr:`.MetaData.tables` collection
+``referred`` table named **without** the schema::
+
+    >>> meta.tables['referred'].schema is None
+    True
+
+To alter the behavior of reflection such that the referred schema is maintained
+regardless of the ``search_path`` setting, use the ``postgresql_ignore_search_path``
+option, which can be specified as a dialect-specific argument to both
+:class:`.Table` as well as :meth:`.MetaData.reflect`::
+
+    >>> with engine.connect() as conn:
+    ...     conn.execute("SET search_path TO test_schema, public")
+    ...     meta = MetaData()
+    ...     referring = Table('referring', meta, autoload=True, autoload_with=conn,
+    ...                     postgresql_ignore_search_path=True)
+    ...
+    <sqlalchemy.engine.result.ResultProxy object at 0x1016126d0>
+
+We will now have ``test_schema.referred`` stored as schema-qualified::
+
+    >>> meta.tables['test_schema.referred'].schema
+    'test_schema'
+
+.. sidebar:: Best Practices for Postgresql Schema reflection
+
+    The description of Postgresql schema reflection behavior is complex, and is
+    the product of many years of dealing with widely varied use cases and user preferences.
+    But in fact, there's no need to understand any of it if you just stick to the simplest
+    use pattern: leave the ``search_path`` set to its default of ``public`` only, never refer
+    to the name ``public`` as an explicit schema name otherwise, and
+    refer to all other schema names explicitly when building
+    up a :class:`.Table` object.  The options described here are only for those users
+    who can't, or prefer not to, stay within these guidelines.
+
+Note that **in all cases**, the "default" schema is always reflected as ``None``.
+The "default" schema on Postgresql is that which is returned by the
+Postgresql ``current_schema()`` function.  On a typical Postgresql installation,
+this is the name ``public``.  So a table that refers to another which is
+in the ``public`` (i.e. default) schema will always have the ``.schema`` attribute
+set to ``None``.
+
+.. versionadded:: 0.9.2 Added the ``postgresql_ignore_search_path``
+   dialect-level option accepted by :class:`.Table` and :meth:`.MetaData.reflect`.
+
+
+.. seealso::
+
+        `The Schema Search Path <http://www.postgresql.org/docs/9.0/static/ddl-schemas.html#DDL-SCHEMAS-PATH>`_ - on the Postgresql website.
 
 INSERT/UPDATE...RETURNING
 -------------------------
@@ -1439,8 +1535,13 @@ class PGDialect(default.DefaultDialect):
             "using": False,
             "where": None,
             "ops": {}
+        }),
+        (schema.Table, {
+            "ignore_search_path": False
         })
     ]
+
+    reflection_options = ('postgresql_ignore_search_path', )
 
     _backslash_escapes = True
 
@@ -1968,7 +2069,8 @@ class PGDialect(default.DefaultDialect):
         return {'constrained_columns': cols, 'name': name}
 
     @reflection.cache
-    def get_foreign_keys(self, connection, table_name, schema=None, **kw):
+    def get_foreign_keys(self, connection, table_name, schema=None,
+                                postgresql_ignore_search_path=False, **kw):
         preparer = self.identifier_preparer
         table_oid = self.get_table_oid(connection, table_name, schema,
                                        info_cache=kw.get('info_cache'))
@@ -2004,26 +2106,35 @@ class PGDialect(default.DefaultDialect):
         fkeys = []
         for conname, condef, conschema in c.fetchall():
             m = re.search(FK_REGEX, condef).groups()
+
             constrained_columns, referred_schema, \
                     referred_table, referred_columns, \
                     _, match, _, onupdate, _, ondelete, \
                     deferrable, _, initially = m
+
             if deferrable is not None:
                 deferrable = True if deferrable == 'DEFERRABLE' else False
             constrained_columns = [preparer._unquote_identifier(x)
                         for x in re.split(r'\s*,\s*', constrained_columns)]
 
-            if referred_schema:
+            if postgresql_ignore_search_path:
+                # when ignoring search path, we use the actual schema
+                # provided it isn't the "default" schema
+                if conschema != self.default_schema_name:
+                    referred_schema = conschema
+                else:
+                    referred_schema = schema
+            elif referred_schema:
+                # referred_schema is the schema that we regexp'ed from
+                # pg_get_constraintdef().  If the schema is in the search
+                # path, pg_get_constraintdef() will give us None.
                 referred_schema = \
                                 preparer._unquote_identifier(referred_schema)
             elif schema is not None and schema == conschema:
-                # no schema was returned by pg_get_constraintdef().  This
-                # means the schema is in the search path.   We will leave
-                # it as None, unless the actual schema, which we pull out
-                # from pg_namespace even though pg_get_constraintdef() doesn't
-                # want to give it to us, matches that of the referencing table,
-                # and an explicit schema was given for the referencing table.
+                # If the actual schema matches the schema of the table
+                # we're reflecting, then we will use that.
                 referred_schema = schema
+
             referred_table = preparer._unquote_identifier(referred_table)
             referred_columns = [preparer._unquote_identifier(x)
                         for x in re.split(r'\s*,\s', referred_columns)]

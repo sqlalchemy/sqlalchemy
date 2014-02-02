@@ -3153,7 +3153,8 @@ class MetaData(SchemaItem):
 
     def reflect(self, bind=None, schema=None, views=False, only=None,
                                 extend_existing=False,
-                                autoload_replace=True):
+                                autoload_replace=True,
+                                **dialect_kwargs):
         """Load all available table definitions from the database.
 
         Automatically creates ``Table`` entries in this ``MetaData`` for any
@@ -3198,6 +3199,14 @@ class MetaData(SchemaItem):
 
           .. versionadded:: 0.9.1
 
+        :param \**dialect_kwargs: Additional keyword arguments not mentioned above are
+         dialect specific, and passed in the form ``<dialectname>_<argname>``.
+         See the documentation regarding an individual dialect at
+         :ref:`dialect_toplevel` for detail on documented arguments.
+
+          .. versionadded:: 0.9.2 - Added :paramref:`.MetaData.reflect.**dialect_kwargs`
+             to support dialect-level reflection options for all :class:`.Table`
+             objects reflected.
 
         """
         if bind is None:
@@ -3211,6 +3220,8 @@ class MetaData(SchemaItem):
                 'extend_existing': extend_existing,
                 'autoload_replace': autoload_replace
             }
+
+            reflect_opts.update(dialect_kwargs)
 
             if schema is None:
                 schema = self.schema

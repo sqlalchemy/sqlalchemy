@@ -15,6 +15,34 @@
     :version: 0.9.2
 
     .. change::
+        :tags: feature, sql
+
+        Added :paramref:`.MetaData.reflect.**dialect_kwargs`
+        to support dialect-level reflection options for all :class:`.Table`
+        objects reflected.
+
+    .. change::
+        :tags: feature, postgresql
+        :tickets: 2922
+
+        Added a new dialect-level argument ``postgresql_ignore_search_path``;
+        this argument is accepted by both the :class:`.Table` constructor
+        as well as by the :meth:`.MetaData.reflect` method.  When in use
+        against Postgresql, a foreign-key referenced table which specifies
+        a remote schema name will retain that schema name even if the name
+        is present in the ``search_path``; the default behavior since 0.7.3
+        has been that schemas present in ``search_path`` would not be copied
+        to reflected :class:`.ForeignKey` objects.  The documentation has been
+        updated to describe in detail the behavior of the ``pg_get_constraintdef()``
+        function and how the ``postgresql_ignore_search_path`` feature essentially
+        determines if we will honor the schema qualification reported by
+        this function or not.
+
+        .. seealso::
+
+            :ref:`postgresql_schema_reflection`
+
+    .. change::
         :tags: bug, sql
         :tickets: 2913
 

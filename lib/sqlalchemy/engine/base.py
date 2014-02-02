@@ -353,17 +353,26 @@ class Connection(Connectable):
     def detach(self):
         """Detach the underlying DB-API connection from its connection pool.
 
-        This Connection instance will remain usable.  When closed,
+        E.g.::
+
+            with engine.connect() as conn:
+                conn.detach()
+                conn.execute("SET search_path TO schema1, schema2")
+
+                # work with connection
+
+            # connection is fully closed (since we used "with:", can
+            # also call .close())
+
+        This :class:`.Connection` instance will remain usable.  When closed
+        (or exited from a context manager context as above),
         the DB-API connection will be literally closed and not
-        returned to its pool.  The pool will typically lazily create a
-        new connection to replace the detached connection.
+        returned to its originating pool.
 
         This method can be used to insulate the rest of an application
         from a modified state on a connection (such as a transaction
-        isolation level or similar).  Also see
-        :class:`~sqlalchemy.interfaces.PoolListener` for a mechanism to modify
-        connection state when connections leave and return to their
-        connection pool.
+        isolation level or similar).
+
         """
 
         self.__connection.detach()

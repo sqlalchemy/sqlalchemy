@@ -203,24 +203,19 @@ class ReflectionTest(fixtures.TestBase):
         eq_([c.name for c in t2.primary_key], ['t_id'])
 
     @testing.provide_metadata
-    def test_schema_reflection(self):
-        """note: this test requires that the 'test_schema' schema be
-        separate and accessible by the test user"""
+    def test_cross_schema_reflection_one(self):
 
         meta1 = self.metadata
 
-        users = Table('users', meta1, Column('user_id', Integer,
-                      primary_key=True), Column('user_name',
-                      String(30), nullable=False), schema='test_schema')
-        addresses = Table(
-            'email_addresses',
-            meta1,
+        users = Table('users', meta1,
+                    Column('user_id', Integer, primary_key=True),
+                    Column('user_name', String(30), nullable=False),
+                    schema='test_schema')
+        addresses = Table('email_addresses', meta1,
             Column('address_id', Integer, primary_key=True),
-            Column('remote_user_id', Integer,
-                   ForeignKey(users.c.user_id)),
+            Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
             Column('email_address', String(20)),
-            schema='test_schema',
-            )
+            schema='test_schema')
         meta1.create_all()
         meta2 = MetaData(testing.db)
         addresses = Table('email_addresses', meta2, autoload=True,
@@ -232,13 +227,14 @@ class ReflectionTest(fixtures.TestBase):
                      == addresses.c.remote_user_id).compare(j.onclause))
 
     @testing.provide_metadata
-    def test_schema_reflection_2(self):
+    def test_cross_schema_reflection_two(self):
         meta1 = self.metadata
-        subject = Table('subject', meta1, Column('id', Integer,
-                        primary_key=True))
-        referer = Table('referer', meta1, Column('id', Integer,
-                        primary_key=True), Column('ref', Integer,
-                        ForeignKey('subject.id')), schema='test_schema')
+        subject = Table('subject', meta1,
+                    Column('id', Integer, primary_key=True))
+        referer = Table('referer', meta1,
+                    Column('id', Integer, primary_key=True),
+                    Column('ref', Integer, ForeignKey('subject.id')),
+                    schema='test_schema')
         meta1.create_all()
         meta2 = MetaData(testing.db)
         subject = Table('subject', meta2, autoload=True)
@@ -249,23 +245,176 @@ class ReflectionTest(fixtures.TestBase):
                         subject.join(referer).onclause))
 
     @testing.provide_metadata
-    def test_schema_reflection_3(self):
+    def test_cross_schema_reflection_three(self):
         meta1 = self.metadata
-        subject = Table('subject', meta1, Column('id', Integer,
-                        primary_key=True), schema='test_schema_2')
-        referer = Table('referer', meta1, Column('id', Integer,
-                        primary_key=True), Column('ref', Integer,
-                        ForeignKey('test_schema_2.subject.id')),
+        subject = Table('subject', meta1,
+                        Column('id', Integer, primary_key=True),
+                        schema='test_schema_2')
+        referer = Table('referer', meta1,
+                        Column('id', Integer, primary_key=True),
+                        Column('ref', Integer, ForeignKey('test_schema_2.subject.id')),
                         schema='test_schema')
         meta1.create_all()
         meta2 = MetaData(testing.db)
         subject = Table('subject', meta2, autoload=True,
                         schema='test_schema_2')
-        referer = Table('referer', meta2, schema='test_schema',
-                        autoload=True)
+        referer = Table('referer', meta2, autoload=True,
+                        schema='test_schema')
         self.assert_((subject.c.id
                      == referer.c.ref).compare(
                         subject.join(referer).onclause))
+
+    @testing.provide_metadata
+    def test_cross_schema_reflection_four(self):
+        meta1 = self.metadata
+        subject = Table('subject', meta1,
+                        Column('id', Integer, primary_key=True),
+                        schema='test_schema_2')
+        referer = Table('referer', meta1,
+                        Column('id', Integer, primary_key=True),
+                        Column('ref', Integer, ForeignKey('test_schema_2.subject.id')),
+                        schema='test_schema')
+        meta1.create_all()
+
+        conn = testing.db.connect()
+        conn.detach()
+        conn.execute("SET search_path TO test_schema, test_schema_2")
+        meta2 = MetaData(bind=conn)
+        subject = Table('subject', meta2, autoload=True,
+                        schema='test_schema_2',
+                        postgresql_ignore_search_path=True)
+        referer = Table('referer', meta2, autoload=True,
+                        schema='test_schema',
+                        postgresql_ignore_search_path=True)
+        self.assert_((subject.c.id
+                     == referer.c.ref).compare(
+                        subject.join(referer).onclause))
+        conn.close()
+
+    @testing.provide_metadata
+    def test_cross_schema_reflection_five(self):
+        meta1 = self.metadata
+
+        # we assume 'public'
+        default_schema = testing.db.dialect.default_schema_name
+        subject = Table('subject', meta1,
+                        Column('id', Integer, primary_key=True))
+        referer = Table('referer', meta1,
+                        Column('id', Integer, primary_key=True),
+                        Column('ref', Integer, ForeignKey('subject.id')))
+        meta1.create_all()
+
+        meta2 = MetaData(testing.db)
+        subject = Table('subject', meta2, autoload=True,
+                        schema=default_schema,
+                        postgresql_ignore_search_path=True
+                        )
+        referer = Table('referer', meta2, autoload=True,
+                        schema=default_schema,
+                        postgresql_ignore_search_path=True
+                        )
+        assert subject.schema == default_schema
+        self.assert_((subject.c.id
+                     == referer.c.ref).compare(
+                        subject.join(referer).onclause))
+
+    @testing.provide_metadata
+    def test_cross_schema_reflection_six(self):
+        # test that the search path *is* taken into account
+        # by default
+        meta1 = self.metadata
+
+        Table('some_table', meta1,
+                Column('id', Integer, primary_key=True),
+                schema='test_schema'
+            )
+        Table('some_other_table', meta1,
+                Column('id', Integer, primary_key=True),
+                Column('sid', Integer, ForeignKey('test_schema.some_table.id')),
+                schema='test_schema_2'
+                )
+        meta1.create_all()
+        with testing.db.connect() as conn:
+            conn.detach()
+
+            conn.execute("set search_path to test_schema_2, test_schema, public")
+
+            m1 = MetaData(conn)
+
+            t1_schema = Table('some_table',
+                                m1,
+                                schema="test_schema",
+                                autoload=True)
+            t2_schema = Table('some_other_table',
+                                m1,
+                                schema="test_schema_2",
+                                autoload=True)
+
+            t2_no_schema = Table('some_other_table',
+                                m1,
+                                autoload=True)
+
+            t1_no_schema = Table('some_table',
+                                m1,
+                                autoload=True)
+
+            m2 = MetaData(conn)
+            t1_schema_isp = Table('some_table',
+                                m2,
+                                schema="test_schema",
+                                autoload=True,
+                                postgresql_ignore_search_path=True)
+            t2_schema_isp = Table('some_other_table',
+                                m2,
+                                schema="test_schema_2",
+                                autoload=True,
+                                postgresql_ignore_search_path=True)
+
+
+            # t2_schema refers to t1_schema, but since "test_schema"
+            # is in the search path, we instead link to t2_no_schema
+            assert t2_schema.c.sid.references(
+                                t1_no_schema.c.id)
+
+            # the two no_schema tables refer to each other also.
+            assert t2_no_schema.c.sid.references(
+                                t1_no_schema.c.id)
+
+            # but if we're ignoring search path, then we maintain
+            # those explicit schemas vs. what the "default" schema is
+            assert t2_schema_isp.c.sid.references(t1_schema_isp.c.id)
+
+    @testing.provide_metadata
+    def test_cross_schema_reflection_seven(self):
+        # test that the search path *is* taken into account
+        # by default
+        meta1 = self.metadata
+
+        Table('some_table', meta1,
+                Column('id', Integer, primary_key=True),
+                schema='test_schema'
+            )
+        Table('some_other_table', meta1,
+                Column('id', Integer, primary_key=True),
+                Column('sid', Integer, ForeignKey('test_schema.some_table.id')),
+                schema='test_schema_2'
+                )
+        meta1.create_all()
+        with testing.db.connect() as conn:
+            conn.detach()
+
+            conn.execute("set search_path to test_schema_2, test_schema, public")
+            meta2 = MetaData(conn)
+            meta2.reflect(schema="test_schema_2")
+
+            eq_(set(meta2.tables), set(['test_schema_2.some_other_table', 'some_table']))
+
+            meta3 = MetaData(conn)
+            meta3.reflect(schema="test_schema_2", postgresql_ignore_search_path=True)
+
+            eq_(set(meta3.tables),
+                    set(['test_schema_2.some_other_table', 'test_schema.some_table']))
+
 
     @testing.provide_metadata
     def test_uppercase_lowercase_table(self):
@@ -294,68 +443,6 @@ class ReflectionTest(fixtures.TestBase):
         a_seq.drop(testing.db)
         A_seq.drop(testing.db)
 
-    def test_schema_reflection_multi_search_path(self):
-        """test the 'set the same schema' rule when
-        multiple schemas/search paths are in effect."""
-
-        db = engines.testing_engine()
-        conn = db.connect()
-        trans = conn.begin()
-        try:
-            conn.execute("set search_path to test_schema_2, "
-                                "test_schema, public")
-            conn.dialect.default_schema_name = "test_schema_2"
-
-            conn.execute("""
-            CREATE TABLE test_schema.some_table (
-                id SERIAL not null primary key
-            )
-            """)
-
-            conn.execute("""
-            CREATE TABLE test_schema_2.some_other_table (
-                id SERIAL not null primary key,
-                sid INTEGER REFERENCES test_schema.some_table(id)
-            )
-            """)
-
-            m1 = MetaData()
-
-            t2_schema = Table('some_other_table',
-                                m1,
-                                schema="test_schema_2",
-                                autoload=True,
-                                autoload_with=conn)
-            t1_schema = Table('some_table',
-                                m1,
-                                schema="test_schema",
-                                autoload=True,
-                                autoload_with=conn)
-
-            t2_no_schema = Table('some_other_table',
-                                m1,
-                                autoload=True,
-                                autoload_with=conn)
-
-            t1_no_schema = Table('some_table',
-                                m1,
-                                autoload=True,
-                                autoload_with=conn)
-
-            # OK, this because, "test_schema" is
-            # in the search path, and might as well be
-            # the default too.  why would we assign
-            # a "schema" to the Table ?
-            assert t2_schema.c.sid.references(
-                                t1_no_schema.c.id)
-
-            assert t2_no_schema.c.sid.references(
-                                t1_no_schema.c.id)
-
-        finally:
-            trans.rollback()
-            conn.close()
-            db.dispose()
 
     @testing.provide_metadata
     def test_index_reflection(self):
