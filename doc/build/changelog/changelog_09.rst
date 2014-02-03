@@ -15,6 +15,13 @@
     :version: 0.9.2
 
     .. change::
+        :tags: bug, examples
+
+        Added a tweak to the "history_meta" example where the check for
+        "history" on a relationship-bound attribute will now no longer emit
+        any SQL if the relationship is unloaded.
+
+    .. change::
         :tags: feature, sql
 
         Added :paramref:`.MetaData.reflect.**dialect_kwargs`
