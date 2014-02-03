@@ -128,36 +128,17 @@ class MySQLDBConnector(Connector):
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
 
-        # Note: MySQL-python 1.2.1c7 seems to ignore changes made
-        # on a connection via set_character_set()
-        if self.server_version_info < (4, 1, 0):
-            try:
-                return connection.connection.character_set_name()
-            except AttributeError:
-                # < 1.2.1 final MySQL-python drivers have no charset support.
-                # a query is needed.
-                pass
-
-        # Prefer 'character_set_results' for the current connection over the
-        # value in the driver.  SET NAMES or individual variable SETs will
-        # change the charset without updating the driver's view of the world.
-        #
-        # If it's decided that issuing that sort of SQL leaves you SOL, then
-        # this can prefer the driver value.
-        rs = connection.execute("SHOW VARIABLES LIKE 'character_set%%'")
-        opts = dict([(row[0], row[1]) for row in self._compat_fetchall(rs)])
-
-        if 'character_set_results' in opts:
-            return opts['character_set_results']
         try:
-            return connection.connection.character_set_name()
+            # note: the SQL here would be
+            # "SHOW VARIABLES LIKE 'character_set%%'"
+            cset_name = connection.connection.character_set_name
         except AttributeError:
-            # Still no charset on < 1.2.1 final...
-            if 'character_set' in opts:
-                return opts['character_set']
-            else:
-                util.warn(
-                    "Could not detect the connection character set with this "
-                    "combination of MySQL server and MySQL-python. "
-                    "MySQL-python >= 1.2.2 is recommended.  Assuming latin1.")
-                return 'latin1'
+            util.warn(
+                "No 'character_set_name' can be detected with "
+                "this MySQL-Python version; "
+                "please upgrade to a recent version of MySQL-Python.  "
+                "Assuming latin1.")
+            return 'latin1'
+        else:
+            return cset_name()
+

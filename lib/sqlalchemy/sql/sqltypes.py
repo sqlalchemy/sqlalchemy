@@ -198,7 +198,6 @@ class String(Concatenable, TypeEngine):
                                 dialect.returns_unicode_strings and
                                 self.convert_unicode != 'force_nocheck'
                             )
-
         if needs_convert:
             to_unicode = processors.to_unicode_processor_factory(
                                     dialect.encoding, self.unicode_error)

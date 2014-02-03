@@ -31,6 +31,7 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     if py3k:
         supports_unicode_statements = True
 
+
     @classmethod
     def dbapi(cls):
         return __import__('pymysql')
