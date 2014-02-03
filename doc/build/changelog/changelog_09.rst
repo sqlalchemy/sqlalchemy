@@ -13,6 +13,7 @@
 
 .. changelog::
     :version: 0.9.2
+    :released: February 2, 2014
 
     .. change::
         :tags: bug, examples
