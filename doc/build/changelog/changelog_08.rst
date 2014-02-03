@@ -13,6 +13,19 @@
 
     .. change::
         :tags: bug, mysql
+        :tickets: 2933
+        :versions: 0.9.3
+
+        Fixed bug which prevented MySQLdb-based dialects (e.g.
+        pymysql) from working in Py3K, where a check for "connection
+        charset" would fail due to Py3K's more strict value comparison
+        rules.  The call in question  wasn't taking the database
+        version into account in any case as the server version was
+        still None at that point, so the method overall has been
+        simplified to rely upon connection.character_set_name().
+
+    .. change::
+        :tags: bug, mysql
         :pullreq: github:61
         :versions: 0.9.2
 
