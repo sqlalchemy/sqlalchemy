@@ -49,7 +49,7 @@ Production Ready
 * `redshift-sqlalchemy <https://pypi.python.org/pypi/redshift-sqlalchemy>`_ - driver for Amazon Redshift, adapts
   the existing Postgresql/psycopg2 driver.
 * `sqlalchemy-sqlany <https://github.com/sqlanywhere/sqlalchemy-sqlany>`_ - driver for SAP Sybase SQL
-   Anywhere, developed by SAP.
+  Anywhere, developed by SAP.
 * `sqlalchemy-monetdb <https://github.com/gijzelaerr/sqlalchemy-monetdb>`_ - driver for MonetDB.
 
 Experimental / Incomplete
