@@ -78,6 +78,12 @@ class PointTest(fixtures.MappedTest):
         sess.commit()
         return sess
 
+    def test_early_configure(self):
+        # test [ticket:2935], that we can call a composite
+        # expression before configure_mappers()
+        Edge = self.classes.Edge
+        Edge.start.__clause_element__()
+
     def test_round_trip(self):
         Graph, Point = self.classes.Graph, self.classes.Point
 
@@ -601,6 +607,13 @@ class ManyToOneTest(fixtures.MappedTest):
             'c':composite(C, 'b1', 'b2')
         })
         mapper(B, b)
+
+    def test_early_configure(self):
+        # test [ticket:2935], that we can call a composite
+        # expression before configure_mappers()
+        A = self.classes.A
+        A.c.__clause_element__()
+
 
     def test_persist(self):
         A, C, B = (self.classes.A,

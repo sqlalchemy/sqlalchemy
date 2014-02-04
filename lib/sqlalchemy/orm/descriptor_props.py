@@ -165,7 +165,6 @@ class CompositeProperty(DescriptorProperty):
         has been associated with its parent mapper.
 
         """
-        self._init_props()
         self._setup_arguments_on_columns()
 
     def _create_descriptor(self):
@@ -236,11 +235,12 @@ class CompositeProperty(DescriptorProperty):
             for prop in self.props
         ]
 
-    def _init_props(self):
-        self.props = props = []
+    @util.memoized_property
+    def props(self):
+        props = []
         for attr in self.attrs:
             if isinstance(attr, str):
-                prop = self.parent.get_property(attr)
+                prop = self.parent.get_property(attr, _configure_mappers=False)
             elif isinstance(attr, schema.Column):
                 prop = self.parent._columntoproperty[attr]
             elif isinstance(attr, attributes.InstrumentedAttribute):
@@ -251,6 +251,7 @@ class CompositeProperty(DescriptorProperty):
                         "attributes/attribute names as arguments, got: %r"
                         % (attr,))
             props.append(prop)
+        return props
 
     @property
     def columns(self):

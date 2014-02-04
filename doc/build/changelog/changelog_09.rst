@@ -12,6 +12,18 @@
         :start-line: 5
 
 .. changelog::
+    :version: 0.9.3
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 2935
+
+        Improved the initialization logic of composite attributes such that
+        calling ``MyClass.attribute`` will not require that the configure
+        mappers step has occurred, e.g. it will just work without throwing
+        any error.
+
+.. changelog::
     :version: 0.9.2
     :released: February 2, 2014
 
