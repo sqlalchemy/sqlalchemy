@@ -4,8 +4,8 @@ import unicodedata
 import sqlalchemy as sa
 from sqlalchemy import schema, events, event, inspect
 from sqlalchemy import MetaData, Integer, String
-from sqlalchemy.testing import ComparesTables, \
-                            engines, AssertsCompiledSQL, fixtures
+from sqlalchemy.testing import (ComparesTables, engines, AssertsCompiledSQL,
+    fixtures, skip)
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import testing
@@ -317,8 +317,14 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         t2a = Table('test2', m2, autoload=True)
         assert t2a._autoincrement_column is t2a.c.id2
 
+    @skip('sqlite')
     @testing.provide_metadata
     def test_unknown_types(self):
+        """Test the handling of unknown types for the given dialect.
+
+        sqlite is skipped because it has special rules for unknown types using
+        'affinity types' - this feature is tested in that dialect's test spec.
+        """
         meta = self.metadata
         t = Table("test", meta,
             Column('foo', sa.DateTime))

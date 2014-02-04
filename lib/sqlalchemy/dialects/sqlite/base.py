@@ -403,6 +403,7 @@ ischema_names = {
     'CHAR': sqltypes.CHAR,
     'DATE': sqltypes.DATE,
     'DATETIME': sqltypes.DATETIME,
+    'DOUBLE': sqltypes.FLOAT,
     'DECIMAL': sqltypes.DECIMAL,
     'FLOAT': sqltypes.FLOAT,
     'INT': sqltypes.INTEGER,
@@ -806,22 +807,17 @@ class SQLiteDialect(default.DefaultDialect):
         return columns
 
     def _get_column_info(self, name, type_, nullable, default, primary_key):
-        match = re.match(r'(\w+)(\(.*?\))?', type_)
+        match = re.match(r'([\w ]+)(\(.*?\))?', type_)
         if match:
             coltype = match.group(1)
             args = match.group(2)
         else:
-            coltype = "VARCHAR"
+            coltype = ''
             args = ''
-        try:
-            coltype = self.ischema_names[coltype]
-            if args is not None:
-                args = re.findall(r'(\d+)', args)
-                coltype = coltype(*[int(a) for a in args])
-        except KeyError:
-            util.warn("Did not recognize type '%s' of column '%s'" %
-                      (coltype, name))
-            coltype = sqltypes.NullType()
+        coltype = self._resolve_col_affinity(coltype)
+        if args is not None:
+            args = re.findall(r'(\d+)', args)
+            coltype = coltype(*[int(a) for a in args])
 
         if default is not None:
             default = util.text_type(default)
@@ -834,6 +830,35 @@ class SQLiteDialect(default.DefaultDialect):
             'autoincrement': default is None,
             'primary_key': primary_key,
         }
+
+    def _resolve_col_affinity(self, coltype):
+        """Return a data type from a reflected column, using affinity tules.
+
+        SQLite's goal for universal compatability introduces some complexity
+        during reflection, as a column's defined type might not actually be a
+        type that SQLite understands - or indeed, my not be defined *at all*.
+        Internally, SQLite handles this with a 'data type affinity' for each
+        column definition, mapping to one of 'TEXT', 'NUMERIC', 'INTEGER',
+        'REAL', or 'NONE' (raw bits). The algorithm that determines this is
+        listed in http://www.sqlite.org/datatype3.html section 2.1.
+
+        This method allows SQLAlchemy to support that algorithm, while still
+        providing access to smarter reflection utilities by regcognizing
+        column definitions that SQLite only supports through affinity (like
+        DATE and DOUBLE).
+        """
+        if coltype in self.ischema_names:
+            return self.ischema_names[coltype]
+        if 'INT' in coltype:
+            return sqltypes.INTEGER
+        elif 'CHAR' in coltype or 'CLOB' in coltype or 'TEXT' in coltype:
+            return sqltypes.TEXT,
+        elif 'BLOB' in coltype or not coltype: 
+            return sqltypes.NullType
+        elif 'REAL' in coltype or 'FLOA' in coltype or 'DOUB' in coltype:
+            return sqltype.REAL
+        else:
+            return sqltypes.NUMERIC
 
     @reflection.cache
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
