@@ -16,6 +16,14 @@
 
     .. change::
         :tags: bug, sql
+        :pullreq: github:67
+
+        Fixed regression in new "naming convention" feature where conventions
+        would fail if the referred table in a foreign key contained a schema
+        name.  Pull request courtesy Thomas Farvour.
+
+    .. change::
+        :tags: bug, sql
 
         Fixed bug where so-called "literal render" of :func:`.bindparam`
         constructs would fail if the bind were constructed with a callable,

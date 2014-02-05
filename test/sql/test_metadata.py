@@ -2523,13 +2523,14 @@ class DialectKWArgTest(fixtures.TestBase):
                         "participating_z_one": "default"})
 
 class NamingConventionTest(fixtures.TestBase):
-    def _fixture(self, naming_convention):
+    def _fixture(self, naming_convention, table_schema=None):
         m1 = MetaData(naming_convention=naming_convention)
 
         u1 = Table('user', m1,
                 Column('id', Integer, primary_key=True),
                 Column('version', Integer, primary_key=True),
-                Column('data', String(30))
+                Column('data', String(30)),
+                schema=table_schema
             )
 
         return u1
@@ -2554,6 +2555,23 @@ class NamingConventionTest(fixtures.TestBase):
             "requires that constraint is explicitly named.",
             CheckConstraint, u1.c.data == 'x'
         )
+
+    def test_fk_name_schema(self):
+        u1 = self._fixture(naming_convention={
+                "fk": "fk_%(table_name)s_%(column_0_name)s_"
+                "%(referred_table_name)s_%(referred_column_0_name)s"
+            }, table_schema="foo")
+        m1 = u1.metadata
+        a1 = Table('address', m1,
+                Column('id', Integer, primary_key=True),
+                Column('user_id', Integer),
+                Column('user_version_id', Integer)
+            )
+        fk = ForeignKeyConstraint(['user_id', 'user_version_id'],
+                        ['foo.user.id', 'foo.user.version'])
+        a1.append_constraint(fk)
+        eq_(fk.name, "fk_address_user_id_user_id")
+
 
     def test_fk_attrs(self):
         u1 = self._fixture(naming_convention={
