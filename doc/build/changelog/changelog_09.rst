@@ -15,6 +15,14 @@
     :version: 0.9.3
 
     .. change::
+        :tags: bug, sql
+
+        Fixed bug where so-called "literal render" of :func:`.bindparam`
+        constructs would fail if the bind were constructed with a callable,
+        rather than a direct value.  This prevented ORM expressions
+        from being rendered with the "literal_binds" compiler flag.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2935
 

@@ -969,7 +969,7 @@ class SQLCompiler(Compiled):
         if literal_binds or \
             (within_columns_clause and \
                 self.ansi_bind_rules):
-            if bindparam.value is None:
+            if bindparam.value is None and bindparam.callable is None:
                 raise exc.CompileError("Bind parameter '%s' without a "
                                         "renderable value not allowed here."
                                         % bindparam.key)
@@ -1005,7 +1005,7 @@ class SQLCompiler(Compiled):
         return self.bindparam_string(name, **kwargs)
 
     def render_literal_bindparam(self, bindparam, **kw):
-        value = bindparam.value
+        value = bindparam.effective_value
         return self.render_literal_value(value, bindparam.type)
 
     def render_literal_value(self, value, type_):
