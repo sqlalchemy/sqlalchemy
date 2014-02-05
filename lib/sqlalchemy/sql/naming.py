@@ -54,12 +54,20 @@ class ConventionDict(object):
 
     def _key_referred_table_name(self):
         fk = self.const.elements[0]
-        reftable, refcol = fk.target_fullname.split(".")
+        refs = fk.target_fullname.split(".")
+        if len(refs) == 3:
+            refschema, reftable, refcol = refs
+        else:
+            reftable, refcol = refs
         return reftable
 
     def _key_referred_column_X_name(self, idx):
         fk = self.const.elements[idx]
-        reftable, refcol = fk.target_fullname.split(".")
+        refs = fk.target_fullname.split(".")
+        if len(refs) == 3:
+            refschema, reftable, refcol = refs
+        else:
+            reftable, refcol = refs
         return refcol
 
     def __getitem__(self, key):
