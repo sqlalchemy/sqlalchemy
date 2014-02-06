@@ -1055,6 +1055,19 @@ class UUIDTest(fixtures.TestBase):
             uuid.uuid4()
         )
 
+    @testing.fails_on('postgresql+zxjdbc',
+                      'column "data" is of type uuid[] but expression is of type character varying')
+    @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
+    def test_uuid_array(self):
+        import uuid
+        self._test_round_trip(
+            Table('utable', MetaData(),
+                Column('data', postgresql.ARRAY(postgresql.UUID()))
+            ),
+            [str(uuid.uuid4()), str(uuid.uuid4())],
+            [str(uuid.uuid4()), str(uuid.uuid4())],
+        )
+
     def test_no_uuid_available(self):
         from sqlalchemy.dialects.postgresql import base
         uuid_type = base._python_UUID
