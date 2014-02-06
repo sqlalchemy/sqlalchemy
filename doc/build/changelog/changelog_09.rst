@@ -39,6 +39,18 @@
         mappers step has occurred, e.g. it will just work without throwing
         any error.
 
+    .. change::
+        :tags: bug, orm
+        :tickets: 2932
+
+        More issues with [ticket:2932] first resolved in 0.9.2 where
+        using a column key of the form ``<tablename>_<columnname>``
+        matching that of an aliased column in the text would still not
+        match at the ORM level, which is ultimately due to a core
+        column-matching issue.  Additional rules have been added so that the
+        column ``_label`` is taken into account when working with a
+        :class:`.TextAsFrom` construct or with literal columns.
+
 .. changelog::
     :version: 0.9.2
     :released: February 2, 2014

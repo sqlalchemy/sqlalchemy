@@ -2927,8 +2927,8 @@ class ColumnClause(Immutable, ColumnElement):
                         other.table is None or
                         other.table._textual)
         ):
-            return super(ColumnClause, self).\
-                    _compare_name_for_result(other)
+            return (hasattr(other, 'name') and self.name == other.name) or \
+                (hasattr(other, '_label') and self._label == other._label)
         else:
             return other.proxy_set.intersection(self.proxy_set)
 

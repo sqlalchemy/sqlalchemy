@@ -1831,6 +1831,36 @@ class KeyTargetingTest(fixtures.TablesTest):
         assert stmt.c.a in row
         assert stmt.c.b in row
 
+    def test_columnclause_schema_column_four(self):
+        keyed2 = self.tables.keyed2
+
+        # this is also addressed by [ticket:2932]
+
+        a, b = sql.column('keyed2_a'), sql.column('keyed2_b')
+        stmt = text("select a AS keyed2_a, b AS keyed2_b from keyed2").columns(a, b)
+        row = testing.db.execute(stmt).first()
+
+        assert keyed2.c.a in row
+        assert keyed2.c.b in row
+        assert a in row
+        assert b in row
+        assert stmt.c.keyed2_a in row
+        assert stmt.c.keyed2_b in row
+
+    def test_columnclause_schema_column_five(self):
+        keyed2 = self.tables.keyed2
+
+        # this is also addressed by [ticket:2932]
+
+        stmt = text("select a AS keyed2_a, b AS keyed2_b from keyed2").columns(
+                            keyed2_a=CHAR, keyed2_b=CHAR)
+        row = testing.db.execute(stmt).first()
+
+        assert keyed2.c.a in row
+        assert keyed2.c.b in row
+        assert stmt.c.keyed2_a in row
+        assert stmt.c.keyed2_b in row
+
 
 
 class LimitTest(fixtures.TestBase):
