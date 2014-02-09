@@ -15,6 +15,17 @@
     :version: 0.9.3
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2949
+
+        Fixed an 0.9 regression where ORM instance or mapper events applied
+        to a base class such as a declarative base with the propagate=True
+        flag would fail to apply to existing mapped classes which also
+        used inheritance due to an assertion.  Addtionally, repaired an
+        attribute error which could occur during removal of such an event,
+        depending on how it was first assigned.
+
+    .. change::
         :tags: bug, ext
 
         Fixed bug where the :class:`.AutomapBase` class of the

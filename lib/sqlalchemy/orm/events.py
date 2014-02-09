@@ -192,12 +192,9 @@ class InstanceEvents(event.Events):
             event_key.dispatch_target, event_key.identifier, event_key.fn
 
         if not raw:
-            orig_fn = fn
-
             def wrap(state, *arg, **kw):
-                return orig_fn(state.obj(), *arg, **kw)
-            fn = wrap
-            event_key = event_key.with_wrapper(fn)
+                return fn(state.obj(), *arg, **kw)
+            event_key = event_key.with_wrapper(wrap)
 
         event_key.base_listen(propagate=propagate)
 
@@ -369,15 +366,18 @@ class _EventsHold(event.RefCollection):
                     stack.extend(subclass.__subclasses__())
                     subject = target.resolve(subclass)
                     if subject is not None:
+                        # we are already going through __subclasses__()
+                        # so leave generic propagate flag False
                         event_key.with_dispatch_target(subject).\
-                                listen(raw=raw, propagate=propagate)
+                            listen(raw=raw, propagate=False)
 
     def remove(self, event_key):
         target, identifier, fn = \
             event_key.dispatch_target, event_key.identifier, event_key.fn
 
-        collection = target.all_holds[target.class_]
-        del collection[event_key._key]
+        if isinstance(target, _EventsHold):
+            collection = target.all_holds[target.class_]
+            del collection[event_key._key]
 
     @classmethod
     def populate(cls, class_, subject):
@@ -517,18 +517,15 @@ class MapperEvents(event.Events):
                 except ValueError:
                     target_index = None
 
-            wrapped_fn = fn
-
             def wrap(*arg, **kw):
                 if not raw and target_index is not None:
                     arg = list(arg)
                     arg[target_index] = arg[target_index].obj()
                 if not retval:
-                    wrapped_fn(*arg, **kw)
+                    fn(*arg, **kw)
                     return interfaces.EXT_CONTINUE
                 else:
-                    return wrapped_fn(*arg, **kw)
-            fn = wrap
+                    return fn(*arg, **kw)
             event_key = event_key.with_wrapper(wrap)
 
         if propagate:
@@ -1560,17 +1557,14 @@ class AttributeEvents(event.Events):
             target.dispatch._active_history = True
 
         if not raw or not retval:
-            orig_fn = fn
-
             def wrap(target, value, *arg):
                 if not raw:
                     target = target.obj()
                 if not retval:
-                    orig_fn(target, value, *arg)
+                    fn(target, value, *arg)
                     return value
                 else:
-                    return orig_fn(target, value, *arg)
-            fn = wrap
+                    return fn(target, value, *arg)
             event_key = event_key.with_wrapper(wrap)
 
         event_key.base_listen(propagate=propagate)

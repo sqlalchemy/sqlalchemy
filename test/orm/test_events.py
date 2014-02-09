@@ -240,6 +240,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             'before_update', 'after_update', 'before_delete',
             'after_delete'])
 
+
     def test_before_after_only_collection(self):
         """before_update is called on parent for collection modifications,
         after_update is called even if no columns were updated.
@@ -318,6 +319,41 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         eq_(canary, [User])
         mapper(Address, addresses)
         eq_(canary, [User, Address])
+
+class DeclarativeEventListenTest(_RemoveListeners, fixtures.DeclarativeMappedTest):
+    run_setup_classes = "each"
+    run_deletes = None
+
+    def test_inheritance_propagate_after_config(self):
+        # test [ticket:2949]
+
+        class A(self.DeclarativeBasic):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+
+        class B(A):
+            pass
+
+        listen = Mock()
+        event.listen(self.DeclarativeBasic, "load", listen, propagate=True)
+
+        class C(B):
+            pass
+
+        m1 = A.__mapper__.class_manager
+        m2 = B.__mapper__.class_manager
+        m3 = C.__mapper__.class_manager
+        a1 = A()
+        b1 = B()
+        c1 = C()
+        m3.dispatch.load(c1._sa_instance_state, "c")
+        m2.dispatch.load(b1._sa_instance_state, "b")
+        m1.dispatch.load(a1._sa_instance_state, "a")
+        eq_(
+            listen.mock_calls,
+            [call(c1, "c"), call(b1, "b"), call(a1, "a")]
+        )
+
 
 class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     """"test event listeners against unmapped classes.
@@ -777,6 +813,27 @@ class RemovalTest(_fixtures.FixtureTest):
         b1 = Bar()
         m.dispatch.before_insert(m, None, attributes.instance_state(b1))
         eq_(fn.call_count, 1)
+
+    def test_instance_event_listen_on_cls_before_map(self):
+        users = self.tables.users
+
+        fn = Mock()
+
+        class User(object):
+            pass
+
+        event.listen(User, "load", fn)
+        m = mapper(User, users)
+
+        u1 = User()
+        m.class_manager.dispatch.load(u1._sa_instance_state, "u1")
+
+        event.remove(User, "load", fn)
+
+        m.class_manager.dispatch.load(u1._sa_instance_state, "u2")
+
+        eq_(fn.mock_calls, [call(u1, "u1")])
+
 
 
 class RefreshTest(_fixtures.FixtureTest):
