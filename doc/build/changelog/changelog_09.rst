@@ -15,6 +15,16 @@
     :version: 0.9.3
 
     .. change::
+        :tags: bug, ext
+
+        Fixed bug where the :class:`.AutomapBase` class of the
+        new automap extension would fail if classes
+        were pre-arranged in single or potentially joined inheritance patterns.
+        The repaired joined inheritance issue could also potentially apply when
+        using :class:`.DeferredReflection` as well.
+
+
+    .. change::
         :tags: bug, sql
         :pullreq: github:67
 

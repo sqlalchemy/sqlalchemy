@@ -4,6 +4,8 @@ from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import relationship, interfaces, backref
 from sqlalchemy.ext.automap import generate_relationship
 from sqlalchemy.testing.mock import Mock, call
+from sqlalchemy import Column, String, Table, Integer, ForeignKey
+from sqlalchemy import testing
 
 class AutomapTest(fixtures.MappedTest):
     @classmethod
@@ -144,3 +146,66 @@ class AutomapTest(fixtures.MappedTest):
                 (Base, interfaces.MANYTOONE, "users"),
                 (Base, interfaces.ONETOMANY, "addresses_collection"),
         ])
+
+
+class AutomapInhTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('single', metadata,
+                Column('id', Integer, primary_key=True),
+                Column('type', String(10))
+            )
+
+        Table('joined_base', metadata,
+                Column('id', Integer, primary_key=True),
+                Column('type', String(10))
+            )
+
+        Table('joined_inh', metadata,
+                Column('id', Integer, ForeignKey('joined_base.id'), primary_key=True),
+            )
+
+        FixtureTest.define_tables(metadata)
+
+    def test_single_inheritance_reflect(self):
+        Base = automap_base()
+
+        class Single(Base):
+            __tablename__ = 'single'
+
+            type = Column(String)
+
+            __mapper_args__ = {"polymorphic_identity": "u0",
+                "polymorphic_on": type}
+
+        class SubUser1(Single):
+            __mapper_args__ = {"polymorphic_identity": "u1"}
+
+        class SubUser2(Single):
+            __mapper_args__ = {"polymorphic_identity": "u2"}
+
+        Base.prepare(engine=testing.db, reflect=True)
+
+        assert SubUser2.__mapper__.inherits is Single.__mapper__
+
+    def test_joined_inheritance_reflect(self):
+        Base = automap_base()
+
+        class Joined(Base):
+            __tablename__ = 'joined_base'
+
+            type = Column(String)
+
+            __mapper_args__ = {"polymorphic_identity": "u0",
+                "polymorphic_on": type}
+
+        class SubJoined(Joined):
+            __tablename__ = 'joined_inh'
+            __mapper_args__ = {"polymorphic_identity": "u1"}
+
+
+        Base.prepare(engine=testing.db, reflect=True)
+
+        assert SubJoined.__mapper__.inherits is Joined.__mapper__
+
+

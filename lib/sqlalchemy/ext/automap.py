@@ -598,7 +598,8 @@ class AutomapBase(object):
 
         table_to_map_config = dict(
                                 (m.local_table, m)
-                                for m in _DeferredMapperConfig.classes_for_base(cls)
+                                for m in _DeferredMapperConfig.
+                                    classes_for_base(cls, sort=False)
                             )
 
         many_to_many = []
@@ -635,7 +636,8 @@ class AutomapBase(object):
                             name_for_scalar_relationship,
                             name_for_collection_relationship,
                             generate_relationship)
-        for map_config in table_to_map_config.values():
+
+        for map_config in _DeferredMapperConfig.classes_for_base(cls):
             map_config.map()
 
 
@@ -718,6 +720,8 @@ def _relationships_for_fks(automap_base, map_config, table_to_map_config,
     local_table = map_config.local_table
     local_cls = map_config.cls
 
+    if local_table is None:
+        return
     for constraint in local_table.constraints:
         if isinstance(constraint, ForeignKeyConstraint):
             fks = constraint.elements
