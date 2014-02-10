@@ -1122,37 +1122,6 @@ inheritance::
         primary_language = Column(String(50))
         __mapper_args__ = {'polymorphic_identity': 'engineer'}
 
-If you want to use a similar pattern with a mix of single and joined
-table inheritance, you would need a slightly different mixin and use
-it on any joined table child classes in addition to their parent
-classes::
-
-    from sqlalchemy.ext.declarative import declared_attr
-    from sqlalchemy.ext.declarative import has_inherited_table
-
-    class Tablename(object):
-        @declared_attr
-        def __tablename__(cls):
-            if (has_inherited_table(cls) and
-                Tablename not in cls.__bases__):
-                return None
-            return cls.__name__.lower()
-
-    class Person(Tablename, Base):
-        id = Column(Integer, primary_key=True)
-        discriminator = Column('type', String(50))
-        __mapper_args__ = {'polymorphic_on': discriminator}
-
-    # This is single table inheritance
-    class Engineer(Person):
-        primary_language = Column(String(50))
-        __mapper_args__ = {'polymorphic_identity': 'engineer'}
-
-    # This is joined table inheritance
-    class Manager(Tablename, Person):
-        id = Column(Integer, ForeignKey('person.id'), primary_key=True)
-        preferred_recreation = Column(String(50))
-        __mapper_args__ = {'polymorphic_identity': 'engineer'}
 
 Combining Table/Mapper Arguments from Multiple Mixins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
