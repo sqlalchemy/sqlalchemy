@@ -12,6 +12,16 @@
     :version: 0.8.5
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2951
+        :versions: 0.9.3
+
+        Fixed bug where :meth:`.Query.get` would fail to consistently
+        raise the :class:`.InvalidRequestError` that invokes when called
+        on a query with existing criterion, when the given identity is
+        already present in the identity map.
+
+    .. change::
         :tags: bug, mysql
         :tickets: 2933
         :versions: 0.9.3
