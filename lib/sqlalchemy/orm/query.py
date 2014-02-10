@@ -351,19 +351,25 @@ class Query(object):
         return equivs
 
     def _get_condition(self):
-        self._order_by = self._distinct = False
-        return self._no_criterion_condition("get")
+        return self._no_criterion_condition("get", order_by=False, distinct=False)
 
-    def _no_criterion_condition(self, meth):
+    def _get_existing_condition(self):
+        self._no_criterion_assertion("get", order_by=False, distinct=False)
+
+    def _no_criterion_assertion(self, meth, order_by=True, distinct=True):
         if not self._enable_assertions:
             return
         if self._criterion is not None or \
                 self._statement is not None or self._from_obj or \
                 self._limit is not None or self._offset is not None or \
-                self._group_by or self._order_by or self._distinct:
+                self._group_by or (order_by and self._order_by) or \
+                (distinct and self._distinct):
             raise sa_exc.InvalidRequestError(
                                 "Query.%s() being called on a "
                                 "Query with existing criterion. " % meth)
+
+    def _no_criterion_condition(self, meth, order_by=True, distinct=True):
+        self._no_criterion_assertion(meth, order_by, distinct)
 
         self._from_obj = ()
         self._statement = self._criterion = None
@@ -811,6 +817,7 @@ class Query(object):
             instance = loading.get_from_identity(
                 self.session, key, attributes.PASSIVE_OFF)
             if instance is not None:
+                self._get_existing_condition()
                 # reject calls for id in identity map but class
                 # mismatch.
                 if not issubclass(instance.__class__, mapper.class_):
