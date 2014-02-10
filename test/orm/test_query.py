@@ -433,17 +433,12 @@ class GetTest(QueryTest):
 
         User, Address = self.classes.User, self.classes.Address
 
-
         s = create_session()
 
         u1 = s.query(User).get(7)
 
         q = s.query(User).join('addresses').filter(Address.user_id==8)
         assert_raises(sa_exc.InvalidRequestError, q.get, 7)
-        assert_raises(sa_exc.InvalidRequestError, s.query(User).filter(User.id==7).get, 19)
-
-        # order_by()/get() doesn't raise
-        s.query(User).order_by(User.id).get(8)
 
     def test_unique_param_names(self):
         users = self.tables.users
