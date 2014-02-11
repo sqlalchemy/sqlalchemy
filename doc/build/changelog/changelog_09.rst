@@ -15,6 +15,15 @@
     :version: 0.9.3
 
     .. change::
+        :tags: bug, mysql, cymysql
+        :tickets: 2934
+        :pullreq: github:69
+
+        Fixed bug in cymysql dialect where a version string such as
+        ``'33a-MariaDB'`` would fail to parse properly.  Pull request
+        courtesy Matt Schmidt.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2949
 
