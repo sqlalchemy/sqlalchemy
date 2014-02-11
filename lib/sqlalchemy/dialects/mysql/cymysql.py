@@ -13,6 +13,7 @@
     :url: https://github.com/nakagami/CyMySQL
 
 """
+import re
 
 from .mysqldb import MySQLDialect_mysqldb
 from .base import (BIT, MySQLDialect)
@@ -54,7 +55,13 @@ class MySQLDialect_cymysql(MySQLDialect_mysqldb):
 
     def _get_server_version_info(self, connection):
         dbapi_con = connection.connection
-        version = [int(v) for v in dbapi_con.server_version.split('.')]
+        version = []
+        r = re.compile('[.\-]')
+        for n in r.split(dbapi_con.server_version):
+            try:
+                version.append(int(n))
+            except ValueError:
+                version.append(n)
         return tuple(version)
 
     def _detect_charset(self, connection):
