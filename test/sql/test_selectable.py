@@ -1927,6 +1927,75 @@ class WithLabelsTest(fixtures.TestBase):
         )
         self._assert_result_keys(sel, ['t1_a', 't2_b'])
 
+class SelectProxyTest(fixtures.TestBase):
+    def _fixture(self):
+        m = MetaData()
+        t = Table('t', m, Column('x', Integer), Column('y', Integer))
+        return t
+
+    def _mapping(self, stmt):
+        compiled = stmt.compile()
+        return dict(
+                    (elem, key)
+                    for key, elements in compiled.result_map.items()
+                    for elem in elements[1]
+                )
+
+    def test_select_label_alt_name(self):
+        t = self._fixture()
+        l1, l2 = t.c.x.label('a'), t.c.y.label('b')
+        s = select([l1, l2])
+        mapping = self._mapping(s)
+        assert l1 in mapping
+
+        assert t.c.x not in mapping
+
+    def test_select_alias_label_alt_name(self):
+        t = self._fixture()
+        l1, l2 = t.c.x.label('a'), t.c.y.label('b')
+        s = select([l1, l2]).alias()
+        mapping = self._mapping(s)
+        assert l1 in mapping
+
+        assert t.c.x not in mapping
+
+    def test_select_alias_column(self):
+        t = self._fixture()
+        x, y = t.c.x, t.c.y
+        s = select([x, y]).alias()
+        mapping = self._mapping(s)
+
+        assert t.c.x in mapping
+
+    def test_select_alias_column_apply_labels(self):
+        t = self._fixture()
+        x, y = t.c.x, t.c.y
+        s = select([x, y]).apply_labels().alias()
+        mapping = self._mapping(s)
+        assert t.c.x in mapping
+
+    def test_select_table_alias_column(self):
+        t = self._fixture()
+        x, y = t.c.x, t.c.y
+
+        ta = t.alias()
+        s = select([ta.c.x, ta.c.y])
+        mapping = self._mapping(s)
+        assert x not in mapping
+
+    def test_select_label_alt_name_table_alias_column(self):
+        t = self._fixture()
+        x, y = t.c.x, t.c.y
+
+        ta = t.alias()
+        l1, l2 = ta.c.x.label('a'), ta.c.y.label('b')
+
+        s = select([l1, l2])
+        mapping = self._mapping(s)
+        assert x not in mapping
+        assert l1 in mapping
+        assert ta.c.x not in mapping
+
 class ForUpdateTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 

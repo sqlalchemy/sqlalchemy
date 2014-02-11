@@ -616,10 +616,9 @@ class SQLCompiler(Compiled):
                                     )
 
         if populate_result_map:
-            for c in taf.c:
-                self._add_to_result_map(
-                        c.key, c.key, (c,), c.type
-                )
+            for c in taf.column_args:
+                self.process(c, within_columns_clause=True,
+                                add_to_result_map=self._add_to_result_map)
 
         text = self.process(taf.element, **kw)
         if asfrom and parens:

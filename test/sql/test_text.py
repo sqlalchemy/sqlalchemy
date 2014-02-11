@@ -2,7 +2,7 @@
 
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, eq_, assert_raises_message
 from sqlalchemy import text, select, Integer, String, Float, \
-            bindparam, and_, func, literal_column, exc
+            bindparam, and_, func, literal_column, exc, MetaData, Table, Column
 from sqlalchemy.types import NullType
 from sqlalchemy.sql import table, column
 
@@ -291,8 +291,8 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(
             compiled.result_map,
             {
-                'id': ('id', (t.c.id,), t.c.id.type),
-                'name': ('name', (t.c.name,), t.c.name.type)
+                'id': ('id', (t.c.id._proxies[0], 'id', 'id'), t.c.id.type),
+                'name': ('name', (t.c.name._proxies[0], 'name', 'name'), t.c.name.type)
             }
         )
 
@@ -303,8 +303,8 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(
             compiled.result_map,
             {
-                'id': ('id', (t.c.id,), t.c.id.type),
-                'name': ('name', (t.c.name,), t.c.name.type)
+                'id': ('id', (t.c.id._proxies[0], 'id', 'id'), t.c.id.type),
+                'name': ('name', (t.c.name._proxies[0], 'name', 'name'), t.c.name.type)
             }
         )
 
@@ -321,6 +321,73 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
                         (table1.c.myid, "myid", "myid"), table1.c.myid.type),
             }
         )
+
+    def _xy_table_fixture(self):
+        m = MetaData()
+        t = Table('t', m, Column('x', Integer), Column('y', Integer))
+        return t
+
+    def _mapping(self, stmt):
+        compiled = stmt.compile()
+        return dict(
+                    (elem, key)
+                    for key, elements in compiled.result_map.items()
+                    for elem in elements[1]
+                )
+
+    def test_select_label_alt_name(self):
+        t = self._xy_table_fixture()
+        l1, l2 = t.c.x.label('a'), t.c.y.label('b')
+        s = text("select x AS a, y AS b FROM t").columns(l1, l2)
+        mapping = self._mapping(s)
+        assert l1 in mapping
+
+        assert t.c.x not in mapping
+
+    def test_select_alias_label_alt_name(self):
+        t = self._xy_table_fixture()
+        l1, l2 = t.c.x.label('a'), t.c.y.label('b')
+        s = text("select x AS a, y AS b FROM t").columns(l1, l2).alias()
+        mapping = self._mapping(s)
+        assert l1 in mapping
+
+        assert t.c.x not in mapping
+
+    def test_select_column(self):
+        t = self._xy_table_fixture()
+        x, y = t.c.x, t.c.y
+        s = text("select x, y FROM t").columns(x, y)
+        mapping = self._mapping(s)
+        assert t.c.x in mapping
+
+    def test_select_alias_column(self):
+        t = self._xy_table_fixture()
+        x, y = t.c.x, t.c.y
+        s = text("select x, y FROM t").columns(x, y).alias()
+        mapping = self._mapping(s)
+        assert t.c.x in mapping
+
+    def test_select_table_alias_column(self):
+        t = self._xy_table_fixture()
+        x, y = t.c.x, t.c.y
+
+        ta = t.alias()
+        s = text("select ta.x, ta.y FROM t AS ta").columns(ta.c.x, ta.c.y)
+        mapping = self._mapping(s)
+        assert x not in mapping
+
+    def test_select_label_alt_name_table_alias_column(self):
+        t = self._xy_table_fixture()
+        x, y = t.c.x, t.c.y
+
+        ta = t.alias()
+        l1, l2 = ta.c.x.label('a'), ta.c.y.label('b')
+
+        s = text("SELECT ta.x AS a, ta.y AS b FROM t AS ta").columns(l1, l2)
+        mapping = self._mapping(s)
+        assert x not in mapping
+        assert l1 in mapping
+        assert ta.c.x not in mapping
 
     def test_cte(self):
         t = text("select id, name from user").columns(id=Integer, name=String).cte('t')
