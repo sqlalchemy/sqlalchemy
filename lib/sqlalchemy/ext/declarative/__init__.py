@@ -656,7 +656,7 @@ Using the Concrete Helpers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Helper classes provides a simpler pattern for concrete inheritance.
-With these objects, the ``__declare_last__`` helper is used to configure the
+With these objects, the ``__declare_first__`` helper is used to configure the
 "polymorphic" loader for the mapper after all subclasses have been declared.
 
 .. versionadded:: 0.7.3
@@ -700,6 +700,26 @@ Either ``Employee`` base can be used in the normal fashion::
         engineer_info = Column(String(40))
         __mapper_args__ = {'polymorphic_identity':'engineer',
                         'concrete':True}
+
+
+The :class:`.AbstractConcreteBase` class is itself mapped, and can be
+used as a target of relationships::
+
+    class Company(Base):
+        __tablename__ = 'company'
+
+        id = Column(Integer, primary_key=True)
+        employees = relationship("Employee",
+                        primaryjoin="Company.id == Employee.company_id")
+
+
+.. versionchanged:: 0.9.3 Support for use of :class:`.AbstractConcreteBase`
+   as the target of a :func:`.relationship` has been improved.
+
+It can also be queried directly::
+
+    for employee in session.query(Employee).filter(Employee.name == 'qbert'):
+        print(employee)
 
 
 .. _declarative_mixins:
@@ -1191,6 +1211,20 @@ assumed to be completed and the 'configure' step has finished::
             # do something with mappings
 
 .. versionadded:: 0.7.3
+
+``__declare_first__()``
+~~~~~~~~~~~~~~~~~~~~~~
+
+Like ``__declare_last__()``, but is called at the beginning of mapper configuration
+via the :meth:`.MapperEvents.before_configured` event::
+
+    class MyClass(Base):
+        @classmethod
+        def __declare_first__(cls):
+            ""
+            # do something before mappings are configured
+
+.. versionadded:: 0.9.3
 
 .. _declarative_abstract:
 

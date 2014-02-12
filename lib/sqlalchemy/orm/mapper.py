@@ -2512,7 +2512,6 @@ def configure_mappers():
     if not Mapper._new_mappers:
         return
 
-    _call_configured = None
     _CONFIGURE_MUTEX.acquire()
     try:
         global _already_compiling
@@ -2525,10 +2524,12 @@ def configure_mappers():
             if not Mapper._new_mappers:
                 return
 
+            Mapper.dispatch(Mapper).before_configured()
             # initialize properties on all mappers
             # note that _mapper_registry is unordered, which
             # may randomly conceal/reveal issues related to
             # the order of mapper compilation
+
             for mapper in list(_mapper_registry):
                 if getattr(mapper, '_configure_failed', False):
                     e = sa_exc.InvalidRequestError(
@@ -2544,7 +2545,6 @@ def configure_mappers():
                         mapper._expire_memoizations()
                         mapper.dispatch.mapper_configured(
                                 mapper, mapper.class_)
-                        _call_configured = mapper
                     except:
                         exc = sys.exc_info()[1]
                         if not hasattr(exc, '_configure_failed'):
@@ -2556,8 +2556,7 @@ def configure_mappers():
             _already_compiling = False
     finally:
         _CONFIGURE_MUTEX.release()
-    if _call_configured is not None:
-        _call_configured.dispatch.after_configured()
+    Mapper.dispatch(Mapper).after_configured()
 
 
 def reconstructor(fn):

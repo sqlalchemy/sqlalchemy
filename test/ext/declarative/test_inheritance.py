@@ -1201,3 +1201,81 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
             __mapper_args__ = {'polymorphic_identity': "engineer",
                             'concrete': True}
         self._roundtrip(Employee, Manager, Engineer, Boss, explicit_type=True)
+
+class ConcreteExtensionConfigTest(_RemoveListeners, testing.AssertsCompiledSQL, DeclarativeTestBase):
+    __dialect__ = 'default'
+
+    def test_classreg_setup(self):
+        class A(Base, fixtures.ComparableEntity):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
+            data = Column(String(50))
+            collection = relationship("BC", primaryjoin="BC.a_id == A.id",
+                            collection_class=set)
+
+        class BC(AbstractConcreteBase, Base, fixtures.ComparableEntity):
+            pass
+
+        class B(BC):
+            __tablename__ = 'b'
+            id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
+
+            a_id = Column(Integer, ForeignKey('a.id'))
+            data = Column(String(50))
+            b_data = Column(String(50))
+            __mapper_args__ = {
+                "polymorphic_identity": "b",
+                "concrete": True
+            }
+
+        class C(BC):
+            __tablename__ = 'c'
+            id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
+            a_id = Column(Integer, ForeignKey('a.id'))
+            data = Column(String(50))
+            c_data = Column(String(50))
+            __mapper_args__ = {
+                "polymorphic_identity": "c",
+                "concrete": True
+            }
+
+        Base.metadata.create_all()
+        sess = Session()
+        sess.add_all([
+            A(data='a1', collection=set([
+                B(data='a1b1', b_data='a1b1'),
+                C(data='a1b2', c_data='a1c1'),
+                B(data='a1b2', b_data='a1b2'),
+                C(data='a1c2', c_data='a1c2'),
+            ])),
+            A(data='a2', collection=set([
+                B(data='a2b1', b_data='a2b1'),
+                C(data='a2c1', c_data='a2c1'),
+                B(data='a2b2', b_data='a2b2'),
+                C(data='a2c2', c_data='a2c2'),
+            ]))
+        ])
+        sess.commit()
+        sess.expunge_all()
+
+        eq_(
+            sess.query(A).filter_by(data='a2').all(),
+            [
+                A(data='a2', collection=set([
+                    B(data='a2b1', b_data='a2b1'),
+                    B(data='a2b2', b_data='a2b2'),
+                    C(data='a2c1', c_data='a2c1'),
+                    C(data='a2c2', c_data='a2c2'),
+                ]))
+            ]
+        )
+
+        self.assert_compile(
+            sess.query(A).join(A.collection),
+            "SELECT a.id AS a_id, a.data AS a_data FROM a JOIN "
+            "(SELECT c.id AS id, c.a_id AS a_id, c.data AS data, "
+                "c.c_data AS c_data, CAST(NULL AS VARCHAR(50)) AS b_data, "
+                "'c' AS type FROM c UNION ALL SELECT b.id AS id, b.a_id AS a_id, "
+                "b.data AS data, CAST(NULL AS VARCHAR(50)) AS c_data, "
+                "b.b_data AS b_data, 'b' AS type FROM b) AS pjoin ON pjoin.a_id = a.id"
+        )

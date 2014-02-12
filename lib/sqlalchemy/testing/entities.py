@@ -85,8 +85,12 @@ class ComparableEntity(BasicEntity):
                     return False
 
                 if hasattr(value, '__iter__'):
-                    if list(value) != list(battr):
-                        return False
+                    if hasattr(value, '__getitem__') and not hasattr(value, 'keys'):
+                        if list(value) != list(battr):
+                            return False
+                    else:
+                        if set(value) != set(battr):
+                            return False
                 else:
                     if value is not None and value != battr:
                         return False

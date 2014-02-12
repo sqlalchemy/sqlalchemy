@@ -20,7 +20,7 @@ from .base import _as_declarative, \
                 _declarative_constructor,\
                 _DeferredMapperConfig, _add_attribute
 from .clsregistry import _class_resolver
-
+from . import clsregistry
 
 def instrument_declarative(cls, registry, metadata):
     """Given a class, configure the class declaratively,
@@ -325,7 +325,7 @@ class ConcreteBase(object):
          ), 'type', 'pjoin')
 
     @classmethod
-    def __declare_last__(cls):
+    def __declare_first__(cls):
         m = cls.__mapper__
         if m.with_polymorphic:
             return
@@ -370,10 +370,11 @@ class AbstractConcreteBase(ConcreteBase):
     __abstract__ = True
 
     @classmethod
-    def __declare_last__(cls):
+    def __declare_first__(cls):
         if hasattr(cls, '__mapper__'):
             return
 
+        clsregistry.add_class(cls.__name__, cls)
         # can't rely on 'self_and_descendants' here
         # since technically an immediate subclass
         # might not be mapped, but a subclass

@@ -15,6 +15,27 @@
     :version: 0.9.3
 
     .. change::
+        :tags: bug, orm, declarative
+        :tickets: 2950
+
+        Fixed bug where :class:`.AbstractConcreteBase` would fail to be
+        fully usable within declarative relationship configuration, as its
+        string classname would not be available in the registry of classnames
+        at mapper configuration time.   The class now explicitly adds itself
+        to the class regsitry, and additionally both :class:`.AbstractConcreteBase`
+        as well as :class:`.ConcreteBase` set themselves up *before* mappers
+        are configured within the :func:`.configure_mappers` setup, using
+        the new :meth:`.MapperEvents.before_configured` event.
+
+    .. change::
+        :tags: feature, orm
+
+        Added new :meth:`.MapperEvents.before_configured` event which allows
+        an event at the start of :func:`.configure_mappers`, as well
+        as ``__declare_first__()`` hook within declarative to complement
+        ``__declare_last__()``.
+
+    .. change::
         :tags: bug, mysql, cymysql
         :tickets: 2934
         :pullreq: github:69

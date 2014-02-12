@@ -52,6 +52,10 @@ def _as_declarative(cls, classname, dict_):
             @event.listens_for(mapper, "after_configured")
             def go():
                 cls.__declare_last__()
+        if '__declare_first__' in base.__dict__:
+            @event.listens_for(mapper, "before_configured")
+            def go():
+                cls.__declare_first__()
         if '__abstract__' in base.__dict__:
             if (base is cls or
                 (base in cls.__bases__ and not _is_declarative_inherits)
