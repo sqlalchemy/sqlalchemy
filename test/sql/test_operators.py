@@ -153,6 +153,39 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
             )
         self._loop_test(operators.notin_op, [1, 2, 3])
 
+    def test_in_no_accept_list_of_non_column_element(self):
+        left = column('left')
+        foo = ClauseList()
+        assert_raises_message(
+            exc.InvalidRequestError,
+            r"in_\(\) accepts either a list of expressions or a selectable:",
+            left.in_, [foo]
+        )
+
+    def test_in_no_accept_non_list_non_selectable(self):
+        left = column('left')
+        right = column('right')
+        assert_raises_message(
+            exc.InvalidRequestError,
+            r"in_\(\) accepts either a list of expressions or a selectable:",
+            left.in_, right
+        )
+
+    def test_in_no_accept_non_list_thing_with_getitem(self):
+        # test [ticket:2726]
+        class HasGetitem(String):
+            class comparator_factory(String.Comparator):
+                def __getitem__(self, value):
+                    return value
+
+        left = column('left')
+        right = column('right', HasGetitem)
+        assert_raises_message(
+            exc.InvalidRequestError,
+            r"in_\(\) accepts either a list of expressions or a selectable:",
+            left.in_, right
+        )
+
     def test_collate(self):
         left = column('left')
         right = "some collation"
