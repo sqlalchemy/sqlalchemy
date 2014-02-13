@@ -2618,14 +2618,18 @@ class _DefaultColumnComparator(operators.ColumnOperators):
         elif isinstance(seq_or_selectable, (Selectable, TextClause)):
             return self._boolean_compare(expr, op, seq_or_selectable,
                                   negate=negate_op, **kw)
+        elif isinstance(seq_or_selectable, ClauseElement):
+            raise exc.InvalidRequestError('in_() accepts'
+                    ' either a list of expressions '
+                    'or a selectable: %r' % seq_or_selectable)
 
         # Handle non selectable arguments as sequences
         args = []
         for o in seq_or_selectable:
             if not _is_literal(o):
                 if not isinstance(o, ColumnOperators):
-                    raise exc.InvalidRequestError('in() function accept'
-                            's either a list of non-selectable values, '
+                    raise exc.InvalidRequestError('in_() accepts'
+                            ' either a list of expressions '
                             'or a selectable: %r' % o)
             elif o is None:
                 o = null()
