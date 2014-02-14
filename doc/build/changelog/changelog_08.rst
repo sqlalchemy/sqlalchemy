@@ -14,6 +14,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 2291
+        :versions: 0.9.3
 
         Revised this very old issue where the Postgresql "get primary key"
         reflection query were updated to take into account primary key constraints
