@@ -583,7 +583,7 @@ class RelationshipProperty(StrategizedProperty):
           used for self-referential relationships, indicates the column or
           list of columns that form the "remote side" of the relationship.
 
-          ``remote_side`` may also be passed as a callable function
+          :paramref:`.relationship.remote_side` may also be passed as a callable function
           which is evaluated at mapper initialization time, and may be passed as a
           Python-evaluable string when using Declarative.
 
@@ -592,6 +592,12 @@ class RelationshipProperty(StrategizedProperty):
               directly to the ``primaryjoin`` expression, which is an alternate,
               more specific system of describing which columns in a particular
               ``primaryjoin`` should be considered "remote".
+
+          .. seealso::
+
+            :ref:`self_referential` - in-depth explaination of how
+            :paramref:`.relationship.remote_side`
+            is used to configure self-referential relationships.
 
         :param query_class:
           a :class:`.Query` subclass that will be used as the base of the

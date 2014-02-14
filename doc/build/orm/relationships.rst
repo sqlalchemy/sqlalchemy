@@ -368,7 +368,7 @@ same way as a "normal" one-to-many relationship, with the
 exception that the "direction", i.e. whether the relationship
 is one-to-many or many-to-one, is assumed by default to
 be one-to-many.   To establish the relationship as many-to-one,
-an extra directive is added known as ``remote_side``, which
+an extra directive is added known as :paramref:`~.relationship.remote_side`, which
 is a :class:`.Column` or collection of :class:`.Column` objects
 that indicate those which should be considered to be "remote"::
 
@@ -379,7 +379,7 @@ that indicate those which should be considered to be "remote"::
         data = Column(String(50))
         parent = relationship("Node", remote_side=[id])
 
-Where above, the ``id`` column is applied as the ``remote_side``
+Where above, the ``id`` column is applied as the :paramref:`~.relationship.remote_side`
 of the ``parent`` :func:`.relationship`, thus establishing
 ``parent_id`` as the "local" side, and the relationship
 then behaves as a many-to-one.
@@ -429,7 +429,7 @@ to a specific folder within that account::
                             remote_side=[account_id, folder_id]
                       )
 
-Above, we pass ``account_id`` into the ``remote_side`` list.
+Above, we pass ``account_id`` into the :paramref:`~.relationship.remote_side` list.
 :func:`.relationship` recognizes that the ``account_id`` column here
 is on both sides, and aligns the "remote" column along with the
 ``folder_id`` column, which it recognizes as uniquely present on
@@ -949,8 +949,8 @@ The default behavior of :func:`.relationship` when constructing a join
 is that it equates the value of primary key columns
 on one side to that of foreign-key-referring columns on the other.
 We can change this criterion to be anything we'd like using the
-:paramref:`.relationship.primaryjoin`
-argument, as well as the :paramref:`.relationship.secondaryjoin`
+:paramref:`~.relationship.primaryjoin`
+argument, as well as the :paramref:`~.relationship.secondaryjoin`
 argument in the case when a "secondary" table is used.
 
 In the example below, using the ``User`` class
@@ -1016,7 +1016,7 @@ be part of a :class:`.ForeignKeyConstraint` that's relevant to the join conditio
 how it should load and persist data for this relationship.   However, the
 ``primaryjoin`` argument can be used to create a join condition that
 doesn't involve any "schema" level foreign keys.  We can combine ``primaryjoin``
-along with ``foreign_keys`` and ``remote_side`` explicitly in order to
+along with :paramref:`~.relationship.foreign_keys` and :paramref:`~.relationship.remote_side` explicitly in order to
 establish such a join.
 
 Below, a class ``HostEntry`` joins to itself, equating the string ``content``
@@ -1089,13 +1089,13 @@ For custom operators we use the :meth:`.Operators.op` function::
 
     inet_column.op("<<")(cidr_column)
 
-However, if we construct a :paramref:`.relationship.primaryjoin` using this
+However, if we construct a :paramref:`~.relationship.primaryjoin` using this
 operator, :func:`.relationship` will still need more information.  This is because
 when it examines our primaryjoin condition, it specifically looks for operators
 used for **comparisons**, and this is typically a fixed list containing known
 comparison operators such as ``==``, ``<``, etc.   So for our custom operator
 to participate in this system, we need it to register as a comparison operator
-using the :paramref:`.Operators.op.is_comparison` parameter::
+using the :paramref:`~.Operators.op.is_comparison` parameter::
 
     inet_column.op("<<", is_comparison=True)(cidr_column)
 
@@ -1220,7 +1220,7 @@ to push the boundaries of what's possible, and often the ultimate solution to
 many of these exotic use cases needs to be hammered out on the SQLAlchemy mailing
 list.
 
-In more recent versions of SQLAlchemy, the :paramref:`.relationship.secondary`
+In more recent versions of SQLAlchemy, the :paramref:`~.relationship.secondary`
 parameter can be used in some of these cases in order to provide a composite
 target consisting of multiple tables.   Below is an example of such a
 join condition (requires version 0.9.2 at least to function as is)::
@@ -1257,8 +1257,8 @@ join condition (requires version 0.9.2 at least to function as is)::
 
         id = Column(Integer, primary_key=True)
 
-In the above example, we provide all three of :paramref:`.relationship.secondary`,
-:paramref:`.relationship.primaryjoin`, and :paramref:`.relationship.secondaryjoin`,
+In the above example, we provide all three of :paramref:`~.relationship.secondary`,
+:paramref:`~.relationship.primaryjoin`, and :paramref:`~.relationship.secondaryjoin`,
 in the declarative style referring to the named tables ``a``, ``b``, ``c``, ``d``
 directly.  A query from ``A`` to ``D`` looks like:
 
@@ -1279,7 +1279,7 @@ there's just "one" table on both the "left" and the "right" side; the
 complexity is kept within the middle.
 
 .. versionadded:: 0.9.2  Support is improved for allowing a :func:`.join()`
-   construct to be used directly as the target of the :paramref:`.relationship.secondary`
+   construct to be used directly as the target of the :paramref:`~.relationship.secondary`
    argument, including support for joins, eager joins and lazy loading,
    as well as support within declarative to specify complex conditions such
    as joins involving class names as targets.
@@ -1290,7 +1290,7 @@ Relationship to Non Primary Mapper
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In the previous section, we illustrated a technique where we used
-:paramref:`.relationship.secondary` in order to place additional tables
+:paramref:`~.relationship.secondary` in order to place additional tables
 within a join condition.   There is one complex join case where even this technique is not
 sufficient; when we seek to join from ``A`` to ``B``, making use of any
 number of ``C``, ``D``, etc. in between, however there are also join conditions
@@ -1303,7 +1303,7 @@ case arises, we can resort to creating a second mapping as a target for
 the relationship.  This is where we use :func:`.mapper` in order to make a mapping to
 a class that includes all the additional tables we need for this join.
 In order to produce this mapper as an "alternative" mapping for our class,
-we use the :paramref:`.mapper.non_primary` flag.
+we use the :paramref:`~.mapper.non_primary` flag.
 
 Below illustrates a :func:`.relationship` with a simple join from ``A`` to
 ``B``, however the primaryjoin condition is augmented with two additional
