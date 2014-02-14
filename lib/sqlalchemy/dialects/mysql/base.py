@@ -1607,12 +1607,12 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             if opt in ('DATA_DIRECTORY', 'INDEX_DIRECTORY',
                        'DEFAULT_CHARACTER_SET', 'CHARACTER_SET',
                        'DEFAULT_CHARSET',
-                       'DEFAULT_COLLATE'):
+                       'DEFAULT_COLLATE', 'PARTITION_BY'):
                 opt = opt.replace('_', ' ')
 
             joiner = '='
             if opt in ('TABLESPACE', 'DEFAULT CHARACTER SET',
-                       'CHARACTER SET', 'COLLATE'):
+                       'CHARACTER SET', 'COLLATE', 'PARTITION BY', 'PARTITIONS'):
                 joiner = ' '
 
             table_opts.append(joiner.join((opt, arg)))

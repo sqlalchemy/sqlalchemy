@@ -476,3 +476,33 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             'KEY idx_autoinc_order (`order`)'
             ')ENGINE=InnoDB')
 
+    def test_create_table_with_partition(self):
+        t1 = Table(
+            'testtable', MetaData(),
+            Column('id', Integer(), primary_key=True, autoincrement=True),
+            Column('other_id', Integer(), primary_key=True, autoincrement=False),
+            mysql_partitions='2', mysql_partition_by='KEY(other_id)')
+        self.assert_compile(
+            schema.CreateTable(t1),
+            'CREATE TABLE testtable ('
+            'id INTEGER NOT NULL AUTO_INCREMENT, '
+            'other_id INTEGER NOT NULL, '
+            'PRIMARY KEY (id, other_id)'
+            ')PARTITION BY KEY(other_id) PARTITIONS 2'
+        )
+
+    def test_create_table_with_partition_hash(self):
+        t1 = Table(
+            'testtable', MetaData(),
+            Column('id', Integer(), primary_key=True, autoincrement=True),
+            Column('other_id', Integer(), primary_key=True, autoincrement=False),
+            mysql_partitions='2', mysql_partition_by='HASH(other_id)')
+        self.assert_compile(
+            schema.CreateTable(t1),
+            'CREATE TABLE testtable ('
+            'id INTEGER NOT NULL AUTO_INCREMENT, '
+            'other_id INTEGER NOT NULL, '
+            'PRIMARY KEY (id, other_id)'
+            ')PARTITION BY HASH(other_id) PARTITIONS 2'
+        )
+
