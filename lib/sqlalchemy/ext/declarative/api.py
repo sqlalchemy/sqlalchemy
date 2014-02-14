@@ -12,7 +12,7 @@ from ...orm import synonym as _orm_synonym, mapper,\
                                 interfaces, properties
 from ...orm.util import polymorphic_union
 from ...orm.base import _mapper_or_none
-from ...util import compat
+from ...util import OrderedDict
 from ... import exc
 import weakref
 
@@ -319,7 +319,7 @@ class ConcreteBase(object):
 
     @classmethod
     def _create_polymorphic_union(cls, mappers):
-        return polymorphic_union(dict(
+        return polymorphic_union(OrderedDict(
             (mp.polymorphic_identity, mp.local_table)
             for mp in mappers
          ), 'type', 'pjoin')
