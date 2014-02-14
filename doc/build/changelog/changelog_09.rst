@@ -15,6 +15,15 @@
     :version: 0.9.3
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 2946
+
+        Added server version detection to the newly added dialect startup
+        query for  "show standard_conforming_strings"; as this variable was
+        added as of PG 8.2, we skip the query for PG versions older than
+        that as well as for backends like Redshift.
+
+    .. change::
         :tags: bug, orm, declarative
         :tickets: 2950
 

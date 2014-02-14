@@ -1567,7 +1567,8 @@ class PGDialect(default.DefaultDialect):
         # http://www.postgresql.org/docs/9.3/static/release-9-2.html#AEN116689
         self.supports_smallserial = self.server_version_info >= (9, 2)
 
-        self._backslash_escapes = connection.scalar(
+        self._backslash_escapes = self.server_version_info < (8, 2) or \
+                    connection.scalar(
                                     "show standard_conforming_strings"
                                     ) == 'off'
 
