@@ -1824,7 +1824,21 @@ class PGDialect(default.DefaultDialect):
         table_oid = self.get_table_oid(connection, table_name, schema,
                                        info_cache=kw.get('info_cache'))
 
-        if self.server_version_info < (8, 4):
+        if self.server_version_info < (8, 0):
+            # the shortcoming of this query is that it will
+            # not detect a PK constraint that has been renamed.
+            # This query was removed with #2291, however it was reported
+            # that the newer queries do not work with PG 7 so here
+            # it is restored when old PG versions are detected.
+            PK_SQL = """
+              SELECT attname FROM pg_attribute
+              WHERE attrelid = (
+                 SELECT indexrelid FROM pg_index i
+                 WHERE i.indrelid = :table_oid
+                 AND i.indisprimary = 't')
+              ORDER BY attnum
+            """
+        elif self.server_version_info < (8, 4):
             # unnest() and generate_subscripts() both introduced in
             # version 8.4
             PK_SQL = """

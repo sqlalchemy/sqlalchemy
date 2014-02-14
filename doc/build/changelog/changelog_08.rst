@@ -12,6 +12,16 @@
     :version: 0.8.5
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 2291
+
+        Revised this very old issue where the Postgresql "get primary key"
+        reflection query were updated to take into account primary key constraints
+        that were renamed; the newer query fails on very old versions of
+        Postgresql such as version 7, so the old query is restored in those cases
+        when server_version_info < (8, 0) is detected.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2957
         :versions: 0.9.3
