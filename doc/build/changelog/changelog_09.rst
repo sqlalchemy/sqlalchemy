@@ -15,6 +15,20 @@
     :version: 0.9.3
 
     .. change::
+        :tags: sqlite
+        :pullreq: github:65
+
+        Support has been added to SQLite type reflection to fully support
+        the "type affinity" contract specified at http://www.sqlite.org/datatype3.html.
+        In this scheme, keywords like ``INT``, ``CHAR``, ``BLOB`` or
+        ``REAL`` located in the type name generically associate the type with
+        one of five affinities.  Pull request courtesy Erich Blume.
+
+        .. seealso::
+
+            :ref:`sqlite_type_reflection`
+
+    .. change::
         :tags: postgresql
         :pullreq: github:64
 

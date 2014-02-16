@@ -124,6 +124,56 @@ new connections through the usage of events::
 
     :ref:`event_toplevel` - SQLAlchemy event API.
 
+.. _sqlite_type_reflection:
+
+Type Reflection
+---------------
+
+SQLite types are unlike those of most other database backends, in that
+the string name of the type usually does not correspond to a "type" in a
+one-to-one fashion.  Instead, SQLite links per-column typing behavior
+to one of five so-called "type affinities" based on a string matching
+pattern for the type.
+
+SQLAlchemy's reflection process, when inspecting types, uses a simple
+lookup table to link the keywords returned to provided SQLAlchemy types.
+This lookup table is present within the SQLite dialect as it is for all
+other dialects.  However, the SQLite dialect has a different "fallback"
+routine for when a particular type name is not located in the lookup map;
+it instead implements the SQLite "type affinity" scheme located at
+http://www.sqlite.org/datatype3.html section 2.1.
+
+The provided typemap will make direct associations from an exact string
+name match for the following types:
+
+:class:`~.types.BIGINT`, :class:`~.types.BLOB`,
+:class:`~.types.BOOLEAN`, :class:`~.types.BOOLEAN`,
+:class:`~.types.CHAR`, :class:`~.types.DATE`,
+:class:`~.types.DATETIME`, :class:`~.types.FLOAT`,
+:class:`~.types.DECIMAL`, :class:`~.types.FLOAT`,
+:class:`~.types.INTEGER`, :class:`~.types.INTEGER`,
+:class:`~.types.NUMERIC`, :class:`~.types.REAL`,
+:class:`~.types.SMALLINT`, :class:`~.types.TEXT`,
+:class:`~.types.TIME`, :class:`~.types.TIMESTAMP`,
+:class:`~.types.VARCHAR`, :class:`~.types.NVARCHAR`,
+:class:`~.types.NCHAR`
+
+When a type name does not match one of the above types, the "type affinity"
+lookup is used instead:
+
+* :class:`~.types.INTEGER` is returned if the type name includes the
+  string ``INT``
+* :class:`~.types.TEXT` is returned if the type name includes the
+  :string ``CHAR``, ``CLOB`` or ``TEXT``
+* :class:`~.types.NullType` is returned if the type name includes the
+  string ``BLOB``
+* :class:`~.types.REAL` is returned if the type name includes the string
+  ``REAL``, ``FLOA`` or ``DOUB``.
+* Otherwise, the :class:`~.types.NUMERIC` type is used.
+
+.. versionadded:: 0.9.3 Support for SQLite type affinity rules when reflecting
+   columns.
+
 """
 
 import datetime
@@ -814,7 +864,7 @@ class SQLiteDialect(default.DefaultDialect):
         else:
             coltype = ''
             args = ''
-        coltype = self._resolve_col_affinity(coltype)
+        coltype = self._resolve_type_affinity(coltype)
         if args is not None:
             args = re.findall(r'(\d+)', args)
             coltype = coltype(*[int(a) for a in args])
@@ -831,7 +881,7 @@ class SQLiteDialect(default.DefaultDialect):
             'primary_key': primary_key,
         }
 
-    def _resolve_col_affinity(self, coltype):
+    def _resolve_type_affinity(self, coltype):
         """Return a data type from a reflected column, using affinity tules.
 
         SQLite's goal for universal compatability introduces some complexity
@@ -846,17 +896,18 @@ class SQLiteDialect(default.DefaultDialect):
         providing access to smarter reflection utilities by regcognizing
         column definitions that SQLite only supports through affinity (like
         DATE and DOUBLE).
+
         """
         if coltype in self.ischema_names:
             return self.ischema_names[coltype]
-        if 'INT' in coltype:
+        elif 'INT' in coltype:
             return sqltypes.INTEGER
         elif 'CHAR' in coltype or 'CLOB' in coltype or 'TEXT' in coltype:
-            return sqltypes.TEXT,
-        elif 'BLOB' in coltype or not coltype: 
+            return sqltypes.TEXT
+        elif 'BLOB' in coltype or not coltype:
             return sqltypes.NullType
         elif 'REAL' in coltype or 'FLOA' in coltype or 'DOUB' in coltype:
-            return sqltype.REAL
+            return sqltypes.REAL
         else:
             return sqltypes.NUMERIC
 
