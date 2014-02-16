@@ -154,13 +154,40 @@ The psycopg2 dialect will log Postgresql NOTICE messages via the
     import logging
     logging.getLogger('sqlalchemy.dialects.postgresql').setLevel(logging.INFO)
 
+.. _psycopg2_hstore::
+
 HSTORE type
 ------------
 
-The psycopg2 dialect will make use of the
-``psycopg2.extensions.register_hstore()`` extension when using the HSTORE
-type.  This replaces SQLAlchemy's pure-Python HSTORE coercion which takes
-effect for other DBAPIs.
+The ``psycopg2`` DBAPI includes an extension to natively handle marshalling of the
+HSTORE type.   The SQLAlchemy psycopg2 dialect will enable this extension
+by default when it is detected that the target database has the HSTORE
+type set up for use.   In other words, when the dialect makes the first
+connection, a sequence like the following is performed:
+
+1. Request the available HSTORE oids using ``psycopg2.extras.HstoreAdapter.get_oids()``.
+   If this function returns a list of HSTORE identifiers, we then determine that
+   the ``HSTORE`` extension is present.
+
+2. If the ``use_native_hstore`` flag is at it's default of ``True``, and
+   we've detected that ``HSTORE`` oids are available, the
+   ``psycopg2.extensions.register_hstore()`` extension is invoked for all
+   connections.
+
+The ``register_hstore()`` extension has the effect of **all Python dictionaries
+being accepted as parameters regardless of the type of target column in SQL**.
+The dictionaries are converted by this extension into a textual HSTORE expression.
+If this behavior is not desired, disable the
+use of the hstore extension by setting ``use_native_hstore`` to ``False`` as follows::
+
+    engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test",
+                use_native_hstore=False)
+
+The ``HSTORE`` type is **still supported** when the ``psycopg2.extensions.register_hstore()``
+extension is not used.  It merely means that the coercion between Python dictionaries and the HSTORE
+string format, on both the parameter side and the result side, will take
+place within SQLAlchemy's own marshalling logic, and not that of ``psycopg2`` which
+may be more performant.
 
 """
 from __future__ import absolute_import
