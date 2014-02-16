@@ -112,7 +112,7 @@ from the database, the ``children`` collection stays empty.
 Using Passive Deletes
 ----------------------
 
-Use ``passive_deletes=True`` to disable child object loading on a DELETE
+Use :paramref:`~.relationship.passive_deletes` to disable child object loading on a DELETE
 operation, in conjunction with "ON DELETE (CASCADE|SET NULL)" on your database
 to automatically cascade deletes to child objects::
 
@@ -142,7 +142,7 @@ to automatically cascade deletes to child objects::
     * When using SQLite, foreign key support must be enabled explicitly.
       See :ref:`sqlite_foreign_keys` for details.
 
-When ``passive_deletes`` is applied, the ``children`` relationship will not be
+When :paramref:`~.relationship.passive_deletes` is applied, the ``children`` relationship will not be
 loaded into memory when an instance of ``MyClass`` is marked for deletion. The
 ``cascade="all, delete-orphan"`` *will* take effect for instances of
 ``MyOtherClass`` which are currently present in the session; however for

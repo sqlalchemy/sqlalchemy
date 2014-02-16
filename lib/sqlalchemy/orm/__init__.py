@@ -555,6 +555,11 @@ def relationship(argument, secondary=None, **kwargs):
        after a flush occurs so this is a very special use-case
        setting.
 
+       .. seealso::
+
+            :ref:`passive_deletes` - Introductory documentation
+            and examples.
+
     :param passive_updates=True:
       Indicates loading and INSERT/UPDATE/DELETE behavior when the
       source of a foreign key value changes (i.e. an "on update"
@@ -581,10 +586,13 @@ def relationship(argument, secondary=None, **kwargs):
       are expected and the database in use doesn't support CASCADE
       (i.e. SQLite, MySQL MyISAM tables).
 
-      Also see the passive_updates flag on ``mapper()``.
+      .. seealso::
 
-      A future SQLAlchemy release will provide a "detect" feature for
-      this flag.
+            :ref:`passive_updates` - Introductory documentation and
+            examples.
+
+            :paramref:`.mapper.passive_updates` - a similar flag which
+            takes effect for joined-table inheritance mappings.
 
     :param post_update:
       this indicates that the relationship should be handled by a
@@ -1061,7 +1069,7 @@ def mapper(class_, local_table=None, *args, **params):
 
            When False, it is assumed that the database does not enforce
            referential integrity and will not be issuing its own CASCADE
-           operation for an update.  The :class:`.Mapper` here will
+           operation for an update.  The unit of work process will
            emit an UPDATE statement for the dependent columns during a
            primary key change.
 
