@@ -15,7 +15,15 @@
     :version: 0.9.3
 
     .. change::
-        :tags: sqlite
+        :tags: sqlite, bug
+
+        The SQLite dialect will now skip unsupported arguments when reflecting
+        types; such as if it encounters a string like ``INTEGER(5)``, the
+        :class:`.INTEGER` type will be instantiated without the "5" being included,
+        based on detecting a ``TypeError`` on the first attempt.
+
+    .. change::
+        :tags: sqlite, bug
         :pullreq: github:65
 
         Support has been added to SQLite type reflection to fully support

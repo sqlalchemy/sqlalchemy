@@ -11,7 +11,9 @@ from sqlalchemy import Table, String, select, Text, CHAR, bindparam, Column,\
     Unicode, Date, MetaData, UnicodeText, Time, Integer, TIMESTAMP, \
     Boolean, func, NUMERIC, DateTime, extract, ForeignKey, text, Numeric,\
     DefaultClause, and_, DECIMAL, TypeDecorator, create_engine, Float, \
-    INTEGER, UniqueConstraint, DATETIME, DATE, TIME, BOOLEAN, BIGINT
+    INTEGER, UniqueConstraint, DATETIME, DATE, TIME, BOOLEAN, BIGINT, \
+    VARCHAR
+from sqlalchemy.types import UserDefinedType
 from sqlalchemy.util import u, ue
 from sqlalchemy import exc, sql, schema, pool, types as sqltypes, util
 from sqlalchemy.dialects.sqlite import base as sqlite, \
@@ -30,7 +32,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         """Test that the boolean only treats 1 as True
 
         """
-        
+
         meta = MetaData(testing.db)
         t = Table('bool_table', meta, Column('id', Integer,
                   primary_key=True), Column('boo',
@@ -161,11 +163,19 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             assert not bindproc or \
                 isinstance(bindproc(util.u('some string')), util.text_type)
 
+    @testing.emits_warning("Could not instantiate")
     @testing.provide_metadata
     def test_type_reflection(self):
         metadata = self.metadata
 
         # (ask_for, roundtripped_as_if_different)
+
+        class AnyType(UserDefinedType):
+            def __init__(self, spec):
+                self.spec = spec
+
+            def get_col_spec(self):
+              return self.spec
 
         specs = [
             (String(), String()),
@@ -198,11 +208,14 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             (Time, Time()),
             (BOOLEAN, BOOLEAN()),
             (Boolean, Boolean()),
+            # types with unsupported arguments
+            (AnyType("INTEGER(5)"), INTEGER()),
+            (AnyType("DATETIME(6, 12)"), DATETIME()),
             ]
         columns = [Column('c%i' % (i + 1), t[0]) for (i, t) in
                    enumerate(specs)]
         db = testing.db
-        t_table = Table('types', metadata, *columns)
+        Table('types', metadata, *columns)
         metadata.create_all()
         m2 = MetaData(db)
         rt = Table('types', m2, autoload=True)
@@ -218,7 +231,6 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         finally:
             db.execute('DROP VIEW types_v')
 
-    @testing.emits_warning('Did not recognize')
     @testing.provide_metadata
     def test_unknown_reflection(self):
         metadata = self.metadata

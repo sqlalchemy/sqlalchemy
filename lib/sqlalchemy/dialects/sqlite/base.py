@@ -867,7 +867,14 @@ class SQLiteDialect(default.DefaultDialect):
         coltype = self._resolve_type_affinity(coltype)
         if args is not None:
             args = re.findall(r'(\d+)', args)
-            coltype = coltype(*[int(a) for a in args])
+            try:
+                coltype = coltype(*[int(a) for a in args])
+            except TypeError:
+                util.warn(
+                        "Could not instantiate type %s with "
+                        "reflected arguments %s; using no arguments." %
+                        (coltype, args))
+                coltype = coltype()
 
         if default is not None:
             default = util.text_type(default)
