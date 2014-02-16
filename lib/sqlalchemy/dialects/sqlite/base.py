@@ -940,7 +940,7 @@ class SQLiteDialect(default.DefaultDialect):
 
         UNIQUE_PATTERN = 'CONSTRAINT (\w+) UNIQUE \(([^\)]+)\)'
         return [
-            {'name': name, 'column_names': [c.strip() for c in cols.split(',')]}
+            {'name': name, 'column_names': [c.strip(' "') for c in cols.split(',')]}
             for name, cols in re.findall(UNIQUE_PATTERN, table_data)
         ]
 
