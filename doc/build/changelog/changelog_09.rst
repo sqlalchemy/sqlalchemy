@@ -37,14 +37,14 @@
             :ref:`sqlite_type_reflection`
 
     .. change::
-        :tags: postgresql
+        :tags: postgresql, feature
         :pullreq: github:64
 
         Added the :attr:`.TypeEngine.python_type` convenience accessor onto the
         :class:`.postgresql.ARRAY` type.  Pull request courtesy Alexey Terentev.
 
     .. change::
-        :tags: examples
+        :tags: examples, feature
         :pullreq: github:41
 
         Added optional "changed" column to the versioned rows example, as well
