@@ -1,10 +1,12 @@
 #!coding: utf-8
 
 """SQLite-specific tests."""
+import os
+from collections import Counter
+import datetime
 
 from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message
-import datetime
 from sqlalchemy import Table, String, select, Text, CHAR, bindparam, Column,\
     Unicode, Date, MetaData, UnicodeText, Time, Integer, TIMESTAMP, \
     Boolean, func, NUMERIC, DateTime, extract, ForeignKey, text, Numeric,\
@@ -18,7 +20,6 @@ from sqlalchemy.engine.url import make_url
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, \
     AssertsExecutionResults, engines
 from sqlalchemy import testing
-import os
 from sqlalchemy.schema import CreateTable
 
 class TestTypes(fixtures.TestBase, AssertsExecutionResults):
@@ -29,7 +30,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         """Test that the boolean only treats 1 as True
 
         """
-
+        
         meta = MetaData(testing.db)
         t = Table('bool_table', meta, Column('id', Integer,
                   primary_key=True), Column('boo',
@@ -227,8 +228,8 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         )
         t.create()
         t2 = Table('t', MetaData(), autoload=True, autoload_with=testing.db)
-        assert isinstance(t2.c.x.type, sqltypes.NullType)
-        assert isinstance(t2.c.y.type, sqltypes.NullType)
+        assert isinstance(t2.c.x.type, sqltypes.Numeric)
+        assert isinstance(t2.c.y.type, sqltypes.Numeric)
 
 
 class DateTimeTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -1022,3 +1023,60 @@ class ReflectFKConstraintTest(fixtures.TestBase):
             set([con.name for con in c.constraints]),
             set([None, None])
         )
+
+
+class ColumnTypeAffinityReflectionTest(fixtures.TestBase):
+    """Tests on data type affinities for SQLite during relection.
+
+    See http://www.sqlite.org/datatype3.html - section 2.
+    """
+    __only_on__ = 'sqlite'
+
+    def setup(self):
+        testing.db.execute("""
+            CREATE TABLE a (
+                "id" INTEGER PRIMARY KEY,
+                "foo" DOUBLE,
+                "bar" DECIMAL(19,4),
+                "baz" VARCHAR(200),
+                "boff",
+                "biff" LONGTEXT
+            )""")
+        # These example names come from section 2.2 of the datatype docs,
+        # after pruning out types which we convert to more convenient types
+        self.example_typenames_integer = ["TINYINT", "MEDIUMINT", "INT2",
+            "UNSIGNED BIG INT", "INT8"]
+        self.example_typenames_text = ["CHARACTER(20)", "CLOB",
+            "VARYING CHARACTER(70)", "NATIVE CHARACTER(70)"]
+        self.example_typenames_none = [""]
+        self.example_typenames_real = ["DOUBLE PRECISION"]
+        cols = ["i%d %s" % (n, t) for n, t in enumerate(
+            self.example_typenames_integer)]
+        cols += ["t%d %s" % (n, t) for n, t in enumerate(
+            self.example_typenames_text)]
+        cols += ["o%d %s" % (n, t) for n, t in enumerate(
+            self.example_typenames_none)]
+        cols += ["n%d %s" % (n, t) for n, t in enumerate(
+            self.example_typenames_real)]
+        cols = ','.join(cols)
+        testing.db.execute("CREATE TABLE b (%s)" % (cols,))
+
+    def teardown(self):
+        testing.db.execute("drop table a")
+        testing.db.execute("drop table b")
+
+    def test_can_reflect_with_affinity(self):
+        "Test that 'affinity-types' don't break reflection outright."
+        meta = MetaData()
+        a = Table('a', meta, autoload=True, autoload_with=testing.db)
+        eq_(len(a.columns), 6)
+
+    def test_correct_reflection_with_affinity(self):
+        "Test that coltypes are detected correctly from affinity rules."
+        meta = MetaData()
+        b = Table('b', meta, autoload=True, autoload_with=testing.db)
+        typecounts = Counter(type(col.type) for col in b.columns)
+        eq_(typecounts[sqltypes.INTEGER], len(self.example_typenames_integer))
+        eq_(typecounts[sqltypes.TEXT], len(self.example_typenames_text))
+        eq_(typecounts[sqltypes.NullType], len(self.example_typenames_none))
+        eq_(typecounts[sqltypes.REAL], len(self.example_typenames_real))
