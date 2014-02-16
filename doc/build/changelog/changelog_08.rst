@@ -12,6 +12,15 @@
     :version: 0.8.5
 
     .. change::
+        :tags: bug, sqlite
+        :pullreq: github:72
+
+        Restored a change that was missed in the backport of unique
+        constraint reflection to 0.8, where :class:`.UniqueConstraint`
+        with SQLite would fail if reserved keywords were included in the
+        names of columns.  Pull request courtesy Roman Podolyaka.
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 2291
 
