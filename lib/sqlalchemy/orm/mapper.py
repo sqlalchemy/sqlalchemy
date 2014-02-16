@@ -315,11 +315,11 @@ class Mapper(_InspectionAttr):
 
            When False, it is assumed that the database does not enforce
            referential integrity and will not be issuing its own CASCADE
-           operation for an update.  The :class:`.Mapper` here will
+           operation for an update.  The unit of work process will
            emit an UPDATE statement for the dependent columns during a
            primary key change.
 
-           ..seealso::
+           .. seealso::
 
                :ref:`passive_updates` - description of a similar feature as
                used with :func:`.relationship`

@@ -221,8 +221,8 @@ There are several possibilities here:
   this feature, the database itself can be made to automatically delete rows in the
   "secondary" table as referencing rows in "child" are deleted.   SQLAlchemy
   can be instructed to forego actively loading in the ``Child.parents``
-  collection in this case using the ``passive_deletes=True`` directive
-  on :func:`.relationship`; see :ref:`passive_deletes` for more details
+  collection in this case using the :paramref:`~.relationship.passive_deletes`
+  directive on :func:`.relationship`; see :ref:`passive_deletes` for more details
   on this.
 
 Note again, these behaviors are *only* relevant to the ``secondary`` option
@@ -1563,13 +1563,13 @@ of sync for any moment.
 
 For databases that don't support this, such as SQLite and
 MySQL without their referential integrity options turned
-on, the ``passive_updates`` flag can
+on, the :paramref:`~.relationship.passive_updates` flag can
 be set to ``False``, most preferably on a one-to-many or
 many-to-many :func:`.relationship`, which instructs
 SQLAlchemy to issue UPDATE statements individually for
 objects referenced in the collection, loading them into
 memory if not already locally present. The
-``passive_updates`` flag can also be ``False`` in
+:paramref:`~.relationship.passive_updates` flag can also be ``False`` in
 conjunction with ON UPDATE CASCADE functionality,
 although in that case the unit of work will be issuing
 extra SELECT and UPDATE statements unnecessarily.
@@ -1594,16 +1594,17 @@ A typical mutable primary key setup might look like::
                     ForeignKey('user.username', onupdate="cascade")
                 )
 
-``passive_updates`` is set to ``True`` by default,
+:paramref:`~.relationship.passive_updates` is set to ``True`` by default,
 indicating that ON UPDATE CASCADE is expected to be in
 place in the usual case for foreign keys that expect
 to have a mutating parent key.
 
-``passive_updates=False`` may be configured on any
+A :paramref:`~.relationship.passive_updates` setting of False may be configured on any
 direction of relationship, i.e. one-to-many, many-to-one,
 and many-to-many, although it is much more effective when
 placed just on the one-to-many or many-to-many side.
-Configuring the ``passive_updates=False`` only on the
+Configuring the :paramref:`~.relationship.passive_updates`
+to False only on the
 many-to-one side will have only a partial effect, as the
 unit of work searches only through the current identity
 map for objects that may be referencing the one with a

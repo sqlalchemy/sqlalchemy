@@ -514,6 +514,11 @@ class RelationshipProperty(StrategizedProperty):
            after a flush occurs so this is a very special use-case
            setting.
 
+           .. seealso::
+
+                :ref:`passive_deletes` - Introductory documentation
+                and examples.
+
         :param passive_updates=True:
           Indicates loading and INSERT/UPDATE/DELETE behavior when the
           source of a foreign key value changes (i.e. an "on update"
@@ -540,10 +545,16 @@ class RelationshipProperty(StrategizedProperty):
           are expected and the database in use doesn't support CASCADE
           (i.e. SQLite, MySQL MyISAM tables).
 
+          .. seealso::
+
+                :ref:`passive_updates` - Introductory documentation and
+                examples.
+
+                :paramref:`.mapper.passive_updates` - a similar flag which
+                takes effect for joined-table inheritance mappings.
+
           Also see the passive_updates flag on ``mapper()``.
 
-          A future SQLAlchemy release will provide a "detect" feature for
-          this flag.
 
         :param post_update:
           this indicates that the relationship should be handled by a
