@@ -553,9 +553,6 @@ class RelationshipProperty(StrategizedProperty):
                 :paramref:`.mapper.passive_updates` - a similar flag which
                 takes effect for joined-table inheritance mappings.
 
-          Also see the passive_updates flag on ``mapper()``.
-
-
         :param post_update:
           this indicates that the relationship should be handled by a
           second UPDATE statement after an INSERT or before a
