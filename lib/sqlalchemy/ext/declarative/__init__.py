@@ -95,6 +95,9 @@ objects::
     mymetadata = MetaData()
     Base = declarative_base(metadata=mymetadata)
 
+
+.. _declarative_configuring_relationships:
+
 Configuring Relationships
 =========================
 
@@ -191,6 +194,7 @@ are available::
 
 
 
+.. _declarative_many_to_many:
 
 Configuring Many-to-Many Relationships
 ======================================

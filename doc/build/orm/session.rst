@@ -1244,7 +1244,7 @@ are as follows:
   on a one-to-many relationship.   Setting it on a many-to-one or
   many-to-many relationship is more awkward; for this use case,
   SQLAlchemy requires that the :func:`~sqlalchemy.orm.relationship`
-  be configured with the ``single_parent=True`` function, which
+  be configured with the :paramref:`~.relationship.single_parent` argument,
   establishes Python-side validation that ensures the object
   is associated with only one parent at a time.
 
@@ -1291,7 +1291,7 @@ place::
     >>> i1 in session
     True
 
-This behavior can be disabled using the ``cascade_backrefs`` flag::
+This behavior can be disabled using the :paramref:`~.relationship.cascade_backrefs` flag::
 
     mapper(Order, order_table, properties={
         'items' : relationship(Item, backref='order',

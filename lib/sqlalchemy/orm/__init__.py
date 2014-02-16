@@ -169,7 +169,7 @@ def create_session(bind=None, **kwargs):
 
 
 def relationship(argument, secondary=None, **kwargs):
-    """Provide a relationship of a primary Mapper to a secondary Mapper.
+    """Provide a relationship between two mapped classes.
 
     This corresponds to a parent-child or associative table relationship.  The
     constructed class is an instance of :class:`.RelationshipProperty`.
@@ -210,28 +210,64 @@ def relationship(argument, secondary=None, **kwargs):
             id = Column(Integer, primary_key=True)
             children = relationship("Child", order_by="Child.id")
 
-    A full array of examples and reference documentation regarding
-    :func:`.relationship` is at :ref:`relationship_config_toplevel`.
+    .. seealso::
+
+      :ref:`relationship_config_toplevel` - Full introductory and reference
+      documentation for :func:`.relationship`.
+
+      :ref:`orm_tutorial_relationship` - ORM tutorial introduction.
 
     :param argument:
       a mapped class, or actual :class:`.Mapper` instance, representing the
       target of the relationship.
 
-      ``argument`` may also be passed as a callable function
+      :paramref:`~.relationship.argument` may also be passed as a callable function
       which is evaluated at mapper initialization time, and may be passed as a
       Python-evaluable string when using Declarative.
 
+      .. seealso::
+
+        :ref:`declarative_configuring_relationships` - further detail
+        on relationship configuration when using Declarative.
+
     :param secondary:
       for a many-to-many relationship, specifies the intermediary
-      table, and is an instance of :class:`.Table`.  The ``secondary`` keyword
-      argument should generally only
-      be used for a table that is not otherwise expressed in any class
-      mapping, unless this relationship is declared as view only, otherwise
-      conflicting persistence operations can occur.
+      table, and is typically an instance of :class:`.Table`.
+      In less common circumstances, the argument may also be specified
+      as an :class:`.Alias` construct, or even a :class:`.Join` construct.
 
-      ``secondary`` may
+      :paramref:`~.relationship.secondary` may
       also be passed as a callable function which is evaluated at
-      mapper initialization time.
+      mapper initialization time.  When using Declarative, it may also
+      be a string argument noting the name of a :class:`.Table` that is
+      present in the :class:`.MetaData` collection associated with the
+      parent-mapped :class:`.Table`.
+
+      The :paramref:`~.relationship.secondary` keyword argument is typically
+      applied in the case where the intermediary :class:`.Table` is not
+      otherwise exprssed in any direct class mapping. If the "secondary" table
+      is also explicitly mapped elsewhere
+      (e.g. as in :ref:`association_pattern`), one should consider applying
+      the :paramref:`~.relationship.viewonly` flag so that this :func:`.relationship`
+      is not used for persistence operations which may conflict with those
+      of the association object pattern.
+
+      .. seealso::
+
+          :ref:`relationships_many_to_many` - Reference example of "many to many".
+
+          :ref:`orm_tutorial_many_to_many` - ORM tutorial introduction to
+          many-to-many relationships.
+
+          :ref:`self_referential_many_to_many` - Specifics on using many-to-many
+          in a self-referential case.
+
+          :ref:`declarative_many_to_many` - Additional options when using
+          Declarative.
+
+          :ref:`association_pattern` - an alternative to :paramref:`~.relationship.secondary`
+          when composing association table relationships, allowing additional
+          attributes to be specified on the association table.
 
     :param active_history=False:
       When ``True``, indicates that the "previous" value for a
@@ -248,15 +284,35 @@ def relationship(argument, secondary=None, **kwargs):
       mapper's class that will handle this relationship in the other
       direction. The other property will be created automatically
       when the mappers are configured.  Can also be passed as a
-      :func:`backref` object to control the configuration of the
+      :func:`.backref` object to control the configuration of the
       new relationship.
 
+      .. seealso::
+
+        :ref:`relationships_backref` - Introductory documentation and
+        examples.
+
+        :paramref:`~.relationship.back_populates` - alternative form
+        of backref specification.
+
+        :func:`.backref` - allows control over :func:`.relationship`
+        configuration when using :paramref:`~.relationship.backref`.
+
+
     :param back_populates:
-      Takes a string name and has the same meaning as ``backref``,
+      Takes a string name and has the same meaning as :paramref:`~.relationship.backref`,
       except the complementing property is **not** created automatically,
       and instead must be configured explicitly on the other mapper.  The
-      complementing property should also indicate ``back_populates``
+      complementing property should also indicate :paramref:`~.relationship.back_populates`
       to this relationship to ensure proper functioning.
+
+      .. seealso::
+
+        :ref:`relationships_backref` - Introductory documentation and
+        examples.
+
+        :paramref:`~.relationship.backref` - alternative form
+        of backref specification.
 
     :param cascade:
       a comma-separated list of cascade rules which determines how
@@ -268,13 +324,13 @@ def relationship(argument, secondary=None, **kwargs):
 
       * ``save-update`` - cascade the :meth:`.Session.add`
         operation.  This cascade applies both to future and
-        past calls to :meth:`~sqlalchemy.orm.session.Session.add`,
+        past calls to :meth:`.Session.add`,
         meaning new items added to a collection or scalar relationship
         get placed into the same session as that of the parent, and
         also applies to items which have been removed from this
         relationship but are still part of unflushed history.
 
-      * ``merge`` - cascade the :meth:`~sqlalchemy.orm.session.Session.merge`
+      * ``merge`` - cascade the :meth:`.Session.merge`
         operation
 
       * ``expunge`` - cascade the :meth:`.Session.expunge`
@@ -294,13 +350,18 @@ def relationship(argument, secondary=None, **kwargs):
             is configured as NOT NULL
 
       * ``refresh-expire`` - cascade the :meth:`.Session.expire`
-        and :meth:`~sqlalchemy.orm.session.Session.refresh` operations
+        and :meth:`.Session.refresh` operations
 
       * ``all`` - shorthand for "save-update,merge, refresh-expire,
         expunge, delete"
 
-     See the section :ref:`unitofwork_cascades` for more background
-     on configuring cascades.
+      .. seealso::
+
+        :ref:`unitofwork_cascades` - Introductory documentation and
+        examples.
+
+        :ref:`tutorial_delete_cascade` - Tutorial example describing
+        a delete cascade.
 
     :param cascade_backrefs=True:
       a boolean value indicating if the ``save-update`` cascade should
@@ -328,35 +389,53 @@ def relationship(argument, secondary=None, **kwargs):
                 )
         })
 
-      See the section :ref:`unitofwork_cascades` for more background
-      on configuring cascades.
+      .. seealso::
+
+        :ref:`backref_cascade` - Introductory documentation and
+        examples.
 
     :param collection_class:
       a class or callable that returns a new list-holding object. will
       be used in place of a plain list for storing elements.
-      Behavior of this attribute is described in detail at
-      :ref:`custom_collections`.
+
+      .. seealso::
+
+        :ref:`custom_collections` - Introductory documentation and
+        examples.
 
     :param comparator_factory:
       a class which extends :class:`.RelationshipProperty.Comparator` which
       provides custom SQL clause generation for comparison operations.
 
-    :param distinct_target_key=False:
+      .. seealso::
+
+        :class:`.PropComparator` - some detail on redefining comparators
+        at this level.
+
+        :ref:`custom_comparators` - Brief intro to this feature.
+
+
+    :param distinct_target_key=None:
       Indicate if a "subquery" eager load should apply the DISTINCT
-      keyword to the innermost SELECT statement.  When set to ``None``,
+      keyword to the innermost SELECT statement.  When left as ``None``,
       the DISTINCT keyword will be applied in those cases when the target
       columns do not comprise the full primary key of the target table.
       When set to ``True``, the DISTINCT keyword is applied to the innermost
       SELECT unconditionally.
 
-      This flag defaults as False in 0.8 but will default to None in 0.9.
       It may be desirable to set this flag to False when the DISTINCT is
       reducing performance of the innermost subquery beyond that of what
       duplicate innermost rows may be causing.
 
-      .. versionadded:: 0.8.3 - distinct_target_key allows the
+      .. versionadded:: 0.8.3 - :paramref:`~.relationship.distinct_target_key`
+         allows the
          subquery eager loader to apply a DISTINCT modifier to the
          innermost SELECT.
+
+      .. seealso::
+
+        :ref:`loading_toplevel` - includes an introduction to subquery
+        eager loading.
 
     :param doc:
       docstring which will be applied to the resulting descriptor.
@@ -365,24 +444,30 @@ def relationship(argument, secondary=None, **kwargs):
       an :class:`.AttributeExtension` instance, or list of extensions,
       which will be prepended to the list of attribute listeners for
       the resulting descriptor placed on the class.
-      **Deprecated.**  Please see :class:`.AttributeEvents`.
+
+      .. deprecated:: 0.7 Please see :class:`.AttributeEvents`.
 
     :param foreign_keys:
-      a list of columns which are to be used as "foreign key" columns,
-      or columns which refer to the value in a remote column, within the
-      context of this :func:`.relationship` object's ``primaryjoin``
-      condition.   That is, if the ``primaryjoin`` condition of this
-      :func:`.relationship` is ``a.id == b.a_id``, and the values in ``b.a_id``
-      are required to be present in ``a.id``, then the "foreign key" column
-      of this :func:`.relationship` is ``b.a_id``.
 
-      In normal cases, the ``foreign_keys`` parameter is **not required.**
-      :func:`.relationship` will **automatically** determine which columns
-      in the ``primaryjoin`` conditition are to be considered "foreign key"
-      columns based on those :class:`.Column` objects that specify
-      :class:`.ForeignKey`, or are otherwise listed as referencing columns
-      in a :class:`.ForeignKeyConstraint` construct.  ``foreign_keys`` is only
-      needed when:
+      a list of columns which are to be used as "foreign key"
+      columns, or columns which refer to the value in a remote
+      column, within the context of this :func:`.relationship`
+      object's :paramref:`~.relationship.primaryjoin` condition.
+      That is, if the :paramref:`~.relationship.primaryjoin`
+      condition of this :func:`.relationship` is ``a.id ==
+      b.a_id``, and the values in ``b.a_id`` are required to be
+      present in ``a.id``, then the "foreign key" column of this
+      :func:`.relationship` is ``b.a_id``.
+
+      In normal cases, the :paramref:`~.relationship.foreign_keys`
+      parameter is **not required.** :func:`.relationship` will
+      automatically determine which columns in the
+      :paramref:`~.relationship.primaryjoin` conditition are to be
+      considered "foreign key" columns based on those
+      :class:`.Column` objects that specify :class:`.ForeignKey`,
+      or are otherwise listed as referencing columns in a
+      :class:`.ForeignKeyConstraint` construct.
+      :paramref:`~.relationship.foreign_keys` is only needed when:
 
         1. There is more than one way to construct a join from the local
            table to the remote table, as there are multiple foreign key
@@ -392,8 +477,8 @@ def relationship(argument, secondary=None, **kwargs):
 
            .. versionchanged:: 0.8
                 A multiple-foreign key join ambiguity can be resolved by
-                setting the ``foreign_keys`` parameter alone, without the
-                need to explicitly set ``primaryjoin`` as well.
+                setting the :paramref:`~.relationship.foreign_keys` parameter alone, without the
+                need to explicitly set :paramref:`~.relationship.primaryjoin` as well.
 
         2. The :class:`.Table` being mapped does not actually have
            :class:`.ForeignKey` or :class:`.ForeignKeyConstraint`
@@ -401,18 +486,20 @@ def relationship(argument, secondary=None, **kwargs):
            was reflected from a database that does not support foreign key
            reflection (MySQL MyISAM).
 
-        3. The ``primaryjoin`` argument is used to construct a non-standard
+        3. The :paramref:`~.relationship.primaryjoin` argument is used to construct a non-standard
            join condition, which makes use of columns or expressions that do
            not normally refer to their "parent" column, such as a join condition
            expressed by a complex comparison using a SQL function.
 
-      The :func:`.relationship` construct will raise informative error messages
-      that suggest the use of the ``foreign_keys`` parameter when presented
-      with an ambiguous condition.   In typical cases, if :func:`.relationship`
-      doesn't raise any exceptions, the ``foreign_keys`` parameter is usually
+      The :func:`.relationship` construct will raise informative
+      error messages that suggest the use of the
+      :paramref:`~.relationship.foreign_keys` parameter when
+      presented with an ambiguous condition.   In typical cases,
+      if :func:`.relationship` doesn't raise any exceptions, the
+      :paramref:`~.relationship.foreign_keys` parameter is usually
       not needed.
 
-      ``foreign_keys`` may also be passed as a callable function
+      :paramref:`~.relationship.foreign_keys` may also be passed as a callable function
       which is evaluated at mapper initialization time, and may be passed as a
       Python-evaluable string when using Declarative.
 
@@ -423,13 +510,13 @@ def relationship(argument, secondary=None, **kwargs):
         :ref:`relationship_custom_foreign`
 
         :func:`.foreign` - allows direct annotation of the "foreign" columns
-        within a ``primaryjoin`` condition.
+        within a :paramref:`~.relationship.primaryjoin` condition.
 
       .. versionadded:: 0.8
           The :func:`.foreign` annotation can also be applied
-          directly to the ``primaryjoin`` expression, which is an alternate,
+          directly to the :paramref:`~.relationship.primaryjoin` expression, which is an alternate,
           more specific system of describing which columns in a particular
-          ``primaryjoin`` should be considered "foreign".
+          :paramref:`~.relationship.primaryjoin` should be considered "foreign".
 
     :param info: Optional data dictionary which will be populated into the
         :attr:`.MapperProperty.info` attribute of this object.
@@ -440,13 +527,17 @@ def relationship(argument, secondary=None, **kwargs):
       when ``True``, joined eager loads will use an inner join to join
       against related tables instead of an outer join.  The purpose
       of this option is generally one of performance, as inner joins
-      generally perform better than outer joins. Another reason can be
-      the use of ``with_lockmode``, which does not support outer joins.
+      generally perform better than outer joins.
 
       This flag can be set to ``True`` when the relationship references an
       object via many-to-one using local foreign keys that are not nullable,
       or when the reference is one-to-one or a collection that is guaranteed
       to have one or at least one entry.
+
+      .. seealso::
+
+        :ref:`what_kind_of_loading` - Discussion of some details of
+        various loader options.
 
     :param join_depth:
       when non-``None``, an integer value indicating how many levels
@@ -457,6 +548,11 @@ def relationship(argument, secondary=None, **kwargs):
       will stop chaining when they encounter a the same target mapper
       which is already higher up in the chain.  This option applies
       both to joined- and subquery- eager loaders.
+
+      .. seealso::
+
+        :ref:`self_referential_eager_loading` - Introductory documentation
+        and examples.
 
     :param lazy='select': specifies
       how the related items should be loaded.  Default value is
@@ -469,8 +565,6 @@ def relationship(argument, secondary=None, **kwargs):
       * ``immediate`` - items should be loaded as the parents are loaded,
         using a separate SELECT statement, or identity map fetch for
         simple many-to-one references.
-
-        .. versionadded:: 0.6.5
 
       * ``joined`` - items should be loaded "eagerly" in the same query as
         that of the parent, using a JOIN or LEFT OUTER JOIN.  Whether
@@ -486,7 +580,7 @@ def relationship(argument, secondary=None, **kwargs):
         populated in some manner specific to the application.
 
       * ``dynamic`` - the attribute will return a pre-configured
-        :class:`~sqlalchemy.orm.query.Query` object for all read
+        :class:`.Query` object for all read
         operations, onto which further filtering operations can be
         applied before iterating the results.  See
         the section :ref:`dynamic_relationship` for more details.
@@ -497,7 +591,12 @@ def relationship(argument, secondary=None, **kwargs):
 
       * None - a synonym for 'noload'
 
-      Detailed discussion of loader strategies is at :doc:`/orm/loading`.
+      .. seealso::
+
+        :doc:`/orm/loading` - Full documentation on relationship loader
+        configuration.
+
+        :ref:`dynamic_relationship` - detail on the ``dynamic`` option.
 
     :param load_on_pending=False:
       Indicates loading behavior for transient or pending parent objects.
@@ -509,13 +608,11 @@ def relationship(argument, secondary=None, **kwargs):
       "attached" to a :class:`.Session` but is not part of its pending
       collection.
 
-      The load_on_pending flag does not improve behavior
+      The :paramref:`~.relationship.load_on_pending` flag does not improve behavior
       when the ORM is used normally - object references should be constructed
       at the object level, not at the foreign key level, so that they
-      are present in an ordinary way before flush() proceeds.  This flag
+      are present in an ordinary way before a flush proceeds.  This flag
       is not not intended for general use.
-
-      .. versionadded:: 0.6.5
 
       .. seealso::
 
@@ -525,12 +622,13 @@ def relationship(argument, secondary=None, **kwargs):
 
     :param order_by:
       indicates the ordering that should be applied when loading these
-      items.  ``order_by`` is expected to refer to one of the :class:`.Column`
+      items.  :paramref:`~.relationship.order_by` is expected to refer to one
+      of the :class:`.Column`
       objects to which the target class is mapped, or
       the attribute itself bound to the target class which refers
       to the column.
 
-      ``order_by`` may also be passed as a callable function
+      :paramref:`~.relationship.order_by` may also be passed as a callable function
       which is evaluated at mapper initialization time, and may be passed as a
       Python-evaluable string when using Declarative.
 
@@ -588,11 +686,11 @@ def relationship(argument, secondary=None, **kwargs):
 
       .. seealso::
 
-            :ref:`passive_updates` - Introductory documentation and
-            examples.
+          :ref:`passive_updates` - Introductory documentation and
+          examples.
 
-            :paramref:`.mapper.passive_updates` - a similar flag which
-            takes effect for joined-table inheritance mappings.
+          :paramref:`.mapper.passive_updates` - a similar flag which
+          takes effect for joined-table inheritance mappings.
 
     :param post_update:
       this indicates that the relationship should be handled by a
@@ -608,9 +706,13 @@ def relationship(argument, secondary=None, **kwargs):
       that has a one-to-many relationship to a set of child rows, and
       also has a column that references a single child row within that
       list (i.e. both tables contain a foreign key to each other). If
-      a ``flush()`` operation returns an error that a "cyclical
+      a flush operation returns an error that a "cyclical
       dependency" was detected, this is a cue that you might want to
-      use ``post_update`` to "break" the cycle.
+      use :paramref:`~.relationship.post_update` to "break" the cycle.
+
+      .. seealso::
+
+          :ref:`post_update` - Introductory documentation and examples.
 
     :param primaryjoin:
       a SQL expression that will be used as the primary
@@ -620,15 +722,19 @@ def relationship(argument, secondary=None, **kwargs):
       foreign key relationships of the parent and child tables (or association
       table).
 
-      ``primaryjoin`` may also be passed as a callable function
+      :paramref:`~.relationship.primaryjoin` may also be passed as a callable function
       which is evaluated at mapper initialization time, and may be passed as a
       Python-evaluable string when using Declarative.
+
+      .. seealso::
+
+          :ref:`relationship_primaryjoin`
 
     :param remote_side:
       used for self-referential relationships, indicates the column or
       list of columns that form the "remote side" of the relationship.
 
-      ``remote_side`` may also be passed as a callable function
+      :paramref:`.relationship.remote_side` may also be passed as a callable function
       which is evaluated at mapper initialization time, and may be passed as a
       Python-evaluable string when using Declarative.
 
@@ -638,6 +744,17 @@ def relationship(argument, secondary=None, **kwargs):
           more specific system of describing which columns in a particular
           ``primaryjoin`` should be considered "remote".
 
+      .. seealso::
+
+        :ref:`self_referential` - in-depth explaination of how
+        :paramref:`~.relationship.remote_side`
+        is used to configure self-referential relationships.
+
+        :func:`.remote` - an annotation function that accomplishes the same
+        purpose as :paramref:`~.relationship.remote_side`, typically
+        when a custom :paramref:`~.relationship.primaryjoin` condition
+        is used.
+
     :param query_class:
       a :class:`.Query` subclass that will be used as the base of the
       "appender query" returned by a "dynamic" relationship, that
@@ -645,48 +762,84 @@ def relationship(argument, secondary=None, **kwargs):
       otherwise constructed using the :func:`.orm.dynamic_loader`
       function.
 
+      .. seealso::
+
+        :ref:`dynamic_relationship` - Introduction to "dynamic" relationship
+        loaders.
+
     :param secondaryjoin:
       a SQL expression that will be used as the join of
       an association table to the child object. By default, this value is
       computed based on the foreign key relationships of the association and
       child tables.
 
-      ``secondaryjoin`` may also be passed as a callable function
+      :paramref:`~.relationship.secondaryjoin` may also be passed as a callable function
       which is evaluated at mapper initialization time, and may be passed as a
       Python-evaluable string when using Declarative.
 
-    :param single_parent=(True|False):
+      .. seealso::
+
+          :ref:`relationship_primaryjoin`
+
+    :param single_parent:
       when True, installs a validator which will prevent objects
       from being associated with more than one parent at a time.
       This is used for many-to-one or many-to-many relationships that
-      should be treated either as one-to-one or one-to-many.  Its
-      usage is optional unless delete-orphan cascade is also
-      set on this relationship(), in which case its required.
+      should be treated either as one-to-one or one-to-many.  Its usage
+      is optional, except for :func:`.relationship` constructs which
+      are many-to-one or many-to-many and also
+      specify the ``delete-orphan`` cascade option.  The :func:`.relationship`
+      construct itself will raise an error instructing when this option
+      is required.
 
-    :param uselist=(True|False):
+      .. seealso::
+
+        :ref:`unitofwork_cascades` - includes detail on when the
+        :paramref:`~.relationship.single_parent` flag may be appropriate.
+
+    :param uselist:
       a boolean that indicates if this property should be loaded as a
       list or a scalar. In most cases, this value is determined
-      automatically by ``relationship()``, based on the type and direction
+      automatically by :func:`.relationship` at mapper configuration
+      time, based on the type and direction
       of the relationship - one to many forms a list, many to one
       forms a scalar, many to many is a list. If a scalar is desired
       where normally a list would be present, such as a bi-directional
-      one-to-one relationship, set uselist to False.
+      one-to-one relationship, set :paramref:`~.relationship.uselist` to False.
+
+      The :paramref:`~.relationship.uselist` flag is also available on an
+      existing :func:`.relationship` construct as a read-only attribute, which
+      can be used to determine if this :func:`.relationship` deals with
+      collections or scalar attributes::
+
+          >>> User.addresses.property.uselist
+          True
+
+      .. seealso::
+
+          :ref:`relationships_one_to_one` - Introduction to the "one to one"
+          relationship pattern, which is typically when the
+          :paramref:`~.relationship.uselist` flag is needed.
 
     :param viewonly=False:
-      when set to True, the relationship is used only for loading objects
-      within the relationship, and has no effect on the unit-of-work
-      flush process.  Relationships with viewonly can specify any kind of
-      join conditions to provide additional views of related objects
-      onto a parent object. Note that the functionality of a viewonly
-      relationship has its limits - complicated join conditions may
-      not compile into eager or lazy loaders properly. If this is the
-      case, use an alternative method.
+      when set to True, the relationship is used only for loading objects,
+      and not for any persistence operation.  A :func:`.relationship`
+      which specifies :paramref:`~.relationship.viewonly` can work
+      with a wider range of SQL operations within the :paramref:`~.relationship.primaryjoin`
+      condition, including operations that feature the use of
+      a variety of comparison operators as well as SQL functions such
+      as :func:`~.sql.expression.cast`.  The :paramref:`~.relationship.viewonly`
+      flag is also of general use when defining any kind of :func:`~.relationship`
+      that doesn't represent the full set of related objects, to prevent
+      modifications of the collection from resulting in persistence operations.
 
-    .. versionchanged:: 0.6
-        :func:`relationship` was renamed from its previous name
-        :func:`relation`.
+      .. seealso::
 
-    """
+          :ref:`relationship_custom_operator` - Introduces the most common
+          use case for :paramref:`~.relationship.viewonly`, that
+          of a non-equality comparison in a :paramref:`~.relationship.primaryjoin`
+          condition.
+          """
     return RelationshipProperty(argument, secondary=secondary, **kwargs)
 
 

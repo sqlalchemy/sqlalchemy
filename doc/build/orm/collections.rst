@@ -172,7 +172,7 @@ this collection is a ``list``::
 
 Collections are not limited to lists. Sets, mutable sequences and almost any
 other Python object that can act as a container can be used in place of the
-default list, by specifying the ``collection_class`` option on
+default list, by specifying the :paramref:`~.relationship.collection_class` option on
 :func:`~sqlalchemy.orm.relationship`::
 
     class Parent(Base):

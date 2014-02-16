@@ -1109,6 +1109,8 @@ of the ``User`` primary key directly:
     ()
     {stop}4
 
+.. _orm_tutorial_relationship:
+
 Building a Relationship
 =======================
 
@@ -1946,6 +1948,8 @@ with the user:
    The cascade functionality can also integrate smoothly with
    the ``ON DELETE CASCADE`` functionality of the relational database.
    See :ref:`passive_deletes` for details.
+
+.. _orm_tutorial_many_to_many:
 
 Building a Many To Many Relationship
 ====================================
