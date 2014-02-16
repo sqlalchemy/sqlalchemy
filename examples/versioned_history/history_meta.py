@@ -1,10 +1,11 @@
 """Versioned mixin class and other utilities."""
 
 from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import mapper, class_mapper, attributes, object_mapper
-from sqlalchemy.orm.exc import UnmappedClassError, UnmappedColumnError
+from sqlalchemy.orm import mapper, attributes, object_mapper
+from sqlalchemy.orm.exc import UnmappedColumnError
 from sqlalchemy import Table, Column, ForeignKeyConstraint, Integer, DateTime
 from sqlalchemy import event
+import datetime
 from sqlalchemy.orm.properties import RelationshipProperty
 
 def col_references_table(col, table):
@@ -12,6 +13,9 @@ def col_references_table(col, table):
         if fk.references(table):
             return True
     return False
+
+def _is_versioning_col(col):
+    return "version_meta" in col.info
 
 def _history_mapper(local_mapper):
     cls = local_mapper.class_
@@ -31,7 +35,7 @@ def _history_mapper(local_mapper):
     if not super_mapper or local_mapper.local_table is not super_mapper.local_table:
         cols = []
         for column in local_mapper.local_table.c:
-            if column.name == 'version':
+            if _is_versioning_col(column):
                 continue
 
             col = column.copy()
@@ -47,17 +51,29 @@ def _history_mapper(local_mapper):
 
         if super_mapper:
             super_fks.append(('version', super_history_mapper.local_table.c.version))
-            cols.append(Column('version', Integer, primary_key=True, autoincrement=False))
-            cols.append(Column('changed', DateTime, default=datetime.datetime.utcnow))
-        else:
-            cols.append(Column('version', Integer, primary_key=True, autoincrement=False))
-            cols.append(Column('changed', DateTime, default=datetime.datetime.utcnow))
+
+        version_meta = {"version_meta": True}  # add column.info to identify
+                                               # columns specific to versioning
+
+        # "version" stores the integer version id.  This column is
+        # required.
+        cols.append(Column('version', Integer, primary_key=True,
+                            autoincrement=False, info=version_meta))
+
+        # "changed" column stores the UTC timestamp of when the
+        # history row was created.
+        # This column is optional and can be omitted.
+        cols.append(Column('changed', DateTime,
+                            default=datetime.datetime.utcnow,
+                            info=version_meta))
 
         if super_fks:
             cols.append(ForeignKeyConstraint(*zip(*super_fks)))
 
-        table = Table(local_mapper.local_table.name + '_history', local_mapper.local_table.metadata,
-           *cols, schema=local_mapper.local_table.schema
+        table = Table(local_mapper.local_table.name + '_history',
+                        local_mapper.local_table.metadata,
+                        *cols,
+                        schema=local_mapper.local_table.schema
         )
     else:
         # single table inheritance.  take any additional columns that may have
@@ -106,7 +122,7 @@ def versioned_objects(iter):
         if hasattr(obj, '__history_mapper__'):
             yield obj
 
-def create_version(obj, session, deleted = False):
+def create_version(obj, session, deleted=False):
     obj_mapper = object_mapper(obj)
     history_mapper = obj.__history_mapper__
     history_cls = history_mapper.class_
@@ -122,7 +138,7 @@ def create_version(obj, session, deleted = False):
             continue
 
         for hist_col in hm.local_table.c:
-            if hist_col.key == 'version' or hist_col.key == 'changed':
+            if _is_versioning_col(hist_col):
                 continue
 
             obj_col = om.local_table.c[hist_col.key]
@@ -187,4 +203,4 @@ def versioned_session(session):
         for obj in versioned_objects(session.dirty):
             create_version(obj, session)
         for obj in versioned_objects(session.deleted):
-            create_version(obj, session, deleted = True)
+            create_version(obj, session, deleted=True)

@@ -6,11 +6,10 @@ from .history_meta import Versioned, versioned_session
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import clear_mappers, Session, deferred, relationship
 from sqlalchemy.testing import AssertsCompiledSQL, eq_, assert_raises
-from sqlalchemy.testing.entities import BasicEntity, ComparableEntity
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.orm import exc as orm_exc
 
 engine = None
-
 
 def setup():
     global engine
@@ -184,7 +183,7 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
             name = Column(String(50))
             type = Column(String(20))
 
-            __mapper_args__ = {'polymorphic_on':type, 'polymorphic_identity':'base'}
+            __mapper_args__ = {'polymorphic_on': type, 'polymorphic_identity': 'base'}
 
         class SubClassSeparatePk(BaseClass):
             __tablename__ = 'subtable1'
@@ -193,7 +192,7 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
             base_id = Column(Integer, ForeignKey('basetable.id'))
             subdata1 = Column(String(50))
 
-            __mapper_args__ = {'polymorphic_identity':'sep'}
+            __mapper_args__ = {'polymorphic_identity': 'sep'}
 
         class SubClassSamePk(BaseClass):
             __tablename__ = 'subtable2'
@@ -201,7 +200,7 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
             id = Column(Integer, ForeignKey('basetable.id'), primary_key=True)
             subdata2 = Column(String(50))
 
-            __mapper_args__ = {'polymorphic_identity':'same'}
+            __mapper_args__ = {'polymorphic_identity': 'same'}
 
         self.create_tables()
         sess = self.session
@@ -214,7 +213,7 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
 
         base1.name = 'base1mod'
         same1.subdata2 = 'same1subdatamod'
-        sep1.name ='sep1mod'
+        sep1.name = 'sep1mod'
         sess.commit()
 
         BaseClassHistory = BaseClass.__history_mapper__.class_
@@ -288,14 +287,24 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         q = sess.query(SubSubHistory)
         self.assert_compile(
             q,
-            "SELECT subsubtable_history.id AS subsubtable_history_id, "
+            "SELECT "
+
+            "subsubtable_history.id AS subsubtable_history_id, "
             "subtable_history.id AS subtable_history_id, "
             "basetable_history.id AS basetable_history_id, "
+
             "basetable_history.name AS basetable_history_name, "
+
             "basetable_history.type AS basetable_history_type, "
+
             "subsubtable_history.version AS subsubtable_history_version, "
             "subtable_history.version AS subtable_history_version, "
             "basetable_history.version AS basetable_history_version, "
+
+            "subsubtable_history.changed AS subsubtable_history_changed, "
+            "subtable_history.changed AS subtable_history_changed, "
+            "basetable_history.changed AS basetable_history_changed, "
+
             "subtable_history.base_id AS subtable_history_base_id, "
             "subtable_history.subdata1 AS subtable_history_subdata1, "
             "subsubtable_history.subdata2 AS subsubtable_history_subdata2 "
@@ -334,12 +343,13 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
             type = Column(String(50))
-            __mapper_args__ = {'polymorphic_on':type, 'polymorphic_identity':'base'}
+            __mapper_args__ = {'polymorphic_on': type,
+                                'polymorphic_identity': 'base'}
 
         class SubClass(BaseClass):
 
             subname = Column(String(50), unique=True)
-            __mapper_args__ = {'polymorphic_identity':'sub'}
+            __mapper_args__ = {'polymorphic_identity': 'sub'}
 
         self.create_tables()
         sess = self.session
@@ -351,21 +361,23 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
 
         sess.commit()
 
-        b1.name='b1modified'
+        b1.name = 'b1modified'
 
         BaseClassHistory = BaseClass.__history_mapper__.class_
         SubClassHistory = SubClass.__history_mapper__.class_
 
         eq_(
-            sess.query(BaseClassHistory).order_by(BaseClassHistory.id, BaseClassHistory.version).all(),
+            sess.query(BaseClassHistory).order_by(BaseClassHistory.id,
+                                        BaseClassHistory.version).all(),
             [BaseClassHistory(id=1, name='b1', type='base', version=1)]
         )
 
-        sc.name ='s1modified'
-        b1.name='b1modified2'
+        sc.name = 's1modified'
+        b1.name = 'b1modified2'
 
         eq_(
-            sess.query(BaseClassHistory).order_by(BaseClassHistory.id, BaseClassHistory.version).all(),
+            sess.query(BaseClassHistory).order_by(BaseClassHistory.id,
+                            BaseClassHistory.version).all(),
             [
                 BaseClassHistory(id=1, name='b1', type='base', version=1),
                 BaseClassHistory(id=1, name='b1modified', type='base', version=2),
@@ -375,7 +387,7 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
 
         # test the unique constraint on the subclass
         # column
-        sc.name ="modifyagain"
+        sc.name = "modifyagain"
         sess.flush()
 
     def test_unique(self):

@@ -15,6 +15,15 @@
     :version: 0.9.3
 
     .. change::
+        :tags: examples
+        :pullreq: github:41
+
+        Added optional "changed" column to the versioned rows example, as well
+        as support for when the versioned :class:`.Table` has an explicit
+        :paramref:`~.Table.schema` argument.   Pull request
+        courtesy jplaverdure.
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 2946
 
