@@ -834,6 +834,10 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
         self.as_tuple = as_tuple
         self.dimensions = dimensions
 
+    @property
+    def python_type(self):
+        return list
+
     def compare_values(self, x, y):
         return x == y
 
