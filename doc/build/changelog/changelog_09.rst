@@ -15,6 +15,13 @@
     :version: 0.9.3
 
     .. change::
+        :tags: postgresql
+        :pullreq: github:64
+
+        Added the :attr:`.TypeEngine.python_type` convenience accessor onto the
+        :class:`.postgresql.ARRAY` type.  Pull request courtesy Alexey Terentev.
+
+    .. change::
         :tags: examples
         :pullreq: github:41
 
