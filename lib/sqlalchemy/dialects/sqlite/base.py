@@ -857,24 +857,7 @@ class SQLiteDialect(default.DefaultDialect):
         return columns
 
     def _get_column_info(self, name, type_, nullable, default, primary_key):
-        match = re.match(r'([\w ]+)(\(.*?\))?', type_)
-        if match:
-            coltype = match.group(1)
-            args = match.group(2)
-        else:
-            coltype = ''
-            args = ''
-        coltype = self._resolve_type_affinity(coltype)
-        if args is not None:
-            args = re.findall(r'(\d+)', args)
-            try:
-                coltype = coltype(*[int(a) for a in args])
-            except TypeError:
-                util.warn(
-                        "Could not instantiate type %s with "
-                        "reflected arguments %s; using no arguments." %
-                        (coltype, args))
-                coltype = coltype()
+        coltype = self._resolve_type_affinity(type_)
 
         if default is not None:
             default = util.text_type(default)
@@ -888,7 +871,7 @@ class SQLiteDialect(default.DefaultDialect):
             'primary_key': primary_key,
         }
 
-    def _resolve_type_affinity(self, coltype):
+    def _resolve_type_affinity(self, type_):
         """Return a data type from a reflected column, using affinity tules.
 
         SQLite's goal for universal compatability introduces some complexity
@@ -905,18 +888,41 @@ class SQLiteDialect(default.DefaultDialect):
         DATE and DOUBLE).
 
         """
-        if coltype in self.ischema_names:
-            return self.ischema_names[coltype]
-        elif 'INT' in coltype:
-            return sqltypes.INTEGER
-        elif 'CHAR' in coltype or 'CLOB' in coltype or 'TEXT' in coltype:
-            return sqltypes.TEXT
-        elif 'BLOB' in coltype or not coltype:
-            return sqltypes.NullType
-        elif 'REAL' in coltype or 'FLOA' in coltype or 'DOUB' in coltype:
-            return sqltypes.REAL
+        match = re.match(r'([\w ]+)(\(.*?\))?', type_)
+        if match:
+            coltype = match.group(1)
+            args = match.group(2)
         else:
-            return sqltypes.NUMERIC
+            coltype = ''
+            args = ''
+
+        if coltype in self.ischema_names:
+            coltype = self.ischema_names[coltype]
+        elif 'INT' in coltype:
+            coltype = sqltypes.INTEGER
+        elif 'CHAR' in coltype or 'CLOB' in coltype or 'TEXT' in coltype:
+            coltype = sqltypes.TEXT
+        elif 'BLOB' in coltype or not coltype:
+            coltype = sqltypes.NullType
+        elif 'REAL' in coltype or 'FLOA' in coltype or 'DOUB' in coltype:
+            coltype = sqltypes.REAL
+        else:
+            coltype = sqltypes.NUMERIC
+
+        if args is not None:
+            args = re.findall(r'(\d+)', args)
+            try:
+                coltype = coltype(*[int(a) for a in args])
+            except TypeError:
+                util.warn(
+                        "Could not instantiate type %s with "
+                        "reflected arguments %s; using no arguments." %
+                        (coltype, args))
+                coltype = coltype()
+        else:
+            coltype = coltype()
+
+        return coltype
 
     @reflection.cache
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
