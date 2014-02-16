@@ -532,9 +532,9 @@ class Query(object):
                 ).\\
                 group_by(included_parts.c.sub_part)
 
-        See also:
+        .. seealso::
 
-        :meth:`.SelectBase.cte`
+            :meth:`.SelectBase.cte`
 
         """
         return self.enable_eagerloads(False).\
@@ -1229,9 +1229,9 @@ class Query(object):
         .. versionchanged:: 0.7.5
             Multiple criteria joined by AND.
 
-        See also:
+        .. seealso::
 
-        :meth:`.Query.filter_by` - filter on keyword expressions.
+            :meth:`.Query.filter_by` - filter on keyword expressions.
 
         """
         for criterion in list(criterion):
@@ -1261,9 +1261,9 @@ class Query(object):
         entity of the query, or the last entity that was the
         target of a call to :meth:`.Query.join`.
 
-        See also:
+        .. seealso::
 
-        :meth:`.Query.filter` - filter on SQL expressions.
+            :meth:`.Query.filter` - filter on SQL expressions.
 
         """
 
@@ -1676,7 +1676,7 @@ class Query(object):
          joined target, rather than starting back from the original
          FROM clauses of the query.
 
-        See also:
+        .. seealso::
 
             :ref:`ormtutorial_joins` in the ORM tutorial.
 

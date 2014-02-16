@@ -341,6 +341,8 @@ joined eager loading goes the extra mile, and then ten miles further, to
 absolutely ensure that it does not affect the end result of the query, only
 the way collections and related objects are loaded, no matter what the format of the query is.
 
+.. _what_kind_of_loading:
+
 What Kind of Loading to Use ?
 -----------------------------
 
@@ -388,7 +390,8 @@ references a scalar many-to-one reference.
  * When using joined loading, the load of 100 objects will emit only one SQL statement.   The join
    will be a LEFT OUTER JOIN, and the total number of rows will be equal to 100 in all cases.
    If you know that each parent definitely has a child (i.e. the foreign
-   key reference is NOT NULL), the joined load can be configured with ``innerjoin=True``, which is
+   key reference is NOT NULL), the joined load can be configured with
+   :paramref:`~.relationship.innerjoin` set to ``True``, which is
    usually specified within the :func:`~sqlalchemy.orm.relationship`.   For a load of objects where
    there are many possible target references which may have not been loaded already, joined loading
    with an INNER JOIN is extremely efficient.

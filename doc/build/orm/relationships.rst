@@ -44,7 +44,7 @@ a collection of items represented by the child::
         parent_id = Column(Integer, ForeignKey('parent.id'))
 
 To establish a bidirectional relationship in one-to-many, where the "reverse"
-side is a many to one, specify the ``backref`` option::
+side is a many to one, specify the :paramref:`~.relationship.backref` option::
 
     class Parent(Base):
         __tablename__ = 'parent'
@@ -75,8 +75,9 @@ attribute will be created::
         __tablename__ = 'child'
         id = Column(Integer, primary_key=True)
 
-Bidirectional behavior is achieved by specifying ``backref="parents"``,
-which will place a one-to-many collection on the ``Child`` class::
+Bidirectional behavior is achieved by setting
+:paramref:`~.relationship.backref` to the value ``"parents"``, which
+will place a one-to-many collection on the ``Child`` class::
 
     class Parent(Base):
         __tablename__ = 'parent'
@@ -84,11 +85,13 @@ which will place a one-to-many collection on the ``Child`` class::
         child_id = Column(Integer, ForeignKey('child.id'))
         child = relationship("Child", backref="parents")
 
+.. _relationships_one_to_one:
+
 One To One
 ~~~~~~~~~~~
 
 One To One is essentially a bidirectional relationship with a scalar
-attribute on both sides. To achieve this, the ``uselist=False`` flag indicates
+attribute on both sides. To achieve this, the :paramref:`~.relationship.uselist` flag indicates
 the placement of a scalar attribute instead of a collection on the "many" side
 of the relationship. To convert one-to-many into one-to-one::
 
@@ -121,7 +124,7 @@ Many To Many
 ~~~~~~~~~~~~~
 
 Many to Many adds an association table between two classes. The association
-table is indicated by the ``secondary`` argument to
+table is indicated by the :paramref:`~.relationship.secondary` argument to
 :func:`.relationship`.  Usually, the :class:`.Table` uses the :class:`.MetaData`
 object associated with the declarative base class, so that the :class:`.ForeignKey`
 directives can locate the remote tables with which to link::
@@ -142,8 +145,8 @@ directives can locate the remote tables with which to link::
         id = Column(Integer, primary_key=True)
 
 For a bidirectional relationship, both sides of the relationship contain a
-collection.  The ``backref`` keyword will automatically use
-the same ``secondary`` argument for the reverse relationship::
+collection.  The :paramref:`~.relationship.backref` keyword will automatically use
+the same :paramref:`~.relationship.secondary` argument for the reverse relationship::
 
     association_table = Table('association', Base.metadata,
         Column('left_id', Integer, ForeignKey('left.id')),
@@ -161,7 +164,7 @@ the same ``secondary`` argument for the reverse relationship::
         __tablename__ = 'right'
         id = Column(Integer, primary_key=True)
 
-The ``secondary`` argument of :func:`.relationship` also accepts a callable
+The :paramref:`~.relationship.secondary` argument of :func:`.relationship` also accepts a callable
 that returns the ultimate argument, which is evaluated only when mappers are
 first used.   Using this, we can define the ``association_table`` at a later
 point, as long as it's available to the callable after all module initialization
@@ -187,7 +190,7 @@ is accepted as well, matching the name of the table as stored in ``Base.metadata
 Deleting Rows from the Many to Many Table
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A behavior which is unique to the ``secondary`` argument to :func:`.relationship`
+A behavior which is unique to the :paramref:`~.relationship.secondary` argument to :func:`.relationship`
 is that the :class:`.Table` which is specified here is automatically subject
 to INSERT and DELETE statements, as objects are added or removed from the collection.
 There is **no need to delete from this table manually**.   The act of removing a
@@ -225,9 +228,9 @@ There are several possibilities here:
   directive on :func:`.relationship`; see :ref:`passive_deletes` for more details
   on this.
 
-Note again, these behaviors are *only* relevant to the ``secondary`` option
+Note again, these behaviors are *only* relevant to the :paramref:`~.relationship.secondary` option
 used with :func:`.relationship`.   If dealing with association tables that
-are mapped explicitly and are *not* present in the ``secondary`` option
+are mapped explicitly and are *not* present in the :paramref:`~.relationship.secondary` option
 of a relevant :func:`.relationship`, cascade rules can be used instead
 to automatically delete entities in reaction to a related entity being
 deleted - see :ref:`unitofwork_cascades` for information on this feature.
@@ -238,16 +241,17 @@ deleted - see :ref:`unitofwork_cascades` for information on this feature.
 Association Object
 ~~~~~~~~~~~~~~~~~~
 
-The association object pattern is a variant on many-to-many: it's
-used when your association table contains additional columns beyond those
-which are foreign keys to the left and right tables. Instead of using the
-``secondary`` argument, you map a new class directly to the association table.
-The left side of the relationship references the association object via
-one-to-many, and the association class references the right side via
-many-to-one.  Below we illustrate an association table mapped to the
-``Association`` class which includes a column called ``extra_data``,
-which is a string value that is stored along with each association
-between ``Parent`` and ``Child``::
+The association object pattern is a variant on many-to-many: it's used
+when your association table contains additional columns beyond those
+which are foreign keys to the left and right tables. Instead of using
+the :paramref:`~.relationship.secondary` argument, you map a new class
+directly to the association table. The left side of the relationship
+references the association object via one-to-many, and the association
+class references the right side via many-to-one.  Below we illustrate
+an association table mapped to the ``Association`` class which
+includes a column called ``extra_data``, which is a string value that
+is stored along with each association between ``Parent`` and
+``Child``::
 
     class Association(Base):
         __tablename__ = 'association'
@@ -309,15 +313,14 @@ associated object, and a second to a target attribute.
 
 .. note::
 
-  When using the association object pattern, it is
-  advisable that the association-mapped table not be used
-  as the ``secondary`` argument on a :func:`.relationship`
-  elsewhere, unless that :func:`.relationship` contains
-  the option ``viewonly=True``.   SQLAlchemy otherwise
-  may attempt to emit redundant INSERT and DELETE
-  statements on the same table, if similar state is detected
-  on the related attribute as well as the associated
-  object.
+  When using the association object pattern, it is advisable that the
+  association-mapped table not be used as the
+  :paramref:`~.relationship.secondary` argument on a
+  :func:`.relationship` elsewhere, unless that :func:`.relationship`
+  contains the option :paramref:`~.relationship.viewonly` set to
+  ``True``. SQLAlchemy otherwise may attempt to emit redundant INSERT
+  and DELETE statements on the same table, if similar state is
+  detected on the related attribute as well as the associated object.
 
 .. _self_referential:
 
@@ -475,12 +478,13 @@ looks like:
         AND node_1.data = ?
     ['subchild1', 'child2']
 
-:meth:`.Query.join` also includes a feature known as ``aliased=True`` that
-can shorten the verbosity self-referential joins, at the expense
-of query flexibility.  This feature
-performs a similar "aliasing" step to that above, without the need for an
-explicit entity.   Calls to :meth:`.Query.filter` and similar subsequent to
-the aliased join will **adapt** the ``Node`` entity to be that of the alias:
+:meth:`.Query.join` also includes a feature known as
+:paramref:`.Query.join.aliased` that can shorten the verbosity self-
+referential joins, at the expense of query flexibility.  This feature
+performs a similar "aliasing" step to that above, without the need for
+an explicit entity.   Calls to :meth:`.Query.filter` and similar
+subsequent to the aliased join will **adapt** the ``Node`` entity to
+be that of the alias:
 
 .. sourcecode:: python+sql
 
@@ -496,8 +500,9 @@ the aliased join will **adapt** the ``Node`` entity to be that of the alias:
     WHERE node.data = ? AND node_1.data = ?
     ['subchild1', 'child2']
 
-To add criterion to multiple points along a longer join, add ``from_joinpoint=True``
-to the additional :meth:`~.Query.join` calls:
+To add criterion to multiple points along a longer join, add
+:paramref:`.Query.join.from_joinpoint` to the additional
+:meth:`~.Query.join` calls:
 
 .. sourcecode:: python+sql
 
@@ -530,8 +535,11 @@ calls::
             reset_joinpoint().\
             filter(Node.data == 'bar')
 
-For an example of using ``aliased=True`` to arbitrarily join along a chain of self-referential
-nodes, see :ref:`examples_xmlpersistence`.
+For an example of using :paramref:`.Query.join.aliased` to
+arbitrarily join along a chain of self-referential nodes, see
+:ref:`examples_xmlpersistence`.
+
+.. _self_referential_eager_loading:
 
 Configuring Self-Referential Eager Loading
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -545,7 +553,7 @@ when joining to related items, so are compatible with self-referential
 joining. However, to use eager loading with a self-referential relationship,
 SQLAlchemy needs to be told how many levels deep it should join and/or query;
 otherwise the eager load will not take place at all. This depth setting is
-configured via ``join_depth``:
+configured via :paramref:`~.relationships.join_depth`:
 
 .. sourcecode:: python+sql
 
@@ -580,7 +588,7 @@ configured via ``join_depth``:
 Linking Relationships with Backref
 ----------------------------------
 
-The ``backref`` keyword argument was first introduced in :ref:`ormtutorial_toplevel`, and has been
+The :paramref:`~.relationship.backref` keyword argument was first introduced in :ref:`ormtutorial_toplevel`, and has been
 mentioned throughout many of the examples here.   What does it actually do ?   Let's start
 with the canonical ``User`` and ``Address`` scenario::
 
@@ -607,8 +615,8 @@ The above configuration establishes a collection of ``Address`` objects on ``Use
 ``User.addresses``.   It also establishes a ``.user`` attribute on ``Address`` which will
 refer to the parent ``User`` object.
 
-In fact, the ``backref`` keyword is only a common shortcut for placing a second
-``relationship`` onto the ``Address`` mapping, including the establishment
+In fact, the :paramref:`~.relationship.backref` keyword is only a common shortcut for placing a second
+:func:`.relationship` onto the ``Address`` mapping, including the establishment
 of an event listener on both sides which will mirror attribute operations
 in both directions.   The above configuration is equivalent to::
 
@@ -634,7 +642,7 @@ in both directions.   The above configuration is equivalent to::
         user = relationship("User", back_populates="addresses")
 
 Above, we add a ``.user`` relationship to ``Address`` explicitly.  On
-both relationships, the ``back_populates`` directive tells each relationship
+both relationships, the :paramref:`~.relationship.back_populates` directive tells each relationship
 about the other one, indicating that they should establish "bidirectional"
 behavior between each other.   The primary effect of this configuration
 is that the relationship adds event handlers to both attributes
@@ -673,27 +681,27 @@ The manipulation of the ``.addresses`` collection and the ``.user`` attribute
 occurs entirely in Python without any interaction with the SQL database.
 Without this behavior, the proper state would be apparent on both sides once the
 data has been flushed to the database, and later reloaded after a commit or
-expiration operation occurs.  The ``backref``/``back_populates`` behavior has the advantage
+expiration operation occurs.  The :paramref:`~.relationship.backref`/:paramref:`~.relationship.back_populates` behavior has the advantage
 that common bidirectional operations can reflect the correct state without requiring
 a database round trip.
 
-Remember, when the ``backref`` keyword is used on a single relationship, it's
+Remember, when the :paramref:`~.relationship.backref` keyword is used on a single relationship, it's
 exactly the same as if the above two relationships were created individually
-using ``back_populates`` on each.
+using :paramref:`~.relationship.back_populates` on each.
 
 Backref Arguments
 ~~~~~~~~~~~~~~~~~~
 
-We've established that the ``backref`` keyword is merely a shortcut for building
+We've established that the :paramref:`~.relationship.backref` keyword is merely a shortcut for building
 two individual :func:`.relationship` constructs that refer to each other.  Part of
 the behavior of this shortcut is that certain configurational arguments applied to
 the :func:`.relationship`
 will also be applied to the other direction - namely those arguments that describe
 the relationship at a schema level, and are unlikely to be different in the reverse
 direction.  The usual case
-here is a many-to-many :func:`.relationship` that has a ``secondary`` argument,
-or a one-to-many or many-to-one which has a ``primaryjoin`` argument (the
-``primaryjoin`` argument is discussed in :ref:`relationship_primaryjoin`).  Such
+here is a many-to-many :func:`.relationship` that has a :paramref:`~.relationship.secondary` argument,
+or a one-to-many or many-to-one which has a :paramref:`~.relationship.primaryjoin` argument (the
+:paramref:`~.relationship.primaryjoin` argument is discussed in :ref:`relationship_primaryjoin`).  Such
 as if we limited the list of ``Address`` objects to those which start with "tony"::
 
     from sqlalchemy import Integer, ForeignKey, String, Column
@@ -728,17 +736,22 @@ of the relationship have this join condition applied::
     "user".id = address.user_id AND address.email LIKE :email_1 || '%%'
     >>>
 
-This reuse of arguments should pretty much do the "right thing" - it uses
-only arguments that are applicable, and in the case of a many-to-many
-relationship, will reverse the usage of ``primaryjoin`` and ``secondaryjoin``
-to correspond to the other direction (see the example in :ref:`self_referential_many_to_many`
-for this).
+This reuse of arguments should pretty much do the "right thing" - it
+uses only arguments that are applicable, and in the case of a many-to-
+many relationship, will reverse the usage of
+:paramref:`~.relationship.primaryjoin` and
+:paramref:`~.relationship.secondaryjoin` to correspond to the other
+direction (see the example in :ref:`self_referential_many_to_many` for
+this).
 
-It's very often the case however that we'd like to specify arguments that
-are specific to just the side where we happened to place the "backref".
-This includes :func:`.relationship` arguments like ``lazy``, ``remote_side``,
-``cascade`` and ``cascade_backrefs``.   For this case we use the :func:`.backref`
-function in place of a string::
+It's very often the case however that we'd like to specify arguments
+that are specific to just the side where we happened to place the
+"backref". This includes :func:`.relationship` arguments like
+:paramref:`~.relationship.lazy`,
+:paramref:`~.relationship.remote_side`,
+:paramref:`~.relationship.cascade` and
+:paramref:`~.relationship.cascade_backrefs`.   For this case we use
+the :func:`.backref` function in place of a string::
 
     # <other imports>
     from sqlalchemy.orm import backref
@@ -761,18 +774,22 @@ arguments to be applied to the new relationship it creates.
 One Way Backrefs
 ~~~~~~~~~~~~~~~~~
 
-An unusual case is that of the "one way backref".   This is where the "back-populating"
-behavior of the backref is only desirable in one direction. An example of this
-is a collection which contains a filtering ``primaryjoin`` condition.   We'd like to append
-items to this collection as needed, and have them populate the "parent" object on the
-incoming object. However, we'd also like to have items that are not part of the collection,
-but still have the same "parent" association - these items should never be in the
-collection.
+An unusual case is that of the "one way backref".   This is where the
+"back-populating" behavior of the backref is only desirable in one
+direction. An example of this is a collection which contains a
+filtering :paramref:`~.relationship.primaryjoin` condition.   We'd
+like to append items to this collection as needed, and have them
+populate the "parent" object on the incoming object. However, we'd
+also like to have items that are not part of the collection, but still
+have the same "parent" association - these items should never be in
+the collection.
 
-Taking our previous example, where we established a ``primaryjoin`` that limited the
-collection only to ``Address`` objects whose email address started with the word ``tony``,
-the usual backref behavior is that all items populate in both directions.   We wouldn't
-want this behavior for a case like the following::
+Taking our previous example, where we established a
+:paramref:`~.relationship.primaryjoin` that limited the collection
+only to ``Address`` objects whose email address started with the word
+``tony``, the usual backref behavior is that all items populate in
+both directions.   We wouldn't want this behavior for a case like the
+following::
 
     >>> u1 = User()
     >>> a1 = Address(email='mary')
@@ -786,7 +803,7 @@ the transaction committed and their attributes expired for a re-load, the ``addr
 collection will hit the database on next access and no longer have this ``Address`` object
 present, due to the filtering condition.   But we can do away with this unwanted side
 of the "backref" behavior on the Python side by using two separate :func:`.relationship` constructs,
-placing ``back_populates`` only on one side::
+placing :paramref:`~.relationship.back_populates` only on one side::
 
     from sqlalchemy import Integer, ForeignKey, String, Column
     from sqlalchemy.ext.declarative import declarative_base
@@ -828,14 +845,17 @@ will not append the ``Address`` object to the collection::
     >>> a2 in u1.addresses
     False
 
-Of course, we've disabled some of the usefulness of ``backref`` here, in that
-when we do append an ``Address`` that corresponds to the criteria of ``email.startswith('tony')``,
-it won't show up in the ``User.addresses`` collection until the session is flushed,
-and the attributes reloaded after a commit or expire operation.   While we could
-consider an attribute event that checks this criterion in Python, this starts
-to cross the line of duplicating too much SQL behavior in Python.  The backref behavior
-itself is only a slight transgression of this philosophy - SQLAlchemy tries to keep
-these to a minimum overall.
+Of course, we've disabled some of the usefulness of
+:paramref:`~.relationship.backref` here, in that when we do append an
+``Address`` that corresponds to the criteria of
+``email.startswith('tony')``, it won't show up in the
+``User.addresses`` collection until the session is flushed, and the
+attributes reloaded after a commit or expire operation.   While we
+could consider an attribute event that checks this criterion in
+Python, this starts to cross the line of duplicating too much SQL
+behavior in Python.  The backref behavior itself is only a slight
+transgression of this philosophy - SQLAlchemy tries to keep these to a
+minimum overall.
 
 .. _relationship_configure_joins:
 
@@ -937,8 +957,8 @@ one :class:`.Column` we need::
 
 .. versionchanged:: 0.8
     :func:`.relationship` can resolve ambiguity between foreign key targets on the
-    basis of the ``foreign_keys`` argument alone; the ``primaryjoin`` argument is no
-    longer needed in this situation.
+    basis of the ``foreign_keys`` argument alone; the :paramref:`~.relationship.primaryjoin`
+    argument is no longer needed in this situation.
 
 .. _relationship_primaryjoin:
 
@@ -989,19 +1009,23 @@ to just ``city='Boston'``.   When using Declarative, rudimentary SQL functions l
 :func:`.and_` are automatically available in the evaluated namespace of a string
 :func:`.relationship` argument.
 
-The custom criteria we use in a ``primaryjoin`` is generally only significant
-when SQLAlchemy is rendering SQL in order to load or represent this relationship.
-That is, it's  used
-in the SQL statement that's emitted in order to perform a per-attribute lazy load, or when a join is
-constructed at query time, such as via :meth:`.Query.join`, or via the eager "joined" or "subquery"
-styles of loading.   When in-memory objects are being manipulated, we can place any ``Address`` object
-we'd like into the ``boston_addresses`` collection, regardless of what the value of the ``.city``
-attribute is.   The objects will remain present in the collection until the attribute is expired
-and re-loaded from the database where the criterion is applied.   When
-a flush occurs, the objects inside of ``boston_addresses`` will be flushed unconditionally, assigning
-value of the primary key ``user.id`` column onto the foreign-key-holding ``address.user_id`` column
-for each row.  The ``city`` criteria has no effect here, as the flush process only cares about synchronizing primary
-key values into referencing foreign key values.
+The custom criteria we use in a :paramref:`~.relationship.primaryjoin`
+is generally only significant when SQLAlchemy is rendering SQL in
+order to load or represent this relationship. That is, it's  used in
+the SQL statement that's emitted in order to perform a per-attribute
+lazy load, or when a join is constructed at query time, such as via
+:meth:`.Query.join`, or via the eager "joined" or "subquery" styles of
+loading.   When in-memory objects are being manipulated, we can place
+any ``Address`` object we'd like into the ``boston_addresses``
+collection, regardless of what the value of the ``.city`` attribute
+is.   The objects will remain present in the collection until the
+attribute is expired and re-loaded from the database where the
+criterion is applied.   When a flush occurs, the objects inside of
+``boston_addresses`` will be flushed unconditionally, assigning value
+of the primary key ``user.id`` column onto the foreign-key-holding
+``address.user_id`` column for each row.  The ``city`` criteria has no
+effect here, as the flush process only cares about synchronizing
+primary key values into referencing foreign key values.
 
 .. _relationship_custom_foreign:
 
@@ -1014,8 +1038,8 @@ of :class:`.Column` objects will specify :class:`.ForeignKey`, or otherwise
 be part of a :class:`.ForeignKeyConstraint` that's relevant to the join condition.
 :func:`.relationship` looks to this foreign key status as it decides
 how it should load and persist data for this relationship.   However, the
-``primaryjoin`` argument can be used to create a join condition that
-doesn't involve any "schema" level foreign keys.  We can combine ``primaryjoin``
+:paramref:`~.relationship.primaryjoin` argument can be used to create a join condition that
+doesn't involve any "schema" level foreign keys.  We can combine :paramref:`~.relationship.primaryjoin`
 along with :paramref:`~.relationship.foreign_keys` and :paramref:`~.relationship.remote_side` explicitly in order to
 establish such a join.
 
@@ -1053,10 +1077,10 @@ The above relationship will produce a join like::
     ON host_entry_1.ip_address = CAST(host_entry.content AS INET)
 
 An alternative syntax to the above is to use the :func:`.foreign` and
-:func:`.remote` :term:`annotations`, inline within the ``primaryjoin`` expression.
+:func:`.remote` :term:`annotations`, inline within the :paramref:`~.relationship.primaryjoin` expression.
 This syntax represents the annotations that :func:`.relationship` normally
-applies by itself to the join condition given the ``foreign_keys`` and
-``remote_side`` arguments; the functions are provided in the API in the
+applies by itself to the join condition given the :paramref:`~.relationship.foreign_keys` and
+:paramref:`~.relationship.remote_side` arguments; the functions are provided in the API in the
 rare case that :func:`.relationship` can't determine the exact location
 of these features on its own::
 
@@ -1136,10 +1160,10 @@ Will render as::
 Self-Referential Many-to-Many Relationship
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Many to many relationships can be customized by one or both of ``primaryjoin``
-and ``secondaryjoin`` - the latter is significant for a relationship that
-specifies a many-to-many reference using the ``secondary`` argument.
-A common situation which involves the usage of ``primaryjoin`` and ``secondaryjoin``
+Many to many relationships can be customized by one or both of :paramref:`~.relationship.primaryjoin`
+and :paramref:`~.relationship.secondaryjoin` - the latter is significant for a relationship that
+specifies a many-to-many reference using the :paramref:`~.relationship.secondary` argument.
+A common situation which involves the usage of :paramref:`~.relationship.primaryjoin` and :paramref:`~.relationship.secondaryjoin`
 is when establishing a many-to-many relationship from a class to itself, as shown below::
 
     from sqlalchemy import Integer, ForeignKey, String, Column, Table
@@ -1165,11 +1189,11 @@ is when establishing a many-to-many relationship from a class to itself, as show
         )
 
 Where above, SQLAlchemy can't know automatically which columns should connect
-to which for the ``right_nodes`` and ``left_nodes`` relationships.   The ``primaryjoin``
-and ``secondaryjoin`` arguments establish how we'd like to join to the association table.
+to which for the ``right_nodes`` and ``left_nodes`` relationships.   The :paramref:`~.relationship.primaryjoin`
+and :paramref:`~.relationship.secondaryjoin` arguments establish how we'd like to join to the association table.
 In the Declarative form above, as we are declaring these conditions within the Python
 block that corresponds to the ``Node`` class, the ``id`` variable is available directly
-as the ``Column`` object we wish to join with.
+as the :class:`.Column` object we wish to join with.
 
 A classical mapping situation here is similar, where ``node_to_node`` can be joined
 to ``node.c.id``::
@@ -1200,9 +1224,12 @@ to ``node.c.id``::
                         )})
 
 
-Note that in both examples, the ``backref`` keyword specifies a ``left_nodes``
-backref - when :func:`.relationship` creates the second relationship in the reverse
-direction, it's smart enough to reverse the ``primaryjoin`` and ``secondaryjoin`` arguments.
+Note that in both examples, the :paramref:`~.relationship.backref`
+keyword specifies a ``left_nodes`` backref - when
+:func:`.relationship` creates the second relationship in the reverse
+direction, it's smart enough to reverse the
+:paramref:`~.relationship.primaryjoin` and
+:paramref:`~.relationship.secondaryjoin` arguments.
 
 .. _composite_secondary_join:
 
@@ -1290,20 +1317,23 @@ Relationship to Non Primary Mapper
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In the previous section, we illustrated a technique where we used
-:paramref:`~.relationship.secondary` in order to place additional tables
-within a join condition.   There is one complex join case where even this technique is not
-sufficient; when we seek to join from ``A`` to ``B``, making use of any
-number of ``C``, ``D``, etc. in between, however there are also join conditions
-between ``A`` and ``B`` *directly*.  In this case, the join from ``A`` to ``B``
-may be difficult to express with just a complex ``primaryjoin`` condition, as the
-intermediary tables may need special handling, and it is also not expressable
-with a ``secondary`` object, since the ``A->secondary->B`` pattern does not support
-any references between ``A`` and ``B`` directly.  When this **extremely advanced**
-case arises, we can resort to creating a second mapping as a target for
-the relationship.  This is where we use :func:`.mapper` in order to make a mapping to
-a class that includes all the additional tables we need for this join.
-In order to produce this mapper as an "alternative" mapping for our class,
-we use the :paramref:`~.mapper.non_primary` flag.
+:paramref:`~.relationship.secondary` in order to place additional
+tables within a join condition.   There is one complex join case where
+even this technique is not sufficient; when we seek to join from ``A``
+to ``B``, making use of any number of ``C``, ``D``, etc. in between,
+however there are also join conditions between ``A`` and ``B``
+*directly*.  In this case, the join from ``A`` to ``B`` may be
+difficult to express with just a complex
+:paramref:`~.relationship.primaryjoin` condition, as the intermediary
+tables may need special handling, and it is also not expressable with
+a :paramref:`~.relationship.secondary` object, since the
+``A->secondary->B`` pattern does not support any references between
+``A`` and ``B`` directly.  When this **extremely advanced** case
+arises, we can resort to creating a second mapping as a target for the
+relationship.  This is where we use :func:`.mapper` in order to make a
+mapping to a class that includes all the additional tables we need for
+this join. In order to produce this mapper as an "alternative" mapping
+for our class, we use the :paramref:`~.mapper.non_primary` flag.
 
 Below illustrates a :func:`.relationship` with a simple join from ``A`` to
 ``B``, however the primaryjoin condition is augmented with two additional
@@ -1364,11 +1394,11 @@ Building Query-Enabled Properties
 
 Very ambitious custom join conditions may fail to be directly persistable, and
 in some cases may not even load correctly. To remove the persistence part of
-the equation, use the flag ``viewonly=True`` on the
+the equation, use the flag :paramref:`~.relationship.viewonly` on the
 :func:`~sqlalchemy.orm.relationship`, which establishes it as a read-only
 attribute (data written to the collection will be ignored on flush()).
 However, in extreme cases, consider using a regular Python property in
-conjunction with :class:`~sqlalchemy.orm.query.Query` as follows:
+conjunction with :class:`.Query` as follows:
 
 .. sourcecode:: python+sql
 
@@ -1429,7 +1459,7 @@ identifiers were populated manually (again essentially bypassing
 :func:`~sqlalchemy.orm.relationship`).
 
 To enable the usage of a supplementary UPDATE statement,
-we use the ``post_update`` option
+we use the :paramref:`~.relationship.post_update` option
 of :func:`.relationship`.  This specifies that the linkage between the
 two rows should be created using an UPDATE statement after both rows
 have been INSERTED; it also causes the rows to be de-associated with
@@ -1437,7 +1467,7 @@ each other via UPDATE before a DELETE is emitted.  The flag should
 be placed on just *one* of the relationships, preferably the
 many-to-one side.  Below we illustrate
 a complete example, including two :class:`.ForeignKey` constructs, one which
-specifies ``use_alter=True`` to help with emitting CREATE TABLE statements::
+specifies :paramref:`~.ForeignKey.use_alter` to help with emitting CREATE TABLE statements::
 
     from sqlalchemy import Integer, ForeignKey, Column
     from sqlalchemy.ext.declarative import declarative_base
@@ -1541,12 +1571,10 @@ as illustrated below::
 The above mapping features a composite :class:`.ForeignKeyConstraint`
 bridging the ``widget_id`` and ``favorite_entry_id`` columns.  To ensure
 that ``Widget.widget_id`` remains an "autoincrementing" column we specify
-``autoincrement='ignore_fk'`` on :class:`.Column`, and additionally on each
+:paramref:`~.Column.autoincrement` to the value ``"ignore_fk"``
+on :class:`.Column`, and additionally on each
 :func:`.relationship` we must limit those columns considered as part of
 the foreign key for the purposes of joining and cross-population.
-
-.. versionadded:: 0.7.4
-    ``autoincrement='ignore_fk'`` on :class:`.Column`\ .
 
 .. _passive_updates:
 

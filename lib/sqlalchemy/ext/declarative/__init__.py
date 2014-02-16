@@ -95,6 +95,9 @@ objects::
     mymetadata = MetaData()
     Base = declarative_base(metadata=mymetadata)
 
+
+.. _declarative_configuring_relationships:
+
 Configuring Relationships
 =========================
 
@@ -191,6 +194,7 @@ are available::
 
 
 
+.. _declarative_many_to_many:
 
 Configuring Many-to-Many Relationships
 ======================================
@@ -1213,7 +1217,7 @@ assumed to be completed and the 'configure' step has finished::
 .. versionadded:: 0.7.3
 
 ``__declare_first__()``
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 
 Like ``__declare_last__()``, but is called at the beginning of mapper configuration
 via the :meth:`.MapperEvents.before_configured` event::
