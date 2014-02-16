@@ -787,12 +787,6 @@ class RelationshipProperty(StrategizedProperty):
           that doesn't represent the full set of related objects, to prevent
           modifications of the collection from resulting in persistence operations.
 
-          .. seealso::
-
-              :ref:`relationship_custom_operator` - Introduces the most common
-              use case for :paramref:`~.relationship.viewonly`, that
-              of a non-equality comparison in a :paramref:`~.relationship.primaryjoin`
-              condition.
 
         """
 
