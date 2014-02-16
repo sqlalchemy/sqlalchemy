@@ -33,25 +33,46 @@ been idle for eight hours or more.   To circumvent having this issue, use the
 
 .. _mysql_storage_engines:
 
-Storage Engines
----------------
+CREATE TABLE arguments including Storage Engines
+------------------------------------------------
 
-Most MySQL server installations have a default table type of ``MyISAM``, a
-non-transactional table type.  During a transaction, non-transactional storage
-engines do not participate and continue to store table changes in autocommit
-mode.  For fully atomic transactions as well as support for foreign key
-constraints, all participating tables must use a
-transactional engine such as ``InnoDB``, ``Falcon``, ``SolidDB``, `PBXT`, etc.
-
-Storage engines can be elected when creating tables in SQLAlchemy by supplying
-a ``mysql_engine='whatever'`` to the ``Table`` constructor.  Any MySQL table
-creation option can be specified in this syntax::
+MySQL's CREATE TABLE syntax includes a wide array of special options,
+including ``ENGINE``, ``CHARSET``, ``MAX_ROWS``, ``ROW_FORMAT``, ``INSERT_METHOD``, and many more.
+To accommodate the rendering of these arguments, specify the form
+``mysql_argument_name="value"``.  For example, to specify a table with
+``ENGINE`` of ``InnoDB``, ``CHARSET`` of ``utf8``, and ``KEY_BLOCK_SIZE`` of ``1024``::
 
   Table('mytable', metadata,
         Column('data', String(32)),
         mysql_engine='InnoDB',
-        mysql_charset='utf8'
+        mysql_charset='utf8',
+        mysql_key_block_size="1024"
        )
+
+The MySQL dialect will normally transfer any keyword specified as ``mysql_keyword_name``
+to be rendered as ``KEYWORD_NAME`` in the ``CREATE TABLE`` statement.  A handful
+of these names will render with a space instead of an underscore; to support this,
+the MySQL dialect has awareness of these particular names, which include
+``DATA DIRECTORY`` (e.g. ``mysql_data_directory``), ``CHARACTER SET`` (e.g.
+``mysql_character_set``) and ``INDEX DIRECTORY`` (e.g. ``mysql_index_directory``).
+
+The most common argument is ``mysql_engine``, which refers to the storage engine
+for the table.  Historically, MySQL server installations would default
+to ``MyISAM`` for this value, although newer versions may be defaulting
+to ``InnoDB``.  The ``InnoDB`` engine is typically preferred for its support
+of transactions and foreign keys.
+
+A :class:`.Table` that is created in a MySQL database with a storage engine
+of ``MyISAM`` will be essentially non-transactional, meaning any INSERT/UPDATE/DELETE
+statement referring to this table will be invoked as autocommit.   It also will have no
+support for foreign key constraints; while the ``CREATE TABLE`` statement
+accepts foreign key options, when using the ``MyISAM`` storage engine these
+arguments are discarded.  Reflecting such a table will also produce no
+foreign key constraint information.
+
+For fully atomic transactions as well as support for foreign key
+constraints, all participating ``CREATE TABLE`` statements must specify a
+transactional engine, which in the vast majority of cases is ``InnoDB``.
 
 .. seealso::
 
@@ -92,21 +113,11 @@ every new connection. Valid values for this parameter are
 
 .. versionadded:: 0.7.6
 
-Keys
-----
-
-Not all MySQL storage engines support foreign keys.  For ``MyISAM`` and
-similar engines, the information loaded by table reflection will not include
-foreign keys.  For these tables, you may supply a
-:class:`~sqlalchemy.ForeignKeyConstraint` at reflection time::
-
-  Table('mytable', metadata,
-        ForeignKeyConstraint(['other_id'], ['othertable.other_id']),
-        autoload=True
-       )
+AUTO_INCREMENT Behavior
+-----------------------
 
 When creating tables, SQLAlchemy will automatically set ``AUTO_INCREMENT`` on
-an integer primary key column::
+the first :class:`.Integer` primary key column which is not marked as a foreign key::
 
   >>> t = Table('mytable', metadata,
   ...   Column('mytable_id', Integer, primary_key=True)
@@ -117,8 +128,8 @@ an integer primary key column::
           PRIMARY KEY (id)
   )
 
-You can disable this behavior by supplying ``autoincrement=False`` to the
-:class:`~sqlalchemy.Column`.  This flag can also be used to enable
+You can disable this behavior by passing ``False`` to the :paramref:`~.Column.autoincrement`
+argument of :class:`.Column`.  This flag can also be used to enable
 auto-increment on a secondary column in a multi-column key for some storage
 engines::
 
@@ -267,8 +278,13 @@ http://dev.mysql.com/doc/refman/5.0/en/create-table.html
 
 .. _mysql_foreign_keys:
 
-MySQL Foreign Key Options
--------------------------
+MySQL Foreign Keys
+------------------
+
+MySQL's behavior regarding foreign keys has some important caveats.
+
+Foreign Key Arguments to Avoid
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 MySQL does not support the foreign key arguments "DEFERRABLE", "INITIALLY",
 or "MATCH".  Using the ``deferrable`` or ``initially`` keyword argument with
@@ -299,6 +315,23 @@ rules can be used to correct a MySQL ForeignKeyConstraint at DDL definition time
 .. versionadded:: 0.9.0 - the MySQL backend will raise a :class:`.CompileError`
    when the ``match`` keyword is used with :class:`.ForeignKeyConstraint`
    or :class:`.ForeignKey`.
+
+Reflection of Foreign Key Constraints
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Not all MySQL storage engines support foreign keys.  When using the
+very common ``MyISAM`` MySQL storage engine, the information loaded by table
+reflection will not include foreign keys.  For these tables, you may supply a
+:class:`~sqlalchemy.ForeignKeyConstraint` at reflection time::
+
+  Table('mytable', metadata,
+        ForeignKeyConstraint(['other_id'], ['othertable.other_id']),
+        autoload=True
+       )
+
+.. seealso::
+
+    :ref:`mysql_storage_engines`
 
 """
 
