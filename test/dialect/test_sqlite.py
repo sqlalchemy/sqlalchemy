@@ -2,7 +2,6 @@
 
 """SQLite-specific tests."""
 import os
-from collections import Counter
 import datetime
 
 from sqlalchemy.testing import eq_, assert_raises, \
