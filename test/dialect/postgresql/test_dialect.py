@@ -205,6 +205,7 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                     : Numeric})
         assert_raises(exc.InvalidRequestError, testing.db.execute, stmt)
 
+    @testing.only_if("postgresql >= 8.2", "requires standard_conforming_strings")
     def test_serial_integer(self):
 
         for version, type_, expected in [

@@ -102,7 +102,7 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
 
 class EnumTest(fixtures.TestBase, AssertsExecutionResults):
 
-    __only_on__ = 'postgresql'
+    __only_on__ = 'postgresql > 8.3'
 
 
     @testing.fails_on('postgresql+zxjdbc',
@@ -908,7 +908,7 @@ class SpecialTypesTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
 class UUIDTest(fixtures.TestBase):
     """Test the bind/return values of the UUID type."""
 
-    __only_on__ = 'postgresql'
+    __only_on__ = 'postgresql >= 8.3'
 
     @testing.fails_on('postgresql+zxjdbc',
                       'column "data" is of type uuid but expression is of type character varying')

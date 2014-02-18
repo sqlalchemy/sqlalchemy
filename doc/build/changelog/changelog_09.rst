@@ -15,6 +15,20 @@
     :version: 0.9.3
 
     .. change::
+        :tags: postgresql, bug
+
+        Support has been improved for Postgresql reflection behavior on very old
+        (pre 8.1) versions of Postgresql, and potentially other PG engines
+        such as Redshift (assuming Redshift reports the version as < 8.1).
+        The query for "indexes" as well as "primary keys" relies upon inspecting
+        a so-called "int2vector" datatype, which refuses to coerce to an array
+        prior to 8.1 causing failures regarding the "ANY()" operator used
+        in the query.  Extensive googling has located the very hacky, but
+        recommended-by-PG-core-developer query to use when PG version < 8.1
+        is in use, so index and primary key constraint reflection now work
+        on these versions.
+
+    .. change::
         :tags: sqlite, bug
 
         The SQLite dialect will now skip unsupported arguments when reflecting
@@ -58,8 +72,8 @@
 
         Added server version detection to the newly added dialect startup
         query for  "show standard_conforming_strings"; as this variable was
-        added as of PG 8.2, we skip the query for PG versions older than
-        that as well as for backends like Redshift.
+        added as of PG 8.2, we skip the query for PG versions who report a
+        version string earlier than that.
 
     .. change::
         :tags: bug, orm, declarative
