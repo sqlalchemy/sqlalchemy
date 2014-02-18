@@ -56,14 +56,39 @@ on the URL, or as keyword arguments to :func:`.create_engine()` are:
 Unicode
 -------
 
-cx_oracle 5 fully supports Python unicode objects.   SQLAlchemy will pass
-all unicode strings directly to cx_oracle, and additionally uses an output
-handler so that all string based result values are returned as unicode as well.
-Generally, the ``NLS_LANG`` environment variable determines the nature
-of the encoding to be used.
+The cx_Oracle DBAPI as of version 5 fully supports unicode, and has the ability
+to return string results as Python unicode objects natively.
 
-Note that this behavior is disabled when Oracle 8 is detected, as it has been
-observed that issues remain when passing Python unicodes to cx_oracle with Oracle 8.
+When used in Python 3, cx_Oracle returns all strings as Python unicode objects
+(that is, plain ``str`` in Python 3).  In Python 2, it will return as Python
+unicode those column values that are of type ``NVARCHAR`` or ``NCLOB``.  For
+column values that are of type ``VARCHAR`` or other non-unicode string types,
+it will return values as Python strings (e.g. bytestrings).
+
+While the cx_Oracle DBAPI has the ability to return all string types as
+unicode by using outputtypehandlers, SQLAlchemy has observed that usage
+of a unicode-converting outputtypehandler in Python 2 (not Python 3) incurs
+significant performance overhead for all statements that deliver string
+results, whether or not values contain non-ASCII characters.  For this reason,
+SQLAlchemy as of 0.9.2 does not use cx_Oracle's outputtypehandlers for unicode conversion.
+
+Keeping in mind that any NVARCHAR or NCLOB type is returned as Python unicode
+unconditionally, in order for VARCHAR values to be returned as Python unicode
+objects in Python 2, SQLAlchemy's own unicode facilities should be used.
+This means ensuring that the :class:`.Unicode` or :class:`.String` type with
+:paramref:`.String.convert_unicode` should be linked to any result columns
+where non-default unicode coersion is desired.   For Core and ORM
+select constructs, if those constructs are linked to :class:`.Column` objects
+of the appropriate type, this conversion will be automatic.  For a textual
+SQL statement, use :func:`.text`::
+
+    from sqlalchemy import text, Unicode
+    result = conn.execute(text("select username from user").columns(username=Unicode))
+
+.. versionchanged:: 0.9.2 cx_Oracle's outputtypehandlers are no longer used for
+   unicode results of non-unicode datatypes in Python 2, after they were identified as a major
+   performance bottleneck.  SQLAlchemy's own unicode facilities are used
+   instead.
 
 .. _cx_oracle_returning:
 

@@ -59,20 +59,6 @@ against data dictionary data received from Oracle, so unless identifier names ha
 truly created as case sensitive (i.e. using quoted names), all lowercase names should be
 used on the SQLAlchemy side.
 
-Unicode
--------
-
-.. versionchanged:: 0.6
-    SQLAlchemy uses the "native unicode" mode provided as of cx_oracle 5.
-    cx_oracle 5.0.2 or greater is recommended for support of NCLOB.
-    If not using cx_oracle 5, the NLS_LANG environment variable needs
-    to be set in order for the oracle client library to use proper encoding,
-    such as "AMERICAN_AMERICA.UTF8".
-
-Also note that Oracle supports unicode data through the NVARCHAR and NCLOB data types.
-When using the SQLAlchemy Unicode and UnicodeText types, these DDL types will be used
-within CREATE TABLE statements.   Usage of VARCHAR2 and CLOB with unicode text still
-requires NLS_LANG to be set.
 
 LIMIT/OFFSET Support
 --------------------
