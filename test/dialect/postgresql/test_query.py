@@ -70,6 +70,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         metadata.create_all()
         self._assert_data_with_sequence(table, 'my_seq')
 
+    @testing.requires.returning
     def test_sequence_returning_insert(self):
         table = Table('testtable', metadata, Column('id', Integer,
                       Sequence('my_seq'), primary_key=True),
@@ -84,6 +85,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         metadata.create_all()
         self._assert_data_autoincrement(table)
 
+    @testing.requires.returning
     def test_opt_sequence_returning_insert(self):
         table = Table('testtable', metadata, Column('id', Integer,
                       Sequence('my_seq', optional=True),
@@ -97,6 +99,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         metadata.create_all()
         self._assert_data_autoincrement(table)
 
+    @testing.requires.returning
     def test_autoincrement_returning_insert(self):
         table = Table('testtable', metadata, Column('id', Integer,
                       primary_key=True), Column('data', String(30)))
@@ -592,8 +595,7 @@ class ServerSideCursorsTest(fixtures.TestBase, AssertsExecutionResults):
 
 class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
 
-    __only_on__ = 'postgresql'
-    __excluded_on__ = ('postgresql', '<', (8, 3, 0)),
+    __only_on__ = 'postgresql >= 8.3'
 
     @classmethod
     def setup_class(cls):

@@ -11,6 +11,21 @@
 .. changelog::
     :version: 0.8.5
 
+    .. change::
+        :tags: postgresql, bug
+        :versions: 0.9.3
+
+        Support has been improved for Postgresql reflection behavior on very old
+        (pre 8.1) versions of Postgresql, and potentially other PG engines
+        such as Redshift (assuming Redshift reports the version as < 8.1).
+        The query for "indexes" as well as "primary keys" relies upon inspecting
+        a so-called "int2vector" datatype, which refuses to coerce to an array
+        prior to 8.1 causing failures regarding the "ANY()" operator used
+        in the query.  Extensive googling has located the very hacky, but
+        recommended-by-PG-core-developer query to use when PG version < 8.1
+        is in use, so index and primary key constraint reflection now work
+        on these versions.
+
      .. change::
         :tags: feature, mysql
         :versions: 0.9.3

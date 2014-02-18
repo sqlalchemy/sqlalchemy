@@ -99,7 +99,7 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
 
 class EnumTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
-    __only_on__ = 'postgresql'
+    __only_on__ = 'postgresql > 8.3'
     __dialect__ = postgresql.dialect()
 
     def test_compile(self):
@@ -917,7 +917,7 @@ class SpecialTypesTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
 class UUIDTest(fixtures.TestBase):
     """Test the bind/return values of the UUID type."""
 
-    __only_on__ = 'postgresql'
+    __only_on__ = 'postgresql >= 8.3'
 
     @testing.requires.python25
     @testing.fails_on('postgresql+zxjdbc',

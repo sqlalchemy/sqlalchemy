@@ -19,7 +19,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
 
     """Test PostgreSQL domains"""
 
-    __only_on__ = 'postgresql'
+    __only_on__ = 'postgresql > 8.2'
 
     @classmethod
     def setup_class(cls):
@@ -127,8 +127,8 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
 class ReflectionTest(fixtures.TestBase):
     __only_on__ = 'postgresql'
 
-    @testing.fails_if(('postgresql', '<', (8, 4)),
-            "newer query is bypassed due to unsupported SQL functions")
+    @testing.fails_if("postgresql < 8.4",
+                    "Better int2vector functions not available")
     @testing.provide_metadata
     def test_reflected_primary_key_order(self):
         meta1 = self.metadata
@@ -169,6 +169,8 @@ class ReflectionTest(fixtures.TestBase):
         eq_(
             t.c.x.server_default.arg.text, "'%s'::character varying" % ("abcd" * 40)
         )
+
+    @testing.fails_if("postgresql < 8.1", "schema name leaks in, not sure")
     @testing.provide_metadata
     def test_renamed_sequence_reflection(self):
         metadata = self.metadata
