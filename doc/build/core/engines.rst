@@ -112,7 +112,7 @@ python-sybase_                                                   ``sybase+pysyba
 .. _pg8000: http://pybrary.net/pg8000/
 .. _pypostgresql: http://python.projects.postgresql.org/
 .. _mysql-python: http://sourceforge.net/projects/mysql-python
-.. _MySQL Connector/Python: https://launchpad.net/myconnpy
+.. _MySQL Connector/Python: http://dev.mysql.com/downloads/connector/python/
 .. _OurSQL: http://packages.python.org/oursql/
 .. _pymysql: http://code.google.com/p/pymysql/
 .. _rdbms: https://developers.google.com/cloud-sql/docs/developers_guide_python
