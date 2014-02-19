@@ -394,12 +394,13 @@ class _CompoundListener(object):
         """Execute this event, but only if it has not been
         executed already for this collection."""
 
-        with self._exec_once_mutex:
-            if not self._exec_once:
-                try:
-                    self(*args, **kw)
-                finally:
-                    self._exec_once = True
+        if not self._exec_once:
+            with self._exec_once_mutex:
+                if not self._exec_once:
+                    try:
+                        self(*args, **kw)
+                    finally:
+                        self._exec_once = True
 
 
     # I'm not entirely thrilled about the overhead here,
