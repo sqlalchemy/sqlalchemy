@@ -9,7 +9,7 @@
     :name: MySQL Connector/Python
     :dbapi: myconnpy
     :connectstring: mysql+mysqlconnector://<user>:<password>@<host>[:<port>]/<dbname>
-    :url: https://launchpad.net/myconnpy
+    :url: http://dev.mysql.com/downloads/connector/python/
 
 
 """
