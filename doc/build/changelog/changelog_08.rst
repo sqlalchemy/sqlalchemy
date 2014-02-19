@@ -12,6 +12,17 @@
     :version: 0.8.5
 
      .. change::
+        :tags: bug, mysql
+        :versions: 0.9.3
+        :tickets: 2966
+        :pullreq: bitbucket:12
+
+        Added support for the ``PARTITION BY`` and ``PARTITIONS``
+        MySQL table keywords, specified as ``mysql_partition_by='value'`` and
+        ``mysql_partitions='value'`` to :class:`.Table`.  Pull request
+        courtesy Marcus McCurdy.
+
+     .. change::
         :tags: bug, sql
         :versions: 0.9.3
         :tickets: 2944
