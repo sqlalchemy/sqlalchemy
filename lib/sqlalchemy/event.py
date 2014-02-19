@@ -5,8 +5,10 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """Base event API."""
+from __future__ import with_statement
 
 from . import util, exc
+from .util import threading
 from itertools import chain
 import weakref
 
@@ -384,13 +386,21 @@ class _EmptyListener(object):
 class _CompoundListener(object):
     _exec_once = False
 
+    @util.memoized_property
+    def _exec_once_mutex(self):
+        return threading.Lock()
+
     def exec_once(self, *args, **kw):
         """Execute this event, but only if it has not been
         executed already for this collection."""
 
-        if not self._exec_once:
-            self(*args, **kw)
-            self._exec_once = True
+        with self._exec_once_mutex:
+            if not self._exec_once:
+                try:
+                    self(*args, **kw)
+                finally:
+                    self._exec_once = True
+
 
     # I'm not entirely thrilled about the overhead here,
     # but this allows class-level listeners to be added
