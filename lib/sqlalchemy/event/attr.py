@@ -28,13 +28,15 @@ as well as support for subclass propagation (e.g. events assigned to
 
 """
 
-from __future__ import absolute_import
+from __future__ import absolute_import, with_statement
 
 from .. import util
+from ..util import threading
 from . import registry
 from . import legacy
 from itertools import chain
 import weakref
+
 
 class RefCollection(object):
     @util.memoized_property
@@ -230,13 +232,20 @@ class _EmptyListener(_HasParentDispatchDescriptor):
 class _CompoundListener(_HasParentDispatchDescriptor):
     _exec_once = False
 
+    @util.memoized_property
+    def _exec_once_mutex(self):
+        return threading.Lock()
+
     def exec_once(self, *args, **kw):
         """Execute this event, but only if it has not been
         executed already for this collection."""
 
-        if not self._exec_once:
-            self(*args, **kw)
-            self._exec_once = True
+        with self._exec_once_mutex:
+            if not self._exec_once:
+                try:
+                    self(*args, **kw)
+                finally:
+                    self._exec_once = True
 
     def __call__(self, *args, **kw):
         """Execute this event."""

@@ -525,6 +525,44 @@ class PoolEventsTest(PoolTestBase):
         # going
         pool.Pool.dispatch._clear()
 
+class PoolFirstConnectSyncTest(PoolTestBase):
+    # test [ticket:2964]
+
+    def test_sync(self):
+        pool = self._queuepool_fixture(pool_size=3, max_overflow=0)
+
+        evt = Mock()
+
+        @event.listens_for(pool, 'first_connect')
+        def slow_first_connect(dbapi_con, rec):
+            time.sleep(1)
+            evt.first_connect()
+
+        @event.listens_for(pool, 'connect')
+        def on_connect(dbapi_con, rec):
+            evt.connect()
+
+        def checkout():
+            for j in range(2):
+                c1 = pool.connect()
+                time.sleep(.02)
+                c1.close()
+                time.sleep(.02)
+
+        threads = []
+        for i in range(5):
+            th = threading.Thread(target=checkout)
+            th.start()
+            threads.append(th)
+        for th in threads:
+            th.join(join_timeout)
+
+        eq_(evt.mock_calls,
+                [call.first_connect(), call.connect(), call.connect(), call.connect()]
+            )
+
+
+
 class DeprecatedPoolListenerTest(PoolTestBase):
     @testing.requires.predictable_gc
     @testing.uses_deprecated(r".*Use event.listen")

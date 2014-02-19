@@ -11,6 +11,16 @@
 .. changelog::
     :version: 0.8.5
 
+     .. change::
+        :tags: bug, engine, pool
+        :versions: 0.9.3
+        :tickets: 2880, 2964
+
+        Fixed a critical regression caused by :ticket:`2880` where the newly
+        concurrent ability to return connections from the pool means that the
+        "first_connect" event is now no longer synchronized either, thus leading
+        to dialect mis-configurations under even minimal concurrency situations.
+
     .. change::
         :tags: bug, postgresql
         :tickets: 2291
