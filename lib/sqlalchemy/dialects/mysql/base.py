@@ -1681,7 +1681,8 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
         for opt in topological.sort([
             ('DEFAULT_CHARSET', 'COLLATE'),
-            ('DEFAULT_CHARACTER_SET', 'COLLATE')
+            ('DEFAULT_CHARACTER_SET', 'COLLATE'),
+            ('PARTITION_BY', 'PARTITIONS'),  # only for test consistency
         ], opts):
             arg = opts[opt]
             if opt in _options_of_type_string:
