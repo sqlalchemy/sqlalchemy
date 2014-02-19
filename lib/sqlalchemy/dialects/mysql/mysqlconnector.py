@@ -8,7 +8,8 @@
 
 MySQL Connector/Python is available at:
 
-    https://launchpad.net/myconnpy
+    http://dev.mysql.com/downloads/connector/python/
+
 
 Connecting
 -----------

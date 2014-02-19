@@ -108,7 +108,7 @@ python-sybase_             ``sybase+pysybase``          yes [1]_     development
 .. _pg8000: http://pybrary.net/pg8000/
 .. _pypostgresql: http://python.projects.postgresql.org/
 .. _mysql-python: http://sourceforge.net/projects/mysql-python
-.. _MySQL Connector/Python: https://launchpad.net/myconnpy
+.. _MySQL Connector/Python: http://dev.mysql.com/downloads/connector/python/
 .. _OurSQL: http://packages.python.org/oursql/
 .. _PostgreSQL JDBC Driver: http://jdbc.postgresql.org/
 .. _sqlite3: http://docs.python.org/library/sqlite3.html
