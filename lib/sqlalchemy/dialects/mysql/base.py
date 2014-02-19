@@ -340,7 +340,6 @@ reflection will not include foreign keys.  For these tables, you may supply a
 """
 
 import datetime
-import inspect
 import re
 import sys
 
@@ -353,7 +352,7 @@ from ...engine import reflection
 from ...engine import default
 from ... import types as sqltypes
 from ...util import topological
-from ...types import DATE, DATETIME, BOOLEAN, TIME, \
+from ...types import DATE, BOOLEAN, \
                                 BLOB, BINARY, VARBINARY
 
 RESERVED_WORDS = set(
@@ -740,15 +739,7 @@ class BIT(sqltypes.TypeEngine):
 
 
 class TIME(sqltypes.TIME):
-    """MySQL TIME type.
-
-    Recent versions of MySQL add support for
-    fractional seconds precision.   While the
-    :class:`.mysql.TIME` type now supports this,
-    note that many DBAPI drivers may not yet
-    include support.
-
-    """
+    """MySQL TIME type. """
 
     __visit_name__ = 'TIME'
 
@@ -759,9 +750,13 @@ class TIME(sqltypes.TIME):
         :param fsp: fractional seconds precision value.
          MySQL 5.6 supports storage of fractional seconds;
          this parameter will be used when emitting DDL
-         for the TIME type.  Note that many DBAPI drivers
-         may not yet have support for fractional seconds,
-         however.
+         for the TIME type.
+
+         .. note::
+
+            DBAPI driver support for fractional seconds may
+            be limited; current support includes
+            MySQL Connector/Python.
 
         .. versionadded:: 0.8 The MySQL-specific TIME
            type as well as fractional seconds support.
@@ -789,8 +784,63 @@ class TIME(sqltypes.TIME):
 
 
 class TIMESTAMP(sqltypes.TIMESTAMP):
-    """MySQL TIMESTAMP type."""
+    """MySQL TIMESTAMP type.
+
+    """
+
     __visit_name__ = 'TIMESTAMP'
+
+    def __init__(self, timezone=False, fsp=None):
+        """Construct a MySQL TIMESTAMP type.
+
+        :param timezone: not used by the MySQL dialect.
+        :param fsp: fractional seconds precision value.
+         MySQL 5.6.4 supports storage of fractional seconds;
+         this parameter will be used when emitting DDL
+         for the TIMESTAMP type.
+
+         .. note::
+
+            DBAPI driver support for fractional seconds may
+            be limited; current support includes
+            MySQL Connector/Python.
+
+        .. versionadded:: 0.8.5 Added MySQL-specific :class:`.mysql.TIMESTAMP`
+           with fractional seconds support.
+
+        """
+        super(TIMESTAMP, self).__init__(timezone=timezone)
+        self.fsp = fsp
+
+
+class DATETIME(sqltypes.DATETIME):
+    """MySQL DATETIME type.
+
+    """
+
+    __visit_name__ = 'DATETIME'
+
+    def __init__(self, timezone=False, fsp=None):
+        """Construct a MySQL DATETIME type.
+
+        :param timezone: not used by the MySQL dialect.
+        :param fsp: fractional seconds precision value.
+         MySQL 5.6.4 supports storage of fractional seconds;
+         this parameter will be used when emitting DDL
+         for the DATETIME type.
+
+         .. note::
+
+            DBAPI driver support for fractional seconds may
+            be limited; current support includes
+            MySQL Connector/Python.
+
+        .. versionadded:: 0.8.5 Added MySQL-specific :class:`.mysql.DATETIME`
+           with fractional seconds support.
+
+        """
+        super(DATETIME, self).__init__(timezone=timezone)
+        self.fsp = fsp
 
 
 class YEAR(sqltypes.TypeEngine):
@@ -1849,7 +1899,10 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
             return "BIT"
 
     def visit_DATETIME(self, type_):
-        return "DATETIME"
+        if getattr(type_, 'fsp', None):
+            return "DATETIME(%d)" % type_.fsp
+        else:
+            return "DATETIME"
 
     def visit_DATE(self, type_):
         return "DATE"
@@ -1861,7 +1914,10 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
             return "TIME"
 
     def visit_TIMESTAMP(self, type_):
-        return 'TIMESTAMP'
+        if getattr(type_, 'fsp', None):
+            return "TIMESTAMP(%d)" % type_.fsp
+        else:
+            return "TIMESTAMP"
 
     def visit_YEAR(self, type_):
         if type_.display_width is None:
