@@ -12,6 +12,17 @@
     :version: 0.8.5
 
      .. change::
+        :tags: feature, mysql
+        :versions: 0.9.3
+        :tickets: 2941
+
+        Added new MySQL-specific :class:`.mysql.DATETIME` which includes
+        fractional seconds support; also added fractional seconds support
+        to :class:`.mysql.TIMESTAMP`.  DBAPI support is limited, though
+        fractional seconds are known to be supported by MySQL Connector/Python.
+        Patch courtesy Geert JM Vanderkelen.
+
+     .. change::
         :tags: bug, mysql
         :versions: 0.9.3
         :tickets: 2966

@@ -408,8 +408,14 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         roundtrip([False, False, 0, 0, 0], [False, False, False,
                   False, 0])
 
-    def test_timestamp(self):
-        """Exercise funky TIMESTAMP default syntax."""
+    def test_timestamp_fsp(self):
+        self.assert_compile(
+                mysql.TIMESTAMP(fsp=5),
+                "TIMESTAMP(5)"
+        )
+
+    def test_timestamp_defaults(self):
+        """Exercise funky TIMESTAMP default syntax when used in columns."""
 
         columns = [
             ([TIMESTAMP],
@@ -473,7 +479,20 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             [(now, now), (None, now)]
         )
 
-    def test_time(self):
+    def test_datetime_generic(self):
+        self.assert_compile(
+                mysql.DATETIME(),
+                "DATETIME"
+        )
+
+    def test_datetime_fsp(self):
+        self.assert_compile(
+                mysql.DATETIME(fsp=4),
+                "DATETIME(4)"
+        )
+
+
+    def test_time_generic(self):
         """"Exercise TIME."""
 
         self.assert_compile(
@@ -481,11 +500,13 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 "TIME"
         )
 
+    def test_time_fsp(self):
         self.assert_compile(
                 mysql.TIME(fsp=5),
                 "TIME(5)"
         )
 
+    def test_time_result_processor(self):
         eq_(
             mysql.TIME().result_processor(None, None)(
                     datetime.timedelta(seconds=35, minutes=517,
