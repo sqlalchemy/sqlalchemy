@@ -12,6 +12,15 @@
     :version: 0.8.5
 
      .. change::
+        :tags: bug, sql
+        :versions: 0.9.3
+        :tickets: 2944
+
+        Fixed bug where calling :meth:`.Insert.values` with an empty list
+        or tuple would raise an IndexError.   It now produces an empty
+        insert construct as would be the case with an empty dictionary.
+
+     .. change::
         :tags: bug, engine, pool
         :versions: 0.9.3
         :tickets: 2880, 2964

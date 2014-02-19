@@ -37,6 +37,7 @@ class UpdateBase(DialectKWArgs, HasPrefixes, Executable, ClauseElement):
                 return p
 
         if isinstance(parameters, (list, tuple)) and \
+                parameters and \
               isinstance(parameters[0], (list, tuple, dict)):
 
             if not self._supports_multi_parameters:
