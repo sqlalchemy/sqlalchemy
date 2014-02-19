@@ -244,6 +244,29 @@ class EmptyTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
                 "settings does not support empty inserts.",
             stmt.compile, dialect=dialect)
 
+    def _test_insert_with_empty_collection_values(self, collection):
+        table1 = self.tables.mytable
+
+        ins = table1.insert().values(collection)
+
+        self.assert_compile(ins,
+            'INSERT INTO mytable () VALUES ()',
+            checkparams={})
+
+        # empty dict populates on next values call
+        self.assert_compile(ins.values(myid=3),
+            'INSERT INTO mytable (myid) VALUES (:myid)',
+            checkparams={'myid': 3})
+
+    def test_insert_with_empty_list_values(self):
+        self._test_insert_with_empty_collection_values([])
+
+    def test_insert_with_empty_dict_values(self):
+        self._test_insert_with_empty_collection_values({})
+
+    def test_insert_with_empty_tuple_values(self):
+        self._test_insert_with_empty_collection_values(())
+
 
 class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     __dialect__ = 'default'
