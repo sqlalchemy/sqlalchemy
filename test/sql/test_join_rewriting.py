@@ -1,9 +1,8 @@
-from sqlalchemy import Table, Column, Integer, MetaData, ForeignKey, select
+from sqlalchemy import Table, Column, Integer, MetaData, ForeignKey, select, exists
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, eq_
 from sqlalchemy import util
 from sqlalchemy.engine import default
 from sqlalchemy import testing
-
 
 
 m = MetaData()
@@ -15,6 +14,11 @@ a = Table('a', m,
 b = Table('b', m,
         Column('id', Integer, primary_key=True),
         Column('a_id', Integer, ForeignKey('a.id'))
+    )
+
+a_to_b = Table('a_to_b', m,
+        Column('a_id', Integer, ForeignKey('a.id')),
+        Column('b_id', Integer, ForeignKey('b.id')),
     )
 
 c = Table('c', m,
@@ -137,6 +141,26 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
             self._a_bc_comma_a1_selbc
         )
 
+    def test_a_atobalias_balias_c_w_exists(self):
+        a_to_b_alias = a_to_b.alias()
+        b_alias = b.alias()
+
+        j1 = a_to_b_alias.join(b_alias)
+        j2 = a.outerjoin(j1, a.c.id == a_to_b_alias.c.a_id)
+
+        # TODO: if we put straight a_to_b_alias here,
+        # it fails to alias the columns clause.
+        s = select([a, a_to_b_alias.c.a_id, a_to_b_alias.c.b_id,
+                    b_alias.c.id, b_alias.c.a_id,
+                    exists().select_from(c).where(c.c.b_id == b_alias.c.id).label(None)
+                ], use_labels=True).select_from(j2)
+
+        self._test(
+            s,
+            self._a_atobalias_balias_c_w_exists
+        )
+
+
 
 class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
     """test rendering of each join with right-nested rewritten as
@@ -221,7 +245,17 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
         "JOIN b_key ON b_key.id = anon_1.bid) AS anon_2 ON a.id = anon_2.anon_1_aid"
     )
 
-
+    _a_atobalias_balias_c_w_exists = (
+        "SELECT a.id AS a_id, "
+        "anon_1.a_to_b_1_a_id AS a_to_b_1_a_id, anon_1.a_to_b_1_b_id AS a_to_b_1_b_id, "
+        "anon_1.b_1_id AS b_1_id, anon_1.b_1_a_id AS b_1_a_id, "
+        "EXISTS (SELECT * FROM c WHERE c.b_id = anon_1.b_1_id) AS anon_2 "
+        "FROM a LEFT OUTER JOIN (SELECT a_to_b_1.a_id AS a_to_b_1_a_id, "
+        "a_to_b_1.b_id AS a_to_b_1_b_id, b_1.id AS b_1_id, b_1.a_id AS b_1_a_id "
+        "FROM a_to_b AS a_to_b_1 "
+        "JOIN b AS b_1 ON b_1.id = a_to_b_1.b_id) AS anon_1 "
+        "ON a.id = anon_1.a_to_b_1_a_id"
+    )
 
 class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
     """test rendering of each join with normal nesting."""
@@ -285,6 +319,15 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
         "SELECT a.id AS a_id, b_key_1.id AS b_key_1_id FROM a "
         "JOIN (b_key AS b_key_1 JOIN a_to_b_key AS a_to_b_key_1 "
         "ON b_key_1.id = a_to_b_key_1.bid) ON a.id = a_to_b_key_1.aid"
+    )
+
+    _a_atobalias_balias_c_w_exists = (
+        "SELECT a.id AS a_id, a_to_b_1.a_id AS a_to_b_1_a_id, "
+        "a_to_b_1.b_id AS a_to_b_1_b_id, b_1.id AS b_1_id, b_1.a_id AS b_1_a_id, "
+        "EXISTS (SELECT * FROM c WHERE c.b_id = b_1.id) AS anon_1 "
+        "FROM a LEFT OUTER JOIN "
+        "(a_to_b AS a_to_b_1 JOIN b AS b_1 ON b_1.id = a_to_b_1.b_id) "
+        "ON a.id = a_to_b_1.a_id"
     )
 
 class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
@@ -355,10 +398,19 @@ class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
         "ON a.id = a_to_b_key_1.aid"
     )
 
+    _a_atobalias_balias_c_w_exists = (
+        "SELECT a.id, a_to_b_1.a_id, a_to_b_1.b_id, b_1.id, b_1.a_id, "
+        "EXISTS (SELECT * FROM c WHERE c.b_id = b_1.id) AS anon_1 "
+        "FROM a LEFT OUTER JOIN "
+        "(a_to_b AS a_to_b_1 JOIN b AS b_1 ON b_1.id = a_to_b_1.b_id) "
+        "ON a.id = a_to_b_1.a_id"
+    )
+
 class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
     """invoke the SQL on the current backend to ensure compatibility"""
 
-    _a_bc = _a_bc_comma_a1_selbc = _a__b_dc = _a_bkeyassoc = _a_bkeyassoc_aliased = None
+    _a_bc = _a_bc_comma_a1_selbc = _a__b_dc = _a_bkeyassoc = \
+        _a_bkeyassoc_aliased = _a_atobalias_balias_c_w_exists = None
 
     @classmethod
     def setup_class(cls):

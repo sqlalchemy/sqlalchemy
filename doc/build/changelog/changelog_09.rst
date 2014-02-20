@@ -15,6 +15,14 @@
     :version: 0.9.3
 
     .. change::
+        :tags: orm, bug, sqlite
+        :tickets: 2967
+
+        Fixed bug in SQLite "join rewriting" where usage of an exists() construct
+        would fail to be rewritten properly, such as when the exists is
+        mapped to a column_property in an intricate nested-join scenario.
+
+    .. change::
         :tags: sqlite, bug
 
         The SQLite dialect will now skip unsupported arguments when reflecting

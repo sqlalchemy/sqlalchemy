@@ -1286,7 +1286,7 @@ class SQLCompiler(Compiled):
         # call down to compiler.visit_join(), compiler.visit_select()
         join_name = selectable.Join.__visit_name__
         select_name = selectable.Select.__visit_name__
-
+        alias_name = selectable.Alias.__visit_name__
         def visit(element, **kw):
             if element in column_translate[-1]:
                 return column_translate[-1][element]
@@ -1307,7 +1307,6 @@ class SQLCompiler(Compiled):
                 selectable_ = selectable.Select(
                                     [right.element],
                                     use_labels=True).alias()
-
                 for c in selectable_.c:
                     c._key_label = c.key
                     c._label = c.name
@@ -1336,7 +1335,8 @@ class SQLCompiler(Compiled):
                 newelem.right = selectable_
 
                 newelem.onclause = visit(newelem.onclause, **kw)
-            elif newelem.__visit_name__ is select_name:
+            elif newelem.__visit_name__ is alias_name \
+                and newelem.element.__visit_name__ is select_name:
                 column_translate.append({})
                 newelem._copy_internals(clone=visit, **kw)
                 del column_translate[-1]
