@@ -14,6 +14,15 @@
     .. change::
         :tags: postgresql, bug
         :versions: 0.9.3
+        :tickets: 2936
+
+        Added an additional message to psycopg2 disconnect detection,
+        "could not send data to server", which complements the existing
+        "could not receive data from server" and has been observed by users.
+
+    .. change::
+        :tags: postgresql, bug
+        :versions: 0.9.3
 
         Support has been improved for Postgresql reflection behavior on very old
         (pre 8.1) versions of Postgresql, and potentially other PG engines
