@@ -164,7 +164,7 @@ lookup is used instead:
 * :class:`~.types.INTEGER` is returned if the type name includes the
   string ``INT``
 * :class:`~.types.TEXT` is returned if the type name includes the
-  :string ``CHAR``, ``CLOB`` or ``TEXT``
+  string ``CHAR``, ``CLOB`` or ``TEXT``
 * :class:`~.types.NullType` is returned if the type name includes the
   string ``BLOB``
 * :class:`~.types.REAL` is returned if the type name includes the string
