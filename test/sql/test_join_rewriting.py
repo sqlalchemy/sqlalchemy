@@ -462,6 +462,9 @@ class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
         for col in selectable.inner_columns:
             assert col in result._metadata._keymap
 
+    @testing.skip_if("oracle", "oracle's cranky")
+    def test_a_atobalias_balias_c_w_exists(self):
+        super(JoinExecTest, self).test_a_atobalias_balias_c_w_exists()
 
 class DialectFlagTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_dialect_flag(self):
