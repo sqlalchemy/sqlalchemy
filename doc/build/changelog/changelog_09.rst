@@ -21,6 +21,9 @@
         Fixed bug in SQLite "join rewriting" where usage of an exists() construct
         would fail to be rewritten properly, such as when the exists is
         mapped to a column_property in an intricate nested-join scenario.
+        Also fixed a somewhat related issue where join rewriting would fail
+        on the columns clause of the SELECT statement if the targets were
+        aliased tables, as opposed to individual aliased columns.
 
     .. change::
         :tags: sqlite, bug

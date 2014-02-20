@@ -1315,8 +1315,13 @@ class SQLCompiler(Compiled):
                     zip(newelem.right.element.c, selectable_.c)
                 )
 
+                # translating from both the old and the new
+                # because different select() structures will lead us
+                # to traverse differently
                 translate_dict[right.element.left] = selectable_
                 translate_dict[right.element.right] = selectable_
+                translate_dict[newelem.right.element.left] = selectable_
+                translate_dict[newelem.right.element.right] = selectable_
 
                 # propagate translations that we've gained
                 # from nested visit(newelem.right) outwards

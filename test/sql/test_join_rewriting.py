@@ -160,6 +160,19 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
             self._a_atobalias_balias_c_w_exists
         )
 
+    def test_a_atobalias_balias(self):
+        a_to_b_alias = a_to_b.alias()
+        b_alias = b.alias()
+
+        j1 = a_to_b_alias.join(b_alias)
+        j2 = a.outerjoin(j1, a.c.id == a_to_b_alias.c.a_id)
+
+        s = select([a, a_to_b_alias, b_alias], use_labels=True).select_from(j2)
+
+        self._test(
+            s,
+            self._a_atobalias_balias
+        )
 
 
 class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
@@ -257,6 +270,15 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
         "ON a.id = anon_1.a_to_b_1_a_id"
     )
 
+    _a_atobalias_balias = (
+        "SELECT a.id AS a_id, anon_1.a_to_b_1_a_id AS a_to_b_1_a_id, "
+        "anon_1.a_to_b_1_b_id AS a_to_b_1_b_id, anon_1.b_1_id AS b_1_id, "
+        "anon_1.b_1_a_id AS b_1_a_id FROM a LEFT OUTER JOIN "
+        "(SELECT a_to_b_1.a_id AS a_to_b_1_a_id, a_to_b_1.b_id AS a_to_b_1_b_id, "
+        "b_1.id AS b_1_id, b_1.a_id AS b_1_a_id FROM a_to_b AS a_to_b_1 "
+        "JOIN b AS b_1 ON b_1.id = a_to_b_1.b_id) AS anon_1 ON a.id = anon_1.a_to_b_1_a_id"
+    )
+
 class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
     """test rendering of each join with normal nesting."""
     @util.classproperty
@@ -328,6 +350,14 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
         "FROM a LEFT OUTER JOIN "
         "(a_to_b AS a_to_b_1 JOIN b AS b_1 ON b_1.id = a_to_b_1.b_id) "
         "ON a.id = a_to_b_1.a_id"
+    )
+
+    _a_atobalias_balias = (
+        "SELECT a.id AS a_id, a_to_b_1.a_id AS a_to_b_1_a_id, "
+        "a_to_b_1.b_id AS a_to_b_1_b_id, b_1.id AS b_1_id, "
+        "b_1.a_id AS b_1_a_id "
+        "FROM a LEFT OUTER JOIN (a_to_b AS a_to_b_1 "
+        "JOIN b AS b_1 ON b_1.id = a_to_b_1.b_id) ON a.id = a_to_b_1.a_id"
     )
 
 class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
@@ -406,11 +436,18 @@ class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
         "ON a.id = a_to_b_1.a_id"
     )
 
+    _a_atobalias_balias = (
+        "SELECT a.id, a_to_b_1.a_id, a_to_b_1.b_id, b_1.id, b_1.a_id "
+        "FROM a LEFT OUTER JOIN (a_to_b AS a_to_b_1 "
+        "JOIN b AS b_1 ON b_1.id = a_to_b_1.b_id) ON a.id = a_to_b_1.a_id"
+    )
+
 class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
     """invoke the SQL on the current backend to ensure compatibility"""
 
     _a_bc = _a_bc_comma_a1_selbc = _a__b_dc = _a_bkeyassoc = \
-        _a_bkeyassoc_aliased = _a_atobalias_balias_c_w_exists = None
+        _a_bkeyassoc_aliased = _a_atobalias_balias_c_w_exists = \
+        _a_atobalias_balias = None
 
     @classmethod
     def setup_class(cls):
