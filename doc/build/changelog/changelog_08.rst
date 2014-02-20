@@ -10,6 +10,7 @@
 
 .. changelog::
     :version: 0.8.5
+    :released: February 19, 2014
 
     .. change::
         :tags: postgresql, bug
