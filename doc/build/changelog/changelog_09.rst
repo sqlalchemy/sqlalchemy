@@ -13,6 +13,7 @@
 
 .. changelog::
     :version: 0.9.3
+    :released: February 19, 2014
 
     .. change::
         :tags: orm, bug, sqlite
