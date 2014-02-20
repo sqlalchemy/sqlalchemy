@@ -1,4 +1,4 @@
-from sqlalchemy import Table, Column, Integer, MetaData, ForeignKey, select, exists
+from sqlalchemy import Table, Column, Integer, MetaData, ForeignKey, select, exists, union
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, eq_
 from sqlalchemy import util
 from sqlalchemy.engine import default
@@ -12,6 +12,16 @@ a = Table('a', m,
     )
 
 b = Table('b', m,
+        Column('id', Integer, primary_key=True),
+        Column('a_id', Integer, ForeignKey('a.id'))
+    )
+
+b1 = Table('b1', m,
+        Column('id', Integer, primary_key=True),
+        Column('a_id', Integer, ForeignKey('a.id'))
+    )
+
+b2 = Table('b2', m,
         Column('id', Integer, primary_key=True),
         Column('a_id', Integer, ForeignKey('a.id'))
     )
@@ -174,6 +184,23 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
             self._a_atobalias_balias
         )
 
+    def test_b_ab1_union_b_ab2(self):
+        j1 = a.join(b1)
+        j2 = a.join(b2)
+
+        b_j1 = b.join(j1)
+        b_j2 = b.join(j2)
+
+        s = union(
+                select([b_j1], use_labels=True),
+                select([b_j2], use_labels=True)
+            ).select(use_labels=True)
+
+        self._test(
+            s,
+            self._b_ab1_union_c_ab2
+        )
+
 
 class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
     """test rendering of each join with right-nested rewritten as
@@ -279,6 +306,20 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
         "JOIN b AS b_1 ON b_1.id = a_to_b_1.b_id) AS anon_1 ON a.id = anon_1.a_to_b_1_a_id"
     )
 
+    _b_ab1_union_c_ab2 = (
+        "SELECT b_id AS b_id, b_a_id AS b_a_id, a_id AS a_id, b1_id AS b1_id, "
+        "b1_a_id AS b1_a_id FROM "
+        "(SELECT b.id AS b_id, b.a_id AS b_a_id, anon_1.a_id AS a_id, "
+            "anon_1.b1_id AS b1_id, anon_1.b1_a_id AS b1_a_id "
+            "FROM b JOIN (SELECT a.id AS a_id, b1.id AS b1_id, b1.a_id AS b1_a_id "
+            "FROM a JOIN b1 ON a.id = b1.a_id) AS anon_1 ON anon_1.a_id = b.a_id "
+        "UNION "
+        "SELECT b.id AS b_id, b.a_id AS b_a_id, anon_2.a_id AS a_id, "
+        "anon_2.b2_id AS b2_id, anon_2.b2_a_id AS b2_a_id "
+        "FROM b JOIN (SELECT a.id AS a_id, b2.id AS b2_id, b2.a_id AS b2_a_id "
+        "FROM a JOIN b2 ON a.id = b2.a_id) AS anon_2 ON anon_2.a_id = b.a_id)"
+    )
+
 class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
     """test rendering of each join with normal nesting."""
     @util.classproperty
@@ -358,6 +399,18 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
         "b_1.a_id AS b_1_a_id "
         "FROM a LEFT OUTER JOIN (a_to_b AS a_to_b_1 "
         "JOIN b AS b_1 ON b_1.id = a_to_b_1.b_id) ON a.id = a_to_b_1.a_id"
+    )
+
+    _b_ab1_union_c_ab2 = (
+        "SELECT b_id AS b_id, b_a_id AS b_a_id, a_id AS a_id, b1_id AS b1_id, "
+        "b1_a_id AS b1_a_id FROM "
+        "(SELECT b.id AS b_id, b.a_id AS b_a_id, a.id AS a_id, b1.id AS b1_id, "
+        "b1.a_id AS b1_a_id FROM b "
+        "JOIN (a JOIN b1 ON a.id = b1.a_id) ON a.id = b.a_id "
+        "UNION "
+        "SELECT b.id AS b_id, b.a_id AS b_a_id, a.id AS a_id, b2.id AS b2_id, "
+        "b2.a_id AS b2_a_id FROM b "
+        "JOIN (a JOIN b2 ON a.id = b2.a_id) ON a.id = b.a_id)"
     )
 
 class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
@@ -442,12 +495,23 @@ class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
         "JOIN b AS b_1 ON b_1.id = a_to_b_1.b_id) ON a.id = a_to_b_1.a_id"
     )
 
+    _b_ab1_union_c_ab2 = (
+        "SELECT b_id, b_a_id, a_id, b1_id, b1_a_id "
+        "FROM (SELECT b.id AS b_id, b.a_id AS b_a_id, a.id AS a_id, "
+        "b1.id AS b1_id, b1.a_id AS b1_a_id "
+        "FROM b JOIN (a JOIN b1 ON a.id = b1.a_id) ON a.id = b.a_id "
+        "UNION "
+        "SELECT b.id AS b_id, b.a_id AS b_a_id, a.id AS a_id, b2.id AS b2_id, "
+        "b2.a_id AS b2_a_id "
+        "FROM b JOIN (a JOIN b2 ON a.id = b2.a_id) ON a.id = b.a_id)"
+    )
+
 class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
     """invoke the SQL on the current backend to ensure compatibility"""
 
     _a_bc = _a_bc_comma_a1_selbc = _a__b_dc = _a_bkeyassoc = \
         _a_bkeyassoc_aliased = _a_atobalias_balias_c_w_exists = \
-        _a_atobalias_balias = None
+        _a_atobalias_balias = _b_ab1_union_c_ab2 = None
 
     @classmethod
     def setup_class(cls):

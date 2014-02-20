@@ -12,6 +12,23 @@
         :start-line: 5
 
 .. changelog::
+    :version: 0.9.4
+
+    .. change::
+        :tags: orm, bug, sqlite
+        :tickets: 2969
+
+        More fixes to SQLite "join rewriting"; the fix from :ticket:`2967`
+        implemented right before the release of 0.9.3 affected the case where
+        a UNION contained nested joins in it.   "Join rewriting" is a feature
+        with a wide range of possibilities and is the first intricate
+        "SQL rewriting" feature we've introduced in years, so we're sort of
+        going through a lot of iterations with it (not unlike eager loading
+        back in the 0.2/0.3 series, polymorphic loading in 0.4/0.5). We should
+        be there soon so thanks for bearing with us :).
+
+
+.. changelog::
     :version: 0.9.3
     :released: February 19, 2014
 

@@ -1280,13 +1280,7 @@ class SQLCompiler(Compiled):
         cloned = {}
         column_translate = [{}]
 
-        # TODO: should we be using isinstance() for this,
-        # as this whole system won't work for custom Join/Select
-        # subclasses where compilation routines
-        # call down to compiler.visit_join(), compiler.visit_select()
-        join_name = selectable.Join.__visit_name__
-        select_name = selectable.Select.__visit_name__
-        alias_name = selectable.Alias.__visit_name__
+
         def visit(element, **kw):
             if element in column_translate[-1]:
                 return column_translate[-1][element]
@@ -1296,7 +1290,7 @@ class SQLCompiler(Compiled):
 
             newelem = cloned[element] = element._clone()
 
-            if newelem.__visit_name__ is join_name and \
+            if newelem.is_selectable and newelem._is_join and \
                 isinstance(newelem.right, selectable.FromGrouping):
 
                 newelem._reset_exported()
@@ -1340,11 +1334,22 @@ class SQLCompiler(Compiled):
                 newelem.right = selectable_
 
                 newelem.onclause = visit(newelem.onclause, **kw)
-            elif newelem.__visit_name__ is alias_name \
-                and newelem.element.__visit_name__ is select_name:
-                column_translate.append({})
+
+            elif newelem.is_selectable and newelem._is_from_container:
+                # if we hit an Alias or CompoundSelect, put a marker in the
+                # stack.
+                kw['transform_clue'] = 'select_container'
                 newelem._copy_internals(clone=visit, **kw)
-                del column_translate[-1]
+            elif newelem.is_selectable and newelem._is_select:
+                barrier_select = kw.get('transform_clue', None) == 'select_container'
+                # if we're still descended from an Alias/CompoundSelect, we're
+                # in a FROM clause, so start with a new translate collection
+                if barrier_select:
+                    column_translate.append({})
+                kw['transform_clue'] = 'inside_select'
+                newelem._copy_internals(clone=visit, **kw)
+                if barrier_select:
+                    del column_translate[-1]
             else:
                 newelem._copy_internals(clone=visit, **kw)
 

@@ -137,6 +137,10 @@ class FromClause(Selectable):
     named_with_column = False
     _hide_froms = []
 
+    _is_join = False
+    _is_select = False
+    _is_from_container = False
+
     _textual = False
     """a marker that allows us to easily distinguish a :class:`.TextAsFrom`
     or similar object from other kinds of :class:`.FromClause` objects."""
@@ -503,6 +507,8 @@ class Join(FromClause):
 
     """
     __visit_name__ = 'join'
+
+    _is_join = True
 
     def __init__(self, left, right, onclause=None, isouter=False):
         """Construct a new :class:`.Join`.
@@ -909,6 +915,8 @@ class Alias(FromClause):
 
     __visit_name__ = 'alias'
     named_with_column = True
+
+    _is_from_container = True
 
     def __init__(self, selectable, name=None):
         baseselectable = selectable
@@ -1716,6 +1724,8 @@ class CompoundSelect(GenerativeSelect):
     INTERSECT = util.symbol('INTERSECT')
     INTERSECT_ALL = util.symbol('INTERSECT ALL')
 
+    _is_from_container = True
+
     def __init__(self, keyword, *selects, **kwargs):
         self._auto_correlate = kwargs.pop('correlate', False)
         self.keyword = keyword
@@ -1982,6 +1992,7 @@ class Select(HasPrefixes, GenerativeSelect):
     _correlate = ()
     _correlate_except = None
     _memoized_property = SelectBase._memoized_property
+    _is_select = True
 
     def __init__(self,
                 columns=None,
