@@ -1005,79 +1005,171 @@ The :meth:`~.Session.close` method issues a
 transactional/connection resources. When connections are returned to the
 connection pool, transactional state is rolled back as well.
 
+.. _session_expire:
+
 Refreshing / Expiring
 ---------------------
 
-The Session normally works in the context of an ongoing transaction (with the
-default setting of autoflush=False). Most databases offer "isolated"
-transactions - this refers to a series of behaviors that allow the work within
-a transaction to remain consistent as time passes, regardless of the
-activities outside of that transaction. A key feature of a high degree of
-transaction isolation is that emitting the same SELECT statement twice will
-return the same results as when it was called the first time, even if the data
-has been modified in another transaction.
+:term:`Expiring` means that the database-persisted data held inside a series
+of object attributes is erased, in such a way that when those attributes
+are next accessed, a SQL query is emitted which will refresh that data from
+the database.
 
-For this reason, the :class:`.Session` gains very efficient behavior by
-loading the attributes of each instance only once.   Subsequent reads of the
-same row in the same transaction are assumed to have the same value.  The
-user application also gains directly from this assumption, that the transaction
-is regarded as a temporary shield against concurrent changes - a good application
-will ensure that isolation levels are set appropriately such that this assumption
-can be made, given the kind of data being worked with.
+When we talk about expiration of data we are usually talking about an object
+that is in the :term:`persistent` state.   For example, if we load an object
+as follows::
 
-To clear out the currently loaded state on an instance, the instance or its individual
-attributes can be marked as "expired", which results in a reload to
-occur upon next access of any of the instance's attrbutes.  The instance
-can also be immediately reloaded from the database.   The :meth:`~.Session.expire`
-and :meth:`~.Session.refresh` methods achieve this::
+    user = session.query(User).filter_by(name='user1').first()
 
-    # immediately re-load attributes on obj1, obj2
-    session.refresh(obj1)
-    session.refresh(obj2)
+The above ``User`` object is persistent, and has a series of attributes
+present; if we were to look inside its ``__dict__``, we'd see that state
+loaded::
 
-    # expire objects obj1, obj2, attributes will be reloaded
+    >>> user.__dict__
+    {
+      'id': 1, 'name': u'user1',
+      '_sa_instance_state': <...>,
+    }
+
+where ``id`` and ``name`` refer to those columns in the database.
+``_sa_instance_state`` is a non-database-persisted value used by SQLAlchemy
+internally (it refers to the :class:`.InstanceState` for the instance.
+While not directly relevant to this section, if we want to get at it,
+we should use the :func:`.inspect` function to access it).
+
+At this point, the state in our ``User`` object matches that of the loaded
+database row.  But upon expiring the object using a method such as
+:meth:`.Session.expire`, we see that the state is removed::
+
+    >>> session.expire(user)
+    >>> user.__dict__
+    {'_sa_instance_state': <...>}
+
+We see that while the internal "state" still hangs around, the values which
+correspond to the ``id`` and ``name`` columns are gone.   If we were to access
+one of these columns and are watching SQL, we'd see this:
+
+.. sourcecode:: python+sql
+
+    >>> print(user.name)
+    {opensql}SELECT user.id AS user_id, user.name AS user_name
+    FROM user
+    WHERE user.id = ?
+    (1,)
+    {stop}user1
+
+Above, upon accessing the expired attribute ``user.name``, the ORM initiated
+a :term:`lazy load` to retrieve the most recent state from the database,
+by emitting a SELECT for the user row to which this user refers.  Afterwards,
+the ``__dict__`` is again populated::
+
+    >>> user.__dict__
+    {
+      'id': 1, 'name': u'user1',
+      '_sa_instance_state': <...>,
+    }
+
+.. note::  While we are peeking inside of ``__dict__`` in order to see a bit
+   of what SQLAlchemy does with object attributes, we **should not modify**
+   the contents of ``__dict__`` directly, at least as far as those attributes
+   which the SQLAlchemy ORM is maintaining (other attributes outside of SQLA's
+   realm are fine).  This is because SQLAlchemy uses :term:`descriptors` in
+   order to track the changes we make to an object, and when we modify ``__dict__``
+   directly, the ORM won't be able to track that we changed something.
+
+
+The :meth:`~.Session.expire` method can be used to mark as "expired" all ORM-mapped
+attributes for an instance::
+
+    # expire object obj1
     # on the next access:
     session.expire(obj1)
-    session.expire(obj2)
 
-When an expired object reloads, all non-deferred column-based attributes are
-loaded in one query. Current behavior for expired relationship-based
-attributes is that they load individually upon access - this behavior may be
-enhanced in a future release. When a refresh is invoked on an object, the
-ultimate operation is equivalent to a :meth:`.Query.get`, so any relationships
-configured with eager loading should also load within the scope of the refresh
-operation.
+it can also be passed a list of string attribute names, referring to specific
+attributes to be marked as expired::
 
-:meth:`~.Session.refresh` and
-:meth:`~.Session.expire` also support being passed a
-list of individual attribute names in which to be refreshed. These names can
-refer to any attribute, column-based or relationship based::
+    # expire only attributes obj1.attr1, obj1.attr2
+    session.expire(obj1, ['attr1', 'attr2'])
 
-    # immediately re-load the attributes 'hello', 'world' on obj1, obj2
-    session.refresh(obj1, ['hello', 'world'])
-    session.refresh(obj2, ['hello', 'world'])
+The :meth:`~.Session.refresh` method has a similar interface, but instead
+of expiring, reloads the object's row immediately::
 
-    # expire the attributes 'hello', 'world' objects obj1, obj2, attributes will be reloaded
-    # on the next access:
-    session.expire(obj1, ['hello', 'world'])
-    session.expire(obj2, ['hello', 'world'])
+    # reload all attributes on obj1
+    session.refresh(obj1)
 
-The full contents of the session may be expired at once using
-:meth:`~.Session.expire_all`::
+    # reload obj1.attr1, obj1.attr2
+    session.refresh(obj1, ['attr1', 'attr2'])
+
+The :meth:`.Session.expire_all` method allows us to essentially call
+:meth:`.Session.expire` on all objects contained within the :class:`.Session`
+at once::
 
     session.expire_all()
 
-Note that :meth:`~.Session.expire_all` is called **automatically** whenever
-:meth:`~.Session.commit` or :meth:`~.Session.rollback` are called. If using the
-session in its default mode of autocommit=False and with a well-isolated
-transactional environment (which is provided by most backends with the notable
-exception of MySQL MyISAM), there is virtually *no reason* to ever call
-:meth:`~.Session.expire_all` directly - plenty of state will remain on the
-current transaction until it is rolled back or committed or otherwise removed.
+When to Expire or Refresh
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-:meth:`~.Session.refresh` and :meth:`~.Session.expire` similarly are usually
-only necessary when an UPDATE or DELETE has been issued manually within the
-transaction using :meth:`.Session.execute()`.
+The :class:`.Session` uses the expiration feature automatically whenever
+the transaction referred to by the session ends.  Meaning, whenever :meth:`.Session.commit`
+or :meth:`.Session.rollback` is called, all objects within the :class:`.Session`
+are expired, using a feature equivalent to that of the :meth:`.Session.expire_all`
+method.   The rationale is that the end of a transaction is a
+demarcating point at which there is no more context available in order to know
+what the current state of the database is, as any number of other transactions
+may be affecting it.  Only when a new transaction starts can we again have access
+to the current state of the database, at which point any number of changes
+may have occurred.
+
+.. sidebar:: Transaction Isolation
+
+    Of course, most databases are capable of handling
+    multiple transactions at once, even involving the same rows of data.   When
+    a relational database handles multiple transactions involving the same
+    tables or rows, this is when the :term:`isolation` aspect of the database comes
+    into play.  The isolation behavior of different databases varies considerably
+    and even on a single database can be configured to behave in different ways
+    (via the so-called :term:`isolation level` setting).  In that sense, the :class:`.Session`
+    can't fully predict when the same SELECT statement, emitted a second time,
+    will definitely return the data we already have, or will return new data.
+    So as a best guess, it assumes that within the scope of a transaction, unless
+    it is known that a SQL expression has been emitted to modify a particular row,
+    there's no need to refresh a row unless explicitly told to do so.
+
+The :meth:`.Session.expire` and :meth:`.Session.refresh` methods are used in
+those cases when one wants to force an object to re-load its data from the
+database, in those cases when it is known that the current state of data
+is possibly stale.  Reasons for this might include:
+
+* some SQL has been emitted within the transaction outside of the
+  scope of the ORM's object handling, such as if a :meth:`.Table.update` construct
+  were emitted using the :meth:`.Session.execute` method;
+
+* if the application
+  is attempting to acquire data that is known to have been modified in a
+  concurrent transaction, and it is also known that the isolation rules in effect
+  allow this data to be visible.
+
+The second bullet has the important caveat that "it is also known that the isolation rules in effect
+allow this data to be visible."  This means that it cannot be assumed that an
+UPDATE that happened on another database connection will yet be visible here
+locally; in many cases, it will not.  This is why if one wishes to use
+:meth:`.expire` or :meth:`.refresh` in order to view data between ongoing
+transactions, an understanding of the isolation behavior in effect is essential.
+
+.. seealso::
+
+    :meth:`.Session.expire`
+
+    :meth:`.Session.expire_all`
+
+    :meth:`.Session.refresh`
+
+    :term:`isolation` - glossary explanation of isolation which includes links
+    to Wikipedia.
+
+    `The SQLAlchemy Session In-Depth <http://techspot.zzzeek.org/2012/11/14/pycon-canada-the-sqlalchemy-session-in-depth/>`_ - a video + slides with an in-depth discussion of the object
+    lifecycle including the role of data expiration.
+
 
 Session Attributes
 ------------------

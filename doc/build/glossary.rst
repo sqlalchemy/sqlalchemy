@@ -292,6 +292,19 @@ Glossary
 
             :doc:`orm/session`
 
+    expire
+    expires
+    expiring
+        In the SQLAlchemy ORM, refers to when the data in a :term:`persistent`
+        or sometimes :term:`detached` object is erased, such that when
+        the object's attributes are next accessed, a :term:`lazy load` SQL
+        query will be emitted in order to refresh the data for this object
+        as stored in the current ongoing transaction.
+
+        .. seealso::
+
+            :ref:`session_expire`
+
     Session
         The container or scope for ORM database operations. Sessions
         load instances from the database, track changes to mapped

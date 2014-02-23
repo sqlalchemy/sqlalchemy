@@ -1220,6 +1220,14 @@ class Session(_SessionClassMethods):
         :param lockmode: Passed to the :class:`~sqlalchemy.orm.query.Query`
           as used by :meth:`~sqlalchemy.orm.query.Query.with_lockmode`.
 
+        .. seealso::
+
+            :ref:`session_expire` - introductory material
+
+            :meth:`.Session.expire`
+
+            :meth:`.Session.expire_all`
+
         """
         try:
             state = attributes.instance_state(instance)
@@ -1258,6 +1266,14 @@ class Session(_SessionClassMethods):
         calling :meth:`Session.expire_all` should not be needed when
         autocommit is ``False``, assuming the transaction is isolated.
 
+        .. seealso::
+
+            :ref:`session_expire` - introductory material
+
+            :meth:`.Session.expire`
+
+            :meth:`.Session.refresh`
+
         """
         for state in self.identity_map.all_states():
             state._expire(state.dict, self.identity_map._modified)
@@ -1287,6 +1303,14 @@ class Session(_SessionClassMethods):
         :param instance: The instance to be refreshed.
         :param attribute_names: optional list of string attribute names
           indicating a subset of attributes to be expired.
+
+        .. seealso::
+
+            :ref:`session_expire` - introductory material
+
+            :meth:`.Session.expire`
+
+            :meth:`.Session.refresh`
 
         """
         try:
