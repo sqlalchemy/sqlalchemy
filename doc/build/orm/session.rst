@@ -1077,12 +1077,23 @@ the ``__dict__`` is again populated::
    order to track the changes we make to an object, and when we modify ``__dict__``
    directly, the ORM won't be able to track that we changed something.
 
+Another key behavior of both :meth:`~.Session.expire` and :meth:`~.Session.refresh`
+is that all un-flushed changes on an object are discarded.  That is,
+if we were to modify an attribute on our ``User``::
+
+    >>> user.name = 'user2'
+
+but then we call :meth:`~.Session.expire` without first calling :meth:`~.Session.flush`,
+our pending value of ``'user2'`` is discarded::
+
+    >>> session.expire(user)
+    >>> user.name
+    'user1'
 
 The :meth:`~.Session.expire` method can be used to mark as "expired" all ORM-mapped
 attributes for an instance::
 
-    # expire object obj1
-    # on the next access:
+    # expire all ORM-mapped attributes on obj1
     session.expire(obj1)
 
 it can also be passed a list of string attribute names, referring to specific
@@ -1092,10 +1103,14 @@ attributes to be marked as expired::
     session.expire(obj1, ['attr1', 'attr2'])
 
 The :meth:`~.Session.refresh` method has a similar interface, but instead
-of expiring, reloads the object's row immediately::
+of expiring, it emits an immediate SELECT for the object's row immediately::
 
     # reload all attributes on obj1
     session.refresh(obj1)
+
+:meth:`~.Session.refresh` also accepts a list of string attribute names,
+but unlike :meth:`~.Session.expire`, expects at least one name to
+be that of a column-mapped attribute::
 
     # reload obj1.attr1, obj1.attr2
     session.refresh(obj1, ['attr1', 'attr2'])
@@ -1105,6 +1120,54 @@ The :meth:`.Session.expire_all` method allows us to essentially call
 at once::
 
     session.expire_all()
+
+What Actually Loads
+~~~~~~~~~~~~~~~~~~~
+
+The SELECT statement that's emitted when an object marked with :meth:`~.Session.expire`
+or loaded with :meth:`~.Session.refresh` varies based on several factors, including:
+
+* The load of expired attributes is triggered from **column-mapped attributes only**.
+  While any kind of attribute can be marked as expired, including a
+  :func:`.relationship` - mapped attribute, accessing an expired :func:`.relationship`
+  attribute will emit a load only for that attribute, using standard
+  relationship-oriented lazy loading.   Column-oriented attributes, even if
+  expired, will not load as part of this operation, and instead will load when
+  any column-oriented attribute is accessed.
+
+* :func:`.relationship`- mapped attributes will not load in response to
+  expired column-based attributes being accessed.
+
+* Regarding relationships, :meth:`~.Session.refresh` is more restrictive than
+  :meth:`~.Session.expire` with regards to attributes that aren't column-mapped.
+  Calling :meth:`.refresh` and passing a list of names that only includes
+  relationship-mapped attributes will actually raise an error.
+  In any case, non-eager-loading :func:`.relationship` attributes will not be
+  included in any refresh operation.
+
+* :func:`.relationship` attributes configured as "eager loading" via the
+  :paramref:`~.relationship.lazy` parameter will load in the case of
+  :meth:`~.Session.refresh`, if either no attribute names are specified, or
+  if their names are inclued in the list of attributes to be
+  refreshed.
+
+* Attributes that are configured as :func:`.deferred` will not normally load,
+  during either the expired-attribute load or during a refresh.
+  An unloaded attribute that's :func:`.deferred` instead loads on its own when directly
+  accessed, or if part of a "group" of deferred attributes where an unloaded
+  attribute in that group is accessed.
+
+* For expired attributes that are loaded on access, a joined-inheritance table
+  mapping will emit a SELECT that typically only includes those tables for which
+  unloaded attributes are present.   The action here is sophisticated enough
+  to load only the parent or child table, for example, if the subset of columns
+  that were originally expired encompass only one or the other of those tables.
+
+* When :meth:`~.Session.refresh` is used on a joined-inheritance table mapping,
+  the SELECT emitted will resemble that of when :meth:`.Session.query` is
+  used on the target object's class.  This is typically all those tables that
+  are set up as part of the mapping.
+
 
 When to Expire or Refresh
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
