@@ -156,6 +156,20 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
             sess.query(User).options, opt
         )
 
+    def test_global_star_ignored_no_entities_unbound(self):
+        sess = self._downgrade_fixture()
+        User = self.classes.User
+        opt = sa.orm.lazyload('*')
+        q = sess.query(User.name).options(opt)
+        eq_(q.all(), [(u'jack',), (u'ed',), (u'fred',), (u'chuck',)])
+
+    def test_global_star_ignored_no_entities_bound(self):
+        sess = self._downgrade_fixture()
+        User = self.classes.User
+        opt = sa.orm.Load(User).lazyload('*')
+        q = sess.query(User.name).options(opt)
+        eq_(q.all(), [(u'jack',), (u'ed',), (u'fred',), (u'chuck',)])
+
     def test_select_with_joinedload(self):
         """Mapper load strategy defaults can be downgraded with
         lazyload('*') option, while explicit joinedload() option

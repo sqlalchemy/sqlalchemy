@@ -15,6 +15,15 @@
     :version: 0.9.4
 
     .. change::
+        :tags: bug, orm
+
+        Fixed regression from 0.8 where using an option like
+        :func:`.orm.lazyload` with the "wildcard" expression, e.g. ``"*"``,
+        would raise an assertion error in the case where the query didn't
+        contain any actual entities.  This assertion is meant for other cases
+        and was catching this one inadvertently.
+
+    .. change::
         :tags: bug, examples
 
         Fixed bug in the versioned_history example where column-level INSERT

@@ -431,6 +431,8 @@ class _UnboundLoad(Load):
                             "Wildcard loader can only be used with exactly "
                             "one entity.  Use Load(ent) to specify "
                             "specific entities.")
+        elif token.endswith(_DEFAULT_TOKEN):
+            raiseerr = False
 
         for ent in query._mapper_entities:
             # return only the first _MapperEntity when searching
