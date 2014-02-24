@@ -32,14 +32,19 @@ def _history_mapper(local_mapper):
     polymorphic_on = None
     super_fks = []
 
+    def _col_copy(col):
+        col = col.copy()
+        col.unique = False
+        col.default = col.server_default = None
+        return col
+
     if not super_mapper or local_mapper.local_table is not super_mapper.local_table:
         cols = []
         for column in local_mapper.local_table.c:
             if _is_versioning_col(column):
                 continue
 
-            col = column.copy()
-            col.unique = False
+            col = _col_copy(column)
 
             if super_mapper and col_references_table(column, super_mapper.local_table):
                 super_fks.append((col.key, list(super_history_mapper.local_table.primary_key)[0]))
@@ -80,8 +85,7 @@ def _history_mapper(local_mapper):
         # been added and add them to the history table.
         for column in local_mapper.local_table.c:
             if column.key not in super_history_mapper.local_table.c:
-                col = column.copy()
-                col.unique = False
+                col = _col_copy(column)
                 super_history_mapper.local_table.append_column(col)
         table = None
 

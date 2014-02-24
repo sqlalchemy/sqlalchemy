@@ -15,6 +15,12 @@
     :version: 0.9.4
 
     .. change::
+        :tags: bug, examples
+
+        Fixed bug in the versioned_history example where column-level INSERT
+        defaults would prevent history values of NULL from being written.
+
+    .. change::
         :tags: orm, bug, sqlite
         :tickets: 2969
 

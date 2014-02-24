@@ -3,7 +3,7 @@
 from unittest import TestCase
 from sqlalchemy.ext.declarative import declarative_base
 from .history_meta import Versioned, versioned_session
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Boolean
 from sqlalchemy.orm import clear_mappers, Session, deferred, relationship
 from sqlalchemy.testing import AssertsCompiledSQL, eq_, assert_raises
 from sqlalchemy.testing.entities import ComparableEntity
@@ -141,6 +141,35 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         sess.commit()
 
         assert sc.version == 2
+
+    def test_insert_null(self):
+        class SomeClass(Versioned, self.Base, ComparableEntity):
+            __tablename__ = 'sometable'
+
+            id = Column(Integer, primary_key=True)
+            boole = Column(Boolean, default=False)
+
+        self.create_tables()
+        sess = self.session
+        sc = SomeClass(boole=True)
+        sess.add(sc)
+        sess.commit()
+
+        sc.boole = None
+        sess.commit()
+
+        sc.boole = False
+        sess.commit()
+
+        SomeClassHistory = SomeClass.__history_mapper__.class_
+
+        eq_(
+            sess.query(SomeClassHistory.boole).order_by(SomeClassHistory.id).all(),
+            [(True, ), (None, )]
+        )
+
+        eq_(sc.version, 3)
+
 
     def test_deferred(self):
         """test versioning of unloaded, deferred columns."""
