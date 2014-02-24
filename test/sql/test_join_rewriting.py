@@ -530,6 +530,12 @@ class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
     def test_a_atobalias_balias_c_w_exists(self):
         super(JoinExecTest, self).test_a_atobalias_balias_c_w_exists()
 
+    @testing.only_on("sqlite", "non-standard aliasing rules used at the moment, "
+                        "possibly fix this or add another test that uses "
+                        "cross-compatible aliasing")
+    def test_b_ab1_union_b_ab2(self):
+        super(JoinExecTest, self).test_b_ab1_union_b_ab2()
+
 class DialectFlagTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_dialect_flag(self):
         d1 = default.DefaultDialect(supports_right_nested_joins=True)
