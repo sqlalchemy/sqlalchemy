@@ -669,6 +669,39 @@ class ListenOverrideTest(fixtures.TestBase):
             [call(5, 7), call(10, 5)]
         )
 
+    def test_remove_clslevel(self):
+        listen_one = Mock()
+        event.listen(self.Target, "event_one", listen_one, add=True)
+        t1 = self.Target()
+        t1.dispatch.event_one(5, 7)
+        eq_(
+            listen_one.mock_calls,
+            [call(12)]
+        )
+        event.remove(self.Target, "event_one", listen_one)
+        t1.dispatch.event_one(10, 5)
+        eq_(
+            listen_one.mock_calls,
+            [call(12)]
+        )
+
+    def test_remove_instancelevel(self):
+        listen_one = Mock()
+        t1 = self.Target()
+        event.listen(t1, "event_one", listen_one, add=True)
+        t1.dispatch.event_one(5, 7)
+        eq_(
+            listen_one.mock_calls,
+            [call(12)]
+        )
+        event.remove(t1, "event_one", listen_one)
+        t1.dispatch.event_one(10, 5)
+        eq_(
+            listen_one.mock_calls,
+            [call(12)]
+        )
+
+
 class PropagateTest(fixtures.TestBase):
     def setUp(self):
         class TargetEvents(event.Events):
@@ -1087,8 +1120,3 @@ class RemovalTest(fixtures.TestBase):
         )
 
         event.remove(t1, "event_three", m1)
-
-
-
-
-

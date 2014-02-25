@@ -15,6 +15,16 @@
     :version: 0.9.4
 
     .. change::
+        :tags: bug, orm, engine
+        :tickets: 2973
+
+        Fixed bug where events set to listen at the class
+        level (e.g. on the :class:`.Mapper` or :class:`.ClassManager`
+        level, as opposed to on an individual mapped class, and also on
+        :class:`.Connection`) that also made use of internal argument conversion
+        (which is most within those categories) would fail to be removable.
+
+    .. change::
         :tags: bug, orm
 
         Fixed regression from 0.8 where using an option like

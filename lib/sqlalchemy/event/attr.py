@@ -135,7 +135,7 @@ class _DispatchDescriptor(RefCollection):
             cls = stack.pop(0)
             stack.extend(cls.__subclasses__())
             if cls in self._clslevel:
-                self._clslevel[cls].remove(event_key.fn)
+                self._clslevel[cls].remove(event_key._listen_fn)
         registry._removed_from_collection(event_key, self)
 
     def clear(self):
