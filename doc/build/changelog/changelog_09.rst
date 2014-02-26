@@ -16,6 +16,30 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 2974
+
+        Some changes to how the :attr:`.FromClause.c` collection behaves
+        when presented with duplicate columns.  The behavior of emitting a
+        warning and replacing the old column with the same name still
+        remains to some degree; the replacement in particular is to maintain
+        backwards compatibility.  However, the replaced column still remains
+        associated with the ``c`` collection now in a collection ``._all_columns``,
+        which is used by constructs such as aliases and unions, to deal with
+        the set of columns in ``c`` more towards what is actually in the
+        list of columns rather than the unique set of key names.  This helps
+        with situations where SELECT statements with same-named columns
+        are used in unions and such, so that the union can match the columns
+        up positionally and also there's some chance of :meth:`.FromClause.corresponding_column`
+        still being usable here (it can now return a column that is only
+        in selectable.c._all_columns and not otherwise named).
+        The new collection is underscored as we still need to decide where this
+        list might end up.   Theoretically it
+        would become the result of iter(selectable.c), however this would mean
+        that the length of the iteration would no longer match the length of
+        keys(), and that behavior needs to be checked out.
+
+    .. change::
+        :tags: bug, sql
 
         Fixed issue in new :meth:`.TextClause.columns` method where the ordering
         of columns given positionally would not be preserved.   This could

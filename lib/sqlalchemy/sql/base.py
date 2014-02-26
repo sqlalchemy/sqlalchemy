@@ -435,10 +435,10 @@ class ColumnCollection(util.OrderedProperties):
 
     """
 
-    def __init__(self, *cols):
+    def __init__(self):
         super(ColumnCollection, self).__init__()
-        self._data.update((c.key, c) for c in cols)
-        self.__dict__['_all_cols'] = util.column_set(self)
+        self.__dict__['_all_col_set'] = util.column_set()
+        self.__dict__['_all_columns'] = []
 
     def __str__(self):
         return repr([str(c) for c in self])
@@ -459,15 +459,26 @@ class ColumnCollection(util.OrderedProperties):
            Used by schema.Column to override columns during table reflection.
 
         """
+        remove_col = None
         if column.name in self and column.key != column.name:
             other = self[column.name]
             if other.name == other.key:
-                del self._data[other.name]
-                self._all_cols.remove(other)
+                remove_col = other
+                self._all_col_set.remove(other)
+                del self._data[other.key]
+
         if column.key in self._data:
-            self._all_cols.remove(self._data[column.key])
-        self._all_cols.add(column)
+            remove_col = self._data[column.key]
+            self._all_col_set.remove(remove_col)
+
+        self._all_col_set.add(column)
         self._data[column.key] = column
+        if remove_col is not None:
+            self._all_columns[:] = [column if c is remove_col
+                                            else c for c in self._all_columns]
+        else:
+            self._all_columns.append(column)
+
 
     def add(self, column):
         """Add a column to this collection.
@@ -497,37 +508,41 @@ class ColumnCollection(util.OrderedProperties):
                           '%r, which has the same key.  Consider '
                           'use_labels for select() statements.' % (key,
                           getattr(existing, 'table', None), value))
-            self._all_cols.remove(existing)
+
             # pop out memoized proxy_set as this
             # operation may very well be occurring
             # in a _make_proxy operation
             util.memoized_property.reset(value, "proxy_set")
-        self._all_cols.add(value)
+
+        self._all_col_set.add(value)
+        self._all_columns.append(value)
         self._data[key] = value
 
     def clear(self):
-        self._data.clear()
-        self._all_cols.clear()
+        raise NotImplementedError()
 
     def remove(self, column):
-        del self._data[column.key]
-        self._all_cols.remove(column)
+        raise NotImplementedError()
 
-    def update(self, value):
-        self._data.update(value)
-        self._all_cols.clear()
-        self._all_cols.update(self._data.values())
+    def update(self, iter):
+        cols = list(iter)
+        self._all_columns.extend(c for label, c in cols)
+        self._all_col_set.update(c for label, c in cols)
+        self._data.update((label, c) for label, c in cols)
 
     def extend(self, iter):
-        self.update((c.key, c) for c in iter)
+        cols = list(iter)
+        self._all_columns.extend(cols)
+        self._all_col_set.update(cols)
+        self._data.update((c.key, c) for c in cols)
 
     __hash__ = None
 
     @util.dependencies("sqlalchemy.sql.elements")
     def __eq__(self, elements, other):
         l = []
-        for c in other:
-            for local in self:
+        for c in getattr(other, "_all_columns", other):
+            for local in self._all_columns:
                 if c.shares_lineage(local):
                     l.append(c == local)
         return elements.and_(*l)
@@ -537,22 +552,28 @@ class ColumnCollection(util.OrderedProperties):
             raise exc.ArgumentError("__contains__ requires a string argument")
         return util.OrderedProperties.__contains__(self, other)
 
+    def __getstate__(self):
+        return {'_data': self.__dict__['_data'],
+                '_all_columns': self.__dict__['_all_columns']}
+
     def __setstate__(self, state):
         self.__dict__['_data'] = state['_data']
-        self.__dict__['_all_cols'] = util.column_set(self._data.values())
+        self.__dict__['_all_columns'] = state['_all_columns']
+        self.__dict__['_all_col_set'] = util.column_set(state['_all_columns'])
 
     def contains_column(self, col):
         # this has to be done via set() membership
-        return col in self._all_cols
+        return col in self._all_col_set
 
     def as_immutable(self):
-        return ImmutableColumnCollection(self._data, self._all_cols)
+        return ImmutableColumnCollection(self._data, self._all_col_set, self._all_columns)
 
 
 class ImmutableColumnCollection(util.ImmutableProperties, ColumnCollection):
-    def __init__(self, data, colset):
+    def __init__(self, data, colset, all_columns):
         util.ImmutableProperties.__init__(self, data)
-        self.__dict__['_all_cols'] = colset
+        self.__dict__['_all_col_set'] = colset
+        self.__dict__['_all_columns'] = all_columns
 
     extend = remove = util.ImmutableProperties._immutable
 

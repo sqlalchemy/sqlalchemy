@@ -342,7 +342,7 @@ class FromClause(Selectable):
             return column
         col, intersect = None, None
         target_set = column.proxy_set
-        cols = self.c
+        cols = self.c._all_columns
         for c in cols:
             expanded_proxy_set = set(_expand_cloned(c.proxy_set))
             i = target_set.intersection(expanded_proxy_set)
@@ -934,6 +934,7 @@ class Alias(FromClause):
                     or 'anon'))
         self.name = name
 
+
     @property
     def description(self):
         if util.py3k:
@@ -954,7 +955,7 @@ class Alias(FromClause):
         return self.element.is_derived_from(fromclause)
 
     def _populate_column_collection(self):
-        for col in self.element.columns:
+        for col in self.element.columns._all_columns:
             col._make_proxy(self)
 
     def _refresh_for_new_column(self, column):
@@ -1738,13 +1739,13 @@ class CompoundSelect(GenerativeSelect):
             s = _clause_element_as_expr(s)
 
             if not numcols:
-                numcols = len(s.c)
-            elif len(s.c) != numcols:
+                numcols = len(s.c._all_columns)
+            elif len(s.c._all_columns) != numcols:
                 raise exc.ArgumentError('All selectables passed to '
                         'CompoundSelect must have identical numbers of '
                         'columns; select #%d has %d columns, select '
-                        '#%d has %d' % (1, len(self.selects[0].c), n
-                        + 1, len(s.c)))
+                        '#%d has %d' % (1, len(self.selects[0].c._all_columns), n
+                        + 1, len(s.c._all_columns)))
 
             self.selects.append(s.self_group(self))
 
@@ -1876,7 +1877,7 @@ class CompoundSelect(GenerativeSelect):
         return False
 
     def _populate_column_collection(self):
-        for cols in zip(*[s.c for s in self.selects]):
+        for cols in zip(*[s.c._all_columns for s in self.selects]):
 
             # this is a slightly hacky thing - the union exports a
             # column that resembles just that of the *first* selectable.
