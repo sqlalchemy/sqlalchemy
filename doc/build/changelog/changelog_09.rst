@@ -15,6 +15,33 @@
     :version: 0.9.4
 
     .. change::
+        :tags: feature, sql
+        :tickets: 2962, 2866
+
+        The new dialect-level keyword argument system for schema-level
+        constructs has been enhanced in order to assist with existing
+        schemes that rely upon addition of ad-hoc keyword arguments to
+        constructs.
+
+        E.g., a construct such as :class:`.Index` will again accept
+        ad-hoc keyword arguments within the :attr:`.Index.kwargs` collection,
+        after construction::
+
+            idx = Index('a', 'b')
+            idx.kwargs['mysql_someargument'] = True
+
+        To suit the use case of allowing custom arguments at construction time,
+        the :meth:`.DialectKWArgs.argument_for` method now allows this registration::
+
+            Index.argument_for('mysql', 'someargument', False)
+
+            idx = Index('a', 'b', mysql_someargument=True)
+
+        .. seealso::
+
+            :meth:`.DialectKWArgs.argument_for`
+
+    .. change::
         :tags: bug, orm, engine
         :tickets: 2973
 

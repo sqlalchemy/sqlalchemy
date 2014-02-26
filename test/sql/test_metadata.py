@@ -2293,6 +2293,9 @@ class DialectKWArgTest(fixtures.TestBase):
         with mock.patch("sqlalchemy.dialects.registry.load", load):
             yield
 
+    def teardown(self):
+        Index._kw_registry.clear()
+
     def test_participating(self):
         with self._fixture():
             idx = Index('a', 'b', 'c', participating_y=True)
@@ -2318,6 +2321,14 @@ class DialectKWArgTest(fixtures.TestBase):
                 }
             )
 
+    def test_bad_kwarg_raise(self):
+        with self._fixture():
+            assert_raises_message(
+                TypeError,
+                "Additional arguments should be named "
+                    "<dialectname>_<argument>, got 'foobar'",
+                Index, 'a', 'b', 'c', foobar=True
+            )
     def test_unknown_dialect_warning(self):
         with self._fixture():
             assert_raises_message(
@@ -2521,6 +2532,128 @@ class DialectKWArgTest(fixtures.TestBase):
                         "participating_y": True,
                         'participating2_y': "p2y",
                         "participating_z_one": "default"})
+
+    def test_key_error_kwargs_no_dialect(self):
+        with self._fixture():
+            idx = Index('a', 'b', 'c')
+            assert_raises(
+                KeyError,
+                idx.kwargs.__getitem__, 'foo_bar'
+            )
+
+    def test_key_error_kwargs_no_underscore(self):
+        with self._fixture():
+            idx = Index('a', 'b', 'c')
+            assert_raises(
+                KeyError,
+                idx.kwargs.__getitem__, 'foobar'
+            )
+
+    def test_key_error_kwargs_no_argument(self):
+        with self._fixture():
+            idx = Index('a', 'b', 'c')
+            assert_raises(
+                KeyError,
+                idx.kwargs.__getitem__, 'participating_asdmfq34098'
+            )
+
+            assert_raises(
+                KeyError,
+                idx.kwargs.__getitem__, 'nonparticipating_asdmfq34098'
+            )
+
+    def test_key_error_dialect_options(self):
+        with self._fixture():
+            idx = Index('a', 'b', 'c')
+            assert_raises(
+                KeyError,
+                idx.dialect_options['participating'].__getitem__, 'asdfaso890'
+            )
+
+            assert_raises(
+                KeyError,
+                idx.dialect_options['nonparticipating'].__getitem__, 'asdfaso890'
+            )
+
+    def test_ad_hoc_participating_via_opt(self):
+        with self._fixture():
+            idx = Index('a', 'b', 'c')
+            idx.dialect_options['participating']['foobar'] = 5
+
+            eq_(idx.dialect_options['participating']['foobar'], 5)
+            eq_(idx.kwargs['participating_foobar'], 5)
+
+    def test_ad_hoc_nonparticipating_via_opt(self):
+        with self._fixture():
+            idx = Index('a', 'b', 'c')
+            idx.dialect_options['nonparticipating']['foobar'] = 5
+
+            eq_(idx.dialect_options['nonparticipating']['foobar'], 5)
+            eq_(idx.kwargs['nonparticipating_foobar'], 5)
+
+    def test_ad_hoc_participating_via_kwargs(self):
+        with self._fixture():
+            idx = Index('a', 'b', 'c')
+            idx.kwargs['participating_foobar'] = 5
+
+            eq_(idx.dialect_options['participating']['foobar'], 5)
+            eq_(idx.kwargs['participating_foobar'], 5)
+
+    def test_ad_hoc_nonparticipating_via_kwargs(self):
+        with self._fixture():
+            idx = Index('a', 'b', 'c')
+            idx.kwargs['nonparticipating_foobar'] = 5
+
+            eq_(idx.dialect_options['nonparticipating']['foobar'], 5)
+            eq_(idx.kwargs['nonparticipating_foobar'], 5)
+
+    def test_ad_hoc_via_kwargs_invalid_key(self):
+        with self._fixture():
+            idx = Index('a', 'b', 'c')
+            assert_raises_message(
+                exc.ArgumentError,
+                "Keys must be of the form <dialectname>_<argname>",
+                idx.kwargs.__setitem__, "foobar", 5
+            )
+
+    def test_ad_hoc_via_kwargs_invalid_dialect(self):
+        with self._fixture():
+            idx = Index('a', 'b', 'c')
+            assert_raises_message(
+                exc.ArgumentError,
+                "no dialect 'nonexistent'",
+                idx.kwargs.__setitem__, "nonexistent_foobar", 5
+            )
+
+    def test_add_new_arguments_participating(self):
+        with self._fixture():
+            Index.argument_for("participating", "xyzqpr", False)
+
+            idx = Index('a', 'b', 'c', participating_xyzqpr=True)
+
+            eq_(idx.kwargs['participating_xyzqpr'], True)
+
+            idx = Index('a', 'b', 'c')
+            eq_(idx.dialect_options['participating']['xyzqpr'], False)
+
+    def test_add_new_arguments_nonparticipating(self):
+        with self._fixture():
+            assert_raises_message(
+                exc.ArgumentError,
+                "Dialect 'nonparticipating' does have keyword-argument "
+                    "validation and defaults enabled configured",
+                Index.argument_for, "nonparticipating", "xyzqpr", False
+            )
+
+
+    def test_add_new_arguments_invalid_dialect(self):
+        with self._fixture():
+            assert_raises_message(
+                exc.ArgumentError,
+                "no dialect 'nonexistent'",
+                Index.argument_for, "nonexistent", "foobar", 5
+            )
+
 
 class NamingConventionTest(fixtures.TestBase):
     def _fixture(self, naming_convention, table_schema=None):

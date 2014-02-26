@@ -100,6 +100,9 @@ used to construct any kind of typed SQL expression.
    :special-members:
    :inherited-members:
 
+.. autoclass:: sqlalchemy.sql.base.DialectKWArgs
+   :members:
+
 .. autoclass:: Extract
    :members:
 

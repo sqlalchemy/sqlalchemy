@@ -44,11 +44,148 @@ def _generative(fn, *args, **kw):
     return self
 
 
+
+class _DialectArgDictBase(object):
+    """base for dynamic dictionaries that handle dialect-level keyword
+    arguments."""
+
+    def _keys_iter(self):
+        raise NotImplementedError()
+    if util.py2k:
+        def keys(self):
+            return list(self._keys_iter())
+        def items(self):
+            return [(key, self[key]) for key in self._keys_iter()]
+    else:
+        def keys(self):
+            return self._keys_iter()
+        def items(self):
+            return ((key, self[key]) for key in self._keys_iter())
+
+    def get(self, key, default=None):
+        if key in self:
+            return self[key]
+        else:
+            return default
+
+    def __iter__(self):
+        return self._keys_iter()
+
+    def __eq__(self, other):
+        return dict(self) == dict(other)
+
+    def __repr__(self):
+        return repr(dict(self))
+
+class _DialectArgView(_DialectArgDictBase):
+    """A dictionary view of dialect-level arguments in the form
+    <dialectname>_<argument_name>.
+
+    """
+    def __init__(self, obj):
+        self.obj = obj
+
+    def __getitem__(self, key):
+        if "_" not in key:
+            raise KeyError(key)
+        dialect, value_key = key.split("_", 1)
+
+        try:
+            opt = self.obj.dialect_options[dialect]
+        except exc.NoSuchModuleError:
+            raise KeyError(key)
+        else:
+            return opt[value_key]
+
+    def __setitem__(self, key, value):
+        if "_" not in key:
+            raise exc.ArgumentError(
+                            "Keys must be of the form <dialectname>_<argname>")
+
+        dialect, value_key = key.split("_", 1)
+        self.obj.dialect_options[dialect][value_key] = value
+
+    def _keys_iter(self):
+        return (
+            "%s_%s" % (dialect_name, value_name)
+            for dialect_name in self.obj.dialect_options
+            for value_name in self.obj.dialect_options[dialect_name]._non_defaults
+        )
+
+class _DialectArgDict(_DialectArgDictBase):
+    """A dictionary view of dialect-level arguments for a specific
+    dialect.
+
+    Maintains a separate collection of user-specified arguments
+    and dialect-specified default arguments.
+
+    """
+    def __init__(self, obj, dialect_name):
+        self._non_defaults = {}
+        self._defaults = {}
+
+    def _keys_iter(self):
+        return iter(set(self._non_defaults).union(self._defaults))
+
+    def __getitem__(self, key):
+        if key in self._non_defaults:
+            return self._non_defaults[key]
+        else:
+            return self._defaults[key]
+
+    def __setitem__(self, key, value):
+        self._non_defaults[key] = value
+
 class DialectKWArgs(object):
     """Establish the ability for a class to have dialect-specific arguments
     with defaults and validation.
 
     """
+
+    @classmethod
+    def argument_for(cls, dialect_name, argument_name, default):
+        """Add a new kind of dialect-specific keyword argument for this class.
+
+        E.g.::
+
+            Index.argument_for("mydialect", "length", None)
+
+            some_index = Index('a', 'b', mydialect_length=5)
+
+        The :meth:`.DialectKWArgs.argument_for` method is a per-argument
+        way adding extra arguments to the :attr:`.Dialect.construct_arguments`
+        dictionary. This dictionary provides a list of argument names accepted by
+        various schema-level constructs on behalf of a dialect.
+
+        New dialects should typically specify this dictionary all at once as a data
+        member of the dialect class.  The use case for ad-hoc addition of
+        argument names is typically for end-user code that is also using
+        a custom compilation scheme which consumes the additional arguments.
+
+        :param dialect_name: name of a dialect.  The dialect must be locatable,
+         else a :class:`.NoSuchModuleError` is raised.   The dialect must
+         also include an existing :attr:`.Dialect.construct_arguments` collection,
+         indicating that it participates in the keyword-argument validation and
+         default system, else :class:`.ArgumentError` is raised.
+         If the dialect does not include this collection, then any keyword argument
+         can be specified on behalf of this dialect already.  All dialects
+         packaged within SQLAlchemy include this collection, however for third
+         party dialects, support may vary.
+
+        :param argument_name: name of the parameter.
+
+        :param default: default value of the parameter.
+
+        .. versionadded:: 0.9.4
+
+        """
+
+        construct_arg_dictionary = DialectKWArgs._kw_registry[dialect_name]
+        if construct_arg_dictionary is None:
+            raise exc.ArgumentError("Dialect '%s' does have keyword-argument "
+                        "validation and defaults enabled configured" %
+                        dialect_name)
+        construct_arg_dictionary[cls][argument_name] = default
 
     @util.memoized_property
     def dialect_kwargs(self):
@@ -60,19 +197,25 @@ class DialectKWArgs(object):
         unlike the :attr:`.DialectKWArgs.dialect_options` collection, which
         contains all options known by this dialect including defaults.
 
+        The collection is also writable; keys are accepted of the
+        form ``<dialect>_<kwarg>`` where the value will be assembled
+        into the list of options.
+
         .. versionadded:: 0.9.2
+
+        .. versionchanged:: 0.9.4 The :attr:`.DialectKWArgs.dialect_kwargs`
+           collection is now writable.
 
         .. seealso::
 
             :attr:`.DialectKWArgs.dialect_options` - nested dictionary form
 
         """
-
-        return util.immutabledict()
+        return _DialectArgView(self)
 
     @property
     def kwargs(self):
-        """Deprecated; see :attr:`.DialectKWArgs.dialect_kwargs"""
+        """A synonym for :attr:`.DialectKWArgs.dialect_kwargs`."""
         return self.dialect_kwargs
 
     @util.dependencies("sqlalchemy.dialects")
@@ -85,14 +228,15 @@ class DialectKWArgs(object):
 
     def _kw_reg_for_dialect_cls(self, dialect_name):
         construct_arg_dictionary = DialectKWArgs._kw_registry[dialect_name]
+        d = _DialectArgDict(self, dialect_name)
+
         if construct_arg_dictionary is None:
-            return {"*": None}
+            d._defaults.update({"*": None})
         else:
-            d = {}
             for cls in reversed(self.__class__.__mro__):
                 if cls in construct_arg_dictionary:
-                    d.update(construct_arg_dictionary[cls])
-            return d
+                    d._defaults.update(construct_arg_dictionary[cls])
+        return d
 
     @util.memoized_property
     def dialect_options(self):
@@ -123,11 +267,9 @@ class DialectKWArgs(object):
         if not kwargs:
             return
 
-        self.dialect_kwargs = self.dialect_kwargs.union(kwargs)
-
         for k in kwargs:
             m = re.match('^(.+?)_(.+)$', k)
-            if m is None:
+            if not m:
                 raise TypeError("Additional arguments should be "
                         "named <dialectname>_<argument>, got '%s'" % k)
             dialect_name, arg_name = m.group(1, 2)
@@ -139,9 +281,10 @@ class DialectKWArgs(object):
                         "Can't validate argument %r; can't "
                         "locate any SQLAlchemy dialect named %r" %
                         (k, dialect_name))
-                self.dialect_options[dialect_name] = {
-                                            "*": None,
-                                            arg_name: kwargs[k]}
+                self.dialect_options[dialect_name] = d = \
+                                    _DialectArgDict(self, dialect_name)
+                d._defaults.update({"*": None})
+                d._non_defaults[arg_name] = kwargs[k]
             else:
                 if "*" not in construct_arg_dictionary and \
                     arg_name not in construct_arg_dictionary:

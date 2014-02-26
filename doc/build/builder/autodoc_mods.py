@@ -22,7 +22,7 @@ _convert_modname = {
 }
 
 _convert_modname_w_class = {
-    ("sqlalchemy.engine.interfaces", "Connectable"): "sqlalchemy.engine"
+    ("sqlalchemy.engine.interfaces", "Connectable"): "sqlalchemy.engine",
 }
 
 def _adjust_rendered_mod_name(modname, objname):
