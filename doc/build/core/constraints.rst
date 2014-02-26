@@ -431,26 +431,33 @@ name as follows::
 Constraints API
 ---------------
 .. autoclass:: Constraint
-
+    :members:
 
 .. autoclass:: CheckConstraint
-
+    :members:
+    :inherited-members:
 
 .. autoclass:: ColumnCollectionConstraint
-
+    :members:
 
 .. autoclass:: ForeignKey
     :members:
+    :inherited-members:
 
 
 .. autoclass:: ForeignKeyConstraint
     :members:
+    :inherited-members:
 
 
 .. autoclass:: PrimaryKeyConstraint
+    :members:
+    :inherited-members:
 
 
 .. autoclass:: UniqueConstraint
+    :members:
+    :inherited-members:
 
 
 .. _schema_indexes:
@@ -569,3 +576,4 @@ Index API
 
 .. autoclass:: Index
     :members:
+    :inherited-members:

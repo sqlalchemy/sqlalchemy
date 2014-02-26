@@ -138,7 +138,14 @@ class _DialectArgDict(_DialectArgDictBase):
 
 class DialectKWArgs(object):
     """Establish the ability for a class to have dialect-specific arguments
-    with defaults and validation.
+    with defaults and constructor validation.
+
+    The :class:`.DialectKWArgs` interacts with the
+    :attr:`.DefaultDialect.construct_arguments` present on a dialect.
+
+    .. seealso::
+
+        :attr:`.DefaultDialect.construct_arguments`
 
     """
 
@@ -153,7 +160,7 @@ class DialectKWArgs(object):
             some_index = Index('a', 'b', mydialect_length=5)
 
         The :meth:`.DialectKWArgs.argument_for` method is a per-argument
-        way adding extra arguments to the :attr:`.Dialect.construct_arguments`
+        way adding extra arguments to the :attr:`.DefaultDialect.construct_arguments`
         dictionary. This dictionary provides a list of argument names accepted by
         various schema-level constructs on behalf of a dialect.
 
@@ -164,7 +171,7 @@ class DialectKWArgs(object):
 
         :param dialect_name: name of a dialect.  The dialect must be locatable,
          else a :class:`.NoSuchModuleError` is raised.   The dialect must
-         also include an existing :attr:`.Dialect.construct_arguments` collection,
+         also include an existing :attr:`.DefaultDialect.construct_arguments` collection,
          indicating that it participates in the keyword-argument validation and
          default system, else :class:`.ArgumentError` is raised.
          If the dialect does not include this collection, then any keyword argument

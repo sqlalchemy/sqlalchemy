@@ -115,8 +115,7 @@ class DefaultDialect(interfaces.Dialect):
     """Optional set of argument specifiers for various SQLAlchemy
     constructs, typically schema items.
 
-    To
-    implement, establish as a series of tuples, as in::
+    To implement, establish as a series of tuples, as in::
 
         construct_arguments = [
             (schema.Index, {
@@ -127,14 +126,25 @@ class DefaultDialect(interfaces.Dialect):
         ]
 
     If the above construct is established on the Postgresql dialect,
-    the ``Index`` construct will now accept additional keyword arguments
-    such as ``postgresql_using``, ``postgresql_where``, etc.  Any kind of
-    ``postgresql_XYZ`` argument not corresponding to the above template will
-    be rejected with an ``ArgumentError`, for all those SQLAlchemy constructs
-    which implement the :class:`.DialectKWArgs` class.
+    the :class:`.Index` construct will now accept the keyword arguments
+    ``postgresql_using``, ``postgresql_where``, nad ``postgresql_ops``.
+    Any other argument specified to the constructor of :class:`.Index`
+    which is prefixed with ``postgresql_`` will raise :class:`.ArgumentError`.
 
-    The default is ``None``; older dialects which don't implement the argument
-    will have the old behavior of un-validated kwargs to schema/SQL constructs.
+    A dialect which does not include a ``construct_arguments`` member will
+    not participate in the argument validation system.  For such a dialect,
+    any argument name is accepted by all participating constructs, within
+    the namespace of arguments prefixed with that dialect name.  The rationale
+    here is so that third-party dialects that haven't yet implemented this
+    feature continue to function in the old way.
+
+    .. versionadded:: 0.9.2
+
+    .. seealso::
+
+        :class:`.DialectKWArgs` - implementing base class which consumes
+        :attr:`.DefaultDialect.construct_arguments`
+
 
     """
 

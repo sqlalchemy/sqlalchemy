@@ -23,13 +23,14 @@ _convert_modname = {
 
 _convert_modname_w_class = {
     ("sqlalchemy.engine.interfaces", "Connectable"): "sqlalchemy.engine",
+    ("sqlalchemy.sql.base", "DialectKWArgs"): "sqlalchemy.sql.base",
 }
 
 def _adjust_rendered_mod_name(modname, objname):
-    if modname in _convert_modname:
-        return _convert_modname[modname]
-    elif (modname, objname) in _convert_modname_w_class:
+    if (modname, objname) in _convert_modname_w_class:
         return _convert_modname_w_class[(modname, objname)]
+    elif modname in _convert_modname:
+        return _convert_modname[modname]
     else:
         return modname
 
