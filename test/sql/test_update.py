@@ -203,7 +203,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         """
         table1 = self.tables.mytable
         expr = func.foo(table1.c.myid)
-        assert not hasattr(expr, 'key')
+        eq_(expr.key, None)
         self.assert_compile(table1.update().values({expr: 'bar'}),
             'UPDATE mytable SET foo(myid)=:param_1')
 

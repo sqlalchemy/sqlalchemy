@@ -588,7 +588,7 @@ class ColumnElement(ClauseElement, operators.ColumnOperators):
     primary_key = False
     foreign_keys = []
     _label = None
-    _key_label = None
+    _key_label = key = None
     _alt_names = ()
 
     def self_group(self, against=None):
@@ -681,10 +681,14 @@ class ColumnElement(ClauseElement, operators.ColumnOperators):
         """
         if name is None:
             name = self.anon_label
-            try:
-                key = str(self)
-            except exc.UnsupportedCompilationError:
-                key = self.anon_label
+            if self.key:
+                key = self.key
+            else:
+                try:
+                    key = str(self)
+                except exc.UnsupportedCompilationError:
+                    key = self.anon_label
+
         else:
             key = name
         co = ColumnClause(
@@ -753,7 +757,6 @@ class ColumnElement(ClauseElement, operators.ColumnOperators):
         """
         return _anonymous_label('%%(%d %s)s' % (id(self), getattr(self,
                                 'name', 'anon')))
-
 
 
 class BindParameter(ColumnElement):

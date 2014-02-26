@@ -18,6 +18,17 @@
         :tags: bug, sql
         :tickets: 2974
 
+        Adjusted the logic which applies names to the .c collection when
+        a no-name :class:`.BindParameter` is received, e.g. via :func:`.sql.literal`
+        or similar; the "key" of the bind param is used as the key within
+        .c. rather than the rendered name.  Since these binds have "anonymous"
+        names in any case, this allows individual bound parameters to
+        have their own name within a selectable if they are otherwise unlabeled.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 2974
+
         Some changes to how the :attr:`.FromClause.c` collection behaves
         when presented with duplicate columns.  The behavior of emitting a
         warning and replacing the old column with the same name still

@@ -2082,6 +2082,10 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_naming(self):
+        # TODO: the part where we check c.keys() are  not "compile" tests, they
+        # belong probably in test_selectable, or some broken up
+        # version of that suite
+
         f1 = func.hoho(table1.c.name)
         s1 = select([table1.c.myid, table1.c.myid.label('foobar'),
                     f1,
@@ -2098,7 +2102,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         exprs = (
             table1.c.myid == 12,
             func.hoho(table1.c.myid),
-            cast(table1.c.name, Numeric)
+            cast(table1.c.name, Numeric),
+            literal('x'),
         )
         for col, key, expr, label in (
             (table1.c.name, 'name', 'mytable.name', None),
@@ -2108,7 +2113,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                         'CAST(mytable.name AS NUMERIC)', 'anon_1'),
             (t1.c.col1, 'col1', 'mytable.col1', None),
             (column('some wacky thing'), 'some wacky thing',
-                '"some wacky thing"', '')
+                '"some wacky thing"', ''),
+            (exprs[3], exprs[3].key, ":param_1", "anon_1")
         ):
             if getattr(col, 'table', None) is not None:
                 t = col.table
