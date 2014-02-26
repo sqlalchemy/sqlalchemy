@@ -322,6 +322,20 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
             }
         )
 
+    def test_column_collection_ordered(self):
+        t = text("select a, b, c from foo").columns(column('a'),
+                            column('b'), column('c'))
+        eq_(t.c.keys(), ['a', 'b', 'c'])
+
+    def test_column_collection_pos_plus_bykey(self):
+        # overlapping positional names + type names
+        t = text("select a, b, c from foo").columns(column('a'),
+                            column('b'), b=Integer, c=String)
+        eq_(t.c.keys(), ['a', 'b', 'c'])
+        eq_(t.c.b.type._type_affinity, Integer)
+        eq_(t.c.c.type._type_affinity, String)
+
+
     def _xy_table_fixture(self):
         m = MetaData()
         t = Table('t', m, Column('x', Integer), Column('y', Integer))

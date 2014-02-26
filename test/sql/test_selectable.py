@@ -388,6 +388,31 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         assert u.corresponding_column(s2.c.table2_coly) is u.c.coly
         assert s2.corresponding_column(u.c.coly) is s2.c.table2_coly
 
+    def test_union_of_alias(self):
+        s1 = select([table1.c.col1, table1.c.col2])
+        s2 = select([table1.c.col1, table1.c.col2]).alias()
+
+        u1 = union(s1, s2)
+        assert u1.corresponding_column(s1.c.col1) is u1.c.col1
+        assert u1.corresponding_column(s2.c.col1) is u1.c.col1
+
+        u2 = union(s2, s1)
+        assert u2.corresponding_column(s1.c.col1) is u2.c.col1
+        assert u2.corresponding_column(s2.c.col1) is u2.c.col1
+
+    def test_union_of_text(self):
+        s1 = select([table1.c.col1, table1.c.col2])
+        s2 = text("select col1, col2 from foo").columns(
+                            column('col1'), column('col2'))
+
+        u1 = union(s1, s2)
+        assert u1.corresponding_column(s1.c.col1) is u1.c.col1
+        assert u1.corresponding_column(s2.c.col1) is u1.c.col1
+
+        u2 = union(s2, s1)
+        assert u2.corresponding_column(s1.c.col1) is u2.c.col1
+        assert u2.corresponding_column(s2.c.col1) is u2.c.col1
+
     def test_select_union(self):
 
         # like testaliasunion, but off a Select off the union.

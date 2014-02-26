@@ -1446,13 +1446,13 @@ class TextClause(Executable, ClauseElement):
 
         """
 
-        col_by_name = dict(
-            (col.key, col) for col in cols
-        )
-        for key, type_ in types.items():
-            col_by_name[key] = ColumnClause(key, type_)
-
-        return selectable.TextAsFrom(self, list(col_by_name.values()))
+        input_cols = [
+            ColumnClause(col.key, types.pop(col.key))
+                if col.key in types
+                else col
+            for col in cols
+        ] + [ColumnClause(key, type_) for key, type_ in types.items()]
+        return selectable.TextAsFrom(self, input_cols)
 
     @property
     def type(self):

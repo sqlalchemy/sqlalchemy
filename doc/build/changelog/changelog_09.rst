@@ -15,6 +15,14 @@
     :version: 0.9.4
 
     .. change::
+        :tags: bug, sql
+
+        Fixed issue in new :meth:`.TextClause.columns` method where the ordering
+        of columns given positionally would not be preserved.   This could
+        have potential impact in positional situations such as applying the
+        resulting :class:`.TextAsFrom` object to a union.
+
+    .. change::
         :tags: feature, sql
         :tickets: 2962, 2866
 
