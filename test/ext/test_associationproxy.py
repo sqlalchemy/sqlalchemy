@@ -12,6 +12,7 @@ from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing.mock import Mock, call
 
 class DictCollection(dict):
     @collection.appender
@@ -602,7 +603,6 @@ class CustomObjectTest(_CollectionOperations):
             p.children.__getitem__, 1
         )
 
-
 class ProxyFactoryTest(ListTest):
     def setup(self):
         metadata = MetaData(testing.db)
@@ -814,6 +814,36 @@ class ScalarTest(fixtures.TestBase):
         a1 = A()
         assert a1.a2b_name is None
         assert a1.b_single is None
+
+    def custom_getset_test(self):
+        metadata = MetaData()
+        p = Table('p', metadata,
+                              Column('id', Integer, primary_key=True),
+                              Column('cid', Integer, ForeignKey('c.id')))
+        c = Table('c', metadata,
+                               Column('id', Integer, primary_key=True),
+                               Column('foo', String(128)))
+
+        get = Mock()
+        set_ = Mock()
+        class Parent(object):
+            foo = association_proxy('child', 'foo',
+                    getset_factory=lambda cc, parent: (get, set_))
+
+        class Child(object):
+            def __init__(self, foo):
+                self.foo = foo
+
+        mapper(Parent, p, properties={'child': relationship(Child)})
+        mapper(Child, c)
+
+        p1 = Parent()
+
+        eq_(p1.foo, get(None))
+        p1.child = child = Child(foo='x')
+        eq_(p1.foo, get(child))
+        p1.foo = "y"
+        eq_(set_.mock_calls, [call(child, "y")])
 
 
 

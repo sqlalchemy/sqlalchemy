@@ -15,6 +15,17 @@
     :version: 0.9.4
 
     .. change::
+        :tags: bug, ext
+        :tickets: 2810
+
+        Fixed a regression in association proxy caused by :ticket:`2810` which
+        caused a user-provided "getter" to no longer receive values of ``None``
+        when fetching scalar values from a target that is non-present.  The
+        check for None introduced by this change is now moved into the default
+        getter, so a user-provided getter will also again receive values of
+        None.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2974
 
