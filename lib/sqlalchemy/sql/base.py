@@ -522,17 +522,19 @@ class ColumnCollection(util.OrderedProperties):
         raise NotImplementedError()
 
     def remove(self, column):
-        raise NotImplementedError()
+        del self._data[column.key]
+        self._all_col_set.remove(column)
+        self._all_columns[:] = [c for c in self._all_columns if c is not column]
 
     def update(self, iter):
         cols = list(iter)
-        self._all_columns.extend(c for label, c in cols)
+        self._all_columns.extend(c for label, c in cols if c not in self._all_col_set)
         self._all_col_set.update(c for label, c in cols)
         self._data.update((label, c) for label, c in cols)
 
     def extend(self, iter):
         cols = list(iter)
-        self._all_columns.extend(cols)
+        self._all_columns.extend(c for c in cols if c not in self._all_col_set)
         self._all_col_set.update(cols)
         self._data.update((c.key, c) for c in cols)
 

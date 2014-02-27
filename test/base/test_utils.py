@@ -454,6 +454,36 @@ class ColumnCollectionTest(fixtures.TestBase):
         # the same as the "_all_columns" collection.
         eq_(list(cc), [c1, c2b, c3])
 
+    def test_extend_existing(self):
+        cc = sql.ColumnCollection()
+
+        c1, c2, c3, c4, c5 = column('c1'), column('c2'), column('c3'), column('c4'), column('c5')
+
+        cc.extend([c1, c2])
+        eq_(cc._all_columns, [c1, c2])
+
+        cc.extend([c3])
+        eq_(cc._all_columns, [c1, c2, c3])
+        cc.extend([c4, c2, c5])
+
+        eq_(cc._all_columns, [c1, c2, c3, c4, c5])
+
+    def test_update_existing(self):
+        cc = sql.ColumnCollection()
+
+        c1, c2, c3, c4, c5 = column('c1'), column('c2'), column('c3'), column('c4'), column('c5')
+
+        cc.update([('c1', c1), ('c2', c2)])
+        eq_(cc._all_columns, [c1, c2])
+
+        cc.update([('c3', c3)])
+        eq_(cc._all_columns, [c1, c2, c3])
+        cc.update([('c4', c4), ('c2', c2), ('c5', c5)])
+
+        eq_(cc._all_columns, [c1, c2, c3, c4, c5])
+
+
+
 class LRUTest(fixtures.TestBase):
 
     def test_lru(self):
