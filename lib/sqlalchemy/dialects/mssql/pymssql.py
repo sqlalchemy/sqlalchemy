@@ -9,7 +9,7 @@
     :name: pymssql
     :dbapi: pymssql
     :connectstring: mssql+pymssql://<username>:<password>@<freetds_name>?charset=utf8
-    :url: http://pymssql.sourceforge.net/
+    :url: http://pymssql.org/
 
 Limitations
 -----------
