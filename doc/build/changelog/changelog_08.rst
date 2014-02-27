@@ -9,6 +9,18 @@
         :start-line: 5
 
 .. changelog::
+    :version: 0.8.6
+
+    .. change::
+        :tags: orm, bug
+        :versions: 0.9.4
+        :tickets: 2975
+
+        Removed stale names from ``sqlalchemy.orm.interfaces.__all__`` and
+        refreshed with current names, so that an ``import *`` from this
+        module again works.
+
+.. changelog::
     :version: 0.8.5
     :released: February 19, 2014
 
