@@ -6,10 +6,10 @@ What's New in SQLAlchemy 0.9?
 
     This document describes changes between SQLAlchemy version 0.8,
     undergoing maintenance releases as of May, 2013,
-    and SQLAlchemy version 0.9, which is expected for release
-    in late 2013.
+    and SQLAlchemy version 0.9, which had its first production
+    release on December 30, 2013.
 
-    Document last updated: January 8, 2014
+    Document last updated: February 28, 2014
 
 Introduction
 ============
@@ -1213,6 +1213,39 @@ Generates (everywhere except SQLite)::
         OR managers.manager_name = %(manager_name_1)s
 
 :ticket:`2369` :ticket:`2587`
+
+Right-nested inner joins available in joined eager loads
+---------------------------------------------------------
+
+As of version 0.9.4, the above mentioned right-nested joining can be enabled
+in the case of a joined eager load where an "outer" join is linked to an "inner"
+on the right side.
+
+Normally, a joined eager load chain like the following::
+
+    query(User).options(joinedload("orders", innerjoin=False).joinedload("items", innerjoin=True))
+
+Would not produce an inner join; because of the LEFT OUTER JOIN from user->order,
+joined eager loading could not use an INNER join from order->items without changing
+the user rows that are returned, and would instead ignore the "chained" ``innerjoin=True``
+directive.  How 0.9.0 should have delivered this would be that instead of::
+
+    FROM users LEFT OUTER JOIN orders ON <onclause> LEFT OUTER JOIN items ON <onclause>
+
+the new "right-nested joins are OK" logic would kick in, and we'd get::
+
+    FROM users LEFT OUTER JOIN (orders JOIN items ON <onclause>) ON <onclause>
+
+Since we missed the boat on that, to avoid further regressions we've added the above
+functionality by specifying the string ``"nested"`` to :paramref:`.joinedload.innerjoin`::
+
+    query(User).options(joinedload("orders", innerjoin=False).joinedload("items", innerjoin="nested"))
+
+This feature is new in 0.9.4.
+
+:ticket:`2976`
+
+
 
 ORM can efficiently fetch just-generated INSERT/UPDATE defaults using RETURNING
 -------------------------------------------------------------------------------
