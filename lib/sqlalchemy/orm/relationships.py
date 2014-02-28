@@ -488,10 +488,21 @@ class RelationshipProperty(StrategizedProperty):
           or when the reference is one-to-one or a collection that is guaranteed
           to have one or at least one entry.
 
+          If the joined-eager load is chained onto an existing LEFT OUTER JOIN,
+          ``innerjoin=True`` will be bypassed and the join will continue to
+          chain as LEFT OUTER JOIN so that the results don't change.  As an alternative,
+          specify the value ``"nested"``.  This will instead nest the join
+          on the right side, e.g. using the form "a LEFT OUTER JOIN (b JOIN c)".
+
+          .. versionadded:: 0.9.4 Added ``innerjoin="nested"`` option to support
+             nesting of eager "inner" joins.
+
           .. seealso::
 
             :ref:`what_kind_of_loading` - Discussion of some details of
             various loader options.
+
+            :parmref:`.joinedload.innerjoin` - loader option version
 
         :param join_depth:
           when non-``None``, an integer value indicating how many levels
@@ -522,8 +533,8 @@ class RelationshipProperty(StrategizedProperty):
 
           * ``joined`` - items should be loaded "eagerly" in the same query as
             that of the parent, using a JOIN or LEFT OUTER JOIN.  Whether
-            the join is "outer" or not is determined by the ``innerjoin``
-            parameter.
+            the join is "outer" or not is determined by the
+            :paramref:`~.relationship.innerjoin` parameter.
 
           * ``subquery`` - items should be loaded "eagerly" as the parents are
             loaded, using one additional SQL statement, which issues a JOIN to a

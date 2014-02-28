@@ -10,6 +10,7 @@
 from .. import exc as sa_exc, inspect
 from .. import util, log, event
 from ..sql import util as sql_util, visitors
+from .. import sql
 from . import (
         attributes, interfaces, exc as orm_exc, loading,
         unitofwork, util as orm_util
@@ -1032,7 +1033,6 @@ class JoinedLoader(AbstractRelationshipLoader):
 
     def setup_query(self, context, entity, path, loadopt, adapter, \
                                 column_collection=None, parentmapper=None,
-                                allow_innerjoin=True,
                                 **kwargs):
         """Add a left outer join to the statement thats being constructed."""
 
@@ -1062,10 +1062,9 @@ class JoinedLoader(AbstractRelationshipLoader):
                 elif path.contains_mapper(self.mapper):
                     return
 
-            clauses, adapter, add_to_collection, \
-                allow_innerjoin = self._generate_row_adapter(
+            clauses, adapter, add_to_collection = self._generate_row_adapter(
                     context, entity, path, loadopt, adapter,
-                    column_collection, parentmapper, allow_innerjoin
+                    column_collection, parentmapper
                 )
 
         with_poly_info = path.get(
@@ -1088,8 +1087,7 @@ class JoinedLoader(AbstractRelationshipLoader):
                 path,
                 clauses,
                 parentmapper=self.mapper,
-                column_collection=add_to_collection,
-                allow_innerjoin=allow_innerjoin)
+                column_collection=add_to_collection)
 
         if with_poly_info is not None and \
             None in set(context.secondary_columns):
@@ -1167,7 +1165,7 @@ class JoinedLoader(AbstractRelationshipLoader):
 
     def _generate_row_adapter(self,
         context, entity, path, loadopt, adapter,
-        column_collection, parentmapper, allow_innerjoin
+        column_collection, parentmapper
     ):
         with_poly_info = path.get(
             context.attributes,
@@ -1189,16 +1187,12 @@ class JoinedLoader(AbstractRelationshipLoader):
         if self.parent_property.direction != interfaces.MANYTOONE:
             context.multi_row_eager_loaders = True
 
-        innerjoin = allow_innerjoin and (
+        innerjoin = (
                             loadopt.local_opts.get(
                                 'innerjoin', self.parent_property.innerjoin)
                             if loadopt is not None
                             else self.parent_property.innerjoin
                         )
-        if not innerjoin:
-            # if this is an outer join, all eager joins from
-            # here must also be outer joins
-            allow_innerjoin = False
 
         context.create_eager_joins.append(
             (self._create_eager_join, context,
@@ -1209,7 +1203,7 @@ class JoinedLoader(AbstractRelationshipLoader):
         add_to_collection = context.secondary_columns
         path.set(context.attributes, "eager_row_processor", clauses)
 
-        return clauses, adapter, add_to_collection, allow_innerjoin
+        return clauses, adapter, add_to_collection
 
     def _create_eager_join(self, context, entity,
                             path, adapter, parentmapper,
@@ -1265,13 +1259,34 @@ class JoinedLoader(AbstractRelationshipLoader):
             onclause = self.parent_property
 
         assert clauses.aliased_class is not None
-        context.eager_joins[entity_key] = eagerjoin = \
-                                orm_util.join(
-                                            towrap,
-                                            clauses.aliased_class,
-                                            onclause,
-                                            isouter=not innerjoin
-                                            )
+
+        join_to_outer = innerjoin and isinstance(towrap, sql.Join) and towrap.isouter
+
+        if join_to_outer and innerjoin == 'nested':
+            inner = orm_util.join(
+                                    towrap.right,
+                                    clauses.aliased_class,
+                                    onclause,
+                                    isouter=False
+                                )
+
+            eagerjoin = orm_util.join(
+                                towrap.left,
+                                inner,
+                                towrap.onclause,
+                                isouter=True
+                        )
+            eagerjoin._target_adapter = inner._target_adapter
+        else:
+            if join_to_outer:
+                innerjoin = False
+            eagerjoin = orm_util.join(
+                                        towrap,
+                                        clauses.aliased_class,
+                                        onclause,
+                                        isouter=not innerjoin
+                                        )
+        context.eager_joins[entity_key] = eagerjoin
 
         # send a hint to the Query as to where it may "splice" this join
         eagerjoin.stop_on = entity.selectable

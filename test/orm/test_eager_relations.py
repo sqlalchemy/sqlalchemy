@@ -1242,6 +1242,139 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         )
 
+    def test_inner_join_nested_chaining_negative_options(self):
+        users, items, order_items, Order, Item, User, orders = (self.tables.users,
+                                self.tables.items,
+                                self.tables.order_items,
+                                self.classes.Order,
+                                self.classes.Item,
+                                self.classes.User,
+                                self.tables.orders)
+
+        mapper(User, users, properties=dict(
+            orders=relationship(Order, innerjoin='nested',
+                                    lazy=False, order_by=orders.c.id)
+        ))
+        mapper(Order, orders, properties=dict(
+            items=relationship(Item, secondary=order_items, lazy=False,
+                                    innerjoin='nested', order_by=items.c.id)
+        ))
+        mapper(Item, items)
+
+        sess = create_session()
+        self.assert_compile(
+            sess.query(User),
+            "SELECT users.id AS users_id, users.name AS users_name, items_1.id AS "
+            "items_1_id, items_1.description AS items_1_description, orders_1.id AS "
+            "orders_1_id, orders_1.user_id AS orders_1_user_id, orders_1.address_id AS "
+            "orders_1_address_id, orders_1.description AS orders_1_description, "
+            "orders_1.isopen AS orders_1_isopen FROM users JOIN orders AS orders_1 ON "
+            "users.id = orders_1.user_id JOIN order_items AS order_items_1 ON orders_1.id = "
+            "order_items_1.order_id JOIN items AS items_1 ON items_1.id = "
+            "order_items_1.item_id ORDER BY orders_1.id, items_1.id"
+        )
+
+        q = sess.query(User).options(joinedload(User.orders, innerjoin=False))
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name, items_1.id AS "
+            "items_1_id, items_1.description AS items_1_description, orders_1.id AS "
+            "orders_1_id, orders_1.user_id AS orders_1_user_id, orders_1.address_id AS "
+            "orders_1_address_id, orders_1.description AS orders_1_description, "
+            "orders_1.isopen AS orders_1_isopen "
+            "FROM users LEFT OUTER JOIN "
+            "(orders AS orders_1 JOIN order_items AS order_items_1 "
+                "ON orders_1.id = order_items_1.order_id "
+                "JOIN items AS items_1 ON items_1.id = order_items_1.item_id) "
+            "ON users.id = orders_1.user_id ORDER BY orders_1.id, items_1.id"
+        )
+
+        eq_(
+                [
+                    User(id=7,
+                        orders=[
+                            Order(id=1, items=[Item(id=1), Item(id=2), Item(id=3)]),
+                            Order(id=3, items=[Item(id=3), Item(id=4), Item(id=5)]),
+                            Order(id=5, items=[Item(id=5)])]),
+                    User(id=8, orders=[]),
+                    User(id=9, orders=[
+                        Order(id=2, items=[Item(id=1), Item(id=2), Item(id=3)]),
+                        Order(id=4, items=[Item(id=1), Item(id=5)])
+                        ]
+                    ),
+                    User(id=10, orders=[])
+                ],
+            q.order_by(User.id).all()
+        )
+
+        self.assert_compile(
+            sess.query(User).options(joinedload(User.orders, Order.items, innerjoin=False)),
+            "SELECT users.id AS users_id, users.name AS users_name, items_1.id AS "
+            "items_1_id, items_1.description AS items_1_description, orders_1.id AS "
+            "orders_1_id, orders_1.user_id AS orders_1_user_id, orders_1.address_id AS "
+            "orders_1_address_id, orders_1.description AS orders_1_description, "
+            "orders_1.isopen AS orders_1_isopen "
+            "FROM users JOIN orders AS orders_1 ON users.id = orders_1.user_id "
+            "LEFT OUTER JOIN (order_items AS order_items_1 "
+            "JOIN items AS items_1 ON items_1.id = order_items_1.item_id) "
+            "ON orders_1.id = order_items_1.order_id ORDER BY orders_1.id, items_1.id"
+
+        )
+
+    def test_inner_join_nested_chaining_positive_options(self):
+        users, items, order_items, Order, Item, User, orders = (self.tables.users,
+                                self.tables.items,
+                                self.tables.order_items,
+                                self.classes.Order,
+                                self.classes.Item,
+                                self.classes.User,
+                                self.tables.orders)
+
+        mapper(User, users, properties=dict(
+            orders=relationship(Order, order_by=orders.c.id)
+        ))
+        mapper(Order, orders, properties=dict(
+            items=relationship(Item, secondary=order_items, order_by=items.c.id)
+        ))
+        mapper(Item, items)
+
+        sess = create_session()
+        q = sess.query(User).options(
+                joinedload("orders", innerjoin=False).\
+                    joinedload("items", innerjoin="nested")
+            )
+
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "items_1.id AS items_1_id, items_1.description AS items_1_description, "
+            "orders_1.id AS orders_1_id, orders_1.user_id AS orders_1_user_id, "
+            "orders_1.address_id AS orders_1_address_id, orders_1.description AS "
+            "orders_1_description, orders_1.isopen AS orders_1_isopen "
+            "FROM users LEFT OUTER JOIN (orders AS orders_1 JOIN order_items AS "
+            "order_items_1 ON orders_1.id = order_items_1.order_id JOIN items AS "
+            "items_1 ON items_1.id = order_items_1.item_id) ON users.id = orders_1.user_id "
+            "ORDER BY orders_1.id, items_1.id"
+        )
+
+        eq_(
+                [
+                    User(id=7,
+                        orders=[
+                            Order(id=1, items=[Item(id=1), Item(id=2), Item(id=3)]),
+                            Order(id=3, items=[Item(id=3), Item(id=4), Item(id=5)]),
+                            Order(id=5, items=[Item(id=5)])]),
+                    User(id=8, orders=[]),
+                    User(id=9, orders=[
+                        Order(id=2, items=[Item(id=1), Item(id=2), Item(id=3)]),
+                        Order(id=4, items=[Item(id=1), Item(id=5)])
+                        ]
+                    ),
+                    User(id=10, orders=[])
+                ],
+            q.order_by(User.id).all()
+        )
+
     def test_catch_the_right_target(self):
         # test eager join chaining to the "nested" join on the left,
         # a new feature as of [ticket:2369]
@@ -1259,14 +1392,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                                 self.tables.item_keywords)
 
         mapper(User, users, properties={
-            'orders':relationship(Order, backref='user'), # o2m, m2o
+            'orders': relationship(Order, backref='user'), # o2m, m2o
         })
         mapper(Order, orders, properties={
-            'items':relationship(Item, secondary=order_items,
+            'items': relationship(Item, secondary=order_items,
                                         order_by=items.c.id),  #m2m
         })
         mapper(Item, items, properties={
-            'keywords':relationship(Keyword, secondary=item_keywords,
+            'keywords': relationship(Keyword, secondary=item_keywords,
                                         order_by=keywords.c.id) #m2m
         })
         mapper(Keyword, keywords)
@@ -1309,7 +1442,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                                 self.classes.User,
                                 self.tables.orders)
 
-        mapper(User, users, properties = dict(
+        mapper(User, users, properties=dict(
             orders =relationship(Order, lazy=False)
         ))
         mapper(Order, orders, properties=dict(
@@ -1347,6 +1480,41 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         )
 
 
+    def test_inner_join_nested_chaining_fixed(self):
+        users, items, order_items, Order, Item, User, orders = (self.tables.users,
+                                self.tables.items,
+                                self.tables.order_items,
+                                self.classes.Order,
+                                self.classes.Item,
+                                self.classes.User,
+                                self.tables.orders)
+
+        mapper(User, users, properties=dict(
+            orders = relationship(Order, lazy=False)
+        ))
+        mapper(Order, orders, properties=dict(
+            items=relationship(Item, secondary=order_items, lazy=False,
+                                    innerjoin='nested')
+        ))
+        mapper(Item, items)
+
+        sess = create_session()
+
+        self.assert_compile(
+            sess.query(User),
+            "SELECT users.id AS users_id, users.name AS users_name, items_1.id AS "
+            "items_1_id, items_1.description AS items_1_description, orders_1.id AS "
+            "orders_1_id, orders_1.user_id AS orders_1_user_id, orders_1.address_id AS "
+            "orders_1_address_id, orders_1.description AS orders_1_description, "
+            "orders_1.isopen AS orders_1_isopen "
+            "FROM users LEFT OUTER JOIN "
+            "(orders AS orders_1 JOIN order_items AS order_items_1 "
+                "ON orders_1.id = order_items_1.order_id "
+                "JOIN items AS items_1 ON items_1.id = order_items_1.item_id) "
+                "ON users.id = orders_1.user_id"
+        )
+
+
 
     def test_inner_join_options(self):
         users, items, order_items, Order, Item, User, orders = (self.tables.users,
@@ -1358,7 +1526,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                                 self.tables.orders)
 
         mapper(User, users, properties = dict(
-            orders =relationship(Order, backref=backref('user', innerjoin=True), order_by=orders.c.id)
+            orders =relationship(Order, backref=backref('user', innerjoin=True),
+                        order_by=orders.c.id)
         ))
         mapper(Order, orders, properties=dict(
             items=relationship(Item, secondary=order_items, order_by=items.c.id)

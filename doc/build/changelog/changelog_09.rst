@@ -15,6 +15,19 @@
     :version: 0.9.4
 
     .. change::
+        :tags: orm feature
+        :tickets: 2976
+
+        Added a new option to :paramref:`.relationship.innerjoin` which is
+        to specify the string ``"nested"``.  When set to ``"nested"`` as opposed
+        to ``True``, the "chaining" of joins will parenthesize the inner join on the
+        right side of an existing outer join, instead of chaining as a string
+        of outer joins.   This possibly should have been the default behavior
+        when 0.9 was released, as we introduced the feature of right-nested
+        joins in the ORM, however we are keeping it as a non-default for now
+        to avoid further surprises.
+
+    .. change::
         :tags: bug, ext
         :tickets: 2810
 
