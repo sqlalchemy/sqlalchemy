@@ -271,7 +271,19 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def view_column_reflection(self):
+        """target database must support retrieval of the columns in a view,
+        similarly to how a table is inspected.
+
+        This does not include the full CREATE VIEW definition.
+
+        """
+        return self.views
+
+    @property
     def view_reflection(self):
+        """target database must support inspection of the full CREATE VIEW definition.
+        """
         return self.views
 
     @property

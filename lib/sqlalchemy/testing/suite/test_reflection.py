@@ -89,7 +89,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
 
         if testing.requires.index_reflection.enabled:
             cls.define_index(metadata, users)
-        if testing.requires.view_reflection.enabled:
+        if testing.requires.view_column_reflection.enabled:
             cls.define_views(metadata, schema)
 
     @classmethod
@@ -243,11 +243,11 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def test_get_columns_with_schema(self):
         self._test_get_columns(schema='test_schema')
 
-    @testing.requires.view_reflection
+    @testing.requires.view_column_reflection
     def test_get_view_columns(self):
         self._test_get_columns(table_type='view')
 
-    @testing.requires.view_reflection
+    @testing.requires.view_column_reflection
     @testing.requires.schemas
     def test_get_view_columns_with_schema(self):
         self._test_get_columns(schema='test_schema', table_type='view')
@@ -300,18 +300,20 @@ class ComponentReflectionTest(fixtures.TablesTest):
         insp = inspect(meta.bind)
         expected_schema = schema
         # users
-        users_fkeys = insp.get_foreign_keys(users.name,
-                                            schema=schema)
-        fkey1 = users_fkeys[0]
 
-        with testing.requires.named_constraints.fail_if():
-            self.assert_(fkey1['name'] is not None)
-
-        eq_(fkey1['referred_schema'], expected_schema)
-        eq_(fkey1['referred_table'], users.name)
-        eq_(fkey1['referred_columns'], ['user_id', ])
         if testing.requires.self_referential_foreign_keys.enabled:
-            eq_(fkey1['constrained_columns'], ['parent_user_id'])
+            users_fkeys = insp.get_foreign_keys(users.name,
+                                                schema=schema)
+            fkey1 = users_fkeys[0]
+
+            with testing.requires.named_constraints.fail_if():
+                self.assert_(fkey1['name'] is not None)
+
+            eq_(fkey1['referred_schema'], expected_schema)
+            eq_(fkey1['referred_table'], users.name)
+            eq_(fkey1['referred_columns'], ['user_id', ])
+            if testing.requires.self_referential_foreign_keys.enabled:
+                eq_(fkey1['constrained_columns'], ['parent_user_id'])
 
         #addresses
         addr_fkeys = insp.get_foreign_keys(addresses.name,
