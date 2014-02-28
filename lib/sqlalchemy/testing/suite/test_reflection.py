@@ -172,17 +172,17 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def test_get_table_names_with_schema(self):
         self._test_get_table_names('test_schema')
 
-    @testing.requires.view_reflection
+    @testing.requires.view_column_reflection
     def test_get_view_names(self):
         self._test_get_table_names(table_type='view')
 
-    @testing.requires.view_reflection
+    @testing.requires.view_column_reflection
     @testing.requires.schemas
     def test_get_view_names_with_schema(self):
         self._test_get_table_names('test_schema', table_type='view')
 
     @testing.requires.table_reflection
-    @testing.requires.view_reflection
+    @testing.requires.view_column_reflection
     def test_get_tables_and_views(self):
         self._test_get_table_names()
         self._test_get_table_names(table_type='view')
