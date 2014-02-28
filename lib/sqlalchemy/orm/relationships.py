@@ -502,7 +502,7 @@ class RelationshipProperty(StrategizedProperty):
             :ref:`what_kind_of_loading` - Discussion of some details of
             various loader options.
 
-            :parmref:`.joinedload.innerjoin` - loader option version
+            :paramref:`.joinedload.innerjoin` - loader option version
 
         :param join_depth:
           when non-``None``, an integer value indicating how many levels

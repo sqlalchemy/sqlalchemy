@@ -646,7 +646,7 @@ def joinedload(loadopt, attr, innerjoin=None):
         :paramref:`.relationship.lazy`
 
         :paramref:`.relationship.innerjoin` - :func:`.relationship`-level version
-         of the :paramref:`.joinedload.innerjoin` option.
+        of the :paramref:`.joinedload.innerjoin` option.
 
     """
     loader = loadopt.set_relationship_strategy(attr, {"lazy": "joined"})
