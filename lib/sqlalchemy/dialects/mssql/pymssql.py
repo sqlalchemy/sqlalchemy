@@ -11,15 +11,22 @@
     :connectstring: mssql+pymssql://<username>:<password>@<freetds_name>?charset=utf8
     :url: http://pymssql.org/
 
-Limitations
------------
+pymssql is a Python module that wraps FreeTDS (a C library) and provides a
+DB-API interface, which this dialect uses.
 
-pymssql inherits a lot of limitations from FreeTDS, including:
+The 1.x versions of pymssql were written mostly in C, with a Python "outer
+layer". These 1.x versions are no longer maintained.
 
-* no support for multibyte schema identifiers
-* poor support for large decimals
-* poor support for binary fields
-* poor support for VARCHAR/CHAR fields over 255 characters
+The 2.x versions of pymssql are written completely in Cython so the code is
+translated into C, which is compiled, leading to better performance. The 2.x
+versions have had a good amount of development activity in 2013, and so far
+this has continued in 2014. pymssql 2.x supports Python 2.6, Python 2.7, and
+Python 3.3 and up.
+
+Note that if you experience problems or limitations when using this dialect,
+the problem could be in the dialect, in pymssql, or in FreeTDS (or it could
+even be a limitation of SQL Server). So it would be great if you could isolate
+the problem before filing tickets with these projects.
 
 Please consult the pymssql documentation for further information.
 
