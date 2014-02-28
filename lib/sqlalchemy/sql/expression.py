@@ -4028,12 +4028,34 @@ class BooleanClauseList(ClauseList, ColumnElement):
 
 
 class Tuple(ClauseList, ColumnElement):
+    """Represent a SQL tuple."""
 
     def __init__(self, *clauses, **kw):
+        """Return a :class:`.Tuple`.
+
+        Main usage is to produce a composite IN construct::
+
+            from sqlalchemy import tuple_
+
+            tuple_(table.c.col1, table.c.col2).in_(
+                [(1, 2), (5, 12), (10, 19)]
+            )
+
+        .. warning::
+
+            The composite IN construct is not supported by all backends,
+            and is currently known to work on Postgresql and MySQL,
+            but not SQLite.   Unsupported backends will raise
+            a subclass of :class:`~sqlalchemy.exc.DBAPIError` when such
+            an expression is invoked.
+
+        """
+
         clauses = [_literal_as_binds(c) for c in clauses]
-        self.type = kw.pop('type_', None)
-        if self.type is None:
-            self.type = _type_from_args(clauses)
+        self._type_tuple = [arg.type for arg in clauses]
+        self.type = kw.pop('type_', self._type_tuple[0]
+                            if self._type_tuple else sqltypes.NULLTYPE)
+
         super(Tuple, self).__init__(*clauses, **kw)
 
     @property
@@ -4043,8 +4065,8 @@ class Tuple(ClauseList, ColumnElement):
     def _bind_param(self, operator, obj):
         return Tuple(*[
             BindParameter(None, o, _compared_to_operator=operator,
-                             _compared_to_type=self.type, unique=True)
-            for o in obj
+                             _compared_to_type=type_, unique=True)
+            for o, type_ in zip(obj, self._type_tuple)
         ]).self_group()
 
 
