@@ -7,7 +7,7 @@ from sqlalchemy.sql.expression import BinaryExpression, \
                 UnaryExpression, select, union, func, tuple_
 from sqlalchemy.sql import operators, table
 import operator
-from sqlalchemy import String, Integer
+from sqlalchemy import String, Integer, LargeBinary
 from sqlalchemy import exc
 from sqlalchemy.engine import default
 from sqlalchemy.sql.elements import _literal_as_text
@@ -1628,3 +1628,23 @@ class CustomOpTest(fixtures.TestBase):
         assert operators.is_comparison(op1)
         assert not operators.is_comparison(op2)
 
+class TupleTypingTest(fixtures.TestBase):
+
+    def _assert_types(self, expr):
+        eq_(expr.clauses[0].type._type_affinity, Integer)
+        eq_(expr.clauses[1].type._type_affinity, String)
+        eq_(expr.clauses[2].type._type_affinity, LargeBinary()._type_affinity)
+
+    def test_type_coersion_on_eq(self):
+        a, b, c = column('a', Integer), column('b', String), column('c', LargeBinary)
+        t1 = tuple_(a, b, c)
+        expr = t1 == (3, 'hi', 'there')
+        self._assert_types(expr.right)
+
+    def test_type_coersion_on_in(self):
+        a, b, c = column('a', Integer), column('b', String), column('c', LargeBinary)
+        t1 = tuple_(a, b, c)
+        expr = t1.in_([(3, 'hi', 'there'), (4, 'Q', 'P')])
+        eq_(len(expr.right.clauses), 2)
+        for elem in expr.right.clauses:
+            self._assert_types(elem)

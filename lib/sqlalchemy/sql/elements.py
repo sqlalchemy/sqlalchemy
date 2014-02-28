@@ -1856,9 +1856,10 @@ class Tuple(ClauseList, ColumnElement):
         """
 
         clauses = [_literal_as_binds(c) for c in clauses]
-        self.type = kw.pop('type_', None)
-        if self.type is None:
-            self.type = _type_from_args(clauses)
+        self._type_tuple = [arg.type for arg in clauses]
+        self.type = kw.pop('type_', self._type_tuple[0]
+                            if self._type_tuple else type_api.NULLTYPE)
+
         super(Tuple, self).__init__(*clauses, **kw)
 
     @property
@@ -1868,8 +1869,8 @@ class Tuple(ClauseList, ColumnElement):
     def _bind_param(self, operator, obj):
         return Tuple(*[
             BindParameter(None, o, _compared_to_operator=operator,
-                             _compared_to_type=self.type, unique=True)
-            for o in obj
+                             _compared_to_type=type_, unique=True)
+            for o, type_ in zip(obj, self._type_tuple)
         ]).self_group()
 
 

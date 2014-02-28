@@ -12,6 +12,20 @@
     :version: 0.8.6
 
     .. change::
+        :tags: bug, sql
+        :versions: 0.9.4
+        :tickets: 2977
+
+        Fixed bug in :func:`.tuple_` construct where the "type" of essentially
+        the first SQL expression would be applied as the "comparison type"
+        to a compared tuple value; this has the effect in some cases of an
+        inappropriate "type coersion" occurring, such as when a tuple that
+        has a mix of String and Binary values improperly coerces target
+        values to Binary even though that's not what they are on the left
+        side.  :func:`.tuple_` now expects heterogeneous types within its
+        list of values.
+
+    .. change::
         :tags: orm, bug
         :versions: 0.9.4
         :tickets: 2975
