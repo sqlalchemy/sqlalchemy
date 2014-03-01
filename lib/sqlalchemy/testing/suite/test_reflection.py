@@ -238,6 +238,52 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def test_get_columns(self):
         self._test_get_columns()
 
+    @testing.provide_metadata
+    def _type_round_trip(self, *types):
+        t = Table('t', self.metadata,
+                    *[
+                        Column('t%d' % i, type_)
+                        for i, type_ in enumerate(types)
+                    ]
+                )
+        t.create()
+
+        return [
+            c['type'] for c in
+            inspect(self.metadata.bind).get_columns('t')
+        ]
+
+    @testing.requires.table_reflection
+    def test_numeric_reflection(self):
+        for typ in self._type_round_trip(
+                            sql_types.Numeric(18, 5),
+                        ):
+            assert isinstance(typ, sql_types.Numeric)
+            eq_(typ.precision, 18)
+            eq_(typ.scale, 5)
+
+    @testing.requires.table_reflection
+    def test_varchar_reflection(self):
+        typ = self._type_round_trip(sql_types.String(52))[0]
+        assert isinstance(typ, sql_types.String)
+        eq_(typ.length, 52)
+
+    @testing.requires.table_reflection
+    @testing.provide_metadata
+    def test_nullable_reflection(self):
+        t = Table('t', self.metadata,
+                        Column('a', Integer, nullable=True),
+                        Column('b', Integer, nullable=False))
+        t.create()
+        eq_(
+            dict(
+                (col['name'], col['nullable'])
+                for col in inspect(self.metadata.bind).get_columns('t')
+            ),
+            {"a": True, "b": False}
+        )
+
+
     @testing.requires.table_reflection
     @testing.requires.schemas
     def test_get_columns_with_schema(self):
