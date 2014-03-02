@@ -69,7 +69,7 @@ class _DispatchDescriptor(RefCollection):
         if self.legacy_signatures:
             try:
                 argspec = util.get_callable_argspec(fn, no_self=True)
-            except ValueError:
+            except TypeError:
                 pass
             else:
                 fn = legacy._wrap_fn_for_legacy(self, fn, argspec)

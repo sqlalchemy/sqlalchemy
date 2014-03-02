@@ -1836,41 +1836,17 @@ class ColumnDefault(DefaultGenerator):
     def _maybe_wrap_callable(self, fn):
         """Wrap callables that don't accept a context.
 
-        The alternative here is to require that
-        a simple callable passed to "default" would need
-        to be of the form "default=lambda ctx: datetime.now".
-        That is the more "correct" way to go, but the case
-        of using a zero-arg callable for "default" is so
-        much more prominent than the context-specific one
-        I'm having trouble justifying putting that inconvenience
-        on everyone.
+        This is to allow easy compatiblity with default callables
+        that aren't specific to accepting of a context.
 
         """
-        # TODO: why aren't we using a util.langhelpers function
-        # for this?  e.g. get_callable_argspec
-
-        if isinstance(fn, (types.BuiltinMethodType, types.BuiltinFunctionType)):
-            return lambda ctx: fn()
-        elif inspect.isfunction(fn) or inspect.ismethod(fn):
-            inspectable = fn
-        elif inspect.isclass(fn):
-            inspectable = fn.__init__
-        elif hasattr(fn, '__call__'):
-            inspectable = fn.__call__
-        else:
-            # probably not inspectable, try anyways.
-            inspectable = fn
         try:
-            argspec = inspect.getargspec(inspectable)
+            argspec = util.get_callable_argspec(fn, no_self=True)
         except TypeError:
             return lambda ctx: fn()
 
         defaulted = argspec[3] is not None and len(argspec[3]) or 0
         positionals = len(argspec[0]) - defaulted
-
-        # Py3K compat - no unbound methods
-        if inspect.ismethod(inspectable) or inspect.isclass(fn):
-            positionals -= 1
 
         if positionals == 0:
             return lambda ctx: fn()

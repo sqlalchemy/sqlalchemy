@@ -260,20 +260,42 @@ def get_func_kwargs(func):
 
     return compat.inspect_getargspec(func)[0]
 
-def get_callable_argspec(fn, no_self=False):
-    if isinstance(fn, types.FunctionType):
-        return compat.inspect_getargspec(fn)
-    elif isinstance(fn, types.MethodType) and no_self:
-        spec = compat.inspect_getargspec(fn.__func__)
-        return compat.ArgSpec(spec.args[1:], spec.varargs, spec.keywords, spec.defaults)
+def get_callable_argspec(fn, no_self=False, _is_init=False):
+    """Return the argument signature for any callable.
+
+    All pure-Python callables are accepted, including
+    functions, methods, classes, objects with __call__;
+    builtins and other edge cases like functools.partial() objects
+    raise a TypeError.
+
+    """
+    if inspect.isbuiltin(fn):
+        raise TypeError("Can't inspect builtin: %s" % fn)
+    elif inspect.isfunction(fn):
+        if _is_init and no_self:
+            spec = compat.inspect_getargspec(fn)
+            return compat.ArgSpec(spec.args[1:], spec.varargs,
+                            spec.keywords, spec.defaults)
+        else:
+            return compat.inspect_getargspec(fn)
+    elif inspect.ismethod(fn):
+        if no_self and (_is_init or fn.__self__):
+            spec = compat.inspect_getargspec(fn.__func__)
+            return compat.ArgSpec(spec.args[1:], spec.varargs,
+                            spec.keywords, spec.defaults)
+        else:
+            return compat.inspect_getargspec(fn.__func__)
+    elif inspect.isclass(fn):
+        return get_callable_argspec(fn.__init__, no_self=no_self, _is_init=True)
     elif hasattr(fn, '__func__'):
         return compat.inspect_getargspec(fn.__func__)
-    elif hasattr(fn, '__call__') and \
-        not hasattr(fn.__call__, '__call__'):  # functools.partial does this;
-                                               # not much we can do
-        return get_callable_argspec(fn.__call__)
+    elif hasattr(fn, '__call__'):
+        if inspect.ismethod(fn.__call__):
+            return get_callable_argspec(fn.__call__, no_self=no_self)
+        else:
+            raise TypeError("Can't inspect callable: %s" % fn)
     else:
-        raise ValueError("Can't inspect function: %s" % fn)
+        raise TypeError("Can't inspect callable: %s" % fn)
 
 def format_argspec_plus(fn, grouped=True):
     """Returns a dictionary of formatted, introspected function arguments.

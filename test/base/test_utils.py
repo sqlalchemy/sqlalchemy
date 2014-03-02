@@ -1377,6 +1377,35 @@ class ArgInspectionTest(fixtures.TestBase):
             (['x', 'y'], None, 'kw', None)
         )
 
+    def test_callable_argspec_fn_no_self(self):
+        def foo(x, y, **kw):
+            pass
+        eq_(
+            get_callable_argspec(foo, no_self=True),
+            (['x', 'y'], None, 'kw', None)
+        )
+
+    def test_callable_argspec_fn_no_self_but_self(self):
+        def foo(self, x, y, **kw):
+            pass
+        eq_(
+            get_callable_argspec(foo, no_self=True),
+            (['self', 'x', 'y'], None, 'kw', None)
+        )
+
+    def test_callable_argspec_py_builtin(self):
+        import datetime
+        assert_raises(
+            TypeError,
+            get_callable_argspec, datetime.datetime.now
+        )
+
+    def test_callable_argspec_obj_init(self):
+        assert_raises(
+            TypeError,
+            get_callable_argspec, object
+        )
+
     def test_callable_argspec_method(self):
         class Foo(object):
             def foo(self, x, y, **kw):
@@ -1386,6 +1415,62 @@ class ArgInspectionTest(fixtures.TestBase):
             (['self', 'x', 'y'], None, 'kw', None)
         )
 
+    def test_callable_argspec_instance_method_no_self(self):
+        class Foo(object):
+            def foo(self, x, y, **kw):
+                pass
+        eq_(
+            get_callable_argspec(Foo().foo, no_self=True),
+            (['x', 'y'], None, 'kw', None)
+        )
+
+    def test_callable_argspec_unbound_method_no_self(self):
+        class Foo(object):
+            def foo(self, x, y, **kw):
+                pass
+        eq_(
+            get_callable_argspec(Foo.foo, no_self=True),
+            (['self', 'x', 'y'], None, 'kw', None)
+        )
+
+    def test_callable_argspec_init(self):
+        class Foo(object):
+            def __init__(self, x, y):
+                pass
+
+        eq_(
+            get_callable_argspec(Foo),
+            (['self', 'x', 'y'], None, None, None)
+        )
+
+    def test_callable_argspec_init_no_self(self):
+        class Foo(object):
+            def __init__(self, x, y):
+                pass
+
+        eq_(
+            get_callable_argspec(Foo, no_self=True),
+            (['x', 'y'], None, None, None)
+        )
+
+    def test_callable_argspec_call(self):
+        class Foo(object):
+            def __call__(self, x, y):
+                pass
+        eq_(
+            get_callable_argspec(Foo()),
+            (['self', 'x', 'y'], None, None, None)
+        )
+
+    def test_callable_argspec_call_no_self(self):
+        class Foo(object):
+            def __call__(self, x, y):
+                pass
+        eq_(
+            get_callable_argspec(Foo(), no_self=True),
+            (['x', 'y'], None, None, None)
+        )
+
     def test_callable_argspec_partial(self):
         from functools import partial
         def foo(x, y, z, **kw):
@@ -1393,7 +1478,7 @@ class ArgInspectionTest(fixtures.TestBase):
         bar = partial(foo, 5)
 
         assert_raises(
-            ValueError,
+            TypeError,
             get_callable_argspec, bar
         )
 
