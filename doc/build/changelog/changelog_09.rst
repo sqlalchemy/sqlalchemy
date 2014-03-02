@@ -15,6 +15,14 @@
     :version: 0.9.4
 
     .. change::
+        :tags: bug, general
+        :tickets: 2979
+
+        Fixed some test/feature failures occurring in Python 3.4,
+        in particular the logic used to wrap "column default" callables
+        wouldn't work properly for Python built-ins.
+
+    .. change::
         :tags: orm feature
         :tickets: 2976
 

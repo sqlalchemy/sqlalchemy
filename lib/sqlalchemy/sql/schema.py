@@ -27,6 +27,7 @@ Since these objects are part of the SQL expression language, they are usable
 as components in SQL expressions.
 
 """
+from __future__ import absolute_import
 
 import inspect
 from .. import exc, util, event, inspection
@@ -41,6 +42,7 @@ from .selectable import TableClause
 import collections
 import sqlalchemy
 from . import ddl
+import types
 
 RETAIN_SCHEMA = util.symbol('retain_schema')
 
@@ -1844,7 +1846,12 @@ class ColumnDefault(DefaultGenerator):
         on everyone.
 
         """
-        if inspect.isfunction(fn) or inspect.ismethod(fn):
+        # TODO: why aren't we using a util.langhelpers function
+        # for this?  e.g. get_callable_argspec
+
+        if isinstance(fn, (types.BuiltinMethodType, types.BuiltinFunctionType)):
+            return lambda ctx: fn()
+        elif inspect.isfunction(fn) or inspect.ismethod(fn):
             inspectable = fn
         elif inspect.isclass(fn):
             inspectable = fn.__init__

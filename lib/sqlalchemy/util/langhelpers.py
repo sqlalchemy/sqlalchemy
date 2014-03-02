@@ -362,15 +362,15 @@ def format_argspec_init(method, grouped=True):
       other unreflectable (usually C) -> (self, *args, **kwargs)
 
     """
-    try:
-        return format_argspec_plus(method, grouped=grouped)
-    except TypeError:
-        if method is object.__init__:
-            args = grouped and '(self)' or 'self'
-        else:
+    if method is object.__init__:
+        args = grouped and '(self)' or 'self'
+    else:
+        try:
+            return format_argspec_plus(method, grouped=grouped)
+        except TypeError:
             args = (grouped and '(self, *args, **kwargs)'
                             or 'self, *args, **kwargs')
-        return dict(self_arg='self', args=args, apply_pos=args, apply_kw=args)
+    return dict(self_arg='self', args=args, apply_pos=args, apply_kw=args)
 
 
 def getargspec_init(method):
