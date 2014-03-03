@@ -112,7 +112,9 @@ def pytest_runtest_teardown(item):
     test_teardown(item)
 
 def test_setup(item):
-    id_ = "%s.%s:%s" % (item.parent.module.__name__, item.parent.name, item.name)
+    # like a nose id, e.g.:
+    # "test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause"
+    id_ = "%s.%s.%s" % (item.parent.module.__name__, item.parent.cls.__name__, item.name)
     plugin_base.before_test(item, id_)
 
 def test_teardown(item):
