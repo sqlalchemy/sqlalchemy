@@ -99,6 +99,26 @@ test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 3.3_postgre
 test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 3.3_postgresql_psycopg2_nocextensions 151
 test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 3.3_sqlite_pysqlite_cextensions 151
 
+# TEST: test.aaa_profiling.test_compiler.CompileTest:test_insert
+
+test.aaa_profiling.test_compiler.CompileTest:test_insert 2.7_sqlite_pysqlite_cextensions 73
+
+# TEST: test.aaa_profiling.test_compiler.CompileTest:test_select
+
+test.aaa_profiling.test_compiler.CompileTest:test_select 2.7_sqlite_pysqlite_cextensions 145
+
+# TEST: test.aaa_profiling.test_compiler.CompileTest:test_select_labels
+
+test.aaa_profiling.test_compiler.CompileTest:test_select_labels 2.7_sqlite_pysqlite_cextensions 179
+
+# TEST: test.aaa_profiling.test_compiler.CompileTest:test_update
+
+test.aaa_profiling.test_compiler.CompileTest:test_update 2.7_sqlite_pysqlite_cextensions 78
+
+# TEST: test.aaa_profiling.test_compiler.CompileTest:test_update_whereclause
+
+test.aaa_profiling.test_compiler.CompileTest:test_update_whereclause 2.7_sqlite_pysqlite_cextensions 147
+
 # TEST: test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set
 
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set 2.7_sqlite_pysqlite_cextensions 4265

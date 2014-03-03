@@ -3004,7 +3004,7 @@ class MetaData(SchemaItem):
 
         self.bind = bind
         if reflect:
-            util.warn("reflect=True is deprecate; please "
+            util.warn_deprecated("reflect=True is deprecate; please "
                             "use the reflect() method.")
             if not bind:
                 raise exc.ArgumentError(

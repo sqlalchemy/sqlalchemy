@@ -9,7 +9,12 @@ installs SQLAlchemy's testing plugin into the local environment.
 import sys
 import imp
 import nose
+import warnings
 
+warnings.warn(
+    "SQLAlchemy now includes py.test support which going forward should be "
+    "preferred to nose.  Please see README.unittests.rst for updated "
+    "testing information!")
 
 from os import path
 for pth in ['./lib']:

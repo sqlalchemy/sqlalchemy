@@ -10,7 +10,6 @@ import sqlalchemy as tsa
 from sqlalchemy import testing
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import AssertsCompiledSQL, eq_
-from nose import SkipTest
 from sqlalchemy.testing import fixtures
 
 
@@ -429,11 +428,9 @@ class DDLExecutionTest(fixtures.TestBase):
         strings = ' '.join(str(x) for x in pg_mock.mock)
         assert 'my_test_constraint' in strings
 
+    @testing.requires.sqlite
     def test_ddl_execute(self):
-        try:
-            engine = create_engine('sqlite:///')
-        except ImportError:
-            raise SkipTest('Requires sqlite')
+        engine = create_engine('sqlite:///')
         cx = engine.connect()
         table = self.users
         ddl = DDL('SELECT 1')

@@ -19,6 +19,8 @@ metadata, users = None, None
 
 
 class HasTableTest(fixtures.TablesTest):
+    __multiple__ = True
+
     @classmethod
     def define_tables(cls, metadata):
         Table('test_table', metadata,
@@ -33,8 +35,11 @@ class HasTableTest(fixtures.TablesTest):
 
 
 
+
 class ComponentReflectionTest(fixtures.TablesTest):
     run_inserts = run_deletes = None
+
+    __multiple__ = True
 
     @classmethod
     def define_tables(cls, metadata):

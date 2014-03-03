@@ -180,25 +180,6 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             gen(True, ['high_priority', sql.text('sql_cache')]),
             'SELECT high_priority sql_cache DISTINCT q')
 
-    @testing.uses_deprecated
-    def test_deprecated_distinct(self):
-        dialect = self.__dialect__
-
-        self.assert_compile(
-            select(['q'], distinct='ALL'),
-            'SELECT ALL q',
-        )
-
-        self.assert_compile(
-            select(['q'], distinct='distinctROW'),
-            'SELECT DISTINCTROW q',
-        )
-
-        self.assert_compile(
-            select(['q'], distinct='ALL',
-                    prefixes=['HIGH_PRIORITY', 'SQL_SMALL_RESULT']),
-            'SELECT HIGH_PRIORITY SQL_SMALL_RESULT ALL q'
-        )
 
     def test_backslash_escaping(self):
         self.assert_compile(

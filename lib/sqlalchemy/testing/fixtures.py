@@ -14,6 +14,8 @@ import sys
 import sqlalchemy as sa
 from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 
+# whether or not we use unittest changes things dramatically,
+# as far as how py.test collection works.
 
 class TestBase(object):
     # A sequence of database names to always run, regardless of the
@@ -37,6 +39,14 @@ class TestBase(object):
     def assert_(self, val, msg=None):
         assert val, msg
 
+    # apparently a handful of tests are doing this....OK
+    def setup(self):
+        if hasattr(self, "setUp"):
+            self.setUp()
+
+    def teardown(self):
+        if hasattr(self, "tearDown"):
+            self.tearDown()
 
 class TablesTest(TestBase):
 

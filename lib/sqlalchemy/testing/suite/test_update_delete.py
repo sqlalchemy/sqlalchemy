@@ -7,6 +7,7 @@ from ..schema import Table, Column
 
 class SimpleUpdateDeleteTest(fixtures.TablesTest):
     run_deletes = 'each'
+    __multiple__ = True
 
     @classmethod
     def define_tables(cls, metadata):

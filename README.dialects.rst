@@ -24,6 +24,9 @@ be viewed as the primary target for new dialects, and as it continues
 to grow and mature it should become a more thorough and efficient system
 of testing new dialects.
 
+As of SQLAlchemy 0.9.4, both nose and pytest are supported for running tests,
+and pytest is now preferred.
+
 Dialect Layout
 ===============
 
@@ -39,6 +42,7 @@ The file structure of a dialect is typically similar to the following::
                                               <dbapi>.py
                                               requirements.py
                          test/
+                                              conftest.py
                                               __init__.py
                                               test_suite.py
                                               test_<dialect_specific_test>.py
@@ -66,12 +70,16 @@ Key aspects of this file layout include:
 
     create_engine("access+pyodbc://user:pw@dsn")
 
-* setup.cfg - this file contains the traditional contents such as [egg_info]
-  and [nosetests] directives, but also contains new directives that are used
+* setup.cfg - this file contains the traditional contents such as [egg_info],
+  [pytest] and [nosetests] directives, but also contains new directives that are used
   by SQLAlchemy's testing framework.  E.g. for Access::
 
     [egg_info]
     tag_build = dev
+
+    [pytest]
+    addopts= --tb native -v -r fxX
+    python_files=test/*test_*.py
 
     [nosetests]
     with-sqla_testing = true
@@ -89,21 +97,38 @@ Key aspects of this file layout include:
     sqlite=sqlite:///:memory:
 
   Above, the ``[sqla_testing]`` section contains configuration used by
-  SQLAlchemy's test plugin.The ``[nosetests]`` section includes the
-  directive ``with-sql_testing = true``, which indicates to Nose that
-  the SQLAlchemy nose plugin should be used.
+  SQLAlchemy's test plugin.  The ``[pytest]`` and ``[nosetests]`` sections
+  include directives to help with these runners; in the case of
+  Nose, the directive ``with-sql_testing = true``, which indicates to Nose that
+  the SQLAlchemy nose plugin should be used.  In the case of pytest, the
+  test/conftest.py file will bootstrap SQLAlchemy's plugin.
 
-* run_tests.py - The plugin is provided with SQLAlchemy, however is not
-  plugged into Nose automatically; instead, a ``run_tests.py`` script
-  should be composed as a front end to Nose, such that SQLAlchemy's plugin
-  will be correctly installed.
+* test/conftest.py - This script bootstraps SQLAlchemy's pytest plugin
+  into the pytest runner.  This
+  script can also be used to install your third party dialect into
+  SQLAlchemy without using the setuptools entrypoint system; this allows
+  your dialect to be present without any explicit setup.py step needed.
+  The other portion invokes SQLAlchemy's pytest plugin::
 
-  run_tests.py has two parts.  One optional, but probably helpful, step
-  is that it installs your third party dialect into SQLAlchemy without
-  using the setuptools entrypoint system; this allows your dialect to
-  be present without any explicit setup.py step needed.  The other
-  step is to import SQLAlchemy's nose runner and invoke it.  An
-  example run_tests.py file looks like the following::
+    from sqlalchemy.dialects import registry
+
+    registry.register("access", "sqlalchemy_access.pyodbc", "AccessDialect_pyodbc")
+    registry.register("access.pyodbc", "sqlalchemy_access.pyodbc", "AccessDialect_pyodbc")
+
+    from sqlalchemy.testing.plugin.pytestplugin import *
+
+  Where above, the ``registry`` module, introduced in SQLAlchemy 0.8, provides
+  an in-Python means of installing the dialect entrypoints without the use
+  of setuptools, using the ``registry.register()`` function in a way that
+  is similar to the ``entry_points`` directive we placed in our ``setup.py``.
+
+* run_tests.py - This script is used when running the tests via Nose.
+  The purpose of the script is to plug in SQLAlchemy's nose plugin into
+  the Nose environment before the tests run.
+
+  The format of this file is similar to that of conftest.py; first,
+  the optional but helpful step of registering your third party plugin,
+  then the other is to import SQLAlchemy's nose runner and invoke it::
 
     from sqlalchemy.dialects import registry
 
@@ -120,10 +145,6 @@ Key aspects of this file layout include:
     if __name__ == '__main__':
         runner.main()
 
-  Where above, the ``registry`` module, introduced in SQLAlchemy 0.8, provides
-  an in-Python means of installing the dialect entrypoints without the use
-  of setuptools, using the ``registry.register()`` function in a way that
-  is similar to the ``entry_points`` directive we placed in our ``setup.py``.
   The call to ``runner.main()`` then runs the Nose front end, which installs
   SQLAlchemy's testing plugins.   Invoking our custom runner looks like the
   following::
@@ -175,12 +196,12 @@ Key aspects of this file layout include:
   dialect take place::
 
     cd /path/to/sqlalchemy
-    python ./sqla_nose.py -v \
+    py.test -v \
       --requirements sqlalchemy_access.requirements:Requirements \
       --dburi access+pyodbc://admin@access_test
 
 * test_suite.py - Finally, the ``test_suite.py`` module represents a
-  Nose test suite, which pulls   in the actual SQLAlchemy test suite.
+  stub test suite, which pulls in the actual SQLAlchemy test suite.
   To pull in the suite as a whole, it can   be imported in one step::
 
       # test/test_suite.py

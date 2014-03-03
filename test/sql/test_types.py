@@ -1351,36 +1351,6 @@ class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         expr = column('foo', CHAR) == "asdf"
         eq_(expr.right.type.__class__, CHAR)
 
-    @testing.uses_deprecated
-    @testing.fails_on('firebird', 'Data type unknown on the parameter')
-    @testing.fails_on('mssql', 'int is unsigned ?  not clear')
-    def test_operator_adapt(self):
-        """test type-based overloading of operators"""
-
-        # test string concatenation
-        expr = test_table.c.data + "somedata"
-        eq_(testing.db.execute(select([expr])).scalar(), "somedatasomedata")
-
-        expr = test_table.c.id + 15
-        eq_(testing.db.execute(select([expr])).scalar(), 16)
-
-        # test custom operator conversion
-        expr = test_table.c.avalue + 40
-        assert expr.type.__class__ is test_table.c.avalue.type.__class__
-
-        # value here is calculated as (250 - 40) / 10 = 21
-        # because "40" is an integer, not an "avalue"
-        eq_(testing.db.execute(select([expr.label('foo')])).scalar(), 21)
-
-        expr = test_table.c.avalue + literal(40, type_=MyCustomType)
-
-        # + operator converted to -
-        # value is calculated as: (250 - (40 * 10)) / 10 == -15
-        eq_(testing.db.execute(select([expr.label('foo')])).scalar(), -15)
-
-        # this one relies upon anonymous labeling to assemble result
-        # processing rules on the column.
-        eq_(testing.db.execute(select([expr])).scalar(), -15)
 
     def test_typedec_operator_adapt(self):
         expr = test_table.c.bvalue + "hi"

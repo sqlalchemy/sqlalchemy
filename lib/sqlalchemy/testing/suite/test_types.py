@@ -120,6 +120,7 @@ class _UnicodeFixture(_LiteralRoundTripFixture):
 
 class UnicodeVarcharTest(_UnicodeFixture, fixtures.TablesTest):
     __requires__ = 'unicode_data',
+    __multiple__ = True
 
     datatype = Unicode(255)
 
@@ -130,6 +131,7 @@ class UnicodeVarcharTest(_UnicodeFixture, fixtures.TablesTest):
 
 class UnicodeTextTest(_UnicodeFixture, fixtures.TablesTest):
     __requires__ = 'unicode_data', 'text_type'
+    __multiple__ = True
 
     datatype = UnicodeText()
 
@@ -138,6 +140,8 @@ class UnicodeTextTest(_UnicodeFixture, fixtures.TablesTest):
         self._test_empty_strings()
 
 class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
+    __multiple__ = True
+
     @classmethod
     def define_tables(cls, metadata):
         Table('text_table', metadata,
@@ -182,6 +186,8 @@ class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         self._literal_round_trip(Text, [data], [data])
 
 class StringTest(_LiteralRoundTripFixture, fixtures.TestBase):
+    __multiple__ = True
+
     @requirements.unbounded_varchar
     def test_nolength_string(self):
         metadata = MetaData()
@@ -258,36 +264,42 @@ class _DateFixture(_LiteralRoundTripFixture):
 
 class DateTimeTest(_DateFixture, fixtures.TablesTest):
     __requires__ = 'datetime',
+    __multiple__ = True
     datatype = DateTime
     data = datetime.datetime(2012, 10, 15, 12, 57, 18)
 
 
 class DateTimeMicrosecondsTest(_DateFixture, fixtures.TablesTest):
     __requires__ = 'datetime_microseconds',
+    __multiple__ = True
     datatype = DateTime
     data = datetime.datetime(2012, 10, 15, 12, 57, 18, 396)
 
 
 class TimeTest(_DateFixture, fixtures.TablesTest):
     __requires__ = 'time',
+    __multiple__ = True
     datatype = Time
     data = datetime.time(12, 57, 18)
 
 
 class TimeMicrosecondsTest(_DateFixture, fixtures.TablesTest):
     __requires__ = 'time_microseconds',
+    __multiple__ = True
     datatype = Time
     data = datetime.time(12, 57, 18, 396)
 
 
 class DateTest(_DateFixture, fixtures.TablesTest):
     __requires__ = 'date',
+    __multiple__ = True
     datatype = Date
     data = datetime.date(2012, 10, 15)
 
 
 class DateTimeCoercedToDateTimeTest(_DateFixture, fixtures.TablesTest):
     __requires__ = 'date',
+    __multiple__ = True
     datatype = Date
     data = datetime.datetime(2012, 10, 15, 12, 57, 18)
     compare = datetime.date(2012, 10, 15)
@@ -295,21 +307,25 @@ class DateTimeCoercedToDateTimeTest(_DateFixture, fixtures.TablesTest):
 
 class DateTimeHistoricTest(_DateFixture, fixtures.TablesTest):
     __requires__ = 'datetime_historic',
+    __multiple__ = True
     datatype = DateTime
     data = datetime.datetime(1850, 11, 10, 11, 52, 35)
 
 
 class DateHistoricTest(_DateFixture, fixtures.TablesTest):
     __requires__ = 'date_historic',
+    __multiple__ = True
     datatype = Date
     data = datetime.date(1727, 4, 1)
 
 
 class IntegerTest(_LiteralRoundTripFixture, fixtures.TestBase):
+    __multiple__ = True
     def test_literal(self):
         self._literal_round_trip(Integer, [5], [5])
 
 class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
+    __multiple__ = True
 
     @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
     @testing.provide_metadata

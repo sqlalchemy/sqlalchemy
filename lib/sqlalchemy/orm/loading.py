@@ -361,6 +361,7 @@ def instance_processor(mapper, context, path, adapter,
                         )
 
         instance = session_identity_map.get(identitykey)
+
         if instance is not None:
             state = attributes.instance_state(instance)
             dict_ = attributes.instance_dict(instance)

@@ -108,6 +108,7 @@ def %(name)s(%(args)s):
                             {targ_name: target, fn_name: fn},
                             fn.__name__)
         decorated.__defaults__ = getattr(fn, 'im_func', fn).__defaults__
+        decorated.__wrapped__ = fn
         return update_wrapper(decorated, fn)
     return update_wrapper(decorate, target)
 

@@ -11,7 +11,7 @@ from ..util import decorator
 from . import config
 from .. import util
 import contextlib
-
+import inspect
 
 class skip_if(object):
     def __init__(self, predicate, reason=None):
@@ -20,27 +20,30 @@ class skip_if(object):
 
     _fails_on = None
 
-    @property
-    def enabled(self):
-        return not self.predicate()
-
     def __add__(self, other):
         def decorate(fn):
             return other(self(fn))
         return decorate
+
+    @property
+    def enabled(self):
+        return self.enabled_for_config(config._current)
+
+    def enabled_for_config(self, config):
+        return not self.predicate(config)
 
     @contextlib.contextmanager
     def fail_if(self, name='block'):
         try:
             yield
         except Exception as ex:
-            if self.predicate():
+            if self.predicate(config._current):
                 print(("%s failed as expected (%s): %s " % (
                     name, self.predicate, str(ex))))
             else:
                 raise
         else:
-            if self.predicate():
+            if self.predicate(config._current):
                 raise AssertionError(
                     "Unexpected success for '%s' (%s)" %
                     (name, self.predicate))
@@ -48,7 +51,7 @@ class skip_if(object):
     def __call__(self, fn):
         @decorator
         def decorate(fn, *args, **kw):
-            if self.predicate():
+            if self.predicate(config._current):
                 if self.reason:
                     msg = "'%s' : %s" % (
                             fn.__name__,
@@ -122,7 +125,7 @@ class BooleanPredicate(Predicate):
         self.value = value
         self.description = description or "boolean %s" % value
 
-    def __call__(self):
+    def __call__(self, config):
         return self.value
 
     def _as_string(self, negate=False):
@@ -153,9 +156,8 @@ class SpecPredicate(Predicate):
              'between': lambda val, pair: val >= pair[0] and val <= pair[1],
              }
 
-    def __call__(self, engine=None):
-        if engine is None:
-            engine = config.db
+    def __call__(self, config):
+        engine = config.db
 
         if "+" in self.db:
             dialect, driver = self.db.split('+')
@@ -205,7 +207,11 @@ class SpecPredicate(Predicate):
 
 class LambdaPredicate(Predicate):
     def __init__(self, lambda_, description=None, args=None, kw=None):
-        self.lambda_ = lambda_
+        spec = inspect.getargspec(lambda_)
+        if not spec[0]:
+            self.lambda_ = lambda db: lambda_()
+        else:
+            self.lambda_ = lambda_
         self.args = args or ()
         self.kw = kw or {}
         if description:
@@ -215,8 +221,8 @@ class LambdaPredicate(Predicate):
         else:
             self.description = "custom function"
 
-    def __call__(self):
-        return self.lambda_(*self.args, **self.kw)
+    def __call__(self, config):
+        return self.lambda_(config)
 
     def _as_string(self, negate=False):
         if negate:
@@ -232,8 +238,8 @@ class NotPredicate(Predicate):
     def __init__(self, predicate):
         self.predicate = predicate
 
-    def __call__(self, *arg, **kw):
-        return not self.predicate(*arg, **kw)
+    def __call__(self, config):
+        return not self.predicate(config)
 
     def __str__(self):
         return self.predicate._as_string(True)
@@ -244,9 +250,9 @@ class OrPredicate(Predicate):
         self.predicates = predicates
         self.description = description
 
-    def __call__(self, *arg, **kw):
+    def __call__(self, config):
         for pred in self.predicates:
-            if pred(*arg, **kw):
+            if pred(config):
                 self._str = pred
                 return True
         return False
@@ -286,7 +292,7 @@ _as_predicate = Predicate.as_predicate
 
 
 def _is_excluded(db, op, spec):
-    return SpecPredicate(db, op, spec)()
+    return SpecPredicate(db, op, spec)(config._current)
 
 
 def _server_version(engine):
@@ -301,7 +307,7 @@ def _server_version(engine):
 
 def db_spec(*dbs):
     return OrPredicate(
-            Predicate.as_predicate(db) for db in dbs
+            [Predicate.as_predicate(db) for db in dbs]
         )
 
 
@@ -314,8 +320,8 @@ def closed():
 
 
 @decorator
-def future(fn, *args, **kw):
-    return fails_if(LambdaPredicate(fn, *args, **kw), "Future feature")
+def future(fn, *arg):
+    return fails_if(LambdaPredicate(fn), "Future feature")
 
 
 def fails_on(db, reason=None):
@@ -344,8 +350,9 @@ def exclude(db, op, spec, reason=None):
     return skip_if(SpecPredicate(db, op, spec), reason)
 
 
-def against(*queries):
+def against(config, *queries):
+    assert queries, "no queries sent!"
     return OrPredicate([
                 Predicate.as_predicate(query)
                 for query in queries
-            ])()
+            ])(config)

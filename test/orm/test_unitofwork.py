@@ -127,10 +127,6 @@ class UnicodeSchemaTest(fixtures.MappedTest):
     run_dispose_bind = 'once'
 
     @classmethod
-    def create_engine(cls):
-        return engines.utf8_engine()
-
-    @classmethod
     def define_tables(cls, metadata):
         t1 = Table('unitable1', metadata,
               Column(u('méil'), Integer, primary_key=True, key='a', test_needs_autoincrement=True),

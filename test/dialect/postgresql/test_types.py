@@ -448,6 +448,7 @@ class TimezoneTest(fixtures.TestBase):
 class TimePrecisionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __dialect__ = postgresql.dialect()
+    __prefer__ = 'postgresql'
 
     def test_compile(self):
         for type_, expected in [

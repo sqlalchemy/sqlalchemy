@@ -215,7 +215,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                                                         sqltypes.DateTime)
                         ]:
                 assert isinstance(fn(*args).type, type_), \
-                            "%s / %s" % (fn(), type_)
+                            "%s / %r != %s" % (fn(), fn(*args).type, type_)
 
         assert isinstance(func.concat("foo", "bar").type, sqltypes.String)
 
@@ -306,17 +306,6 @@ class ExecuteTest(fixtures.TestBase):
     def tearDown(self):
         pass
 
-    @testing.uses_deprecated
-    def test_standalone_execute(self):
-        x = testing.db.func.current_date().execute().scalar()
-        y = testing.db.func.current_date().select().execute().scalar()
-        z = testing.db.func.current_date().scalar()
-        assert (x == y == z) is True
-
-        # ansi func
-        x = testing.db.func.current_date()
-        assert isinstance(x.type, Date)
-        assert isinstance(x.execute().scalar(), datetime.date)
 
     def test_conn_execute(self):
         from sqlalchemy.sql.expression import FunctionElement

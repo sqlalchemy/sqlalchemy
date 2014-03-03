@@ -70,7 +70,7 @@ def emits_warning_on(db, *warnings):
     @decorator
     def decorate(fn, *args, **kw):
         if isinstance(db, util.string_types):
-            if not spec(config.db):
+            if not spec(config._current):
                 return fn(*args, **kw)
             else:
                 wrapped = emits_warning(*warnings)(fn)

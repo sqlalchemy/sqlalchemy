@@ -19,6 +19,7 @@ from sqlalchemy.sql import table, column, operators
 from sqlalchemy.util import u
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
+    __prefer__ = 'postgresql'
 
     def test_format(self):
         seq = Sequence('my_seq_no_schema')

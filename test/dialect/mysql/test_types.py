@@ -8,7 +8,6 @@ from sqlalchemy import util
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, AssertsExecutionResults
 from sqlalchemy import testing
-from sqlalchemy.testing.engines import utf8_engine
 import datetime
 import decimal
 
@@ -705,39 +704,36 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
         found = set([frozenset(row[0]) for row in rows])
         eq_(found, set([frozenset(['5']), frozenset(['5', '7'])]))
 
+    @testing.provide_metadata
     def test_unicode_enum(self):
-        unicode_engine = utf8_engine()
-        metadata = MetaData(unicode_engine)
+        metadata = self.metadata
         t1 = Table('table', metadata,
             Column('id', Integer, primary_key=True),
             Column('value', Enum(u('réveillé'), u('drôle'), u('S’il'))),
             Column('value2', mysql.ENUM(u('réveillé'), u('drôle'), u('S’il')))
         )
         metadata.create_all()
-        try:
-            t1.insert().execute(value=u('drôle'), value2=u('drôle'))
-            t1.insert().execute(value=u('réveillé'), value2=u('réveillé'))
-            t1.insert().execute(value=u('S’il'), value2=u('S’il'))
-            eq_(t1.select().order_by(t1.c.id).execute().fetchall(),
-                [(1, u('drôle'), u('drôle')), (2, u('réveillé'), u('réveillé')),
-                            (3, u('S’il'), u('S’il'))]
-            )
+        t1.insert().execute(value=u('drôle'), value2=u('drôle'))
+        t1.insert().execute(value=u('réveillé'), value2=u('réveillé'))
+        t1.insert().execute(value=u('S’il'), value2=u('S’il'))
+        eq_(t1.select().order_by(t1.c.id).execute().fetchall(),
+            [(1, u('drôle'), u('drôle')), (2, u('réveillé'), u('réveillé')),
+                        (3, u('S’il'), u('S’il'))]
+        )
 
-            # test reflection of the enum labels
+        # test reflection of the enum labels
 
-            m2 = MetaData(testing.db)
-            t2 = Table('table', m2, autoload=True)
+        m2 = MetaData(testing.db)
+        t2 = Table('table', m2, autoload=True)
 
-            # TODO: what's wrong with the last element ?  is there
-            # latin-1 stuff forcing its way in ?
+        # TODO: what's wrong with the last element ?  is there
+        # latin-1 stuff forcing its way in ?
 
-            assert t2.c.value.type.enums[0:2] == \
-                    (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
+        assert t2.c.value.type.enums[0:2] == \
+                (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
 
-            assert t2.c.value2.type.enums[0:2] == \
-                    (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
-        finally:
-            metadata.drop_all()
+        assert t2.c.value2.type.enums[0:2] == \
+                (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
 
     def test_enum_compile(self):
         e1 = Enum('x', 'y', 'z', name='somename')

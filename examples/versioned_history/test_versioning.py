@@ -11,7 +11,7 @@ from sqlalchemy.orm import exc as orm_exc
 
 engine = None
 
-def setup():
+def setup_module():
     global engine
     engine = create_engine('sqlite://', echo=True)
 

@@ -1179,11 +1179,6 @@ class QueryTest(fixtures.TestBase):
             self.assert_(r.row == r['row'] == r[shadowed.c.row] == 'Without light there is no shadow')
             self.assert_(r['_parent'] == 'Hidden parent')
             self.assert_(r['_row'] == 'Hidden row')
-            try:
-                print(r._parent, r._row)
-                self.fail('Should not allow access to private attributes')
-            except AttributeError:
-                pass # expected
         finally:
             shadowed.drop(checkfirst=True)
 

@@ -505,28 +505,26 @@ class GetTest(QueryTest):
         assert u2.name =='jack'
         assert a not in u2.addresses
 
+    @testing.provide_metadata
     @testing.requires.unicode_connections
     def test_unicode(self):
         """test that Query.get properly sets up the type for the bind
         parameter. using unicode would normally fail on postgresql, mysql and
         oracle unless it is converted to an encoded string"""
 
-        metadata = MetaData(engines.utf8_engine())
+        metadata = self.metadata
         table = Table('unicode_data', metadata,
             Column('id', Unicode(40), primary_key=True, test_needs_autoincrement=True),
             Column('data', Unicode(40)))
-        try:
-            metadata.create_all()
-            ustring = util.b('petit voix m\xe2\x80\x99a').decode('utf-8')
+        metadata.create_all()
+        ustring = util.b('petit voix m\xe2\x80\x99a').decode('utf-8')
 
-            table.insert().execute(id=ustring, data=ustring)
-            class LocalFoo(self.classes.Base):
-                pass
-            mapper(LocalFoo, table)
-            eq_(create_session().query(LocalFoo).get(ustring),
-                              LocalFoo(id=ustring, data=ustring))
-        finally:
-            metadata.drop_all()
+        table.insert().execute(id=ustring, data=ustring)
+        class LocalFoo(self.classes.Base):
+            pass
+        mapper(LocalFoo, table)
+        eq_(create_session().query(LocalFoo).get(ustring),
+                          LocalFoo(id=ustring, data=ustring))
 
     def test_populate_existing(self):
         User, Address = self.classes.User, self.classes.Address

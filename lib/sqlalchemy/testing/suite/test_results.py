@@ -10,6 +10,7 @@ from ..schema import Table, Column
 
 
 class RowFetchTest(fixtures.TablesTest):
+    __multiple__ = True
 
     @classmethod
     def define_tables(cls, metadata):

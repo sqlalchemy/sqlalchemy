@@ -188,7 +188,7 @@ class ReconnectFixture(object):
 
 
 def reconnecting_engine(url=None, options=None):
-    url = url or config.db_url
+    url = url or config.db.url
     dbapi = config.db.dialect.dbapi
     if not options:
         options = {}
@@ -216,7 +216,7 @@ def testing_engine(url=None, options=None):
     else:
         use_reaper = options.pop('use_reaper', True)
 
-    url = url or config.db_url
+    url = url or config.db.url
     if options is None:
         options = config.db_opts
 
@@ -235,22 +235,6 @@ def testing_engine(url=None, options=None):
     return engine
 
 
-def utf8_engine(url=None, options=None):
-    """Hook for dialects or drivers that don't handle utf8 by default."""
-
-    from sqlalchemy.engine import url as engine_url
-
-    if config.db.dialect.name == 'mysql' and \
-        config.db.driver in ['mysqldb', 'pymysql', 'cymysql']:
-        # note 1.2.1.gamma.6 or greater of MySQLdb
-        # needed here
-        url = url or config.db_url
-        url = engine_url.make_url(url)
-        url.query['charset'] = 'utf8'
-        url.query['use_unicode'] = '0'
-        url = str(url)
-
-    return testing_engine(url, options)
 
 
 def mock_engine(dialect_name=None):

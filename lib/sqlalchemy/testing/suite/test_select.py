@@ -15,6 +15,8 @@ class OrderByLabelTest(fixtures.TablesTest):
     setting.
 
     """
+    __multiple__ = True
+
     @classmethod
     def define_tables(cls, metadata):
         Table("some_table", metadata,

@@ -12,6 +12,8 @@ from ..schema import Table, Column
 class LastrowidTest(fixtures.TablesTest):
     run_deletes = 'each'
 
+    __multiple__ = True
+
     __requires__ = 'implements_get_lastrowid', 'autoincrement_insert'
 
     __engine_options__ = {"implicit_returning": False}
@@ -74,6 +76,7 @@ class LastrowidTest(fixtures.TablesTest):
 
 class InsertBehaviorTest(fixtures.TablesTest):
     run_deletes = 'each'
+    __multiple__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -156,8 +159,9 @@ class InsertBehaviorTest(fixtures.TablesTest):
         )
 
 class ReturningTest(fixtures.TablesTest):
-    run_deletes = 'each'
+    run_create_tables = 'each'
     __requires__ = 'returning', 'autoincrement_insert'
+    __multiple__ = True
 
     __engine_options__ = {"implicit_returning": True}
 

@@ -119,8 +119,8 @@ def run_setup(with_cext):
         package_dir={'': 'lib'},
         license="MIT License",
         cmdclass=cmdclass,
-        tests_require=['nose >= 0.11', 'mock'],
-        test_suite="sqla_nose",
+        tests_require=['pytest >= 2.5.2', 'mock'],
+        test_suite="pytest.main",
         long_description=readme,
         classifiers=[
             "Development Status :: 5 - Production/Stable",

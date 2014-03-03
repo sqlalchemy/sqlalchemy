@@ -156,7 +156,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         s = Session()
         u2 = s.merge(User(name='u2'))
         s.commit()
-        s.query(User).first()
+        s.query(User).order_by(User.id).first()
         eq_(canary, ['load', 'load', 'load'])
 
     def test_inheritance(self):

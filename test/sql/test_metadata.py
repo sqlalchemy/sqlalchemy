@@ -1249,16 +1249,6 @@ class UseExistingTest(fixtures.TablesTest):
             go
         )
 
-    @testing.uses_deprecated
-    def test_deprecated_useexisting(self):
-        meta2 = self._useexisting_fixture()
-        users = Table('users', meta2, Column('name', Unicode),
-                      autoload=True, useexisting=True)
-        assert isinstance(users.c.name.type, Unicode)
-        assert not users.quote
-        users = Table('users', meta2, quote=True, autoload=True,
-                      useexisting=True)
-        assert users.quote
 
     def test_keep_plus_existing_raises(self):
         meta2 = self._useexisting_fixture()
@@ -1268,7 +1258,7 @@ class UseExistingTest(fixtures.TablesTest):
                 extend_existing=True
         )
 
-    @testing.uses_deprecated
+    @testing.uses_deprecated()
     def test_existing_plus_useexisting_raises(self):
         meta2 = self._useexisting_fixture()
         assert_raises(

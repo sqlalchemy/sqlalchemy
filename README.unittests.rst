@@ -2,50 +2,61 @@
 SQLALCHEMY UNIT TESTS
 =====================
 
+**NOTE:** SQLAlchemy as of 0.9.4 now standardizes on `pytest <http://pytest.org/>`_
+for test running!  However, the existing support for Nose **still remains**!
+That is, you can now run the tests via pytest or nose.  We hope to keep the
+suite nose-compatible indefinitely however this might change at some point.
+
 SQLAlchemy unit tests by default run using Python's built-in sqlite3
-module.  If running on Python 2.4, pysqlite must be installed.
+module.   If running on a Python installation that doesn't include this
+module, then pysqlite or compatible must be installed.
 
-Unit tests are run using nose.  Nose is available at::
+Unit tests can be run with pytest or nose:
 
-    https://pypi.python.org/pypi/nose/
+    py.test: http://pytest.org/
 
-SQLAlchemy implements a nose plugin that must be present when tests are run.
-This plugin is invoked when the test runner script provided with
-SQLAlchemy is used.
+    nose: https://pypi.python.org/pypi/nose/
 
-The test suite as of version 0.8.2 also requires the mock library.  While
+The suite includes enhanced support when running with pytest.
+
+SQLAlchemy implements plugins for both pytest and nose that must be
+present when tests are run.   In the case of pytest, this plugin is automatically
+used when pytest is run against the SQLAlchemy source tree.  However,
+for Nose support, a special test runner script must be used.
+
+
+The test suite as also requires the mock library.  While
 mock is part of the Python standard library as of 3.3, previous versions
 will need to have it installed, and is available at::
 
     https://pypi.python.org/pypi/mock
 
-**NOTE:** - the nose plugin is no longer installed by setuptools as of
-version 0.7 !  Use "python setup.py test" or "./sqla_nose.py".
-
 RUNNING TESTS VIA SETUP.PY
 --------------------------
-A plain vanilla run of all tests using sqlite can be run via setup.py:
+A plain vanilla run of all tests using sqlite can be run via setup.py, and
+requires that pytest is installed::
 
     $ python setup.py test
 
-The -v flag also works here::
 
-    $ python setup.py test -v
-
-RUNNING ALL TESTS
-------------------
+RUNNING ALL TESTS - PYTEST
+--------------------------
 To run all tests::
 
+    $ py.test
+
+The pytest configuration in setup.cfg will point the runner at the
+test/ directory, where it consumes a conftest.py file that gets everything
+else up and running.
+
+
+RUNNING ALL TESTS - NOSE
+--------------------------
+
+When using Nose, a bootstrap script is provided which sets up sys.path
+as well as installs the nose plugin::
+
     $ ./sqla_nose.py
-
-If you're running the tests on Microsoft Windows, then there is an additional
-argument that must be passed to ./sqla_nose.py::
-
-    > ./sqla_nose.py --first-package-wins
-
-This is required because nose's importer will normally evict a package from
-sys.modules if it sees a package with the same name in a different location.
-Setting this argument disables that behavior.
 
 Assuming all tests pass, this is a very unexciting output.  To make it more
 interesting::
@@ -53,30 +64,52 @@ interesting::
     $ ./sqla_nose.py -v
 
 RUNNING INDIVIDUAL TESTS
--------------------------
+---------------------------------
+
 Any directory of test modules can be run at once by specifying the directory
-path::
+path, and a specific file can be specified as well::
 
-    $ ./sqla_nose.py test/dialect
+    $ py.test test/dialect
 
-Any test module can be run directly by specifying its module name::
+    $ py.test test/orm/test_mapper.py
+
+When using nose, the setup.cfg currently sets "where" to "test/", so the
+"test/" prefix is omitted::
+
+    $ ./sqla_nose.py dialect/
+
+    $ ./sqla_nose.py orm/test_mapper.py
+
+With Nose, it is often more intuitive to specify tests as module paths::
 
     $ ./sqla_nose.py test.orm.test_mapper
 
-To run a specific test within the module, specify it as module:ClassName.methodname::
+Nose can also specify a test class and optional method using this syntax::
 
     $ ./sqla_nose.py test.orm.test_mapper:MapperTest.test_utils
+
+With pytest, the -k flag is used to limit tests::
+
+    $ py.test test/orm/test_mapper.py -k "MapperTest and test_utils"
 
 
 COMMAND LINE OPTIONS
 --------------------
-Help is available via --help::
+
+SQLAlchemy-specific options are added to both runners, which are viewable
+within the help screen.  With pytest, these options are easier to locate
+as they are underneath the "sqlalchemy" grouping::
+
+    $ py.test --help
 
     $ ./sqla_nose.py --help
 
 The --help screen is a combination of common nose options and options which
 the SQLAlchemy nose plugin adds.  The most commonly SQLAlchemy-specific
 options used are '--db' and '--dburi'.
+
+Both pytest and nose support the same set of SQLAlchemy options, though
+pytest features a bit more capability with them.
 
 
 DATABASE TARGETS
@@ -86,6 +119,63 @@ Tests will target an in-memory SQLite database by default.  To test against
 another database, use the --dburi option with any standard SQLAlchemy URL::
 
     --dburi=postgresql://user:password@localhost/test
+
+If you'll be running the tests frequently, database aliases can save a lot of
+typing.  The --dbs option lists the built-in aliases and their matching URLs::
+
+    $ py.test --dbs
+    Available --db options (use --dburi to override)
+               mysql    mysql://scott:tiger@127.0.0.1:3306/test
+              oracle    oracle://scott:tiger@127.0.0.1:1521
+            postgresql    postgresql://scott:tiger@127.0.0.1:5432/test
+    [...]
+
+To run tests against an aliased database::
+
+    $ py.test --db postgresql
+
+This list of database urls is present in the setup.cfg file.   The list
+can be modified/extended by adding a file ``test.cfg`` at the
+top level of the SQLAlchemy source distribution which includes
+additional entries::
+
+    [db]
+    postgresql=postgresql://myuser:mypass@localhost/mydb
+
+Your custom entries will override the defaults and you'll see them reflected
+in the output of --dbs.
+
+MULTIPLE DATABASE TARGETS
+-------------------------
+
+As of SQLAlchemy 0.9.4, the test runner supports **multiple databases at once**.
+This doesn't mean that the entire test suite runs for each database, but
+instead specific test suites may do so, while other tests may choose to
+run on a specific target out of those available.   For example, if the tests underneath
+test/dialect/ are run, the majority of these tests are either specific to
+a particular backend, or are marked as "multiple", meaning they will run repeatedly
+for each database in use.  If one runs the test suite as follows::
+
+    $ py.test test/dialect --db sqlite --db postgresql --db mysql
+
+The tests underneath test/dialect/test_suite.py will be tripled up, running
+as appropriate for each target database, whereas dialect-specific tests
+within test/dialect/mysql, test/dialect/postgresql/ test/dialect/test_sqlite.py
+should run fully with no skips, as each suite has its target database available.
+
+The multiple targets feature is available both under pytest and nose,
+however when running nose, the "multiple runner" feature won't be available;
+instead, the first database target will be used.
+
+When running with multiple targets, tests that don't prefer a specific target
+will be run against the first target specified.  Putting sqlite first in
+the list will lead to a much faster suite as the in-memory database is
+extremely fast for setting up and tearing down tables.
+
+
+
+DATABASE CONFIGURATION
+----------------------
 
 Use an empty database and a database user with general DBA privileges.
 The test suite will be creating and dropping many tables and other DDL, and
@@ -160,30 +250,6 @@ Additional steps specific to individual databases are as follows::
     requires using a test.cfg configuration file as the cmd.exe shell won't
     properly pass the URL arguments into the nose test runner.
 
-If you'll be running the tests frequently, database aliases can save a lot of
-typing.  The --dbs option lists the built-in aliases and their matching URLs::
-
-    $ ./sqla_nose.py --dbs
-    Available --db options (use --dburi to override)
-               mysql    mysql://scott:tiger@127.0.0.1:3306/test
-              oracle    oracle://scott:tiger@127.0.0.1:1521
-            postgresql    postgresql://scott:tiger@127.0.0.1:5432/test
-    [...]
-
-To run tests against an aliased database::
-
-    $ ./sqla_nose.py --db=postgresql
-
-To customize the URLs with your own users or hostnames, create a file
-called `test.cfg` at the top level of the SQLAlchemy source distribution.
-This file is in Python config format, and contains a [db] section which
-lists out additional database configurations::
-
-    [db]
-    postgresql=postgresql://myuser:mypass@localhost/mydb
-
-Your custom entries will override the defaults and you'll see them reflected
-in the output of --dbs.
 
 CONFIGURING LOGGING
 -------------------

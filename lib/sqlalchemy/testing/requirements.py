@@ -14,16 +14,11 @@ to provide specific inclusion/exlusions.
 
 """
 
-from . import exclusions, config
+from . import exclusions
 
 
 class Requirements(object):
-    def __init__(self, config):
-        self.config = config
-
-    @property
-    def db(self):
-        return config.db
+    pass
 
 class SuiteRequirements(Requirements):
 
@@ -158,8 +153,8 @@ class SuiteRequirements(Requirements):
         INSERT DEFAULT VALUES or equivalent."""
 
         return exclusions.only_if(
-                    lambda: self.config.db.dialect.supports_empty_insert or \
-                        self.config.db.dialect.supports_default_values,
+                    lambda config: config.db.dialect.supports_empty_insert or \
+                        config.db.dialect.supports_default_values,
                     "empty inserts not supported"
                 )
 
@@ -174,7 +169,7 @@ class SuiteRequirements(Requirements):
         """target platform supports RETURNING."""
 
         return exclusions.only_if(
-                lambda: self.config.db.dialect.implicit_returning,
+                lambda config: config.db.dialect.implicit_returning,
                 "'returning' not supported by database"
             )
 
@@ -184,7 +179,7 @@ class SuiteRequirements(Requirements):
         UPPERCASE as case insensitive names."""
 
         return exclusions.skip_if(
-                    lambda: not self.db.dialect.requires_name_normalize,
+                    lambda config: not config.db.dialect.requires_name_normalize,
                     "Backend does not require denormalized names."
                 )
 
@@ -194,7 +189,7 @@ class SuiteRequirements(Requirements):
         INSERT statement."""
 
         return exclusions.skip_if(
-                    lambda: not self.db.dialect.supports_multivalues_insert,
+                    lambda config: not config.db.dialect.supports_multivalues_insert,
                     "Backend does not support multirow inserts."
                 )
 
@@ -245,7 +240,7 @@ class SuiteRequirements(Requirements):
         """Target database must support SEQUENCEs."""
 
         return exclusions.only_if([
-                lambda: self.config.db.dialect.supports_sequences
+                lambda config: config.db.dialect.supports_sequences
             ], "no sequence support")
 
     @property
@@ -254,8 +249,8 @@ class SuiteRequirements(Requirements):
         as a means of generating new PK values."""
 
         return exclusions.only_if([
-                lambda: self.config.db.dialect.supports_sequences and \
-                    self.config.db.dialect.sequences_optional
+                lambda config: config.db.dialect.supports_sequences and \
+                    config.db.dialect.sequences_optional
             ], "no sequence support, or sequences not optional")
 
 
@@ -528,8 +523,8 @@ class SuiteRequirements(Requirements):
         """Catchall for a large variety of MySQL on Windows failures"""
         return exclusions.open()
 
-    def _has_mysql_on_windows(self):
+    def _has_mysql_on_windows(self, config):
         return False
 
-    def _has_mysql_fully_case_sensitive(self):
+    def _has_mysql_fully_case_sensitive(self, config):
         return False

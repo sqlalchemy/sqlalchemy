@@ -8,6 +8,7 @@ from sqlalchemy import Table, Column, Integer, String
 
 
 class TableDDLTest(fixtures.TestBase):
+    __multiple__ = True
 
     def _simple_fixture(self):
         return Table('test_table', self.metadata,

@@ -23,6 +23,34 @@
         wouldn't work properly for Python built-ins.
 
     .. change::
+        :tags: feature, general
+
+        Support has been added for pytest to run tests.   This runner
+        is currently being supported in addition to nose, and will likely
+        be preferred to nose going forward.   The nose plugin system used
+        by SQLAlchemy has been split out so that it works under pytest as
+        well.  There are no plans to drop support for nose at the moment
+        and we hope that the test suite itself can continue to remain as
+        agnostic of testing platform as possible.  See the file
+        README.unittests.rst for updated information on running tests
+        with pytest.
+
+        The test plugin system has also been enhanced to support running
+        tests against mutiple database URLs at once, by specifying the ``--db``
+        and/or ``--dburi`` flags multiple times.  This does not run the entire test
+        suite for each database, but instead allows test cases that are specific
+        to certain backends make use of that backend as the test is run.
+        When using pytest as the test runner, the system will also run
+        specific test suites multiple times, once for each database, particularly
+        those tests within the "dialect suite".   The plan is that the enhanced
+        system will also be used by Alembic, and allow Alembic to run
+        migration operation tests against multiple backends in one run, including
+        third-party backends not included within Alembic itself.
+        Third party dialects and extensions are also encouraged to standardize
+        on SQLAlchemy's test suite as a basis; see the file README.dialects.rst
+        for background on building out from SQLAlchemy's test platform.
+
+    .. change::
         :tags: orm feature
         :tickets: 2976
 
