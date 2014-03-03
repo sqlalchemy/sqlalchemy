@@ -1393,6 +1393,7 @@ class ArgInspectionTest(fixtures.TestBase):
             (['self', 'x', 'y'], None, 'kw', None)
         )
 
+    @fails_if(lambda: util.pypy,  "pypy inspects datetime.now correctly")
     def test_callable_argspec_py_builtin(self):
         import datetime
         assert_raises(
@@ -1599,7 +1600,6 @@ class TestFormatArgspec(fixtures.TestBase):
             'apply_kw': 'a=a, b=b', 'apply_pos': 'a, b'},
            grouped=False)
 
-    @fails_if(lambda: util.pypy, "object.__init__ is introspectable")
     def test_init_grouped(self):
         object_spec = {
             'args': '(self)', 'self_arg': 'self',
@@ -1615,7 +1615,6 @@ class TestFormatArgspec(fixtures.TestBase):
         self._test_init(None, object_spec, wrapper_spec, custom_spec)
         self._test_init(True, object_spec, wrapper_spec, custom_spec)
 
-    @fails_if(lambda: util.pypy,  "object.__init__ can be introspected")
     def test_init_bare(self):
         object_spec = {
             'args': 'self', 'self_arg': 'self',
