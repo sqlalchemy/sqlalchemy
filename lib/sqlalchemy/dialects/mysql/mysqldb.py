@@ -16,28 +16,20 @@
 Unicode
 -------
 
-MySQLdb will accommodate Python ``unicode`` objects if the
-``use_unicode=1`` parameter, or the ``charset`` parameter,
-is passed as a connection argument.
+MySQLdb requires a "charset" parameter to be passed in order for it
+to handle non-ASCII characters correctly.   When this parameter is passed,
+MySQLdb will also implicitly set the "use_unicode" flag to true, which means
+that it will return Python unicode objects instead of bytestrings.
+However, SQLAlchemy's decode process, when C extensions are enabled,
+is orders of magnitude faster than that of MySQLdb as it does not call into
+Python functions to do so.  Therefore, the **recommended URL to use for
+unicode** will include both charset and use_unicode=0::
 
-Without this setting, many MySQL server installations default to
-a ``latin1`` encoding for client connections, which has the effect
-of all data being converted into ``latin1``, even if you have ``utf8``
-or another character set configured on your tables
-and columns.  With versions 4.1 and higher, you can change the connection
-character set either through server configuration or by including the
-``charset`` parameter.  The ``charset``
-parameter as received by MySQL-Python also has the side-effect of
-enabling ``use_unicode=1``::
+    create_engine("mysql+mysqldb://user:pass@host/dbname?charset=utf8&use_unicode=0")
 
-    # set client encoding to utf8; all strings come back as unicode
-    create_engine('mysql+mysqldb:///mydb?charset=utf8')
+As of this writing, MySQLdb only runs on Python 2.   It is not known how
+MySQLdb behaves on Python 3 as far as unicode decoding.
 
-Manually configuring ``use_unicode=0`` will cause MySQL-python to
-return encoded strings::
-
-    # set client encoding to utf8; all strings come back as utf8 str
-    create_engine('mysql+mysqldb:///mydb?charset=utf8&use_unicode=0')
 
 Known Issues
 -------------
