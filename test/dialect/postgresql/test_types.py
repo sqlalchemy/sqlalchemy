@@ -1379,7 +1379,6 @@ class _RangeTypeMixin(object):
     __requires__ = 'range_types',
     __dialect__ = 'postgresql+psycopg2'
 
-    @property
     def extras(self):
         # done this way so we don't get ImportErrors with
         # older psycopg2 versions.
@@ -1587,7 +1586,7 @@ class Int4RangeTests(_RangeTypeMixin, fixtures.TablesTest):
     _col_str = 'INT4RANGE'
     _data_str = '[1,2)'
     def _data_obj(self):
-        return self.extras.NumericRange(1, 2)
+        return self.extras().NumericRange(1, 2)
 
 class Int8RangeTests(_RangeTypeMixin, fixtures.TablesTest):
 
@@ -1595,7 +1594,7 @@ class Int8RangeTests(_RangeTypeMixin, fixtures.TablesTest):
     _col_str = 'INT8RANGE'
     _data_str = '[9223372036854775806,9223372036854775807)'
     def _data_obj(self):
-        return self.extras.NumericRange(
+        return self.extras().NumericRange(
             9223372036854775806, 9223372036854775807
             )
 
@@ -1605,7 +1604,7 @@ class NumRangeTests(_RangeTypeMixin, fixtures.TablesTest):
     _col_str = 'NUMRANGE'
     _data_str = '[1.0,2.0)'
     def _data_obj(self):
-        return self.extras.NumericRange(
+        return self.extras().NumericRange(
             decimal.Decimal('1.0'), decimal.Decimal('2.0')
             )
 
@@ -1615,7 +1614,7 @@ class DateRangeTests(_RangeTypeMixin, fixtures.TablesTest):
     _col_str = 'DATERANGE'
     _data_str = '[2013-03-23,2013-03-24)'
     def _data_obj(self):
-        return self.extras.DateRange(
+        return self.extras().DateRange(
             datetime.date(2013, 3, 23), datetime.date(2013, 3, 24)
             )
 
@@ -1625,7 +1624,7 @@ class DateTimeRangeTests(_RangeTypeMixin, fixtures.TablesTest):
     _col_str = 'TSRANGE'
     _data_str = '[2013-03-23 14:30,2013-03-23 23:30)'
     def _data_obj(self):
-        return self.extras.DateTimeRange(
+        return self.extras().DateTimeRange(
             datetime.datetime(2013, 3, 23, 14, 30),
             datetime.datetime(2013, 3, 23, 23, 30)
             )
@@ -1652,7 +1651,7 @@ class DateTimeTZRangeTests(_RangeTypeMixin, fixtures.TablesTest):
         return '[%s,%s)' % self.tstzs()
 
     def _data_obj(self):
-        return self.extras.DateTimeTZRange(*self.tstzs())
+        return self.extras().DateTimeTZRange(*self.tstzs())
 
 
 class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
