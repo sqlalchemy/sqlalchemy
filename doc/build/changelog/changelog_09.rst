@@ -63,6 +63,10 @@
         joins in the ORM, however we are keeping it as a non-default for now
         to avoid further surprises.
 
+        .. seealso::
+
+            :ref:`feature_2976`
+
     .. change::
         :tags: bug, ext
         :tickets: 2810

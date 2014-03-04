@@ -1214,6 +1214,8 @@ Generates (everywhere except SQLite)::
 
 :ticket:`2369` :ticket:`2587`
 
+.. _feature_2976:
+
 Right-nested inner joins available in joined eager loads
 ---------------------------------------------------------
 
