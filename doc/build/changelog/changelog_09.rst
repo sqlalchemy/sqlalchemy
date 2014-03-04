@@ -15,6 +15,12 @@
     :version: 0.9.4
 
     .. change::
+        :tags: bug, ext, py3k
+
+        Fixed bug in association proxy where assigning an empty slice
+        (e.g. ``x[:] = [...]``) would fail on Py3k.
+
+    .. change::
         :tags: bug, general
         :tickets: 2979
 

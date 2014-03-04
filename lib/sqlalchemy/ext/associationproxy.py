@@ -540,11 +540,12 @@ class _AssociationList(_AssociationCollection):
                 stop = index.stop
             step = index.step or 1
 
+            start = index.start or 0
             rng = list(range(index.start or 0, stop, step))
             if step == 1:
                 for i in rng:
-                    del self[index.start]
-                i = index.start
+                    del self[start]
+                i = start
                 for item in value:
                     self.insert(i, item)
                     i += 1

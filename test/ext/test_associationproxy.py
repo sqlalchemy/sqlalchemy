@@ -212,6 +212,13 @@ class _CollectionOperations(fixtures.TestBase):
         self.assert_(p1.children == after)
         self.assert_([c.name for c in p1._children] == after)
 
+        p1.children[:] = ['d', 'e']
+        after = ['d', 'e']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
+        p1.children[:] = ['a', 'b']
+
         p1.children += ['c']
         after = ['a', 'b', 'c']
         self.assert_(p1.children == after)
