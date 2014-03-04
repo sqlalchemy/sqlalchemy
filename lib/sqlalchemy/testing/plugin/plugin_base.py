@@ -13,7 +13,15 @@ via py.test.
 """
 
 from __future__ import absolute_import
-from unittest import SkipTest
+try:
+    # needs 2.7...
+    from unittest import SkipTest
+except ImportError:
+    try:
+        from nose import SkipTest
+    except ImportError:
+        from _pytest.runner import Skipped as SkipTest
+
 import sys
 import re
 
