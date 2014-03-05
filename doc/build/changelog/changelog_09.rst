@@ -15,6 +15,19 @@
     :version: 0.9.4
 
     .. change::
+        :tags: enhancement, oracle
+        :tickets: 2911
+        :pullreq: github:74
+
+        Added a new engine option ``coerce_to_unicode=True`` to the
+        cx_Oracle dialect, which restores the cx_Oracle outputtypehandler
+        approach to Python unicode conversion under Python 2, which was
+        removed in 0.9.2 as a result of :ticket:`2911`.  Some use cases would
+        prefer that unicode coersion is unconditional for all string values,
+        despite performance concerns.  Pull request courtesy
+        Christoph Zwerschke.
+
+    .. change::
         :tags: bug, pool
 
         Fixed small issue in :class:`.SingletonThreadPool` where the current

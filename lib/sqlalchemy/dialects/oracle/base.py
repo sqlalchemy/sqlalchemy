@@ -85,6 +85,8 @@ http://www.sqlalchemy.org/trac/wiki/UsageRecipes/WindowFunctionsByDefault
 which installs a select compiler that overrides the generation of limit/offset with
 a window function.
 
+.. _oracle_returning:
+
 RETURNING Support
 -----------------
 
@@ -155,9 +157,24 @@ Synonym/DBLINK Reflection
 
 When using reflection with Table objects, the dialect can optionally search for tables
 indicated by synonyms, either in local or remote schemas or accessed over DBLINK,
-by passing the flag oracle_resolve_synonyms=True as a
-keyword argument to the Table construct.   If synonyms are not in use
-this flag should be left off.
+by passing the flag ``oracle_resolve_synonyms=True`` as a
+keyword argument to the :class:`.Table` construct::
+
+    some_table = Table('some_table', autoload=True,
+                                autoload_with=some_engine,
+                                oracle_resolve_synonyms=True)
+
+When this flag is set, the given name (such as ``some_table`` above) will
+be searched not just in the ``ALL_TABLES`` view, but also within the
+``ALL_SYNONYMS`` view to see if this name is actually a synonym to another name.
+If the synonym is located and refers to a DBLINK, the oracle dialect knows
+how to locate the table's information using DBLINK syntax (e.g. ``@dblink``).
+
+``oracle_resolve_synonyms`` is accepted wherever reflection arguments are
+accepted, including methods such as :meth:`.MetaData.reflect` and
+:meth:`.Inspector.get_columns`.
+
+If synonyms are not in use, this flag should be left disabled.
 
 """
 
