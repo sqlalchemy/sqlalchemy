@@ -1218,8 +1218,6 @@ class TypesTest(fixtures.TestBase):
                 assert isinstance(row[i], type_), '%r is not %r' \
                     % (row[i], type_)
 
-
-
     def test_numeric_no_decimal_mode(self):
         engine = testing_engine(options=dict(coerce_to_decimal=False))
         value = engine.scalar("SELECT 5.66 FROM DUAL")
@@ -1227,6 +1225,14 @@ class TypesTest(fixtures.TestBase):
 
         value = testing.db.scalar("SELECT 5.66 FROM DUAL")
         assert isinstance(value, decimal.Decimal)
+
+    def test_coerce_to_unicode(self):
+        engine = testing_engine(options=dict(coerce_to_unicode=True))
+        value = engine.scalar("SELECT 'hello' FROM DUAL")
+        assert isinstance(value, util.text_type)
+
+        value = testing.db.scalar("SELECT 'hello' FROM DUAL")
+        assert isinstance(value, util.binary_type)
 
     @testing.provide_metadata
     def test_numerics_broken_inspection(self):

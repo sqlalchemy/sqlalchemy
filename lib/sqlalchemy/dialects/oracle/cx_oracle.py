@@ -70,7 +70,12 @@ unicode by using outputtypehandlers, SQLAlchemy has observed that usage
 of a unicode-converting outputtypehandler in Python 2 (not Python 3) incurs
 significant performance overhead for all statements that deliver string
 results, whether or not values contain non-ASCII characters.  For this reason,
-SQLAlchemy as of 0.9.2 does not use cx_Oracle's outputtypehandlers for unicode conversion.
+SQLAlchemy as of 0.9.2 does not use cx_Oracle's outputtypehandlers for unicode
+conversion by default. If you want to use this feature anyway, you can enable
+it by passing the flag ``coerce_to_unicode=True`` to :func:`.create_engine`::
+
+    engine = create_engine("oracle+cx_oracle://dsn",
+                        coerce_to_unicode=True)
 
 Keeping in mind that any NVARCHAR or NCLOB type is returned as Python unicode
 unconditionally, in order for VARCHAR values to be returned as Python unicode
@@ -89,6 +94,9 @@ SQL statement, use :func:`.text`::
    unicode results of non-unicode datatypes in Python 2, after they were identified as a major
    performance bottleneck.  SQLAlchemy's own unicode facilities are used
    instead.
+
+.. versionadded:: 0.9.4
+    Add the ``coerce_to_unicode`` flag.
 
 .. _cx_oracle_returning:
 
@@ -602,6 +610,7 @@ class OracleDialect_cx_oracle(OracleDialect):
                 threaded=True,
                 allow_twophase=True,
                 coerce_to_decimal=True,
+                coerce_to_unicode=False,
                 arraysize=50, **kwargs):
         OracleDialect.__init__(self, **kwargs)
         self.threaded = threaded
@@ -629,6 +638,11 @@ class OracleDialect_cx_oracle(OracleDialect):
         self._cx_oracle_unicode_types = types("UNICODE", "NCLOB")
         self._cx_oracle_binary_types = types("BFILE", "CLOB", "NCLOB", "BLOB")
         self.supports_unicode_binds = self.cx_oracle_ver >= (5, 0)
+
+        self.coerce_to_unicode = (
+                                        self.cx_oracle_ver >= (5, 0) and
+                                        coerce_to_unicode
+                                    )
 
         self.supports_native_decimal = (
                                         self.cx_oracle_ver >= (5, 0) and
@@ -773,6 +787,10 @@ class OracleDialect_cx_oracle(OracleDialect):
                             255,
                             outconverter=self._detect_decimal,
                             arraysize=cursor.arraysize)
+            # allow all strings to come back natively as Unicode
+            elif self.coerce_to_unicode and \
+                    defaultType in (cx_Oracle.STRING, cx_Oracle.FIXED_CHAR):
+                return cursor.var(util.text_type, size, cursor.arraysize)
 
         def on_connect(conn):
             conn.outputtypehandler = output_type_handler
