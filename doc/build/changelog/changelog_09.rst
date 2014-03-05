@@ -15,6 +15,13 @@
     :version: 0.9.4
 
     .. change::
+        :tags: bug, pool
+
+        Fixed small issue in :class:`.SingletonThreadPool` where the current
+        connection to be returned might get inadvertently cleaned out during
+        the "cleanup" process.  Patch courtesy jd23.
+
+    .. change::
         :tags: bug, ext, py3k
 
         Fixed bug in association proxy where assigning an empty slice

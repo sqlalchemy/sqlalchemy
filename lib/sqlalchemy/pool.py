@@ -817,7 +817,7 @@ class SingletonThreadPool(Pool):
         self._all_conns.clear()
 
     def _cleanup(self):
-        while len(self._all_conns) > self.size:
+        while len(self._all_conns) >= self.size:
             c = self._all_conns.pop()
             c.close()
 
@@ -837,9 +837,9 @@ class SingletonThreadPool(Pool):
             pass
         c = self._create_connection()
         self._conn.current = weakref.ref(c)
-        self._all_conns.add(c)
-        if len(self._all_conns) > self.size:
+        if len(self._all_conns) >= self.size:
             self._cleanup()
+        self._all_conns.add(c)
         return c
 
 
