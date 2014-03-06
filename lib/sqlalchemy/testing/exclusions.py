@@ -6,7 +6,7 @@
 
 
 import operator
-from nose import SkipTest
+from .plugin.plugin_base import SkipTest
 from ..util import decorator
 from . import config
 from .. import util
@@ -98,7 +98,7 @@ class Predicate(object):
     @classmethod
     def as_predicate(cls, predicate):
         if isinstance(predicate, skip_if):
-            return predicate.predicate
+            return NotPredicate(predicate.predicate)
         elif isinstance(predicate, Predicate):
             return predicate
         elif isinstance(predicate, list):

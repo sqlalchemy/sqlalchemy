@@ -266,8 +266,9 @@ statement execution.
 
 BUILT-IN COVERAGE REPORTING
 ------------------------------
-Coverage is tracked using Nose's coverage plugin.   See the nose
-documentation for details.  Basic usage is::
+Coverage is tracked using the coverage plugins built for pytest or nose::
+
+    $ py.test test/sql/test_query --cov=sqlalchemy
 
     $ ./sqla_nose.py test.sql.test_query --with-coverage
 

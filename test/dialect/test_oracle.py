@@ -1226,6 +1226,10 @@ class TypesTest(fixtures.TestBase):
         value = testing.db.scalar("SELECT 5.66 FROM DUAL")
         assert isinstance(value, decimal.Decimal)
 
+    @testing.only_on("oracle+cx_oracle", "cx_oracle-specific feature")
+    @testing.fails_if(
+                    testing.requires.python3,
+                    "cx_oracle always returns unicode on py3k")
     def test_coerce_to_unicode(self):
         engine = testing_engine(options=dict(coerce_to_unicode=True))
         value = engine.scalar("SELECT 'hello' FROM DUAL")
