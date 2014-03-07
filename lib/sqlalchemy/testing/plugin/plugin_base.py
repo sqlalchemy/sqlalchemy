@@ -114,6 +114,7 @@ def post_begin():
     global util, fixtures, engines, exclusions, \
                     assertions, warnings, profiling,\
                     config, testing
+    from sqlalchemy import testing
     from sqlalchemy.testing import fixtures, engines, exclusions, \
                     assertions, warnings, profiling, config
     from sqlalchemy import util
