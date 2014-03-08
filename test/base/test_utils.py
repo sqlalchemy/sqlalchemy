@@ -1393,7 +1393,7 @@ class ArgInspectionTest(fixtures.TestBase):
             (['self', 'x', 'y'], None, 'kw', None)
         )
 
-    @fails_if(lambda: util.pypy,  "pypy inspects datetime.now correctly")
+    @fails_if(lambda: util.pypy,  "pypy returns plain *arg, **kw")
     def test_callable_argspec_py_builtin(self):
         import datetime
         assert_raises(
@@ -1401,6 +1401,7 @@ class ArgInspectionTest(fixtures.TestBase):
             get_callable_argspec, datetime.datetime.now
         )
 
+    @fails_if(lambda: util.pypy,  "pypy returns plain *arg, **kw")
     def test_callable_argspec_obj_init(self):
         assert_raises(
             TypeError,
@@ -1472,6 +1473,7 @@ class ArgInspectionTest(fixtures.TestBase):
             (['x', 'y'], None, None, None)
         )
 
+    @fails_if(lambda: util.pypy,  "pypy returns plain *arg, **kw")
     def test_callable_argspec_partial(self):
         from functools import partial
         def foo(x, y, z, **kw):
@@ -1600,6 +1602,8 @@ class TestFormatArgspec(fixtures.TestBase):
             'apply_kw': 'a=a, b=b', 'apply_pos': 'a, b'},
            grouped=False)
 
+    @testing.fails_if(lambda: util.pypy,
+                "pypy doesn't report O.__init__ as object.__init__")
     def test_init_grouped(self):
         object_spec = {
             'args': '(self)', 'self_arg': 'self',
@@ -1615,6 +1619,8 @@ class TestFormatArgspec(fixtures.TestBase):
         self._test_init(None, object_spec, wrapper_spec, custom_spec)
         self._test_init(True, object_spec, wrapper_spec, custom_spec)
 
+    @testing.fails_if(lambda: util.pypy,
+                "pypy doesn't report O.__init__ as object.__init__")
     def test_init_bare(self):
         object_spec = {
             'args': 'self', 'self_arg': 'self',
