@@ -9,21 +9,14 @@
     :name: pymssql
     :dbapi: pymssql
     :connectstring: mssql+pymssql://<username>:<password>@<freetds_name>?charset=utf8
-    :url: http://pymssql.sourceforge.net/
+    :url: http://pymssql.org/
 
-Limitations
------------
-
-pymssql inherits a lot of limitations from FreeTDS, including:
-
-* no support for multibyte schema identifiers
-* poor support for large decimals
-* poor support for binary fields
-* poor support for VARCHAR/CHAR fields over 255 characters
-
-Please consult the pymssql documentation for further information.
+pymssql is a Python module that provides a Python DBAPI interface around
+`FreeTDS <http://www.freetds.org/>`_.  Compatible builds are available for
+Linux, MacOSX and Windows platforms.
 
 """
+
 from .base import MSDialect
 from ... import types as sqltypes, util, processors
 import re
