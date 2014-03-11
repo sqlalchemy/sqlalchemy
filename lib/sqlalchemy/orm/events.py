@@ -508,6 +508,13 @@ class MapperEvents(event.Events):
         target, identifier, fn = \
             event_key.dispatch_target, event_key.identifier, event_key.fn
 
+        if identifier in ("before_configured", "after_configured") and \
+            target is not mapperlib.Mapper:
+            util.warn(
+                    "'before_configured' and 'after_configured' ORM events "
+                    "only invoke with the mapper() function or Mapper class "
+                    "as the target.")
+
         if not raw or not retval:
             if not raw:
                 meth = getattr(cls, identifier)
@@ -590,11 +597,30 @@ class MapperEvents(event.Events):
         note is usually called automatically as mappings are first
         used.
 
+        This event can **only** be applied to the :class:`.Mapper` class
+        or :func:`.mapper` function, and not to individual mappings or
+        mapped classes.  It is only invoked for all mappings as a whole::
+
+            from sqlalchemy.orm import mapper
+
+            @event.listens_for(mapper, "before_configured")
+            def go():
+                # ...
+
         Theoretically this event is called once per
         application, but is actually called any time new mappers
         are to be affected by a :func:`.orm.configure_mappers`
         call.   If new mappings are constructed after existing ones have
-        already been used, this event can be called again.
+        already been used, this event can be called again.  To ensure
+        that a particular event is only called once and no further, the
+        ``once=True`` argument (new in 0.9.4) can be applied::
+
+            from sqlalchemy.orm import mapper
+
+            @event.listens_for(mapper, "before_configured", once=True)
+            def go():
+                # ...
+
 
         .. versionadded:: 0.9.3
 
@@ -607,11 +633,29 @@ class MapperEvents(event.Events):
         note is usually called automatically as mappings are first
         used.
 
+        This event can **only** be applied to the :class:`.Mapper` class
+        or :func:`.mapper` function, and not to individual mappings or
+        mapped classes.  It is only invoked for all mappings as a whole::
+
+            from sqlalchemy.orm import mapper
+
+            @event.listens_for(mapper, "after_configured")
+            def go():
+                # ...
+
         Theoretically this event is called once per
         application, but is actually called any time new mappers
         have been affected by a :func:`.orm.configure_mappers`
         call.   If new mappings are constructed after existing ones have
-        already been used, this event can be called again.
+        already been used, this event can be called again.  To ensure
+        that a particular event is only called once and no further, the
+        ``once=True`` argument (new in 0.9.4) can be applied::
+
+            from sqlalchemy.orm import mapper
+
+            @event.listens_for(mapper, "after_configured", once=True)
+            def go():
+                # ...
 
         """
 

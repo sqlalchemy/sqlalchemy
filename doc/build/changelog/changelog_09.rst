@@ -17,6 +17,14 @@
     .. change::
         :tags: feature, orm
 
+        A warning is emitted if the :meth:`.MapperEvents.before_configured`
+        or :meth:`.MapperEvents.after_configured` events are applied to a
+        specific mapper or mapped class, as the events are only invoked
+        for the :class:`.Mapper` target at the general level.
+
+    .. change::
+        :tags: feature, orm
+
         Added a new keyword argument ``once=True`` to :func:`.event.listen`
         and :func:`.event.listens_for`.  This is a convenience feature which
         will wrap the given listener such that it is only invoked once.

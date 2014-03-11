@@ -283,6 +283,42 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         eq_(canary1, ['before_update', 'after_update'])
         eq_(canary2, [])
 
+    def test_before_after_configured_warn_on_non_mapper(self):
+        User, users = self.classes.User, self.tables.users
+
+        m1 = Mock()
+
+        mapper(User, users)
+        assert_raises_message(
+            sa.exc.SAWarning,
+            "before_configured' and 'after_configured' ORM events only "
+            "invoke with the mapper\(\) function or Mapper class as the target.",
+            event.listen, User, 'before_configured', m1
+        )
+
+        assert_raises_message(
+            sa.exc.SAWarning,
+            "before_configured' and 'after_configured' ORM events only "
+            "invoke with the mapper\(\) function or Mapper class as the target.",
+            event.listen, User, 'after_configured', m1
+        )
+
+    def test_before_after_configured(self):
+        User, users = self.classes.User, self.tables.users
+
+        m1 = Mock()
+        m2 = Mock()
+
+        mapper(User, users)
+
+        event.listen(mapper, "before_configured", m1)
+        event.listen(mapper, "after_configured", m2)
+
+        s = Session()
+        s.query(User)
+
+        eq_(m1.mock_calls, [call()])
+        eq_(m2.mock_calls, [call()])
 
     def test_retval(self):
         User, users = self.classes.User, self.tables.users
