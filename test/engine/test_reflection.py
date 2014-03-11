@@ -92,6 +92,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         meta = MetaData(testing.db)
         assert_raises(sa.exc.NoSuchTableError, Table, 'nonexistent',
                       meta, autoload=True)
+        assert 'nonexistent' not in meta.tables
 
     @testing.provide_metadata
     def test_include_columns(self):
