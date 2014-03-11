@@ -15,7 +15,14 @@
     :version: 0.9.4
 
     .. change::
-        :tags: enhancement, oracle
+        :tags: feature, orm
+
+        Added a new keyword argument ``once=True`` to :func:`.event.listen`
+        and :func:`.event.listens_for`.  This is a convenience feature which
+        will wrap the given listener such that it is only invoked once.
+
+    .. change::
+        :tags: feature, oracle
         :tickets: 2911
         :pullreq: github:74
 

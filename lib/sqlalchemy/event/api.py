@@ -44,6 +44,18 @@ def listen(target, identifier, fn, *args, **kw):
                 "after_parent_attach",
                 unique_constraint_name)
 
+
+    A given function can also be invoked for only the first invocation
+    of the event using the ``once`` argument::
+
+        def on_config():
+            do_config()
+
+        event.listen(Mapper, "before_configure", on_config, once=True)
+
+    .. versionadded:: 0.9.3 Added ``once=True`` to :func:`.event.listen`
+       and :func:`.event.listens_for`.
+
     """
 
     _event_key(target, identifier, fn).listen(*args, **kw)
@@ -63,6 +75,18 @@ def listens_for(target, identifier, *args, **kw):
                 table.name,
                 list(const.columns)[0].name
             )
+
+    A given function can also be invoked for only the first invocation
+    of the event using the ``once`` argument::
+
+        @event.listens_for(Mapper, "before_configure", once=True)
+        def on_config():
+            do_config()
+
+
+    .. versionadded:: 0.9.3 Added ``once=True`` to :func:`.event.listen`
+       and :func:`.event.listens_for`.
+
     """
     def decorate(fn):
         listen(target, identifier, fn, *args, **kw)

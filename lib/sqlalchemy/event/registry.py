@@ -19,7 +19,7 @@ from __future__ import absolute_import
 import weakref
 import collections
 import types
-from .. import exc
+from .. import exc, util
 
 
 _key_to_collection = collections.defaultdict(dict)
@@ -173,7 +173,11 @@ class _EventKey(object):
                 )
 
     def listen(self, *args, **kw):
-        self.dispatch_target.dispatch._listen(self, *args, **kw)
+        once = kw.pop("once", False)
+        if once:
+            self.with_wrapper(util.only_once(self._listen_fn)).listen(*args, **kw)
+        else:
+            self.dispatch_target.dispatch._listen(self, *args, **kw)
 
     def remove(self):
         key = self._key
@@ -233,4 +237,5 @@ class _EventKey(object):
     def prepend_to_list(self, owner, list_):
         _stored_in_collection(self, owner)
         list_.insert(0, self._listen_fn)
+
 

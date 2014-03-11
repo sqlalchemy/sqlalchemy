@@ -1202,7 +1202,7 @@ def only_once(fn):
             once_fn = once.pop()
             return once_fn(*arg, **kw)
 
-    return update_wrapper(go, fn)
+    return go
 
 
 _SQLA_RE = re.compile(r'sqlalchemy/([a-z_]+/){0,2}[a-z_]+\.py')

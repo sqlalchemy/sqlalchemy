@@ -1045,6 +1045,31 @@ class RemovalTest(fixtures.TestBase):
         eq_(f1.mock.mock_calls, [call("x")])
         eq_(f2.mock.mock_calls, [call("x"), call("y")])
 
+    def test_once(self):
+        Target = self._fixture()
+
+        m1 = Mock()
+        m2 = Mock()
+        m3 = Mock()
+        m4 = Mock()
+
+        event.listen(Target, "event_one", m1)
+        event.listen(Target, "event_one", m2, once=True)
+        event.listen(Target, "event_one", m3, once=True)
+
+        t1 = Target()
+        t1.dispatch.event_one("x")
+        t1.dispatch.event_one("y")
+
+        event.listen(Target, "event_one", m4, once=True)
+        t1.dispatch.event_one("z")
+        t1.dispatch.event_one("q")
+
+        eq_(m1.mock_calls, [call("x"), call("y"), call("z"), call("q")])
+        eq_(m2.mock_calls, [call("x")])
+        eq_(m3.mock_calls, [call("x")])
+        eq_(m4.mock_calls, [call("z")])
+
     def test_propagate(self):
         Target = self._fixture()
 
