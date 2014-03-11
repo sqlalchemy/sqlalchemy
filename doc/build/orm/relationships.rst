@@ -1195,6 +1195,24 @@ In the Declarative form above, as we are declaring these conditions within the P
 block that corresponds to the ``Node`` class, the ``id`` variable is available directly
 as the :class:`.Column` object we wish to join with.
 
+Alternatively, we can define the :paramref:`~.relationship.primaryjoin`
+and :paramref:`~.relationship.secondaryjoin` arguments using strings, which is suitable
+in the case that our configuration does not have either the ``Node.id`` column
+object available yet or the ``node_to_node`` table perhaps isn't yet available.
+When referring to a plain :class:`.Table` object in a declarative string, we
+use the string name of the table as it is present in the :class:`.MetaData`::
+
+    class Node(Base):
+        __tablename__ = 'node'
+        id = Column(Integer, primary_key=True)
+        label = Column(String)
+        right_nodes = relationship("Node",
+                            secondary="node_to_node",
+                            primaryjoin="Node.id==node_to_node.c.left_node_id",
+                            secondaryjoin="Node.id==node_to_node.c.right_node_id",
+                            backref="left_nodes"
+        )
+
 A classical mapping situation here is similar, where ``node_to_node`` can be joined
 to ``node.c.id``::
 
