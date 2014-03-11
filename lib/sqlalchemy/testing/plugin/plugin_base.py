@@ -14,13 +14,11 @@ via py.test.
 
 from __future__ import absolute_import
 try:
-    # needs 2.7...
-    from unittest import SkipTest
+    # unitttest has a SkipTest also but pytest doesn't
+    # honor it unless nose is imported too...
+    from nose import SkipTest
 except ImportError:
-    try:
-        from nose import SkipTest
-    except ImportError:
-        from _pytest.runner import Skipped as SkipTest
+    from _pytest.runner import Skipped as SkipTest
 
 import sys
 import re
