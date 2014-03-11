@@ -227,7 +227,7 @@ subclasses:
     # use with Query
     session.query(entity).all()
 
-It also accepts a second argument ``selectable`` which replaces the automatic
+It also accepts a third argument ``selectable`` which replaces the automatic
 join creation and instead selects directly from the selectable given. This
 feature is normally used with "concrete" inheritance, described later, but can
 be used with any kind of inheritance setup in the case that specialized SQL
