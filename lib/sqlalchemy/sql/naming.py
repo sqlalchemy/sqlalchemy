@@ -10,7 +10,7 @@
 """
 
 from .schema import Constraint, ForeignKeyConstraint, PrimaryKeyConstraint, \
-                UniqueConstraint, CheckConstraint, Index, Table
+                UniqueConstraint, CheckConstraint, Index, Table, Column
 from .. import event, events
 from .. import exc
 from .elements import _truncated_label
@@ -107,7 +107,14 @@ def _get_convention(dict_, key):
 @event.listens_for(Constraint, "after_parent_attach")
 @event.listens_for(Index, "after_parent_attach")
 def _constraint_name(const, table):
-    if isinstance(table, Table):
+    if isinstance(table, Column):
+        # for column-attached constraint, set another event
+        # to link the column attached to the table as this constraint
+        # associated with the table.
+        event.listen(table, "after_parent_attach",
+                    lambda col, table: _constraint_name(const, table)
+                )
+    elif isinstance(table, Table):
         metadata = table.metadata
         convention = _get_convention(metadata.naming_convention, type(const))
         if convention is not None:

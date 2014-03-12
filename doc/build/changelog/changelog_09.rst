@@ -16,6 +16,14 @@
 
     .. change::
         :tags: bug, sql
+
+        :paramref:`.MetaData.naming_convention` feature will now also
+        apply to :class:`.CheckConstraint` objects that are associated
+        directly with a :class:`.Column` instead of just on the
+        :class:`.Table`.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 2991
 
         Fixed bug in new :paramref:`.MetaData.naming_convention` feature

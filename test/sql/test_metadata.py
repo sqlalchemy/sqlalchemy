@@ -2679,6 +2679,23 @@ class NamingConventionTest(fixtures.TestBase):
             CheckConstraint, u1.c.data == 'x'
         )
 
+    def test_column_attached_ck_name(self):
+        m = MetaData(naming_convention={
+                        "ck": "ck_%(table_name)s_%(constraint_name)s"
+                    })
+        ck = CheckConstraint('x > 5', name='x1')
+        Table('t', m, Column('x', ck))
+        eq_(ck.name, "ck_t_x1")
+
+    def test_table_attached_ck_name(self):
+        m = MetaData(naming_convention={
+                        "ck": "ck_%(table_name)s_%(constraint_name)s"
+                    })
+        ck = CheckConstraint('x > 5', name='x1')
+        Table('t', m, Column('x', Integer), ck)
+        eq_(ck.name, "ck_t_x1")
+
+
     def test_fk_name_schema(self):
         u1 = self._fixture(naming_convention={
                 "fk": "fk_%(table_name)s_%(column_0_name)s_"
