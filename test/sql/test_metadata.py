@@ -7,7 +7,7 @@ from sqlalchemy import Integer, String, UniqueConstraint, \
     CheckConstraint, ForeignKey, MetaData, Sequence, \
     ForeignKeyConstraint, PrimaryKeyConstraint, ColumnDefault, Index, event,\
     events, Unicode, types as sqltypes, bindparam, \
-    Table, Column
+    Table, Column, Boolean, Enum
 from sqlalchemy import schema, exc
 import sqlalchemy as tsa
 from sqlalchemy.testing import fixtures
@@ -2731,3 +2731,39 @@ class NamingConventionTest(fixtures.TestBase):
                         ['user.id', 'user.version'])
         a1.append_constraint(fk)
         eq_(fk.name, "fk_address_HASH_address")
+
+    def test_schematype_ck_name_boolean(self):
+        m1 = MetaData(naming_convention={
+                            "ck": "ck_%(table_name)s_%(constraint_name)s"})
+
+        u1 = Table('user', m1,
+            Column('x', Boolean(name='foo'))
+            )
+        eq_(
+            [c for c in u1.constraints
+                if isinstance(c, CheckConstraint)][0].name, "ck_user_foo"
+        )
+
+    def test_schematype_ck_name_enum(self):
+        m1 = MetaData(naming_convention={
+                            "ck": "ck_%(table_name)s_%(constraint_name)s"})
+
+        u1 = Table('user', m1,
+            Column('x', Enum('a', 'b', name='foo'))
+            )
+        eq_(
+            [c for c in u1.constraints
+                if isinstance(c, CheckConstraint)][0].name, "ck_user_foo"
+        )
+
+    def test_ck_constraint_redundant_event(self):
+        u1 = self._fixture(naming_convention={
+                            "ck": "ck_%(table_name)s_%(constraint_name)s"})
+
+        ck1 = CheckConstraint(u1.c.version > 3, name='foo')
+        u1.append_constraint(ck1)
+        u1.append_constraint(ck1)
+        u1.append_constraint(ck1)
+
+        eq_(ck1.name, "ck_user_foo")
+

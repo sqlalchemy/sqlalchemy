@@ -22,7 +22,7 @@ class ConventionDict(object):
         self._is_fk = isinstance(const, ForeignKeyConstraint)
         self.table = table
         self.convention = convention
-        self._const_name = const.name
+        self._const_name = const._orig_name = getattr(const, '_orig_name', const.name)
 
     def _key_table_name(self):
         return self.table.name
