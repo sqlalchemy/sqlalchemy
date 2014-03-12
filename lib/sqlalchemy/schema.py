@@ -37,6 +37,9 @@ from .sql.schema import (
     )
 
 
+from .sql.naming import conv
+
+
 from .sql.ddl import (
     DDL,
     CreateTable,

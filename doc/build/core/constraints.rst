@@ -459,6 +459,7 @@ Constraints API
     :members:
     :inherited-members:
 
+.. autofunction:: sqlalchemy.schema.conv
 
 .. _schema_indexes:
 

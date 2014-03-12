@@ -15,6 +15,15 @@
     :version: 0.9.4
 
     .. change::
+        :tags: feature, sql
+
+        Added a new feature :func:`.schema.conv`, the purpose of which is to
+        mark a constraint name as already having had a naming convention applied.
+        This token will be used by Alembic migrations as of Alembic 0.6.4
+        in order to render constraints in migration scripts with names marked
+        as already having been subject to a naming convention.
+
+    .. change::
         :tags: bug, sql
 
         :paramref:`.MetaData.naming_convention` feature will now also
