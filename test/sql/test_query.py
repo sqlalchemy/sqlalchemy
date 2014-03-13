@@ -291,16 +291,19 @@ class QueryTest(fixtures.TestBase):
             [("test: jack",), ("test: fred",), ("test: ed",)]
         )
 
-        @testing.fails_on('postgresql', 'only simple labels allowed')
-        @testing.fails_on('sybase', 'only simple labels allowed')
-        @testing.fails_on('mssql', 'only simple labels allowed')
-        def go():
-            concat = ("test: " + users.c.user_name).label('thedata')
-            eq_(
-                select([concat]).order_by(literal_column('thedata') + "x").execute().fetchall(),
-                [("test: ed",), ("test: fred",), ("test: jack",)]
-            )
-        go()
+    @testing.requires.order_by_label_with_expression
+    def test_order_by_label_compound(self):
+        users.insert().execute(
+            {'user_id':7, 'user_name':'jack'},
+            {'user_id':8, 'user_name':'ed'},
+            {'user_id':9, 'user_name':'fred'},
+        )
+
+        concat = ("test: " + users.c.user_name).label('thedata')
+        eq_(
+            select([concat]).order_by(literal_column('thedata') + "x").execute().fetchall(),
+            [("test: ed",), ("test: fred",), ("test: jack",)]
+        )
 
 
     def test_row_comparison(self):
@@ -604,24 +607,6 @@ class QueryTest(fixtures.TestBase):
 
 
 
-    @testing.exclude('mysql', '<', (5, 0, 37), 'database bug')
-    def test_scalar_select(self):
-        """test that scalar subqueries with labels get their type propagated to the result set."""
-
-        # mysql and/or mysqldb has a bug here, type isn't propagated for scalar
-        # subquery.
-        datetable = Table('datetable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('today', DateTime))
-        datetable.create()
-        try:
-            datetable.insert().execute(id=1, today=datetime.datetime(2006, 5, 12, 12, 0, 0))
-            s = select([datetable.alias('x').c.today]).as_scalar()
-            s2 = select([datetable.c.id, s.label('somelabel')])
-            #print s2.c.somelabel.type
-            assert isinstance(s2.execute().first()['somelabel'], datetime.datetime)
-        finally:
-            datetable.drop()
 
     def test_order_by(self):
         """Exercises ORDER BY clause generation.
@@ -894,6 +879,7 @@ class QueryTest(fixtures.TestBase):
             )
             trans.rollback()
 
+    @testing.requires.empty_inserts
     @testing.requires.returning
     def test_no_inserted_pk_on_returning(self):
         result = testing.db.execute(users.insert().returning(users.c.user_id, users.c.user_name))
@@ -975,6 +961,7 @@ class QueryTest(fixtures.TestBase):
             [(1, 'john'), (2, 'ed')]
         )
 
+    @testing.requires.duplicate_names_in_cursor_description
     def test_ambiguous_column(self):
         users.insert().execute(user_id=1, user_name='john')
         result = users.outerjoin(addresses).select().execute()
@@ -1024,6 +1011,7 @@ class QueryTest(fixtures.TestBase):
             lambda: r['user_id']
         )
 
+    @testing.requires.duplicate_names_in_cursor_description
     def test_ambiguous_column_by_col(self):
         users.insert().execute(user_id=1, user_name='john')
         ua = users.alias()
@@ -1059,6 +1047,7 @@ class QueryTest(fixtures.TestBase):
             lambda: row[u2.c.user_id]
         )
 
+    @testing.requires.duplicate_names_in_cursor_description
     def test_ambiguous_column_contains(self):
         # ticket 2702.  in 0.7 we'd get True, False.
         # in 0.8, both columns are present so it's True;
@@ -1506,129 +1495,6 @@ class TableInsertTest(fixtures.TablesTest):
             inserted_primary_key=[]
         )
 
-class PercentSchemaNamesTest(fixtures.TestBase):
-    """tests using percent signs, spaces in table and column names.
-
-    Doesn't pass for mysql, postgresql, but this is really a
-    SQLAlchemy bug - we should be escaping out %% signs for this
-    operation the same way we do for text() and column labels.
-
-    """
-
-    @classmethod
-    def setup_class(cls):
-        global percent_table, metadata, lightweight_percent_table
-        metadata = MetaData(testing.db)
-        percent_table = Table('percent%table', metadata,
-            Column("percent%", Integer),
-            Column("spaces % more spaces", Integer),
-        )
-        lightweight_percent_table = sql.table('percent%table',
-            sql.column("percent%"),
-            sql.column("spaces % more spaces"),
-        )
-        metadata.create_all()
-
-    def teardown(self):
-        percent_table.delete().execute()
-
-    @classmethod
-    def teardown_class(cls):
-        metadata.drop_all()
-
-    @testing.skip_if(lambda: testing.against('postgresql'),
-                    "psycopg2 2.4 no longer accepts % in bind placeholders")
-    def test_single_roundtrip(self):
-        percent_table.insert().execute(
-            {'percent%':5, 'spaces % more spaces':12},
-        )
-        percent_table.insert().execute(
-            {'percent%':7, 'spaces % more spaces':11},
-        )
-        percent_table.insert().execute(
-            {'percent%':9, 'spaces % more spaces':10},
-        )
-        percent_table.insert().execute(
-            {'percent%':11, 'spaces % more spaces':9},
-        )
-        self._assert_table()
-
-    @testing.skip_if(lambda: testing.against('postgresql'),
-                "psycopg2 2.4 no longer accepts % in bind placeholders")
-    @testing.crashes('mysql+mysqldb', "MySQLdb handles executemany() "
-                        "inconsistently vs. execute()")
-    def test_executemany_roundtrip(self):
-        percent_table.insert().execute(
-            {'percent%':5, 'spaces % more spaces':12},
-        )
-        percent_table.insert().execute(
-            {'percent%':7, 'spaces % more spaces':11},
-            {'percent%':9, 'spaces % more spaces':10},
-            {'percent%':11, 'spaces % more spaces':9},
-        )
-        self._assert_table()
-
-    def _assert_table(self):
-        for table in (
-                    percent_table,
-                    percent_table.alias(),
-                    lightweight_percent_table,
-                    lightweight_percent_table.alias()):
-            eq_(
-                list(
-                    testing.db.execute(
-                        table.select().order_by(table.c['percent%'])
-                    )
-                ),
-                [
-                    (5, 12),
-                    (7, 11),
-                    (9, 10),
-                    (11, 9)
-                ]
-            )
-
-            eq_(
-                list(
-                    testing.db.execute(
-                        table.select().
-                            where(table.c['spaces % more spaces'].in_([9, 10])).
-                            order_by(table.c['percent%']),
-                    )
-                ),
-                    [
-                        (9, 10),
-                        (11, 9)
-                    ]
-            )
-
-            row = testing.db.execute(table.select().\
-                        order_by(table.c['percent%'])).first()
-            eq_(row['percent%'], 5)
-            eq_(row['spaces % more spaces'], 12)
-
-            eq_(row[table.c['percent%']], 5)
-            eq_(row[table.c['spaces % more spaces']], 12)
-
-        percent_table.update().values(
-            {percent_table.c['spaces % more spaces']:15}
-        ).execute()
-
-        eq_(
-            list(
-                testing.db.execute(
-                    percent_table.\
-                        select().\
-                        order_by(percent_table.c['percent%'])
-                )
-            ),
-            [
-                (5, 15),
-                (7, 15),
-                (9, 15),
-                (11, 15)
-            ]
-        )
 
 class KeyTargetingTest(fixtures.TablesTest):
     run_inserts = 'once'
@@ -1707,6 +1573,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         eq_(row.keyed1_a, "a1")
         eq_(row.keyed1_c, "c1")
 
+    @testing.requires.duplicate_names_in_cursor_description
     def test_keyed_accessor_composite_conflict_2(self):
         keyed1 = self.tables.keyed1
         keyed2 = self.tables.keyed2
@@ -1731,6 +1598,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         eq_(row.a, "a1")
         eq_(row.c, "c1")
 
+    @testing.requires.duplicate_names_in_cursor_description
     def test_keyed_accessor_composite_keys_precedent(self):
         keyed1 = self.tables.keyed1
         keyed3 = self.tables.keyed3
@@ -1918,8 +1786,11 @@ class LimitTest(fixtures.TestBase):
     def test_select_distinct_offset(self):
         """Test the interaction between distinct and offset"""
 
-        r = sorted([x[0] for x in select([addresses.c.address]).distinct().offset(1).order_by(addresses.c.address).execute().fetchall()])
-        self.assert_(len(r) == 4, repr(r))
+        r = sorted([x[0] for x in
+                select([addresses.c.address]).distinct().
+                    offset(1).order_by(addresses.c.address).
+                    execute().fetchall()])
+        eq_(len(r), 4)
         self.assert_(r[0] != r[1] and r[1] != r[2] and r[2] != [3], repr(r))
 
     @testing.requires.offset

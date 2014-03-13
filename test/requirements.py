@@ -690,6 +690,25 @@ class DefaultRequirements(SuiteRequirements):
                 )
 
     @property
+    def percent_schema_names(self):
+        return skip_if(
+                [
+                    ("+psycopg2", None, None,
+                            "psycopg2 2.4 no longer accepts % in bind placeholders"),
+                    ("mysql", None, None, "executemany() doesn't work here")
+                ]
+            )
+
+    @property
+    def order_by_label_with_expression(self):
+        return fails_if([
+                    ('firebird', None, None, "kinterbasdb doesn't send full type information"),
+                    ('postgresql', None, None, 'only simple labels allowed'),
+                    ('sybase', None, None, 'only simple labels allowed'),
+                    ('mssql', None, None, 'only simple labels allowed')
+                ])
+
+    @property
     def ad_hoc_engines(self):
         """Test environment must allow ad-hoc engine/connection creation.
 

@@ -174,6 +174,13 @@ class SuiteRequirements(Requirements):
             )
 
     @property
+    def duplicate_names_in_cursor_description(self):
+        """target platform supports a SELECT statement that has
+        the same name repeated more than once in the columns list."""
+
+        return exclusions.open()
+
+    @property
     def denormalized_names(self):
         """Target database must have 'denormalized', i.e.
         UPPERCASE as case insensitive names."""
@@ -511,6 +518,33 @@ class SuiteRequirements(Requirements):
     def mod_operator_as_percent_sign(self):
         """target database must use a plain percent '%' as the 'modulus'
         operator."""
+        return exclusions.closed()
+
+    @property
+    def percent_schema_names(self):
+        """target backend supports weird identifiers with percent signs
+        in them, e.g. 'some % column'.
+
+        this is a very weird use case but often has problems because of
+        DBAPIs that use python formatting.  It's not a critical use
+        case either.
+
+        """
+        return exclusions.closed()
+
+    @property
+    def order_by_label_with_expression(self):
+        """target backend supports ORDER BY a column label within an
+        expression.
+
+        Basically this::
+
+            select data as foo from test order by foo || 'bar'
+
+        Lots of databases including Postgresql don't support this,
+        so this is off by default.
+
+        """
         return exclusions.closed()
 
     @property

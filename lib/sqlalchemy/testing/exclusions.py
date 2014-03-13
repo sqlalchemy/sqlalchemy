@@ -318,6 +318,8 @@ def open():
 def closed():
     return skip_if(BooleanPredicate(True, "marked as skip"))
 
+def fails():
+    return fails_if(BooleanPredicate(True, "expected to fail"))
 
 @decorator
 def future(fn, *arg):
