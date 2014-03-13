@@ -93,6 +93,13 @@ class RowFetchTest(fixtures.TablesTest):
 
 
     def test_row_w_scalar_select(self):
+        """test that a scalar select as a column is returned as such
+        and that type conversion works OK.
+
+        (this is half a SQLAlchemy Core test and half to catch database
+        backends that may have unusual behavior with scalar selects.)
+
+        """
         datetable = self.tables.has_dates
         s = select([datetable.alias('x').c.today]).as_scalar()
         s2 = select([datetable.c.id, s.label('somelabel')])
