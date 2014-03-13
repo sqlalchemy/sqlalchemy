@@ -407,11 +407,6 @@ class DefaultRequirements(SuiteRequirements):
             "driver doesn't support 'sane' rowcount"
         )
 
-    @property
-    def cextensions(self):
-        return skip_if(
-                lambda: not self._has_cextensions(), "C extensions not installed"
-                )
 
     @property
     def emulated_lastrowid(self):
@@ -677,9 +672,6 @@ class DefaultRequirements(SuiteRequirements):
 
         return only_if(check_range_types)
 
-    @property
-    def sqlite(self):
-        return skip_if(lambda: not self._has_sqlite())
 
     @property
     def oracle_test_dblink(self):
@@ -708,16 +700,6 @@ class DefaultRequirements(SuiteRequirements):
                     ('mssql', None, None, 'only simple labels allowed')
                 ])
 
-    @property
-    def ad_hoc_engines(self):
-        """Test environment must allow ad-hoc engine/connection creation.
-
-        DBs that scale poorly for many connections, even when closed, i.e.
-        Oracle, may use the "--low-connections" option which flags this requirement
-        as not present.
-
-        """
-        return skip_if(lambda config: config.options.low_connections)
 
     @property
     def skip_mysql_on_windows(self):
@@ -744,20 +726,6 @@ class DefaultRequirements(SuiteRequirements):
         """target driver must support the literal statement 'select 1'"""
         return skip_if(["oracle", "firebird"], "non-standard SELECT scalar syntax")
 
-    def _has_cextensions(self):
-        try:
-            from sqlalchemy import cresultproxy, cprocessors
-            return True
-        except ImportError:
-            return False
-
-    def _has_sqlite(self):
-        from sqlalchemy import create_engine
-        try:
-            create_engine('sqlite://')
-            return True
-        except ImportError:
-            return False
 
     @property
     def mysql_fully_case_sensitive(self):

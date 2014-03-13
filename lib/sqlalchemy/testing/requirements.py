@@ -495,6 +495,24 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def selectone(self):
+        """target driver must support the literal statement 'select 1'"""
+        return exclusions.open()
+
+    @property
+    def savepoints(self):
+        """Target database must support savepoints."""
+
+        return exclusions.closed()
+
+    @property
+    def two_phase_transactions(self):
+        """Target database must support two-phase transactions."""
+
+        return exclusions.closed()
+
+
+    @property
     def update_from(self):
         """Target must support UPDATE..FROM syntax"""
         return exclusions.closed()
@@ -557,8 +575,44 @@ class SuiteRequirements(Requirements):
         """Catchall for a large variety of MySQL on Windows failures"""
         return exclusions.open()
 
+    @property
+    def ad_hoc_engines(self):
+        """Test environment must allow ad-hoc engine/connection creation.
+
+        DBs that scale poorly for many connections, even when closed, i.e.
+        Oracle, may use the "--low-connections" option which flags this requirement
+        as not present.
+
+        """
+        return exclusions.skip_if(lambda config: config.options.low_connections)
+
     def _has_mysql_on_windows(self, config):
         return False
 
     def _has_mysql_fully_case_sensitive(self, config):
         return False
+
+    @property
+    def sqlite(self):
+        return exclusions.skip_if(lambda: not self._has_sqlite())
+
+    @property
+    def cextensions(self):
+        return exclusions.skip_if(
+                lambda: not self._has_cextensions(), "C extensions not installed"
+                )
+
+    def _has_sqlite(self):
+        from sqlalchemy import create_engine
+        try:
+            create_engine('sqlite://')
+            return True
+        except ImportError:
+            return False
+
+    def _has_cextensions(self):
+        try:
+            from sqlalchemy import cresultproxy, cprocessors
+            return True
+        except ImportError:
+            return False
