@@ -3352,8 +3352,7 @@ class _ColumnEntity(_QueryEntity):
                 if c is column:
                     break
                 _ColumnEntity(query, c, namespace=column)
-
-            if c is not column:
+            else:
                 return
         elif isinstance(column, Bundle):
             _BundleEntity(query, column)
