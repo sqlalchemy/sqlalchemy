@@ -5,7 +5,7 @@ from ..assertions import eq_
 from ..config import requirements
 from sqlalchemy import Integer, Unicode, UnicodeText, select
 from sqlalchemy import Date, DateTime, Time, MetaData, String, \
-            Text, Numeric, Float, literal
+            Text, Numeric, Float, literal, Boolean
 from ..schema import Table, Column
 from ... import testing
 import decimal
@@ -519,10 +519,79 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
         )
 
 
+class BooleanTest(_LiteralRoundTripFixture, fixtures.TablesTest):
+    __multiple__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('boolean_table', metadata,
+            Column('id', Integer, primary_key=True, autoincrement=False),
+            Column('value', Boolean),
+            Column('unconstrained_value', Boolean(create_constraint=False)),
+            )
+
+    def test_render_literal_bool(self):
+        self._literal_round_trip(
+            Boolean(),
+            [True, False],
+            [True, False]
+        )
+
+    def test_round_trip(self):
+        boolean_table = self.tables.boolean_table
+
+        config.db.execute(
+            boolean_table.insert(),
+            {
+                'id': 1,
+                'value': True,
+                'unconstrained_value': False
+            }
+        )
+
+        row = config.db.execute(
+                    select([
+                            boolean_table.c.value,
+                            boolean_table.c.unconstrained_value
+                    ])
+                ).first()
+
+        eq_(
+            row,
+            (True, False)
+        )
+        assert isinstance(row[0], bool)
+
+    def test_null(self):
+        boolean_table = self.tables.boolean_table
+
+        config.db.execute(
+            boolean_table.insert(),
+            {
+                'id': 1,
+                'value': None,
+                'unconstrained_value': None
+            }
+        )
+
+        row = config.db.execute(
+                    select([
+                            boolean_table.c.value,
+                            boolean_table.c.unconstrained_value
+                    ])
+                ).first()
+
+        eq_(
+            row,
+            (None, None)
+        )
+
+
+
 
 __all__ = ('UnicodeVarcharTest', 'UnicodeTextTest',
             'DateTest', 'DateTimeTest', 'TextTest',
             'NumericTest', 'IntegerTest',
             'DateTimeHistoricTest', 'DateTimeCoercedToDateTimeTest',
             'TimeMicrosecondsTest', 'TimeTest', 'DateTimeMicrosecondsTest',
-            'DateHistoricTest', 'StringTest')
+            'DateHistoricTest', 'StringTest', 'BooleanTest')

@@ -1692,52 +1692,18 @@ class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(row['non_native_interval'], None)
 
 
-class BooleanTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+class BooleanTest(fixtures.TablesTest, AssertsExecutionResults, AssertsCompiledSQL):
+    """test edge cases for booleans.  Note that the main boolean test suite
+    is now in testing/suite/test_types.py
+
+    """
     @classmethod
-    def setup_class(cls):
-        global bool_table
-        metadata = MetaData(testing.db)
-        bool_table = Table('booltest', metadata,
+    def define_tables(cls, metadata):
+        Table('boolean_table', metadata,
             Column('id', Integer, primary_key=True, autoincrement=False),
             Column('value', Boolean),
             Column('unconstrained_value', Boolean(create_constraint=False)),
             )
-        bool_table.create()
-
-    @classmethod
-    def teardown_class(cls):
-        bool_table.drop()
-
-    def teardown(self):
-        bool_table.delete().execute()
-
-    def test_boolean(self):
-        bool_table.insert().execute(id=1, value=True)
-        bool_table.insert().execute(id=2, value=False)
-        bool_table.insert().execute(id=3, value=True)
-        bool_table.insert().execute(id=4, value=True)
-        bool_table.insert().execute(id=5, value=True)
-        bool_table.insert().execute(id=6, value=None)
-
-        res = select([bool_table.c.id, bool_table.c.value]).where(
-            bool_table.c.value == True
-            ).order_by(bool_table.c.id).execute().fetchall()
-        eq_(res, [(1, True), (3, True), (4, True), (5, True)])
-
-        res2 = select([bool_table.c.id, bool_table.c.value]).where(
-                    bool_table.c.value == False).execute().fetchall()
-        eq_(res2, [(2, False)])
-
-        res3 = select([bool_table.c.id, bool_table.c.value]).\
-                order_by(bool_table.c.id).\
-                execute().fetchall()
-        eq_(res3, [(1, True), (2, False),
-                    (3, True), (4, True),
-                    (5, True), (6, None)])
-
-        # ensure we're getting True/False, not just ints
-        assert res3[0][1] is True
-        assert res3[1][1] is False
 
     @testing.fails_on('mysql',
             "The CHECK clause is parsed but ignored by all storage engines.")
@@ -1747,12 +1713,12 @@ class BooleanTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
     def test_constraint(self):
         assert_raises((exc.IntegrityError, exc.ProgrammingError),
                         testing.db.execute,
-                        "insert into booltest (id, value) values(1, 5)")
+                        "insert into boolean_table (id, value) values(1, 5)")
 
     @testing.skip_if(lambda: testing.db.dialect.supports_native_boolean)
     def test_unconstrained(self):
         testing.db.execute(
-            "insert into booltest (id, unconstrained_value) values (1, 5)")
+            "insert into boolean_table (id, unconstrained_value) values (1, 5)")
 
     def test_non_native_constraint_custom_type(self):
         class Foob(object):

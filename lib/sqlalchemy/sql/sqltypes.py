@@ -1274,6 +1274,15 @@ class Boolean(TypeEngine, SchemaType):
     def python_type(self):
         return bool
 
+    def literal_processor(self, dialect):
+        if dialect.supports_native_boolean:
+            def process(value):
+                return "true" if value else "false"
+        else:
+            def process(value):
+                return str(1 if value else 0)
+        return process
+
     def bind_processor(self, dialect):
         if dialect.supports_native_boolean:
             return None

@@ -17,6 +17,12 @@
     .. change::
         :tags: feature, sql
 
+        Added support for literal rendering of boolean values, e.g.
+        "true" / "false" or "1" / "0".
+
+    .. change::
+        :tags: feature, sql
+
         Added a new feature :func:`.schema.conv`, the purpose of which is to
         mark a constraint name as already having had a naming convention applied.
         This token will be used by Alembic migrations as of Alembic 0.6.4
