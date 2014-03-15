@@ -790,9 +790,15 @@ Here's a rundown of some of the most common operators used in :func:`~sqlalchemy
 
     filter(User.name == None)
 
+    # alternatively, if pep8/linters are a concern
+    query.filter(User.name.is_(None))
+
 * IS NOT NULL::
 
     filter(User.name != None)
+
+    # alternatively, if pep8/linters are a concern
+    query.filter(User.name.isnot(None))
 
 * AND::
 
