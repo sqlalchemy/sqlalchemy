@@ -129,6 +129,8 @@ For example::
         )
     )
 
+.. _on_update_on_delete:
+
 ON UPDATE and ON DELETE
 ~~~~~~~~~~~~~~~~~~~~~~~
 
