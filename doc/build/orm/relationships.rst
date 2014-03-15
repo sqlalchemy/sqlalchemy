@@ -187,6 +187,8 @@ is accepted as well, matching the name of the table as stored in ``Base.metadata
                         secondary="association",
                         backref="parents")
 
+.. _relationships_many_to_many_deletion:
+
 Deleting Rows from the Many to Many Table
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

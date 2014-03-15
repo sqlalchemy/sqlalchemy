@@ -75,6 +75,18 @@ Glossary
             >>> inspect(m1).attrs.data.history.added
             "some data"
 
+    DDL
+        An acronym for *Data Definition Language*.  DDL is the subset
+        of SQL that relational databases use to configure tables, constraints,
+        and other permanent objects within a database schema.  SQLAlchemy
+        provides a rich API for constructing and emitting DDL expressions.
+
+        .. seealso::
+
+            :ref:`metadata_toplevel`
+
+            `DDL (via Wikipedia) <http://en.wikipedia.org/wiki/Data_definition_language>`_
+
     discriminator
         A result-set column which is used during :term:`polymorphic` loading
         to determine what kind of mapped class should be applied to a particular
