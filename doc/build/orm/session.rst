@@ -1176,7 +1176,7 @@ its arguments back into :func:`~sqlalchemy.orm.relationship`::
     `Example: Parent/Child <https://docs.jboss.org/hibernate/orm/3.3/reference/en-US/html/example-parentchild.html>`_.
     If cascades are confusing, we'll refer to their conclusion,
     stating "The sections we have just covered can be a bit confusing.
-    However, in practice, it all works out nicely.".
+    However, in practice, it all works out nicely."
 
 The default value of :paramref:`~.relationship.cascade` is ``save-update, merge``.
 The typical alternative setting for this parameter is either
