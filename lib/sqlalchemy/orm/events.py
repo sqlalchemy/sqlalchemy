@@ -58,7 +58,7 @@ class InstrumentationEvents(event.Events):
             return None
 
     @classmethod
-    def _listen(cls, event_key, propagate=True):
+    def _listen(cls, event_key, propagate=True, **kw):
         target, identifier, fn = \
             event_key.dispatch_target, event_key.identifier, event_key.fn
 
@@ -79,7 +79,7 @@ class InstrumentationEvents(event.Events):
 
         event_key.\
             with_dispatch_target(instrumentation._instrumentation_factory).\
-            with_wrapper(listen).base_listen()
+            with_wrapper(listen).base_listen(**kw)
 
     @classmethod
     def _clear(cls):
@@ -187,7 +187,7 @@ class InstanceEvents(event.Events):
         return None
 
     @classmethod
-    def _listen(cls, event_key, raw=False, propagate=False):
+    def _listen(cls, event_key, raw=False, propagate=False, **kw):
         target, identifier, fn = \
             event_key.dispatch_target, event_key.identifier, event_key.fn
 
@@ -196,7 +196,7 @@ class InstanceEvents(event.Events):
                 return fn(state.obj(), *arg, **kw)
             event_key = event_key.with_wrapper(wrap)
 
-        event_key.base_listen(propagate=propagate)
+        event_key.base_listen(propagate=propagate, **kw)
 
         if propagate:
             for mgr in target.subclass_managers(True):
@@ -347,7 +347,7 @@ class _EventsHold(event.RefCollection):
         _dispatch_target = None
 
         @classmethod
-        def _listen(cls, event_key, raw=False, propagate=False):
+        def _listen(cls, event_key, raw=False, propagate=False, **kw):
             target, identifier, fn = \
                 event_key.dispatch_target, event_key.identifier, event_key.fn
 
@@ -369,7 +369,7 @@ class _EventsHold(event.RefCollection):
                         # we are already going through __subclasses__()
                         # so leave generic propagate flag False
                         event_key.with_dispatch_target(subject).\
-                            listen(raw=raw, propagate=False)
+                            listen(raw=raw, propagate=False, **kw)
 
     def remove(self, event_key):
         target, identifier, fn = \
@@ -503,8 +503,7 @@ class MapperEvents(event.Events):
             return target
 
     @classmethod
-    def _listen(cls, event_key,
-                            raw=False, retval=False, propagate=False):
+    def _listen(cls, event_key, raw=False, retval=False, propagate=False, **kw):
         target, identifier, fn = \
             event_key.dispatch_target, event_key.identifier, event_key.fn
 
@@ -537,9 +536,10 @@ class MapperEvents(event.Events):
 
         if propagate:
             for mapper in target.self_and_descendants:
-                event_key.with_dispatch_target(mapper).base_listen(propagate=True)
+                event_key.with_dispatch_target(mapper).base_listen(
+                                                propagate=True, **kw)
         else:
-            event_key.base_listen()
+            event_key.base_listen(**kw)
 
     @classmethod
     def _clear(cls):

@@ -15,6 +15,12 @@
     :version: 0.9.4
 
     .. change::
+        :tags: bug, orm
+
+        Added support for the not-quite-yet-documented ``insert=True``
+        flag for :func:`.event.listen` to work with mapper / instance events.
+
+    .. change::
         :tags: feature, sql
 
         Added support for literal rendering of boolean values, e.g.
