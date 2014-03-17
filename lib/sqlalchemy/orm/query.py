@@ -1843,6 +1843,12 @@ class Query(object):
             elif self._entities:
                 left = self._entities[0].entity_zero_or_selectable
 
+        if left is None:
+            raise sa_exc.InvalidRequestError(
+                            "Don't know how to join from %s; please use "
+                            "select_from() to establish the left "
+                            "entity/selectable of this join" % self._entities[0])
+
         if left is right and \
                 not create_aliases:
             raise sa_exc.InvalidRequestError(
