@@ -437,6 +437,9 @@ class MutableBase(object):
             outgoing.
 
             """
+            if value is oldvalue:
+                return value
+
             if not isinstance(value, cls):
                 value = cls.coerce(key, value)
             if value is not None:

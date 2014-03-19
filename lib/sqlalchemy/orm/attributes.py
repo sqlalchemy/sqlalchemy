@@ -1538,4 +1538,4 @@ def flag_modified(instance, key):
     """
     state, dict_ = instance_state(instance), instance_dict(instance)
     impl = state.manager[key].impl
-    state._modified_event(dict_, impl, NO_VALUE)
+    state._modified_event(dict_, impl, NO_VALUE, force=True)

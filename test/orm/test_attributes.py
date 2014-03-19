@@ -1852,6 +1852,21 @@ class HistoryTest(fixtures.TestBase):
         f.someattr = ['a']
         eq_(self._someattr_history(f), ([['a']], (), ()))
 
+    def test_scalar_inplace_mutation_replace_self_flag_modified_set(self):
+        Foo = self._fixture(uselist=False, useobject=False,
+                                active_history=False)
+        f = Foo()
+        f.someattr = {'a': 'b'}
+        self._commit_someattr(f)
+        eq_(self._someattr_history(f), ((), [{'a': 'b'}], ()))
+
+        # set the attribute to itself; this places a copy
+        # in committed_state
+        f.someattr = f.someattr
+
+        attributes.flag_modified(f, 'someattr')
+        eq_(self._someattr_history(f), ([{'a': 'b'}], (), ()))
+
 
     def test_use_object_init(self):
         Foo, Bar = self._two_obj_fixture(uselist=False)

@@ -96,6 +96,17 @@ class _MutableDictTestBase(object):
         sess.commit()
         eq_(f1.data, {'b': 'c'})
 
+    def test_replace_itself_still_ok(self):
+        sess = Session()
+        f1 = Foo(data={'a': 'b'})
+        sess.add(f1)
+        sess.flush()
+
+        f1.data = f1.data
+        f1.data['b'] = 'c'
+        sess.commit()
+        eq_(f1.data, {'a': 'b', 'b': 'c'})
+
     def test_pickle_parent(self):
         sess = Session()
 
