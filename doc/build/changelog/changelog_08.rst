@@ -12,6 +12,15 @@
     :version: 0.8.6
 
     .. change::
+        :tags: bug, ext
+        :versions: 0.9.4
+        :tickets: 2997
+
+        Fixed bug in mutable extension as well as
+        :func:`.attributes.flag_modified` where the change event would not be
+        propagated if the attribute had been reassigned to itself.
+
+    .. change::
         :tags: bug, orm
         :versions: 0.9.4
 
