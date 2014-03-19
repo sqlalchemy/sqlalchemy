@@ -1235,6 +1235,48 @@ class EngineEventsTest(fixtures.TestBase):
         canary.be1.assert_call_count(2)
         canary.be2.assert_call_count(2)
 
+    def test_cursor_events_ctx_execute_scalar(self):
+        canary = Mock()
+        e1 = testing_engine(config.db_url)
+
+        event.listen(e1, "before_cursor_execute", canary.bce)
+        event.listen(e1, "after_cursor_execute", canary.ace)
+
+        stmt = str(select([1]).compile(dialect=e1.dialect))
+
+        with e1.connect() as conn:
+            dialect = conn.dialect
+
+            ctx = dialect.execution_ctx_cls._init_statement(
+                            dialect, conn, conn.connection, stmt, {})
+
+            ctx._execute_scalar(stmt, Integer())
+
+        eq_(canary.bce.mock_calls,
+                [call(conn, ctx.cursor, stmt, ctx.parameters[0], ctx, False)])
+        eq_(canary.ace.mock_calls,
+                [call(conn, ctx.cursor, stmt, ctx.parameters[0], ctx, False)])
+
+    def test_cursor_events_execute(self):
+        canary = Mock()
+        e1 = testing_engine(config.db_url)
+
+        event.listen(e1, "before_cursor_execute", canary.bce)
+        event.listen(e1, "after_cursor_execute", canary.ace)
+
+        stmt = str(select([1]).compile(dialect=e1.dialect))
+
+        with e1.connect() as conn:
+
+            result = conn.execute(stmt)
+
+        ctx = result.context
+        eq_(canary.bce.mock_calls,
+                [call(conn, ctx.cursor, stmt, ctx.parameters[0], ctx, False)])
+        eq_(canary.ace.mock_calls,
+                [call(conn, ctx.cursor, stmt, ctx.parameters[0], ctx, False)])
+
+
     def test_argument_format_execute(self):
         def before_execute(conn, clauseelement, multiparams, params):
             assert isinstance(multiparams, (list, tuple))

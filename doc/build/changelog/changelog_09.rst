@@ -15,6 +15,20 @@
     :version: 0.9.4
 
     .. change::
+        :tags: bug, engine
+
+        The :meth:`.ConnectionEvents.after_cursor_execute` event is now
+        emitted for the "_cursor_execute()" method of :class:`.Connection`;
+        this is the "quick" executor that is used for things like
+        when a sequence is executed ahead of an INSERT statement, as well as
+        for dialect startup checks like unicode returns, charset, etc.
+        the :meth:`.ConnectionEvents.before_cursor_execute` event was already
+        invoked here.  The "executemany" flag is now always set to False
+        here, as this event always corresponds to a single execution.
+        Previously the flag could be True if we were acting on behalf of
+        an executemany INSERT statement.
+
+    .. change::
         :tags: bug, orm
 
         Added support for the not-quite-yet-documented ``insert=True``

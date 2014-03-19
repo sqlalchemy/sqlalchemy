@@ -986,8 +986,7 @@ class Connection(Connectable):
                 statement, parameters = \
                             fn(self, cursor, statement, parameters,
                                         context,
-                                        context.executemany
-                                           if context is not None else False)
+                                        False)
 
         if self._echo:
             self.engine.logger.info(statement)
@@ -996,14 +995,22 @@ class Connection(Connectable):
             self.dialect.do_execute(
                                 cursor,
                                 statement,
-                                parameters)
+                                parameters,
+                                context)
         except Exception as e:
             self._handle_dbapi_exception(
                                 e,
                                 statement,
                                 parameters,
                                 cursor,
-                                None)
+                                context)
+
+        if self._has_events:
+            self.dispatch.after_cursor_execute(self, cursor,
+                                                statement,
+                                                parameters,
+                                                context,
+                                                False)
 
     def _safe_close_cursor(self, cursor):
         """Close the given cursor, catching exceptions
