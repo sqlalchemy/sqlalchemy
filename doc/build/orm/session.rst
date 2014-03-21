@@ -301,19 +301,16 @@ opt for an explicit commit pattern, only committing for those requests
 where one is warranted, but still always tearing down the :class:`.Session`
 unconditionally at the end.
 
-Most web frameworks include infrastructure to establish a single
-:class:`.Session`, associated with the request, which is correctly
-constructed and torn down corresponding
-torn down at the end of a request.   Such infrastructure pieces
-include products such as `Flask-SQLAlchemy <http://packages.python.org/Flask-SQLAlchemy/>`_,
+Some web frameworks include infrastructure to assist in the task
+of aligning the lifespan of a :class:`.Session` with that of a web request.
+This includes products such as `Flask-SQLAlchemy <http://packages.python.org/Flask-SQLAlchemy/>`_,
 for usage in conjunction with the Flask web framework,
 and `Zope-SQLAlchemy <http://pypi.python.org/pypi/zope.sqlalchemy>`_,
-for usage in conjunction with the Pyramid and Zope frameworks.
-SQLAlchemy strongly recommends that these products be used as
-available.
+typically used with the Pyramid framework.
+SQLAlchemy recommends that these products be used as available.
 
-In those situations where integration libraries are not available,
-SQLAlchemy includes its own "helper" class known as
+In those situations where the integration libraries are not
+provided or are insufficient, SQLAlchemy includes its own "helper" class known as
 :class:`.scoped_session`.   A tutorial on the usage of this object
 is at :ref:`unitofwork_contextual`.   It provides both a quick way
 to associate a :class:`.Session` with the current thread, as well as
