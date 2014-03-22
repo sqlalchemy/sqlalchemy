@@ -93,11 +93,7 @@ SQLAlchemy supports installation using standard Python "distutils" or
   using the ``setup.py`` script. The C extensions as well as Python 3 builds are supported.
 * **Standard Setuptools** - When using `setuptools <http://pypi.python.org/pypi/setuptools/>`_,
   SQLAlchemy can be installed via ``setup.py`` or ``easy_install``, and the C
-  extensions are supported.  setuptools is not supported on Python 3 at the time
-  of this writing.
-* **Distribute** - With `distribute <http://pypi.python.org/pypi/distribute/>`_,
-  SQLAlchemy can be installed via ``setup.py`` or ``easy_install``, and the C
-  extensions as well as Python 3 builds are supported.
+  extensions are supported.
 * **pip** - `pip <http://pypi.python.org/pypi/pip/>`_ is an installer that
   rides on top of ``setuptools`` or ``distribute``, replacing the usage
   of ``easy_install``.  It is often preferred for its simpler mode of usage.
@@ -117,6 +113,11 @@ Or with pip::
 This command will download the latest version of SQLAlchemy from the `Python
 Cheese Shop <http://pypi.python.org/pypi/SQLAlchemy>`_ and install it to your system.
 
+.. note::
+
+    Beta releases of SQLAlchemy may not be present on Pypi, and may instead
+    require a direct download first.
+
 Installing using setup.py
 ----------------------------------
 
@@ -131,26 +132,38 @@ SQLAlchemy includes C extensions which provide an extra speed boost for
 dealing with result sets. Currently, the extensions are only supported on the
 2.xx series of cPython, not Python 3 or Pypy.
 
-setup.py will automatically build the extensions if an appropriate platform is
+``setup.py`` will automatically build the extensions if an appropriate platform is
 detected. If the build of the C extensions fails, due to missing compiler or
 other issue, the setup process will output a warning message, and re-run the
 build without the C extensions, upon completion reporting final status.
 
 To run the build/install without even attempting to compile the C extensions,
-pass the flag ``--without-cextensions`` to the ``setup.py`` script::
+the ``DISABLE_SQLALCHEMY_CEXT`` environment variable may be specified.  The
+use case for this is either for special testing circumstances, or in the rare
+case of compatibility/build issues not overcome by the usual "rebuild"
+mechanism::
 
-    python setup.py --without-cextensions install
+  # *** only in SQLAlchemy 0.9.4 / 0.8.6 or greater ***
+  export DISABLE_SQLALCHEMY_CEXT=1; python setup.py install
 
-Or with pip::
+.. versionadded:: 0.9.4,0.8.6  Support for disabling the build of
+   C extensions using the ``DISABLE_SQLALCHEMY_CEXT`` environment variable
+   has been added.  This allows control of C extension building whether or not
+   setuptools is available, and additionally works around the fact that
+   setuptools will possibly be **removing support** for command-line switches
+   such as ``--without-extensions`` in a future release.
 
-    pip install --global-option='--without-cextensions' SQLAlchemy
+   For versions of SQLAlchemy prior to 0.9.4 or 0.8.6, the
+   ``--without-cextensions`` option may be used to disable the attempt to build
+   C extensions, provided setupools is in use, and provided the ``Feature``
+   construct is supported by the installed version of setuptools::
 
-.. note::
+      python setup.py --without-cextensions install
 
-   The ``--without-cextensions`` flag is available **only** if ``setuptools``
-   or ``distribute`` is installed.  It is not available on a plain Python ``distutils``
-   installation.  The library will still install without the C extensions if they
-   cannot be built, however.
+   Or with pip::
+
+      pip install --global-option='--without-cextensions' SQLAlchemy
+
 
 Installing on Python 3
 ----------------------------------

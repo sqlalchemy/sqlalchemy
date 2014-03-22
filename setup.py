@@ -10,11 +10,20 @@ import sys
 from distutils.command.build_ext import build_ext
 from distutils.errors import (CCompilerError, DistutilsExecError,
                               DistutilsPlatformError)
+
+has_feature = has_setuptools = False
 try:
-    from setuptools import setup, Extension, Feature
+    from setuptools import setup, Extension
     has_setuptools = True
+    try:
+        # see
+        # https://bitbucket.org/pypa/setuptools/issue/65/deprecate-and-remove-features,
+        # where they may remove Feature.
+        from setuptools import Feature
+        has_feature = True
+    except ImportError:
+        pass
 except ImportError:
-    has_setuptools = False
     from distutils.core import setup, Extension
     Feature = None
     try:  # Python 3
@@ -22,10 +31,19 @@ except ImportError:
     except ImportError:  # Python 2
         from distutils.command.build_py import build_py
 
-cmdclass = {}
-pypy = hasattr(sys, 'pypy_version_info')
-jython = sys.platform.startswith('java')
+py25 = sys.version_info < (2, 6)
+
+if py25:
+    pypy = hasattr(sys, 'pypy_version_info')
+    jython = sys.platform.startswith('java')
+    cpython = not pypy and not jython
+else:
+    import platform
+    cpython = platform.python_implementation() == 'CPython'
+
 py3k = False
+
+cmdclass = {}
 extra = {}
 if sys.version_info < (2, 4):
     raise Exception("SQLAlchemy requires Python 2.4 or higher.")
@@ -111,7 +129,7 @@ r_file.close()
 def run_setup(with_cext):
     kwargs = extra.copy()
     if with_cext:
-        if Feature:
+        if has_feature:
             kwargs['features'] = {'cextensions': Feature(
                     "optional C speed-enhancements",
                     standard=True,
@@ -160,7 +178,7 @@ def unmonkeypatch2to3():
     if hasattr(RefactoringTool, 'old_refactor_string'):
         RefactoringTool.refactor_string = RefactoringTool.old_refactor_string
 
-if pypy or jython or py3k:
+if not cpython or py3k:
     if py3k:
         # monkeypatch our preprocessor onto the 2to3 tool.
         monkeypatch2to3()
@@ -171,11 +189,19 @@ if pypy or jython or py3k:
             # unmonkeypatch to not stomp other setup.py's that are compiled
             # and exec'd and which also require 2to3 fixing
             unmonkeypatch2to3()
+
     status_msgs(
         "WARNING: C extensions are not supported on " +
             "this Python platform, speedups are not enabled.",
         "Plain-Python build succeeded."
     )
+elif os.environ.get('DISABLE_SQLALCHEMY_CEXT'):
+    run_setup(False)
+    status_msgs(
+        "DISABLE_SQLALCHEMY_CEXT is set; not attempting to build C extensions.",
+        "Plain-Python build succeeded."
+    )
+
 else:
     try:
         run_setup(True)
