@@ -353,7 +353,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                 table.dispatch.after_parent_attach(table, metadata)
                 return table
             except:
-                #metadata._remove_table(name, schema)
+                metadata._remove_table(name, schema)
                 raise
 
 
