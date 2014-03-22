@@ -10,18 +10,33 @@ import sys
 from distutils.command.build_ext import build_ext
 from distutils.errors import (CCompilerError, DistutilsExecError,
                               DistutilsPlatformError)
+
+has_feature = False
 try:
-    from setuptools import setup, Extension, Feature
-    has_setuptools = True
+    from setuptools import setup, Extension
+    try:
+        # see
+        # https://bitbucket.org/pypa/setuptools/issue/65/deprecate-and-remove-features,
+        # where they may remove Feature.
+        from setuptools import Feature
+        has_feature = True
+    except ImportError:
+        pass
 except ImportError:
-    has_setuptools = False
     from distutils.core import setup, Extension
-    Feature = None
+
+try:
+    import platform
+except ImportError:
+    pypy = hasattr(sys, 'pypy_version_info')
+    jython = sys.platform.startswith('java')
+    cpython = not pypy and not jython
+else:
+    cpython = platform.python_implementation() == 'CPython'
+
+py3k = False
 
 cmdclass = {}
-pypy = hasattr(sys, 'pypy_version_info')
-jython = sys.platform.startswith('java')
-py3k = False
 extra = {}
 if sys.version_info < (2, 6):
     raise Exception("SQLAlchemy requires Python 2.6 or higher.")
@@ -100,7 +115,7 @@ r_file.close()
 def run_setup(with_cext):
     kwargs = extra.copy()
     if with_cext:
-        if Feature:
+        if has_feature:
             kwargs['features'] = {'cextensions': Feature(
                     "optional C speed-enhancements",
                     standard=True,
@@ -137,13 +152,20 @@ def run_setup(with_cext):
             **kwargs
           )
 
-if pypy or jython:
+if not cpython:
     run_setup(False)
     status_msgs(
         "WARNING: C extensions are not supported on " +
             "this Python platform, speedups are not enabled.",
         "Plain-Python build succeeded."
     )
+elif os.environ.get('DISABLE_SQLALCHEMY_CEXT'):
+    run_setup(False)
+    status_msgs(
+        "DISABLE_SQLALCHEMY_CEXT is set; not attempting to build C extensions.",
+        "Plain-Python build succeeded."
+    )
+
 else:
     try:
         run_setup(True)

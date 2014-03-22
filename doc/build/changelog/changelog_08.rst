@@ -12,6 +12,19 @@
     :version: 0.8.6
 
     .. change::
+        :tags: bug, general
+        :tickets: 2986
+        :versions: 0.9.4
+
+        Adjusted ``setup.py`` file to support the possible future
+        removal of the ``setuptools.Feature`` extension from setuptools.
+        If this keyword isn't present, the setup will still succeed
+        with setuptools rather than falling back to distutils.  C extension
+        building can be disabled now also by setting the
+        DISABLE_SQLALCHEMY_CEXT environment variable.  This variable works
+        whether or not setuptools is even available.
+
+    .. change::
         :tags: bug, ext
         :versions: 0.9.4
         :tickets: 2997
