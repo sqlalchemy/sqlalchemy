@@ -2543,7 +2543,14 @@ class Query(object):
         .. versionadded:: 0.8.1
 
         """
-        return sql.exists(self.with_labels().statement.with_only_columns(['1']))
+
+        # .add_columns() for the case that we are a query().select_from(X),
+        # so that ".statement" can be produced (#2995) but also without
+        # omitting the FROM clause from a query(X) (#2818);
+        # .with_only_columns() after we have a core select() so that
+        # we get just "SELECT 1" without any entities.
+        return sql.exists(self.add_columns('1').with_labels().
+                                statement.with_only_columns(['1']))
 
     def count(self):
         """Return a count of rows this Query would return.

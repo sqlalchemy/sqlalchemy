@@ -12,6 +12,15 @@
     :version: 0.8.6
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2995,
+        :versions: 0.9.4
+
+        Fixed regression from 0.8.3 as a result of :ticket:`2818`
+        where :meth:`.Query.exists` wouldn't work on a query that only
+        had a :meth:`.Query.select_from` entry but no other entities.
+
+    .. change::
         :tags: bug, general
         :tickets: 2986
         :versions: 0.9.4
