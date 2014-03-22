@@ -979,11 +979,11 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             users_v = Table("users_v", m2, autoload=True)
             addresses_v = Table("email_addresses_v", m2, autoload=True)
 
-            for c1, c2 in zip(users.c, users_v.c):
+            for c1, c2 in zip(users_v.c, users.c):
                 eq_(c1.name, c2.name)
                 self.assert_types_base(c1, c2)
 
-            for c1, c2 in zip(addresses.c, addresses_v.c):
+            for c1, c2 in zip(addresses_v.c, addresses.c):
                 eq_(c1.name, c2.name)
                 self.assert_types_base(c1, c2)
         finally:

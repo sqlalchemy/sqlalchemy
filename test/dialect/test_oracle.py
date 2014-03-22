@@ -1022,7 +1022,8 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
             (oracle.OracleRaw(), cx_oracle._OracleRaw),
             (String(), String),
             (VARCHAR(), cx_oracle._OracleString),
-            (DATE(), DATE),
+            (DATE(), cx_oracle._OracleDate),
+            (oracle.DATE(), oracle.DATE),
             (String(50), cx_oracle._OracleString),
             (Unicode(), cx_oracle._OracleNVarChar),
             (Text(), cx_oracle._OracleText),
@@ -1403,22 +1404,26 @@ class TypesTest(fixtures.TestBase):
         metadata = self.metadata
         Table(
             "date_types", metadata,
-            Column('d1', DATE),
-            Column('d2', TIMESTAMP),
-            Column('d3', TIMESTAMP(timezone=True)),
-            Column('d4', oracle.INTERVAL(second_precision=5)),
+            Column('d1', sqltypes.DATE),
+            Column('d2', oracle.DATE),
+            Column('d3', TIMESTAMP),
+            Column('d4', TIMESTAMP(timezone=True)),
+            Column('d5', oracle.INTERVAL(second_precision=5)),
         )
         metadata.create_all()
         m = MetaData(testing.db)
         t1 = Table(
             "date_types", m,
             autoload=True)
-        assert isinstance(t1.c.d1.type, DATE)
-        assert isinstance(t1.c.d2.type, TIMESTAMP)
-        assert not t1.c.d2.type.timezone
+        assert isinstance(t1.c.d1.type, oracle.DATE)
+        assert isinstance(t1.c.d1.type, DateTime)
+        assert isinstance(t1.c.d2.type, oracle.DATE)
+        assert isinstance(t1.c.d2.type, DateTime)
         assert isinstance(t1.c.d3.type, TIMESTAMP)
-        assert t1.c.d3.type.timezone
-        assert isinstance(t1.c.d4.type, oracle.INTERVAL)
+        assert not t1.c.d3.type.timezone
+        assert isinstance(t1.c.d4.type, TIMESTAMP)
+        assert t1.c.d4.type.timezone
+        assert isinstance(t1.c.d5.type, oracle.INTERVAL)
 
     def test_reflect_all_types_schema(self):
         types_table = Table('all_types', MetaData(testing.db),

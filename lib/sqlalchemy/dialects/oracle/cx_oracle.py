@@ -610,7 +610,6 @@ class OracleDialect_cx_oracle(OracleDialect):
     colspecs = colspecs = {
         sqltypes.Numeric: _OracleNumeric,
         sqltypes.Date: _OracleDate,  # generic type, assume datetime.date is desired
-        oracle.DATE: oracle.DATE,  # non generic type - passthru
         sqltypes.LargeBinary: _OracleBinary,
         sqltypes.Boolean: oracle._OracleBoolean,
         sqltypes.Interval: _OracleInterval,

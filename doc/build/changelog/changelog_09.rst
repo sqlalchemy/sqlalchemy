@@ -15,6 +15,21 @@
     :version: 0.9.4
 
     .. change::
+        :tags: bug, oracle
+        :tickets: 2987
+
+        Added new datatype :class:`.oracle.DATE`, which is a subclass of
+        :class:`.DateTime`.  As Oracle has no "datetime" type per se,
+        it instead has only ``DATE``, it is appropriate here that the
+        ``DATE`` type as present in the Oracle dialect be an instance of
+        :class:`.DateTime`.  This issue doesn't change anything as far as
+        the behavior of the type, as data conversion is handled by the
+        DBAPI in any case, however the improved subclass layout will help
+        the use cases of inspecting types for cross-database compatibility.
+        Also removed uppercase ``DATETIME`` from the Oracle dialect as this
+        type isn't functional in that context.
+
+    .. change::
         :tags: bug, sql
         :tickets: 2988
         :pullreq: github:78
