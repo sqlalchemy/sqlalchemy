@@ -449,6 +449,18 @@ class ExecuteTest(fixtures.TestBase):
         assert eng.dialect.returns_unicode_strings in (True, False)
         eng.dispose()
 
+    def test_works_after_dispose(self):
+        eng = create_engine(testing.db.url)
+        for i in range(3):
+            eq_(eng.scalar(select([1])), 1)
+            eng.dispose()
+
+    def test_works_after_dispose_testing_engine(self):
+        eng = engines.testing_engine()
+        for i in range(3):
+            eq_(eng.scalar(select([1])), 1)
+            eng.dispose()
+
 class ConvenienceExecuteTest(fixtures.TablesTest):
     @classmethod
     def define_tables(cls, metadata):

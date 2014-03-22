@@ -1502,6 +1502,7 @@ class Engine(Connectable, log.Identified):
 
         """
         self.pool.dispose()
+        self.pool = self.pool.recreate()
 
     def _execute_default(self, default):
         with self.contextual_connect() as conn:
