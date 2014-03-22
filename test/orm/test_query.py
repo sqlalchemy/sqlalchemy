@@ -1779,6 +1779,17 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
             ') AS anon_1'
         )
 
+    def test_exists_w_select_from(self):
+        User = self.classes.User
+        sess = create_session()
+
+        q1 = sess.query().select_from(User).exists()
+        self.assert_compile(sess.query(q1),
+            'SELECT EXISTS ('
+                'SELECT 1 FROM users'
+            ') AS anon_1'
+        )
+
 
 class CountTest(QueryTest):
     def test_basic(self):
