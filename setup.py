@@ -25,15 +25,6 @@ try:
 except ImportError:
     from distutils.core import setup, Extension
 
-try:
-    import platform
-except ImportError:
-    pypy = hasattr(sys, 'pypy_version_info')
-    jython = sys.platform.startswith('java')
-    cpython = not pypy and not jython
-else:
-    cpython = platform.python_implementation() == 'CPython'
-
 py3k = False
 
 cmdclass = {}
@@ -42,6 +33,9 @@ if sys.version_info < (2, 6):
     raise Exception("SQLAlchemy requires Python 2.6 or higher.")
 elif sys.version_info >= (3, 0):
     py3k = True
+
+import platform
+cpython = platform.python_implementation() == 'CPython'
 
 ext_modules = [
     Extension('sqlalchemy.cprocessors',
