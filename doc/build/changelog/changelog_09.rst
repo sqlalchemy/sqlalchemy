@@ -15,6 +15,21 @@
     :version: 0.9.4
 
     .. change::
+        :tags: bug, engine
+        :tickets: 2985
+
+        A major improvement made to the mechanics by which the :class:`.Engine`
+        recycles the connection pool when a "disconnect" condition is detected;
+        instead of discarding the pool and explicitly closing out connections,
+        the pool is retained and a "generational" timestamp is updated to
+        reflect the current time, thereby causing all existing connections
+        to be recycled when they are next checked out.   This greatly simplifies
+        the recycle process, removes the need for "waking up" connect attempts
+        waiting on the old pool and eliminates the race condition that many
+        immediately-discarded "pool" objects could be created during the
+        recycle operation.
+
+    .. change::
         :tags: bug, oracle
         :tickets: 2987
 

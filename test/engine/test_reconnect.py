@@ -146,16 +146,20 @@ class MockReconnectTest(fixtures.TestBase):
         # close shouldnt break
 
         conn.close()
-        is_not_(self.db.pool, db_pool)
 
-        # ensure all connections closed (pool was recycled)
-
+        # ensure one connection closed...
         eq_(
             [c.close.mock_calls for c in self.dbapi.connections],
-            [[call()], [call()]]
+            [[call()], []]
         )
 
         conn = self.db.connect()
+
+        eq_(
+            [c.close.mock_calls for c in self.dbapi.connections],
+            [[call()], [call()], []]
+        )
+
         conn.execute(select([1]))
         conn.close()
 
@@ -534,8 +538,6 @@ class RealReconnectTest(fixtures.TestBase):
         # invalidate() also doesn't screw up
         assert_raises(exc.DBAPIError, engine.connect)
 
-        # pool was recreated
-        assert engine.pool is not p1
 
     def test_null_pool(self):
         engine = \

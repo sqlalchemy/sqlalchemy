@@ -1091,9 +1091,7 @@ class Connection(Connectable):
                 del self._is_disconnect
                 dbapi_conn_wrapper = self.connection
                 self.invalidate(e)
-                if not hasattr(dbapi_conn_wrapper, '_pool') or \
-                        dbapi_conn_wrapper._pool is self.engine.pool:
-                    self.engine.dispose()
+                self.engine.pool._invalidate(dbapi_conn_wrapper)
             if self.should_close_with_result:
                 self.close()
 
@@ -1503,7 +1501,7 @@ class Engine(Connectable, log.Identified):
         the engine are not affected.
 
         """
-        self.pool = self.pool._replace()
+        self.pool.dispose()
 
     def _execute_default(self, default):
         with self.contextual_connect() as conn:
