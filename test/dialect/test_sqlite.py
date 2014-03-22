@@ -111,7 +111,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         testing.db.execute("insert into t (d) values ('2004-05-21T00:00:00')")
         eq_(
             testing.db.execute("select * from t order by d").fetchall(),
-            [(u'2004-05-21T00:00:00',), (u'2010-10-15T12:37:00',)]
+            [('2004-05-21T00:00:00',), ('2010-10-15T12:37:00',)]
         )
         eq_(
             testing.db.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
@@ -133,7 +133,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         testing.db.execute("insert into t (d) values ('2004|05|21')")
         eq_(
             testing.db.execute("select * from t order by d").fetchall(),
-            [(u'2004|05|21',), (u'2010|10|15',)]
+            [('2004|05|21',), ('2010|10|15',)]
         )
         eq_(
             testing.db.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),

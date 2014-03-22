@@ -15,6 +15,13 @@
     :version: 0.9.4
 
     .. change::
+        :tags: bug, tests
+        :tickets: 2980
+
+        Fixed a few errant ``u''`` strings that would prevent tests from passing
+        in Py3.2.  Patch courtesy Arfrever Frehtes Taifersar Arahesis.
+
+    .. change::
         :tags: bug, engine
         :tickets: 2985
 

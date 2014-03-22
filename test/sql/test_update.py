@@ -306,7 +306,7 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
                 where(users.c.id == addresses.c.user_id),
             "UPDATE users, addresses SET addresses.name=%s, "
                 "users.name=%s WHERE users.id = addresses.user_id",
-            checkparams={u'addresses_name': 'new address', 'name': 'newname'},
+            checkparams={'addresses_name': 'new address', 'name': 'newname'},
             dialect='mysql'
         )
 
