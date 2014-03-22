@@ -1208,6 +1208,7 @@ class EngineEventsTest(fixtures.TestBase):
         e2.execute(s2)
         eq_([arg[1][1] for arg in canary.mock_calls], [s1, s1, s2])
 
+
     def test_per_engine_plus_global(self):
         canary = Mock()
         event.listen(Engine, "before_execute", canary.be1)
@@ -1221,14 +1222,14 @@ class EngineEventsTest(fixtures.TestBase):
         e2.connect()
 
         e1.execute(select([1]))
-        canary.be1.assert_call_count(1)
-        canary.be2.assert_call_count(1)
+        eq_(canary.be1.call_count, 1)
+        eq_(canary.be2.call_count, 1)
 
         e2.execute(select([1]))
 
-        canary.be1.assert_call_count(2)
-        canary.be2.assert_call_count(1)
-        canary.be3.assert_call_count(2)
+        eq_(canary.be1.call_count, 2)
+        eq_(canary.be2.call_count, 1)
+        eq_(canary.be3.call_count, 2)
 
     def test_per_connection_plus_engine(self):
         canary = Mock()
@@ -1240,12 +1241,12 @@ class EngineEventsTest(fixtures.TestBase):
         event.listen(conn, "before_execute", canary.be2)
         conn.execute(select([1]))
 
-        canary.be1.assert_call_count(1)
-        canary.be2.assert_call_count(1)
+        eq_(canary.be1.call_count, 1)
+        eq_(canary.be2.call_count, 1)
 
         conn._branch().execute(select([1]))
-        canary.be1.assert_call_count(2)
-        canary.be2.assert_call_count(2)
+        eq_(canary.be1.call_count, 2)
+        eq_(canary.be2.call_count, 2)
 
     def test_cursor_events_ctx_execute_scalar(self):
         canary = Mock()
