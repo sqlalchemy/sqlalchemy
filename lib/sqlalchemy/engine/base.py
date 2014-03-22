@@ -65,7 +65,10 @@ class Connection(Connectable):
         self.__can_reconnect = True
         if _dispatch:
             self.dispatch = _dispatch
-        elif engine._has_events:
+        elif _has_events is None:
+            # if _has_events is sent explicitly as False,
+            # then don't join the dispatch of the engine; we don't
+            # want to handle any of the engine's events in that case.
             self.dispatch = self.dispatch._join(engine.dispatch)
         self._has_events = _has_events or (
                                 _has_events is None and engine._has_events)
@@ -77,7 +80,7 @@ class Connection(Connectable):
         else:
             self._execution_options = engine._execution_options
 
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.engine_connect(self, _branch)
 
     def _branch(self):
@@ -204,7 +207,7 @@ class Connection(Connectable):
         """
         c = self._clone()
         c._execution_options = c._execution_options.union(opt)
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.set_connection_execution_options(c, opt)
         self.dialect.set_connection_execution_options(c, opt)
         return c
@@ -482,7 +485,7 @@ class Connection(Connectable):
         if self._echo:
             self.engine.logger.info("BEGIN (implicit)")
 
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.begin(self)
 
         try:
@@ -493,7 +496,7 @@ class Connection(Connectable):
             self._handle_dbapi_exception(e, None, None, None, None)
 
     def _rollback_impl(self):
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.rollback(self)
 
         if self._still_open_and_connection_is_valid:
@@ -511,7 +514,7 @@ class Connection(Connectable):
             self.__transaction = None
 
     def _commit_impl(self, autocommit=False):
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.commit(self)
 
         if self._echo:
@@ -526,7 +529,7 @@ class Connection(Connectable):
             self.__transaction = None
 
     def _savepoint_impl(self, name=None):
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.savepoint(self, name)
 
         if name is None:
@@ -537,7 +540,7 @@ class Connection(Connectable):
             return name
 
     def _rollback_to_savepoint_impl(self, name, context):
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.rollback_savepoint(self, name, context)
 
         if self._still_open_and_connection_is_valid:
@@ -545,7 +548,7 @@ class Connection(Connectable):
         self.__transaction = context
 
     def _release_savepoint_impl(self, name, context):
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.release_savepoint(self, name, context)
 
         if self._still_open_and_connection_is_valid:
@@ -555,7 +558,7 @@ class Connection(Connectable):
     def _begin_twophase_impl(self, transaction):
         if self._echo:
             self.engine.logger.info("BEGIN TWOPHASE (implicit)")
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.begin_twophase(self, transaction.xid)
 
         if self._still_open_and_connection_is_valid:
@@ -565,7 +568,7 @@ class Connection(Connectable):
                 self.connection._reset_agent = transaction
 
     def _prepare_twophase_impl(self, xid):
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.prepare_twophase(self, xid)
 
         if self._still_open_and_connection_is_valid:
@@ -573,7 +576,7 @@ class Connection(Connectable):
             self.engine.dialect.do_prepare_twophase(self, xid)
 
     def _rollback_twophase_impl(self, xid, is_prepared):
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.rollback_twophase(self, xid, is_prepared)
 
         if self._still_open_and_connection_is_valid:
@@ -588,7 +591,7 @@ class Connection(Connectable):
             self.__transaction = None
 
     def _commit_twophase_impl(self, xid, is_prepared):
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.commit_twophase(self, xid, is_prepared)
 
         if self._still_open_and_connection_is_valid:
@@ -725,7 +728,7 @@ class Connection(Connectable):
     def _execute_default(self, default, multiparams, params):
         """Execute a schema.ColumnDefault object."""
 
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             for fn in self.dispatch.before_execute:
                 default, multiparams, params = \
                     fn(self, default, multiparams, params)
@@ -746,7 +749,7 @@ class Connection(Connectable):
         if self.should_close_with_result:
             self.close()
 
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.after_execute(self,
                 default, multiparams, params, ret)
 
@@ -755,7 +758,7 @@ class Connection(Connectable):
     def _execute_ddl(self, ddl, multiparams, params):
         """Execute a schema.DDL object."""
 
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             for fn in self.dispatch.before_execute:
                 ddl, multiparams, params = \
                     fn(self, ddl, multiparams, params)
@@ -770,7 +773,7 @@ class Connection(Connectable):
             None,
             compiled
         )
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.after_execute(self,
                 ddl, multiparams, params, ret)
         return ret
@@ -778,7 +781,7 @@ class Connection(Connectable):
     def _execute_clauseelement(self, elem, multiparams, params):
         """Execute a sql.ClauseElement object."""
 
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             for fn in self.dispatch.before_execute:
                 elem, multiparams, params = \
                     fn(self, elem, multiparams, params)
@@ -813,7 +816,7 @@ class Connection(Connectable):
             distilled_params,
             compiled_sql, distilled_params
         )
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.after_execute(self,
                 elem, multiparams, params, ret)
         return ret
@@ -821,7 +824,7 @@ class Connection(Connectable):
     def _execute_compiled(self, compiled, multiparams, params):
         """Execute a sql.Compiled object."""
 
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             for fn in self.dispatch.before_execute:
                 compiled, multiparams, params = \
                     fn(self, compiled, multiparams, params)
@@ -835,7 +838,7 @@ class Connection(Connectable):
             parameters,
             compiled, parameters
         )
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.after_execute(self,
                 compiled, multiparams, params, ret)
         return ret
@@ -843,7 +846,7 @@ class Connection(Connectable):
     def _execute_text(self, statement, multiparams, params):
         """Execute a string SQL statement."""
 
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             for fn in self.dispatch.before_execute:
                 statement, multiparams, params = \
                     fn(self, statement, multiparams, params)
@@ -857,7 +860,7 @@ class Connection(Connectable):
             parameters,
             statement, parameters
         )
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.after_execute(self,
                 statement, multiparams, params, ret)
         return ret
@@ -890,7 +893,7 @@ class Connection(Connectable):
         if not context.executemany:
             parameters = parameters[0]
 
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             for fn in self.dispatch.before_cursor_execute:
                 statement, parameters = \
                             fn(self, cursor, statement, parameters,
@@ -926,7 +929,7 @@ class Connection(Connectable):
                                 cursor,
                                 context)
 
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.after_cursor_execute(self, cursor,
                                                 statement,
                                                 parameters,
@@ -981,7 +984,7 @@ class Connection(Connectable):
         terminates at _execute_context().
 
         """
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             for fn in self.dispatch.before_cursor_execute:
                 statement, parameters = \
                             fn(self, cursor, statement, parameters,
@@ -1005,7 +1008,7 @@ class Connection(Connectable):
                                 cursor,
                                 context)
 
-        if self._has_events:
+        if self._has_events or self.engine._has_events:
             self.dispatch.after_cursor_execute(self, cursor,
                                                 statement,
                                                 parameters,
@@ -1058,7 +1061,7 @@ class Connection(Connectable):
                 (statement is not None and context is None)
 
             if should_wrap and context:
-                if self._has_events:
+                if self._has_events or self.engine._has_events:
                     self.dispatch.dbapi_error(self,
                                                     cursor,
                                                     statement,

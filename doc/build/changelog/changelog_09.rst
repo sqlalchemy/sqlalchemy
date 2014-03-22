@@ -15,6 +15,19 @@
     :version: 0.9.4
 
     .. change::
+        :tags: feature, engine
+        :tickets: 2978
+
+        An event listener can now be associated with a :class:`.Engine`,
+        after one or more :class:`.Connection` objects have been created
+        (such as by an orm :class:`.Session` or via explicit connect)
+        and the listener will pick up events from those connections.
+        Previously, performance concerns pushed the event transfer from
+        :class:`.Engine` to  :class:`.Connection` at init-time only, but
+        we've inlined a bunch of conditional checks to make this possible
+        without any additional function calls.
+
+    .. change::
         :tags: bug, tests
         :tickets: 2980
 

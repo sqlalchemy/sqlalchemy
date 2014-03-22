@@ -1248,6 +1248,39 @@ class EngineEventsTest(fixtures.TestBase):
         eq_(canary.be1.call_count, 2)
         eq_(canary.be2.call_count, 2)
 
+    def test_add_event_after_connect(self):
+        # new feature as of #2978
+        canary = Mock()
+        e1 = create_engine(config.db_url)
+        assert not e1._has_events
+
+        conn = e1.connect()
+
+        event.listen(e1, "before_execute", canary.be1)
+        conn.execute(select([1]))
+
+        eq_(canary.be1.call_count, 1)
+
+        conn._branch().execute(select([1]))
+        eq_(canary.be1.call_count, 2)
+
+    def test_force_conn_events_false(self):
+        canary = Mock()
+        e1 = create_engine(config.db_url)
+        assert not e1._has_events
+
+        event.listen(e1, "before_execute", canary.be1)
+
+        conn = e1._connection_cls(e1, connection=e1.raw_connection(),
+                            _has_events=False)
+
+        conn.execute(select([1]))
+
+        eq_(canary.be1.call_count, 0)
+
+        conn._branch().execute(select([1]))
+        eq_(canary.be1.call_count, 0)
+
     def test_cursor_events_ctx_execute_scalar(self):
         canary = Mock()
         e1 = testing_engine(config.db_url)
