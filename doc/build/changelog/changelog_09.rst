@@ -15,6 +15,16 @@
     :version: 0.9.4
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2988
+        :pullreq: github:78
+
+        Fixed an 0.9 regression where a :class:`.Table` that failed to
+        reflect correctly wouldn't be removed from the parent
+        :class:`.MetaData`, even though in an invalid state.  Pullreq
+        courtesy Roman Podoliaka.
+
+    .. change::
         :tags: bug, engine
 
         The :meth:`.ConnectionEvents.after_cursor_execute` event is now
