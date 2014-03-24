@@ -2432,6 +2432,8 @@ class MixedEntitiesTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     run_deletes = None
     __dialect__ = 'default'
 
+    __prefer_backends__ = ('postgresql', 'mysql', 'oracle')
+
     @classmethod
     def setup_mappers(cls):
         users, Keyword, items, order_items, orders, Item, User, Address, keywords, Order, item_keywords, addresses = (cls.tables.users,

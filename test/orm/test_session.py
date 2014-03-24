@@ -20,7 +20,6 @@ from sqlalchemy import event, ForeignKey
 
 class BindTest(_fixtures.FixtureTest):
     run_inserts = None
-    __backend__ = True
 
     def test_mapped_binds(self):
         Address, addresses, users, User = (self.classes.Address,
@@ -260,7 +259,7 @@ class ExecutionTest(_fixtures.FixtureTest):
 
 class TransScopingTest(_fixtures.FixtureTest):
     run_inserts = None
-    __backend__ = True
+    __prefer_requires__ = "independent_connections",
 
     def test_no_close_on_flush(self):
         """Flush() doesn't close a connection the session didn't open"""
@@ -316,7 +315,6 @@ class TransScopingTest(_fixtures.FixtureTest):
 
 class SessionUtilTest(_fixtures.FixtureTest):
     run_inserts = None
-    __backend__ = True
 
     def test_object_session_raises(self):
         User = self.classes.User
@@ -397,8 +395,8 @@ class SessionUtilTest(_fixtures.FixtureTest):
 
 class SessionStateTest(_fixtures.FixtureTest):
     run_inserts = None
-    __backend__ = True
 
+    __prefer_requires__ = ('independent_connections', )
 
     def test_info(self):
         s = Session()
@@ -890,7 +888,6 @@ class NoCyclesOnTransientDetachedTest(_fixtures.FixtureTest):
 
     """
     run_inserts = None
-    __backend__ = True
 
     def setup(self):
         mapper(self.classes.User, self.tables.users)
@@ -1645,7 +1642,6 @@ class TLTransactionTest(fixtures.MappedTest):
 
 class FlushWarningsTest(fixtures.MappedTest):
     run_setup_mappers = 'each'
-    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):

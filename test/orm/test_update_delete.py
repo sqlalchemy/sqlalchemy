@@ -12,6 +12,8 @@ from sqlalchemy.testing.schema import Table, Column
 
 
 class UpdateDeleteTest(fixtures.MappedTest):
+    __backend__ = True
+
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
@@ -734,6 +736,7 @@ class InheritTest(fixtures.DeclarativeMappedTest):
     run_inserts = 'each'
 
     run_deletes = 'each'
+    __backend__ = True
 
     @classmethod
     def setup_classes(cls):

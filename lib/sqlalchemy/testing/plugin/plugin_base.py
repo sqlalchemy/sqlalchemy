@@ -375,6 +375,18 @@ def _do_skips(cls):
                         reasons.append(check.reason)
                     break
 
+    if hasattr(cls, '__prefer_requires__'):
+        non_preferred = set()
+        requirements = config.requirements
+        for config_obj in list(all_configs):
+            for requirement in cls.__prefer_requires__:
+                check = getattr(requirements, requirement)
+
+                if check.predicate(config_obj):
+                    non_preferred.add(config_obj)
+        if all_configs.difference(non_preferred):
+            all_configs.difference_update(non_preferred)
+
     if cls.__unsupported_on__:
         spec = exclusions.db_spec(*cls.__unsupported_on__)
         for config_obj in list(all_configs):
@@ -415,7 +427,7 @@ def _do_skips(cls):
                 ", ".join(reasons)
             )
         )
-    elif hasattr(cls, '__prefer__'):
+    elif hasattr(cls, '__prefer_backends__'):
         non_preferred = set()
         spec = exclusions.db_spec(*util.to_list(cls.__prefer__))
         for config_obj in all_configs:

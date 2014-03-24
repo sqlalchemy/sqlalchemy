@@ -1410,6 +1410,7 @@ class ProxyConnectionTest(fixtures.TestBase):
 
     """
     __requires__ = 'ad_hoc_engines',
+    __prefer_requires__ = 'two_phase_transactions',
 
     @testing.uses_deprecated(r'.*Use event.listen')
     @testing.fails_on('firebird', 'Data type unknown')
