@@ -429,7 +429,7 @@ def _do_skips(cls):
         )
     elif hasattr(cls, '__prefer_backends__'):
         non_preferred = set()
-        spec = exclusions.db_spec(*util.to_list(cls.__prefer__))
+        spec = exclusions.db_spec(*util.to_list(cls.__prefer_backends__))
         for config_obj in all_configs:
             if not spec(config_obj):
                 non_preferred.add(config_obj)
