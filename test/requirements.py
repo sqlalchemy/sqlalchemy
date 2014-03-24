@@ -16,7 +16,8 @@ from sqlalchemy.testing.exclusions import \
      fails_if,\
      succeeds_if,\
      SpecPredicate,\
-     against
+     against,\
+     LambdaPredicate
 
 def no_support(db, reason):
     return SpecPredicate(db, description=reason)
@@ -397,6 +398,12 @@ class DefaultRequirements(SuiteRequirements):
             no_support('oracle', 'FIXME: no support in database?'),
             no_support('sybase', 'FIXME: guessing, needs confirmation'),
             no_support('mssql+pymssql', 'no FreeTDS support'),
+
+            LambdaPredicate(
+                lambda config: (not util.py3k and against(config, "mysql+mysqlconnector")),
+                "mysqlconnector seems to handle heavy unicode only in py3k"
+            ),
+
             exclude('mysql', '<', (4, 1, 1), 'no unicode connection support'),
             ])
 
@@ -413,9 +420,8 @@ class DefaultRequirements(SuiteRequirements):
         """"target dialect retrieves cursor.lastrowid or an equivalent
         after an insert() construct executes.
         """
-        return fails_on_everything_except('mysql+mysqldb', 'mysql+oursql',
-                                      'sqlite+pysqlite', 'mysql+pymysql',
-                                      'mysql+cymysql',
+        return fails_on_everything_except('mysql',
+                                      'sqlite+pysqlite',
                                       'sybase', 'mssql')
 
     @property
