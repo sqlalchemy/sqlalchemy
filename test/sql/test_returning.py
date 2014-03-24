@@ -10,6 +10,7 @@ import itertools
 
 class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
     __requires__ = 'returning',
+    __backend__ = True
 
     def setup(self):
         meta = MetaData(testing.db)
@@ -137,6 +138,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
 
 class SequenceReturningTest(fixtures.TestBase):
     __requires__ = 'returning', 'sequences'
+    __backend__ = True
 
     def setup(self):
         meta = MetaData(testing.db)
@@ -160,6 +162,7 @@ class KeyReturningTest(fixtures.TestBase, AssertsExecutionResults):
     """test returning() works with columns that define 'key'."""
 
     __requires__ = 'returning',
+    __backend__ = True
 
     def setup(self):
         meta = MetaData(testing.db)
@@ -188,6 +191,7 @@ class KeyReturningTest(fixtures.TestBase, AssertsExecutionResults):
 class ReturnDefaultsTest(fixtures.TablesTest):
     __requires__ = ('returning', )
     run_define_tables = 'each'
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -309,6 +313,8 @@ class ReturnDefaultsTest(fixtures.TablesTest):
         )
 
 class ImplicitReturningFlag(fixtures.TestBase):
+    __backend__ = True
+
     def test_flag_turned_off(self):
         e = engines.testing_engine(options={'implicit_returning':False})
         assert e.dialect.implicit_returning is False

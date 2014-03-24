@@ -4,6 +4,7 @@ from sqlalchemy.engine import default
 
 class CompileTest(fixtures.TestBase, AssertsExecutionResults):
     __requires__ = 'cpython',
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):

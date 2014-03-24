@@ -14,6 +14,8 @@ from sqlalchemy.sql import table, column
 
 class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
     __dialect__ = 'default'
+    __backend__ = True
+
 
     @testing.provide_metadata
     def test_pk_fk_constraint_create(self):

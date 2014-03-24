@@ -9,6 +9,7 @@ from sqlalchemy.util import u, ue
 
 class UnicodeSchemaTest(fixtures.TestBase):
     __requires__ = ('unicode_ddl',)
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):

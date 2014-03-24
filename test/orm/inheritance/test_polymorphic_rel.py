@@ -13,6 +13,7 @@ from ._poly_fixtures import Company, Person, Engineer, Manager, Boss, \
     _PolymorphicAliasedJoins
 
 class _PolymorphicTestBase(object):
+    __backend__ = True
 
     @classmethod
     def setup_mappers(cls):

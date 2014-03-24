@@ -63,6 +63,8 @@ def setup_options(make_option):
         help="Database uri.  Multiple OK, first one is run by default.")
     make_option("--dropfirst", action="store_true", dest="dropfirst",
         help="Drop all tables in the target database first")
+    make_option("--backend-only", action="store_true", dest="backend_only",
+        help="Run only tests marked with __backend__")
     make_option("--mockpool", action="store_true", dest="mockpool",
         help="Use mock pool (asserts only one connection used)")
     make_option("--low-connections", action="store_true", dest="low_connections",
@@ -309,11 +311,13 @@ def want_class(cls):
         return False
     elif cls.__name__.startswith('_'):
         return False
+    elif config.options.backend_only and not getattr(cls, '__backend__', False):
+        return False
     else:
         return True
 
 def generate_sub_tests(cls, module):
-    if getattr(cls, '__multiple__', False):
+    if getattr(cls, '__backend__', False):
         for cfg in config.Config.all_configs():
             name = "%s_%s_%s" % (cls.__name__, cfg.db.name, cfg.db.driver)
             subcls = type(
@@ -321,7 +325,7 @@ def generate_sub_tests(cls, module):
                         (cls, ),
                         {
                             "__only_on__": (cfg.db.name, cfg.db.driver),
-                            "__multiple__": False}
+                            "__backend__": False}
                         )
             setattr(module, name, subcls)
             yield subcls

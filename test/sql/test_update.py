@@ -405,6 +405,7 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
 
 
 class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
+    __backend__ = True
 
     @testing.requires.update_from
     def test_exec_two_table(self):
@@ -538,6 +539,8 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
 
 class UpdateFromMultiTableUpdateDefaultsTest(_UpdateFromTestBase,
                                              fixtures.TablesTest):
+    __backend__ = True
+
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,

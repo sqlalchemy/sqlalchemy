@@ -29,7 +29,7 @@ def pytest_configure(config):
 
 
 def pytest_collection_modifyitems(session, config, items):
-    # look for all those classes that specify __multiple__ and
+    # look for all those classes that specify __backend__ and
     # expand them out into per-database test cases.
 
     # this is much easier to do within pytest_pycollect_makeitem, however

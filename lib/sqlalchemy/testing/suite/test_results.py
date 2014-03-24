@@ -10,7 +10,7 @@ from ..schema import Table, Column
 
 
 class RowFetchTest(fixtures.TablesTest):
-    __multiple__ = True
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -119,7 +119,7 @@ class PercentSchemaNamesTest(fixtures.TablesTest):
 
     __requires__ = ('percent_schema_names', )
 
-    __multiple__ = True
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):

@@ -19,6 +19,7 @@ t = f = f2 = ts = currenttime = metadata = default_generator = None
 t = f = f2 = ts = currenttime = metadata = default_generator = None
 
 class DefaultTest(fixtures.TestBase):
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -418,6 +419,7 @@ class DefaultTest(fixtures.TestBase):
 
 class PKDefaultTest(fixtures.TablesTest):
     __requires__ = ('subqueries',)
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -454,6 +456,7 @@ class PKDefaultTest(fixtures.TablesTest):
 
 class PKIncrementTest(fixtures.TablesTest):
     run_define_tables = 'each'
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -520,6 +523,8 @@ class PKIncrementTest(fixtures.TablesTest):
 
 
 class EmptyInsertTest(fixtures.TestBase):
+    __backend__ = True
+
     @testing.exclude('sqlite', '<', (3, 3, 8), 'no empty insert support')
     @testing.fails_on('oracle', 'FIXME: unknown')
     @testing.provide_metadata
@@ -534,6 +539,7 @@ class EmptyInsertTest(fixtures.TestBase):
 class AutoIncrementTest(fixtures.TablesTest):
     __requires__ = ('identity',)
     run_define_tables = 'each'
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -644,6 +650,7 @@ class AutoIncrementTest(fixtures.TablesTest):
 
 class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
+    __backend__ = True
 
     def test_create_drop_ddl(self):
         self.assert_compile(
@@ -673,6 +680,7 @@ class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 class SequenceExecTest(fixtures.TestBase):
     __requires__ = ('sequences',)
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -804,6 +812,7 @@ class SequenceExecTest(fixtures.TestBase):
 
 class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __requires__ = ('sequences',)
+    __backend__ = True
 
     @testing.fails_on('firebird', 'no FB support for start/increment')
     def test_start_increment(self):
@@ -918,6 +927,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 cartitems = sometable = metadata = None
 class TableBoundSequenceTest(fixtures.TestBase):
     __requires__ = ('sequences',)
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -985,6 +995,7 @@ class SpecialTypePKTest(fixtures.TestBase):
     rather than the class of "type" itself.
 
     """
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -1065,6 +1076,8 @@ class SpecialTypePKTest(fixtures.TestBase):
         self._run_test(server_default='1', autoincrement=False)
 
 class ServerDefaultsOnPKTest(fixtures.TestBase):
+    __backend__ = True
+
     @testing.provide_metadata
     def test_string_default_none_on_insert(self):
         """Test that without implicit returning, we return None for
@@ -1193,6 +1206,8 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
         )
 
 class UnicodeDefaultsTest(fixtures.TestBase):
+    __backend__ = True
+
     def test_no_default(self):
         Column(Unicode(32))
 

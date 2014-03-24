@@ -20,6 +20,7 @@ from sqlalchemy import event, ForeignKey
 
 class BindTest(_fixtures.FixtureTest):
     run_inserts = None
+    __backend__ = True
 
     def test_mapped_binds(self):
         Address, addresses, users, User = (self.classes.Address,
@@ -209,6 +210,7 @@ class BindTest(_fixtures.FixtureTest):
 
 class ExecutionTest(_fixtures.FixtureTest):
     run_inserts = None
+    __backend__ = True
 
     @testing.requires.sequences
     def test_sequence_execute(self):
@@ -258,6 +260,7 @@ class ExecutionTest(_fixtures.FixtureTest):
 
 class TransScopingTest(_fixtures.FixtureTest):
     run_inserts = None
+    __backend__ = True
 
     def test_no_close_on_flush(self):
         """Flush() doesn't close a connection the session didn't open"""
@@ -313,6 +316,7 @@ class TransScopingTest(_fixtures.FixtureTest):
 
 class SessionUtilTest(_fixtures.FixtureTest):
     run_inserts = None
+    __backend__ = True
 
     def test_object_session_raises(self):
         User = self.classes.User
@@ -393,6 +397,7 @@ class SessionUtilTest(_fixtures.FixtureTest):
 
 class SessionStateTest(_fixtures.FixtureTest):
     run_inserts = None
+    __backend__ = True
 
 
     def test_info(self):
@@ -822,6 +827,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert object_session(u1) is None
 
 class SessionStateWFixtureTest(_fixtures.FixtureTest):
+    __backend__ = True
 
     def test_autoflush_rollback(self):
         Address, addresses, users, User = (self.classes.Address,
@@ -884,6 +890,7 @@ class NoCyclesOnTransientDetachedTest(_fixtures.FixtureTest):
 
     """
     run_inserts = None
+    __backend__ = True
 
     def setup(self):
         mapper(self.classes.User, self.tables.users)
@@ -1024,6 +1031,7 @@ class NoCyclesOnTransientDetachedTest(_fixtures.FixtureTest):
 
 class WeakIdentityMapTest(_fixtures.FixtureTest):
     run_inserts = None
+    __backend__ = True
 
     @testing.requires.predictable_gc
     def test_weakref(self):
@@ -1194,6 +1202,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
 
 class StrongIdentityMapTest(_fixtures.FixtureTest):
     run_inserts = None
+    __backend__ = True
 
     @testing.uses_deprecated()
     def test_strong_ref(self):
@@ -1274,6 +1283,7 @@ class StrongIdentityMapTest(_fixtures.FixtureTest):
 
 class IsModifiedTest(_fixtures.FixtureTest):
     run_inserts = None
+    __backend__ = True
 
     def _default_mapping_fixture(self):
         User, Address = self.classes.User, self.classes.Address
@@ -1387,6 +1397,7 @@ class DisposedStates(fixtures.MappedTest):
     run_setup_mappers = 'once'
     run_inserts = 'once'
     run_deletes = None
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1600,6 +1611,7 @@ class SessionInterface(fixtures.TestBase):
 
 class TLTransactionTest(fixtures.MappedTest):
     run_dispose_bind = 'once'
+    __backend__ = True
 
     @classmethod
     def setup_bind(cls):
@@ -1637,6 +1649,7 @@ class TLTransactionTest(fixtures.MappedTest):
 
 class FlushWarningsTest(fixtures.MappedTest):
     run_setup_mappers = 'each'
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):

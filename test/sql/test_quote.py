@@ -6,8 +6,8 @@ from sqlalchemy import testing
 from sqlalchemy.sql.elements import quoted_name, _truncated_label, _anonymous_label
 from sqlalchemy.testing.util import picklers
 
-class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = 'default'
+class QuoteExecTest(fixtures.TestBase):
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -159,6 +159,28 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         result = select(columns, use_labels=True).execute().fetchall()
         assert(result == [(1, 2, 3), (2, 2, 3), (4, 3, 2)])
 
+class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_class(cls):
+        # TODO: figure out which databases/which identifiers allow special
+        # characters to be used, such as: spaces, quote characters,
+        # punctuation characters, set up tests for those as well.
+
+        global table1, table2
+        metadata = MetaData(testing.db)
+
+        table1 = Table('WorstCase1', metadata,
+            Column('lowercase', Integer, primary_key=True),
+            Column('UPPERCASE', Integer),
+            Column('MixedCase', Integer),
+            Column('ASC', Integer, key='a123'))
+        table2 = Table('WorstCase2', metadata,
+            Column('desc', Integer, primary_key=True, key='d123'),
+            Column('Union', Integer, key='u123'),
+            Column('MixedCase', Integer))
+
     @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.requires.subqueries
     def test_labels(self):
@@ -181,7 +203,6 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         where the "UPPERCASE" column of "LaLa" doesn't exist.
         """
 
-        x = table1.select(distinct=True).alias('LaLa').select().scalar()
         self.assert_compile(
             table1.select(distinct=True).alias('LaLa').select(),
             'SELECT '

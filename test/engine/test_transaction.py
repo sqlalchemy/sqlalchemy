@@ -15,6 +15,8 @@ from sqlalchemy.testing import fixtures
 
 users, metadata = None, None
 class TransactionTest(fixtures.TestBase):
+    __backend__ = True
+
     @classmethod
     def setup_class(cls):
         global users, metadata
@@ -412,6 +414,8 @@ class TransactionTest(fixtures.TestBase):
             eq_(result.fetchall(), [])
 
 class ResetAgentTest(fixtures.TestBase):
+    __backend__ = True
+
     def test_begin_close(self):
         with testing.db.connect() as connection:
             trans = connection.begin()
@@ -513,6 +517,7 @@ class ResetAgentTest(fixtures.TestBase):
             assert connection.connection._reset_agent is None
 
 class AutoRollbackTest(fixtures.TestBase):
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -678,6 +683,7 @@ tlengine = None
 
 class TLTransactionTest(fixtures.TestBase):
     __requires__ = ('ad_hoc_engines', )
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -1124,6 +1130,7 @@ counters = None
 
 class ForUpdateTest(fixtures.TestBase):
     __requires__ = 'ad_hoc_engines',
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -1254,6 +1261,7 @@ class ForUpdateTest(fixtures.TestBase):
 
 class IsolationLevelTest(fixtures.TestBase):
     __requires__ = ('isolation_level', 'ad_hoc_engines')
+    __backend__ = True
 
     def _default_isolation_level(self):
         if testing.against('sqlite'):

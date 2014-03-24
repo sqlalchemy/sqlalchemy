@@ -13,6 +13,7 @@ from sqlalchemy.testing.schema import Table, Column
 # sqlalhcemy.testing.suite
 
 class QueryTest(fixtures.TestBase):
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -1328,6 +1329,7 @@ class TableInsertTest(fixtures.TablesTest):
 
     """
     run_create_tables = 'each'
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1499,6 +1501,7 @@ class TableInsertTest(fixtures.TablesTest):
 class KeyTargetingTest(fixtures.TablesTest):
     run_inserts = 'once'
     run_deletes = None
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1727,6 +1730,7 @@ class KeyTargetingTest(fixtures.TablesTest):
 
 
 class LimitTest(fixtures.TestBase):
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -1804,6 +1808,9 @@ class LimitTest(fixtures.TestBase):
 class CompoundTest(fixtures.TestBase):
     """test compound statements like UNION, INTERSECT, particularly their ability to nest on
     different databases."""
+
+    __backend__ = True
+
     @classmethod
     def setup_class(cls):
         global metadata, t1, t2, t3
@@ -2101,6 +2108,7 @@ class JoinTest(fixtures.TestBase):
     `JOIN rhs ON lhs.col=rhs.col` vs `rhs.col=lhs.col`.  At least one
     database seems to be sensitive to this.
     """
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -2365,6 +2373,8 @@ class JoinTest(fixtures.TestBase):
 
 
 class OperatorTest(fixtures.TestBase):
+    __backend__ = True
+
     @classmethod
     def setup_class(cls):
         global metadata, flds

@@ -28,6 +28,7 @@ class NaturalPKTest(fixtures.MappedTest):
     # MySQL 5.5 on Windows crashes (the entire server, not the client)
     # if you screw around with ON UPDATE CASCADE type of stuff.
     __requires__ = 'skip_mysql_on_windows', 'on_update_or_deferrable_fks'
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -453,6 +454,7 @@ class NaturalPKTest(fixtures.MappedTest):
 
 class TransientExceptionTesst(_fixtures.FixtureTest):
     run_inserts = None
+    __backend__ = True
 
     def test_transient_exception(self):
         """An object that goes from a pk value to transient/pending
@@ -492,6 +494,7 @@ class ReversePKsTest(fixtures.MappedTest):
     """reverse the primary keys of two entities and ensure bookkeeping
     succeeds."""
 
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -553,6 +556,7 @@ class SelfReferentialTest(fixtures.MappedTest):
     __unsupported_on__ = ('mssql', 'mysql')
 
     __requires__ = 'on_update_or_deferrable_fks',
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -657,6 +661,7 @@ class SelfReferentialTest(fixtures.MappedTest):
 
 class NonPKCascadeTest(fixtures.MappedTest):
     __requires__ = 'skip_mysql_on_windows', 'on_update_or_deferrable_fks'
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -762,6 +767,7 @@ class NonPKCascadeTest(fixtures.MappedTest):
 class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     """A primary key mutation cascades onto a foreign key that is itself a
     primary key."""
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1016,6 +1022,7 @@ class JoinedInheritanceTest(fixtures.MappedTest):
     __unsupported_on__ = ('mssql',)
 
     __requires__ = 'skip_mysql_on_windows',
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):

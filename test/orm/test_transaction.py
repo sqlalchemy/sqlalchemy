@@ -15,6 +15,7 @@ from test.orm._fixtures import FixtureTest
 
 class SessionTransactionTest(FixtureTest):
     run_inserts = None
+    __backend__ = True
 
     def test_no_close_transaction_on_flush(self):
         User, users = self.classes.User, self.tables.users
@@ -539,6 +540,7 @@ class _LocalFixture(FixtureTest):
 
 class FixtureDataTest(_LocalFixture):
     run_inserts = 'each'
+    __backend__ = True
 
     def test_attrs_on_rollback(self):
         User = self.classes.User
@@ -578,6 +580,7 @@ class CleanSavepointTest(FixtureTest):
 
     """
     run_inserts = None
+    __backend__ = True
 
     def _run_test(self, update_fn):
         User, users = self.classes.User, self.tables.users
@@ -624,6 +627,7 @@ class CleanSavepointTest(FixtureTest):
 
 class ContextManagerTest(FixtureTest):
     run_inserts = None
+    __backend__ = True
 
     @testing.requires.savepoints
     @engines.close_open_connections
@@ -683,6 +687,7 @@ class ContextManagerTest(FixtureTest):
 
 
 class AutoExpireTest(_LocalFixture):
+    __backend__ = True
 
     def test_expunge_pending_on_rollback(self):
         User = self.classes.User
@@ -825,6 +830,7 @@ class AutoExpireTest(_LocalFixture):
         assert u1.name == 'will'
 
 class TwoPhaseTest(_LocalFixture):
+    __backend__ = True
 
     @testing.requires.two_phase_transactions
     def test_rollback_on_prepare(self):
@@ -839,6 +845,7 @@ class TwoPhaseTest(_LocalFixture):
         assert u not in s
 
 class RollbackRecoverTest(_LocalFixture):
+    __backend__ = True
 
     def test_pk_violation(self):
         User, Address = self.classes.User, self.classes.Address
@@ -905,6 +912,7 @@ class RollbackRecoverTest(_LocalFixture):
 
 
 class SavepointTest(_LocalFixture):
+    __backend__ = True
 
     @testing.requires.savepoints
     def test_savepoint_rollback(self):
@@ -1073,6 +1081,8 @@ class SavepointTest(_LocalFixture):
 
 
 class AccountingFlagsTest(_LocalFixture):
+    __backend__ = True
+
     def test_no_expire_on_commit(self):
         User, users = self.classes.User, self.tables.users
 
@@ -1147,6 +1157,8 @@ class AccountingFlagsTest(_LocalFixture):
 
 
 class AutoCommitTest(_LocalFixture):
+    __backend__ = True
+
     def test_begin_nested_requires_trans(self):
         sess = create_session(autocommit=True)
         assert_raises(sa_exc.InvalidRequestError, sess.begin_nested)
@@ -1248,6 +1260,8 @@ class AutoCommitTest(_LocalFixture):
         eq_(u1.id, 3)
 
 class NaturalPKRollbackTest(fixtures.MappedTest):
+    __backend__ = True
+
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,

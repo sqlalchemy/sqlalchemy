@@ -11,6 +11,7 @@ NUM_RECORDS = 1000
 
 
 class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -55,6 +56,7 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
 
 
 class ExecutionTest(fixtures.TestBase):
+    __backend__ = True
 
     def test_minimal_connection_execute(self):
         # create an engine without any instrumentation.
@@ -82,6 +84,7 @@ class ExecutionTest(fixtures.TestBase):
 
 class RowProxyTest(fixtures.TestBase):
     __requires__ = 'cpython',
+    __backend__ = True
 
     def _rowproxy_fixture(self, keys, processors, row):
         class MockMeta(object):

@@ -846,6 +846,7 @@ class UnicodeTest(fixtures.TestBase):
     sqlalchemy/testing/suite/test_types.py.
 
     """
+    __backend__ = True
 
     def test_native_unicode(self):
         """assert expected values for 'native unicode' mode"""

@@ -84,6 +84,7 @@ class EnsureZeroed(fixtures.ORMTest):
 class MemUsageTest(EnsureZeroed):
 
     __requires__ = 'cpython',
+    __backend__ = True
 
     # ensure a pure growing test trips the assertion
     @testing.fails_if(lambda: True)

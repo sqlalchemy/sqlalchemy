@@ -15,6 +15,7 @@ from sqlalchemy.util import ue
 metadata, users = None, None
 
 class ReflectionTest(fixtures.TestBase, ComparesTables):
+    __backend__ = True
 
     @testing.exclude('mssql', '<', (10, 0, 0),
                      'Date is only supported on MSSQL 2008+')
@@ -1016,6 +1017,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             _drop_views(metadata.bind)
 
 class CreateDropTest(fixtures.TestBase):
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -1103,6 +1105,8 @@ class CreateDropTest(fixtures.TestBase):
         metadata.drop_all(bind=testing.db)
 
 class SchemaManipulationTest(fixtures.TestBase):
+    __backend__ = True
+
     def test_append_constraint_unique(self):
         meta = MetaData()
 
@@ -1119,6 +1123,8 @@ class SchemaManipulationTest(fixtures.TestBase):
         assert addresses.constraints == set([addresses.primary_key, fk])
 
 class UnicodeReflectionTest(fixtures.TestBase):
+    __backend__ = True
+
     @classmethod
     def setup_class(cls):
         cls.metadata = metadata = MetaData()
@@ -1226,6 +1232,7 @@ class UnicodeReflectionTest(fixtures.TestBase):
             )
 
 class SchemaTest(fixtures.TestBase):
+    __backend__ = True
 
     @testing.requires.schemas
     @testing.requires.cross_schema_fk_reflection
@@ -1430,6 +1437,7 @@ def _drop_views(con, schema=None):
 
 class ReverseCasingReflectTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
+    __backend__ = True
 
     @testing.requires.denormalized_names
     def setup(self):
@@ -1456,6 +1464,7 @@ class ReverseCasingReflectTest(fixtures.TestBase, AssertsCompiledSQL):
 
 class CaseSensitiveTest(fixtures.TablesTest):
     """Nail down case sensitive behaviors, mostly on MySQL."""
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1502,6 +1511,7 @@ class CaseSensitiveTest(fixtures.TablesTest):
 
 
 class ColumnEventsTest(fixtures.RemovesEvents, fixtures.TestBase):
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):

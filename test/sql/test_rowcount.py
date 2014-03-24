@@ -7,6 +7,7 @@ class FoundRowsTest(fixtures.TestBase, AssertsExecutionResults):
     """tests rowcount functionality"""
 
     __requires__ = ('sane_rowcount', )
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):

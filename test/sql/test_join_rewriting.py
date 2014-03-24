@@ -509,6 +509,8 @@ class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
 class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
     """invoke the SQL on the current backend to ensure compatibility"""
 
+    __backend__ = True
+
     _a_bc = _a_bc_comma_a1_selbc = _a__b_dc = _a_bkeyassoc = \
         _a_bkeyassoc_aliased = _a_atobalias_balias_c_w_exists = \
         _a_atobalias_balias = _b_ab1_union_c_ab2 = None

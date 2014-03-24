@@ -10,6 +10,7 @@ from sqlalchemy.testing.schema import Table, Column
 import sys
 
 class MergeTest(fixtures.MappedTest):
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -104,6 +105,7 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
     to load 1000 related objects from the identity map.
 
     """
+    __backend__ = True
 
 
     @classmethod
@@ -258,6 +260,8 @@ class MergeBackrefsTest(fixtures.MappedTest):
             s.merge(a)
 
 class DeferOptionsTest(fixtures.MappedTest):
+    __backend__ = True
+
     @classmethod
     def define_tables(cls, metadata):
         Table('a', metadata,
@@ -312,6 +316,8 @@ class DeferOptionsTest(fixtures.MappedTest):
 
 
 class AttributeOverheadTest(fixtures.MappedTest):
+    __backend__ = True
+
     @classmethod
     def define_tables(cls, metadata):
         Table('parent', metadata, Column('id', Integer,

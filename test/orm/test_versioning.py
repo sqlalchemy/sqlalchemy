@@ -36,6 +36,7 @@ def make_uuid():
     return _uuids.pop(0)
 
 class VersioningTest(fixtures.MappedTest):
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -326,6 +327,7 @@ class VersioningTest(fixtures.MappedTest):
         )
 
 class ColumnTypeTest(fixtures.MappedTest):
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -366,6 +368,7 @@ class ColumnTypeTest(fixtures.MappedTest):
         s1.commit()
 
 class RowSwitchTest(fixtures.MappedTest):
+    __backend__ = True
     @classmethod
     def define_tables(cls, metadata):
         Table('p', metadata,
@@ -433,6 +436,7 @@ class RowSwitchTest(fixtures.MappedTest):
         session.commit()
 
 class AlternateGeneratorTest(fixtures.MappedTest):
+    __backend__ = True
     @classmethod
     def define_tables(cls, metadata):
         Table('p', metadata,
@@ -544,6 +548,7 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
     versioning column.
 
     """
+    __backend__ = True
     @classmethod
     def define_tables(cls, metadata):
         Table('base', metadata,
@@ -647,6 +652,7 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
 
 class ServerVersioningTest(fixtures.MappedTest):
     run_define_tables = 'each'
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -831,6 +837,7 @@ class ServerVersioningTest(fixtures.MappedTest):
 
 class ManualVersionTest(fixtures.MappedTest):
     run_define_tables = 'each'
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
