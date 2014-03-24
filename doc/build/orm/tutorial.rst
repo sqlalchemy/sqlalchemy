@@ -893,7 +893,7 @@ database results.  Here's a brief tour:
 
   .. sourcecode:: python+sql
 
-      >>> query = session.query(User.id).filter(User.name.like('%ed')).\
+      >>> query = session.query(User.id).filter(User.name == 'ed').\
       ...    order_by(User.id)
       {sql}>>> query.scalar() #doctest: +NORMALIZE_WHITESPACE
       SELECT users.id AS users_id
@@ -993,7 +993,7 @@ completely "raw", using string names to identify desired columns:
    .. sourcecode:: python+sql
 
        >>> q = session.query(User.id, User.name)
-       {sql}>>> q.order_by("name").all()
+       {sql}>>> q.order_by("name").all() #doctest: +NORMALIZE_WHITESPACE
        SELECT users.id AS users_id, users.name AS users_name
        FROM users ORDER BY name
        ()
@@ -1118,7 +1118,7 @@ To achieve our simple ``SELECT count(*) FROM table``, we can apply it as:
 
 .. sourcecode:: python+sql
 
-    {sql}>>> session.query(func.count('*')).select_from(User).scalar()
+    {sql}>>> session.query(func.count('*')).select_from(User).scalar() #doctest: +NORMALIZE_WHITESPACE
     SELECT count(?) AS count_1
     FROM users
     ('*',)
@@ -1384,7 +1384,7 @@ using the :meth:`.Query.join` method:
     FROM users JOIN addresses ON users.id = addresses.user_id
     WHERE addresses.email_address = ?
     ('jack@google.com',)
-    {stop}[<User(name='jack', fullname='Jack Bean', email_address='gjffdd')>]
+    {stop}[<User(name='jack', fullname='Jack Bean', password='gjffdd')>]
 
 :meth:`.Query.join` knows how to join between ``User``
 and ``Address`` because there's only one foreign key between them. If there
