@@ -1611,6 +1611,14 @@ class DialectEventTest(fixtures.TestBase):
         e.dialect.do_executemany = m1.real_do_executemany
         e.dialect.do_execute_no_params = m1.real_do_execute_no_params
 
+        def mock_the_cursor(cursor, *arg):
+            arg[-1].get_result_proxy = Mock(return_value=Mock(context=arg[-1]))
+            return retval
+
+        m1.real_do_execute.side_effect = m1.do_execute.side_effect = mock_the_cursor
+        m1.real_do_executemany.side_effect = m1.do_executemany.side_effect = mock_the_cursor
+        m1.real_do_execute_no_params.side_effect = m1.do_execute_no_params.side_effect = mock_the_cursor
+
         with e.connect() as conn:
             yield conn, m1
 
