@@ -1333,7 +1333,7 @@ class QueuePoolTest(PoolTestBase):
         p1 = TrackQueuePool(creator=creator, pool_size=20)
 
         from sqlalchemy import create_engine
-        eng = create_engine("postgresql://", pool=p1, _initialize=False)
+        eng = create_engine(testing.db.url, pool=p1, _initialize=False)
         eng.dialect = dialect
 
         # 15 total connections
