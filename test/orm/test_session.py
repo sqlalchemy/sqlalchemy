@@ -1031,7 +1031,6 @@ class NoCyclesOnTransientDetachedTest(_fixtures.FixtureTest):
 
 class WeakIdentityMapTest(_fixtures.FixtureTest):
     run_inserts = None
-    __backend__ = True
 
     @testing.requires.predictable_gc
     def test_weakref(self):
@@ -1202,7 +1201,6 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
 
 class StrongIdentityMapTest(_fixtures.FixtureTest):
     run_inserts = None
-    __backend__ = True
 
     @testing.uses_deprecated()
     def test_strong_ref(self):
@@ -1283,7 +1281,6 @@ class StrongIdentityMapTest(_fixtures.FixtureTest):
 
 class IsModifiedTest(_fixtures.FixtureTest):
     run_inserts = None
-    __backend__ = True
 
     def _default_mapping_fixture(self):
         User, Address = self.classes.User, self.classes.Address
@@ -1397,7 +1394,6 @@ class DisposedStates(fixtures.MappedTest):
     run_setup_mappers = 'once'
     run_inserts = 'once'
     run_deletes = None
-    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):

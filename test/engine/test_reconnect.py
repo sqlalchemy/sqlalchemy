@@ -411,6 +411,8 @@ def _assert_invalidated(fn, *args):
             raise
 
 class RealReconnectTest(fixtures.TestBase):
+    __backend__ = True
+
     def setup(self):
         self.engine = engines.reconnecting_engine()
 
@@ -595,6 +597,7 @@ class RealReconnectTest(fixtures.TestBase):
         assert not conn.invalidated
 
 class RecycleTest(fixtures.TestBase):
+    __backend__ = True
 
     def test_basic(self):
         for threadlocal in False, True:
@@ -625,6 +628,8 @@ class RecycleTest(fixtures.TestBase):
             conn.close()
 
 class InvalidateDuringResultTest(fixtures.TestBase):
+    __backend__ = True
+
     def setup(self):
         self.engine = engines.reconnecting_engine()
         self.meta = MetaData(self.engine)
