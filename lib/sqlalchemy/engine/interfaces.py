@@ -150,6 +150,9 @@ class Dialect(object):
 
     """
 
+    _has_events = False
+
+
     def create_connect_args(self, url):
         """Build DB-API compatible connection arguments.
 

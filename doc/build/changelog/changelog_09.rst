@@ -16,6 +16,15 @@
 
     .. change::
         :tags: feature, engine
+
+        Added some new event mechanics for dialect-level events; the initial
+        implementation allows an event handler to redefine the specific mechanics
+        by which an arbitrary dialect invokes execute() or executemany() on a
+        DBAPI cursor.  The new events, at this point semi-public and experimental,
+        are in support of some upcoming transaction-related extensions.
+
+    .. change::
+        :tags: feature, engine
         :tickets: 2978
 
         An event listener can now be associated with a :class:`.Engine`,

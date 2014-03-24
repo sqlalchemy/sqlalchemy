@@ -27,6 +27,9 @@ SQL Execution and Connection Events
 .. autoclass:: sqlalchemy.events.ConnectionEvents
     :members:
 
+.. autoclass:: sqlalchemy.events.DialectEvents
+    :members:
+
 Schema Events
 -----------------------
 

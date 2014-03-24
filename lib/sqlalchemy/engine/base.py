@@ -905,22 +905,39 @@ class Connection(Connectable):
                     sql_util._repr_params(parameters, batches=10))
         try:
             if context.executemany:
-                self.dialect.do_executemany(
-                                    cursor,
-                                    statement,
-                                    parameters,
-                                    context)
+                for fn in () if not self.dialect._has_events \
+                    else self.dialect.dispatch.do_executemany:
+                    if fn(cursor, statement, parameters, context):
+                        break
+                else:
+                    self.dialect.do_executemany(
+                                     cursor,
+                                     statement,
+                                     parameters,
+                                     context)
+
             elif not parameters and context.no_parameters:
-                self.dialect.do_execute_no_params(
-                                    cursor,
-                                    statement,
-                                    context)
+                for fn in () if not self.dialect._has_events \
+                    else self.dialect.dispatch.do_execute_no_params:
+                    if fn(cursor, statement, context):
+                        break
+                else:
+                    self.dialect.do_execute_no_params(
+                                     cursor,
+                                     statement,
+                                     context)
+
             else:
-                self.dialect.do_execute(
-                                    cursor,
-                                    statement,
-                                    parameters,
-                                    context)
+                for fn in () if not self.dialect._has_events \
+                    else self.dialect.dispatch.do_execute:
+                    if fn(cursor, statement, parameters, context):
+                        break
+                else:
+                    self.dialect.do_execute(
+                                     cursor,
+                                     statement,
+                                     parameters,
+                                     context)
         except Exception as e:
             self._handle_dbapi_exception(
                                 e,
@@ -995,11 +1012,16 @@ class Connection(Connectable):
             self.engine.logger.info(statement)
             self.engine.logger.info("%r", parameters)
         try:
-            self.dialect.do_execute(
-                                cursor,
-                                statement,
-                                parameters,
-                                context)
+            for fn in () if not self.dialect._has_events \
+                else self.dialect.dispatch.do_execute:
+                if fn(cursor, statement, parameters, context):
+                    break
+            else:
+                self.dialect.do_execute(
+                                 cursor,
+                                 statement,
+                                 parameters,
+                                 context)
         except Exception as e:
             self._handle_dbapi_exception(
                                 e,

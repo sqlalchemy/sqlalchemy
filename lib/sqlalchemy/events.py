@@ -8,7 +8,7 @@
 
 from . import event, exc
 from .pool import Pool
-from .engine import Connectable, Engine
+from .engine import Connectable, Engine, Dialect
 from .sql.base import SchemaEventTarget
 
 class DDLEvents(event.Events):
@@ -840,3 +840,85 @@ class ConnectionEvents(event.Events):
          :meth:`.TwoPhaseTransaction.prepare` was called.
 
         """
+
+
+class DialectEvents(event.Events):
+    """event interface for execution-replacement functions.
+
+    These events allow direct instrumentation and replacement
+    of key dialect functions which interact with the DBAPI.
+
+    .. note::
+
+        :class:`.DialectEvents` hooks should be considered **semi-public**
+        and experimental.
+        These hooks are not for general use and are only for those situations where
+        intricate re-statement of DBAPI mechanics must be injected onto an existing
+        dialect.   For general-use statement-interception events, please
+        use the :class:`.ConnectionEvents` interface.
+
+    .. seealso::
+
+        :meth:`.ConnectionEvents.before_cursor_execute`
+
+        :meth:`.ConnectionEvents.before_execute`
+
+        :meth:`.ConnectionEvents.after_cursor_execute`
+
+        :meth:`.ConnectionEvents.after_execute`
+
+
+    .. versionadded:: 0.9.4
+
+    """
+
+    _target_class_doc = "SomeEngine"
+    _dispatch_target = Dialect
+
+    @classmethod
+    def _listen(cls, event_key, retval=False):
+        target, identifier, fn = \
+            event_key.dispatch_target, event_key.identifier, event_key.fn
+
+        target._has_events = True
+        event_key.base_listen()
+
+    @classmethod
+    def _accept_with(cls, target):
+        if isinstance(target, type):
+            if issubclass(target, Engine):
+                return Dialect
+            elif issubclass(target, Dialect):
+                return target
+        elif isinstance(target, Engine):
+            return target.dialect
+        else:
+            return target
+
+    def do_executemany(self, cursor, statement, parameters, context):
+        """Receive a cursor to have executemany() called.
+
+        Return the value True to halt further events from invoking,
+        and to indicate that the cursor execution has already taken
+        place within the event handler.
+
+        """
+
+    def do_execute_no_params(self, cursor, statement, context):
+        """Receive a cursor to have execute() with no parameters called.
+
+        Return the value True to halt further events from invoking,
+        and to indicate that the cursor execution has already taken
+        place within the event handler.
+
+        """
+
+    def do_execute(self, cursor, statement, parameters, context):
+        """Receive a cursor to have execute() called.
+
+        Return the value True to halt further events from invoking,
+        and to indicate that the cursor execution has already taken
+        place within the event handler.
+
+        """
+

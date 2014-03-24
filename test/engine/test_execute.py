@@ -20,7 +20,7 @@ from sqlalchemy.engine import result as _result, default
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.mock import Mock, call, patch
-
+from contextlib import contextmanager
 
 users, metadata, users_autoinc = None, None, None
 class ExecuteTest(fixtures.TestBase):
@@ -1817,4 +1817,113 @@ class ProxyConnectionTest(fixtures.TestBase):
                     'rollback', 'begin_twophase',
                        'prepare_twophase', 'commit_twophase']
         )
+
+class DialectEventTest(fixtures.TestBase):
+    @contextmanager
+    def _run_test(self, retval):
+        m1 = Mock()
+
+        m1.do_execute.return_value = retval
+        m1.do_executemany.return_value = retval
+        m1.do_execute_no_params.return_value = retval
+        e = engines.testing_engine(options={"_initialize": False})
+
+        event.listen(e, "do_execute", m1.do_execute)
+        event.listen(e, "do_executemany", m1.do_executemany)
+        event.listen(e, "do_execute_no_params", m1.do_execute_no_params)
+
+        e.dialect.do_execute = m1.real_do_execute
+        e.dialect.do_executemany = m1.real_do_executemany
+        e.dialect.do_execute_no_params = m1.real_do_execute_no_params
+
+        with e.connect() as conn:
+            yield conn, m1
+
+    def _assert(self, retval, m1, m2, mock_calls):
+        eq_(m1.mock_calls, mock_calls)
+        if retval:
+            eq_(m2.mock_calls, [])
+        else:
+            eq_(m2.mock_calls, mock_calls)
+
+    def _test_do_execute(self, retval):
+        with self._run_test(retval) as (conn, m1):
+            result = conn.execute("insert into table foo", {"foo": "bar"})
+        self._assert(
+            retval,
+            m1.do_execute, m1.real_do_execute,
+            [call(
+                    result.context.cursor,
+                    "insert into table foo",
+                    {"foo": "bar"}, result.context)]
+        )
+
+    def _test_do_executemany(self, retval):
+        with self._run_test(retval) as (conn, m1):
+            result = conn.execute("insert into table foo",
+                            [{"foo": "bar"}, {"foo": "bar"}])
+        self._assert(
+            retval,
+            m1.do_executemany, m1.real_do_executemany,
+            [call(
+                    result.context.cursor,
+                    "insert into table foo",
+                    [{"foo": "bar"}, {"foo": "bar"}], result.context)]
+        )
+
+    def _test_do_execute_no_params(self, retval):
+        with self._run_test(retval) as (conn, m1):
+            result = conn.execution_options(no_parameters=True).\
+                execute("insert into table foo")
+        self._assert(
+            retval,
+            m1.do_execute_no_params, m1.real_do_execute_no_params,
+            [call(
+                    result.context.cursor,
+                    "insert into table foo", result.context)]
+        )
+
+    def _test_cursor_execute(self, retval):
+        with self._run_test(retval) as (conn, m1):
+            dialect = conn.dialect
+
+            stmt = "insert into table foo"
+            params = {"foo": "bar"}
+            ctx = dialect.execution_ctx_cls._init_statement(
+                            dialect, conn, conn.connection, stmt, [params])
+
+            conn._cursor_execute(ctx.cursor, stmt, params, ctx)
+
+        self._assert(
+            retval,
+            m1.do_execute, m1.real_do_execute,
+            [call(
+                    ctx.cursor,
+                    "insert into table foo",
+                    {"foo": "bar"}, ctx)]
+        )
+
+    def test_do_execute_w_replace(self):
+        self._test_do_execute(True)
+
+    def test_do_execute_wo_replace(self):
+        self._test_do_execute(False)
+
+    def test_do_executemany_w_replace(self):
+        self._test_do_executemany(True)
+
+    def test_do_executemany_wo_replace(self):
+        self._test_do_executemany(False)
+
+    def test_do_execute_no_params_w_replace(self):
+        self._test_do_execute_no_params(True)
+
+    def test_do_execute_no_params_wo_replace(self):
+        self._test_do_execute_no_params(False)
+
+    def test_cursor_execute_w_replace(self):
+        self._test_cursor_execute(True)
+
+    def test_cursor_execute_wo_replace(self):
+        self._test_cursor_execute(False)
 
