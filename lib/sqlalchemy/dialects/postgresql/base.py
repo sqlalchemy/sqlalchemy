@@ -2204,7 +2204,10 @@ class PGDialect(default.DefaultDialect):
               t.relname,
               i.relname
         """ % (
-                "::varchar" if self.server_version_info >= (8, 1) else "",
+                # version 8.3 here was based on observing the
+                # cast does not work in PG 8.2.4, does work in 8.3.0.
+                # nothing in PG changelogs regarding this.
+                "::varchar" if self.server_version_info >= (8, 3) else "",
                 self._pg_index_any("a.attnum", "ix.indkey")
             )
 

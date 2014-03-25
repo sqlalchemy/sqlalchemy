@@ -20,7 +20,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
 
     """Test PostgreSQL domains"""
 
-    __only_on__ = 'postgresql > 8.2'
+    __only_on__ = 'postgresql > 8.3'
 
     @classmethod
     def setup_class(cls):
