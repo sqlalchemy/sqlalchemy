@@ -12,6 +12,18 @@
     :version: 0.8.6
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 3000
+        :versions: 0.9.4
+
+        Fixed regression caused by release 0.8.5 / 0.9.3's compatibility
+        enhancements where index reflection on Postgresql versions specific
+        to only the 8.1, 8.2 series again
+        broke, surrounding the ever problematic int2vector type.  While
+        int2vector supports array operations as of 8.1, apparently it only
+        supports CAST to a varchar as of 8.3.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2995,
         :versions: 0.9.4
