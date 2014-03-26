@@ -26,47 +26,65 @@ class B(fixtures.ComparableEntity):
 class ASub(A):
     pass
 
-def profile_memory(times=50):
+def profile_memory(maxtimes=50):
     def decorate(func):
-        # run the test 50 times.  if length of gc.get_objects()
+        # run the test N times.  if length of gc.get_objects()
         # keeps growing, assert false
 
         def get_objects_skipping_sqlite_issue():
             # pysqlite keeps adding weakref objects which only
-            # get reset after 220 iterations, which is too long
-            # to run lots of these tests, so just filter them
-            # out.
-            return [o for o in gc.get_objects()
-                    if not isinstance(o, weakref.ref)]
+            # get reset after 220 iterations.  We'd like to keep these
+            # tests under 50 iterations and ideally about ten, so
+            # just filter them out so that we get a "flatline" more quickly.
+            if testing.against("sqlite+pysqlite"):
+                return [o for o in gc.get_objects()
+                        if not isinstance(o, weakref.ref)]
+            else:
+                return gc.get_objects()
 
         def profile(*args):
             gc_collect()
-            samples = [0 for x in range(0, times)]
-            for x in range(0, times):
-                func(*args)
-                gc_collect()
-                samples[x] = len(get_objects_skipping_sqlite_issue())
+            samples = []
 
+            success = False
+            for y in range(maxtimes / 5):
+                for x in range(5):
+                    func(*args)
+                    gc_collect()
+                    samples.append(len(get_objects_skipping_sqlite_issue()))
 
-            print("sample gc sizes:", samples)
+                print("sample gc sizes:", samples)
 
-            assert len(_sessions) == 0
+                assert len(_sessions) == 0
 
-            for x in samples[-4:]:
-                if x != samples[-5]:
-                    flatline = False
-                    break
-            else:
-                flatline = True
-
-            # object count is bigger than when it started
-            if not flatline and samples[-1] > samples[0]:
-                for x in samples[1:-2]:
-                    # see if a spike bigger than the endpoint exists
-                    if x > samples[-1]:
+                # check for "flatline" - size is constant for
+                # 5 iterations
+                for x in samples[-4:]:
+                    if x != samples[-5]:
                         break
                 else:
-                    assert False, repr(samples) + " " + repr(flatline)
+                    success = True
+
+                if not success:
+                    # object count is bigger than when it started
+                    if samples[-1] > samples[0]:
+                        for x in samples[1:-2]:
+                            # see if a spike bigger than the endpoint exists
+                            if x > samples[-1]:
+                                success = True
+                                break
+                    else:
+                        success = True
+
+                # if we saw count go down or flatline,
+                # we're done
+                if success:
+                    break
+
+                # else keep trying until maxtimes
+
+            else:
+                assert False, repr(samples)
 
         return profile
     return decorate
@@ -93,7 +111,7 @@ class MemUsageTest(EnsureZeroed):
             pass
 
         x = []
-        @profile_memory()
+        @profile_memory(maxtimes=10)
         def go():
             x[-1:] = [Foo(), Foo(), Foo(), Foo(), Foo(), Foo()]
         go()
@@ -433,7 +451,7 @@ class MemUsageTest(EnsureZeroed):
         # sqlite has a slow enough growth here
         # that we have to run it more times to see the
         # "dip" again
-        @profile_memory(times=120)
+        @profile_memory(maxtimes=120)
         def go():
             sess = Session()
             sess.query(B).options(subqueryload(B.as_.of_type(ASub))).all()
