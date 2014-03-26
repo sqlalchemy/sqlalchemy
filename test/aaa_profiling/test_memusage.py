@@ -47,7 +47,7 @@ def profile_memory(maxtimes=50):
             samples = []
 
             success = False
-            for y in range(maxtimes / 5):
+            for y in range(maxtimes // 5):
                 for x in range(5):
                     func(*args)
                     gc_collect()
