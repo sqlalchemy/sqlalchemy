@@ -140,6 +140,7 @@ class UnicodeTextTest(_UnicodeFixture, fixtures.TablesTest):
         self._test_empty_strings()
 
 class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
+    __requires__ = 'text_type',
     __backend__ = True
 
     @classmethod
