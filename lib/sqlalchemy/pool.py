@@ -277,7 +277,7 @@ class Pool(log.Identified):
 
         return _ConnectionRecord(self)
 
-    def _invalidate(self, connection):
+    def _invalidate(self, connection, exception=None):
         """Mark all connections established within the generation
         of the given connection as invalidated.
 
@@ -291,6 +291,8 @@ class Pool(log.Identified):
         rec = getattr(connection, "_connection_record", None)
         if not rec or self._invalidate_time < rec.starttime:
             self._invalidate_time = time.time()
+        if getattr(connection, 'is_valid', False):
+            connection.invalidate(exception)
 
 
     def recreate(self):
@@ -733,7 +735,8 @@ class _ConnectionFairy(object):
         """
 
         if self.connection is None:
-            raise exc.InvalidRequestError("This connection is closed")
+            util.warn("Can't invalidate an already-closed connection.")
+            return
         if self._connection_record:
             self._connection_record.invalidate(e=e)
         self.connection = None

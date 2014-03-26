@@ -912,9 +912,11 @@ class QueuePoolTest(PoolTestBase):
         gc_collect()
 
         dbapi = MockDBAPI()
+        mutex = threading.Lock()
         def creator():
             time.sleep(.05)
-            return dbapi.connect()
+            with mutex:
+                return dbapi.connect()
 
         p = pool.QueuePool(creator=creator,
                            pool_size=3, timeout=2,
@@ -1070,7 +1072,6 @@ class QueuePoolTest(PoolTestBase):
                 # two conns
                 time.sleep(.2)
                 p._invalidate(c2)
-                c2.invalidate()
 
                 for t in threads:
                     t.join(join_timeout)
@@ -1088,7 +1089,6 @@ class QueuePoolTest(PoolTestBase):
         p1 = pool.QueuePool(creator=creator,
                            pool_size=1, timeout=None,
                            max_overflow=0)
-        #p2 = pool.NullPool(creator=creator2)
         def waiter(p):
             conn = p.connect()
             canary.append(2)
@@ -1105,7 +1105,8 @@ class QueuePoolTest(PoolTestBase):
         time.sleep(.5)
         eq_(canary, [1])
 
-        c1.invalidate()
+        # this also calls invalidate()
+        # on c1
         p1._invalidate(c1)
 
         for t in threads:
