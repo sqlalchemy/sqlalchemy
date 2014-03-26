@@ -107,6 +107,8 @@ class UnicodeTextTest(_UnicodeFixture, fixtures.TablesTest):
         self._test_empty_strings()
 
 class TextTest(fixtures.TablesTest):
+    __requires__ = 'text_type',
+
     @classmethod
     def define_tables(cls, metadata):
         Table('text_table', metadata,
