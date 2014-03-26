@@ -149,11 +149,12 @@ def _assert_no_stray_pool_connections():
     # however, once in awhile, on an EC2 machine usually,
     # there's a ref in there.  usually just one.
     if pool._refs:
+
         # OK, let's be somewhat forgiving.  Increment a counter,
         # we'll allow a couple of these at most.
         _STRAY_CONNECTION_FAILURES += 1
 
-        util.warn("Encountered a stray connection in test cleanup: %s"
+        print("Encountered a stray connection in test cleanup: %s"
                         % str(pool._refs))
         # then do a real GC sweep.   We shouldn't even be here
         # so a single sweep should really be doing it, otherwise
@@ -171,7 +172,7 @@ def _assert_no_stray_pool_connections():
         # so the error doesn't at least keep happening.
         pool._refs.clear()
         _STRAY_CONNECTION_FAILURES = 0
-        assert False, err
+        assert False, "Stray conections in cleanup: %s" % err
 
 
 def eq_(a, b, msg=None):
