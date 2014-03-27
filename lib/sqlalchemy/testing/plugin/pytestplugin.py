@@ -114,7 +114,13 @@ def pytest_runtest_teardown(item):
 def test_setup(item):
     # like a nose id, e.g.:
     # "test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause"
-    id_ = "%s.%s.%s" % (item.parent.module.__name__, item.parent.cls.__name__, item.name)
+    name = item.parent.cls.__name__
+
+    suffix = "_%s_%s" % (plugin_base.config.db.name, plugin_base.config.db.driver)
+    if name.endswith(suffix):
+        name = name[0:-(len(suffix))]
+
+    id_ = "%s.%s.%s" % (item.parent.module.__name__, name, item.name)
     plugin_base.before_test(item, id_)
 
 def test_teardown(item):

@@ -111,7 +111,7 @@ class ProfileStatsFile(object):
             # etc.
             self._write()
 
-    @util.memoized_property
+    @property
     def platform_key(self):
 
         dbapi_key = config.db.name + "_" + config.db.driver
