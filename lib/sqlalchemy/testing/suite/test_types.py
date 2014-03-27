@@ -299,7 +299,7 @@ class DateTest(_DateFixture, fixtures.TablesTest):
 
 
 class DateTimeCoercedToDateTimeTest(_DateFixture, fixtures.TablesTest):
-    __requires__ = 'date',
+    __requires__ = 'date', 'date_coerces_from_datetime'
     __backend__ = True
     datatype = Date
     data = datetime.datetime(2012, 10, 15, 12, 57, 18)

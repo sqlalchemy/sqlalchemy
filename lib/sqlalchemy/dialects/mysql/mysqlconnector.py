@@ -52,8 +52,11 @@ class _myconnpyBIT(BIT):
 
 class MySQLDialect_mysqlconnector(MySQLDialect):
     driver = 'mysqlconnector'
-    supports_unicode_statements = True
+
+    if util.py2k:
+        supports_unicode_statements = False
     supports_unicode_binds = True
+
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
 

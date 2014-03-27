@@ -15,6 +15,17 @@
     :version: 0.9.4
 
     .. change::
+        :tags: bug, mysql
+
+        Tweaked the settings for mysql-connector-python; in Py2K, the
+        "supports unicode statements" flag is now False, so that SQLAlchemy
+        will encode the *SQL string* (note: *not* the parameters)
+        to bytes before sending to the database.  This seems to allow
+        all unicode-related tests to pass for mysql-connector, including those
+        that use non-ascii table/column names, as well as some tests for the
+        TEXT type using unicode under cursor.executemany().
+
+    .. change::
         :tags: feature, engine
 
         Added some new event mechanics for dialect-level events; the initial

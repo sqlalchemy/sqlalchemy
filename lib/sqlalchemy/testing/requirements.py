@@ -367,6 +367,13 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def date_coerces_from_datetime(self):
+        """target dialect accepts a datetime object as the target
+        of a date column."""
+
+        return exclusions.open()
+
+    @property
     def date_historic(self):
         """target dialect supports representation of Python
         datetime.datetime() objects with historic (pre 1970) values."""

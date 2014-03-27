@@ -13,6 +13,7 @@ from sqlalchemy.testing.exclusions import \
      only_if,\
      only_on,\
      fails_on_everything_except,\
+     fails_on,\
      fails_if,\
      succeeds_if,\
      SpecPredicate,\
@@ -399,11 +400,6 @@ class DefaultRequirements(SuiteRequirements):
             no_support('sybase', 'FIXME: guessing, needs confirmation'),
             no_support('mssql+pymssql', 'no FreeTDS support'),
 
-            LambdaPredicate(
-                lambda config: (not util.py3k and against(config, "mysql+mysqlconnector")),
-                "mysqlconnector seems to handle heavy unicode only in py3k"
-            ),
-
             exclude('mysql', '<', (4, 1, 1), 'no unicode connection support'),
             ])
 
@@ -437,9 +433,8 @@ class DefaultRequirements(SuiteRequirements):
 
         """
         return skip_if('mssql+pymssql', 'crashes on pymssql') + \
-                    fails_on_everything_except('mysql+mysqldb', 'mysql+oursql',
-                                       'sqlite+pysqlite', 'mysql+pymysql',
-                                       'mysql+cymysql')
+                    fails_on_everything_except('mysql',
+                                       'sqlite+pysqlite')
 
     @property
     def sane_multi_rowcount(self):
@@ -497,6 +492,13 @@ class DefaultRequirements(SuiteRequirements):
         datetime.date() objects."""
 
         return exclusions.open()
+
+    @property
+    def date_coerces_from_datetime(self):
+        """target dialect accepts a datetime object as the target
+        of a date column."""
+
+        return fails_on('mysql+mysqlconnector')
 
     @property
     def date_historic(self):

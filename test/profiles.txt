@@ -167,7 +167,7 @@ test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove 
 
 # TEST: test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline
 
-test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_mysql_mysqlconnector_cextensions 111739
+test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_mysql_mysqlconnector_cextensions 100535
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_mysql_mysqlconnector_nocextensions 120756
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_mysql_mysqldb_cextensions 30052
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_mysql_mysqldb_nocextensions 39069
@@ -272,7 +272,7 @@ test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 3.
 # TEST: test.aaa_profiling.test_orm.MergeTest.test_merge_load
 
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.6_sqlite_pysqlite_nocextensions 1521
-test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_mysql_mysqlconnector_cextensions 2453
+test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_mysql_mysqlconnector_cextensions 2271
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_mysql_mysqlconnector_nocextensions 2478
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_mysql_mysqldb_cextensions 1388
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_mysql_mysqldb_nocextensions 1413
@@ -467,7 +467,7 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 3.4
 # TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_string
 
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.6_sqlite_pysqlite_nocextensions 15447
-test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_mysqlconnector_cextensions 110262
+test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_mysqlconnector_cextensions 92960
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_mysqlconnector_nocextensions 125282
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_mysqldb_cextensions 512
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_mysqldb_nocextensions 15505
@@ -494,7 +494,7 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_string 3.4_sqlite_pysqlite_
 # TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_unicode
 
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.6_sqlite_pysqlite_nocextensions 15447
-test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_mysqlconnector_cextensions 110262
+test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_mysqlconnector_cextensions 92960
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_mysqlconnector_nocextensions 125282
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_mysqldb_cextensions 512
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_mysqldb_nocextensions 45505
