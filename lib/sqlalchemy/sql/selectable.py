@@ -24,6 +24,7 @@ from .. import exc
 from operator import attrgetter
 from . import operators
 import operator
+import collections
 from .annotation import Annotated
 import itertools
 
@@ -682,8 +683,7 @@ class Join(FromClause):
         providing a "natural join".
 
         """
-        crit = []
-        constraints = set()
+        constraints = collections.defaultdict(list)
 
         for left in (a_subset, a):
             if left is None:
@@ -703,8 +703,7 @@ class Join(FromClause):
                         continue
 
                 if col is not None:
-                    crit.append(col == fk.parent)
-                    constraints.add(fk.constraint)
+                    constraints[fk.constraint].append((col, fk.parent))
             if left is not b:
                 for fk in sorted(
                             left.foreign_keys,
@@ -723,12 +722,36 @@ class Join(FromClause):
                             continue
 
                     if col is not None:
-                        crit.append(col == fk.parent)
-                        constraints.add(fk.constraint)
-            if crit:
+                        constraints[fk.constraint].append((col, fk.parent))
+            if constraints:
                 break
 
-        if len(crit) == 0:
+        if len(constraints) > 1:
+            # more than one constraint matched.  narrow down the list
+            # to include just those FKCs that match exactly to
+            # "consider_as_foreign_keys".
+            if consider_as_foreign_keys:
+                for const in list(constraints):
+                    if set(f.parent for f in const.elements) != set(consider_as_foreign_keys):
+                        del constraints[const]
+
+            # if still multiple constraints, but
+            # they all refer to the exact same end result, use it.
+            if len(constraints) > 1:
+                dedupe = set(tuple(crit) for crit in constraints.values())
+                if len(dedupe) == 1:
+                    key = constraints.keys()[0]
+                    constraints = {key, constraints[key]}
+
+            if len(constraints) != 1:
+                raise exc.AmbiguousForeignKeysError(
+                    "Can't determine join between '%s' and '%s'; "
+                    "tables have more than one foreign key "
+                    "constraint relationship between them. "
+                    "Please specify the 'onclause' of this "
+                    "join explicitly." % (a.description, b.description))
+
+        if len(constraints) == 0:
             if isinstance(b, FromGrouping):
                 hint = " Perhaps you meant to convert the right side to a "\
                                     "subquery using alias()?"
@@ -737,14 +760,9 @@ class Join(FromClause):
             raise exc.NoForeignKeysError(
                 "Can't find any foreign key relationships "
                 "between '%s' and '%s'.%s" % (a.description, b.description, hint))
-        elif len(constraints) > 1:
-            raise exc.AmbiguousForeignKeysError(
-                "Can't determine join between '%s' and '%s'; "
-                "tables have more than one foreign key "
-                "constraint relationship between them. "
-                "Please specify the 'onclause' of this "
-                "join explicitly." % (a.description, b.description))
-        elif len(crit) == 1:
+
+        crit = [(x == y) for x, y in constraints.values()[0]]
+        if len(crit) == 1:
             return (crit[0])
         else:
             return and_(*crit)

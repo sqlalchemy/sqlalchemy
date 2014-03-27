@@ -15,6 +15,17 @@
     :version: 0.9.4
 
     .. change::
+        :tags: bug, orm
+        :tickets: 2965
+
+        Improved the check for "how to join from A to B" such that when
+        a table has multiple, composite foreign keys targeting a parent table,
+        the :paramref:`.relationship.foreign_keys` argument will be properly
+        interpreted in order to resolve the ambiguity; previously this condition
+        would raise that there were multiple FK paths when in fact the
+        foreign_keys argument should be establishing which one is expected.
+
+    .. change::
         :tags: bug, mysql
 
         Tweaked the settings for mysql-connector-python; in Py2K, the

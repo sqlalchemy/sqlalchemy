@@ -104,6 +104,21 @@ class _JoinFixtures(object):
             Column('bid', Integer, ForeignKey('three_tab_b.id'))
         )
 
+        cls.composite_target = Table('composite_target', m,
+            Column('uid', Integer, primary_key=True),
+            Column('oid', Integer, primary_key=True),
+        )
+
+        cls.composite_multi_ref = Table('composite_multi_ref', m,
+            Column('uid1', Integer),
+            Column('uid2', Integer),
+            Column('oid', Integer),
+            ForeignKeyConstraint(("uid1", "oid"),
+                        ("composite_target.uid", "composite_target.oid")),
+            ForeignKeyConstraint(("uid2", "oid"),
+                        ("composite_target.uid", "composite_target.oid")),
+            )
+
     def _join_fixture_overlapping_three_tables(self, **kw):
         def _can_sync(*cols):
             for c in cols:
@@ -387,6 +402,17 @@ class _JoinFixtures(object):
                     primaryjoin=self.left.c.id ==
                         func.foo(self.right.c.lid),
                     consider_as_foreign_keys=[self.right.c.lid],
+                    **kw
+                )
+
+    def _join_fixture_overlapping_composite_fks(self, **kw):
+        return relationships.JoinCondition(
+                    self.composite_target,
+                    self.composite_multi_ref,
+                    self.composite_target,
+                    self.composite_multi_ref,
+                    consider_as_foreign_keys=[self.composite_multi_ref.c.uid2,
+                                    self.composite_multi_ref.c.oid],
                     **kw
                 )
 
@@ -766,6 +792,17 @@ class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase,
         eq_(
             joincond.remote_columns,
             set([self.three_tab_b.c.id, self.three_tab_b.c.aid])
+        )
+
+    def test_determine_local_remote_overlapping_composite_fks(self):
+        joincond = self._join_fixture_overlapping_composite_fks()
+
+        eq_(
+            joincond.local_remote_pairs,
+            [
+                (self.composite_target.c.uid, self.composite_multi_ref.c.uid2,),
+                (self.composite_target.c.oid, self.composite_multi_ref.c.oid,)
+            ]
         )
 
 class DirectionTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
