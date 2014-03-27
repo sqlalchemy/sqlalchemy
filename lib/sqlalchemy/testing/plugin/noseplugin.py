@@ -69,7 +69,9 @@ class NoseSQLAlchemy(Plugin):
         return plugin_base.want_class(cls)
 
     def beforeTest(self, test):
-        plugin_base.before_test(test, test.id())
+        plugin_base.before_test(test,
+                        test.test.cls.__module__,
+                        test.test.cls, test.test.method.__name__)
 
     def afterTest(self, test):
         plugin_base.after_test(test)

@@ -324,7 +324,7 @@ def generate_sub_tests(cls, module):
                         name,
                         (cls, ),
                         {
-                            "__only_on__": (cfg.db.name, cfg.db.driver),
+                            "__only_on__": ("%s+%s" % (cfg.db.name, cfg.db.driver)),
                             "__backend__": False}
                         )
             setattr(module, name, subcls)
@@ -351,7 +351,18 @@ def _setup_engine(cls):
         eng = engines.testing_engine(options=cls.__engine_options__)
         config._current.push_engine(eng, testing)
 
-def before_test(test, id_):
+def before_test(test, test_module_name, test_class, test_name):
+
+    # like a nose id, e.g.:
+    # "test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause"
+    name = test_class.__name__
+
+    suffix = "_%s_%s" % (config.db.name, config.db.driver)
+    if name.endswith(suffix):
+        name = name[0:-(len(suffix))]
+
+    id_ = "%s.%s.%s" % (test_module_name, name, test_name)
+
     warnings.resetwarnings()
     profiling._current_test = id_
 
