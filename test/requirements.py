@@ -62,6 +62,13 @@ class DefaultRequirements(SuiteRequirements):
                 )
 
     @property
+    def non_updating_cascade(self):
+        """target database must *not* support ON UPDATE..CASCADE behavior in
+        foreign keys."""
+
+        return fails_on_everything_except('sqlite', 'oracle', '+zxjdbc') + skip_if('mssql')
+
+    @property
     def deferrable_fks(self):
         """target database must support deferrable fks"""
 
@@ -427,7 +434,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def sane_multi_rowcount(self):
-        return skip_if(
+        return fails_if(
                     lambda: not self.db.dialect.supports_sane_multi_rowcount,
                     "driver doesn't support 'sane' multi row count"
                 )

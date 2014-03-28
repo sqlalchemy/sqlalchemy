@@ -441,7 +441,7 @@ def _collect_delete_commands(base_mapper, uowtransaction, table,
         for col in mapper._pks_by_table[table]:
             params[col.key] = \
                     value = \
-                    mapper._get_state_attr_by_column(
+                    mapper._get_committed_state_attr_by_column(
                                     state, state_dict, col)
             if value is None:
                 raise orm_exc.FlushError(
@@ -655,21 +655,19 @@ def _emit_delete_statements(base_mapper, uowtransaction, cached_connections,
 
         connection = cached_connections[connection]
 
-        if need_version_id:
-            # TODO: need test coverage for this [ticket:1761]
+        expected = len(del_objects)
+        rows_matched = -1
+        if connection.dialect.supports_sane_multi_rowcount:
+            c = connection.execute(statement, del_objects)
+            rows_matched = c.rowcount
+        elif need_version_id:
             if connection.dialect.supports_sane_rowcount:
-                rows = 0
+                rows_matched = 0
                 # execute deletes individually so that versioned
                 # rows can be verified
                 for params in del_objects:
                     c = connection.execute(statement, params)
-                    rows += c.rowcount
-                if rows != len(del_objects):
-                    raise orm_exc.StaleDataError(
-                        "DELETE statement on table '%s' expected to "
-                        "delete %d row(s); %d were matched." %
-                        (table.description, len(del_objects), c.rowcount)
-                    )
+                    rows_matched += c.rowcount
             else:
                 util.warn(
                     "Dialect %s does not support deleted rowcount "
@@ -680,6 +678,12 @@ def _emit_delete_statements(base_mapper, uowtransaction, cached_connections,
         else:
             connection.execute(statement, del_objects)
 
+        if rows_matched > -1 and expected != rows_matched:
+            raise orm_exc.StaleDataError(
+                "DELETE statement on table '%s' expected to "
+                "delete %d row(s); %d were matched." %
+                (table.description, expected, rows_matched)
+            )
 
 def _finalize_insert_update_commands(base_mapper, uowtransaction,
                             states_to_insert, states_to_update):

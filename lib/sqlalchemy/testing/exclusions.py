@@ -66,6 +66,9 @@ class skip_if(object):
         self._fails_on = skip_if(other, reason)
         return self
 
+    def fails_on_everything_except(self, *dbs):
+        self._fails_on = skip_if(fails_on_everything_except(*dbs))
+        return self
 
 class fails_if(skip_if):
     def __call__(self, fn):
