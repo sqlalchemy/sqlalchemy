@@ -2587,6 +2587,7 @@ class JoinCondition(object):
         binds = util.column_dict()
         lookup = util.column_dict()
         equated_columns = util.column_dict()
+        being_replaced = set()
 
         if reverse_direction and self.secondaryjoin is None:
             for l, r in self.local_remote_pairs:
@@ -2594,16 +2595,22 @@ class JoinCondition(object):
                 _list.append((r, l))
                 equated_columns[l] = r
         else:
+            # replace all "local side" columns, which is
+            # anything that isn't marked "remote"
+            being_replaced.update(self.local_columns)
             for l, r in self.local_remote_pairs:
                 _list = lookup.setdefault(l, [])
                 _list.append((l, r))
                 equated_columns[r] = l
 
         def col_to_bind(col):
-            if col in lookup:
-                for tobind, equated in lookup[col]:
-                    if equated in binds:
-                        return None
+            if col in being_replaced or col in lookup:
+                if col in lookup:
+                    for tobind, equated in lookup[col]:
+                        if equated in binds:
+                            return None
+                else:
+                    assert not reverse_direction
                 if col not in binds:
                     binds[col] = sql.bindparam(
                         None, None, type_=col.type, unique=True)

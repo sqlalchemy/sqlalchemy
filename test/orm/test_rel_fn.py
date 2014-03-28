@@ -416,6 +416,30 @@ class _JoinFixtures(object):
                     **kw
                 )
 
+
+        cls.left = Table('lft', m,
+            Column('id', Integer, primary_key=True),
+            Column('x', Integer),
+            Column('y', Integer),
+        )
+        cls.right = Table('rgt', m,
+            Column('id', Integer, primary_key=True),
+            Column('lid', Integer, ForeignKey('lft.id')),
+            Column('x', Integer),
+            Column('y', Integer),
+        )
+
+    def _join_fixture_o2m_o_side_none(self, **kw):
+        return relationships.JoinCondition(
+                    self.left,
+                    self.right,
+                    self.left,
+                    self.right,
+                    primaryjoin=and_(self.left.c.id == self.right.c.lid,
+                                        self.left.c.x == 5),
+                    **kw
+                    )
+
     def _assert_non_simple_warning(self, fn):
         assert_raises_message(
             exc.SAWarning,
@@ -1062,3 +1086,23 @@ class LazyClauseTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
             "lft.id = :param_1"
         )
 
+    def test_lazy_clause_o2m_o_side_none(self):
+        # test for #2948.  When the join is "o.id == m.oid AND o.something == something",
+        # we don't want 'o' brought into the lazy load for 'm'
+        joincond = self._join_fixture_o2m_o_side_none()
+        lazywhere, bind_to_col, equated_columns = joincond.create_lazy_clause()
+        self.assert_compile(
+            lazywhere,
+            ":param_1 = rgt.lid AND :param_2 = :x_1",
+            checkparams={'param_1': None, 'param_2': None, 'x_1': 5}
+        )
+
+    def test_lazy_clause_o2m_o_side_none_reverse(self):
+        # continued test for #2948.
+        joincond = self._join_fixture_o2m_o_side_none()
+        lazywhere, bind_to_col, equated_columns = joincond.create_lazy_clause(reverse_direction=True)
+        self.assert_compile(
+            lazywhere,
+            "lft.id = :param_1 AND lft.x = :x_1",
+            checkparams= {'param_1': None, 'x_1': 5}
+        )

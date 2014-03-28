@@ -5,15 +5,16 @@ import datetime
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import attributes, exc as orm_exc
 import sqlalchemy as sa
-from sqlalchemy import testing
-from sqlalchemy import Integer, String, ForeignKey, SmallInteger
+from sqlalchemy import testing, and_
+from sqlalchemy import Integer, String, ForeignKey, SmallInteger, Boolean
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.schema import Column
-from sqlalchemy.orm import mapper, relationship, create_session
+from sqlalchemy.orm import mapper, relationship, create_session, Session
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
+from sqlalchemy.testing.assertsql import AllOf, CompiledSQL
 
 
 class LazyTest(_fixtures.FixtureTest):
@@ -691,4 +692,117 @@ class CorrelatedTest(fixtures.MappedTest):
             User(name='user3', stuff=[Stuff(id=5, date=datetime.date(2007, 6, 15))])
         ])
 
+class O2MWOSideFixedTest(fixtures.MappedTest):
+    # test #2948 - o2m backref with a "m2o does/does not count"
+    # criteria doesn't scan the "o" table
 
+    @classmethod
+    def define_tables(self, meta):
+        Table('city', meta,
+            Column('id', Integer, primary_key=True),
+            Column('deleted', Boolean),
+        )
+        Table('person', meta,
+              Column('id', Integer, primary_key=True),
+              Column('city_id', ForeignKey('city.id'))
+              )
+
+
+    @classmethod
+    def setup_classes(cls):
+        class Person(cls.Basic):
+            pass
+
+        class City(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Person, City = cls.classes.Person, cls.classes.City
+        city, person = cls.tables.city, cls.tables.person
+
+        mapper(Person, person, properties={
+                'city':relationship(City,
+                            primaryjoin=and_(
+                                        person.c.city_id==city.c.id,
+                                        city.c.deleted == False),
+                            backref='people'
+                        )
+            })
+        mapper(City, city)
+
+    def _fixture(self, include_other):
+        city, person = self.tables.city, self.tables.person
+
+        if include_other:
+            city.insert().execute(
+                {"id": 1, "deleted": False},
+            )
+
+            person.insert().execute(
+                {"id": 1, "city_id": 1},
+                {"id": 2, "city_id": 1},
+            )
+
+        city.insert().execute(
+            {"id": 2, "deleted": True},
+        )
+
+        person.insert().execute(
+            {"id": 3, "city_id": 2},
+            {"id": 4, "city_id": 2},
+        )
+
+
+    def test_lazyload_assert_expected_sql(self):
+        self._fixture(True)
+        Person, City = self.classes.Person, self.classes.City
+        sess = Session(testing.db)
+        c1, c2 = sess.query(City).order_by(City.id).all()
+
+        def go():
+            eq_(
+                [p.id for p in c2.people],
+                []
+            )
+
+        self.assert_sql_execution(
+                testing.db,
+                go,
+                CompiledSQL(
+                    "SELECT person.id AS person_id, person.city_id AS "
+                    "person_city_id FROM person "
+                    "WHERE person.city_id = :param_1 AND :param_2 = 0",
+                    {"param_1": 2, "param_2": 1}
+                )
+        )
+
+    def test_lazyload_people_other_exists(self):
+        self._fixture(True)
+        Person, City = self.classes.Person, self.classes.City
+        sess = Session(testing.db)
+        c1, c2 = sess.query(City).order_by(City.id).all()
+        eq_(
+            [p.id for p in c1.people],
+            [1, 2]
+        )
+
+        eq_(
+            [p.id for p in c2.people],
+            []
+        )
+
+    def test_lazyload_people_no_other_exists(self):
+        # note that if we revert #2948, *this still passes!*
+        # e.g. due to the scan of the "o" table, whether or not *another*
+        # row exists determines if this works.
+
+        self._fixture(False)
+        Person, City = self.classes.Person, self.classes.City
+        sess = Session(testing.db)
+        c2, = sess.query(City).order_by(City.id).all()
+
+        eq_(
+            [p.id for p in c2.people],
+            []
+        )

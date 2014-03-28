@@ -16,6 +16,25 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 2948
+
+        Fixed a very old behavior where the lazy load emitted for a one-to-many
+        could inappropriately pull in the parent table, and also return results
+        inconsistent based on what's in the parent table, when the primaryjoin
+        includes some kind of discriminator against the parent table, such
+        as ``and_(parent.id == child.parent_id, parent.deleted == False)``.
+        While this primaryjoin doesn't make that much sense for a one-to-many,
+        it is slightly more common when applied to the many-to-one side, and
+        the one-to-many comes as a result of a backref.
+        Loading rows from ``child`` in this case would keep ``parent.deleted == False``
+        as is within the query, thereby yanking it into the FROM clause
+        and doing a cartesian product.  The new behavior will now substitute
+        the value of the local "parent.deleted" for that parameter as is
+        appropriate.   Though typically, a real-world app probably wants to use a
+        different primaryjoin for the o2m side in any case.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 2965
 
         Improved the check for "how to join from A to B" such that when
