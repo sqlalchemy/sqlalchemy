@@ -659,7 +659,18 @@ def _emit_delete_statements(base_mapper, uowtransaction, cached_connections,
         rows_matched = -1
         if connection.dialect.supports_sane_multi_rowcount:
             c = connection.execute(statement, del_objects)
-            rows_matched = c.rowcount
+
+            # only do a row check if we have versioning turned on.
+            # unfortunately, we *cannot* do a check on the number of
+            # rows matched here in general, as there is the edge case
+            # of a table that has a self-referential foreign key with
+            # ON DELETE CASCADE on it, see #2403.   I'm not sure how we can
+            # resolve this, unless we require special configuration
+            # to enable "count rows" for certain mappings, or to disable
+            # it, or to based on it relationship(), not sure.
+            if need_version_id:
+                rows_matched = c.rowcount
+
         elif need_version_id:
             if connection.dialect.supports_sane_rowcount:
                 rows_matched = 0
