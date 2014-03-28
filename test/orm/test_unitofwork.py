@@ -569,7 +569,7 @@ class BatchDeleteIgnoresRowcountTest(fixtures.DeclarativeMappedTest):
         A = self.classes.A
         session = Session(testing.db)
 
-        a1, a2 = A(id=1),A(id=2, parent_id=1)
+        a1, a2 = A(id=1), A(id=2, parent_id=1)
 
         session.add_all([a1, a2])
         session.flush()

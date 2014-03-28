@@ -1330,12 +1330,16 @@ class BasicStaleChecksTest(fixtures.MappedTest):
         sess.delete(p1)
         sess.delete(p2)
 
-        assert_raises_message(
-            orm_exc.StaleDataError,
-            "DELETE statement on table 'parent' expected to "
-                "delete 2 row\(s\); 0 were matched.",
-            sess.flush
-        )
+        sess.flush()
+
+        # see issue #2403 - we *cannot* use rowcount here, as
+        # self-referential DELETE CASCADE could have deleted rows
+        #assert_raises_message(
+        #    orm_exc.StaleDataError,
+        #    "DELETE statement on table 'parent' expected to "
+        #        "delete 2 row\(s\); 0 were matched.",
+        #    sess.flush
+        #)
 
 
 class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):

@@ -18,13 +18,9 @@
 
         Fixed ORM bug where changing the primary key of an object, then marking
         it for DELETE would fail to target the correct row for DELETE.
-        Then to compound matters, basic "number of rows matched" checks were
-        not being performed.  Both issues are fixed, however note that the
-        "rows matched" check requires so-called "sane multi-row count"
-        functionality; the DBAPI's executemany() method must count up the
-        rows matched by individual statements and SQLAlchemy's dialect must
-        mark this feature as supported, currently applies to some mysql dialects,
-        psycopg2, sqlite only.
+        Note that we cannot currently check "number of rows matched" in general
+        for DELETE statements as we can't be sure that a self-referential
+        ON DELETE CASCADE has gotten there first.
 
     .. change::
         :tags: feature, postgresql
