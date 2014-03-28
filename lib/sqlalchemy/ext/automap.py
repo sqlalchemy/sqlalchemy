@@ -325,6 +325,61 @@ is as follows:
    many-to-one; the :func:`.generate_relationship` function is called upon
    to generate the strucures and existing attributes will be maintained.
 
+Relationships with Inheritance
+------------------------------
+
+:mod:`.sqlalchemy.ext.automap` will not generate any relationships between
+two classes that are in an inheritance relationship.   That is, with two classes
+given as follows::
+
+    class Employee(Base):
+        __tablename__ = 'employee'
+        id = Column(Integer, primary_key=True)
+        type = Column(String(50))
+        __mapper_args__ = {
+             'polymorphic_identity':'employee', 'polymorphic_on': type
+        }
+
+    class Engineer(Employee):
+        __tablename__ = 'engineer'
+        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+        __mapper_args__ = {
+            'polymorphic_identity':'engineer',
+        }
+
+The foreign key from ``Engineer`` to ``Employee`` is used not for a relationship,
+but to establish joined inheritance between the two classes.
+
+Note that this means automap will not generate **any relationships** that are
+between these two classes, nor for any other classes in the same hierarchy.
+If there are actually relationships between classes in the hierarchy, they
+must be declared explicitly.  Below, as we have two separate foreign keys
+from ``Engineer`` to ``Employee``, we need to set up both the relationship
+we want as well as the ``inherit_condition``, as these are not things
+SQLAlchemy can guess::
+
+    class Employee(Base):
+        __tablename__ = 'employee'
+        id = Column(Integer, primary_key=True)
+        type = Column(String(50))
+
+        __mapper_args__ = {
+            'polymorphic_identity':'employee', 'polymorphic_on':type
+        }
+
+    class Engineer(Employee):
+        __tablename__ = 'engineer'
+        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+        favorite_employee_id = Column(Integer, ForeignKey('employee.id'))
+
+        favorite_employee = relationship(Employee, foreign_keys=favorite_employee_id)
+
+        __mapper_args__ = {
+            'polymorphic_identity':'engineer',
+            'inherit_condition': id == Employee.id
+        }
+
+
 Using Automap with Explicit Declarations
 ========================================
 
@@ -731,6 +786,9 @@ def _relationships_for_fks(automap_base, map_config, table_to_map_config,
                 continue
             referred_cls = referred_cfg.cls
 
+            if local_cls is not referred_cls and issubclass(local_cls, referred_cls):
+                continue
+
             relationship_name = name_for_scalar_relationship(
                                         automap_base,
                                         local_cls,
@@ -752,8 +810,7 @@ def _relationships_for_fks(automap_base, map_config, table_to_map_config,
                                         collection_class=collection_class)
                 else:
                     backref_obj = None
-                map_config.properties[relationship_name] = \
-                    generate_relationship(automap_base,
+                rel = generate_relationship(automap_base,
                         interfaces.MANYTOONE,
                         relationship,
                         relationship_name,
@@ -762,11 +819,12 @@ def _relationships_for_fks(automap_base, map_config, table_to_map_config,
                         backref=backref_obj,
                         remote_side=[fk.column for fk in constraint.elements]
                     )
-                if not create_backref:
-                    referred_cfg.properties[backref_name].back_populates = relationship_name
+                if rel is not None:
+                    map_config.properties[relationship_name] = rel
+                    if not create_backref:
+                        referred_cfg.properties[backref_name].back_populates = relationship_name
             elif create_backref:
-                referred_cfg.properties[backref_name] = \
-                    generate_relationship(automap_base,
+                rel = generate_relationship(automap_base,
                         interfaces.ONETOMANY,
                         relationship,
                         backref_name,
@@ -774,7 +832,9 @@ def _relationships_for_fks(automap_base, map_config, table_to_map_config,
                         foreign_keys=[fk.parent for fk in constraint.elements],
                         back_populates=relationship_name,
                         collection_class=collection_class)
-                map_config.properties[relationship_name].back_populates = backref_name
+                if rel is not None:
+                    referred_cfg.properties[backref_name] = rel
+                    map_config.properties[relationship_name].back_populates = backref_name
 
 def _m2m_relationship(automap_base, lcl_m2m, rem_m2m, m2m_const, table,
                             table_to_map_config,
@@ -815,8 +875,7 @@ def _m2m_relationship(automap_base, lcl_m2m, rem_m2m, m2m_const, table,
                             )
         else:
             backref_obj = None
-        map_config.properties[relationship_name] = \
-            generate_relationship(automap_base,
+        rel = generate_relationship(automap_base,
                 interfaces.MANYTOMANY,
                 relationship,
                 relationship_name,
@@ -827,11 +886,13 @@ def _m2m_relationship(automap_base, lcl_m2m, rem_m2m, m2m_const, table,
                 backref=backref_obj,
                 collection_class=collection_class
                 )
-        if not create_backref:
-            referred_cfg.properties[backref_name].back_populates = relationship_name
+        if rel is not None:
+            map_config.properties[relationship_name] = rel
+
+            if not create_backref:
+                referred_cfg.properties[backref_name].back_populates = relationship_name
     elif create_backref:
-        referred_cfg.properties[backref_name] = \
-            generate_relationship(automap_base,
+        rel = generate_relationship(automap_base,
                 interfaces.MANYTOMANY,
                 relationship,
                 backref_name,
@@ -841,4 +902,6 @@ def _m2m_relationship(automap_base, lcl_m2m, rem_m2m, m2m_const, table,
                 secondaryjoin=and_(fk.column == fk.parent for fk in m2m_const[0].elements),
                 back_populates=relationship_name,
                 collection_class=collection_class)
-        map_config.properties[relationship_name].back_populates = backref_name
+        if rel is not None:
+            referred_cfg.properties[backref_name] = rel
+            map_config.properties[relationship_name].back_populates = backref_name

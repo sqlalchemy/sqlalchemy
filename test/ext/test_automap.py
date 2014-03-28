@@ -208,4 +208,11 @@ class AutomapInhTest(fixtures.MappedTest):
 
         assert SubJoined.__mapper__.inherits is Joined.__mapper__
 
+        assert not Joined.__mapper__.relationships
+        assert not SubJoined.__mapper__.relationships
 
+    def test_conditional_relationship(self):
+        Base = automap_base()
+        def _gen_relationship(*arg, **kw):
+            return None
+        Base.prepare(engine=testing.db, reflect=True, generate_relationship=_gen_relationship)

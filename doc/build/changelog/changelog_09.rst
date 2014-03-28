@@ -15,6 +15,15 @@
     :version: 0.9.4
 
     .. change::
+        :tags: bug, ext, automap
+        :tickets: 3004
+
+        Added support to automap for the case where a relationship should
+        not be created between two classes that are in a joined inheritance
+        relationship, for those foreign keys that link the subclass back to
+        the superclass.
+
+    .. change::
         :tags: bug, orm
         :tickets: 2948
 
