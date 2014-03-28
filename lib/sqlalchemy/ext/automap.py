@@ -350,10 +350,10 @@ given as follows::
 The foreign key from ``Engineer`` to ``Employee`` is used not for a relationship,
 but to establish joined inheritance between the two classes.
 
-Note that this means automap will not generate **any relationships** that are
-between these two classes, nor for any other classes in the same hierarchy.
-If there are actually relationships between classes in the hierarchy, they
-must be declared explicitly.  Below, as we have two separate foreign keys
+Note that this means automap will not generate *any* relationships
+for foreign keys that link from a subclass to a superclass.  If a mapping
+has actual relationships from subclass to superclass as well, those
+need to be explicit.  Below, as we have two separate foreign keys
 from ``Engineer`` to ``Employee``, we need to set up both the relationship
 we want as well as the ``inherit_condition``, as these are not things
 SQLAlchemy can guess::
