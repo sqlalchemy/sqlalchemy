@@ -761,7 +761,7 @@ class Join(FromClause):
                 "Can't find any foreign key relationships "
                 "between '%s' and '%s'.%s" % (a.description, b.description, hint))
 
-        crit = [(x == y) for x, y in constraints.values()[0]]
+        crit = [(x == y) for x, y in list(constraints.values())[0]]
         if len(crit) == 1:
             return (crit[0])
         else:
