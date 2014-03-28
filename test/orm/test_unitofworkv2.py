@@ -1317,7 +1317,6 @@ class BasicStaleChecksTest(fixtures.MappedTest):
             sess.flush
         )
 
-    @testing.requires.sane_multi_rowcount
     def test_delete_multi_missing(self):
         Parent, Child = self._fixture()
         sess = Session()
