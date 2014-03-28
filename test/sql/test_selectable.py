@@ -1062,6 +1062,16 @@ class JoinConditionTest(fixtures.TestBase, AssertsCompiledSQL):
                 "FROM t2 JOIN t3 ON t2.id = t3.t2id) ON t2.id = t3_t2id")
 
 
+    def test_join_multiple_equiv_fks(self):
+        m = MetaData()
+        t1 = Table('t1', m,
+                Column('id', Integer, primary_key=True)
+            )
+        t2 = Table('t2', m,
+                Column('t1id', Integer, ForeignKey('t1.id'), ForeignKey('t1.id'))
+                )
+
+        assert sql_util.join_condition(t1, t2).compare(t1.c.id == t2.c.t1id)
 
     def test_join_cond_no_such_unrelated_table(self):
         m = MetaData()

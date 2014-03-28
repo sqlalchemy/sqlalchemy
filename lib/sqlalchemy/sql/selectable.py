@@ -740,7 +740,7 @@ class Join(FromClause):
             if len(constraints) > 1:
                 dedupe = set(tuple(crit) for crit in constraints.values())
                 if len(dedupe) == 1:
-                    key = constraints.keys()[0]
+                    key = list(constraints)[0]
                     constraints = {key: constraints[key]}
 
             if len(constraints) != 1:
