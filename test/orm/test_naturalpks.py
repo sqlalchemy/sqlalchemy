@@ -389,10 +389,7 @@ class NaturalPKTest(fixtures.MappedTest):
     def test_manytomany_passive(self):
         self._test_manytomany(True)
 
-    # mysqldb executemany() of the association table fails to
-    # report the correct row count
-    @testing.fails_if(lambda: testing.against('mysql')
-        and not (testing.against('+zxjdbc') or testing.against('+cymysql')))
+    @testing.requires.non_updating_cascade
     def test_manytomany_nonpassive(self):
         self._test_manytomany(False)
 
@@ -798,8 +795,7 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     def test_onetomany_passive(self):
         self._test_onetomany(True)
 
-    # PG etc. need passive=True to allow PK->PK cascade
-    @testing.fails_on_everything_except('sqlite', 'oracle', '+zxjdbc')
+    @testing.requires.non_updating_cascade
     def test_onetomany_nonpassive(self):
         self._test_onetomany(False)
 
@@ -876,7 +872,7 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     def test_change_m2o_passive(self):
         self._test_change_m2o(True)
 
-    @testing.fails_on_everything_except('sqlite', 'oracle', '+zxjdbc')
+    @testing.requires.non_updating_cascade
     def test_change_m2o_nonpassive(self):
         self._test_change_m2o(False)
 
@@ -1063,8 +1059,7 @@ class JoinedInheritanceTest(fixtures.MappedTest):
     def test_pk_passive(self):
         self._test_pk(True)
 
-    # PG etc. need passive=True to allow PK->PK cascade
-    @testing.fails_on_everything_except('sqlite', 'oracle', '+zxjdbc')
+    @testing.requires.non_updating_cascade
     def test_pk_nonpassive(self):
         self._test_pk(False)
 
@@ -1073,8 +1068,7 @@ class JoinedInheritanceTest(fixtures.MappedTest):
         self._test_fk(True)
 
     # PG etc. need passive=True to allow PK->PK cascade
-    @testing.fails_on_everything_except('sqlite', 'mysql+zxjdbc', 'oracle',
-                                                'postgresql+zxjdbc')
+    @testing.requires.non_updating_cascade
     def test_fk_nonpassive(self):
         self._test_fk(False)
 

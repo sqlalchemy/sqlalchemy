@@ -347,7 +347,7 @@ class PGDialect_psycopg2(PGDialect):
         supports_unicode_statements = False
 
     default_paramstyle = 'pyformat'
-    supports_sane_multi_rowcount = False
+    supports_sane_multi_rowcount = False  # set to true based on psycopg2 version
     execution_ctx_cls = PGExecutionContext_psycopg2
     statement_compiler = PGCompiler_psycopg2
     preparer = PGIdentifierPreparer_psycopg2
@@ -392,6 +392,9 @@ class PGDialect_psycopg2(PGDialect):
                         self._hstore_oids(connection.connection) \
                             is not None
         self._has_native_json = self.psycopg2_version >= (2, 5)
+
+        # http://initd.org/psycopg/docs/news.html#what-s-new-in-psycopg-2-0-9
+        self.supports_sane_multi_rowcount = self.psycopg2_version >= (2, 0, 9)
 
     @classmethod
     def dbapi(cls):

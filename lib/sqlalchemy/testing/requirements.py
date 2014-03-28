@@ -48,6 +48,12 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def non_updating_cascade(self):
+        """target database must *not* support ON UPDATE..CASCADE behavior in
+        foreign keys."""
+        return exclusions.closed()
+
+    @property
     def deferrable_fks(self):
         return exclusions.closed()
 

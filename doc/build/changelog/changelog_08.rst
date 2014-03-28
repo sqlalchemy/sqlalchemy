@@ -12,6 +12,28 @@
     :version: 0.8.6
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3006
+        :versions: 0.9.4
+
+        Fixed ORM bug where changing the primary key of an object, then marking
+        it for DELETE would fail to target the correct row for DELETE.
+        Then to compound matters, basic "number of rows matched" checks were
+        not being performed.  Both issues are fixed, however note that the
+        "rows matched" check requires so-called "sane multi-row count"
+        functionality; the DBAPI's executemany() method must count up the
+        rows matched by individual statements and SQLAlchemy's dialect must
+        mark this feature as supported, currently applies to some mysql dialects,
+        psycopg2, sqlite only.
+
+    .. change::
+        :tags: feature, postgresql
+        :versions: 0.9.4
+
+        Enabled "sane multi-row count" checking for the psycopg2 DBAPI, as
+        this seems to be supported as of psycopg2 2.0.9.
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 3000
         :versions: 0.9.4

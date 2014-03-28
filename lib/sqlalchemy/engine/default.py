@@ -514,6 +514,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.compiled = compiled
 
         if not compiled.can_execute:
+            import pdb
+            pdb.set_trace()
             raise exc.ArgumentError("Not an executable clause")
 
         self.execution_options = compiled.statement._execution_options

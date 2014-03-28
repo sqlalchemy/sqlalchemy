@@ -91,8 +91,27 @@ attribute, so that the ordering is correct when first loaded.
 .. warning::
 
   :class:`.OrderingList` only provides limited functionality when a primary
-  key column or unique column is the target of the sort.  Since changing the
-  order of entries often means that two rows must trade values, this is not
+  key column or unique column is the target of the sort.  The two operations
+  that are unsupported or are problematic are:
+
+    * two entries must trade values.  This is not supported directly in the
+      case of a primary key or unique constraint because it means at least
+      one row would need to be temporarily removed first, or changed to
+      a third, neutral value while the switch occurs.
+
+    * an entry must be deleted in order to make room for a new entry.  SQLAlchemy's
+      unit of work performs all INSERTs before DELETEs within a single flush
+      by default.  A future feature will allow this to be configurable for
+      specific sets of columns on mappings.
+
+  Additional issues when using primary keys as ordering keys are that UPDATE
+  or DELETE statements on target rows may fail to fire correctly as orderinglist
+  may change their primary key value
+
+
+  Since changing the
+  order of entries often means that either rows must trade values,
+  or rows must be deleted to make way for new inserts, this is not
   possible when the value is constrained by a primary key or unique
   constraint, since one of the rows would temporarily have to point to a
   third available value so that the other row could take its old

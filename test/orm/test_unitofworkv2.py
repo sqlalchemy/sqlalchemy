@@ -1203,20 +1203,20 @@ class RowswitchAccountingTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('parent', metadata,
-            Column('id', Integer, primary_key=True)
+            Column('id', Integer, primary_key=True),
+            Column('data', Integer)
         )
         Table('child', metadata,
-            Column('id', Integer, ForeignKey('parent.id'), primary_key=True)
+            Column('id', Integer, ForeignKey('parent.id'), primary_key=True),
+            Column('data', Integer)
         )
 
-    def test_accounting_for_rowswitch(self):
+    def _fixture(self):
         parent, child = self.tables.parent, self.tables.child
 
-        class Parent(object):
-            def __init__(self, id):
-                self.id = id
-                self.child = Child()
-        class Child(object):
+        class Parent(fixtures.BasicEntity):
+            pass
+        class Child(fixtures.BasicEntity):
             pass
 
         mapper(Parent, parent, properties={
@@ -1225,15 +1225,19 @@ class RowswitchAccountingTest(fixtures.MappedTest):
                                     backref="parent")
         })
         mapper(Child, child)
+        return Parent, Child
+
+    def test_switch_on_update(self):
+        Parent, Child = self._fixture()
 
         sess = create_session(autocommit=False)
 
-        p1 = Parent(1)
+        p1 = Parent(id=1, child=Child())
         sess.add(p1)
         sess.commit()
 
         sess.close()
-        p2 = Parent(1)
+        p2 = Parent(id=1, child=Child())
         p3 = sess.merge(p2)
 
         old = attributes.get_history(p3, 'child')[2][0]
@@ -1244,13 +1248,95 @@ class RowswitchAccountingTest(fixtures.MappedTest):
         assert p3.child._sa_instance_state.session_id == sess.hash_key
         assert p3.child in sess
 
-        p4 = Parent(1)
+        p4 = Parent(id=1, child=Child())
         p5 = sess.merge(p4)
 
         old = attributes.get_history(p5, 'child')[2][0]
         assert old in sess
 
         sess.flush()
+
+    def test_switch_on_delete(self):
+        Parent, Child = self._fixture()
+
+        sess = Session()
+        p1 = Parent(id=1, data=2, child=None)
+        sess.add(p1)
+        sess.flush()
+
+        p1.id = 5
+        sess.delete(p1)
+        eq_(p1.id, 5)
+        sess.flush()
+
+        eq_(sess.scalar(self.tables.parent.count()), 0)
+
+
+class BasicStaleChecksTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('parent', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', Integer)
+        )
+        Table('child', metadata,
+            Column('id', Integer, ForeignKey('parent.id'), primary_key=True),
+            Column('data', Integer)
+        )
+
+    def _fixture(self):
+        parent, child = self.tables.parent, self.tables.child
+
+        class Parent(fixtures.BasicEntity):
+            pass
+        class Child(fixtures.BasicEntity):
+            pass
+
+        mapper(Parent, parent, properties={
+            'child':relationship(Child, uselist=False,
+                                    cascade="all, delete-orphan",
+                                    backref="parent")
+        })
+        mapper(Child, child)
+        return Parent, Child
+
+    def test_update_single_missing(self):
+        Parent, Child = self._fixture()
+        sess = Session()
+        p1 = Parent(id=1, data=2)
+        sess.add(p1)
+        sess.flush()
+
+        sess.execute(self.tables.parent.delete())
+
+        p1.data = 3
+        assert_raises_message(
+            orm_exc.StaleDataError,
+            "UPDATE statement on table 'parent' expected to "
+                "update 1 row\(s\); 0 were matched.",
+            sess.flush
+        )
+
+    @testing.requires.sane_multi_rowcount
+    def test_delete_multi_missing(self):
+        Parent, Child = self._fixture()
+        sess = Session()
+        p1 = Parent(id=1, data=2, child=None)
+        p2 = Parent(id=2, data=3, child=None)
+        sess.add_all([p1, p2])
+        sess.flush()
+
+        sess.execute(self.tables.parent.delete())
+        sess.delete(p1)
+        sess.delete(p2)
+
+        assert_raises_message(
+            orm_exc.StaleDataError,
+            "DELETE statement on table 'parent' expected to "
+                "delete 2 row\(s\); 0 were matched.",
+            sess.flush
+        )
+
 
 class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
     @classmethod
