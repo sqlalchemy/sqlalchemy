@@ -246,6 +246,9 @@ class QueryTest(fixtures.TestBase):
             l.append(row)
         self.assert_(len(l) == 3)
 
+    @testing.fails_if(
+            lambda: util.py3k and testing.against('mysql+mysqlconnector'),
+            "bug in mysqlconnector")
     @testing.requires.subqueries
     def test_anonymous_rows(self):
         users.insert().execute(
@@ -444,6 +447,9 @@ class QueryTest(fixtures.TestBase):
             )
 
 
+    @testing.fails_if(
+            lambda: util.py3k and testing.against('mysql+mysqlconnector'),
+            "bug in mysqlconnector")
     @testing.requires.boolean_col_expressions
     def test_or_and_as_columns(self):
         true, false = literal(True), literal(False)
@@ -497,6 +503,9 @@ class QueryTest(fixtures.TestBase):
         ):
             eq_(expr.execute().fetchall(), result)
 
+    @testing.fails_if(
+            lambda: util.py3k and testing.against('mysql+mysqlconnector'),
+            "bug in mysqlconnector")
     @testing.requires.mod_operator_as_percent_sign
     @testing.emits_warning('.*now automatically escapes.*')
     def test_percents_in_text(self):
@@ -539,6 +548,9 @@ class QueryTest(fixtures.TestBase):
         c = testing.db.connect()
         assert c.execute(s, id=7).fetchall()[0]['user_id'] == 7
 
+    @testing.fails_if(
+            lambda: util.py3k and testing.against('mysql+mysqlconnector'),
+            "bug in mysqlconnector")
     def test_repeated_bindparams(self):
         """Tests that a BindParam can be used more than once.
 
@@ -1199,6 +1211,9 @@ class QueryTest(fixtures.TestBase):
         # Null values are not outside any set
         assert len(r) == 0
 
+    @testing.fails_if(
+            lambda: util.py3k and testing.against('mysql+mysqlconnector'),
+            "bug in mysqlconnector")
     @testing.emits_warning('.*empty sequence.*')
     @testing.fails_on('firebird', "uses sql-92 rules")
     @testing.fails_on('sybase', "uses sql-92 rules")
@@ -1225,6 +1240,9 @@ class QueryTest(fixtures.TestBase):
         r = s.execute(search_key=None).fetchall()
         assert len(r) == 0
 
+    @testing.fails_if(
+            lambda: util.py3k and testing.against('mysql+mysqlconnector'),
+            "bug in mysqlconnector")
     @testing.emits_warning('.*empty sequence.*')
     def test_literal_in(self):
         """similar to test_bind_in but use a bind with a value."""
@@ -2397,6 +2415,9 @@ class OperatorTest(fixtures.TestBase):
 
 
     # TODO: seems like more tests warranted for this setup.
+    @testing.fails_if(
+            lambda: util.py3k and testing.against('mysql+mysqlconnector'),
+            "bug in mysqlconnector")
     def test_modulo(self):
         eq_(
             select([flds.c.intcol % 3],
