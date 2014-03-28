@@ -110,6 +110,7 @@ class Mapper(_InspectionAttr):
                  include_properties=None,
                  exclude_properties=None,
                  passive_updates=True,
+                 confirm_deleted_rows=True,
                  eager_defaults=False,
                  legacy_is_orphan=False,
                  _compiled_cache_size=100,
@@ -207,6 +208,17 @@ class Mapper(_InspectionAttr):
            table inheritance with its parent mapper.
 
            See the section :ref:`concrete_inheritance` for an example.
+
+        :param confirm_deleted_rows: defaults to True; when a DELETE occurs
+          of one more more rows based on specific primary keys, a warning is
+          emitted when the number of rows matched does not equal the number
+          of rows expected.  This parameter may be set to False to handle the case
+          where database ON DELETE CASCADE rules may be deleting some of those
+          rows automatically.  The warning may be changed to an exception
+          in a future release.
+
+          .. versionadded:: 0.9.4 - added :paramref:`.mapper.confirm_deleted_rows`
+             as well as conditional matched row checking on delete.
 
         :param eager_defaults: if True, the ORM will immediately fetch the
           value of server-generated default values after an INSERT or UPDATE,
@@ -545,8 +557,12 @@ class Mapper(_InspectionAttr):
         self._compiled_cache_size = _compiled_cache_size
         self._reconstructor = None
         self._deprecated_extensions = util.to_list(extension or [])
-
         self.allow_partial_pks = allow_partial_pks
+
+        if self.inherits and not self.concrete:
+            self.confirm_deleted_rows = False
+        else:
+            self.confirm_deleted_rows = confirm_deleted_rows
 
         self._set_with_polymorphic(with_polymorphic)
 

@@ -3,6 +3,7 @@ from sqlalchemy import testing
 from sqlalchemy.testing import engines
 from sqlalchemy.testing.schema import Table, Column
 from test.orm import _fixtures
+from sqlalchemy import exc
 from sqlalchemy.testing import fixtures
 from sqlalchemy import Integer, String, ForeignKey, func
 from sqlalchemy.orm import mapper, relationship, backref, \
@@ -1284,7 +1285,7 @@ class BasicStaleChecksTest(fixtures.MappedTest):
             Column('data', Integer)
         )
 
-    def _fixture(self):
+    def _fixture(self, confirm_deleted_rows=True):
         parent, child = self.tables.parent, self.tables.child
 
         class Parent(fixtures.BasicEntity):
@@ -1295,8 +1296,8 @@ class BasicStaleChecksTest(fixtures.MappedTest):
         mapper(Parent, parent, properties={
             'child':relationship(Child, uselist=False,
                                     cascade="all, delete-orphan",
-                                    backref="parent")
-        })
+                                    backref="parent"),
+        }, confirm_deleted_rows=confirm_deleted_rows)
         mapper(Child, child)
         return Parent, Child
 
@@ -1318,7 +1319,7 @@ class BasicStaleChecksTest(fixtures.MappedTest):
         )
 
     @testing.requires.sane_multi_rowcount
-    def test_delete_multi_missing(self):
+    def test_delete_multi_missing_warning(self):
         Parent, Child = self._fixture()
         sess = Session()
         p1 = Parent(id=1, data=2, child=None)
@@ -1330,16 +1331,27 @@ class BasicStaleChecksTest(fixtures.MappedTest):
         sess.delete(p1)
         sess.delete(p2)
 
+        assert_raises_message(
+            exc.SAWarning,
+            "DELETE statement on table 'parent' expected to "
+                "delete 2 row\(s\); 0 were matched.",
+            sess.flush
+        )
+
+    @testing.requires.sane_multi_rowcount
+    def test_delete_multi_missing_allow(self):
+        Parent, Child = self._fixture(confirm_deleted_rows=False)
+        sess = Session()
+        p1 = Parent(id=1, data=2, child=None)
+        p2 = Parent(id=2, data=3, child=None)
+        sess.add_all([p1, p2])
         sess.flush()
 
-        # see issue #2403 - we *cannot* use rowcount here, as
-        # self-referential DELETE CASCADE could have deleted rows
-        #assert_raises_message(
-        #    orm_exc.StaleDataError,
-        #    "DELETE statement on table 'parent' expected to "
-        #        "delete 2 row\(s\); 0 were matched.",
-        #    sess.flush
-        #)
+        sess.execute(self.tables.parent.delete())
+        sess.delete(p1)
+        sess.delete(p2)
+
+        sess.flush()
 
 
 class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):

@@ -562,6 +562,7 @@ class BatchDeleteIgnoresRowcountTest(fixtures.DeclarativeMappedTest):
         class A(cls.DeclarativeBasic):
             __tablename__ = 'A'
             __table_args__ = dict(test_needs_fk=True)
+            __mapper_args__ = {"confirm_deleted_rows": False}
             id = Column(Integer, primary_key=True)
             parent_id = Column(Integer, ForeignKey('A.id', ondelete='CASCADE'))
 

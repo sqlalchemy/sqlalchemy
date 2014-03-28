@@ -681,19 +681,14 @@ def _emit_delete_statements(base_mapper, uowtransaction, cached_connections,
 
         expected = len(del_objects)
         rows_matched = -1
+        only_warn = False
         if connection.dialect.supports_sane_multi_rowcount:
             c = connection.execute(statement, del_objects)
 
-            # only do a row check if we have versioning turned on.
-            # unfortunately, we *cannot* do a check on the number of
-            # rows matched here in general, as there is the edge case
-            # of a table that has a self-referential foreign key with
-            # ON DELETE CASCADE on it, see #2403.   I'm not sure how we can
-            # resolve this, unless we require special configuration
-            # to enable "count rows" for certain mappings, or to disable
-            # it, or to based on it relationship(), not sure.
-            if need_version_id:
-                rows_matched = c.rowcount
+            if not need_version_id:
+                only_warn = True
+
+            rows_matched = c.rowcount
 
         elif need_version_id:
             if connection.dialect.supports_sane_rowcount:
@@ -713,12 +708,24 @@ def _emit_delete_statements(base_mapper, uowtransaction, cached_connections,
         else:
             connection.execute(statement, del_objects)
 
-        if rows_matched > -1 and expected != rows_matched:
-            raise orm_exc.StaleDataError(
-                "DELETE statement on table '%s' expected to "
-                "delete %d row(s); %d were matched." %
-                (table.description, expected, rows_matched)
-            )
+        if base_mapper.confirm_deleted_rows and \
+            rows_matched > -1 and expected != rows_matched:
+            if only_warn:
+                util.warn(
+                    "DELETE statement on table '%s' expected to "
+                    "delete %d row(s); %d were matched.  Please set "
+                    "confirm_deleted_rows=False within the mapper "
+                    "configuration to prevent this warning." %
+                    (table.description, expected, rows_matched)
+                )
+            else:
+                raise orm_exc.StaleDataError(
+                    "DELETE statement on table '%s' expected to "
+                    "delete %d row(s); %d were matched.  Please set "
+                    "confirm_deleted_rows=False within the mapper "
+                    "configuration to prevent this warning." %
+                    (table.description, expected, rows_matched)
+                )
 
 def _finalize_insert_update_commands(base_mapper, uowtransaction,
                             states_to_insert, states_to_update):

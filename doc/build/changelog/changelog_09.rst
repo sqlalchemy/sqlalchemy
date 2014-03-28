@@ -15,6 +15,21 @@
     :version: 0.9.4
 
     .. change::
+        :tags: feature, orm
+        :tickets: 3007
+
+        Added new parameter :paramref:`.mapper.confirm_deleted_rows`.  Defaults
+        to True, indicates that a series of DELETE statements should confirm
+        that the cursor rowcount matches the number of primary keys that should
+        have matched;  this behavior had been taken off in most cases
+        (except when version_id is used) to support the unusual edge case of
+        self-referential ON DELETE CASCADE; to accomodate this, the message
+        is now just a warning, not an exception, and the flag can be used
+        to indicate a mapping that expects self-refererntial cascaded
+        deletes of this nature.  See also :ticket:`2403` for background on the
+        original change.
+
+    .. change::
         :tags: bug, ext, automap
         :tickets: 3004
 
