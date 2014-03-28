@@ -741,7 +741,7 @@ class Join(FromClause):
                 dedupe = set(tuple(crit) for crit in constraints.values())
                 if len(dedupe) == 1:
                     key = constraints.keys()[0]
-                    constraints = {key, constraints[key]}
+                    constraints = {key: constraints[key]}
 
             if len(constraints) != 1:
                 raise exc.AmbiguousForeignKeysError(
