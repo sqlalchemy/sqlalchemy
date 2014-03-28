@@ -19,7 +19,7 @@
         :tags: feature, orm
         :tickets: 3007
 
-        Added new parameter :paramref:`.mapper.confirm_deleted_rows`.  Defaults
+        Added new parameter :paramref:`.orm.mapper.confirm_deleted_rows`.  Defaults
         to True, indicates that a series of DELETE statements should confirm
         that the cursor rowcount matches the number of primary keys that should
         have matched;  this behavior had been taken off in most cases

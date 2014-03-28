@@ -19,9 +19,6 @@
 
         Fixed ORM bug where changing the primary key of an object, then marking
         it for DELETE would fail to target the correct row for DELETE.
-        Note that we cannot currently check "number of rows matched" in general
-        for DELETE statements as we can't be sure that a self-referential
-        ON DELETE CASCADE has gotten there first.
 
     .. change::
         :tags: feature, postgresql
