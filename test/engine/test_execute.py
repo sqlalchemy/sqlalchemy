@@ -285,6 +285,8 @@ class ExecuteTest(fixtures.TestBase):
                 "Older versions dont support cursor pickling, newer ones do")
     @testing.fails_on("mysql+oursql",
                 "Exception doesn't come back exactly the same from pickle")
+    @testing.fails_on("mysql+mysqlconnector",
+                "Exception doesn't come back exactly the same from pickle")
     @testing.fails_on("oracle+cx_oracle",
                         "cx_oracle exception seems to be having "
                         "some issue with pickling")
