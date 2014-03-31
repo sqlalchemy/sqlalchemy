@@ -12,6 +12,19 @@
         :start-line: 5
 
 .. changelog::
+    :version: 0.9.5
+
+    .. change::
+        :tags: feature, sql
+        :tickets: 2990
+
+        Added new flag :paramref:`.expression.between.symmetric`, when set to True
+        renders "BETWEEN SYMMETRIC".  Also added a new negation operator
+        "notbetween_op", which now allows an expression like ``~col.between(x, y)``
+        to render as "col NOT BETWEEN x AND y", rather than a parentheiszed NOT
+        string.
+
+.. changelog::
     :version: 0.9.4
     :released: March 28, 2014
 

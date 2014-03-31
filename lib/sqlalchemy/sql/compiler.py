@@ -93,7 +93,6 @@ OPERATORS = {
     operators.ge: ' >= ',
     operators.eq: ' = ',
     operators.concat_op: ' || ',
-    operators.between_op: ' BETWEEN ',
     operators.match_op: ' MATCH ',
     operators.in_op: ' IN ',
     operators.notin_op: ' NOT IN ',
@@ -955,6 +954,18 @@ class SQLCompiler(Compiled):
                 self.render_literal_value(escape, sqltypes.STRINGTYPE)
                 if escape else ''
             )
+
+    def visit_between_op_binary(self, binary, operator, **kw):
+        symmetric = binary.modifiers.get("symmetric", False)
+        return self._generate_generic_binary(
+                        binary, " BETWEEN SYMMETRIC "
+                                if symmetric else " BETWEEN ", **kw)
+
+    def visit_notbetween_op_binary(self, binary, operator, **kw):
+        symmetric = binary.modifiers.get("symmetric", False)
+        return self._generate_generic_binary(
+                        binary, " NOT BETWEEN SYMMETRIC "
+                                if symmetric else " NOT BETWEEN ", **kw)
 
     def visit_bindparam(self, bindparam, within_columns_clause=False,
                                             literal_binds=False,

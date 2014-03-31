@@ -45,7 +45,7 @@ def collate(expression, collation):
         _literal_as_text(collation),
         operators.collate, type_=expr.type)
 
-def between(expr, lower_bound, upper_bound):
+def between(expr, lower_bound, upper_bound, symmetric=False):
     """Produce a ``BETWEEN`` predicate clause.
 
     E.g.::
@@ -85,13 +85,18 @@ def between(expr, lower_bound, upper_bound):
     :param upper_bound: a column or Python scalar expression serving as the
      upper bound of the right side of the ``BETWEEN`` expression.
 
+    :param symmetric: if True, will render " BETWEEN SYMMETRIC ". Note
+     that not all databases support this syntax.
+
+     .. versionadded:: 0.9.5
+
     .. seealso::
 
         :meth:`.ColumnElement.between`
 
     """
     expr = _literal_as_binds(expr)
-    return expr.between(lower_bound, upper_bound)
+    return expr.between(lower_bound, upper_bound, symmetric=symmetric)
 
 def literal(value, type_=None):
     """Return a literal clause, bound to a bind parameter.

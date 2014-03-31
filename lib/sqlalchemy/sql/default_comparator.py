@@ -214,7 +214,11 @@ class _DefaultColumnComparator(operators.ColumnOperators):
                     self._check_literal(expr, operators.and_, cright),
                     operator=operators.and_,
                     group=False, group_contents=False),
-                operators.between_op)
+                op,
+                negate=operators.notbetween_op
+                        if op is operators.between_op
+                        else operators.between_op,
+                modifiers=kw)
 
     def _collate_impl(self, expr, op, other, **kw):
         return collate(expr, other)
@@ -255,6 +259,7 @@ class _DefaultColumnComparator(operators.ColumnOperators):
         "match_op": (_match_impl,),
         "distinct_op": (_distinct_impl,),
         "between_op": (_between_impl, ),
+        "notbetween_op": (_between_impl, ),
         "neg": (_neg_impl,),
         "getitem": (_unsupported_impl,),
         "lshift": (_unsupported_impl,),

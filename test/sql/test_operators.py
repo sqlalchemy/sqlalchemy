@@ -679,8 +679,8 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_operator_precedence_9(self):
         self.assert_compile(self.table2.select(
                         not_(self.table2.c.field.between(5, 6))),
-            "SELECT op.field FROM op WHERE NOT "
-                    "(op.field BETWEEN :field_1 AND :field_2)")
+            "SELECT op.field FROM op WHERE "
+                    "op.field NOT BETWEEN :field_1 AND :field_2")
 
     def test_operator_precedence_10(self):
         self.assert_compile(self.table2.select(not_(self.table2.c.field) == 5),
@@ -1248,7 +1248,7 @@ class NegationTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 ~(self.table1.c.name.between('jack', 'john'))),
          "SELECT mytable.myid, mytable.name FROM "
              "mytable WHERE mytable.myid != :myid_1 AND "\
-             "NOT (mytable.name BETWEEN :name_1 AND :name_2)"
+             "mytable.name NOT BETWEEN :name_1 AND :name_2"
         )
 
     def test_negate_operators_4(self):
@@ -1343,6 +1343,46 @@ class LikeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 ~self.table1.c.name.ilike('%something%'),
                 "mytable.name NOT ILIKE %(name_1)s",
                 dialect=postgresql.dialect())
+
+class BetweenTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    table1 = table('mytable',
+        column('myid', Integer),
+        column('name', String),
+    )
+
+    def test_between_1(self):
+        self.assert_compile(
+                self.table1.c.myid.between(1, 2),
+                "mytable.myid BETWEEN :myid_1 AND :myid_2")
+
+    def test_between_2(self):
+        self.assert_compile(
+                ~self.table1.c.myid.between(1, 2),
+                "mytable.myid NOT BETWEEN :myid_1 AND :myid_2")
+
+    def test_between_3(self):
+        self.assert_compile(
+                self.table1.c.myid.between(1, 2, symmetric=True),
+                "mytable.myid BETWEEN SYMMETRIC :myid_1 AND :myid_2")
+
+    def test_between_4(self):
+        self.assert_compile(
+                ~self.table1.c.myid.between(1, 2, symmetric=True),
+                "mytable.myid NOT BETWEEN SYMMETRIC :myid_1 AND :myid_2")
+
+    def test_between_5(self):
+        self.assert_compile(
+                between(self.table1.c.myid, 1, 2, symmetric=True),
+                "mytable.myid BETWEEN SYMMETRIC :myid_1 AND :myid_2")
+
+    def test_between_6(self):
+        self.assert_compile(
+                ~between(self.table1.c.myid, 1, 2, symmetric=True),
+                "mytable.myid NOT BETWEEN SYMMETRIC :myid_1 AND :myid_2")
+
+
 
 class MatchTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'

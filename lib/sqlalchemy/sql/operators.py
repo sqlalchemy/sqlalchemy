@@ -584,10 +584,12 @@ class ColumnOperators(Operators):
         """
         return self.reverse_operate(div, other)
 
-    def between(self, cleft, cright):
+    def between(self, cleft, cright, symmetric=False):
         """Produce a :func:`~.expression.between` clause against
-        the parent object, given the lower and upper range."""
-        return self.operate(between_op, cleft, cright)
+        the parent object, given the lower and upper range.
+
+        """
+        return self.operate(between_op, cleft, cright, symmetric=symmetric)
 
     def distinct(self):
         """Produce a :func:`~.expression.distinct` clause against the
@@ -707,8 +709,11 @@ def notilike_op(a, b, escape=None):
     return a.notilike(b, escape=escape)
 
 
-def between_op(a, b, c):
-    return a.between(b, c)
+def between_op(a, b, c, symmetric=False):
+    return a.between(b, c, symmetric=symmetric)
+
+def notbetween_op(a, b, c, symmetric=False):
+    return a.notbetween(b, c, symmetric=symmetric)
 
 
 def in_op(a, b):
@@ -837,6 +842,7 @@ _PRECEDENCE = {
     le: 5,
 
     between_op: 5,
+    notbetween_op: 5,
     distinct_op: 5,
     inv: 5,
     istrue: 5,
