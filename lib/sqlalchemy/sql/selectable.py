@@ -2191,12 +2191,12 @@ class Select(HasPrefixes, GenerativeSelect):
             self._raw_columns = []
 
         if whereclause is not None:
-            self._whereclause = _literal_as_text(whereclause)
+            self._whereclause = and_(True_._singleton(), whereclause)
         else:
             self._whereclause = None
 
         if having is not None:
-            self._having = _literal_as_text(having)
+            self._having = and_(True_._singleton(), having)
         else:
             self._having = None
 

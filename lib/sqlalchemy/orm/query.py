@@ -1244,6 +1244,7 @@ class Query(object):
             else:
                 self._criterion = criterion
 
+
     def filter_by(self, **kwargs):
         """apply the given filtering criterion to a copy
         of this :class:`.Query`, using keyword expressions.
@@ -2886,7 +2887,6 @@ class Query(object):
                         order_by=context.order_by,
                         **self._select_args
                     )
-
         statement._for_update_arg = context._for_update_arg
 
         for hint in self._with_hints:

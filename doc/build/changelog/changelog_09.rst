@@ -15,6 +15,16 @@
     :version: 0.9.5
 
     .. change::
+        :tags: bug, orm, sql
+        :tickets: 3013
+
+        Fixes to the newly enhanced boolean coercion in :ticket:`2804` where
+        the new rules for "where" and "having" woudn't take effect for the
+        "whereclause" and "having" kw arguments of the :func:`.select` construct,
+        which is also what :class:`.Query` uses so wasn't working in the
+        ORM either.
+
+    .. change::
         :tags: feature, sql
         :tickets: 2990
 

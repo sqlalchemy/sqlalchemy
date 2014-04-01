@@ -439,7 +439,7 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             dialect=self._dialect(True)
         )
 
-    def test_two(self):
+    def test_two_a(self):
         c = column('x', Boolean)
         self.assert_compile(
             select([c]).where(c),
@@ -447,10 +447,26 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             dialect=self._dialect(False)
         )
 
-    def test_three(self):
+    def test_two_b(self):
+        c = column('x', Boolean)
+        self.assert_compile(
+            select([c], whereclause=c),
+            "SELECT x WHERE x = 1",
+            dialect=self._dialect(False)
+        )
+
+    def test_three_a(self):
         c = column('x', Boolean)
         self.assert_compile(
             select([c]).where(~c),
+            "SELECT x WHERE x = 0",
+            dialect=self._dialect(False)
+        )
+
+    def test_three_b(self):
+        c = column('x', Boolean)
+        self.assert_compile(
+            select([c], whereclause=~c),
             "SELECT x WHERE x = 0",
             dialect=self._dialect(False)
         )
@@ -463,10 +479,18 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             dialect=self._dialect(True)
         )
 
-    def test_five(self):
+    def test_five_a(self):
         c = column('x', Boolean)
         self.assert_compile(
             select([c]).having(c),
+            "SELECT x HAVING x = 1",
+            dialect=self._dialect(False)
+        )
+
+    def test_five_b(self):
+        c = column('x', Boolean)
+        self.assert_compile(
+            select([c], having=c),
             "SELECT x HAVING x = 1",
             dialect=self._dialect(False)
         )

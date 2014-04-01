@@ -1,7 +1,7 @@
 from sqlalchemy.sql import operators
 from sqlalchemy import MetaData, null, exists, text, union, literal, \
     literal_column, func, between, Unicode, desc, and_, bindparam, \
-    select, distinct, or_, collate, insert, Integer, String
+    select, distinct, or_, collate, insert, Integer, String, Boolean
 from sqlalchemy import inspect
 from sqlalchemy import exc as sa_exc, util
 from sqlalchemy.sql import compiler, table, column
@@ -2549,4 +2549,58 @@ class ExecutionOptionsTest(QueryTest):
         q1 = sess.query(User).execution_options(**execution_options)
         q1.all()
 
+
+class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    """test standalone booleans being wrapped in an AsBoolean, as well
+    as true/false compilation."""
+
+    def _dialect(self, native_boolean):
+        d = default.DefaultDialect()
+        d.supports_native_boolean = native_boolean
+        return d
+
+    def test_one(self):
+        s = Session()
+        c = column('x', Boolean)
+        self.assert_compile(
+            s.query(c).filter(c),
+            "SELECT x AS x WHERE x",
+            dialect=self._dialect(True)
+        )
+
+    def test_two(self):
+        s = Session()
+        c = column('x', Boolean)
+        self.assert_compile(
+            s.query(c).filter(c),
+            "SELECT x AS x WHERE x = 1",
+            dialect=self._dialect(False)
+        )
+
+    def test_three(self):
+        s = Session()
+        c = column('x', Boolean)
+        self.assert_compile(
+            s.query(c).filter(~c),
+            "SELECT x AS x WHERE x = 0",
+            dialect=self._dialect(False)
+        )
+
+    def test_four(self):
+        s = Session()
+        c = column('x', Boolean)
+        self.assert_compile(
+            s.query(c).filter(~c),
+            "SELECT x AS x WHERE NOT x",
+            dialect=self._dialect(True)
+        )
+
+    def test_five(self):
+        s = Session()
+        c = column('x', Boolean)
+        self.assert_compile(
+            s.query(c).having(c),
+            "SELECT x AS x HAVING x = 1",
+            dialect=self._dialect(False)
+        )
 
