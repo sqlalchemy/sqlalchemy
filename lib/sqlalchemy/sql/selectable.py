@@ -14,7 +14,8 @@ from .elements import ClauseElement, TextClause, ClauseList, \
 from .elements import _clone, \
         _literal_as_text, _interpret_as_column_or_from, _expand_cloned,\
         _select_iterables, _anonymous_label, _clause_element_as_expr,\
-        _cloned_intersection, _cloned_difference, True_, _only_column_elements
+        _cloned_intersection, _cloned_difference, True_, _only_column_elements,\
+        TRUE
 from .base import Immutable, Executable, _generative, \
             ColumnCollection, ColumnSet, _from_objects, Generative
 from . import type_api
@@ -2191,12 +2192,12 @@ class Select(HasPrefixes, GenerativeSelect):
             self._raw_columns = []
 
         if whereclause is not None:
-            self._whereclause = and_(True_._singleton(), whereclause)
+            self._whereclause = _literal_as_text(whereclause).self_group(against=operators._asbool)
         else:
             self._whereclause = None
 
         if having is not None:
-            self._having = and_(True_._singleton(), having)
+            self._having = _literal_as_text(having).self_group(against=operators._asbool)
         else:
             self._having = None
 
