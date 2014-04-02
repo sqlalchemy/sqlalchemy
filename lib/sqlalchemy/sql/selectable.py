@@ -1467,8 +1467,8 @@ class SelectBase(Executable, FromClause):
             parts_alias = parts.alias()
             included_parts = included_parts.union_all(
                 select([
-                    parts_alias.c.part,
                     parts_alias.c.sub_part,
+                    parts_alias.c.part,
                     parts_alias.c.quantity
                 ]).
                     where(parts_alias.c.part==incl_alias.c.sub_part)
@@ -1479,8 +1479,6 @@ class SelectBase(Executable, FromClause):
                         func.sum(included_parts.c.quantity).
                           label('total_quantity')
                     ]).\
-                    select_from(included_parts.join(parts,
-                                included_parts.c.part==parts.c.part)).\\
                     group_by(included_parts.c.sub_part)
 
             result = conn.execute(statement).fetchall()
