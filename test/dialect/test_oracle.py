@@ -2074,3 +2074,23 @@ class DBLinkReflectionTest(fixtures.TestBase):
                 autoload_with=testing.db, oracle_resolve_synonyms=True)
         eq_(list(t.c.keys()), ['id', 'data'])
         eq_(list(t.primary_key), [t.c.id])
+
+
+class ServiceNameTest(fixtures.TestBase):
+    __only_on__ = 'oracle+cx_oracle'
+
+    def test_cx_oracle_service_name(self):
+        url_string = 'oracle+cx_oracle://scott:tiger@host/?service_name=hr'
+        eng = create_engine(url_string, _initialize=False)
+        cargs, cparams = eng.dialect.create_connect_args(eng.url)
+
+        assert 'SERVICE_NAME=hr' in cparams['dsn']
+        assert 'SID=hr' not in cparams['dsn']
+
+    def test_cx_oracle_service_name_bad(self):
+        url_string = 'oracle+cx_oracle://scott:tiger@host/hr1?service_name=hr2'
+        assert_raises(
+            exc.InvalidRequestError,
+            create_engine, url_string,
+            _initialize=False
+        )

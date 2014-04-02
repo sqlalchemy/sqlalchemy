@@ -24,6 +24,14 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, oracle
+        :pullreq: github:152
+
+        Added support for cx_oracle connections to a specific service 
+        name, as opposed to a tns name, by passing ``?service_name=<name>`` 
+        to the URL.  Pull request courtesy Sławomir Ehlert.
+
+    .. change::
         :tags: feature, mysql
         :tickets: 3155
 
