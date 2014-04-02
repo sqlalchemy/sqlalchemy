@@ -77,8 +77,8 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         parts_alias = parts.alias()
         included_parts = included_parts.union(
             select([
-                parts_alias.c.part,
                 parts_alias.c.sub_part,
+                parts_alias.c.part,
                 parts_alias.c.quantity]).\
                 where(parts_alias.c.part==incl_alias.c.sub_part)
             )
@@ -93,8 +93,8 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
                 "WITH RECURSIVE anon_1(sub_part, part, quantity) "
                 "AS (SELECT parts.sub_part AS sub_part, parts.part "
                 "AS part, parts.quantity AS quantity FROM parts "
-                "WHERE parts.part = :part_1 UNION SELECT parts_1.part "
-                "AS part, parts_1.sub_part AS sub_part, parts_1.quantity "
+                "WHERE parts.part = :part_1 UNION SELECT parts_1.sub_part AS sub_part, "
+                "parts_1.part AS part, parts_1.quantity "
                 "AS quantity FROM parts AS parts_1, anon_1 AS anon_2 "
                 "WHERE parts_1.part = anon_2.sub_part) "
                 "SELECT anon_1.sub_part, "
@@ -109,8 +109,8 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
                 "WITH anon_1(sub_part, part, quantity) "
                 "AS (SELECT parts.sub_part AS sub_part, parts.part "
                 "AS part, parts.quantity AS quantity FROM parts "
-                "WHERE parts.part = :part_1 UNION SELECT parts_1.part "
-                "AS part, parts_1.sub_part AS sub_part, parts_1.quantity "
+                "WHERE parts.part = :part_1 UNION SELECT parts_1.sub_part AS sub_part, "
+                "parts_1.part AS part, parts_1.quantity "
                 "AS quantity FROM parts AS parts_1, anon_1 AS anon_2 "
                 "WHERE parts_1.part = anon_2.sub_part) "
                 "SELECT anon_1.sub_part, "

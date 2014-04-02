@@ -530,8 +530,8 @@ class Query(object):
             parts_alias = aliased(Part, name="p")
             included_parts = included_parts.union_all(
                 session.query(
-                    parts_alias.part,
                     parts_alias.sub_part,
+                    parts_alias.part,
                     parts_alias.quantity).\\
                         filter(parts_alias.part==incl_alias.c.sub_part)
                 )
