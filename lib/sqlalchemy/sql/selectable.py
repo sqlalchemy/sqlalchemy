@@ -1478,7 +1478,7 @@ class SelectBase(Executable, FromClause):
                         included_parts.c.sub_part,
                         func.sum(included_parts.c.quantity).
                           label('total_quantity')
-                    ]).\
+                    ]).\\
                     group_by(included_parts.c.sub_part)
 
             result = conn.execute(statement).fetchall()
