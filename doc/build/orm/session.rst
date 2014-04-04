@@ -196,6 +196,28 @@ Knowing these states is important, since the
 operations (such as trying to save the same object to two different sessions
 at the same time).
 
+Getting the Current State of an Object
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The actual state of any mapped object can be viewed at any time using
+the :func:`.inspect` system::
+
+  >>> from sqlalchemy import inspect
+  >>> insp = inspect(my_object)
+  >>> insp.persistent
+  True
+
+.. seealso::
+
+    :attr:`.InstanceState.transient`
+
+    :attr:`.InstanceState.pending`
+
+    :attr:`.InstanceState.persistent`
+
+    :attr:`.InstanceState.detached`
+
+
 .. _session_faq:
 
 Session Frequently Asked Questions

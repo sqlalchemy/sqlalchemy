@@ -20,7 +20,30 @@ from .base import PASSIVE_NO_RESULT, SQL_OK, NEVER_SET, ATTR_WAS_SET, \
 from . import base
 
 class InstanceState(interfaces._InspectionAttr):
-    """tracks state information at the instance level."""
+    """tracks state information at the instance level.
+
+    The :class:`.InstanceState` is a key object used by the
+    SQLAlchemy ORM in order to track the state of an object;
+    it is created the moment an object is instantiated, typically
+    as a result of :term:`instrumentation` which SQLAlchemy applies
+    to the ``__init__()`` method of the class.
+
+    :class:`.InstanceState` is also a semi-public object,
+    available for runtime inspection as to the state of a
+    mapped instance, including information such as its current
+    status within a particular :class:`.Session` and details
+    about data on individual attributes.  The public API
+    in order to acquire a :class:`.InstanceState` object
+    is to use the :func:`.inspect` system::
+
+        >>> from sqlalchemy import inspect
+        >>> insp = inspect(some_mapped_object)
+
+    .. seealso::
+
+        :ref:`core_inspection_toplevel`
+
+    """
 
     session_id = None
     key = None
@@ -50,6 +73,9 @@ class InstanceState(interfaces._InspectionAttr):
         and history.
 
         The returned object is an instance of :class:`.AttributeState`.
+        This object allows inspection of the current data
+        within an attribute as well as attribute history
+        since the last flush.
 
         """
         return util.ImmutableProperties(
@@ -61,25 +87,50 @@ class InstanceState(interfaces._InspectionAttr):
 
     @property
     def transient(self):
-        """Return true if the object is transient."""
+        """Return true if the object is :term:`transient`.
+
+        .. seealso::
+
+            :ref:`session_object_states`
+
+        """
         return self.key is None and \
             not self._attached
 
     @property
     def pending(self):
-        """Return true if the object is pending."""
+        """Return true if the object is :term:`pending`.
+
+
+        .. seealso::
+
+            :ref:`session_object_states`
+
+        """
         return self.key is None and \
             self._attached
 
     @property
     def persistent(self):
-        """Return true if the object is persistent."""
+        """Return true if the object is :term:`persistent`.
+
+        .. seealso::
+
+            :ref:`session_object_states`
+
+            """
         return self.key is not None and \
             self._attached
 
     @property
     def detached(self):
-        """Return true if the object is detached."""
+        """Return true if the object is :term:`detached`.
+
+        .. seealso::
+
+            :ref:`session_object_states`
+
+        """
         return self.key is not None and \
             not self._attached
 
@@ -180,6 +231,17 @@ class InstanceState(interfaces._InspectionAttr):
 
     @property
     def dict(self):
+        """Return the instance dict used by the object.
+
+        Under normal circumstances, this is always synonymous
+        with the ``__dict__`` attribute of the mapped object,
+        unless an alternative instrumentation system has been
+        configured.
+
+        In the case that the actual object has been garbage
+        collected, this accessor returns a blank dictionary.
+
+        """
         o = self.obj()
         if o is not None:
             return base.instance_dict(o)
