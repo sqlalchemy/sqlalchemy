@@ -27,7 +27,7 @@ __all__ = [
 
 
 from .visitors import Visitable
-from .functions import func, modifier, FunctionElement
+from .functions import func, modifier, FunctionElement, Function
 from ..util.langhelpers import public_factory
 from .elements import ClauseElement, ColumnElement,\
   BindParameter, UnaryExpression, BooleanClauseList, \

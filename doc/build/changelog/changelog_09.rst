@@ -15,6 +15,12 @@
     :version: 0.9.5
 
     .. change::
+        :tags: bug, sql
+
+        Restored the import for :class:`.Function` to the ``sqlalchemy.sql.expression``
+        import namespace, which was removed at the beginning of 0.9.
+
+    .. change::
         :tags: bug, orm, sql
         :tickets: 3013
 
