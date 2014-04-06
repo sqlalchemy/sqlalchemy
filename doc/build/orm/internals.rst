@@ -11,16 +11,12 @@ sections, are listed here.
 .. autoclass:: sqlalchemy.orm.state.AttributeState
     :members:
 
-    :inherited-members:
-
 .. autoclass:: sqlalchemy.orm.instrumentation.ClassManager
     :members:
-
     :inherited-members:
 
 .. autoclass:: sqlalchemy.orm.properties.ColumnProperty
     :members:
-
     :inherited-members:
 
 .. autoclass:: sqlalchemy.orm.descriptor_props.CompositeProperty
@@ -41,7 +37,6 @@ sections, are listed here.
 
 .. autoclass:: sqlalchemy.orm.attributes.InstrumentedAttribute
     :members: __get__, __set__, __delete__
-
     :undoc-members:
 
 .. autodata:: sqlalchemy.orm.interfaces.MANYTOONE
@@ -58,17 +53,14 @@ sections, are listed here.
 
 .. autoclass:: sqlalchemy.orm.interfaces.PropComparator
     :members:
-
     :inherited-members:
 
 .. autoclass:: sqlalchemy.orm.properties.RelationshipProperty
     :members:
-
     :inherited-members:
 
 .. autoclass:: sqlalchemy.orm.descriptor_props.SynonymProperty
     :members:
-
     :inherited-members:
 
 .. autoclass:: sqlalchemy.orm.query.QueryContext
