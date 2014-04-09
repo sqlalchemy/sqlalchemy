@@ -2361,7 +2361,6 @@ class sessionmaker(_SessionClassMethods):
                 )
 
 
-
 def make_transient(instance):
     """Make the given instance 'transient'.
 
@@ -2389,6 +2388,41 @@ def make_transient(instance):
         del state.key
     if state.deleted:
         del state.deleted
+
+def make_transient_to_detached(instance):
+    """Make the given transient instance 'detached'.
+
+    All attribute history on the given instance
+    will be reset as though the instance were freshly loaded
+    from a query.  Missing attributes will be marked as expired.
+    The primary key attributes of the object, which are required, will be made
+    into the "key" of the instance.
+
+    The object can then be added to a session, or merged
+    possibly with the load=False flag, at which point it will look
+    as if it were loaded that way, without emitting SQL.
+
+    This is a special use case function that differs from a normal
+    call to :meth:`.Session.merge` in that a given persistent state
+    can be manufactured without any SQL calls.
+
+    .. versionadded:: 0.9.5
+
+    .. seealso::
+
+        :func:`.make_transient`
+
+    """
+    state = attributes.instance_state(instance)
+    if state.session_id or state.key:
+        raise sa_exc.InvalidRequestError(
+                    "Given object must be transient")
+    state.key = state.mapper._identity_key_from_state(state)
+    if state.deleted:
+        del state.deleted
+    state._commit_all(state.dict)
+    state._expire_attributes(state.dict, state.unloaded)
+
 
 
 def object_session(instance):

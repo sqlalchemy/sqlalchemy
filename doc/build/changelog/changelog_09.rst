@@ -15,6 +15,16 @@
     :version: 0.9.5
 
     .. change::
+        :tags: feature, orm
+        :tickets: 3017
+
+        Added new utility function :func:`.make_transient_to_detached` which can
+        be used to manufacture objects that behave as though they were loaded
+        from a session, then detached.   Attributes that aren't present
+        are marked as expired, and the object can be added to a Session
+        where it will act like a persistent one.
+
+    .. change::
         :tags: bug, sql
 
         Restored the import for :class:`.Function` to the ``sqlalchemy.sql.expression``

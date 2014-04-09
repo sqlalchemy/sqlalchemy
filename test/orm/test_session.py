@@ -5,7 +5,7 @@ from sqlalchemy.testing import pickleable
 from sqlalchemy.util import pickle
 import inspect
 from sqlalchemy.orm import create_session, sessionmaker, attributes, \
-    make_transient, Session
+    make_transient, make_transient_to_detached, Session
 import sqlalchemy as sa
 from sqlalchemy.testing import engines, config
 from sqlalchemy import testing
@@ -392,6 +392,51 @@ class SessionUtilTest(_fixtures.FixtureTest):
         sess.flush()
         make_transient(u1)
         sess.rollback()
+
+    def test_make_transient_to_detached(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        sess = Session()
+        u1 = User(id=1, name='test')
+        sess.add(u1)
+        sess.commit()
+        sess.close()
+
+        u2 = User(id=1)
+        make_transient_to_detached(u2)
+        assert 'id' in u2.__dict__
+        sess.add(u2)
+        eq_(u2.name, "test")
+
+    def test_make_transient_to_detached_no_session_allowed(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        sess = Session()
+        u1 = User(id=1, name='test')
+        sess.add(u1)
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Given object must be transient",
+            make_transient_to_detached, u1
+        )
+
+    def test_make_transient_to_detached_no_key_allowed(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        sess = Session()
+        u1 = User(id=1, name='test')
+        sess.add(u1)
+        sess.commit()
+        sess.expunge(u1)
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Given object must be transient",
+            make_transient_to_detached, u1
+        )
+
 
 class SessionStateTest(_fixtures.FixtureTest):
     run_inserts = None

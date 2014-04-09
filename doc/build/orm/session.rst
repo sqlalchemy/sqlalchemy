@@ -2475,6 +2475,8 @@ Session Utilites
 
 .. autofunction:: make_transient
 
+.. autofunction:: make_transient_to_detached
+
 .. autofunction:: object_session
 
 .. autofunction:: sqlalchemy.orm.util.was_deleted

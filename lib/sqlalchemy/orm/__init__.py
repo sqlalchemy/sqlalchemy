@@ -56,7 +56,8 @@ from .session import (
     Session,
     object_session,
     sessionmaker,
-    make_transient
+    make_transient,
+    make_transient_to_detached
 )
 from .scoping import (
     scoped_session
