@@ -2043,7 +2043,7 @@ entire database interaction is rolled back::
             self.connection = engine.connect()
 
             # begin a non-ORM transaction
-            self.trans = connection.begin()
+            self.trans = self.connection.begin()
 
             # bind an individual Session to the connection
             self.session = Session(bind=self.connection)
