@@ -496,7 +496,9 @@ class PGDialect_psycopg2(PGDialect):
                 'cursor already closed',
                 # not sure where this path is originally from, it may
                 # be obsolete.   It really says "losed", not "closed".
-                'losed the connection unexpectedly'
+                'losed the connection unexpectedly',
+                # this can occur in newer SSL
+                'connection has been closed unexpectedly'
             ]:
                 idx = str_e.find(msg)
                 if idx >= 0 and '"' not in str_e[:idx]:
