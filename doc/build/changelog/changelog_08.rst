@@ -9,6 +9,18 @@
         :start-line: 5
 
 .. changelog::
+    :version: 0.8.7
+
+    .. change::
+        :tags: bug, postgresql
+        :pullreq: bitbucket:13
+        :versions: 0.9.5
+
+        Added a new "disconnect" message "connection has been closed unexpectedly".
+        This appears to be related to newer versions of SSL.
+        Pull request courtesy Antti Haapala.
+
+.. changelog::
     :version: 0.8.6
     :released: March 28, 2014
 
