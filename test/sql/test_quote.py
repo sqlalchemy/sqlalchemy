@@ -443,6 +443,15 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
                 '"Anon".Col1 = :Col1_1'
         )
 
+    def test_simple_order_by_label(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('col1', Integer))
+        cl = t1.c.col1.label('ShouldQuote')
+        self.assert_compile(
+            select([cl]).order_by(cl),
+            'SELECT t1.col1 AS "ShouldQuote" FROM t1 ORDER BY "ShouldQuote"'
+        )
+
     def test_join(self):
         # Lower case names, should not quote
         metadata = MetaData()

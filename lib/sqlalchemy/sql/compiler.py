@@ -521,7 +521,7 @@ class SQLCompiler(Compiled):
                         OPERATORS[operators.as_] + \
                         self.preparer.format_label(label, labelname)
         elif render_label_only:
-            return labelname
+            return self.preparer.format_label(label, labelname)
         else:
             return label.element._compiler_dispatch(self,
                                     within_columns_clause=False,

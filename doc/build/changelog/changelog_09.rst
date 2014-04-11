@@ -15,6 +15,14 @@
     :version: 0.9.5
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3020, 1068
+
+        Fixed regression introduced in 0.9 where new "ORDER BY <labelname>"
+        feature from :ticket:`1068` would not apply quoting rules to the
+        label name as rendered in the ORDER BY.
+
+    .. change::
         :tags: feature, orm
         :tickets: 3017
 
