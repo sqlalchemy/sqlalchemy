@@ -7,7 +7,6 @@ installs SQLAlchemy's testing plugin into the local environment.
 
 """
 import sys
-import imp
 
 from os import path
 for pth in ['../lib']:
