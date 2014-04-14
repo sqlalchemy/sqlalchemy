@@ -15,6 +15,15 @@
     :version: 0.9.5
 
     .. change::
+        :tags: bug, py3k, tests
+        :tickets: 2830
+        :pullreq: bitbucket:2830
+
+        Corrected for some deprecation warnings involving the ``imp``
+        module and Python 3.3 or greater, when running tests.  Pull
+        request courtesy Matt Chisholm.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3020, 1068
 
