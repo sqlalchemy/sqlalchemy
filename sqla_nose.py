@@ -7,7 +7,6 @@ installs SQLAlchemy's testing plugin into the local environment.
 
 """
 import sys
-import imp
 import nose
 import warnings
 
@@ -19,7 +18,12 @@ for pth in ['./lib']:
 # installing without importing SQLAlchemy, so that coverage includes
 # SQLAlchemy itself.
 path = "lib/sqlalchemy/testing/plugin/noseplugin.py"
-noseplugin = imp.load_source("noseplugin", path)
+if sys.version_info >= (3,3):
+    from importlib import machinery
+    noseplugin = machinery.SourceFileLoader("noseplugin", path).load_module()
+else:
+    import imp
+    noseplugin = imp.load_source("noseplugin", path)
 
 
 nose.main(addplugins=[noseplugin.NoseSQLAlchemy()])

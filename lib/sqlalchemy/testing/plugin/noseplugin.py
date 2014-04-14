@@ -12,15 +12,20 @@ way (e.g. as a package-less import).
 """
 
 import os
+import sys
 
 from nose.plugins import Plugin
 fixtures = None
 
 # no package imports yet!  this prevents us from tripping coverage
 # too soon.
-import imp
 path = os.path.join(os.path.dirname(__file__), "plugin_base.py")
-plugin_base = imp.load_source("plugin_base", path)
+if sys.version_info >= (3,3):
+    from importlib import machinery
+    plugin_base = machinery.SourceFileLoader("plugin_base", path).load_module()
+else:
+    import imp
+    plugin_base = imp.load_source("plugin_base", path)
 
 
 class NoseSQLAlchemy(Plugin):
