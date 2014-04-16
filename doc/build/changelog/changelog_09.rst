@@ -15,6 +15,14 @@
     :version: 0.9.5
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3024
+
+        Fixed bug in new :meth:`.DialectKWArgs.argument_for` method where
+        adding an argument for a construct not previously included for any
+        special arguments would fail.
+
+    .. change::
         :tags: bug, py3k, tests
         :tickets: 2830
         :pullreq: bitbucket:2830

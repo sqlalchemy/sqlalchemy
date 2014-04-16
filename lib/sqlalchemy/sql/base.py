@@ -181,6 +181,8 @@ class DialectKWArgs(object):
             raise exc.ArgumentError("Dialect '%s' does have keyword-argument "
                         "validation and defaults enabled configured" %
                         dialect_name)
+        if cls not in construct_arg_dictionary:
+            construct_arg_dictionary[cls] = {}
         construct_arg_dictionary[cls][argument_name] = default
 
     @util.memoized_property

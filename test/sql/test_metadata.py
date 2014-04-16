@@ -2626,6 +2626,17 @@ class DialectKWArgTest(fixtures.TestBase):
             idx = Index('a', 'b', 'c')
             eq_(idx.dialect_options['participating']['xyzqpr'], False)
 
+    def test_add_new_arguments_participating_no_existing(self):
+        with self._fixture():
+            PrimaryKeyConstraint.argument_for("participating", "xyzqpr", False)
+
+            pk = PrimaryKeyConstraint('a', 'b', 'c', participating_xyzqpr=True)
+
+            eq_(pk.kwargs['participating_xyzqpr'], True)
+
+            pk = PrimaryKeyConstraint('a', 'b', 'c')
+            eq_(pk.dialect_options['participating']['xyzqpr'], False)
+
     def test_add_new_arguments_nonparticipating(self):
         with self._fixture():
             assert_raises_message(
