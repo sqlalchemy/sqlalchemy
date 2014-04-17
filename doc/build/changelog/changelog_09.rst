@@ -15,6 +15,16 @@
     :version: 0.9.5
 
     .. change::
+        :tags: bug, mssql
+        :tickets: 3025
+
+        Revised the query used to determine the current default schema name
+        to use the ``database_principal_id()`` function in conjunction with
+        the ``sys.database_principals`` view so that we can determine
+        the default schema independently of the type of login in progress
+        (e.g., SQL Server, Windows, etc).
+
+    .. change::
         :tags: bug, sql
         :tickets: 3024
 
