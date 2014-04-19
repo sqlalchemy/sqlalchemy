@@ -297,6 +297,10 @@ class RawReflectionTest(fixtures.TestBase):
         assert regex.match('  PRIMARY KEY (`id`)')
         assert regex.match('  PRIMARY KEY USING BTREE (`id`)')
         assert regex.match('  PRIMARY KEY (`id`) USING BTREE')
+        assert regex.match('  PRIMARY KEY (`id`) USING BTREE KEY_BLOCK_SIZE 16')
+        assert regex.match('  PRIMARY KEY (`id`) USING BTREE KEY_BLOCK_SIZE=16')
+        assert regex.match('  PRIMARY KEY (`id`) USING BTREE KEY_BLOCK_SIZE  = 16')
+        assert not regex.match('  PRIMARY KEY (`id`) USING BTREE KEY_BLOCK_SIZE = = 16')
 
     def test_fk_reflection(self):
         regex = self.parser._re_constraint
