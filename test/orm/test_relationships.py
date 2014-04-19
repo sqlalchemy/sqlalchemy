@@ -8,7 +8,7 @@ from sqlalchemy.orm import mapper, relationship, relation, \
                     backref, create_session, configure_mappers, \
                     clear_mappers, sessionmaker, attributes,\
                     Session, composite, column_property, foreign,\
-                    remote, synonym, joinedload
+                    remote, synonym, joinedload, subqueryload
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
 from sqlalchemy.testing import eq_, startswith_, AssertsCompiledSQL, is_
 from sqlalchemy.testing import fixtures
@@ -229,6 +229,154 @@ class DependencyTwoParentTest(fixtures.MappedTest):
 
         session.delete(c)
         session.flush()
+
+
+class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
+    """Tests the ultimate join condition, a single column
+    that points to itself, e.g. within a SQL function or similar.
+    The test is against a materialized path setup.
+
+    this is an **extremely** unusual case::
+
+    Entity
+    ------
+     path -------+
+       ^         |
+       +---------+
+
+    In this case, one-to-many and many-to-one are no longer accurate.
+    Both relationships return collections.   I'm not sure if this is a good
+    idea.
+
+    """
+
+    __dialect__ = 'default'
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('entity', metadata,
+                Column('path', String(100), primary_key=True)
+            )
+
+    @classmethod
+    def setup_classes(cls):
+        class Entity(cls.Basic):
+            def __init__(self, path):
+                self.path = path
+
+
+    def _descendants_fixture(self, data=True):
+        Entity = self.classes.Entity
+        entity = self.tables.entity
+
+        m = mapper(Entity, entity, properties={
+                "descendants": relationship(Entity,
+                                primaryjoin=
+                                    remote(foreign(entity.c.path)).like(
+                                            entity.c.path.concat('/%')),
+                                viewonly=True,
+                                order_by=entity.c.path)
+            })
+        configure_mappers()
+        assert m.get_property("descendants").direction is ONETOMANY
+        if data:
+            return self._fixture()
+
+    def _anscestors_fixture(self, data=True):
+        Entity = self.classes.Entity
+        entity = self.tables.entity
+
+        m = mapper(Entity, entity, properties={
+                "anscestors": relationship(Entity,
+                                primaryjoin=
+                                    entity.c.path.like(
+                                            remote(foreign(entity.c.path)).concat('/%')),
+                                viewonly=True,
+                                order_by=entity.c.path)
+            })
+        configure_mappers()
+        assert m.get_property("anscestors").direction is ONETOMANY
+        if data:
+            return self._fixture()
+
+    def _fixture(self):
+        Entity = self.classes.Entity
+        sess = Session()
+        sess.add_all([
+            Entity("/foo"),
+            Entity("/foo/bar1"),
+            Entity("/foo/bar2"),
+            Entity("/foo/bar2/bat1"),
+            Entity("/foo/bar2/bat2"),
+            Entity("/foo/bar3"),
+            Entity("/bar"),
+            Entity("/bar/bat1")
+        ])
+        return sess
+
+    def test_descendants_lazyload(self):
+        sess = self._descendants_fixture()
+        Entity = self.classes.Entity
+        e1 = sess.query(Entity).filter_by(path="/foo").first()
+        eq_(
+            [e.path for e in e1.descendants],
+            ["/foo/bar1", "/foo/bar2", "/foo/bar2/bat1",
+                "/foo/bar2/bat2", "/foo/bar3"]
+        )
+
+    def test_anscestors_lazyload(self):
+        sess = self._anscestors_fixture()
+        Entity = self.classes.Entity
+        e1 = sess.query(Entity).filter_by(path="/foo/bar2/bat1").first()
+        eq_(
+            [e.path for e in e1.anscestors],
+            ["/foo", "/foo/bar2"]
+        )
+
+    def test_descendants_joinedload(self):
+        sess = self._descendants_fixture()
+        Entity = self.classes.Entity
+        e1 = sess.query(Entity).filter_by(path="/foo").\
+                options(joinedload(Entity.descendants)).first()
+
+        eq_(
+            [e.path for e in e1.descendants],
+            ["/foo/bar1", "/foo/bar2", "/foo/bar2/bat1",
+                "/foo/bar2/bat2", "/foo/bar3"]
+        )
+
+    def test_descendants_subqueryload(self):
+        sess = self._descendants_fixture()
+        Entity = self.classes.Entity
+        e1 = sess.query(Entity).filter_by(path="/foo").\
+                options(subqueryload(Entity.descendants)).first()
+
+        eq_(
+            [e.path for e in e1.descendants],
+            ["/foo/bar1", "/foo/bar2", "/foo/bar2/bat1",
+                "/foo/bar2/bat2", "/foo/bar3"]
+        )
+
+    def test_anscestors_joinedload(self):
+        sess = self._anscestors_fixture()
+        Entity = self.classes.Entity
+        e1 = sess.query(Entity).filter_by(path="/foo/bar2/bat1").\
+                options(joinedload(Entity.anscestors)).first()
+        eq_(
+            [e.path for e in e1.anscestors],
+            ["/foo", "/foo/bar2"]
+        )
+
+    def test_plain_join_descendants(self):
+        self._descendants_fixture(data=False)
+        Entity = self.classes.Entity
+        sess = Session()
+        self.assert_compile(
+            sess.query(Entity).join(Entity.descendants, aliased=True),
+            "SELECT entity.path AS entity_path FROM entity JOIN entity AS "
+            "entity_1 ON entity_1.path LIKE (entity.path || :path_1)"
+        )
+
 
 
 class CompositeSelfRefFKTest(fixtures.MappedTest):

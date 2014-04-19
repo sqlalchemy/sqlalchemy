@@ -15,6 +15,19 @@
     :version: 0.9.5
 
     .. change::
+        :tags: feature, orm
+        :tickets: 3029
+
+        The "primaryjoin" model has been stretched a bit further to allow
+        a join condition that is strictly from a single column to itself,
+        translated through some kind of SQL function or expression.  This
+        is kind of experimental, but the first proof of concept is a
+        "materialized path" join condition where a path string is compared
+        to itself using "like".   The :meth:`.Operators.like` operator has
+        also been added to the list of valid operators to use in a primaryjoin
+        condition.
+
+    .. change::
         :tags: feature, sql
         :tickets: 3028
 

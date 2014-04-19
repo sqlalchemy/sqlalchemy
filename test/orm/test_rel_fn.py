@@ -3,7 +3,7 @@ from sqlalchemy.testing import assert_raises_message, eq_, \
 from sqlalchemy.testing import fixtures
 from sqlalchemy.orm import relationships, foreign, remote
 from sqlalchemy import MetaData, Table, Column, ForeignKey, Integer, \
-    select, ForeignKeyConstraint, exc, func, and_
+    select, ForeignKeyConstraint, exc, func, and_, String
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
 
 
@@ -117,6 +117,10 @@ class _JoinFixtures(object):
                         ("composite_target.uid", "composite_target.oid")),
             ForeignKeyConstraint(("uid2", "oid"),
                         ("composite_target.uid", "composite_target.oid")),
+            )
+
+        cls.purely_single_col = Table('purely_single_col', m,
+            Column('path', String)
             )
 
     def _join_fixture_overlapping_three_tables(self, **kw):
@@ -439,6 +443,37 @@ class _JoinFixtures(object):
                                         self.left.c.x == 5),
                     **kw
                     )
+
+    def _join_fixture_purely_single_o2m(self, **kw):
+        return relationships.JoinCondition(
+                    self.purely_single_col,
+                    self.purely_single_col,
+                    self.purely_single_col,
+                    self.purely_single_col,
+                    support_sync=False,
+                    primaryjoin=
+                        self.purely_single_col.c.path.like(
+                            remote(
+                                foreign(
+                                    self.purely_single_col.c.path.concat('%')
+                                )
+                            )
+                        )
+                )
+
+    def _join_fixture_purely_single_m2o(self, **kw):
+        return relationships.JoinCondition(
+                    self.purely_single_col,
+                    self.purely_single_col,
+                    self.purely_single_col,
+                    self.purely_single_col,
+                    support_sync=False,
+                    primaryjoin=
+                        remote(self.purely_single_col.c.path).like(
+                            foreign(self.purely_single_col.c.path.concat('%'))
+                        )
+                )
+
 
     def _assert_non_simple_warning(self, fn):
         assert_raises_message(
@@ -829,6 +864,13 @@ class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase,
             ]
         )
 
+    def test_determine_local_remote_pairs_purely_single_col_o2m(self):
+        joincond = self._join_fixture_purely_single_o2m()
+        eq_(
+            joincond.local_remote_pairs,
+            [(self.purely_single_col.c.path, self.purely_single_col.c.path)]
+        )
+
 class DirectionTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
     def test_determine_direction_compound_2(self):
         joincond = self._join_fixture_compound_expression_2(
@@ -862,6 +904,13 @@ class DirectionTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
         joincond = self._join_fixture_m2o()
         is_(joincond.direction, MANYTOONE)
 
+    def test_determine_direction_purely_single_o2m(self):
+        joincond = self._join_fixture_purely_single_o2m()
+        is_(joincond.direction, ONETOMANY)
+
+    def test_determine_direction_purely_single_m2o(self):
+        joincond = self._join_fixture_purely_single_m2o()
+        is_(joincond.direction, MANYTOONE)
 
 class DetermineJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
