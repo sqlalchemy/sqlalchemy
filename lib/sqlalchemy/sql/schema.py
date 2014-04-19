@@ -2724,12 +2724,40 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
 
         Index("some_index", sometable.c.name, sometable.c.address)
 
-    Functional indexes are supported as well, keeping in mind that at least
-    one :class:`.Column` must be present::
+    Functional indexes are supported as well, typically by using the
+    :data:`.func` construct in conjunction with table-bound
+    :class:`.Column` objects::
 
         Index("some_index", func.lower(sometable.c.name))
 
     .. versionadded:: 0.8 support for functional and expression-based indexes.
+
+    An :class:`.Index` can also be manually associated with a :class:`.Table`,
+    either through inline declaration or using :meth:`.Table.append_constraint`.
+    When this approach is used, the names of the indexed columns can be specified
+    as strings::
+
+        Table("sometable", metadata,
+                        Column("name", String(50)),
+                        Column("address", String(100)),
+                        Index("some_index", "name", "address")
+                )
+
+    To support functional or expression-based indexes in this form, the
+    :func:`.text` construct may be used::
+
+        from sqlalchemy import text
+
+        Table("sometable", metadata,
+                        Column("name", String(50)),
+                        Column("address", String(100)),
+                        Index("some_index", text("lower(name)"))
+                )
+
+    .. versionadded:: 0.9.5 the :func:`.text` construct may be used to
+       specify :class:`.Index` expressions, provided the :class:`.Index`
+       is explicitly associated with the :class:`.Table`.
+
 
     .. seealso::
 
@@ -2785,8 +2813,6 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
                 visitors.traverse(expr, {}, {'column': cols.append})
                 if cols:
                     columns.append(cols[0])
-                else:
-                    columns.append(expr)
 
         self.expressions = expressions
         self.name = quoted_name(name, kw.pop("quote", None))
@@ -2796,7 +2822,6 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         # will call _set_parent() if table-bound column
         # objects are present
         ColumnCollectionMixin.__init__(self, *columns)
-
 
 
     def _set_parent(self, table):
@@ -2823,7 +2848,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         self.expressions = [
             expr if isinstance(expr, ClauseElement)
             else colexpr
-            for expr, colexpr in zip(self.expressions, self.columns)
+            for expr, colexpr in util.zip_longest(self.expressions, self.columns)
         ]
 
     @property
@@ -2865,7 +2890,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         return 'Index(%s)' % (
                     ", ".join(
                         [repr(self.name)] +
-                        [repr(c) for c in self.columns] +
+                        [repr(e) for e in self.expressions] +
                         (self.unique and ["unique=True"] or [])
                     ))
 

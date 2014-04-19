@@ -85,6 +85,8 @@ if py3k:
     itertools_filterfalse = itertools.filterfalse
     itertools_filter = filter
     itertools_imap = map
+    from itertools import zip_longest
+
 
     import base64
     def b64encode(x):
@@ -147,6 +149,8 @@ else:
     itertools_filterfalse = itertools.ifilterfalse
     itertools_filter = itertools.ifilter
     itertools_imap = itertools.imap
+    from itertools import izip_longest as zip_longest
+
 
 
 import time

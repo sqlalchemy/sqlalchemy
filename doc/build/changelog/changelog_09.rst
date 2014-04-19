@@ -15,6 +15,16 @@
     :version: 0.9.5
 
     .. change::
+        :tags: feature, sql
+        :tickets: 3028
+
+        Liberalized the contract for :class:`.Index` a bit in that you can
+        specify a :func:`.text` expression as the target; the index no longer
+        needs to have a table-bound column present if the index is to be
+        manually added to the table, either via inline declaration or via
+        :meth:`.Table.append_constraint`.
+
+    .. change::
         :tags: bug, mssql
         :tickets: 3025
 

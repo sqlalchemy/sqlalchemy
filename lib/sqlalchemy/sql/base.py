@@ -489,6 +489,9 @@ class ColumnCollection(util.OrderedProperties):
         for this dictionary.
 
         """
+        if not column.key:
+            raise exc.ArgumentError(
+                        "Can't add unnamed column to column collection")
         self[column.key] = column
 
     def __delitem__(self, key):

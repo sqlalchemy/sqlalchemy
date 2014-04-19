@@ -7,7 +7,7 @@ from sqlalchemy import Integer, String, UniqueConstraint, \
     CheckConstraint, ForeignKey, MetaData, Sequence, \
     ForeignKeyConstraint, PrimaryKeyConstraint, ColumnDefault, Index, event,\
     events, Unicode, types as sqltypes, bindparam, \
-    Table, Column, Boolean, Enum
+    Table, Column, Boolean, Enum, func, text
 from sqlalchemy import schema, exc
 import sqlalchemy as tsa
 from sqlalchemy.testing import fixtures
@@ -451,7 +451,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                 "Column('x', String(), table=<bar>), schema=None)"),
             (schema.DefaultGenerator(for_update=True),
                 "DefaultGenerator(for_update=True)"),
-            (schema.Index("bar", "c"), "Index('bar')"),
+            (schema.Index("bar", "c"), "Index('bar', 'c')"),
             (i1, "Index('bar', Column('x', Integer(), table=<foo>))"),
             (schema.FetchedValue(), "FetchedValue()"),
             (ck,
@@ -1439,6 +1439,73 @@ class UseExistingTest(fixtures.TablesTest):
                         Column('foo', Integer),
                       extend_existing=True)
         assert "foo" in users.c
+
+class IndexTest(fixtures.TestBase):
+    def _assert(self, t, i, columns=True):
+        eq_(t.indexes, set([i]))
+        if columns:
+            eq_(list(i.columns), [t.c.x])
+        else:
+            eq_(list(i.columns), [])
+        assert i.table is t
+
+    def test_separate_decl_columns(self):
+        m = MetaData()
+        t = Table('t', m, Column('x', Integer))
+        i = Index('i', t.c.x)
+        self._assert(t, i)
+
+    def test_separate_decl_columns_functional(self):
+        m = MetaData()
+        t = Table('t', m, Column('x', Integer))
+        i = Index('i', func.foo(t.c.x))
+        self._assert(t, i)
+
+    def test_inline_decl_columns(self):
+        m = MetaData()
+        c = Column('x', Integer)
+        i = Index('i', c)
+        t = Table('t', m, c, i)
+        self._assert(t, i)
+
+    def test_inline_decl_columns_functional(self):
+        m = MetaData()
+        c = Column('x', Integer)
+        i = Index('i', func.foo(c))
+        t = Table('t', m, c, i)
+        self._assert(t, i)
+
+    def test_inline_decl_string(self):
+        m = MetaData()
+        i = Index('i', "x")
+        t = Table('t', m, Column('x', Integer), i)
+        self._assert(t, i)
+
+    def test_inline_decl_textonly(self):
+        m = MetaData()
+        i = Index('i', text("foobar(x)"))
+        t = Table('t', m, Column('x', Integer), i)
+        self._assert(t, i, columns=False)
+
+    def test_separate_decl_textonly(self):
+        m = MetaData()
+        i = Index('i', text("foobar(x)"))
+        t = Table('t', m, Column('x', Integer))
+        t.append_constraint(i)
+        self._assert(t, i, columns=False)
+
+    def test_unnamed_column_exception(self):
+        # this can occur in some declarative situations
+        c = Column(Integer)
+        idx = Index('q', c)
+        m = MetaData()
+        t = Table('t', m, Column('q'))
+        assert_raises_message(
+            exc.ArgumentError,
+            "Can't add unnamed column to column collection",
+            t.append_constraint, idx
+        )
+
 
 class ConstraintTest(fixtures.TestBase):
     def _single_fixture(self):

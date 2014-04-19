@@ -10,7 +10,7 @@ from .compat import callable, cmp, reduce,  \
     raise_from_cause, text_type, string_types, int_types, binary_type, \
     quote_plus, with_metaclass, print_, itertools_filterfalse, u, ue, b,\
     unquote_plus, unquote, b64decode, b64encode, byte_buffer, itertools_filter,\
-    iterbytes, StringIO, inspect_getargspec
+    iterbytes, StringIO, inspect_getargspec, zip_longest
 
 from ._collections import KeyedTuple, ImmutableContainer, immutabledict, \
     Properties, OrderedProperties, ImmutableProperties, OrderedDict, \

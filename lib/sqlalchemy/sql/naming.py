@@ -158,8 +158,9 @@ def _constraint_name(const, table):
         metadata = table.metadata
         convention = _get_convention(metadata.naming_convention, type(const))
         if convention is not None:
-            newname = conv(
-                        convention % ConventionDict(const, table, metadata.naming_convention)
-                        )
-            if const.name is None:
-                const.name = newname
+            if const.name is None or "constraint_name" in convention:
+                newname = conv(
+                            convention % ConventionDict(const, table, metadata.naming_convention)
+                            )
+                if const.name is None:
+                    const.name = newname

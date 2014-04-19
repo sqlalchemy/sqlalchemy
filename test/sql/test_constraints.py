@@ -1,7 +1,7 @@
 from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy import Table, Integer, String, Column, PrimaryKeyConstraint,\
     ForeignKeyConstraint, ForeignKey, UniqueConstraint, Index, MetaData, \
-    CheckConstraint, func
+    CheckConstraint, func, text
 from sqlalchemy import exc, schema
 from sqlalchemy.testing import fixtures, AssertsExecutionResults, \
                     AssertsCompiledSQL
@@ -323,7 +323,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
 class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
-    def test_create_plain(self):
+    def test_create_index_plain(self):
         t = Table('t', MetaData(), Column('x', Integer))
         i = Index("xyz", t.c.x)
         self.assert_compile(
@@ -331,19 +331,19 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE INDEX xyz ON t (x)"
         )
 
-    def test_drop_plain_unattached(self):
+    def test_drop_index_plain_unattached(self):
         self.assert_compile(
             schema.DropIndex(Index(name="xyz")),
             "DROP INDEX xyz"
         )
 
-    def test_drop_plain(self):
+    def test_drop_index_plain(self):
         self.assert_compile(
             schema.DropIndex(Index(name="xyz")),
             "DROP INDEX xyz"
         )
 
-    def test_create_schema(self):
+    def test_create_index_schema(self):
         t = Table('t', MetaData(), Column('x', Integer), schema="foo")
         i = Index("xyz", t.c.x)
         self.assert_compile(
@@ -351,7 +351,7 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE INDEX xyz ON foo.t (x)"
         )
 
-    def test_drop_schema(self):
+    def test_drop_index_schema(self):
         t = Table('t', MetaData(), Column('x', Integer), schema="foo")
         i = Index("xyz", t.c.x)
         self.assert_compile(
@@ -360,7 +360,7 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
-    def test_too_long_idx_name(self):
+    def test_too_long_index_name(self):
         dialect = testing.db.dialect.__class__()
 
         for max_ident, max_index in [(22, None), (256, 22)]:
@@ -413,6 +413,32 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE INDEX y ON x (lower(q))",
             dialect=testing.db.dialect
         )
+
+    def test_index_against_text_separate(self):
+        metadata = MetaData()
+        idx = Index('y', text("some_function(q)"))
+        t = Table('x', metadata,
+                Column('q', String(50))
+            )
+        t.append_constraint(idx)
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX y ON x (some_function(q))"
+        )
+
+    def test_index_against_text_inline(self):
+        metadata = MetaData()
+        idx = Index('y', text("some_function(q)"))
+        x = Table('x', metadata,
+                Column('q', String(50)),
+                idx
+            )
+
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX y ON x (some_function(q))"
+        )
+
 
     def test_index_declaration_inline(self):
         metadata = MetaData()
@@ -933,9 +959,6 @@ class ConstraintAPITest(fixtures.TestBase):
 
 
     def test_no_warning_w_no_columns(self):
-        # I think the test here is, there is no warning.
-        # people want to create empty indexes for the purpose of
-        # a drop.
         idx = Index(name="foo")
 
         assert_raises_message(
