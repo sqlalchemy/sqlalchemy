@@ -501,27 +501,29 @@ class Session(_SessionClassMethods):
             :ref:`session_autocommit`
 
         :param autoflush: When ``True``, all query operations will issue a
-           ``flush()`` call to this ``Session`` before proceeding. This is a
-           convenience feature so that ``flush()`` need not be called
-           repeatedly in order for database queries to retrieve results. It's
-           typical that ``autoflush`` is used in conjunction with
+           :meth:`~.Session.flush` call to this ``Session`` before proceeding. 
+           This is a convenience feature so that :meth:`~.Session.flush` need 
+           not be called repeatedly in order for database queries to retrieve 
+           results. It's typical that ``autoflush`` is used in conjunction with
            ``autocommit=False``. In this scenario, explicit calls to
-           ``flush()`` are rarely needed; you usually only need to call
-           ``commit()`` (which flushes) to finalize changes.
+           :meth:`~.Session.flush` are rarely needed; you usually only need to 
+           call :meth:`~.Session.commit` (which flushes) to finalize changes.
 
-        :param bind: An optional ``Engine`` or ``Connection`` to which this
-           ``Session`` should be bound. When specified, all SQL operations
-           performed by this session will execute via this connectable.
+        :param bind: An optional :class:`.Engine` or :class:`.Connection` to 
+           which this ``Session`` should be bound. When specified, all SQL 
+           operations performed by this session will execute via this 
+           connectable.
 
         :param binds: An optional dictionary which contains more granular
            "bind" information than the ``bind`` parameter provides. This
-           dictionary can map individual ``Table`` instances as well as
-           ``Mapper`` instances to individual ``Engine`` or ``Connection``
-           objects. Operations which proceed relative to a particular
-           ``Mapper`` will consult this dictionary for the direct ``Mapper``
-           instance as well as the mapper's ``mapped_table`` attribute in
-           order to locate an connectable to use. The full resolution is
-           described in the ``get_bind()`` method of ``Session``.
+           dictionary can map individual :class`.Table` 
+           instances as well as :class:`~.Mapper` instances to individual 
+           :class:`.Engine` or :class:`.Connection` objects. Operations which 
+           proceed relative to a particular :class:`.Mapper` will consult this 
+           dictionary for the direct :class:`.Mapper` instance as 
+           well as the mapper's ``mapped_table`` attribute in order to locate a 
+           connectable to use. The full resolution is described in the 
+           :meth:`.Session.get_bind`.
            Usage looks like::
 
             Session = sessionmaker(binds={
@@ -536,7 +538,7 @@ class Session(_SessionClassMethods):
         :param \class_: Specify an alternate class other than
            ``sqlalchemy.orm.session.Session`` which should be used by the
            returned class. This is the only argument that is local to the
-           ``sessionmaker()`` function, and is not sent directly to the
+           :class:`.sessionmaker` function, and is not sent directly to the
            constructor for ``Session``.
 
         :param _enable_transaction_accounting:  Defaults to ``True``.  A
@@ -544,12 +546,12 @@ class Session(_SessionClassMethods):
            object accounting on transaction boundaries, including auto-expiry
            of instances on rollback and commit, maintenance of the "new" and
            "deleted" lists upon rollback, and autoflush of pending changes upon
-           begin(), all of which are interdependent.
+           :meth:`~.Session.begin`, all of which are interdependent.
 
         :param expire_on_commit:  Defaults to ``True``. When ``True``, all
-           instances will be fully expired after each ``commit()``, so that
-           all attribute/object access subsequent to a completed transaction
-           will load from the most recent database state.
+           instances will be fully expired after each :meth:`~.commit`, 
+           so that all attribute/object access subsequent to a completed 
+           transaction will load from the most recent database state.
 
         :param extension: An optional
            :class:`~.SessionExtension` instance, or a list
@@ -558,16 +560,17 @@ class Session(_SessionClassMethods):
            Please see :class:`.SessionEvents`.
 
         :param query_cls:  Class which should be used to create new Query
-           objects, as returned by the ``query()`` method. Defaults to
-           :class:`~sqlalchemy.orm.query.Query`.
+           objects, as returned by the :meth:`~.Session.query` method. Defaults 
+           to :class:`.Query`.
 
         :param twophase:  When ``True``, all transactions will be started as
             a "two phase" transaction, i.e. using the "two phase" semantics
-            of the database in use along with an XID.  During a ``commit()``,
-            after ``flush()`` has been issued for all attached databases, the
-            ``prepare()`` method on each database's ``TwoPhaseTransaction``
-            will be called. This allows each database to roll back the entire
-            transaction, before each transaction is committed.
+            of the database in use along with an XID.  During a 
+            :meth:`~.commit`, after :meth:`~.flush` has been issued for all 
+            attached databases, the :meth:`~.TwoPhaseTransaction.prepare` method
+            on each database's :class:`.TwoPhaseTransaction` will be called. 
+            This allows each database to roll back the entire transaction, 
+            before each transaction is committed.
 
         :param weak_identity_map:  Defaults to ``True`` - when set to
            ``False``, objects placed in the :class:`.Session` will be
@@ -623,7 +626,7 @@ class Session(_SessionClassMethods):
     """The current active or inactive :class:`.SessionTransaction`."""
 
     def begin(self, subtransactions=False, nested=False):
-        """Begin a transaction on this Session.
+        """Begin a transaction on this :class:`.Session`.
 
         If this Session is already within a transaction, either a plain
         transaction or nested transaction, an error is raised, unless
@@ -672,7 +675,7 @@ class Session(_SessionClassMethods):
         This method rolls back the current transaction or nested transaction
         regardless of subtransactions being in effect.  All subtransactions up
         to the first real transaction are closed.  Subtransactions occur when
-        begin() is called multiple times.
+        :meth:`.begin` is called multiple times.
 
         .. seealso::
 
@@ -979,7 +982,7 @@ class Session(_SessionClassMethods):
           A mapper instance or mapped class
 
         bind
-          Any Connectable: a ``Engine`` or ``Connection``.
+          Any Connectable: a :class:`.Engine` or :class:`.Connection`.
 
         All subsequent operations involving this mapper will use the given
         `bind`.
@@ -996,12 +999,12 @@ class Session(_SessionClassMethods):
         """Bind operations on a Table to a Connectable.
 
         table
-          A ``Table`` instance
+          A :class:`.Table` instance
 
         bind
-          Any Connectable: a ``Engine`` or ``Connection``.
+          Any Connectable: a :class:`.Engine` or :class:`.Connection`.
 
-        All subsequent operations involving this ``Table`` will use the
+        All subsequent operations involving this :class:`.Table` will use the 
         given `bind`.
 
         """
@@ -1102,7 +1105,8 @@ class Session(_SessionClassMethods):
             ', '.join(context)))
 
     def query(self, *entities, **kwargs):
-        """Return a new ``Query`` object corresponding to this ``Session``."""
+        """Return a new :class:`.Query` object corresponding to this 
+        :class:`.Session`."""
 
         return self._query_cls(entities, self, **kwargs)
 
