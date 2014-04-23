@@ -469,8 +469,8 @@ subselect back to the parent ``companies`` table.
    :func:`.orm.aliased` and :func:`.orm.with_polymorphic` constructs in conjunction
    with :meth:`.Query.join`, ``any()`` and ``has()``.
 
-Eager Loading of Specific Subtypes
-++++++++++++++++++++++++++++++++++
+Eager Loading of Specific or Polymorphic Subtypes
+++++++++++++++++++++++++++++++++++++++++++++++++++
 
 The :func:`.joinedload` and :func:`.subqueryload` options also support
 paths which make use of :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type`.
@@ -484,10 +484,26 @@ objects, querying the ``employee`` and ``engineer`` tables simultaneously::
             )
         )
 
+As is the case with :meth:`.Query.join`, :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type`
+also can be used with eager loading and :func:`.orm.with_polymorphic`
+at the same time, so that all sub-attributes of all referenced subtypes
+can be loaded::
+
+    manager_and_engineer = with_polymorphic(
+                                Employee, [Manager, Engineer],
+                                aliased=True)
+
+    session.query(Company).\
+        options(
+            joinedload(Company.employees.of_type(manager_and_engineer))
+            )
+        )
+
 .. versionadded:: 0.8
     :func:`.joinedload` and :func:`.subqueryload` support
     paths that are qualified with
-    :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type`.
+    :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type`, supporting
+    single target types as well as :func:`.orm.with_polymorphic` targets.
 
 Single Table Inheritance
 ------------------------
