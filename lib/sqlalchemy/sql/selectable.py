@@ -1562,9 +1562,9 @@ class GenerativeSelect(SelectBase):
                 self._execution_options.union(
                   {'autocommit': autocommit})
         if limit is not None:
-            self._limit = util.asint(limit)
+            self._limit = limit
         if offset is not None:
-            self._offset = util.asint(offset)
+            self._offset = offset
         self._bind = bind
 
         if order_by is not None:
@@ -1644,14 +1644,14 @@ class GenerativeSelect(SelectBase):
         """return a new selectable with the given LIMIT criterion
         applied."""
 
-        self._limit = util.asint(limit)
+        self._limit = limit
 
     @_generative
     def offset(self, offset):
         """return a new selectable with the given OFFSET criterion
         applied."""
 
-        self._offset = util.asint(offset)
+        self._offset = offset
 
     @_generative
     def order_by(self, *clauses):
@@ -1711,6 +1711,12 @@ class GenerativeSelect(SelectBase):
                 clauses = list(self._group_by_clause) + list(clauses)
             self._group_by_clause = ClauseList(*clauses)
 
+
+    def _copy_internals(self, clone=_clone, **kw):
+        if isinstance(self._limit, ClauseElement):
+            self._limit = clone(self._limit)
+        if isinstance(self._offset, ClauseElement):
+            self._offset = clone(self._offset)
 
 class CompoundSelect(GenerativeSelect):
     """Forms the basis of ``UNION``, ``UNION ALL``, and other
@@ -1930,6 +1936,7 @@ class CompoundSelect(GenerativeSelect):
                 "addition of columns to underlying selectables")
 
     def _copy_internals(self, clone=_clone, **kw):
+        super(CompoundSelect, self)._copy_internals(clone, **kw)
         self._reset_exported()
         self.selects = [clone(s, **kw) for s in self.selects]
         if hasattr(self, '_col_map'):
@@ -2380,6 +2387,7 @@ class Select(HasPrefixes, GenerativeSelect):
         return False
 
     def _copy_internals(self, clone=_clone, **kw):
+        super(Select, self)._copy_internals(clone, **kw)
 
         # Select() object has been cloned and probably adapted by the
         # given clone function.  Apply the cloning function to internal

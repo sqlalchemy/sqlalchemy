@@ -29,6 +29,7 @@ from .. import util, exc
 import decimal
 import itertools
 import operator
+from sqlalchemy.sql.elements import _literal_as_binds
 
 RESERVED_WORDS = set([
     'all', 'analyse', 'analyze', 'and', 'any', 'array',
@@ -1625,11 +1626,11 @@ class SQLCompiler(Compiled):
     def limit_clause(self, select):
         text = ""
         if select._limit is not None:
-            text += "\n LIMIT " + self.process(elements.literal(select._limit))
+            text += "\n LIMIT " + self.process(_literal_as_binds(select._limit))
         if select._offset is not None:
             if select._limit is None:
                 text += "\n LIMIT -1"
-            text += " OFFSET " + self.process(elements.literal(select._offset))
+            text += " OFFSET " + self.process(_literal_as_binds(select._offset))
         return text
 
     def visit_table(self, table, asfrom=False, iscrud=False, ashint=False,

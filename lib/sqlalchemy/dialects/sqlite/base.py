@@ -185,6 +185,7 @@ from ... import types as sqltypes, schema as sa_schema
 from ... import util
 from ...engine import default, reflection
 from ...sql import compiler
+from sqlalchemy.sql.elements import _literal_as_binds
 
 from ...types import (BLOB, BOOLEAN, CHAR, DATE, DECIMAL, FLOAT, INTEGER, REAL,
                       NUMERIC, SMALLINT, TEXT, TIMESTAMP, VARCHAR)
@@ -520,11 +521,11 @@ class SQLiteCompiler(compiler.SQLCompiler):
     def limit_clause(self, select):
         text = ""
         if select._limit is not None:
-            text += "\n LIMIT " + self.process(sql.literal(select._limit))
+            text += "\n LIMIT " + self.process(_literal_as_binds(select._limit))
         if select._offset is not None:
             if select._limit is None:
                 text += "\n LIMIT " + self.process(sql.literal(-1))
-            text += " OFFSET " + self.process(sql.literal(select._offset))
+            text += " OFFSET " + self.process(_literal_as_binds(select._offset))
         else:
             text += " OFFSET " + self.process(sql.literal(0))
         return text

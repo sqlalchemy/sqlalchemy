@@ -76,7 +76,7 @@ from sqlalchemy import exc, types as sqltypes, sql, util
 from sqlalchemy.sql import expression
 from sqlalchemy.engine import base, default, reflection
 from sqlalchemy.sql import compiler
-
+from sqlalchemy.sql.elements import _literal_as_binds
 
 from sqlalchemy.types import (BIGINT, BLOB, DATE, FLOAT, INTEGER, NUMERIC,
                               SMALLINT, TEXT, TIME, TIMESTAMP, Integer)
@@ -301,9 +301,9 @@ class FBCompiler(sql.compiler.SQLCompiler):
 
         result = ""
         if select._limit:
-            result += "FIRST %s " % self.process(sql.literal(select._limit))
+            result += "FIRST %s " % self.process(_literal_as_binds(select._limit))
         if select._offset:
-            result += "SKIP %s " % self.process(sql.literal(select._offset))
+            result += "SKIP %s " % self.process(_literal_as_binds(select._offset))
         if select._distinct:
             result += "DISTINCT "
         return result

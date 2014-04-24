@@ -346,6 +346,7 @@ from ... import sql, schema, exc, util
 from ...engine import default, reflection
 from ...sql import compiler, expression, operators
 from ... import types as sqltypes
+from sqlalchemy.sql.elements import _literal_as_binds
 
 try:
     from uuid import UUID as _python_UUID
@@ -1144,11 +1145,11 @@ class PGCompiler(compiler.SQLCompiler):
     def limit_clause(self, select):
         text = ""
         if select._limit is not None:
-            text += " \n LIMIT " + self.process(sql.literal(select._limit))
+            text += " \n LIMIT " + self.process(_literal_as_binds(select._limit))
         if select._offset is not None:
             if select._limit is None:
                 text += " \n LIMIT ALL"
-            text += " OFFSET " + self.process(sql.literal(select._offset))
+            text += " OFFSET " + self.process(_literal_as_binds(select._offset))
         return text
 
     def format_from_hint_text(self, sqltext, table, hint, iscrud):
