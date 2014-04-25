@@ -10,7 +10,7 @@ SQL tables and derived rowsets.
 """
 
 from .elements import ClauseElement, TextClause, ClauseList, \
-        and_, Grouping, UnaryExpression, literal_column
+        and_, Grouping, UnaryExpression, literal_column, _literal_as_binds, BindParameter, Null
 from .elements import _clone, \
         _literal_as_text, _interpret_as_column_or_from, _expand_cloned,\
         _select_iterables, _anonymous_label, _clause_element_as_expr,\
@@ -28,6 +28,8 @@ import operator
 import collections
 from .annotation import Annotated
 import itertools
+from sqlalchemy.sql.visitors import Visitable
+
 
 def _interpret_as_from(element):
     insp = inspection.inspect(element, raiseerr=False)
@@ -45,6 +47,22 @@ def _interpret_as_select(element):
     if not isinstance(element, Select):
         element = element.select()
     return element
+
+def _offset_or_limit_clause(element, name=None, type_=None):
+    """
+    If the element is a custom clause of some sort, returns (None, element)
+    If the element is a BindParameter, return (element.effective_value, element)
+    Otherwise, assume element is an int and create a new bindparam and return (asint(element), BindParameter(...))
+    """
+    if element is None:
+        return None
+    if hasattr(element, '__clause_element__'):
+        return element.__clause_element__()
+    if isinstance(element, Visitable):
+        return element
+
+    value = util.asint(element)
+    return BindParameter(name, value, type_=type_, unique=True)
 
 def subquery(alias, *args, **kwargs):
     """Return an :class:`.Alias` object derived
@@ -1536,8 +1554,8 @@ class GenerativeSelect(SelectBase):
     """
     _order_by_clause = ClauseList()
     _group_by_clause = ClauseList()
-    _limit = None
-    _offset = None
+    _limit_clause = None
+    _offset_clause = None
     _for_update_arg = None
 
     def __init__(self,
@@ -1562,9 +1580,9 @@ class GenerativeSelect(SelectBase):
                 self._execution_options.union(
                   {'autocommit': autocommit})
         if limit is not None:
-            self._limit = limit
+            self._limit_clause = _offset_or_limit_clause(limit)
         if offset is not None:
-            self._offset = offset
+            self._offset_clause = _offset_or_limit_clause(offset)
         self._bind = bind
 
         if order_by is not None:
@@ -1639,19 +1657,31 @@ class GenerativeSelect(SelectBase):
         """
         self.use_labels = True
 
+    @property
+    def _limit(self):
+        if not isinstance(self._limit_clause, BindParameter):
+            return None
+        return util.asint(self._limit_clause.effective_value)
+
+    @property
+    def _offset(self):
+        if not isinstance(self._offset_clause, BindParameter):
+            return None
+        return util.asint(self._offset_clause.effective_value)
+
     @_generative
     def limit(self, limit):
         """return a new selectable with the given LIMIT criterion
         applied."""
 
-        self._limit = limit
+        self._limit_clause = _offset_or_limit_clause(limit)
 
     @_generative
     def offset(self, offset):
         """return a new selectable with the given OFFSET criterion
         applied."""
 
-        self._offset = offset
+        self._offset_clause = _offset_or_limit_clause(offset)
 
     @_generative
     def order_by(self, *clauses):
@@ -1713,10 +1743,10 @@ class GenerativeSelect(SelectBase):
 
 
     def _copy_internals(self, clone=_clone, **kw):
-        if isinstance(self._limit, ClauseElement):
-            self._limit = clone(self._limit)
-        if isinstance(self._offset, ClauseElement):
-            self._offset = clone(self._offset)
+        if self._limit_clause is not None:
+            self._limit_clause = clone(self._limit_clause, **kw)
+        if self._offset_clause is not None:
+            self._offset_clause = clone(self._offset_clause, **kw)
 
 class CompoundSelect(GenerativeSelect):
     """Forms the basis of ``UNION``, ``UNION ALL``, and other

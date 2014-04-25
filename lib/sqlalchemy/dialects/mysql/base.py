@@ -1568,15 +1568,15 @@ class MySQLCompiler(compiler.SQLCompiler):
         # The latter is more readable for offsets but we're stuck with the
         # former until we can refine dialects by server revision.
 
-        limit, offset = select._limit, select._offset
+        limit_clause, offset_clause = select._limit_clause, select._offset_clause
 
-        if (limit, offset) == (None, None):
+        if (limit_clause, offset_clause) == (None, None):
             return ''
-        elif offset is not None:
+        elif offset_clause is not None:
             # As suggested by the MySQL docs, need to apply an
             # artificial limit if one wasn't provided
             # http://dev.mysql.com/doc/refman/5.0/en/select.html
-            if limit is None:
+            if limit_clause is None:
                 # hardwire the upper limit.  Currently
                 # needed by OurSQL with Python 3
                 # (https://bugs.launchpad.net/oursql/+bug/686232),
@@ -1584,15 +1584,15 @@ class MySQLCompiler(compiler.SQLCompiler):
                 # bound as part of MySQL's "syntax" for OFFSET with
                 # no LIMIT
                 return ' \n LIMIT %s, %s' % (
-                                self.process(sql.literal(offset)),
+                                self.process(offset_clause),
                                 "18446744073709551615")
             else:
                 return ' \n LIMIT %s, %s' % (
-                                self.process(sql.literal(offset)),
-                                self.process(sql.literal(limit)))
+                                self.process(offset_clause),
+                                self.process(limit_clause))
         else:
             # No offset provided, so just use the limit
-            return ' \n LIMIT %s' % (self.process(sql.literal(limit)),)
+            return ' \n LIMIT %s' % (self.process(limit_clause),)
 
     def update_limit_clause(self, update_stmt):
         limit = update_stmt.kwargs.get('%s_limit' % self.dialect.name, None)

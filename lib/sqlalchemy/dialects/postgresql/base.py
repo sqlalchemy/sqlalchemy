@@ -1144,12 +1144,12 @@ class PGCompiler(compiler.SQLCompiler):
 
     def limit_clause(self, select):
         text = ""
-        if select._limit is not None:
-            text += " \n LIMIT " + self.process(_literal_as_binds(select._limit))
-        if select._offset is not None:
-            if select._limit is None:
+        if select._limit_clause is not None:
+            text += " \n LIMIT " + self.process(select._limit_clause)
+        if select._offset_clause is not None:
+            if select._limit_clause is None:
                 text += " \n LIMIT ALL"
-            text += " OFFSET " + self.process(_literal_as_binds(select._offset))
+            text += " OFFSET " + self.process(select._offset_clause)
         return text
 
     def format_from_hint_text(self, sqltext, table, hint, iscrud):
