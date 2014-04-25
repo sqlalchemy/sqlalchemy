@@ -76,7 +76,6 @@ from sqlalchemy import exc, types as sqltypes, sql, util
 from sqlalchemy.sql import expression
 from sqlalchemy.engine import base, default, reflection
 from sqlalchemy.sql import compiler
-from sqlalchemy.sql.elements import _literal_as_binds
 
 from sqlalchemy.types import (BIGINT, BLOB, DATE, FLOAT, INTEGER, NUMERIC,
                               SMALLINT, TEXT, TIME, TIMESTAMP, Integer)
