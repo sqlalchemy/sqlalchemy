@@ -185,7 +185,6 @@ from ... import types as sqltypes, schema as sa_schema
 from ... import util
 from ...engine import default, reflection
 from ...sql import compiler
-from sqlalchemy.sql.elements import _literal_as_binds
 
 from ...types import (BLOB, BOOLEAN, CHAR, DATE, DECIMAL, FLOAT, INTEGER, REAL,
                       NUMERIC, SMALLINT, TEXT, TIMESTAMP, VARCHAR)
