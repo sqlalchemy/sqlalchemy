@@ -325,18 +325,20 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
         s = select._distinct and "DISTINCT " or ""
         # TODO: don't think Sybase supports
         # bind params for FIRST / TOP
-        if select._limit:
+        limit = select._limit
+        if limit:
             #if select._limit == 1:
                 #s += "FIRST "
             #else:
                 #s += "TOP %s " % (select._limit,)
-            s += "TOP %s " % (select._limit,)
-        if select._offset:
-            if not select._limit:
+            s += "TOP %s " % (limit,)
+        offset = select._offset
+        if offset:
+            if not limit:
                 # FIXME: sybase doesn't allow an offset without a limit
                 # so use a huge value for TOP here
                 s += "TOP 1000000 "
-            s += "START AT %s " % (select._offset + 1,)
+            s += "START AT %s " % (offset + 1,)
         return s
 
     def get_from_hint_text(self, table, text):
