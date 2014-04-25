@@ -346,7 +346,6 @@ from ... import sql, schema, exc, util
 from ...engine import default, reflection
 from ...sql import compiler, expression, operators
 from ... import types as sqltypes
-from sqlalchemy.sql.elements import _literal_as_binds
 
 try:
     from uuid import UUID as _python_UUID
