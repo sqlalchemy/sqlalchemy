@@ -29,7 +29,6 @@ from .. import util, exc
 import decimal
 import itertools
 import operator
-from sqlalchemy.sql.elements import _literal_as_binds
 
 RESERVED_WORDS = set([
     'all', 'analyse', 'analyze', 'and', 'any', 'array',
