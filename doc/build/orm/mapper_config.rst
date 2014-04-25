@@ -1168,6 +1168,16 @@ each time an ``UPDATE`` to the mapped table occurs.  This value is checked each
 time the ORM emits an ``UPDATE`` or ``DELETE`` against the row to ensure that
 the value held in memory matches the database value.
 
+.. warning::
+
+    Because the versioning feature relies upon comparison of the **in memory**
+    record of an object, the feature only applies to the :meth:`.Session.flush`
+    process, where the ORM flushes individual in-memory rows to the database.
+    It does **not** take effect when performing
+    a multirow UPDATE or DELETE using :meth:`.Query.update` or :meth:`.Query.delete`
+    methods, as these methods only emit an UPDATE or DELETE statement but otherwise
+    do not have direct access to the contents of those rows being affected.
+
 The purpose of this feature is to detect when two concurrent transactions
 are modifying the same row at roughly the same time, or alternatively to provide
 a guard against the usage of a "stale" row in a system that might be re-using
