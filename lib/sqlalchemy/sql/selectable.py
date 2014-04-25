@@ -10,7 +10,7 @@ SQL tables and derived rowsets.
 """
 
 from .elements import ClauseElement, TextClause, ClauseList, \
-        and_, Grouping, UnaryExpression, literal_column, _literal_as_binds, BindParameter, Null
+        and_, Grouping, UnaryExpression, literal_column, BindParameter
 from .elements import _clone, \
         _literal_as_text, _interpret_as_column_or_from, _expand_cloned,\
         _select_iterables, _anonymous_label, _clause_element_as_expr,\
