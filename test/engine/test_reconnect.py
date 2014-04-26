@@ -143,7 +143,7 @@ class MockReconnectTest(fixtures.TestBase):
         assert not conn.closed
         assert conn.invalidated
 
-        # close shouldnt break
+        # close shouldn't break
 
         conn.close()
 

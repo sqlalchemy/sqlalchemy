@@ -305,7 +305,7 @@ So what happens when we say:
 
 Notice the nice clean alias names too.  The joining doesn't
 care if it's against the same immediate table or some other
-object which then cycles back to the beginining.  Any kind
+object which then cycles back to the beginning.  Any kind
 of chain of eager loads can cycle back onto itself when
 ``join_depth`` is specified.  When not present, eager
 loading automatically stops when it hits a cycle.

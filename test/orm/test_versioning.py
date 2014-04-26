@@ -90,7 +90,7 @@ class VersioningTest(fixtures.MappedTest):
         else:
             s1.commit()
 
-        # new in 0.5 !  dont need to close the session
+        # new in 0.5 !  don't need to close the session
         f1 = s1.query(Foo).get(f1.id)
         f2 = s1.query(Foo).get(f2.id)
 

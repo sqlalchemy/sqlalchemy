@@ -1078,7 +1078,7 @@ class Connection(Connectable):
         self._reentrant_error = True
         try:
             # non-DBAPI error - if we already got a context,
-            # or theres no string statement, don't wrap it
+            # or there's no string statement, don't wrap it
             should_wrap = isinstance(e, self.dialect.dbapi.Error) or \
                 (statement is not None and context is None)
 

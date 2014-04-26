@@ -12,7 +12,7 @@ ORM events are described in :ref:`orm_event_toplevel`.
    :members:
 
 .. versionadded:: 0.7
-    The event system supercedes the previous system of "extension", "listener",
+    The event system supersedes the previous system of "extension", "listener",
     and "proxy" classes.
 
 Connection Pool Events

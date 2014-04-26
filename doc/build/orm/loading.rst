@@ -168,7 +168,7 @@ the string ``'*'`` as the argument to any of these options::
 
     session.query(MyClass).options(lazyload('*'))
 
-Above, the ``lazyload('*')`` option will supercede the ``lazy`` setting
+Above, the ``lazyload('*')`` option will supersede the ``lazy`` setting
 of all :func:`.relationship` constructs in use for that query,
 except for those which use the ``'dynamic'`` style of loading.
 If some relationships specify
@@ -177,7 +177,7 @@ using ``lazyload('*')`` will unilaterally
 cause all those relationships to use ``'select'`` loading, e.g. emit a
 SELECT statement when each attribute is accessed.
 
-The option does not supercede loader options stated in the
+The option does not supersede loader options stated in the
 query, such as :func:`.eagerload`,
 :func:`.subqueryload`, etc.  The query below will still use joined loading
 for the ``widget`` relationship::

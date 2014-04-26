@@ -189,7 +189,7 @@ class Dialect(object):
         The connection passed here is a SQLAlchemy Connection object,
         with full capabilities.
 
-        The initalize() method of the base dialect should be called via
+        The initialize() method of the base dialect should be called via
         super().
 
         """
@@ -443,7 +443,7 @@ class Dialect(object):
         :meth:`.Dialect.do_autocommit`
         hook is provided for DBAPIs that need some extra commands emitted
         after a commit in order to enter the next transaction, when the
-        SQLAlchemy :class:`.Connection` is used in it's default "autocommit"
+        SQLAlchemy :class:`.Connection` is used in its default "autocommit"
         mode.
 
         :param dbapi_connection: a DBAPI connection, typically

@@ -2408,8 +2408,8 @@ class TestOverlyEagerEquivalentCols(fixtures.MappedTest):
         sess.add(b2)
         sess.flush()
 
-        # theres an overlapping ForeignKey here, so not much option except
-        # to artifically control the flush order
+        # there's an overlapping ForeignKey here, so not much option except
+        # to artificially control the flush order
         b2.sub2 = [s2]
         sess.flush()
 

@@ -374,7 +374,7 @@ class TimezoneTest(fixtures.TestBase):
 
     psycopg will return a datetime with a tzinfo attached to it, if
     postgresql returns it.  python then will not let you compare a
-    datetime with a tzinfo to a datetime that doesnt have one.  this
+    datetime with a tzinfo to a datetime that doesn't have one.  this
     test illustrates two ways to have datetime types with and without
     timezone info. """
 

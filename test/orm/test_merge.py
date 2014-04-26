@@ -748,7 +748,7 @@ class MergeTest(_fixtures.FixtureTest):
         'converted' to represent the correct objects.  However, at the
         moment I'd rather not support this use case; if you are merging
         with load=False, you're typically dealing with caching and the
-        merged objects shouldnt be 'dirty'.
+        merged objects shouldn't be 'dirty'.
 
         """
 
@@ -782,7 +782,7 @@ class MergeTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 0)
 
     def test_no_load_disallows_dirty(self):
-        """load=False doesnt support 'dirty' objects right now
+        """load=False doesn't support 'dirty' objects right now
 
         (see test_no_load_with_eager()). Therefore lets assert it.
 
@@ -899,7 +899,7 @@ class MergeTest(_fixtures.FixtureTest):
             'somenewaddress')
 
         # this use case is not supported; this is with a pending Address
-        # on the pre-merged object, and we currently dont support
+        # on the pre-merged object, and we currently don't support
         # 'dirty' objects being merged with load=False.  in this case,
         # the empty '_state.parents' collection would be an issue, since
         # the optimistic flag is False in _is_orphan() for pending

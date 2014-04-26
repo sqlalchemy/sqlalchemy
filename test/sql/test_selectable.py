@@ -216,7 +216,7 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         jj = select([table1.c.col1.label('bar_col1')])
         jjj = join(table1, jj, table1.c.col1 == jj.c.bar_col1)
 
-        # test column directly agaisnt itself
+        # test column directly against itself
 
         assert jjj.corresponding_column(jjj.c.table1_col1) \
             is jjj.c.table1_col1

@@ -2143,7 +2143,7 @@ class SQLCompiler(Compiled):
                             c in implicit_return_defaults:
                             self.returning.append(c)
                         elif not c.primary_key:
-                            # dont add primary key column to postfetch
+                            # don't add primary key column to postfetch
                             self.postfetch.append(c)
                     else:
                         values.append(

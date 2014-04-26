@@ -10,7 +10,7 @@ Provides decorators to mark tests requiring specific feature support from the
 target database.
 
 External dialect test suites should subclass SuiteRequirements
-to provide specific inclusion/exlusions.
+to provide specific inclusion/exclusions.
 
 """
 

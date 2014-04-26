@@ -210,7 +210,7 @@ class Mapper(_InspectionAttr):
            See the section :ref:`concrete_inheritance` for an example.
 
         :param confirm_deleted_rows: defaults to True; when a DELETE occurs
-          of one more more rows based on specific primary keys, a warning is
+          of one more rows based on specific primary keys, a warning is
           emitted when the number of rows matched does not equal the number
           of rows expected.  This parameter may be set to False to handle the case
           where database ON DELETE CASCADE rules may be deleting some of those
@@ -913,7 +913,7 @@ class Mapper(_InspectionAttr):
                     if self.inherit_condition is None:
                         # figure out inherit condition from our table to the
                         # immediate table of the inherited mapper, not its
-                        # full table which could pull in other stuff we dont
+                        # full table which could pull in other stuff we don't
                         # want (allows test/inheritance.InheritTest4 to pass)
                         self.inherit_condition = sql_util.join_condition(
                                                     self.inherits.local_table,
@@ -1311,7 +1311,7 @@ class Mapper(_InspectionAttr):
             setter = True
 
             if isinstance(self.polymorphic_on, util.string_types):
-                # polymorphic_on specified as as string - link
+                # polymorphic_on specified as a string - link
                 # it to mapped ColumnProperty
                 try:
                     self.polymorphic_on = self._props[self.polymorphic_on]
@@ -2463,7 +2463,7 @@ class Mapper(_InspectionAttr):
             # attempt to skip dependencies that are not
             # significant to the inheritance chain
             # for two tables that are related by inheritance.
-            # while that dependency may be important, it's techinically
+            # while that dependency may be important, it's technically
             # not what we mean to sort on here.
             parent = table_to_mapper.get(fk.parent.table)
             dep = table_to_mapper.get(fk.column.table)

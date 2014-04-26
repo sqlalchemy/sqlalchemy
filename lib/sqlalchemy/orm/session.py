@@ -1016,7 +1016,7 @@ class Session(_SessionClassMethods):
         self._deleted = {}
 
     # TODO: need much more test coverage for bind_mapper() and similar !
-    # TODO: + crystalize + document resolution order
+    # TODO: + crystallize + document resolution order
     #       vis. bind_mapper/bind_table
 
     def bind_mapper(self, mapper, bind):
@@ -1194,7 +1194,7 @@ class Session(_SessionClassMethods):
                 e.add_detail(
                         "raised as a result of Query-invoked autoflush; "
                         "consider using a session.no_autoflush block if this "
-                        "flush is occuring prematurely")
+                        "flush is occurring prematurely")
                 util.raise_from_cause(e)
 
     def refresh(self, instance, attribute_names=None, lockmode=None):

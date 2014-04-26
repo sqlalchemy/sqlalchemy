@@ -961,7 +961,7 @@ class OracleDialect(default.DefaultDialect):
     def get_table_names(self, connection, schema=None, **kw):
         schema = self.denormalize_name(schema or self.default_schema_name)
 
-        # note that table_names() isnt loading DBLINKed or synonym'ed tables
+        # note that table_names() isn't loading DBLINKed or synonym'ed tables
         if schema is None:
             schema = self.default_schema_name
         s = sql.text(

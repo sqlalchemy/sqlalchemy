@@ -149,7 +149,7 @@ includes but is not limited to:
 
 * The value of the ``.quote`` setting for :class:`.Column` or :class:`.Table`
 
-* The assocation of a particular :class:`.Sequence` with a given :class:`.Column`
+* The association of a particular :class:`.Sequence` with a given :class:`.Column`
 
 The relational database also in many cases reports on table metadata in a
 different format than what was specified in SQLAlchemy.   The :class:`.Table`

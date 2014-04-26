@@ -101,7 +101,7 @@ within a "CREATE TABLE" statement when
 :func:`~sqlalchemy.schema.MetaData.create_all` is issued, and
 :class:`~sqlalchemy.schema.ForeignKeyConstraint` invokes the "CONSTRAINT"
 keyword inline with "CREATE TABLE". There are some cases where this is
-undesireable, particularly when two tables reference each other mutually, each
+undesirable, particularly when two tables reference each other mutually, each
 with a foreign key referencing the other. In such a situation at least one of
 the foreign key constraints must be generated after both tables have been
 built. To support such a scheme, :class:`~sqlalchemy.schema.ForeignKey` and
@@ -424,7 +424,7 @@ name as follows::
 .. seealso::
 
     :paramref:`.MetaData.naming_convention` - for additional usage details
-    as well as a listing of all avaiable naming components.
+    as well as a listing of all available naming components.
 
     :ref:`alembic:tutorial_constraint_names` - in the Alembic documentation.
 

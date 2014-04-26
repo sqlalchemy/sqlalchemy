@@ -172,7 +172,7 @@ def _assert_no_stray_pool_connections():
         # so the error doesn't at least keep happening.
         pool._refs.clear()
         _STRAY_CONNECTION_FAILURES = 0
-        assert False, "Stray conections in cleanup: %s" % err
+        assert False, "Stray connections in cleanup: %s" % err
 
 
 def eq_(a, b, msg=None):

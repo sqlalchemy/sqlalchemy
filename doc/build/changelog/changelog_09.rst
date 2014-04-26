@@ -121,7 +121,7 @@
         that the cursor rowcount matches the number of primary keys that should
         have matched;  this behavior had been taken off in most cases
         (except when version_id is used) to support the unusual edge case of
-        self-referential ON DELETE CASCADE; to accomodate this, the message
+        self-referential ON DELETE CASCADE; to accommodate this, the message
         is now just a warning, not an exception, and the flag can be used
         to indicate a mapping that expects self-refererntial cascaded
         deletes of this nature.  See also :ticket:`2403` for background on the
@@ -1270,7 +1270,7 @@
         :tags: feature, orm
 
         The :class:`.exc.StatementError` or DBAPI-related subclass
-        now can accomodate additional information about the "reason" for
+        now can accommodate additional information about the "reason" for
         the exception; the :class:`.Session` now adds some detail to it
         when the exception occurs within an autoflush.  This approach
         is taken as opposed to combining :class:`.FlushError` with
@@ -1888,7 +1888,7 @@
         operations.  End user code which emulates the behavior of backrefs
         must now ensure that recursive event propagation schemes are halted,
         if the scheme does not use the backref handlers.   Using this new system,
-        backref handlers can now peform a
+        backref handlers can now perform a
         "two-hop" operation when an object is appended to a collection,
         associated with a new many-to-one, de-associated with the previous
         many-to-one, and then removed from a previous collection.   Before this
@@ -2096,7 +2096,7 @@
 
         The "auto-aliasing" behavior of the :meth:`.Query.select_from`
         method has been turned off.  The specific behavior is now
-        availble via a new method :meth:`.Query.select_entity_from`.
+        available via a new method :meth:`.Query.select_entity_from`.
         The auto-aliasing behavior here was never well documented and
         is generally not what's desired, as :meth:`.Query.select_from`
         has become more oriented towards controlling how a JOIN is

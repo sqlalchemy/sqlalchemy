@@ -119,7 +119,7 @@ We define our tables all within a catalog called
 :class:`~sqlalchemy.schema.Table` construct, which resembles regular SQL
 CREATE TABLE statements. We'll make two tables, one of which represents
 "users" in an application, and another which represents zero or more "email
-addreses" for each row in the "users" table:
+addresses" for each row in the "users" table:
 
 .. sourcecode:: pycon+sql
 
@@ -1510,7 +1510,7 @@ method:
     (4,)
     {stop}[(u'wendy', 2)]
 
-A common system of dealing with duplicates in composed SELECT statments
+A common system of dealing with duplicates in composed SELECT statements
 is the DISTINCT modifier.  A simple DISTINCT clause can be added using the
 :meth:`.Select.distinct` method:
 

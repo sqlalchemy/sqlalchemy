@@ -255,7 +255,7 @@ The "decimal point is present" logic itself is also sensitive to
 locale.  Under OCI_, this is controlled by the NLS_LANG
 environment variable. Upon first connection, the dialect runs a
 test to determine the current "decimal" character, which can be
-a comma "," for european locales. From that point forward the
+a comma "," for European locales. From that point forward the
 outputtypehandler uses that character to represent a decimal
 point. Note that cx_oracle 5.0.3 or greater is required
 when dealing with numerics with locale settings that don't use
@@ -741,7 +741,7 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     def _detect_decimal_char(self, connection):
         """detect if the decimal separator character is not '.', as
-        is the case with european locale settings for NLS_LANG.
+        is the case with European locale settings for NLS_LANG.
 
         cx_oracle itself uses similar logic when it formats Python
         Decimal objects to strings on the bind side (as of 5.0.3),

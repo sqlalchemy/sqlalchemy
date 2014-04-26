@@ -18,7 +18,7 @@ class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
     def setup_class(cls):
         global A, B
 
-        # establish two ficticious ClauseElements.
+        # establish two fictitious ClauseElements.
         # define deep equality semantics as well as deep
         # identity semantics.
         class A(ClauseElement):

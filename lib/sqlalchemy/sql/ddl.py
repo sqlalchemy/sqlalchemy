@@ -295,7 +295,7 @@ class DDL(DDLElement):
       %(fullname)s - the Table name including schema, quoted if needed
 
     The DDL's "context", if any, will be combined with the standard
-    substutions noted above.  Keys present in the context will override
+    substitutions noted above.  Keys present in the context will override
     the standard substitutions.
 
     """
@@ -394,7 +394,7 @@ class DDL(DDLElement):
 
 
 class _CreateDropBase(DDLElement):
-    """Base class for DDL constucts that represent CREATE and DROP or
+    """Base class for DDL constructs that represent CREATE and DROP or
     equivalents.
 
     The common theme of _CreateDropBase is a single

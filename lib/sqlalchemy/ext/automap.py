@@ -231,7 +231,7 @@ by which this works for many-to-one and one-to-many relationships is as follows:
    object present is matched up to the class to which it is to be mapped,
    if any, else it is skipped.
 
-3. As the :class:`.ForeignKeyConstraint` we are examining correponds to a reference
+3. As the :class:`.ForeignKeyConstraint` we are examining corresponds to a reference
    from the immediate mapped class,
    the relationship will be set up as a many-to-one referring to the referred class;
    a corresponding one-to-many backref will be created on the referred class referring

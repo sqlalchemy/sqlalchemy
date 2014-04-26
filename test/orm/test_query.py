@@ -550,7 +550,7 @@ class GetTest(QueryTest):
 
         u.addresses[0].email_address = 'lala'
         u.orders[1].items[2].description = 'item 12'
-        # test that lazy load doesnt change child items
+        # test that lazy load doesn't change child items
         s.query(User).populate_existing().all()
         assert u.addresses[0].email_address == 'lala'
         assert u.orders[1].items[2].description == 'item 12'
@@ -1383,7 +1383,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         assert [Address(id=2), Address(id=3), Address(id=4)] == \
             sess.query(Address).join("user").filter(Address.user.has(User.name.like('%ed%'), id=8)).order_by(Address.id).all()
 
-        # test has() doesnt' get subquery contents adapted by aliased join
+        # test has() doesn't get subquery contents adapted by aliased join
         assert [Address(id=2), Address(id=3), Address(id=4)] == \
             sess.query(Address).join("user", aliased=True).filter(Address.user.has(User.name.like('%ed%'), id=8)).order_by(Address.id).all()
 

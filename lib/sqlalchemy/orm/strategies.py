@@ -1033,7 +1033,7 @@ class JoinedLoader(AbstractRelationshipLoader):
     def setup_query(self, context, entity, path, loadopt, adapter, \
                                 column_collection=None, parentmapper=None,
                                 **kwargs):
-        """Add a left outer join to the statement thats being constructed."""
+        """Add a left outer join to the statement that's being constructed."""
 
         if not context.query._enable_eagerloads:
             return
@@ -1337,7 +1337,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             self.mapper.identity_key_from_row(row, decorator)
             return decorator
         except KeyError:
-            # no identity key - dont return a row
+            # no identity key - don't return a row
             # processor, will cause a degrade to lazy
             return False
 

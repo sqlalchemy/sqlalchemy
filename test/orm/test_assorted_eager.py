@@ -289,7 +289,7 @@ class EagerTest2(fixtures.MappedTest):
     def test_eager_terminate(self):
         """Eager query generation does not include the same mapper's table twice.
 
-        Or, that bi-directional eager loads dont include each other in eager
+        Or, that bi-directional eager loads don't include each other in eager
         query generation.
 
         """

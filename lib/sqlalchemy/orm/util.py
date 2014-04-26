@@ -141,7 +141,7 @@ def polymorphic_union(table_map, typecolname,
     for key in table_map:
         table = table_map[key]
 
-        # mysql doesnt like selecting from a select;
+        # mysql doesn't like selecting from a select;
         # make it an alias of the select
         if isinstance(table, sql.Select):
             table = table.alias()

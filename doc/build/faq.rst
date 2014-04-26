@@ -823,7 +823,7 @@ I'm calling ``Session.delete(myobject)`` and it isn't removed from the parent co
 
 See :ref:`session_deleting_from_collections` for a description of this behavior.
 
-why isnt my ``__init__()`` called when I load objects?
+why isn't my ``__init__()`` called when I load objects?
 ------------------------------------------------------
 
 See :ref:`mapping_constructors` for a description of this behavior.
@@ -923,7 +923,7 @@ have meaning until the row is inserted; otherwise there is no row yet::
 	many-to-one relationships load as according to foreign key attributes
 	regardless of the object being in any particular state.
 	Both techniques are **not recommended for general use**; they were added to suit
-	specfic programming scenarios encountered by users which involve the repurposing
+	specific programming scenarios encountered by users which involve the repurposing
 	of the ORM's usual object states.
 
 The recipe `ExpireRelationshipOnFKChange <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/ExpireRelationshipOnFKChange>`_ features an example using SQLAlchemy events

@@ -971,7 +971,7 @@ The condition above is resolved using a lambda::
                 primaryjoin=lambda: Target.id==cls.target_id
             )
 
-or alternatively, the string form (which ultmately generates a lambda)::
+or alternatively, the string form (which ultimately generates a lambda)::
 
     class RefTargetMixin(object):
         @declared_attr
@@ -1053,7 +1053,7 @@ string values to an implementing class::
 
 Above, the ``HasStringCollection`` mixin produces a :func:`.relationship`
 which refers to a newly generated class called ``StringAttribute``.  The
-``StringAttribute`` class is generated with it's own :class:`.Table`
+``StringAttribute`` class is generated with its own :class:`.Table`
 definition which is local to the parent class making usage of the
 ``HasStringCollection`` mixin.  It also produces an :func:`.association_proxy`
 object which proxies references to the ``strings`` attribute onto the ``value``

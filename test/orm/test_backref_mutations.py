@@ -393,7 +393,7 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
         # backref fires
         assert u1.address is a2
 
-        # didnt work this way tho
+        # didn't work this way tho
         assert a1.user is u1
 
         # moves appropriately after commit

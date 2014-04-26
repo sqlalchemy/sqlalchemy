@@ -103,7 +103,7 @@ attribute, so that the ordering is correct when first loaded.
       SQLAlchemy's unit of work performs all INSERTs before DELETEs within a
       single flush.  In the case of a primary key, it will trade
       an INSERT/DELETE of the same primary key for an UPDATE statement in order
-      to lessen the impact of this lmitation, however this does not take place
+      to lessen the impact of this limitation, however this does not take place
       for a UNIQUE column.
       A future feature will allow the "DELETE before INSERT" behavior to be
       possible, allevating this limitation, though this feature will require

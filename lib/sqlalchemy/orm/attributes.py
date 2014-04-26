@@ -98,7 +98,7 @@ class QueryableAttribute(interfaces._MappedAttribute,
           any other kind of SQL expression other than a :class:`.Column`,
           the attribute will refer to the :attr:`.MapperProperty.info` dictionary
           associated directly with the :class:`.ColumnProperty`, assuming the SQL
-          expression itself does not have it's own ``.info`` attribute
+          expression itself does not have its own ``.info`` attribute
           (which should be the case, unless a user-defined SQL construct
           has defined one).
 

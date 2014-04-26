@@ -51,7 +51,7 @@
       correspondence for cloned selectables which contain
       free-standing column expressions.   This bug is
       generally only noticeable when exercising newer
-      ORM behavior only availble in 0.6 via,
+      ORM behavior only available in 0.6 via,
       but is more correct at the SQL expression level
       as well.
 
@@ -437,7 +437,7 @@
         :tags: orm
         :tickets: 1501
 
-      Fixed recursion issue which occured if a mapped object's
+      Fixed recursion issue which occurred if a mapped object's
       `__len__()` or `__nonzero__()` method resulted in state
       changes.
 
@@ -567,7 +567,7 @@
       and secondaryjoin do.  For the extremely rare use case where
       the backref of a relation() has intentionally different
       "foreign_keys" configured, both sides now need to be
-      configured explicity (if they do in fact require this setting,
+      configured explicitly (if they do in fact require this setting,
       see the next note...).
 
     .. change::
@@ -794,7 +794,7 @@
         graph of mappers.
       
       - Cached a wasteful "table sort" operation that previously
-        occured multiple times per flush, also removing significant
+        occurred multiple times per flush, also removing significant
         method call count from flush().
       
       - Other redundant behaviors have been simplified in
@@ -1325,7 +1325,7 @@
       when determining "orphan" status - for a persistent object
       it only detects an in-python de-association event to establish
       the object as an "orphan".  Next, the good news: to support
-      one-to-one via a foreign key or assocation table, or to
+      one-to-one via a foreign key or association table, or to
       support one-to-many via an association table, a new flag
       single_parent=True may be set which indicates objects
       linked to the relation are only meant to have a single parent.

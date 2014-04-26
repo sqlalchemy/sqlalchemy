@@ -1836,7 +1836,7 @@ class ColumnDefault(DefaultGenerator):
     def _maybe_wrap_callable(self, fn):
         """Wrap callables that don't accept a context.
 
-        This is to allow easy compatiblity with default callables
+        This is to allow easy compatibility with default callables
         that aren't specific to accepting of a context.
 
         """
@@ -2785,7 +2785,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         :param \*expressions:
           Column expressions to include in the index.   The expressions
           are normally instances of :class:`.Column`, but may also
-          be arbitrary SQL expressions which ultmately refer to a
+          be arbitrary SQL expressions which ultimately refer to a
           :class:`.Column`.
 
         :param unique=False:
@@ -2973,7 +2973,7 @@ class MetaData(SchemaItem):
           The values associated with each "constraint class" or "constraint
           mnemonic" key are string naming templates, such as
           ``"uq_%(table_name)s_%(column_0_name)s"``,
-          which decribe how the name should be composed.  The values associated
+          which describe how the name should be composed.  The values associated
           with user-defined "token" keys should be callables of the form
           ``fn(constraint, table)``, which accepts the constraint/index
           object and :class:`.Table` as arguments, returning a string
@@ -3387,7 +3387,7 @@ class ThreadLocalMetaData(MetaData):
                 self.__engines[bind] = e
                 self.context._engine = e
         else:
-            # TODO: this is squirrely.  we shouldnt have to hold onto engines
+            # TODO: this is squirrely.  we shouldn't have to hold onto engines
             # in a case like this
             if bind not in self.__engines:
                 self.__engines[bind] = bind

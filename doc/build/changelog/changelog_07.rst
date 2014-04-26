@@ -499,7 +499,7 @@
         :tickets: 2529
 
       Added gaerdbms import to mysql/__init__.py,
-      the absense of which was preventing the new
+      the absence of which was preventing the new
       GAE dialect from being loaded.
 
     .. change::
@@ -3126,7 +3126,7 @@
         :tickets:
 
       Streamlined the process by which a Select
-      determines what's in it's '.c' collection.
+      determines what's in its '.c' collection.
       Behaves identically, except that a
       raw ClauseList() passed to select([])
       (which is not a documented case anyway) will
@@ -3681,7 +3681,7 @@
         :tags: schema
         :tickets: 2109
 
-      The 'useexisting' flag on Table has been superceded
+      The 'useexisting' flag on Table has been superseded
       by a new pair of flags 'keep_existing' and
       'extend_existing'.   'extend_existing' is equivalent
       to 'useexisting' - the existing Table is returned,
@@ -4131,7 +4131,7 @@
         :tags: general
         :tickets: 1902
 
-      New event system, supercedes all extensions, listeners,
+      New event system, supersedes all extensions, listeners,
       etc.
 
     .. change::
@@ -4167,7 +4167,7 @@
         :tags: orm
         :tickets: 1903
 
-      Hybrid Attributes, implements/supercedes synonym()
+      Hybrid Attributes, implements/supersedes synonym()
 
     .. change::
         :tags: orm
@@ -4179,7 +4179,7 @@
         :tags: orm
         :tickets:
 
-      Mutation Event Extension, supercedes "mutable=True"
+      Mutation Event Extension, supersedes "mutable=True"
 
       .. seealso::
 
@@ -4530,7 +4530,7 @@
       execution_options() on Connection accepts
       "isolation_level" argument, sets transaction isolation
       level for that connection only until returned to the
-      connection pool, for thsoe backends which support it
+      connection pool, for those backends which support it
       (SQLite, Postgresql)
 
     .. change::

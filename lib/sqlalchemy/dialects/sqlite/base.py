@@ -100,7 +100,7 @@ table.
 Constraint checking on SQLite has three prerequisites:
 
 * At least version 3.6.19 of SQLite must be in use
-* The SQLite libary must be compiled *without* the SQLITE_OMIT_FOREIGN_KEY
+* The SQLite library must be compiled *without* the SQLITE_OMIT_FOREIGN_KEY
   or SQLITE_OMIT_TRIGGER symbols enabled.
 * The ``PRAGMA foreign_keys = ON`` statement must be emitted on all connections
   before use.
@@ -244,7 +244,7 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
     :param regexp: regular expression which will be applied to incoming result
      rows. If the regexp contains named groups, the resulting match dict is
      applied to the Python datetime() constructor as keyword arguments.
-     Otherwise, if positional groups are used, the the datetime() constructor
+     Otherwise, if positional groups are used, the datetime() constructor
      is called with positional arguments via
      ``*map(int, match_obj.groups(0))``.
     """
@@ -337,7 +337,7 @@ class DATE(_DateTimeMixin, sqltypes.Date):
      incoming result rows. If the regexp contains named groups, the
      resulting match dict is applied to the Python date() constructor
      as keyword arguments. Otherwise, if positional groups are used, the
-     the date() constructor is called with positional arguments via
+     date() constructor is called with positional arguments via
      ``*map(int, match_obj.groups(0))``.
     """
 
@@ -397,7 +397,7 @@ class TIME(_DateTimeMixin, sqltypes.Time):
     :param regexp: regular expression which will be applied to incoming result
      rows. If the regexp contains named groups, the resulting match dict is
      applied to the Python time() constructor as keyword arguments. Otherwise,
-     if positional groups are used, the the time() constructor is called with
+     if positional groups are used, the time() constructor is called with
      positional arguments via ``*map(int, match_obj.groups(0))``.
     """
 
@@ -874,7 +874,7 @@ class SQLiteDialect(default.DefaultDialect):
     def _resolve_type_affinity(self, type_):
         """Return a data type from a reflected column, using affinity tules.
 
-        SQLite's goal for universal compatability introduces some complexity
+        SQLite's goal for universal compatibility introduces some complexity
         during reflection, as a column's defined type might not actually be a
         type that SQLite understands - or indeed, my not be defined *at all*.
         Internally, SQLite handles this with a 'data type affinity' for each

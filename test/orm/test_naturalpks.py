@@ -108,7 +108,7 @@ class NaturalPKTest(fixtures.MappedTest):
         users.update(values={User.username:'jack'}).execute(username='ed')
 
         # expire/refresh works off of primary key.  the PK is gone
-        # in this case so theres no way to look it up.  criterion-
+        # in this case so there's no way to look it up.  criterion-
         # based session invalidation could solve this [ticket:911]
         sess.expire(u1)
         assert_raises(sa.orm.exc.ObjectDeletedError, getattr, u1, 'username')

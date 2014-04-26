@@ -387,7 +387,7 @@ Glossary
         A subquery comes in two general flavors, one known as a "scalar select"
         which specifically must return exactly one row and one column, and the
         other form which acts as a "derived table" and serves as a source of
-        rows for the FROM clause of another select.  A scalar select is eligble
+        rows for the FROM clause of another select.  A scalar select is eligible
         to be placed in the :term:`WHERE clause`, :term:`columns clause`,
         ORDER BY clause or HAVING clause of the enclosing select, whereas the
         derived table form is eligible to be placed in the FROM clause of the
@@ -447,7 +447,7 @@ Glossary
 
         The above subquery refers to the ``user_account`` table, which is not itself
         in the ``FROM`` clause of this nested query.   Instead, the ``user_account``
-        table is recieved from the enclosing query, where each row selected from
+        table is received from the enclosing query, where each row selected from
         ``user_account`` results in a distinct execution of the subquery.
 
         A correlated subquery is in most cases present in the :term:`WHERE clause`

@@ -248,7 +248,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
                 testing.db,
                 lambda: engine.execute(t1.insert()),
                 ExactSQL("INSERT INTO t1 DEFAULT VALUES"),
-                # we dont have an event for
+                # we don't have an event for
                 # "SELECT @@IDENTITY" part here.
                 # this will be in 0.8 with #2459
         )

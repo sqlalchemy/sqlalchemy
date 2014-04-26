@@ -218,7 +218,7 @@ class AttributesTest(fixtures.ORMTest):
         attributes.register_attribute(MyTest2, 'b', uselist=False,
                 useobject=False)
 
-        # shouldnt be pickling callables at the class level
+        # shouldn't be pickling callables at the class level
 
         def somecallable(state, passive):
             return None
@@ -1298,7 +1298,7 @@ class PendingBackrefTest(fixtures.ORMTest):
 
         p = Post("post 5")
 
-        # setting blog doesnt call 'posts' callable, calls with no fetch
+        # setting blog doesn't call 'posts' callable, calls with no fetch
         p.blog = b
         eq_(
             lazy_posts.mock_calls, [

@@ -46,7 +46,7 @@ class ExpireTest(_fixtures.FixtureTest):
         # change the value in the DB
         users.update(users.c.id==7, values=dict(name='jack')).execute()
         sess.expire(u)
-        # object isnt refreshed yet, using dict to bypass trigger
+        # object isn't refreshed yet, using dict to bypass trigger
         assert u.__dict__.get('name') != 'jack'
         assert 'name' in attributes.instance_state(u).expired_attributes
 
@@ -666,7 +666,7 @@ class ExpireTest(_fixtures.FixtureTest):
         assert 'addresses' not in u.__dict__
 
         # hit the lazy loader.  just does the lazy load,
-        # doesnt do the overall refresh
+        # doesn't do the overall refresh
         def go():
             assert u.addresses[0].email_address=='ed@wood.com'
         self.assert_sql_count(testing.db, go, 1)
@@ -1394,7 +1394,7 @@ class RefreshTest(_fixtures.FixtureTest):
 
     def test_refresh_with_lazy(self):
         """test that when a lazy loader is set as a trigger on an object's attribute
-        (at the attribute level, not the class level), a refresh() operation doesnt
+        (at the attribute level, not the class level), a refresh() operation doesn't
         fire the lazy loader or create any problems"""
 
         User, Address, addresses, users = (self.classes.User,

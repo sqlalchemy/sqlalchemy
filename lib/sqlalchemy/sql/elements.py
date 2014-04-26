@@ -143,7 +143,7 @@ def type_coerce(expression, type_):
     passed to :func:`.type_coerce` as targets.
     For example, if a type implements the :meth:`.TypeEngine.bind_expression`
     method or :meth:`.TypeEngine.bind_processor` method or equivalent,
-    these functions will take effect at statement compliation/execution time
+    these functions will take effect at statement compilation/execution time
     when a literal value is passed, as in::
 
         # bound-value handling of MyStringType will be applied to the
@@ -158,7 +158,7 @@ def type_coerce(expression, type_):
      or a Python string which will be coerced into a bound literal value.
 
     :param type_: A :class:`.TypeEngine` class or instance indicating
-     the type to which the the expression is coerced.
+     the type to which the expression is coerced.
 
     .. seealso::
 
@@ -854,7 +854,7 @@ class BindParameter(ColumnElement):
             expr = users_table.c.name == 'Wendy'
 
         The above expression will produce a :class:`.BinaryExpression`
-        contruct, where the left side is the :class:`.Column` object
+        construct, where the left side is the :class:`.Column` object
         representing the ``name`` column, and the right side is a :class:`.BindParameter`
         representing the literal value::
 
@@ -1916,7 +1916,7 @@ class Case(ColumnElement):
         languages.  It returns an instance of :class:`.Case`.
 
         :func:`.case` in its usual form is passed a list of "when"
-        contructs, that is, a list of conditions and results as tuples::
+        constructs, that is, a list of conditions and results as tuples::
 
             from sqlalchemy import case
 
@@ -2508,7 +2508,7 @@ class BinaryExpression(ColumnElement):
     """Represent an expression that is ``LEFT <operator> RIGHT``.
 
     A :class:`.BinaryExpression` is generated automatically
-    whenever two column expressions are used in a Python binary expresion::
+    whenever two column expressions are used in a Python binary expression::
 
         >>> from sqlalchemy.sql import column
         >>> column('a') + column('b')

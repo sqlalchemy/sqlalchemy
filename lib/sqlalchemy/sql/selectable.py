@@ -2060,7 +2060,7 @@ class Select(HasPrefixes, GenerativeSelect):
           Use this parameter to explicitly specify "from" objects which are not
           automatically locatable. This could include
           :class:`~sqlalchemy.schema.Table` objects that aren't otherwise present,
-          or :class:`.Join` objects whose presence will supercede that of the
+          or :class:`.Join` objects whose presence will supersede that of the
           :class:`~sqlalchemy.schema.Table` objects already located in the other
           clauses.
 
@@ -2403,7 +2403,7 @@ class Select(HasPrefixes, GenerativeSelect):
         # here is the same item is _correlate as in _from_obj but the
         # _correlate version has an annotation on it - (specifically
         # RelationshipProperty.Comparator._criterion_exists() does
-        # this). Also keep _correlate liberally open with it's previous
+        # this). Also keep _correlate liberally open with its previous
         # contents, as this set is used for matching, not rendering.
         self._correlate = set(clone(f) for f in
                               self._correlate).union(self._correlate)
@@ -2411,7 +2411,7 @@ class Select(HasPrefixes, GenerativeSelect):
         # 4. clone other things.   The difficulty here is that Column
         # objects are not actually cloned, and refer to their original
         # .table, resulting in the wrong "from" parent after a clone
-        # operation.  Hence _from_cloned and _from_obj supercede what is
+        # operation.  Hence _from_cloned and _from_obj supersede what is
         # present here.
         self._raw_columns = [clone(c, **kw) for c in self._raw_columns]
         for attr in '_whereclause', '_having', '_order_by_clause', \

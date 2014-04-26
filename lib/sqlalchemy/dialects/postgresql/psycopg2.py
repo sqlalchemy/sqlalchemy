@@ -102,7 +102,7 @@ This overrides the encoding specified in the Postgresql client configuration.
     :func:`.create_engine`.
 
 SQLAlchemy can also be instructed to skip the usage of the psycopg2
-``UNICODE`` extension and to instead utilize it's own unicode encode/decode
+``UNICODE`` extension and to instead utilize its own unicode encode/decode
 services, which are normally reserved only for those DBAPIs that don't
 fully support unicode directly.  Passing ``use_native_unicode=False`` to
 :func:`.create_engine` will disable usage of ``psycopg2.extensions.UNICODE``.
@@ -169,7 +169,7 @@ connection, a sequence like the following is performed:
    If this function returns a list of HSTORE identifiers, we then determine that
    the ``HSTORE`` extension is present.
 
-2. If the ``use_native_hstore`` flag is at it's default of ``True``, and
+2. If the ``use_native_hstore`` flag is at its default of ``True``, and
    we've detected that ``HSTORE`` oids are available, the
    ``psycopg2.extensions.register_hstore()`` extension is invoked for all
    connections.

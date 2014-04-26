@@ -666,7 +666,7 @@ class RelationshipProperty(StrategizedProperty):
 
           .. seealso::
 
-            :ref:`self_referential` - in-depth explaination of how
+            :ref:`self_referential` - in-depth explanation of how
             :paramref:`~.relationship.remote_side`
             is used to configure self-referential relationships.
 

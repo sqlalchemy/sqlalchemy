@@ -859,7 +859,7 @@ class LRUCache(dict):
                 try:
                     del self[item[0]]
                 except KeyError:
-                    # if we couldnt find a key, most
+                    # if we couldn't find a key, most
                     # likely some other thread broke in
                     # on us. loop around and try again
                     break
@@ -908,7 +908,7 @@ class ScopedRegistry(object):
         return self.scopefunc() in self.registry
 
     def set(self, obj):
-        """Set the value forthe current scope."""
+        """Set the value for the current scope."""
 
         self.registry[self.scopefunc()] = obj
 

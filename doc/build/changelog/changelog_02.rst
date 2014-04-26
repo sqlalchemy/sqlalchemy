@@ -81,7 +81,7 @@
 
       unit-of-work does a better check for "orphaned" objects that are
       part of a "delete-orphan" cascade, for certain conditions where the
-      parent isnt available to cascade from.
+      parent isn't available to cascade from.
 
     .. change::
         :tags:
@@ -164,7 +164,7 @@
       so far will convert this to "TIME[STAMP] (WITH|WITHOUT) TIME ZONE",
       so that control over timezone presence is more controllable (psycopg2
       returns datetimes with tzinfo's if available, which can create confusion
-      against datetimes that dont).
+      against datetimes that don't).
 
     .. change::
         :tags:
@@ -229,8 +229,8 @@
       with the session, and the INSERT statements are then sorted within the
       mapper save_obj.  the INSERT ordering has basically been pushed all
       the way to the end of the flush cycle. that way the various sorts and
-      organizations occuring within UOWTask (particularly the circular task
-      sort) dont have to worry about maintaining order (which they werent anyway)
+      organizations occurring within UOWTask (particularly the circular task
+      sort) don't have to worry about maintaining order (which they weren't anyway)
 
     .. change::
         :tags:
@@ -392,7 +392,7 @@
         :tags:
         :tickets:
 
-      overhaul to MapperExtension calling scheme, wasnt working very well
+      overhaul to MapperExtension calling scheme, wasn't working very well
       previously
 
     .. change::
@@ -432,7 +432,7 @@
         :tags:
         :tickets:
 
-      select_table mappers *still* werent always compiling
+      select_table mappers *still* weren't always compiling
 
     .. change::
         :tags:
@@ -647,7 +647,7 @@
         :tickets: 206
 
       utterly remarkable:  added a single space between 'CREATE TABLE'
-      and '(<the rest of it>' since *thats how MySQL indicates a non-
+      and '(<the rest of it>' since *that's how MySQL indicates a non-
       reserved word tablename.....*
 
     .. change::
@@ -743,7 +743,7 @@
       of an attribute is no longer micromanaged with each change and is
       instead part of a "CommittedState" object created when the
       instance is first loaded.  HistoryArraySet is gone, the behavior of
-      list attributes is now more open ended (i.e. theyre not sets anymore).
+      list attributes is now more open ended (i.e. they're not sets anymore).
 
     .. change::
         :tags:
@@ -757,7 +757,7 @@
         :tickets:
 
       fix to transaction control, so that repeated rollback() calls
-      dont fail (was failing pretty badly when flush() would raise
+      don't fail (was failing pretty badly when flush() would raise
       an exception in a larger try/except transaction block)
 
     .. change::
@@ -771,14 +771,14 @@
         :tags:
         :tickets:
 
-      fixed bug where tables with schema names werent getting indexed in
+      fixed bug where tables with schema names weren't getting indexed in
       the MetaData object properly
 
     .. change::
         :tags:
         :tickets: 207
 
-      fixed bug where Column with redefined "key" property wasnt getting
+      fixed bug where Column with redefined "key" property wasn't getting
       type conversion happening in the ResultProxy
 
     .. change::
@@ -792,7 +792,7 @@
         :tickets:
 
       fixed old bug where if a many-to-many table mapped as "secondary"
-      had extra columns, delete operations didnt work
+      had extra columns, delete operations didn't work
 
     .. change::
         :tags:
@@ -811,7 +811,7 @@
         :tickets: 138
 
       added NonExistentTable exception thrown when reflecting a table
-      that doesnt exist
+      that doesn't exist
 
     .. change::
         :tags:
@@ -1010,7 +1010,7 @@
         :tags:
         :tickets:
 
-      placeholder dispose() method added to SingletonThreadPool, doesnt
+      placeholder dispose() method added to SingletonThreadPool, doesn't
       do anything yet
 
     .. change::
@@ -1018,7 +1018,7 @@
         :tickets:
 
       rollback() is automatically called when an exception is raised,
-      but only if theres no transaction in process (i.e. works more like
+      but only if there's no transaction in process (i.e. works more like
       autocommit).
 
     .. change::
@@ -1114,7 +1114,7 @@
 
       "oid" system has been totally moved into compile-time behavior;
       if they are used in an order_by where they are not available, the order_by
-      doesnt get compiled, fixes
+      doesn't get compiled, fixes
 
     .. change::
         :tags:

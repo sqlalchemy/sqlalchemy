@@ -111,7 +111,7 @@ class ConfigData(Base):
         make_transient(self)
         self.id = None
 
-        # history of the 'elements' collecton.
+        # history of the 'elements' collection.
         # this is a tuple of groups: (added, unchanged, deleted)
         hist = attributes.get_history(self, 'elements')
 
@@ -146,7 +146,7 @@ class ConfigValueAssociation(Base):
 
 
     config_value_id = Column(ForeignKey('config_value.id'), primary_key=True)
-    """Reference the primary key of hte ConfigValue object."""
+    """Reference the primary key of the ConfigValue object."""
 
     config_value = relationship("ConfigValue", lazy="joined", innerjoin=True)
     """Reference the related ConfigValue object."""

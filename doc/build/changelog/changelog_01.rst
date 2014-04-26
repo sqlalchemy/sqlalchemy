@@ -48,7 +48,7 @@
         :tags: 
         :tickets: 
 
-      types types types!  still werent working....have to use TypeDecorator again :(
+      types types types!  still weren't working....have to use TypeDecorator again :(
 
     .. change::
         :tags: 
@@ -477,7 +477,7 @@
         :tickets: 
 
       fixed attributes bug where if an object is committed, its lazy-loaded list got
-      blown away if it hadnt been loaded
+      blown away if it hadn't been loaded
 
     .. change::
         :tags: 
@@ -854,11 +854,11 @@
         :tags: 
         :tickets: 
 
-      two issues related to postgres, which doesnt want to give you the "lastrowid"
+      two issues related to postgres, which doesn't want to give you the "lastrowid"
       since oids are deprecated:
 
         * postgres database-side defaults that are on primary key cols *do* execute
-          explicitly beforehand, even though thats not the idea of a PassiveDefault.  this is
+          explicitly beforehand, even though that's not the idea of a PassiveDefault.  this is
           because sequences on columns get reflected as PassiveDefaults, but need to be explicitly
           executed on a primary key col so we know what we just inserted.
         * if you did add a row that has a bunch of database-side defaults on it,

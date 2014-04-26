@@ -1095,7 +1095,7 @@ class FlushTest(fixtures.MappedTest):
 
         # create an Admin, and append a Role.  the dependency processors
         # corresponding to the "roles" attribute for the Admin mapper and the User mapper
-        # have to ensure that two dependency processors dont fire off and insert the
+        # have to ensure that two dependency processors don't fire off and insert the
         # many to many row twice.
         a = Admin()
         a.roles.append(adminrole)

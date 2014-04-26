@@ -148,7 +148,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
             table.insert(inline=True).execute({'data': 'd8'})
 
-        # note that the test framework doesnt capture the "preexecute"
+        # note that the test framework doesn't capture the "preexecute"
         # of a seqeuence or default.  we just see it in the bind params.
 
         self.assert_sql(self.engine, go, [], with_sequences=[

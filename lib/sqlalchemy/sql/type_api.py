@@ -1050,7 +1050,7 @@ def adapt_type(typeobj, colspecs):
         except KeyError:
             pass
     else:
-        # couldnt adapt - so just return the type itself
+        # couldn't adapt - so just return the type itself
         # (it may be a user-defined type)
         return typeobj
     # if we adapted the given generic type to a database-specific type,

@@ -411,7 +411,7 @@ class ExecuteTest(fixtures.TestBase):
 
     @testing.fails_on_everything_except('postgresql')
     def test_as_from(self):
-        # TODO: shouldnt this work on oracle too ?
+        # TODO: shouldn't this work on oracle too ?
         x = func.current_date(bind=testing.db).execute().scalar()
         y = func.current_date(bind=testing.db).select().execute().scalar()
         z = func.current_date(bind=testing.db).scalar()

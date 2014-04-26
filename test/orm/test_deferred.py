@@ -80,7 +80,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         self.sql_count_(0, go)
 
     def test_unsaved_group(self):
-        """Deferred loading doesnt kick in when just PK cols are set"""
+        """Deferred loading doesn't kick in when just PK cols are set"""
 
         orders, Order = self.tables.orders, self.classes.Order
 
@@ -204,7 +204,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         assert o2 not in sess.dirty
         # this will mark it as 'dirty', but nothing actually changed
         o2.description = 'order 3'
-        # therefore the flush() shouldnt actually issue any SQL
+        # therefore the flush() shouldn't actually issue any SQL
         self.assert_sql_count(testing.db, sess.flush, 0)
 
     def test_map_selectable_wo_deferred(self):

@@ -1648,7 +1648,7 @@ class AttributeEvents(event.Events):
           replaces it.
         :param initiator: An instance of :class:`.attributes.Event`
           representing the initiation of the event.  May be modified
-          from it's original value by backref handlers in order to control
+          from its original value by backref handlers in order to control
           chained event propagation.
 
           .. versionchanged:: 0.9.0 the ``initiator`` argument is now
@@ -1669,7 +1669,7 @@ class AttributeEvents(event.Events):
         :param value: the value being removed.
         :param initiator: An instance of :class:`.attributes.Event`
           representing the initiation of the event.  May be modified
-          from it's original value by backref handlers in order to control
+          from its original value by backref handlers in order to control
           chained event propagation.
 
           .. versionchanged:: 0.9.0 the ``initiator`` argument is now
@@ -1697,7 +1697,7 @@ class AttributeEvents(event.Events):
           or expired.
         :param initiator: An instance of :class:`.attributes.Event`
           representing the initiation of the event.  May be modified
-          from it's original value by backref handlers in order to control
+          from its original value by backref handlers in order to control
           chained event propagation.
 
           .. versionchanged:: 0.9.0 the ``initiator`` argument is now

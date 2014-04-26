@@ -94,7 +94,7 @@ def visit_binary_product(fn, expr):
 
     def visit(element):
         if isinstance(element, ScalarSelect):
-            # we dont want to dig into correlated subqueries,
+            # we don't want to dig into correlated subqueries,
             # those are just column elements by themselves
             yield element
         elif element.__visit_name__ == 'binary' and \
@@ -321,7 +321,7 @@ def reduce_columns(columns, *clauses, **kw):
 
     This function is primarily used to determine the most minimal "primary key"
     from a selectable, by reducing the set of primary key columns present
-    in the the selectable to just those that are not repeated.
+    in the selectable to just those that are not repeated.
 
     """
     ignore_nonexistent_tables = kw.pop('ignore_nonexistent_tables', False)

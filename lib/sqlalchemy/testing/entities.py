@@ -57,7 +57,7 @@ class ComparableEntity(BasicEntity):
         _recursion_stack.add(id(self))
 
         try:
-            # pick the entity thats not SA persisted as the source
+            # pick the entity that's not SA persisted as the source
             try:
                 self_key = sa.orm.attributes.instance_state(self).key
             except sa.orm.exc.NO_STATE:

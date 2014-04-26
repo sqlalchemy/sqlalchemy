@@ -837,7 +837,7 @@
 
       The "unicode warning" against non-unicode bind data
       is now raised only when the
-      Unicode type is used explictly; not when
+      Unicode type is used explicitly; not when
       convert_unicode=True is used on the engine
       or String type.
 
@@ -1517,7 +1517,7 @@
       A warning is now emitted if a mapper is created against a
       join or other single selectable that includes multiple
       columns with the same name in its .c. collection,
-      and those columns aren't explictly named as part of
+      and those columns aren't explicitly named as part of
       the same or separate attributes (or excluded).
       In 0.7 this warning will be an exception.   Note that
       this warning is not emitted when the combination occurs
@@ -1813,7 +1813,7 @@
 
       the _Label construct, i.e. the one that is produced
       whenever you say somecol.label(), now counts itself
-      in its "proxy_set" unioned with that of it's
+      in its "proxy_set" unioned with that of its
       contained column's proxy set, instead of
       directly returning that of the contained column.
       This allows column correspondence
@@ -1966,7 +1966,7 @@
         :tags: examples
         :tickets: 
 
-      The beaker_caching example has been reorgnized
+      The beaker_caching example has been reorganized
       such that the Session, cache manager,
       declarative_base are part of environment, and
       custom cache code is portable and now within
@@ -2948,7 +2948,7 @@
         :tags: orm
         :tickets: 
 
-      To accomodate the fact that there are now two kinds of eager
+      To accommodate the fact that there are now two kinds of eager
       loading available, the new names for eagerload() and
       eagerload_all() are joinedload() and joinedload_all().  The
       old names will remain as synonyms for the foreseeable future.
@@ -3052,7 +3052,7 @@
         :tags: postgresql
         :tickets: 997
 
-      the TIME and TIMESTAMP types are now availble from the
+      the TIME and TIMESTAMP types are now available from the
       postgresql dialect directly, which add the PG-specific
       argument 'precision' to both.   'precision' and
       'timezone' are correctly reflected for both TIME and
@@ -3165,7 +3165,7 @@
 
       Fixed bug in session.rollback() which involved not removing
       formerly "pending" objects from the session before
-      re-integrating "deleted" objects, typically occured with
+      re-integrating "deleted" objects, typically occurred with
       natural primary keys. If there was a primary key conflict
       between them, the attach of the deleted would fail
       internally. The formerly "pending" objects are now expunged
@@ -3465,7 +3465,7 @@
       the date/time/interval system created for Postgresql
       EXTRACT in has now been generalized into
       the type system.   The previous behavior which often
-      occured of an expression "column + literal" forcing
+      occurred of an expression "column + literal" forcing
       the type of "literal" to be the same as that of "column"
       will now usually not occur - the type of
       "literal" is first derived from the Python type of the
@@ -4828,7 +4828,7 @@
            postgresql://scott:tiger@localhost/test
            postgresql+pg8000://scott:tiger@localhost/test
       
-       The "postgres" name remains for backwards compatiblity
+       The "postgres" name remains for backwards compatibility
        in the following ways:
       
            - There is a "postgres.py" dummy dialect which
@@ -5000,7 +5000,7 @@
       a column of type TIMESTAMP now defaults to NULL if
       "nullable=False" is not passed to Column(), and no default
       is present. This is now consistent with all other types,
-      and in the case of TIMESTAMP explictly renders "NULL"
+      and in the case of TIMESTAMP explicitly renders "NULL"
       due to MySQL's "switching" of default nullability
       for TIMESTAMP columns.
 

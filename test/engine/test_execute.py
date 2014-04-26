@@ -282,7 +282,7 @@ class ExecuteTest(fixtures.TestBase):
         self._test_stmt_exception_pickleable(Exception("hello world"))
 
     @testing.crashes("postgresql+psycopg2",
-                "Older versions dont support cursor pickling, newer ones do")
+                "Older versions don't support cursor pickling, newer ones do")
     @testing.fails_on("mysql+oursql",
                 "Exception doesn't come back exactly the same from pickle")
     @testing.fails_on("mysql+mysqlconnector",

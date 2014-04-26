@@ -63,7 +63,7 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_select_composition_four(self):
-        # test that use_labels doesnt interfere with literal columns
+        # test that use_labels doesn't interfere with literal columns
         self.assert_compile(
             select(["column1", "column2", table1.c.myid], from_obj=table1,
                         use_labels=True),
@@ -72,7 +72,7 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_select_composition_five(self):
-        # test that use_labels doesnt interfere
+        # test that use_labels doesn't interfere
         # with literal columns that have textual labels
         self.assert_compile(
             select(["column1 AS foobar", "column2 AS hoho", table1.c.myid],
@@ -83,8 +83,8 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_select_composition_six(self):
         # test that "auto-labeling of subquery columns"
-        # doesnt interfere with literal columns,
-        # exported columns dont get quoted
+        # doesn't interfere with literal columns,
+        # exported columns don't get quoted
         self.assert_compile(
             select(["column1 AS foobar", "column2 AS hoho", table1.c.myid],
                             from_obj=[table1]).select(),

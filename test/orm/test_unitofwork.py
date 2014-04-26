@@ -1310,7 +1310,7 @@ class SaveTest(_fixtures.FixtureTest):
         session.add_all((u, u2))
         session.flush()
 
-        # assert the first one retreives the same from the identity map
+        # assert the first one retrieves the same from the identity map
         nu = session.query(m).get(u.id)
         assert u is nu
 
@@ -1430,7 +1430,7 @@ class SaveTest(_fixtures.FixtureTest):
         mapper(Order, orders, properties={
             'description': sa.orm.deferred(orders.c.description)})
 
-        # dont set deferred attribute, commit session
+        # don't set deferred attribute, commit session
         o = Order(id=42)
         session = create_session(autocommit=False)
         session.add(o)

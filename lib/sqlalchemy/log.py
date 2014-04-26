@@ -21,7 +21,7 @@ import logging
 import sys
 
 # set initial level to WARN.  This so that
-# log statements don't occur in the absense of explicit
+# log statements don't occur in the absence of explicit
 # logging being enabled for 'sqlalchemy'.
 rootlogger = logging.getLogger('sqlalchemy')
 if rootlogger.level == logging.NOTSET:

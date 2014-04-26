@@ -1242,7 +1242,7 @@ class DeclarativeTest(DeclarativeTestBase):
             name = Column('name', String(50))
 
             # this is not "valid" but we want to test that Address.id
-            # doesnt get stuck into user's table
+            # doesn't get stuck into user's table
 
             adr_count = Address.id
 

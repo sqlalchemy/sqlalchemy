@@ -200,7 +200,7 @@ def get_cls_kwargs(cls, _set=None):
 
     Probes a class's __init__ method, collecting all named arguments.  If the
     __init__ defines a \**kwargs catch-all, then the constructor is presumed to
-    pass along unrecognized keywords to it's base classes, and the collection
+    pass along unrecognized keywords to its base classes, and the collection
     process is repeated recursively on each of the bases.
 
     Uses a subset of inspect.getargspec() to cut down on method overhead.
