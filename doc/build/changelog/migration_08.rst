@@ -1176,7 +1176,7 @@ Prior to this change, the above would return::
 
 which is invalid SQL as "t1" is not referred to in any FROM clause.
 
-Now, in the absense of an enclosing SELECT, it returns::
+Now, in the absence of an enclosing SELECT, it returns::
 
     SELECT t1.x, t2.y FROM t1, t2
 

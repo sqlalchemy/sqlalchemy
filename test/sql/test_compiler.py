@@ -1866,7 +1866,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                         expected_test_params_list
                 )
 
-        # check that params() doesnt modify original statement
+        # check that params() doesn't modify original statement
         s = select([table1], or_(table1.c.myid == bindparam('myid'),
                                     table2.c.otherid ==
                                         bindparam('myotherid')))

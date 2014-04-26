@@ -25,7 +25,7 @@
         :tags: sql
         :tickets: 768
 
-      dont assume join criterion consists only of column objects
+      don't assume join criterion consists only of column objects
 
     .. change::
         :tags: sql
@@ -305,7 +305,7 @@
         :tags: sql
         :tickets: 
 
-      ForeignKey to a table in a schema thats not the default schema
+      ForeignKey to a table in a schema that's not the default schema
       requires the schema to be explicit; i.e. ForeignKey('alt_schema.users.id')
 
     .. change::
@@ -558,7 +558,7 @@
         :tags: sqlite
         :tickets: 603
 
-      string PK column inserts dont get overwritten with OID
+      string PK column inserts don't get overwritten with OID
 
     .. change::
         :tags: mssql
@@ -634,7 +634,7 @@
       parenthesis are applied to clauses via a new _Grouping
       construct. uses operator precedence to more intelligently apply
       parenthesis to clauses, provides cleaner nesting of clauses
-      (doesnt mutate clauses placed in other clauses, i.e. no 'parens'
+      (doesn't mutate clauses placed in other clauses, i.e. no 'parens'
       flag)
 
     .. change::
@@ -648,7 +648,7 @@
         :tags: sql
         :tickets: 578
 
-      removed "no group by's in a select thats part of a UNION"
+      removed "no group by's in a select that's part of a UNION"
       restriction
 
     .. change::
@@ -666,7 +666,7 @@
         :tags: orm
         :tickets: 
 
-      fixed bug in query.instances() that wouldnt handle more than
+      fixed bug in query.instances() that wouldn't handle more than
       on additional mapper or one additional column.
 
     .. change::
@@ -923,7 +923,7 @@
       means their lengths are dialect-dependent.  So on oracle a label
       that gets truncated to 30 chars will go out to 63 characters
       on postgres.  Also, the true labelname is always attached as the
-      accessor on the parent Selectable so theres no need to be aware
+      accessor on the parent Selectable so there's no need to be aware
       of the "truncated" label names.
 
     .. change::
@@ -941,7 +941,7 @@
         :tickets: 513
 
       the "mini" column labels generated when using subqueries, which
-      are to work around glitchy SQLite behavior that doesnt understand
+      are to work around glitchy SQLite behavior that doesn't understand
       "foo.id" as equivalent to "id", are now only generated in the case
       that those named columns are selected from (part of)
 
@@ -1120,7 +1120,7 @@
         :tickets: 
 
       mysql uses "DESCRIBE.<tablename>", catching exceptions
-      if table doesnt exist, in order to determine if a table exists.
+      if table doesn't exist, in order to determine if a table exists.
       this supports unicode table names as well as schema names. tested
       with MySQL5 but should work with 4.1 series as well. (#557)
 
@@ -1372,7 +1372,7 @@
       more fixes to polymorphic relations, involving proper lazy-clause
       generation on many-to-one relationships to polymorphic mappers. also fixes to detection of "direction", more specific
       targeting of columns that belong to the polymorphic union vs. those
-      that dont.
+      that don't.
 
     .. change::
         :tags: orm
@@ -1468,7 +1468,7 @@
 
       got binary working for any size input !  cx_oracle works fine,
       it was my fault as BINARY was being passed and not BLOB for
-      setinputsizes (also unit tests werent even setting input sizes).
+      setinputsizes (also unit tests weren't even setting input sizes).
 
     .. change::
         :tags: oracle
@@ -1798,7 +1798,7 @@
         :tags: orm, bugs
         :tickets: 
 
-      fix to deferred so that load operation doesnt mistakenly occur when only
+      fix to deferred so that load operation doesn't mistakenly occur when only
       PK col attributes are set
 
     .. change::
@@ -1948,7 +1948,7 @@
         :tickets: 
 
       type system slightly modified to support TypeDecorators that can be
-      overridden by the dialect (ok, thats not very clear, it allows the mssql
+      overridden by the dialect (ok, that's not very clear, it allows the mssql
       tweak below to be possible)
 
     .. change::
@@ -1998,7 +1998,7 @@
         :tickets: 420
 
       mysql is inconsistent with what kinds of quotes it uses in foreign keys
-      during a SHOW CREATE TABLE, reflection updated to accomodate for all three
+      during a SHOW CREATE TABLE, reflection updated to accommodate for all three
       styles
 
     .. change::
@@ -2133,7 +2133,7 @@
         :tags: orm
         :tickets: 407
 
-      fixed bug in mapper refresh/expire whereby eager loaders didnt properly
+      fixed bug in mapper refresh/expire whereby eager loaders didn't properly
       re-populate item lists
 
     .. change::
@@ -2265,7 +2265,7 @@
         :tickets: 
 
       MySQL detects errors 2006 (server has gone away) and 2014
-      (commands out of sync) and invalidates the connection on which it occured.
+      (commands out of sync) and invalidates the connection on which it occurred.
 
     .. change::
         :tags: 
@@ -2304,7 +2304,7 @@
         :tickets: 
 
       added onupdate and ondelete keyword arguments to ForeignKey; propagate
-      to underlying ForeignKeyConstraint if present.  (dont propagate in the
+      to underlying ForeignKeyConstraint if present.  (don't propagate in the
       other direction, however)
 
     .. change::
@@ -2415,9 +2415,9 @@
 
       fixed bug in circular dependency sorting at flush time; if object A
       contained a cyclical many-to-one relationship to object B, and object B
-      was just attached to object A, *but* object B itself wasnt changed,
+      was just attached to object A, *but* object B itself wasn't changed,
       the many-to-one synchronize of B's primary key attribute to A's foreign key
-      attribute wouldnt occur.
+      attribute wouldn't occur.
 
     .. change::
         :tags: orm
@@ -2572,7 +2572,7 @@
 
       a fair amount of cleanup to the schema package, removal of ambiguous
       methods, methods that are no longer needed.  slightly more constrained
-      useage, greater emphasis on explicitness
+      usage, greater emphasis on explicitness
 
     .. change::
         :tags: schema
@@ -2671,7 +2671,7 @@
         :tags: connections/pooling/execution
         :tickets: 
 
-      fixed bug where Connection wouldnt lose its Transaction
+      fixed bug where Connection wouldn't lose its Transaction
       after commit/rollback
 
     .. change::
@@ -2744,7 +2744,7 @@
       including the addition of a MutableType mixin which is implemented by
       PickleType.  unit-of-work now tracks the "dirty" list as an expression
       of all persistent objects where the attribute manager detects changes.
-      The basic issue thats fixed is detecting changes on PickleType
+      The basic issue that's fixed is detecting changes on PickleType
       objects, but also generalizes type handling and "modified" object
       checking to be more complete and extensible.
 
@@ -2850,7 +2850,7 @@
 
       implemented "version check" logic in Query/Mapper, used
       when version_id_col is in effect and query.with_lockmode()
-      is used to get() an instance thats already loaded
+      is used to get() an instance that's already loaded
 
     .. change::
         :tags: orm

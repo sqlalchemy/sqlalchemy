@@ -71,7 +71,7 @@ class DDLEvents(event.Events):
     """
 
     def before_create(self, target, connection, **kw):
-        """Called before CREATE statments are emitted.
+        """Called before CREATE statements are emitted.
 
         :param target: the :class:`.MetaData` or :class:`.Table`
          object which is the target of the event.
@@ -87,7 +87,7 @@ class DDLEvents(event.Events):
         """
 
     def after_create(self, target, connection, **kw):
-        """Called after CREATE statments are emitted.
+        """Called after CREATE statements are emitted.
 
         :param target: the :class:`.MetaData` or :class:`.Table`
          object which is the target of the event.
@@ -103,7 +103,7 @@ class DDLEvents(event.Events):
         """
 
     def before_drop(self, target, connection, **kw):
-        """Called before DROP statments are emitted.
+        """Called before DROP statements are emitted.
 
         :param target: the :class:`.MetaData` or :class:`.Table`
          object which is the target of the event.
@@ -119,7 +119,7 @@ class DDLEvents(event.Events):
         """
 
     def after_drop(self, target, connection, **kw):
-        """Called after DROP statments are emitted.
+        """Called after DROP statements are emitted.
 
         :param target: the :class:`.MetaData` or :class:`.Table`
          object which is the target of the event.
@@ -347,7 +347,7 @@ class PoolEvents(event.Events):
 
 
         The :meth:`.PoolEvents.reset` event is usually followed by the
-        the :meth:`.PoolEvents.checkin` event is called, except in those
+        :meth:`.PoolEvents.checkin` event is called, except in those
         cases where the connection is discarded immediately after reset.
 
         :param dbapi_con:
@@ -580,7 +580,7 @@ class ConnectionEvents(event.Events):
 
         This event is called with the DBAPI exception instance
         received from the DBAPI itself, *before* SQLAlchemy wraps the
-        exception with it's own exception wrappers, and before any
+        exception with its own exception wrappers, and before any
         other operations are performed on the DBAPI cursor; the
         existing transaction remains in effect as well as any state
         on the cursor.

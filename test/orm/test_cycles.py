@@ -383,7 +383,7 @@ class BiDirectionalManyToOneTest(fixtures.MappedTest):
         # the bug here is that the dependency sort comes up with T1/T2 in a
         # cycle, but there are no T1/T2 objects to be saved.  therefore no
         # "cyclical subtree" gets generated, and one or the other of T1/T2
-        # gets lost, and processors on T3 dont fire off.  the test will then
+        # gets lost, and processors on T3 don't fire off.  the test will then
         # fail because the FK's on T3 are not nullable.
         o3 = T3()
         o3.t1 = o1
@@ -592,7 +592,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
 
     def test_cycle(self):
         """
-        This test has a peculiar aspect in that it doesnt create as many
+        This test has a peculiar aspect in that it doesn't create as many
         dependent relationships as the other tests, and revealed a small
         glitch in the circular dependency sorting.
 

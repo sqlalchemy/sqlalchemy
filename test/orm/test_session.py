@@ -826,7 +826,7 @@ class SessionStateWFixtureTest(_fixtures.FixtureTest):
         assert len(u.addresses) == 3
 
         assert newad not in u.addresses
-        # pending objects dont get expired
+        # pending objects don't get expired
         assert newad.email_address == 'a new address'
 
     def test_expunge_cascade(self):

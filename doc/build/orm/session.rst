@@ -634,7 +634,7 @@ When given an instance, it follows these steps:
 * The new instance is returned.
 
 With :meth:`~.Session.merge`, the given "source"
-instance is not modifed nor is it associated with the target :class:`.Session`,
+instance is not modified nor is it associated with the target :class:`.Session`,
 and remains available to be merged with any number of other :class:`.Session`
 objects.  :meth:`~.Session.merge` is useful for
 taking the state of any kind of object structure without regard for its
@@ -686,7 +686,7 @@ Merge Tips
 
 :meth:`~.Session.merge` is an extremely useful method for many purposes.  However,
 it deals with the intricate border between objects that are transient/detached and
-those that are persistent, as well as the automated transferrence of state.
+those that are persistent, as well as the automated transference of state.
 The wide variety of scenarios that can present themselves here often require a
 more careful approach to the state of objects.   Common problems with merge usually involve
 some unexpected state regarding the object being passed to :meth:`~.Session.merge`.
@@ -1368,7 +1368,7 @@ deleting the row entirely.
       relationship, SQLAlchemy's default behavior of setting a foreign key
       to ``NULL`` can be caught in one of two ways:
 
-        * The easiest and most common is just to to set the
+        * The easiest and most common is just to set the
           foreign-key-holding column to ``NOT NULL`` at the database schema
           level.  An attempt by SQLAlchemy to set the column to NULL will
           fail with a simple NOT NULL constraint exception.
@@ -1668,7 +1668,7 @@ is closed out after the :meth:`.Session.flush` operation completes.
     of usage, and can in some cases lead to concurrent connection
     checkouts.
 
-    In the absense of a demarcated transaction, the :class:`.Session`
+    In the absence of a demarcated transaction, the :class:`.Session`
     cannot make appropriate decisions as to when autoflush should
     occur nor when auto-expiration should occur, so these features
     should be disabled with ``autoflush=False, expire_on_commit=False``.

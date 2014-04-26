@@ -151,7 +151,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
         # assert that the "id" column is available without a second
         # load. as of 0.7, the ColumnProperty tests all columns
-        # in it's list to see which is present in the row.
+        # in its list to see which is present in the row.
 
         sess.expunge_all()
 

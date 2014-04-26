@@ -426,7 +426,7 @@ meaning, in-place changes to values will not be detected and will not be
 flushed. Without further steps, you instead would need to replace the existing
 value with a new one on each parent object to detect changes. Note that
 there's nothing wrong with this, as many applications may not require that the
-values are ever mutated once created.  For those which do have this requirment,
+values are ever mutated once created.  For those which do have this requirement,
 support for mutability is best applied using the ``sqlalchemy.ext.mutable``
 extension - see the example in :ref:`mutable_toplevel`.
 

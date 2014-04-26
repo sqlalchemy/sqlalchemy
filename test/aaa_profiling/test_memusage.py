@@ -507,7 +507,7 @@ class MemUsageTest(EnsureZeroed):
                 sess.delete(a)
             sess.flush()
 
-            # dont need to clear_mappers()
+            # don't need to clear_mappers()
             del B
             del A
 
@@ -574,7 +574,7 @@ class MemUsageTest(EnsureZeroed):
                 sess.delete(a)
             sess.flush()
 
-            # dont need to clear_mappers()
+            # don't need to clear_mappers()
             del B
             del A
 

@@ -109,7 +109,7 @@ def id_chooser(query, ident):
 
     given a primary key, returns a list of shards
     to search.  here, we don't have any particular information from a
-    pk so we just return all shard ids. often, youd want to do some
+    pk so we just return all shard ids. often, you'd want to do some
     kind of round-robin strategy here so that requests are evenly
     distributed among DBs.
 

@@ -935,7 +935,7 @@ parent rows.
 
 To make room for the new subquery load feature, the existing
 ```eagerload()````/````eagerload_all()```` options are now
-superceded by ````joinedload()```` and
+superseded by ````joinedload()```` and
 ````joinedload_all()````.   The old names will hang around
 for the foreseeable future just like ````relation()```.
 

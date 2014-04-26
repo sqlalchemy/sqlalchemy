@@ -24,7 +24,7 @@ also accepts the following:
 
 * ``concurrency_level`` - set the backend policy with regards to threading
   issues: by default SQLAlchemy uses policy 1.  See the linked documents
-  below for futher information.
+  below for further information.
 
 .. seealso::
 

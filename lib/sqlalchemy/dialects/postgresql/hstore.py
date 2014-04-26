@@ -52,7 +52,7 @@ def _parse_error(hstore_str, pos):
 
 
 def _parse_hstore(hstore_str):
-    """Parse an hstore from it's literal string representation.
+    """Parse an hstore from its literal string representation.
 
     Attempts to approximate PG's hstore input parsing rules as closely as
     possible. Although currently this is not strictly necessary, since the

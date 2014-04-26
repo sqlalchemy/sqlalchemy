@@ -1524,7 +1524,7 @@
           transaction directly to the parent of the transaction
           that could be rolled back to. Now it rolls back the next
           transaction up that can handle it, but sets the current
-          transaction to it's parent and inactivates the
+          transaction to its parent and inactivates the
           transactions in between. Inactive transactions can only
           be rolled back or closed, any other call results in an
           error.
@@ -1533,7 +1533,7 @@
           subtransactions.
       
         - unitofwork flush didn't close the failed transaction
-          when the session was not in a transaction and commiting
+          when the session was not in a transaction and committing
           the transaction failed.
 
     .. change::
@@ -1562,7 +1562,7 @@
 
       Better support for schemas in SQLite (linked in by ATTACH
       DATABASE ... AS name).  In some cases in the past, schema
-      names were ommitted from generated SQL for SQLite.  This is
+      names were omitted from generated SQL for SQLite.  This is
       no longer the case.
 
     .. change::
@@ -3267,7 +3267,7 @@
         :tags: 
         :tickets: 
 
-      The 'Smallinteger' compatiblity name (small i!) is no longer imported,
+      The 'Smallinteger' compatibility name (small i!) is no longer imported,
       but remains in schema.py for now.  SmallInteger (big I!) is still
       imported.
 
@@ -3628,7 +3628,7 @@
         :tickets: 643
 
       Class-level properties are now usable as query elements... no more
-      '.c.'!  "Class.c.propname" is now superceded by "Class.propname".  All
+      '.c.'!  "Class.c.propname" is now superseded by "Class.propname".  All
       clause operators are supported, as well as higher level operators such
       as Class.prop==<some instance> for scalar attributes,
       Class.prop.contains(<some instance>) and Class.prop.any(<some
@@ -3816,7 +3816,7 @@
       query.get() clauses, etc. and act as though they are regular single-column
       scalars... except they're not!  Use the function composite(cls, \*columns)
       inside of the mapper's "properties" dict, and instances of cls will be
-      created/mapped to a single attribute, comprised of the values correponding
+      created/mapped to a single attribute, comprised of the values corresponding
       to \*columns.
 
     .. change::
@@ -3844,7 +3844,7 @@
       Joined-table inheritance will now generate the primary key columns of all
       inherited classes against the root table of the join only.  This implies
       that each row in the root table is distinct to a single instance.  If for
-      some rare reason this is not desireable, explicit primary_key settings on
+      some rare reason this is not desirable, explicit primary_key settings on
       individual mappers will override it.
 
     .. change::
@@ -3902,7 +3902,7 @@
         :tickets: 
 
       Speed!  Clause compilation as well as the mechanics of SQL constructs have
-      been streamlined and simplified to a signficant degree, for a 20-30%
+      been streamlined and simplified to a significant degree, for a 20-30%
       improvement of the statement construction/compilation overhead of 0.3.
 
     .. change::
@@ -3920,7 +3920,7 @@
       case_sensitive=(True|False) setting removed from schema items, since
       checking this state added a lot of method call overhead and there was no
       decent reason to ever set it to False.  Table and column names which are
-      all lower case will be treated as case-insenstive (yes we adjust for
+      all lower case will be treated as case-insensitive (yes we adjust for
       Oracle's UPPERCASE style too).
 
     .. change::
@@ -4193,4 +4193,4 @@
 
       Very rudimental support for OUT parameters added; use sql.outparam(name,
       type) to set up an OUT parameter, just like bindparam(); after execution,
-      values are avaiable via result.out_parameters dictionary.
+      values are available via result.out_parameters dictionary.

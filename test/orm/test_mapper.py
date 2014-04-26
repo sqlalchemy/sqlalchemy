@@ -64,7 +64,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             x = "something"
             @property
             def y(self):
-                return "somethign else"
+                return "something else"
 
 
         m = mapper(Foo, users, properties={"addresses":relationship(Address)})
@@ -101,7 +101,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             x = "something"
             @property
             def y(self):
-                return "somethign else"
+                return "something else"
         m = mapper(Foo, users)
         a1 = aliased(Foo)
 

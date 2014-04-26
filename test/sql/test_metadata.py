@@ -334,7 +334,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                                    table_c.c.bar.onupdate.arg) == 'z'
                     assert isinstance(table2_c.c.id.default, Sequence)
 
-                # constraints dont get reflected for any dialect right
+                # constraints don't get reflected for any dialect right
                 # now
 
                 if has_constraints:
