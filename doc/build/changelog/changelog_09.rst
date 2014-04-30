@@ -36,6 +36,16 @@
         needs to have a table-bound column present if the index is to be
         manually added to the table, either via inline declaration or via
         :meth:`.Table.append_constraint`.
+        :tags: bug, firebird
+        :tickets: 3038
+
+        Fixed bug where the combination of "limit" rendering as
+        "SELECT FIRST n ROWS" using a bound parameter (only firebird has both),
+        combined with column-level subqueries
+        which also feature "limit" as well as "positional" bound parameters
+        (e.g. qmark style) would erroneously assign the subquery-level positions
+        before that of the enclosing SELECT, thus returning parameters which
+        are out of order.
 
     .. change::
         :tags: bug, mssql

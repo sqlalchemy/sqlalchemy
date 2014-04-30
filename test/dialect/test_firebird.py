@@ -415,8 +415,8 @@ class MiscTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_rowcount_flag(self):
         metadata = self.metadata
-        engine = engines.testing_engine(options={'enable_rowcount'
-                : True})
+        engine = engines.testing_engine(
+                        options={'enable_rowcount': True})
         assert engine.dialect.supports_sane_rowcount
         metadata.bind = engine
         t = Table('t1', metadata, Column('data', String(10)))
@@ -431,6 +431,7 @@ class MiscTest(fixtures.TestBase):
         r = \
             t.delete().execution_options(enable_rowcount=False).execute()
         eq_(r.rowcount, -1)
+        engine.dispose()
         engine = engines.testing_engine(options={'enable_rowcount'
                 : False})
         assert not engine.dialect.supports_sane_rowcount
@@ -444,6 +445,8 @@ class MiscTest(fixtures.TestBase):
         eq_(r.rowcount, -1)
         r = t.delete().execution_options(enable_rowcount=True).execute()
         eq_(r.rowcount, 1)
+        r.close()
+        engine.dispose()
 
     def test_percents_in_text(self):
         for expr, result in (text("select '%' from rdb$database"), '%'

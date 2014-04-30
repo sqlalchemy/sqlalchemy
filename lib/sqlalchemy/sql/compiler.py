@@ -1481,19 +1481,6 @@ class SQLCompiler(Compiled):
                 'within_columns_clause': False
             })
 
-        # the actual list of columns to print in the SELECT column list.
-        inner_columns = [
-            c for c in [
-                self._label_select_column(select,
-                                    column,
-                                    populate_result_map, asfrom,
-                                    column_clause_args,
-                                    name=name)
-                for name, column in select._columns_plus_names
-                ]
-            if c is not None
-        ]
-
         text = "SELECT "  # we're off to a good start !
 
         if select._hints:
@@ -1514,6 +1501,20 @@ class SQLCompiler(Compiled):
             text += self._generate_prefixes(select, select._prefixes, **kwargs)
 
         text += self.get_select_precolumns(select)
+
+        # the actual list of columns to print in the SELECT column list.
+        inner_columns = [
+            c for c in [
+                self._label_select_column(select,
+                                    column,
+                                    populate_result_map, asfrom,
+                                    column_clause_args,
+                                    name=name)
+                for name, column in select._columns_plus_names
+                ]
+            if c is not None
+        ]
+
         text += ', '.join(inner_columns)
 
         if froms:
