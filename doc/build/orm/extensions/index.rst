@@ -16,6 +16,7 @@ behavior.   In particular the "Horizontal Sharding", "Hybrid Attributes", and
     :maxdepth: 1
 
     associationproxy
+    automap
     declarative
     mutable
     orderinglist

@@ -824,7 +824,7 @@ I'm calling ``Session.delete(myobject)`` and it isn't removed from the parent co
 See :ref:`session_deleting_from_collections` for a description of this behavior.
 
 why isn't my ``__init__()`` called when I load objects?
-------------------------------------------------------
+-------------------------------------------------------
 
 See :ref:`mapping_constructors` for a description of this behavior.
 
