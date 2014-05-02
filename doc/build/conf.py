@@ -96,7 +96,7 @@ release = "0.9.4"
 
 release_date = "March 28, 2014"
 
-site_base = "http://www.sqlalchemy.org"
+site_base = os.environ.get("RTD_SITE_BASE", "http://www.sqlalchemy.org")
 
 # arbitrary number recognized by builders.py, incrementing this
 # will force a rebuild

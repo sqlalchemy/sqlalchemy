@@ -90,9 +90,10 @@ a.headerlink:hover {
 }
 
 #docs-top-navigation {
-  margin:10px 0px 10px 0px;
+  margin:10px 0px;
   line-height:1.2em;
 }
+
 
 .docs-navigation-links {
   font-family:Verdana,sans-serif;
@@ -149,8 +150,6 @@ a.headerlink:hover {
 /* content container, sidebar */
 
 #docs-body-container {
-  background-color:#EFEFEF;
-  border: solid 1px #CCC;
 }
 
 #docs-body,
@@ -174,11 +173,36 @@ a.headerlink:hover {
 }
 
 #docs-sidebar {
-  float:left;
-  width:212px;
-  padding: 10px 0 0 15px;
+
+  width:210px;
+  padding: 0px 0 0 15px;
   font-size:.85em;
+
+  border: solid 1px #CCC;
+
+  float:left;
+
+  z-index: 3;
+  background-color: #EFEFEF;
+
 }
+
+#docs-top-navigation-container.automated {
+    position:fixed;
+    top:0;
+    z-index:100;
+    width:100%;
+    background-color:#FFF;
+}
+
+#docs-sidebar.automated {
+    float: none;
+    position: fixed;
+    top: 96px;
+    bottom: 0;
+    overflow-y: auto;
+}
+
 
 #docs-sidebar h3, #docs-sidebar h4 {
     background-color: #DDDDDD;
@@ -189,7 +213,7 @@ a.headerlink:hover {
     margin: 10px 0 0 -15px;
     padding: 5px 10px 5px 10px;
     text-shadow: 1px 1px 0 white;
-    width:210px;
+    /*width:210px;*/
 }
 
 #docs-sidebar h3 a, #docs-sidebar h4 a {
@@ -212,11 +236,13 @@ a.headerlink:hover {
 #docs-body {
   background-color:#FFFFFF;
   padding:1px 10px 10px 10px;
+
+  border: solid 1px #CCC;
+
 }
 
 #docs-body.withsidebar {
   margin: 0 0 0 230px;
-  border-left:3px solid #DFDFDF;
 }
 
 #docs-body h1,

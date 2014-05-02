@@ -112,6 +112,7 @@ withsidebar = bool(toc) and current_page_name != 'index'
 
 </div>
 
+<div id="docs-top-navigation-container">
 <div id="docs-top-navigation">
     <div id="docs-top-page-control" class="docs-navigation-links">
         <ul>
@@ -155,11 +156,22 @@ withsidebar = bool(toc) and current_page_name != 'index'
     </div>
 
 </div>
+</div>
 
 <div id="docs-body-container">
 
 % if withsidebar:
     <div id="docs-sidebar">
+
+    <h4>Quick Search</h4>
+    <p>
+    <form class="search" action="${pathto('search')}" method="get">
+      <input type="text" name="q" size="18" /> <input type="submit" value="${_('Search')}" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </p>
+
     <h3><a href="${pathto('index')}">Table of Contents</a></h3>
     ${toc}
 
@@ -182,14 +194,6 @@ withsidebar = bool(toc) and current_page_name != 'index'
     </ul>
     % endif
 
-    <h4>Quick Search</h4>
-    <p>
-    <form class="search" action="${pathto('search')}" method="get">
-      <input type="text" name="q" size="18" /> <input type="submit" value="${_('Search')}" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
-    </form>
-    </p>
 
     </div>
 % endif
