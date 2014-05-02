@@ -254,35 +254,21 @@ class _CollectionOperations(fixtures.TestBase):
             assert True
 
 class DefaultTest(_CollectionOperations):
-    def __init__(self, *args, **kw):
-        super(DefaultTest, self).__init__(*args, **kw)
-        self.collection_class = None
+    collection_class = None
 
     def test_sequence_ops(self):
         self._test_sequence_ops()
 
 
 class ListTest(_CollectionOperations):
-    def __init__(self, *args, **kw):
-        super(ListTest, self).__init__(*args, **kw)
-        self.collection_class = list
+    collection_class = list
 
     def test_sequence_ops(self):
         self._test_sequence_ops()
 
-class CustomListTest(ListTest):
-    def __init__(self, *args, **kw):
-        super(CustomListTest, self).__init__(*args, **kw)
-        self.collection_class = list
 
-# No-can-do until ticket #213
-class DictTest(_CollectionOperations):
-    pass
-
-class CustomDictTest(DictTest):
-    def __init__(self, *args, **kw):
-        super(DictTest, self).__init__(*args, **kw)
-        self.collection_class = DictCollection
+class CustomDictTest(_CollectionOperations):
+    collection_class = DictCollection
 
     def test_mapping_ops(self):
         Parent, Child = self.Parent, self.Child
@@ -364,9 +350,7 @@ class CustomDictTest(DictTest):
 
 
 class SetTest(_CollectionOperations):
-    def __init__(self, *args, **kw):
-        super(SetTest, self).__init__(*args, **kw)
-        self.collection_class = set
+    collection_class = set
 
     def test_set_operations(self):
         Parent, Child = self.Parent, self.Child
@@ -582,14 +566,10 @@ class SetTest(_CollectionOperations):
 
 
 class CustomSetTest(SetTest):
-    def __init__(self, *args, **kw):
-        super(CustomSetTest, self).__init__(*args, **kw)
-        self.collection_class = SetCollection
+    collection_class = SetCollection
 
 class CustomObjectTest(_CollectionOperations):
-    def __init__(self, *args, **kw):
-        super(CustomObjectTest, self).__init__(*args, **kw)
-        self.collection_class = ObjectCollection
+    collection_class = ObjectCollection
 
     def test_basic(self):
         Parent, Child = self.Parent, self.Child
