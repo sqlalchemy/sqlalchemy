@@ -30,7 +30,7 @@ psycopg2-specific keyword arguments which are accepted by
   way of enabling this mode on a per-execution basis.
 * ``use_native_unicode``: Enable the usage of Psycopg2 "native unicode" mode
   per connection.  True by default.
-* ``isolation_level``: This option, available for all Posgtresql dialects,
+* ``isolation_level``: This option, available for all PostgreSQL dialects,
   includes the ``AUTOCOMMIT`` isolation level when using the psycopg2
   dialect.  See :ref:`psycopg2_isolation_level`.
 
