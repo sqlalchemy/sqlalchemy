@@ -489,12 +489,16 @@ class PGDialect_psycopg2(PGDialect):
 
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.Error):
+            # Is the connection already marked as closed?
+            if getattr(connection, 'closed', False):
+                return True
+
             str_e = str(e).partition("\n")[0]
             for msg in [
                 # these error messages from libpq: interfaces/libpq/fe-misc.c
                 # and interfaces/libpq/fe-secure.c.
                 # TODO: these are sent through gettext in libpq and we can't
-                # check within other locales - consider using connection.closed
+                # check within other locales
                 'terminating connection',
                 'closed the connection',
                 'connection not open',
