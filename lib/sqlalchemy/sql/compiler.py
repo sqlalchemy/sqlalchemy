@@ -1536,7 +1536,9 @@ class SQLCompiler(engine.Compiled):
                 text += " " + extra_from_text
 
         if update_stmt._whereclause is not None:
-            text += " WHERE " + self.process(update_stmt._whereclause)
+            t = self.process(update_stmt._whereclause)
+            if t:
+                text += " WHERE " + t
 
         limit_clause = self.update_limit_clause(update_stmt)
         if limit_clause:
@@ -1864,8 +1866,9 @@ class SQLCompiler(engine.Compiled):
                                 delete_stmt, delete_stmt._returning)
 
         if delete_stmt._whereclause is not None:
-            text += " WHERE "
-            text += delete_stmt._whereclause._compiler_dispatch(self)
+            t = delete_stmt._whereclause._compiler_dispatch(self)
+            if t:
+                text += " WHERE " + t
 
         if self.returning and not self.returning_precedes_values:
             text += " " + self.returning_clause(

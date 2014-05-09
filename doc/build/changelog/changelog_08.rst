@@ -12,6 +12,16 @@
     :version: 0.8.7
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3045
+        :versions: 0.9.5
+
+        Fixed bug where :meth:`.Table.update` and :meth:`.Table.delete`
+        would produce an empty WHERE clause when an empty :func:`.and_()`
+        or :func:`.or_()` or other blank expression were applied.  This is
+        now consistent with that of :func:`.select`.
+
+    .. change::
         :tags: bug, postgresql
         :pullreq: bitbucket:13
         :versions: 0.9.5

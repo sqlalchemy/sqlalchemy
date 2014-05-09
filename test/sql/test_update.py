@@ -177,6 +177,17 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
                 'mytable.myid = hoho(:hoho_1) AND '
                 'mytable.name = :param_2 || mytable.name || :param_3')
 
+    def test_where_empty(self):
+        table1 = self.tables.mytable
+        self.assert_compile(
+            table1.update().where(and_()),
+            "UPDATE mytable SET myid=:myid, name=:name, description=:description"
+        )
+        self.assert_compile(
+            table1.update().where(or_()),
+            "UPDATE mytable SET myid=:myid, name=:name, description=:description"
+        )
+
     def test_prefix_with(self):
         table1 = self.tables.mytable
 
