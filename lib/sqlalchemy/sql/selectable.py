@@ -64,6 +64,23 @@ def _offset_or_limit_clause(element, name=None, type_=None):
     value = util.asint(element)
     return BindParameter(name, value, type_=type_, unique=True)
 
+def _offset_or_limit_clause_asint(clause):
+    """
+    Get the integer value of an offset or limit clause, for database engines that
+    require it to be a plain integer instead of a BindParameter or other custom
+    clause.
+
+    If the clause is None, returns None.
+    If the clause is not a BindParameter, throws an exception.
+    If the clause is a BindParameter but its value is not set yet or not an int, throws an exception.
+    Otherwise, returns the integer in the clause.
+    """
+    if clause is None:
+        return None
+    if not isinstance(clause, BindParameter):
+        raise Exception("Limit is not a simple integer")
+    return util.asint(clause.effective_value)
+
 def subquery(alias, *args, **kwargs):
     """Return an :class:`.Alias` object derived
     from a :class:`.Select`.
@@ -1659,15 +1676,21 @@ class GenerativeSelect(SelectBase):
 
     @property
     def _limit(self):
-        if not isinstance(self._limit_clause, BindParameter):
-            return None
-        return util.asint(self._limit_clause.effective_value)
+        """
+        Get an integer value for the limit.  This should only be used by code that
+        cannot support a limit as a BindParameter or other custom clause as it will
+        throw an exception if the limit isn't currently set to an integer.
+        """
+        return _offset_or_limit_clause_asint(self._limit_clause)
 
     @property
     def _offset(self):
-        if not isinstance(self._offset_clause, BindParameter):
-            return None
-        return util.asint(self._offset_clause.effective_value)
+        """
+        Get an integer value for the offset.  This should only be used by code that
+        cannot support an offset as a BindParameter or other custom clause as it will
+        throw an exception if the offset isn't currently set to an integer.
+        """
+        return _offset_or_limit_clause_asint(self._offset_clause)
 
     @_generative
     def limit(self, limit):
