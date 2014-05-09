@@ -1,6 +1,6 @@
 #! coding:utf-8
 
-from sqlalchemy import Column, Integer, String, Table, delete, select
+from sqlalchemy import Column, Integer, String, Table, delete, select, and_, or_
 from sqlalchemy.dialects import mysql
 from sqlalchemy.testing import AssertsCompiledSQL, fixtures
 
@@ -38,6 +38,18 @@ class DeleteTest(_DeleteTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             'DELETE FROM mytable '
             'WHERE mytable.myid = :myid_1 '
             'AND mytable.name = :name_1')
+
+    def test_where_empty(self):
+        table1 = self.tables.mytable
+
+        self.assert_compile(
+            table1.delete().where(and_()),
+            "DELETE FROM mytable"
+        )
+        self.assert_compile(
+            table1.delete().where(or_()),
+            "DELETE FROM mytable"
+        )
 
     def test_prefix_with(self):
         table1 = self.tables.mytable

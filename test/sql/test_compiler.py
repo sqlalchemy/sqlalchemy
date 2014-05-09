@@ -962,6 +962,15 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
+    def test_where_empty(self):
+        self.assert_compile(
+            select([table1.c.myid]).where(and_()),
+            "SELECT mytable.myid FROM mytable"
+        )
+        self.assert_compile(
+            select([table1.c.myid]).where(or_()),
+            "SELECT mytable.myid FROM mytable"
+        )
 
     def test_multiple_col_binds(self):
         self.assert_compile(
