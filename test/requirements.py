@@ -578,8 +578,6 @@ class DefaultRequirements(SuiteRequirements):
                     ('oracle', None, None,
             "this may be a bug due to the difficulty in handling "
             "oracle precision numerics"),
-                    ('postgresql+pg8000', None, None,
-        "pg-8000 does native decimal but truncates the decimals."),
                     ("firebird", None, None,
         "database and/or driver truncates decimal places.")
                 ]
