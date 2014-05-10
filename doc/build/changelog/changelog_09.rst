@@ -15,6 +15,28 @@
     :version: 0.9.5
 
     .. change::
+        :tags: bug, engine
+        :tickets: 3043
+
+        Fixed some "double invalidate" situations were detected where
+        a connection invalidation could occur within an already critical section
+        like a connection.close(); ultimately, these conditions are caused
+        by the change in :ticket:`2907`, in that the "reset on return" feature
+        calls out to the Connection/Transaction in order to handle it, where
+        "disconnect detection" might be caught.  However, it's possible that
+        the more recent change in :ticket:`2985` made it more likely for this
+        to be seen as the "connection invalidate" operation is much quicker,
+        as the issue is more reproducible on 0.9.4 than 0.9.3.
+
+        Checks are now added within any section that
+        an invalidate might occur to halt further disallowed operations
+        on the invalidated connection.  This includes two fixes both at the
+        engine level and at the pool level.   While the issue was observed
+        with highly concurrent gevent cases, it could in theory occur in
+        any kind of scenario where a disconnect occurs within the connection
+        close operation.
+
+    .. change::
         :tags: feature, orm
         :tickets: 3029
 

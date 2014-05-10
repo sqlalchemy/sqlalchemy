@@ -479,6 +479,9 @@ class _ConnectionRecord(object):
             :ref:`pool_connection_invalidation`
 
         """
+        # already invalidated
+        if self.connection is None:
+            return
         self.__pool.dispatch.invalidate(self.connection, self, e)
         if e is not None:
             self.__pool.logger.info(
@@ -557,6 +560,7 @@ def _finalize_fairy(connection, connection_record, pool, ref, echo, fairy=None):
             if not connection_record:
                 pool._close_connection(connection)
         except Exception as e:
+            pool.logger.error("Exception during reset or similar", exc_info=True)
             if connection_record:
                 connection_record.invalidate(e=e)
             if isinstance(e, (SystemExit, KeyboardInterrupt)):
