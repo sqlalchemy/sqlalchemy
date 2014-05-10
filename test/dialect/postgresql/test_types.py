@@ -108,9 +108,6 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
     @testing.fails_on('postgresql+zxjdbc',
                       'zxjdbc fails on ENUM: column "XXX" is of type '
                       'XXX but expression is of type character varying')
-    @testing.fails_on('postgresql+pg8000',
-                      'zxjdbc fails on ENUM: column "XXX" is of type '
-                      'XXX but expression is of type text')
     def test_create_table(self):
         metadata = MetaData(testing.db)
         t1 = Table('table', metadata, Column('id', Integer,
@@ -138,9 +135,6 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
     @testing.fails_on('postgresql+zxjdbc',
                       'zxjdbc fails on ENUM: column "XXX" is of type '
                       'XXX but expression is of type character varying')
-    @testing.fails_on('postgresql+pg8000',
-                      'zxjdbc fails on ENUM: column "XXX" is of type '
-                      'XXX but expression is of type text')
     @testing.provide_metadata
     def test_unicode_labels(self):
         metadata = self.metadata
