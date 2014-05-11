@@ -1075,12 +1075,12 @@ def _inspect_mapped_class(class_, configure=False):
         if not class_manager.is_mapped:
             return None
         mapper = class_manager.mapper
+    except exc.NO_STATE:
+        return None
+    else:
         if configure and mapperlib.module._new_mappers:
             mapperlib.configure_mappers()
         return mapper
-
-    except exc.NO_STATE:
-        return None
 
 
 def object_mapper(instance):
