@@ -351,12 +351,13 @@ def _inspect_mapped_class(class_, configure=False):
         if not class_manager.is_mapped:
             return None
         mapper = class_manager.mapper
+    except exc.NO_STATE:
+        return None
+    else:
         if configure and mapper._new_mappers:
             mapper._configure_all()
         return mapper
 
-    except exc.NO_STATE:
-        return None
 
 def class_mapper(class_, configure=True):
     """Given a class, return the primary :class:`.Mapper` associated

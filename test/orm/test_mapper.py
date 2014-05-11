@@ -1590,6 +1590,41 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             class_mapper, (5, 6)
         )
 
+    def test_attribute_error_raised_class_mapper(self):
+        users = self.tables.users
+        addresses = self.tables.addresses
+        User = self.classes.User
+        Address = self.classes.Address
+
+        mapper(User, users, properties={
+                "addresses": relationship(Address,
+                    primaryjoin=lambda: users.c.id == addresses.wrong.user_id)
+                })
+        mapper(Address, addresses)
+        assert_raises_message(
+            AttributeError,
+            "'Table' object has no attribute 'wrong'",
+            class_mapper, Address
+        )
+
+    def test_key_error_raised_class_mapper(self):
+        users = self.tables.users
+        addresses = self.tables.addresses
+        User = self.classes.User
+        Address = self.classes.Address
+
+        mapper(User, users, properties={
+                "addresses": relationship(Address,
+                    primaryjoin=lambda: users.c.id ==
+                        addresses.__dict__['wrong'].user_id)
+                })
+        mapper(Address, addresses)
+        assert_raises_message(
+            KeyError,
+            "wrong",
+            class_mapper, Address
+        )
+
     def test_unmapped_subclass_error_postmap(self):
         users = self.tables.users
 

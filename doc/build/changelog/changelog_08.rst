@@ -12,6 +12,16 @@
     :version: 0.8.7
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3047
+        :versions: 0.9.5
+
+        Fixed ORM bug where the :func:`.class_mapper` function would mask
+        AttributeErrors or KeyErrors that should raise during mapper
+        configuration due to user errors.  The catch for attribute/keyerror
+        has been made more specific to not include the configuration step.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3045
         :versions: 0.9.5
