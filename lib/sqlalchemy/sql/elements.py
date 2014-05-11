@@ -3284,7 +3284,7 @@ def _find_columns(clause):
 # however the inspect() versions add significant callcount
 # overhead for critical functions like _interpret_as_column_or_from().
 # Generally, the column-based functions are more performance critical
-# and are fine just checking for __clause_element__().  it's only
+# and are fine just checking for __clause_element__().  It is only
 # _interpret_as_from() where we'd like to be able to receive ORM entities
 # that have no defined namespace, hence inspect() is needed there.
 

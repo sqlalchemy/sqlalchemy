@@ -122,7 +122,7 @@ class Connection(Connectable):
         execution options which will take effect for a call to
         :meth:`execute`. As the new :class:`.Connection` references the same
         underlying resource, it's usually a good idea to ensure that the copies
-        would be discarded immediately, which is implicit if used as in::
+        will be discarded immediately, which is implicit if used as in::
 
             result = connection.execution_options(stream_results=True).\\
                                 execute(stmt)

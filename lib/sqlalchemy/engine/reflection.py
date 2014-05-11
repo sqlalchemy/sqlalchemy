@@ -523,7 +523,7 @@ class Inspector(object):
             table.primary_key.name = pk_cons.get('name')
 
             # tell the PKConstraint to re-initialize
-            # it's column collection
+            # its column collection
             table.primary_key._reload(pk_cols)
 
         fkeys = self.get_foreign_keys(table_name, schema, **table.dialect_kwargs)

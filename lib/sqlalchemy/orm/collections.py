@@ -445,7 +445,7 @@ class collection(object):
         The converter method will receive the object being assigned and should
         return an iterable of values suitable for use by the ``appender``
         method.  A converter must not assign values or mutate the collection,
-        it's sole job is to adapt the value the user provides into an iterable
+        its sole job is to adapt the value the user provides into an iterable
         of values for the ORM's use.
 
         The default converter implementation will use duck-typing to do the

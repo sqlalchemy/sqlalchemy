@@ -1054,7 +1054,7 @@ class Enum(String, SchemaType):
            operations. If the type is not associated with any ``MetaData``
            object, it will associate itself with each ``Table`` in which it is
            used, and will be created when any of those individual tables are
-           created, after a check is performed for it's existence. The type is
+           created, after a check is performed for its existence. The type is
            only dropped when ``drop_all()`` is called for that ``Table``
            object's metadata, however.
 

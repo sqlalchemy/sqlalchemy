@@ -1013,7 +1013,7 @@ to just ``city='Boston'``.   When using Declarative, rudimentary SQL functions l
 
 The custom criteria we use in a :paramref:`~.relationship.primaryjoin`
 is generally only significant when SQLAlchemy is rendering SQL in
-order to load or represent this relationship. That is, it's  used in
+order to load or represent this relationship. That is, it's used in
 the SQL statement that's emitted in order to perform a per-attribute
 lazy load, or when a join is constructed at query time, such as via
 :meth:`.Query.join`, or via the eager "joined" or "subquery" styles of

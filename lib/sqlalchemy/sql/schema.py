@@ -1241,7 +1241,7 @@ class Column(SchemaItem, ColumnClause):
                 for f in self.foreign_keys]
         if name is None and self.name is None:
             raise exc.InvalidRequestError("Cannot initialize a sub-selectable"
-                    " with this Column object until it's 'name' has "
+                    " with this Column object until its 'name' has "
                     "been assigned.")
         try:
             c = self._constructor(

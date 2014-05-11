@@ -127,7 +127,7 @@ within a transparent proxy::
     cursor.execute("select foo")
 
 The purpose of the transparent proxy is to intercept the ``close()`` call,
-such that instead of the DBAPI connection being closed, it's returned to the
+such that instead of the DBAPI connection being closed, it is returned to the
 pool::
 
     # "close" the connection.  Returns
@@ -229,7 +229,7 @@ Disconnect Handling - Pessimistic
 
 At the expense of some extra SQL emitted for each connection checked out from the pool,
 a "ping" operation established by a checkout event handler
-can detect an invalid connection before it's used::
+can detect an invalid connection before it is used::
 
     from sqlalchemy import exc
     from sqlalchemy import event

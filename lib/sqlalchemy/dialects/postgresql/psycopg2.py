@@ -270,7 +270,7 @@ class _PGJSON(JSON):
         else:
             return super(_PGJSON, self).result_processor(dialect, coltype)
 
-# When we're handed literal SQL, ensure it's a SELECT-query. Since
+# When we're handed literal SQL, ensure it's a SELECT query. Since
 # 8.3, combining cursors and "FOR UPDATE" has been fine.
 SERVER_SIDE_CURSOR_RE = re.compile(
     r'\s*SELECT',

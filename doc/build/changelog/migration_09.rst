@@ -1504,7 +1504,7 @@ Label constructs can now render as their name alone in an ORDER BY
 
 For the case where a :class:`.Label` is used in both the columns clause
 as well as the ORDER BY clause of a SELECT, the label will render as
-just it's name in the ORDER BY clause, assuming the underlying dialect
+just its name in the ORDER BY clause, assuming the underlying dialect
 reports support of this feature.
 
 E.g. an example like::

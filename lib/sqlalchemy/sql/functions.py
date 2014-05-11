@@ -414,7 +414,7 @@ register_function("extract", Extract)
 
 class next_value(GenericFunction):
     """Represent the 'next value', given a :class:`.Sequence`
-    as it's single argument.
+    as its single argument.
 
     Compiles into the appropriate function on each backend,
     or will raise NotImplementedError if used on a backend

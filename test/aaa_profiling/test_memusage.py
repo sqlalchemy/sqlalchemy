@@ -338,7 +338,7 @@ class MemUsageTest(EnsureZeroed):
         i = [1]
 
         # the times here is cranked way up so that we can see
-        # pysqlite clearing out it's internal buffer and allow
+        # pysqlite clearing out its internal buffer and allow
         # the test to pass
         @testing.emits_warning()
         @profile_memory()
