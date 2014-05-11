@@ -9,7 +9,7 @@
 The engine package defines the basic components used to interface
 DB-API modules with higher-level statement construction,
 connection-management, execution and result contexts.  The primary
-"entry point" class into this package is the Engine and it's public
+"entry point" class into this package is the Engine and its public
 constructor ``create_engine()``.
 
 This package includes:

@@ -663,8 +663,8 @@ new session. Here's some examples:
   copies of itself that are local to individual :class:`~.Session`
   objects.
 
-  In the caching use case, it's common that the ``load=False`` flag
-  is used to remove the overhead of reconciling the object's state
+  In the caching use case, it's common to use the ``load=False``
+  flag to remove the overhead of reconciling the object's state
   with the database.   There's also a "bulk" version of
   :meth:`~.Session.merge` called :meth:`~.Query.merge_result`
   that was designed to work with cache-extended :class:`.Query`
@@ -1713,7 +1713,7 @@ Using Subtransactions with Autocommit
 A subtransaction indicates usage of the :meth:`.Session.begin` method in conjunction with
 the ``subtransactions=True`` flag.  This produces a non-transactional, delimiting construct that
 allows nesting of calls to :meth:`~.Session.begin` and :meth:`~.Session.commit`.
-It's purpose is to allow the construction of code that can function within a transaction
+Its purpose is to allow the construction of code that can function within a transaction
 both independently of any external code that starts a transaction,
 as well as within a block that has already demarcated a transaction.
 

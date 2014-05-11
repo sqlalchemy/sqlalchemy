@@ -338,7 +338,7 @@ extend the ORM.  Heres a summary:
 * **SessionExtension.** - This is an easy to use extension
   class for session events.  In particular, it provides
   ``before_flush()``, ``after_flush()`` and
-  ``after_flush_postexec()`` methods.  It's usage is
+  ``after_flush_postexec()`` methods.  This usage is
   recommended over ``MapperExtension.before_XXX`` in many
   cases since within ``before_flush()`` you can modify the
   flush plan of the session freely, something which cannot
@@ -545,7 +545,7 @@ Removed
 * **get()/load() cleanup**
 
 
-  The ``load()`` method has been removed.  It's
+  The ``load()`` method has been removed.  Its
   functionality was kind of arbitrary and basically copied
   from Hibernate, where it's also not a particularly
   meaningful method.

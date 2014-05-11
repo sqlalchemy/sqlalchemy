@@ -319,7 +319,7 @@ Example usage::
 -------------------
 
 The "GREATEST" function is given any number of arguments and returns the one
-that is of the highest value - it's equivalent to Python's ``max``
+that is of the highest value - its equivalent to Python's ``max``
 function.  A SQL standard version versus a CASE based version which only
 accommodates two arguments::
 
