@@ -124,7 +124,6 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     @testing.fails_on('+zxjdbc',
                       "Can't infer the SQL type to use for an instance "
                       "of org.python.core.PyObjectDerived.")
-    @testing.fails_on('+pg8000', "Can't determine correct type.")
     def test_extract(self):
         fivedaysago = datetime.datetime.now() \
             - datetime.timedelta(days=5)
