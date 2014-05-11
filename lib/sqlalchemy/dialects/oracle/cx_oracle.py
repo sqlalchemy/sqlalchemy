@@ -499,7 +499,7 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                     if dbtype is None:
                         raise exc.InvalidRequestError(
                                     "Cannot create out parameter for parameter "
-                                    "%r - it's type %r is not supported by"
+                                    "%r - its type %r is not supported by"
                                     " cx_oracle" %
                                     (bindparam.key, bindparam.type)
                                     )

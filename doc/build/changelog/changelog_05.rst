@@ -1557,7 +1557,7 @@
         :tickets: 
 
       Column with no name (as in declarative) won't raise a
-      NoneType error when it's string output is requsted
+      NoneType error when its string output is requested
       (such as in a stack trace).
 
     .. change::

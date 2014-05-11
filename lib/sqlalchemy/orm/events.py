@@ -213,7 +213,7 @@ class InstanceEvents(event.Events):
         """
 
     def init(self, target, args, kwargs):
-        """Receive an instance when it's constructor is called.
+        """Receive an instance when its constructor is called.
 
         This method is only called during a userland construction of
         an object.  It is not called when an object is loaded from the
@@ -222,7 +222,7 @@ class InstanceEvents(event.Events):
         """
 
     def init_failure(self, target, args, kwargs):
-        """Receive an instance when it's constructor has been called,
+        """Receive an instance when its constructor has been called,
         and raised an exception.
 
         This method is only called during a userland construction of
@@ -316,7 +316,7 @@ class InstanceEvents(event.Events):
         """
 
     def unpickle(self, target, state_dict):
-        """Receive an object instance after it's associated state has
+        """Receive an object instance after its associated state has
         been unpickled.
 
         :param target: the mapped instance.  If

@@ -4084,7 +4084,7 @@
 
       The Column.references() method now returns True
       if it has a foreign key referencing the
-      given column exactly, not just it's parent
+      given column exactly, not just its parent
       table.
 
     .. change::

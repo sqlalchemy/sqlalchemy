@@ -114,7 +114,7 @@ linked to TypeEngine classes.
 
     a. The string name should be matched to the most specific type possible within
     sqlalchemy.types, unless there is no matching type within sqlalchemy.types in which
-    case it points to a dialect type.   *It doesn't matter* if the dialect has it's 
+    case it points to a dialect type.   *It doesn't matter* if the dialect has its 
     own subclass of that type with special bind/result behavior - reflect to the types.py
     UPPERCASE type as much as possible.   With very few exceptions, all types
     should reflect to an UPPERCASE type.

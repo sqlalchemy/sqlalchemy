@@ -740,7 +740,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
                                         self.process(binary.right, **kw))
 
     def get_select_precolumns(self, select):
-        """ MS-SQL puts TOP, it's version of LIMIT here """
+        """ MS-SQL puts TOP, its version of LIMIT, here """
         if select._distinct or select._limit is not None:
             s = select._distinct and "DISTINCT " or ""
 

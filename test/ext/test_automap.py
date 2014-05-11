@@ -123,7 +123,7 @@ class AutomapTest(fixtures.MappedTest):
         i1 = Item()
         o1.items_collection.add(i1)
 
-        # it's 'order_collection' because the class name is
+        # it is 'order_collection' because the class name is
         # "Order" !
         assert isinstance(i1.order_collection, list)
         assert o1 in i1.order_collection

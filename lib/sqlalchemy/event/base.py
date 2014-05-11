@@ -7,7 +7,7 @@
 """Base implementation classes.
 
 The public-facing ``Events`` serves as the base class for an event interface;
-it's public attributes represent different kinds of events.   These attributes
+its public attributes represent different kinds of events.   These attributes
 are mirrored onto a ``_Dispatch`` class, which serves as a container for
 collections of listener functions.   These collections are represented both
 at the class level of a particular ``_Dispatch`` class as well as within

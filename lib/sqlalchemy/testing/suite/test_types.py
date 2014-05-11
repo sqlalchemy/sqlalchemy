@@ -20,7 +20,7 @@ class _LiteralRoundTripFixture(object):
         """test literal rendering """
 
         # for literal, we test the literal render in an INSERT
-        # into a typed column.  we can then SELECT it back as it's
+        # into a typed column.  we can then SELECT it back as its
         # official type; ideally we'd be able to use CAST here
         # but MySQL in particular can't CAST fully
         t = Table('t', self.metadata, Column('x', type_))

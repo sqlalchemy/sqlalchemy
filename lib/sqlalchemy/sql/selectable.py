@@ -469,7 +469,7 @@ class FromClause(Selectable):
         to its .c. collection when a Column has been added to one of the
         Table objects it ultimtely derives from.
 
-        If the given selectable hasn't populated it's .c. collection yet,
+        If the given selectable hasn't populated its .c. collection yet,
         it should at least pass on the message to the contained selectables,
         but it will return None.
 
