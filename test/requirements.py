@@ -608,8 +608,11 @@ class DefaultRequirements(SuiteRequirements):
                             ),
                     ('mssql+pymssql', None, None,
                                 'mssql+pymssql has FP inaccuracy even with '
-                                'only four decimal places '
-                            )
+                                'only four decimal places '),
+                    (
+                        'postgresql+pg8000', None, None,
+                        'postgresql+pg8000 has FP inaccuracy even with '
+                        'only four decimal places '),
                 ])
 
     @property
