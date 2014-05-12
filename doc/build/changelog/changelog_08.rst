@@ -12,6 +12,15 @@
     :version: 0.8.7
 
     .. change::
+        :tags: bug, mysql
+        :versions: 0.9.5
+        :pullreq: bitbucket:15
+
+        Added support for reflecting tables where an index includes
+        KEY_BLOCK_SIZE using an equal sign.  Pull request courtesy
+        Sean McGivern.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3047
         :versions: 0.9.5
