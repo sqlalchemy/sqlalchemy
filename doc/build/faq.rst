@@ -447,9 +447,258 @@ The same idea applies to all the other arguments, such as ``foreign_keys``::
 
 	    foo = relationship(Dest, foreign_keys=[foo_id, bar_id])
 
+Performance
+===========
+
+How can I profile a SQLAlchemy powered application?
+---------------------------------------------------
+
+
+Sometimes just plain SQL logging (enabled via python's logging module
+or via the ``echo=True`` argument on :func:`.create_engine`) can give an
+idea how long things are taking.  For example, if you log something
+right after a SQL operation, you'd see something like this in your
+log::
+
+    17:37:48,325 INFO  [sqlalchemy.engine.base.Engine.0x...048c] SELECT ...
+    17:37:48,326 INFO  [sqlalchemy.engine.base.Engine.0x...048c] {<params>}
+    17:37:48,660 DEBUG [myapp.somemessage]
+
+if you logged ``myapp.somemessage`` right after the operation, you know
+it took 334ms to complete the SQL part of things.
+
+Logging SQL will also illustrate if dozens/hundreds of queries are
+being issued which could be better organized into much fewer queries.
+When using the SQLAlchemy ORM, the "eager loading"
+feature is provided to partially (:func:`.contains_eager()`) or fully
+(:func:`.joinedload()`, :func:`.subqueryload()`)
+automate this activity, but without
+the ORM "eager loading" typically means to use joins so that results across multiple
+tables can be loaded in one result set instead of multiplying numbers
+of queries as more depth is added (i.e. ``r + r*r2 + r*r2*r3`` ...)
+
+If logging reveals that individual queries are taking too long, you'd
+need a breakdown of how much time was spent within the database
+processing the query, sending results over the network, being handled
+by the :term:`DBAPI`, and finally being received by SQLAlchemy's result set
+and/or ORM layer.   Each of these stages can present their own
+individual bottlenecks, depending on specifics.
+
+For that you need to use profiling, such as cProfile or hotshot.  Here is a
+decorator similar to that used by SQLAlchemy's test suite for performance
+metrics::
+
+	import cProfile as profiler
+	import gc, pstats, time
+
+	def profile(fn):
+	    def wrapper(*args, **kw):
+	        elapsed, stat_loader, result = _profile("foo.txt", fn, *args, **kw)
+	        stats = stat_loader()
+	        stats.sort_stats('cumulative')
+	        stats.print_stats()
+	        # uncomment this to see who's calling what
+	        # stats.print_callers()
+	        return result
+	    return wrapper
+
+	def _profile(filename, fn, *args, **kw):
+	    load_stats = lambda: pstats.Stats(filename)
+	    gc.collect()
+
+	    began = time.time()
+	    profiler.runctx('result = fn(*args, **kw)', globals(), locals(),
+	                    filename=filename)
+	    ended = time.time()
+
+	    return ended - began, load_stats, locals()['result']
+
+To profile a section of code, place it in a function with the decorator::
+
+    @profile
+    def go():
+        return Session.query(FooClass).filter(FooClass.somevalue==8).all()
+    myfoos = go()
+
+The output of profiling can be used to give an idea where time is
+being spent.  If for example you see all the time being spent within
+``cursor.execute()``, that's the low level DBAPI call to the database,
+and it means your query should be optimized, either by adding indexes
+or restructuring the query and/or underlying schema.  For that task,
+analysis of the query plan is warranted, using a system such as EXPLAIN,
+SHOW PLAN, etc. as is provided by the database backend.
+
+If you see many thousands of calls related to fetching rows, it may
+mean your query is returning more rows than expected - a cartesian
+product as a result of an incomplete join can cause this issue.   Yet
+another issue is time spent within type handling - a SQLAlchemy type
+such as :class:`.Unicode` will perform string encoding/decoding on bind
+parameters and result columns, which may not be  needed in all cases,
+and in some cases some backends might be doing work like this erroneously.
+Make sure to check the :doc:`Dialect documentation <dialects/index>` for notes
+on known performance issues, especially for databases like Oracle.
+
+The output of a profile can be a little daunting but after some
+practice they are very easy to read.   There was once someone on the
+mailing list claiming slowness, and after having him post the results
+of profile, I was able to demonstrate that the speed problems were due
+to network latency - the time spent within cursor.execute() as well as
+all Python methods was very fast, whereas the majority of time was
+spent on socket.receive().
+
+If you're feeling ambitious, there's also a more involved example of
+SQLAlchemy profiling within the SQLAlchemy unit tests in the
+``tests/aaa_profiling`` section.  Tests in this area
+use decorators that assert a
+maximum number of method calls being used for particular operations,
+so that if something inefficient gets checked in, the tests will
+reveal it (it is important to note that in cPython, function calls have
+the highest overhead of any operation, and the count of calls is more
+often than not nearly proportional to time spent).   Of note are the
+the "zoomark" tests which use a fancy "SQL capturing" scheme which
+cuts out the overhead of the DBAPI from the equation - although that
+technique isn't really necessary for garden-variety profiling.
+
+I'm inserting 400,000 rows with the ORM and it's really slow!
+--------------------------------------------------------------
+
+The SQLAlchemy ORM uses the :term:`unit of work` pattern when synchronizing
+changes to the database. This pattern goes far beyond simple "inserts"
+of data. It includes that attributes which are assigned on objects are
+received using an attribute instrumentation system which tracks
+changes on objects as they are made, includes that all rows inserted
+are tracked in an identity map which has the effect that for each row
+SQLAlchemy must retrieve its "last inserted id" if not already given,
+and also involves that rows to be inserted are scanned and sorted for
+dependencies as needed. Objects are also subject to a fair degree of
+bookkeeping in order to keep all of this running, which for a very
+large number of rows at once can create an inordinate amount of time
+spent with large data structures, hence it's best to chunk these.
+
+Basically, unit of work is a large degree of automation in order to
+automate the task of persisting a complex object graph into a
+relational database with no explicit persistence code, and this
+automation has a price.
+
+ORMs are basically not intended for high-performance bulk inserts -
+this is the whole reason SQLAlchemy offers the Core in addition to the
+ORM as a first-class component.
+
+For the use case of fast bulk inserts, the
+SQL generation and execution system that the ORM builds on top of
+is part of the Core.  Using this system directly, we can produce an INSERT that
+is competitive with using the raw database API directly.
+
+The example below illustrates time-based tests for four different
+methods of inserting rows, going from the most automated to the least.
+With cPython 2.7, runtimes observed::
+
+	classics-MacBook-Pro:sqlalchemy classic$ python test.py
+	SQLAlchemy ORM: Total time for 100000 records 14.3528850079 secs
+	SQLAlchemy ORM pk given: Total time for 100000 records 10.0164160728 secs
+	SQLAlchemy Core: Total time for 100000 records 0.775382995605 secs
+	sqlite3: Total time for 100000 records 0.676795005798 sec
+
+We can reduce the time by a factor of three using recent versions of `Pypy <http://pypy.org/>`_::
+
+	classics-MacBook-Pro:sqlalchemy classic$ /usr/local/src/pypy-2.1-beta2-osx64/bin/pypy test.py
+	SQLAlchemy ORM: Total time for 100000 records 5.88369488716 secs
+	SQLAlchemy ORM pk given: Total time for 100000 records 3.52294301987 secs
+	SQLAlchemy Core: Total time for 100000 records 0.613556146622 secs
+	sqlite3: Total time for 100000 records 0.442467927933 sec
+
+Script::
+
+	import time
+	import sqlite3
+
+	from sqlalchemy.ext.declarative import declarative_base
+	from sqlalchemy import Column, Integer, String,  create_engine
+	from sqlalchemy.orm import scoped_session, sessionmaker
+
+	Base = declarative_base()
+	DBSession = scoped_session(sessionmaker())
+	engine = None
+
+	class Customer(Base):
+	    __tablename__ = "customer"
+	    id = Column(Integer, primary_key=True)
+	    name = Column(String(255))
+
+	def init_sqlalchemy(dbname='sqlite:///sqlalchemy.db'):
+	    global engine
+	    engine = create_engine(dbname, echo=False)
+	    DBSession.remove()
+	    DBSession.configure(bind=engine, autoflush=False, expire_on_commit=False)
+	    Base.metadata.drop_all(engine)
+	    Base.metadata.create_all(engine)
+
+	def test_sqlalchemy_orm(n=100000):
+	    init_sqlalchemy()
+	    t0 = time.time()
+	    for i in range(n):
+	        customer = Customer()
+	        customer.name = 'NAME ' + str(i)
+	        DBSession.add(customer)
+	        if i % 1000 == 0:
+	            DBSession.flush()
+	    DBSession.commit()
+	    print("SQLAlchemy ORM: Total time for " + str(n) +
+	                " records " + str(time.time() - t0) + " secs")
+
+	def test_sqlalchemy_orm_pk_given(n=100000):
+	    init_sqlalchemy()
+	    t0 = time.time()
+	    for i in range(n):
+	        customer = Customer(id=i+1, name="NAME " + str(i))
+	        DBSession.add(customer)
+	        if i % 1000 == 0:
+	            DBSession.flush()
+	    DBSession.commit()
+	    print("SQLAlchemy ORM pk given: Total time for " + str(n) +
+	        " records " + str(time.time() - t0) + " secs")
+
+	def test_sqlalchemy_core(n=100000):
+	    init_sqlalchemy()
+	    t0 = time.time()
+	    engine.execute(
+	        Customer.__table__.insert(),
+	        [{"name": 'NAME ' + str(i)} for i in range(n)]
+	    )
+	    print("SQLAlchemy Core: Total time for " + str(n) +
+	        " records " + str(time.time() - t0) + " secs")
+
+	def init_sqlite3(dbname):
+	    conn = sqlite3.connect(dbname)
+	    c = conn.cursor()
+	    c.execute("DROP TABLE IF EXISTS customer")
+	    c.execute("CREATE TABLE customer (id INTEGER NOT NULL, "
+	                                "name VARCHAR(255), PRIMARY KEY(id))")
+	    conn.commit()
+	    return conn
+
+	def test_sqlite3(n=100000, dbname='sqlite3.db'):
+	    conn = init_sqlite3(dbname)
+	    c = conn.cursor()
+	    t0 = time.time()
+	    for i in range(n):
+	        row = ('NAME ' + str(i),)
+	        c.execute("INSERT INTO customer (name) VALUES (?)", row)
+	    conn.commit()
+	    print("sqlite3: Total time for " + str(n) +
+	        " records " + str(time.time() - t0) + " sec")
+
+	if __name__ == '__main__':
+	    test_sqlalchemy_orm(100000)
+	    test_sqlalchemy_orm_pk_given(100000)
+	    test_sqlalchemy_core(100000)
+	    test_sqlite3(100000)
+
+
 
 Sessions / Queries
 ===================
+
 
 "This Session's transaction has been rolled back due to a previous exception during flush." (or similar)
 ---------------------------------------------------------------------------------------------------------
@@ -620,141 +869,6 @@ the external "framing" of the transaction, which could be nested many levels
 with any combination of subtransactions and real SAVEPOINTs. The job of
 starting/ending the "frame" is kept consistently with the code external to the
 ``flush()``, and we made a decision that this was the most consistent approach.
-
-I'm inserting 400,000 rows with the ORM and it's really slow!
---------------------------------------------------------------
-
-The SQLAlchemy ORM uses the :term:`unit of work` pattern when synchronizing
-changes to the database. This pattern goes far beyond simple "inserts"
-of data. It includes that attributes which are assigned on objects are
-received using an attribute instrumentation system which tracks
-changes on objects as they are made, includes that all rows inserted
-are tracked in an identity map which has the effect that for each row
-SQLAlchemy must retrieve its "last inserted id" if not already given,
-and also involves that rows to be inserted are scanned and sorted for
-dependencies as needed. Objects are also subject to a fair degree of
-bookkeeping in order to keep all of this running, which for a very
-large number of rows at once can create an inordinate amount of time
-spent with large data structures, hence it's best to chunk these.
-
-Basically, unit of work is a large degree of automation in order to
-automate the task of persisting a complex object graph into a
-relational database with no explicit persistence code, and this
-automation has a price.
-
-ORMs are basically not intended for high-performance bulk inserts -
-this is the whole reason SQLAlchemy offers the Core in addition to the
-ORM as a first-class component.
-
-For the use case of fast bulk inserts, the
-SQL generation and execution system that the ORM builds on top of
-is part of the Core.  Using this system directly, we can produce an INSERT that
-is competitive with using the raw database API directly.
-
-The example below illustrates time-based tests for four different
-methods of inserting rows, going from the most automated to the least.
-With cPython 2.7, runtimes observed::
-
-	classics-MacBook-Pro:sqlalchemy classic$ python test.py
-	SQLAlchemy ORM: Total time for 100000 records 14.3528850079 secs
-	SQLAlchemy ORM pk given: Total time for 100000 records 10.0164160728 secs
-	SQLAlchemy Core: Total time for 100000 records 0.775382995605 secs
-	sqlite3: Total time for 100000 records 0.676795005798 sec
-
-We can reduce the time by a factor of three using recent versions of `Pypy <http://pypy.org/>`_::
-
-	classics-MacBook-Pro:sqlalchemy classic$ /usr/local/src/pypy-2.1-beta2-osx64/bin/pypy test.py
-	SQLAlchemy ORM: Total time for 100000 records 5.88369488716 secs
-	SQLAlchemy ORM pk given: Total time for 100000 records 3.52294301987 secs
-	SQLAlchemy Core: Total time for 100000 records 0.613556146622 secs
-	sqlite3: Total time for 100000 records 0.442467927933 sec
-
-Script::
-
-	import time
-	import sqlite3
-
-	from sqlalchemy.ext.declarative import declarative_base
-	from sqlalchemy import Column, Integer, String,  create_engine
-	from sqlalchemy.orm import scoped_session, sessionmaker
-
-	Base = declarative_base()
-	DBSession = scoped_session(sessionmaker())
-	engine = None
-
-	class Customer(Base):
-	    __tablename__ = "customer"
-	    id = Column(Integer, primary_key=True)
-	    name = Column(String(255))
-
-	def init_sqlalchemy(dbname='sqlite:///sqlalchemy.db'):
-	    global engine
-	    engine = create_engine(dbname, echo=False)
-	    DBSession.remove()
-	    DBSession.configure(bind=engine, autoflush=False, expire_on_commit=False)
-	    Base.metadata.drop_all(engine)
-	    Base.metadata.create_all(engine)
-
-	def test_sqlalchemy_orm(n=100000):
-	    init_sqlalchemy()
-	    t0 = time.time()
-	    for i in range(n):
-	        customer = Customer()
-	        customer.name = 'NAME ' + str(i)
-	        DBSession.add(customer)
-	        if i % 1000 == 0:
-	            DBSession.flush()
-	    DBSession.commit()
-	    print("SQLAlchemy ORM: Total time for " + str(n) +
-	                " records " + str(time.time() - t0) + " secs")
-
-	def test_sqlalchemy_orm_pk_given(n=100000):
-	    init_sqlalchemy()
-	    t0 = time.time()
-	    for i in range(n):
-	        customer = Customer(id=i+1, name="NAME " + str(i))
-	        DBSession.add(customer)
-	        if i % 1000 == 0:
-	            DBSession.flush()
-	    DBSession.commit()
-	    print("SQLAlchemy ORM pk given: Total time for " + str(n) +
-	        " records " + str(time.time() - t0) + " secs")
-
-	def test_sqlalchemy_core(n=100000):
-	    init_sqlalchemy()
-	    t0 = time.time()
-	    engine.execute(
-	        Customer.__table__.insert(),
-	        [{"name": 'NAME ' + str(i)} for i in range(n)]
-	    )
-	    print("SQLAlchemy Core: Total time for " + str(n) +
-	        " records " + str(time.time() - t0) + " secs")
-
-	def init_sqlite3(dbname):
-	    conn = sqlite3.connect(dbname)
-	    c = conn.cursor()
-	    c.execute("DROP TABLE IF EXISTS customer")
-	    c.execute("CREATE TABLE customer (id INTEGER NOT NULL, "
-	                                "name VARCHAR(255), PRIMARY KEY(id))")
-	    conn.commit()
-	    return conn
-
-	def test_sqlite3(n=100000, dbname='sqlite3.db'):
-	    conn = init_sqlite3(dbname)
-	    c = conn.cursor()
-	    t0 = time.time()
-	    for i in range(n):
-	        row = ('NAME ' + str(i),)
-	        c.execute("INSERT INTO customer (name) VALUES (?)", row)
-	    conn.commit()
-	    print("sqlite3: Total time for " + str(n) +
-	        " records " + str(time.time() - t0) + " sec")
-
-	if __name__ == '__main__':
-	    test_sqlalchemy_orm(100000)
-	    test_sqlalchemy_orm_pk_given(100000)
-	    test_sqlalchemy_core(100000)
-	    test_sqlite3(100000)
 
 
 
