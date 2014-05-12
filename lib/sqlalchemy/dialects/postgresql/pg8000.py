@@ -9,21 +9,19 @@
     :name: pg8000
     :dbapi: pg8000
     :connectstring: postgresql+pg8000://user:password@host:port/dbname[?key=value&key=value...]
-    :url: http://pybrary.net/pg8000/
+    :url: https://pythonhosted.org/pg8000/
 
 Unicode
 -------
 
-pg8000 requires that the postgresql client encoding be
-configured in the postgresql.conf file in order to use encodings
-other than ascii. Set this value to the same value as the
-"encoding" parameter on create_engine(), usually "utf-8".
+When communicating with the server, pg8000 uses the character set that the
+server asks it to use (the client encoding). By default the client encoding is
+the database's character set (chosen when the database is created), but the
+client encoding can be changed in a number of ways (eg. setting CLIENT_ENCODING
+in postgresql.conf).
 
-Interval
---------
-
-Passing data from/to the Interval type is not supported as of
-yet.
+Set the "encoding" parameter on create_engine(), to the same as the client
+encoding, usually "utf-8".
 
 """
 from ... import util, exc
