@@ -2951,7 +2951,7 @@ class MySQLTableDefinitionParser(object):
             r'(?: +USING +(?P<using_pre>\S+))?'
             r' +\((?P<columns>.+?)\)'
             r'(?: +USING +(?P<using_post>\S+))?'
-            r'(?: +KEY_BLOCK_SIZE +(?P<keyblock>\S+))?'
+            r'(?: +KEY_BLOCK_SIZE *[ =]? *(?P<keyblock>\S+))?'
             r'(?: +WITH PARSER +(?P<parser>\S+))?'
             r',?$'
             % quotes
