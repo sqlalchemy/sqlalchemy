@@ -428,6 +428,59 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={'param_1': 7}
         )
 
+    def test_array_shift_indexes(self):
+        c = Column('x', postgresql.ARRAY(Integer, zero_indexes=True))
+
+        self.assert_compile(
+            cast(c, postgresql.ARRAY(Integer, zero_indexes=True)),
+            "CAST(x AS INTEGER[])"
+        )
+        self.assert_compile(
+            c[5],
+            "x[%(x_1)s]",
+            checkparams={'x_1': 6}
+        )
+
+        self.assert_compile(
+            c[5:7],
+            "x[%(x_1)s:%(x_2)s]",
+            checkparams={'x_2': 8, 'x_1': 6}
+        )
+        self.assert_compile(
+            c[5:7][2:3],
+            "x[%(x_1)s:%(x_2)s][%(param_1)s:%(param_2)s]",
+            checkparams={'x_2': 8, 'x_1': 6, 'param_1': 3, 'param_2': 4}
+        )
+        self.assert_compile(
+            c[5:7][3],
+            "x[%(x_1)s:%(x_2)s][%(param_1)s]",
+            checkparams={'x_2': 8, 'x_1': 6, 'param_1': 4}
+        )
+
+        c = Column('x', postgresql.ARRAY(Integer, zero_indexes=False))
+
+        self.assert_compile(
+            c[5],
+            "x[%(x_1)s]",
+            checkparams={'x_1': 5}
+        )
+
+        self.assert_compile(
+            c[5:7],
+            "x[%(x_1)s:%(x_2)s]",
+            checkparams={'x_2': 7, 'x_1': 5}
+        )
+        self.assert_compile(
+            c[5:7][2:3],
+            "x[%(x_1)s:%(x_2)s][%(param_1)s:%(param_2)s]",
+            checkparams={'x_2': 7, 'x_1': 5, 'param_1': 2, 'param_2': 3}
+        )
+        self.assert_compile(
+            c[5:7][3],
+            "x[%(x_1)s:%(x_2)s][%(param_1)s]",
+            checkparams={'x_2': 7, 'x_1': 5, 'param_1': 3}
+        )
+
     def test_array_literal_type(self):
         is_(postgresql.array([1, 2]).type._type_affinity, postgresql.ARRAY)
         is_(postgresql.array([1, 2]).type.item_type._type_affinity, Integer)
