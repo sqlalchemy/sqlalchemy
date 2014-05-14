@@ -12,6 +12,14 @@
     :version: 0.8.7
 
     .. change::
+        :tags: bug, ext
+        :versions: 0.9.5
+        :tickets: 3051
+
+        Fixed bug in mutable extension where :class:`.MutableDict` did not
+        report change events for the ``setdefault()`` dictionary operation.
+
+    .. change::
         :tags: bug, mysql
         :versions: 0.9.5
         :pullreq: bitbucket:15
