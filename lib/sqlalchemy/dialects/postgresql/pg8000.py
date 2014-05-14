@@ -121,4 +121,28 @@ class PGDialect_pg8000(PGDialect):
     def is_disconnect(self, e, connection, cursor):
         return "connection is closed" in str(e)
 
+    def set_isolation_level(self, connection, level):
+        level = level.replace('_', ' ')
+        print("level is", level)
+        print("autocommit is", connection.autocommit)
+        print("class is", connection)
+
+        if level == 'AUTOCOMMIT':
+            connection.connection.autocommit = True
+        elif level in self._isolation_lookup:
+            connection.connection.autocommit = False
+            cursor = connection.cursor()
+            cursor.execute(
+                "SET SESSION CHARACTERISTICS AS TRANSACTION "
+                "ISOLATION LEVEL %s" % level)
+            cursor.execute("COMMIT")
+            cursor.close()
+        else:
+            raise exc.ArgumentError(
+                "Invalid value '%s' for isolation_level. "
+                "Valid isolation levels for %s are %s or AUTOCOMMIT" %
+                (level, self.name, ", ".join(self._isolation_lookup))
+                )
+        print("autocommit is now", connection.autocommit)
+
 dialect = PGDialect_pg8000

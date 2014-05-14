@@ -111,15 +111,21 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         c = e.connect()
         eq_(c.connection.connection.encoding, test_encoding)
 
-    @testing.only_on('postgresql+psycopg2', 'psycopg2-specific feature')
+    @testing.only_on(
+        ['postgresql+psycopg2', 'postgresql+pg8000'],
+        'psycopg2 / pg8000 - specific feature')
     @engines.close_open_connections
     def test_autocommit_isolation_level(self):
-        extensions = __import__('psycopg2.extensions').extensions
-
-        c = testing.db.connect()
-        c = c.execution_options(isolation_level='AUTOCOMMIT')
-        eq_(c.connection.connection.isolation_level,
-            extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+        c = testing.db.connect().execution_options(
+            isolation_level='AUTOCOMMIT')
+        # If we're really in autocommit mode then we'll get an error saying
+        # that the prepared transaction doesn't exist. Otherwise, we'd
+        # get an error saying that the command can't be run within a
+        # transaction.
+        assert_raises_message(
+            exc.ProgrammingError,
+            'prepared transaction with identifier "gilberte" does not exist',
+            c.execute, "commit prepared 'gilberte'")
 
     @testing.fails_on('+zxjdbc',
                       "Can't infer the SQL type to use for an instance "
