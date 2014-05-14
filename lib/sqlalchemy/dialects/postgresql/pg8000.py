@@ -1,5 +1,6 @@
 # postgresql/pg8000.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS
+# file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -8,7 +9,8 @@
 .. dialect:: postgresql+pg8000
     :name: pg8000
     :dbapi: pg8000
-    :connectstring: postgresql+pg8000://user:password@host:port/dbname[?key=value&key=value...]
+    :connectstring: \
+postgresql+pg8000://user:password@host:port/dbname[?key=value&key=value...]
     :url: https://pythonhosted.org/pg8000/
 
 Unicode
@@ -28,9 +30,9 @@ from ... import util, exc
 import decimal
 from ... import processors
 from ... import types as sqltypes
-from .base import PGDialect, \
-                PGCompiler, PGIdentifierPreparer, PGExecutionContext,\
-                _DECIMAL_TYPES, _FLOAT_TYPES, _INT_TYPES
+from .base import (
+    PGDialect, PGCompiler, PGIdentifierPreparer, PGExecutionContext,
+    _DECIMAL_TYPES, _FLOAT_TYPES, _INT_TYPES)
 
 
 class _PGNumeric(sqltypes.Numeric):
@@ -38,14 +40,13 @@ class _PGNumeric(sqltypes.Numeric):
         if self.asdecimal:
             if coltype in _FLOAT_TYPES:
                 return processors.to_decimal_processor_factory(
-                                    decimal.Decimal,
-                                    self._effective_decimal_return_scale)
+                    decimal.Decimal, self._effective_decimal_return_scale)
             elif coltype in _DECIMAL_TYPES or coltype in _INT_TYPES:
                 # pg8000 returns Decimal natively for 1700
                 return None
             else:
                 raise exc.InvalidRequestError(
-                            "Unknown PG numeric type: %d" % coltype)
+                    "Unknown PG numeric type: %d" % coltype)
         else:
             if coltype in _FLOAT_TYPES:
                 # pg8000 returns float natively for 701
@@ -54,7 +55,7 @@ class _PGNumeric(sqltypes.Numeric):
                 return processors.to_float
             else:
                 raise exc.InvalidRequestError(
-                            "Unknown PG numeric type: %d" % coltype)
+                    "Unknown PG numeric type: %d" % coltype)
 
 
 class _PGNumericNoBind(_PGNumeric):
@@ -69,7 +70,7 @@ class PGExecutionContext_pg8000(PGExecutionContext):
 class PGCompiler_pg8000(PGCompiler):
     def visit_mod_binary(self, binary, operator, **kw):
         return self.process(binary.left, **kw) + " %% " + \
-                        self.process(binary.right, **kw)
+            self.process(binary.right, **kw)
 
     def post_process_text(self, text):
         if '%%' in text:
@@ -123,9 +124,6 @@ class PGDialect_pg8000(PGDialect):
 
     def set_isolation_level(self, connection, level):
         level = level.replace('_', ' ')
-        print("level is", level)
-        print("autocommit is", connection.autocommit)
-        print("class is", connection)
 
         if level == 'AUTOCOMMIT':
             connection.connection.autocommit = True
@@ -143,6 +141,5 @@ class PGDialect_pg8000(PGDialect):
                 "Valid isolation levels for %s are %s or AUTOCOMMIT" %
                 (level, self.name, ", ".join(self._isolation_lookup))
                 )
-        print("autocommit is now", connection.autocommit)
 
 dialect = PGDialect_pg8000

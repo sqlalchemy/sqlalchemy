@@ -1,23 +1,20 @@
 # coding: utf-8
 
-from sqlalchemy.testing.assertions import eq_, assert_raises, \
-                assert_raises_message, AssertsExecutionResults, \
-                AssertsCompiledSQL
+from sqlalchemy.testing.assertions import (
+    eq_, assert_raises, assert_raises_message, AssertsExecutionResults,
+    AssertsCompiledSQL)
 from sqlalchemy.testing import engines, fixtures
 from sqlalchemy import testing
 import datetime
-from sqlalchemy import Table, Column, select, MetaData, text, Integer, \
-            String, Sequence, ForeignKey, join, Numeric, \
-            PrimaryKeyConstraint, DateTime, tuple_, Float, BigInteger, \
-            func, literal_column, literal, bindparam, cast, extract, \
-            SmallInteger, Enum, REAL, update, insert, Index, delete, \
-            and_, Date, TypeDecorator, Time, Unicode, Interval, or_, Text
+from sqlalchemy import (
+    Table, Column, select, MetaData, text, Integer, String, Sequence, Numeric,
+    DateTime, BigInteger, func, extract, SmallInteger)
 from sqlalchemy import exc, schema
 from sqlalchemy.dialects.postgresql import base as postgresql
 import logging
 import logging.handlers
 from sqlalchemy.testing.mock import Mock
-from sqlalchemy.engine.reflection import Inspector
+
 
 class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
@@ -26,9 +23,9 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     @testing.provide_metadata
     def test_date_reflection(self):
         metadata = self.metadata
-        t1 = Table('pgdate', metadata, Column('date1',
-                   DateTime(timezone=True)), Column('date2',
-                   DateTime(timezone=False)))
+        Table(
+            'pgdate', metadata, Column('date1', DateTime(timezone=True)),
+            Column('date2', DateTime(timezone=False)))
         metadata.create_all()
         m2 = MetaData(testing.db)
         t2 = Table('pgdate', m2, autoload=True)
@@ -41,24 +38,23 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
         def mock_conn(res):
             return Mock(
-                    execute=Mock(
-                            return_value=Mock(scalar=Mock(return_value=res))
-                        )
-                    )
+                execute=Mock(return_value=Mock(scalar=Mock(return_value=res))))
 
-        for string, version in \
-            [('PostgreSQL 8.3.8 on i686-redhat-linux-gnu, compiled by '
-             'GCC gcc (GCC) 4.1.2 20070925 (Red Hat 4.1.2-33)', (8, 3,
-             8)),
-             ('PostgreSQL 8.5devel on x86_64-unknown-linux-gnu, '
-             'compiled by GCC gcc (GCC) 4.4.2, 64-bit', (8, 5)),
-             ('EnterpriseDB 9.1.2.2 on x86_64-unknown-linux-gnu, '
-             'compiled by gcc (GCC) 4.1.2 20080704 (Red Hat 4.1.2-50), '
-             '64-bit', (9, 1, 2)),
-             ('[PostgreSQL 9.2.4 ] VMware vFabric Postgres 9.2.4.0 '
-                'release build 1080137', (9, 2, 4))
-
-             ]:
+        for string, version in [
+                (
+                    'PostgreSQL 8.3.8 on i686-redhat-linux-gnu, compiled by '
+                    'GCC gcc (GCC) 4.1.2 20070925 (Red Hat 4.1.2-33)',
+                    (8, 3, 8)),
+                (
+                    'PostgreSQL 8.5devel on x86_64-unknown-linux-gnu, '
+                    'compiled by GCC gcc (GCC) 4.4.2, 64-bit', (8, 5)),
+                (
+                    'EnterpriseDB 9.1.2.2 on x86_64-unknown-linux-gnu, '
+                    'compiled by gcc (GCC) 4.1.2 20080704 (Red Hat 4.1.2-50), '
+                    '64-bit', (9, 1, 2)),
+                (
+                    '[PostgreSQL 9.2.4 ] VMware vFabric Postgres 9.2.4.0 '
+                    'release build 1080137', (9, 2, 4))]:
             eq_(testing.db.dialect._get_server_version_info(mock_conn(string)),
                 version)
 
@@ -66,7 +62,7 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     def test_psycopg2_version(self):
         v = testing.db.dialect.psycopg2_version
         assert testing.db.dialect.dbapi.__version__.\
-                    startswith(".".join(str(x) for x in v))
+            startswith(".".join(str(x) for x in v))
 
     # currently not passing with pg 9.3 that does not seem to generate
     # any notices here, would rather find a way to mock this
@@ -105,9 +101,7 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         else:
             test_encoding = 'UTF8'
 
-        e = engines.testing_engine(
-                        options={'client_encoding':test_encoding}
-                    )
+        e = engines.testing_engine(options={'client_encoding': test_encoding})
         c = e.connect()
         eq_(c.connection.connection.encoding, test_encoding)
 
@@ -133,8 +127,8 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     def test_extract(self):
         fivedaysago = datetime.datetime.now() \
             - datetime.timedelta(days=5)
-        for field, exp in ('year', fivedaysago.year), ('month',
-                fivedaysago.month), ('day', fivedaysago.day):
+        for field, exp in ('year', fivedaysago.year), \
+                ('month', fivedaysago.month), ('day', fivedaysago.day):
             r = testing.db.execute(select([extract(field, func.now()
                                    + datetime.timedelta(days=-5))])).scalar()
             eq_(r, exp)
@@ -162,13 +156,13 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             users.insert().execute(id=2, name='name2')
             users.insert().execute(id=3, name='name3')
             users.insert().execute(id=4, name='name4')
-            eq_(users.select().where(users.c.name == 'name2'
-                ).execute().fetchall(), [(2, 'name2')])
+            eq_(users.select().where(users.c.name == 'name2')
+                .execute().fetchall(), [(2, 'name2')])
             eq_(users.select(use_labels=True).where(users.c.name
                 == 'name2').execute().fetchall(), [(2, 'name2')])
             users.delete().where(users.c.id == 3).execute()
-            eq_(users.select().where(users.c.name == 'name3'
-                ).execute().fetchall(), [])
+            eq_(users.select().where(users.c.name == 'name3')
+                .execute().fetchall(), [])
             users.update().where(users.c.name == 'name4'
                                  ).execute(name='newname')
             eq_(users.select(use_labels=True).where(users.c.id
@@ -201,16 +195,16 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         finally:
             testing.db.execute('drop table speedy_users')
 
-
     @testing.fails_on('+zxjdbc', 'psycopg2/pg8000 specific assertion')
     @testing.fails_on('pypostgresql',
                       'psycopg2/pg8000 specific assertion')
     def test_numeric_raise(self):
-        stmt = text("select cast('hi' as char) as hi", typemap={'hi'
-                    : Numeric})
+        stmt = text(
+            "select cast('hi' as char) as hi", typemap={'hi': Numeric})
         assert_raises(exc.InvalidRequestError, testing.db.execute, stmt)
 
-    @testing.only_if("postgresql >= 8.2", "requires standard_conforming_strings")
+    @testing.only_if(
+        "postgresql >= 8.2", "requires standard_conforming_strings")
     def test_serial_integer(self):
 
         for version, type_, expected in [
@@ -232,12 +226,8 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             else:
                 dialect = testing.db.dialect
 
-            ddl_compiler = dialect.ddl_compiler(
-                                dialect,
-                                schema.CreateTable(t)
-                            )
+            ddl_compiler = dialect.ddl_compiler(dialect, schema.CreateTable(t))
             eq_(
                 ddl_compiler.get_column_specification(t.c.c),
                 "c %s NOT NULL" % expected
             )
-
