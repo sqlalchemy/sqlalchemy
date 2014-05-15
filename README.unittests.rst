@@ -250,6 +250,12 @@ Additional steps specific to individual databases are as follows::
     requires using a test.cfg configuration file as the cmd.exe shell won't
     properly pass the URL arguments into the nose test runner.
 
+    POSTGRESQL: Full-text search configuration should be set to English, else
+    several tests of ``.match()`` will fail. This can be set (if it isn't so
+    already) with:
+
+     ALTER DATABASE test SET default_text_search_config = 'pg_catalog.english'
+
 
 CONFIGURING LOGGING
 -------------------
