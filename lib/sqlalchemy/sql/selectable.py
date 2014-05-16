@@ -10,7 +10,7 @@ SQL tables and derived rowsets.
 """
 
 from .elements import ClauseElement, TextClause, ClauseList, \
-        and_, Grouping, UnaryExpression, literal_column
+        and_, Grouping, UnaryExpression, literal_column, BindParameter
 from .elements import _clone, \
         _literal_as_text, _interpret_as_column_or_from, _expand_cloned,\
         _select_iterables, _anonymous_label, _clause_element_as_expr,\
@@ -28,6 +28,8 @@ import operator
 import collections
 from .annotation import Annotated
 import itertools
+from sqlalchemy.sql.visitors import Visitable
+
 
 def _interpret_as_from(element):
     insp = inspection.inspect(element, raiseerr=False)
@@ -45,6 +47,39 @@ def _interpret_as_select(element):
     if not isinstance(element, Select):
         element = element.select()
     return element
+
+def _offset_or_limit_clause(element, name=None, type_=None):
+    """
+    If the element is a custom clause of some sort, returns (None, element)
+    If the element is a BindParameter, return (element.effective_value, element)
+    Otherwise, assume element is an int and create a new bindparam and return (asint(element), BindParameter(...))
+    """
+    if element is None:
+        return None
+    if hasattr(element, '__clause_element__'):
+        return element.__clause_element__()
+    if isinstance(element, Visitable):
+        return element
+
+    value = util.asint(element)
+    return BindParameter(name, value, type_=type_, unique=True)
+
+def _offset_or_limit_clause_asint(clause):
+    """
+    Get the integer value of an offset or limit clause, for database engines that
+    require it to be a plain integer instead of a BindParameter or other custom
+    clause.
+
+    If the clause is None, returns None.
+    If the clause is not a BindParameter, throws an exception.
+    If the clause is a BindParameter but its value is not set yet or not an int, throws an exception.
+    Otherwise, returns the integer in the clause.
+    """
+    if clause is None:
+        return None
+    if not isinstance(clause, BindParameter):
+        raise Exception("Limit is not a simple integer")
+    return util.asint(clause.effective_value)
 
 def subquery(alias, *args, **kwargs):
     """Return an :class:`.Alias` object derived
@@ -1536,8 +1571,8 @@ class GenerativeSelect(SelectBase):
     """
     _order_by_clause = ClauseList()
     _group_by_clause = ClauseList()
-    _limit = None
-    _offset = None
+    _limit_clause = None
+    _offset_clause = None
     _for_update_arg = None
 
     def __init__(self,
@@ -1562,9 +1597,9 @@ class GenerativeSelect(SelectBase):
                 self._execution_options.union(
                   {'autocommit': autocommit})
         if limit is not None:
-            self._limit = util.asint(limit)
+            self._limit_clause = _offset_or_limit_clause(limit)
         if offset is not None:
-            self._offset = util.asint(offset)
+            self._offset_clause = _offset_or_limit_clause(offset)
         self._bind = bind
 
         if order_by is not None:
@@ -1639,19 +1674,37 @@ class GenerativeSelect(SelectBase):
         """
         self.use_labels = True
 
+    @property
+    def _limit(self):
+        """
+        Get an integer value for the limit.  This should only be used by code that
+        cannot support a limit as a BindParameter or other custom clause as it will
+        throw an exception if the limit isn't currently set to an integer.
+        """
+        return _offset_or_limit_clause_asint(self._limit_clause)
+
+    @property
+    def _offset(self):
+        """
+        Get an integer value for the offset.  This should only be used by code that
+        cannot support an offset as a BindParameter or other custom clause as it will
+        throw an exception if the offset isn't currently set to an integer.
+        """
+        return _offset_or_limit_clause_asint(self._offset_clause)
+
     @_generative
     def limit(self, limit):
         """return a new selectable with the given LIMIT criterion
         applied."""
 
-        self._limit = util.asint(limit)
+        self._limit_clause = _offset_or_limit_clause(limit)
 
     @_generative
     def offset(self, offset):
         """return a new selectable with the given OFFSET criterion
         applied."""
 
-        self._offset = util.asint(offset)
+        self._offset_clause = _offset_or_limit_clause(offset)
 
     @_generative
     def order_by(self, *clauses):
@@ -1711,6 +1764,12 @@ class GenerativeSelect(SelectBase):
                 clauses = list(self._group_by_clause) + list(clauses)
             self._group_by_clause = ClauseList(*clauses)
 
+
+    def _copy_internals(self, clone=_clone, **kw):
+        if self._limit_clause is not None:
+            self._limit_clause = clone(self._limit_clause, **kw)
+        if self._offset_clause is not None:
+            self._offset_clause = clone(self._offset_clause, **kw)
 
 class CompoundSelect(GenerativeSelect):
     """Forms the basis of ``UNION``, ``UNION ALL``, and other
@@ -1930,6 +1989,7 @@ class CompoundSelect(GenerativeSelect):
                 "addition of columns to underlying selectables")
 
     def _copy_internals(self, clone=_clone, **kw):
+        super(CompoundSelect, self)._copy_internals(clone, **kw)
         self._reset_exported()
         self.selects = [clone(s, **kw) for s in self.selects]
         if hasattr(self, '_col_map'):
@@ -2380,6 +2440,7 @@ class Select(HasPrefixes, GenerativeSelect):
         return False
 
     def _copy_internals(self, clone=_clone, **kw):
+        super(Select, self)._copy_internals(clone, **kw)
 
         # Select() object has been cloned and probably adapted by the
         # given clone function.  Apply the cloning function to internal

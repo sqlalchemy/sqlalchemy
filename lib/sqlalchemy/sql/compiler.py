@@ -773,7 +773,7 @@ class SQLCompiler(Compiled):
             text += " GROUP BY " + group_by
 
         text += self.order_by_clause(cs, **kwargs)
-        text += (cs._limit is not None or cs._offset is not None) and \
+        text += (cs._limit_clause is not None or cs._offset_clause is not None) and \
                         self.limit_clause(cs) or ""
 
         if self.ctes and \
@@ -1557,7 +1557,7 @@ class SQLCompiler(Compiled):
             text += self.order_by_clause(select,
                             order_by_select=order_by_select, **kwargs)
 
-        if select._limit is not None or select._offset is not None:
+        if select._limit_clause is not None or select._offset_clause is not None:
             text += self.limit_clause(select)
 
         if select._for_update_arg is not None:
@@ -1625,12 +1625,12 @@ class SQLCompiler(Compiled):
 
     def limit_clause(self, select):
         text = ""
-        if select._limit is not None:
-            text += "\n LIMIT " + self.process(elements.literal(select._limit))
-        if select._offset is not None:
-            if select._limit is None:
+        if select._limit_clause is not None:
+            text += "\n LIMIT " + self.process(select._limit_clause)
+        if select._offset_clause is not None:
+            if select._limit_clause is None:
                 text += "\n LIMIT -1"
-            text += " OFFSET " + self.process(elements.literal(select._offset))
+            text += " OFFSET " + self.process(select._offset_clause)
         return text
 
     def visit_table(self, table, asfrom=False, iscrud=False, ashint=False,
