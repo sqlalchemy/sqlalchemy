@@ -679,7 +679,7 @@ The ORM's slowness in turning rows into ORM-mapped objects is a product
 of the complexity of this operation combined with the overhead of cPython.
 Common strategies to mitigate this include:
 
-* fetch individual columns, not rows, that is::
+* fetch individual columns instead of full entities, that is::
 
       session.query(User.id, User.name)
 
