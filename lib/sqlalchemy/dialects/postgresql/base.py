@@ -834,9 +834,12 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
          meaning they can store any number of dimensions no matter how
          they were declared.
 
-         :param zero_indexes=False: True allow to work with field like with
-          python's list - use indexes starts with zero, but not starts with
-          1 like in ARRAY
+        :param zero_indexes=False: when True, index values will be converted
+         between Python zero-based and Postgresql one-based indexes, e.g.
+         a value of one will be added to all index values before passing
+         to the database.
+
+         .. versionadded:: 0.9.5
 
         """
         if isinstance(item_type, ARRAY):

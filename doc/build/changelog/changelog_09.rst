@@ -15,6 +15,17 @@
     :version: 0.9.5
 
     .. change::
+        :tags: feature, postgresql
+        :tickets: 2785
+        :pullreq: bitbucket:18
+
+        Added a new flag :paramref:`.ARRAY.zero_indexes` to the Postgresql
+        :class:`.ARRAY` type.  When set to ``True``, a value of one will be
+        added to all array index values before passing to the database, allowing
+        better interoperability between Python style zero-based indexes and
+        Postgresql one-based indexes.  Pull request courtesy Alexey Terentev.
+
+    .. change::
         :tags: bug, engine
         :tickets: 3043
 
