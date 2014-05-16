@@ -48,38 +48,46 @@ def _interpret_as_select(element):
         element = element.select()
     return element
 
+class _OffsetLimitParam(BindParameter):
+    @property
+    def _limit_offset_value(self):
+        return self.effective_value
+
 def _offset_or_limit_clause(element, name=None, type_=None):
-    """
-    If the element is a custom clause of some sort, returns (None, element)
-    If the element is a BindParameter, return (element.effective_value, element)
-    Otherwise, assume element is an int and create a new bindparam and return (asint(element), BindParameter(...))
+    """Convert the given value to an "offset or limit" clause.
+
+    This handles incoming integers and converts to an expression; if
+    an expression is already given, it is passed through.
+
     """
     if element is None:
         return None
-    if hasattr(element, '__clause_element__'):
+    elif hasattr(element, '__clause_element__'):
         return element.__clause_element__()
-    if isinstance(element, Visitable):
+    elif isinstance(element, Visitable):
         return element
+    else:
+        value = util.asint(element)
+        return _OffsetLimitParam(name, value, type_=type_, unique=True)
 
-    value = util.asint(element)
-    return BindParameter(name, value, type_=type_, unique=True)
+def _offset_or_limit_clause_asint(clause, attrname):
+    """Convert the "offset or limit" clause of a select construct to an
+    integer.
 
-def _offset_or_limit_clause_asint(clause):
-    """
-    Get the integer value of an offset or limit clause, for database engines that
-    require it to be a plain integer instead of a BindParameter or other custom
-    clause.
+    This is only possible if the value is stored as a simple bound parameter.
+    Otherwise, a compilation error is raised.
 
-    If the clause is None, returns None.
-    If the clause is not a BindParameter, throws an exception.
-    If the clause is a BindParameter but its value is not set yet or not an int, throws an exception.
-    Otherwise, returns the integer in the clause.
     """
     if clause is None:
         return None
-    if not isinstance(clause, BindParameter):
-        raise Exception("Limit is not a simple integer")
-    return util.asint(clause.effective_value)
+    try:
+        value = clause._limit_offset_value
+    except AttributeError:
+        raise exc.CompileError(
+                        "This SELECT structure does not use a simple "
+                        "integer value for %s" % attrname)
+    else:
+        return util.asint(value)
 
 def subquery(alias, *args, **kwargs):
     """Return an :class:`.Alias` object derived
@@ -1676,21 +1684,37 @@ class GenerativeSelect(SelectBase):
 
     @property
     def _limit(self):
+        """Get an integer value for the limit.  This should only be used
+        by code that cannot support a limit as a BindParameter or
+        other custom clause as it will throw an exception if the limit
+        isn't currently set to an integer.
+
         """
-        Get an integer value for the limit.  This should only be used by code that
-        cannot support a limit as a BindParameter or other custom clause as it will
-        throw an exception if the limit isn't currently set to an integer.
+        return _offset_or_limit_clause_asint(self._limit_clause, "limit")
+
+    @property
+    def _simple_int_limit(self):
+        """True if the LIMIT clause is a simple integer, False
+        if it is not present or is a SQL expression.
         """
-        return _offset_or_limit_clause_asint(self._limit_clause)
+        return isinstance(self._limit_clause, _OffsetLimitParam)
+
+    @property
+    def _simple_int_offset(self):
+        """True if the OFFSET clause is a simple integer, False
+        if it is not present or is a SQL expression.
+        """
+        return isinstance(self._offset_clause, _OffsetLimitParam)
 
     @property
     def _offset(self):
+        """Get an integer value for the offset.  This should only be used
+        by code that cannot support an offset as a BindParameter or
+        other custom clause as it will throw an exception if the
+        offset isn't currently set to an integer.
+
         """
-        Get an integer value for the offset.  This should only be used by code that
-        cannot support an offset as a BindParameter or other custom clause as it will
-        throw an exception if the offset isn't currently set to an integer.
-        """
-        return _offset_or_limit_clause_asint(self._offset_clause)
+        return _offset_or_limit_clause_asint(self._offset_clause, "offset")
 
     @_generative
     def limit(self, limit):
