@@ -702,11 +702,20 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
         """Define comparison operations for :class:`.ARRAY`."""
 
         def __getitem__(self, index):
+            shift_indexes = 1 if self.expr.type.zero_indexes else 0
             if isinstance(index, slice):
+                if shift_indexes:
+                    index = slice(
+                        index.start + shift_indexes,
+                        index.stop + shift_indexes,
+                        index.step
+                    )
                 index = _Slice(index, self)
                 return_type = self.type
             else:
+                index += shift_indexes
                 return_type = self.type.item_type
+
             return self._binary_operate(self.expr, operators.getitem, index,
                             result_type=return_type)
 
@@ -797,7 +806,8 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
 
     comparator_factory = Comparator
 
-    def __init__(self, item_type, as_tuple=False, dimensions=None):
+    def __init__(self, item_type, as_tuple=False, dimensions=None,
+                 zero_indexes=False):
         """Construct an ARRAY.
 
         E.g.::
@@ -824,6 +834,10 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
          meaning they can store any number of dimensions no matter how
          they were declared.
 
+         :param zero_indexes=False: True allow to work with field like with
+          python's list - use indexes starts with zero, but not starts with
+          1 like in ARRAY
+
         """
         if isinstance(item_type, ARRAY):
             raise ValueError("Do not nest ARRAY types; ARRAY(basetype) "
@@ -833,6 +847,7 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
         self.item_type = item_type
         self.as_tuple = as_tuple
         self.dimensions = dimensions
+        self.zero_indexes = zero_indexes
 
     @property
     def python_type(self):
