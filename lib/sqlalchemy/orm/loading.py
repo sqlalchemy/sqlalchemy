@@ -310,12 +310,6 @@ def instance_processor(mapper, context, path, adapter,
 
     session_identity_map = context.session.identity_map
 
-    listeners = mapper.dispatch
-
-    translate_row = listeners.translate_row or None
-    create_instance = listeners.create_instance or None
-    populate_instance = listeners.populate_instance or None
-    append_result = listeners.append_result or None
     populate_existing = context.populate_existing or mapper.always_refresh
     invoke_all_eagers = context.invoke_all_eagers
 
@@ -337,13 +331,6 @@ def instance_processor(mapper, context, path, adapter,
                             existing_populators,
                             eager_populators
             )
-
-        if translate_row:
-            for fn in translate_row:
-                ret = fn(mapper, context, row)
-                if ret is not EXT_CONTINUE:
-                    row = ret
-                    break
 
         if polymorphic_on is not None:
             discriminator = row[polymorphic_on]
@@ -414,21 +401,7 @@ def instance_processor(mapper, context, path, adapter,
             currentload = True
             loaded_instance = True
 
-            if create_instance:
-                for fn in create_instance:
-                    instance = fn(mapper, context,
-                                        row, mapper.class_)
-                    if instance is not EXT_CONTINUE:
-                        manager = attributes.manager_of_class(
-                                                instance.__class__)
-                        # TODO: if manager is None, raise a friendly error
-                        # about returning instances of unmapped types
-                        manager.setup_instance(instance)
-                        break
-                else:
-                    instance = mapper.class_manager.new_instance()
-            else:
-                instance = mapper.class_manager.new_instance()
+            instance = mapper.class_manager.new_instance()
 
             dict_ = instance_dict(instance)
             state = instance_state(instance)
@@ -445,17 +418,7 @@ def instance_processor(mapper, context, path, adapter,
                 state.runid = context.runid
                 context.progress[state] = dict_
 
-            if populate_instance:
-                for fn in populate_instance:
-                    ret = fn(mapper, context, row, state,
-                        only_load_props=only_load_props,
-                        instancekey=identitykey, isnew=isnew)
-                    if ret is not EXT_CONTINUE:
-                        break
-                else:
-                    populate_state(state, dict_, row, isnew, only_load_props)
-            else:
-                populate_state(state, dict_, row, isnew, only_load_props)
+            populate_state(state, dict_, row, isnew, only_load_props)
 
             if loaded_instance and load_evt:
                 state.manager.dispatch.load(state, context)
@@ -474,17 +437,7 @@ def instance_processor(mapper, context, path, adapter,
                 attrs = state.unloaded
                 context.partials[state] = (dict_, attrs)
 
-            if populate_instance:
-                for fn in populate_instance:
-                    ret = fn(mapper, context, row, state,
-                        only_load_props=attrs,
-                        instancekey=identitykey, isnew=isnew)
-                    if ret is not EXT_CONTINUE:
-                        break
-                else:
-                    populate_state(state, dict_, row, isnew, attrs)
-            else:
-                populate_state(state, dict_, row, isnew, attrs)
+            populate_state(state, dict_, row, isnew, attrs)
 
             for key, pop in eager_populators:
                 if key not in state.unloaded:
@@ -494,16 +447,7 @@ def instance_processor(mapper, context, path, adapter,
                 state.manager.dispatch.refresh(state, context, attrs)
 
         if result is not None:
-            if append_result:
-                for fn in append_result:
-                    if fn(mapper, context, row, state,
-                                result, instancekey=identitykey,
-                                isnew=isnew) is not EXT_CONTINUE:
-                        break
-                else:
-                    result.append(instance)
-            else:
-                result.append(instance)
+            result.append(instance)
 
         return instance
     return _instance
