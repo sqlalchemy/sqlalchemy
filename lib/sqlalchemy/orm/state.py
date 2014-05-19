@@ -56,6 +56,8 @@ class InstanceState(interfaces._InspectionAttr):
     expired = False
     deleted = False
     _load_pending = False
+    committed_state = util.immutabledict()
+    callables = util.immutabledict()
 
     is_instance = True
 
@@ -63,8 +65,14 @@ class InstanceState(interfaces._InspectionAttr):
         self.class_ = obj.__class__
         self.manager = manager
         self.obj = weakref.ref(obj, self._cleanup)
-        self.callables = {}
-        self.committed_state = {}
+
+    @util.memoized_property
+    def callables(self):
+        return {}
+
+    @util.memoized_property
+    def committed_state(self):
+        return {}
 
     @util.memoized_property
     def attrs(self):
@@ -222,7 +230,8 @@ class InstanceState(interfaces._InspectionAttr):
         if instance_dict:
             instance_dict.discard(self)
 
-        self.callables = {}
+        if 'callables' in self.__dict__:
+            del self.callables
         self.session_id = self._strong_obj = None
         del self.obj
 
@@ -555,17 +564,19 @@ class InstanceState(interfaces._InspectionAttr):
 
     @classmethod
     def _commit_all_states(self, iter, instance_dict=None):
-        """Mass version of commit_all()."""
+        """Mass / highly inlined version of commit_all()."""
 
         for state, dict_ in iter:
-            state.committed_state.clear()
+            state_dict = state.__dict__
 
-            # inline of:
-            # InstanceState._pending_mutations._reset(state)
-            state.__dict__.pop('_pending_mutations', None)
+            if 'committed_state' in state_dict:
+                del state_dict['committed_state']
 
-            callables = state.callables
-            if callables:
+            if '_pending_mutations' in state_dict:
+                del state_dict['_pending_mutations']
+
+            if 'callables' in state_dict:
+                callables = state.callables
                 for key in list(callables):
                     if key in dict_ and callables[key] is state:
                         del callables[key]

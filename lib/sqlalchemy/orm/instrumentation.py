@@ -288,12 +288,14 @@ class ClassManager(dict):
     def new_instance(self, state=None):
         instance = self.class_.__new__(self.class_)
         setattr(instance, self.STATE_ATTR,
-                    state or self._state_constructor(instance, self))
+                    self._state_constructor(instance, self)
+                        if not state else state)
         return instance
 
     def setup_instance(self, instance, state=None):
         setattr(instance, self.STATE_ATTR,
-                    state or self._state_constructor(instance, self))
+                    self._state_constructor(instance, self)
+                        if not state else state)
 
     def teardown_instance(self, instance):
         delattr(instance, self.STATE_ATTR)

@@ -318,10 +318,8 @@ def instance_processor(mapper, context, path, adapter,
     append_result = listeners.append_result or None
     populate_existing = context.populate_existing or mapper.always_refresh
     invoke_all_eagers = context.invoke_all_eagers
-
     load_evt = mapper.class_manager.dispatch.load or None
     refresh_evt = mapper.class_manager.dispatch.refresh or None
-
     instance_state = attributes.instance_state
     instance_dict = attributes.instance_dict
 
@@ -335,8 +333,7 @@ def instance_processor(mapper, context, path, adapter,
             _populators(mapper, context, path, row, adapter,
                             new_populators,
                             existing_populators,
-                            eager_populators
-            )
+                            eager_populators)
 
         if translate_row:
             for fn in translate_row:
@@ -490,7 +487,7 @@ def instance_processor(mapper, context, path, adapter,
                 if key not in state.unloaded:
                     pop(state, dict_, row)
 
-            if isnew:
+            if isnew and refresh_evt:
                 state.manager.dispatch.refresh(state, context, attrs)
 
         if result is not None:
