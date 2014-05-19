@@ -84,7 +84,7 @@ def instances(query, cursor, context):
             context.progress.pop(context.refresh_state)
 
         statelib.InstanceState._commit_all_states(
-            list(context.progress.items()),
+            context.progress.items(),
             session.identity_map
         )
 
@@ -319,6 +319,12 @@ def instance_processor(mapper, context, path, adapter,
     populate_existing = context.populate_existing or mapper.always_refresh
     invoke_all_eagers = context.invoke_all_eagers
 
+    load_evt = mapper.class_manager.dispatch.load or None
+    refresh_evt = mapper.class_manager.dispatch.refresh or None
+
+    instance_state = attributes.instance_state
+    instance_dict = attributes.instance_dict
+
     if mapper.allow_partial_pks:
         is_not_primary_key = _none_set.issuperset
     else:
@@ -363,8 +369,8 @@ def instance_processor(mapper, context, path, adapter,
         instance = session_identity_map.get(identitykey)
 
         if instance is not None:
-            state = attributes.instance_state(instance)
-            dict_ = attributes.instance_dict(instance)
+            state = instance_state(instance)
+            dict_ = instance_dict(instance)
 
             isnew = state.runid != context.runid
             currentload = not isnew
@@ -394,7 +400,7 @@ def instance_processor(mapper, context, path, adapter,
             # when eager_defaults is True.
             state = refresh_state
             instance = state.obj()
-            dict_ = attributes.instance_dict(instance)
+            dict_ = instance_dict(instance)
             isnew = state.runid != context.runid
             currentload = True
             loaded_instance = False
@@ -424,13 +430,13 @@ def instance_processor(mapper, context, path, adapter,
             else:
                 instance = mapper.class_manager.new_instance()
 
-            dict_ = attributes.instance_dict(instance)
-            state = attributes.instance_state(instance)
+            dict_ = instance_dict(instance)
+            state = instance_state(instance)
             state.key = identitykey
 
             # attach instance to session.
             state.session_id = context.session.hash_key
-            session_identity_map.add(state)
+            session_identity_map._add_unpresent(state, identitykey)
 
         if currentload or populate_existing:
             # state is being fully loaded, so populate.
@@ -451,9 +457,9 @@ def instance_processor(mapper, context, path, adapter,
             else:
                 populate_state(state, dict_, row, isnew, only_load_props)
 
-            if loaded_instance:
+            if loaded_instance and load_evt:
                 state.manager.dispatch.load(state, context)
-            elif isnew:
+            elif isnew and refresh_evt:
                 state.manager.dispatch.refresh(state, context, only_load_props)
 
         elif state in context.partials or state.unloaded or eager_populators:

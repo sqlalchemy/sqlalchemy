@@ -559,12 +559,16 @@ class InstanceState(interfaces._InspectionAttr):
 
         for state, dict_ in iter:
             state.committed_state.clear()
-            InstanceState._pending_mutations._reset(state)
+
+            # inline of:
+            # InstanceState._pending_mutations._reset(state)
+            state.__dict__.pop('_pending_mutations', None)
 
             callables = state.callables
-            for key in list(callables):
-                if key in dict_ and callables[key] is state:
-                    del callables[key]
+            if callables:
+                for key in list(callables):
+                    if key in dict_ and callables[key] is state:
+                        del callables[key]
 
             if instance_dict and state.modified:
                 instance_dict._modified.discard(state)
