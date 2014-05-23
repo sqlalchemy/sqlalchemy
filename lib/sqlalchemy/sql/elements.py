@@ -460,6 +460,26 @@ class ClauseElement(Visitable):
             also refer to any server-side default generation function
             associated with a primary key `Column`.
 
+        :param compile_kwargs: optional dictionary of additional parameters
+            that will be passed through to the compiler within all "visit"
+            methods.  This allows any custom flag to be passed through to
+            a custom compilation construct, for example.  It is also used
+            for the case of passing the ``literal_binds`` flag through::
+
+                from sqlalchemy.sql import table, column, select
+
+                t = table('t', column('x'))
+
+                s = select([t]).where(t.c.x == 5)
+
+                print s.compile(compile_kwargs={"literal_binds": True})
+
+            .. versionadded:: 0.9.0
+
+        .. seealso::
+
+            :ref:`faq_sql_expression_string`
+
         """
 
         if not dialect:
