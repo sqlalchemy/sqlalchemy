@@ -312,10 +312,13 @@ def instance_processor(mapper, context, path, adapter,
 
     listeners = mapper.dispatch
 
+    ### legacy events - I'd very much like to yank these totally
     translate_row = listeners.translate_row or None
     create_instance = listeners.create_instance or None
     populate_instance = listeners.populate_instance or None
     append_result = listeners.append_result or None
+    ####
+
     populate_existing = context.populate_existing or mapper.always_refresh
     invoke_all_eagers = context.invoke_all_eagers
 
