@@ -98,6 +98,12 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def bound_limit_offset(self):
+        """target database can render LIMIT and/or OFFSET using a bound parameter"""
+
+        return exclusions.open()
+
+    @property
     def boolean_col_expressions(self):
         """Target database must support boolean expressions as columns"""
 

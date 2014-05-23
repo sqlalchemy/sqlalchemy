@@ -2,7 +2,8 @@ from .. import fixtures, config
 from ..assertions import eq_
 
 from sqlalchemy import util
-from sqlalchemy import Integer, String, select, func
+from sqlalchemy import Integer, String, select, func, bindparam
+from sqlalchemy import testing
 
 from ..schema import Table, Column
 
@@ -83,4 +84,81 @@ class OrderByLabelTest(fixtures.TablesTest):
         self._assert_result(
             select([lx]).order_by(lx.desc()),
             [(7, ), (5, ), (3, )]
+        )
+
+class LimitOffsetTest(fixtures.TablesTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("some_table", metadata,
+            Column('id', Integer, primary_key=True),
+            Column('x', Integer),
+            Column('y', Integer))
+
+    @classmethod
+    def insert_data(cls):
+        config.db.execute(
+            cls.tables.some_table.insert(),
+            [
+                {"id": 1, "x": 1, "y": 2},
+                {"id": 2, "x": 2, "y": 3},
+                {"id": 3, "x": 3, "y": 4},
+                {"id": 4, "x": 4, "y": 5},
+            ]
+        )
+
+    def _assert_result(self, select, result, params=()):
+        eq_(
+            config.db.execute(select, params).fetchall(),
+            result
+        )
+
+    def test_simple_limit(self):
+        table = self.tables.some_table
+        self._assert_result(
+            select([table]).order_by(table.c.id).limit(2),
+            [(1, 1, 2), (2, 2, 3)]
+        )
+
+    def test_simple_offset(self):
+        table = self.tables.some_table
+        self._assert_result(
+            select([table]).order_by(table.c.id).offset(2),
+            [(3, 3, 4), (4, 4, 5)]
+        )
+
+    def test_simple_limit_offset(self):
+        table = self.tables.some_table
+        self._assert_result(
+            select([table]).order_by(table.c.id).limit(2).offset(1),
+            [(2, 2, 3), (3, 3, 4)]
+        )
+
+    @testing.requires.bound_limit_offset
+    def test_bound_limit(self):
+        table = self.tables.some_table
+        self._assert_result(
+            select([table]).order_by(table.c.id).limit(bindparam('l')),
+            [(1, 1, 2), (2, 2, 3)],
+            params={"l": 2}
+        )
+
+    @testing.requires.bound_limit_offset
+    def test_bound_offset(self):
+        table = self.tables.some_table
+        self._assert_result(
+            select([table]).order_by(table.c.id).offset(bindparam('o')),
+            [(3, 3, 4), (4, 4, 5)],
+            params={"o": 2}
+        )
+
+    @testing.requires.bound_limit_offset
+    def test_bound_limit_offset(self):
+        table = self.tables.some_table
+        self._assert_result(
+            select([table]).order_by(table.c.id).\
+                limit(bindparam("l")).offset(bindparam("o")),
+            [(2, 2, 3), (3, 3, 4)],
+            params={"l": 2, "o": 1}
         )

@@ -430,8 +430,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 "SELECT anon_1.x, anon_1.y FROM (SELECT t.x AS x, t.y "
                 "AS y, ROW_NUMBER() OVER (ORDER BY t.y) AS "
                 "mssql_rn FROM t WHERE t.x = :x_1) AS "
-                "anon_1 WHERE mssql_rn > :mssql_rn_1",
-                checkparams={'mssql_rn_1': 20, 'x_1': 5}
+                "anon_1 WHERE mssql_rn > :param_1",
+                checkparams={'param_1': 20, 'x_1': 5}
             )
 
     def test_limit_offset_using_window(self):
@@ -446,8 +446,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "ROW_NUMBER() OVER (ORDER BY t.y) AS mssql_rn "
             "FROM t "
             "WHERE t.x = :x_1) AS anon_1 "
-            "WHERE mssql_rn > :mssql_rn_1 AND mssql_rn <= :mssql_rn_2",
-            checkparams={'mssql_rn_1': 20, 'mssql_rn_2': 30, 'x_1': 5}
+            "WHERE mssql_rn > :param_1 AND mssql_rn <= :param_2 + :param_1",
+            checkparams={'param_1': 20, 'param_2': 10, 'x_1': 5}
         )
 
     def test_limit_offset_with_correlated_order_by(self):
@@ -467,8 +467,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             ") AS mssql_rn "
             "FROM t1 "
             "WHERE t1.x = :x_1) AS anon_1 "
-            "WHERE mssql_rn > :mssql_rn_1 AND mssql_rn <= :mssql_rn_2",
-            checkparams={'mssql_rn_1': 20, 'mssql_rn_2': 30, 'x_1': 5}
+            "WHERE mssql_rn > :param_1 AND mssql_rn <= :param_2 + :param_1",
+            checkparams={'param_1': 20, 'param_2': 10, 'x_1': 5}
         )
 
     def test_limit_zero_offset_using_window(self):

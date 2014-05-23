@@ -167,6 +167,57 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         assert_raises(ValueError, select, offset="foo")
         assert_raises(ValueError, select, limit="foo")
 
+    def test_limit_offset_no_int_coercion_one(self):
+        exp1 = literal_column("Q")
+        exp2 = literal_column("Y")
+        self.assert_compile(
+            select([1]).limit(exp1).offset(exp2),
+            "SELECT 1 LIMIT Q OFFSET Y"
+        )
+
+        self.assert_compile(
+            select([1]).limit(bindparam('x')).offset(bindparam('y')),
+            "SELECT 1 LIMIT :x OFFSET :y"
+        )
+
+    def test_limit_offset_no_int_coercion_two(self):
+        exp1 = literal_column("Q")
+        exp2 = literal_column("Y")
+        sel = select([1]).limit(exp1).offset(exp2)
+
+        assert_raises_message(
+            exc.CompileError,
+            "This SELECT structure does not use a simple integer "
+            "value for limit",
+            getattr, sel, "_limit"
+        )
+
+        assert_raises_message(
+            exc.CompileError,
+            "This SELECT structure does not use a simple integer "
+            "value for offset",
+            getattr, sel, "_offset"
+        )
+
+    def test_limit_offset_no_int_coercion_three(self):
+        exp1 = bindparam("Q")
+        exp2 = bindparam("Y")
+        sel = select([1]).limit(exp1).offset(exp2)
+
+        assert_raises_message(
+            exc.CompileError,
+            "This SELECT structure does not use a simple integer "
+            "value for limit",
+            getattr, sel, "_limit"
+        )
+
+        assert_raises_message(
+            exc.CompileError,
+            "This SELECT structure does not use a simple integer "
+            "value for offset",
+            getattr, sel, "_offset"
+        )
+
     def test_limit_offset(self):
         for lim, offset, exp, params in [
             (5, 10, "LIMIT :param_1 OFFSET :param_2",
@@ -181,6 +232,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 "SELECT 1 " + exp,
                 checkparams=params
             )
+
+
 
     def test_select_precol_compile_ordering(self):
         s1 = select([column('x')]).select_from('a').limit(5).as_scalar()

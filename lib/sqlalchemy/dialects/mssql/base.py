@@ -740,18 +740,22 @@ class MSSQLCompiler(compiler.SQLCompiler):
                                         self.process(binary.right, **kw))
 
     def get_select_precolumns(self, select):
-        """ MS-SQL puts TOP, its version of LIMIT, here """
-        if select._distinct or select._limit is not None:
-            s = select._distinct and "DISTINCT " or ""
+        """ MS-SQL puts TOP, it's version of LIMIT here """
 
+        s = ""
+        if select._distinct:
+            s += "DISTINCT "
+
+        if select._simple_int_limit and not select._offset:
             # ODBC drivers and possibly others
             # don't support bind params in the SELECT clause on SQL Server.
             # so have to use literal here.
-            if select._limit is not None:
-                if not select._offset:
-                    s += "TOP %d " % select._limit
+            s += "TOP %d " % select._limit
+
+        if s:
             return s
-        return compiler.SQLCompiler.get_select_precolumns(self, select)
+        else:
+            return compiler.SQLCompiler.get_select_precolumns(self, select)
 
     def get_from_hint_text(self, table, text):
         return text
@@ -768,28 +772,42 @@ class MSSQLCompiler(compiler.SQLCompiler):
         so tries to wrap it in a subquery with ``row_number()`` criterion.
 
         """
-        if select._offset and not getattr(select, '_mssql_visit', None):
+        if (
+                (
+                    not select._simple_int_limit and
+                    select._limit_clause is not None
+                ) or (
+                    select._offset_clause is not None and
+                    not select._simple_int_offset or select._offset
+                )
+            ) and not getattr(select, '_mssql_visit', None):
+
             # to use ROW_NUMBER(), an ORDER BY is required.
             if not select._order_by_clause.clauses:
                 raise exc.CompileError('MSSQL requires an order_by when '
-                                              'using an offset.')
+                                        'using an OFFSET or a non-simple '
+                                        'LIMIT clause')
 
-            _offset = select._offset
-            _limit = select._limit
             _order_by_clauses = select._order_by_clause.clauses
+            limit_clause = select._limit_clause
+            offset_clause = select._offset_clause
             select = select._generate()
             select._mssql_visit = True
             select = select.column(
-                 sql.func.ROW_NUMBER().over(order_by=_order_by_clauses)
-                     .label("mssql_rn")
-                                   ).order_by(None).alias()
+                    sql.func.ROW_NUMBER().over(order_by=_order_by_clauses)
+                    .label("mssql_rn")).order_by(None).alias()
 
             mssql_rn = sql.column('mssql_rn')
             limitselect = sql.select([c for c in select.c if
                                         c.key != 'mssql_rn'])
-            limitselect.append_whereclause(mssql_rn > _offset)
-            if _limit is not None:
-                limitselect.append_whereclause(mssql_rn <= (_limit + _offset))
+            if offset_clause is not None:
+                limitselect.append_whereclause(mssql_rn > offset_clause)
+                if limit_clause is not None:
+                    limitselect.append_whereclause(
+                            mssql_rn <= (limit_clause + offset_clause))
+            else:
+                limitselect.append_whereclause(
+                            mssql_rn <= (limit_clause))
             return self.process(limitselect, iswrapper=True, **kwargs)
         else:
             return compiler.SQLCompiler.visit_select(self, select, **kwargs)

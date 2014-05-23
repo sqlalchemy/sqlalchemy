@@ -652,24 +652,26 @@ class OracleCompiler(compiler.SQLCompiler):
 
                 # Wrap the middle select and add the hint
                 limitselect = sql.select([c for c in select.c])
-                if select._limit and self.dialect.optimize_limits:
-                    limitselect = limitselect.prefix_with("/*+ FIRST_ROWS(%d) */" % select._limit)
+                limit = select._limit
+                if limit and self.dialect.optimize_limits:
+                    limitselect = limitselect.prefix_with("/*+ FIRST_ROWS(%d) */" % limit)
 
                 limitselect._oracle_visit = True
                 limitselect._is_wrapper = True
 
                 # If needed, add the limiting clause
-                if select._limit is not None:
-                    max_row = select._limit
-                    if select._offset is not None:
-                        max_row += select._offset
+                offset = select._offset
+                if limit is not None:
+                    max_row = limit
+                    if offset is not None:
+                        max_row += offset
                     if not self.dialect.use_binds_for_limits:
                         max_row = sql.literal_column("%d" % max_row)
                     limitselect.append_whereclause(
                             sql.literal_column("ROWNUM") <= max_row)
 
                 # If needed, add the ora_rn, and wrap again with offset.
-                if select._offset is None:
+                if offset is None:
                     limitselect._for_update_arg = select._for_update_arg
                     select = limitselect
                 else:
@@ -683,7 +685,7 @@ class OracleCompiler(compiler.SQLCompiler):
                     offsetselect._oracle_visit = True
                     offsetselect._is_wrapper = True
 
-                    offset_value = select._offset
+                    offset_value = offset
                     if not self.dialect.use_binds_for_limits:
                         offset_value = sql.literal_column("%d" % offset_value)
                     offsetselect.append_whereclause(

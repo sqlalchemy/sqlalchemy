@@ -1275,6 +1275,31 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         assert [] == sess.query(User).order_by(User.id)[3:3]
         assert [] == sess.query(User).order_by(User.id)[0:0]
 
+    def test_select_with_bindparam_offset_limit(self):
+        """Does a query allow bindparam for the limit?"""
+        User = self.classes.User
+        sess = create_session()
+        q1 = sess.query(self.classes.User).\
+                    order_by(self.classes.User.id).limit(bindparam('n'))
+
+        for n in range(1, 4):
+            result = q1.params(n=n).all()
+            eq_(len(result), n)
+
+        eq_(
+            sess.query(User).order_by(User.id).
+                    limit(bindparam('limit')).
+                    offset(bindparam('offset')).
+                    params(limit=2, offset=1).all()
+            [User(id=8), User(id=9)]
+        )
+        eq_(
+            list(
+                sess.query(User).params(a=1, b=3).
+                    order_by(User.id)[bindparam('a'):bindparam('b')]
+                )
+            [User(id=8), User(id=9)]
+        )
 
     @testing.requires.boolean_col_expressions
     def test_exists(self):
