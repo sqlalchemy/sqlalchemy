@@ -28,6 +28,7 @@
         :tags: feature, postgresql
         :tickets: 2785
         :pullreq: bitbucket:18
+        :versions: 1.0.0
 
         Added a new flag :paramref:`.ARRAY.zero_indexes` to the Postgresql
         :class:`.ARRAY` type.  When set to ``True``, a value of one will be
@@ -38,6 +39,7 @@
     .. change::
         :tags: bug, engine
         :tickets: 3043
+        :versions: 1.0.0
 
         Fixed some "double invalidate" situations were detected where
         a connection invalidation could occur within an already critical section
@@ -60,6 +62,7 @@
     .. change::
         :tags: feature, orm
         :tickets: 3029
+        :versions: 1.0.0
 
         The "primaryjoin" model has been stretched a bit further to allow
         a join condition that is strictly from a single column to itself,
@@ -73,6 +76,7 @@
     .. change::
         :tags: feature, sql
         :tickets: 3028
+        :versions: 1.0.0
 
         Liberalized the contract for :class:`.Index` a bit in that you can
         specify a :func:`.text` expression as the target; the index no longer
@@ -93,6 +97,7 @@
     .. change::
         :tags: bug, mssql
         :tickets: 3025
+        :versions: 1.0.0
 
         Revised the query used to determine the current default schema name
         to use the ``database_principal_id()`` function in conjunction with
@@ -103,6 +108,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 3024
+        :versions: 1.0.0
 
         Fixed bug in new :meth:`.DialectKWArgs.argument_for` method where
         adding an argument for a construct not previously included for any
@@ -112,6 +118,7 @@
         :tags: bug, py3k, tests
         :tickets: 2830
         :pullreq: bitbucket:2830
+        :versions: 1.0.0
 
         Corrected for some deprecation warnings involving the ``imp``
         module and Python 3.3 or greater, when running tests.  Pull
@@ -120,6 +127,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 3020, 1068
+        :versions: 1.0.0
 
         Fixed regression introduced in 0.9 where new "ORDER BY <labelname>"
         feature from :ticket:`1068` would not apply quoting rules to the
@@ -128,6 +136,7 @@
     .. change::
         :tags: feature, orm
         :tickets: 3017
+        :versions: 1.0.0
 
         Added new utility function :func:`.make_transient_to_detached` which can
         be used to manufacture objects that behave as though they were loaded
@@ -137,6 +146,7 @@
 
     .. change::
         :tags: bug, sql
+        :versions: 1.0.0
 
         Restored the import for :class:`.Function` to the ``sqlalchemy.sql.expression``
         import namespace, which was removed at the beginning of 0.9.
@@ -144,6 +154,7 @@
     .. change::
         :tags: bug, orm, sql
         :tickets: 3013
+        :versions: 1.0.0
 
         Fixes to the newly enhanced boolean coercion in :ticket:`2804` where
         the new rules for "where" and "having" woudn't take effect for the
@@ -154,6 +165,7 @@
     .. change::
         :tags: feature, sql
         :tickets: 2990
+        :versions: 1.0.0
 
         Added new flag :paramref:`.expression.between.symmetric`, when set to True
         renders "BETWEEN SYMMETRIC".  Also added a new negation operator
