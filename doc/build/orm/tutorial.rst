@@ -762,19 +762,19 @@ Common Filter Operators
 
 Here's a rundown of some of the most common operators used in :func:`~sqlalchemy.orm.query.Query.filter`:
 
-* equals::
+* :meth:`equals <.ColumnOperators.__eq__>`::
 
     query.filter(User.name == 'ed')
 
-* not equals::
+* :meth:`not equals <.ColumnOperators.__ne__>`::
 
     query.filter(User.name != 'ed')
 
-* LIKE::
+* :meth:`LIKE <.ColumnOperators.like>`::
 
     query.filter(User.name.like('%ed%'))
 
-* IN::
+* :meth:`IN <.ColumnOperators.in_>`::
 
     query.filter(User.name.in_(['ed', 'wendy', 'jack']))
 
@@ -782,25 +782,25 @@ Here's a rundown of some of the most common operators used in :func:`~sqlalchemy
 
     query.filter(User.name.in_(session.query(User.name).filter(User.name.like('%ed%'))))
 
-* NOT IN::
+* :meth:`NOT IN <.ColumnOperators.notin_>`::
 
     query.filter(~User.name.in_(['ed', 'wendy', 'jack']))
 
-* IS NULL::
+* :meth:`IS NULL <.ColumnOperators.is_>`::
 
     filter(User.name == None)
 
     # alternatively, if pep8/linters are a concern
     query.filter(User.name.is_(None))
 
-* IS NOT NULL::
+* :meth:`IS NOT NULL <.ColumnOperators.isnot>`::
 
     filter(User.name != None)
 
     # alternatively, if pep8/linters are a concern
     query.filter(User.name.isnot(None))
 
-* AND::
+* :func:`AND <.sql.expression.and_>`::
 
     from sqlalchemy import and_
     filter(and_(User.name == 'ed', User.fullname == 'Ed Jones'))
@@ -808,16 +808,20 @@ Here's a rundown of some of the most common operators used in :func:`~sqlalchemy
     # or call filter()/filter_by() multiple times
     filter(User.name == 'ed').filter(User.fullname == 'Ed Jones')
 
-* OR::
+* :func:`OR <.sql.expression.or_>`::
 
     from sqlalchemy import or_
     filter(or_(User.name == 'ed', User.name == 'wendy'))
 
-* match::
+* :meth:`MATCH <.ColumnOperators.match>`::
 
     query.filter(User.name.match('wendy'))
 
- The contents of the match parameter are database backend specific.
+ .. note::
+
+    :meth:`~.ColumnOperators.match` uses a database-specific ``MATCH``
+    or ``CONTAINS`` function; its behavior will vary by backend and is not
+    available on some backends such as SQLite.
 
 Returning Lists and Scalars
 ---------------------------

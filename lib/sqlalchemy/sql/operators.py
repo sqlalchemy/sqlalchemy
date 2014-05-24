@@ -503,11 +503,17 @@ class ColumnOperators(Operators):
         return self.operate(contains_op, other, **kwargs)
 
     def match(self, other, **kwargs):
-        """Implements the 'match' operator.
+        """Implements a database-specific 'match' operator.
 
-        In a column context, this produces a MATCH clause, i.e.
-        ``MATCH '<other>'``.  The allowed contents of ``other``
-        are database backend specific.
+        :meth:`~.ColumnOperators.match` attempts to resolve to
+        a MATCH-like function or operator provided by the backend.
+        Examples include:
+
+        * Postgresql - renders ``x @@ to_tsquery(y)``
+        * MySQL - renders ``MATCH (x) AGAINST (y IN BOOLEAN MODE)``
+        * Oracle - renders ``CONTAINS(x, y)``
+        * other backends may provide special implementations;
+          some backends such as SQLite have no support.
 
         """
         return self.operate(match_op, other, **kwargs)
