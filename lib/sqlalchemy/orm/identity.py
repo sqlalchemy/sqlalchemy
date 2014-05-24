@@ -63,6 +63,9 @@ class IdentityMap(object):
     def setdefault(self, key, default=None):
         raise NotImplementedError("IdentityMap uses add() to insert data")
 
+    def __len__(self):
+        return len(self._dict)
+
     def copy(self):
         raise NotImplementedError()
 

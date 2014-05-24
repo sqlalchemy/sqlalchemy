@@ -1290,14 +1290,14 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             sess.query(User).order_by(User.id).
                     limit(bindparam('limit')).
                     offset(bindparam('offset')).
-                    params(limit=2, offset=1).all()
+                    params(limit=2, offset=1).all(),
             [User(id=8), User(id=9)]
         )
         eq_(
             list(
                 sess.query(User).params(a=1, b=3).
                     order_by(User.id)[bindparam('a'):bindparam('b')]
-                )
+                ),
             [User(id=8), User(id=9)]
         )
 
