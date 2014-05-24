@@ -212,6 +212,11 @@ class CustomUnaryOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                                 operator=operators.custom_op("!!"),
                                 type_=MyInteger)
 
+                def __invert__(self):
+                    return UnaryExpression(self.expr,
+                                operator=operators.custom_op("!!!"),
+                                type_=MyInteger)
+
         return MyInteger
 
     def test_factorial(self):
@@ -233,6 +238,20 @@ class CustomUnaryOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(
             col.factorial_prefix(),
             "!! somecol"
+        )
+
+    def test_factorial_invert(self):
+        col = column('somecol', self._factorial_fixture())
+        self.assert_compile(
+            ~col,
+            "!!! somecol"
+        )
+
+    def test_double_factorial_invert(self):
+        col = column('somecol', self._factorial_fixture())
+        self.assert_compile(
+            ~(~col),
+            "!!! (!!! somecol)"
         )
 
     def test_unary_no_ops(self):
@@ -263,6 +282,7 @@ class _CustomComparatorTests(object):
             )
         proxied = t.select().c.foo
         self._assert_add_override(proxied)
+        self._assert_and_override(proxied)
 
     def test_alias_proxy(self):
         t = Table('t', MetaData(),
@@ -270,22 +290,32 @@ class _CustomComparatorTests(object):
             )
         proxied = t.alias().c.foo
         self._assert_add_override(proxied)
+        self._assert_and_override(proxied)
 
     def test_binary_propagate(self):
         c1 = Column('foo', self._add_override_factory())
         self._assert_add_override(c1 - 6)
+        self._assert_and_override(c1 - 6)
 
     def test_reverse_binary_propagate(self):
         c1 = Column('foo', self._add_override_factory())
         self._assert_add_override(6 - c1)
+        self._assert_and_override(6 - c1)
 
     def test_binary_multi_propagate(self):
         c1 = Column('foo', self._add_override_factory())
         self._assert_add_override((c1 - 6) + 5)
+        self._assert_and_override((c1 - 6) + 5)
 
     def test_no_boolean_propagate(self):
         c1 = Column('foo', self._add_override_factory())
         self._assert_not_add_override(c1 == 56)
+        self._assert_not_and_override(c1 == 56)
+
+    def _assert_and_override(self, expr):
+        assert (expr & text("5")).compare(
+            expr.op("goofy_and")(text("5"))
+        )
 
     def _assert_add_override(self, expr):
         assert (expr + 5).compare(
@@ -295,6 +325,11 @@ class _CustomComparatorTests(object):
     def _assert_not_add_override(self, expr):
         assert not (expr + 5).compare(
             expr.op("goofy")(5)
+        )
+
+    def _assert_not_and_override(self, expr):
+        assert not (expr & text("5")).compare(
+            expr.op("goofy_and")(text("5"))
         )
 
 class CustomComparatorTest(_CustomComparatorTests, fixtures.TestBase):
@@ -308,6 +343,8 @@ class CustomComparatorTest(_CustomComparatorTests, fixtures.TestBase):
                 def __add__(self, other):
                     return self.expr.op("goofy")(other)
 
+                def __and__(self, other):
+                    return self.expr.op("goofy_and")(other)
 
         return MyInteger
 
@@ -325,6 +362,9 @@ class TypeDecoratorComparatorTest(_CustomComparatorTests, fixtures.TestBase):
                 def __add__(self, other):
                     return self.expr.op("goofy")(other)
 
+                def __and__(self, other):
+                    return self.expr.op("goofy_and")(other)
+
 
         return MyInteger
 
@@ -338,6 +378,9 @@ class CustomEmbeddedinTypeDecoratorTest(_CustomComparatorTests, fixtures.TestBas
 
                 def __add__(self, other):
                     return self.expr.op("goofy")(other)
+
+                def __and__(self, other):
+                    return self.expr.op("goofy_and")(other)
 
 
         class MyDecInteger(TypeDecorator):
@@ -363,6 +406,12 @@ class NewOperatorTest(_CustomComparatorTests, fixtures.TestBase):
 
     def _assert_not_add_override(self, expr):
         assert not hasattr(expr, "foob")
+
+    def _assert_and_override(self, expr):
+        pass
+
+    def _assert_not_and_override(self, expr):
+        pass
 
 class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'

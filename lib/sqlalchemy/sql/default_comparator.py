@@ -13,7 +13,7 @@ from . import type_api
 from .elements import BindParameter, True_, False_, BinaryExpression, \
         Null, _const_expr, _clause_element_as_expr, \
         ClauseList, ColumnElement, TextClause, UnaryExpression, \
-        collate, _is_literal, _literal_as_text, ClauseElement
+        collate, _is_literal, _literal_as_text, ClauseElement, and_, or_
 from .selectable import SelectBase, Alias, Selectable, ScalarSelect
 
 class _DefaultColumnComparator(operators.ColumnOperators):
@@ -124,6 +124,14 @@ class _DefaultColumnComparator(operators.ColumnOperators):
 
         return BinaryExpression(left, right, op, type_=result_type)
 
+    def _conjunction_operate(self, expr, op, other, **kw):
+        if op is operators.and_:
+            return and_(expr, other)
+        elif op is operators.or_:
+            return or_(expr, other)
+        else:
+            raise NotImplementedError()
+
     def _scalar(self, expr, op, fn, **kw):
         return fn(expr)
 
@@ -190,6 +198,13 @@ class _DefaultColumnComparator(operators.ColumnOperators):
         raise NotImplementedError("Operator '%s' is not supported on "
                             "this expression" % op.__name__)
 
+    def _inv_impl(self, expr, op, **kw):
+        """See :meth:`.ColumnOperators.__inv__`."""
+        if hasattr(expr, 'negation_clause'):
+            return expr.negation_clause
+        else:
+            return expr._negate()
+
     def _neg_impl(self, expr, op, **kw):
         """See :meth:`.ColumnOperators.__neg__`."""
         return UnaryExpression(expr, operator=operators.neg)
@@ -226,6 +241,9 @@ class _DefaultColumnComparator(operators.ColumnOperators):
     # a mapping of operators with the method they use, along with
     # their negated operator for comparison operators
     operators = {
+        "and_": (_conjunction_operate,),
+        "or_": (_conjunction_operate,),
+        "inv": (_inv_impl,),
         "add": (_binary_operate,),
         "mul": (_binary_operate,),
         "sub": (_binary_operate,),
