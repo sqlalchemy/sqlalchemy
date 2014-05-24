@@ -14,6 +14,9 @@ class IdentityMap(object):
         self._modified = set()
         self._wr = weakref.ref(self)
 
+    def keys(self):
+        return self._dict.keys()
+
     def replace(self, state):
         raise NotImplementedError()
 
@@ -173,12 +176,19 @@ class WeakInstanceDict(IdentityMap):
 
         def itervalues(self):
             return iter(self.values())
+
+        def __iter__(self):
+            return iter(self.keys())
+
     else:
         def items(self):
             return iter(self._items())
 
         def values(self):
             return iter(self._values())
+
+        def __iter__(self):
+            return self.keys()
 
     def all_states(self):
         if util.py2k:
@@ -198,6 +208,35 @@ class WeakInstanceDict(IdentityMap):
 
 
 class StrongInstanceDict(IdentityMap):
+    if util.py2k:
+        def itervalues(self):
+            return self._dict.itervalues()
+
+        def iteritems(self):
+            return self._dict.iteritems()
+
+        def __iter__(self):
+            return iter(self.keys())
+    else:
+        def __iter__(self):
+            return self.keys()
+
+    def __getitem__(self, key):
+        return self._dict[key]
+
+    def __contains__(self, key):
+        return key in self._dict
+
+    def get(self, key, default=None):
+        return self._dict.get(key, default)
+
+    def values(self):
+        return self._dict.values()
+
+    def items(self):
+        return self._dict.items()
+
+
     def all_states(self):
         return [attributes.instance_state(o) for o in self.values()]
 

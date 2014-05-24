@@ -1570,7 +1570,7 @@ class MySQLCompiler(compiler.SQLCompiler):
 
         limit_clause, offset_clause = select._limit_clause, select._offset_clause
 
-        if (limit_clause, offset_clause) == (None, None):
+        if limit_clause is None and offset_clause is None:
             return ''
         elif offset_clause is not None:
             # As suggested by the MySQL docs, need to apply an
