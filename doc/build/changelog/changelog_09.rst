@@ -15,6 +15,16 @@
     :version: 0.9.5
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3012
+        :versions: 1.0.0
+
+        Fixed bug where the :meth:`.Operators.__and__`,
+        :meth:`.Operators.__or__` and :meth:`.Operators.__invert__`
+        operator overload methods could not be overridden within a custom
+        :class:`.TypeEngine.Comparator` implementation.
+
+    .. change::
         :tags: feature, postgresql
         :tickets: 2785
         :pullreq: bitbucket:18

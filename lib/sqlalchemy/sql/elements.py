@@ -505,9 +505,21 @@ class ClauseElement(Visitable):
             return unicode(self.compile()).encode('ascii', 'backslashreplace')
 
     def __and__(self, other):
+        """'and' at the ClauseElement level.
+
+        .. deprecated:: 0.9.5 - conjunctions are intended to be
+           at the :class:`.ColumnElement`. level
+
+        """
         return and_(self, other)
 
     def __or__(self, other):
+        """'or' at the ClauseElement level.
+
+        .. deprecated:: 0.9.5 - conjunctions are intended to be
+           at the :class:`.ColumnElement`. level
+
+        """
         return or_(self, other)
 
     def __invert__(self):
@@ -516,16 +528,17 @@ class ClauseElement(Visitable):
         else:
             return self._negate()
 
-    def __bool__(self):
-        raise TypeError("Boolean value of this clause is not defined")
-
-    __nonzero__ = __bool__
-
     def _negate(self):
         return UnaryExpression(
                     self.self_group(against=operators.inv),
                     operator=operators.inv,
                     negate=None)
+
+    def __bool__(self):
+        raise TypeError("Boolean value of this clause is not defined")
+
+    __nonzero__ = __bool__
+
 
     def __repr__(self):
         friendly = getattr(self, 'description', None)
@@ -536,8 +549,7 @@ class ClauseElement(Visitable):
                 self.__module__, self.__class__.__name__, id(self), friendly)
 
 
-
-class ColumnElement(ClauseElement, operators.ColumnOperators):
+class ColumnElement(operators.ColumnOperators, ClauseElement):
     """Represent a column-oriented SQL expression suitable for usage in the
     "columns" clause, WHERE clause etc. of a statement.
 
@@ -1503,6 +1515,8 @@ class TextClause(Executable, ClauseElement):
     def get_children(self, **kwargs):
         return list(self._bindparams.values())
 
+    def compare(self, other):
+        return isinstance(other, TextClause) and other.text == self.text
 
 class Null(ColumnElement):
     """Represent the NULL keyword in a SQL statement.
