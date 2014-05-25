@@ -15,6 +15,15 @@
     :version: 0.9.5
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3057
+        :versions: 1.0.0
+
+        Fixed bug in SQLite join rewriting where anonymized column names
+        due to repeats would not correctly be rewritten in subqueries.
+        This would affect SELECT queries with any kind of subquery + join.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3012
         :versions: 1.0.0

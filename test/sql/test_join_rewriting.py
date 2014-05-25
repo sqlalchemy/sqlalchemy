@@ -16,6 +16,10 @@ b = Table('b', m,
         Column('a_id', Integer, ForeignKey('a.id'))
     )
 
+b_a = Table('b_a', m,
+        Column('id', Integer, primary_key=True),
+    )
+
 b1 = Table('b1', m,
         Column('id', Integer, primary_key=True),
         Column('a_id', Integer, ForeignKey('a.id'))
@@ -201,6 +205,24 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
             self._b_ab1_union_c_ab2
         )
 
+    def test_b_a_id_double_overlap_annotated(self):
+        # test issue #3057
+        # this involves annotations so try to loop those in.
+        j1 = b.join(b_a, b.c.id == b_a.c.id)
+        annot = [
+                    b.c.id._annotate({}),
+                    b.c.a_id._annotate({}),
+                    b_a.c.id._annotate({})
+                ]
+
+        s = select(annot).select_from(j1).apply_labels().alias()
+
+        s = select(list(s.c)).apply_labels()
+
+        self._test(
+            s,
+            self._b_a_id_double_overlap_annotated
+        )
 
 class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
     """test rendering of each join with right-nested rewritten as
@@ -320,6 +342,13 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
         "FROM a JOIN b2 ON a.id = b2.a_id) AS anon_2 ON anon_2.a_id = b.a_id)"
     )
 
+    _b_a_id_double_overlap_annotated = (
+        "SELECT anon_1.b_id AS anon_1_b_id, anon_1.b_a_id AS anon_1_b_a_id, "
+        "anon_1.id_1 AS anon_1_id_1 "
+        "FROM (SELECT b.id AS b_id, b.a_id AS b_a_id, b_a.id AS id_1 "
+        "FROM b JOIN b_a ON b.id = b_a.id) AS anon_1"
+    )
+
 class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
     """test rendering of each join with normal nesting."""
     @util.classproperty
@@ -411,6 +440,13 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
         "SELECT b.id AS b_id, b.a_id AS b_a_id, a.id AS a_id, b2.id AS b2_id, "
         "b2.a_id AS b2_a_id FROM b "
         "JOIN (a JOIN b2 ON a.id = b2.a_id) ON a.id = b.a_id)"
+    )
+
+    _b_a_id_double_overlap_annotated = (
+        "SELECT anon_1.b_id AS anon_1_b_id, anon_1.b_a_id AS anon_1_b_a_id, "
+        "anon_1.id_1 AS anon_1_id_1 FROM "
+        "(SELECT b.id AS b_id, b.a_id AS b_a_id, b_a.id AS id_1 "
+        "FROM b JOIN b_a ON b.id = b_a.id) AS anon_1"
     )
 
 class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
@@ -506,6 +542,12 @@ class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
         "FROM b JOIN (a JOIN b2 ON a.id = b2.a_id) ON a.id = b.a_id)"
     )
 
+    _b_a_id_double_overlap_annotated = (
+        "SELECT anon_1.b_id, anon_1.b_a_id, anon_1.id_1 FROM "
+        "(SELECT b.id AS b_id, b.a_id AS b_a_id, b_a.id AS id_1 "
+        "FROM b JOIN b_a ON b.id = b_a.id) AS anon_1"
+    )
+
 class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
     """invoke the SQL on the current backend to ensure compatibility"""
 
@@ -513,7 +555,8 @@ class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
 
     _a_bc = _a_bc_comma_a1_selbc = _a__b_dc = _a_bkeyassoc = \
         _a_bkeyassoc_aliased = _a_atobalias_balias_c_w_exists = \
-        _a_atobalias_balias = _b_ab1_union_c_ab2 = None
+        _a_atobalias_balias = _b_ab1_union_c_ab2 = \
+        _b_a_id_double_overlap_annotated = None
 
     @classmethod
     def setup_class(cls):

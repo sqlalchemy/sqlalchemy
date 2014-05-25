@@ -3488,3 +3488,6 @@ class AnnotatedColumnElement(Annotated):
     def info(self):
         return self._Annotated__element.info
 
+    @util.memoized_property
+    def anon_label(self):
+        return self._Annotated__element.anon_label
