@@ -895,7 +895,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
                     attr = getattr(parent_alias, key).\
                                     of_type(effective_entity)
                 else:
-                    attr = key
+                    attr = getattr(mapper.entity, key)
 
             if second_to_last:
                 q = q.join(parent_alias, attr, from_joinpoint=True)

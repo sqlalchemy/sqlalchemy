@@ -23,6 +23,8 @@ class Boss(Manager):
     pass
 class Machine(fixtures.ComparableEntity):
     pass
+class MachineType(fixtures.ComparableEntity):
+    pass
 class Paperwork(fixtures.ComparableEntity):
     pass
 
