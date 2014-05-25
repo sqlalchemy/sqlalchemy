@@ -12,6 +12,17 @@
     :version: 0.8.7
 
     .. change::
+        :tags: bug, orm
+        :versions: 0.9.5, 1.0.0
+        :tickets: 3055
+
+        Fixed bug in subquery eager loading where a long chain of
+        eager loads across a polymorphic-subclass boundary in conjunction
+        with polymorphic loading would fail to locate the subclass-link in the
+        chain, erroring out with a missing property name on an
+        :class:`.AliasedClass`.
+
+    .. change::
         :tags: bug, ext
         :versions: 0.9.5
         :tickets: 3051

@@ -976,7 +976,8 @@ class OrderBySecondaryTest(fixtures.MappedTest):
         self.assert_sql_count(testing.db, go, 2)
 
 
-from .inheritance._poly_fixtures import _Polymorphic, Person, Engineer, Paperwork
+from .inheritance._poly_fixtures import _Polymorphic, Person, Engineer, \
+                Paperwork, Machine, MachineType, Company
 
 class BaseRelationFromJoinedSubclassTest(_Polymorphic):
     @classmethod
@@ -1132,7 +1133,115 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
             )
         )
 
+class SubRelationFromJoinedSubclassMultiLevelTest(_Polymorphic):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('companies', metadata,
+            Column('company_id', Integer,
+                primary_key=True,
+                test_needs_autoincrement=True),
+            Column('name', String(50)))
 
+        Table('people', metadata,
+            Column('person_id', Integer,
+                primary_key=True,
+                test_needs_autoincrement=True),
+            Column('company_id', ForeignKey('companies.company_id')),
+            Column('name', String(50)),
+            Column('type', String(30)))
+
+        Table('engineers', metadata,
+            Column('engineer_id', ForeignKey('people.person_id'),
+                            primary_key=True),
+            Column('primary_language', String(50)))
+
+        Table('machines', metadata,
+            Column('machine_id',
+                 Integer, primary_key=True,
+                 test_needs_autoincrement=True),
+            Column('name', String(50)),
+            Column('engineer_id', ForeignKey('engineers.engineer_id')),
+            Column('machine_type_id',
+                            ForeignKey('machine_type.machine_type_id')))
+
+        Table('machine_type', metadata,
+            Column('machine_type_id',
+                    Integer, primary_key=True,
+                        test_needs_autoincrement=True),
+            Column('name', String(50)))
+
+    @classmethod
+    def setup_mappers(cls):
+        companies = cls.tables.companies
+        people = cls.tables.people
+        engineers = cls.tables.engineers
+        machines = cls.tables.machines
+        machine_type = cls.tables.machine_type
+
+        mapper(Company, companies, properties={
+                'employees': relationship(Person, order_by=people.c.person_id)
+                })
+        mapper(Person, people,
+            polymorphic_on=people.c.type,
+            polymorphic_identity='person',
+            with_polymorphic='*')
+
+        mapper(Engineer, engineers,
+            inherits=Person,
+            polymorphic_identity='engineer', properties={
+                'machines': relationship(Machine,
+                                        order_by=machines.c.machine_id)
+            })
+
+        mapper(Machine, machines, properties={
+                'type': relationship(MachineType)
+                })
+        mapper(MachineType, machine_type)
+
+
+    @classmethod
+    def insert_data(cls):
+        c1 = cls._fixture()
+        sess = create_session()
+        sess.add(c1)
+        sess.flush()
+
+    @classmethod
+    def _fixture(cls):
+        mt1 = MachineType(name='mt1')
+        mt2 = MachineType(name='mt2')
+        return Company(
+                employees=[
+                    Engineer(
+                        name='e1',
+                        machines=[
+                            Machine(name='m1', type=mt1),
+                            Machine(name='m2', type=mt2)
+                        ]
+                    ),
+                    Engineer(
+                        name='e2',
+                        machines=[
+                            Machine(name='m3', type=mt1),
+                            Machine(name='m4', type=mt1)
+                        ]
+                    )
+                ])
+
+    def test_chained_subq_subclass(self):
+        s = Session()
+        q = s.query(Company).options(
+                        subqueryload(Company.employees.of_type(Engineer)).
+                            subqueryload(Engineer.machines).
+                            subqueryload(Machine.type)
+                    )
+
+        def go():
+            eq_(
+                q.all(),
+                [self._fixture()]
+            )
+        self.assert_sql_count(testing.db, go, 4)
 
 
 class SelfReferentialTest(fixtures.MappedTest):
