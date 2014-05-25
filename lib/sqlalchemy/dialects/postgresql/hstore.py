@@ -180,6 +180,7 @@ class HSTORE(sqltypes.Concatenable, sqltypes.TypeEngine):
     """
 
     __visit_name__ = 'HSTORE'
+    hashable = False
 
     class comparator_factory(sqltypes.Concatenable.Comparator):
         """Define comparison operations for :class:`.HSTORE`."""
