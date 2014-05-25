@@ -196,7 +196,25 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             checkparams={}
         )
 
+    def test_insert_from_select_union(self):
+        mytable = self.tables.mytable
 
+        name = 'name'
+        description = 'desc'
+        sel = select(
+            [name, mytable.c.description],
+        ).union(
+            select([name, description])
+        )
+        ins = mytable.insert().\
+                    from_select(
+                            [mytable.c.name, mytable.c.description], sel)
+        self.assert_compile(
+            ins,
+            "INSERT INTO mytable (name, description) "
+                    "SELECT name, mytable.description FROM mytable "
+                    "UNION SELECT name, desc"
+        )
     def test_insert_from_select_col_values(self):
         table1 = self.tables.mytable
         table2 = self.tables.myothertable
