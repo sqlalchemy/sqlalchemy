@@ -2108,7 +2108,7 @@ def _interpret_as_select(element):
     element = _interpret_as_from(element)
     if isinstance(element, Alias):
         element = element.original
-    if not isinstance(element, Select):
+    if not isinstance(element, SelectBase):
         element = element.select()
     return element
 

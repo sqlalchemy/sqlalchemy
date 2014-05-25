@@ -12,6 +12,14 @@
     :version: 0.8.7
 
     .. change::
+        :tags: bug, sql
+        :versions: 0.9.5, 1.0.0
+        :tickets: 3044
+
+        Fixed bug in INSERT..FROM SELECT construct where selecting from a
+        UNION would wrap the union in an anonymous (e.g. unlabled) subquery.
+
+    .. change::
         :tags: bug, postgresql
         :versions: 0.9.5, 1.0.0
         :tickets: 3053
