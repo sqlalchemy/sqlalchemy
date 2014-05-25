@@ -326,4 +326,5 @@ epub_copyright = u'2007-2014, SQLAlchemy authors'
 
 intersphinx_mapping = {
     'alembic': ('http://alembic.readthedocs.org/en/latest/', None),
+    'psycopg2': ('http://pythonhosted.org/psycopg2', None),
 }
