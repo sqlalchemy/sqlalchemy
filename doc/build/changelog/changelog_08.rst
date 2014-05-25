@@ -12,6 +12,16 @@
     :version: 0.8.7
 
     .. change::
+        :tags: bug, postgresql
+        :versions: 0.9.5, 1.0.0
+        :tickets: 3053
+
+        Added the ``hashable=False`` flag to the PG :class:`.HSTORE` type, which
+        is needed to allow the ORM to skip over trying to "hash" an ORM-mapped
+        HSTORE column when requesting it in a mixed column/entity list.
+        Patch courtesy Gunnlaugur Þór Briem.
+
+    .. change::
         :tags: bug, orm
         :versions: 0.9.5, 1.0.0
         :tickets: 3055
