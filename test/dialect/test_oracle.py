@@ -169,7 +169,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'col2, ROWNUM AS ora_rn FROM (SELECT '
                             'sometable.col1 AS col1, sometable.col2 AS '
                             'col2 FROM sometable) WHERE ROWNUM <= '
-                            ':ROWNUM_1) WHERE ora_rn > :ora_rn_1')
+                            ':param_1 + :param_2) WHERE ora_rn > :param_2',
+                            checkparams={'param_1': 10, 'param_2': 20})
 
         c = s.compile(dialect=oracle.OracleDialect())
         assert t.c.col1 in set(c.result_map['col1'][1])
@@ -179,16 +180,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'FROM (SELECT col1, col2, ROWNUM AS ora_rn '
                             'FROM (SELECT sometable.col1 AS col1, '
                             'sometable.col2 AS col2 FROM sometable) '
-                            'WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > '
-                            ':ora_rn_1)')
+                            'WHERE ROWNUM <= :param_1 + :param_2) WHERE ora_rn > '
+                            ':param_2)',
+                            checkparams={'param_1': 10, 'param_2': 20})
 
         self.assert_compile(s,
                             'SELECT col1, col2 FROM (SELECT col1, col2 '
                             'FROM (SELECT col1, col2, ROWNUM AS ora_rn '
                             'FROM (SELECT sometable.col1 AS col1, '
                             'sometable.col2 AS col2 FROM sometable) '
-                            'WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > '
-                            ':ora_rn_1)')
+                            'WHERE ROWNUM <= :param_1 + :param_2) WHERE ora_rn > '
+                            ':param_2)')
 
         s = select([t]).limit(10).offset(20).order_by(t.c.col2)
         self.assert_compile(s,
@@ -197,13 +199,16 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'sometable.col1 AS col1, sometable.col2 AS '
                             'col2 FROM sometable ORDER BY '
                             'sometable.col2) WHERE ROWNUM <= '
-                            ':ROWNUM_1) WHERE ora_rn > :ora_rn_1')
+                            ':param_1 + :param_2) WHERE ora_rn > :param_2',
+                            checkparams={'param_1': 10, 'param_2': 20}
+                            )
+
         s = select([t], for_update=True).limit(10).order_by(t.c.col2)
         self.assert_compile(s,
                             'SELECT col1, col2 FROM (SELECT '
                             'sometable.col1 AS col1, sometable.col2 AS '
                             'col2 FROM sometable ORDER BY '
-                            'sometable.col2) WHERE ROWNUM <= :ROWNUM_1 '
+                            'sometable.col2) WHERE ROWNUM <= :param_1 '
                             'FOR UPDATE')
 
         s = select([t],
@@ -214,7 +219,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'sometable.col1 AS col1, sometable.col2 AS '
                             'col2 FROM sometable ORDER BY '
                             'sometable.col2) WHERE ROWNUM <= '
-                            ':ROWNUM_1) WHERE ora_rn > :ora_rn_1 FOR '
+                            ':param_1 + :param_2) WHERE ora_rn > :param_2 FOR '
                             'UPDATE')
 
     def test_for_update(self):
@@ -297,21 +302,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(select([t]).limit(10),
                 "SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, "
                 "sometable.col2 AS col2 FROM sometable) WHERE ROWNUM "
-                "<= :ROWNUM_1",
+                "<= :param_1",
                 dialect=dialect)
 
         self.assert_compile(select([t]).offset(10),
                 "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
                 "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
-                "FROM sometable)) WHERE ora_rn > :ora_rn_1",
+                "FROM sometable)) WHERE ora_rn > :param_1",
                 dialect=dialect)
 
         self.assert_compile(select([t]).limit(10).offset(10),
                 "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
                 "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
-                "FROM sometable) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > "
-                ":ora_rn_1",
-                dialect=dialect)
+                "FROM sometable) WHERE ROWNUM <= :param_1 + :param_2) "
+                "WHERE ora_rn > :param_2",
+                dialect=dialect,
+                checkparams={'param_1': 10, 'param_2': 10})
 
     def test_long_labels(self):
         dialect = default.DefaultDialect()
@@ -460,8 +466,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'thirdtable.userid(+) = '
                             'myothertable.otherid AND mytable.myid = '
                             'myothertable.otherid ORDER BY '
-                            'mytable.name) WHERE ROWNUM <= :ROWNUM_1) '
-                            'WHERE ora_rn > :ora_rn_1',
+                            'mytable.name) WHERE ROWNUM <= :param_1 + :param_2) '
+                            'WHERE ora_rn > :param_2',
+                            checkparams={'param_1': 10, 'param_2': 5},
                             dialect=oracle.dialect(use_ansi=False))
 
         subq = select([table1]).select_from(table1.outerjoin(table2,

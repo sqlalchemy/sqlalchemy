@@ -635,7 +635,9 @@ class OracleCompiler(compiler.SQLCompiler):
                     select = select.where(whereclause)
                     select._oracle_visit = True
 
-            if select._limit is not None or select._offset is not None:
+            limit_clause = select._limit_clause
+            offset_clause = select._offset_clause
+            if limit_clause is not None or offset_clause is not None:
                 # See http://www.oracle.com/technology/oramag/oracle/06-sep/o56asktom.html
                 #
                 # Generalized form of an Oracle pagination query:
@@ -652,44 +654,53 @@ class OracleCompiler(compiler.SQLCompiler):
 
                 # Wrap the middle select and add the hint
                 limitselect = sql.select([c for c in select.c])
-                limit = select._limit
-                if limit and self.dialect.optimize_limits:
-                    limitselect = limitselect.prefix_with("/*+ FIRST_ROWS(%d) */" % limit)
+                if limit_clause is not None and \
+                    self.dialect.optimize_limits and \
+                        select._simple_int_limit:
+                    limitselect = limitselect.prefix_with(
+                                            "/*+ FIRST_ROWS(%d) */" %
+                                            select._limit)
 
                 limitselect._oracle_visit = True
                 limitselect._is_wrapper = True
 
                 # If needed, add the limiting clause
-                offset = select._offset
-                if limit is not None:
-                    max_row = limit
-                    if offset is not None:
-                        max_row += offset
+                if limit_clause is not None:
                     if not self.dialect.use_binds_for_limits:
+                        # use simple int limits, will raise an exception
+                        # if the limit isn't specified this way
+                        max_row = select._limit
+
+                        if offset_clause is not None:
+                            max_row += select._offset
                         max_row = sql.literal_column("%d" % max_row)
+                    else:
+                        max_row = limit_clause
+                        if offset_clause is not None:
+                            max_row = max_row + offset_clause
                     limitselect.append_whereclause(
                             sql.literal_column("ROWNUM") <= max_row)
 
                 # If needed, add the ora_rn, and wrap again with offset.
-                if offset is None:
+                if offset_clause is None:
                     limitselect._for_update_arg = select._for_update_arg
                     select = limitselect
                 else:
                     limitselect = limitselect.column(
-                             sql.literal_column("ROWNUM").label("ora_rn"))
+                            sql.literal_column("ROWNUM").label("ora_rn"))
                     limitselect._oracle_visit = True
                     limitselect._is_wrapper = True
 
                     offsetselect = sql.select(
-                             [c for c in limitselect.c if c.key != 'ora_rn'])
+                            [c for c in limitselect.c if c.key != 'ora_rn'])
                     offsetselect._oracle_visit = True
                     offsetselect._is_wrapper = True
 
-                    offset_value = offset
                     if not self.dialect.use_binds_for_limits:
-                        offset_value = sql.literal_column("%d" % offset_value)
+                        offset_clause = sql.literal_column(
+                                                "%d" % select._offset)
                     offsetselect.append_whereclause(
-                             sql.literal_column("ora_rn") > offset_value)
+                            sql.literal_column("ora_rn") > offset_clause)
 
                     offsetselect._for_update_arg = select._for_update_arg
                     select = offsetselect
