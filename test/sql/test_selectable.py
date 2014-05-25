@@ -1549,6 +1549,19 @@ class AnnotationsTest(fixtures.TestBase):
         t = Table('t', MetaData(), c1)
         is_(c1_a.table, t)
 
+    def test_basic_attrs(self):
+        t = Table('t', MetaData(),
+                        Column('x', Integer, info={'q': 'p'}),
+                        Column('y', Integer, key='q'))
+        x_a = t.c.x._annotate({})
+        y_a = t.c.q._annotate({})
+        t.c.x.info['z'] = 'h'
+
+        eq_(y_a.key, 'q')
+        is_(x_a.table, t)
+        eq_(x_a.info, {'q': 'p', 'z': 'h'})
+        eq_(t.c.x.anon_label, x_a.anon_label)
+
     def test_custom_constructions(self):
         from sqlalchemy.schema import Column
         class MyColumn(Column):
