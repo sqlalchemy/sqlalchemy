@@ -185,7 +185,7 @@ a.headerlink:hover {
   border: solid 1px #CCC;
 
   float:left;
-
+  min-height: 700px;
   z-index: 3;
   background-color: #EFEFEF;
 

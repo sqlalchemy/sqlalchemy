@@ -12,19 +12,21 @@ var automatedBreakpoint = -1;
 function initFloatyThings() {
 
     automatedBreakpoint = $("#docs-top-navigation-container").offset().top;
-
+    autoOffset = $("#docs-container").offset().top;
     function setNavSize() {
         $("#docs-top-navigation-container").css("width", $("#docs-container").width());
     }
 
     function setScroll() {
         var scrolltop = $(window).scrollTop();
-        if (scrolltop >= automatedBreakpoint - 10) {
+        if (scrolltop >= automatedBreakpoint) {
             setNavSize();
             $("#docs-top-navigation-container").addClass("automated");
             $("#docs-sidebar").addClass("automated");
             $("#docs-sidebar").css("top", $("#docs-top-navigation-container").height());
-            $("#docs-body").css("margin-top", $("#docs-top-navigation-container").height());
+            $("#docs-body").css("margin-top",
+                                    $("#docs-top-navigation-container").height() +
+                                    autoOffset);
         }
         else {
             $("#docs-top-navigation-container.automated").css("width", "");
