@@ -2,7 +2,7 @@
 
 body {
   background-color: #FDFBFC;
-  margin:38px;
+  margin:0 38px;
   color:#333333;
 }
 
@@ -61,6 +61,7 @@ a.headerlink:hover {
 
 #docs-container {
   max-width:1000px;
+  margin: 0 auto;
 }
 
 
@@ -77,7 +78,7 @@ a.headerlink:hover {
   font-family:Verdana,sans-serif;
 
   font-size:.9em;
-
+  position: relative;
 }
 
 #docs-top-navigation,
@@ -92,8 +93,14 @@ a.headerlink:hover {
 #docs-top-navigation {
   margin:10px 0px;
   line-height:1.2em;
+  position: relative;
 }
 
+#docs-version-header {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+}
 
 .docs-navigation-links {
   font-family:Verdana,sans-serif;
@@ -121,13 +128,10 @@ a.headerlink:hover {
     font-size:1.6em;
 }
 
-#docs-search {
-    float:right;
-}
-
 #docs-top-page-control {
-  float:right;
-  width:350px;
+  position: absolute;
+  right: 20px;
+  bottom: 14px;
 }
 
 #docs-top-page-control ul {

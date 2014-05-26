@@ -17,28 +17,27 @@ function initFloatyThings() {
         $("#docs-top-navigation-container").css("width", $("#docs-container").width());
     }
 
-    $(window).scroll(function() {
+    function setScroll() {
         var scrolltop = $(window).scrollTop();
         if (scrolltop >= automatedBreakpoint - 10) {
             setNavSize();
             $("#docs-top-navigation-container").addClass("automated");
             $("#docs-sidebar").addClass("automated");
             $("#docs-sidebar").css("top", $("#docs-top-navigation-container").height());
-            $("#docs-top-navigation").addClass("automated");
-            $("#docs-body").css("padding-top", "100px");
+            $("#docs-body").css("margin-top", $("#docs-top-navigation-container").height());
         }
         else {
             $("#docs-top-navigation-container.automated").css("width", "");
             $("#docs-sidebar.automated").scrollTop(0);
             $("#docs-top-navigation-container").removeClass("automated");
             $("#docs-sidebar").removeClass("automated");
-            $("#docs-top-navigation").removeClass("automated");
-            $("#docs-body").css("padding-top", "");
+            $("#docs-body").css("margin-top", "");
         }
-
-    })
+    }
+    $(window).scroll(setScroll)
 
     $(window).resize(setNavSize());
+    setScroll();
 }
 
 
