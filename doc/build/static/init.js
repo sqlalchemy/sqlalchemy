@@ -43,6 +43,8 @@ function initFloatyThings() {
 
 $(document).ready(function() {
     initSQLPopups();
-    initFloatyThings();
+    if (!$.browser.mobile) {
+        initFloatyThings();
+    }
 });
 

@@ -66,6 +66,7 @@ withsidebar = bool(toc) and current_page_name != 'index'
     % endfor
     <!-- end iterate through sphinx environment script_files -->
 
+    <script type="text/javascript" src="${pathto('_static/detectmobile.js', 1)}"></script>
     <script type="text/javascript" src="${pathto('_static/init.js', 1)}"></script>
     % if hasdoc('about'):
         <link rel="author" title="${_('About these documents')}" href="${pathto('about')}" />
