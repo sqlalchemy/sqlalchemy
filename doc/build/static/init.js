@@ -12,11 +12,8 @@ var automatedBreakpoint = -1;
 function initFloatyThings() {
 
     automatedBreakpoint = $("#docs-container").position().top;
-    containerHeight = $("#docs-top-navigation-container").height();
 
-    // TODO: calculate the '9' here
-    autoOffset = containerHeight + 9;
-
+    parentOffset = $("#docs-container").parent().position().top - $("#docs-container").position().top;
     $("#docs-top-navigation-container").addClass("preautomated");
     $("#docs-sidebar").addClass("preautomated");
     $("#docs-container").addClass("preautomated");
@@ -32,7 +29,12 @@ function initFloatyThings() {
             setNavSize();
             $("#docs-top-navigation-container").addClass("automated");
             $("#docs-sidebar").addClass("automated");
-            $("#docs-body").css("margin-top", autoOffset);
+
+            // note this height is dependent on docs-top-navigation-container
+            // being position:fixed or absolute, otherwise it might get
+            // a little squashed
+            containerHeight = $("#docs-top-navigation-container").height();
+            $("#docs-body").css("margin-top", containerHeight - parentOffset + 1);
         }
         else {
             $("#docs-sidebar.automated").scrollTop(0);

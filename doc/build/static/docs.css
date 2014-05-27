@@ -1,5 +1,9 @@
 /* global */
 
+.body-background {
+  background-color: #FDFBFC;
+}
+
 body {
   background-color: #FDFBFC;
   margin:0 38px;
@@ -197,7 +201,6 @@ a.headerlink:hover {
 
 
 #docs-top-navigation-container {
-    background-color:#FFF;
 }
 
 #docs-top-navigation-container.automated {
@@ -205,7 +208,6 @@ a.headerlink:hover {
     top:0;
     z-index:100;
     width:100%;
-    background-color:#FFF;
 }
 
 /* http://css-tricks.com/hash-tag-links-padding/ */

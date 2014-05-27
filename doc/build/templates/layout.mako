@@ -16,12 +16,12 @@
     main site.
 
     docs-container ->
-        docs-header ->
-            docs-search
-            docs-version-header
-        docs-top-navigation
-            docs-top-page-control
-            docs-navigation-banner
+        docs-top-navigation-container ->
+            docs-header ->
+                docs-version-header
+            docs-top-navigation
+                docs-top-page-control
+                docs-navigation-banner
         docs-body-container ->
             docs-sidebar
             docs-body
@@ -91,17 +91,13 @@ withsidebar = bool(toc) and current_page_name != 'index'
 </%block>
 
 
-<div id="docs-top-navigation-container">
+<div id="docs-top-navigation-container" class="body-background">
 <div id="docs-header">
     <div id="docs-version-header">
         Release: <span class="version-num">${release}</span> | Release Date: ${release_date}
-
-
     </div>
 
     <h1>${docstitle|h}</h1>
-
-
 
 </div>
 <div id="docs-top-navigation">
