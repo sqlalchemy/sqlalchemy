@@ -14,6 +14,11 @@ function initFloatyThings() {
     automatedBreakpoint = $("#docs-container").position().top;
 
     parentOffset = $("#docs-container").parent().position().top - $("#docs-container").position().top;
+
+    // safari doesn't give us 120px for this CSS even though
+    // it's in docs.css as that
+    sidebarTop = "120px"; //$("#docs-sidebar").css("top");
+
     $("#docs-top-navigation-container").addClass("preautomated");
     $("#docs-sidebar").addClass("preautomated");
     $("#docs-container").addClass("preautomated");
@@ -35,12 +40,13 @@ function initFloatyThings() {
             // a little squashed
             containerHeight = $("#docs-top-navigation-container").height();
             $("#docs-body").css("margin-top", containerHeight - parentOffset + 1);
+            $("#docs-sidebar").css("top", sidebarTop);
         }
         else {
-            $("#docs-sidebar.automated").scrollTop(0);
             $("#docs-sidebar").removeClass("automated");
             $("#docs-top-navigation-container").removeClass("automated");
             $("#docs-body").css("margin-top", "");
+            $("#docs-sidebar").css("top", $("#docs-body").offset().top - scrolltop);
         }
 
 
