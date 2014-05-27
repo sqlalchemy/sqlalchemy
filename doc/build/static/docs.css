@@ -192,7 +192,8 @@ a.headerlink:hover {
   z-index: 3;
   background-color: #EFEFEF;
 
-  position: absolute;
+  /*position: absolute;*/
+  float: left;
   top: 120px;
   bottom: 0;
   min-height: 0;
@@ -229,6 +230,7 @@ a.headerlink:hover {
 
 #docs-sidebar.automated {
     position: fixed;
+    float: none;
     top: 120px;
     min-height: 0;
 }
@@ -379,7 +381,7 @@ th.field-name {
 }
 
 div.section {
-  clear:right;
+  /*clear:right;*/
 }
 div.note, div.warning, p.deprecated, div.topic, div.admonition  {
     background-color:#EEFFEF;
