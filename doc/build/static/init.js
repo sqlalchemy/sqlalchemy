@@ -11,23 +11,15 @@ var automatedBreakpoint = -1;
 
 function initFloatyThings() {
 
-    automatedBreakpoint = $("#docs-top-navigation-container").position().top;
-
-    parentOffset = $("#docs-container").parent().position().top - $("#docs-container").position().top;
+    automatedBreakpoint = $("#docs-container").position().top;
     containerHeight = $("#docs-top-navigation-container").height();
 
-    sidebar = $("#docs-sidebar").position();
-    if (sidebar) {
-        margin = sidebar.top - (automatedBreakpoint + containerHeight);
-    }
-    else {
-        margin = 0;
-    }
-    autoOffset = containerHeight + margin - parentOffset;
+    // TODO: calculate the '9' here
+    autoOffset = containerHeight + 9;
 
+    $("#docs-top-navigation-container").addClass("preautomated");
     $("#docs-sidebar").addClass("preautomated");
     $("#docs-container").addClass("preautomated");
-
 
     function setNavSize() {
         $("#docs-top-navigation-container").css("width", $("#docs-container").width());
@@ -40,15 +32,12 @@ function initFloatyThings() {
             setNavSize();
             $("#docs-top-navigation-container").addClass("automated");
             $("#docs-sidebar").addClass("automated");
-            $("#docs-container").addClass("automated");
             $("#docs-body").css("margin-top", autoOffset);
         }
         else {
-            $("#docs-top-navigation-container.automated").css("width", "");
             $("#docs-sidebar.automated").scrollTop(0);
-            $("#docs-top-navigation-container").removeClass("automated");
-            $("#docs-container").removeClass("automated");
             $("#docs-sidebar").removeClass("automated");
+            $("#docs-top-navigation-container").removeClass("automated");
             $("#docs-body").css("margin-top", "");
         }
 

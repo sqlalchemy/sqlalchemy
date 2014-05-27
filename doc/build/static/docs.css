@@ -62,6 +62,7 @@ a.headerlink:hover {
 #docs-container {
   max-width:1000px;
   margin: 0 auto;
+  position: relative;
 }
 
 
@@ -184,11 +185,19 @@ a.headerlink:hover {
 
   border: solid 1px #CCC;
 
-  float:left;
-  min-height: 700px;
   z-index: 3;
   background-color: #EFEFEF;
 
+  position: absolute;
+  top: 120px;
+  bottom: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+
+#docs-top-navigation-container {
+    background-color:#FFF;
 }
 
 #docs-top-navigation-container.automated {
@@ -197,11 +206,6 @@ a.headerlink:hover {
     z-index:100;
     width:100%;
     background-color:#FFF;
-}
-
-#docs-sidebar.preautomated {
-  overflow-y: auto;
-  bottom: 0;
 }
 
 /* http://css-tricks.com/hash-tag-links-padding/ */
@@ -213,8 +217,15 @@ a.headerlink:hover {
     visibility: hidden;
 }
 
+
+#docs-sidebar.preautomated:after {
+  content: " ";
+  display:block;
+  height: 150px;
+}
+
+
 #docs-sidebar.automated {
-    float: none;
     position: fixed;
     top: 120px;
     min-height: 0;
