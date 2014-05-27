@@ -46,7 +46,8 @@ function initFloatyThings() {
             $("#docs-sidebar").removeClass("automated");
             $("#docs-top-navigation-container").removeClass("automated");
             $("#docs-body").css("margin-top", "");
-            $("#docs-sidebar").css("top", $("#docs-body").offset().top - scrolltop);
+            // safari/chrome allow negative scroll positions
+            $("#docs-sidebar").css("top", $("#docs-body").offset().top - Math.max(scrolltop, 0));
         }
 
 
