@@ -96,7 +96,7 @@ release = "1.0.0"
 
 release_date = "Not released"
 
-site_base = "http://www.sqlalchemy.org"
+site_base = os.environ.get("RTD_SITE_BASE", "http://www.sqlalchemy.org")
 
 # arbitrary number recognized by builders.py, incrementing this
 # will force a rebuild
@@ -206,9 +206,11 @@ html_domain_indices = False
 
 # If true, the reST sources are included in the HTML build as _sources/<name>.
 #html_copy_source = True
+html_copy_source = False
 
 # If true, links to the reST sources are added to the pages.
 #html_show_sourcelink = True
+html_show_sourcelink = False
 
 # If true, "Created using Sphinx" is shown in the HTML footer. Default is True.
 #html_show_sphinx = True
