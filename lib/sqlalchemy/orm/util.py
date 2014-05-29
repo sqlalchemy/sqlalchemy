@@ -12,7 +12,8 @@ from . import attributes
 import re
 
 from .base import instance_str, state_str, state_class_str, attribute_str, \
-        state_attribute_str, object_mapper, object_state, _none_set
+        state_attribute_str, object_mapper, object_state, _none_set, \
+        _none_tuple
 from .base import class_mapper, _class_to_mapper
 from .base import _InspectionAttr
 from .path_registry import PathRegistry

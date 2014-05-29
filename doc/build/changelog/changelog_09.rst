@@ -24,10 +24,12 @@
         In this situation, a many-to-one relationship set to None, or
         in some cases a scalar attribute set to None, may not be detected
         as a net change in value, and therefore the UPDATE would not reset
-        what was on the previous row.   This is due to some as-yet
-        unresovled side effects of the way attribute history works in terms
-        of implicitly assuming None isn't really a "change" for a previously
-        un-set attribute.  See also :ticket:`3061`.
+        what was on the previous row.
+
+        The fix here takes on a different form in 1.0.0 vs. 0.9.5.
+        In 1.0.0, the issue is ultimately resolved by :ticket:`3061`,
+        which reverts the more patchwork version of the fix as it exists
+        in 0.9.5.
 
     .. change::
         :tags: bug, orm

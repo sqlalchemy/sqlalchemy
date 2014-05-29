@@ -518,28 +518,28 @@ class Session(_SessionClassMethods):
             :ref:`session_autocommit`
 
         :param autoflush: When ``True``, all query operations will issue a
-           :meth:`~.Session.flush` call to this ``Session`` before proceeding. 
-           This is a convenience feature so that :meth:`~.Session.flush` need 
-           not be called repeatedly in order for database queries to retrieve 
+           :meth:`~.Session.flush` call to this ``Session`` before proceeding.
+           This is a convenience feature so that :meth:`~.Session.flush` need
+           not be called repeatedly in order for database queries to retrieve
            results. It's typical that ``autoflush`` is used in conjunction with
            ``autocommit=False``. In this scenario, explicit calls to
-           :meth:`~.Session.flush` are rarely needed; you usually only need to 
+           :meth:`~.Session.flush` are rarely needed; you usually only need to
            call :meth:`~.Session.commit` (which flushes) to finalize changes.
 
-        :param bind: An optional :class:`.Engine` or :class:`.Connection` to 
-           which this ``Session`` should be bound. When specified, all SQL 
-           operations performed by this session will execute via this 
+        :param bind: An optional :class:`.Engine` or :class:`.Connection` to
+           which this ``Session`` should be bound. When specified, all SQL
+           operations performed by this session will execute via this
            connectable.
 
         :param binds: An optional dictionary which contains more granular
            "bind" information than the ``bind`` parameter provides. This
-           dictionary can map individual :class`.Table` 
-           instances as well as :class:`~.Mapper` instances to individual 
-           :class:`.Engine` or :class:`.Connection` objects. Operations which 
-           proceed relative to a particular :class:`.Mapper` will consult this 
-           dictionary for the direct :class:`.Mapper` instance as 
-           well as the mapper's ``mapped_table`` attribute in order to locate a 
-           connectable to use. The full resolution is described in the 
+           dictionary can map individual :class`.Table`
+           instances as well as :class:`~.Mapper` instances to individual
+           :class:`.Engine` or :class:`.Connection` objects. Operations which
+           proceed relative to a particular :class:`.Mapper` will consult this
+           dictionary for the direct :class:`.Mapper` instance as
+           well as the mapper's ``mapped_table`` attribute in order to locate a
+           connectable to use. The full resolution is described in the
            :meth:`.Session.get_bind`.
            Usage looks like::
 
@@ -566,8 +566,8 @@ class Session(_SessionClassMethods):
            :meth:`~.Session.begin`, all of which are interdependent.
 
         :param expire_on_commit:  Defaults to ``True``. When ``True``, all
-           instances will be fully expired after each :meth:`~.commit`, 
-           so that all attribute/object access subsequent to a completed 
+           instances will be fully expired after each :meth:`~.commit`,
+           so that all attribute/object access subsequent to a completed
            transaction will load from the most recent database state.
 
         :param extension: An optional
@@ -585,16 +585,16 @@ class Session(_SessionClassMethods):
            .. versionadded:: 0.9.0
 
         :param query_cls:  Class which should be used to create new Query
-           objects, as returned by the :meth:`~.Session.query` method. Defaults 
+           objects, as returned by the :meth:`~.Session.query` method. Defaults
            to :class:`.Query`.
 
         :param twophase:  When ``True``, all transactions will be started as
             a "two phase" transaction, i.e. using the "two phase" semantics
-            of the database in use along with an XID.  During a 
-            :meth:`~.commit`, after :meth:`~.flush` has been issued for all 
+            of the database in use along with an XID.  During a
+            :meth:`~.commit`, after :meth:`~.flush` has been issued for all
             attached databases, the :meth:`~.TwoPhaseTransaction.prepare` method
-            on each database's :class:`.TwoPhaseTransaction` will be called. 
-            This allows each database to roll back the entire transaction, 
+            on each database's :class:`.TwoPhaseTransaction` will be called.
+            This allows each database to roll back the entire transaction,
             before each transaction is committed.
 
         :param weak_identity_map:  Defaults to ``True`` - when set to
@@ -1048,7 +1048,7 @@ class Session(_SessionClassMethods):
         bind
           Any Connectable: a :class:`.Engine` or :class:`.Connection`.
 
-        All subsequent operations involving this :class:`.Table` will use the 
+        All subsequent operations involving this :class:`.Table` will use the
         given `bind`.
 
         """
@@ -1149,7 +1149,7 @@ class Session(_SessionClassMethods):
             ', '.join(context)))
 
     def query(self, *entities, **kwargs):
-        """Return a new :class:`.Query` object corresponding to this 
+        """Return a new :class:`.Query` object corresponding to this
         :class:`.Session`."""
 
         return self._query_cls(entities, self, **kwargs)
@@ -1403,7 +1403,7 @@ class Session(_SessionClassMethods):
 
                 instance_key = mapper._identity_key_from_state(state)
 
-                if _none_set.issubset(instance_key[1]) and \
+                if _none_set.intersection(instance_key[1]) and \
                     not mapper.allow_partial_pks or \
                     _none_set.issuperset(instance_key[1]):
                     raise exc.FlushError(
@@ -1635,7 +1635,7 @@ class Session(_SessionClassMethods):
             self._update_impl(merged_state)
             new_instance = True
 
-        elif not _none_set.issubset(key[1]) or \
+        elif not _none_set.intersection(key[1]) or \
                     (mapper.allow_partial_pks and
                     not _none_set.issuperset(key[1])):
             merged = self.query(mapper.class_).get(key[1])

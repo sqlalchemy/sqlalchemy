@@ -151,7 +151,8 @@ NOT_EXTENSION = util.symbol('NOT_EXTENSION',
 
 """)
 
-_none_set = frozenset([None])
+_none_set = frozenset([None, NEVER_SET, PASSIVE_NO_RESULT])
+_none_tuple = tuple(_none_set)  # for "in" checks that won't trip __hash__
 
 
 def _generative(*assertions):

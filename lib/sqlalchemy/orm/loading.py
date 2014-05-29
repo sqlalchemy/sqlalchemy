@@ -329,7 +329,7 @@ def instance_processor(mapper, context, path, adapter,
     if mapper.allow_partial_pks:
         is_not_primary_key = _none_set.issuperset
     else:
-        is_not_primary_key = _none_set.issubset
+        is_not_primary_key = _none_set.intersection
 
     def _instance(row, result):
         if not new_populators and invoke_all_eagers:

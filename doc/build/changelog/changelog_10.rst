@@ -16,6 +16,26 @@
 .. changelog::
 	:version: 1.0.0
 
+    .. change::
+        :tags: enhancement, orm
+        :tickets: 3061
+
+        Adjustment to attribute mechanics concerning when a value is
+        implicitly initialized to None via first access; this action,
+        which has always resulted in a population of the attribute,
+        now emits an attribute event just like any other attribute set
+        operation and generates the same kind of history as one.  Additionally,
+        many mapper internal operations will no longer implicitly generate
+        these "None" values when various never-set attributes are checked.
+        These are subtle behavioral fixes to attribute mechanics which provide
+        a better solution to the problem of :ticket:`3060`, which also
+        involves recognition of attributes explicitly set to ``None``
+        vs. attributes that were never set.
+
+        .. seealso::
+
+        	:ref:`migration_3061`
+
 	.. change::
 		:tags: feature, sql
 		:tickets: 3034

@@ -564,7 +564,7 @@ class LazyLoader(AbstractRelationshipLoader):
 
         if pending:
             bind_values = sql_util.bind_values(lazy_clause)
-            if None in bind_values:
+            if orm_util._none_set.intersection(bind_values):
                 return None
 
         q = q.filter(lazy_clause)
