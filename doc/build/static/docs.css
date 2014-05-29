@@ -86,20 +86,33 @@ a.headerlink:hover {
   position: relative;
 }
 
-#docs-top-navigation,
-#docs-bottom-navigation {
+#docs-sidebar-popout,
+#docs-bottom-navigation,
+#index-nav {
   font-family: Verdana, sans-serif;
   background-color: #FBFBEE;
   border: solid 1px #CCC;
-  padding:10px;
   font-size:.8em;
 }
 
-#docs-top-navigation {
-  margin:10px 0px;
-  line-height:1.2em;
-  position: relative;
+#docs-bottom-navigation,
+#index-nav {
+  padding:10px;
 }
+
+#docs-sidebar-popout {
+  font-size:.75em;
+}
+
+#docs-sidebar-popout p,
+#docs-sidebar-popout form {
+  margin:5px 0 5px 0px;
+}
+
+#docs-sidebar-popout h3 {
+  margin:0 0 10px 0;
+}
+
 
 #docs-version-header {
   position: absolute;
@@ -162,7 +175,8 @@ a.headerlink:hover {
 }
 
 #docs-body,
-#docs-sidebar
+#docs-sidebar,
+#index-nav
  {
   /*font-family: helvetica, arial, sans-serif;
   font-size:.9em;*/
@@ -177,63 +191,97 @@ a.headerlink:hover {
   font-size:.85em;
 }
 
-#docs-sidebar {
+#fixed-sidebar {
+  position: relative;
+}
 
-  width:210px;
-  padding: 0px 0 0 15px;
-  font-size:.85em;
-
-  border: solid 1px #CCC;
-
-  z-index: 3;
-  background-color: #EFEFEF;
-
+#fixed-sidebar.withsidebar {
   float: left;
-  top: 120px;
-  bottom: 0;
-  min-height: 0;
-  overflow-y: auto;
+  width:224px;
 }
 
-
-#docs-top-navigation-container {
-}
-
-#docs-top-navigation-container.automated {
-    position:fixed;
+#fixed-sidebar.preautomated {
+    position: fixed;
+    float: none;
     top:0;
-    z-index:100;
-    width:100%;
+    bottom: 0;
 }
 
-/* http://css-tricks.com/hash-tag-links-padding/ */
-#docs-container.preautomated div.section:before {
-    content: " ";
-    display: block;
-    height:120px;
-    margin-top: -120px;
-    visibility: hidden;
-}
-
-
-#docs-sidebar.preautomated:after {
-  content: " ";
-  display:block;
-  height: 150px;
-}
-
-
-#docs-sidebar.preautomated {
-  position: fixed;
-}
-
-#docs-sidebar.automated {
+#fixed-sidebar.automated {
     position: fixed;
     float: none;
     top: 120px;
     min-height: 0;
 }
 
+
+#docs-sidebar {
+  font-size:.85em;
+
+  border: solid 1px #CCC;
+
+  z-index: 3;
+  background-color: #EFEFEF;
+}
+
+#index-nav {
+  position: relative;
+  margin-top:10px;
+  padding:0 10px;
+}
+
+#index-nav form {
+  padding-top:10px;
+  float:right;
+}
+
+#sidebar-paginate {
+  position: absolute;
+  bottom: 4.5em;
+  left: 10px;
+}
+
+#sidebar-topnav {
+  position: absolute;
+  bottom: 3em;
+  left: 10px;
+}
+
+#sidebar-search {
+  position: absolute;
+  bottom: 1em;
+  left: 10px;
+}
+
+#docs-sidebar {
+  top: 132px;
+  bottom: 0;
+  min-height: 0;
+  overflow-y: auto;
+  margin-top:5px;
+  width:212px;
+  padding-left:10px;
+}
+
+#docs-sidebar-popout {
+  height:120px;
+  max-height: 120px;
+  width:212px;
+  padding-left:10px;
+  padding-top:10px;
+}
+
+
+#fixed-sidebar.preautomated #docs-sidebar,
+#fixed-sidebar.preautomated #docs-sidebar-popout {
+  position:absolute;
+}
+
+#fixed-sidebar.preautomated #docs-sidebar:after {
+  content: " ";
+  display:block;
+  height: 150px;
+}
 
 #docs-sidebar h3, #docs-sidebar h4 {
     background-color: #DDDDDD;
@@ -242,9 +290,13 @@ a.headerlink:hover {
     font-size: 1.1em;
     font-weight: normal;
     margin: 10px 0 0 -15px;
-    padding: 5px 10px 5px 10px;
+    padding: 5px 10px 5px 15px;
     text-shadow: 1px 1px 0 white;
     /*width:210px;*/
+}
+
+#docs-sidebar h3:first-child {
+  margin-top: 0px;
 }
 
 #docs-sidebar h3 a, #docs-sidebar h4 a {
@@ -264,17 +316,21 @@ a.headerlink:hover {
     margin-left: 20px;
 }
 
+
+
+
 #docs-body {
   background-color:#FFFFFF;
   padding:1px 10px 10px 10px;
 
   border: solid 1px #CCC;
-
+  margin-top:10px;
 }
 
 #docs-body.withsidebar {
-  margin: 0 0 0 230px;
+  margin-left: 230px;
 }
+
 
 #docs-body h1,
 #docs-body h2,
@@ -283,11 +339,12 @@ a.headerlink:hover {
   font-family:Helvetica, Arial, sans-serif;
 }
 
-#docs-body h1 {
+#docs-body #sqlalchemy-documentation h1 {
   /* hide the <h1> for each content section. */
   display:none;
   font-size:2.0em;
 }
+
 
 #docs-body h2 {
   font-size:1.8em;
@@ -392,6 +449,34 @@ div.admonition, div.topic, p.deprecated, p.versionadded, p.versionchanged {
     box-shadow: 2px 2px 3px #DFDFDF;
 }
 
+div.sidebar {
+    background-color: #FFFFEE;
+    border: 1px solid #DDDDBB;
+    float: right;
+    margin: 10px 0 10px 1em;
+    padding: 7px 7px 0;
+    width: 40%;
+    font-size:.9em;
+}
+
+p.sidebar-title {
+    font-weight: bold;
+}
+
+/* grrr sphinx changing your document structures, removing classes.... */
+
+.versionadded .versionmodified,
+.versionchanged .versionmodified,
+.deprecated .versionmodified,
+.versionadded > p:first-child > span:first-child,
+.versionchanged > p:first-child > span:first-child,
+.deprecated > p:first-child > span:first-child
+{
+    background-color: #ECF0F3;
+    color: #990000;
+    font-style: italic;
+}
+
 div.inherited-member {
     border:1px solid #CCCCCC;
     padding:5px 5px;
@@ -426,10 +511,11 @@ dl.method > dt,
 dl.class > dt,
 dl.exception > dt
 {
-    background-color:#F0F0F0;
+    background-color: #EFEFEF;
     margin:25px -10px 10px 10px;
     padding: 0px 10px;
 }
+
 
 dl.glossary > dt {
   font-weight:bold;

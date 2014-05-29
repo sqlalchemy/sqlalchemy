@@ -11,58 +11,33 @@ var automatedBreakpoint = -1;
 
 function initFloatyThings() {
 
-    automatedBreakpoint = $("#docs-container").position().top;
+    automatedBreakpoint = $("#docs-container").position().top + $("#docs-top-navigation-container").height();
 
-    parentOffset = $("#docs-container").parent().position().top - $("#docs-container").position().top;
+    $("#fixed-sidebar.withsidebar").addClass("preautomated");
 
-    // safari doesn't give us 120px for this CSS even though
-    // it's in docs.css as that
-    sidebarTop = "120px"; //$("#docs-sidebar").css("top");
-
-    $("#docs-top-navigation-container").addClass("preautomated");
-    $("#docs-sidebar").addClass("preautomated");
-    $("#docs-container").addClass("preautomated");
-
-    function setNavSize() {
-        $("#docs-top-navigation-container").css("width", $("#docs-container").width());
-    }
 
     function setScroll() {
 
         var scrolltop = $(window).scrollTop();
         if (scrolltop >= automatedBreakpoint) {
-            setNavSize();
-            $("#docs-top-navigation-container").addClass("automated");
-            $("#docs-sidebar").addClass("automated");
-
-            // note this height is dependent on docs-top-navigation-container
-            // being position:fixed or absolute, otherwise it might get
-            // a little squashed
-            containerHeight = $("#docs-top-navigation-container").height();
-            $("#docs-body").css("margin-top", containerHeight - parentOffset + 1);
-            $("#docs-sidebar").css("top", sidebarTop);
+            $("#fixed-sidebar.withsidebar").css("top", 5);
         }
         else {
-            $("#docs-sidebar").removeClass("automated");
-            $("#docs-top-navigation-container").removeClass("automated");
-            $("#docs-body").css("margin-top", "");
-            // safari/chrome allow negative scroll positions
-            $("#docs-sidebar").css("top", $("#docs-body").offset().top - Math.max(scrolltop, 0));
+            $("#fixed-sidebar.withsidebar").css(
+                "top", $("#docs-body").offset().top - Math.max(scrolltop, 0));
         }
 
 
     }
     $(window).scroll(setScroll)
 
-    $(window).resize(setNavSize());
     setScroll();
 }
 
 
 $(document).ready(function() {
     initSQLPopups();
-    // disable for now, still can't get anchors to work in all cases
-    if (0) { //!$.browser.mobile) {
+    if (!$.browser.mobile) {
         initFloatyThings();
     }
 });

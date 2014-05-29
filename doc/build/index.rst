@@ -9,7 +9,7 @@ Getting Started
 
 A high level view and getting set up.
 
-:ref:`Overview <overview>` |
+:ref:`Overview <intro>` |
 :ref:`Installation Guide <installation>`  |
 :doc:`Migration from 0.6 <changelog/migration_07>` |
 :doc:`Changelog catalog <changelog/index>`
