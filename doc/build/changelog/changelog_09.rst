@@ -16,6 +16,21 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3060
+        :versions: 1.0.0
+
+        Fixed a few edge cases which arise in the so-called "row switch"
+        scenario, where an INSERT/DELETE can be turned into an UPDATE.
+        In this situation, a many-to-one relationship set to None, or
+        in some cases a scalar attribute set to None, may not be detected
+        as a net change in value, and therefore the UPDATE would not reset
+        what was on the previous row.   This is due to some as-yet
+        unresovled side effects of the way attribute history works in terms
+        of implicitly assuming None isn't really a "change" for a previously
+        un-set attribute.  See also :ticket:`3061`.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3057
         :versions: 1.0.0
 
