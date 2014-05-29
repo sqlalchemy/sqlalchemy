@@ -53,7 +53,7 @@ def listen(target, identifier, fn, *args, **kw):
 
         event.listen(Mapper, "before_configure", on_config, once=True)
 
-    .. versionadded:: 0.9.3 Added ``once=True`` to :func:`.event.listen`
+    .. versionadded:: 0.9.4 Added ``once=True`` to :func:`.event.listen`
        and :func:`.event.listens_for`.
 
     """
@@ -84,7 +84,7 @@ def listens_for(target, identifier, *args, **kw):
             do_config()
 
 
-    .. versionadded:: 0.9.3 Added ``once=True`` to :func:`.event.listen`
+    .. versionadded:: 0.9.4 Added ``once=True`` to :func:`.event.listen`
        and :func:`.event.listens_for`.
 
     """
