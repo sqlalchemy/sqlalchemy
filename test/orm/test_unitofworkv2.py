@@ -1272,6 +1272,122 @@ class RowswitchAccountingTest(fixtures.MappedTest):
 
         eq_(sess.scalar(self.tables.parent.count()), 0)
 
+class RowswitchM2OTest(fixtures.MappedTest):
+    # tests for #3060 and related issues
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'a', metadata,
+            Column('id', Integer, primary_key=True),
+        )
+        Table(
+            'b', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('aid', ForeignKey('a.id')),
+            Column('cid', ForeignKey('c.id')),
+            Column('data', String(50))
+        )
+        Table(
+            'c', metadata,
+            Column('id', Integer, primary_key=True),
+        )
+
+    def _fixture(self):
+        a, b, c = self.tables.a, self.tables.b, self.tables.c
+
+        class A(fixtures.BasicEntity):
+            pass
+        class B(fixtures.BasicEntity):
+            pass
+        class C(fixtures.BasicEntity):
+            pass
+
+
+        mapper(A, a, properties={
+                'bs': relationship(B, cascade="all, delete-orphan")
+        })
+        mapper(B, b, properties={
+                'c': relationship(C)
+        })
+        mapper(C, c)
+        return A, B, C
+
+    def test_set_none_replaces_m2o(self):
+        # we have to deal here with the fact that a
+        # get of an unset attribute implicitly sets it to None
+        # with no history.  So while we'd like "b.x = None" to
+        # record that "None" was added and we can then actively set it,
+        # a simple read of "b.x" ruins that; we'd have to dramatically
+        # alter the semantics of get() such that it creates history, which
+        # would incur extra work within the flush process to deal with
+        # change that previously showed up as nothing.
+
+        A, B, C = self._fixture()
+        sess = Session()
+
+        sess.add(
+            A(id=1, bs=[B(id=1, c=C(id=1))])
+        )
+        sess.commit()
+
+        a1 = sess.query(A).first()
+        a1.bs = [B(id=1, c=None)]
+        sess.commit()
+        assert a1.bs[0].c is None
+
+    def test_set_none_w_get_replaces_m2o(self):
+        A, B, C = self._fixture()
+        sess = Session()
+
+        sess.add(
+            A(id=1, bs=[B(id=1, c=C(id=1))])
+        )
+        sess.commit()
+
+        a1 = sess.query(A).first()
+        b2 = B(id=1)
+        assert b2.c is None
+        b2.c = None
+        a1.bs = [b2]
+        sess.commit()
+        assert a1.bs[0].c is None
+
+    def test_set_none_replaces_scalar(self):
+        # this case worked before #3060, because a straight scalar
+        # set of None shows up.  Howver, as test_set_none_w_get
+        # shows, we can't rely on this - the get of None will blow
+        # away the history.
+        A, B, C = self._fixture()
+        sess = Session()
+
+        sess.add(
+            A(id=1, bs=[B(id=1, data='somedata')])
+        )
+        sess.commit()
+
+        a1 = sess.query(A).first()
+        a1.bs = [B(id=1, data=None)]
+        sess.commit()
+        assert a1.bs[0].data is None
+
+    def test_set_none_w_get_replaces_scalar(self):
+        A, B, C = self._fixture()
+        sess = Session()
+
+        sess.add(
+            A(id=1, bs=[B(id=1, data='somedata')])
+        )
+        sess.commit()
+
+        a1 = sess.query(A).first()
+        b2 = B(id=1)
+        assert b2.data is None
+        b2.data = None
+        a1.bs = [b2]
+        sess.commit()
+        assert a1.bs[0].data is None
+
+
 
 class BasicStaleChecksTest(fixtures.MappedTest):
     @classmethod

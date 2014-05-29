@@ -385,6 +385,12 @@ def _collect_update_commands(base_mapper, uowtransaction,
                     if value is None:
                         hasnull = True
                     params[col._label] = value
+
+                # see #3060.   Need to consider an "unchanged" None
+                # as potentially history for now.
+                elif row_switch and history.unchanged == [None]:
+                    params[col.key] = None
+                    hasdata = True
         if hasdata:
             if hasnull:
                 raise orm_exc.FlushError(
