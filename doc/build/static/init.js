@@ -61,7 +61,8 @@ function initFloatyThings() {
 
 $(document).ready(function() {
     initSQLPopups();
-    if (!$.browser.mobile) {
+    // disable for now, still can't get anchors to work in all cases
+    if (0) { //!$.browser.mobile) {
         initFloatyThings();
     }
 });
