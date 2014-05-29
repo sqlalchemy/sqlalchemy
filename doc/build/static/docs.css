@@ -92,8 +92,12 @@ a.headerlink:hover {
   font-family: Verdana, sans-serif;
   background-color: #FBFBEE;
   border: solid 1px #CCC;
-  padding:10px;
   font-size:.8em;
+}
+
+#docs-bottom-navigation,
+#index-nav {
+  padding:10px;
 }
 
 #docs-sidebar-popout {
@@ -225,28 +229,50 @@ a.headerlink:hover {
 }
 
 #index-nav {
+  position: relative;
   margin-top:10px;
   padding:0 10px;
 }
 
 #index-nav form {
-  float:right;
   padding-top:10px;
+  float:right;
+}
+
+#sidebar-paginate {
+  position: absolute;
+  bottom: 4.5em;
+  left: 10px;
+}
+
+#sidebar-topnav {
+  position: absolute;
+  bottom: 3em;
+  left: 10px;
+}
+
+#sidebar-search {
+  position: absolute;
+  bottom: 1em;
+  left: 10px;
 }
 
 #docs-sidebar {
-  padding: 0px 0 0 15px;
-
-  top: 140px;
+  top: 132px;
   bottom: 0;
   min-height: 0;
   overflow-y: auto;
-  margin-top:10px;
+  margin-top:5px;
+  width:212px;
+  padding-left:10px;
 }
 
 #docs-sidebar-popout {
   height:120px;
   max-height: 120px;
+  width:212px;
+  padding-left:10px;
+  padding-top:10px;
 }
 
 
@@ -281,7 +307,7 @@ a.headerlink:hover {
     font-size: 1.1em;
     font-weight: normal;
     margin: 10px 0 0 -15px;
-    padding: 5px 10px 5px 10px;
+    padding: 5px 10px 5px 15px;
     text-shadow: 1px 1px 0 white;
     /*width:210px;*/
 }
