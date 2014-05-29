@@ -906,7 +906,7 @@ class GetNoValueTest(fixtures.ORMTest):
                         "attr", useobject=True,
                         uselist=False)
 
-        f1 = Foo()
+        f1 = self.f1 = Foo()
         return Foo.attr.impl,\
                 attributes.instance_state(f1), \
                 attributes.instance_dict(f1)
@@ -1566,6 +1566,31 @@ class HistoryTest(fixtures.TestBase):
         f.someattr = 'hi'
         eq_(self._someattr_history(f), (['hi'], (), ()))
 
+    def test_scalar_set_None(self):
+        # note - compare:
+        # test_scalar_set_None,
+        # test_scalar_get_first_set_None,
+        # test_use_object_set_None,
+        # test_use_object_get_first_set_None
+        Foo = self._fixture(uselist=False, useobject=False,
+                                active_history=False)
+        f = Foo()
+        f.someattr = None
+        eq_(self._someattr_history(f), ([None], (), ()))
+
+    def test_scalar_get_first_set_None(self):
+        # note - compare:
+        # test_scalar_set_None,
+        # test_scalar_get_first_set_None,
+        # test_use_object_set_None,
+        # test_use_object_get_first_set_None
+        Foo = self._fixture(uselist=False, useobject=False,
+                                active_history=False)
+        f = Foo()
+        assert f.someattr is None
+        f.someattr = None
+        eq_(self._someattr_history(f), ([None], (), ()))
+
     def test_scalar_set_commit(self):
         Foo = self._fixture(uselist=False, useobject=False,
                                 active_history=False)
@@ -1954,20 +1979,27 @@ class HistoryTest(fixtures.TestBase):
         eq_(self._someattr_history(f), ((), [there], ()))
 
     def test_use_object_set_None(self):
+        # note - compare:
+        # test_scalar_set_None,
+        # test_scalar_get_first_set_None,
+        # test_use_object_set_None,
+        # test_use_object_get_first_set_None
         Foo, Bar = self._two_obj_fixture(uselist=False)
         f = Foo()
         f.someattr = None
-        # we'd expect ([None], (), ()), however because
-        # we set to None w/o setting history if we were to "get" first,
-        # it is more consistent that this doesn't set history.
-        eq_(self._someattr_history(f), ((), [None], ()))
+        eq_(self._someattr_history(f), ([None], (), ()))
 
     def test_use_object_get_first_set_None(self):
+        # note - compare:
+        # test_scalar_set_None,
+        # test_scalar_get_first_set_None,
+        # test_use_object_set_None,
+        # test_use_object_get_first_set_None
         Foo, Bar = self._two_obj_fixture(uselist=False)
         f = Foo()
         assert f.someattr is None
         f.someattr = None
-        eq_(self._someattr_history(f), ((), [None], ()))
+        eq_(self._someattr_history(f), ([None], (), ()))
 
     def test_use_object_set_dict_set_None(self):
         Foo, Bar = self._two_obj_fixture(uselist=False)
@@ -2525,6 +2557,40 @@ class ListenerTest(fixtures.ORMTest):
 
         f1.barlist.remove(None)
         eq_(canary, [(f1, b1), (f1, None), (f1, b2), (f1, None)])
+
+    def test_none_init_scalar(self):
+        canary = Mock()
+        class Foo(object):
+            pass
+        instrumentation.register_class(Foo)
+        attributes.register_attribute(Foo, 'bar')
+
+        event.listen(Foo.bar, "set", canary)
+
+        f1 = Foo()
+        eq_(f1.bar, None)
+        eq_(canary.mock_calls, [
+                call(
+                    f1, None, attributes.NEVER_SET,
+                    attributes.Event(Foo.bar.impl, attributes.OP_REPLACE))
+        ])
+
+    def test_none_init_object(self):
+        canary = Mock()
+        class Foo(object):
+            pass
+        instrumentation.register_class(Foo)
+        attributes.register_attribute(Foo, 'bar', useobject=True)
+
+        event.listen(Foo.bar, "set", canary)
+
+        f1 = Foo()
+        eq_(f1.bar, None)
+        eq_(canary.mock_calls, [
+                call(
+                    f1, None, attributes.NEVER_SET,
+                    attributes.Event(Foo.bar.impl, attributes.OP_REPLACE))
+        ])
 
     def test_propagate(self):
         classes = [None, None, None]

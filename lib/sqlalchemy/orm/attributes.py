@@ -23,7 +23,8 @@ from .base import PASSIVE_NO_RESULT, ATTR_WAS_SET, ATTR_EMPTY, NO_VALUE,\
             NEVER_SET, NO_CHANGE, CALLABLES_OK, SQL_OK, RELATED_OBJECT_OK,\
             INIT_OK, NON_PERSISTENT_OK, LOAD_AGAINST_COMMITTED, PASSIVE_OFF,\
             PASSIVE_RETURN_NEVER_SET, PASSIVE_NO_INITIALIZE, PASSIVE_NO_FETCH,\
-            PASSIVE_NO_FETCH_RELATED, PASSIVE_ONLY_PERSISTENT, NO_AUTOFLUSH
+            PASSIVE_NO_FETCH_RELATED, PASSIVE_ONLY_PERSISTENT, NO_AUTOFLUSH,\
+            _none_tuple
 from .base import state_str, instance_str
 
 @inspection._self_inspects
@@ -355,7 +356,10 @@ class Event(object):
         self.op = op
         self.parent_token = self.impl.parent_token
 
-
+    def __eq__(self, other):
+        return isinstance(other, Event) and \
+            other.impl is self.impl and \
+            other.op == self.op
     @property
     def key(self):
         return self.impl.key
@@ -553,8 +557,15 @@ class AttributeImpl(object):
     def initialize(self, state, dict_):
         """Initialize the given state's attribute with an empty value."""
 
-        dict_[self.key] = None
-        return None
+        old = NEVER_SET
+        value = None
+        if self.dispatch.set:
+            value = self.fire_replace_event(state, dict_,
+                                                None, old, None)
+        state._modified_event(dict_, self, old)
+
+        dict_[self.key] = value
+        return value
 
     def get(self, state, dict_, passive=PASSIVE_OFF):
         """Retrieve a value from the given object.
@@ -763,14 +774,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         if self.dispatch._active_history:
             old = self.get(state, dict_, passive=PASSIVE_ONLY_PERSISTENT | NO_AUTOFLUSH)
         else:
-            # would like to call with PASSIVE_NO_FETCH ^ INIT_OK.  However,
-            # we have a long-standing behavior that a "get()" on never set
-            # should implicitly set the value to None.  Leaving INIT_OK
-            # set here means we are consistent whether or not we did a get
-            # first.
-            # see test_use_object_set_None vs. test_use_object_get_first_set_None
-            # in test_attributes.py
-            old = self.get(state, dict_, passive=PASSIVE_NO_FETCH)
+            old = self.get(state, dict_, passive=PASSIVE_NO_FETCH ^ INIT_OK)
 
         if check_old is not None and \
              old is not PASSIVE_NO_RESULT and \
@@ -1087,7 +1091,7 @@ def backref_listeners(attribute, key, uselist):
     def emit_backref_from_scalar_set_event(state, child, oldchild, initiator):
         if oldchild is child:
             return child
-        if oldchild is not None and oldchild not in (PASSIVE_NO_RESULT, NEVER_SET):
+        if oldchild not in _none_tuple:
             # With lazy=None, there's no guarantee that the full collection is
             # present when updating via a backref.
             old_state, old_dict = instance_state(oldchild),\
@@ -1175,7 +1179,7 @@ _NO_STATE_SYMBOLS = frozenset([
 
 History = util.namedtuple("History", [
         "added", "unchanged", "deleted"
-    ])
+])
 
 
 class History(History):

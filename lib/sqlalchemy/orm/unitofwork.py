@@ -86,9 +86,8 @@ def track_cascade_events(descriptor, prop):
                     not sess._contains_state(newvalue_state):
                     sess._save_or_update_state(newvalue_state)
 
-            if oldvalue is not None and \
-                oldvalue is not attributes.PASSIVE_NO_RESULT and \
-                prop._cascade.delete_orphan:
+            if oldvalue not in orm_util._none_tuple and \
+                    prop._cascade.delete_orphan:
                 # possible to reach here with attributes.NEVER_SET ?
                 oldvalue_state = attributes.instance_state(oldvalue)
 

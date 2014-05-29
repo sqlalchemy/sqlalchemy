@@ -24,6 +24,7 @@ from .. import sql, util, log, exc as sa_exc, event, schema, inspection
 from ..sql import expression, visitors, operators, util as sql_util
 from . import instrumentation, attributes, exc as orm_exc, loading
 from . import properties
+from . import util as orm_util
 from .interfaces import MapperProperty, _InspectionAttr, _MappedAttribute
 
 from .base import _class_to_mapper, _state_mapper, class_mapper, \
@@ -2270,7 +2271,7 @@ class Mapper(_InspectionAttr):
         manager = state.manager
         return self._identity_class, tuple([
             manager[self._columntoproperty[col].key].\
-                impl.get(state, dict_, attributes.PASSIVE_OFF)
+                impl.get(state, dict_, attributes.PASSIVE_RETURN_NEVER_SET)
             for col in self.primary_key
         ])
 
@@ -2292,12 +2293,13 @@ class Mapper(_InspectionAttr):
         manager = state.manager
         return [
             manager[self._columntoproperty[col].key].\
-                impl.get(state, dict_, attributes.PASSIVE_OFF)
+                impl.get(state, dict_,
+                                attributes.PASSIVE_RETURN_NEVER_SET)
             for col in self.primary_key
         ]
 
     def _get_state_attr_by_column(self, state, dict_, column,
-                                    passive=attributes.PASSIVE_OFF):
+                        passive=attributes.PASSIVE_RETURN_NEVER_SET):
         prop = self._columntoproperty[column]
         return state.manager[prop.key].impl.get(state, dict_, passive=passive)
 
@@ -2311,7 +2313,8 @@ class Mapper(_InspectionAttr):
         return self._get_committed_state_attr_by_column(state, dict_, column)
 
     def _get_committed_state_attr_by_column(self, state, dict_,
-                        column, passive=attributes.PASSIVE_OFF):
+                        column,
+                        passive=attributes.PASSIVE_RETURN_NEVER_SET):
 
         prop = self._columntoproperty[column]
         return state.manager[prop.key].impl.\
@@ -2352,7 +2355,7 @@ class Mapper(_InspectionAttr):
                                     state, state.dict,
                                     leftcol,
                                     passive=attributes.PASSIVE_NO_INITIALIZE)
-                if leftval is attributes.PASSIVE_NO_RESULT or leftval is None:
+                if leftval in orm_util._none_set:
                     raise ColumnsNotAvailable()
                 binary.left = sql.bindparam(None, leftval,
                                             type_=binary.right.type)
@@ -2361,8 +2364,7 @@ class Mapper(_InspectionAttr):
                                     state, state.dict,
                                     rightcol,
                                     passive=attributes.PASSIVE_NO_INITIALIZE)
-                if rightval is attributes.PASSIVE_NO_RESULT or \
-                            rightval is None:
+                if rightval in orm_util._none_set:
                     raise ColumnsNotAvailable()
                 binary.right = sql.bindparam(None, rightval,
                                             type_=binary.right.type)
