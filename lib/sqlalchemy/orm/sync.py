@@ -46,7 +46,10 @@ def populate(source, source_mapper, dest, dest_mapper,
 
 def clear(dest, dest_mapper, synchronize_pairs):
     for l, r in synchronize_pairs:
-        if r.primary_key:
+        if r.primary_key and \
+            dest_mapper._get_state_attr_by_column(
+                                        dest, dest.dict, r) is not None:
+
             raise AssertionError(
                 "Dependency rule tried to blank-out primary key "
                 "column '%s' on instance '%s'" %
