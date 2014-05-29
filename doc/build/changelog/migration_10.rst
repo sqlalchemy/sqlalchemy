@@ -101,6 +101,8 @@ is improved in the case where the unit of work inspects a pending object for
 an existing primary key value, as the state of the object won't change
 in the common case that none was set.
 
+:ticket:`3061`
+
 .. _behavioral_changes_core_10:
 
 Behavioral Changes - Core
