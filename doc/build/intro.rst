@@ -1,11 +1,7 @@
 .. _overview_toplevel:
-
-========
-Overview
-========
-
 .. _overview:
 
+========
 Overview
 ========
 

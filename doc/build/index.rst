@@ -11,7 +11,7 @@ Getting Started
 
 A high level view and getting set up.
 
-:ref:`Overview <overview>` |
+:doc:`Overview <intro>` |
 :ref:`Installation Guide <installation>` |
 :doc:`Frequently Asked Questions <faq>` |
 :doc:`Migration from 0.8 <changelog/migration_09>` |

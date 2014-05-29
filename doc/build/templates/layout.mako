@@ -42,6 +42,7 @@ withsidebar = bool(toc) and current_page_name != 'index'
     ${docstitle|h}
 </%block>
 
+
 <div id="docs-container">
 
 
@@ -100,30 +101,91 @@ withsidebar = bool(toc) and current_page_name != 'index'
     <h1>${docstitle|h}</h1>
 
 </div>
-<div id="docs-top-navigation">
-    <div id="docs-top-page-control" class="docs-navigation-links">
-        % if prevtopic:
-            <a href="${prevtopic['link']|h}" title="${prevtopic['title']}">Prev</a> |
-        % endif
-        % if nexttopic:
-            <a href="${nexttopic['link']|h}" title="${nexttopic['title']}">Next</a> |
+</div>
+
+<div id="docs-body-container">
+
+    <div id="fixed-sidebar" class="${'withsidebar' if withsidebar else ''}">
+
+    % if not withsidebar:
+        <div id="index-nav">
+            <form class="search" action="${pathto('search')}" method="get">
+              <input type="text" name="q" size="12" /> <input type="submit" value="${_('Search')}" />
+              <input type="hidden" name="check_keywords" value="yes" />
+              <input type="hidden" name="area" value="default" />
+            </form>
+
+            <p>
+            <a href="${pathto('index')}">Contents</a> |
+            <a href="${pathto('genindex')}">Index</a>
+            % if pdf_url:
+            | <a href="${pdf_url}">Download as PDF</a>
+            % endif
+            </p>
+
+        </div>
+    % endif
+
+    % if withsidebar:
+        <div id="docs-sidebar-popout">
+            <h3><a href="${pathto('index')}">${docstitle|h}</a></h3>
+
+            <p id="sidebar-paginate">
+                % if parents:
+                    <a href="${parents[-1]['link']|h}" title="${parents[-1]['title']}">Up</a> |
+                % else:
+                    <a href="${pathto('index')}" title="${docstitle|h}">Up</a> |
+                % endif
+
+                % if prevtopic:
+                    <a href="${prevtopic['link']|h}" title="${prevtopic['title']}">Prev</a> |
+                % endif
+                % if nexttopic:
+                    <a href="${nexttopic['link']|h}" title="${nexttopic['title']}">Next</a>
+                % endif
+            </p>
+
+            <p id="sidebar-topnav">
+                <a href="${pathto('index')}">Contents</a> |
+                <a href="${pathto('genindex')}">Index</a>
+                % if pdf_url:
+                | <a href="${pdf_url}">PDF</a>
+                % endif
+            </p>
+
+            <div id="sidebar-search">
+                <form class="search" action="${pathto('search')}" method="get">
+                  <input type="text" name="q" size="12" /> <input type="submit" value="${_('Search')}" />
+                  <input type="hidden" name="check_keywords" value="yes" />
+                  <input type="hidden" name="area" value="default" />
+                </form>
+            </div>
+
+        </div>
+
+        <div id="docs-sidebar">
+
+        <h3><a href="#">\
+            <%block name="show_title">
+                ${title}
+            </%block>
+        </a></h3>
+        ${toc}
+
+        % if rtd:
+        <h4>Project Versions</h4>
+        <ul class="version-listing">
+        </ul>
         % endif
 
-        <a href="${pathto('index')}">Contents</a> |
-        <a href="${pathto('genindex')}">Index</a>
-        % if pdf_url:
-        | <a href="${pdf_url}">PDF</a>
-        % endif
 
-        | <form class="search" action="${pathto('search')}" method="get">
-          <input type="text" name="q" size="12" /> <input type="submit" value="${_('Search')}" />
-          <input type="hidden" name="check_keywords" value="yes" />
-          <input type="hidden" name="area" value="default" />
-        </form>
+        </div>
+    % endif
 
     </div>
 
-    <div id="docs-navigation-banner">
+    <%doc>
+    <div id="docs-top-navigation">
         <a href="${pathto('index')}">${docstitle|h}</a>
         % if parents:
             % for parent in parents:
@@ -139,41 +201,9 @@ withsidebar = bool(toc) and current_page_name != 'index'
                 ${title}
             </%block>
         </h2>
-    </div>
-
-</div>
-</div>
-
-<div id="docs-body-container">
-
-% if withsidebar:
-    <div id="docs-sidebar">
-
-    <h3><a href="${pathto('index')}">Table of Contents</a></h3>
-    ${toc}
-
-    % if prevtopic:
-    <h4>Previous Topic</h4>
-    <p>
-    <a href="${prevtopic['link']|h}" title="${_('previous chapter')}">${prevtopic['title']}</a>
-    </p>
-    % endif
-    % if nexttopic:
-    <h4>Next Topic</h4>
-    <p>
-    <a href="${nexttopic['link']|h}" title="${_('next chapter')}">${nexttopic['title']}</a>
-    </p>
-    % endif
-
-    % if rtd:
-    <h4>Project Versions</h4>
-    <ul class="version-listing">
-    </ul>
-    % endif
-
 
     </div>
-% endif
+    </%doc>
 
     <div id="docs-body" class="${'withsidebar' if withsidebar else ''}" >
         ${next.body()}
