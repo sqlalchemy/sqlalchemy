@@ -130,28 +130,37 @@ withsidebar = bool(toc) and current_page_name != 'index'
         <div id="docs-sidebar-popout">
             <h3><a href="${pathto('index')}">${docstitle|h}</a></h3>
 
-            <p>
-            % if prevtopic:
-                <a href="${prevtopic['link']|h}" title="${prevtopic['title']}">Prev</a> |
-            % endif
-            % if nexttopic:
-                <a href="${nexttopic['link']|h}" title="${nexttopic['title']}">Next</a>
-            % endif
+            <p id="sidebar-paginate">
+                % if parents:
+                    <a href="${parents[-1]['link']|h}" title="${parents[-1]['title']}">Up</a> |
+                % else:
+                    <a href="${pathto('index')}" title="${docstitle|h}">Up</a> |
+                % endif
+
+                % if prevtopic:
+                    <a href="${prevtopic['link']|h}" title="${prevtopic['title']}">Prev</a> |
+                % endif
+                % if nexttopic:
+                    <a href="${nexttopic['link']|h}" title="${nexttopic['title']}">Next</a>
+                % endif
             </p>
 
-            <p>
-            <a href="${pathto('index')}">Contents</a> |
-            <a href="${pathto('genindex')}">Index</a>
-            % if pdf_url:
-            | <a href="${pdf_url}">PDF</a>
-            % endif
+            <p id="sidebar-topnav">
+                <a href="${pathto('index')}">Contents</a> |
+                <a href="${pathto('genindex')}">Index</a>
+                % if pdf_url:
+                | <a href="${pdf_url}">PDF</a>
+                % endif
             </p>
 
-            <form class="search" action="${pathto('search')}" method="get">
-              <input type="text" name="q" size="12" /> <input type="submit" value="${_('Search')}" />
-              <input type="hidden" name="check_keywords" value="yes" />
-              <input type="hidden" name="area" value="default" />
-            </form>
+            <div id="sidebar-search">
+                <form class="search" action="${pathto('search')}" method="get">
+                  <input type="text" name="q" size="12" /> <input type="submit" value="${_('Search')}" />
+                  <input type="hidden" name="check_keywords" value="yes" />
+                  <input type="hidden" name="area" value="default" />
+                </form>
+            </div>
+
         </div>
 
         <div id="docs-sidebar">
