@@ -73,8 +73,15 @@ Valid values for ``isolation_level`` include:
 * ``REPEATABLE READ``
 * ``SERIALIZABLE``
 
-The :mod:`~sqlalchemy.dialects.postgresql.psycopg2` dialect also offers the special level ``AUTOCOMMIT``.  See
-:ref:`psycopg2_isolation_level` for details.
+The :mod:`~sqlalchemy.dialects.postgresql.psycopg2` and
+:mod:`~sqlalchemy.dialects.postgresql.pg8000` dialects also offer the
+special level ``AUTOCOMMIT``.
+
+.. seealso::
+
+    :ref:`psycopg2_isolation_level`
+
+    :ref:`pg8000_isolation_level`
 
 .. _postgresql_schema_reflection:
 
