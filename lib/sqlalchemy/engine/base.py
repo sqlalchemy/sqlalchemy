@@ -1054,8 +1054,9 @@ class Connection(Connectable):
         except (SystemExit, KeyboardInterrupt):
             raise
         except Exception:
-            self.connection._logger.error(
-                                    "Error closing cursor", exc_info=True)
+            # log the error through the connection pool's logger.
+            self.engine.pool.logger.error(
+                                "Error closing cursor", exc_info=True)
 
     _reentrant_error = False
     _is_disconnect = False
