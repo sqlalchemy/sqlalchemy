@@ -25,6 +25,30 @@ in postgresql.conf).
 Set the "encoding" parameter on create_engine(), to the same as the client
 encoding, usually "utf-8".
 
+.. _pg8000_isolation_level:
+
+pg8000 Transaction Isolation Level
+-------------------------------------
+
+The pg8000 dialect offers the same isolation level settings as that
+of the :ref:`psycopg2 <psycopg2_isolation_level>` dialect:
+
+* ``READ COMMITTED``
+* ``READ UNCOMMITTED``
+* ``REPEATABLE READ``
+* ``SERIALIZABLE``
+* ``AUTOCOMMIT``
+
+.. versionadded:: 0.9.5 support for AUTOCOMMIT isolation level when using
+   pg8000.
+
+.. seealso::
+
+    :ref:`postgresql_isolation_level`
+
+    :ref:`psycopg2_isolation_level`
+
+
 """
 from ... import util, exc
 import decimal

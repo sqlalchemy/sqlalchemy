@@ -15,6 +15,14 @@
     :version: 0.9.5
 
     .. change::
+        :tags: feature, postgresql
+        :versions: 1.0.0
+        :pullreq: github:88
+
+        Added support for AUTOCOMMIT isolation level when using the pg8000
+        DBAPI.  Pull request courtesy Tony Locke.
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 3021
         :versions: 1.0.0
