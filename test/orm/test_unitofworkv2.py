@@ -1008,23 +1008,16 @@ class SingleCycleTest(UOWTest):
                     "WHERE nodes.id = :param_1",
                     lambda ctx: {'param_1': c2id}
                 ),
-                Or(
-                    AllOf(
-                        CompiledSQL(
-                            "DELETE FROM nodes WHERE nodes.id = :id",
-                            lambda ctx: [{'id': c1id}, {'id': c2id}]
-                        ),
-                        CompiledSQL(
-                            "DELETE FROM nodes WHERE nodes.id = :id",
-                            lambda ctx: {'id': pid}
-                        ),
+                AllOf(
+                    CompiledSQL(
+                        "DELETE FROM nodes WHERE nodes.id = :id",
+                        lambda ctx: [{'id': c1id}, {'id': c2id}]
                     ),
                     CompiledSQL(
                         "DELETE FROM nodes WHERE nodes.id = :id",
-                        lambda ctx: [{'id': c1id}, {'id': c2id}, {'id': pid}]
+                        lambda ctx: {'id': pid}
                     ),
-
-                )
+                ),
             ),
         )
 

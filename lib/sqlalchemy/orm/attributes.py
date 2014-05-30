@@ -23,8 +23,7 @@ from .base import PASSIVE_NO_RESULT, ATTR_WAS_SET, ATTR_EMPTY, NO_VALUE,\
             NEVER_SET, NO_CHANGE, CALLABLES_OK, SQL_OK, RELATED_OBJECT_OK,\
             INIT_OK, NON_PERSISTENT_OK, LOAD_AGAINST_COMMITTED, PASSIVE_OFF,\
             PASSIVE_RETURN_NEVER_SET, PASSIVE_NO_INITIALIZE, PASSIVE_NO_FETCH,\
-            PASSIVE_NO_FETCH_RELATED, PASSIVE_ONLY_PERSISTENT, NO_AUTOFLUSH,\
-            _none_tuple
+            PASSIVE_NO_FETCH_RELATED, PASSIVE_ONLY_PERSISTENT, NO_AUTOFLUSH
 from .base import state_str, instance_str
 
 @inspection._self_inspects
@@ -536,7 +535,7 @@ class AttributeImpl(object):
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
         raise NotImplementedError()
 
-    def get_all_pending(self, state, dict_):
+    def get_all_pending(self, state, dict_, passive=PASSIVE_NO_INITIALIZE):
         """Return a list of tuples of (state, obj)
         for all objects in this attribute's current state
         + history.
@@ -748,23 +747,31 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
             else:
                 return History.from_object_attribute(self, state, current)
 
-    def get_all_pending(self, state, dict_):
+    def get_all_pending(self, state, dict_, passive=PASSIVE_NO_INITIALIZE):
         if self.key in dict_:
             current = dict_[self.key]
-            if current is not None:
-                ret = [(instance_state(current), current)]
-            else:
-                ret = [(None, None)]
-
-            if self.key in state.committed_state:
-                original = state.committed_state[self.key]
-                if original not in (NEVER_SET, PASSIVE_NO_RESULT, None) and \
-                    original is not current:
-
-                    ret.append((instance_state(original), original))
-            return ret
+        elif passive & CALLABLES_OK:
+            current = self.get(state, dict_, passive=passive)
         else:
             return []
+
+        # can't use __hash__(), can't use __eq__() here
+        if current is not None and \
+                current is not PASSIVE_NO_RESULT and \
+                current is not NEVER_SET:
+            ret = [(instance_state(current), current)]
+        else:
+            ret = [(None, None)]
+
+        if self.key in state.committed_state:
+            original = state.committed_state[self.key]
+            if original is not None and \
+                    original is not PASSIVE_NO_RESULT and \
+                    original is not NEVER_SET and \
+                    original is not current:
+
+                ret.append((instance_state(original), original))
+        return ret
 
     def set(self, state, dict_, value, initiator,
                 passive=PASSIVE_OFF, check_old=None, pop=False):
@@ -863,7 +870,9 @@ class CollectionAttributeImpl(AttributeImpl):
         else:
             return History.from_collection(self, state, current)
 
-    def get_all_pending(self, state, dict_):
+    def get_all_pending(self, state, dict_, passive=PASSIVE_NO_INITIALIZE):
+        # NOTE: passive is ignored here at the moment
+
         if self.key not in dict_:
             return []
 
@@ -1091,7 +1100,9 @@ def backref_listeners(attribute, key, uselist):
     def emit_backref_from_scalar_set_event(state, child, oldchild, initiator):
         if oldchild is child:
             return child
-        if oldchild not in _none_tuple:
+        if oldchild is not None and \
+                oldchild is not PASSIVE_NO_RESULT and \
+                oldchild is not NEVER_SET:
             # With lazy=None, there's no guarantee that the full collection is
             # present when updating via a backref.
             old_state, old_dict = instance_state(oldchild),\
