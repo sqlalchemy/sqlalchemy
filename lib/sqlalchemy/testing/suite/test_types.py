@@ -208,7 +208,7 @@ class StringTest(_LiteralRoundTripFixture, fixtures.TestBase):
 
     def test_literal_backslashes(self):
         data = r'backslash one \ backslash two \\ end'
-        self._literal_round_trip(Text, [data], [data])
+        self._literal_round_trip(String(40), [data], [data])
 
 
 class _DateFixture(_LiteralRoundTripFixture):
