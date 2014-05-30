@@ -220,7 +220,7 @@ class DeferredColumnLoader(LoaderStrategy):
         if not state.key:
             return attributes.ATTR_EMPTY
 
-        if not passive & attributes.SQL_OK:
+        if not passive & attributes.CALLABLES_OK:
             return attributes.PASSIVE_NO_RESULT
 
         localparent = state.manager.mapper
