@@ -154,12 +154,16 @@ class DependencyProcessor(object):
                 parent_in_cycles = True
 
         # now create actions /dependencies for each state.
+
         for state in states:
             # detect if there's anything changed or loaded
-            # by a preprocessor on this state/attribute.  if not,
-            # we should be able to skip it entirely.
+            # by a preprocessor on this state/attribute.   In the
+            # case of deletes we may try to load missing items here as well.
             sum_ = state.manager[self.key].impl.get_all_pending(
-                state, state.dict)
+                state, state.dict,
+                                self._passive_delete_flag
+                                        if isdelete
+                                        else attributes.PASSIVE_NO_INITIALIZE)
 
             if not sum_:
                 continue

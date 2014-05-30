@@ -31,6 +31,17 @@
 
     .. change::
         :tags: bug, orm
+        :versions: 1.0.0
+
+        Related to :ticket:`3060`, an adjustment has been made to the unit
+        of work such that loading for related many-to-one objects is slightly
+        more aggressive, in the case of a graph of self-referential objects
+        that are to be deleted; the load of related objects is to help
+        determine the correct order for deletion if passive_deletes is
+        not set.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3057
         :versions: 1.0.0
 
