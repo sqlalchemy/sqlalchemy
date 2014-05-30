@@ -12,6 +12,19 @@
     :version: 0.8.7
 
     .. change::
+        :tags: bug, declarative
+        :versions: 1.0.0, 0.9.5
+        :tickets: 3062
+
+        The ``__mapper_args__`` dictionary is copied from a declarative
+        mixin or abstract class when accessed, so that modifications made
+        to this dictionary by declarative itself won't conflict with that
+        of other mappings.  The dictionary is modified regarding the
+        ``version_id_col`` and ``polymorphic_on`` arguments, replacing the
+        column within with the one that is officially mapped to the local
+        class/table.
+
+    .. change::
         :tags: bug, sql
         :versions: 0.9.5, 1.0.0
         :tickets: 3044

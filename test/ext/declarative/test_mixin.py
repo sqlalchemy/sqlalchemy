@@ -1173,6 +1173,33 @@ class DeclarativeMixinPropertyTest(DeclarativeTestBase):
         eq_(col.name, 'type_')
         assert col.table is not None
 
+    def test_column_in_mapper_args_used_multiple_times(self):
+
+        class MyMixin(object):
+
+            version_id = Column(Integer)
+            __mapper_args__ = {'version_id_col': version_id}
+
+        class ModelOne(Base, MyMixin):
+
+            __tablename__ = 'm1'
+            id = Column(Integer, primary_key=True)
+
+        class ModelTwo(Base, MyMixin):
+
+            __tablename__ = 'm2'
+            id = Column(Integer, primary_key=True)
+
+        is_(
+            ModelOne.__mapper__.version_id_col,
+            ModelOne.__table__.c.version_id
+        )
+        is_(
+            ModelTwo.__mapper__.version_id_col,
+            ModelTwo.__table__.c.version_id
+        )
+
+
     def test_deferred(self):
 
         class MyMixin(object):
