@@ -15,6 +15,20 @@
     :version: 0.9.5
 
     .. change::
+        :tags: bug, engine
+        :versions: 1.0.0
+        :tickets: 3063
+
+        Fixed bug which would occur if a DBAPI exception
+        occurs when the engine first connects and does its initial checks,
+        and the exception is not a disconnect exception, yet the cursor
+        raises an error when we try to close it.  In this case the real
+        exception would be quashed as we tried to log the cursor close
+        exception via the connection pool and failed, as we were trying
+        to access the pool's logger in a way that is inappropriate
+        in this very specific scenario.
+
+    .. change::
         :tags: feature, postgresql
         :versions: 1.0.0
         :pullreq: github:88

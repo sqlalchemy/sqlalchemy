@@ -373,33 +373,76 @@ class MockReconnectTest(fixtures.TestBase):
 
 
 class CursorErrTest(fixtures.TestBase):
+    # this isn't really a "reconnect" test, it's more of
+    # a generic "recovery".   maybe this test suite should have been
+    # named "test_error_recovery".
+    def _fixture(self, explode_on_exec, initialize):
+        class DBAPIError(Exception):
+            pass
 
-    def setup(self):
         def MockDBAPI():
             def cursor():
                 while True:
-                    yield Mock(
-                        description=[],
-                        close=Mock(side_effect=Exception("explode")))
+                    if explode_on_exec:
+                        yield Mock(
+                            description=[],
+                            close=Mock(side_effect=DBAPIError("explode")),
+                            execute=Mock(side_effect=DBAPIError("explode"))
+                        )
+                    else:
+                        yield Mock(
+                            description=[],
+                            close=Mock(side_effect=Exception("explode")),
+                        )
             def connect():
                 while True:
-                    yield Mock(cursor=Mock(side_effect=cursor()))
+                    yield Mock(
+                                spec=['cursor', 'commit', 'rollback', 'close'],
+                                cursor=Mock(side_effect=cursor()),
+                            )
 
-            return Mock(connect=Mock(side_effect=connect()))
-
+            return Mock(
+                        Error = DBAPIError,
+                        paramstyle='qmark',
+                        connect=Mock(side_effect=connect())
+                    )
         dbapi = MockDBAPI()
-        self.db = testing_engine(
-                    'postgresql://foo:bar@localhost/test',
-                    options=dict(module=dbapi, _initialize=False))
+
+        from sqlalchemy.engine import default
+        url = Mock(
+                    get_dialect=lambda: default.DefaultDialect,
+                    translate_connect_args=lambda: {},
+                    query={},
+                )
+        eng = testing_engine(
+                    url,
+                    options=dict(module=dbapi, _initialize=initialize))
+        eng.pool.logger = Mock()
+        return eng
 
     def test_cursor_explode(self):
-        conn = self.db.connect()
+        db = self._fixture(False, False)
+        conn = db.connect()
         result = conn.execute("select foo")
         result.close()
         conn.close()
+        eq_(
+            db.pool.logger.error.mock_calls,
+            [call('Error closing cursor', exc_info=True)]
+        )
 
-    def teardown(self):
-        self.db.dispose()
+    def test_cursor_shutdown_in_initialize(self):
+        db = self._fixture(True, True)
+        assert_raises_message(
+            exc.SAWarning,
+            "Exception attempting to detect",
+            db.connect
+        )
+        eq_(
+            db.pool.logger.error.mock_calls,
+            [call('Error closing cursor', exc_info=True)]
+        )
+
 
 
 def _assert_invalidated(fn, *args):
