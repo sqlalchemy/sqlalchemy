@@ -1968,6 +1968,7 @@ class SQLCompiler(Compiled):
                                 self.dialect.implicit_returning and \
                                 stmt.table.implicit_returning
 
+        implicit_return_defaults = False
         if self.isinsert:
             implicit_return_defaults = implicit_returning and stmt._return_defaults
         elif self.isupdate:
