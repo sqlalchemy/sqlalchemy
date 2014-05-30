@@ -15,6 +15,19 @@
     :version: 0.9.5
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 3021
+        :versions: 1.0.0
+        :pullreq: github:87
+
+        The psycopg2 ``.closed`` accessor is now consulted when determining
+        if an exception is a "disconnect" error; ideally, this should remove
+        the need for any other inspection of the exception message to detect
+        disconnect, however we will leave those existing messages in place
+        as a fallback.   This should be able to handle newer cases like
+        "SSL EOF" conditions.  Pull request courtesy Dirk Mueller.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3060
         :versions: 1.0.0
