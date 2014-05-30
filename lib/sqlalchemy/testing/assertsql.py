@@ -256,11 +256,30 @@ class AllOf(AssertRule):
             if rule.rule_passed():  # a rule passed, move on
                 self.rules.remove(rule)
                 return len(self.rules) == 0
-        assert False, 'No assertion rules were satisfied for statement'
+        return False
+
+    def rule_passed(self):
+        return self.is_consumed()
 
     def consume_final(self):
         return len(self.rules) == 0
 
+class Or(AllOf):
+    def __init__(self, *rules):
+        self.rules = set(rules)
+        self._consume_final = False
+
+    def is_consumed(self):
+        if not self.rules:
+            return True
+        for rule in list(self.rules):
+            if rule.rule_passed():  # a rule passed
+                self._consume_final = True
+                return True
+        return False
+
+    def consume_final(self):
+        assert self._consume_final, "Unsatisified rules remain"
 
 def _process_engine_statement(query, context):
     if util.jython:
