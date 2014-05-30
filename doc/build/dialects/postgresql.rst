@@ -141,7 +141,7 @@ For example:
 
   from psycopg2.extras import DateTimeRange
   from sqlalchemy.dialects.postgresql import TSRANGE
-    
+
   class RoomBooking(Base):
 
       __tablename__ = 'room_booking'
@@ -150,8 +150,8 @@ For example:
       during = Column(TSRANGE())
 
   booking = RoomBooking(
-      room=101, 
-      during=DateTimeRange(datetime(2013, 3, 23), None
+      room=101,
+      during=DateTimeRange(datetime(2013, 3, 23), None)
   )
 
 PostgreSQL Constraint Types
