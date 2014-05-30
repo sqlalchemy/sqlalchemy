@@ -489,22 +489,24 @@ class PGDialect_psycopg2(PGDialect):
 
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.Error):
-            # Is the connection already marked as closed?
+            # check the "closed" flag.  this might not be
+            # present on old psycopg2 versions
             if getattr(connection, 'closed', False):
                 return True
 
+            # legacy checks based on strings.  the "closed" check
+            # above most likely obviates the need for any of these.
             str_e = str(e).partition("\n")[0]
             for msg in [
                 # these error messages from libpq: interfaces/libpq/fe-misc.c
                 # and interfaces/libpq/fe-secure.c.
-                # TODO: these are sent through gettext in libpq and we can't
-                # check within other locales
                 'terminating connection',
                 'closed the connection',
                 'connection not open',
                 'could not receive data from server',
                 'could not send data to server',
-                # psycopg2 client errors, psycopg2/conenction.h, psycopg2/cursor.h
+                # psycopg2 client errors, psycopg2/conenction.h,
+                # psycopg2/cursor.h
                 'connection already closed',
                 'cursor already closed',
                 # not sure where this path is originally from, it may
