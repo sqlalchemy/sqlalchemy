@@ -73,7 +73,10 @@ def _as_declarative(cls, classname, dict_):
                     # don't even invoke __mapper_args__ until
                     # after we've determined everything about the
                     # mapped table.
-                    mapper_args_fn = lambda: cls.__mapper_args__
+                    # make a copy of it so a class-level dictionary
+                    # is not overwritten when we update column-based
+                    # arguments.
+                    mapper_args_fn = lambda: dict(cls.__mapper_args__)
             elif name == '__tablename__':
                 if not tablename and (
                                         not class_mapped or
