@@ -143,3 +143,19 @@ Behavioral Improvements
 
 Dialect Changes
 ===============
+
+.. _change_2984:
+
+Drizzle Dialect is now an External Dialect
+------------------------------------------
+
+The dialect for `Drizzle <http://www.drizzle.org/>`_ is now an external
+dialect, available at https://bitbucket.org/zzzeek/sqlalchemy-drizzle.
+This dialect was added to SQLAlchemy right before SQLAlchemy was able to
+accommodate third party dialects well; going forward, all databases that aren't
+within the "ubiquitous use" category are third party dialects.
+The dialect's implementation hasn't changed and is still based on the
+MySQL + MySQLdb dialects within SQLAlchemy.  The dialect is as of yet
+unreleased and in "attic" status; however it passes the majority of tests
+and is generally in decent working order, if someone wants to pick up
+on polishing it.

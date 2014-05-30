@@ -17,6 +17,18 @@
 	:version: 1.0.0
 
     .. change::
+        :tags: removed
+
+        The Drizzle dialect has been removed from the Core; it is now
+        available as `sqlalchemy-drizzle <https://bitbucket.org/zzzeek/sqlalchemy-drizzle>`_,
+        an independent, third party dialect.  The dialect is still based
+        almost entirely off of the MySQL dialect present in SQLAlchemy.
+
+        .. seealso::
+
+            :ref:`change_2984`
+
+    .. change::
         :tags: enhancement, orm
         :tickets: 3061
 

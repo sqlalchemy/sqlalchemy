@@ -16,7 +16,6 @@ Included Dialects
     :maxdepth: 1
     :glob:
 
-    drizzle
     firebird
     mssql
     mysql
@@ -38,6 +37,9 @@ External Dialects
 
    The "classic" dialects such as SQLite, MySQL, Postgresql, Oracle,
    SQL Server, and Firebird will remain in the Core for the time being.
+
+.. versionchanged:: 1.0
+    The Drizzle dialect has been moved into the third party system.
 
 Current external dialect projects for SQLAlchemy include:
 
@@ -71,6 +73,7 @@ Community members interested in these dialects should feel free to pick up on
 their current codebase and fork off into working libraries.
 
 * `sqlalchemy-access <https://bitbucket.org/zzzeek/sqlalchemy-access>`_ - driver for Microsoft Access.
+* `sqlalchemy-drizzle <https://bitbucket.org/zzzeek/sqlalchemy-drizzle>`_ - driver for the Drizzle MySQL variant.
 * `sqlalchemy-informixdb <https://bitbucket.org/zzzeek/sqlalchemy-informixdb>`_ - driver for the informixdb DBAPI.
 * `sqlalchemy-maxdb <https://bitbucket.org/zzzeek/sqlalchemy-maxdb>`_ - driver for the MaxDB database
 

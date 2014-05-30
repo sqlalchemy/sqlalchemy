@@ -41,32 +41,59 @@ It is strongly advised to use the latest version of MySQL-Python.
 """
 
 from .base import (MySQLDialect, MySQLExecutionContext,
-                                            MySQLCompiler, MySQLIdentifierPreparer)
-from ...connectors.mysqldb import (
-                        MySQLDBExecutionContext,
-                        MySQLDBCompiler,
-                        MySQLDBIdentifierPreparer,
-                        MySQLDBConnector
-                    )
+                                        MySQLCompiler, MySQLIdentifierPreparer)
 from .base import TEXT
 from ... import sql
-
-class MySQLExecutionContext_mysqldb(MySQLDBExecutionContext, MySQLExecutionContext):
-    pass
-
-
-class MySQLCompiler_mysqldb(MySQLDBCompiler, MySQLCompiler):
-    pass
+from ... import util
+import re
 
 
-class MySQLIdentifierPreparer_mysqldb(MySQLDBIdentifierPreparer, MySQLIdentifierPreparer):
-    pass
+class MySQLExecutionContext_mysqldb(MySQLExecutionContext):
+
+    @property
+    def rowcount(self):
+        if hasattr(self, '_rowcount'):
+            return self._rowcount
+        else:
+            return self.cursor.rowcount
+
+class MySQLCompiler_mysqldb(MySQLCompiler):
+    def visit_mod_binary(self, binary, operator, **kw):
+        return self.process(binary.left, **kw) + " %% " + \
+                    self.process(binary.right, **kw)
+
+    def post_process_text(self, text):
+        return text.replace('%', '%%')
+
+class MySQLIdentifierPreparer_mysqldb(MySQLIdentifierPreparer):
+
+    def _escape_identifier(self, value):
+        value = value.replace(self.escape_quote, self.escape_to_quote)
+        return value.replace("%", "%%")
 
 
-class MySQLDialect_mysqldb(MySQLDBConnector, MySQLDialect):
+class MySQLDialect_mysqldb(MySQLDialect):
+    driver = 'mysqldb'
+    supports_unicode_statements = False
+    supports_sane_rowcount = True
+    supports_sane_multi_rowcount = True
+
+    supports_native_decimal = True
+
+    default_paramstyle = 'format'
     execution_ctx_cls = MySQLExecutionContext_mysqldb
     statement_compiler = MySQLCompiler_mysqldb
     preparer = MySQLIdentifierPreparer_mysqldb
+
+
+    @classmethod
+    def dbapi(cls):
+        return __import__('MySQLdb')
+
+    def do_executemany(self, cursor, statement, parameters, context=None):
+        rowcount = cursor.executemany(statement, parameters)
+        if context is not None:
+            context._rowcount = rowcount
 
     def _check_unicode_returns(self, connection):
         # work around issue fixed in
@@ -74,11 +101,11 @@ class MySQLDialect_mysqldb(MySQLDBConnector, MySQLDialect):
         # specific issue w/ the utf8_bin collation and unicode returns
 
         has_utf8_bin = connection.scalar(
-                                "show collation where %s = 'utf8' and %s = 'utf8_bin'"
-                                    % (
-                                    self.identifier_preparer.quote("Charset"),
-                                    self.identifier_preparer.quote("Collation")
-                                ))
+                        "show collation where %s = 'utf8' and %s = 'utf8_bin'"
+                            % (
+                            self.identifier_preparer.quote("Charset"),
+                            self.identifier_preparer.quote("Collation")
+                        ))
         if has_utf8_bin:
             additional_tests = [
                 sql.collate(sql.cast(
@@ -88,7 +115,83 @@ class MySQLDialect_mysqldb(MySQLDBConnector, MySQLDialect):
             ]
         else:
             additional_tests = []
-        return super(MySQLDBConnector, self)._check_unicode_returns(
+        return super(MySQLDialect_mysqldb, self)._check_unicode_returns(
                             connection, additional_tests)
+
+
+    def create_connect_args(self, url):
+        opts = url.translate_connect_args(database='db', username='user',
+                                          password='passwd')
+        opts.update(url.query)
+
+        util.coerce_kw_type(opts, 'compress', bool)
+        util.coerce_kw_type(opts, 'connect_timeout', int)
+        util.coerce_kw_type(opts, 'read_timeout', int)
+        util.coerce_kw_type(opts, 'client_flag', int)
+        util.coerce_kw_type(opts, 'local_infile', int)
+        # Note: using either of the below will cause all strings to be returned
+        # as Unicode, both in raw SQL operations and with column types like
+        # String and MSString.
+        util.coerce_kw_type(opts, 'use_unicode', bool)
+        util.coerce_kw_type(opts, 'charset', str)
+
+        # Rich values 'cursorclass' and 'conv' are not supported via
+        # query string.
+
+        ssl = {}
+        keys = ['ssl_ca', 'ssl_key', 'ssl_cert', 'ssl_capath', 'ssl_cipher']
+        for key in keys:
+            if key in opts:
+                ssl[key[4:]] = opts[key]
+                util.coerce_kw_type(ssl, key[4:], str)
+                del opts[key]
+        if ssl:
+            opts['ssl'] = ssl
+
+        # FOUND_ROWS must be set in CLIENT_FLAGS to enable
+        # supports_sane_rowcount.
+        client_flag = opts.get('client_flag', 0)
+        if self.dbapi is not None:
+            try:
+                CLIENT_FLAGS = __import__(
+                                    self.dbapi.__name__ + '.constants.CLIENT'
+                                    ).constants.CLIENT
+                client_flag |= CLIENT_FLAGS.FOUND_ROWS
+            except (AttributeError, ImportError):
+                self.supports_sane_rowcount = False
+            opts['client_flag'] = client_flag
+        return [[], opts]
+
+    def _get_server_version_info(self, connection):
+        dbapi_con = connection.connection
+        version = []
+        r = re.compile('[.\-]')
+        for n in r.split(dbapi_con.get_server_info()):
+            try:
+                version.append(int(n))
+            except ValueError:
+                version.append(n)
+        return tuple(version)
+
+    def _extract_error_code(self, exception):
+        return exception.args[0]
+
+    def _detect_charset(self, connection):
+        """Sniff out the character set in use for connection results."""
+
+        try:
+            # note: the SQL here would be
+            # "SHOW VARIABLES LIKE 'character_set%%'"
+            cset_name = connection.connection.character_set_name
+        except AttributeError:
+            util.warn(
+                "No 'character_set_name' can be detected with "
+                "this MySQL-Python version; "
+                "please upgrade to a recent version of MySQL-Python.  "
+                "Assuming latin1.")
+            return 'latin1'
+        else:
+            return cset_name()
+
 
 dialect = MySQLDialect_mysqldb
