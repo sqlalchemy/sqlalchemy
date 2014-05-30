@@ -10,7 +10,7 @@ from sqlalchemy.orm import mapper, relationship, backref, \
                             create_session, unitofwork, attributes,\
                             Session, class_mapper, sync, exc as orm_exc
 
-from sqlalchemy.testing.assertsql import AllOf, CompiledSQL
+from sqlalchemy.testing.assertsql import AllOf, CompiledSQL, Or
 
 class AssertsUOW(object):
     def _get_test_uow(self, session):
@@ -1008,14 +1008,23 @@ class SingleCycleTest(UOWTest):
                     "WHERE nodes.id = :param_1",
                     lambda ctx: {'param_1': c2id}
                 ),
-                CompiledSQL(
-                    "DELETE FROM nodes WHERE nodes.id = :id",
-                    lambda ctx: [{'id': c1id}, {'id': c2id}]
-                ),
-                CompiledSQL(
-                    "DELETE FROM nodes WHERE nodes.id = :id",
-                    lambda ctx: {'id': pid}
-                ),
+                Or(
+                    AllOf(
+                        CompiledSQL(
+                            "DELETE FROM nodes WHERE nodes.id = :id",
+                            lambda ctx: [{'id': c1id}, {'id': c2id}]
+                        ),
+                        CompiledSQL(
+                            "DELETE FROM nodes WHERE nodes.id = :id",
+                            lambda ctx: {'id': pid}
+                        ),
+                    ),
+                    CompiledSQL(
+                        "DELETE FROM nodes WHERE nodes.id = :id",
+                        lambda ctx: [{'id': c1id}, {'id': c2id}, {'id': pid}]
+                    ),
+
+                )
             ),
         )
 
