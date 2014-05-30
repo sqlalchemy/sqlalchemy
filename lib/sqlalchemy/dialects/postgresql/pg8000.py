@@ -1,5 +1,6 @@
 # postgresql/pg8000.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors <see AUTHORS
+# file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -8,31 +9,30 @@
 .. dialect:: postgresql+pg8000
     :name: pg8000
     :dbapi: pg8000
-    :connectstring: postgresql+pg8000://user:password@host:port/dbname[?key=value&key=value...]
-    :url: http://pybrary.net/pg8000/
+    :connectstring: \
+postgresql+pg8000://user:password@host:port/dbname[?key=value&key=value...]
+    :url: https://pythonhosted.org/pg8000/
 
 Unicode
 -------
 
-pg8000 requires that the postgresql client encoding be
-configured in the postgresql.conf file in order to use encodings
-other than ascii. Set this value to the same value as the
-"encoding" parameter on create_engine(), usually "utf-8".
+When communicating with the server, pg8000 uses the character set that the
+server asks it to use (the client encoding). By default the client encoding is
+the database's character set (chosen when the database is created), but the
+client encoding can be changed in a number of ways (eg. setting CLIENT_ENCODING
+in postgresql.conf).
 
-Interval
---------
-
-Passing data from/to the Interval type is not supported as of
-yet.
+Set the "encoding" parameter on create_engine(), to the same as the client
+encoding, usually "utf-8".
 
 """
 from ... import util, exc
 import decimal
 from ... import processors
 from ... import types as sqltypes
-from .base import PGDialect, \
-                PGCompiler, PGIdentifierPreparer, PGExecutionContext,\
-                _DECIMAL_TYPES, _FLOAT_TYPES, _INT_TYPES
+from .base import (
+    PGDialect, PGCompiler, PGIdentifierPreparer, PGExecutionContext,
+    _DECIMAL_TYPES, _FLOAT_TYPES, _INT_TYPES)
 
 
 class _PGNumeric(sqltypes.Numeric):
@@ -40,14 +40,13 @@ class _PGNumeric(sqltypes.Numeric):
         if self.asdecimal:
             if coltype in _FLOAT_TYPES:
                 return processors.to_decimal_processor_factory(
-                                    decimal.Decimal,
-                                    self._effective_decimal_return_scale)
+                    decimal.Decimal, self._effective_decimal_return_scale)
             elif coltype in _DECIMAL_TYPES or coltype in _INT_TYPES:
                 # pg8000 returns Decimal natively for 1700
                 return None
             else:
                 raise exc.InvalidRequestError(
-                            "Unknown PG numeric type: %d" % coltype)
+                    "Unknown PG numeric type: %d" % coltype)
         else:
             if coltype in _FLOAT_TYPES:
                 # pg8000 returns float natively for 701
@@ -56,7 +55,7 @@ class _PGNumeric(sqltypes.Numeric):
                 return processors.to_float
             else:
                 raise exc.InvalidRequestError(
-                            "Unknown PG numeric type: %d" % coltype)
+                    "Unknown PG numeric type: %d" % coltype)
 
 
 class _PGNumericNoBind(_PGNumeric):
@@ -71,7 +70,7 @@ class PGExecutionContext_pg8000(PGExecutionContext):
 class PGCompiler_pg8000(PGCompiler):
     def visit_mod_binary(self, binary, operator, **kw):
         return self.process(binary.left, **kw) + " %% " + \
-                        self.process(binary.right, **kw)
+            self.process(binary.right, **kw)
 
     def post_process_text(self, text):
         if '%%' in text:
@@ -111,7 +110,7 @@ class PGDialect_pg8000(PGDialect):
 
     @classmethod
     def dbapi(cls):
-        return __import__('pg8000').dbapi
+        return __import__('pg8000')
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username='user')
@@ -122,5 +121,25 @@ class PGDialect_pg8000(PGDialect):
 
     def is_disconnect(self, e, connection, cursor):
         return "connection is closed" in str(e)
+
+    def set_isolation_level(self, connection, level):
+        level = level.replace('_', ' ')
+
+        if level == 'AUTOCOMMIT':
+            connection.connection.autocommit = True
+        elif level in self._isolation_lookup:
+            connection.connection.autocommit = False
+            cursor = connection.cursor()
+            cursor.execute(
+                "SET SESSION CHARACTERISTICS AS TRANSACTION "
+                "ISOLATION LEVEL %s" % level)
+            cursor.execute("COMMIT")
+            cursor.close()
+        else:
+            raise exc.ArgumentError(
+                "Invalid value '%s' for isolation_level. "
+                "Valid isolation levels for %s are %s or AUTOCOMMIT" %
+                (level, self.name, ", ".join(self._isolation_lookup))
+                )
 
 dialect = PGDialect_pg8000

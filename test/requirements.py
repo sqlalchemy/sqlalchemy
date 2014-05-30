@@ -578,8 +578,6 @@ class DefaultRequirements(SuiteRequirements):
                     ('oracle', None, None,
             "this may be a bug due to the difficulty in handling "
             "oracle precision numerics"),
-                    ('postgresql+pg8000', None, None,
-        "pg-8000 does native decimal but truncates the decimals."),
                     ("firebird", None, None,
         "database and/or driver truncates decimal places.")
                 ]
@@ -610,8 +608,11 @@ class DefaultRequirements(SuiteRequirements):
                             ),
                     ('mssql+pymssql', None, None,
                                 'mssql+pymssql has FP inaccuracy even with '
-                                'only four decimal places '
-                            )
+                                'only four decimal places '),
+                    (
+                        'postgresql+pg8000', None, None,
+                        'postgresql+pg8000 has FP inaccuracy even with '
+                        'only four decimal places '),
                 ])
 
     @property
