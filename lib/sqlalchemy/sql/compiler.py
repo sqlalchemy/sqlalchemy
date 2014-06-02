@@ -1969,13 +1969,14 @@ class SQLCompiler(Compiled):
         implicit_returning = need_pks and \
                                 self.dialect.implicit_returning and \
                                 stmt.table.implicit_returning
-
         if self.isinsert:
             implicit_return_defaults = implicit_returning and stmt._return_defaults
         elif self.isupdate:
             implicit_return_defaults = self.dialect.implicit_returning and \
                                 stmt.table.implicit_returning and \
                                 stmt._return_defaults
+        else:
+            implicit_return_defaults = False
 
         if implicit_return_defaults:
             if stmt._return_defaults is True:
