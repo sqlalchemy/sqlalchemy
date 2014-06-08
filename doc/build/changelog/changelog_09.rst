@@ -15,6 +15,13 @@
     :version: 0.9.5
 
     .. change::
+        :tags: feature, examples
+        :pullreq: bitbucket: 21
+
+        Added a new example illustrating materialized paths, using the
+        latest relationship features.   Example courtesy Jack Zhou.
+
+    .. change::
         :tags: bug, testsuite
         :pullreq: github: 95
 
