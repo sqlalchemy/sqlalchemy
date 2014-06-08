@@ -52,6 +52,11 @@ Large Collections
 
 .. automodule:: examples.large_collection
 
+Materialized Paths
+------------------
+
+.. automodule:: examples.materialized_paths
+
 Nested Sets
 ------------
 
