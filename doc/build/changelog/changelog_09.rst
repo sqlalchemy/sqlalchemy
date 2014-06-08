@@ -15,6 +15,14 @@
     :version: 0.9.5
 
     .. change::
+        :tags: bug, testsuite
+        :pullreq: github: 95
+
+        In public test suite, shanged to use of ``String(40)`` from
+        less-supported ``Text`` in ``StringTest.test_literal_backslashes``.
+        Pullreq courtesy Jan.
+
+    .. change::
         :tags: bug, engine
         :versions: 1.0.0
         :tickets: 3063
