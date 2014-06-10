@@ -695,3 +695,84 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM t, (SELECT t.id AS id, t.a AS a, "
             "t.b AS b FROM t) AS sq WHERE t.id = sq.id"
             )
+
+class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
+    """Tests for full text searching
+    """
+    __dialect__ = postgresql.dialect()
+
+    def setup(self):
+        self.table = Table('t', MetaData(),
+                Column('id', Integer, primary_key=True),
+                Column('title', String),
+                Column('body', String),
+            )
+        self.table_alt = table('mytable',
+                column('id', Integer),
+                column('title', String(128)),
+                column('body', String(128)))
+
+    def _raise_query(self, q):
+        """
+            useful for debugging. just do...
+            self._raise_query(q)
+        """
+        c = q.compile(dialect=postgresql.dialect())
+        raise ValueError(c)
+
+    def test_match_basic(self):
+        s = select([self.table_alt.c.id])\
+            .where(self.table_alt.c.title.match('somestring'))
+        self.assert_compile(s,
+            'SELECT mytable.id '
+            'FROM mytable '
+            'WHERE mytable.title @@ to_tsquery(%(title_1)s)')
+
+    def test_match_regconfig(self):
+        s = select([self.table_alt.c.id])\
+            .where(
+                self.table_alt.c.title.match('somestring',
+                    postgresql_regconfig='english')
+            )
+        self.assert_compile(s,
+            'SELECT mytable.id '
+            'FROM mytable '
+            """WHERE mytable.title @@ to_tsquery('english', %(title_1)s)""")
+
+    def test_match_tsvector(self):
+        s = select([self.table_alt.c.id])\
+            .where(
+                func.to_tsvector( self.table_alt.c.title )\
+                .match('somestring')
+            )
+        self.assert_compile(s,
+            'SELECT mytable.id '
+            'FROM mytable '
+            'WHERE to_tsvector(mytable.title) @@ to_tsquery(%(to_tsvector_1)s)')
+
+    def test_match_tsvectorconfig(self):
+        s = select([self.table_alt.c.id])\
+            .where(
+                func.to_tsvector( 'english', self.table_alt.c.title )\
+                .match('somestring')
+            )
+        self.assert_compile(s,
+            'SELECT mytable.id '
+            'FROM mytable '
+            'WHERE to_tsvector(%(to_tsvector_1)s, mytable.title) @@ '
+                'to_tsquery(%(to_tsvector_2)s)'
+            )
+
+    def test_match_tsvectorconfig_regconfig(self):
+        s = select([self.table_alt.c.id])\
+            .where(\
+                func.to_tsvector( 'english', self.table_alt.c.title )\
+                .match('somestring', postgresql_regconfig='english')
+            )
+        self.assert_compile(s,
+            'SELECT mytable.id '
+            'FROM mytable '
+            'WHERE to_tsvector(%(to_tsvector_1)s, mytable.title) @@ '
+                """to_tsquery('english', %(to_tsvector_2)s)"""
+            )
+

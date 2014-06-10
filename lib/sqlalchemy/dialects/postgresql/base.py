@@ -271,6 +271,47 @@ produces a statement equivalent to::
 
     SELECT CAST('some text' AS TSVECTOR) AS anon_1
 
+Full Text Searches in Postgresql are influenced by a combination of: the
+PostgresSQL setting of ``default_text_search_config``, the ``regconfig`` used to
+build the GIN/GiST indexes, and the ``regconfig`` optionally passed in during a
+query.
+
+When performing a Full Text Search against a column that has a GIN or
+GiST index that is already pre-computed (which is common on full text searches)
+one may need to explicitly pass in a particular PostgresSQL ``regconfig`` value
+to ensure the query-planner utilizes the index and does not re-compute the
+column on demand.
+
+In order to provide for this explicit query planning, or to use different search
+strategies, the ``match`` method accepts a ``postgresql_regconfig`` keyword
+argument.
+
+    select([mytable.c.id]).where(
+        mytable.c.title.match('somestring', postgresql_regconfig='english')
+    )
+
+Emits the equivalent of::
+
+    SELECT mytable.id FROM mytable
+    WHERE mytable.title @@ to_tsquery('english', 'somestring')
+
+One can also specifically pass in a `'regconfig'` value to the ``to_tsvector()``
+command as the initial argument.
+
+    select([mytable.c.id]).where(
+            func.to_tsvector('english', mytable.c.title )\
+            .match('somestring', postgresql_regconfig='english')
+        )
+
+produces a statement equivalent to::
+
+    SELECT mytable.id FROM mytable
+    WHERE to_tsvector('english', mytable.title) @@
+        to_tsquery('english', 'somestring')
+
+It is recommended that you use the ``EXPLAIN ANALYZE...`` tool from PostgresSQL
+to ensure that you are generating queries with SQLAlchemy that take full
+advantage of any indexes you may have created for full text search.
 
 FROM ONLY ...
 ------------------------
@@ -1134,14 +1175,25 @@ class PGCompiler(compiler.SQLCompiler):
 
     def visit_getitem_binary(self, binary, operator, **kw):
         return "%s[%s]" % (
-                self.process(binary.left, **kw),
-                self.process(binary.right, **kw)
-            )
+            self.process(binary.left, **kw),
+            self.process(binary.right, **kw)
+        )
 
     def visit_match_op_binary(self, binary, operator, **kw):
+        if "postgresql_regconfig" in binary.modifiers:
+            regconfig = self.render_literal_value(\
+                binary.modifiers['postgresql_regconfig'],
+                sqltypes.STRINGTYPE)
+            if regconfig:
+                return "%s @@ to_tsquery(%s, %s)" % (
+                    self.process(binary.left, **kw),
+                    regconfig,
+                    self.process(binary.right, **kw)
+                )
         return "%s @@ to_tsquery(%s)" % (
-                        self.process(binary.left, **kw),
-                        self.process(binary.right, **kw))
+            self.process(binary.left, **kw),
+            self.process(binary.right, **kw)
+        )
 
     def visit_ilike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)

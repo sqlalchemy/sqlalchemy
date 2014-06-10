@@ -213,7 +213,7 @@ class _DefaultColumnComparator(operators.ColumnOperators):
         """See :meth:`.ColumnOperators.match`."""
         return self._boolean_compare(expr, operators.match_op,
                               self._check_literal(expr, operators.match_op,
-                              other))
+                              other), **kw)
 
     def _distinct_impl(self, expr, op, **kw):
         """See :meth:`.ColumnOperators.distinct`."""
