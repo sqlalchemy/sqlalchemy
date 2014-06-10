@@ -17,6 +17,17 @@
     .. change::
         :tags: feature, postgresql
         :versions: 1.0.0
+        :pullreq: bitbucket:22
+        :tickets: 3078
+
+        Added kw argument ``postgresql_regconfig`` to the
+        :meth:`.Operators.match` operator, allows the "reg config" argument
+        to be specified to the ``to_tsquery()`` function emitted.
+        Pull request courtesy Jonathan Vanasco.
+
+    .. change::
+        :tags: feature, postgresql
+        :versions: 1.0.0
         :pullreq: github:101
 
         Added support for Postgresql JSONB via :class:`.JSONB`.  Pull request

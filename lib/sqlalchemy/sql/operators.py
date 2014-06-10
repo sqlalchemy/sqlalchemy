@@ -758,8 +758,8 @@ def notcontains_op(a, b, escape=None):
     return ~a.contains(b, escape=escape)
 
 
-def match_op(a, b):
-    return a.match(b)
+def match_op(a, b, **kw):
+    return a.match(b, **kw)
 
 
 def comma_op(a, b):
