@@ -15,6 +15,18 @@
     :version: 0.9.5
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3080
+
+        Modified the behavior of :func:`.orm.load_only` such that primary key
+        columns are always added to the list of columns to be "undeferred";
+        otherwise, the ORM can't load the row's identity.   Apparently,
+        one can defer the mapped primary keys and the ORM will fail, that
+        hasn't been changed.  But as load_only is essentially saying
+        "defer all but X", it's more critical that PK cols not be part of this
+        deferral.
+
+    .. change::
         :tags: feature, examples
         :pullreq: bitbucket: 21
 
