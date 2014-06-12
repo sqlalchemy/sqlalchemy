@@ -582,7 +582,8 @@ def load_only(loadopt, *attrs):
                 {"deferred": False, "instrument": True}
             )
     cloned.set_column_strategy("*",
-                    {"deferred": True, "instrument": True})
+                    {"deferred": True, "instrument": True},
+                    {"undefer_pks": True})
     return cloned
 
 @load_only._add_unbound_fn

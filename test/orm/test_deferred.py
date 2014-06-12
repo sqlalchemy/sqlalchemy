@@ -3,7 +3,7 @@ from sqlalchemy import testing, util
 from sqlalchemy.orm import mapper, deferred, defer, undefer, Load, \
     load_only, undefer_group, create_session, synonym, relationship, Session,\
     joinedload, defaultload
-from sqlalchemy.testing import eq_, AssertsCompiledSQL
+from sqlalchemy.testing import eq_, AssertsCompiledSQL, assert_raises_message
 from test.orm import _fixtures
 from sqlalchemy.orm import strategies
 
@@ -36,6 +36,24 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             ("SELECT orders.description AS orders_description "
              "FROM orders WHERE orders.id = :param_1",
              {'param_1':3})])
+
+    def test_defer_primary_key(self):
+        """what happens when we try to defer the primary key?"""
+
+        Order, orders = self.classes.Order, self.tables.orders
+
+
+        mapper(Order, orders, order_by=orders.c.id, properties={
+            'id': deferred(orders.c.id)})
+
+        # right now, it's not that graceful :)
+        q = create_session().query(Order)
+        assert_raises_message(
+            sa.exc.NoSuchColumnError,
+            "Could not locate",
+            q.first
+        )
+
 
     def test_unsaved(self):
         """Deferred loading does not kick in when just PK cols are set."""
@@ -431,7 +449,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             "LEFT OUTER JOIN orders AS orders_1 ON users.id = orders_1.user_id"
             )
 
-    def test_load_only(self):
+    def test_load_only_no_pk(self):
         orders, Order = self.tables.orders, self.classes.Order
 
         mapper(Order, orders)
@@ -439,8 +457,19 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         sess = create_session()
         q = sess.query(Order).options(load_only("isopen", "description"))
         self.assert_compile(q,
-            "SELECT orders.description AS orders_description, "
+            "SELECT orders.id AS orders_id, "
+            "orders.description AS orders_description, "
             "orders.isopen AS orders_isopen FROM orders")
+
+    def test_load_only_no_pk_rt(self):
+        orders, Order = self.tables.orders, self.classes.Order
+
+        mapper(Order, orders)
+
+        sess = create_session()
+        q = sess.query(Order).order_by(Order.id).\
+                options(load_only("isopen", "description"))
+        eq_(q.first(), Order(id=1))
 
     def test_load_only_w_deferred(self):
         orders, Order = self.tables.orders, self.classes.Order
@@ -456,6 +485,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
                 )
         self.assert_compile(q,
             "SELECT orders.description AS orders_description, "
+            "orders.id AS orders_id, "
             "orders.user_id AS orders_user_id, "
             "orders.isopen AS orders_isopen FROM orders")
 
@@ -522,7 +552,8 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
                 )
 
         self.assert_compile(q,
-            "SELECT users.name AS users_name, orders.id AS orders_id, "
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "orders.id AS orders_id, "
             "addresses.id AS addresses_id, addresses.email_address "
             "AS addresses_email_address FROM users, orders, addresses"
             )
@@ -554,7 +585,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         # hmmmm joinedload seems to be forcing users.id into here...
         self.assert_compile(
             q,
-            "SELECT users.name AS users_name, users.id AS users_id, "
+            "SELECT users.id AS users_id, users.name AS users_name, "
             "addresses_1.id AS addresses_1_id, "
             "addresses_1.email_address AS addresses_1_email_address, "
             "orders_1.id AS orders_1_id FROM users "
