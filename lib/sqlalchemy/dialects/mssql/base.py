@@ -1232,6 +1232,8 @@ class MSDialect(default.DefaultDialect):
         if self.server_version_info >= MS_2005_VERSION and \
                     'implicit_returning' not in self.__dict__:
             self.implicit_returning = True
+        if self.server_version_info >= MS_2008_VERSION:
+            self.supports_multivalues_insert = True
 
     def _get_default_schema_name(self, connection):
         query = sql.text("""
