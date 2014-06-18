@@ -12,6 +12,17 @@
     :version: 0.8.7
 
     .. change::
+        :tags: bug, mysql
+        :versions: 1.0.0, 0.9.5
+        :tickets: 3085
+
+        Fixed bug where column names added to ``mysql_length`` parameter
+        on an index needed to have the same quoting for quoted names in
+        order to be recognized.  The fix makes the quotes optional but
+        also provides the old behavior for backwards compatibility with those
+        using the workaround.
+
+    .. change::
         :tags: bug, declarative
         :versions: 1.0.0, 0.9.5
         :tickets: 3062
