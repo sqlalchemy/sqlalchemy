@@ -1673,9 +1673,13 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
                 # length value can be a (column_name --> integer value) mapping
                 # specifying the prefix length for each column of the index
                 columns = ', '.join(
-                    ('%s(%d)' % (col, length[col])
-                     if col in length else '%s' % col)
-                    for col in columns
+                    '%s(%d)' % (expr, length[col.name]) if col.name in length
+                    else
+                    (
+                        '%s(%d)' % (expr, length[expr]) if expr in length
+                        else '%s' % expr
+                    )
+                    for col, expr in zip(index.expressions, columns)
                 )
             else:
                 # or can be an integer value specifying the same
