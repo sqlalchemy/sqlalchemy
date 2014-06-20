@@ -71,7 +71,9 @@ class TestORMInspection(_fixtures.FixtureTest):
         user_table = self.tables.users
         addresses_table = self.tables.addresses
         mapper(Foo, user_table, with_polymorphic=(Bar,))
-        mapper(Bar, addresses_table, inherits=Foo)
+        mapper(Bar, addresses_table, inherits=Foo, properties={
+                'address_id': addresses_table.c.id
+            })
         i1 = inspect(Foo)
         i2 = inspect(Foo)
         assert i1.selectable is i2.selectable

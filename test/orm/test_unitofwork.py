@@ -1408,7 +1408,9 @@ class SaveTest(_fixtures.FixtureTest):
 
         # define a mapper for AddressUser that inherits the User.mapper, and
         # joins on the id column
-        mapper(AddressUser, addresses, inherits=m1)
+        mapper(AddressUser, addresses, inherits=m1, properties={
+                'address_id': addresses.c.id
+            })
 
         au = AddressUser(name='u', email_address='u@e')
 
@@ -2344,12 +2346,12 @@ class InheritingRowSwitchTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('parent', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('pid', Integer, primary_key=True),
             Column('pdata', String(30))
         )
         Table('child', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('pid', Integer, ForeignKey('parent.id')),
+            Column('cid', Integer, primary_key=True),
+            Column('pid', Integer, ForeignKey('parent.pid')),
             Column('cdata', String(30))
         )
 
@@ -2371,27 +2373,27 @@ class InheritingRowSwitchTest(fixtures.MappedTest):
         mapper(C, child, inherits=P)
 
         sess = create_session()
-        c1 = C(id=1, pdata='c1', cdata='c1')
+        c1 = C(pid=1, cid=1, pdata='c1', cdata='c1')
         sess.add(c1)
         sess.flush()
 
         # establish a row switch between c1 and c2.
         # c2 has no value for the "child" table
-        c2 = C(id=1, pdata='c2')
+        c2 = C(pid=1, cid=1, pdata='c2')
         sess.add(c2)
         sess.delete(c1)
 
         self.assert_sql_execution(testing.db, sess.flush,
-            CompiledSQL("UPDATE parent SET pdata=:pdata WHERE parent.id = :parent_id",
-                {'pdata':'c2', 'parent_id':1}
+            CompiledSQL("UPDATE parent SET pdata=:pdata WHERE parent.pid = :parent_pid",
+                {'pdata':'c2', 'parent_pid':1}
             ),
 
             # this fires as of [ticket:1362], since we synchronzize
             # PK/FKs on UPDATES.  c2 is new so the history shows up as
             # pure added, update occurs.  If a future change limits the
             # sync operation during _save_obj().update, this is safe to remove again.
-            CompiledSQL("UPDATE child SET pid=:pid WHERE child.id = :child_id",
-                {'pid':1, 'child_id':1}
+            CompiledSQL("UPDATE child SET pid=:pid WHERE child.cid = :child_cid",
+                {'pid':1, 'child_cid':1}
             )
         )
 

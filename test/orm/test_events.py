@@ -41,7 +41,8 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             pass
 
         mapper(A, users)
-        mapper(B, addresses, inherits=A)
+        mapper(B, addresses, inherits=A,
+            properties={'address_id': addresses.c.id})
 
         def init_a(target, args, kwargs):
             canary.append(('init_a', target))
@@ -220,7 +221,8 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             pass
 
         mapper(User, users)
-        mapper(AdminUser, addresses, inherits=User)
+        mapper(AdminUser, addresses, inherits=User,
+            properties={'address_id': addresses.c.id})
 
         canary1 = self.listen_all(User, propagate=True)
         canary2 = self.listen_all(User)
@@ -264,7 +266,8 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         class AdminUser(User):
             pass
-        mapper(AdminUser, addresses, inherits=User)
+        mapper(AdminUser, addresses, inherits=User,
+            properties={'address_id': addresses.c.id})
         canary3 = self.listen_all(AdminUser)
 
         sess = create_session()
@@ -853,7 +856,8 @@ class RemovalTest(_fixtures.FixtureTest):
             pass
 
         mapper(User, users)
-        mapper(AdminUser, addresses, inherits=User)
+        mapper(AdminUser, addresses, inherits=User,
+            properties={'address_id': addresses.c.id})
 
         fn = Mock()
         event.listen(User.name, "set", fn, propagate=True)
@@ -1594,7 +1598,8 @@ class MapperExtensionTest(_fixtures.FixtureTest):
             pass
 
         mapper(User, users, extension=Ext())
-        mapper(AdminUser, addresses, inherits=User)
+        mapper(AdminUser, addresses, inherits=User,
+            properties={'address_id': addresses.c.id})
 
         sess = create_session()
         am = AdminUser(name='au1', email_address='au1@e1')
@@ -1670,7 +1675,8 @@ class MapperExtensionTest(_fixtures.FixtureTest):
 
         ext = Ext()
         mapper(User, users, extension=ext)
-        mapper(AdminUser, addresses, inherits=User, extension=ext)
+        mapper(AdminUser, addresses, inherits=User, extension=ext,
+            properties={'address_id': addresses.c.id})
 
         sess = create_session()
         am = AdminUser(name="au1", email_address="au1@e1")

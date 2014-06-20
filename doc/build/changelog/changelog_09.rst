@@ -15,6 +15,23 @@
     :version: 0.9.5
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3042
+        :versions: 1.0.0
+
+        Additional checks have been added for the case where an inheriting
+        mapper is implicitly combining one of its column-based attributes
+        with that of the parent, where those columns normally don't necessarily
+        share the same value.  This is an extension of an existing check that
+        was added via :ticket:`1892`; however this new check emits only a
+        warning, instead of an exception, to allow for applications that may
+        be relying upon the existing behavior.
+
+        .. seealso::
+
+            :ref:`faq_combining_columns`
+
+    .. change::
         :tags: bug, sql
         :tickets: 3023
         :versions: 1.0.0

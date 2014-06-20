@@ -348,7 +348,9 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         class Foo(User):pass
         mapper(User, users)
-        mapper(Foo, addresses, inherits=User)
+        mapper(Foo, addresses, inherits=User, properties={
+                'address_id': addresses.c.id
+            })
         assert getattr(Foo().__class__, 'name').impl is not None
 
     def test_deferred_subclass_attribute_instrument(self):
@@ -359,7 +361,9 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         class Foo(User):pass
         mapper(User, users)
         configure_mappers()
-        mapper(Foo, addresses, inherits=User)
+        mapper(Foo, addresses, inherits=User, properties={
+                'address_id': addresses.c.id
+            })
         assert getattr(Foo().__class__, 'name').impl is not None
 
     def test_check_descriptor_as_method(self):
@@ -584,7 +588,9 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         class SubUser(User):
             pass
         m = mapper(User, users)
-        m2 = mapper(SubUser, addresses, inherits=User)
+        m2 = mapper(SubUser, addresses, inherits=User, properties={
+                'address_id': addresses.c.id
+            })
         m3 = mapper(Address, addresses, properties={
             'foo':relationship(m2)
         })
@@ -697,7 +703,9 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             pass
         m1 = mapper(User, users, polymorphic_identity='user')
         m2 = mapper(AddressUser, addresses, inherits=User,
-                        polymorphic_identity='address')
+                        polymorphic_identity='address', properties={
+                'address_id': addresses.c.id
+            })
         m3 = mapper(AddressUser, addresses, non_primary=True)
         assert m3._identity_class is m2._identity_class
         eq_(
