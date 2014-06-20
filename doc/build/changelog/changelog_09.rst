@@ -15,6 +15,18 @@
     :version: 0.9.5
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3023
+        :versions: 1.0.0
+
+        The :paramref:`.Column.nullable` flag is implicitly set to ``False``
+        when that :class:`.Column` is referred to in an explicit
+        :class:`.PrimaryKeyConstraint` for that table.  This behavior now
+        matches that of when the :class:`.Column` itself has the
+        :paramref:`.Column.primary_key` flag set to ``True``, which is
+        intended to be an exactly equivalent case.
+
+    .. change::
         :tags: enhancement, postgresql
         :tickets: 3002
 
