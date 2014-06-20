@@ -1053,6 +1053,24 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         eq_(list(t.primary_key), [t.c.b, t.c.c])
 
+    def test_pk_always_flips_nullable(self):
+        m = MetaData()
+
+        t1 = Table('t1', m, Column('x', Integer), PrimaryKeyConstraint('x'))
+
+        t2 = Table('t2', m, Column('x', Integer, primary_key=True))
+
+        eq_(list(t1.primary_key), [t1.c.x])
+
+        eq_(list(t2.primary_key), [t2.c.x])
+
+        assert t1.c.x.primary_key
+        assert t2.c.x.primary_key
+
+        assert not t2.c.x.nullable
+        assert not t1.c.x.nullable
+
+
 class SchemaTypeTest(fixtures.TestBase):
     class MyType(sqltypes.SchemaType, sqltypes.TypeEngine):
         column = None

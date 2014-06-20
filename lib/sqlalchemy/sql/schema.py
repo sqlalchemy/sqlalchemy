@@ -2652,6 +2652,7 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
 
         for c in self.columns:
             c.primary_key = True
+            c.nullable = False
         self.columns.extend(table_pks)
 
     def _reload(self, columns):
