@@ -29,6 +29,7 @@
     .. change::
         :tags: enhancement, postgresql
         :tickets: 3002
+        :versions: 1.0.0
 
         Added a new type :class:`.postgresql.OID` to the Postgresql dialect.
         While "oid" is generally a private type within PG that is not exposed
@@ -39,6 +40,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 3080
+        :versions: 1.0.0
 
         Modified the behavior of :func:`.orm.load_only` such that primary key
         columns are always added to the list of columns to be "undeferred";
@@ -51,6 +53,7 @@
     .. change::
         :tags: feature, examples
         :pullreq: bitbucket: 21
+        :versions: 1.0.0
 
         Added a new example illustrating materialized paths, using the
         latest relationship features.   Example courtesy Jack Zhou.
@@ -58,6 +61,7 @@
     .. change::
         :tags: bug, testsuite
         :pullreq: github: 95
+        :versions: 1.0.0
 
         In public test suite, shanged to use of ``String(40)`` from
         less-supported ``Text`` in ``StringTest.test_literal_backslashes``.
