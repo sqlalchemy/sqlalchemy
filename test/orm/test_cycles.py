@@ -275,16 +275,14 @@ class InheritTestTwo(fixtures.MappedTest):
     def define_tables(cls, metadata):
         Table('a', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('data', String(30)),
             Column('cid', Integer, ForeignKey('c.id')))
 
         Table('b', metadata,
             Column('id', Integer, ForeignKey("a.id"), primary_key=True),
-            Column('data', String(30)))
+            )
 
         Table('c', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('data', String(30)),
             Column('aid', Integer,
                    ForeignKey('a.id', use_alter=True, name="foo")))
 

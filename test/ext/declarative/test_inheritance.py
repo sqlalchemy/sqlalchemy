@@ -76,7 +76,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         class Bar(Foo):
 
             __tablename__ = 'bar'
-            id = Column('id', Integer, primary_key=True)
+            bar_id = Column('id', Integer, primary_key=True)
             foo_id = Column('foo_id', Integer)
             __mapper_args__ = {'inherit_condition': foo_id == Foo.id}
 

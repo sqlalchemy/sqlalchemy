@@ -1605,13 +1605,22 @@ class Mapper(_InspectionAttr):
         prop = self._props.get(key, None)
 
         if isinstance(prop, properties.ColumnProperty):
-            if prop.parent is self:
-                raise sa_exc.InvalidRequestError(
-                        "Implicitly combining column %s with column "
-                        "%s under attribute '%s'.  Please configure one "
-                        "or more attributes for these same-named columns "
-                        "explicitly."
-                         % (prop.columns[-1], column, key))
+            if (
+                not self._inherits_equated_pairs or
+                (prop.columns[0], column) not in self._inherits_equated_pairs
+                ) and \
+                    not prop.columns[0].shares_lineage(column) and \
+                    prop.columns[0] is not self.version_id_col and \
+                    column is not self.version_id_col:
+                warn_only = prop.parent is not self
+                msg = ("Implicitly combining column %s with column "
+                      "%s under attribute '%s'.  Please configure one "
+                      "or more attributes for these same-named columns "
+                      "explicitly." % (prop.columns[-1], column, key))
+                if warn_only:
+                    util.warn(msg)
+                else:
+                    raise sa_exc.InvalidRequestError(msg)
 
             # existing properties.ColumnProperty from an inheriting
             # mapper. make a copy and append our column to it

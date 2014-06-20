@@ -1478,22 +1478,22 @@ class TypeMatchTest(fixtures.MappedTest):
         Table("a", metadata,
               Column('aid', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
-              Column('data', String(30)))
+              Column('adata', String(30)))
         Table("b", metadata,
                Column('bid', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
                Column("a_id", Integer, ForeignKey("a.aid")),
-               Column('data', String(30)))
+               Column('bdata', String(30)))
         Table("c", metadata,
               Column('cid', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
               Column("b_id", Integer, ForeignKey("b.bid")),
-              Column('data', String(30)))
+              Column('cdata', String(30)))
         Table("d", metadata,
               Column('did', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
               Column("a_id", Integer, ForeignKey("a.aid")),
-              Column('data', String(30)))
+              Column('ddata', String(30)))
 
     def test_o2m_oncascade(self):
         a, c, b = (self.tables.a,

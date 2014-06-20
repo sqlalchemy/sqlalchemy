@@ -505,6 +505,80 @@ From there, all information about the class can be acquired using such methods a
   this differs from :attr:`.Mapper.mapped_table` in the case of a mapper mapped
   using inheritance to a composed selectable.
 
+.. _faq_combining_columns:
+
+I'm getting a warning or error about "Implicitly combining column X under attribute Y"
+--------------------------------------------------------------------------------------
+
+This condition refers to when a mapping contains two columns that are being
+mapped under the same attribute name due to their name, but there's no indication
+that this is intentional.  A mapped class needs to have explicit names for
+every attribute that is to store an independent value; when two columns have the
+same name and aren't disambiguated, they fall under the same attribute and
+the effect is that the value from one column is **copied** into the other, based
+on which column was assigned to the attribute first.
+
+This behavior is often desirable and is allowed without warning in the case
+where the two columns are linked together via a foreign key relationship
+within an inheritance mapping.   When the warning or exception occurs, the
+issue can be resolved by either assigning the columns to differently-named
+attributes, or if combining them together is desired, by using
+:func:`.column_property` to make this explicit.
+
+Given the example as follows::
+
+    from sqlalchemy import Integer, Column, ForeignKey
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+    class A(Base):
+        __tablename__ = 'a'
+
+        id = Column(Integer, primary_key=True)
+
+    class B(A):
+        __tablename__ = 'b'
+
+        id = Column(Integer, primary_key=True)
+        a_id = Column(Integer, ForeignKey('a.id'))
+
+As of SQLAlchemy version 0.9.5, the above condition is detected, and will
+warn that the ``id`` column of ``A`` and ``B`` is being combined under
+the same-named attribute ``id``, which above is a serious issue since it means
+that a ``B`` object's primary key will always mirror that of its ``A``.
+
+A mapping which resolves this is as follows::
+
+    class A(Base):
+        __tablename__ = 'a'
+
+        id = Column(Integer, primary_key=True)
+
+    class B(A):
+        __tablename__ = 'b'
+
+        b_id = Column('id', Integer, primary_key=True)
+        a_id = Column(Integer, ForeignKey('a.id'))
+
+Suppose we did want ``A.id`` and ``B.id`` to be mirrors of each other, despite
+the fact that ``B.a_id`` is where ``A.id`` is related.  We could combine
+them together using :func:`.column_property`::
+
+    class A(Base):
+        __tablename__ = 'a'
+
+        id = Column(Integer, primary_key=True)
+
+    class B(A):
+        __tablename__ = 'b'
+
+        # probably not what you want, but this is a demonstration
+        id = column_property(Column(Integer, primary_key=True), A.id)
+        a_id = Column(Integer, ForeignKey('a.id'))
+
+
+
 I'm using Declarative and setting primaryjoin/secondaryjoin using an ``and_()`` or ``or_()``, and I am getting an error message about foreign keys.
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

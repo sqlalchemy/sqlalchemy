@@ -154,11 +154,11 @@ class InheritTest3(fixtures.MappedTest):
 
         bar = Table('bar', metadata,
             Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
-            Column('data', String(20)))
+            Column('bar_data', String(20)))
 
         blub = Table('blub', metadata,
             Column('id', Integer, ForeignKey('bar.id'), primary_key=True),
-            Column('data', String(20)))
+            Column('blub_data', String(20)))
 
         bar_foo = Table('bar_foo', metadata,
             Column('bar_id', Integer, ForeignKey('bar.id')),

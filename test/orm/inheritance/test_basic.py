@@ -28,12 +28,12 @@ class O2MTest(fixtures.MappedTest):
 
         bar = Table('bar', metadata,
             Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
-            Column('data', String(20)))
+            Column('bar_data', String(20)))
 
         blub = Table('blub', metadata,
             Column('id', Integer, ForeignKey('bar.id'), primary_key=True),
             Column('foo_id', Integer, ForeignKey('foo.id'), nullable=False),
-            Column('data', String(20)))
+            Column('blub_data', String(20)))
 
     def test_basic(self):
         class Foo(object):
@@ -184,7 +184,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
                 Column('x', String(10)),
                 Column('q', String(10)))
         t2 = Table('t2', metadata,
-                Column('id', Integer, primary_key=True,
+                Column('t2id', Integer, primary_key=True,
                             test_needs_autoincrement=True),
                 Column('y', String(10)),
                 Column('xid', ForeignKey('t1.id')))
@@ -583,7 +583,8 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
                         polymorphic_identity='a')
         mapper(B, table_b, inherits=A,
                         polymorphic_on=table_b.c.class_name,
-                        polymorphic_identity='b')
+                        polymorphic_identity='b',
+                        properties=dict(class_name=[table_a.c.class_name, table_b.c.class_name]))
         mapper(C, table_c, inherits=B,
                         polymorphic_identity='c')
         mapper(D, inherits=B,
@@ -854,13 +855,13 @@ class GetTest(fixtures.MappedTest):
 
         bar = Table('bar', metadata,
             Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
-            Column('data', String(20)))
+            Column('bar_data', String(20)))
 
         blub = Table('blub', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('blub_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('foo_id', Integer, ForeignKey('foo.id')),
             Column('bar_id', Integer, ForeignKey('bar.id')),
-            Column('data', String(20)))
+            Column('blub_data', String(20)))
 
     @classmethod
     def setup_classes(cls):
@@ -957,7 +958,7 @@ class EagerLazyTest(fixtures.MappedTest):
                     Column('data', String(30)))
         bar = Table('bar', metadata,
                     Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
-                    Column('data', String(30)))
+                    Column('bar_data', String(30)))
 
         bar_foo = Table('bar_foo', metadata,
                         Column('bar_id', Integer, ForeignKey('bar.id')),
@@ -1175,9 +1176,11 @@ class JoinedNoFKSortingTest(fixtures.MappedTest):
         A, B, C = cls.classes.A, cls.classes.B, cls.classes.C
         mapper(A, cls.tables.a)
         mapper(B, cls.tables.b, inherits=A,
-                    inherit_condition=cls.tables.a.c.id == cls.tables.b.c.id)
+                    inherit_condition=cls.tables.a.c.id == cls.tables.b.c.id,
+                    inherit_foreign_keys=cls.tables.b.c.id)
         mapper(C, cls.tables.c, inherits=A,
-                    inherit_condition=cls.tables.a.c.id == cls.tables.c.c.id)
+                    inherit_condition=cls.tables.a.c.id == cls.tables.c.c.id,
+                    inherit_foreign_keys=cls.tables.c.c.id)
 
     def test_ordering(self):
         B, C = self.classes.B, self.classes.C
@@ -1345,7 +1348,7 @@ class DistinctPKTest(fixtures.MappedTest):
                 )
 
         employee_table = Table("employees", metadata,
-                Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
+                Column("eid", Integer, primary_key=True, test_needs_autoincrement=True),
                 Column("salary", Integer),
                 Column("person_id", Integer, ForeignKey("persons.id")),
                 )
@@ -1375,18 +1378,19 @@ class DistinctPKTest(fixtures.MappedTest):
         person_mapper = mapper(Person, person_table)
         mapper(Employee, employee_table, inherits=person_mapper,
                         properties={'pid':person_table.c.id,
-                                    'eid':employee_table.c.id})
+                                    'eid':employee_table.c.eid})
         self._do_test(False)
 
     def test_explicit_composite_pk(self):
         person_mapper = mapper(Person, person_table)
         mapper(Employee, employee_table,
                     inherits=person_mapper,
-                    primary_key=[person_table.c.id, employee_table.c.id])
+                    properties=dict(id=[employee_table.c.eid, person_table.c.id]),
+                    primary_key=[person_table.c.id, employee_table.c.eid])
         assert_raises_message(sa_exc.SAWarning,
                                     r"On mapper Mapper\|Employee\|employees, "
                                     "primary key column 'persons.id' is being "
-                                    "combined with distinct primary key column 'employees.id' "
+                                    "combined with distinct primary key column 'employees.eid' "
                                     "in attribute 'id'.  Use explicit properties to give "
                                     "each column its own mapped attribute name.",
             self._do_test, True
@@ -1487,7 +1491,7 @@ class OverrideColKeyTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        global base, subtable
+        global base, subtable, subtable_two
 
         base = Table('base', metadata,
             Column('base_id', Integer, primary_key=True, test_needs_autoincrement=True),
@@ -1499,6 +1503,12 @@ class OverrideColKeyTest(fixtures.MappedTest):
             Column('base_id', Integer, ForeignKey('base.base_id'), primary_key=True),
             Column('subdata', String(255))
         )
+        subtable_two = Table('subtable_two', metadata,
+            Column('base_id', Integer, primary_key=True),
+            Column('fk_base_id', Integer, ForeignKey('base.base_id')),
+            Column('subdata', String(255))
+        )
+
 
     def test_plain(self):
         # control case
@@ -1609,6 +1619,23 @@ class OverrideColKeyTest(fixtures.MappedTest):
         # an exception in 0.7 due to the implicit conflict.
         assert_raises(sa_exc.InvalidRequestError, go)
 
+    def test_pk_fk_different(self):
+        class Base(object):
+            pass
+        class Sub(Base):
+            pass
+
+        mapper(Base, base)
+
+        def go():
+            mapper(Sub, subtable_two, inherits=Base)
+        assert_raises_message(
+            sa_exc.SAWarning,
+            "Implicitly combining column base.base_id with "
+            "column subtable_two.base_id under attribute 'base_id'",
+            go
+        )
+
     def test_plain_descriptor(self):
         """test that descriptors prevent inheritance from propigating properties to subclasses."""
 
@@ -1716,12 +1743,12 @@ class OptimizedLoadTest(fixtures.MappedTest):
         Table('sub', metadata,
             Column('id', Integer, ForeignKey('base.id'), primary_key=True),
             Column('sub', String(50)),
-            Column('counter', Integer, server_default="1"),
-            Column('counter2', Integer, server_default="1")
+            Column('subcounter', Integer, server_default="1"),
+            Column('subcounter2', Integer, server_default="1")
         )
         Table('subsub', metadata,
             Column('id', Integer, ForeignKey('sub.id'), primary_key=True),
-            Column('counter2', Integer, server_default="1")
+            Column('subsubcounter2', Integer, server_default="1")
         )
         Table('with_comp', metadata,
             Column('id', Integer, ForeignKey('base.id'), primary_key=True),
@@ -1743,7 +1770,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
         mapper(Base, base)
         mapper(JoinBase, base.outerjoin(sub), properties=util.OrderedDict(
                 [('id', [base.c.id, sub.c.id]),
-                ('counter', [base.c.counter, sub.c.counter])])
+                ('counter', [base.c.counter, sub.c.subcounter])])
             )
         mapper(SubJoinBase, inherits=JoinBase)
 
@@ -1765,11 +1792,10 @@ class OptimizedLoadTest(fixtures.MappedTest):
             go,
             CompiledSQL(
                 "SELECT base.id AS base_id, sub.id AS sub_id, "
-                "base.counter AS base_counter, sub.counter AS sub_counter, "
-                "base.data AS base_data, "
-                "base.type AS base_type, sub.sub AS sub_sub, "
-                "sub.counter2 AS sub_counter2 FROM base "
-                "LEFT OUTER JOIN sub ON base.id = sub.id "
+                "base.counter AS base_counter, sub.subcounter AS sub_subcounter, "
+                "base.data AS base_data, base.type AS base_type, "
+                "sub.sub AS sub_sub, sub.subcounter2 AS sub_subcounter2 "
+                "FROM base LEFT OUTER JOIN sub ON base.id = sub.id "
                 "WHERE base.id = :param_1",
                 {'param_1': sjb_id}
             ),
@@ -1914,14 +1940,14 @@ class OptimizedLoadTest(fixtures.MappedTest):
                 ),
         )
         def go():
-            eq_( s1.counter2, 1 )
+            eq_( s1.subcounter2, 1 )
         self.assert_sql_execution(
             testing.db,
             go,
             CompiledSQL(
-                "SELECT sub.counter AS sub_counter, base.counter AS base_counter, "
-                "sub.counter2 AS sub_counter2 FROM base JOIN sub ON "
-                "base.id = sub.id WHERE base.id = :param_1",
+                "SELECT base.counter AS base_counter, sub.subcounter AS sub_subcounter, "
+                "sub.subcounter2 AS sub_subcounter2 FROM base JOIN sub "
+                "ON base.id = sub.id WHERE base.id = :param_1",
                 lambda ctx:{'param_1': s1.id}
             ),
         )
@@ -1939,19 +1965,19 @@ class OptimizedLoadTest(fixtures.MappedTest):
 
         s1 = Sub()
         assert m._optimized_get_statement(attributes.instance_state(s1),
-                                ['counter2']) is None
+                                ['subcounter2']) is None
 
         # loads s1.id as None
         eq_(s1.id, None)
 
         # this now will come up with a value of None for id - should reject
         assert m._optimized_get_statement(attributes.instance_state(s1),
-                                ['counter2']) is None
+                                ['subcounter2']) is None
 
         s1.id = 1
         attributes.instance_state(s1)._commit_all(s1.__dict__, None)
         assert m._optimized_get_statement(attributes.instance_state(s1),
-                                ['counter2']) is not None
+                                ['subcounter2']) is not None
 
     def test_load_expired_on_pending_twolevel(self):
         base, sub, subsub = (self.tables.base,
@@ -1970,7 +1996,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
         mapper(Sub, sub, inherits=Base, polymorphic_identity='sub')
         mapper(SubSub, subsub, inherits=Sub, polymorphic_identity='subsub')
         sess = Session()
-        s1 = SubSub(data='s1', counter=1)
+        s1 = SubSub(data='s1', counter=1, subcounter=2)
         sess.add(s1)
         self.assert_sql_execution(
                 testing.db,
@@ -1981,9 +2007,9 @@ class OptimizedLoadTest(fixtures.MappedTest):
                     [{'data':'s1','type':'subsub','counter':1}]
                 ),
                 CompiledSQL(
-                    "INSERT INTO sub (id, sub, counter) VALUES "
-                    "(:id, :sub, :counter)",
-                    lambda ctx:[{'counter': 1, 'sub': None, 'id': s1.id}]
+                    "INSERT INTO sub (id, sub, subcounter) VALUES "
+                    "(:id, :sub, :subcounter)",
+                    lambda ctx:[{'subcounter': 2, 'sub': None, 'id': s1.id}]
                 ),
                 CompiledSQL(
                     "INSERT INTO subsub (id) VALUES (:id)",
@@ -1993,14 +2019,14 @@ class OptimizedLoadTest(fixtures.MappedTest):
 
         def go():
             eq_(
-                s1.counter2, 1
+                s1.subcounter2, 1
             )
         self.assert_sql_execution(
             testing.db,
             go,
             CompiledSQL(
-                "SELECT subsub.counter2 AS subsub_counter2, "
-                "sub.counter2 AS sub_counter2 FROM subsub, sub "
+                "SELECT subsub.subsubcounter2 AS subsub_subsubcounter2, "
+                "sub.subcounter2 AS sub_subcounter2 FROM subsub, sub "
                 "WHERE :param_1 = sub.id AND sub.id = subsub.id",
                 lambda ctx:{'param_1': s1.id}
             ),
