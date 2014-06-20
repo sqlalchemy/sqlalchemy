@@ -409,6 +409,15 @@ class MACADDR(sqltypes.TypeEngine):
 PGMacAddr = MACADDR
 
 
+class OID(sqltypes.TypeEngine):
+    """Provide the Postgresql OID type.
+
+    .. versionadded:: 0.9.5
+
+    """
+    __visit_name__ = "OID"
+
+
 class TIMESTAMP(sqltypes.TIMESTAMP):
     def __init__(self, timezone=False, precision=None):
         super(TIMESTAMP, self).__init__(timezone=timezone)
@@ -1080,6 +1089,7 @@ ischema_names = {
     'bit': BIT,
     'bit varying': BIT,
     'macaddr': MACADDR,
+    'oid': OID,
     'double precision': DOUBLE_PRECISION,
     'timestamp': TIMESTAMP,
     'timestamp with time zone': TIMESTAMP,
@@ -1352,6 +1362,9 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_MACADDR(self, type_):
         return "MACADDR"
+
+    def visit_OID(self, type_):
+        return "OID"
 
     def visit_FLOAT(self, type_):
         if not type_.precision:

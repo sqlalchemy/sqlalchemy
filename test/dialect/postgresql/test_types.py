@@ -320,6 +320,19 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         finally:
             metadata.drop_all()
 
+class OIDTest(fixtures.TestBase):
+    __only_on__ = 'postgresql'
+
+    @testing.provide_metadata
+    def test_reflection(self):
+        metadata = self.metadata
+        Table('table', metadata, Column('x', Integer),
+                            Column('y', postgresql.OID))
+        metadata.create_all()
+        m2 = MetaData()
+        t2 = Table('table', m2, autoload_with=testing.db, autoload=True)
+        assert isinstance(t2.c.y.type, postgresql.OID)
+
 class NumericInterpretationTest(fixtures.TestBase):
     __only_on__ = 'postgresql'
 
