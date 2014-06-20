@@ -66,7 +66,7 @@
 
     .. change::
         :tags: bug, ext
-        :versions: 0.9.5
+        :versions: 0.9.5, 1.0.0
         :tickets: 3051
 
         Fixed bug in mutable extension where :class:`.MutableDict` did not
@@ -74,7 +74,7 @@
 
     .. change::
         :tags: bug, mysql
-        :versions: 0.9.5
+        :versions: 0.9.5, 1.0.0
         :pullreq: bitbucket:15
 
         Added support for reflecting tables where an index includes
@@ -84,7 +84,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 3047
-        :versions: 0.9.5
+        :versions: 0.9.5, 1.0.0
 
         Fixed ORM bug where the :func:`.class_mapper` function would mask
         AttributeErrors or KeyErrors that should raise during mapper
@@ -94,7 +94,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 3045
-        :versions: 0.9.5
+        :versions: 0.9.5, 1.0.0
 
         Fixed bug where :meth:`.Table.update` and :meth:`.Table.delete`
         would produce an empty WHERE clause when an empty :func:`.and_()`
@@ -104,7 +104,7 @@
     .. change::
         :tags: bug, postgresql
         :pullreq: bitbucket:13
-        :versions: 0.9.5
+        :versions: 0.9.5, 1.0.0
 
         Added a new "disconnect" message "connection has been closed unexpectedly".
         This appears to be related to newer versions of SSL.
