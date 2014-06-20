@@ -15,6 +15,16 @@
     :version: 0.9.5
 
     .. change::
+        :tags: enhancement, postgresql
+        :tickets: 3002
+
+        Added a new type :class:`.postgresql.OID` to the Postgresql dialect.
+        While "oid" is generally a private type within PG that is not exposed
+        in modern versions, there are some PG use cases such as large object
+        support where these types might be exposed, as well as within some
+        user-reported schema reflection use cases.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3080
 
