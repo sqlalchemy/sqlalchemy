@@ -40,14 +40,14 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
             testing.db,
             lambda: metadata.create_all(checkfirst=False),
             CompiledSQL('CREATE TABLE employees ('
-                    'id INTEGER, '
-                    'soc VARCHAR(40), '
+                    'id INTEGER NOT NULL, '
+                    'soc VARCHAR(40) NOT NULL, '
                     'name VARCHAR(30), '
                     'PRIMARY KEY (id, soc)'
                     ')'
             ),
             CompiledSQL('CREATE TABLE elements ('
-                    'id INTEGER, '
+                    'id INTEGER NOT NULL, '
                     'stuff VARCHAR(30), '
                     'emp_id INTEGER, '
                     'emp_soc VARCHAR(40), '

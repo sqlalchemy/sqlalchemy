@@ -117,7 +117,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             PrimaryKeyConstraint('data'))
 
         self.assert_compile(schema.CreateTable(tbl),
-            "CREATE TABLE testtbl (data VARCHAR(255), PRIMARY KEY (data))")
+            "CREATE TABLE testtbl (data VARCHAR(255) NOT NULL, PRIMARY KEY (data))")
 
     def test_create_pk_with_using(self):
         m = MetaData()
@@ -125,7 +125,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             PrimaryKeyConstraint('data', mysql_using='btree'))
 
         self.assert_compile(schema.CreateTable(tbl),
-            "CREATE TABLE testtbl (data VARCHAR(255), "
+            "CREATE TABLE testtbl (data VARCHAR(255) NOT NULL, "
             "PRIMARY KEY (data) USING btree)")
 
     def test_create_index_expr(self):
