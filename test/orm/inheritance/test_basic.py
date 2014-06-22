@@ -5,7 +5,7 @@ from sqlalchemy import exc as sa_exc, util, event
 from sqlalchemy.orm import *
 from sqlalchemy.orm.util import instance_str
 from sqlalchemy.orm import exc as orm_exc, attributes
-from sqlalchemy.testing.assertsql import AllOf, CompiledSQL
+from sqlalchemy.testing.assertsql import AllOf, CompiledSQL, Or
 from sqlalchemy.sql import table, column
 from sqlalchemy import testing
 from sqlalchemy.testing import engines
@@ -2024,12 +2024,21 @@ class OptimizedLoadTest(fixtures.MappedTest):
         self.assert_sql_execution(
             testing.db,
             go,
-            CompiledSQL(
-                "SELECT subsub.subsubcounter2 AS subsub_subsubcounter2, "
-                "sub.subcounter2 AS sub_subcounter2 FROM subsub, sub "
-                "WHERE :param_1 = sub.id AND sub.id = subsub.id",
-                lambda ctx:{'param_1': s1.id}
-            ),
+            Or(
+                CompiledSQL(
+                    "SELECT subsub.subsubcounter2 AS subsub_subsubcounter2, "
+                    "sub.subcounter2 AS sub_subcounter2 FROM subsub, sub "
+                    "WHERE :param_1 = sub.id AND sub.id = subsub.id",
+                    lambda ctx: {'param_1': s1.id}
+                ),
+                CompiledSQL(
+                    "SELECT sub.subcounter2 AS sub_subcounter2, "
+                    "subsub.subsubcounter2 AS subsub_subsubcounter2 "
+                    "FROM sub, subsub "
+                    "WHERE :param_1 = sub.id AND sub.id = subsub.id",
+                    lambda ctx: {'param_1': s1.id}
+                ),
+            )
         )
 
 class TransientInheritingGCTest(fixtures.TestBase):
