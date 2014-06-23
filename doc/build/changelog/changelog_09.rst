@@ -12,6 +12,20 @@
         :start-line: 5
 
 .. changelog::
+    :version: 0.9.6
+    :released:
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3060
+
+        Reverted the change for :ticket:`3060` - this is a unit of work
+        fix that is updated more comprehensively in 1.0 via :ticket:`3061`.
+        The fix in :ticket:`3060` unfortunately produces a new issue whereby
+        an eager load of a many-to-one attribute can produce an event
+        that is interpreted into an attribute change.
+
+.. changelog::
     :version: 0.9.5
     :released: June 23, 2014
 
@@ -136,6 +150,12 @@
         In 1.0.0, the issue is ultimately resolved by :ticket:`3061`,
         which reverts the more patchwork version of the fix as it exists
         in 0.9.5.
+
+        .. note::
+
+            This change has been **REVERTED** in 0.9.6.   The full fix
+            will be in version 1.0 of SQLAlchemy.
+
 
     .. change::
         :tags: bug, orm
