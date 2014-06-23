@@ -576,10 +576,12 @@ class TypeCoerceCastTest(fixtures.TablesTest):
             def __str__(self):
                 return "THISISMYOBJ"
 
+        t = self.tables.t
+
+        t.insert().values(data=coerce_fn(MyObj(), MyType)).execute()
+
         eq_(
-            testing.db.execute(
-                select([coerce_fn(MyObj(), MyType)])
-            ).fetchall(),
+            select([coerce_fn(t.c.data, MyType)]).execute().fetchall(),
             [('BIND_INTHISISMYOBJBIND_OUT',)]
         )
 
@@ -723,16 +725,16 @@ class TypeCoerceCastTest(fixtures.TablesTest):
     def test_type_coerce_existing_typed(self):
         MyType = self.MyType
         coerce_fn = type_coerce
+        t = self.tables.t
+
         # type_coerce does upgrade the given expression to the
         # given type.
+
+        t.insert().values(data=coerce_fn(literal('d1'), MyType)).execute()
+
         eq_(
-            testing.db.scalar(
-                select([coerce_fn(literal('d1'), MyType)])
-            ),
-            'BIND_INd1BIND_OUT'
-        )
-
-
+            select([coerce_fn(t.c.data, MyType)]).execute().fetchall(),
+            [('BIND_INd1BIND_OUT', )])
 
 class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
     def setup(self):
@@ -983,9 +985,6 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
     @testing.fails_on('postgresql+zxjdbc',
                         'zxjdbc fails on ENUM: column "XXX" is of type XXX '
                         'but expression is of type character varying')
-    @testing.fails_on('postgresql+pg8000',
-                        'zxjdbc fails on ENUM: column "XXX" is of type XXX '
-                        'but expression is of type text')
     def test_round_trip(self):
         enum_table.insert().execute([
             {'id': 1, 'someenum': 'two'},
@@ -1669,7 +1668,6 @@ class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
         assert adapted.native is False
         eq_(str(adapted), "DATETIME")
 
-    @testing.fails_on("+pg8000", "Not yet known how to pass values of the INTERVAL type")
     @testing.fails_on("postgresql+zxjdbc", "Not yet known how to pass values of the INTERVAL type")
     @testing.fails_on("oracle+zxjdbc", "Not yet known how to pass values of the INTERVAL type")
     def test_roundtrip(self):
