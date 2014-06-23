@@ -13,6 +13,7 @@
 
 .. changelog::
     :version: 0.9.5
+    :released: June 23, 2014
 
     .. change::
         :tags: bug, orm
