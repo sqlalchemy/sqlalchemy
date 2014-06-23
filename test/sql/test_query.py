@@ -610,11 +610,11 @@ class QueryTest(fixtures.TestBase):
                 return "INT_%d" % value
 
         eq_(
-            testing.db.scalar(select([literal("INT_5", type_=MyInteger)])),
+            testing.db.scalar(select([cast("INT_5", type_=MyInteger)])),
             "INT_5"
         )
         eq_(
-            testing.db.scalar(select([literal("INT_5", type_=MyInteger).label('foo')])),
+            testing.db.scalar(select([cast("INT_5", type_=MyInteger).label('foo')])),
             "INT_5"
         )
 
