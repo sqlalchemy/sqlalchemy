@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from sqlalchemy import testing
 from sqlalchemy.testing import engines
 from sqlalchemy import MetaData, Integer, String, ForeignKey, Boolean, exc,\
-                Sequence, func, literal, Unicode
+                Sequence, func, literal, Unicode, cast
 from sqlalchemy.types import TypeDecorator, TypeEngine
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.dialects import sqlite
@@ -1064,7 +1064,7 @@ class SpecialTypePKTest(fixtures.TestBase):
         self._run_test(server_default='1', autoincrement=False)
 
     def test_clause(self):
-        stmt = select([literal("INT_1", type_=self.MyInteger)]).as_scalar()
+        stmt = select([cast("INT_1", type_=self.MyInteger)]).as_scalar()
         self._run_test(default=stmt)
 
     @testing.requires.returning

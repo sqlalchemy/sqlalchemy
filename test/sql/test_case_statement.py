@@ -73,14 +73,18 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             ('gt3', 6, 'pk_6_data')
         ]
 
-        w_else = select([case([
-                [info_table.c.pk < 3,
-                        3],
-        [and_(info_table.c.pk >= 3, info_table.c.pk < 6),
-                        6]],
-                else_ = 0).label('x'),
-        info_table.c.pk, info_table.c.info],
-                from_obj=[info_table])
+        w_else = select(
+            [
+                case(
+                    [
+                        [info_table.c.pk < 3, cast(3, Integer)],
+                        [
+                            and_(
+                                info_table.c.pk >= 3, info_table.c.pk < 6),
+                            6]],
+                    else_ = 0).label('x'),
+                info_table.c.pk, info_table.c.info],
+            from_obj=[info_table])
 
         else_result = w_else.execute().fetchall()
 

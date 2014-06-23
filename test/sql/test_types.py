@@ -756,7 +756,6 @@ class TypeCoerceCastTest(fixtures.TablesTest):
             select([coerce_fn(t.c.data, MyType)]).execute().fetchall(),
             [('BIND_INd1BIND_OUT', )])
 
-
 class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
     def setup(self):
         class UTypeOne(types.UserDefinedType):
