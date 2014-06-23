@@ -223,6 +223,8 @@
         needs to have a table-bound column present if the index is to be
         manually added to the table, either via inline declaration or via
         :meth:`.Table.append_constraint`.
+
+    .. change::
         :tags: bug, firebird
         :tickets: 3038
 
