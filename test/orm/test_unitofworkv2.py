@@ -1314,6 +1314,7 @@ class RowswitchM2OTest(fixtures.MappedTest):
         mapper(C, c)
         return A, B, C
 
+    @testing.fails()
     def test_set_none_replaces_m2o(self):
         # we have to deal here with the fact that a
         # get of an unset attribute implicitly sets it to None
@@ -1337,6 +1338,7 @@ class RowswitchM2OTest(fixtures.MappedTest):
         sess.commit()
         assert a1.bs[0].c is None
 
+    @testing.fails()
     def test_set_none_w_get_replaces_m2o(self):
         A, B, C = self._fixture()
         sess = Session()
@@ -1389,6 +1391,25 @@ class RowswitchM2OTest(fixtures.MappedTest):
         sess.commit()
         assert a1.bs[0].data is None
 
+    def test_joinedload_doesnt_produce_bogus_event(self):
+        A, B, C = self._fixture()
+        sess = Session()
+
+        c1 = C()
+        sess.add(c1)
+        sess.flush()
+
+        b1 = B()
+        sess.add(b1)
+        sess.commit()
+
+        # test that was broken by #3060
+        from sqlalchemy.orm import joinedload
+        b1 = sess.query(B).options(joinedload("c")).first()
+        b1.cid = c1.id
+        sess.flush()
+
+        assert b1.cid == c1.id
 
 
 class BasicStaleChecksTest(fixtures.MappedTest):

@@ -11,7 +11,7 @@ from . import config
 
 from .exclusions import db_spec, _is_excluded, fails_if, skip_if, future,\
     fails_on, fails_on_everything_except, skip, only_on, exclude, \
-    against as _against, _server_version, only_if
+    against as _against, _server_version, only_if, fails
 
 
 def against(*queries):

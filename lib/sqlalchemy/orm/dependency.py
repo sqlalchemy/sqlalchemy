@@ -749,11 +749,6 @@ class ManyToOneDP(DependencyProcessor):
                     for child in history.added:
                         self._synchronize(state, child, None, False,
                                                 uowcommit, "add")
-                elif history.unchanged == [None]:
-                    # this is to appease the case where our row
-                    # here is in fact going to be a so-called "row switch",
-                    # where an INSERT becomes an UPDATE.  See #3060.
-                    self._synchronize(state, None, None, True, uowcommit)
                 if self.post_update:
                     self._post_update(state, uowcommit, history.sum())
 
