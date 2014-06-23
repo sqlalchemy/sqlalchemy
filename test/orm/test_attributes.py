@@ -949,7 +949,7 @@ class GetNoValueTest(fixtures.ORMTest):
             attr.get(state, dict_, passive=attributes.PASSIVE_OFF),
             None
         )
-        assert 'attr' in dict_
+        assert 'attr' not in dict_
 
 class UtilTest(fixtures.ORMTest):
     def test_helpers(self):
@@ -2386,7 +2386,7 @@ class LazyloadHistoryTest(fixtures.TestBase):
             'bar'), ((), (), ['hi']))
         assert f.bar is None
         eq_(attributes.get_state_history(attributes.instance_state(f),
-            'bar'), ([None], (), ['hi']))
+            'bar'), ((), (), ['hi']))
 
     def test_scalar_via_lazyload_with_active(self):
         # TODO: break into individual tests
@@ -2430,7 +2430,7 @@ class LazyloadHistoryTest(fixtures.TestBase):
             'bar'), ((), (), ['hi']))
         assert f.bar is None
         eq_(attributes.get_state_history(attributes.instance_state(f),
-            'bar'), ([None], (), ['hi']))
+            'bar'), ((), (), ['hi']))
 
     def test_scalar_object_via_lazyload(self):
         # TODO: break into individual tests
@@ -2475,7 +2475,7 @@ class LazyloadHistoryTest(fixtures.TestBase):
             'bar'), ((), (), [bar1]))
         assert f.bar is None
         eq_(attributes.get_state_history(attributes.instance_state(f),
-            'bar'), ([None], (), [bar1]))
+            'bar'), ((), (), [bar1]))
 
 class ListenerTest(fixtures.ORMTest):
     def test_receive_changes(self):
@@ -2569,11 +2569,8 @@ class ListenerTest(fixtures.ORMTest):
 
         f1 = Foo()
         eq_(f1.bar, None)
-        eq_(canary.mock_calls, [
-                call(
-                    f1, None, attributes.NEVER_SET,
-                    attributes.Event(Foo.bar.impl, attributes.OP_REPLACE))
-        ])
+        # reversal of approach in #3061
+        eq_(canary.mock_calls, [])
 
     def test_none_init_object(self):
         canary = Mock()
@@ -2586,11 +2583,23 @@ class ListenerTest(fixtures.ORMTest):
 
         f1 = Foo()
         eq_(f1.bar, None)
-        eq_(canary.mock_calls, [
-                call(
-                    f1, None, attributes.NEVER_SET,
-                    attributes.Event(Foo.bar.impl, attributes.OP_REPLACE))
-        ])
+        # reversal of approach in #3061
+        eq_(canary.mock_calls, [])
+
+    def test_none_init_collection(self):
+        canary = Mock()
+        class Foo(object):
+            pass
+        instrumentation.register_class(Foo)
+        attributes.register_attribute(Foo, 'bar', useobject=True, uselist=True)
+
+        event.listen(Foo.bar, "set", canary)
+
+        f1 = Foo()
+        eq_(f1.bar, [])
+        # reversal of approach in #3061
+        eq_(canary.mock_calls, [])
+
 
     def test_propagate(self):
         classes = [None, None, None]

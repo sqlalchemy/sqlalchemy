@@ -556,15 +556,7 @@ class AttributeImpl(object):
     def initialize(self, state, dict_):
         """Initialize the given state's attribute with an empty value."""
 
-        old = NEVER_SET
-        value = None
-        if self.dispatch.set:
-            value = self.fire_replace_event(state, dict_,
-                                                None, old, None)
-        state._modified_event(dict_, self, old)
-
-        dict_[self.key] = value
-        return value
+        return None
 
     def get(self, state, dict_, passive=PASSIVE_OFF):
         """Retrieve a value from the given object.

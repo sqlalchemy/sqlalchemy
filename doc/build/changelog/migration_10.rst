@@ -62,13 +62,14 @@ attribute first instead::
 
 The above means that the behavior of our "set" operation can be corrupted
 by the fact that the value was accessed via "get" earlier.  In 1.0, this
-inconsistency has been resolved::
+inconsistency has been resolved, by no longer actually setting anything
+when the default "getter" is used.
 
 	>>> obj = Foo()
 	>>> obj.someattr
 	None
 	>>> inspect(obj).attrs.someattr.history
-	History(added=[None], unchanged=(), deleted=())  # 1.0
+	History(added=(), unchanged=(), deleted=())  # 1.0
 	>>> obj.someattr = None
 	>>> inspect(obj).attrs.someattr.history
 	History(added=[None], unchanged=(), deleted=())
@@ -93,13 +94,6 @@ calling on mapper utility functions such as :meth:`.Mapper.primary_key_from_stat
 if the primary key attributes have no setting at all, whereas the value
 would be ``None`` before, it will now be the :data:`.orm.attributes.NEVER_SET`
 symbol, and no change to the object's state occurs.
-
-Performance-wise, the change has the tradeoff that an attribute will need
-to be considered in a unit of work flush process in more cases than before, if it has
-been accessed and populated with a default value.   However, performance
-is improved in the case where the unit of work inspects a pending object for
-an existing primary key value, as the state of the object won't change
-in the common case that none was set.
 
 :ticket:`3061`
 

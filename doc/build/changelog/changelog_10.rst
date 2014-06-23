@@ -35,14 +35,11 @@
         Adjustment to attribute mechanics concerning when a value is
         implicitly initialized to None via first access; this action,
         which has always resulted in a population of the attribute,
-        now emits an attribute event just like any other attribute set
-        operation and generates the same kind of history as one.  Additionally,
-        many mapper internal operations will no longer implicitly generate
-        these "None" values when various never-set attributes are checked.
-        These are subtle behavioral fixes to attribute mechanics which provide
-        a better solution to the problem of :ticket:`3060`, which also
-        involves recognition of attributes explicitly set to ``None``
-        vs. attributes that were never set.
+        no longer does so; the None value is returned but the underlying
+        attribute receives no set event.  This is consistent with how collections
+        work and allows attribute mechanics to behave more consistently;
+        in particular, getting an attribute with no value does not squash
+        the event that should proceed if the value is actually set to None.
 
         .. seealso::
 

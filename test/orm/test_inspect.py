@@ -341,10 +341,10 @@ class TestORMInspection(_fixtures.FixtureTest):
             insp.attrs.id.value,
             None
         )
-        # now the None is there
+        # nope, still not set
         eq_(
             insp.attrs.id.loaded_value,
-            None
+            NO_VALUE
         )
 
     def test_instance_state_attr_passive_value_collection(self):

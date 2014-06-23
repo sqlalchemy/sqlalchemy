@@ -230,6 +230,116 @@ class DependencyTwoParentTest(fixtures.MappedTest):
         session.delete(c)
         session.flush()
 
+class M2ODontOverwriteFKTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'a', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('bid', ForeignKey('b.id'))
+        )
+        Table(
+            'b', metadata,
+            Column('id', Integer, primary_key=True),
+        )
+
+    def _fixture(self, uselist=False):
+        a, b = self.tables.a, self.tables.b
+
+        class A(fixtures.BasicEntity):
+            pass
+        class B(fixtures.BasicEntity):
+            pass
+
+
+        mapper(A, a, properties={
+                'b': relationship(B, uselist=uselist)
+            })
+        mapper(B, b)
+        return A, B
+
+    def test_joinedload_doesnt_produce_bogus_event(self):
+        A, B = self._fixture()
+        sess = Session()
+
+        b1 = B()
+        sess.add(b1)
+        sess.flush()
+
+        a1 = A()
+        sess.add(a1)
+        sess.commit()
+
+        # test that was broken by #3060
+        from sqlalchemy.orm import joinedload
+        a1 = sess.query(A).options(joinedload("b")).first()
+        a1.bid = b1.id
+        sess.flush()
+
+        eq_(a1.bid, b1.id)
+
+    def test_init_doesnt_produce_scalar_event(self):
+        A, B = self._fixture()
+        sess = Session()
+
+        b1 = B()
+        sess.add(b1)
+        sess.flush()
+
+        a1 = A()
+        assert a1.b is None
+        a1.bid = b1.id
+        sess.add(a1)
+        sess.flush()
+        assert a1.bid is not None
+
+    def test_init_doesnt_produce_collection_event(self):
+        A, B = self._fixture(uselist=True)
+        sess = Session()
+
+        b1 = B()
+        sess.add(b1)
+        sess.flush()
+
+        a1 = A()
+        assert a1.b == []
+        a1.bid = b1.id
+        sess.add(a1)
+        sess.flush()
+        assert a1.bid is not None
+
+    def test_scalar_relationship_overrides_fk(self):
+        A, B = self._fixture()
+        sess = Session()
+
+        b1 = B()
+        sess.add(b1)
+        sess.flush()
+
+        a1 = A()
+        a1.bid = b1.id
+        a1.b = None
+        sess.add(a1)
+        sess.flush()
+        assert a1.bid is None
+
+    def test_collection_relationship_overrides_fk(self):
+        A, B = self._fixture(uselist=True)
+        sess = Session()
+
+        b1 = B()
+        sess.add(b1)
+        sess.flush()
+
+        a1 = A()
+        a1.bid = b1.id
+        a1.b = []
+        sess.add(a1)
+        sess.flush()
+        # this is weird
+        assert a1.bid is not None
+
+
 
 class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
     """Tests the ultimate join condition, a single column
