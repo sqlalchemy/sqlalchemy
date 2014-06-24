@@ -93,12 +93,12 @@ class _MutableDictTestBase(object):
         sess.add(f1)
         sess.commit()
 
-        f1.data.setdefault('c', 'd')
+        eq_(f1.data.setdefault('c', 'd'), 'd')
         sess.commit()
 
         eq_(f1.data, {'a': 'b', 'c': 'd'})
 
-        f1.data.setdefault('c', 'q')
+        eq_(f1.data.setdefault('c', 'q'), 'd')
         sess.commit()
 
         eq_(f1.data, {'a': 'b', 'c': 'd'})
