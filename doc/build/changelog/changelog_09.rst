@@ -1,4 +1,3 @@
-
 ==============
 0.9 Changelog
 ==============
@@ -84,7 +83,7 @@
 
     .. change::
         :tags: feature, examples
-        :pullreq: bitbucket: 21
+        :pullreq: bitbucket:21
         :versions: 1.0.0
 
         Added a new example illustrating materialized paths, using the
@@ -92,7 +91,7 @@
 
     .. change::
         :tags: bug, testsuite
-        :pullreq: github: 95
+        :pullreq: github:95
         :versions: 1.0.0
 
         In public test suite, shanged to use of ``String(40)`` from
