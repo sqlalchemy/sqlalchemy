@@ -12,18 +12,69 @@
 Auto Increment Behavior
 -----------------------
 
-``IDENTITY`` columns are supported by using SQLAlchemy
-``schema.Sequence()`` objects. In other words::
+SQL Server provides so-called "auto incrementing" behavior using the ``IDENTITY``
+construct, which can be placed on an integer primary key.  SQLAlchemy
+considers ``IDENTITY`` within its default "autoincrement" behavior,
+described at :paramref:`.Column.autoincrement`; this means
+that by default, the first integer primary key column in a :class:`.Table`
+will be considered to be the identity column and will generate DDL as such::
+
+    from sqlalchemy import Table, MetaData, Column, Integer
+
+    m = MetaData()
+    t = Table('t', m,
+            Column('id', Integer, primary_key=True),
+            Column('x', Integer))
+    m.create_all(engine)
+
+The above example will generate DDL as:
+
+.. sourcecode:: sql
+
+    CREATE TABLE t (
+        id INTEGER NOT NULL IDENTITY(1,1),
+        x INTEGER NULL,
+        PRIMARY KEY (id)
+    )
+
+For the case where this default generation of ``IDENTITY`` is not desired,
+specify ``autoincrement=False`` on all integer primary key columns::
+
+    m = MetaData()
+    t = Table('t', m,
+            Column('id', Integer, primary_key=True, autoincrement=False),
+            Column('x', Integer))
+    m.create_all(engine)
+
+.. note::
+
+    An INSERT statement which refers to an explicit value for such
+    a column is prohibited by SQL Server, however SQLAlchemy will detect this
+    and modify the ``IDENTITY_INSERT`` flag accordingly at statement execution
+    time.  As this is not a high performing process, care should be taken to set
+    the ``autoincrement`` flag appropriately for columns that will not actually
+    require IDENTITY behavior.
+
+Controlling "Start" and "Increment"
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Specific control over the parameters of the ``IDENTITY`` value is supported
+using the :class:`.schema.Sequence` object.  While this object normally represents
+an explicit "sequence" for supporting backends, on SQL Server it is re-purposed
+to specify behavior regarding the identity column, including support
+of the "start" and "increment" values::
 
     from sqlalchemy import Table, Integer, Sequence, Column
 
     Table('test', metadata,
            Column('id', Integer,
-                  Sequence('blah',100,10), primary_key=True),
+                  Sequence('blah', start=100, increment=10), primary_key=True),
            Column('name', String(20))
          ).create(some_engine)
 
-would yield::
+would yield:
+
+.. sourcecode:: sql
 
    CREATE TABLE test (
      id INTEGER NOT NULL IDENTITY(100,10) PRIMARY KEY,
@@ -33,14 +84,85 @@ would yield::
 Note that the ``start`` and ``increment`` values for sequences are
 optional and will default to 1,1.
 
-Implicit ``autoincrement`` behavior works the same in MSSQL as it
-does in other dialects and results in an ``IDENTITY`` column.
+INSERT behavior
+^^^^^^^^^^^^^^^^
 
-* Support for ``SET IDENTITY_INSERT ON`` mode (automagic on / off for
-  ``INSERT`` s)
+Handling of the ``IDENTITY`` column at INSERT time involves two key techniques.
+The most common is being able to fetch the "last inserted value" for a given
+``IDENTITY`` column, a process which SQLAlchemy performs implicitly in many
+cases, most importantly within the ORM.
 
-* Support for auto-fetching of ``@@IDENTITY/@@SCOPE_IDENTITY()`` on
-  ``INSERT``
+The process for fetching this value has several variants:
+
+* In the vast majority of cases, RETURNING is used in conjunction with INSERT
+  statements on SQL Server in order to get newly generated primary key values:
+
+  .. sourcecode:: sql
+
+    INSERT INTO t (x) OUTPUT inserted.id VALUES (?)
+
+* When RETURNING is not available or has been disabled via
+  ``implicit_returning=False``, either the ``scope_identity()`` function or
+  the ``@@identity`` variable is used; behavior varies by backend:
+
+  * when using PyODBC, the phrase ``; select scope_identity()`` will be appended
+    to the end of the INSERT statement; a second result set will be fetched
+    in order to receive the value.  Given a table as::
+
+        t = Table('t', m, Column('id', Integer, primary_key=True),
+                Column('x', Integer),
+                implicit_returning=False)
+
+    an INSERT will look like:
+
+    .. sourcecode:: sql
+
+        INSERT INTO t (x) VALUES (?); select scope_identity()
+
+  * Other dialects such as pymssql will call upon
+    ``SELECT scope_identity() AS lastrowid`` subsequent to an INSERT statement.
+    If the flag ``use_scope_identity=False`` is passed to :func:`.create_engine`,
+    the statement ``SELECT @@identity AS lastrowid`` is used instead.
+
+A table that contains an ``IDENTITY`` column will prohibit an INSERT statement
+that refers to the identity column explicitly.  The SQLAlchemy dialect will
+detect when an INSERT construct, created using a core :func:`.insert`
+construct (not a plain string SQL), refers to the identity column, and
+in this case will emit ``SET IDENTITY_INSERT ON`` prior to the insert statement
+proceeding, and ``SET IDENTITY_INSERT OFF`` subsequent to the execution.
+Given this example::
+
+    m = MetaData()
+    t = Table('t', m, Column('id', Integer, primary_key=True),
+                    Column('x', Integer))
+    m.create_all(engine)
+
+    engine.execute(t.insert(), {'id': 1, 'x':1}, {'id':2, 'x':2})
+
+The above column will be created with IDENTITY, however the INSERT statement
+we emit is specifying explicit values.  In the echo output we can see
+how SQLAlchemy handles this:
+
+.. sourcecode:: sql
+
+    CREATE TABLE t (
+        id INTEGER NOT NULL IDENTITY(1,1),
+        x INTEGER NULL,
+        PRIMARY KEY (id)
+    )
+
+    COMMIT
+    SET IDENTITY_INSERT t ON
+    INSERT INTO t (id, x) VALUES (?, ?)
+    ((1, 1), (2, 2))
+    SET IDENTITY_INSERT t OFF
+    COMMIT
+
+
+
+This
+is an auxilliary use case suitable for testing and bulk insert scenarios.
+
 
 Collation Support
 -----------------

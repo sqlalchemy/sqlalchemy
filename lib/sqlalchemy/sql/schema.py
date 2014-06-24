@@ -840,10 +840,17 @@ class Column(SchemaItem, ColumnClause):
 
           * Part of the primary key
 
-          * Are not referenced by any foreign keys, unless
-            the value is specified as ``'ignore_fk'``
+          * Not refering to another column via :class:`.ForeignKey`, unless
+            the value is specified as ``'ignore_fk'``::
 
-            .. versionadded:: 0.7.4
+                # turn on autoincrement for this column despite
+                # the ForeignKey()
+                Column('id', ForeignKey('other.id'),
+                            primary_key=True, autoincrement='ignore_fk')
+
+            It is typically not desirable to have "autoincrement" enabled
+            on such a column as its value intends to mirror that of a
+            primary key column elsewhere.
 
           * have no server side or client side defaults (with the exception
             of Postgresql SERIAL).
