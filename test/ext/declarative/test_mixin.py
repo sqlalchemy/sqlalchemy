@@ -115,7 +115,6 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(MyModelA.__table__.c.foo.type.__class__, String)
         eq_(MyModelB.__table__.c.foo.type.__class__, Integer)
 
-
     def test_not_allowed(self):
 
         class MyMixin:
@@ -1279,3 +1278,27 @@ class DeclarativeMixinPropertyTest(DeclarativeTestBase):
     def test_relationship_primryjoin(self):
         self._test_relationship(True)
 
+
+class AbstractTest(DeclarativeTestBase):
+    def test_abstract_boolean(self):
+
+        class A(Base):
+            __abstract__ = True
+            __tablename__ = 'x'
+            id = Column(Integer, primary_key=True)
+
+        class B(Base):
+            __abstract__ = False
+            __tablename__ = 'y'
+            id = Column(Integer, primary_key=True)
+
+        class C(Base):
+            __abstract__ = False
+            __tablename__ = 'z'
+            id = Column(Integer, primary_key=True)
+
+        class D(Base):
+            __tablename__ = 'q'
+            id = Column(Integer, primary_key=True)
+
+        eq_(set(Base.metadata.tables), set(['y', 'z', 'q']))
