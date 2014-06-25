@@ -11,6 +11,20 @@
         :start-line: 5
 
 .. changelog::
+    :version: 0.9.7
+    :released:
+
+    .. change::
+        :tags: bug, declarative
+        :tickets: 3097
+        :versions: 1.0.0
+
+        Fixed bug when the declarative ``__abstract__`` flag was not being
+        distinguished for when it was actually the value ``False``.
+        The ``__abstract__`` flag needs to acutally evaluate to a True
+        value at the level being tested.
+
+.. changelog::
     :version: 0.9.6
     :released:
 
