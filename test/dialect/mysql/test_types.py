@@ -516,6 +516,16 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     @testing.only_if('mysql')
     @testing.provide_metadata
+    def test_time_roundtrip(self):
+        t = Table('mysql_time', self.metadata,
+                Column('t1', mysql.TIME())
+            )
+        t.create()
+        t.insert().values(t1=datetime.time(8, 37, 35)).execute()
+        eq_(select([t.c.t1]).scalar(), datetime.time(8, 37, 35))
+
+    @testing.only_if('mysql')
+    @testing.provide_metadata
     def test_year(self):
         """Exercise YEAR."""
 
