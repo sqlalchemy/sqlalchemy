@@ -600,6 +600,23 @@ class UOWTest(_DynamicFixture, _fixtures.FixtureTest,
     def test_delete_cascade(self):
         self._test_delete_cascade(False)
 
+    def test_self_referential(self):
+        Node, nodes = self.classes.Node, self.tables.nodes
+
+
+        mapper(Node, nodes, properties={
+            'children': relationship(Node, lazy="dynamic", order_by=nodes.c.id)
+        })
+
+        sess = Session()
+        n2, n3 = Node(), Node()
+        n1 = Node(children=[n2, n3])
+        sess.add(n1)
+        sess.commit()
+
+        eq_(n1.children.all(), [n2, n3])
+
+
     def test_remove_orphans(self):
         addresses = self.tables.addresses
         User, Address = self._user_address_fixture(addresses_args={
