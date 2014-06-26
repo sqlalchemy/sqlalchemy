@@ -15,6 +15,14 @@
     :released:
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3099
+
+        Fixed bug involving dynamic attributes, that was again a regression
+        of :ticket:`3060` from verision 0.9.5.  A self-referential relationship
+        with lazy='dynamic' would raise a TypeError within a flush operation.
+
+    .. change::
         :tags: bug, declarative
         :tickets: 3097
         :versions: 1.0.0

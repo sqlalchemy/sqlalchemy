@@ -171,9 +171,10 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         c = self._get_collection_history(state, passive)
         return c.as_history()
 
-    def get_all_pending(self, state, dict_):
+    def get_all_pending(self, state, dict_,
+                                passive=attributes.PASSIVE_NO_INITIALIZE):
         c = self._get_collection_history(
-            state, attributes.PASSIVE_NO_INITIALIZE)
+            state, passive)
         return [
                 (attributes.instance_state(x), x)
                 for x in
