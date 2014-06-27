@@ -14,6 +14,16 @@
     .. change::
         :tags: bug, mysql
         :versions: 1.0.0, 0.9.5
+        :tickets: 3101
+
+        MySQL error 2014 "commands out of sync" appears to be raised as a
+        ProgrammingError, not OperationalError, in modern MySQL-Python versions;
+        all MySQL error codes that are tested for "is disconnect" are now
+        checked within OperationalError and ProgrammingError regardless.
+
+    .. change::
+        :tags: bug, mysql
+        :versions: 1.0.0, 0.9.5
         :tickets: 3085
 
         Fixed bug where column names added to ``mysql_length`` parameter

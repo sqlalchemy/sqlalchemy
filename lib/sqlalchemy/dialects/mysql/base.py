@@ -2165,7 +2165,7 @@ class MySQLDialect(default.DefaultDialect):
         return [row['data'][0:row['gtrid_length']] for row in resultset]
 
     def is_disconnect(self, e, connection, cursor):
-        if isinstance(e, self.dbapi.OperationalError):
+        if isinstance(e, (self.dbapi.OperationalError, self.dbapi.ProgrammingError)):
             return self._extract_error_code(e) in \
                         (2006, 2013, 2014, 2045, 2055)
         elif isinstance(e, self.dbapi.InterfaceError):
