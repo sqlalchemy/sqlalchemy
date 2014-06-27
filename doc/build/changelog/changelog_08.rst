@@ -13,7 +13,7 @@
 
     .. change::
         :tags: bug, mysql
-        :versions: 1.0.0, 0.9.5
+        :versions: 1.0.0, 0.9.7
         :tickets: 3101
 
         MySQL error 2014 "commands out of sync" appears to be raised as a
