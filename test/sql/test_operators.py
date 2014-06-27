@@ -355,7 +355,7 @@ class TypeDecoratorComparatorTest(_CustomComparatorTests, fixtures.TestBase):
         class MyInteger(TypeDecorator):
             impl = Integer
 
-            class comparator_factory(TypeEngine.Comparator):
+            class comparator_factory(TypeDecorator.Comparator):
                 def __init__(self, expr):
                     self.expr = expr
 
@@ -367,6 +367,35 @@ class TypeDecoratorComparatorTest(_CustomComparatorTests, fixtures.TestBase):
 
 
         return MyInteger
+
+class TypeDecoratorWVariantComparatorTest(_CustomComparatorTests, fixtures.TestBase):
+    def _add_override_factory(self):
+
+        class SomeOtherInteger(Integer):
+            class comparator_factory(TypeEngine.Comparator):
+                def __init__(self, expr):
+                    self.expr = expr
+
+                def __add__(self, other):
+                    return self.expr.op("not goofy")(other)
+
+                def __and__(self, other):
+                    return self.expr.op("not goofy_and")(other)
+
+        class MyInteger(TypeDecorator):
+            impl = Integer
+
+            class comparator_factory(TypeDecorator.Comparator):
+                def __init__(self, expr):
+                    self.expr = expr
+
+                def __add__(self, other):
+                    return self.expr.op("goofy")(other)
+
+                def __and__(self, other):
+                    return self.expr.op("goofy_and")(other)
+
+        return MyInteger().with_variant(SomeOtherInteger, "mysql")
 
 
 class CustomEmbeddedinTypeDecoratorTest(_CustomComparatorTests, fixtures.TestBase):

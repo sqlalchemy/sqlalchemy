@@ -631,8 +631,8 @@ class TypeDecorator(TypeEngine):
     @property
     def comparator_factory(self):
         return type("TDComparator",
-                    (TypeDecorator.Comparator, self.impl.comparator_factory),
-                    {})
+                (TypeDecorator.Comparator, self.impl.comparator_factory),
+                {})
 
     def _gen_dialect_impl(self, dialect):
         """
@@ -1025,6 +1025,11 @@ class Variant(TypeDecorator):
         mapping = self.mapping.copy()
         mapping[dialect_name] = type_
         return Variant(self.impl, mapping)
+
+    @property
+    def comparator_factory(self):
+        """express comparison behavior in terms of the base type"""
+        return self.impl.comparator_factory
 
 def _reconstitute_comparator(expression):
     return expression.comparator
