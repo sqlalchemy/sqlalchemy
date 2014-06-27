@@ -961,6 +961,10 @@ class Variant(TypeDecorator):
         mapping[dialect_name] = type_
         return Variant(self.impl, mapping)
 
+    @property
+    def comparator_factory(self):
+        """express comparison behavior in terms of the base type"""
+        return self.impl.comparator_factory
 
 def to_instance(typeobj, *arg, **kw):
     if typeobj is None:

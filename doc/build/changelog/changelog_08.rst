@@ -12,6 +12,15 @@
     :version: 0.8.7
 
     .. change::
+        :tags: bug, sql
+        :versions: 1.0.0, 0.9.7
+        :tickets: 3102
+
+        Fixed a bug within the custom operator plus :meth:`.TypeEngine.with_variant`
+        system, whereby using a :class:`.TypeDecorator` in conjunction with
+        variant would fail with an MRO error when a comparison operator was used.
+
+    .. change::
         :tags: bug, mysql
         :versions: 1.0.0, 0.9.7
         :tickets: 3101
