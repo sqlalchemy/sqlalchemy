@@ -1982,7 +1982,6 @@ class JSONRoundTripTest(fixtures.TablesTest):
                 },
         )
 
-
     def test_unicode_round_trip_python(self):
         engine = self._non_native_engine()
         self._test_unicode_round_trip(engine)
@@ -2000,6 +1999,21 @@ class JSONBTest(JSONTest):
             Column('test_column', JSONB)
         )
         self.jsoncol = self.test_table.c.test_column
+
+    #Note - add fixture data for arrays []
+
+    def test_where_has_key(self):
+        self._test_where(
+            # hide from 2to3
+            getattr(self.jsoncol, 'has_key')('data'),
+            "test_table.test_column ? %(test_column_1)s"
+        )
+
+    def test_where_contains(self):
+        self._test_where(
+            self.jsoncol.contains('{"k1": "r1v1"}'),
+            "test_table.test_column @> %(test_column_1)s"
+        )
 
 class JSONBRoundTripTest(JSONRoundTripTest):
     __only_on__ = ('postgresql >= 9.4',)

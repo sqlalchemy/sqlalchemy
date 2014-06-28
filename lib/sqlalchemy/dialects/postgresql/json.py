@@ -280,7 +280,7 @@ class JSONB(JSON):
 
         def _adapt_expression(self, op, other_comparator):
             if isinstance(op, custom_op):
-                if op.opstring in ['?', '?&', '?|', '@>', '<@']:
+                if op.opstring in ['?', '@>']:
                     return op, sqltypes.Boolean
                 if op.opstring == '->':
                     return op, sqltypes.Text
@@ -298,9 +298,5 @@ class JSONB(JSON):
             the keys of the argument jsonb expression.
             """
             return self.expr.op('@>')(other)
-
-
-
-
 
 ischema_names['jsonb'] = JSONB
