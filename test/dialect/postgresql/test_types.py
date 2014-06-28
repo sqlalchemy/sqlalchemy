@@ -2011,7 +2011,7 @@ class JSONBTest(JSONTest):
 
     def test_where_contains(self):
         self._test_where(
-            self.jsoncol.contains('{"k1": "r1v1"}'),
+            self.jsoncol.contains({"k1": "r1v1"}),
             "test_table.test_column @> %(test_column_1)s"
         )
 
