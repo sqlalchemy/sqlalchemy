@@ -956,7 +956,7 @@ class TLTransactionTest(fixtures.TestBase):
 
     def test_mixed_nesting(self):
         """tests nesting of transactions off the TLEngine directly
-        inside of tranasctions off the connection from the TLEngine"""
+        inside of transactions off the connection from the TLEngine"""
 
         external_connection = tlengine.connect()
         self.assert_(external_connection.connection

@@ -1315,7 +1315,7 @@ class SessionEvents(event.Events):
 
         .. note::
 
-            The :class:`.Session` is not in an active tranasction
+            The :class:`.Session` is not in an active transaction
             when the :meth:`~.SessionEvents.after_commit` event is invoked, and therefore
             can not emit SQL.  To emit SQL corresponding to every transaction,
             use the :meth:`~.SessionEvents.before_commit` event.
