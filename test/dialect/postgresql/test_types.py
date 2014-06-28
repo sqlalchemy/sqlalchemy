@@ -17,7 +17,7 @@ from sqlalchemy import exc, schema, types
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import HSTORE, hstore, array, \
             INT4RANGE, INT8RANGE, NUMRANGE, DATERANGE, TSRANGE, TSTZRANGE, \
-            JSON
+            JSON, JSONB
 import decimal
 from sqlalchemy import util
 from sqlalchemy.testing.util import round_decimal
@@ -1991,3 +1991,17 @@ class JSONRoundTripTest(fixtures.TablesTest):
     def test_unicode_round_trip_native(self):
         engine = testing.db
         self._test_unicode_round_trip(engine)
+
+class JSONBTest(JSONTest):
+    def setup(self):
+        metadata = MetaData()
+        self.test_table = Table('test_table', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('test_column', JSONB)
+        )
+        self.jsoncol = self.test_table.c.test_column
+
+class JSONBRoundTripTest(JSONRoundTripTest):
+    __only_on__ = ('postgresql >= 9.4',)
+
+
