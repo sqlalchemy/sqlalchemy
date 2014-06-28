@@ -200,7 +200,7 @@ ischema_names['json'] = JSON
 
 
 
-class JSONB(sqltypes.TypeEngine):
+class JSONB(JSON):
     """Represent the Postgresql JSONB type.
 
     The :class:`.JSONB` type stores arbitrary JSONB format data, e.g.::
@@ -268,6 +268,7 @@ class JSONB(sqltypes.TypeEngine):
     """
 
     __visit_name__ = 'JSONB'
+    hashable = False
 
     class comparator_factory(sqltypes.Concatenable.Comparator):
         """Define comparison operations for :class:`.JSON`."""
@@ -279,32 +280,27 @@ class JSONB(sqltypes.TypeEngine):
 
         def _adapt_expression(self, op, other_comparator):
             if isinstance(op, custom_op):
+                if op.opstring in ['?', '?&', '?|', '@>', '<@']:
+                    return op, sqltypes.Boolean
                 if op.opstring == '->':
                     return op, sqltypes.Text
             return sqltypes.Concatenable.Comparator.\
                 _adapt_expression(self, op, other_comparator)
 
-    def bind_processor(self, dialect):
-        json_serializer = dialect._json_serializer or json.dumps
-        if util.py2k:
-            encoding = dialect.encoding
-            def process(value):
-                return json_serializer(value).encode(encoding)
-        else:
-            def process(value):
-                return json_serializer(value)
-        return process
+        def has_key(self, other):
+            """Boolean expression.  Test for presence of a key.  Note that the
+            key may be a SQLA expression.
+            """
+            return self.expr.op('?')(other)
 
-    def result_processor(self, dialect, coltype):
-        json_deserializer = dialect._json_deserializer or json.loads
-        if util.py2k:
-            encoding = dialect.encoding
-            def process(value):
-                return json_deserializer(value.decode(encoding))
-        else:
-            def process(value):
-                return json_deserializer(value)
-        return process
+        def contains(self, other, **kwargs):
+            """Boolean expression.  Test if keys (or array) are a superset of/contained
+            the keys of the argument jsonb expression.
+            """
+            return self.expr.op('@>')(other)
+
+
+
 
 
 ischema_names['jsonb'] = JSONB
