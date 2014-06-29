@@ -314,9 +314,8 @@ def _collect_update_commands(base_mapper, uowtransaction,
                                     col)
 
                 prop = mapper._columntoproperty[col]
-                history = attributes.get_state_history(
-                    state, prop.key,
-                    attributes.PASSIVE_NO_INITIALIZE
+                history = state.manager[prop.key].impl.get_history(
+                    state, state_dict, attributes.PASSIVE_NO_INITIALIZE
                 )
                 if history.added:
                     params[col.key] = history.added[0]
@@ -331,15 +330,15 @@ def _collect_update_commands(base_mapper, uowtransaction,
                         # in a different table than the one
                         # where the version_id_col is.
                         for prop in mapper._columntoproperty.values():
-                            history = attributes.get_state_history(
-                                    state, prop.key,
+                            history = state.manager[prop.key].impl.get_history(
+                                    state, state_dict,
                                     attributes.PASSIVE_NO_INITIALIZE)
                             if history.added:
                                 hasdata = True
             else:
                 prop = mapper._columntoproperty[col]
-                history = attributes.get_state_history(
-                                state, prop.key,
+                history = state.manager[prop.key].impl.get_history(
+                                state, state_dict,
                                 attributes.PASSIVE_NO_INITIALIZE)
                 if history.added:
                     if isinstance(history.added[0],
@@ -426,8 +425,8 @@ def _collect_post_update_commands(base_mapper, uowtransaction, table,
 
             elif col in post_update_cols:
                 prop = mapper._columntoproperty[col]
-                history = attributes.get_state_history(
-                            state, prop.key,
+                history = state.manager[prop.key].impl.get_history(
+                            state, state_dict,
                             attributes.PASSIVE_NO_INITIALIZE)
                 if history.added:
                     value = history.added[0]
