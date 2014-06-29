@@ -170,6 +170,8 @@ class Compiled(object):
     defaults.
     """
 
+    _cached_metadata = None
+
     def __init__(self, dialect, statement, bind=None,
                 compile_kwargs=util.immutabledict()):
         """Construct a new ``Compiled`` object.

@@ -269,9 +269,6 @@ class ResultMetaData(object):
         # high precedence keymap.
         keymap.update(primary_keymap)
 
-        if parent._echo:
-            context.engine.logger.debug(
-                "Col %r", tuple(x[0] for x in metadata))
 
     @util.pending_deprecation("0.8", "sqlite dialect uses "
                     "_translate_colname() now")
@@ -406,7 +403,18 @@ class ResultProxy(object):
     def _init_metadata(self):
         metadata = self._cursor_description()
         if metadata is not None:
-            self._metadata = ResultMetaData(self, metadata)
+            if self.context.compiled and \
+                    'compiled_cache' in self.context.execution_options:
+                if self.context.compiled._cached_metadata:
+                    self._metadata = self.context.compiled._cached_metadata
+                else:
+                    self._metadata = self.context.compiled._cached_metadata = \
+                        ResultMetaData(self, metadata)
+            else:
+                self._metadata = ResultMetaData(self, metadata)
+            if self._echo:
+                    self.context.engine.logger.debug(
+                    "Col %r", tuple(x[0] for x in metadata))
 
     def keys(self):
         """Return the current set of string keys for rows."""
