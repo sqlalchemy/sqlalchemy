@@ -267,6 +267,15 @@ func = _FunctionGenerator()
    calculate their return type automatically. For a listing of known generic
    functions, see :ref:`generic_functions`.
 
+   .. note::
+
+        The :data:`.func` construct has only limited support for calling
+        standalone "stored procedures", especially those with special parameterization
+        concerns.
+
+        See the section :ref:`stored_procedures` for details on how to use
+        the DBAPI-level ``callproc()`` method for fully traditional stored procedures.
+
 """
 
 modifier = _FunctionGenerator(group=False)

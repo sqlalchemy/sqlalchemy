@@ -445,6 +445,71 @@ Calling :meth:`~.Connection.close` on the "contextual" connection does not :term
 its resources until all other usages of that resource are closed as well, including
 that any ongoing transactions are rolled back or committed.
 
+.. _dbapi_connections:
+
+Working with Raw DBAPI Connections
+==================================
+
+There are some cases where SQLAlchemy does not provide a genericized way
+at accessing some :term:`DBAPI` functions, such as calling stored procedures as well
+as dealing with multiple result sets.  In these cases, it's just as expedient
+to deal with the raw DBAPI connection directly.   This is accessible from
+a :class:`.Engine` using the :meth:`.Engine.raw_connection` method::
+
+    dbapi_conn = engine.raw_connection()
+
+The instance returned is a "wrapped" form of DBAPI connection. When its
+``.close()`` method is called, the connection is :term:`released` back to the
+engine's connection pool::
+
+    dbapi_conn.close()
+
+While SQLAlchemy may in the future add built-in patterns for more DBAPI
+use cases, there are diminishing returns as these cases tend to be rarely
+needed and they also vary highly dependent on the type of DBAPI in use,
+so in any case the direct DBAPI calling pattern is always there for those
+cases where it is needed.
+
+Some recipes for DBAPI connection use follow.
+
+.. _stored_procedures:
+
+Calling Stored Procedures
+-------------------------
+
+For stored procedures with special syntactical or parameter concerns,
+DBAPI-level `callproc <http://legacy.python.org/dev/peps/pep-0249/#callproc>`_
+may be used::
+
+    connection = engine.raw_connection()
+    try:
+        cursor = connection.cursor()
+        cursor.callproc("my_procedure", ['x', 'y', 'z'])
+        results = list(cursor.fetchall())
+        cursor.close()
+        connection.commit()
+    finally:
+        connection.close()
+
+Multiple Result Sets
+--------------------
+
+Multiple result set support is available from a raw DBAPI cursor using the
+`nextset <http://legacy.python.org/dev/peps/pep-0249/#nextset>`_ method::
+
+    connection = engine.raw_connection()
+    try:
+        cursor = connection.cursor()
+        cursor.execute("select * from table1; select * from table2")
+        results_one = cursor.fetchall()
+        cursor.nextset()
+        results_two = cursor.fetchall()
+        cursor.close()
+    finally:
+        connection.close()
+
+
+
 Registering New Dialects
 ========================
 
