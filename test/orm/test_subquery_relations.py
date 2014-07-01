@@ -14,6 +14,8 @@ from sqlalchemy.testing.entities import ComparableEntity
 from test.orm import _fixtures
 import sqlalchemy as sa
 
+from sqlalchemy.orm import with_polymorphic
+
 class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     run_inserts = 'once'
     run_deletes = None
@@ -1130,6 +1132,158 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "ORDER BY anon_1.people_person_id, paperwork.paperwork_id",
                 {"primary_language_1": "java",
                     "description_1": "tps report #2"}
+            )
+        )
+
+    def test_correct_subquery_with_polymorphic_no_alias(self):
+        # test #3106
+        sess = create_session()
+
+        wp = with_polymorphic(Person, [Engineer])
+        q = sess.query(wp).\
+                options(subqueryload(wp.paperwork)).\
+                order_by(Engineer.primary_language.desc())
+
+        def go():
+            eq_(q.first(),
+                Engineer(
+                    paperwork=[
+                        Paperwork(description="tps report #1"),
+                        Paperwork(description="tps report #2")],
+                    primary_language='java'
+                )
+
+            )
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT people.person_id AS people_person_id, "
+                "people.name AS people_name, people.type AS people_type, "
+                "engineers.engineer_id AS engineers_engineer_id, "
+                "engineers.primary_language AS engineers_primary_language "
+                "FROM people LEFT OUTER JOIN engineers ON people.person_id = "
+                "engineers.engineer_id ORDER BY engineers.primary_language "
+                "DESC LIMIT :param_1"),
+            CompiledSQL(
+                "SELECT paperwork.paperwork_id AS paperwork_paperwork_id, "
+                "paperwork.description AS paperwork_description, "
+                "paperwork.person_id AS paperwork_person_id, "
+                "anon_1.people_person_id AS anon_1_people_person_id FROM "
+                "(SELECT people.person_id AS people_person_id FROM people "
+                "LEFT OUTER JOIN engineers ON people.person_id = "
+                "engineers.engineer_id ORDER BY engineers.primary_language "
+                "DESC LIMIT :param_1) AS anon_1 JOIN paperwork "
+                "ON anon_1.people_person_id = paperwork.person_id "
+                "ORDER BY anon_1.people_person_id, paperwork.paperwork_id")
+        )
+
+    def test_correct_subquery_with_polymorphic_alias(self):
+        # test #3106
+        sess = create_session()
+
+        wp = with_polymorphic(Person, [Engineer], aliased=True)
+        q = sess.query(wp).\
+                options(subqueryload(wp.paperwork)).\
+                order_by(wp.Engineer.primary_language.desc())
+
+        def go():
+            eq_(q.first(),
+                Engineer(
+                    paperwork=[
+                        Paperwork(description="tps report #1"),
+                        Paperwork(description="tps report #2")],
+                    primary_language='java'
+                )
+
+            )
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT anon_1.people_person_id AS anon_1_people_person_id, "
+                "anon_1.people_name AS anon_1_people_name, "
+                "anon_1.people_type AS anon_1_people_type, "
+                "anon_1.engineers_engineer_id AS anon_1_engineers_engineer_id, "
+                "anon_1.engineers_primary_language "
+                "AS anon_1_engineers_primary_language FROM "
+                "(SELECT people.person_id AS people_person_id, "
+                "people.name AS people_name, people.type AS people_type, "
+                "engineers.engineer_id AS engineers_engineer_id, "
+                "engineers.primary_language AS engineers_primary_language "
+                "FROM people LEFT OUTER JOIN engineers ON people.person_id = "
+                "engineers.engineer_id) AS anon_1 "
+                "ORDER BY anon_1.engineers_primary_language DESC "
+                "LIMIT :param_1"),
+            CompiledSQL(
+                "SELECT paperwork.paperwork_id AS paperwork_paperwork_id, "
+                "paperwork.description AS paperwork_description, "
+                "paperwork.person_id AS paperwork_person_id, "
+                "anon_1.anon_2_people_person_id AS "
+                "anon_1_anon_2_people_person_id FROM "
+                "(SELECT DISTINCT anon_2.people_person_id AS "
+                "anon_2_people_person_id, "
+                "anon_2.engineers_primary_language AS "
+                "anon_2_engineers_primary_language FROM "
+                "(SELECT people.person_id AS people_person_id, "
+                "people.name AS people_name, people.type AS people_type, "
+                "engineers.engineer_id AS engineers_engineer_id, "
+                "engineers.primary_language AS engineers_primary_language "
+                "FROM people LEFT OUTER JOIN engineers ON people.person_id = "
+                "engineers.engineer_id) AS anon_2 "
+                "ORDER BY anon_2.engineers_primary_language "
+                "DESC LIMIT :param_1) AS anon_1 "
+                "JOIN paperwork "
+                "ON anon_1.anon_2_people_person_id = paperwork.person_id "
+                "ORDER BY anon_1.anon_2_people_person_id, "
+                "paperwork.paperwork_id")
+        )
+
+    def test_correct_subquery_with_polymorphic_flat_alias(self):
+        # test #3106
+        sess = create_session()
+
+        wp = with_polymorphic(Person, [Engineer], aliased=True, flat=True)
+        q = sess.query(wp).\
+                options(subqueryload(wp.paperwork)).\
+                order_by(wp.Engineer.primary_language.desc())
+
+        def go():
+            eq_(q.first(),
+                Engineer(
+                    paperwork=[
+                        Paperwork(description="tps report #1"),
+                        Paperwork(description="tps report #2")],
+                    primary_language='java'
+                )
+
+            )
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT people_1.person_id AS people_1_person_id, "
+                "people_1.name AS people_1_name, "
+                "people_1.type AS people_1_type, "
+                "engineers_1.engineer_id AS engineers_1_engineer_id, "
+                "engineers_1.primary_language AS engineers_1_primary_language "
+                "FROM people AS people_1 "
+                "LEFT OUTER JOIN engineers AS engineers_1 "
+                "ON people_1.person_id = engineers_1.engineer_id "
+                "ORDER BY engineers_1.primary_language DESC LIMIT :param_1"),
+            CompiledSQL(
+                "SELECT paperwork.paperwork_id AS paperwork_paperwork_id, "
+                "paperwork.description AS paperwork_description, "
+                "paperwork.person_id AS paperwork_person_id, "
+                "anon_1.people_1_person_id AS anon_1_people_1_person_id "
+                "FROM (SELECT people_1.person_id AS people_1_person_id "
+                "FROM people AS people_1 "
+                "LEFT OUTER JOIN engineers AS engineers_1 "
+                "ON people_1.person_id = engineers_1.engineer_id "
+                "ORDER BY engineers_1.primary_language DESC LIMIT :param_1) "
+                "AS anon_1 JOIN paperwork ON anon_1.people_1_person_id = "
+                "paperwork.person_id ORDER BY anon_1.people_1_person_id, "
+                "paperwork.paperwork_id"
             )
         )
 

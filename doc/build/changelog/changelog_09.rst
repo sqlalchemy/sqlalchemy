@@ -16,6 +16,16 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3106
+        :versions: 1.0.0
+
+        Fixed bug in subquery eager loading in conjunction with
+        :func:`.with_polymorphic`, the targeting of entities and columns
+        in the subquery load has been made more accurate with respect
+        to this type of entity and others.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3099
 
         Fixed bug involving dynamic attributes, that was again a regression

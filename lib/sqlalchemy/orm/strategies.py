@@ -713,7 +713,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
             elif subq_path.contains_mapper(self.mapper):
                 return
 
-        subq_mapper, leftmost_mapper, leftmost_attr, leftmost_relationship = \
+        leftmost_mapper, leftmost_attr, leftmost_relationship = \
                 self._get_leftmost(subq_path)
 
         orig_query = context.attributes.get(
@@ -725,7 +725,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         left_alias = self._generate_from_original_query(
                             orig_query, leftmost_mapper,
                             leftmost_attr, leftmost_relationship,
-                            entity.mapper
+                            entity.entity_zero
         )
 
         # generate another Query that will join the
@@ -738,13 +738,12 @@ class SubqueryLoader(AbstractRelationshipLoader):
             ("orig_query", SubqueryLoader): orig_query,
             ('subquery_path', None): subq_path
         }
-        q = q._enable_single_crit(False)
 
+        q = q._set_enable_single_crit(False)
         to_join, local_attr, parent_alias = \
                     self._prep_for_joins(left_alias, subq_path)
         q = q.order_by(*local_attr)
         q = q.add_columns(*local_attr)
-
         q = self._apply_joins(q, to_join, left_alias,
                             parent_alias, effective_entity)
 
@@ -771,15 +770,17 @@ class SubqueryLoader(AbstractRelationshipLoader):
         leftmost_cols = leftmost_prop.local_columns
 
         leftmost_attr = [
-            leftmost_mapper._columntoproperty[c].class_attribute
+            getattr(subq_path[0].entity,
+                leftmost_mapper._columntoproperty[c].key)
             for c in leftmost_cols
         ]
-        return subq_mapper, leftmost_mapper, leftmost_attr, leftmost_prop
+
+        return leftmost_mapper, leftmost_attr, leftmost_prop
 
     def _generate_from_original_query(self,
             orig_query, leftmost_mapper,
             leftmost_attr, leftmost_relationship,
-            entity_mapper
+            orig_entity
     ):
         # reformat the original query
         # to look only for significant columns
@@ -787,9 +788,8 @@ class SubqueryLoader(AbstractRelationshipLoader):
 
         # set a real "from" if not present, as this is more
         # accurate than just going off of the column expression
-        if not q._from_obj and entity_mapper.isa(leftmost_mapper):
-            q._set_select_from([entity_mapper], False)
-
+        if not q._from_obj and orig_entity.mapper.isa(leftmost_mapper):
+            q._set_select_from([orig_entity], False)
         target_cols = q._adapt_col_list(leftmost_attr)
 
         # select from the identity columns of the outer
