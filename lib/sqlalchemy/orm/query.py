@@ -941,7 +941,7 @@ class Query(object):
 
         """
         fromclause = self.with_labels().enable_eagerloads(False).\
-                                    _enable_single_crit(False).\
+                                    _set_enable_single_crit(False).\
                                     statement.correlate(None)
         q = self._from_selectable(fromclause)
         if entities:
@@ -949,7 +949,7 @@ class Query(object):
         return q
 
     @_generative()
-    def _enable_single_crit(self, val):
+    def _set_enable_single_crit(self, val):
         self._enable_single_crit = val
 
     @_generative()
@@ -2908,7 +2908,8 @@ class Query(object):
         subtypes are selected from the total results.
 
         """
-        for (ext_info, adapter) in self._mapper_adapter_map.values():
+
+        for (ext_info, adapter) in set(self._mapper_adapter_map.values()):
             if ext_info in self._join_entities:
                 continue
             single_crit = ext_info.mapper._single_table_criterion
