@@ -85,6 +85,43 @@ class SessionTransactionTest(FixtureTest):
             raise
 
 
+    @testing.requires.savepoints
+    def test_nested_accounting_new_items_removed(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        session = create_session(bind=testing.db)
+        session.begin()
+        session.begin_nested()
+        u1 = User(name='u1')
+        session.add(u1)
+        session.commit()
+        assert u1 in session
+        session.rollback()
+        assert u1 not in session
+
+    @testing.requires.savepoints
+    def test_nested_accounting_deleted_items_restored(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        session = create_session(bind=testing.db)
+        session.begin()
+        u1 = User(name='u1')
+        session.add(u1)
+        session.commit()
+
+        session.begin()
+        u1 = session.query(User).first()
+
+        session.begin_nested()
+        session.delete(u1)
+        session.commit()
+        assert u1 not in session
+        session.rollback()
+        assert u1 in session
 
     @testing.requires.savepoints
     def test_heavy_nesting(self):

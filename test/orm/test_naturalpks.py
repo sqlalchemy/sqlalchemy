@@ -546,6 +546,36 @@ class ReversePKsTest(fixtures.MappedTest):
         assert session.query(User).get([1, PUBLISHED]) is a_published
         assert session.query(User).get([1, EDITABLE]) is a_editable
 
+    @testing.requires.savepoints
+    def test_reverse_savepoint(self):
+        user, User = self.tables.user, self.classes.User
+
+        PUBLISHED, EDITABLE, ARCHIVED = 1, 2, 3
+
+        mapper(User, user)
+
+        session = sa.orm.sessionmaker()()
+
+        a_published = User(1, PUBLISHED, 'a')
+        session.add(a_published)
+        session.commit()
+
+        a_editable = User(1, EDITABLE, 'a')
+
+        session.add(a_editable)
+        session.commit()
+
+        # testing #3108
+        session.begin_nested()
+
+        a_published.status = ARCHIVED
+        a_editable.status = PUBLISHED
+
+        session.commit()
+
+        session.rollback()
+        eq_(a_published.status, PUBLISHED)
+        eq_(a_editable.status, EDITABLE)
 
 class SelfReferentialTest(fixtures.MappedTest):
     # mssql, mysql don't allow
