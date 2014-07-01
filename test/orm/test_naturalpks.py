@@ -497,9 +497,10 @@ class ReversePKsTest(fixtures.MappedTest):
     def define_tables(cls, metadata):
         Table(
             'user', metadata,
-            Column('code', Integer, primary_key=True),
-            Column('status', Integer, primary_key=True),
+            Column('code', Integer, autoincrement=False, primary_key=True),
+            Column('status', Integer, autoincrement=False, primary_key=True),
             Column('username', String(50), nullable=False),
+            test_needs_acid=True
             )
 
     @classmethod
