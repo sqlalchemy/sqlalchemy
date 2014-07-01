@@ -16,6 +16,17 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3108
+        :versions: 1.0.0
+
+        Fixed bug where items that were persisted, deleted, or had a
+        primary key change within a savepoint block would not
+        participate in being restored to their former state (not in
+        session, in session, previous PK) after the outer transaction
+        were rolled back.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3106
         :versions: 1.0.0
 

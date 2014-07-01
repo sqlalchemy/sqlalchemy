@@ -292,7 +292,10 @@ class SessionTransaction(object):
             for s in self._deleted:
                 s.session_id = None
             self._deleted.clear()
-
+        elif self.nested:
+            self._parent._new.update(self._new)
+            self._parent._deleted.update(self._deleted)
+            self._parent._key_switches.update(self._key_switches)
 
     def _connection_for_bind(self, bind):
         self._assert_active()
