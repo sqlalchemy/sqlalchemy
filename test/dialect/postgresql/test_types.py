@@ -2009,11 +2009,30 @@ class JSONBTest(JSONTest):
             "test_table.test_column ? %(test_column_1)s"
         )
 
+    def test_where_has_all(self):
+        self._test_where(
+            self.jsoncol.has_all({'name': 'r1', 'data': {"k1": "r1v1", "k2": "r1v2"}}),
+            "test_table.test_column ?& %(test_column_1)s"
+        )
+
+    def test_where_has_any(self):
+        self._test_where(
+            self.jsoncol.has_any(postgresql.array(['name', 'data'])),
+            "test_table.test_column ?| ARRAY[%(param_1)s, %(param_2)s]"
+        )
+
     def test_where_contains(self):
         self._test_where(
             self.jsoncol.contains({"k1": "r1v1"}),
             "test_table.test_column @> %(test_column_1)s"
         )
+
+    def test_where_contained_by(self):
+        self._test_where(
+            self.jsoncol.contained_by({'foo': '1', 'bar': None}),
+            "test_table.test_column <@ %(test_column_1)s"
+        )
+
 
 class JSONBRoundTripTest(JSONRoundTripTest):
     __only_on__ = ('postgresql >= 9.4',)

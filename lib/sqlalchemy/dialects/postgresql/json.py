@@ -279,8 +279,9 @@ class JSONB(JSON):
             return JSONElement(self.expr, other)
 
         def _adapt_expression(self, op, other_comparator):
+            # How does one do equality?? jsonb also has "=" eg. '[1,2,3]'::jsonb = '[1,2,3]'::jsonb
             if isinstance(op, custom_op):
-                if op.opstring in ['?', '@>']:
+                if op.opstring in ['?', '?&', '?|', '@>', '<@']:
                     return op, sqltypes.Boolean
                 if op.opstring == '->':
                     return op, sqltypes.Text
@@ -293,10 +294,26 @@ class JSONB(JSON):
             """
             return self.expr.op('?')(other)
 
+        def has_all(self, other):
+            """Boolean expression.  Test for presence of all keys in jsonb
+            """
+            return self.expr.op('?&')(other)
+
+        def has_any(self, other):
+            """Boolean expression.  Test for presence of any key in jsonb
+            """
+            return self.expr.op('?|')(other)
+
         def contains(self, other, **kwargs):
             """Boolean expression.  Test if keys (or array) are a superset of/contained
             the keys of the argument jsonb expression.
             """
             return self.expr.op('@>')(other)
+
+        def contained_by(self, other):
+            """Boolean expression.  Test if keys are a proper subset of the
+            keys of the argument jsonb expression.
+            """
+            return self.expr.op('<@')(other)
 
 ischema_names['jsonb'] = JSONB
