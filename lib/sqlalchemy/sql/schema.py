@@ -864,8 +864,11 @@ class Column(SchemaItem, ColumnClause):
             SERIAL on Postgresql, and IDENTITY on MS-SQL.  It does
             *not* issue AUTOINCREMENT for SQLite since this is a
             special SQLite flag that is not required for autoincrementing
-            behavior.  See the SQLite dialect documentation for
-            information on SQLite's AUTOINCREMENT.
+            behavior.
+
+            .. seealso::
+
+                :ref:`sqlite_autoincrement`
 
           * The column will be considered to be available as
             cursor.lastrowid or equivalent, for those dialects which
