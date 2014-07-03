@@ -22,8 +22,10 @@ These types represent dates and times as ISO formatted strings, which also
 nicely support ordering. There's no reliance on typical "libc" internals for
 these functions so historical dates are fully supported.
 
-Auto Incrementing Behavior
---------------------------
+.. _sqlite_autoincrement:
+
+SQLite Auto Incrementing Behavior
+----------------------------------
 
 Background on SQLite's autoincrement is at: http://sqlite.org/autoinc.html
 
