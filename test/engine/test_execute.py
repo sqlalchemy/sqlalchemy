@@ -1131,6 +1131,117 @@ class EngineEventsTest(fixtures.TestBase):
             assert canary[0][2] is e.orig
             assert canary[0][0] == "SELECT FOO FROM I_DONT_EXIST"
 
+    def test_exception_event_reraise(self):
+        engine = engines.testing_engine()
+
+        class MyException(Exception):
+            pass
+
+        @event.listens_for(engine, 'dbapi_error', retval=True)
+        def err(conn, cursor, stmt, parameters, context, exception):
+            if "ERROR ONE" in str(stmt):
+                return MyException("my exception")
+            elif "ERROR TWO" in str(stmt):
+                return exception
+            else:
+                return None
+
+        conn = engine.connect()
+        # case 1: custom exception
+        assert_raises_message(
+            MyException,
+            "my exception",
+            conn.execute, "SELECT 'ERROR ONE' FROM I_DONT_EXIST"
+        )
+        # case 2: return the DBAPI exception we're given;
+        # no wrapping should occur
+        assert_raises(
+            conn.dialect.dbapi.Error,
+            conn.execute, "SELECT 'ERROR TWO' FROM I_DONT_EXIST"
+        )
+        # case 3: normal wrapping
+        assert_raises(
+            tsa.exc.DBAPIError,
+            conn.execute, "SELECT 'ERROR THREE' FROM I_DONT_EXIST"
+        )
+
+    def test_exception_event_reraise_chaining(self):
+        engine = engines.testing_engine()
+
+        class MyException1(Exception):
+            pass
+
+        class MyException2(Exception):
+            pass
+
+        class MyException3(Exception):
+            pass
+
+        @event.listens_for(engine, 'dbapi_error', retval=True)
+        def err1(conn, cursor, stmt, parameters, context, exception):
+            if "ERROR ONE" in str(stmt) or "ERROR TWO" in str(stmt) \
+                    or "ERROR THREE" in str(stmt):
+                return MyException1("my exception")
+            elif "ERROR FOUR" in str(stmt):
+                raise MyException3("my exception short circuit")
+
+        @event.listens_for(engine, 'dbapi_error', retval=True)
+        def err2(conn, cursor, stmt, parameters, context, exception):
+            if ("ERROR ONE" in str(stmt) or "ERROR FOUR" in str(stmt)) \
+                and isinstance(exception, MyException1):
+                raise MyException2("my exception chained")
+            elif "ERROR TWO" in str(stmt):
+                return exception
+            else:
+                return None
+
+        conn = engine.connect()
+
+        with patch.object(engine.
+                dialect.execution_ctx_cls, "handle_dbapi_exception") as patched:
+            assert_raises_message(
+                MyException2,
+                "my exception chained",
+                conn.execute, "SELECT 'ERROR ONE' FROM I_DONT_EXIST"
+            )
+            eq_(patched.call_count, 1)
+
+        with patch.object(engine.
+                dialect.execution_ctx_cls, "handle_dbapi_exception") as patched:
+            assert_raises(
+                MyException1,
+                conn.execute, "SELECT 'ERROR TWO' FROM I_DONT_EXIST"
+            )
+            eq_(patched.call_count, 1)
+
+        with patch.object(engine.
+                dialect.execution_ctx_cls, "handle_dbapi_exception") as patched:
+            # test that non None from err1 isn't cancelled out
+            # by err2
+            assert_raises(
+                MyException1,
+                conn.execute, "SELECT 'ERROR THREE' FROM I_DONT_EXIST"
+            )
+            eq_(patched.call_count, 1)
+
+        with patch.object(engine.
+                dialect.execution_ctx_cls, "handle_dbapi_exception") as patched:
+            assert_raises(
+                tsa.exc.DBAPIError,
+                conn.execute, "SELECT 'ERROR FIVE' FROM I_DONT_EXIST"
+            )
+            eq_(patched.call_count, 1)
+
+        with patch.object(engine.
+                dialect.execution_ctx_cls, "handle_dbapi_exception") as patched:
+            assert_raises_message(
+                MyException3,
+                "my exception short circuit",
+                conn.execute, "SELECT 'ERROR FOUR' FROM I_DONT_EXIST"
+            )
+            eq_(patched.call_count, 1)
+
+
 
     @testing.fails_on('firebird', 'Data type unknown')
     def test_execute_events(self):

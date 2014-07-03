@@ -1090,14 +1090,28 @@ class Connection(Connectable):
             should_wrap = isinstance(e, self.dialect.dbapi.Error) or \
                 (statement is not None and context is None)
 
+            newraise = None
             if should_wrap and context:
                 if self._has_events or self.engine._has_events:
-                    self.dispatch.dbapi_error(self,
-                                                    cursor,
-                                                    statement,
-                                                    parameters,
-                                                    context,
-                                                    e)
+                    for fn in self.dispatch.dbapi_error:
+                        try:
+                            # handler returns an exception;
+                            # call next handler in a chain
+                            per_fn = fn(self,
+                                                cursor,
+                                                statement,
+                                                parameters,
+                                                context,
+                                                newraise
+                                                    if newraise
+                                                    is not None else e)
+                            if per_fn is not None:
+                                newraise = per_fn
+                        except Exception as _raised:
+                            # handler raises an exception - stop processing
+                            newraise = _raised
+
+
                 context.handle_dbapi_exception(e)
 
             if not self._is_disconnect:
@@ -1105,7 +1119,9 @@ class Connection(Connectable):
                     self._safe_close_cursor(cursor)
                 self._autorollback()
 
-            if should_wrap:
+            if newraise:
+                util.raise_from_cause(newraise, exc_info)
+            elif should_wrap:
                 util.raise_from_cause(
                                     exc.DBAPIError.instance(
                                         statement,

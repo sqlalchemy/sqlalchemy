@@ -492,12 +492,12 @@ class ConnectionEvents(event.Events):
                         parameters, context, executemany)
                     return statement, parameters
                 fn = wrap_before_cursor_execute
-
         elif retval and \
-            identifier not in ('before_execute', 'before_cursor_execute'):
+            identifier not in ('before_execute',
+                                    'before_cursor_execute', 'dbapi_error'):
             raise exc.ArgumentError(
-                    "Only the 'before_execute' and "
-                    "'before_cursor_execute' engine "
+                    "Only the 'before_execute', "
+                    "'before_cursor_execute' and 'dbapi_error' engine "
                     "event listeners accept the 'retval=True' "
                     "argument.")
         event_key.with_wrapper(fn).base_listen()
@@ -616,20 +616,69 @@ class ConnectionEvents(event.Events):
         existing transaction remains in effect as well as any state
         on the cursor.
 
-        The use case here is to inject low-level exception handling
-        into an :class:`.Engine`, typically for logging and
-        debugging purposes.   In general, user code should **not** modify
-        any state or throw any exceptions here as this will
-        interfere with SQLAlchemy's cleanup and error handling
-        routines.
+        The use cases supported by this hook include:
 
-        Subsequent to this hook, SQLAlchemy may attempt any
-        number of operations on the connection/cursor, including
-        closing the cursor, rolling back of the transaction in the
-        case of connectionless execution, and disposing of the entire
-        connection pool if a "disconnect" was detected.   The
-        exception is then wrapped in a SQLAlchemy DBAPI exception
-        wrapper and re-thrown.
+        * read-only, low-level exception handling for logging and
+          debugging purposes
+        * exception re-writing (0.9.7 and up only)
+
+        The hook is called while the cursor from the failed operation
+        (if any) is still open and accessible.   Special cleanup operations
+        can be called on this cursor; SQLAlchemy will attempt to close
+        this cursor subsequent to this hook being invoked.  If the connection
+        is in "autocommit" mode, the transaction also remains open within
+        the scope of this hook; the rollback of the per-statement transaction
+        also occurs after the hook is called.
+
+        When cleanup operations are complete, SQLAlchemy wraps the DBAPI-specific
+        exception in a SQLAlchemy-level wrapper mirroring the exception class,
+        and then propagates that new exception object.
+
+        The user-defined event handler has two options for replacing
+        the SQLAlchemy-constructed exception into one that is user
+        defined.   It can either raise this new exception directly, in
+        which case all further event listeners are bypassed and the
+        exception will be raised, after appropriate cleanup as taken
+        place::
+
+            # 0.9.7 and up only !!!
+            @event.listens_for(Engine, "dbapi_error")
+            def handle_exception(conn, cursor, statement, parameters, context, exception):
+                if isinstance(exception, psycopg2.OperationalError) and \
+                    "failed" in str(exception):
+                    raise MySpecialException("failed operation")
+
+        Alternatively, a "chained" style of event handling can be
+        used, by configuring the handler with the ``retval=True``
+        modifier and returning the new exception instance from the
+        function.  In this case, event handling will continue onto the
+        next handler, that handler receiving the new exception as its
+        argument::
+
+            # 0.9.7 and up only !!!
+            @event.listens_for(Engine, "dbapi_error", retval=True)
+            def handle_exception(conn, cursor, statement, parameters, context, exception):
+                if isinstance(exception, psycopg2.OperationalError) and \
+                    "failed" in str(exception):
+                    return MySpecialException("failed operation")
+                else:
+                    return None
+
+        Handlers that return ``None`` may remain within this chain; the
+        last non-``None`` return value is the one that continues to be
+        passed to the next handler.
+
+        When a custom exception is raised or returned, SQLAlchemy raises
+        this new exception as-is, it is not wrapped by any SQLAlchemy
+        object.  If the exception is not a subclass of
+        :class:`sqlalchemy.exc.StatementError`,
+        certain features may not be available; currently this includes
+        the ORM's feature of adding a detail hint about "autoflush" to
+        exceptions raised within the autoflush process.
+
+        .. versionadded:: 0.9.7 Support for translation of DBAPI exceptions
+           into user-defined exceptions within the
+           :meth:`.ConnectionEvents.dbapi_error` event hook.
 
         :param conn: :class:`.Connection` object
         :param cursor: DBAPI cursor object

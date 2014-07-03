@@ -15,6 +15,16 @@
     :released:
 
     .. change::
+        :tags: feature, engine
+        :tickets: 3076
+        :versions: 1.0.0
+
+        The mechanics of the :meth:`.ConnectionEvents.dbapi_error` handler
+        have been enhanced such that the function handler is now capable
+        of raising or returning a new exception object, which will replace
+        the exception normally being thrown by SQLAlchemy.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3108
         :versions: 1.0.0
