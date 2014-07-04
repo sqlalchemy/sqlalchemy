@@ -25,6 +25,16 @@
         the exception normally being thrown by SQLAlchemy.
 
     .. change::
+        :tags: feature, engine
+        :versions: 1.0.0
+
+        Added new attributes :attr:`.ExecutionContext.exception` and
+        :attr:`.ExecutionContext.is_disconnect` which are meaningful within
+        the :meth:`.ConnectionEvents.dbapi_error` handler to see both the
+        original DBAPI error as well as whether or not it represents
+        a disconnect.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3108
         :versions: 1.0.0
