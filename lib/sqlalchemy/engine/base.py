@@ -12,8 +12,8 @@ from __future__ import with_statement
 
 import sys
 from .. import exc, util, log, interfaces
-from ..sql import expression, util as sql_util, schema, ddl
-from .interfaces import Connectable, Compiled
+from ..sql import util as sql_util
+from .interfaces import Connectable, ExceptionContext
 from .util import _distill_params
 import contextlib
 
@@ -1096,28 +1096,51 @@ class Connection(Connectable):
             should_wrap = isinstance(e, self.dialect.dbapi.Error) or \
                 (statement is not None and context is None)
 
+            if should_wrap:
+                sqlalchemy_exception = exc.DBAPIError.instance(
+                    statement,
+                    parameters,
+                    e,
+                    self.dialect.dbapi.Error,
+                    connection_invalidated=self._is_disconnect)
+            else:
+                sqlalchemy_exception = None
+
             newraise = None
+
+            if self._has_events or self.engine._has_events:
+                # legacy dbapi_error event
+                if should_wrap and context:
+                    self.dispatch.dbapi_error(self,
+                                                    cursor,
+                                                    statement,
+                                                    parameters,
+                                                    context,
+                                                    e)
+
+                # new handle_error event
+                ctx = ExceptionContextImpl(
+                    e, sqlalchemy_exception, self, cursor, statement,
+                    parameters, context, self._is_disconnect)
+
+                for fn in self.dispatch.handle_error:
+                    try:
+                        # handler returns an exception;
+                        # call next handler in a chain
+                        per_fn = fn(ctx)
+                        if per_fn is not None:
+                            ctx.chained_exception = newraise = per_fn
+                    except Exception as _raised:
+                        # handler raises an exception - stop processing
+                        newraise = _raised
+                        break
+
+                if sqlalchemy_exception and \
+                        self._is_disconnect != ctx.is_disconnect:
+                    sqlalchemy_exception.connection_invalidated = \
+                        self._is_disconnect = ctx.is_disconnect
+
             if should_wrap and context:
-                if self._has_events or self.engine._has_events:
-                    for fn in self.dispatch.dbapi_error:
-                        try:
-                            # handler returns an exception;
-                            # call next handler in a chain
-                            per_fn = fn(self,
-                                                cursor,
-                                                statement,
-                                                parameters,
-                                                context,
-                                                newraise
-                                                    if newraise
-                                                    is not None else e)
-                            if per_fn is not None:
-                                newraise = per_fn
-                        except Exception as _raised:
-                            # handler raises an exception - stop processing
-                            newraise = _raised
-
-
                 context.handle_dbapi_exception(e)
 
             if not self._is_disconnect:
@@ -1129,16 +1152,11 @@ class Connection(Connectable):
                 util.raise_from_cause(newraise, exc_info)
             elif should_wrap:
                 util.raise_from_cause(
-                                    exc.DBAPIError.instance(
-                                        statement,
-                                        parameters,
-                                        e,
-                                        self.dialect.dbapi.Error,
-                                        connection_invalidated=self._is_disconnect),
+                                    sqlalchemy_exception,
                                     exc_info
                                 )
-
-            util.reraise(*exc_info)
+            else:
+                util.reraise(*exc_info)
 
         finally:
             del self._reentrant_error
@@ -1222,6 +1240,21 @@ class Connection(Connectable):
     def _run_visitor(self, visitorcallable, element, **kwargs):
         visitorcallable(self.dialect, self,
                             **kwargs).traverse_single(element)
+
+
+class ExceptionContextImpl(ExceptionContext):
+    """Implement the :class:`.ExceptionContext` interface."""
+
+    def __init__(self, exception, sqlalchemy_exception,
+                        connection, cursor, statement, parameters,
+                        context, is_disconnect):
+        self.connection = connection
+        self.sqlalchemy_exception = sqlalchemy_exception
+        self.original_exception = exception
+        self.execution_context = context
+        self.statement = statement
+        self.parameters = parameters
+        self.is_disconnect = is_disconnect
 
 
 class Transaction(object):

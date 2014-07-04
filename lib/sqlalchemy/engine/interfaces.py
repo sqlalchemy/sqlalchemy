@@ -882,3 +882,105 @@ class Connectable(object):
 
     def _execute_clauseelement(self, elem, multiparams=None, params=None):
         raise NotImplementedError()
+
+class ExceptionContext(object):
+    """Encapsulate information about an error condition in progress.
+
+    This object exists solely to be passed to the
+    :meth:`.ConnectionEvents.handle_error` event, supporting an interface that
+    can be extended without backwards-incompatibility.
+
+    .. versionadded:: 0.9.7
+
+    """
+
+    connection = None
+    """The :class:`.Connection` in use during the exception.
+
+    This member is always present.
+
+    """
+
+    cursor = None
+    """The DBAPI cursor object.
+
+    May be None.
+
+    """
+
+    statement = None
+    """String SQL statement that was emitted directly to the DBAPI.
+
+    May be None.
+
+    """
+
+    parameters = None
+    """Parameter collection that was emitted directly to the DBAPI.
+
+    May be None.
+
+    """
+
+    original_exception = None
+    """The exception object which was caught.
+
+    This member is always present.
+
+    """
+
+    sqlalchemy_exception = None
+    """The :class:`sqlalchemy.exc.StatementError` which wraps the original,
+    and will be raised if exception handling is not circumvented by the event.
+
+    May be None, as not all exception types are wrapped by SQLAlchemy.
+    For DBAPI-level exceptions that subclass the dbapi's Error class, this
+    field will always be present.
+
+    """
+
+    chained_exception = None
+    """The exception that was returned by the previous handler in the
+    exception chain, if any.
+
+    If present, this exception will be the one ultimately raised by
+    SQLAlchemy unless a subsequent handler replaces it.
+
+    May be None.
+
+    """
+
+    execution_context = None
+    """The :class:`.ExecutionContext` corresponding to the execution
+    operation in progress.
+
+    This is present for statement execution operations, but not for
+    operations such as transaction begin/end.  It also is not present when
+    the exception was raised before the :class:`.ExecutionContext`
+    could be constructed.
+
+    Note that the :attr:`.ExceptionContext.statement` and
+    :attr:`.ExceptionContext.parameters` members may represent a
+    different value than that of the :class:`.ExecutionContext`,
+    potentially in the case where a
+    :meth:`.ConnectionEvents.before_cursor_execute` event or similar
+    modified the statement/parameters to be sent.
+
+    May be None.
+
+    """
+
+    is_disconnect = None
+    """Represent whether the exception as occurred represents a "disconnect"
+    condition.
+
+    This flag will always be True or False within the scope of the
+    :meth:`.ConnectionEvents.handle_error` handler.
+
+    SQLAlchemy will defer to this flag in order to determine whether or not
+    the connection should be invalidated subsequently.    That is, by
+    assigning to this flag, a "disconnect" event which then results in
+    a connection and pool invalidation can be invoked or prevented by
+    changing this flag.
+
+    """

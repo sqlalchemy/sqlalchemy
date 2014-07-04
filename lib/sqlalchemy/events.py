@@ -494,10 +494,10 @@ class ConnectionEvents(event.Events):
                 fn = wrap_before_cursor_execute
         elif retval and \
             identifier not in ('before_execute',
-                                    'before_cursor_execute', 'dbapi_error'):
+                                    'before_cursor_execute', 'handle_error'):
             raise exc.ArgumentError(
                     "Only the 'before_execute', "
-                    "'before_cursor_execute' and 'dbapi_error' engine "
+                    "'before_cursor_execute' and 'handle_error' engine "
                     "event listeners accept the 'retval=True' "
                     "argument.")
         event_key.with_wrapper(fn).base_listen()
@@ -611,16 +611,72 @@ class ConnectionEvents(event.Events):
 
         This event is called with the DBAPI exception instance
         received from the DBAPI itself, *before* SQLAlchemy wraps the
-        exception with its own exception wrappers, and before any
+        exception with it's own exception wrappers, and before any
         other operations are performed on the DBAPI cursor; the
         existing transaction remains in effect as well as any state
         on the cursor.
 
-        The use cases supported by this hook include:
+        The use case here is to inject low-level exception handling
+        into an :class:`.Engine`, typically for logging and
+        debugging purposes.
+
+        .. warning::
+
+            Code should **not** modify
+            any state or throw any exceptions here as this will
+            interfere with SQLAlchemy's cleanup and error handling
+            routines.  For exception modification, please refer to the
+            new :meth:`.ConnectionEvents.handle_error` event.
+
+        Subsequent to this hook, SQLAlchemy may attempt any
+        number of operations on the connection/cursor, including
+        closing the cursor, rolling back of the transaction in the
+        case of connectionless execution, and disposing of the entire
+        connection pool if a "disconnect" was detected.   The
+        exception is then wrapped in a SQLAlchemy DBAPI exception
+        wrapper and re-thrown.
+
+        :param conn: :class:`.Connection` object
+        :param cursor: DBAPI cursor object
+        :param statement: string SQL statement
+        :param parameters: Dictionary, tuple, or list of parameters being
+         passed to the ``execute()`` or ``executemany()`` method of the
+         DBAPI ``cursor``.  In some cases may be ``None``.
+        :param context: :class:`.ExecutionContext` object in use.  May
+         be ``None``.
+        :param exception: The **unwrapped** exception emitted directly from the
+         DBAPI.  The class here is specific to the DBAPI module in use.
+
+        .. deprecated:: 0.9.7 - replaced by
+            :meth:`.ConnectionEvents.handle_error`
+
+        """
+
+    def handle_error(self, exception_context):
+        """Intercept all exceptions processed by the :class:`.Connection`.
+
+        This includes all exceptions emitted by the DBAPI as well as
+        within SQLAlchemy's statement invocation process, including
+        encoding errors and other statement validation errors.  Other areas
+        in which the event is invoked include transaction begin and end,
+        result row fetching, cursor creation.
+
+        Note that :meth:`.handle_error` may support new kinds of exceptions
+        and new calling scenarios at *any time*.  Code which uses this
+        event must expect new calling patterns to be present in minor
+        releases.
+
+        To support the wide variety of members that correspond to an exception,
+        as well as to allow extensibility of the event without backwards
+        incompatibility, the sole argument received is an instance of
+        :class:`.ExceptionContext`.   This object contains data members
+        representing detail about the exception.
+
+        Use cases supported by this hook include:
 
         * read-only, low-level exception handling for logging and
           debugging purposes
-        * exception re-writing (0.9.7 and up only)
+        * exception re-writing
 
         The hook is called while the cursor from the failed operation
         (if any) is still open and accessible.   Special cleanup operations
@@ -630,10 +686,6 @@ class ConnectionEvents(event.Events):
         the scope of this hook; the rollback of the per-statement transaction
         also occurs after the hook is called.
 
-        When cleanup operations are complete, SQLAlchemy wraps the DBAPI-specific
-        exception in a SQLAlchemy-level wrapper mirroring the exception class,
-        and then propagates that new exception object.
-
         The user-defined event handler has two options for replacing
         the SQLAlchemy-constructed exception into one that is user
         defined.   It can either raise this new exception directly, in
@@ -641,28 +693,26 @@ class ConnectionEvents(event.Events):
         exception will be raised, after appropriate cleanup as taken
         place::
 
-            # 0.9.7 and up only !!!
-            @event.listens_for(Engine, "dbapi_error")
-            def handle_exception(conn, cursor, statement, parameters, context, exception):
-                if isinstance(exception, psycopg2.OperationalError) and \
-                    "failed" in str(exception):
+            @event.listens_for(Engine, "handle_error")
+            def handle_exception(context):
+                if isinstance(context.original_exception,
+                    psycopg2.OperationalError) and \\
+                    "failed" in str(context.original_exception):
                     raise MySpecialException("failed operation")
 
         Alternatively, a "chained" style of event handling can be
         used, by configuring the handler with the ``retval=True``
         modifier and returning the new exception instance from the
         function.  In this case, event handling will continue onto the
-        next handler, that handler receiving the new exception as its
-        argument::
+        next handler.   The "chained" exception is available using
+        :attr:`.ExceptionContext.chained_exception`::
 
-            # 0.9.7 and up only !!!
-            @event.listens_for(Engine, "dbapi_error", retval=True)
-            def handle_exception(conn, cursor, statement, parameters, context, exception):
-                if isinstance(exception, psycopg2.OperationalError) and \
-                    "failed" in str(exception):
-                    return MySpecialException("failed operation")
-                else:
-                    return None
+            @event.listens_for(Engine, "handle_error", retval=True)
+            def handle_exception(context):
+                if context.chained_exception is not None and \\
+                    "special" in context.chained_exception.message:
+                    return MySpecialException("failed",
+                        cause=context.chained_exception)
 
         Handlers that return ``None`` may remain within this chain; the
         last non-``None`` return value is the one that continues to be
@@ -676,22 +726,11 @@ class ConnectionEvents(event.Events):
         the ORM's feature of adding a detail hint about "autoflush" to
         exceptions raised within the autoflush process.
 
-        .. versionadded:: 0.9.7 Support for translation of DBAPI exceptions
-           into user-defined exceptions within the
-           :meth:`.ConnectionEvents.dbapi_error` event hook.
+        :param context: an :class:`.ExceptionContext` object.  See this
+         class for details on all available members.
 
-        :param conn: :class:`.Connection` object
-        :param cursor: DBAPI cursor object
-        :param statement: string SQL statement
-        :param parameters: Dictionary, tuple, or list of parameters being
-         passed to the ``execute()`` or ``executemany()`` method of the
-         DBAPI ``cursor``.  In some cases may be ``None``.
-        :param context: :class:`.ExecutionContext` object in use.  May
-         be ``None``.
-        :param exception: The **unwrapped** exception emitted directly from the
-         DBAPI.  The class here is specific to the DBAPI module in use.
-
-        .. versionadded:: 0.7.7
+        .. versionadded:: 0.9.7 Added the
+            :meth:`.ConnectionEvents.handle_error` hook.
 
         """
 
