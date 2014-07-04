@@ -1659,6 +1659,31 @@ class HandleErrorTest(fixtures.TestBase):
         is_(ctx.is_disconnect, False)
         is_(ctx.original_exception, nope)
 
+    def _test_alter_disconnect(self, orig_error, evt_value):
+        engine = engines.testing_engine()
+
+        @event.listens_for(engine, "handle_error")
+        def evt(ctx):
+            ctx.is_disconnect = evt_value
+
+        with patch.object(engine.dialect, "is_disconnect",
+                Mock(return_value=orig_error)):
+
+            with engine.connect() as c:
+                try:
+                    c.execute("SELECT x FROM nonexistent")
+                    assert False
+                except tsa.exc.StatementError as st:
+                    eq_(st.connection_invalidated, evt_value)
+
+    def test_alter_disconnect_to_true(self):
+        self._test_alter_disconnect(False, True)
+        self._test_alter_disconnect(True, True)
+
+    def test_alter_disconnect_to_false(self):
+        self._test_alter_disconnect(True, False)
+        self._test_alter_disconnect(False, False)
+
 class ProxyConnectionTest(fixtures.TestBase):
     """These are the same tests as EngineEventsTest, except using
     the deprecated ConnectionProxy interface.
