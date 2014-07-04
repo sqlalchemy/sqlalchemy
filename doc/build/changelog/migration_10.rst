@@ -133,33 +133,6 @@ than the integer value.
 
 .. _feature_3076:
 
-DBAPI Exceptions may be re-stated using events
-----------------------------------------------
-
-.. note::
-
-	this feature is also back-ported to SQLAlchemy 0.9.7.
-
-The :meth:`.ConnectionEvents.dbapi_error` handler may now be used to re-state
-the exception raised as an alternate, user-defined exception::
-
-    @event.listens_for(Engine, "dbapi_error")
-    def handle_exception(conn, cursor, statement, parameters, context, exception):
-        if isinstance(exception, psycopg2.OperationalError) and \
-            "failed" in str(exception):
-            raise MySpecialException("failed operation")
-
-The handler supports both raising an exception immediately, as well
-as being able to return the new exception such that the chain of event handling
-will continue, the next event handler receiving the new exception as
-its argument.
-
-:ticket:`3076`
-
-.. seealso::
-
-	:meth:`.ConnectionEvents.dbapi_error`
-
 Behavioral Improvements
 =======================
 

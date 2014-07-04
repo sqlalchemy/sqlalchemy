@@ -568,6 +568,9 @@ Connection / Engine API
 .. autoclass:: Engine
    :members:
 
+.. autoclass:: sqlalchemy.engine.ExceptionContext
+   :members:
+
 .. autoclass:: NestedTransaction
     :members:
 

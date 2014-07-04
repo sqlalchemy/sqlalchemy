@@ -19,20 +19,9 @@
         :tickets: 3076
         :versions: 1.0.0
 
-        The mechanics of the :meth:`.ConnectionEvents.dbapi_error` handler
-        have been enhanced such that the function handler is now capable
-        of raising or returning a new exception object, which will replace
-        the exception normally being thrown by SQLAlchemy.
-
-    .. change::
-        :tags: feature, engine
-        :versions: 1.0.0
-
-        Added new attributes :attr:`.ExecutionContext.exception` and
-        :attr:`.ExecutionContext.is_disconnect` which are meaningful within
-        the :meth:`.ConnectionEvents.dbapi_error` handler to see both the
-        original DBAPI error as well as whether or not it represents
-        a disconnect.
+        Added new event :meth:`.ConnectionEvents.handle_error`, a more
+        fully featured and comprehensive replacement for
+        :meth:`.ConnectionEvents.dbapi_error`.
 
     .. change::
         :tags: bug, orm

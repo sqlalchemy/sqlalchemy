@@ -54,6 +54,7 @@ from .interfaces import (
     Connectable,
     Dialect,
     ExecutionContext,
+    ExceptionContext,
 
     # backwards compat
     Compiled,
