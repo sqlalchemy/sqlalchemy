@@ -707,6 +707,41 @@ class ExecutionContext(object):
       and updates.
     """
 
+    exception = None
+    """A DBAPI-level exception that was caught when this ExecutionContext
+    attempted to execute a statement.
+
+    This attribute is meaningful only within the
+    :meth:`.ConnectionEvents.dbapi_error` event.
+
+    .. versionadded:: 0.9.7
+
+    .. seealso::
+
+        :attr:`.ExecutionContext.is_disconnect`
+
+        :meth:`.ConnectionEvents.dbapi_error`
+
+    """
+
+    is_disconnect = None
+    """Boolean flag set to True or False when a DBAPI-level exception
+    is caught when this ExecutionContext attempted to execute a statement.
+
+    This attribute is meaningful only within the
+    :meth:`.ConnectionEvents.dbapi_error` event.
+
+    .. versionadded:: 0.9.7
+
+    .. seealso::
+
+        :attr:`.ExecutionContext.exception`
+
+        :meth:`.ConnectionEvents.dbapi_error`
+
+    """
+
+
     def create_cursor(self):
         """Return a new cursor generated from this ExecutionContext's
         connection.

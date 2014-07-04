@@ -1070,10 +1070,16 @@ class Connection(Connectable):
 
         exc_info = sys.exc_info()
 
+        if context and context.exception is None:
+            context.exception = e
+
         if not self._is_disconnect:
-            self._is_disconnect = isinstance(e, self.dialect.dbapi.Error) and \
+            self._is_disconnect =  \
+                isinstance(e, self.dialect.dbapi.Error) and \
                 not self.closed and \
                 self.dialect.is_disconnect(e, self.__connection, cursor)
+            if context:
+                context.is_disconnect = self._is_disconnect
 
         if self._reentrant_error:
             util.raise_from_cause(
