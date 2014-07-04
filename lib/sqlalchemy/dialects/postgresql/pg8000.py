@@ -16,14 +16,15 @@ postgresql+pg8000://user:password@host:port/dbname[?key=value&key=value...]
 Unicode
 -------
 
-When communicating with the server, pg8000 uses the character set that the
-server asks it to use (the client encoding). By default the client encoding is
-the database's character set (chosen when the database is created), but the
-client encoding can be changed in a number of ways (eg. setting CLIENT_ENCODING
-in postgresql.conf).
+When communicating with the server, pg8000 **always uses the server-side
+character set**.  SQLAlchemy has no ability to modify what character set
+pg8000 chooses to use, and additionally SQLAlchemy does no unicode conversion
+of any kind with the pg8000 backend. The origin of the client encoding setting
+is ultimately the CLIENT_ENCODING setting in postgresql.conf.
 
-Set the "encoding" parameter on create_engine(), to the same as the client
-encoding, usually "utf-8".
+It is not necessary, though is also harmless, to pass the "encoding" parameter
+to :func:`.create_engine` when using pg8000.
+
 
 .. _pg8000_isolation_level:
 
