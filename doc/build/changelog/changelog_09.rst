@@ -15,6 +15,14 @@
     :released:
 
     .. change::
+        :tags: feature, mssql
+        :pullreq: github:98
+        :versions: 1.0.0
+
+        Enabled "multivalues insert" for SQL Server 2008.  Pull request
+        courtesy Albert Cervin.
+
+    .. change::
         :tags: feature, engine
         :tickets: 3076
         :versions: 1.0.0
