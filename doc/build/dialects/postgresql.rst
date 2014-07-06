@@ -94,7 +94,7 @@ construction arguments, are as follows:
 Range Types
 ~~~~~~~~~~~
 
-The new range column types founds in PostgreSQL 9.2 onwards are
+The new range column types found in PostgreSQL 9.2 onwards are
 catered for by the following types:
 
 .. autoclass:: INT4RANGE
