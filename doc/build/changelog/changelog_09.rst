@@ -15,6 +15,15 @@
     :released:
 
     .. change::
+        :tags: bug, ext
+        :versions: 1.0.0
+        :pullreq: bitbucket:24
+        :tickets: 3093
+
+        Fixed bug where :meth:`.MutableDict.setdefault` didn't return the
+        existing or new value.  Pull request courtesy Thomas Hervé.
+
+    .. change::
         :tags: feature, mssql
         :pullreq: github:98
         :versions: 1.0.0
