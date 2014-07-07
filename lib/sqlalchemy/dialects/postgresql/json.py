@@ -14,7 +14,7 @@ from ... import sql
 from ...sql import elements
 from ... import util
 
-__all__ = ('JSON', 'JSONElement')
+__all__ = ('JSON', 'JSONElement', 'JSONB')
 
 
 class JSONElement(elements.BinaryExpression):
@@ -197,3 +197,123 @@ class JSON(sqltypes.TypeEngine):
 
 
 ischema_names['json'] = JSON
+
+
+
+class JSONB(JSON):
+    """Represent the Postgresql JSONB type.
+
+    The :class:`.JSONB` type stores arbitrary JSONB format data, e.g.::
+
+        data_table = Table('data_table', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', JSONB)
+        )
+
+        with engine.connect() as conn:
+            conn.execute(
+                data_table.insert(),
+                data = {"key1": "value1", "key2": "value2"}
+            )
+
+    :class:`.JSONB` provides several operations:
+
+    * Index operations::
+
+        data_table.c.data['some key']
+
+    * Index operations returning text (required for text comparison)::
+
+        data_table.c.data['some key'].astext == 'some value'
+
+    * Index operations with a built-in CAST call::
+
+        data_table.c.data['some key'].cast(Integer) == 5
+
+    * Path index operations::
+
+        data_table.c.data[('key_1', 'key_2', ..., 'key_n')]
+
+    * Path index operations returning text (required for text comparison)::
+
+        data_table.c.data[('key_1', 'key_2', ..., 'key_n')].astext == 'some value'
+
+    Index operations return an instance of :class:`.JSONElement`, which represents
+    an expression such as ``column -> index``.  This element then defines
+    methods such as :attr:`.JSONElement.astext` and :meth:`.JSONElement.cast`
+    for setting up type behavior.
+
+    The :class:`.JSON` type, when used with the SQLAlchemy ORM, does not detect
+    in-place mutations to the structure.  In order to detect these, the
+    :mod:`sqlalchemy.ext.mutable` extension must be used.  This extension will
+    allow "in-place" changes to the datastructure to produce events which
+    will be detected by the unit of work.  See the example at :class:`.HSTORE`
+    for a simple example involving a dictionary.
+
+    Custom serializers and deserializers are specified at the dialect level,
+    that is using :func:`.create_engine`.  The reason for this is that when
+    using psycopg2, the DBAPI only allows serializers at the per-cursor
+    or per-connection level.   E.g.::
+
+        engine = create_engine("postgresql://scott:tiger@localhost/test",
+                                json_serializer=my_serialize_fn,
+                                json_deserializer=my_deserialize_fn
+                        )
+
+    When using the psycopg2 dialect, the json_deserializer is registered
+    against the database using ``psycopg2.extras.register_default_json``.
+
+    .. versionadded:: 0.9.7
+
+    """
+
+    __visit_name__ = 'JSONB'
+    hashable = False
+
+    class comparator_factory(sqltypes.Concatenable.Comparator):
+        """Define comparison operations for :class:`.JSON`."""
+
+        def __getitem__(self, other):
+            """Get the value at a given key."""
+
+            return JSONElement(self.expr, other)
+
+        def _adapt_expression(self, op, other_comparator):
+            # How does one do equality?? jsonb also has "=" eg. '[1,2,3]'::jsonb = '[1,2,3]'::jsonb
+            if isinstance(op, custom_op):
+                if op.opstring in ['?', '?&', '?|', '@>', '<@']:
+                    return op, sqltypes.Boolean
+                if op.opstring == '->':
+                    return op, sqltypes.Text
+            return sqltypes.Concatenable.Comparator.\
+                _adapt_expression(self, op, other_comparator)
+
+        def has_key(self, other):
+            """Boolean expression.  Test for presence of a key.  Note that the
+            key may be a SQLA expression.
+            """
+            return self.expr.op('?')(other)
+
+        def has_all(self, other):
+            """Boolean expression.  Test for presence of all keys in jsonb
+            """
+            return self.expr.op('?&')(other)
+
+        def has_any(self, other):
+            """Boolean expression.  Test for presence of any key in jsonb
+            """
+            return self.expr.op('?|')(other)
+
+        def contains(self, other, **kwargs):
+            """Boolean expression.  Test if keys (or array) are a superset of/contained
+            the keys of the argument jsonb expression.
+            """
+            return self.expr.op('@>')(other)
+
+        def contained_by(self, other):
+            """Boolean expression.  Test if keys are a proper subset of the
+            keys of the argument jsonb expression.
+            """
+            return self.expr.op('<@')(other)
+
+ischema_names['jsonb'] = JSONB
