@@ -15,6 +15,14 @@
     :released:
 
     .. change::
+        :tags: feature, postgresql
+        :versions: 1.0.0
+        :pullreq: github:101
+
+        Added support for Postgresql JSONB via :class:`.JSONB`.  Pull request
+        courtesy Damian Dimmich.
+
+    .. change::
         :tags: bug, ext
         :versions: 1.0.0
         :pullreq: bitbucket:24
