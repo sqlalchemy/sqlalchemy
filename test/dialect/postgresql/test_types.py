@@ -17,7 +17,7 @@ from sqlalchemy import exc, schema, types
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import HSTORE, hstore, array, \
             INT4RANGE, INT8RANGE, NUMRANGE, DATERANGE, TSRANGE, TSTZRANGE, \
-            JSON
+            JSON, JSONB
 import decimal
 from sqlalchemy import util
 from sqlalchemy.testing.util import round_decimal
@@ -1982,7 +1982,6 @@ class JSONRoundTripTest(fixtures.TablesTest):
                 },
         )
 
-
     def test_unicode_round_trip_python(self):
         engine = self._non_native_engine()
         self._test_unicode_round_trip(engine)
@@ -1991,3 +1990,51 @@ class JSONRoundTripTest(fixtures.TablesTest):
     def test_unicode_round_trip_native(self):
         engine = testing.db
         self._test_unicode_round_trip(engine)
+
+class JSONBTest(JSONTest):
+    def setup(self):
+        metadata = MetaData()
+        self.test_table = Table('test_table', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('test_column', JSONB)
+        )
+        self.jsoncol = self.test_table.c.test_column
+
+    #Note - add fixture data for arrays []
+
+    def test_where_has_key(self):
+        self._test_where(
+            # hide from 2to3
+            getattr(self.jsoncol, 'has_key')('data'),
+            "test_table.test_column ? %(test_column_1)s"
+        )
+
+    def test_where_has_all(self):
+        self._test_where(
+            self.jsoncol.has_all({'name': 'r1', 'data': {"k1": "r1v1", "k2": "r1v2"}}),
+            "test_table.test_column ?& %(test_column_1)s"
+        )
+
+    def test_where_has_any(self):
+        self._test_where(
+            self.jsoncol.has_any(postgresql.array(['name', 'data'])),
+            "test_table.test_column ?| ARRAY[%(param_1)s, %(param_2)s]"
+        )
+
+    def test_where_contains(self):
+        self._test_where(
+            self.jsoncol.contains({"k1": "r1v1"}),
+            "test_table.test_column @> %(test_column_1)s"
+        )
+
+    def test_where_contained_by(self):
+        self._test_where(
+            self.jsoncol.contained_by({'foo': '1', 'bar': None}),
+            "test_table.test_column <@ %(test_column_1)s"
+        )
+
+
+class JSONBRoundTripTest(JSONRoundTripTest):
+    __only_on__ = ('postgresql >= 9.4',)
+
+
