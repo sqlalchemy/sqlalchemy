@@ -6,7 +6,7 @@
 
 import operator
 from ..sql import operators
-
+from .. import util
 
 class UnevaluatableError(Exception):
     pass
@@ -25,6 +25,9 @@ _notimplemented_ops = set(getattr(operators, op)
 
 
 class EvaluatorCompiler(object):
+    def __init__(self, target_cls=None):
+        self.target_cls = target_cls
+
     def process(self, clause):
         meth = getattr(self, "visit_%s" % clause.__visit_name__, None)
         if not meth:
@@ -46,10 +49,22 @@ class EvaluatorCompiler(object):
 
     def visit_column(self, clause):
         if 'parentmapper' in clause._annotations:
-            key = clause._annotations['parentmapper'].\
-              _columntoproperty[clause].key
+            parentmapper = clause._annotations['parentmapper']
+            if self.target_cls and not issubclass(
+                    self.target_cls, parentmapper.class_):
+                util.warn(
+                    "Can't do in-Python evaluation of criteria against "
+                    "alternate class %s; "
+                    "expiration of objects will not be accurate "
+                    "and/or may fail.  synchronize_session should be set to "
+                    "False or 'fetch'. "
+                    "This warning will be an exception "
+                    "in 1.0." % parentmapper.class_
+                )
+            key = parentmapper._columntoproperty[clause].key
         else:
             key = clause.key
+
         get_corresponding_attr = operator.attrgetter(key)
         return lambda obj: get_corresponding_attr(obj)
 

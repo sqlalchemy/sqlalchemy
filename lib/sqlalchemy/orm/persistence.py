@@ -927,8 +927,10 @@ class BulkEvaluate(BulkUD):
 
     def _do_pre_synchronize(self):
         query = self.query
+        target_cls = query._mapper_zero().class_
+
         try:
-            evaluator_compiler = evaluator.EvaluatorCompiler()
+            evaluator_compiler = evaluator.EvaluatorCompiler(target_cls)
             if query.whereclause is not None:
                 eval_condition = evaluator_compiler.process(
                                                 query.whereclause)
@@ -943,7 +945,6 @@ class BulkEvaluate(BulkUD):
                     "Could not evaluate current criteria in Python. "
                     "Specify 'fetch' or False for the "
                     "synchronize_session parameter.")
-        target_cls = query._mapper_zero().class_
 
         #TODO: detect when the where clause is a trivial primary key match
         self.matched_objects = [
