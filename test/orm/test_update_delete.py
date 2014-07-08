@@ -21,12 +21,10 @@ class UpdateDeleteTest(fixtures.MappedTest):
                         test_needs_autoincrement=True),
               Column('name', String(32)),
               Column('age', Integer))
-
     @classmethod
     def setup_classes(cls):
         class User(cls.Comparable):
             pass
-
     @classmethod
     def insert_data(cls):
         users = cls.tables.users
@@ -619,6 +617,21 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
                 ])
         )
 
+    def test_no_eval_against_multi_table_criteria(self):
+        User = self.classes.User
+        Document = self.classes.Document
+
+        s = Session()
+
+        q = s.query(User).filter(User.id == Document.user_id)
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Could not evaluate current criteria in Python.",
+            q.update,
+            {"name": "ed"}
+        )
+
+
     @testing.requires.update_where_target_in_subquery
     def test_update_using_in(self):
         Document = self.classes.Document
@@ -675,7 +688,7 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
             filter(User.id == 2).update({
                     Document.samename: 'd_samename',
                     User.samename: 'u_samename'
-                }
+                }, synchronize_session=False
             )
         eq_(
             s.query(User.id, Document.samename, User.samename).
