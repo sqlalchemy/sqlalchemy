@@ -1,10 +1,11 @@
-from sqlalchemy.testing import assert_raises, assert_raises_message, eq_
-import sys
-from sqlalchemy import *
+from sqlalchemy.testing import assert_raises, eq_
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
-from sqlalchemy import testing
-from sqlalchemy import util, exc
+from sqlalchemy import (
+    testing, exc, case, select, literal_column, text, and_, Integer, cast,
+    String, Column, Table, MetaData)
 from sqlalchemy.sql import table, column
+
+info_table = None
 
 
 class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -14,19 +15,21 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
     def setup_class(cls):
         metadata = MetaData(testing.db)
         global info_table
-        info_table = Table('infos', metadata,
-        Column('pk', Integer, primary_key=True),
-        Column('info', String(30)))
+        info_table = Table(
+            'infos', metadata,
+            Column('pk', Integer, primary_key=True),
+            Column('info', String(30)))
 
         info_table.create()
 
         info_table.insert().execute(
-        {'pk':1, 'info':'pk_1_data'},
-        {'pk':2, 'info':'pk_2_data'},
-        {'pk':3, 'info':'pk_3_data'},
-                {'pk':4, 'info':'pk_4_data'},
-                {'pk':5, 'info':'pk_5_data'},
-                {'pk':6, 'info':'pk_6_data'})
+            {'pk': 1, 'info': 'pk_1_data'},
+            {'pk': 2, 'info': 'pk_2_data'},
+            {'pk': 3, 'info': 'pk_3_data'},
+            {'pk': 4, 'info': 'pk_4_data'},
+            {'pk': 5, 'info': 'pk_5_data'},
+            {'pk': 6, 'info': 'pk_6_data'})
+
     @classmethod
     def teardown_class(cls):
         info_table.drop()
@@ -34,13 +37,15 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
     @testing.fails_on('firebird', 'FIXME: unknown')
     @testing.requires.subqueries
     def test_case(self):
-        inner = select([case([
-                [info_table.c.pk < 3,
-                        'lessthan3'],
-        [and_(info_table.c.pk >= 3, info_table.c.pk < 7),
-                        'gt3']]).label('x'),
-        info_table.c.pk, info_table.c.info],
-                from_obj=[info_table])
+        inner = select(
+            [
+                case(
+                    [
+                        [info_table.c.pk < 3, 'lessthan3'],
+                        [
+                            and_(info_table.c.pk >= 3, info_table.c.pk < 7),
+                            'gt3']]).label('x'),
+                info_table.c.pk, info_table.c.info], from_obj=[info_table])
 
         inner_result = inner.execute().fetchall()
 
@@ -73,14 +78,18 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             ('gt3', 6, 'pk_6_data')
         ]
 
-        w_else = select([case([
-                [info_table.c.pk < 3,
-                        3],
-        [and_(info_table.c.pk >= 3, info_table.c.pk < 6),
-                        6]],
-                else_ = 0).label('x'),
-        info_table.c.pk, info_table.c.info],
-                from_obj=[info_table])
+        w_else = select(
+            [
+                case(
+                    [
+                        [info_table.c.pk < 3, cast(3, Integer)],
+                        [
+                            and_(
+                                info_table.c.pk >= 3, info_table.c.pk < 6),
+                            6]],
+                    else_=0).label('x'),
+                info_table.c.pk, info_table.c.info],
+            from_obj=[info_table])
 
         else_result = w_else.execute().fetchall()
 
@@ -98,21 +107,36 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert_raises(exc.ArgumentError, case, [("x", "y")])
 
-        self.assert_compile(case([("x", "y")], value=t.c.col1),
-                "CASE test.col1 WHEN :param_1 THEN :param_2 END")
-        self.assert_compile(case([(t.c.col1 == 7, "y")], else_="z"),
-                "CASE WHEN (test.col1 = :col1_1) THEN :param_1 ELSE :param_2 END")
+        self.assert_compile(
+            case([("x", "y")], value=t.c.col1),
+            "CASE test.col1 WHEN :param_1 THEN :param_2 END")
+        self.assert_compile(
+            case([(t.c.col1 == 7, "y")], else_="z"),
+            "CASE WHEN (test.col1 = :col1_1) THEN :param_1 ELSE :param_2 END")
 
     def test_text_doesnt_explode(self):
 
         for s in [
-            select([case([(info_table.c.info == 'pk_4_data',
-                   text("'yes'"))], else_=text("'no'"
-                   ))]).order_by(info_table.c.info),
+            select(
+                [
+                    case(
+                        [
+                            (
+                                info_table.c.info == 'pk_4_data',
+                                text("'yes'"))],
+                        else_=text("'no'"))
+                ]).order_by(info_table.c.info),
 
-           select([case([(info_table.c.info == 'pk_4_data',
-                  literal_column("'yes'"))], else_=literal_column("'no'"
-                  ))]).order_by(info_table.c.info),
+            select(
+                [
+                    case(
+                        [
+                            (
+                                info_table.c.info == 'pk_4_data',
+                                literal_column("'yes'"))],
+                        else_=literal_column("'no'")
+                    )]
+            ).order_by(info_table.c.info),
 
         ]:
             if testing.against("firebird"):
@@ -126,14 +150,15 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
                     ('no', ), ('no', ),
                     ])
 
-
-
     @testing.fails_on('firebird', 'FIXME: unknown')
     def testcase_with_dict(self):
-        query = select([case({
-                    info_table.c.pk < 3: 'lessthan3',
-                    info_table.c.pk >= 3: 'gt3',
-                }, else_='other'),
+        query = select(
+            [
+                case(
+                    {
+                        info_table.c.pk < 3: 'lessthan3',
+                        info_table.c.pk >= 3: 'gt3',
+                    }, else_='other'),
                 info_table.c.pk, info_table.c.info
             ],
             from_obj=[info_table])
@@ -146,10 +171,11 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             ('gt3', 6, 'pk_6_data')
         ]
 
-        simple_query = select([case({
-                    1: 'one',
-                    2: 'two',
-                }, value=info_table.c.pk, else_='other'),
+        simple_query = select(
+            [
+                case(
+                    {1: 'one', 2: 'two', },
+                    value=info_table.c.pk, else_='other'),
                 info_table.c.pk
             ],
             whereclause=info_table.c.pk < 4,
@@ -160,4 +186,3 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             ('two', 2),
             ('other', 3),
         ]
-
