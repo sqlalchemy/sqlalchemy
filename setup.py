@@ -129,7 +129,7 @@ def run_setup(with_cext):
         license="MIT License",
         cmdclass=cmdclass,
         tests_require=['pytest >= 2.5.2', 'mock'],
-        test_suite="pytest.main",
+        test_suite="sqlalchemy.testing.distutils_run",
         long_description=readme,
         classifiers=[
             "Development Status :: 5 - Production/Stable",
