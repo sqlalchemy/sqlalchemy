@@ -69,10 +69,11 @@ class DialectTest(fixtures.TestBase):
             )[1]
         eq_(kw['raise_on_warnings'], False)
 
+
         kw = dialect.create_connect_args(
                 make_url("mysql+mysqlconnector://u:p@host/db")
             )[1]
-        eq_(kw['raise_on_warnings'], True)
+        assert "raise_on_warnings" not in kw
 
     @testing.only_on('mysql')
     def test_random_arg(self):
@@ -84,11 +85,11 @@ class DialectTest(fixtures.TestBase):
 
 class SQLModeDetectionTest(fixtures.TestBase):
     __only_on__ = 'mysql'
+    __backend__ = True
 
     def _options(self, modes):
         def connect(con, record):
             cursor = con.cursor()
-            print("DOING THiS:", "set sql_mode='%s'" % (",".join(modes)))
             cursor.execute("set sql_mode='%s'" % (",".join(modes)))
         e = engines.testing_engine(options={
             'pool_events':[
@@ -131,6 +132,7 @@ class ExecutionTest(fixtures.TestBase):
     """Various MySQL execution special cases."""
 
     __only_on__ = 'mysql'
+    __backend__ = True
 
     def test_charset_caching(self):
         engine = engines.testing_engine()

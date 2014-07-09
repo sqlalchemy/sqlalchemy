@@ -10,6 +10,7 @@ from sqlalchemy import testing
 class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = 'mysql'
+    __backend__ = True
 
     def test_default_reflection(self):
         """Test reflection of column defaults."""

@@ -8,6 +8,7 @@ from sqlalchemy import testing
 
 class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = 'mysql'
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):

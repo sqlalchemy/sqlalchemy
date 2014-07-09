@@ -17,6 +17,15 @@
 	:version: 1.0.0
 
     .. change::
+        :tags: mysql, bug
+        :tickets: 2515
+
+        Changed the default value of "raise_on_warnings" to False for
+        MySQLconnector.  This was set at True for some reason.  The "buffered"
+        flag unfortunately must stay at True as MySQLconnector does not allow
+        a cursor to be closed unless all results are fully fetched.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3117
 

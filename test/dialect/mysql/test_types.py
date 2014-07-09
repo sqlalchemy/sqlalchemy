@@ -15,6 +15,7 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     "Test MySQL column types"
 
     __dialect__ = mysql.dialect()
+    __backend__ = True
 
     def test_numeric(self):
         "Exercise type specification and options for numeric types."
@@ -257,7 +258,7 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 res
             )
 
-    @testing.only_if('mysql')
+    @testing.only_if('mysql+mysqldb')
     @testing.exclude('mysql', '<', (5, 0, 5), 'a 5.0+ feature')
     @testing.provide_metadata
     def test_charset_collate_table(self):
@@ -554,6 +555,7 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
 
     __only_on__ = 'mysql'
     __dialect__ = mysql.dialect()
+    __backend__ = True
 
 
     @testing.provide_metadata
