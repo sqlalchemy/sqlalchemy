@@ -15,6 +15,14 @@
     :released:
 
     .. change::
+        :tags: bug, tests
+        :versions: 1.0.0
+
+        Fixed bug where "python setup.py test" wasn't calling into
+        distutils appropriately, and errors would be emitted at the end
+        of the test suite.
+
+    .. change::
         :tags: feature, postgresql
         :versions: 1.0.0
         :pullreq: bitbucket:22
