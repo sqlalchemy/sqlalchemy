@@ -1,4 +1,5 @@
-from sqlalchemy import *
+from sqlalchemy import MetaData, Table, Column, String, Unicode, Integer, \
+    create_engine
 from sqlalchemy.testing import fixtures, AssertsExecutionResults, profiling
 from sqlalchemy import testing
 from sqlalchemy.testing import eq_
@@ -9,6 +10,8 @@ import sys
 NUM_FIELDS = 10
 NUM_RECORDS = 1000
 
+t = t2 = metadata = None
+
 
 class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
     __backend__ = True
@@ -18,18 +21,20 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
         global t, t2, metadata
         metadata = MetaData(testing.db)
         t = Table('table', metadata, *[Column('field%d' % fnum, String(50))
-                  for fnum in range(NUM_FIELDS)])
-        t2 = Table('table2', metadata, *[Column('field%d' % fnum,
-                   Unicode(50)) for fnum in range(NUM_FIELDS)])
+                                       for fnum in range(NUM_FIELDS)])
+        t2 = Table(
+            'table2', metadata, *
+            [Column('field%d' % fnum, Unicode(50))
+             for fnum in range(NUM_FIELDS)])
 
     def setup(self):
         metadata.create_all()
         t.insert().execute([dict(('field%d' % fnum, u('value%d' % fnum))
-                           for fnum in range(NUM_FIELDS)) for r_num in
-                           range(NUM_RECORDS)])
-        t2.insert().execute([dict(('field%d' % fnum, u('value%d' % fnum))
-                            for fnum in range(NUM_FIELDS)) for r_num in
+                                 for fnum in range(NUM_FIELDS)) for r_num in
                             range(NUM_RECORDS)])
+        t2.insert().execute([dict(('field%d' % fnum, u('value%d' % fnum))
+                                  for fnum in range(NUM_FIELDS)) for r_num in
+                             range(NUM_RECORDS)])
 
         # warm up type caches
         t.select().execute().fetchall()
@@ -48,7 +53,9 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
 
     def test_contains_doesnt_compile(self):
         row = t.select().execute().first()
-        c1 = Column('some column', Integer) + Column("some other column", Integer)
+        c1 = Column('some column', Integer) + \
+            Column("some other column", Integer)
+
         @profiling.function_call_count()
         def go():
             c1 in row
@@ -88,6 +95,7 @@ class RowProxyTest(fixtures.TestBase):
 
     def _rowproxy_fixture(self, keys, processors, row):
         class MockMeta(object):
+
             def __init__(self):
                 pass
 
@@ -95,7 +103,7 @@ class RowProxyTest(fixtures.TestBase):
 
         keymap = {}
         for index, (keyobjs, processor, values) in \
-            enumerate(list(zip(keys, processors, row))):
+                enumerate(list(zip(keys, processors, row))):
             for key in keyobjs:
                 keymap[key] = (processor, key, index)
             keymap[index] = (processor, key, index)
@@ -103,6 +111,7 @@ class RowProxyTest(fixtures.TestBase):
 
     def _test_getitem_value_refcounts(self, seq_factory):
         col1, col2 = object(), object()
+
         def proc1(value):
             return value
         value1, value2 = "x", "y"
@@ -130,6 +139,7 @@ class RowProxyTest(fixtures.TestBase):
 
     def test_value_refcounts_custom_seq(self):
         class CustomSeq(object):
+
             def __init__(self, data):
                 self.data = data
 

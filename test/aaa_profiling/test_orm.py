@@ -1,26 +1,36 @@
-from sqlalchemy.testing import eq_, assert_raises, \
-    assert_raises_message
-from sqlalchemy import exc as sa_exc, util, Integer, String, ForeignKey
-from sqlalchemy.orm import exc as orm_exc, mapper, relationship, \
+from sqlalchemy import exc as Integer, String, ForeignKey
+from sqlalchemy.orm import exc as mapper, relationship, \
     sessionmaker, Session, defer
 from sqlalchemy import testing
 from sqlalchemy.testing import profiling
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Table, Column
-import sys
+
 
 class MergeTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('parent', metadata, Column('id', Integer,
-                       primary_key=True,
-                       test_needs_autoincrement=True), Column('data',
-                       String(20)))
-        Table('child', metadata, Column('id', Integer,
-                      primary_key=True, test_needs_autoincrement=True),
-                      Column('data', String(20)), Column('parent_id',
-                      Integer, ForeignKey('parent.id'), nullable=False))
+        Table(
+            'parent',
+            metadata,
+            Column(
+                'id',
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True),
+            Column(
+                'data',
+                String(20)))
+        Table(
+            'child', metadata,
+            Column(
+                'id', Integer, primary_key=True,
+                test_needs_autoincrement=True),
+            Column(
+                'data', String(20)),
+            Column(
+                'parent_id', Integer, ForeignKey('parent.id'), nullable=False))
 
     @classmethod
     def setup_classes(cls):
@@ -33,12 +43,17 @@ class MergeTest(fixtures.MappedTest):
     @classmethod
     def setup_mappers(cls):
         Child, Parent, parent, child = (cls.classes.Child,
-                                cls.classes.Parent,
-                                cls.tables.parent,
-                                cls.tables.child)
+                                        cls.classes.Parent,
+                                        cls.tables.parent,
+                                        cls.tables.child)
 
-        mapper(Parent, parent, properties={'children':
-                        relationship(Child, backref='parent')})
+        mapper(
+            Parent,
+            parent,
+            properties={
+                'children': relationship(
+                    Child,
+                    backref='parent')})
         mapper(Child, child)
 
     @classmethod
@@ -85,17 +100,19 @@ class MergeTest(fixtures.MappedTest):
 
         @profiling.function_call_count()
         def go():
-            p2 = sess2.merge(p1)
+            sess2.merge(p1)
         go()
 
         # one more time, count the SQL
 
         def go2():
-            p2 = sess2.merge(p1)
+            sess2.merge(p1)
         sess2 = sessionmaker(testing.db)()
         self.assert_sql_count(testing.db, go2, 2)
 
+
 class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
+
     """test overhead associated with many-to-one fetches.
 
     Prior to the refactor of LoadLazyAttribute and
@@ -105,19 +122,18 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
 
     """
 
-
     @classmethod
     def define_tables(cls, metadata):
         Table('parent', metadata,
-                        Column('id', Integer, primary_key=True),
-                       Column('data', String(20)),
-                       Column('child_id', Integer, ForeignKey('child.id'))
-                       )
+              Column('id', Integer, primary_key=True),
+              Column('data', String(20)),
+              Column('child_id', Integer, ForeignKey('child.id'))
+              )
 
         Table('child', metadata,
-                    Column('id', Integer, primary_key=True),
-                  Column('data', String(20))
-                 )
+              Column('id', Integer, primary_key=True),
+              Column('data', String(20))
+              )
 
     @classmethod
     def setup_classes(cls):
@@ -130,9 +146,9 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
     @classmethod
     def setup_mappers(cls):
         Child, Parent, parent, child = (cls.classes.Child,
-                                cls.classes.Parent,
-                                cls.tables.parent,
-                                cls.tables.child)
+                                        cls.classes.Parent,
+                                        cls.tables.parent,
+                                        cls.tables.child)
 
         mapper(Parent, parent, properties={
             'child': relationship(Child)})
@@ -143,14 +159,14 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
         parent, child = cls.tables.parent, cls.tables.child
 
         child.insert().execute([
-            {'id':i, 'data':'c%d' % i}
+            {'id': i, 'data': 'c%d' % i}
             for i in range(1, 251)
         ])
         parent.insert().execute([
             {
-                'id':i,
-                'data':'p%dc%d' % (i, (i % 250) + 1),
-                'child_id':(i % 250) + 1
+                'id': i,
+                'data': 'p%dc%d' % (i, (i % 250) + 1),
+                'child_id': (i % 250) + 1
             }
             for i in range(1, 1000)
         ])
@@ -160,7 +176,6 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
 
         sess = Session()
         parents = sess.query(Parent).all()
-
 
         @profiling.function_call_count(variance=.2)
         def go():
@@ -174,6 +189,7 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
         sess = Session()
         parents = sess.query(Parent).all()
         children = sess.query(Child).all()
+        children  # strong reference
 
         @profiling.function_call_count()
         def go():
@@ -181,43 +197,47 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
                 p.child
         go()
 
+
 class MergeBackrefsTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
         Table('a', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('c_id', Integer, ForeignKey('c.id'))
-        )
+              Column('id', Integer, primary_key=True),
+              Column('c_id', Integer, ForeignKey('c.id'))
+              )
         Table('b', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('a_id', Integer, ForeignKey('a.id'))
-        )
+              Column('id', Integer, primary_key=True),
+              Column('a_id', Integer, ForeignKey('a.id'))
+              )
         Table('c', metadata,
-            Column('id', Integer, primary_key=True),
-        )
+              Column('id', Integer, primary_key=True),
+              )
         Table('d', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('a_id', Integer, ForeignKey('a.id'))
-        )
+              Column('id', Integer, primary_key=True),
+              Column('a_id', Integer, ForeignKey('a.id'))
+              )
 
     @classmethod
     def setup_classes(cls):
         class A(cls.Basic):
             pass
+
         class B(cls.Basic):
             pass
+
         class C(cls.Basic):
             pass
+
         class D(cls.Basic):
             pass
 
     @classmethod
     def setup_mappers(cls):
         A, B, C, D = cls.classes.A, cls.classes.B, \
-                    cls.classes.C, cls.classes.D
+            cls.classes.C, cls.classes.D
         a, b, c, d = cls.tables.a, cls.tables.b, \
-                    cls.tables.c, cls.tables.d
+            cls.tables.c, cls.tables.d
         mapper(A, a, properties={
             'bs': relationship(B, backref='a'),
             'c': relationship(C, backref='as'),
@@ -230,14 +250,14 @@ class MergeBackrefsTest(fixtures.MappedTest):
     @classmethod
     def insert_data(cls):
         A, B, C, D = cls.classes.A, cls.classes.B, \
-                    cls.classes.C, cls.classes.D
+            cls.classes.C, cls.classes.D
         s = Session()
         s.add_all([
             A(id=i,
                 bs=[B(id=(i * 5) + j) for j in range(1, 5)],
                 c=C(id=i),
                 ds=[D(id=(i * 5) + j) for j in range(1, 5)]
-            )
+              )
             for i in range(1, 5)
         ])
         s.commit()
@@ -245,31 +265,32 @@ class MergeBackrefsTest(fixtures.MappedTest):
     @profiling.function_call_count(variance=.10)
     def test_merge_pending_with_all_pks(self):
         A, B, C, D = self.classes.A, self.classes.B, \
-                    self.classes.C, self.classes.D
+            self.classes.C, self.classes.D
         s = Session()
         for a in [
             A(id=i,
                 bs=[B(id=(i * 5) + j) for j in range(1, 5)],
                 c=C(id=i),
                 ds=[D(id=(i * 5) + j) for j in range(1, 5)]
-            )
+              )
             for i in range(1, 5)
         ]:
             s.merge(a)
+
 
 class DeferOptionsTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
         Table('a', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('x', String(5)),
-            Column('y', String(5)),
-            Column('z', String(5)),
-            Column('q', String(5)),
-            Column('p', String(5)),
-            Column('r', String(5)),
-        )
+              Column('id', Integer, primary_key=True),
+              Column('x', String(5)),
+              Column('y', String(5)),
+              Column('z', String(5)),
+              Column('q', String(5)),
+              Column('p', String(5)),
+              Column('r', String(5)),
+              )
 
     @classmethod
     def setup_classes(cls):
@@ -289,8 +310,8 @@ class DeferOptionsTest(fixtures.MappedTest):
         s.add_all([
             A(id=i,
                 **dict((letter, "%s%d" % (letter, i)) for letter in
-                        ['x', 'y', 'z', 'p', 'q', 'r'])
-            ) for i in range(1, 1001)
+                       ['x', 'y', 'z', 'p', 'q', 'r'])
+              ) for i in range(1, 1001)
         ])
         s.commit()
 
@@ -316,14 +337,25 @@ class AttributeOverheadTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('parent', metadata, Column('id', Integer,
-                       primary_key=True,
-                       test_needs_autoincrement=True), Column('data',
-                       String(20)))
-        Table('child', metadata, Column('id', Integer,
-                      primary_key=True, test_needs_autoincrement=True),
-                      Column('data', String(20)), Column('parent_id',
-                      Integer, ForeignKey('parent.id'), nullable=False))
+        Table(
+            'parent',
+            metadata,
+            Column(
+                'id',
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True),
+            Column(
+                'data',
+                String(20)))
+        Table(
+            'child', metadata,
+            Column(
+                'id', Integer, primary_key=True,
+                test_needs_autoincrement=True),
+            Column(
+                'data', String(20)), Column(
+                'parent_id', Integer, ForeignKey('parent.id'), nullable=False))
 
     @classmethod
     def setup_classes(cls):
@@ -336,14 +368,18 @@ class AttributeOverheadTest(fixtures.MappedTest):
     @classmethod
     def setup_mappers(cls):
         Child, Parent, parent, child = (cls.classes.Child,
-                                cls.classes.Parent,
-                                cls.tables.parent,
-                                cls.tables.child)
+                                        cls.classes.Parent,
+                                        cls.tables.parent,
+                                        cls.tables.child)
 
-        mapper(Parent, parent, properties={'children':
-                        relationship(Child, backref='parent')})
+        mapper(
+            Parent,
+            parent,
+            properties={
+                'children': relationship(
+                    Child,
+                    backref='parent')})
         mapper(Child, child)
-
 
     def test_attribute_set(self):
         Parent, Child = self.classes.Parent, self.classes.Child
@@ -371,4 +407,3 @@ class AttributeOverheadTest(fixtures.MappedTest):
             for child in children:
                 p1.children.remove(child)
         go()
-

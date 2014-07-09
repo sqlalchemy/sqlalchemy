@@ -19,12 +19,18 @@ import gc
 from sqlalchemy.testing import fixtures
 import weakref
 
+
 class A(fixtures.ComparableEntity):
     pass
+
+
 class B(fixtures.ComparableEntity):
     pass
+
+
 class ASub(A):
     pass
+
 
 def profile_memory(maxtimes=50):
     def decorate(func):
@@ -89,15 +95,19 @@ def profile_memory(maxtimes=50):
         return profile
     return decorate
 
+
 def assert_no_mappers():
     clear_mappers()
     gc_collect()
     assert len(_mapper_registry) == 0
 
+
 class EnsureZeroed(fixtures.ORMTest):
+
     def setup(self):
         _sessions.clear()
         _mapper_registry.clear()
+
 
 class MemUsageTest(EnsureZeroed):
 
@@ -111,6 +121,7 @@ class MemUsageTest(EnsureZeroed):
             pass
 
         x = []
+
         @profile_memory(maxtimes=10)
         def go():
             x[-1:] = [Foo(), Foo(), Foo(), Foo(), Foo(), Foo()]
@@ -120,22 +131,22 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
 
         table1 = Table("mytable", metadata,
-            Column('col1', Integer, primary_key=True,
-                                    test_needs_autoincrement=True),
-            Column('col2', String(30)))
+                       Column('col1', Integer, primary_key=True,
+                              test_needs_autoincrement=True),
+                       Column('col2', String(30)))
 
         table2 = Table("mytable2", metadata,
-            Column('col1', Integer, primary_key=True,
-                                    test_needs_autoincrement=True),
-            Column('col2', String(30)),
-            Column('col3', Integer, ForeignKey("mytable.col1")))
+                       Column('col1', Integer, primary_key=True,
+                              test_needs_autoincrement=True),
+                       Column('col2', String(30)),
+                       Column('col3', Integer, ForeignKey("mytable.col1")))
 
         metadata.create_all()
 
         m1 = mapper(A, table1, properties={
-            "bs":relationship(B, cascade="all, delete",
-                                    order_by=table2.c.col1)},
-            order_by=table1.c.col1)
+            "bs": relationship(B, cascade="all, delete",
+                               order_by=table2.c.col1)},
+                    order_by=table1.c.col1)
         m2 = mapper(B, table2)
 
         m3 = mapper(A, table1, non_primary=True)
@@ -149,7 +160,7 @@ class MemUsageTest(EnsureZeroed):
             a1.bs.append(B(col2="b1"))
             a1.bs.append(B(col2="b2"))
             a3.bs.append(B(col2="b3"))
-            for x in [a1,a2,a3]:
+            for x in [a1, a2, a3]:
                 sess.add(x)
             sess.flush()
             sess.expunge_all()
@@ -189,37 +200,37 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
 
         table1 = Table("mytable", metadata,
-            Column('col1', Integer, primary_key=True,
-                            test_needs_autoincrement=True),
-            Column('col2', String(30)))
+                       Column('col1', Integer, primary_key=True,
+                              test_needs_autoincrement=True),
+                       Column('col2', String(30)))
 
         table2 = Table("mytable2", metadata,
-            Column('col1', Integer, primary_key=True,
-                            test_needs_autoincrement=True),
-            Column('col2', String(30)),
-            Column('col3', Integer, ForeignKey("mytable.col1")))
+                       Column('col1', Integer, primary_key=True,
+                              test_needs_autoincrement=True),
+                       Column('col2', String(30)),
+                       Column('col3', Integer, ForeignKey("mytable.col1")))
 
         metadata.create_all()
 
         m1 = mapper(A, table1, properties={
-            "bs":relationship(B, cascade="all, delete",
-                                    order_by=table2.c.col1)},
-            order_by=table1.c.col1,
-            _compiled_cache_size=10
-            )
+            "bs": relationship(B, cascade="all, delete",
+                               order_by=table2.c.col1)},
+                    order_by=table1.c.col1,
+                    _compiled_cache_size=10
+                    )
         m2 = mapper(B, table2,
-            _compiled_cache_size=10
-        )
+                    _compiled_cache_size=10
+                    )
 
         m3 = mapper(A, table1, non_primary=True)
 
         @profile_memory()
         def go():
             engine = engines.testing_engine(
-                                options={'logging_name':'FOO',
-                                        'pool_logging_name':'BAR',
-                                        'use_reaper':False}
-                                    )
+                options={'logging_name': 'FOO',
+                                         'pool_logging_name': 'BAR',
+                                         'use_reaper': False}
+            )
             sess = create_session(bind=engine)
 
             a1 = A(col2="a1")
@@ -228,7 +239,7 @@ class MemUsageTest(EnsureZeroed):
             a1.bs.append(B(col2="b1"))
             a1.bs.append(B(col2="b2"))
             a3.bs.append(B(col2="b3"))
-            for x in [a1,a2,a3]:
+            for x in [a1, a2, a3]:
                 sess.add(x)
             sess.flush()
             sess.expunge_all()
@@ -277,19 +288,19 @@ class MemUsageTest(EnsureZeroed):
                 type_ = args[0](*args[1:])
                 bp = type_._cached_bind_processor(eng.dialect)
                 rp = type_._cached_result_processor(eng.dialect, 0)
+                bp, rp  # strong reference
             go()
 
         assert not eng.dialect._type_memos
-
 
     def test_many_updates(self):
         metadata = MetaData(testing.db)
 
         wide_table = Table('t', metadata,
-            Column('id', Integer, primary_key=True,
-                                test_needs_autoincrement=True),
-            *[Column('col%d' % i, Integer) for i in range(10)]
-        )
+                           Column('id', Integer, primary_key=True,
+                                  test_needs_autoincrement=True),
+                           *[Column('col%d' % i, Integer) for i in range(10)]
+                           )
 
         class Wide(object):
             pass
@@ -330,10 +341,17 @@ class MemUsageTest(EnsureZeroed):
     @testing.crashes('mysql+cymysql', 'blocking')
     def test_unicode_warnings(self):
         metadata = MetaData(testing.db)
-        table1 = Table('mytable', metadata, Column('col1', Integer,
-                       primary_key=True,
-                       test_needs_autoincrement=True), Column('col2',
-                       Unicode(30)))
+        table1 = Table(
+            'mytable',
+            metadata,
+            Column(
+                'col1',
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True),
+            Column(
+                'col2',
+                Unicode(30)))
         metadata.create_all()
         i = [1]
 
@@ -348,7 +366,7 @@ class MemUsageTest(EnsureZeroed):
             # this warning shouldn't clog up memory.
 
             testing.db.execute(table1.select().where(table1.c.col2
-                               == 'foo%d' % i[0]))
+                                                     == 'foo%d' % i[0]))
             i[0] += 1
         try:
             go()
@@ -359,24 +377,24 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
 
         table1 = Table("mytable", metadata,
-            Column('col1', Integer, primary_key=True,
-                                test_needs_autoincrement=True),
-            Column('col2', String(30)))
+                       Column('col1', Integer, primary_key=True,
+                              test_needs_autoincrement=True),
+                       Column('col2', String(30)))
 
         table2 = Table("mytable2", metadata,
-            Column('col1', Integer, primary_key=True,
-                                test_needs_autoincrement=True),
-            Column('col2', String(30)),
-            Column('col3', Integer, ForeignKey("mytable.col1")))
+                       Column('col1', Integer, primary_key=True,
+                              test_needs_autoincrement=True),
+                       Column('col2', String(30)),
+                       Column('col3', Integer, ForeignKey("mytable.col1")))
 
         @profile_memory()
         def go():
-            m1 = mapper(A, table1, properties={
-                "bs":relationship(B, order_by=table2.c.col1)
+            mapper(A, table1, properties={
+                "bs": relationship(B, order_by=table2.c.col1)
             })
-            m2 = mapper(B, table2)
+            mapper(B, table2)
 
-            m3 = mapper(A, table1, non_primary=True)
+            mapper(A, table1, non_primary=True)
 
             sess = create_session()
             a1 = A(col2="a1")
@@ -385,7 +403,7 @@ class MemUsageTest(EnsureZeroed):
             a1.bs.append(B(col2="b1"))
             a1.bs.append(B(col2="b2"))
             a3.bs.append(B(col2="b3"))
-            for x in [a1,a2,a3]:
+            for x in [a1, a2, a3]:
                 sess.add(x)
             sess.flush()
             sess.expunge_all()
@@ -416,26 +434,26 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
 
         a = Table("a", metadata,
-            Column('id', Integer, primary_key=True,
-                                test_needs_autoincrement=True),
-            Column('bid', Integer, ForeignKey('b.id')),
-            Column('type', String(30))
-        )
+                  Column('id', Integer, primary_key=True,
+                         test_needs_autoincrement=True),
+                  Column('bid', Integer, ForeignKey('b.id')),
+                  Column('type', String(30))
+                  )
 
         asub = Table("asub", metadata,
-            Column('id', Integer, ForeignKey('a.id'),
-                                primary_key=True),
-            Column('data', String(30)))
+                     Column('id', Integer, ForeignKey('a.id'),
+                            primary_key=True),
+                     Column('data', String(30)))
 
         b = Table("b", metadata,
-            Column('id', Integer, primary_key=True,
-                                test_needs_autoincrement=True),
-        )
+                  Column('id', Integer, primary_key=True,
+                         test_needs_autoincrement=True),
+                  )
         mapper(A, a, polymorphic_identity='a',
-            polymorphic_on=a.c.type)
-        mapper(ASub, asub, inherits=A,polymorphic_identity='asub')
-        m1 = mapper(B, b, properties={
-            'as_':relationship(A)
+               polymorphic_on=a.c.type)
+        mapper(ASub, asub, inherits=A, polymorphic_identity='asub')
+        mapper(B, b, properties={
+            'as_': relationship(A)
         })
 
         metadata.create_all()
@@ -465,11 +483,12 @@ class MemUsageTest(EnsureZeroed):
     def test_path_registry(self):
         metadata = MetaData()
         a = Table("a", metadata,
-            Column('id', Integer, primary_key=True),
-            Column('foo', Integer),
-            Column('bar', Integer)
-        )
+                  Column('id', Integer, primary_key=True),
+                  Column('foo', Integer),
+                  Column('bar', Integer)
+                  )
         m1 = mapper(A, a)
+
         @profile_memory()
         def go():
             ma = sa.inspect(aliased(A))
@@ -481,21 +500,22 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
 
         table1 = Table("mytable", metadata,
-            Column('col1', Integer, primary_key=True,
-                                    test_needs_autoincrement=True),
-            Column('col2', String(30))
-            )
+                       Column('col1', Integer, primary_key=True,
+                              test_needs_autoincrement=True),
+                       Column('col2', String(30))
+                       )
 
         table2 = Table("mytable2", metadata,
-            Column('col1', Integer, ForeignKey('mytable.col1'),
-                   primary_key=True, test_needs_autoincrement=True),
-            Column('col3', String(30)),
-            )
+                       Column('col1', Integer, ForeignKey('mytable.col1'),
+                              primary_key=True, test_needs_autoincrement=True),
+                       Column('col3', String(30)),
+                       )
 
         @profile_memory()
         def go():
             class A(fixtures.ComparableEntity):
                 pass
+
             class B(A):
                 pass
 
@@ -511,7 +531,7 @@ class MemUsageTest(EnsureZeroed):
             a2 = A()
             b1 = B(col3='b1')
             b2 = B(col3='b2')
-            for x in [a1,a2,b1, b2]:
+            for x in [a1, a2, b1, b2]:
                 sess.add(x)
             sess.flush()
             sess.expunge_all()
@@ -542,32 +562,33 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
 
         table1 = Table("mytable", metadata,
-            Column('col1', Integer, primary_key=True,
-                                    test_needs_autoincrement=True),
-            Column('col2', String(30))
-            )
+                       Column('col1', Integer, primary_key=True,
+                              test_needs_autoincrement=True),
+                       Column('col2', String(30))
+                       )
 
         table2 = Table("mytable2", metadata,
-            Column('col1', Integer, primary_key=True,
-                                    test_needs_autoincrement=True),
-            Column('col2', String(30)),
-            )
+                       Column('col1', Integer, primary_key=True,
+                              test_needs_autoincrement=True),
+                       Column('col2', String(30)),
+                       )
 
         table3 = Table('t1tot2', metadata,
-            Column('t1', Integer, ForeignKey('mytable.col1')),
-            Column('t2', Integer, ForeignKey('mytable2.col1')),
-            )
+                       Column('t1', Integer, ForeignKey('mytable.col1')),
+                       Column('t2', Integer, ForeignKey('mytable2.col1')),
+                       )
 
         @profile_memory()
         def go():
             class A(fixtures.ComparableEntity):
                 pass
+
             class B(fixtures.ComparableEntity):
                 pass
 
             mapper(A, table1, properties={
-                'bs':relationship(B, secondary=table3,
-                                    backref='as', order_by=table3.c.t1)
+                'bs': relationship(B, secondary=table3,
+                                   backref='as', order_by=table3.c.t1)
             })
             mapper(B, table2)
 
@@ -578,7 +599,7 @@ class MemUsageTest(EnsureZeroed):
             b2 = B(col2='b2')
             a1.bs.append(b1)
             a2.bs.append(b2)
-            for x in [a1,a2]:
+            for x in [a1, a2]:
                 sess.add(x)
             sess.flush()
             sess.expunge_all()
@@ -611,7 +632,8 @@ class MemUsageTest(EnsureZeroed):
         m = self.metadata
         t = Table('t', m, Column('x', Integer), Column('y', Integer))
         m.create_all(e)
-        e.execute(t.insert(), {"x":1, "y":1})
+        e.execute(t.insert(), {"x": 1, "y": 1})
+
         @profile_memory()
         def go():
             r = e.execute(t.alias().select())
@@ -626,15 +648,25 @@ class MemUsageTest(EnsureZeroed):
     @testing.crashes('mysql+cymysql', 'blocking')
     def test_join_cache(self):
         metadata = MetaData(testing.db)
-        table1 = Table('table1', metadata, Column('id', Integer,
-                       primary_key=True,
-                       test_needs_autoincrement=True), Column('data',
-                       String(30)))
-        table2 = Table('table2', metadata, Column('id', Integer,
-                       primary_key=True,
-                       test_needs_autoincrement=True), Column('data',
-                       String(30)), Column('t1id', Integer,
-                       ForeignKey('table1.id')))
+        table1 = Table(
+            'table1',
+            metadata,
+            Column(
+                'id',
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True),
+            Column(
+                'data',
+                String(30)))
+        table2 = Table(
+            'table2', metadata,
+            Column(
+                'id', Integer, primary_key=True,
+                test_needs_autoincrement=True),
+            Column(
+                'data', String(30)), Column(
+                't1id', Integer, ForeignKey('table1.id')))
 
         class Foo(object):
             pass
@@ -642,8 +674,8 @@ class MemUsageTest(EnsureZeroed):
         class Bar(object):
             pass
 
-        mapper(Foo, table1, properties={'bars'
-               : relationship(mapper(Bar, table2))})
+        mapper(Foo, table1, properties={
+               'bars': relationship(mapper(Bar, table2))})
         metadata.create_all()
         session = sessionmaker()
 
@@ -658,11 +690,10 @@ class MemUsageTest(EnsureZeroed):
         finally:
             metadata.drop_all()
 
-
-
     def test_type_compile(self):
         from sqlalchemy.dialects.sqlite.base import dialect as SQLiteDialect
         cast = sa.cast(column('x'), sa.Integer)
+
         @profile_memory()
         def go():
             dialect = SQLiteDialect()
@@ -689,5 +720,3 @@ class MemUsageTest(EnsureZeroed):
         def go():
             to_unicode_processor_factory('utf8')
         go()
-
-
