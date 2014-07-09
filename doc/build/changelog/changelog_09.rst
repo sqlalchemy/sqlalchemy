@@ -15,6 +15,15 @@
     :released:
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3117
+
+        The "evaulator" for query.update()/delete() won't work with multi-table
+        updates, and needs to be set to `synchronize_session=False` or
+        `synchronize_session='fetch'`; a warning is now emitted.  In
+        1.0 this will be promoted to a full exception.
+
+    .. change::
         :tags: bug, tests
         :versions: 1.0.0
 
