@@ -318,7 +318,7 @@ def want_class(cls):
 
 def generate_sub_tests(cls, module):
     if getattr(cls, '__backend__', False):
-        for cfg in config.Config.all_configs():
+        for cfg in _possible_configs_for_cls(cls):
             name = "%s_%s_%s" % (cls.__name__, cfg.db.name, cfg.db.driver)
             subcls = type(
                         name,
@@ -370,8 +370,25 @@ def after_test(test):
     engines.testing_reaper._after_test_ctx()
     warnings.resetwarnings()
 
-def _do_skips(cls):
+def _possible_configs_for_cls(cls):
     all_configs = set(config.Config.all_configs())
+    if cls.__unsupported_on__:
+        spec = exclusions.db_spec(*cls.__unsupported_on__)
+        for config_obj in list(all_configs):
+            if spec(config_obj):
+                all_configs.remove(config_obj)
+
+    if getattr(cls, '__only_on__', None):
+        spec = exclusions.db_spec(*util.to_list(cls.__only_on__))
+        for config_obj in list(all_configs):
+            if not spec(config_obj):
+                all_configs.remove(config_obj)
+
+
+    return all_configs
+
+def _do_skips(cls):
+    all_configs = _possible_configs_for_cls(cls)
     reasons = []
 
     if hasattr(cls, '__requires__'):
@@ -397,19 +414,6 @@ def _do_skips(cls):
                     non_preferred.add(config_obj)
         if all_configs.difference(non_preferred):
             all_configs.difference_update(non_preferred)
-
-    if cls.__unsupported_on__:
-        spec = exclusions.db_spec(*cls.__unsupported_on__)
-        for config_obj in list(all_configs):
-            if spec(config_obj):
-                all_configs.remove(config_obj)
-
-    if getattr(cls, '__only_on__', None):
-        spec = exclusions.db_spec(*util.to_list(cls.__only_on__))
-        for config_obj in list(all_configs):
-            if not spec(config_obj):
-                all_configs.remove(config_obj)
-
 
     if getattr(cls, '__skip_if__', False):
         for c in getattr(cls, '__skip_if__'):
