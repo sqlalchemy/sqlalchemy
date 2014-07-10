@@ -154,11 +154,10 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 res
             )
 
-    # TODO: how on earth does mysqlconnector pass the precision numeric
-    # testse in the generic suite when it fails this??
-    @testing.fails_on(
-        "mysql+mysqlconnector",
-        "unknown issue, possible bug in mysqlconnector")
+    @testing.fails_if(
+        lambda: testing.against("mysql+mysqlconnector")
+        and not util.py3k,
+        "bug in mysqlconnector; http://bugs.mysql.com/bug.php?id=73266")
     @testing.provide_metadata
     def test_precision_float_roundtrip(self):
         t = Table('t', self.metadata,
