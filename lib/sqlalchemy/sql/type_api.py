@@ -263,7 +263,7 @@ class TypeEngine(Visitable):
         .. versionadded:: 0.7.2
 
         """
-        return Variant(self, {dialect_name: type_})
+        return Variant(self, {dialect_name: to_instance(type_)})
 
 
     @util.memoized_property

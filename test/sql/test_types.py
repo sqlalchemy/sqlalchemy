@@ -794,6 +794,13 @@ class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=dialects.postgresql.dialect()
         )
 
+    def test_to_instance(self):
+        self.assert_compile(
+            self.UTypeOne().with_variant(self.UTypeTwo, "postgresql"),
+            "UTYPETWO",
+            dialect=dialects.postgresql.dialect()
+        )
+
     def test_compile_composite(self):
         self.assert_compile(
             self.composite,
