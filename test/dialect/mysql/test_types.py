@@ -154,13 +154,18 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 res
             )
 
+    # TODO: how on earth does mysqlconnector pass the precision numeric
+    # testse in the generic suite when it fails this??
+    @testing.fails_on(
+        "mysql+mysqlconnector",
+        "unknown issue, possible bug in mysqlconnector")
     @testing.provide_metadata
     def test_precision_float_roundtrip(self):
         t = Table('t', self.metadata,
                     Column('scale_value', mysql.DOUBLE(
-                                        precision=15, scale=12, asdecimal=True)),
+                            precision=15, scale=12, asdecimal=True)),
                     Column('unscale_value', mysql.DOUBLE(
-                                        decimal_return_scale=12, asdecimal=True))
+                            decimal_return_scale=12, asdecimal=True))
             )
         t.create(testing.db)
         testing.db.execute(
@@ -258,7 +263,7 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 res
             )
 
-    @testing.only_if('mysql')
+    @testing.fails_on('mysql+mysqlconnector', "different unicode behavior")
     @testing.exclude('mysql', '<', (5, 0, 5), 'a 5.0+ feature')
     @testing.provide_metadata
     def test_charset_collate_table(self):
@@ -512,6 +517,7 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             datetime.time(8, 37, 35, 450)
         )
 
+    @testing.fails_on("mysql+oursql", "TODO: probable OurSQL bug")
     @testing.provide_metadata
     def test_time_roundtrip(self):
         t = Table('mysql_time', self.metadata,
