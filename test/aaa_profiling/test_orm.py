@@ -1,5 +1,5 @@
-from sqlalchemy import exc as Integer, String, ForeignKey
-from sqlalchemy.orm import exc as mapper, relationship, \
+from sqlalchemy import Integer, String, ForeignKey
+from sqlalchemy.orm import mapper, relationship, \
     sessionmaker, Session, defer
 from sqlalchemy import testing
 from sqlalchemy.testing import profiling
