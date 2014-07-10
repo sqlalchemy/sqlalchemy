@@ -9,7 +9,6 @@
 and :class:`.RowProxy."""
 
 
-
 from .. import exc, util
 from ..sql import expression, sqltypes
 import collections
@@ -75,7 +74,7 @@ except ImportError:
                 if isinstance(key, slice):
                     l = []
                     for processor, value in zip(self._processors[key],
-                                                 self._row[key]):
+                                                self._row[key]):
                         if processor is None:
                             l.append(value)
                         else:
@@ -85,8 +84,8 @@ except ImportError:
                     raise
             if index is None:
                 raise exc.InvalidRequestError(
-                        "Ambiguous column name '%s' in result set! "
-                        "try 'use_labels' option on select statement." % key)
+                    "Ambiguous column name '%s' in result set! "
+                    "try 'use_labels' option on select statement." % key)
             if processor is not None:
                 return processor(self._row[index])
             else:
@@ -219,15 +218,14 @@ class ResultMetaData(object):
 
             if context.result_map:
                 try:
-                    name, obj, type_ = context.result_map[colname
-                                                    if self.case_sensitive
-                                                    else colname.lower()]
+                    name, obj, type_ = context.result_map[
+                        colname if self.case_sensitive else colname.lower()]
                 except KeyError:
                     name, obj, type_ = \
                         colname, None, typemap.get(coltype, sqltypes.NULLTYPE)
             else:
                 name, obj, type_ = \
-                        colname, None, typemap.get(coltype, sqltypes.NULLTYPE)
+                    colname, None, typemap.get(coltype, sqltypes.NULLTYPE)
 
             processor = context.get_result_processor(type_, colname, coltype)
 
@@ -240,9 +238,9 @@ class ResultMetaData(object):
 
             # populate primary keymap, looking for conflicts.
             if primary_keymap.setdefault(
-                                name if self.case_sensitive
-                                else name.lower(),
-                                rec) is not rec:
+                    name if self.case_sensitive
+                    else name.lower(),
+                    rec) is not rec:
                 # place a record that doesn't have the "index" - this
                 # is interpreted later as an AmbiguousColumnError,
                 # but only when actually accessed.   Columns
@@ -250,8 +248,8 @@ class ResultMetaData(object):
                 # aren't used; integer access is always
                 # unambiguous.
                 primary_keymap[name
-                                if self.case_sensitive
-                                else name.lower()] = rec = (None, obj, None)
+                               if self.case_sensitive
+                               else name.lower()] = rec = (None, obj, None)
 
             self.keys.append(colname)
             if obj:
@@ -263,7 +261,7 @@ class ResultMetaData(object):
                     #    keymap[o] = (None, obj, None)
 
             if translate_colname and \
-                untranslated:
+                    untranslated:
                 keymap[untranslated] = rec
 
         # overwrite keymap values with those of the
@@ -275,7 +273,7 @@ class ResultMetaData(object):
                 "Col %r", tuple(x[0] for x in metadata))
 
     @util.pending_deprecation("0.8", "sqlite dialect uses "
-                    "_translate_colname() now")
+                              "_translate_colname() now")
     def _set_keymap_synonym(self, name, origname):
         """Set a synonym for the given name.
 
@@ -285,8 +283,8 @@ class ResultMetaData(object):
 
         """
         rec = (processor, obj, i) = self._keymap[origname if
-                                                self.case_sensitive
-                                                else origname.lower()]
+                                                 self.case_sensitive
+                                                 else origname.lower()]
         if self._keymap.setdefault(name, rec) is not rec:
             self._keymap[name] = (processor, obj, None)
 
@@ -301,26 +299,26 @@ class ResultMetaData(object):
         # pickle/unpickle roundtrip
         elif isinstance(key, expression.ColumnElement):
             if key._label and (
-                            key._label
-                            if self.case_sensitive
-                            else key._label.lower()) in map:
+                    key._label
+                    if self.case_sensitive
+                    else key._label.lower()) in map:
                 result = map[key._label
-                            if self.case_sensitive
-                            else key._label.lower()]
+                             if self.case_sensitive
+                             else key._label.lower()]
             elif hasattr(key, 'name') and (
-                                    key.name
-                                    if self.case_sensitive
-                                    else key.name.lower()) in map:
+                    key.name
+                    if self.case_sensitive
+                    else key.name.lower()) in map:
                 # match is only on name.
                 result = map[key.name
-                            if self.case_sensitive
-                            else key.name.lower()]
+                             if self.case_sensitive
+                             else key.name.lower()]
             # search extra hard to make sure this
             # isn't a column/label name overlap.
             # this check isn't currently available if the row
             # was unpickled.
             if result is not None and \
-                 result[1] is not None:
+                    result[1] is not None:
                 for obj in result[1]:
                     if key._compare_name_for_result(obj):
                         break
@@ -330,7 +328,7 @@ class ResultMetaData(object):
             if raiseerr:
                 raise exc.NoSuchColumnError(
                     "Could not locate column in row for column '%s'" %
-                        expression._string_or_unprintable(key))
+                    expression._string_or_unprintable(key))
             else:
                 return None
         else:
@@ -401,7 +399,7 @@ class ResultProxy(object):
         self.cursor = self._saved_cursor = context.cursor
         self.connection = context.root_connection
         self._echo = self.connection._echo and \
-                        context.engine._should_log_debug()
+            context.engine._should_log_debug()
         self._init_metadata()
 
     def _init_metadata(self):
@@ -461,7 +459,7 @@ class ResultProxy(object):
             return self.context.rowcount
         except Exception as e:
             self.connection._handle_dbapi_exception(
-                              e, None, None, self.cursor, self.context)
+                e, None, None, self.cursor, self.context)
 
     @property
     def lastrowid(self):
@@ -483,8 +481,8 @@ class ResultProxy(object):
             return self._saved_cursor.lastrowid
         except Exception as e:
             self.connection._handle_dbapi_exception(
-                                 e, None, None,
-                                 self._saved_cursor, self.context)
+                e, None, None,
+                self._saved_cursor, self.context)
 
     @property
     def returns_rows(self):
@@ -540,7 +538,7 @@ class ResultProxy(object):
             self.closed = True
             self.connection._safe_close_cursor(self.cursor)
             if _autoclose_connection and \
-                self.connection.should_close_with_result:
+                    self.connection.should_close_with_result:
                 self.connection.close()
             # allow consistent errors
             self.cursor = None
@@ -582,17 +580,17 @@ class ResultProxy(object):
 
         if not self.context.compiled:
             raise exc.InvalidRequestError(
-                        "Statement is not a compiled "
-                        "expression construct.")
+                "Statement is not a compiled "
+                "expression construct.")
         elif not self.context.isinsert:
             raise exc.InvalidRequestError(
-                        "Statement is not an insert() "
-                        "expression construct.")
+                "Statement is not an insert() "
+                "expression construct.")
         elif self.context._is_explicit_returning:
             raise exc.InvalidRequestError(
-                        "Can't call inserted_primary_key "
-                        "when returning() "
-                        "is used.")
+                "Can't call inserted_primary_key "
+                "when returning() "
+                "is used.")
 
         return self.context.inserted_primary_key
 
@@ -607,12 +605,12 @@ class ResultProxy(object):
         """
         if not self.context.compiled:
             raise exc.InvalidRequestError(
-                        "Statement is not a compiled "
-                        "expression construct.")
+                "Statement is not a compiled "
+                "expression construct.")
         elif not self.context.isupdate:
             raise exc.InvalidRequestError(
-                        "Statement is not an update() "
-                        "expression construct.")
+                "Statement is not an update() "
+                "expression construct.")
         elif self.context.executemany:
             return self.context.compiled_parameters
         else:
@@ -629,12 +627,12 @@ class ResultProxy(object):
         """
         if not self.context.compiled:
             raise exc.InvalidRequestError(
-                        "Statement is not a compiled "
-                        "expression construct.")
+                "Statement is not a compiled "
+                "expression construct.")
         elif not self.context.isinsert:
             raise exc.InvalidRequestError(
-                        "Statement is not an insert() "
-                        "expression construct.")
+                "Statement is not an insert() "
+                "expression construct.")
         elif self.context.executemany:
             return self.context.compiled_parameters
         else:
@@ -682,12 +680,12 @@ class ResultProxy(object):
 
         if not self.context.compiled:
             raise exc.InvalidRequestError(
-                        "Statement is not a compiled "
-                        "expression construct.")
+                "Statement is not a compiled "
+                "expression construct.")
         elif not self.context.isinsert and not self.context.isupdate:
             raise exc.InvalidRequestError(
-                        "Statement is not an insert() or update() "
-                        "expression construct.")
+                "Statement is not an insert() or update() "
+                "expression construct.")
         return self.context.postfetch_cols
 
     def prefetch_cols(self):
@@ -704,12 +702,12 @@ class ResultProxy(object):
 
         if not self.context.compiled:
             raise exc.InvalidRequestError(
-                        "Statement is not a compiled "
-                        "expression construct.")
+                "Statement is not a compiled "
+                "expression construct.")
         elif not self.context.isinsert and not self.context.isupdate:
             raise exc.InvalidRequestError(
-                        "Statement is not an insert() or update() "
-                        "expression construct.")
+                "Statement is not an insert() or update() "
+                "expression construct.")
         return self.context.prefetch_cols
 
     def supports_sane_rowcount(self):
@@ -754,8 +752,8 @@ class ResultProxy(object):
     def _non_result(self):
         if self._metadata is None:
             raise exc.ResourceClosedError(
-            "This result object does not return rows. "
-            "It has been closed automatically.",
+                "This result object does not return rows. "
+                "It has been closed automatically.",
             )
         else:
             raise exc.ResourceClosedError("This result object is closed.")
@@ -785,8 +783,8 @@ class ResultProxy(object):
             return l
         except Exception as e:
             self.connection._handle_dbapi_exception(
-                                    e, None, None,
-                                    self.cursor, self.context)
+                e, None, None,
+                self.cursor, self.context)
 
     def fetchmany(self, size=None):
         """Fetch many rows, just like DB-API
@@ -804,8 +802,8 @@ class ResultProxy(object):
             return l
         except Exception as e:
             self.connection._handle_dbapi_exception(
-                                    e, None, None,
-                                    self.cursor, self.context)
+                e, None, None,
+                self.cursor, self.context)
 
     def fetchone(self):
         """Fetch one row, just like DB-API ``cursor.fetchone()``.
@@ -823,8 +821,8 @@ class ResultProxy(object):
                 return None
         except Exception as e:
             self.connection._handle_dbapi_exception(
-                                    e, None, None,
-                                    self.cursor, self.context)
+                e, None, None,
+                self.cursor, self.context)
 
     def first(self):
         """Fetch the first row and then close the result set unconditionally.
@@ -839,8 +837,8 @@ class ResultProxy(object):
             row = self._fetchone_impl()
         except Exception as e:
             self.connection._handle_dbapi_exception(
-                                    e, None, None,
-                                    self.cursor, self.context)
+                e, None, None,
+                self.cursor, self.context)
 
         try:
             if row is not None:
@@ -937,6 +935,7 @@ class FullyBufferedResultProxy(ResultProxy):
     such as MSSQL INSERT...OUTPUT after an autocommit.
 
     """
+
     def _init_metadata(self):
         super(FullyBufferedResultProxy, self)._init_metadata()
         self.__rowbuffer = self._buffer_rows()

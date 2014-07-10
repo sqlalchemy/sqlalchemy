@@ -11,7 +11,7 @@ This system allows specification of classes and expressions used in
 
 """
 from ...orm.properties import ColumnProperty, RelationshipProperty, \
-                            SynonymProperty
+    SynonymProperty
 from ...schema import _get_table_key
 from ...orm import class_mapper, interfaces
 from ... import util
@@ -74,7 +74,7 @@ class _MultipleClassMarker(object):
     def __init__(self, classes, on_remove=None):
         self.on_remove = on_remove
         self.contents = set([
-                weakref.ref(item, self._remove_item) for item in classes])
+            weakref.ref(item, self._remove_item) for item in classes])
         _registries.add(self)
 
     def __iter__(self):
@@ -121,6 +121,7 @@ class _ModuleMarker(object):
     _decl_class_registry.
 
     """
+
     def __init__(self, name, parent):
         self.parent = parent
         self.name = name
@@ -161,8 +162,8 @@ class _ModuleMarker(object):
             existing.add_item(cls)
         else:
             existing = self.contents[name] = \
-                    _MultipleClassMarker([cls],
-                        on_remove=lambda: self._remove_item(name))
+                _MultipleClassMarker([cls],
+                                     on_remove=lambda: self._remove_item(name))
 
 
 class _ModNS(object):
@@ -182,7 +183,8 @@ class _ModNS(object):
                     assert isinstance(value, _MultipleClassMarker)
                     return value.attempt_get(self.__parent.path, key)
         raise AttributeError("Module %r has no mapped classes "
-                    "registered under the name %r" % (self.__parent.name, key))
+                             "registered under the name %r" % (
+                                 self.__parent.name, key))
 
 
 class _GetColumns(object):
@@ -194,8 +196,8 @@ class _GetColumns(object):
         if mp:
             if key not in mp.all_orm_descriptors:
                 raise exc.InvalidRequestError(
-                            "Class %r does not have a mapped column named %r"
-                            % (self.cls, key))
+                    "Class %r does not have a mapped column named %r"
+                    % (self.cls, key))
 
             desc = mp.all_orm_descriptors[key]
             if desc.extension_type is interfaces.NOT_EXTENSION:
@@ -204,13 +206,13 @@ class _GetColumns(object):
                     key = prop.name
                 elif not isinstance(prop, ColumnProperty):
                     raise exc.InvalidRequestError(
-                                "Property %r is not an instance of"
-                                " ColumnProperty (i.e. does not correspond"
-                                " directly to a Column)." % key)
+                        "Property %r is not an instance of"
+                        " ColumnProperty (i.e. does not correspond"
+                        " directly to a Column)." % key)
         return getattr(self.cls, key)
 
 inspection._inspects(_GetColumns)(
-            lambda target: inspection.inspect(target.cls))
+    lambda target: inspection.inspect(target.cls))
 
 
 class _GetTable(object):
@@ -220,8 +222,8 @@ class _GetTable(object):
 
     def __getattr__(self, key):
         return self.metadata.tables[
-                _get_table_key(key, self.key)
-            ]
+            _get_table_key(key, self.key)
+        ]
 
 
 def _determine_container(key, value):
@@ -248,7 +250,7 @@ class _class_resolver(object):
         elif key in cls.metadata._schemas:
             return _GetTable(key, cls.metadata)
         elif '_sa_module_registry' in cls._decl_class_registry and \
-            key in cls._decl_class_registry['_sa_module_registry']:
+                key in cls._decl_class_registry['_sa_module_registry']:
             registry = cls._decl_class_registry['_sa_module_registry']
             return registry.resolve_attr(key)
         elif self._resolvers:

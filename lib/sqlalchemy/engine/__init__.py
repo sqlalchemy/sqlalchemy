@@ -69,7 +69,7 @@ from .base import (
     RootTransaction,
     Transaction,
     TwoPhaseTransaction,
-    )
+)
 
 from .result import (
     BufferedColumnResultProxy,
@@ -78,11 +78,11 @@ from .result import (
     FullyBufferedResultProxy,
     ResultProxy,
     RowProxy,
-    )
+)
 
 from .util import (
     connection_memoize
-    )
+)
 
 
 from . import util, strategies
@@ -371,4 +371,4 @@ def engine_from_config(configuration, prefix='sqlalchemy.', **kwargs):
 __all__ = (
     'create_engine',
     'engine_from_config',
-    )
+)

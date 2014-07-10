@@ -12,6 +12,7 @@ from .pool import Pool
 from .engine import Connectable, Engine, Dialect
 from .sql.base import SchemaEventTarget
 
+
 class DDLEvents(event.Events):
     """
     Define event listeners for schema objects,
@@ -221,7 +222,6 @@ class DDLEvents(event.Events):
         """
 
 
-
 class PoolEvents(event.Events):
     """Available events for :class:`.Pool`.
 
@@ -291,9 +291,9 @@ class PoolEvents(event.Events):
         :class:`.Pool` refers to a single "creator" function (which in terms
         of a :class:`.Engine` refers to the URL and connection options used),
         it is typically valid to make observations about a single connection
-        that can be safely assumed to be valid about all subsequent connections,
-        such as the database version, the server and client encoding settings,
-        collation settings, and many others.
+        that can be safely assumed to be valid about all subsequent
+        connections, such as the database version, the server and client
+        encoding settings, collation settings, and many others.
 
         :param dbapi_connection: a DBAPI connection.
 
@@ -311,8 +311,8 @@ class PoolEvents(event.Events):
          DBAPI connection.
 
         :param connection_proxy: the :class:`._ConnectionFairy` object which
-          will proxy the public interface of the DBAPI connection for the lifespan
-          of the checkout.
+          will proxy the public interface of the DBAPI connection for the
+          lifespan of the checkout.
 
         If you raise a :class:`~sqlalchemy.exc.DisconnectionError`, the current
         connection will be disposed and a fresh connection retrieved.
@@ -372,8 +372,8 @@ class PoolEvents(event.Events):
 
         This event is called any time the :meth:`._ConnectionRecord.invalidate`
         method is invoked, either from API usage or via "auto-invalidation".
-        The event occurs before a final attempt to call ``.close()`` on the connection
-        occurs.
+        The event occurs before a final attempt to call ``.close()`` on the
+        connection occurs.
 
         :param dbapi_connection: a DBAPI connection.
 
@@ -467,7 +467,6 @@ class ConnectionEvents(event.Events):
     _target_class_doc = "SomeEngine"
     _dispatch_target = Connectable
 
-
     @classmethod
     def _listen(cls, event_key, retval=False):
         target, identifier, fn = \
@@ -480,7 +479,7 @@ class ConnectionEvents(event.Events):
                 orig_fn = fn
 
                 def wrap_before_execute(conn, clauseelement,
-                                                multiparams, params):
+                                        multiparams, params):
                     orig_fn(conn, clauseelement, multiparams, params)
                     return clauseelement, multiparams, params
                 fn = wrap_before_execute
@@ -488,19 +487,20 @@ class ConnectionEvents(event.Events):
                 orig_fn = fn
 
                 def wrap_before_cursor_execute(conn, cursor, statement,
-                        parameters, context, executemany):
+                                               parameters, context,
+                                               executemany):
                     orig_fn(conn, cursor, statement,
-                        parameters, context, executemany)
+                            parameters, context, executemany)
                     return statement, parameters
                 fn = wrap_before_cursor_execute
         elif retval and \
             identifier not in ('before_execute',
-                                    'before_cursor_execute', 'handle_error'):
+                               'before_cursor_execute', 'handle_error'):
             raise exc.ArgumentError(
-                    "Only the 'before_execute', "
-                    "'before_cursor_execute' and 'handle_error' engine "
-                    "event listeners accept the 'retval=True' "
-                    "argument.")
+                "Only the 'before_execute', "
+                "'before_cursor_execute' and 'handle_error' engine "
+                "event listeners accept the 'retval=True' "
+                "argument.")
         event_key.with_wrapper(fn).base_listen()
 
     def before_execute(self, conn, clauseelement, multiparams, params):
@@ -546,7 +546,7 @@ class ConnectionEvents(event.Events):
         """
 
     def before_cursor_execute(self, conn, cursor, statement,
-                        parameters, context, executemany):
+                              parameters, context, executemany):
         """Intercept low-level cursor execute() events before execution,
         receiving the string
         SQL statement and DBAPI-specific parameter list to be invoked
@@ -588,7 +588,7 @@ class ConnectionEvents(event.Events):
         """
 
     def after_cursor_execute(self, conn, cursor, statement,
-                        parameters, context, executemany):
+                             parameters, context, executemany):
         """Intercept low-level cursor execute() events after execution.
 
         :param conn: :class:`.Connection` object
@@ -607,7 +607,7 @@ class ConnectionEvents(event.Events):
         """
 
     def dbapi_error(self, conn, cursor, statement, parameters,
-                        context, exception):
+                    context, exception):
         """Intercept a raw DBAPI error.
 
         This event is called with the DBAPI exception instance
@@ -750,8 +750,8 @@ class ConnectionEvents(event.Events):
         It also differs from the :meth:`.PoolEvents.checkout` event
         in that it is specific to the :class:`.Connection` object, not the
         DBAPI connection that :meth:`.PoolEvents.checkout` deals with, although
-        this DBAPI connection is available here via the :attr:`.Connection.connection`
-        attribute.  But note there can in fact
+        this DBAPI connection is available here via the
+        :attr:`.Connection.connection` attribute.  But note there can in fact
         be multiple :meth:`.PoolEvents.checkout` events within the lifespan
         of a single :class:`.Connection` object, if that :class:`.Connection`
         is invalidated and re-established.  There can also be multiple
@@ -773,8 +773,8 @@ class ConnectionEvents(event.Events):
             :meth:`.PoolEvents.checkout` the lower-level pool checkout event
             for an individual DBAPI connection
 
-            :meth:`.ConnectionEvents.set_connection_execution_options` - a copy of a
-            :class:`.Connection` is also made when the
+            :meth:`.ConnectionEvents.set_connection_execution_options` - a copy
+            of a :class:`.Connection` is also made when the
             :meth:`.Connection.execution_options` method is called.
 
         """
@@ -828,7 +828,8 @@ class ConnectionEvents(event.Events):
         .. seealso::
 
             :meth:`.ConnectionEvents.set_connection_execution_options` - event
-            which is called when :meth:`.Connection.execution_options` is called.
+            which is called when :meth:`.Connection.execution_options` is
+            called.
 
         """
 
@@ -941,10 +942,10 @@ class DialectEvents(event.Events):
 
         :class:`.DialectEvents` hooks should be considered **semi-public**
         and experimental.
-        These hooks are not for general use and are only for those situations where
-        intricate re-statement of DBAPI mechanics must be injected onto an existing
-        dialect.   For general-use statement-interception events, please
-        use the :class:`.ConnectionEvents` interface.
+        These hooks are not for general use and are only for those situations
+        where intricate re-statement of DBAPI mechanics must be injected onto
+        an existing dialect.  For general-use statement-interception events,
+        please use the :class:`.ConnectionEvents` interface.
 
     .. seealso::
 
@@ -1010,4 +1011,3 @@ class DialectEvents(event.Events):
         place within the event handler.
 
         """
-

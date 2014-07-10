@@ -119,6 +119,7 @@ from .engine import create_engine, engine_from_config
 
 __version__ = '0.9.7'
 
+
 def __go(lcls):
     global __all__
 
@@ -128,7 +129,7 @@ def __go(lcls):
     import inspect as _inspect
 
     __all__ = sorted(name for name, obj in lcls.items()
-                 if not (name.startswith('_') or _inspect.ismodule(obj)))
+                     if not (name.startswith('_') or _inspect.ismodule(obj)))
 
     _sa_util.dependencies.resolve_all("sqlalchemy")
 __go(locals())

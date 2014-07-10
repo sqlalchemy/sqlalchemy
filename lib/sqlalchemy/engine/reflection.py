@@ -41,14 +41,14 @@ def cache(fn, self, con, *args, **kw):
     if info_cache is None:
         return fn(self, con, *args, **kw)
     key = (
-            fn.__name__,
-            tuple(a for a in args if isinstance(a, util.string_types)),
-            tuple((k, v) for k, v in kw.items() if
-                    isinstance(v,
-                        util.string_types + util.int_types + (float, )
-                    )
-                )
-        )
+        fn.__name__,
+        tuple(a for a in args if isinstance(a, util.string_types)),
+        tuple((k, v) for k, v in kw.items() if
+              isinstance(v,
+                         util.string_types + util.int_types + (float, )
+                         )
+              )
+    )
     ret = info_cache.get(key)
     if ret is None:
         ret = fn(self, con, *args, **kw)
@@ -155,7 +155,7 @@ class Inspector(object):
 
         if hasattr(self.dialect, 'get_schema_names'):
             return self.dialect.get_schema_names(self.bind,
-                                                    info_cache=self.info_cache)
+                                                 info_cache=self.info_cache)
         return []
 
     def get_table_names(self, schema=None, order_by=None):
@@ -188,8 +188,8 @@ class Inspector(object):
         """
 
         if hasattr(self.dialect, 'get_table_names'):
-            tnames = self.dialect.get_table_names(self.bind,
-            schema, info_cache=self.info_cache)
+            tnames = self.dialect.get_table_names(
+                self.bind, schema, info_cache=self.info_cache)
         else:
             tnames = self.engine.table_names(schema)
         if order_by == 'foreign_key':
@@ -230,7 +230,7 @@ class Inspector(object):
         """
 
         return self.dialect.get_view_names(self.bind, schema,
-                                                  info_cache=self.info_cache)
+                                           info_cache=self.info_cache)
 
     def get_view_definition(self, view_name, schema=None):
         """Return definition for `view_name`.
@@ -293,8 +293,8 @@ class Inspector(object):
         """
 
         return self.dialect.get_pk_constraint(self.bind, table_name, schema,
-                                               info_cache=self.info_cache,
-                                               **kw)['constrained_columns']
+                                              info_cache=self.info_cache,
+                                              **kw)['constrained_columns']
 
     def get_pk_constraint(self, table_name, schema=None, **kw):
         """Return information about primary key constraint on `table_name`.
@@ -352,8 +352,8 @@ class Inspector(object):
         """
 
         return self.dialect.get_foreign_keys(self.bind, table_name, schema,
-                                                info_cache=self.info_cache,
-                                                **kw)
+                                             info_cache=self.info_cache,
+                                             **kw)
 
     def get_indexes(self, table_name, schema=None, **kw):
         """Return information about indexes in `table_name`.
@@ -380,8 +380,8 @@ class Inspector(object):
         """
 
         return self.dialect.get_indexes(self.bind, table_name,
-                                                  schema,
-                                            info_cache=self.info_cache, **kw)
+                                        schema,
+                                        info_cache=self.info_cache, **kw)
 
     def get_unique_constraints(self, table_name, schema=None, **kw):
         """Return information about unique constraints in `table_name`.
@@ -446,7 +446,8 @@ class Inspector(object):
         )
 
         # reflect table options, like mysql_engine
-        tbl_opts = self.get_table_options(table_name, schema, **table.dialect_kwargs)
+        tbl_opts = self.get_table_options(
+            table_name, schema, **table.dialect_kwargs)
         if tbl_opts:
             # add additional kwargs to the Table if the dialect
             # returned them
@@ -461,7 +462,8 @@ class Inspector(object):
         found_table = False
         cols_by_orig_name = {}
 
-        for col_d in self.get_columns(table_name, schema, **table.dialect_kwargs):
+        for col_d in self.get_columns(
+                table_name, schema, **table.dialect_kwargs):
             found_table = True
             orig_name = col_d['name']
 
@@ -503,7 +505,7 @@ class Inspector(object):
                 colargs.append(sequence)
 
             cols_by_orig_name[orig_name] = col = \
-                        sa_schema.Column(name, coltype, *colargs, **col_kw)
+                sa_schema.Column(name, coltype, *colargs, **col_kw)
 
             if col.key in table.primary_key:
                 col.primary_key = True
@@ -512,7 +514,8 @@ class Inspector(object):
         if not found_table:
             raise exc.NoSuchTableError(table.name)
 
-        pk_cons = self.get_pk_constraint(table_name, schema, **table.dialect_kwargs)
+        pk_cons = self.get_pk_constraint(
+            table_name, schema, **table.dialect_kwargs)
         if pk_cons:
             pk_cols = [
                 cols_by_orig_name[pk]
@@ -527,18 +530,19 @@ class Inspector(object):
             # its column collection
             table.primary_key._reload(pk_cols)
 
-        fkeys = self.get_foreign_keys(table_name, schema, **table.dialect_kwargs)
+        fkeys = self.get_foreign_keys(
+            table_name, schema, **table.dialect_kwargs)
         for fkey_d in fkeys:
             conname = fkey_d['name']
             # look for columns by orig name in cols_by_orig_name,
             # but support columns that are in-Python only as fallback
             constrained_columns = [
-                                    cols_by_orig_name[c].key
-                                    if c in cols_by_orig_name else c
-                                    for c in fkey_d['constrained_columns']
-                                ]
+                cols_by_orig_name[c].key
+                if c in cols_by_orig_name else c
+                for c in fkey_d['constrained_columns']
+            ]
             if exclude_columns and set(constrained_columns).intersection(
-                                exclude_columns):
+                    exclude_columns):
                 continue
             referred_schema = fkey_d['referred_schema']
             referred_table = fkey_d['referred_table']
@@ -576,7 +580,7 @@ class Inspector(object):
             unique = index_d['unique']
             flavor = index_d.get('type', 'unknown type')
             if include_columns and \
-                            not set(columns).issubset(include_columns):
+                    not set(columns).issubset(include_columns):
                 util.warn(
                     "Omitting %s KEY for (%s), key covers omitted columns." %
                     (flavor, ', '.join(columns)))
@@ -584,8 +588,8 @@ class Inspector(object):
             # look for columns by orig name in cols_by_orig_name,
             # but support columns that are in-Python only as fallback
             sa_schema.Index(name, *[
-                                cols_by_orig_name[c] if c in cols_by_orig_name
-                                        else table.c[c]
-                                for c in columns
-                        ],
-                         **dict(unique=unique))
+                cols_by_orig_name[c] if c in cols_by_orig_name
+                else table.c[c]
+                for c in columns
+            ],
+                **dict(unique=unique))
