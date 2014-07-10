@@ -18,7 +18,7 @@ for pth in ['./lib']:
 # installing without importing SQLAlchemy, so that coverage includes
 # SQLAlchemy itself.
 path = "lib/sqlalchemy/testing/plugin/noseplugin.py"
-if sys.version_info >= (3,3):
+if sys.version_info >= (3, 3):
     from importlib import machinery
     noseplugin = machinery.SourceFileLoader("noseplugin", path).load_module()
 else:

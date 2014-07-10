@@ -39,11 +39,11 @@ cpython = platform.python_implementation() == 'CPython'
 
 ext_modules = [
     Extension('sqlalchemy.cprocessors',
-           sources=['lib/sqlalchemy/cextension/processors.c']),
+              sources=['lib/sqlalchemy/cextension/processors.c']),
     Extension('sqlalchemy.cresultproxy',
-           sources=['lib/sqlalchemy/cextension/resultproxy.c']),
+              sources=['lib/sqlalchemy/cextension/resultproxy.c']),
     Extension('sqlalchemy.cutils',
-           sources=['lib/sqlalchemy/cextension/utils.c'])
+              sources=['lib/sqlalchemy/cextension/utils.c'])
     ]
 
 ext_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
@@ -52,10 +52,12 @@ if sys.platform == 'win32':
     # find the compiler
     ext_errors += (IOError,)
 
+
 class BuildFailed(Exception):
 
     def __init__(self):
         self.cause = sys.exc_info()[1]  # work around py 2/3 different syntax
+
 
 class ve_build_ext(build_ext):
     # This class allows C extension building to fail.
@@ -79,11 +81,13 @@ class ve_build_ext(build_ext):
 
 cmdclass['build_ext'] = ve_build_ext
 
+
 def status_msgs(*msgs):
     print('*' * 75)
     for msg in msgs:
         print(msg)
     print('*' * 75)
+
 
 def find_packages(location):
     packages = []
@@ -96,7 +100,7 @@ def find_packages(location):
     return packages
 
 v_file = open(os.path.join(os.path.dirname(__file__),
-                        'lib', 'sqlalchemy', '__init__.py'))
+                           'lib', 'sqlalchemy', '__init__.py'))
 VERSION = re.compile(r".*__version__ = '(.*?)'",
                      re.S).match(v_file.read()).group(1)
 v_file.close()
@@ -111,52 +115,53 @@ def run_setup(with_cext):
     if with_cext:
         if has_feature:
             kwargs['features'] = {'cextensions': Feature(
-                    "optional C speed-enhancements",
-                    standard=True,
-                    ext_modules=ext_modules
-                    )}
+                "optional C speed-enhancements",
+                standard=True,
+                ext_modules=ext_modules
+                )}
         else:
             kwargs['ext_modules'] = ext_modules
 
     setup(name="SQLAlchemy",
-        version=VERSION,
-        description="Database Abstraction Library",
-        author="Mike Bayer",
-        author_email="mike_mp@zzzcomputing.com",
-        url="http://www.sqlalchemy.org",
-        packages=find_packages('lib'),
-        package_dir={'': 'lib'},
-        license="MIT License",
-        cmdclass=cmdclass,
-        tests_require=['pytest >= 2.5.2', 'mock'],
-        test_suite="sqlalchemy.testing.distutils_run",
-        long_description=readme,
-        classifiers=[
-            "Development Status :: 5 - Production/Stable",
-            "Intended Audience :: Developers",
-            "License :: OSI Approved :: MIT License",
-            "Programming Language :: Python",
-            "Programming Language :: Python :: 3",
-            "Programming Language :: Python :: Implementation :: CPython",
-            "Programming Language :: Python :: Implementation :: Jython",
-            "Programming Language :: Python :: Implementation :: PyPy",
-            "Topic :: Database :: Front-Ends",
-            "Operating System :: OS Independent",
-            ],
-            **kwargs
+          version=VERSION,
+          description="Database Abstraction Library",
+          author="Mike Bayer",
+          author_email="mike_mp@zzzcomputing.com",
+          url="http://www.sqlalchemy.org",
+          packages=find_packages('lib'),
+          package_dir={'': 'lib'},
+          license="MIT License",
+          cmdclass=cmdclass,
+          tests_require=['pytest >= 2.5.2', 'mock'],
+          test_suite="sqlalchemy.testing.distutils_run",
+          long_description=readme,
+          classifiers=[
+              "Development Status :: 5 - Production/Stable",
+              "Intended Audience :: Developers",
+              "License :: OSI Approved :: MIT License",
+              "Programming Language :: Python",
+              "Programming Language :: Python :: 3",
+              "Programming Language :: Python :: Implementation :: CPython",
+              "Programming Language :: Python :: Implementation :: Jython",
+              "Programming Language :: Python :: Implementation :: PyPy",
+              "Topic :: Database :: Front-Ends",
+              "Operating System :: OS Independent",
+              ],
+          **kwargs
           )
 
 if not cpython:
     run_setup(False)
     status_msgs(
         "WARNING: C extensions are not supported on " +
-            "this Python platform, speedups are not enabled.",
+        "this Python platform, speedups are not enabled.",
         "Plain-Python build succeeded."
     )
 elif os.environ.get('DISABLE_SQLALCHEMY_CEXT'):
     run_setup(False)
     status_msgs(
-        "DISABLE_SQLALCHEMY_CEXT is set; not attempting to build C extensions.",
+        "DISABLE_SQLALCHEMY_CEXT is set; " +
+        "not attempting to build C extensions.",
         "Plain-Python build succeeded."
     )
 
@@ -167,7 +172,7 @@ else:
         status_msgs(
             exc.cause,
             "WARNING: The C extension could not be compiled, " +
-                "speedups are not enabled.",
+            "speedups are not enabled.",
             "Failure information, if any, is above.",
             "Retrying the build without the C extension now."
         )
@@ -176,6 +181,6 @@ else:
 
         status_msgs(
             "WARNING: The C extension could not be compiled, " +
-                "speedups are not enabled.",
+            "speedups are not enabled.",
             "Plain-Python build succeeded."
         )

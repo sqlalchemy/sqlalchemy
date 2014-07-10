@@ -462,15 +462,15 @@ class MutableBase(object):
                     val._parents[state.obj()] = key
 
         event.listen(parent_cls, 'load', load,
-            raw=True, propagate=True)
+                     raw=True, propagate=True)
         event.listen(parent_cls, 'refresh', load,
-            raw=True, propagate=True)
+                     raw=True, propagate=True)
         event.listen(attribute, 'set', set,
-            raw=True, retval=True, propagate=True)
+                     raw=True, retval=True, propagate=True)
         event.listen(parent_cls, 'pickle', pickle,
-            raw=True, propagate=True)
+                     raw=True, propagate=True)
         event.listen(parent_cls, 'unpickle', unpickle,
-            raw=True, propagate=True)
+                     raw=True, propagate=True)
 
 
 class Mutable(MutableBase):
@@ -565,7 +565,6 @@ class Mutable(MutableBase):
         return sqltype
 
 
-
 class MutableComposite(MutableBase):
     """Mixin that defines transparent propagation of change
     events on a SQLAlchemy "composite" object to its
@@ -582,16 +581,17 @@ class MutableComposite(MutableBase):
 
             prop = object_mapper(parent).get_property(key)
             for value, attr_name in zip(
-                                    self.__composite_values__(),
-                                    prop._attribute_keys):
+                    self.__composite_values__(),
+                    prop._attribute_keys):
                 setattr(parent, attr_name, value)
+
 
 def _setup_composite_listener():
     def _listen_for_type(mapper, class_):
         for prop in mapper.iterate_properties:
             if (hasattr(prop, 'composite_class') and
-                isinstance(prop.composite_class, type) and
-                 issubclass(prop.composite_class, MutableComposite)):
+                    isinstance(prop.composite_class, type) and
+                    issubclass(prop.composite_class, MutableComposite)):
                 prop.composite_class._listen_on_attribute(
                     getattr(class_, prop.key), False, class_)
     if not event.contains(Mapper, "mapper_configured", _listen_for_type):
@@ -610,7 +610,6 @@ class MutableDict(Mutable, dict):
         """Detect dictionary set events and emit change events."""
         dict.__setitem__(self, key, value)
         self.changed()
-
 
     def setdefault(self, key, value):
         result = dict.setdefault(self, key, value)
