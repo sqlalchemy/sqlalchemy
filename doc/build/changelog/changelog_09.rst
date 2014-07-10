@@ -15,6 +15,15 @@
     :released:
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3122
+
+        The :meth:`.TypeEngine.with_variant` method will now accept a
+        type class as an argument which is internally converted to an
+        instance, using the same convention long established by other
+        constructs such as :class:`.Column`.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3117
 
