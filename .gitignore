@@ -6,7 +6,6 @@
 /doc/build/output/
 /dogpile_data/
 *.orig
-tox.ini
 /.tox
 .venv
 *.egg-info
