@@ -171,4 +171,23 @@ class PGDialect_pg8000(PGDialect):
                 (level, self.name, ", ".join(self._isolation_lookup))
             )
 
+    def do_begin_twophase(self, connection, xid):
+        print("begin twophase", xid)
+        connection.connection.tpc_begin((0, xid, ''))
+
+    def do_prepare_twophase(self, connection, xid):
+        print("prepare twophase", xid)
+        connection.connection.tpc_prepare()
+
+    def do_rollback_twophase(
+            self, connection, xid, is_prepared=True, recover=False):
+        connection.connection.tpc_rollback((0, xid, ''))
+
+    def do_commit_twophase(
+            self, connection, xid, is_prepared=True, recover=False):
+        connection.connection.tpc_commit((0, xid, ''))
+
+    def do_recover_twophase(self, connection):
+        return [row[1] for row in connection.connection.tpc_recover()]
+
 dialect = PGDialect_pg8000
