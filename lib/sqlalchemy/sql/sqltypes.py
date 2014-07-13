@@ -918,6 +918,7 @@ class SchemaType(SchemaEventTarget):
         self.schema = schema
         self.metadata = metadata
         self.inherit_schema = inherit_schema
+
         if self.metadata:
             event.listen(
                 self.metadata,
@@ -967,13 +968,16 @@ class SchemaType(SchemaEventTarget):
 
     def adapt(self, impltype, **kw):
         schema = kw.pop('schema', self.schema)
-        metadata = kw.pop('metadata', self.metadata)
+
+        # don't associate with MetaData as the hosting type
+        # is already associated with it, avoid creating event
+        # listeners
+        metadata = kw.pop('metadata', None)
         return impltype(name=self.name,
                     schema=schema,
                     metadata=metadata,
                     inherit_schema=self.inherit_schema,
-                    **kw
-                    )
+                    **kw)
 
     @property
     def bind(self):
@@ -1136,7 +1140,7 @@ class Enum(String, SchemaType):
 
     def adapt(self, impltype, **kw):
         schema = kw.pop('schema', self.schema)
-        metadata = kw.pop('metadata', self.metadata)
+        metadata = kw.pop('metadata', None)
         if issubclass(impltype, Enum):
             return impltype(name=self.name,
                         schema=schema,
@@ -1145,8 +1149,7 @@ class Enum(String, SchemaType):
                         native_enum=self.native_enum,
                         inherit_schema=self.inherit_schema,
                         *self.enums,
-                        **kw
-                        )
+                        **kw)
         else:
             return super(Enum, self).adapt(impltype, **kw)
 
