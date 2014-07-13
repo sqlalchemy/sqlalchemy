@@ -14,6 +14,16 @@
     .. change::
         :tags: bug, sql
         :versions: 1.0.0, 0.9.7
+        :tickets: 3124
+
+        Fixed bug in :class:`.Enum` and other :class:`.SchemaType`
+        subclasses where direct association of the type with a
+        :class:`.MetaData` would lead to a hang when events
+        (like create events) were emitted on the :class:`.MetaData`.
+
+    .. change::
+        :tags: bug, sql
+        :versions: 1.0.0, 0.9.7
         :tickets: 3102
 
         Fixed a bug within the custom operator plus :meth:`.TypeEngine.with_variant`

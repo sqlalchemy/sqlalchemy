@@ -770,7 +770,21 @@ class SchemaTypeTest(fixtures.TestBase):
             self.table = table
 
         def _on_table_create(self, target, bind, **kw):
+            super(SchemaTypeTest.MyType, self)._on_table_create(
+                target, bind, **kw)
             self.evt_targets += (target,)
+
+        def _on_metadata_create(self, target, bind, **kw):
+            super(SchemaTypeTest.MyType, self)._on_metadata_create(
+                target, bind, **kw)
+            self.evt_targets += (target,)
+
+    class MyTypeWImpl(MyType):
+        def _gen_dialect_impl(self, dialect):
+            return self.adapt(SchemaTypeTest.MyTypeImpl)
+
+    class MyTypeImpl(MyTypeWImpl):
+        pass
 
     def test_independent_schema(self):
         m = MetaData()
@@ -852,6 +866,49 @@ class SchemaTypeTest(fixtures.TestBase):
         eq_(t1.c.y.type.evt_targets, (t1,))
         eq_(t2.c.y.type.evt_targets, (t2, t2))
 
+    def test_metadata_dispatch_no_new_impl(self):
+        m1 = MetaData()
+        typ = self.MyType(metadata=m1)
+        m1.dispatch.before_create(m1, testing.db)
+        eq_(typ.evt_targets, (m1, ))
+
+        dialect_impl = typ.dialect_impl(testing.db.dialect)
+        eq_(dialect_impl.evt_targets, ())
+
+    def test_metadata_dispatch_new_impl(self):
+        m1 = MetaData()
+        typ = self.MyTypeWImpl(metadata=m1)
+        m1.dispatch.before_create(m1, testing.db)
+        eq_(typ.evt_targets, (m1, ))
+
+        dialect_impl = typ.dialect_impl(testing.db.dialect)
+        eq_(dialect_impl.evt_targets, (m1, ))
+
+    def test_table_dispatch_no_new_impl(self):
+        m1 = MetaData()
+        typ = self.MyType()
+        t1 = Table('t1', m1, Column('x', typ))
+        m1.dispatch.before_create(t1, testing.db)
+        eq_(typ.evt_targets, (t1, ))
+
+        dialect_impl = typ.dialect_impl(testing.db.dialect)
+        eq_(dialect_impl.evt_targets, ())
+
+    def test_table_dispatch_new_impl(self):
+        m1 = MetaData()
+        typ = self.MyTypeWImpl()
+        t1 = Table('t1', m1, Column('x', typ))
+        m1.dispatch.before_create(t1, testing.db)
+        eq_(typ.evt_targets, (t1, ))
+
+        dialect_impl = typ.dialect_impl(testing.db.dialect)
+        eq_(dialect_impl.evt_targets, (t1, ))
+
+    def test_create_metadata_bound_no_crash(self):
+        m1 = MetaData()
+        self.MyType(metadata=m1)
+
+        m1.create_all(testing.db)
 
 
 class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):

@@ -1913,7 +1913,11 @@ class SchemaType(events.SchemaEventTarget):
 
     def adapt(self, impltype, **kw):
         schema = kw.pop('schema', self.schema)
-        metadata = kw.pop('metadata', self.metadata)
+
+        # don't associate with MetaData as the hosting type
+        # is already associated with it, avoid creating event
+        # listeners
+        metadata = kw.pop('metadata', None)
         return impltype(name=self.name,
                     quote=self.quote,
                     schema=schema,
@@ -2087,7 +2091,11 @@ class Enum(String, SchemaType):
 
     def adapt(self, impltype, **kw):
         schema = kw.pop('schema', self.schema)
-        metadata = kw.pop('metadata', self.metadata)
+
+        # don't associate with MetaData as the hosting type
+        # is already associated with it, avoid creating event
+        # listeners
+        metadata = kw.pop('metadata', None)
         if issubclass(impltype, Enum):
             return impltype(name=self.name,
                         quote=self.quote,
