@@ -1100,8 +1100,7 @@ class ENUM(sqltypes.Enum):
             self.create(bind=bind, checkfirst=checkfirst)
 
     def _on_metadata_create(self, target, bind, checkfirst, **kw):
-        if self.metadata is not None and \
-            not self._check_for_name_in_memos(checkfirst, kw):
+        if not self._check_for_name_in_memos(checkfirst, kw):
             self.create(bind=bind, checkfirst=checkfirst)
 
     def _on_metadata_drop(self, target, bind, checkfirst, **kw):

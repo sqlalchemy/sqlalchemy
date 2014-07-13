@@ -1064,6 +1064,12 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(e1.adapt(ENUM).name, 'foo')
         eq_(e1.adapt(ENUM).schema, 'bar')
 
+    def test_create_metadata_bound_no_crash(self):
+        m1 = MetaData()
+        Enum('a', 'b', 'c', metadata=m1)
+
+        m1.create_all(testing.db)
+
     @testing.crashes(
         'mysql', 'Inconsistent behavior across various OS/drivers')
     def test_constraint(self):
