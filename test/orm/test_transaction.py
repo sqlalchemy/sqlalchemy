@@ -1,15 +1,13 @@
 from __future__ import with_statement
-from sqlalchemy.testing import eq_, assert_raises, \
-    assert_raises_message, assert_warnings
-from sqlalchemy import *
-from sqlalchemy.orm import attributes
-from sqlalchemy import exc as sa_exc, event
-from sqlalchemy.orm import exc as orm_exc
-from sqlalchemy.orm import *
+from sqlalchemy import (
+    testing, exc as sa_exc, event, String, Column, Table, select, func)
+from sqlalchemy.testing import (
+    fixtures, engines, eq_, assert_raises, assert_raises_message,
+    assert_warnings)
+from sqlalchemy.orm import (
+    exc as orm_exc, Session, mapper, sessionmaker, create_session,
+    relationship, attributes)
 from sqlalchemy.testing.util import gc_collect
-from sqlalchemy import testing
-from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import engines
 from test.orm._fixtures import FixtureTest
 
 
@@ -52,8 +50,8 @@ class SessionTransactionTest(FixtureTest):
         u = User(name='ed')
         sess.add(u)
         sess.flush()
-        sess.commit() # commit does nothing
-        trans.rollback() # rolls back
+        sess.commit()  # commit does nothing
+        trans.rollback()  # rolls back
         assert len(sess.query(User).all()) == 0
         sess.close()
 
@@ -83,7 +81,6 @@ class SessionTransactionTest(FixtureTest):
         except:
             conn.close()
             raise
-
 
     @testing.requires.savepoints
     def test_nested_accounting_new_items_removed(self):
@@ -129,22 +126,22 @@ class SessionTransactionTest(FixtureTest):
 
         session = create_session(bind=testing.db)
         session.begin()
-        session.connection().execute(users.insert().values(name='user1'
-                ))
+        session.connection().execute(users.insert().values(
+            name='user1'))
         session.begin(subtransactions=True)
         session.begin_nested()
-        session.connection().execute(users.insert().values(name='user2'
-                ))
-        assert session.connection().execute('select count(1) from users'
-                ).scalar() == 2
+        session.connection().execute(users.insert().values(
+            name='user2'))
+        assert session.connection().execute(
+            'select count(1) from users').scalar() == 2
         session.rollback()
-        assert session.connection().execute('select count(1) from users'
-                ).scalar() == 1
-        session.connection().execute(users.insert().values(name='user3'
-                ))
+        assert session.connection().execute(
+            'select count(1) from users').scalar() == 1
+        session.connection().execute(users.insert().values(
+            name='user3'))
         session.commit()
-        assert session.connection().execute('select count(1) from users'
-                ).scalar() == 2
+        assert session.connection().execute(
+            'select count(1) from users').scalar() == 2
 
     @testing.requires.independent_connections
     def test_transactions_isolated(self):
@@ -196,8 +193,8 @@ class SessionTransactionTest(FixtureTest):
         u = User(name='u1')
         sess.add(u)
         sess.flush()
-        sess.commit() # commit does nothing
-        sess.rollback() # rolls back
+        sess.commit()  # commit does nothing
+        sess.rollback()  # rolls back
         assert len(sess.query(User).all()) == 0
         sess.close()
 
@@ -276,7 +273,7 @@ class SessionTransactionTest(FixtureTest):
 
         u3 = User(name='u3')
         sess.add(u3)
-        sess.commit() # commit the nested transaction
+        sess.commit()  # commit the nested transaction
         sess.rollback()
 
         eq_(set(sess.query(User).all()), set([u2]))
@@ -346,13 +343,15 @@ class SessionTransactionTest(FixtureTest):
         sess = Session()
 
         to_flush = [User(name='ed'), User(name='jack'), User(name='wendy')]
+
         @event.listens_for(sess, "after_flush_postexec")
         def add_another_user(session, ctx):
             if to_flush:
                 session.add(to_flush.pop(0))
 
         x = [1]
-        @event.listens_for(sess, "after_commit")
+
+        @event.listens_for(sess, "after_commit")  # noqa
         def add_another_user(session):
             x[0] += 1
 
@@ -378,7 +377,6 @@ class SessionTransactionTest(FixtureTest):
             "Over 100 subsequent flushes have occurred",
             sess.commit
         )
-
 
     def test_error_on_using_inactive_session_commands(self):
         users, User = self.tables.users, self.classes.User
@@ -432,15 +430,11 @@ class SessionTransactionTest(FixtureTest):
         trans = sess.begin()
         trans.rollback()
         assert_raises_message(
-                sa_exc.ResourceClosedError,
-                "This transaction is closed",
-                trans.rollback
-        )
+            sa_exc.ResourceClosedError, "This transaction is closed",
+            trans.rollback)
         assert_raises_message(
-                sa_exc.ResourceClosedError,
-                "This transaction is closed",
-                trans.commit
-        )
+            sa_exc.ResourceClosedError, "This transaction is closed",
+            trans.commit)
 
     def test_deactive_status_check(self):
         sess = create_session()
@@ -493,6 +487,7 @@ class SessionTransactionTest(FixtureTest):
         sess, u1 = self._inactive_flushed_session_fixture()
         u2 = User(name='u2')
         sess.add(u2)
+
         def go():
             sess.rollback()
         assert_warnings(go,
@@ -506,6 +501,7 @@ class SessionTransactionTest(FixtureTest):
     def test_warning_on_using_inactive_session_dirty(self):
         sess, u1 = self._inactive_flushed_session_fixture()
         u1.name = 'newname'
+
         def go():
             sess.rollback()
         assert_warnings(go,
@@ -519,6 +515,7 @@ class SessionTransactionTest(FixtureTest):
     def test_warning_on_using_inactive_session_delete(self):
         sess, u1 = self._inactive_flushed_session_fixture()
         sess.delete(u1)
+
         def go():
             sess.rollback()
         assert_warnings(go,
@@ -558,6 +555,7 @@ class SessionTransactionTest(FixtureTest):
         assert session.transaction is not None, \
             'autocommit=False should start a new transaction'
 
+
 class _LocalFixture(FixtureTest):
     run_setup_mappers = 'once'
     run_inserts = None
@@ -567,10 +565,11 @@ class _LocalFixture(FixtureTest):
     def setup_mappers(cls):
         User, Address = cls.classes.User, cls.classes.Address
         users, addresses = cls.tables.users, cls.tables.addresses
-        mapper(User, users, properties={
-            'addresses':relationship(Address, backref='user',
-                                 cascade="all, delete-orphan",
-                                    order_by=addresses.c.id),
+        mapper(
+            User, users, properties={
+                'addresses': relationship(
+                    Address, backref='user', cascade="all, delete-orphan",
+                    order_by=addresses.c.id),
             })
         mapper(Address, addresses)
 
@@ -611,6 +610,7 @@ class FixtureDataTest(_LocalFixture):
 
         assert u1.name == 'will'
 
+
 class CleanSavepointTest(FixtureTest):
     """test the behavior for [ticket:2452] - rollback on begin_nested()
     only expires objects tracked as being modified in that transaction.
@@ -641,26 +641,29 @@ class CleanSavepointTest(FixtureTest):
 
     @testing.requires.savepoints
     def test_rollback_ignores_clean_on_savepoint(self):
-        User, users = self.classes.User, self.tables.users
+
         def update_fn(s, u2):
             u2.name = 'u2modified'
         self._run_test(update_fn)
 
     @testing.requires.savepoints
     def test_rollback_ignores_clean_on_savepoint_agg_upd_eval(self):
-        User, users = self.classes.User, self.tables.users
+        User = self.classes.User
+
         def update_fn(s, u2):
-            s.query(User).filter_by(name='u2').update(dict(name='u2modified'),
-                                    synchronize_session='evaluate')
+            s.query(User).filter_by(name='u2').update(
+                dict(name='u2modified'), synchronize_session='evaluate')
         self._run_test(update_fn)
 
     @testing.requires.savepoints
     def test_rollback_ignores_clean_on_savepoint_agg_upd_fetch(self):
-        User, users = self.classes.User, self.tables.users
+        User = self.classes.User
+
         def update_fn(s, u2):
             s.query(User).filter_by(name='u2').update(dict(name='u2modified'),
                                     synchronize_session='fetch')
         self._run_test(update_fn)
+
 
 class ContextManagerTest(FixtureTest):
     run_inserts = None
@@ -674,6 +677,7 @@ class ContextManagerTest(FixtureTest):
         mapper(User, users)
 
         sess = Session()
+
         def go():
             with sess.begin_nested():
                 sess.add(User())   # name can't be null
@@ -708,6 +712,7 @@ class ContextManagerTest(FixtureTest):
         mapper(User, users)
 
         sess = Session(autocommit=True)
+
         def go():
             with sess.begin():
                 sess.add(User())  # name can't be null
@@ -729,7 +734,7 @@ class AutoExpireTest(_LocalFixture):
     def test_expunge_pending_on_rollback(self):
         User = self.classes.User
         sess = self.session()
-        u2= User(name='newuser')
+        u2 = User(name='newuser')
         sess.add(u2)
         assert u2 in sess
         sess.rollback()
@@ -738,7 +743,7 @@ class AutoExpireTest(_LocalFixture):
     def test_trans_pending_cleared_on_commit(self):
         User = self.classes.User
         sess = self.session()
-        u2= User(name='newuser')
+        u2 = User(name='newuser')
         sess.add(u2)
         assert u2 in sess
         sess.commit()
@@ -836,8 +841,7 @@ class AutoExpireTest(_LocalFixture):
         u1.addresses.remove(a1)
 
         s.flush()
-        eq_(s.query(Address).filter(Address.email_address=='foo').all(),
-                [])
+        eq_(s.query(Address).filter(Address.email_address == 'foo').all(), [])
         s.rollback()
         assert a1 not in s.deleted
         assert u1.addresses == [a1]
@@ -851,7 +855,6 @@ class AutoExpireTest(_LocalFixture):
         sess.commit()
         eq_(u1.name, 'newuser')
 
-
     def test_concurrent_commit_pending(self):
         User = self.classes.User
         s1 = self.session()
@@ -860,11 +863,12 @@ class AutoExpireTest(_LocalFixture):
         s1.commit()
 
         s2 = self.session()
-        u2 = s2.query(User).filter(User.name=='edward').one()
+        u2 = s2.query(User).filter(User.name == 'edward').one()
         u2.name = 'will'
         s2.commit()
 
         assert u1.name == 'will'
+
 
 class TwoPhaseTest(_LocalFixture):
     __backend__ = True
@@ -880,6 +884,7 @@ class TwoPhaseTest(_LocalFixture):
         s.rollback()
 
         assert u not in s
+
 
 class RollbackRecoverTest(_LocalFixture):
     __backend__ = True
@@ -943,9 +948,10 @@ class RollbackRecoverTest(_LocalFixture):
         s.commit()
         eq_(
             s.query(User).all(),
-            [User(id=1, name='edward',
-                addresses=[Address(email_address='foober')])]
-        )
+            [
+                User(
+                    id=1, name='edward',
+                    addresses=[Address(email_address='foober')])])
 
 
 class SavepointTest(_LocalFixture):
@@ -965,18 +971,19 @@ class SavepointTest(_LocalFixture):
         u1.name = 'edward'
         u2.name = 'jackward'
         s.add_all([u3, u4])
-        eq_(s.query(User.name).order_by(User.id).all(),
-                    [('edward',), ('jackward',), ('wendy',), ('foo',)])
+        eq_(
+            s.query(User.name).order_by(User.id).all(),
+            [('edward',), ('jackward',), ('wendy',), ('foo',)])
         s.rollback()
         assert u1.name == 'ed'
         assert u2.name == 'jack'
-        eq_(s.query(User.name).order_by(User.id).all(),
-                    [('ed',), ('jack',)])
+        eq_(
+            s.query(User.name).order_by(User.id).all(),
+            [('ed',), ('jack',)])
         s.commit()
         assert u1.name == 'ed'
         assert u2.name == 'jack'
-        eq_(s.query(User.name).order_by(User.id).all(),
-                    [('ed',), ('jack',)])
+        eq_(s.query(User.name).order_by(User.id).all(), [('ed',), ('jack',)])
 
     @testing.requires.savepoints
     def test_savepoint_delete(self):
@@ -1006,19 +1013,23 @@ class SavepointTest(_LocalFixture):
         u1.name = 'edward'
         u2.name = 'jackward'
         s.add_all([u3, u4])
-        eq_(s.query(User.name).order_by(User.id).all(),
-                [('edward',), ('jackward',), ('wendy',), ('foo',)])
+        eq_(
+            s.query(User.name).order_by(User.id).all(),
+            [('edward',), ('jackward',), ('wendy',), ('foo',)])
         s.commit()
+
         def go():
             assert u1.name == 'edward'
             assert u2.name == 'jackward'
-            eq_(s.query(User.name).order_by(User.id).all(),
-                    [('edward',), ('jackward',), ('wendy',), ('foo',)])
+            eq_(
+                s.query(User.name).order_by(User.id).all(),
+                [('edward',), ('jackward',), ('wendy',), ('foo',)])
         self.assert_sql_count(testing.db, go, 1)
 
         s.commit()
-        eq_(s.query(User.name).order_by(User.id).all(),
-                [('edward',), ('jackward',), ('wendy',), ('foo',)])
+        eq_(
+            s.query(User.name).order_by(User.id).all(),
+            [('edward',), ('jackward',), ('wendy',), ('foo',)])
 
     @testing.requires.savepoints
     def test_savepoint_rollback_collections(self):
@@ -1028,30 +1039,40 @@ class SavepointTest(_LocalFixture):
         s.add(u1)
         s.commit()
 
-        u1.name='edward'
+        u1.name = 'edward'
         u1.addresses.append(Address(email_address='bar'))
         s.begin_nested()
         u2 = User(name='jack', addresses=[Address(email_address='bat')])
         s.add(u2)
-        eq_(s.query(User).order_by(User.id).all(),
+        eq_(
+            s.query(User).order_by(User.id).all(),
             [
-                User(name='edward', addresses=[Address(email_address='foo'),
-                                        Address(email_address='bar')]),
+                User(
+                    name='edward',
+                    addresses=[
+                        Address(email_address='foo'),
+                        Address(email_address='bar')]),
                 User(name='jack', addresses=[Address(email_address='bat')])
-            ]
-        )
+            ])
         s.rollback()
-        eq_(s.query(User).order_by(User.id).all(),
+        eq_(
+            s.query(User).order_by(User.id).all(),
             [
-                User(name='edward', addresses=[Address(email_address='foo'),
-                                        Address(email_address='bar')]),
-            ]
-        )
+                User(
+                    name='edward',
+                    addresses=[
+                        Address(email_address='foo'),
+                        Address(email_address='bar')]),
+            ])
         s.commit()
-        eq_(s.query(User).order_by(User.id).all(),
+        eq_(
+            s.query(User).order_by(User.id).all(),
             [
-                User(name='edward', addresses=[Address(email_address='foo'),
-                                        Address(email_address='bar')]),
+                User(
+                    name='edward',
+                    addresses=[
+                        Address(email_address='foo'),
+                        Address(email_address='bar')]),
             ]
         )
 
@@ -1063,28 +1084,43 @@ class SavepointTest(_LocalFixture):
         s.add(u1)
         s.commit()
 
-        u1.name='edward'
+        u1.name = 'edward'
         u1.addresses.append(Address(email_address='bar'))
         s.begin_nested()
         u2 = User(name='jack', addresses=[Address(email_address='bat')])
         s.add(u2)
-        eq_(s.query(User).order_by(User.id).all(),
+        eq_(
+            s.query(User).order_by(User.id).all(),
             [
-                User(name='edward', addresses=[Address(email_address='foo'), Address(email_address='bar')]),
+                User(
+                    name='edward',
+                    addresses=[
+                        Address(email_address='foo'),
+                        Address(email_address='bar')]),
                 User(name='jack', addresses=[Address(email_address='bat')])
             ]
         )
         s.commit()
-        eq_(s.query(User).order_by(User.id).all(),
+        eq_(
+            s.query(User).order_by(User.id).all(),
             [
-                User(name='edward', addresses=[Address(email_address='foo'), Address(email_address='bar')]),
+                User(
+                    name='edward',
+                    addresses=[
+                        Address(email_address='foo'),
+                        Address(email_address='bar')]),
                 User(name='jack', addresses=[Address(email_address='bat')])
             ]
         )
         s.commit()
-        eq_(s.query(User).order_by(User.id).all(),
+        eq_(
+            s.query(User).order_by(User.id).all(),
             [
-                User(name='edward', addresses=[Address(email_address='foo'), Address(email_address='bar')]),
+                User(
+                    name='edward',
+                    addresses=[
+                        Address(email_address='foo'),
+                        Address(email_address='bar')]),
                 User(name='jack', addresses=[Address(email_address='bat')])
             ]
         )
@@ -1095,7 +1131,7 @@ class SavepointTest(_LocalFixture):
         sess = self.session()
 
         sess.begin_nested()
-        u2= User(name='newuser')
+        u2 = User(name='newuser')
         sess.add(u2)
         assert u2 in sess
         sess.rollback()
@@ -1128,7 +1164,8 @@ class AccountingFlagsTest(_LocalFixture):
         sess.add(u1)
         sess.commit()
 
-        testing.db.execute(users.update(users.c.name=='ed').values(name='edward'))
+        testing.db.execute(
+            users.update(users.c.name == 'ed').values(name='edward'))
 
         assert u1.name == 'ed'
         sess.expire_all()
@@ -1145,7 +1182,8 @@ class AccountingFlagsTest(_LocalFixture):
         u1.name = 'edwardo'
         sess.rollback()
 
-        testing.db.execute(users.update(users.c.name=='ed').values(name='edward'))
+        testing.db.execute(
+            users.update(users.c.name == 'ed').values(name='edward'))
 
         assert u1.name == 'edwardo'
         sess.expire_all()
@@ -1162,12 +1200,14 @@ class AccountingFlagsTest(_LocalFixture):
         u1.name = 'edwardo'
         sess.rollback()
 
-        testing.db.execute(users.update(users.c.name=='ed').values(name='edward'))
+        testing.db.execute(
+            users.update(users.c.name == 'ed').values(name='edward'))
 
         assert u1.name == 'edwardo'
         sess.commit()
 
-        assert testing.db.execute(select([users.c.name])).fetchall() == [('edwardo',)]
+        assert testing.db.execute(select([users.c.name])).fetchall() == \
+            [('edwardo',)]
         assert u1.name == 'edwardo'
 
         sess.delete(u1)
@@ -1176,8 +1216,9 @@ class AccountingFlagsTest(_LocalFixture):
     def test_preflush_no_accounting(self):
         User, users = self.classes.User, self.tables.users
 
-        sess = Session(_enable_transaction_accounting=False,
-                        autocommit=True, autoflush=False)
+        sess = Session(
+            _enable_transaction_accounting=False, autocommit=True,
+            autoflush=False)
         u1 = User(name='ed')
         sess.add(u1)
         sess.flush()
@@ -1190,7 +1231,8 @@ class AccountingFlagsTest(_LocalFixture):
         sess.rollback()
 
         sess.begin()
-        assert testing.db.execute(select([users.c.name])).fetchall() == [('ed',)]
+        assert testing.db.execute(select([users.c.name])).fetchall() == \
+            [('ed',)]
 
 
 class AutoCommitTest(_LocalFixture):
@@ -1220,6 +1262,7 @@ class AutoCommitTest(_LocalFixture):
         sess = create_session(autocommit=True)
 
         fail = False
+
         def fail_fn(*arg, **kw):
             if fail:
                 raise Exception("commit fails")
@@ -1251,6 +1294,7 @@ class AutoCommitTest(_LocalFixture):
         sess = create_session(autocommit=True)
 
         fail = False
+
         def fail_fn(*arg, **kw):
             if fail:
                 raise Exception("commit fails")
@@ -1296,14 +1340,13 @@ class AutoCommitTest(_LocalFixture):
         assert 'id' not in u1.__dict__
         eq_(u1.id, 3)
 
+
 class NaturalPKRollbackTest(fixtures.MappedTest):
     __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('users', metadata,
-            Column('name', String(50), primary_key=True)
-        )
+        Table('users', metadata, Column('name', String(50), primary_key=True))
 
     @classmethod
     def setup_classes(cls):
@@ -1317,10 +1360,7 @@ class NaturalPKRollbackTest(fixtures.MappedTest):
 
         session = sessionmaker()()
 
-        u1, u2, u3= \
-            User(name='u1'),\
-            User(name='u2'),\
-            User(name='u3')
+        u1, u2, u3 = User(name='u1'), User(name='u2'), User(name='u3')
 
         session.add_all([u1, u2, u3])
 
@@ -1424,5 +1464,3 @@ class NaturalPKRollbackTest(fixtures.MappedTest):
         assert u2 not in s
 
         assert s.identity_map[(User, ('u1',))] is u1
-
-
