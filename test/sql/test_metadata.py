@@ -2517,6 +2517,19 @@ class DialectKWArgTest(fixtures.TestBase):
                 'otherunknown_foo': 'bar'}
             )  # still populates
 
+    def test_runs_safekwarg(self):
+
+        with mock.patch("sqlalchemy.util.safe_kwarg",
+            lambda arg: "goofy_%s" % arg):
+            with self._fixture():
+                idx = Index('a', 'b')
+                idx.kwargs[u'participating_x'] = 7
+
+                eq_(
+                    list(idx.dialect_kwargs),
+                    ['goofy_participating_x']
+                )
+
     def test_combined(self):
         with self._fixture():
             idx = Index('a', 'b', 'c', participating_x=7,

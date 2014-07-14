@@ -18,6 +18,7 @@ py33 = sys.version_info >= (3, 3)
 py32 = sys.version_info >= (3, 2)
 py3k = sys.version_info >= (3, 0)
 py2k = sys.version_info < (3, 0)
+py265 = sys.version_info >= (2, 6, 5)
 jython = sys.platform.startswith('java')
 pypy = hasattr(sys, 'pypy_version_info')
 win32 = sys.platform.startswith('win')
@@ -33,6 +34,12 @@ else:
         import cPickle as pickle
     except ImportError:
         import pickle
+
+# work around http://bugs.python.org/issue2646
+if py265:
+    safe_kwarg = lambda arg: arg
+else:
+    safe_kwarg = str
 
 ArgSpec = collections.namedtuple("ArgSpec",
                 ["args", "varargs", "keywords", "defaults"])

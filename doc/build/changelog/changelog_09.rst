@@ -16,6 +16,16 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 3123
+        :versions: 1.0.0
+
+        Added a "str()" step to the dialect_kwargs iteration for
+        Python version < 2.6.5, working around the
+        "no unicode keyword arg" bug as these args are passed along as
+        keyword args within some reflection processes.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 3122
 
         The :meth:`.TypeEngine.with_variant` method will now accept a
