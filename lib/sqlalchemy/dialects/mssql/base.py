@@ -596,6 +596,12 @@ class MSExecutionContext(default.DefaultExecutionContext):
     _result_proxy = None
     _lastrowid = None
 
+    def _opt_encode(self, statement):
+        if not self.dialect.supports_unicode_statements:
+            return self.dialect._encoder(statement)[0]
+        else:
+            return statement
+
     def pre_exec(self):
         """Activate IDENTITY_INSERT if needed."""
 
@@ -617,8 +623,8 @@ class MSExecutionContext(default.DefaultExecutionContext):
 
             if self._enable_identity_insert:
                 self.root_connection._cursor_execute(self.cursor,
-                    "SET IDENTITY_INSERT %s ON" %
-                    self.dialect.identifier_preparer.format_table(tbl),
+                    self._opt_encode("SET IDENTITY_INSERT %s ON" %
+                    self.dialect.identifier_preparer.format_table(tbl)),
                     (), self)
 
     def post_exec(self):
@@ -642,9 +648,9 @@ class MSExecutionContext(default.DefaultExecutionContext):
 
         if self._enable_identity_insert:
             conn._cursor_execute(self.cursor,
-                        "SET IDENTITY_INSERT %s OFF" %
+                        self._opt_encode("SET IDENTITY_INSERT %s OFF" %
                             self.dialect.identifier_preparer.
-                                format_table(self.compiled.statement.table),
+                                format_table(self.compiled.statement.table)),
                         (), self)
 
     def get_lastrowid(self):
@@ -654,9 +660,9 @@ class MSExecutionContext(default.DefaultExecutionContext):
         if self._enable_identity_insert:
             try:
                 self.cursor.execute(
-                        "SET IDENTITY_INSERT %s OFF" %
+                        self._opt_encode("SET IDENTITY_INSERT %s OFF" %
                             self.dialect.identifier_preparer.\
-                            format_table(self.compiled.statement.table)
+                            format_table(self.compiled.statement.table))
                         )
             except:
                 pass
