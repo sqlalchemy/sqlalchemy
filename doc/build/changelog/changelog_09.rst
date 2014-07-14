@@ -27,6 +27,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 3122
+        :versions: 1.0.0
 
         The :meth:`.TypeEngine.with_variant` method will now accept a
         type class as an argument which is internally converted to an
