@@ -16,6 +16,15 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 3090
+        :versions: 1.0.0
+
+        Fixed bug in common table expressions whereby positional bound
+        parameters could be expressed in the wrong final order
+        when CTEs were nested in certain ways.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 3069
         :versions: 1.0.0
 
