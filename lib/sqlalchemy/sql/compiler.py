@@ -407,7 +407,7 @@ class SQLCompiler(Compiled):
         self.ctes_by_name = {}
         self.ctes_recursive = False
         if self.positional:
-            self.cte_positional = []
+            self.cte_positional = {}
 
     def _apply_numbered_params(self):
         poscount = itertools.count(1)
@@ -1089,8 +1089,6 @@ class SQLCompiler(Compiled):
                                 fromhints=None,
                                 **kwargs):
         self._init_cte_state()
-        if self.positional:
-            kwargs['positional_names'] = self.cte_positional
 
         if isinstance(cte.name, elements._truncated_label):
             cte_name = self._truncated_identifier("alias", cte.name)
@@ -1144,10 +1142,15 @@ class SQLCompiler(Compiled):
                 text += "(%s)" % (", ".join(
                                     self.preparer.format_column(ident)
                                     for ident in recur_cols))
+
+            if self.positional:
+                kwargs['positional_names'] = self.cte_positional[cte] = []
+
             text += " AS \n" + \
                         cte.original._compiler_dispatch(
                                 self, asfrom=True, **kwargs
                             )
+
             self.ctes[cte] = text
 
         if asfrom:
@@ -1416,7 +1419,6 @@ class SQLCompiler(Compiled):
                             iswrapper=False, fromhints=None,
                             compound_index=0,
                             force_result_map=False,
-                            positional_names=None,
                             nested_join_translation=False,
                             **kwargs):
 
@@ -1433,7 +1435,6 @@ class SQLCompiler(Compiled):
                             iswrapper=iswrapper, fromhints=fromhints,
                             compound_index=compound_index,
                             force_result_map=force_result_map,
-                            positional_names=positional_names,
                             nested_join_translation=True, **kwargs
                         )
 
@@ -1479,7 +1480,6 @@ class SQLCompiler(Compiled):
 
         column_clause_args = kwargs.copy()
         column_clause_args.update({
-                'positional_names': positional_names,
                 'within_label_clause': False,
                 'within_columns_clause': False
             })
@@ -1590,7 +1590,10 @@ class SQLCompiler(Compiled):
 
     def _render_cte_clause(self):
         if self.positional:
-            self.positiontup = self.cte_positional + self.positiontup
+            self.positiontup = sum([
+                                    self.cte_positional[cte]
+                                    for cte in self.ctes], []) + \
+                                    self.positiontup
         cte_text = self.get_cte_preamble(self.ctes_recursive) + " "
         cte_text += ", \n".join(
             [txt for txt in self.ctes.values()]
