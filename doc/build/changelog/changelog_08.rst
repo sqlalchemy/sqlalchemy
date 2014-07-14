@@ -14,6 +14,16 @@
     .. change::
         :tags: bug, mssql
         :versions: 1.0.0, 0.9.7
+
+        Added statement encoding to the "SET IDENTITY_INSERT"
+        statements which operate when an explicit INSERT is being
+        interjected into an IDENTITY column, to support non-ascii table
+        identifiers on drivers such as pyodbc + unix + py2k that don't
+        support unicode statements.
+
+    .. change::
+        :tags: bug, mssql
+        :versions: 1.0.0, 0.9.7
         :tickets: 3091
 
         In the SQL Server pyodbc dialect, repaired the implementation

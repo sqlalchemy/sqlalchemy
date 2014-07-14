@@ -142,6 +142,7 @@ class PyODBCConnector(Connector):
         # run other initialization which asks for user name, etc.
         super(PyODBCConnector, self).initialize(connection)
 
+
     def _dbapi_version(self):
         if not self.dbapi:
             return ()
