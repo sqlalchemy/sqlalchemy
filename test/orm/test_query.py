@@ -3,7 +3,7 @@ from sqlalchemy import MetaData, null, exists, text, union, literal, \
     literal_column, func, between, Unicode, desc, and_, bindparam, \
     select, distinct, or_, collate, insert, Integer, String, Boolean
 from sqlalchemy import inspect
-from sqlalchemy import exc as sa_exc, util
+from sqlalchemy import exc as sa_exc, util, cast
 from sqlalchemy.sql import compiler, table, column
 from sqlalchemy.sql import expression
 from sqlalchemy.engine import default
