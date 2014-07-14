@@ -7,6 +7,7 @@
 
 from .. import util
 
+
 def connection_memoize(key):
     """Decorator, memoize a function in a connection.info stash.
 
@@ -61,7 +62,7 @@ def py_fallback():
                 return [[zero]]
         else:
             if hasattr(multiparams[0], '__iter__') and \
-                not hasattr(multiparams[0], 'strip'):
+                    not hasattr(multiparams[0], 'strip'):
                 return multiparams
             else:
                 return [multiparams]

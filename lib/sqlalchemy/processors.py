@@ -33,15 +33,17 @@ def str_to_datetime_processor_factory(regexp, type_):
                 m = rmatch(value)
             except TypeError:
                 raise ValueError("Couldn't parse %s string '%r' "
-                                "- value is not a string." %
-                                (type_.__name__, value))
+                                 "- value is not a string." %
+                                 (type_.__name__, value))
             if m is None:
                 raise ValueError("Couldn't parse %s string: "
-                                "'%s'" % (type_.__name__, value))
+                                 "'%s'" % (type_.__name__, value))
             if has_named_groups:
                 groups = m.groupdict(0)
-                return type_(**dict(list(zip(iter(groups.keys()),
-                                        list(map(int, iter(groups.values())))))))
+                return type_(**dict(list(zip(
+                    iter(groups.keys()),
+                    list(map(int, iter(groups.values())))
+                ))))
             else:
                 return type_(*list(map(int, m.groups(0))))
     return process
@@ -112,7 +114,7 @@ def py_fallback():
             return value and True or False
 
     DATETIME_RE = re.compile(
-                        "(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)(?:\.(\d+))?")
+        "(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)(?:\.(\d+))?")
     TIME_RE = re.compile("(\d+):(\d+):(\d+)(?:\.(\d+))?")
     DATE_RE = re.compile("(\d+)-(\d+)-(\d+)")
 
@@ -124,10 +126,10 @@ def py_fallback():
 
 try:
     from sqlalchemy.cprocessors import UnicodeResultProcessor, \
-                                       DecimalResultProcessor, \
-                                       to_float, to_str, int_to_boolean, \
-                                       str_to_datetime, str_to_time, \
-                                       str_to_date
+        DecimalResultProcessor, \
+        to_float, to_str, int_to_boolean, \
+        str_to_datetime, str_to_time, \
+        str_to_date
 
     def to_unicode_processor_factory(encoding, errors=None):
         if errors is not None:

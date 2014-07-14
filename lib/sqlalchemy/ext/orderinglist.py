@@ -83,11 +83,11 @@ With the above mapping the ``Bullet.position`` attribute is managed::
     s.bullets[2].position
     >>> 2
 
-The :class:`.OrderingList` construct only works with **changes** to a collection,
-and not the initial load from the database, and requires that the list be
-sorted when loaded.  Therefore, be sure to
-specify ``order_by`` on the :func:`.relationship` against the target ordering
-attribute, so that the ordering is correct when first loaded.
+The :class:`.OrderingList` construct only works with **changes** to a
+collection, and not the initial load from the database, and requires that the
+list be sorted when loaded.  Therefore, be sure to specify ``order_by`` on the
+:func:`.relationship` against the target ordering attribute, so that the
+ordering is correct when first loaded.
 
 .. warning::
 
@@ -111,11 +111,11 @@ attribute, so that the ordering is correct when first loaded.
       explicit configuration at the mapper level for sets of columns that
       are to be handled in this way.
 
-:func:`.ordering_list` takes the name of the related object's ordering attribute as
-an argument.  By default, the zero-based integer index of the object's
-position in the :func:`.ordering_list` is synchronized with the ordering attribute:
-index 0 will get position 0, index 1 position 1, etc.  To start numbering at 1
-or some other integer, provide ``count_from=1``.
+:func:`.ordering_list` takes the name of the related object's ordering
+attribute as an argument.  By default, the zero-based integer index of the
+object's position in the :func:`.ordering_list` is synchronized with the
+ordering attribute: index 0 will get position 0, index 1 position 1, etc.  To
+start numbering at 1 or some other integer, provide ``count_from=1``.
 
 
 """
@@ -359,7 +359,7 @@ class OrderingList(list):
 
     for func_name, func in list(locals().items()):
         if (util.callable(func) and func.__name__ == func_name and
-            not func.__doc__ and hasattr(list, func_name)):
+                not func.__doc__ and hasattr(list, func_name)):
             func.__doc__ = getattr(list, func_name).__doc__
     del func_name, func
 

@@ -105,7 +105,7 @@ class ExtendedInstrumentationRegistry(InstrumentationFactory):
 
     def _check_conflicts(self, class_, factory):
         existing_factories = self._collect_management_factories_for(class_).\
-                                difference([factory])
+            difference([factory])
         if existing_factories:
             raise TypeError(
                 "multiple instrumentation implementations specified "
@@ -182,7 +182,7 @@ class ExtendedInstrumentationRegistry(InstrumentationFactory):
 
 
 orm_instrumentation._instrumentation_factory = \
-        _instrumentation_factory = ExtendedInstrumentationRegistry()
+    _instrumentation_factory = ExtendedInstrumentationRegistry()
 orm_instrumentation.instrumentation_finders = instrumentation_finders
 
 
@@ -316,7 +316,7 @@ class _ClassInstrumentationAdapter(ClassManager):
             return delegate(key, state, factory)
         else:
             return ClassManager.initialize_collection(self, key,
-                                                        state, factory)
+                                                      state, factory)
 
     def new_instance(self, state=None):
         instance = self.class_.__new__(self.class_)

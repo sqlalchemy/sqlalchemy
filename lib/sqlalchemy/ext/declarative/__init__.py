@@ -955,9 +955,9 @@ Mapping a class using the above mixin, we will get an error like::
     sqlalchemy.exc.InvalidRequestError: this ForeignKey's parent column is not
     yet associated with a Table.
 
-This is because the ``target_id`` :class:`.Column` we've called upon in our ``target()``
-method is not the same :class:`.Column` that declarative is actually going to map
-to our table.
+This is because the ``target_id`` :class:`.Column` we've called upon in our
+``target()`` method is not the same :class:`.Column` that declarative is
+actually going to map to our table.
 
 The condition above is resolved using a lambda::
 
@@ -1220,8 +1220,8 @@ assumed to be completed and the 'configure' step has finished::
 ``__declare_first__()``
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Like ``__declare_last__()``, but is called at the beginning of mapper configuration
-via the :meth:`.MapperEvents.before_configured` event::
+Like ``__declare_last__()``, but is called at the beginning of mapper
+configuration via the :meth:`.MapperEvents.before_configured` event::
 
     class MyClass(Base):
         @classmethod
@@ -1312,6 +1312,6 @@ from .api import declarative_base, synonym_for, comparable_using, \
 
 
 __all__ = ['declarative_base', 'synonym_for', 'has_inherited_table',
-            'comparable_using', 'instrument_declarative', 'declared_attr',
-            'ConcreteBase', 'AbstractConcreteBase', 'DeclarativeMeta',
-            'DeferredReflection']
+           'comparable_using', 'instrument_declarative', 'declared_attr',
+           'ConcreteBase', 'AbstractConcreteBase', 'DeclarativeMeta',
+           'DeferredReflection']

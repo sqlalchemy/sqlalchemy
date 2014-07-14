@@ -85,12 +85,12 @@ ASSOCIATION_PROXY = util.symbol('ASSOCIATION_PROXY')
 
 """
 
+
 class AssociationProxy(interfaces._InspectionAttr):
     """A descriptor that presents a read/write view of an object attribute."""
 
     is_attribute = False
     extension_type = ASSOCIATION_PROXY
-
 
     def __init__(self, target_collection, attr, creator=None,
                  getset_factory=None, proxy_factory=None,
@@ -230,7 +230,7 @@ class AssociationProxy(interfaces._InspectionAttr):
     @util.memoized_property
     def _value_is_scalar(self):
         return not self._get_property().\
-                    mapper.get_property(self.value_attr).uselist
+            mapper.get_property(self.value_attr).uselist
 
     @util.memoized_property
     def _target_is_object(self):
@@ -349,8 +349,8 @@ class AssociationProxy(interfaces._InspectionAttr):
             proxy.update(values)
         else:
             raise exc.ArgumentError(
-               'no proxy_bulk_set supplied for custom '
-               'collection_class implementation')
+                'no proxy_bulk_set supplied for custom '
+                'collection_class implementation')
 
     @property
     def _comparator(self):
@@ -378,12 +378,12 @@ class AssociationProxy(interfaces._InspectionAttr):
         # the "can't call any() on a scalar" msg is raised.
         if self.scalar and not self._value_is_scalar:
             return self._comparator.has(
-                    value_expr
-                )
+                value_expr
+            )
         else:
             return self._comparator.any(
-                    value_expr
-                )
+                value_expr
+            )
 
     def has(self, criterion=None, **kwargs):
         """Produce a proxied 'has' expression using EXISTS.
@@ -397,14 +397,14 @@ class AssociationProxy(interfaces._InspectionAttr):
 
         if self._target_is_object:
             return self._comparator.has(
-                    getattr(self.target_class, self.value_attr).\
-                        has(criterion, **kwargs)
-                )
+                getattr(self.target_class, self.value_attr).
+                has(criterion, **kwargs)
+            )
         else:
             if criterion is not None or kwargs:
                 raise exc.ArgumentError(
-                        "Non-empty has() not allowed for "
-                        "column-targeted association proxy; use ==")
+                    "Non-empty has() not allowed for "
+                    "column-targeted association proxy; use ==")
             return self._comparator.has()
 
     def contains(self, obj):
@@ -429,9 +429,9 @@ class AssociationProxy(interfaces._InspectionAttr):
         # is only allowed with a scalar.
         if obj is None:
             return or_(
-                        self._comparator.has(**{self.value_attr: obj}),
-                        self._comparator == None
-                    )
+                self._comparator.has(**{self.value_attr: obj}),
+                self._comparator == None
+            )
         else:
             return self._comparator.has(**{self.value_attr: obj})
 
@@ -439,7 +439,7 @@ class AssociationProxy(interfaces._InspectionAttr):
         # note the has() here will fail for collections; eq_()
         # is only allowed with a scalar.
         return self._comparator.has(
-                    getattr(self.target_class, self.value_attr) != obj)
+            getattr(self.target_class, self.value_attr) != obj)
 
 
 class _lazy_collection(object):
@@ -451,8 +451,8 @@ class _lazy_collection(object):
         obj = self.ref()
         if obj is None:
             raise exc.InvalidRequestError(
-               "stale association proxy, parent object has gone out of "
-               "scope")
+                "stale association proxy, parent object has gone out of "
+                "scope")
         return getattr(obj, self.target)
 
     def __getstate__(self):
@@ -698,7 +698,7 @@ class _AssociationList(_AssociationCollection):
 
     for func_name, func in list(locals().items()):
         if (util.callable(func) and func.__name__ == func_name and
-            not func.__doc__ and hasattr(list, func_name)):
+                not func.__doc__ and hasattr(list, func_name)):
             func.__doc__ = getattr(list, func_name).__doc__
     del func_name, func
 
@@ -835,8 +835,8 @@ class _AssociationDict(_AssociationCollection):
                         self[k] = v
                 except ValueError:
                     raise ValueError(
-                            "dictionary update sequence "
-                            "requires 2-element tuples")
+                        "dictionary update sequence "
+                        "requires 2-element tuples")
 
         for key, value in kw:
             self[key] = value
@@ -849,7 +849,7 @@ class _AssociationDict(_AssociationCollection):
 
     for func_name, func in list(locals().items()):
         if (util.callable(func) and func.__name__ == func_name and
-            not func.__doc__ and hasattr(dict, func_name)):
+                not func.__doc__ and hasattr(dict, func_name)):
             func.__doc__ = getattr(dict, func_name).__doc__
     del func_name, func
 
@@ -1049,6 +1049,6 @@ class _AssociationSet(_AssociationCollection):
 
     for func_name, func in list(locals().items()):
         if (util.callable(func) and func.__name__ == func_name and
-            not func.__doc__ and hasattr(set, func_name)):
+                not func.__doc__ and hasattr(set, func_name)):
             func.__doc__ = getattr(set, func_name).__doc__
     del func_name, func
