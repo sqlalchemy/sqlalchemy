@@ -1347,6 +1347,9 @@ class MSDialect(default.DefaultDialect):
             self.supports_multivalues_insert = True
 
     def _get_default_schema_name(self, connection):
+        if self.server_version_info < MS_2005_VERSION:
+            return self.schema_name
+
         query = sql.text("""
             SELECT default_schema_name FROM
             sys.database_principals
