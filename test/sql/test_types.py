@@ -1064,9 +1064,10 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(e1.adapt(ENUM).name, 'foo')
         eq_(e1.adapt(ENUM).schema, 'bar')
 
+    @testing.provide_metadata
     def test_create_metadata_bound_no_crash(self):
-        m1 = MetaData()
-        Enum('a', 'b', 'c', metadata=m1)
+        m1 = self.metadata
+        Enum('a', 'b', 'c', metadata=m1, name='ncenum')
 
         m1.create_all(testing.db)
 
