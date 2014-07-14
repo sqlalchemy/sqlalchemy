@@ -79,6 +79,28 @@ class UnicodeSchemaTest(fixtures.TestBase):
         assert t2.select().execute().fetchall() == [(1, 1)]
         assert t3.select().execute().fetchall() == [(1, 5, 1, 1)]
 
+    def test_col_targeting(self):
+        t1.insert().execute({u('méil'): 1, ue('\u6e2c\u8a66'): 5})
+        t2.insert().execute({u('a'): 1, u('b'): 1})
+        t3.insert().execute({ue('\u6e2c\u8a66_id'): 1,
+                             ue('unitable1_\u6e2c\u8a66'): 5,
+                             u('Unitéble2_b'): 1,
+                             ue('\u6e2c\u8a66_self'): 1})
+
+        row = t1.select().execute().first()
+        eq_(row[t1.c[u('méil')]], 1)
+        eq_(row[t1.c[ue('\u6e2c\u8a66')]], 5)
+
+        row = t2.select().execute().first()
+        eq_(row[t2.c[u('a')]], 1)
+        eq_(row[t2.c[u('b')]], 1)
+
+        row = t3.select().execute().first()
+        eq_(row[t3.c[ue('\u6e2c\u8a66_id')]], 1)
+        eq_(row[t3.c[ue('unitable1_\u6e2c\u8a66')]], 5)
+        eq_(row[t3.c[u('Unitéble2_b')]], 1)
+        eq_(row[t3.c[ue('\u6e2c\u8a66_self')]], 1)
+
     def test_reflect(self):
         t1.insert().execute({u('méil'): 2, ue('\u6e2c\u8a66'): 7})
         t2.insert().execute({u('a'): 2, u('b'): 2})
