@@ -250,8 +250,9 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
     )
 
     def __init__(self, description_encoding=None, **params):
+        if 'description_encoding' in params:
+            self.description_encoding = params.pop('description_encoding')
         super(MSDialect_pyodbc, self).__init__(**params)
-        self.description_encoding = description_encoding
         self.use_scope_identity = self.use_scope_identity and \
                         self.dbapi and \
                         hasattr(self.dbapi.Cursor, 'nextset')
