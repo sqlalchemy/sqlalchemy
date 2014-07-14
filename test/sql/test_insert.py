@@ -382,6 +382,47 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             '(%(id_2)s, %(data_2)s, foobar())',
             checkparams=checkparams, dialect=postgresql.dialect())
 
+    def test_sql_functions(self):
+        metadata = MetaData()
+        table = Table('sometable', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String),
+            Column('foo', Integer))
+
+        values = [
+            {"id": 1, "data": "foo", "foo": func.foob()},
+            {"id": 2, "data": "bar", "foo": func.foob()},
+            {"id": 3, "data": "bar", "foo": func.bar()},
+            {"id": 4, "data": "bar", "foo": 15},
+            {"id": 5, "data": "bar", "foo": func.foob()},
+        ]
+        checkparams = {
+            'id_0': 1,
+            'data_0': 'foo',
+
+            'id_1': 2,
+            'data_1': 'bar',
+
+            'id_2': 3,
+            'data_2': 'bar',
+
+            'id_3': 4,
+            'data_3': 'bar',
+            'foo_3': 15,
+
+            'id_4': 5,
+            'data_4': 'bar'
+        }
+
+        self.assert_compile(table.insert().values(values),
+            "INSERT INTO sometable (id, data, foo) VALUES "
+            "(%(id_0)s, %(data_0)s, foob()), "
+            "(%(id_1)s, %(data_1)s, foob()), "
+            "(%(id_2)s, %(data_2)s, bar()), "
+            "(%(id_3)s, %(data_3)s, %(foo_3)s), "
+            "(%(id_4)s, %(data_4)s, foob())",
+            checkparams=checkparams, dialect=postgresql.dialect())
+
     def test_server_default(self):
         metadata = MetaData()
         table = Table('sometable', metadata,

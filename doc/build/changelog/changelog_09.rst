@@ -16,6 +16,15 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 3069
+        :versions: 1.0.0
+
+        Fixed bug where multi-valued :class:`.Insert` construct would fail
+        to check subsequent values entries beyond the first one given
+        for literal SQL expressions.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 3123
         :versions: 1.0.0
 
