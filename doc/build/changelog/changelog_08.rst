@@ -12,6 +12,18 @@
     :version: 0.8.7
 
     .. change::
+        :tags: bug, mssql
+        :versions: 1.0.0, 0.9.7
+        :tickets: 3091
+
+        In the SQL Server pyodbc dialect, repaired the implementation
+        for the ``description_encoding`` dialect parameter, which when
+        not explicitly set was preventing  cursor.description from
+        being parsed correctly in the case of result sets that
+        contained names in alternate encodings.  This parameter
+        shouldn't be needed going forward.
+
+    .. change::
         :tags: bug, sql
         :versions: 1.0.0, 0.9.7
         :tickets: 3124
