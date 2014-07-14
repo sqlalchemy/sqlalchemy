@@ -15,6 +15,18 @@
     :released:
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3083, 2736
+        :versions: 1.0.0
+
+        Fixed a regression from 0.9.0 due to :ticket:`2736` where the
+        :meth:`.Query.select_from` method no longer set up the "from
+        entity" of the :class:`.Query` object correctly, so that
+        subsequent :meth:`.Query.filter_by` or :meth:`.Query.join`
+        calls would fail to check the appropriate "from" entity when
+        searching for attributes by string name.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3090
         :versions: 1.0.0

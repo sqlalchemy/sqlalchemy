@@ -164,6 +164,7 @@ class Query(object):
 
             if hasattr(info, 'mapper') and \
                 (info.is_mapper or info.is_aliased_class):
+                self._select_from_entity = from_obj
                 if set_base_alias:
                     raise sa_exc.ArgumentError(
                             "A selectable (FromClause) instance is "
