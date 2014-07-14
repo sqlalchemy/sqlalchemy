@@ -15,6 +15,16 @@
     :released:
 
     .. change::
+        :tags: bug, mssql
+        :tickets: 3025
+
+        Fixed a regression from 0.9.5 caused by :ticket:`3025` where the
+        query used to determine "default schema" is invalid in SQL Server 2000.
+        For SQL Server 2000 we go back to defaulting to the "schema name"
+        parameter of the dialect, which is configurable but defaults
+        to 'dbo'.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3083, 2736
         :versions: 1.0.0
