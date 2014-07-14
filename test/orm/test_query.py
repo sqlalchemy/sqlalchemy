@@ -1486,6 +1486,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         assert [User(name='chuck')] == sess.query(User).filter_by(addresses = None).all()
         assert [User(name='chuck')] == sess.query(User).filter_by(addresses = null()).all()
 
+
     def test_filter_by_tables(self):
         users = self.tables.users
         addresses = self.tables.addresses

@@ -1930,6 +1930,52 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             ]
         )
 
+    def test_join_relname_from_selected_from(self):
+        User, Address = self.classes.User, self.classes.Address
+        users, addresses = self.tables.users, self.tables.addresses
+        mapper(User, users, properties=
+            {'addresses': relationship(mapper(Address, addresses),
+                backref='user')})
+
+        sess = create_session()
+
+        self.assert_compile(
+            sess.query(User).select_from(Address).join("user"),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM addresses JOIN users ON users.id = addresses.user_id"
+        )
+
+    def test_filter_by_selected_from(self):
+        User, Address = self.classes.User, self.classes.Address
+        users, addresses = self.tables.users, self.tables.addresses
+        mapper(User, users, properties=
+            {'addresses': relationship(mapper(Address, addresses))})
+
+        sess = create_session()
+
+        self.assert_compile(
+            sess.query(User).select_from(Address).
+            filter_by(email_address='ed').join(User),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM addresses JOIN users ON users.id = addresses.user_id "
+            "WHERE addresses.email_address = :email_address_1"
+        )
+
+    def test_join_ent_selected_from(self):
+        User, Address = self.classes.User, self.classes.Address
+        users, addresses = self.tables.users, self.tables.addresses
+        mapper(User, users, properties=
+            {'addresses': relationship(mapper(Address, addresses))})
+
+        sess = create_session()
+
+        self.assert_compile(
+            sess.query(User).select_from(Address).join(User),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM addresses JOIN users ON users.id = addresses.user_id"
+        )
+
+
     def test_join(self):
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
