@@ -2211,10 +2211,12 @@ class SQLCompiler(Compiled):
                 [
                     (
                         c,
-                            self._create_crud_bind_param(
+                            (self._create_crud_bind_param(
                                     c, row[c.key],
                                     name="%s_%d" % (c.key, i + 1)
-                            )
+                            ) if elements._is_literal(row[c.key])
+                                else self.process(
+                                            row[c.key].self_group(), **kw))
                             if c.key in row else param
                     )
                     for (c, param) in values_0
