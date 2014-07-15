@@ -7,6 +7,7 @@ from sqlalchemy import testing
 
 m = MetaData()
 
+
 a = Table('a', m,
         Column('id', Integer, primary_key=True)
     )
@@ -47,6 +48,11 @@ d = Table('d', m,
 
 e = Table('e', m,
         Column('id', Integer, primary_key=True)
+    )
+
+f = Table('f', m,
+        Column('id', Integer, primary_key=True),
+        Column('a_id', ForeignKey('a.id'))
     )
 
 b_key = Table('b_key', m,
@@ -224,6 +230,20 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
             self._b_a_id_double_overlap_annotated
         )
 
+    def test_f_b1a_where_in_b2a(self):
+        # test issue #3130
+        b1a = a.join(b1)
+        b2a = a.join(b2)
+        subq = select([b2.c.id]).select_from(b2a)
+        s = select([f]).select_from(f.join(b1a)).where(b1.c.id.in_(subq))
+
+        s = s.apply_labels()
+        self._test(
+            s,
+            self._f_b1a_where_in_b2a
+        )
+
+
 class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
     """test rendering of each join with right-nested rewritten as
     aliased SELECT statements.."""
@@ -349,6 +369,14 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
         "FROM b JOIN b_a ON b.id = b_a.id) AS anon_1"
     )
 
+    _f_b1a_where_in_b2a = (
+        "SELECT f.id AS f_id, f.a_id AS f_a_id "
+        "FROM f JOIN (SELECT a.id AS a_id, b1.id AS b1_id, b1.a_id AS b1_a_id "
+        "FROM a JOIN b1 ON a.id = b1.a_id) AS anon_1 ON anon_1.a_id = f.a_id "
+        "WHERE anon_1.b1_id IN (SELECT b2.id "
+        "FROM a JOIN b2 ON a.id = b2.a_id)"
+    )
+
 class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
     """test rendering of each join with normal nesting."""
     @util.classproperty
@@ -447,6 +475,13 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
         "anon_1.id_1 AS anon_1_id_1 FROM "
         "(SELECT b.id AS b_id, b.a_id AS b_a_id, b_a.id AS id_1 "
         "FROM b JOIN b_a ON b.id = b_a.id) AS anon_1"
+    )
+
+    _f_b1a_where_in_b2a = (
+        "SELECT f.id AS f_id, f.a_id AS f_a_id "
+        "FROM f JOIN (a JOIN b1 ON a.id = b1.a_id) ON a.id = f.a_id "
+        "WHERE b1.id IN (SELECT b2.id "
+        "FROM a JOIN b2 ON a.id = b2.a_id)"
     )
 
 class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
@@ -548,6 +583,13 @@ class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
         "FROM b JOIN b_a ON b.id = b_a.id) AS anon_1"
     )
 
+    _f_b1a_where_in_b2a = (
+        "SELECT f.id, f.a_id "
+        "FROM f JOIN (a JOIN b1 ON a.id = b1.a_id) ON a.id = f.a_id "
+        "WHERE b1.id IN (SELECT b2.id "
+        "FROM a JOIN b2 ON a.id = b2.a_id)"
+    )
+
 class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
     """invoke the SQL on the current backend to ensure compatibility"""
 
@@ -556,7 +598,7 @@ class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
     _a_bc = _a_bc_comma_a1_selbc = _a__b_dc = _a_bkeyassoc = \
         _a_bkeyassoc_aliased = _a_atobalias_balias_c_w_exists = \
         _a_atobalias_balias = _b_ab1_union_c_ab2 = \
-        _b_a_id_double_overlap_annotated = None
+        _b_a_id_double_overlap_annotated = _f_b1a_where_in_b2a = None
 
     @classmethod
     def setup_class(cls):

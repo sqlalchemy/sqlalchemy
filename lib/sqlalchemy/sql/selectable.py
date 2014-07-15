@@ -2965,6 +2965,7 @@ class Select(HasPrefixes, GenerativeSelect):
 
 class ScalarSelect(Generative, Grouping):
     _from_objects = []
+    _is_from_container = True
 
     def __init__(self, element):
         self.element = element
