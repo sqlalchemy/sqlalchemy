@@ -15,6 +15,22 @@
     :released:
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3067
+        :versions: 1.0.0
+
+        Fix bug in naming convention feature where using a check
+        constraint convention that includes ``constraint_name`` would
+        then force all :class:`.Boolean` and :class:`.Enum` types to
+        require names as well, as these implicitly create a
+        constraint, even if the ultimate target backend were one that does
+        not require generation of the constraint such as Postgresql.
+        The mechanics of naming conventions for these particular
+        constraints has been reorganized such that the naming
+        determination is done at DDL compile time, rather than at
+        constraint/table construction time.
+
+    .. change::
         :tags: bug, mssql
         :tickets: 3025
 

@@ -13,7 +13,7 @@ import datetime as dt
 import codecs
 
 from .type_api import TypeEngine, TypeDecorator, to_instance
-from .elements import quoted_name, type_coerce
+from .elements import quoted_name, type_coerce, _defer_name
 from .default_comparator import _DefaultColumnComparator
 from .. import exc, util, processors
 from .base import _bind_or_error, SchemaEventTarget
@@ -1132,7 +1132,7 @@ class Enum(String, SchemaType):
 
         e = schema.CheckConstraint(
                         type_coerce(column, self).in_(self.enums),
-                        name=self.name,
+                        name=_defer_name(self.name),
                         _create_rule=util.portable_instancemethod(
                                         self._should_create_constraint)
                     )
@@ -1268,7 +1268,7 @@ class Boolean(TypeEngine, SchemaType):
 
         e = schema.CheckConstraint(
                         type_coerce(column, self).in_([0, 1]),
-                        name=self.name,
+                        name=_defer_name(self.name),
                         _create_rule=util.portable_instancemethod(
                                     self._should_create_constraint)
                     )
