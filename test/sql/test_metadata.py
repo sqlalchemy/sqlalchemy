@@ -2813,7 +2813,7 @@ class DialectKWArgTest(fixtures.TestBase):
 
 
 class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
-    dialect = 'default'
+    __dialect__ = 'default'
 
     def _fixture(self, naming_convention, table_schema=None):
         m1 = MetaData(naming_convention=naming_convention)
@@ -2957,7 +2957,7 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         # but is hit at compile time
         self.assert_compile(
             schema.CreateTable(u1),
-            "CREATE TABLE user ("
+            'CREATE TABLE "user" ('
             "x BOOLEAN, "
             "CONSTRAINT ck_user_foo CHECK (x IN (0, 1))"
             ")"
@@ -2977,9 +2977,29 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         # but is hit at compile time
         self.assert_compile(
             schema.CreateTable(u1),
-            "CREATE TABLE user ("
+            'CREATE TABLE "user" ('
                 "x VARCHAR(1), "
                 "CONSTRAINT ck_user_foo CHECK (x IN ('a', 'b'))"
+            ")"
+        )
+
+    def test_schematype_ck_name_propagate_conv(self):
+        m1 = MetaData(naming_convention={
+                            "ck": "ck_%(table_name)s_%(constraint_name)s"})
+
+        u1 = Table('user', m1,
+            Column('x', Enum('a', 'b', name=naming.conv('foo')))
+            )
+        eq_(
+            [c for c in u1.constraints
+                if isinstance(c, CheckConstraint)][0].name, "foo"
+        )
+        # but is hit at compile time
+        self.assert_compile(
+            schema.CreateTable(u1),
+            'CREATE TABLE "user" ('
+                "x VARCHAR(1), "
+                "CONSTRAINT foo CHECK (x IN ('a', 'b'))"
             ")"
         )
 
@@ -3028,7 +3048,7 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateTable(u1),
-            "CREATE TABLE user (x BOOLEAN, CHECK (x IN (0, 1)))"
+            'CREATE TABLE "user" (x BOOLEAN, CHECK (x IN (0, 1)))'
         )
 
 
