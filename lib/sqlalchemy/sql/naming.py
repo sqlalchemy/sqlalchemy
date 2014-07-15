@@ -14,49 +14,9 @@ from .schema import Constraint, ForeignKeyConstraint, PrimaryKeyConstraint, \
                 UniqueConstraint, CheckConstraint, Index, Table, Column
 from .. import event, events
 from .. import exc
-from .elements import _truncated_label, _defer_name, _defer_none_name
+from .elements import _truncated_label, _defer_name, _defer_none_name, conv
 import re
 
-class conv(_truncated_label):
-    """Mark a string indicating that a name has already been converted
-    by a naming convention.
-
-    This is a string subclass that indicates a name that should not be
-    subject to any further naming conventions.
-
-    E.g. when we create a :class:`.Constraint` using a naming convention
-    as follows::
-
-        m = MetaData(naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s"})
-        t = Table('t', m, Column('x', Integer),
-                        CheckConstraint('x > 5', name='x5'))
-
-    The name of the above constraint will be rendered as ``"ck_t_x5"``.  That is,
-    the existing name ``x5`` is used in the naming convention as the ``constraint_name``
-    token.
-
-    In some situations, such as in migration scripts, we may be rendering
-    the above :class:`.CheckConstraint` with a name that's already been
-    converted.  In order to make sure the name isn't double-modified, the
-    new name is applied using the :func:`.schema.conv` marker.  We can
-    use this explicitly as follows::
-
-
-        m = MetaData(naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s"})
-        t = Table('t', m, Column('x', Integer),
-                        CheckConstraint('x > 5', name=conv('ck_t_x5')))
-
-    Where above, the :func:`.schema.conv` marker indicates that the constraint
-    name here is final, and the name will render as ``"ck_t_x5"`` and not
-    ``"ck_t_ck_t_x5"``
-
-    .. versionadded:: 0.9.4
-
-    .. seealso::
-
-        :ref:`constraint_naming_conventions`
-
-    """
 
 class ConventionDict(object):
     def __init__(self, const, table, convention):
@@ -147,7 +107,10 @@ def _get_convention(dict_, key):
 def _constraint_name_for_table(const, table):
     metadata = table.metadata
     convention = _get_convention(metadata.naming_convention, type(const))
-    if convention is not None and (
+
+    if isinstance(const.name, conv):
+        return const.name
+    elif convention is not None and (
             const.name is None or not isinstance(const.name, conv) and
                 "constraint_name" in convention
         ):
