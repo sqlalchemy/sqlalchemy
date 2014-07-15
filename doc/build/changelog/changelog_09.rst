@@ -15,6 +15,19 @@
     :released:
 
     .. change::
+        :tags: bug, orm, eagerloading
+        :tickets: 3131
+        :versions: 1.0.0
+
+        Fixed a regression caused by :ticket:`2976` released in 0.9.4 where
+        the "outer join" propagation along a chain of joined eager loads
+        would incorrectly convert an "inner join" along a sibling join path
+        into an outer join as well, when only descendant paths should be
+        receiving the "outer join" propagation; additionally, fixed related
+        issue where "nested" join propagation would take place inappropriately
+        between two sibling join paths.
+
+    .. change::
         :tags: bug, sqlite
         :tickets: 3130
         :versions: 1.0.0

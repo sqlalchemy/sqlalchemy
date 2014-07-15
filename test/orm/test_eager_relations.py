@@ -1375,6 +1375,78 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             q.order_by(User.id).all()
         )
 
+    def test_unnested_outerjoin_propagation_only_on_correct_path(self):
+        # test #3131
+
+        User, users = self.classes.User, self.tables.users
+        Order, orders = self.classes.Order, self.tables.orders
+        Address, addresses = self.classes.Address, self.tables.addresses
+
+        mapper(User, users, properties={
+            'orders': relationship(Order),
+            'addresses': relationship(Address)
+        })
+        mapper(Order, orders)
+        mapper(Address, addresses)
+
+        sess = create_session()
+        q = sess.query(User).options(
+            joinedload("orders"),
+            joinedload("addresses", innerjoin=True),
+        )
+
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "orders_1.id AS orders_1_id, "
+            "orders_1.user_id AS orders_1_user_id, "
+            "orders_1.address_id AS orders_1_address_id, "
+            "orders_1.description AS orders_1_description, "
+            "orders_1.isopen AS orders_1_isopen, "
+            "addresses_1.id AS addresses_1_id, "
+            "addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address "
+            "FROM users LEFT OUTER JOIN orders AS orders_1 "
+            "ON users.id = orders_1.user_id JOIN addresses AS addresses_1 "
+            "ON users.id = addresses_1.user_id"
+        )
+
+    def test_nested_outerjoin_propagation_only_on_correct_path(self):
+        # test #3131
+
+        User, users = self.classes.User, self.tables.users
+        Order, orders = self.classes.Order, self.tables.orders
+        Address, addresses = self.classes.Address, self.tables.addresses
+
+        mapper(User, users, properties={
+            'orders': relationship(Order),
+            'addresses': relationship(Address)
+        })
+        mapper(Order, orders)
+        mapper(Address, addresses)
+
+        sess = create_session()
+        q = sess.query(User).options(
+            joinedload("orders"),
+            joinedload("addresses", innerjoin='nested'),
+        )
+
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "orders_1.id AS orders_1_id, "
+            "orders_1.user_id AS orders_1_user_id, "
+            "orders_1.address_id AS orders_1_address_id, "
+            "orders_1.description AS orders_1_description, "
+            "orders_1.isopen AS orders_1_isopen, "
+            "addresses_1.id AS addresses_1_id, "
+            "addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address "
+            "FROM users LEFT OUTER JOIN orders AS orders_1 "
+            "ON users.id = orders_1.user_id JOIN addresses AS addresses_1 "
+            "ON users.id = addresses_1.user_id"
+        )
+
     def test_catch_the_right_target(self):
         # test eager join chaining to the "nested" join on the left,
         # a new feature as of [ticket:2369]
