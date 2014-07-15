@@ -1047,6 +1047,7 @@ class JoinedLoader(AbstractRelationshipLoader):
 
     def setup_query(self, context, entity, path, loadopt, adapter, \
                                 column_collection=None, parentmapper=None,
+                                chained_from_outerjoin=False,
                                 **kwargs):
         """Add a left outer join to the statement that's being constructed."""
 
@@ -1076,10 +1077,11 @@ class JoinedLoader(AbstractRelationshipLoader):
                 elif path.contains_mapper(self.mapper):
                     return
 
-            clauses, adapter, add_to_collection = self._generate_row_adapter(
-                    context, entity, path, loadopt, adapter,
-                    column_collection, parentmapper
-                )
+            clauses, adapter, add_to_collection, chained_from_outerjoin = \
+                self._generate_row_adapter(
+                        context, entity, path, loadopt, adapter,
+                        column_collection, parentmapper, chained_from_outerjoin
+                    )
 
         with_poly_info = path.get(
             context.attributes,
@@ -1101,7 +1103,8 @@ class JoinedLoader(AbstractRelationshipLoader):
                 path,
                 clauses,
                 parentmapper=self.mapper,
-                column_collection=add_to_collection)
+                column_collection=add_to_collection,
+                chained_from_outerjoin=chained_from_outerjoin)
 
         if with_poly_info is not None and \
             None in set(context.secondary_columns):
@@ -1179,7 +1182,7 @@ class JoinedLoader(AbstractRelationshipLoader):
 
     def _generate_row_adapter(self,
         context, entity, path, loadopt, adapter,
-        column_collection, parentmapper
+        column_collection, parentmapper, chained_from_outerjoin
     ):
         with_poly_info = path.get(
             context.attributes,
@@ -1208,20 +1211,25 @@ class JoinedLoader(AbstractRelationshipLoader):
                             else self.parent_property.innerjoin
                         )
 
+        if not innerjoin:
+            # if this is an outer join, all non-nested eager joins from
+            # this path must also be outer joins
+            chained_from_outerjoin = True
+
         context.create_eager_joins.append(
             (self._create_eager_join, context,
             entity, path, adapter,
-            parentmapper, clauses, innerjoin)
+            parentmapper, clauses, innerjoin, chained_from_outerjoin)
         )
 
         add_to_collection = context.secondary_columns
         path.set(context.attributes, "eager_row_processor", clauses)
 
-        return clauses, adapter, add_to_collection
+        return clauses, adapter, add_to_collection, chained_from_outerjoin
 
     def _create_eager_join(self, context, entity,
                             path, adapter, parentmapper,
-                            clauses, innerjoin):
+                            clauses, innerjoin, chained_from_outerjoin):
 
         if parentmapper is None:
             localparent = entity.mapper
@@ -1276,7 +1284,7 @@ class JoinedLoader(AbstractRelationshipLoader):
 
         join_to_outer = innerjoin and isinstance(towrap, sql.Join) and towrap.isouter
 
-        if join_to_outer and innerjoin == 'nested':
+        if chained_from_outerjoin and join_to_outer and innerjoin == 'nested':
             inner = orm_util.join(
                                     towrap.right,
                                     clauses.aliased_class,
@@ -1292,7 +1300,7 @@ class JoinedLoader(AbstractRelationshipLoader):
                         )
             eagerjoin._target_adapter = inner._target_adapter
         else:
-            if join_to_outer:
+            if chained_from_outerjoin:
                 innerjoin = False
             eagerjoin = orm_util.join(
                                         towrap,
