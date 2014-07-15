@@ -1297,7 +1297,6 @@ class SQLCompiler(Compiled):
         cloned = {}
         column_translate = [{}]
 
-
         def visit(element, **kw):
             if element in column_translate[-1]:
                 return column_translate[-1][element]
@@ -1316,8 +1315,9 @@ class SQLCompiler(Compiled):
                 right = visit(newelem.right, **kw)
 
                 selectable_ = selectable.Select(
-                                    [right.element],
-                                    use_labels=True).alias()
+                    [right.element],
+                    use_labels=True).alias()
+
                 for c in selectable_.c:
                     c._key_label = c.key
                     c._label = c.name
@@ -1352,14 +1352,16 @@ class SQLCompiler(Compiled):
 
                 newelem.onclause = visit(newelem.onclause, **kw)
 
-            elif newelem.is_selectable and newelem._is_from_container:
-                # if we hit an Alias or CompoundSelect, put a marker in the
-                # stack.
+            elif newelem._is_from_container:
+                # if we hit an Alias, CompoundSelect or ScalarSelect, put a
+                # marker in the stack.
                 kw['transform_clue'] = 'select_container'
                 newelem._copy_internals(clone=visit, **kw)
             elif newelem.is_selectable and newelem._is_select:
-                barrier_select = kw.get('transform_clue', None) == 'select_container'
-                # if we're still descended from an Alias/CompoundSelect, we're
+                barrier_select = kw.get('transform_clue', None) == \
+                    'select_container'
+                # if we're still descended from an
+                # Alias/CompoundSelect/ScalarSelect, we're
                 # in a FROM clause, so start with a new translate collection
                 if barrier_select:
                     column_translate.append({})

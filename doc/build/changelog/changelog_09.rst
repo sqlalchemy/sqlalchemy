@@ -15,6 +15,17 @@
     :released:
 
     .. change::
+        :tags: bug, sqlite
+        :tickets: 3130
+        :versions: 1.0.0
+
+        Fixed a SQLite join rewriting issue where a subquery that is embedded
+        as a scalar subquery such as within an IN would receive inappropriate
+        substitutions from the enclosing query, if the same table were present
+        inside the subquery as were in the enclosing query such as in a
+        joined inheritance scenario.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3067
         :versions: 1.0.0

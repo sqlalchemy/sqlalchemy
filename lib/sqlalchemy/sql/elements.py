@@ -231,6 +231,7 @@ class ClauseElement(Visitable):
     is_clause_element = True
 
     _order_by_label_element = None
+    _is_from_container = False
 
     def _clone(self):
         """Create a shallow copy of this ClauseElement.
