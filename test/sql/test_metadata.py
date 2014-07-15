@@ -9,6 +9,7 @@ from sqlalchemy import Integer, String, UniqueConstraint, \
     events, Unicode, types as sqltypes, bindparam, \
     Table, Column, Boolean, Enum, func, text
 from sqlalchemy import schema, exc
+from sqlalchemy.sql import elements, naming
 import sqlalchemy as tsa
 from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
@@ -2811,7 +2812,9 @@ class DialectKWArgTest(fixtures.TestBase):
             )
 
 
-class NamingConventionTest(fixtures.TestBase):
+class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
+    dialect = 'default'
+
     def _fixture(self, naming_convention, table_schema=None):
         m1 = MetaData(naming_convention=naming_convention)
 
@@ -2831,10 +2834,10 @@ class NamingConventionTest(fixtures.TestBase):
         uq = UniqueConstraint(u1.c.data)
         eq_(uq.name, "uq_user_data")
 
-    def test_ck_name(self):
+    def test_ck_name_required(self):
         u1 = self._fixture(naming_convention={
-                        "ck": "ck_%(table_name)s_%(constraint_name)s"
-                    })
+            "ck": "ck_%(table_name)s_%(constraint_name)s"
+        })
         ck = CheckConstraint(u1.c.data == 'x', name='mycheck')
         eq_(ck.name, "ck_user_mycheck")
 
@@ -2843,6 +2846,19 @@ class NamingConventionTest(fixtures.TestBase):
             r"Naming convention including %\(constraint_name\)s token "
             "requires that constraint is explicitly named.",
             CheckConstraint, u1.c.data == 'x'
+        )
+
+    def test_ck_name_deferred_required(self):
+        u1 = self._fixture(naming_convention={
+            "ck": "ck_%(table_name)s_%(constraint_name)s"
+        })
+        ck = CheckConstraint(u1.c.data == 'x', name=elements._defer_name(None))
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            r"Naming convention including %\(constraint_name\)s token "
+            "requires that constraint is explicitly named.",
+            schema.AddConstraint(ck).compile
         )
 
     def test_column_attached_ck_name(self):
@@ -2860,6 +2876,17 @@ class NamingConventionTest(fixtures.TestBase):
         ck = CheckConstraint('x > 5', name='x1')
         Table('t', m, Column('x', Integer), ck)
         eq_(ck.name, "ck_t_x1")
+
+    def test_uq_name_already_conv(self):
+        m = MetaData(naming_convention={
+            "uq": "uq_%(constraint_name)s_%(column_0_name)s"
+        })
+
+        t = Table('mytable', m)
+        uq = UniqueConstraint(name=naming.conv('my_special_key'))
+
+        t.append_constraint(uq)
+        eq_(uq.name, "my_special_key")
 
 
     def test_fk_name_schema(self):
@@ -2922,9 +2949,18 @@ class NamingConventionTest(fixtures.TestBase):
         u1 = Table('user', m1,
             Column('x', Boolean(name='foo'))
             )
+        # constraint is not hit
         eq_(
             [c for c in u1.constraints
-                if isinstance(c, CheckConstraint)][0].name, "ck_user_foo"
+                if isinstance(c, CheckConstraint)][0].name, "foo"
+        )
+        # but is hit at compile time
+        self.assert_compile(
+            schema.CreateTable(u1),
+            "CREATE TABLE user ("
+            "x BOOLEAN, "
+            "CONSTRAINT ck_user_foo CHECK (x IN (0, 1))"
+            ")"
         )
 
     def test_schematype_ck_name_enum(self):
@@ -2936,7 +2972,45 @@ class NamingConventionTest(fixtures.TestBase):
             )
         eq_(
             [c for c in u1.constraints
-                if isinstance(c, CheckConstraint)][0].name, "ck_user_foo"
+                if isinstance(c, CheckConstraint)][0].name, "foo"
+        )
+        # but is hit at compile time
+        self.assert_compile(
+            schema.CreateTable(u1),
+            "CREATE TABLE user ("
+                "x VARCHAR(1), "
+                "CONSTRAINT ck_user_foo CHECK (x IN ('a', 'b'))"
+            ")"
+        )
+
+    def test_schematype_ck_name_boolean_no_name(self):
+        m1 = MetaData(naming_convention={
+            "ck": "ck_%(table_name)s_%(constraint_name)s"
+        })
+
+        u1 = Table(
+            'user', m1,
+            Column('x', Boolean())
+        )
+        # constraint gets special _defer_none_name
+        eq_(
+            [c for c in u1.constraints
+                if isinstance(c, CheckConstraint)][0].name, "_unnamed_"
+        )
+        # no issue with native boolean
+        self.assert_compile(
+            schema.CreateTable(u1),
+            'CREATE TABLE "user" ('
+            "x BOOLEAN"
+            ")",
+            dialect='postgresql'
+        )
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Naming convention including \%\(constraint_name\)s token "
+            "requires that constraint is explicitly named.",
+            schema.CreateTable(u1).compile
         )
 
     def test_ck_constraint_redundant_event(self):

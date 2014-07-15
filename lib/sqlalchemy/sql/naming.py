@@ -14,7 +14,7 @@ from .schema import Constraint, ForeignKeyConstraint, PrimaryKeyConstraint, \
                 UniqueConstraint, CheckConstraint, Index, Table, Column
 from .. import event, events
 from .. import exc
-from .elements import _truncated_label
+from .elements import _truncated_label, _defer_name, _defer_none_name
 import re
 
 class conv(_truncated_label):
@@ -77,12 +77,12 @@ class ConventionDict(object):
             return list(self.const.columns)[idx]
 
     def _key_constraint_name(self):
-        if not self._const_name:
+        if isinstance(self._const_name, (type(None), _defer_none_name)):
             raise exc.InvalidRequestError(
-                    "Naming convention including "
-                    "%(constraint_name)s token requires that "
-                    "constraint is explicitly named."
-                )
+                "Naming convention including "
+                "%(constraint_name)s token requires that "
+                "constraint is explicitly named."
+            )
         if not isinstance(self._const_name, conv):
             self.const.name = None
         return self._const_name
@@ -144,6 +144,17 @@ def _get_convention(dict_, key):
     else:
         return None
 
+def _constraint_name_for_table(const, table):
+    metadata = table.metadata
+    convention = _get_convention(metadata.naming_convention, type(const))
+    if convention is not None and (
+            const.name is None or not isinstance(const.name, conv) and
+                "constraint_name" in convention
+        ):
+        return conv(
+                convention % ConventionDict(const, table,
+                                metadata.naming_convention)
+                )
 
 @event.listens_for(Constraint, "after_parent_attach")
 @event.listens_for(Index, "after_parent_attach")
@@ -156,12 +167,9 @@ def _constraint_name(const, table):
                     lambda col, table: _constraint_name(const, table)
                 )
     elif isinstance(table, Table):
-        metadata = table.metadata
-        convention = _get_convention(metadata.naming_convention, type(const))
-        if convention is not None:
-            if const.name is None or "constraint_name" in convention:
-                newname = conv(
-                            convention % ConventionDict(const, table, metadata.naming_convention)
-                            )
-                if const.name is None:
-                    const.name = newname
+        if isinstance(const.name, (conv, _defer_name)):
+            return
+
+        newname = _constraint_name_for_table(const, table)
+        if newname is not None:
+            const.name = newname

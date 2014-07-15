@@ -3201,6 +3201,22 @@ class _truncated_label(quoted_name):
     def apply_map(self, map_):
         return self
 
+
+class _defer_name(_truncated_label):
+    """mark a name as 'deferred' for the purposes of automated name
+    generation.
+
+    """
+    def __new__(cls, value):
+        if value is None:
+            return _defer_none_name('_unnamed_')
+        else:
+            return super(_defer_name, cls).__new__(cls, value)
+
+
+class _defer_none_name(_defer_name):
+    """indicate a 'deferred' name that was ultimately the value None."""
+
 # for backwards compatibility in case
 # someone is re-implementing the
 # _truncated_identifier() sequence in a custom

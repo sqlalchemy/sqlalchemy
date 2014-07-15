@@ -2902,7 +2902,13 @@ class IdentifierPreparer(object):
     def format_savepoint(self, savepoint, name=None):
         return self.quote(name or savepoint.ident)
 
-    def format_constraint(self, constraint):
+    @util.dependencies("sqlalchemy.sql.naming")
+    def format_constraint(self, naming, constraint):
+        if isinstance(constraint.name, elements._defer_name):
+            name = naming._constraint_name_for_table(
+                                        constraint, constraint.table)
+            if name:
+                return self.quote(name)
         return self.quote(constraint.name)
 
     def format_table(self, table, use_schema=True, name=None):
