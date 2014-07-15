@@ -1382,10 +1382,10 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         Order, orders = self.classes.Order, self.tables.orders
         Address, addresses = self.classes.Address, self.tables.addresses
 
-        mapper(User, users, properties={
-            'orders': relationship(Order),
-            'addresses': relationship(Address)
-        })
+        mapper(User, users, properties=odict([
+            ('orders', relationship(Order)),
+            ('addresses', relationship(Address))
+        ]))
         mapper(Order, orders)
         mapper(Address, addresses)
 
@@ -1418,10 +1418,10 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         Order, orders = self.classes.Order, self.tables.orders
         Address, addresses = self.classes.Address, self.tables.addresses
 
-        mapper(User, users, properties={
-            'orders': relationship(Order),
-            'addresses': relationship(Address)
-        })
+        mapper(User, users, properties=odict([
+            ('orders', relationship(Order)),
+            ('addresses', relationship(Address))
+        ]))
         mapper(Order, orders)
         mapper(Address, addresses)
 
