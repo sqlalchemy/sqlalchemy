@@ -2536,8 +2536,9 @@ class DDLCompiler(Compiled):
     def visit_check_constraint(self, constraint):
         text = ""
         if constraint.name is not None:
-            text += "CONSTRAINT %s " % \
-                        self.preparer.format_constraint(constraint)
+            formatted_name = self.preparer.format_constraint(constraint)
+            if formatted_name is not None:
+                text += "CONSTRAINT %s " % formatted_name
         text += "CHECK (%s)" % self.sql_compiler.process(constraint.sqltext,
                                                             include_table=False,
                                                             literal_binds=True)
@@ -2547,8 +2548,9 @@ class DDLCompiler(Compiled):
     def visit_column_check_constraint(self, constraint):
         text = ""
         if constraint.name is not None:
-            text += "CONSTRAINT %s " % \
-                        self.preparer.format_constraint(constraint)
+            formatted_name = self.preparer.format_constraint(constraint)
+            if formatted_name is not None:
+                text += "CONSTRAINT %s " % formatted_name
         text += "CHECK (%s)" % constraint.sqltext
         text += self.define_constraint_deferrability(constraint)
         return text
@@ -2558,8 +2560,9 @@ class DDLCompiler(Compiled):
             return ''
         text = ""
         if constraint.name is not None:
-            text += "CONSTRAINT %s " % \
-                    self.preparer.format_constraint(constraint)
+            formatted_name = self.preparer.format_constraint(constraint)
+            if formatted_name is not None:
+                text += "CONSTRAINT %s " % formatted_name
         text += "PRIMARY KEY "
         text += "(%s)" % ', '.join(self.preparer.quote(c.name)
                                        for c in constraint)
@@ -2570,14 +2573,15 @@ class DDLCompiler(Compiled):
         preparer = self.dialect.identifier_preparer
         text = ""
         if constraint.name is not None:
-            text += "CONSTRAINT %s " % \
-                        preparer.format_constraint(constraint)
+            formatted_name = self.preparer.format_constraint(constraint)
+            if formatted_name is not None:
+                text += "CONSTRAINT %s " % formatted_name
         remote_table = list(constraint._elements.values())[0].column.table
         text += "FOREIGN KEY(%s) REFERENCES %s (%s)" % (
             ', '.join(preparer.quote(f.parent.name)
                       for f in constraint._elements.values()),
             self.define_constraint_remote_table(
-                            constraint, remote_table, preparer),
+                constraint, remote_table, preparer),
             ', '.join(preparer.quote(f.column.name)
                       for f in constraint._elements.values())
         )
@@ -2596,11 +2600,11 @@ class DDLCompiler(Compiled):
             return ''
         text = ""
         if constraint.name is not None:
-            text += "CONSTRAINT %s " % \
-                    self.preparer.format_constraint(constraint)
+            formatted_name = self.preparer.format_constraint(constraint)
+            text += "CONSTRAINT %s " % formatted_name
         text += "UNIQUE (%s)" % (
-                    ', '.join(self.preparer.quote(c.name)
-                            for c in constraint))
+                ', '.join(self.preparer.quote(c.name)
+                for c in constraint))
         text += self.define_constraint_deferrability(constraint)
         return text
 
@@ -2908,6 +2912,8 @@ class IdentifierPreparer(object):
                                         constraint, constraint.table)
             if name:
                 return self.quote(name)
+            elif isinstance(constraint.name, elements._defer_none_name):
+                return None
         return self.quote(constraint.name)
 
     def format_table(self, table, use_schema=True, name=None):

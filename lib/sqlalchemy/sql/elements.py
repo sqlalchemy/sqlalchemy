@@ -3209,13 +3209,15 @@ class _defer_name(_truncated_label):
     """
     def __new__(cls, value):
         if value is None:
-            return _defer_none_name('_unnamed_')
+            return _NONE_NAME
         else:
             return super(_defer_name, cls).__new__(cls, value)
 
 
 class _defer_none_name(_defer_name):
     """indicate a 'deferred' name that was ultimately the value None."""
+
+_NONE_NAME = _defer_none_name("_unnamed_")
 
 # for backwards compatibility in case
 # someone is re-implementing the

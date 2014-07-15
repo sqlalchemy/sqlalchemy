@@ -3013,6 +3013,25 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(u1).compile
         )
 
+    def test_schematype_no_ck_name_boolean_no_name(self):
+        m1 = MetaData()  # no naming convention
+
+        u1 = Table(
+            'user', m1,
+            Column('x', Boolean())
+        )
+        # constraint gets special _defer_none_name
+        eq_(
+            [c for c in u1.constraints
+                if isinstance(c, CheckConstraint)][0].name, "_unnamed_"
+        )
+
+        self.assert_compile(
+            schema.CreateTable(u1),
+            "CREATE TABLE user (x BOOLEAN, CHECK (x IN (0, 1)))"
+        )
+
+
     def test_ck_constraint_redundant_event(self):
         u1 = self._fixture(naming_convention={
                             "ck": "ck_%(table_name)s_%(constraint_name)s"})
