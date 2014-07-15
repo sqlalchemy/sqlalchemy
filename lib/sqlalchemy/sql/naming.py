@@ -155,6 +155,8 @@ def _constraint_name_for_table(const, table):
                 convention % ConventionDict(const, table,
                                 metadata.naming_convention)
                 )
+    elif isinstance(convention, _defer_none_name):
+        return None
 
 @event.listens_for(Constraint, "after_parent_attach")
 @event.listens_for(Index, "after_parent_attach")
