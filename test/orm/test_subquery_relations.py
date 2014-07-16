@@ -1148,12 +1148,12 @@ class SubRelationFromJoinedSubclassMultiLevelTest(_Polymorphic):
             Column('person_id', Integer,
                 primary_key=True,
                 test_needs_autoincrement=True),
-            Column('company_id', ForeignKey('companies.company_id')),
+            Column('company_id', Integer, ForeignKey('companies.company_id')),
             Column('name', String(50)),
             Column('type', String(30)))
 
         Table('engineers', metadata,
-            Column('engineer_id', ForeignKey('people.person_id'),
+            Column('engineer_id', Integer, ForeignKey('people.person_id'),
                             primary_key=True),
             Column('primary_language', String(50)))
 
@@ -1162,8 +1162,8 @@ class SubRelationFromJoinedSubclassMultiLevelTest(_Polymorphic):
                  Integer, primary_key=True,
                  test_needs_autoincrement=True),
             Column('name', String(50)),
-            Column('engineer_id', ForeignKey('engineers.engineer_id')),
-            Column('machine_type_id',
+            Column('engineer_id', Integer, ForeignKey('engineers.engineer_id')),
+            Column('machine_type_id', Integer,
                             ForeignKey('machine_type.machine_type_id')))
 
         Table('machine_type', metadata,
