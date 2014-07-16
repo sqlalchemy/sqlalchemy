@@ -387,6 +387,50 @@ SQLAlchemy can guess::
             'inherit_condition': id == Employee.id
         }
 
+Handling Simple Naming Conflicts
+--------------------------------
+
+In the case of naming conflicts during mapping, override any of
+:func:`.classname_for_table`, :func:`.name_for_scalar_relationship`,
+and :func:`.name_for_collection_relationship` as needed.  For example, if
+automap is attempting to name a many-to-one relationship the same as an
+existing column, an alternate convention can be conditionally selected.  Given
+a schema:
+
+.. sourcecode:: sql
+
+    CREATE TABLE table_a (
+        id INTEGER PRIMARY KEY
+    );
+
+    CREATE TABLE table_b (
+        id INTEGER PRIMARY KEY,
+        table_a INTEGER,
+        FOREIGN KEY(table_a) REFERENCES table_a(id)
+    );
+
+The above schema will first automap the ``table_a`` table as a class named
+``table_a``; it will then automap a relationship onto the class for ``table_b``
+with the same name as this related class, e.g. ``table_a``.  This
+relationship name conflicts with the mapping column ``table_b.table_a``,
+and will emit an error on mapping.
+
+We can resolve this conflict by using an underscore as follows::
+
+    def name_for_scalar_relationship(base, local_cls, referred_cls, constraint):
+        name = referred_cls.__name__.lower()
+        local_table = local_cls.__table__
+        if name in local_table.columns:
+            newname = name + "_"
+            warnings.warn(
+                "Already detected name %s present.  using %s" %
+                (name, newname))
+            return newname
+        return name
+
+
+    Base.prepare(engine, reflect=True,
+        name_for_scalar_relationship=name_for_scalar_relationship)
 
 Using Automap with Explicit Declarations
 ========================================
