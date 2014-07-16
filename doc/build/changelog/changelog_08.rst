@@ -123,6 +123,20 @@
         Fixed bug in mutable extension where :class:`.MutableDict` did not
         report change events for the ``setdefault()`` dictionary operation.
 
+        .. seealso::
+
+            :ticket:`3093`
+
+    .. change::
+        :tags: bug, ext
+        :versions: 0.9.5, 1.0.0
+        :pullreq: bitbucket:24
+        :tickets: 3093, 3051
+
+        Fixed bug where :meth:`.MutableDict.setdefault` didn't return the
+        existing or new value (this bug was not released in any 0.8 version).
+        Pull request courtesy Thomas Hervé.
+
     .. change::
         :tags: bug, mysql
         :versions: 0.9.5, 1.0.0
