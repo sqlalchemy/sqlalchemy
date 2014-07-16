@@ -610,10 +610,10 @@ class MutableDict(Mutable, dict):
         dict.__setitem__(self, key, value)
         self.changed()
 
-
     def setdefault(self, key, value):
-        dict.setdefault(self, key, value)
+        result = dict.setdefault(self, key, value)
         self.changed()
+        return result
 
     def __delitem__(self, key):
         """Detect dictionary del events and emit change events."""
