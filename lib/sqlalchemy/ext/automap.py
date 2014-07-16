@@ -432,6 +432,20 @@ We can resolve this conflict by using an underscore as follows::
     Base.prepare(engine, reflect=True,
         name_for_scalar_relationship=name_for_scalar_relationship)
 
+Alternatively, we can change the name on the column side.   The columns
+that are mapped can be modified using the technique described at
+:ref:`mapper_column_distinct_names`, by assigning the column explicitly
+to a new name::
+
+    Base = automap_base()
+
+    class TableB(Base):
+        __tablename__ = 'table_b'
+        _table_a = Column('table_a', ForeignKey('table_a.id'))
+
+    Base.prepare(engine, reflect=True)
+
+
 Using Automap with Explicit Declarations
 ========================================
 
