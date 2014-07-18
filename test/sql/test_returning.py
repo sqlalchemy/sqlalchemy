@@ -4,9 +4,10 @@ from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.testing import fixtures, AssertsExecutionResults, engines, \
-        assert_raises_message
+    assert_raises_message
 from sqlalchemy import exc as sa_exc
 import itertools
+
 
 class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
     __requires__ = 'returning',
@@ -29,29 +30,30 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
                     return None
                 return value + "BAR"
 
-        table = Table('tables', meta,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('persons', Integer),
-            Column('full', Boolean),
-            Column('goofy', GoofyType(50))
-        )
+        table = Table(
+            'tables', meta, Column(
+                'id', Integer, primary_key=True, test_needs_autoincrement=True), Column(
+                'persons', Integer), Column(
+                'full', Boolean), Column(
+                    'goofy', GoofyType(50)))
         table.create(checkfirst=True)
 
     def teardown(self):
         table.drop()
 
     def test_column_targeting(self):
-        result = table.insert().returning(table.c.id, table.c.full).execute({'persons': 1, 'full': False})
+        result = table.insert().returning(
+            table.c.id, table.c.full).execute({'persons': 1, 'full': False})
 
         row = result.first()
         assert row[table.c.id] == row['id'] == 1
         assert row[table.c.full] == row['full'] == False
 
         result = table.insert().values(persons=5, full=True, goofy="somegoofy").\
-                            returning(table.c.persons, table.c.full, table.c.goofy).execute()
+            returning(table.c.persons, table.c.full, table.c.goofy).execute()
         row = result.first()
         assert row[table.c.persons] == row['persons'] == 5
-        assert row[table.c.full] == row['full'] == True
+        assert row[table.c.full] == row['full']
 
         eq_(row[table.c.goofy], row['goofy'])
         eq_(row['goofy'], "FOOsomegoofyBAR")
@@ -59,57 +61,65 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
     @testing.fails_on('firebird', "fb can't handle returning x AS y")
     def test_labeling(self):
         result = table.insert().values(persons=6).\
-                            returning(table.c.persons.label('lala')).execute()
+            returning(table.c.persons.label('lala')).execute()
         row = result.first()
         assert row['lala'] == 6
 
-    @testing.fails_on('firebird', "fb/kintersbasdb can't handle the bind params")
+    @testing.fails_on(
+        'firebird',
+        "fb/kintersbasdb can't handle the bind params")
     @testing.fails_on('oracle+zxjdbc', "JDBC driver bug")
     def test_anon_expressions(self):
         result = table.insert().values(goofy="someOTHERgoofy").\
-                            returning(func.lower(table.c.goofy, type_=GoofyType)).execute()
+            returning(func.lower(table.c.goofy, type_=GoofyType)).execute()
         row = result.first()
         eq_(row[0], "foosomeothergoofyBAR")
 
         result = table.insert().values(persons=12).\
-                            returning(table.c.persons + 18).execute()
+            returning(table.c.persons + 18).execute()
         row = result.first()
         eq_(row[0], 30)
 
     def test_update_returning(self):
-        table.insert().execute([{'persons': 5, 'full': False}, {'persons': 3, 'full': False}])
+        table.insert().execute(
+            [{'persons': 5, 'full': False}, {'persons': 3, 'full': False}])
 
-        result = table.update(table.c.persons > 4, dict(full=True)).returning(table.c.id).execute()
+        result = table.update(
+            table.c.persons > 4, dict(
+                full=True)).returning(
+            table.c.id).execute()
         eq_(result.fetchall(), [(1,)])
 
-        result2 = select([table.c.id, table.c.full]).order_by(table.c.id).execute()
+        result2 = select([table.c.id, table.c.full]).order_by(
+            table.c.id).execute()
         eq_(result2.fetchall(), [(1, True), (2, False)])
 
     def test_insert_returning(self):
-        result = table.insert().returning(table.c.id).execute({'persons': 1, 'full': False})
+        result = table.insert().returning(
+            table.c.id).execute({'persons': 1, 'full': False})
 
         eq_(result.fetchall(), [(1,)])
 
     @testing.requires.multivalues_inserts
     def test_multirow_returning(self):
         ins = table.insert().returning(table.c.id, table.c.persons).values(
-                            [
-                                {'persons': 1, 'full': False},
-                                {'persons': 2, 'full': True},
-                                {'persons': 3, 'full': False},
-                            ]
-                        )
+            [
+                {'persons': 1, 'full': False},
+                {'persons': 2, 'full': True},
+                {'persons': 3, 'full': False},
+            ]
+        )
         result = testing.db.execute(ins)
         eq_(
-                result.fetchall(),
-                 [(1, 1), (2, 2), (3, 3)]
+            result.fetchall(),
+            [(1, 1), (2, 2), (3, 3)]
         )
 
     def test_no_ipk_on_returning(self):
         result = testing.db.execute(
-                    table.insert().returning(table.c.id),
-                    {'persons': 1, 'full': False}
-                )
+            table.insert().returning(table.c.id),
+            {'persons': 1, 'full': False}
+        )
         assert_raises_message(
             sa_exc.InvalidRequestError,
             "Can't call inserted_primary_key when returning\(\) is used.",
@@ -123,18 +133,25 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
         else:
             literal_true = "1"
 
-        result4 = testing.db.execute('insert into tables (id, persons, "full") '
-                                        'values (5, 10, %s) returning persons' % literal_true)
+        result4 = testing.db.execute(
+            'insert into tables (id, persons, "full") '
+            'values (5, 10, %s) returning persons' %
+            literal_true)
         eq_([dict(row) for row in result4], [{'persons': 10}])
 
     def test_delete_returning(self):
-        table.insert().execute([{'persons': 5, 'full': False}, {'persons': 3, 'full': False}])
+        table.insert().execute(
+            [{'persons': 5, 'full': False}, {'persons': 3, 'full': False}])
 
-        result = table.delete(table.c.persons > 4).returning(table.c.id).execute()
+        result = table.delete(
+            table.c.persons > 4).returning(
+            table.c.id).execute()
         eq_(result.fetchall(), [(1,)])
 
-        result2 = select([table.c.id, table.c.full]).order_by(table.c.id).execute()
-        eq_(result2.fetchall(), [(2, False),])
+        result2 = select([table.c.id, table.c.full]).order_by(
+            table.c.id).execute()
+        eq_(result2.fetchall(), [(2, False), ])
+
 
 class SequenceReturningTest(fixtures.TestBase):
     __requires__ = 'returning', 'sequences'
@@ -145,9 +162,9 @@ class SequenceReturningTest(fixtures.TestBase):
         global table, seq
         seq = Sequence('tid_seq')
         table = Table('tables', meta,
-                    Column('id', Integer, seq, primary_key=True),
-                    Column('data', String(50))
-                )
+                      Column('id', Integer, seq, primary_key=True),
+                      Column('data', String(50))
+                      )
         table.create(checkfirst=True)
 
     def teardown(self):
@@ -158,7 +175,9 @@ class SequenceReturningTest(fixtures.TestBase):
         assert r.first() == (1, )
         assert seq.execute() == 2
 
+
 class KeyReturningTest(fixtures.TestBase, AssertsExecutionResults):
+
     """test returning() works with columns that define 'key'."""
 
     __requires__ = 'returning',
@@ -168,9 +187,18 @@ class KeyReturningTest(fixtures.TestBase, AssertsExecutionResults):
         meta = MetaData(testing.db)
         global table
 
-        table = Table('tables', meta,
-            Column('id', Integer, primary_key=True, key='foo_id', test_needs_autoincrement=True),
-            Column('data', String(20)),
+        table = Table(
+            'tables',
+            meta,
+            Column(
+                'id',
+                Integer,
+                primary_key=True,
+                key='foo_id',
+                test_needs_autoincrement=True),
+            Column(
+                'data',
+                String(20)),
         )
         table.create(checkfirst=True)
 
@@ -180,7 +208,9 @@ class KeyReturningTest(fixtures.TestBase, AssertsExecutionResults):
     @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
     @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     def test_insert(self):
-        result = table.insert().returning(table.c.foo_id).execute(data='somedata')
+        result = table.insert().returning(
+            table.c.foo_id).execute(
+            data='somedata')
         row = result.first()
         assert row[table.c.foo_id] == row['id'] == 1
 
@@ -207,18 +237,18 @@ class ReturnDefaultsTest(fixtures.TablesTest):
         def compile(element, compiler, **kw):
             return str(next(counter))
 
-        Table("t1", metadata,
-                Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
-                Column("data", String(50)),
-                Column("insdef", Integer, default=IncDefault()),
-                Column("upddef", Integer, onupdate=IncDefault())
-            )
+        Table(
+            "t1", metadata, Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True), Column(
+                "data", String(50)), Column(
+                "insdef", Integer, default=IncDefault()), Column(
+                    "upddef", Integer, onupdate=IncDefault()))
 
     def test_chained_insert_pk(self):
         t1 = self.tables.t1
         result = testing.db.execute(
-                        t1.insert().values(upddef=1).return_defaults(t1.c.insdef)
-                    )
+            t1.insert().values(upddef=1).return_defaults(t1.c.insdef)
+        )
         eq_(
             [result.returned_defaults[k] for k in (t1.c.id, t1.c.insdef)],
             [1, 0]
@@ -227,8 +257,8 @@ class ReturnDefaultsTest(fixtures.TablesTest):
     def test_arg_insert_pk(self):
         t1 = self.tables.t1
         result = testing.db.execute(
-                        t1.insert(return_defaults=[t1.c.insdef]).values(upddef=1)
-                    )
+            t1.insert(return_defaults=[t1.c.insdef]).values(upddef=1)
+        )
         eq_(
             [result.returned_defaults[k] for k in (t1.c.id, t1.c.insdef)],
             [1, 0]
@@ -237,10 +267,10 @@ class ReturnDefaultsTest(fixtures.TablesTest):
     def test_chained_update_pk(self):
         t1 = self.tables.t1
         testing.db.execute(
-                        t1.insert().values(upddef=1)
-                    )
+            t1.insert().values(upddef=1)
+        )
         result = testing.db.execute(t1.update().values(data='d1').
-                            return_defaults(t1.c.upddef))
+                                    return_defaults(t1.c.upddef))
         eq_(
             [result.returned_defaults[k] for k in (t1.c.upddef,)],
             [1]
@@ -249,10 +279,10 @@ class ReturnDefaultsTest(fixtures.TablesTest):
     def test_arg_update_pk(self):
         t1 = self.tables.t1
         testing.db.execute(
-                        t1.insert().values(upddef=1)
-                    )
+            t1.insert().values(upddef=1)
+        )
         result = testing.db.execute(t1.update(return_defaults=[t1.c.upddef]).
-                            values(data='d1'))
+                                    values(data='d1'))
         eq_(
             [result.returned_defaults[k] for k in (t1.c.upddef,)],
             [1]
@@ -264,8 +294,8 @@ class ReturnDefaultsTest(fixtures.TablesTest):
 
         t1 = self.tables.t1
         result = testing.db.execute(
-                        t1.insert().values(upddef=1).return_defaults(t1.c.data)
-                    )
+            t1.insert().values(upddef=1).return_defaults(t1.c.data)
+        )
         eq_(
             [result.returned_defaults[k] for k in (t1.c.id, t1.c.data,)],
             [1, None]
@@ -277,10 +307,12 @@ class ReturnDefaultsTest(fixtures.TablesTest):
 
         t1 = self.tables.t1
         testing.db.execute(
-                        t1.insert().values(upddef=1)
-                    )
-        result = testing.db.execute(t1.update().
-                            values(upddef=2).return_defaults(t1.c.data))
+            t1.insert().values(upddef=1)
+        )
+        result = testing.db.execute(
+            t1.update(). values(
+                upddef=2).return_defaults(
+                t1.c.data))
         eq_(
             [result.returned_defaults[k] for k in (t1.c.data,)],
             [None]
@@ -290,9 +322,9 @@ class ReturnDefaultsTest(fixtures.TablesTest):
     def test_insert_non_default_plus_default(self):
         t1 = self.tables.t1
         result = testing.db.execute(
-                        t1.insert().values(upddef=1).return_defaults(
-                                                    t1.c.data, t1.c.insdef)
-                    )
+            t1.insert().values(upddef=1).return_defaults(
+                t1.c.data, t1.c.insdef)
+        )
         eq_(
             dict(result.returned_defaults),
             {"id": 1, "data": None, "insdef": 0}
@@ -302,33 +334,35 @@ class ReturnDefaultsTest(fixtures.TablesTest):
     def test_update_non_default_plus_default(self):
         t1 = self.tables.t1
         testing.db.execute(
-                        t1.insert().values(upddef=1)
-                    )
+            t1.insert().values(upddef=1)
+        )
         result = testing.db.execute(t1.update().
-                            values(insdef=2).return_defaults(
-                                                t1.c.data, t1.c.upddef))
+                                    values(insdef=2).return_defaults(
+            t1.c.data, t1.c.upddef))
         eq_(
             dict(result.returned_defaults),
             {"data": None, 'upddef': 1}
         )
 
+
 class ImplicitReturningFlag(fixtures.TestBase):
     __backend__ = True
 
     def test_flag_turned_off(self):
-        e = engines.testing_engine(options={'implicit_returning':False})
+        e = engines.testing_engine(options={'implicit_returning': False})
         assert e.dialect.implicit_returning is False
         c = e.connect()
         assert e.dialect.implicit_returning is False
 
     def test_flag_turned_on(self):
-        e = engines.testing_engine(options={'implicit_returning':True})
+        e = engines.testing_engine(options={'implicit_returning': True})
         assert e.dialect.implicit_returning is True
         c = e.connect()
         assert e.dialect.implicit_returning is True
 
     def test_flag_turned_default(self):
         supports = [False]
+
         def go():
             supports[0] = True
         testing.requires.returning(go)()

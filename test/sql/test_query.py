@@ -40,7 +40,7 @@ class QueryTest(fixtures.TestBase):
             Column('user_id', Integer, ForeignKey('query_users.user_id')),
             Column('address', String(30)),
             test_needs_acid=True
-            )
+        )
 
         users2 = Table(
             'u2', metadata,
@@ -237,6 +237,7 @@ class QueryTest(fixtures.TestBase):
         eng = engines.testing_engine()
 
         class ExcCtx(sqlite.base.SQLiteExecutionContext):
+
             def get_lastrowid(self):
                 return 0
         eng.dialect.execution_ctx_cls = ExcCtx
@@ -482,6 +483,7 @@ class QueryTest(fixtures.TestBase):
         row = testing.db.execute(select([1])).first()
 
         class unprintable(object):
+
             def __str__(self):
                 raise ValueError("nope")
 
@@ -1436,6 +1438,7 @@ class RequiredBindTest(fixtures.TablesTest):
 
 
 class TableInsertTest(fixtures.TablesTest):
+
     """test for consistent insert behavior across dialects
     regarding the inline=True flag, lower-case 't' tables.
 
@@ -1907,6 +1910,7 @@ class LimitTest(fixtures.TestBase):
 
 
 class CompoundTest(fixtures.TestBase):
+
     """test compound statements like UNION, INTERSECT, particularly their
     ability to nest on different databases."""
 
@@ -2212,6 +2216,7 @@ t1 = t2 = t3 = None
 
 
 class JoinTest(fixtures.TestBase):
+
     """Tests join execution.
 
     The compiled SQL emitted by the dialect might be ANSI joins or
@@ -2260,7 +2265,7 @@ class JoinTest(fixtures.TestBase):
         """Execute a statement and assert that rows returned equal expected."""
 
         found = sorted([tuple(row)
-                       for row in statement.execute().fetchall()])
+                        for row in statement.execute().fetchall()])
 
         eq_(found, sorted(expected))
 

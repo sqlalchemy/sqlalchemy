@@ -5,8 +5,10 @@ from sqlalchemy.testing import eq_
 
 
 class _ExprFixture(object):
+
     def _fixture(self):
         class MyString(String):
+
             def bind_expression(self, bindvalue):
                 return func.lower(bindvalue)
 
@@ -14,10 +16,11 @@ class _ExprFixture(object):
                 return func.lower(col)
 
         test_table = Table(
-                'test_table',
-                MetaData(), Column('x', String), Column('y', MyString)
+            'test_table',
+            MetaData(), Column('x', String), Column('y', MyString)
         )
         return test_table
+
 
 class SelectTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
@@ -70,13 +73,13 @@ class SelectTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
         table = self._fixture()
 
         self.assert_compile(
-                table.insert(),
-                "INSERT INTO test_table (x, y) VALUES (:x, lower(:y))"
+            table.insert(),
+            "INSERT INTO test_table (x, y) VALUES (:x, lower(:y))"
         )
 
         self.assert_compile(
-                table.insert().values(y="hi"),
-                "INSERT INTO test_table (y) VALUES (lower(:y))"
+            table.insert().values(y="hi"),
+            "INSERT INTO test_table (y) VALUES (lower(:y))"
         )
 
     def test_select_binds(self):
@@ -87,6 +90,7 @@ class SelectTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
             "test_table WHERE test_table.y = lower(:y_1)"
         )
 
+
 class DerivedTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
@@ -95,7 +99,7 @@ class DerivedTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             table.select().select(),
             "SELECT x, lower(y) AS y FROM (SELECT test_table.x "
-                "AS x, test_table.y AS y FROM test_table)"
+            "AS x, test_table.y AS y FROM test_table)"
         )
 
     def test_select_from_alias(self):
@@ -103,8 +107,8 @@ class DerivedTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             table.select().alias().select(),
             "SELECT anon_1.x, lower(anon_1.y) AS y FROM (SELECT "
-                "test_table.x AS x, test_table.y AS y "
-                "FROM test_table) AS anon_1"
+            "test_table.x AS x, test_table.y AS y "
+            "FROM test_table) AS anon_1"
         )
 
     def test_select_from_aliased_join(self):
@@ -113,16 +117,17 @@ class DerivedTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
         s2 = table.select().alias()
         j = s1.join(s2, s1.c.x == s2.c.x)
         s3 = j.select()
-        self.assert_compile(s3,
-            "SELECT anon_1.x, lower(anon_1.y) AS y, anon_2.x, "
+        self.assert_compile(
+            s3, "SELECT anon_1.x, lower(anon_1.y) AS y, anon_2.x, "
             "lower(anon_2.y) AS y "
             "FROM (SELECT test_table.x AS x, test_table.y AS y "
             "FROM test_table) AS anon_1 JOIN (SELECT "
             "test_table.x AS x, test_table.y AS y "
-            "FROM test_table) AS anon_2 ON anon_1.x = anon_2.x"
-        )
+            "FROM test_table) AS anon_2 ON anon_1.x = anon_2.x")
+
 
 class RoundTripTestBase(object):
+
     def test_round_trip(self):
         testing.db.execute(
             self.tables.test_table.insert(),
@@ -145,7 +150,7 @@ class RoundTripTestBase(object):
         # conversion back to upper
         eq_(
             testing.db.execute(
-                select([self.tables.test_table]).\
+                select([self.tables.test_table]).
                 order_by(self.tables.test_table.c.y)
             ).fetchall(),
             [
@@ -183,7 +188,7 @@ class RoundTripTestBase(object):
             {"x": "X1", "y": "Y1"},
         )
         row = testing.db.execute(select([self.tables.test_table]).
-                        apply_labels()).first()
+                                 apply_labels()).first()
         eq_(
             row[self.tables.test_table.c.y],
             "Y1"
@@ -195,18 +200,21 @@ class RoundTripTestBase(object):
             {"x": "X1", "y": "Y1"},
         )
         row = testing.db.execute(select([
-                    self.tables.test_table.c.x.label('xbar'),
-                    self.tables.test_table.c.y.label('ybar')
-                ])).first()
+            self.tables.test_table.c.x.label('xbar'),
+            self.tables.test_table.c.y.label('ybar')
+        ])).first()
         eq_(
             row[self.tables.test_table.c.y],
             "Y1"
         )
 
+
 class StringRoundTripTest(fixtures.TablesTest, RoundTripTestBase):
+
     @classmethod
     def define_tables(cls, metadata):
         class MyString(String):
+
             def bind_expression(self, bindvalue):
                 return func.lower(bindvalue)
 
@@ -214,19 +222,21 @@ class StringRoundTripTest(fixtures.TablesTest, RoundTripTestBase):
                 return func.upper(col)
 
         Table(
-                'test_table',
-                metadata,
-                    Column('x', String(50)),
-                    Column('y', MyString(50)
-                )
+            'test_table',
+            metadata,
+            Column('x', String(50)),
+            Column('y', MyString(50)
+                   )
         )
 
 
 class TypeDecRoundTripTest(fixtures.TablesTest, RoundTripTestBase):
+
     @classmethod
     def define_tables(cls, metadata):
         class MyString(TypeDecorator):
             impl = String
+
             def bind_expression(self, bindvalue):
                 return func.lower(bindvalue)
 
@@ -234,12 +244,13 @@ class TypeDecRoundTripTest(fixtures.TablesTest, RoundTripTestBase):
                 return func.upper(col)
 
         Table(
-                'test_table',
-                metadata,
-                    Column('x', String(50)),
-                    Column('y', MyString(50)
-                )
+            'test_table',
+            metadata,
+            Column('x', String(50)),
+            Column('y', MyString(50)
+                   )
         )
+
 
 class ReturningTest(fixtures.TablesTest):
     __requires__ = 'returning',
@@ -247,25 +258,24 @@ class ReturningTest(fixtures.TablesTest):
     @classmethod
     def define_tables(cls, metadata):
         class MyString(String):
+
             def column_expression(self, col):
                 return func.lower(col)
 
         Table(
-                'test_table',
-                metadata, Column('x', String(50)),
-                    Column('y', MyString(50), server_default="YVALUE")
+            'test_table',
+            metadata, Column('x', String(50)),
+            Column('y', MyString(50), server_default="YVALUE")
         )
 
     @testing.provide_metadata
     def test_insert_returning(self):
         table = self.tables.test_table
         result = testing.db.execute(
-                table.insert().returning(table.c.y),
-                {"x": "xvalue"}
+            table.insert().returning(table.c.y),
+            {"x": "xvalue"}
         )
         eq_(
             result.first(),
             ("yvalue",)
         )
-
-

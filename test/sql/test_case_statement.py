@@ -143,12 +143,12 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
                 eq_(s.execute().fetchall(), [
                     ('no ', ), ('no ', ), ('no ', ), ('yes', ),
                     ('no ', ), ('no ', ),
-                    ])
+                ])
             else:
                 eq_(s.execute().fetchall(), [
                     ('no', ), ('no', ), ('no', ), ('yes', ),
                     ('no', ), ('no', ),
-                    ])
+                ])
 
     @testing.fails_on('firebird', 'FIXME: unknown')
     def testcase_with_dict(self):

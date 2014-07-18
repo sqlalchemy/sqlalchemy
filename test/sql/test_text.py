@@ -2,21 +2,22 @@
 
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, eq_, assert_raises_message
 from sqlalchemy import text, select, Integer, String, Float, \
-            bindparam, and_, func, literal_column, exc, MetaData, Table, Column
+    bindparam, and_, func, literal_column, exc, MetaData, Table, Column
 from sqlalchemy.types import NullType
 from sqlalchemy.sql import table, column
 
 table1 = table('mytable',
-    column('myid', Integer),
-    column('name', String),
-    column('description', String),
-)
+               column('myid', Integer),
+               column('name', String),
+               column('description', String),
+               )
 
 table2 = table(
     'myothertable',
     column('otherid', Integer),
     column('othername', String),
 )
+
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
@@ -27,7 +28,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "select * from foo where lala = bar"
         )
 
+
 class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
+
     """test the usage of text() implicit within the select() construct
     when strings are passed."""
 
@@ -38,7 +41,7 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
             ["foobar(a)", "pk_foo_bar(syslaal)"],
             "a = 12",
             from_obj=["foobar left outer join lala on foobar.foo = lala.foo"]
-            ),
+        ),
             "SELECT foobar(a), pk_foo_bar(syslaal) FROM foobar "
             "left outer join lala on foobar.foo = lala.foo WHERE a = 12"
         )
@@ -52,12 +55,12 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
         s = s.order_by("column1")
         s.append_from("table1")
         self.assert_compile(s, "SELECT column1, column2 FROM table1 WHERE "
-                                "column1=12 AND column2=19 ORDER BY column1")
+                            "column1=12 AND column2=19 ORDER BY column1")
 
     def test_select_composition_three(self):
         self.assert_compile(
             select(["column1", "column2"],
-                            from_obj=table1).alias('somealias').select(),
+                   from_obj=table1).alias('somealias').select(),
             "SELECT somealias.column1, somealias.column2 FROM "
             "(SELECT column1, column2 FROM mytable) AS somealias"
         )
@@ -66,7 +69,7 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
         # test that use_labels doesn't interfere with literal columns
         self.assert_compile(
             select(["column1", "column2", table1.c.myid], from_obj=table1,
-                        use_labels=True),
+                   use_labels=True),
             "SELECT column1, column2, mytable.myid AS mytable_myid "
             "FROM mytable"
         )
@@ -76,7 +79,7 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
         # with literal columns that have textual labels
         self.assert_compile(
             select(["column1 AS foobar", "column2 AS hoho", table1.c.myid],
-                        from_obj=table1, use_labels=True),
+                   from_obj=table1, use_labels=True),
             "SELECT column1 AS foobar, column2 AS hoho, "
             "mytable.myid AS mytable_myid FROM mytable"
         )
@@ -87,10 +90,10 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
         # exported columns don't get quoted
         self.assert_compile(
             select(["column1 AS foobar", "column2 AS hoho", table1.c.myid],
-                            from_obj=[table1]).select(),
+                   from_obj=[table1]).select(),
             "SELECT column1 AS foobar, column2 AS hoho, myid FROM "
             "(SELECT column1 AS foobar, column2 AS hoho, "
-                "mytable.myid AS myid FROM mytable)"
+            "mytable.myid AS myid FROM mytable)"
         )
 
     def test_select_composition_seven(self):
@@ -105,8 +108,8 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
             "foo.f = t.id",
             from_obj=["(select f from bar where lala=heyhey) foo"]
         ),
-        "SELECT t.myid, t.name, t.description, foo.f FROM mytable AS t, "
-        "(select f from bar where lala=heyhey) foo WHERE foo.f = t.id")
+            "SELECT t.myid, t.name, t.description, foo.f FROM mytable AS t, "
+            "(select f from bar where lala=heyhey) foo WHERE foo.f = t.id")
 
     def test_select_bundle_columns(self):
         self.assert_compile(select(
@@ -117,17 +120,18 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
                 table1.c.myid == table2.c.otherid,
             )
         ),
-        "SELECT mytable.myid, mytable.name, mytable.description, "
-        "myothertable.otherid, sysdate(), foo, bar, lala "
-        "FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND "
-        "datetime(foo) = Today AND mytable.myid = myothertable.otherid")
+            "SELECT mytable.myid, mytable.name, mytable.description, "
+            "myothertable.otherid, sysdate(), foo, bar, lala "
+            "FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND "
+            "datetime(foo) = Today AND mytable.myid = myothertable.otherid")
+
 
 class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def test_legacy(self):
         t = text("select * from foo where lala=:bar and hoho=:whee",
-                bindparams=[bindparam('bar', 4), bindparam('whee', 7)])
+                 bindparams=[bindparam('bar', 4), bindparam('whee', 7)])
 
         self.assert_compile(
             t,
@@ -187,44 +191,43 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
         t = text("select * from table :foo :bar :bat")
 
         self._assert_type_map(t, {"foo": NullType(),
-                                    "bar": NullType(),
-                                    "bat": NullType()})
+                                  "bar": NullType(),
+                                  "bat": NullType()})
 
         t = t.bindparams(bindparam('foo', type_=String))
 
         self._assert_type_map(t, {"foo": String(),
-                                    "bar": NullType(),
-                                    "bat": NullType()})
+                                  "bar": NullType(),
+                                  "bat": NullType()})
 
         t = t.bindparams(bindparam('bar', type_=Integer))
 
         self._assert_type_map(t, {"foo": String(),
-                                    "bar": Integer(),
-                                    "bat": NullType()})
+                                  "bar": Integer(),
+                                  "bat": NullType()})
 
         t = t.bindparams(bat=45.564)
 
         self._assert_type_map(t, {"foo": String(),
-                                    "bar": Integer(),
-                                    "bat": Float()})
-
+                                  "bar": Integer(),
+                                  "bat": Float()})
 
     def test_binds_compiled_named(self):
         self.assert_compile(
             text("select * from foo where lala=:bar and hoho=:whee").
-                bindparams(bar=4, whee=7),
-                "select * from foo where lala=%(bar)s and hoho=%(whee)s",
-                checkparams={'bar': 4, 'whee': 7},
-                dialect="postgresql"
+            bindparams(bar=4, whee=7),
+            "select * from foo where lala=%(bar)s and hoho=%(whee)s",
+            checkparams={'bar': 4, 'whee': 7},
+            dialect="postgresql"
         )
 
     def test_binds_compiled_positional(self):
         self.assert_compile(
             text("select * from foo where lala=:bar and hoho=:whee").
-                bindparams(bar=4, whee=7),
-                "select * from foo where lala=? and hoho=?",
-                checkparams={'bar': 4, 'whee': 7},
-                dialect="sqlite"
+            bindparams(bar=4, whee=7),
+            "select * from foo where lala=? and hoho=?",
+            checkparams={'bar': 4, 'whee': 7},
+            dialect="sqlite"
         )
 
     def test_missing_bind_kw(self):
@@ -232,109 +235,123 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
             exc.ArgumentError,
             "This text\(\) construct doesn't define a bound parameter named 'bar'",
             text(":foo").bindparams,
-            foo=5, bar=7
-        )
+            foo=5,
+            bar=7)
 
     def test_missing_bind_posn(self):
         assert_raises_message(
             exc.ArgumentError,
             "This text\(\) construct doesn't define a bound parameter named 'bar'",
             text(":foo").bindparams,
-            bindparam('foo', value=5), bindparam('bar', value=7)
-        )
+            bindparam(
+                'foo',
+                value=5),
+            bindparam(
+                'bar',
+                value=7))
 
     def test_escaping_colons(self):
         # test escaping out text() params with a backslash
         self.assert_compile(
             text("select * from foo where clock='05:06:07' "
-                    "and mork='\:mindy'"),
+                 "and mork='\:mindy'"),
             "select * from foo where clock='05:06:07' and mork=':mindy'",
             checkparams={},
             params={},
             dialect="postgresql"
         )
 
-
     def test_text_in_select_nonfrom(self):
 
         generate_series = text("generate_series(:x, :y, :z) as s(a)").\
-                            bindparams(x=None, y=None, z=None)
+            bindparams(x=None, y=None, z=None)
 
         s = select([
-                    (func.current_date() + literal_column("s.a")).label("dates")
-                ]).select_from(generate_series)
+            (func.current_date() + literal_column("s.a")).label("dates")
+        ]).select_from(generate_series)
 
         self.assert_compile(
-                    s,
-                    "SELECT CURRENT_DATE + s.a AS dates FROM "
-                                        "generate_series(:x, :y, :z) as s(a)",
-                    checkparams={'y': None, 'x': None, 'z': None}
-                )
+            s,
+            "SELECT CURRENT_DATE + s.a AS dates FROM "
+            "generate_series(:x, :y, :z) as s(a)",
+            checkparams={'y': None, 'x': None, 'z': None}
+        )
 
         self.assert_compile(
-                    s.params(x=5, y=6, z=7),
-                    "SELECT CURRENT_DATE + s.a AS dates FROM "
-                                        "generate_series(:x, :y, :z) as s(a)",
-                    checkparams={'y': 6, 'x': 5, 'z': 7}
-                )
+            s.params(x=5, y=6, z=7),
+            "SELECT CURRENT_DATE + s.a AS dates FROM "
+            "generate_series(:x, :y, :z) as s(a)",
+            checkparams={'y': 6, 'x': 5, 'z': 7}
+        )
+
 
 class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def test_basic_toplevel_resultmap_positional(self):
         t = text("select id, name from user").columns(
-                    column('id', Integer),
-                    column('name')
-                )
+            column('id', Integer),
+            column('name')
+        )
 
         compiled = t.compile()
-        eq_(
-            compiled.result_map,
-            {
-                'id': ('id', (t.c.id._proxies[0], 'id', 'id'), t.c.id.type),
-                'name': ('name', (t.c.name._proxies[0], 'name', 'name'), t.c.name.type)
-            }
-        )
+        eq_(compiled.result_map,
+            {'id': ('id',
+                    (t.c.id._proxies[0],
+                     'id',
+                     'id'),
+                    t.c.id.type),
+                'name': ('name',
+                         (t.c.name._proxies[0],
+                          'name',
+                          'name'),
+                         t.c.name.type)})
 
     def test_basic_toplevel_resultmap(self):
         t = text("select id, name from user").columns(id=Integer, name=String)
 
         compiled = t.compile()
-        eq_(
-            compiled.result_map,
-            {
-                'id': ('id', (t.c.id._proxies[0], 'id', 'id'), t.c.id.type),
-                'name': ('name', (t.c.name._proxies[0], 'name', 'name'), t.c.name.type)
-            }
-        )
+        eq_(compiled.result_map,
+            {'id': ('id',
+                    (t.c.id._proxies[0],
+                     'id',
+                     'id'),
+                    t.c.id.type),
+                'name': ('name',
+                         (t.c.name._proxies[0],
+                          'name',
+                          'name'),
+                         t.c.name.type)})
 
     def test_basic_subquery_resultmap(self):
         t = text("select id, name from user").columns(id=Integer, name=String)
 
         stmt = select([table1.c.myid]).select_from(
-                                    table1.join(t, table1.c.myid == t.c.id))
+            table1.join(t, table1.c.myid == t.c.id))
         compiled = stmt.compile()
         eq_(
             compiled.result_map,
             {
                 "myid": ("myid",
-                        (table1.c.myid, "myid", "myid"), table1.c.myid.type),
+                         (table1.c.myid, "myid", "myid"), table1.c.myid.type),
             }
         )
 
     def test_column_collection_ordered(self):
         t = text("select a, b, c from foo").columns(column('a'),
-                            column('b'), column('c'))
+                                                    column('b'), column('c'))
         eq_(t.c.keys(), ['a', 'b', 'c'])
 
     def test_column_collection_pos_plus_bykey(self):
         # overlapping positional names + type names
-        t = text("select a, b, c from foo").columns(column('a'),
-                            column('b'), b=Integer, c=String)
+        t = text("select a, b, c from foo").columns(
+            column('a'),
+            column('b'),
+            b=Integer,
+            c=String)
         eq_(t.c.keys(), ['a', 'b', 'c'])
         eq_(t.c.b.type._type_affinity, Integer)
         eq_(t.c.c.type._type_affinity, String)
-
 
     def _xy_table_fixture(self):
         m = MetaData()
@@ -344,10 +361,10 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
     def _mapping(self, stmt):
         compiled = stmt.compile()
         return dict(
-                    (elem, key)
-                    for key, elements in compiled.result_map.items()
-                    for elem in elements[1]
-                )
+            (elem, key)
+            for key, elements in compiled.result_map.items()
+            for elem in elements[1]
+        )
 
     def test_select_label_alt_name(self):
         t = self._xy_table_fixture()
@@ -404,7 +421,9 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
         assert ta.c.x not in mapping
 
     def test_cte(self):
-        t = text("select id, name from user").columns(id=Integer, name=String).cte('t')
+        t = text("select id, name from user").columns(
+            id=Integer,
+            name=String).cte('t')
 
         s = select([table1]).where(table1.c.myid == t.c.id)
         self.assert_compile(
@@ -414,9 +433,10 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM mytable, t WHERE mytable.myid = t.id"
         )
 
-
     def test_alias(self):
-        t = text("select id, name from user").columns(id=Integer, name=String).alias('t')
+        t = text("select id, name from user").columns(
+            id=Integer,
+            name=String).alias('t')
 
         s = select([table1]).where(table1.c.myid == t.c.id)
         self.assert_compile(
