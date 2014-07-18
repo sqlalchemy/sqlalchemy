@@ -50,6 +50,7 @@ class DefaultTest(fixtures.TestBase):
         is_oracle = testing.against('oracle')
 
         class MyClass(object):
+
             @classmethod
             def gen_default(cls, ctx):
                 return "hi"
@@ -166,10 +167,12 @@ class DefaultTest(fixtures.TestBase):
             pass
 
         class fn3(object):
+
             def __init__(self, x, y):
                 pass
 
         class FN4(object):
+
             def __call__(self, x, y):
                 pass
         fn4 = FN4()
@@ -194,19 +197,23 @@ class DefaultTest(fixtures.TestBase):
         fn5 = list
 
         class fn6a(object):
+
             def __init__(self, x):
                 eq_(x, "context")
 
         class fn6b(object):
+
             def __init__(self, x, y=3):
                 eq_(x, "context")
 
         class FN7(object):
+
             def __call__(self, x):
                 eq_(x, "context")
         fn7 = FN7()
 
         class FN8(object):
+
             def __call__(self, x, y=3):
                 eq_(x, "context")
         fn8 = FN8()
@@ -1023,6 +1030,7 @@ class TableBoundSequenceTest(fixtures.TestBase):
 
 
 class SpecialTypePKTest(fixtures.TestBase):
+
     """test process_result_value in conjunction with primary key columns.
 
     Also tests that "autoincrement" checks are against

@@ -1,5 +1,6 @@
-from sqlalchemy import Table, Column, Integer, MetaData, ForeignKey, select, exists, union
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL, eq_
+from sqlalchemy import Table, Column, Integer, MetaData, ForeignKey, \
+    select, exists, union
+from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy import util
 from sqlalchemy.engine import default
 from sqlalchemy import testing
@@ -9,62 +10,64 @@ m = MetaData()
 
 
 a = Table('a', m,
-        Column('id', Integer, primary_key=True)
-    )
+          Column('id', Integer, primary_key=True)
+          )
 
 b = Table('b', m,
-        Column('id', Integer, primary_key=True),
-        Column('a_id', Integer, ForeignKey('a.id'))
-    )
+          Column('id', Integer, primary_key=True),
+          Column('a_id', Integer, ForeignKey('a.id'))
+          )
 
 b_a = Table('b_a', m,
-        Column('id', Integer, primary_key=True),
-    )
+            Column('id', Integer, primary_key=True),
+            )
 
 b1 = Table('b1', m,
-        Column('id', Integer, primary_key=True),
-        Column('a_id', Integer, ForeignKey('a.id'))
-    )
+           Column('id', Integer, primary_key=True),
+           Column('a_id', Integer, ForeignKey('a.id'))
+           )
 
 b2 = Table('b2', m,
-        Column('id', Integer, primary_key=True),
-        Column('a_id', Integer, ForeignKey('a.id'))
-    )
+           Column('id', Integer, primary_key=True),
+           Column('a_id', Integer, ForeignKey('a.id'))
+           )
 
 a_to_b = Table('a_to_b', m,
-        Column('a_id', Integer, ForeignKey('a.id')),
-        Column('b_id', Integer, ForeignKey('b.id')),
-    )
+               Column('a_id', Integer, ForeignKey('a.id')),
+               Column('b_id', Integer, ForeignKey('b.id')),
+               )
 
 c = Table('c', m,
-        Column('id', Integer, primary_key=True),
-        Column('b_id', Integer, ForeignKey('b.id'))
-    )
+          Column('id', Integer, primary_key=True),
+          Column('b_id', Integer, ForeignKey('b.id'))
+          )
 
 d = Table('d', m,
-        Column('id', Integer, primary_key=True),
-        Column('c_id', Integer, ForeignKey('c.id'))
-    )
+          Column('id', Integer, primary_key=True),
+          Column('c_id', Integer, ForeignKey('c.id'))
+          )
 
 e = Table('e', m,
-        Column('id', Integer, primary_key=True)
-    )
+          Column('id', Integer, primary_key=True)
+          )
 
 f = Table('f', m,
-        Column('id', Integer, primary_key=True),
-        Column('a_id', ForeignKey('a.id'))
-    )
+          Column('id', Integer, primary_key=True),
+          Column('a_id', ForeignKey('a.id'))
+          )
 
 b_key = Table('b_key', m,
-        Column('id', Integer, primary_key=True, key='bid'),
-    )
+              Column('id', Integer, primary_key=True, key='bid'),
+              )
 
 a_to_b_key = Table('a_to_b_key', m,
-        Column('aid', Integer, ForeignKey('a.id')),
-        Column('bid', Integer, ForeignKey('b_key.bid')),
-    )
+                   Column('aid', Integer, ForeignKey('a.id')),
+                   Column('bid', Integer, ForeignKey('b_key.bid')),
+                   )
+
 
 class _JoinRewriteTestBase(AssertsCompiledSQL):
+
     def _test(self, s, assert_):
         self.assert_compile(
             s,
@@ -111,7 +114,7 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
         j2 = a.join(j1)
 
         s = select([a, b_key.c.bid], use_labels=True).\
-                select_from(j2)
+            select_from(j2)
 
         self._test(s, self._a_bkeyassoc)
 
@@ -123,7 +126,7 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
         j2 = a.join(j1)
 
         s = select([a, bkey_alias.c.bid], use_labels=True).\
-                select_from(j2)
+            select_from(j2)
 
         self._test(s, self._a_bkeyassoc_aliased)
 
@@ -137,7 +140,7 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
             where(b.c.id == 2).\
             where(c.c.id == 3).\
             where(d.c.id == 4).\
-                order_by(a.c.id, b.c.id, c.c.id, d.c.id)
+            order_by(a.c.id, b.c.id, c.c.id, d.c.id)
 
         self._test(
             s,
@@ -146,7 +149,8 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
 
     def test_a_bc_comma_a1_selbc(self):
         # test here we're emulating is
-        # test.orm.inheritance.test_polymorphic_rel:PolymorphicJoinsTest.test_multi_join
+        # test.orm.inheritance.test_polymorphic_rel:
+        #  PolymorphicJoinsTest.test_multi_join
         j1 = b.join(c)
         j2 = b.join(c).select(use_labels=True).alias()
         j3 = a.join(j1)
@@ -154,7 +158,7 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
         j4 = a_a.join(j2)
 
         s = select([a, a_a, b, c, j2], use_labels=True).\
-                select_from(j3).select_from(j4).order_by(j2.c.b_id)
+            select_from(j3).select_from(j4).order_by(j2.c.b_id)
 
         self._test(
             s,
@@ -170,10 +174,14 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
 
         # TODO: if we put straight a_to_b_alias here,
         # it fails to alias the columns clause.
-        s = select([a, a_to_b_alias.c.a_id, a_to_b_alias.c.b_id,
-                    b_alias.c.id, b_alias.c.a_id,
-                    exists().select_from(c).where(c.c.b_id == b_alias.c.id).label(None)
-                ], use_labels=True).select_from(j2)
+        s = select([a,
+                    a_to_b_alias.c.a_id,
+                    a_to_b_alias.c.b_id,
+                    b_alias.c.id,
+                    b_alias.c.a_id,
+                    exists().select_from(c).
+                    where(c.c.b_id == b_alias.c.id).label(None)],
+                   use_labels=True).select_from(j2)
 
         self._test(
             s,
@@ -202,9 +210,9 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
         b_j2 = b.join(j2)
 
         s = union(
-                select([b_j1], use_labels=True),
-                select([b_j2], use_labels=True)
-            ).select(use_labels=True)
+            select([b_j1], use_labels=True),
+            select([b_j2], use_labels=True)
+        ).select(use_labels=True)
 
         self._test(
             s,
@@ -216,10 +224,10 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
         # this involves annotations so try to loop those in.
         j1 = b.join(b_a, b.c.id == b_a.c.id)
         annot = [
-                    b.c.id._annotate({}),
-                    b.c.a_id._annotate({}),
-                    b_a.c.id._annotate({})
-                ]
+            b.c.id._annotate({}),
+            b.c.a_id._annotate({}),
+            b_a.c.id._annotate({})
+        ]
 
         s = select(annot).select_from(j1).apply_labels().alias()
 
@@ -245,6 +253,7 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
 
 
 class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
+
     """test rendering of each join with right-nested rewritten as
     aliased SELECT statements.."""
 
@@ -255,49 +264,49 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
         return dialect
 
     _a__b_dc = (
-            "SELECT a.id AS a_id, anon_1.b_id AS b_id, "
-            "anon_1.b_a_id AS b_a_id, anon_1.c_id AS c_id, "
-            "anon_1.c_b_id AS c_b_id, anon_1.d_id AS d_id, "
-            "anon_1.d_c_id AS d_c_id "
-            "FROM a JOIN (SELECT b.id AS b_id, b.a_id AS b_a_id, "
-            "anon_2.c_id AS c_id, anon_2.c_b_id AS c_b_id, "
-            "anon_2.d_id AS d_id, anon_2.d_c_id AS d_c_id "
-            "FROM b JOIN (SELECT c.id AS c_id, c.b_id AS c_b_id, "
-            "d.id AS d_id, d.c_id AS d_c_id "
-            "FROM c JOIN d ON c.id = d.c_id) AS anon_2 "
-            "ON b.id = anon_2.c_b_id) AS anon_1 ON a.id = anon_1.b_a_id "
-            "WHERE anon_1.b_id = :id_1 AND anon_1.c_id = :id_2 AND "
-            "anon_1.d_id = :id_3 "
-            "ORDER BY a.id, anon_1.b_id, anon_1.c_id, anon_1.d_id"
-            )
+        "SELECT a.id AS a_id, anon_1.b_id AS b_id, "
+        "anon_1.b_a_id AS b_a_id, anon_1.c_id AS c_id, "
+        "anon_1.c_b_id AS c_b_id, anon_1.d_id AS d_id, "
+        "anon_1.d_c_id AS d_c_id "
+        "FROM a JOIN (SELECT b.id AS b_id, b.a_id AS b_a_id, "
+        "anon_2.c_id AS c_id, anon_2.c_b_id AS c_b_id, "
+        "anon_2.d_id AS d_id, anon_2.d_c_id AS d_c_id "
+        "FROM b JOIN (SELECT c.id AS c_id, c.b_id AS c_b_id, "
+        "d.id AS d_id, d.c_id AS d_c_id "
+        "FROM c JOIN d ON c.id = d.c_id) AS anon_2 "
+        "ON b.id = anon_2.c_b_id) AS anon_1 ON a.id = anon_1.b_a_id "
+        "WHERE anon_1.b_id = :id_1 AND anon_1.c_id = :id_2 AND "
+        "anon_1.d_id = :id_3 "
+        "ORDER BY a.id, anon_1.b_id, anon_1.c_id, anon_1.d_id"
+    )
 
     _a_bc = (
-            "SELECT a.id AS a_id, anon_1.b_id AS b_id, "
-            "anon_1.b_a_id AS b_a_id, anon_1.c_id AS c_id, "
-            "anon_1.c_b_id AS c_b_id FROM a JOIN "
-            "(SELECT b.id AS b_id, b.a_id AS b_a_id, "
-                "c.id AS c_id, c.b_id AS c_b_id "
-                "FROM b JOIN c ON b.id = c.b_id) AS anon_1 "
-            "ON a.id = anon_1.b_a_id "
-            "WHERE anon_1.b_id = :id_1 AND anon_1.c_id = :id_2 "
-            "ORDER BY a.id, anon_1.b_id, anon_1.c_id"
-            )
+        "SELECT a.id AS a_id, anon_1.b_id AS b_id, "
+        "anon_1.b_a_id AS b_a_id, anon_1.c_id AS c_id, "
+        "anon_1.c_b_id AS c_b_id FROM a JOIN "
+        "(SELECT b.id AS b_id, b.a_id AS b_a_id, "
+        "c.id AS c_id, c.b_id AS c_b_id "
+        "FROM b JOIN c ON b.id = c.b_id) AS anon_1 "
+        "ON a.id = anon_1.b_a_id "
+        "WHERE anon_1.b_id = :id_1 AND anon_1.c_id = :id_2 "
+        "ORDER BY a.id, anon_1.b_id, anon_1.c_id"
+    )
 
     _a_bc_comma_a1_selbc = (
-            "SELECT a.id AS a_id, a_1.id AS a_1_id, anon_1.b_id AS b_id, "
-            "anon_1.b_a_id AS b_a_id, anon_1.c_id AS c_id, "
-            "anon_1.c_b_id AS c_b_id, anon_2.b_id AS anon_2_b_id, "
-            "anon_2.b_a_id AS anon_2_b_a_id, anon_2.c_id AS anon_2_c_id, "
-            "anon_2.c_b_id AS anon_2_c_b_id FROM a "
-            "JOIN (SELECT b.id AS b_id, b.a_id AS b_a_id, c.id AS c_id, "
-            "c.b_id AS c_b_id FROM b JOIN c ON b.id = c.b_id) AS anon_1 "
-            "ON a.id = anon_1.b_a_id, "
-            "a AS a_1 JOIN "
-                "(SELECT b.id AS b_id, b.a_id AS b_a_id, "
-                "c.id AS c_id, c.b_id AS c_b_id "
-                "FROM b JOIN c ON b.id = c.b_id) AS anon_2 "
-            "ON a_1.id = anon_2.b_a_id ORDER BY anon_2.b_id"
-        )
+        "SELECT a.id AS a_id, a_1.id AS a_1_id, anon_1.b_id AS b_id, "
+        "anon_1.b_a_id AS b_a_id, anon_1.c_id AS c_id, "
+        "anon_1.c_b_id AS c_b_id, anon_2.b_id AS anon_2_b_id, "
+        "anon_2.b_a_id AS anon_2_b_a_id, anon_2.c_id AS anon_2_c_id, "
+        "anon_2.c_b_id AS anon_2_c_b_id FROM a "
+        "JOIN (SELECT b.id AS b_id, b.a_id AS b_a_id, c.id AS c_id, "
+        "c.b_id AS c_b_id FROM b JOIN c ON b.id = c.b_id) AS anon_1 "
+        "ON a.id = anon_1.b_a_id, "
+        "a AS a_1 JOIN "
+        "(SELECT b.id AS b_id, b.a_id AS b_a_id, "
+        "c.id AS c_id, c.b_id AS c_b_id "
+        "FROM b JOIN c ON b.id = c.b_id) AS anon_2 "
+        "ON a_1.id = anon_2.b_a_id ORDER BY anon_2.b_id"
+    )
 
     _a_bkeyassoc = (
         "SELECT a.id AS a_id, anon_1.b_key_id AS b_key_id "
@@ -306,7 +315,7 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
         "a_to_b_key.bid AS a_to_b_key_bid FROM b_key "
         "JOIN a_to_b_key ON b_key.id = a_to_b_key.bid) AS anon_1 "
         "ON a.id = anon_1.a_to_b_key_aid"
-        )
+    )
 
     _a_bkeyassoc_aliased = (
         "SELECT a.id AS a_id, anon_1.b_key_1_id AS b_key_1_id "
@@ -315,46 +324,49 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
         "a_to_b_key_1.bid AS a_to_b_key_1_bid FROM b_key AS b_key_1 "
         "JOIN a_to_b_key AS a_to_b_key_1 ON b_key_1.id = a_to_b_key_1.bid) AS "
         "anon_1 ON a.id = anon_1.a_to_b_key_1_aid"
-        )
+    )
 
     _a_bkeyselect_bkey = (
         "SELECT a.id AS a_id, anon_2.anon_1_aid AS anon_1_aid, "
         "anon_2.anon_1_bid AS anon_1_bid, anon_2.b_key_id AS b_key_id "
-        "FROM a JOIN (SELECT anon_1.aid AS anon_1_aid, anon_1.bid AS anon_1_bid, "
-            "b_key.id AS b_key_id "
-            "FROM (SELECT a_to_b_key.aid AS aid, a_to_b_key.bid AS bid "
-                "FROM a_to_b_key) AS anon_1 "
-        "JOIN b_key ON b_key.id = anon_1.bid) AS anon_2 ON a.id = anon_2.anon_1_aid"
-    )
+        "FROM a JOIN (SELECT anon_1.aid AS anon_1_aid, "
+        "anon_1.bid AS anon_1_bid, "
+        "b_key.id AS b_key_id "
+        "FROM (SELECT a_to_b_key.aid AS aid, a_to_b_key.bid AS bid "
+        "FROM a_to_b_key) AS anon_1 "
+        "JOIN b_key ON b_key.id = anon_1.bid) AS anon_2 "
+        "ON a.id = anon_2.anon_1_aid")
 
     _a_atobalias_balias_c_w_exists = (
         "SELECT a.id AS a_id, "
-        "anon_1.a_to_b_1_a_id AS a_to_b_1_a_id, anon_1.a_to_b_1_b_id AS a_to_b_1_b_id, "
+        "anon_1.a_to_b_1_a_id AS a_to_b_1_a_id, "
+        "anon_1.a_to_b_1_b_id AS a_to_b_1_b_id, "
         "anon_1.b_1_id AS b_1_id, anon_1.b_1_a_id AS b_1_a_id, "
         "EXISTS (SELECT * FROM c WHERE c.b_id = anon_1.b_1_id) AS anon_2 "
         "FROM a LEFT OUTER JOIN (SELECT a_to_b_1.a_id AS a_to_b_1_a_id, "
-        "a_to_b_1.b_id AS a_to_b_1_b_id, b_1.id AS b_1_id, b_1.a_id AS b_1_a_id "
+        "a_to_b_1.b_id AS a_to_b_1_b_id, b_1.id AS b_1_id, "
+        "b_1.a_id AS b_1_a_id "
         "FROM a_to_b AS a_to_b_1 "
         "JOIN b AS b_1 ON b_1.id = a_to_b_1.b_id) AS anon_1 "
-        "ON a.id = anon_1.a_to_b_1_a_id"
-    )
+        "ON a.id = anon_1.a_to_b_1_a_id")
 
     _a_atobalias_balias = (
         "SELECT a.id AS a_id, anon_1.a_to_b_1_a_id AS a_to_b_1_a_id, "
         "anon_1.a_to_b_1_b_id AS a_to_b_1_b_id, anon_1.b_1_id AS b_1_id, "
         "anon_1.b_1_a_id AS b_1_a_id FROM a LEFT OUTER JOIN "
-        "(SELECT a_to_b_1.a_id AS a_to_b_1_a_id, a_to_b_1.b_id AS a_to_b_1_b_id, "
+        "(SELECT a_to_b_1.a_id AS a_to_b_1_a_id, "
+        "a_to_b_1.b_id AS a_to_b_1_b_id, "
         "b_1.id AS b_1_id, b_1.a_id AS b_1_a_id FROM a_to_b AS a_to_b_1 "
-        "JOIN b AS b_1 ON b_1.id = a_to_b_1.b_id) AS anon_1 ON a.id = anon_1.a_to_b_1_a_id"
-    )
+        "JOIN b AS b_1 ON b_1.id = a_to_b_1.b_id) AS anon_1 "
+        "ON a.id = anon_1.a_to_b_1_a_id")
 
     _b_ab1_union_c_ab2 = (
         "SELECT b_id AS b_id, b_a_id AS b_a_id, a_id AS a_id, b1_id AS b1_id, "
         "b1_a_id AS b1_a_id FROM "
         "(SELECT b.id AS b_id, b.a_id AS b_a_id, anon_1.a_id AS a_id, "
-            "anon_1.b1_id AS b1_id, anon_1.b1_a_id AS b1_a_id "
-            "FROM b JOIN (SELECT a.id AS a_id, b1.id AS b1_id, b1.a_id AS b1_a_id "
-            "FROM a JOIN b1 ON a.id = b1.a_id) AS anon_1 ON anon_1.a_id = b.a_id "
+        "anon_1.b1_id AS b1_id, anon_1.b1_a_id AS b1_a_id "
+        "FROM b JOIN (SELECT a.id AS a_id, b1.id AS b1_id, b1.a_id AS b1_a_id "
+        "FROM a JOIN b1 ON a.id = b1.a_id) AS anon_1 ON anon_1.a_id = b.a_id "
         "UNION "
         "SELECT b.id AS b_id, b.a_id AS b_a_id, anon_2.a_id AS a_id, "
         "anon_2.b2_id AS b2_id, anon_2.b2_a_id AS b2_a_id "
@@ -377,7 +389,9 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
         "FROM a JOIN b2 ON a.id = b2.a_id)"
     )
 
+
 class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
+
     """test rendering of each join with normal nesting."""
     @util.classproperty
     def __dialect__(cls):
@@ -387,53 +401,52 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
     _a_bkeyselect_bkey = (
         "SELECT a.id AS a_id, b_key.id AS b_key_id FROM a JOIN "
         "((SELECT a_to_b_key.aid AS aid, a_to_b_key.bid AS bid "
-            "FROM a_to_b_key) AS anon_1 JOIN b_key ON b_key.id = anon_1.bid) "
+        "FROM a_to_b_key) AS anon_1 JOIN b_key ON b_key.id = anon_1.bid) "
         "ON a.id = anon_1.aid"
     )
     _a__b_dc = (
-            "SELECT a.id AS a_id, b.id AS b_id, "
-            "b.a_id AS b_a_id, c.id AS c_id, "
-            "c.b_id AS c_b_id, d.id AS d_id, "
-            "d.c_id AS d_c_id "
-            "FROM a JOIN (b JOIN (c JOIN d ON c.id = d.c_id) "
-            "ON b.id = c.b_id) ON a.id = b.a_id "
-            "WHERE b.id = :id_1 AND c.id = :id_2 AND "
-            "d.id = :id_3 "
-            "ORDER BY a.id, b.id, c.id, d.id"
-            )
-
+        "SELECT a.id AS a_id, b.id AS b_id, "
+        "b.a_id AS b_a_id, c.id AS c_id, "
+        "c.b_id AS c_b_id, d.id AS d_id, "
+        "d.c_id AS d_c_id "
+        "FROM a JOIN (b JOIN (c JOIN d ON c.id = d.c_id) "
+        "ON b.id = c.b_id) ON a.id = b.a_id "
+        "WHERE b.id = :id_1 AND c.id = :id_2 AND "
+        "d.id = :id_3 "
+        "ORDER BY a.id, b.id, c.id, d.id"
+    )
 
     _a_bc = (
-            "SELECT a.id AS a_id, b.id AS b_id, "
-            "b.a_id AS b_a_id, c.id AS c_id, "
-            "c.b_id AS c_b_id FROM a JOIN "
-            "(b JOIN c ON b.id = c.b_id) "
-            "ON a.id = b.a_id "
-            "WHERE b.id = :id_1 AND c.id = :id_2 "
-            "ORDER BY a.id, b.id, c.id"
-            )
+        "SELECT a.id AS a_id, b.id AS b_id, "
+        "b.a_id AS b_a_id, c.id AS c_id, "
+        "c.b_id AS c_b_id FROM a JOIN "
+        "(b JOIN c ON b.id = c.b_id) "
+        "ON a.id = b.a_id "
+        "WHERE b.id = :id_1 AND c.id = :id_2 "
+        "ORDER BY a.id, b.id, c.id"
+    )
 
     _a_bc_comma_a1_selbc = (
-            "SELECT a.id AS a_id, a_1.id AS a_1_id, b.id AS b_id, "
-            "b.a_id AS b_a_id, c.id AS c_id, "
-            "c.b_id AS c_b_id, anon_1.b_id AS anon_1_b_id, "
-            "anon_1.b_a_id AS anon_1_b_a_id, anon_1.c_id AS anon_1_c_id, "
-            "anon_1.c_b_id AS anon_1_c_b_id FROM a "
-            "JOIN (b JOIN c ON b.id = c.b_id) "
-            "ON a.id = b.a_id, "
-            "a AS a_1 JOIN "
-                "(SELECT b.id AS b_id, b.a_id AS b_a_id, "
-                "c.id AS c_id, c.b_id AS c_b_id "
-                "FROM b JOIN c ON b.id = c.b_id) AS anon_1 "
-            "ON a_1.id = anon_1.b_a_id ORDER BY anon_1.b_id"
-        )
+        "SELECT a.id AS a_id, a_1.id AS a_1_id, b.id AS b_id, "
+        "b.a_id AS b_a_id, c.id AS c_id, "
+        "c.b_id AS c_b_id, anon_1.b_id AS anon_1_b_id, "
+        "anon_1.b_a_id AS anon_1_b_a_id, anon_1.c_id AS anon_1_c_id, "
+        "anon_1.c_b_id AS anon_1_c_b_id FROM a "
+        "JOIN (b JOIN c ON b.id = c.b_id) "
+        "ON a.id = b.a_id, "
+        "a AS a_1 JOIN "
+        "(SELECT b.id AS b_id, b.a_id AS b_a_id, "
+        "c.id AS c_id, c.b_id AS c_b_id "
+        "FROM b JOIN c ON b.id = c.b_id) AS anon_1 "
+        "ON a_1.id = anon_1.b_a_id ORDER BY anon_1.b_id"
+    )
 
     _a_bkeyassoc = (
         "SELECT a.id AS a_id, b_key.id AS b_key_id "
         "FROM a JOIN "
         "(b_key JOIN a_to_b_key ON b_key.id = a_to_b_key.bid) "
         "ON a.id = a_to_b_key.aid"
-        )
+    )
 
     _a_bkeyassoc_aliased = (
         "SELECT a.id AS a_id, b_key_1.id AS b_key_1_id FROM a "
@@ -443,12 +456,12 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
 
     _a_atobalias_balias_c_w_exists = (
         "SELECT a.id AS a_id, a_to_b_1.a_id AS a_to_b_1_a_id, "
-        "a_to_b_1.b_id AS a_to_b_1_b_id, b_1.id AS b_1_id, b_1.a_id AS b_1_a_id, "
+        "a_to_b_1.b_id AS a_to_b_1_b_id, b_1.id AS b_1_id, "
+        "b_1.a_id AS b_1_a_id, "
         "EXISTS (SELECT * FROM c WHERE c.b_id = b_1.id) AS anon_1 "
         "FROM a LEFT OUTER JOIN "
         "(a_to_b AS a_to_b_1 JOIN b AS b_1 ON b_1.id = a_to_b_1.b_id) "
-        "ON a.id = a_to_b_1.a_id"
-    )
+        "ON a.id = a_to_b_1.a_id")
 
     _a_atobalias_balias = (
         "SELECT a.id AS a_id, a_to_b_1.a_id AS a_to_b_1_a_id, "
@@ -461,14 +474,14 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
     _b_ab1_union_c_ab2 = (
         "SELECT b_id AS b_id, b_a_id AS b_a_id, a_id AS a_id, b1_id AS b1_id, "
         "b1_a_id AS b1_a_id FROM "
-        "(SELECT b.id AS b_id, b.a_id AS b_a_id, a.id AS a_id, b1.id AS b1_id, "
+        "(SELECT b.id AS b_id, b.a_id AS b_a_id, a.id AS a_id, "
+        "b1.id AS b1_id, "
         "b1.a_id AS b1_a_id FROM b "
         "JOIN (a JOIN b1 ON a.id = b1.a_id) ON a.id = b.a_id "
         "UNION "
         "SELECT b.id AS b_id, b.a_id AS b_a_id, a.id AS a_id, b2.id AS b2_id, "
         "b2.a_id AS b2_a_id FROM b "
-        "JOIN (a JOIN b2 ON a.id = b2.a_id) ON a.id = b.a_id)"
-    )
+        "JOIN (a JOIN b2 ON a.id = b2.a_id) ON a.id = b.a_id)")
 
     _b_a_id_double_overlap_annotated = (
         "SELECT anon_1.b_id AS anon_1_b_id, anon_1.b_a_id AS anon_1_b_a_id, "
@@ -484,7 +497,9 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
         "FROM a JOIN b2 ON a.id = b2.a_id)"
     )
 
+
 class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
+
     @util.classproperty
     def __dialect__(cls):
         dialect = default.DefaultDialect()
@@ -500,51 +515,51 @@ class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
 
     _a_bkeyselect_bkey = (
         "SELECT a.id, b_key.id FROM a JOIN ((SELECT a_to_b_key.aid AS aid, "
-            "a_to_b_key.bid AS bid FROM a_to_b_key) AS anon_1 "
-            "JOIN b_key ON b_key.id = anon_1.bid) ON a.id = anon_1.aid"
+        "a_to_b_key.bid AS bid FROM a_to_b_key) AS anon_1 "
+        "JOIN b_key ON b_key.id = anon_1.bid) ON a.id = anon_1.aid"
     )
 
     _a__b_dc = (
-            "SELECT a.id, b.id, "
-            "b.a_id, c.id, "
-            "c.b_id, d.id, "
-            "d.c_id "
-            "FROM a JOIN (b JOIN (c JOIN d ON c.id = d.c_id) "
-            "ON b.id = c.b_id) ON a.id = b.a_id "
-            "WHERE b.id = :id_1 AND c.id = :id_2 AND "
-            "d.id = :id_3 "
-            "ORDER BY a.id, b.id, c.id, d.id"
-            )
+        "SELECT a.id, b.id, "
+        "b.a_id, c.id, "
+        "c.b_id, d.id, "
+        "d.c_id "
+        "FROM a JOIN (b JOIN (c JOIN d ON c.id = d.c_id) "
+        "ON b.id = c.b_id) ON a.id = b.a_id "
+        "WHERE b.id = :id_1 AND c.id = :id_2 AND "
+        "d.id = :id_3 "
+        "ORDER BY a.id, b.id, c.id, d.id"
+    )
 
     _a_bc = (
-            "SELECT a.id, b.id, "
-            "b.a_id, c.id, "
-            "c.b_id FROM a JOIN "
-            "(b JOIN c ON b.id = c.b_id) "
-            "ON a.id = b.a_id "
-            "WHERE b.id = :id_1 AND c.id = :id_2 "
-            "ORDER BY a.id, b.id, c.id"
-            )
+        "SELECT a.id, b.id, "
+        "b.a_id, c.id, "
+        "c.b_id FROM a JOIN "
+        "(b JOIN c ON b.id = c.b_id) "
+        "ON a.id = b.a_id "
+        "WHERE b.id = :id_1 AND c.id = :id_2 "
+        "ORDER BY a.id, b.id, c.id"
+    )
 
     _a_bc_comma_a1_selbc = (
-            "SELECT a.id, a_1.id, b.id, "
-            "b.a_id, c.id, "
-            "c.b_id, anon_1.b_id, "
-            "anon_1.b_a_id, anon_1.c_id, "
-            "anon_1.c_b_id FROM a "
-            "JOIN (b JOIN c ON b.id = c.b_id) "
-            "ON a.id = b.a_id, "
-            "a AS a_1 JOIN "
-                "(SELECT b.id AS b_id, b.a_id AS b_a_id, "
-                "c.id AS c_id, c.b_id AS c_b_id "
-                "FROM b JOIN c ON b.id = c.b_id) AS anon_1 "
-            "ON a_1.id = anon_1.b_a_id ORDER BY anon_1.b_id"
-        )
+        "SELECT a.id, a_1.id, b.id, "
+        "b.a_id, c.id, "
+        "c.b_id, anon_1.b_id, "
+        "anon_1.b_a_id, anon_1.c_id, "
+        "anon_1.c_b_id FROM a "
+        "JOIN (b JOIN c ON b.id = c.b_id) "
+        "ON a.id = b.a_id, "
+        "a AS a_1 JOIN "
+        "(SELECT b.id AS b_id, b.a_id AS b_a_id, "
+        "c.id AS c_id, c.b_id AS c_b_id "
+        "FROM b JOIN c ON b.id = c.b_id) AS anon_1 "
+        "ON a_1.id = anon_1.b_a_id ORDER BY anon_1.b_id"
+    )
 
     _a_bkeyassoc = (
         "SELECT a.id, b_key.id FROM a JOIN (b_key JOIN a_to_b_key "
         "ON b_key.id = a_to_b_key.bid) ON a.id = a_to_b_key.aid"
-        )
+    )
 
     _a_bkeyassoc_aliased = (
         "SELECT a.id, b_key_1.id FROM a JOIN (b_key AS b_key_1 "
@@ -590,7 +605,9 @@ class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
         "FROM a JOIN b2 ON a.id = b2.a_id)"
     )
 
+
 class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
+
     """invoke the SQL on the current backend to ensure compatibility"""
 
     __backend__ = True
@@ -617,13 +634,17 @@ class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
     def test_a_atobalias_balias_c_w_exists(self):
         super(JoinExecTest, self).test_a_atobalias_balias_c_w_exists()
 
-    @testing.only_on("sqlite", "non-standard aliasing rules used at the moment, "
-                        "possibly fix this or add another test that uses "
-                        "cross-compatible aliasing")
+    @testing.only_on(
+        "sqlite",
+        "non-standard aliasing rules used at the moment, "
+        "possibly fix this or add another test that uses "
+        "cross-compatible aliasing")
     def test_b_ab1_union_b_ab2(self):
         super(JoinExecTest, self).test_b_ab1_union_b_ab2()
 
+
 class DialectFlagTest(fixtures.TestBase, AssertsCompiledSQL):
+
     def test_dialect_flag(self):
         d1 = default.DefaultDialect(supports_right_nested_joins=True)
         d2 = default.DefaultDialect(supports_right_nested_joins=False)
@@ -636,18 +657,16 @@ class DialectFlagTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             s,
-            "SELECT a.id AS a_id, b.id AS b_id, b.a_id AS b_a_id, c.id AS c_id, "
+            "SELECT a.id AS a_id, b.id AS b_id, b.a_id AS b_a_id, "
+            "c.id AS c_id, "
             "c.b_id AS c_b_id FROM a JOIN (b JOIN c ON b.id = c.b_id) "
             "ON a.id = b.a_id",
-            dialect=d1
-        )
+            dialect=d1)
         self.assert_compile(
-            s,
-            "SELECT a.id AS a_id, anon_1.b_id AS b_id, "
+            s, "SELECT a.id AS a_id, anon_1.b_id AS b_id, "
             "anon_1.b_a_id AS b_a_id, "
             "anon_1.c_id AS c_id, anon_1.c_b_id AS c_b_id "
-            "FROM a JOIN (SELECT b.id AS b_id, b.a_id AS b_a_id, c.id AS c_id, "
+            "FROM a JOIN (SELECT b.id AS b_id, b.a_id AS b_a_id, "
+            "c.id AS c_id, "
             "c.b_id AS c_b_id FROM b JOIN c ON b.id = c.b_id) AS anon_1 "
-            "ON a.id = anon_1.b_a_id",
-            dialect=d2
-        )
+            "ON a.id = anon_1.b_a_id", dialect=d2)

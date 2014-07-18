@@ -5,39 +5,39 @@ from sqlalchemy.dialects import mssql
 from sqlalchemy.engine import default
 from sqlalchemy.exc import CompileError
 
+
 class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
     __dialect__ = 'default'
 
     def test_nonrecursive(self):
         orders = table('orders',
-            column('region'),
-            column('amount'),
-            column('product'),
-            column('quantity')
-        )
+                       column('region'),
+                       column('amount'),
+                       column('product'),
+                       column('quantity')
+                       )
 
         regional_sales = select([
-                            orders.c.region,
-                            func.sum(orders.c.amount).label('total_sales')
-                        ]).group_by(orders.c.region).cte("regional_sales")
+            orders.c.region,
+            func.sum(orders.c.amount).label('total_sales')
+        ]).group_by(orders.c.region).cte("regional_sales")
 
         top_regions = select([regional_sales.c.region]).\
-                where(
-                    regional_sales.c.total_sales >
-                    select([
-                        func.sum(regional_sales.c.total_sales)/10
-                    ])
-                ).cte("top_regions")
+            where(
+                regional_sales.c.total_sales > select([
+                    func.sum(regional_sales.c.total_sales) / 10
+                ])
+            ).cte("top_regions")
 
         s = select([
-                    orders.c.region,
-                    orders.c.product,
-                    func.sum(orders.c.quantity).label("product_units"),
-                    func.sum(orders.c.amount).label("product_sales")
-            ]).where(orders.c.region.in_(
-                select([top_regions.c.region])
-            )).group_by(orders.c.region, orders.c.product)
+            orders.c.region,
+            orders.c.product,
+            func.sum(orders.c.quantity).label("product_units"),
+            func.sum(orders.c.amount).label("product_sales")
+        ]).where(orders.c.region.in_(
+            select([top_regions.c.region])
+        )).group_by(orders.c.region, orders.c.product)
 
         # needs to render regional_sales first as top_regions
         # refers to it
@@ -61,17 +61,17 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_recursive(self):
         parts = table('parts',
-            column('part'),
-            column('sub_part'),
-            column('quantity'),
-        )
+                      column('part'),
+                      column('sub_part'),
+                      column('quantity'),
+                      )
 
         included_parts = select([
-                            parts.c.sub_part,
-                            parts.c.part,
-                            parts.c.quantity]).\
-                            where(parts.c.part=='our part').\
-                                cte(recursive=True)
+            parts.c.sub_part,
+            parts.c.part,
+            parts.c.quantity]).\
+            where(parts.c.part == 'our part').\
+            cte(recursive=True)
 
         incl_alias = included_parts.alias()
         parts_alias = parts.alias()
@@ -79,46 +79,45 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             select([
                 parts_alias.c.sub_part,
                 parts_alias.c.part,
-                parts_alias.c.quantity]).\
-                where(parts_alias.c.part==incl_alias.c.sub_part)
-            )
+                parts_alias.c.quantity]).
+            where(parts_alias.c.part == incl_alias.c.sub_part)
+        )
 
         s = select([
             included_parts.c.sub_part,
             func.sum(included_parts.c.quantity).label('total_quantity')]).\
             select_from(included_parts.join(
-                    parts,included_parts.c.part==parts.c.part)).\
+                parts, included_parts.c.part == parts.c.part)).\
             group_by(included_parts.c.sub_part)
-        self.assert_compile(s,
-                "WITH RECURSIVE anon_1(sub_part, part, quantity) "
-                "AS (SELECT parts.sub_part AS sub_part, parts.part "
-                "AS part, parts.quantity AS quantity FROM parts "
-                "WHERE parts.part = :part_1 UNION SELECT parts_1.sub_part AS sub_part, "
-                "parts_1.part AS part, parts_1.quantity "
-                "AS quantity FROM parts AS parts_1, anon_1 AS anon_2 "
-                "WHERE parts_1.part = anon_2.sub_part) "
-                "SELECT anon_1.sub_part, "
-                "sum(anon_1.quantity) AS total_quantity FROM anon_1 "
-                "JOIN parts ON anon_1.part = parts.part "
-                "GROUP BY anon_1.sub_part"
-            )
+        self.assert_compile(
+            s, "WITH RECURSIVE anon_1(sub_part, part, quantity) "
+            "AS (SELECT parts.sub_part AS sub_part, parts.part "
+            "AS part, parts.quantity AS quantity FROM parts "
+            "WHERE parts.part = :part_1 UNION "
+            "SELECT parts_1.sub_part AS sub_part, "
+            "parts_1.part AS part, parts_1.quantity "
+            "AS quantity FROM parts AS parts_1, anon_1 AS anon_2 "
+            "WHERE parts_1.part = anon_2.sub_part) "
+            "SELECT anon_1.sub_part, "
+            "sum(anon_1.quantity) AS total_quantity FROM anon_1 "
+            "JOIN parts ON anon_1.part = parts.part "
+            "GROUP BY anon_1.sub_part")
 
         # quick check that the "WITH RECURSIVE" varies per
         # dialect
-        self.assert_compile(s,
-                "WITH anon_1(sub_part, part, quantity) "
-                "AS (SELECT parts.sub_part AS sub_part, parts.part "
-                "AS part, parts.quantity AS quantity FROM parts "
-                "WHERE parts.part = :part_1 UNION SELECT parts_1.sub_part AS sub_part, "
-                "parts_1.part AS part, parts_1.quantity "
-                "AS quantity FROM parts AS parts_1, anon_1 AS anon_2 "
-                "WHERE parts_1.part = anon_2.sub_part) "
-                "SELECT anon_1.sub_part, "
-                "sum(anon_1.quantity) AS total_quantity FROM anon_1 "
-                "JOIN parts ON anon_1.part = parts.part "
-                "GROUP BY anon_1.sub_part",
-                dialect=mssql.dialect()
-            )
+        self.assert_compile(
+            s, "WITH anon_1(sub_part, part, quantity) "
+            "AS (SELECT parts.sub_part AS sub_part, parts.part "
+            "AS part, parts.quantity AS quantity FROM parts "
+            "WHERE parts.part = :part_1 UNION "
+            "SELECT parts_1.sub_part AS sub_part, "
+            "parts_1.part AS part, parts_1.quantity "
+            "AS quantity FROM parts AS parts_1, anon_1 AS anon_2 "
+            "WHERE parts_1.part = anon_2.sub_part) "
+            "SELECT anon_1.sub_part, "
+            "sum(anon_1.quantity) AS total_quantity FROM anon_1 "
+            "JOIN parts ON anon_1.part = parts.part "
+            "GROUP BY anon_1.sub_part", dialect=mssql.dialect())
 
     def test_recursive_union_no_alias_one(self):
         s1 = select([literal(0).label("x")])
@@ -128,13 +127,12 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
         s2 = select([cte])
         self.assert_compile(s2,
-        "WITH RECURSIVE cte(x) AS "
-        "(SELECT :param_1 AS x UNION ALL "
-        "SELECT cte.x + :x_1 AS anon_1 "
-        "FROM cte WHERE cte.x < :x_2) "
-        "SELECT cte.x FROM cte"
-        )
-
+                            "WITH RECURSIVE cte(x) AS "
+                            "(SELECT :param_1 AS x UNION ALL "
+                            "SELECT cte.x + :x_1 AS anon_1 "
+                            "FROM cte WHERE cte.x < :x_2) "
+                            "SELECT cte.x FROM cte"
+                            )
 
     def test_recursive_union_no_alias_two(self):
         """
@@ -157,13 +155,13 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         t = t.union_all(select([t.c.n + 1]).where(t.c.n < 100))
         s = select([func.sum(t.c.n)])
         self.assert_compile(s,
-            "WITH RECURSIVE t(n) AS "
-            "(SELECT values(:values_1) AS n "
-            "UNION ALL SELECT t.n + :n_1 AS anon_1 "
-            "FROM t "
-            "WHERE t.n < :n_2) "
-            "SELECT sum(t.n) AS sum_1 FROM t"
-            )
+                            "WITH RECURSIVE t(n) AS "
+                            "(SELECT values(:values_1) AS n "
+                            "UNION ALL SELECT t.n + :n_1 AS anon_1 "
+                            "FROM t "
+                            "WHERE t.n < :n_2) "
+                            "SELECT sum(t.n) AS sum_1 FROM t"
+                            )
 
     def test_recursive_union_no_alias_three(self):
         # like test one, but let's refer to the CTE
@@ -181,14 +179,13 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         s2 = select([cte, bar])
         self.assert_compile(s2,
-        "WITH RECURSIVE cte(x) AS "
-        "(SELECT :param_1 AS x UNION ALL "
-        "SELECT cte.x + :x_1 AS anon_1 "
-        "FROM cte WHERE cte.x < :x_2), "
-        "bar AS (SELECT cte.x AS x FROM cte) "
-        "SELECT cte.x, bar.x FROM cte, bar"
-        )
-
+                            "WITH RECURSIVE cte(x) AS "
+                            "(SELECT :param_1 AS x UNION ALL "
+                            "SELECT cte.x + :x_1 AS anon_1 "
+                            "FROM cte WHERE cte.x < :x_2), "
+                            "bar AS (SELECT cte.x AS x FROM cte) "
+                            "SELECT cte.x, bar.x FROM cte, bar"
+                            )
 
     def test_recursive_union_no_alias_four(self):
         # like test one and three, but let's refer
@@ -208,109 +205,104 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         # includes "inner" cte
         s2 = select([cte, bar])
         self.assert_compile(s2,
-        "WITH RECURSIVE cte(x) AS "
-        "(SELECT :param_1 AS x UNION ALL "
-        "SELECT cte.x + :x_1 AS anon_1 "
-        "FROM cte WHERE cte.x < :x_2), "
-        "bar AS (SELECT cte.x AS x FROM cte) "
-        "SELECT cte.x, bar.x FROM cte, bar"
-        )
+                            "WITH RECURSIVE cte(x) AS "
+                            "(SELECT :param_1 AS x UNION ALL "
+                            "SELECT cte.x + :x_1 AS anon_1 "
+                            "FROM cte WHERE cte.x < :x_2), "
+                            "bar AS (SELECT cte.x AS x FROM cte) "
+                            "SELECT cte.x, bar.x FROM cte, bar"
+                            )
 
         # bar rendered, only includes "inner" cte,
         # "outer" cte isn't present
         s2 = select([bar])
         self.assert_compile(s2,
-        "WITH RECURSIVE cte(x) AS "
-        "(SELECT :param_1 AS x), "
-        "bar AS (SELECT cte.x AS x FROM cte) "
-        "SELECT bar.x FROM bar"
-        )
+                            "WITH RECURSIVE cte(x) AS "
+                            "(SELECT :param_1 AS x), "
+                            "bar AS (SELECT cte.x AS x FROM cte) "
+                            "SELECT bar.x FROM bar"
+                            )
 
         # bar rendered, but then the "outer"
         # cte is rendered.
         s2 = select([bar, cte])
-        self.assert_compile(s2,
-        "WITH RECURSIVE bar AS (SELECT cte.x AS x FROM cte), "
-        "cte(x) AS "
-        "(SELECT :param_1 AS x UNION ALL "
-        "SELECT cte.x + :x_1 AS anon_1 "
-        "FROM cte WHERE cte.x < :x_2) "
-
-        "SELECT bar.x, cte.x FROM bar, cte"
-        )
+        self.assert_compile(
+            s2, "WITH RECURSIVE bar AS (SELECT cte.x AS x FROM cte), "
+            "cte(x) AS "
+            "(SELECT :param_1 AS x UNION ALL "
+            "SELECT cte.x + :x_1 AS anon_1 "
+            "FROM cte WHERE cte.x < :x_2) "
+            "SELECT bar.x, cte.x FROM bar, cte")
 
     def test_conflicting_names(self):
         """test a flat out name conflict."""
 
         s1 = select([1])
-        c1= s1.cte(name='cte1', recursive=True)
+        c1 = s1.cte(name='cte1', recursive=True)
         s2 = select([1])
         c2 = s2.cte(name='cte1', recursive=True)
 
         s = select([c1, c2])
         assert_raises_message(
-                CompileError,
-                "Multiple, unrelated CTEs found "
-                "with the same name: 'cte1'",
-                s.compile
+            CompileError,
+            "Multiple, unrelated CTEs found "
+            "with the same name: 'cte1'",
+            s.compile
         )
-
-
-
 
     def test_union(self):
         orders = table('orders',
-            column('region'),
-            column('amount'),
-        )
+                       column('region'),
+                       column('amount'),
+                       )
 
         regional_sales = select([
-                            orders.c.region,
-                            orders.c.amount
-                        ]).cte("regional_sales")
+            orders.c.region,
+            orders.c.amount
+        ]).cte("regional_sales")
 
-        s = select([regional_sales.c.region]).\
-                where(
-                    regional_sales.c.amount > 500
-                )
+        s = select(
+            [regional_sales.c.region]).where(
+            regional_sales.c.amount > 500
+        )
 
         self.assert_compile(s,
-            "WITH regional_sales AS "
-            "(SELECT orders.region AS region, "
-            "orders.amount AS amount FROM orders) "
-            "SELECT regional_sales.region "
-            "FROM regional_sales WHERE "
-            "regional_sales.amount > :amount_1")
+                            "WITH regional_sales AS "
+                            "(SELECT orders.region AS region, "
+                            "orders.amount AS amount FROM orders) "
+                            "SELECT regional_sales.region "
+                            "FROM regional_sales WHERE "
+                            "regional_sales.amount > :amount_1")
 
         s = s.union_all(
-            select([regional_sales.c.region]).\
-                where(
-                    regional_sales.c.amount < 300
-                )
+            select([regional_sales.c.region]).
+            where(
+                regional_sales.c.amount < 300
+            )
         )
         self.assert_compile(s,
-            "WITH regional_sales AS "
-            "(SELECT orders.region AS region, "
-            "orders.amount AS amount FROM orders) "
-            "SELECT regional_sales.region FROM regional_sales "
-            "WHERE regional_sales.amount > :amount_1 "
-            "UNION ALL SELECT regional_sales.region "
-            "FROM regional_sales WHERE "
-            "regional_sales.amount < :amount_2")
+                            "WITH regional_sales AS "
+                            "(SELECT orders.region AS region, "
+                            "orders.amount AS amount FROM orders) "
+                            "SELECT regional_sales.region FROM regional_sales "
+                            "WHERE regional_sales.amount > :amount_1 "
+                            "UNION ALL SELECT regional_sales.region "
+                            "FROM regional_sales WHERE "
+                            "regional_sales.amount < :amount_2")
 
     def test_reserved_quote(self):
         orders = table('orders',
-            column('order'),
-        )
+                       column('order'),
+                       )
         s = select([orders.c.order]).cte("regional_sales", recursive=True)
         s = select([s.c.order])
         self.assert_compile(s,
-            'WITH RECURSIVE regional_sales("order") AS '
-            '(SELECT orders."order" AS "order" '
-            "FROM orders)"
-            ' SELECT regional_sales."order" '
-            "FROM regional_sales"
-            )
+                            'WITH RECURSIVE regional_sales("order") AS '
+                            '(SELECT orders."order" AS "order" '
+                            "FROM orders)"
+                            ' SELECT regional_sales."order" '
+                            "FROM regional_sales"
+                            )
 
     def test_multi_subq_quote(self):
         cte = select([literal(1).label("id")]).cte(name='CTE')
@@ -327,65 +319,61 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             '(SELECT "CTE".id AS id FROM "CTE") AS anon_2'
         )
 
-
     def test_positional_binds(self):
         orders = table('orders',
-            column('order'),
-        )
+                       column('order'),
+                       )
         s = select([orders.c.order, literal("x")]).cte("regional_sales")
         s = select([s.c.order, literal("y")])
         dialect = default.DefaultDialect()
         dialect.positional = True
         dialect.paramstyle = 'numeric'
-        self.assert_compile(s,
+        self.assert_compile(
+            s,
             'WITH regional_sales AS (SELECT orders."order" '
             'AS "order", :1 AS anon_2 FROM orders) SELECT '
             'regional_sales."order", :2 AS anon_1 FROM regional_sales',
-            checkpositional=('x', 'y'),
-            dialect=dialect
-        )
+            checkpositional=(
+                'x',
+                'y'),
+            dialect=dialect)
 
-        self.assert_compile(s.union(s),
-            'WITH regional_sales AS (SELECT orders."order" '
+        self.assert_compile(
+            s.union(s), 'WITH regional_sales AS (SELECT orders."order" '
             'AS "order", :1 AS anon_2 FROM orders) SELECT '
             'regional_sales."order", :2 AS anon_1 FROM regional_sales '
             'UNION SELECT regional_sales."order", :3 AS anon_1 '
-            'FROM regional_sales',
-            checkpositional=('x', 'y', 'y'),
-            dialect=dialect
-        )
+            'FROM regional_sales', checkpositional=(
+                'x', 'y', 'y'), dialect=dialect)
 
         s = select([orders.c.order]).\
-            where(orders.c.order=='x').cte("regional_sales")
-        s = select([s.c.order]).where(s.c.order=="y")
-        self.assert_compile(s,
-            'WITH regional_sales AS (SELECT orders."order" AS '
+            where(orders.c.order == 'x').cte("regional_sales")
+        s = select([s.c.order]).where(s.c.order == "y")
+        self.assert_compile(
+            s, 'WITH regional_sales AS (SELECT orders."order" AS '
             '"order" FROM orders WHERE orders."order" = :1) '
             'SELECT regional_sales."order" FROM regional_sales '
-            'WHERE regional_sales."order" = :2',
-            checkpositional=('x', 'y'),
-            dialect=dialect
-        )
+            'WHERE regional_sales."order" = :2', checkpositional=(
+                'x', 'y'), dialect=dialect)
 
     def test_positional_binds_2(self):
         orders = table('orders',
-            column('order'),
-        )
+                       column('order'),
+                       )
         s = select([orders.c.order, literal("x")]).cte("regional_sales")
         s = select([s.c.order, literal("y")])
         dialect = default.DefaultDialect()
         dialect.positional = True
         dialect.paramstyle = 'numeric'
         s1 = select([orders.c.order]).where(orders.c.order == 'x').\
-                    cte("regional_sales_1")
+            cte("regional_sales_1")
 
         s1a = s1.alias()
 
         s2 = select([orders.c.order == 'y', s1a.c.order,
-                    orders.c.order, s1.c.order]).\
-                    where(orders.c.order == 'z').\
-                    cte("regional_sales_2")
-
+                     orders.c.order, s1.c.order]).\
+            where(orders.c.order == 'z').\
+            cte("regional_sales_2")
 
         s3 = select([s2])
 
@@ -402,7 +390,6 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             'WHERE orders."order" = :3) SELECT regional_sales_2.anon_1, '
             'regional_sales_2."order" FROM regional_sales_2',
             checkpositional=('x', 'y', 'z'), dialect=dialect)
-
 
     def test_all_aliases(self):
         orders = table('order', column('order'))
@@ -422,7 +409,11 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             'regional_sales AS anon_2 WHERE anon_1."order" > anon_2."order"'
         )
 
-        s3 = select([orders]).select_from(orders.join(r1, r1.c.order == orders.c.order))
+        s3 = select(
+            [orders]).select_from(
+            orders.join(
+                r1,
+                r1.c.order == orders.c.order))
 
         self.assert_compile(
             s3,
@@ -430,5 +421,6 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             '(SELECT "order"."order" AS "order" '
             'FROM "order")'
             ' SELECT "order"."order" '
-            'FROM "order" JOIN regional_sales AS anon_1 ON anon_1."order" = "order"."order"'
+            'FROM "order" JOIN regional_sales AS anon_1 '
+            'ON anon_1."order" = "order"."order"'
         )

@@ -1,6 +1,7 @@
 from sqlalchemy.testing import eq_
 import datetime
-from sqlalchemy import *
+from sqlalchemy import func, select, Integer, literal, DateTime, Table, \
+    Column, Sequence, MetaData, extract, Date, String, bindparam
 from sqlalchemy.sql import table, column
 from sqlalchemy import sql, util
 from sqlalchemy.sql.compiler import BIND_TEMPLATES
@@ -24,14 +25,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         for dialect in all_dialects(exclude=('sybase', )):
             bindtemplate = BIND_TEMPLATES[dialect.paramstyle]
             self.assert_compile(func.current_timestamp(),
-                                        "CURRENT_TIMESTAMP", dialect=dialect)
+                                "CURRENT_TIMESTAMP", dialect=dialect)
             self.assert_compile(func.localtime(), "LOCALTIME", dialect=dialect)
             if dialect.name in ('firebird',):
                 self.assert_compile(func.nosuchfunction(),
-                                            "nosuchfunction", dialect=dialect)
+                                    "nosuchfunction", dialect=dialect)
             else:
                 self.assert_compile(func.nosuchfunction(),
-                                        "nosuchfunction()", dialect=dialect)
+                                    "nosuchfunction()", dialect=dialect)
 
             # test generic function compile
             class fake_func(GenericFunction):
@@ -41,15 +42,16 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                     GenericFunction.__init__(self, arg, **kwargs)
 
             self.assert_compile(
-                            fake_func('foo'),
-                            "fake_func(%s)" %
-                            bindtemplate % {'name': 'param_1', 'position': 1},
-                            dialect=dialect)
+                fake_func('foo'),
+                "fake_func(%s)" %
+                bindtemplate % {'name': 'param_1', 'position': 1},
+                dialect=dialect)
 
     def test_use_labels(self):
         self.assert_compile(select([func.foo()], use_labels=True),
-            "SELECT foo() AS foo_1"
-        )
+                            "SELECT foo() AS foo_1"
+                            )
+
     def test_underscores(self):
         self.assert_compile(func.if_(), "if()")
 
@@ -81,6 +83,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             fn, "coalesce(:param_1, :param_2)"
         )
+
     def test_custom_default_namespace(self):
         class myfunc(GenericFunction):
             pass
@@ -204,26 +207,25 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         for fn in [func.coalesce, func.max, func.min, func.sum]:
             for args, type_ in [
-                            ((datetime.date(2007, 10, 5),
-                                datetime.date(2005, 10, 15)), sqltypes.Date),
-                            ((3, 5), sqltypes.Integer),
-                            ((decimal.Decimal(3), decimal.Decimal(5)),
-                                                        sqltypes.Numeric),
-                            (("foo", "bar"), sqltypes.String),
-                            ((datetime.datetime(2007, 10, 5, 8, 3, 34),
-                                datetime.datetime(2005, 10, 15, 14, 45, 33)),
-                                                        sqltypes.DateTime)
-                        ]:
+                ((datetime.date(2007, 10, 5),
+                  datetime.date(2005, 10, 15)), sqltypes.Date),
+                ((3, 5), sqltypes.Integer),
+                ((decimal.Decimal(3), decimal.Decimal(5)),
+                 sqltypes.Numeric),
+                (("foo", "bar"), sqltypes.String),
+                ((datetime.datetime(2007, 10, 5, 8, 3, 34),
+                  datetime.datetime(2005, 10, 15, 14, 45, 33)),
+                 sqltypes.DateTime)
+            ]:
                 assert isinstance(fn(*args).type, type_), \
-                            "%s / %r != %s" % (fn(), fn(*args).type, type_)
+                    "%s / %r != %s" % (fn(), fn(*args).type, type_)
 
         assert isinstance(func.concat("foo", "bar").type, sqltypes.String)
 
-
     def test_assorted(self):
         table1 = table('mytable',
-            column('myid', Integer),
-        )
+                       column('myid', Integer),
+                       )
 
         table2 = table(
             'myothertable',
@@ -232,35 +234,42 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # test an expression with a function
         self.assert_compile(func.lala(3, 4, literal("five"),
-                                        table1.c.myid) * table2.c.otherid,
-            "lala(:lala_1, :lala_2, :param_1, mytable.myid) * "
-            "myothertable.otherid")
+                                      table1.c.myid) * table2.c.otherid,
+                            "lala(:lala_1, :lala_2, :param_1, mytable.myid) * "
+                            "myothertable.otherid")
 
         # test it in a SELECT
-        self.assert_compile(select([func.count(table1.c.myid)]),
+        self.assert_compile(select(
+            [func.count(table1.c.myid)]),
             "SELECT count(mytable.myid) AS count_1 FROM mytable")
 
         # test a "dotted" function name
-        self.assert_compile(select([func.foo.bar.lala(table1.c.myid)]),
+        self.assert_compile(select([func.foo.bar.lala(
+            table1.c.myid)]),
             "SELECT foo.bar.lala(mytable.myid) AS lala_1 FROM mytable")
 
         # test the bind parameter name with a "dotted" function name is
         # only the name (limits the length of the bind param name)
         self.assert_compile(select([func.foo.bar.lala(12)]),
-            "SELECT foo.bar.lala(:lala_2) AS lala_1")
+                            "SELECT foo.bar.lala(:lala_2) AS lala_1")
 
         # test a dotted func off the engine itself
         self.assert_compile(func.lala.hoho(7), "lala.hoho(:hoho_1)")
 
         # test None becomes NULL
-        self.assert_compile(func.my_func(1, 2, None, 3),
-                        "my_func(:my_func_1, :my_func_2, NULL, :my_func_3)")
+        self.assert_compile(
+            func.my_func(
+                1,
+                2,
+                None,
+                3),
+            "my_func(:my_func_1, :my_func_2, NULL, :my_func_3)")
 
         # test pickling
         self.assert_compile(
-                util.pickle.loads(util.pickle.dumps(
-                                        func.my_func(1, 2, None, 3))),
-                "my_func(:my_func_1, :my_func_2, NULL, :my_func_3)")
+            util.pickle.loads(util.pickle.dumps(
+                func.my_func(1, 2, None, 3))),
+            "my_func(:my_func_1, :my_func_2, NULL, :my_func_3)")
 
         # assert func raises AttributeError for __bases__ attribute, since
         # its not a class fixes pydoc
@@ -271,28 +280,34 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             assert True
 
     def test_functions_with_cols(self):
-        users = table('users', column('id'), column('name'), column('fullname'))
-        calculate = select([column('q'), column('z'), column('r')],
-            from_obj=[func.calculate(bindparam('x', None), bindparam('y', None))])
+        users = table(
+            'users',
+            column('id'),
+            column('name'),
+            column('fullname'))
+        calculate = select([column('q'), column('z'), column('r')], from_obj=[
+                           func.calculate(
+                               bindparam('x', None), bindparam('y', None)
+                           )])
 
         self.assert_compile(select([users], users.c.id > calculate.c.z),
-            "SELECT users.id, users.name, users.fullname "
-            "FROM users, (SELECT q, z, r "
-            "FROM calculate(:x, :y)) "
-            "WHERE users.id > z"
-        )
+                            "SELECT users.id, users.name, users.fullname "
+                            "FROM users, (SELECT q, z, r "
+                            "FROM calculate(:x, :y)) "
+                            "WHERE users.id > z"
+                            )
 
         s = select([users], users.c.id.between(
             calculate.alias('c1').unique_params(x=17, y=45).c.z,
             calculate.alias('c2').unique_params(x=5, y=12).c.z))
 
-        self.assert_compile(s,
-            "SELECT users.id, users.name, users.fullname "
+        self.assert_compile(
+            s, "SELECT users.id, users.name, users.fullname "
             "FROM users, (SELECT q, z, r "
             "FROM calculate(:x_1, :y_1)) AS c1, (SELECT q, z, r "
             "FROM calculate(:x_2, :y_2)) AS c2 "
-            "WHERE users.id BETWEEN c1.z AND c2.z",
-            checkparams={'y_1': 45, 'x_1': 17, 'y_2': 12, 'x_2': 5})
+            "WHERE users.id BETWEEN c1.z AND c2.z", checkparams={
+                'y_1': 45, 'x_1': 17, 'y_2': 12, 'x_2': 5})
 
     def test_non_functions(self):
         expr = func.cast("foo", Integer)
@@ -301,11 +316,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         expr = func.extract("year", datetime.date(2010, 12, 5))
         self.assert_compile(expr, "EXTRACT(year FROM :param_1)")
 
+
 class ExecuteTest(fixtures.TestBase):
+
     @engines.close_first
     def tearDown(self):
         pass
-
 
     def test_conn_execute(self):
         from sqlalchemy.sql.expression import FunctionElement
@@ -341,7 +357,6 @@ class ExecuteTest(fixtures.TestBase):
         eq_(ret.context.execution_options, {'foo': 'bar'})
         ret.close()
 
-
     @engines.close_first
     def test_update(self):
         """
@@ -352,16 +367,16 @@ class ExecuteTest(fixtures.TestBase):
 
         meta = MetaData(testing.db)
         t = Table('t1', meta,
-            Column('id', Integer, Sequence('t1idseq', optional=True),
-                                                            primary_key=True),
-            Column('value', Integer)
-        )
+                  Column('id', Integer, Sequence('t1idseq', optional=True),
+                         primary_key=True),
+                  Column('value', Integer)
+                  )
         t2 = Table('t2', meta,
-            Column('id', Integer, Sequence('t2idseq', optional=True),
-                                                            primary_key=True),
-            Column('value', Integer, default=7),
-            Column('stuff', String(20), onupdate="thisisstuff")
-        )
+                   Column('id', Integer, Sequence('t2idseq', optional=True),
+                          primary_key=True),
+                   Column('value', Integer, default=7),
+                   Column('stuff', String(20), onupdate="thisisstuff")
+                   )
         meta.create_all()
         try:
             t.insert(values=dict(value=func.length("one"))).execute()
@@ -374,20 +389,19 @@ class ExecuteTest(fixtures.TestBase):
             assert t.select(t.c.id == id).execute().first()['value'] == 9
             t.update(values={t.c.value: func.length("asdf")}).execute()
             assert t.select().execute().first()['value'] == 4
-            print("--------------------------")
             t2.insert().execute()
             t2.insert(values=dict(value=func.length("one"))).execute()
             t2.insert(values=dict(value=func.length("asfda") + -19)).\
-                            execute(stuff="hi")
+                execute(stuff="hi")
 
             res = exec_sorted(select([t2.c.value, t2.c.stuff]))
             eq_(res, [(-14, 'hi'), (3, None), (7, None)])
 
             t2.update(values=dict(value=func.length("asdsafasd"))).\
-                        execute(stuff="some stuff")
+                execute(stuff="some stuff")
             assert select([t2.c.value, t2.c.stuff]).execute().fetchall() == \
-                        [(9, "some stuff"), (9, "some stuff"),
-                            (9, "some stuff")]
+                [(9, "some stuff"), (9, "some stuff"),
+                 (9, "some stuff")]
 
             t2.delete().execute()
 
@@ -401,10 +415,10 @@ class ExecuteTest(fixtures.TestBase):
             )
 
             t2.update(values={t2.c.value: func.length("asfdaasdf"),
-                                        t2.c.stuff: "foo"}).execute()
+                              t2.c.stuff: "foo"}).execute()
             print("HI", select([t2.c.value, t2.c.stuff]).execute().first())
             eq_(select([t2.c.value, t2.c.stuff]).execute().first(),
-                    (9, "foo")
+                (9, "foo")
                 )
         finally:
             meta.drop_all()
@@ -416,12 +430,12 @@ class ExecuteTest(fixtures.TestBase):
         y = func.current_date(bind=testing.db).select().execute().scalar()
         z = func.current_date(bind=testing.db).scalar()
         w = select(['*'], from_obj=[func.current_date(bind=testing.db)]).\
-                    scalar()
+            scalar()
 
         # construct a column-based FROM object out of a function,
         # like in [ticket:172]
         s = select([sql.column('date', type_=DateTime)],
-                            from_obj=[func.current_date(bind=testing.db)])
+                   from_obj=[func.current_date(bind=testing.db)])
         q = s.execute().first()[s.c.date]
         r = s.alias('datequery').select().scalar()
 
@@ -470,4 +484,3 @@ def exec_sorted(statement, *args, **kw):
 
     return sorted([tuple(row)
                    for row in statement.execute(*args, **kw).fetchall()])
-

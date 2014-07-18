@@ -5,12 +5,13 @@ from sqlalchemy import Table, Column, Integer, MetaData
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 
+
 class TestCoreInspection(fixtures.TestBase):
 
     def test_table(self):
         t = Table('t', MetaData(),
-            Column('x', Integer)
-            )
+                  Column('x', Integer)
+                  )
 
         is_(inspect(t), t)
         assert t.is_selectable
@@ -18,8 +19,8 @@ class TestCoreInspection(fixtures.TestBase):
 
     def test_select(self):
         t = Table('t', MetaData(),
-            Column('x', Integer)
-            )
+                  Column('x', Integer)
+                  )
         s = t.select()
 
         is_(inspect(s), s)

@@ -9,6 +9,7 @@ from sqlalchemy.testing import AssertsCompiledSQL,\
 
 
 class _InsertTestBase(object):
+
     @classmethod
     def define_tables(cls, metadata):
         Table('mytable', metadata,
@@ -27,8 +28,8 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.mytable
 
         self.assert_compile(insert(table1),
-            'INSERT INTO mytable (myid, name, description) '
-            'VALUES (:myid, :name, :description)')
+                            'INSERT INTO mytable (myid, name, description) '
+                            'VALUES (:myid, :name, :description)')
 
     def test_insert_with_values_dict(self):
         table1 = self.tables.mytable
@@ -38,7 +39,12 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             'name': 'jack'
         }
 
-        self.assert_compile(insert(table1, dict(myid=3, name='jack')),
+        self.assert_compile(
+            insert(
+                table1,
+                dict(
+                    myid=3,
+                    name='jack')),
             'INSERT INTO mytable (myid, name) VALUES (:myid, :name)',
             checkparams=checkparams)
 
@@ -52,15 +58,15 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         }
 
         self.assert_compile(insert(table1, (3, 'jack', 'mydescription')),
-            'INSERT INTO mytable (myid, name, description) '
-            'VALUES (:myid, :name, :description)',
-            checkparams=checkparams)
+                            'INSERT INTO mytable (myid, name, description) '
+                            'VALUES (:myid, :name, :description)',
+                            checkparams=checkparams)
 
     def test_insert_with_values_func(self):
         table1 = self.tables.mytable
 
         self.assert_compile(insert(table1, values=dict(myid=func.lala())),
-            'INSERT INTO mytable (myid) VALUES (lala())')
+                            'INSERT INTO mytable (myid) VALUES (lala())')
 
     def test_insert_with_user_supplied_bind_params(self):
         table1 = self.tables.mytable
@@ -70,7 +76,10 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             table1.c.name: bindparam('username')
         }
 
-        self.assert_compile(insert(table1, values),
+        self.assert_compile(
+            insert(
+                table1,
+                values),
             'INSERT INTO mytable (myid, name) VALUES (:userid, :username)')
 
     def test_insert_values(self):
@@ -79,7 +88,10 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         values1 = {table1.c.myid: bindparam('userid')}
         values2 = {table1.c.name: bindparam('username')}
 
-        self.assert_compile(insert(table1, values=values1).values(values2),
+        self.assert_compile(
+            insert(
+                table1,
+                values=values1).values(values2),
             'INSERT INTO mytable (myid, name) VALUES (:userid, :username)')
 
     def test_prefix_with(self):
@@ -89,25 +101,31 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             prefix_with('A', 'B', dialect='mysql').\
             prefix_with('C', 'D')
 
-        self.assert_compile(stmt,
+        self.assert_compile(
+            stmt,
             'INSERT C D INTO mytable (myid, name, description) '
             'VALUES (:myid, :name, :description)')
 
-        self.assert_compile(stmt,
+        self.assert_compile(
+            stmt,
             'INSERT A B C D INTO mytable (myid, name, description) '
-            'VALUES (%s, %s, %s)', dialect=mysql.dialect())
+            'VALUES (%s, %s, %s)',
+            dialect=mysql.dialect())
 
     def test_inline_default(self):
         metadata = MetaData()
         table = Table('sometable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('foo', Integer, default=func.foobar()))
+                      Column('id', Integer, primary_key=True),
+                      Column('foo', Integer, default=func.foobar()))
 
         self.assert_compile(table.insert(values={}, inline=True),
-            'INSERT INTO sometable (foo) VALUES (foobar())')
+                            'INSERT INTO sometable (foo) VALUES (foobar())')
 
-        self.assert_compile(table.insert(inline=True),
-            'INSERT INTO sometable (foo) VALUES (foobar())', params={})
+        self.assert_compile(
+            table.insert(
+                inline=True),
+            'INSERT INTO sometable (foo) VALUES (foobar())',
+            params={})
 
     def test_insert_returning_not_in_default(self):
         table1 = self.tables.mytable
@@ -122,9 +140,10 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_insert_from_select_select(self):
         table1 = self.tables.mytable
-        sel = select([table1.c.myid, table1.c.name]).where(table1.c.name == 'foo')
+        sel = select([table1.c.myid, table1.c.name]).where(
+            table1.c.name == 'foo')
         ins = self.tables.myothertable.insert().\
-                    from_select(("otherid", "othername"), sel)
+            from_select(("otherid", "othername"), sel)
         self.assert_compile(
             ins,
             "INSERT INTO myothertable (otherid, othername) "
@@ -135,9 +154,10 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_insert_from_select_select_alt_ordering(self):
         table1 = self.tables.mytable
-        sel = select([table1.c.name, table1.c.myid]).where(table1.c.name == 'foo')
+        sel = select([table1.c.name, table1.c.myid]).where(
+            table1.c.name == 'foo')
         ins = self.tables.myothertable.insert().\
-                    from_select(("othername", "otherid"), sel)
+            from_select(("othername", "otherid"), sel)
         self.assert_compile(
             ins,
             "INSERT INTO myothertable (othername, otherid) "
@@ -149,12 +169,12 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     def test_insert_from_select_select_no_defaults(self):
         metadata = MetaData()
         table = Table('sometable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('foo', Integer, default=func.foobar()))
+                      Column('id', Integer, primary_key=True),
+                      Column('foo', Integer, default=func.foobar()))
         table1 = self.tables.mytable
         sel = select([table1.c.myid]).where(table1.c.name == 'foo')
         ins = table.insert().\
-                    from_select(["id"], sel)
+            from_select(["id"], sel)
         self.assert_compile(
             ins,
             "INSERT INTO sometable (id) SELECT mytable.myid "
@@ -164,9 +184,10 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_insert_mix_select_values_exception(self):
         table1 = self.tables.mytable
-        sel = select([table1.c.myid, table1.c.name]).where(table1.c.name == 'foo')
+        sel = select([table1.c.myid, table1.c.name]).where(
+            table1.c.name == 'foo')
         ins = self.tables.myothertable.insert().\
-                    from_select(("otherid", "othername"), sel)
+            from_select(("otherid", "othername"), sel)
         assert_raises_message(
             exc.InvalidRequestError,
             "This construct already inserts from a SELECT",
@@ -175,7 +196,8 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_insert_mix_values_select_exception(self):
         table1 = self.tables.mytable
-        sel = select([table1.c.myid, table1.c.name]).where(table1.c.name == 'foo')
+        sel = select([table1.c.myid, table1.c.name]).where(
+            table1.c.name == 'foo')
         ins = self.tables.myothertable.insert().values(othername="5")
         assert_raises_message(
             exc.InvalidRequestError,
@@ -186,7 +208,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     def test_insert_from_select_table(self):
         table1 = self.tables.mytable
         ins = self.tables.myothertable.insert().\
-                    from_select(("otherid", "othername"), table1)
+            from_select(("otherid", "othername"), table1)
         # note we aren't checking the number of columns right now
         self.assert_compile(
             ins,
@@ -207,20 +229,22 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             select([name, description])
         )
         ins = mytable.insert().\
-                    from_select(
-                            [mytable.c.name, mytable.c.description], sel)
+            from_select(
+            [mytable.c.name, mytable.c.description], sel)
         self.assert_compile(
             ins,
             "INSERT INTO mytable (name, description) "
-                    "SELECT name, mytable.description FROM mytable "
-                    "UNION SELECT name, desc"
+            "SELECT name, mytable.description FROM mytable "
+            "UNION SELECT name, desc"
         )
+
     def test_insert_from_select_col_values(self):
         table1 = self.tables.mytable
         table2 = self.tables.myothertable
-        sel = select([table1.c.myid, table1.c.name]).where(table1.c.name == 'foo')
+        sel = select([table1.c.myid, table1.c.name]).where(
+            table1.c.name == 'foo')
         ins = table2.insert().\
-                    from_select((table2.c.otherid, table2.c.othername), sel)
+            from_select((table2.c.otherid, table2.c.othername), sel)
         self.assert_compile(
             ins,
             "INSERT INTO myothertable (otherid, othername) "
@@ -247,8 +271,8 @@ class EmptyTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         stmt = table1.insert().values({})  # hide from 2to3
         self.assert_compile(stmt,
-            'INSERT INTO mytable DEFAULT VALUES',
-            dialect=dialect)
+                            'INSERT INTO mytable DEFAULT VALUES',
+                            dialect=dialect)
 
     def test_supports_empty_insert_false(self):
         table1 = self.tables.mytable
@@ -257,10 +281,12 @@ class EmptyTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         dialect.supports_empty_insert = dialect.supports_default_values = False
 
         stmt = table1.insert().values({})  # hide from 2to3
-        assert_raises_message(exc.CompileError,
+        assert_raises_message(
+            exc.CompileError,
             "The 'default' dialect with current database version "
-                "settings does not support empty inserts.",
-            stmt.compile, dialect=dialect)
+            "settings does not support empty inserts.",
+            stmt.compile,
+            dialect=dialect)
 
     def _test_insert_with_empty_collection_values(self, collection):
         table1 = self.tables.mytable
@@ -268,13 +294,13 @@ class EmptyTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         ins = table1.insert().values(collection)
 
         self.assert_compile(ins,
-            'INSERT INTO mytable () VALUES ()',
-            checkparams={})
+                            'INSERT INTO mytable () VALUES ()',
+                            checkparams={})
 
         # empty dict populates on next values call
         self.assert_compile(ins.values(myid=3),
-            'INSERT INTO mytable (myid) VALUES (:myid)',
-            checkparams={'myid': 3})
+                            'INSERT INTO mytable (myid) VALUES (:myid)',
+                            checkparams={'myid': 3})
 
     def test_insert_with_empty_list_values(self):
         self._test_insert_with_empty_collection_values([])
@@ -297,7 +323,7 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         assert_raises_message(
             exc.CompileError,
             "The 'default' dialect with current database version settings "
-                "does not support in-place multirow inserts.",
+            "does not support in-place multirow inserts.",
             stmt.compile, dialect=dialect)
 
     def test_named(self):
@@ -324,12 +350,14 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         dialect = default.DefaultDialect()
         dialect.supports_multivalues_insert = True
 
-        self.assert_compile(table1.insert().values(values),
+        self.assert_compile(
+            table1.insert().values(values),
             'INSERT INTO mytable (myid, name, description) VALUES '
-             '(:myid_0, :name_0, :description_0), '
-             '(:myid_1, :name_1, :description_1), '
-             '(:myid_2, :name_2, :description_2)',
-            checkparams=checkparams, dialect=dialect)
+            '(:myid_0, :name_0, :description_0), '
+            '(:myid_1, :name_1, :description_1), '
+            '(:myid_2, :name_2, :description_2)',
+            checkparams=checkparams,
+            dialect=dialect)
 
     def test_positional(self):
         table1 = self.tables.mytable
@@ -347,17 +375,19 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         dialect.paramstyle = 'format'
         dialect.positional = True
 
-        self.assert_compile(table1.insert().values(values),
+        self.assert_compile(
+            table1.insert().values(values),
             'INSERT INTO mytable (myid, name, description) VALUES '
             '(%s, %s, %s), (%s, %s, %s), (%s, %s, %s)',
-            checkpositional=checkpositional, dialect=dialect)
+            checkpositional=checkpositional,
+            dialect=dialect)
 
     def test_inline_default(self):
         metadata = MetaData()
         table = Table('sometable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', String),
-            Column('foo', Integer, default=func.foobar()))
+                      Column('id', Integer, primary_key=True),
+                      Column('data', String),
+                      Column('foo', Integer, default=func.foobar()))
 
         values = [
             {'id': 1, 'data': 'data1'},
@@ -375,19 +405,21 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             'foo_1': 'plainfoo',
         }
 
-        self.assert_compile(table.insert().values(values),
+        self.assert_compile(
+            table.insert().values(values),
             'INSERT INTO sometable (id, data, foo) VALUES '
             '(%(id_0)s, %(data_0)s, foobar()), '
             '(%(id_1)s, %(data_1)s, %(foo_1)s), '
             '(%(id_2)s, %(data_2)s, foobar())',
-            checkparams=checkparams, dialect=postgresql.dialect())
+            checkparams=checkparams,
+            dialect=postgresql.dialect())
 
     def test_sql_functions(self):
         metadata = MetaData()
         table = Table('sometable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', String),
-            Column('foo', Integer))
+                      Column('id', Integer, primary_key=True),
+                      Column('data', String),
+                      Column('foo', Integer))
 
         values = [
             {"id": 1, "data": "foo", "foo": func.foob()},
@@ -414,21 +446,23 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             'data_4': 'bar'
         }
 
-        self.assert_compile(table.insert().values(values),
+        self.assert_compile(
+            table.insert().values(values),
             "INSERT INTO sometable (id, data, foo) VALUES "
             "(%(id_0)s, %(data_0)s, foob()), "
             "(%(id_1)s, %(data_1)s, foob()), "
             "(%(id_2)s, %(data_2)s, bar()), "
             "(%(id_3)s, %(data_3)s, %(foo_3)s), "
             "(%(id_4)s, %(data_4)s, foob())",
-            checkparams=checkparams, dialect=postgresql.dialect())
+            checkparams=checkparams,
+            dialect=postgresql.dialect())
 
     def test_server_default(self):
         metadata = MetaData()
         table = Table('sometable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', String),
-            Column('foo', Integer, server_default=func.foobar()))
+                      Column('id', Integer, primary_key=True),
+                      Column('data', String),
+                      Column('foo', Integer, server_default=func.foobar()))
 
         values = [
             {'id': 1, 'data': 'data1'},
@@ -445,19 +479,21 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             'data_2': 'data3',
         }
 
-        self.assert_compile(table.insert().values(values),
+        self.assert_compile(
+            table.insert().values(values),
             'INSERT INTO sometable (id, data) VALUES '
             '(%(id_0)s, %(data_0)s), '
             '(%(id_1)s, %(data_1)s), '
             '(%(id_2)s, %(data_2)s)',
-            checkparams=checkparams, dialect=postgresql.dialect())
+            checkparams=checkparams,
+            dialect=postgresql.dialect())
 
     def test_server_default_absent_value(self):
         metadata = MetaData()
         table = Table('sometable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', String),
-            Column('foo', Integer, server_default=func.foobar()))
+                      Column('id', Integer, primary_key=True),
+                      Column('data', String),
+                      Column('foo', Integer, server_default=func.foobar()))
 
         values = [
             {'id': 1, 'data': 'data1', 'foo': 'plainfoo'},
@@ -478,9 +514,11 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         # note the effect here is that the first set of params
         # takes effect for the rest of them, when one is absent
-        self.assert_compile(table.insert().values(values),
+        self.assert_compile(
+            table.insert().values(values),
             'INSERT INTO sometable (id, data, foo) VALUES '
             '(%(id_0)s, %(data_0)s, %(foo_0)s), '
             '(%(id_1)s, %(data_1)s, %(foo_0)s), '
             '(%(id_2)s, %(data_2)s, %(foo_2)s)',
-            checkparams=checkparams, dialect=postgresql.dialect())
+            checkparams=checkparams,
+            dialect=postgresql.dialect())

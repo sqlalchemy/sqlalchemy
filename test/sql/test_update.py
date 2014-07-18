@@ -7,6 +7,7 @@ from sqlalchemy.testing.schema import Table, Column
 
 
 class _UpdateFromTestBase(object):
+
     @classmethod
     def define_tables(cls, metadata):
         Table('mytable', metadata,
@@ -74,8 +75,8 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         self.assert_compile(
             table1.update().
-                where(table1.c.myid == 7).
-                values({table1.c.myid: 5}),
+            where(table1.c.myid == 7).
+            values({table1.c.myid: 5}),
             'UPDATE mytable SET myid=:myid WHERE mytable.myid = :myid_1',
             checkparams={'myid': 5, 'myid_1': 7})
 
@@ -99,8 +100,8 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         self.assert_compile(
             update(table1,
-                whereclause=table1.c.name == bindparam('crit'),
-                values={table1.c.name: 'hi'}),
+                   whereclause=table1.c.name == bindparam('crit'),
+                   values={table1.c.name: 'hi'}),
             'UPDATE mytable SET name=:name WHERE mytable.name = :crit',
             params={'crit': 'notthere'},
             checkparams={'crit': 'notthere', 'name': 'hi'})
@@ -110,8 +111,8 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         self.assert_compile(
             update(table1,
-                table1.c.myid == 12,
-                values={table1.c.name: table1.c.myid}),
+                   table1.c.myid == 12,
+                   values={table1.c.name: table1.c.myid}),
             'UPDATE mytable '
             'SET name=mytable.myid, description=:description '
             'WHERE mytable.myid = :myid_1',
@@ -152,8 +153,8 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             update(table1, table1.c.myid == 12, values=v1).values(v2),
             'UPDATE mytable '
             'SET '
-                'name=(mytable.name || :name_1), '
-                'description=:description '
+            'name=(mytable.name || :name_1), '
+            'description=:description '
             'WHERE mytable.myid = :myid_1',
             params={'description': 'test'})
 
@@ -164,29 +165,32 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             table1.c.name: table1.c.name + 'lala',
             table1.c.myid: func.do_stuff(table1.c.myid, literal('hoho'))
         }
-        self.assert_compile(update(table1,
-            (table1.c.myid == func.hoho(4)) &
-            (table1.c.name == literal('foo') +
-             table1.c.name + literal('lala')),
-            values=values),
+        self.assert_compile(
+            update(
+                table1,
+                (table1.c.myid == func.hoho(4)) & (
+                    table1.c.name == literal('foo') +
+                    table1.c.name +
+                    literal('lala')),
+                values=values),
             'UPDATE mytable '
             'SET '
-                'myid=do_stuff(mytable.myid, :param_1), '
-                'name=(mytable.name || :name_1) '
+            'myid=do_stuff(mytable.myid, :param_1), '
+            'name=(mytable.name || :name_1) '
             'WHERE '
-                'mytable.myid = hoho(:hoho_1) AND '
-                'mytable.name = :param_2 || mytable.name || :param_3')
+            'mytable.myid = hoho(:hoho_1) AND '
+            'mytable.name = :param_2 || mytable.name || :param_3')
 
     def test_where_empty(self):
         table1 = self.tables.mytable
         self.assert_compile(
-            table1.update().where(and_()),
-            "UPDATE mytable SET myid=:myid, name=:name, description=:description"
-        )
+            table1.update().where(
+                and_()),
+            "UPDATE mytable SET myid=:myid, name=:name, description=:description")
         self.assert_compile(
-            table1.update().where(or_()),
-            "UPDATE mytable SET myid=:myid, name=:name, description=:description"
-        )
+            table1.update().where(
+                or_()),
+            "UPDATE mytable SET myid=:myid, name=:name, description=:description")
 
     def test_prefix_with(self):
         table1 = self.tables.mytable
@@ -196,13 +200,13 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             prefix_with('C', 'D')
 
         self.assert_compile(stmt,
-            'UPDATE C D mytable SET myid=:myid, name=:name, '
-            'description=:description')
+                            'UPDATE C D mytable SET myid=:myid, name=:name, '
+                            'description=:description')
 
-        self.assert_compile(stmt,
+        self.assert_compile(
+            stmt,
             'UPDATE A B C D mytable SET myid=%s, name=%s, description=%s',
             dialect=mysql.dialect())
-
 
     def test_update_to_expression(self):
         """test update from an expression.
@@ -216,7 +220,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         expr = func.foo(table1.c.myid)
         eq_(expr.key, None)
         self.assert_compile(table1.update().values({expr: 'bar'}),
-            'UPDATE mytable SET foo(myid)=:param_1')
+                            'UPDATE mytable SET foo(myid)=:param_1')
 
     def test_update_bound_ordering(self):
         """test that bound parameters between the UPDATE and FROM clauses
@@ -227,8 +231,8 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table2 = self.tables.myothertable
         sel = select([table2]).where(table2.c.otherid == 5).alias()
         upd = table1.update().\
-                    where(table1.c.name == sel.c.othername).\
-                    values(name='foo')
+            where(table1.c.name == sel.c.othername).\
+            values(name='foo')
 
         dialect = default.DefaultDialect()
         dialect.positional = True
@@ -256,7 +260,6 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
 
 
-
 class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
                             AssertsCompiledSQL):
     __dialect__ = 'default'
@@ -272,7 +275,7 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
         # in values.   The behavior here isn't really defined
         self.assert_compile(
             update(talias1, talias1.c.myid == 7).
-                values({table1.c.name: "fred"}),
+            values({table1.c.name: "fred"}),
             'UPDATE mytable AS t1 '
             'SET name=:name '
             'WHERE t1.myid = :myid_1')
@@ -287,13 +290,13 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
         # as an "extra table", hence we see the full table name rendered.
         self.assert_compile(
             update(talias1, table1.c.myid == 7).
-                values({table1.c.name: 'fred'}),
+            values({table1.c.name: 'fred'}),
             'UPDATE mytable AS t1 '
             'SET name=:mytable_name '
             'FROM mytable '
             'WHERE mytable.myid = :myid_1',
             checkparams={'mytable_name': 'fred', 'myid_1': 7},
-            )
+        )
 
     def test_alias_two_mysql(self):
         table1 = self.tables.mytable
@@ -301,7 +304,7 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
 
         self.assert_compile(
             update(talias1, table1.c.myid == 7).
-                values({table1.c.name: 'fred'}),
+            values({table1.c.name: 'fred'}),
             "UPDATE mytable AS t1, mytable SET mytable.name=%s "
             "WHERE mytable.myid = %s",
             checkparams={'mytable_name': 'fred', 'myid_1': 7},
@@ -312,11 +315,11 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
 
         self.assert_compile(
             users.update().
-                values(name='newname').\
-                values({addresses.c.name: "new address"}).\
-                where(users.c.id == addresses.c.user_id),
+            values(name='newname').
+            values({addresses.c.name: "new address"}).
+            where(users.c.id == addresses.c.user_id),
             "UPDATE users, addresses SET addresses.name=%s, "
-                "users.name=%s WHERE users.id = addresses.user_id",
+            "users.name=%s WHERE users.id = addresses.user_id",
             checkparams={'addresses_name': 'new address', 'name': 'newname'},
             dialect='mysql'
         )
@@ -326,14 +329,14 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
 
         self.assert_compile(
             users.update().
-                values(name='newname').
-                where(users.c.id == addresses.c.user_id).
-                where(addresses.c.email_address == 'e1'),
+            values(name='newname').
+            where(users.c.id == addresses.c.user_id).
+            where(addresses.c.email_address == 'e1'),
             'UPDATE users '
             'SET name=:name FROM addresses '
             'WHERE '
-                'users.id = addresses.user_id AND '
-                'addresses.email_address = :email_address_1',
+            'users.id = addresses.user_id AND '
+            'addresses.email_address = :email_address_1',
             checkparams={'email_address_1': 'e1', 'name': 'newname'})
 
     def test_render_multi_table(self):
@@ -349,19 +352,19 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
 
         self.assert_compile(
             users.update().
-                values(name='newname').
-                where(users.c.id == addresses.c.user_id).
-                where(addresses.c.email_address == 'e1').
-                where(addresses.c.id == dingalings.c.address_id).
-                where(dingalings.c.id == 2),
+            values(name='newname').
+            where(users.c.id == addresses.c.user_id).
+            where(addresses.c.email_address == 'e1').
+            where(addresses.c.id == dingalings.c.address_id).
+            where(dingalings.c.id == 2),
             'UPDATE users '
             'SET name=:name '
             'FROM addresses, dingalings '
             'WHERE '
-                'users.id = addresses.user_id AND '
-                'addresses.email_address = :email_address_1 AND '
-                'addresses.id = dingalings.address_id AND '
-                'dingalings.id = :id_1',
+            'users.id = addresses.user_id AND '
+            'addresses.email_address = :email_address_1 AND '
+            'addresses.id = dingalings.address_id AND '
+            'dingalings.id = :id_1',
             checkparams=checkparams)
 
     def test_render_table_mysql(self):
@@ -369,14 +372,14 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
 
         self.assert_compile(
             users.update().
-                values(name='newname').
-                where(users.c.id == addresses.c.user_id).
-                where(addresses.c.email_address == 'e1'),
+            values(name='newname').
+            where(users.c.id == addresses.c.user_id).
+            where(addresses.c.email_address == 'e1'),
             'UPDATE users, addresses '
             'SET users.name=%s '
             'WHERE '
-                'users.id = addresses.user_id AND '
-                'addresses.email_address = %s',
+            'users.id = addresses.user_id AND '
+            'addresses.email_address = %s',
             checkparams={'email_address_1': 'e1', 'name': 'newname'},
             dialect=mysql.dialect())
 
@@ -398,17 +401,17 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
         subq = select(cols).where(addresses.c.id == 7).alias()
         self.assert_compile(
             users.update().
-                values(name='newname').
-                where(users.c.id == subq.c.user_id).
-                where(subq.c.email_address == 'e1'),
+            values(name='newname').
+            where(users.c.id == subq.c.user_id).
+            where(subq.c.email_address == 'e1'),
             'UPDATE users '
             'SET name=:name FROM ('
-                'SELECT '
-                    'addresses.id AS id, '
-                    'addresses.user_id AS user_id, '
-                    'addresses.email_address AS email_address '
-                'FROM addresses '
-                'WHERE addresses.id = :id_1'
+            'SELECT '
+            'addresses.id AS id, '
+            'addresses.user_id AS user_id, '
+            'addresses.email_address AS email_address '
+            'FROM addresses '
+            'WHERE addresses.id = :id_1'
             ') AS anon_1 '
             'WHERE users.id = anon_1.user_id '
             'AND anon_1.email_address = :email_address_1',
@@ -424,9 +427,9 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
 
         testing.db.execute(
             addresses.update().
-                values(email_address=users.c.name).
-                where(users.c.id == addresses.c.user_id).
-                where(users.c.name == 'ed'))
+            values(email_address=users.c.name).
+            where(users.c.id == addresses.c.user_id).
+            where(users.c.name == 'ed'))
 
         expected = [
             (1, 7, 'x', 'jack@bean.com'),
@@ -443,10 +446,10 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
         a1 = addresses.alias()
         testing.db.execute(
             addresses.update().
-                values(email_address=users.c.name).
-                where(users.c.id == a1.c.user_id).
-                where(users.c.name == 'ed').
-                where(a1.c.id == addresses.c.id)
+            values(email_address=users.c.name).
+            where(users.c.id == a1.c.user_id).
+            where(users.c.name == 'ed').
+            where(a1.c.id == addresses.c.id)
         )
 
         expected = [
@@ -465,11 +468,11 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
 
         testing.db.execute(
             addresses.update().
-                values(email_address=users.c.name).
-                where(users.c.id == addresses.c.user_id).
-                where(users.c.name == 'ed').
-                where(addresses.c.id == dingalings.c.address_id).
-                where(dingalings.c.id == 1))
+            values(email_address=users.c.name).
+            where(users.c.id == addresses.c.user_id).
+            where(users.c.name == 'ed').
+            where(addresses.c.id == dingalings.c.address_id).
+            where(dingalings.c.id == 1))
 
         expected = [
             (1, 7, 'x', 'jack@bean.com'),
@@ -490,9 +493,9 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
 
         testing.db.execute(
             addresses.update().
-                values(values).
-                where(users.c.id == addresses.c.user_id).
-                where(users.c.name == 'ed'))
+            values(values).
+            where(users.c.id == addresses.c.user_id).
+            where(users.c.name == 'ed'))
 
         expected = [
             (1, 7, 'x', 'jack@bean.com'),
@@ -520,9 +523,9 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
 
         testing.db.execute(
             addresses.update().
-                values(values).
-                where(users.c.id == addresses.c.user_id).
-                where(users.c.name == 'ed'))
+            values(values).
+            where(users.c.id == addresses.c.user_id).
+            where(users.c.name == 'ed'))
 
         expected = [
             (1, 7, 'x', 'jack@bean.com'),
@@ -565,7 +568,7 @@ class UpdateFromMultiTableUpdateDefaultsTest(_UpdateFromTestBase,
                      test_needs_autoincrement=True),
               Column('user_id', None, ForeignKey('users.id')),
               Column('email_address', String(50), nullable=False),
-            )
+              )
 
         Table('foobar', metadata,
               Column('id', Integer, primary_key=True,
@@ -573,7 +576,7 @@ class UpdateFromMultiTableUpdateDefaultsTest(_UpdateFromTestBase,
               Column('user_id', None, ForeignKey('users.id')),
               Column('data', String(30)),
               Column('some_update', String(30), onupdate='im the other update')
-            )
+              )
 
     @classmethod
     def fixtures(cls):
@@ -608,9 +611,9 @@ class UpdateFromMultiTableUpdateDefaultsTest(_UpdateFromTestBase,
 
         ret = testing.db.execute(
             addresses.update().
-                values(values).
-                where(users.c.id == addresses.c.user_id).
-                where(users.c.name == 'ed'))
+            values(values).
+            where(users.c.id == addresses.c.user_id).
+            where(users.c.name == 'ed'))
 
         eq_(set(ret.prefetch_cols()), set([users.c.some_update]))
 
@@ -636,9 +639,9 @@ class UpdateFromMultiTableUpdateDefaultsTest(_UpdateFromTestBase,
 
         ret = testing.db.execute(
             users.update().
-                values(values).
-                where(users.c.id == foobar.c.user_id).
-                where(users.c.name == 'ed'))
+            values(values).
+            where(users.c.id == foobar.c.user_id).
+            where(users.c.name == 'ed'))
 
         eq_(
             set(ret.prefetch_cols()),
@@ -662,9 +665,9 @@ class UpdateFromMultiTableUpdateDefaultsTest(_UpdateFromTestBase,
 
         ret = testing.db.execute(
             addresses.update().
-                values({'email_address': users.c.name}).
-                where(users.c.id == addresses.c.user_id).
-                where(users.c.name == 'ed'))
+            values({'email_address': users.c.name}).
+            where(users.c.id == addresses.c.user_id).
+            where(users.c.name == 'ed'))
 
         eq_(ret.prefetch_cols(), [])
 

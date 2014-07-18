@@ -3,8 +3,8 @@ from sqlalchemy import testing
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.sql import column, desc, asc, literal, collate, null, true, false
 from sqlalchemy.sql.expression import BinaryExpression, \
-                ClauseList, Grouping, \
-                UnaryExpression, select, union, func, tuple_
+    ClauseList, Grouping, \
+    UnaryExpression, select, union, func, tuple_
 from sqlalchemy.sql import operators, table
 import operator
 from sqlalchemy import String, Integer, LargeBinary
@@ -14,7 +14,7 @@ from sqlalchemy.sql.elements import _literal_as_text
 from sqlalchemy.schema import Column, Table, MetaData
 from sqlalchemy.types import TypeEngine, TypeDecorator, UserDefinedType, Boolean
 from sqlalchemy.dialects import mysql, firebird, postgresql, oracle, \
-        sqlite, mssql
+    sqlite, mssql
 from sqlalchemy import util
 import datetime
 import collections
@@ -22,9 +22,12 @@ from sqlalchemy import text, literal_column
 from sqlalchemy import and_, not_, between, or_
 from sqlalchemy.sql import true, false, null
 
+
 class LoopOperate(operators.ColumnOperators):
+
     def operate(self, op, *other, **kwargs):
         return op
+
 
 class DefaultColumnComparatorTest(fixtures.TestBase):
 
@@ -38,13 +41,21 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
     def _do_operate_test(self, operator, right=column('right')):
         left = column('left')
 
-        assert left.comparator.operate(operator, right).compare(
-            BinaryExpression(_literal_as_text(left), _literal_as_text(right), operator)
-        )
+        assert left.comparator.operate(
+            operator,
+            right).compare(
+            BinaryExpression(
+                _literal_as_text(left),
+                _literal_as_text(right),
+                operator))
 
-        assert operator(left, right).compare(
-            BinaryExpression(_literal_as_text(left), _literal_as_text(right), operator)
-        )
+        assert operator(
+            left,
+            right).compare(
+            BinaryExpression(
+                _literal_as_text(left),
+                _literal_as_text(right),
+                operator))
 
         self._loop_test(operator, right)
 
@@ -130,27 +141,27 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
     def test_in(self):
         left = column('left')
         assert left.comparator.operate(operators.in_op, [1, 2, 3]).compare(
-                BinaryExpression(
-                    left,
-                    Grouping(ClauseList(
-                        literal(1), literal(2), literal(3)
-                    )),
-                    operators.in_op
-                )
+            BinaryExpression(
+                left,
+                Grouping(ClauseList(
+                    literal(1), literal(2), literal(3)
+                )),
+                operators.in_op
             )
+        )
         self._loop_test(operators.in_op, [1, 2, 3])
 
     def test_notin(self):
         left = column('left')
         assert left.comparator.operate(operators.notin_op, [1, 2, 3]).compare(
-                BinaryExpression(
-                    left,
-                    Grouping(ClauseList(
-                        literal(1), literal(2), literal(3)
-                    )),
-                    operators.notin_op
-                )
+            BinaryExpression(
+                left,
+                Grouping(ClauseList(
+                    literal(1), literal(2), literal(3)
+                )),
+                operators.notin_op
             )
+        )
         self._loop_test(operators.notin_op, [1, 2, 3])
 
     def test_in_no_accept_list_of_non_column_element(self):
@@ -174,7 +185,9 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
     def test_in_no_accept_non_list_thing_with_getitem(self):
         # test [ticket:2726]
         class HasGetitem(String):
+
             class comparator_factory(String.Comparator):
+
                 def __getitem__(self, value):
                     return value
 
@@ -196,26 +209,29 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
     def test_concat(self):
         self._do_operate_test(operators.concat_op)
 
+
 class CustomUnaryOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def _factorial_fixture(self):
         class MyInteger(Integer):
+
             class comparator_factory(Integer.Comparator):
+
                 def factorial(self):
                     return UnaryExpression(self.expr,
-                                modifier=operators.custom_op("!"),
-                                type_=MyInteger)
+                                           modifier=operators.custom_op("!"),
+                                           type_=MyInteger)
 
                 def factorial_prefix(self):
                     return UnaryExpression(self.expr,
-                                operator=operators.custom_op("!!"),
-                                type_=MyInteger)
+                                           operator=operators.custom_op("!!"),
+                                           type_=MyInteger)
 
                 def __invert__(self):
                     return UnaryExpression(self.expr,
-                                operator=operators.custom_op("!!!"),
-                                type_=MyInteger)
+                                           operator=operators.custom_op("!!!"),
+                                           type_=MyInteger)
 
         return MyInteger
 
@@ -265,29 +281,31 @@ class CustomUnaryOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         assert_raises_message(
             exc.CompileError,
             "Unary expression does not support operator and "
-                "modifier simultaneously",
+            "modifier simultaneously",
             UnaryExpression(literal("x"),
-                    operator=operators.custom_op("x"),
-                    modifier=operators.custom_op("y")).compile
+                            operator=operators.custom_op("x"),
+                            modifier=operators.custom_op("y")).compile
         )
 
+
 class _CustomComparatorTests(object):
+
     def test_override_builtin(self):
         c1 = Column('foo', self._add_override_factory())
         self._assert_add_override(c1)
 
     def test_column_proxy(self):
         t = Table('t', MetaData(),
-                Column('foo', self._add_override_factory())
-            )
+                  Column('foo', self._add_override_factory())
+                  )
         proxied = t.select().c.foo
         self._assert_add_override(proxied)
         self._assert_and_override(proxied)
 
     def test_alias_proxy(self):
         t = Table('t', MetaData(),
-                Column('foo', self._add_override_factory())
-            )
+                  Column('foo', self._add_override_factory())
+                  )
         proxied = t.alias().c.foo
         self._assert_add_override(proxied)
         self._assert_and_override(proxied)
@@ -332,11 +350,15 @@ class _CustomComparatorTests(object):
             expr.op("goofy_and")(text("5"))
         )
 
+
 class CustomComparatorTest(_CustomComparatorTests, fixtures.TestBase):
+
     def _add_override_factory(self):
 
         class MyInteger(Integer):
+
             class comparator_factory(TypeEngine.Comparator):
+
                 def __init__(self, expr):
                     self.expr = expr
 
@@ -350,12 +372,14 @@ class CustomComparatorTest(_CustomComparatorTests, fixtures.TestBase):
 
 
 class TypeDecoratorComparatorTest(_CustomComparatorTests, fixtures.TestBase):
+
     def _add_override_factory(self):
 
         class MyInteger(TypeDecorator):
             impl = Integer
 
             class comparator_factory(TypeDecorator.Comparator):
+
                 def __init__(self, expr):
                     self.expr = expr
 
@@ -365,14 +389,19 @@ class TypeDecoratorComparatorTest(_CustomComparatorTests, fixtures.TestBase):
                 def __and__(self, other):
                     return self.expr.op("goofy_and")(other)
 
-
         return MyInteger
 
-class TypeDecoratorWVariantComparatorTest(_CustomComparatorTests, fixtures.TestBase):
+
+class TypeDecoratorWVariantComparatorTest(
+        _CustomComparatorTests,
+        fixtures.TestBase):
+
     def _add_override_factory(self):
 
         class SomeOtherInteger(Integer):
+
             class comparator_factory(TypeEngine.Comparator):
+
                 def __init__(self, expr):
                     self.expr = expr
 
@@ -386,6 +415,7 @@ class TypeDecoratorWVariantComparatorTest(_CustomComparatorTests, fixtures.TestB
             impl = Integer
 
             class comparator_factory(TypeDecorator.Comparator):
+
                 def __init__(self, expr):
                     self.expr = expr
 
@@ -398,10 +428,15 @@ class TypeDecoratorWVariantComparatorTest(_CustomComparatorTests, fixtures.TestB
         return MyInteger().with_variant(SomeOtherInteger, "mysql")
 
 
-class CustomEmbeddedinTypeDecoratorTest(_CustomComparatorTests, fixtures.TestBase):
+class CustomEmbeddedinTypeDecoratorTest(
+        _CustomComparatorTests,
+        fixtures.TestBase):
+
     def _add_override_factory(self):
         class MyInteger(Integer):
+
             class comparator_factory(TypeEngine.Comparator):
+
                 def __init__(self, expr):
                     self.expr = expr
 
@@ -411,16 +446,19 @@ class CustomEmbeddedinTypeDecoratorTest(_CustomComparatorTests, fixtures.TestBas
                 def __and__(self, other):
                     return self.expr.op("goofy_and")(other)
 
-
         class MyDecInteger(TypeDecorator):
             impl = MyInteger
 
         return MyDecInteger
 
+
 class NewOperatorTest(_CustomComparatorTests, fixtures.TestBase):
+
     def _add_override_factory(self):
         class MyInteger(Integer):
+
             class comparator_factory(TypeEngine.Comparator):
+
                 def __init__(self, expr):
                     self.expr = expr
 
@@ -442,12 +480,15 @@ class NewOperatorTest(_CustomComparatorTests, fixtures.TestBase):
     def _assert_not_and_override(self, expr):
         pass
 
+
 class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def test_contains(self):
         class MyType(UserDefinedType):
+
             class comparator_factory(UserDefinedType.Comparator):
+
                 def contains(self, other, **kw):
                     return self.op("->")(other)
 
@@ -458,7 +499,9 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_getitem(self):
         class MyType(UserDefinedType):
+
             class comparator_factory(UserDefinedType.Comparator):
+
                 def __getitem__(self, index):
                     return self.op("->")(index)
 
@@ -470,7 +513,9 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_op_not_an_iterator(self):
         # see [ticket:2726]
         class MyType(UserDefinedType):
+
             class comparator_factory(UserDefinedType.Comparator):
+
                 def __getitem__(self, index):
                     return self.op("->")(index)
 
@@ -479,7 +524,9 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_lshift(self):
         class MyType(UserDefinedType):
+
             class comparator_factory(UserDefinedType.Comparator):
+
                 def __lshift__(self, other):
                     return self.op("->")(other)
 
@@ -490,7 +537,9 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_rshift(self):
         class MyType(UserDefinedType):
+
             class comparator_factory(UserDefinedType.Comparator):
+
                 def __rshift__(self, other):
                     return self.op("->")(other)
 
@@ -501,6 +550,7 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 
 class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+
     """test standalone booleans being wrapped in an AsBoolean, as well
     as true/false compilation."""
 
@@ -623,6 +673,7 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 
 class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+
     """test interaction of and_()/or_() with boolean , null constants
     """
     __dialect__ = default.DefaultDialect(supports_native_boolean=True)
@@ -639,9 +690,8 @@ class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_four(self):
         x = column('x')
         self.assert_compile(
-                and_(or_(x == 5), or_(x == 7)),
-                "x = :x_1 AND x = :x_2")
-
+            and_(or_(x == 5), or_(x == 7)),
+            "x = :x_1 AND x = :x_2")
 
     def test_five(self):
         x = column("x")
@@ -659,23 +709,29 @@ class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_six_pt_five(self):
         x = column("x")
         self.assert_compile(select([x]).where(or_(x == 7, true())),
-                "SELECT x WHERE true")
+                            "SELECT x WHERE true")
 
-        self.assert_compile(select([x]).where(or_(x == 7, true())),
-                "SELECT x WHERE 1 = 1",
-                dialect=default.DefaultDialect(supports_native_boolean=False))
+        self.assert_compile(
+            select(
+                [x]).where(
+                or_(
+                    x == 7,
+                    true())),
+            "SELECT x WHERE 1 = 1",
+            dialect=default.DefaultDialect(
+                    supports_native_boolean=False))
 
     def test_seven(self):
         x = column("x")
         self.assert_compile(
-                and_(true(), x == 7, true(), x == 9),
-                "x = :x_1 AND x = :x_2")
+            and_(true(), x == 7, true(), x == 9),
+            "x = :x_1 AND x = :x_2")
 
     def test_eight(self):
         x = column("x")
         self.assert_compile(
-                or_(false(), x == 7, false(), x == 9),
-                "x = :x_1 OR x = :x_2")
+            or_(false(), x == 7, false(), x == 9),
+            "x = :x_1 OR x = :x_2")
 
     def test_nine(self):
         x = column("x")
@@ -726,86 +782,94 @@ class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
-
     table1 = table('mytable',
-        column('myid', Integer),
-        column('name', String),
-        column('description', String),
-    )
+                   column('myid', Integer),
+                   column('name', String),
+                   column('description', String),
+                   )
 
     table2 = table('op', column('field'))
 
     def test_operator_precedence_1(self):
         self.assert_compile(
-                    self.table2.select((self.table2.c.field == 5) == None),
+            self.table2.select((self.table2.c.field == 5) == None),
             "SELECT op.field FROM op WHERE (op.field = :field_1) IS NULL")
 
     def test_operator_precedence_2(self):
         self.assert_compile(
-                self.table2.select(
-                        (self.table2.c.field + 5) == self.table2.c.field),
+            self.table2.select(
+                (self.table2.c.field + 5) == self.table2.c.field),
             "SELECT op.field FROM op WHERE op.field + :field_1 = op.field")
 
     def test_operator_precedence_3(self):
         self.assert_compile(
-                    self.table2.select((self.table2.c.field + 5) * 6),
+            self.table2.select((self.table2.c.field + 5) * 6),
             "SELECT op.field FROM op WHERE (op.field + :field_1) * :param_1")
 
     def test_operator_precedence_4(self):
-        self.assert_compile(self.table2.select((self.table2.c.field * 5) + 6),
+        self.assert_compile(
+            self.table2.select(
+                (self.table2.c.field * 5) + 6),
             "SELECT op.field FROM op WHERE op.field * :field_1 + :param_1")
 
     def test_operator_precedence_5(self):
         self.assert_compile(self.table2.select(
                             5 + self.table2.c.field.in_([5, 6])),
-            "SELECT op.field FROM op WHERE :param_1 + "
-                        "(op.field IN (:field_1, :field_2))")
+                            "SELECT op.field FROM op WHERE :param_1 + "
+                            "(op.field IN (:field_1, :field_2))")
 
     def test_operator_precedence_6(self):
         self.assert_compile(self.table2.select(
-                        (5 + self.table2.c.field).in_([5, 6])),
+            (5 + self.table2.c.field).in_([5, 6])),
             "SELECT op.field FROM op WHERE :field_1 + op.field "
-                    "IN (:param_1, :param_2)")
+            "IN (:param_1, :param_2)")
 
     def test_operator_precedence_7(self):
         self.assert_compile(self.table2.select(
-                    not_(and_(self.table2.c.field == 5,
-                        self.table2.c.field == 7))),
+            not_(and_(self.table2.c.field == 5,
+                      self.table2.c.field == 7))),
             "SELECT op.field FROM op WHERE NOT "
-                "(op.field = :field_1 AND op.field = :field_2)")
+            "(op.field = :field_1 AND op.field = :field_2)")
 
     def test_operator_precedence_8(self):
-        self.assert_compile(self.table2.select(not_(self.table2.c.field == 5)),
+        self.assert_compile(
+            self.table2.select(
+                not_(
+                    self.table2.c.field == 5)),
             "SELECT op.field FROM op WHERE op.field != :field_1")
 
     def test_operator_precedence_9(self):
         self.assert_compile(self.table2.select(
-                        not_(self.table2.c.field.between(5, 6))),
+            not_(self.table2.c.field.between(5, 6))),
             "SELECT op.field FROM op WHERE "
-                    "op.field NOT BETWEEN :field_1 AND :field_2")
+            "op.field NOT BETWEEN :field_1 AND :field_2")
 
     def test_operator_precedence_10(self):
-        self.assert_compile(self.table2.select(not_(self.table2.c.field) == 5),
+        self.assert_compile(
+            self.table2.select(
+                not_(
+                    self.table2.c.field) == 5),
             "SELECT op.field FROM op WHERE (NOT op.field) = :param_1")
 
     def test_operator_precedence_11(self):
         self.assert_compile(self.table2.select(
-                        (self.table2.c.field == self.table2.c.field).\
-                            between(False, True)),
+            (self.table2.c.field == self.table2.c.field).
+            between(False, True)),
             "SELECT op.field FROM op WHERE (op.field = op.field) "
-                            "BETWEEN :param_1 AND :param_2")
+            "BETWEEN :param_1 AND :param_2")
 
     def test_operator_precedence_12(self):
         self.assert_compile(self.table2.select(
-                        between((self.table2.c.field == self.table2.c.field),
-                                    False, True)),
+            between((self.table2.c.field == self.table2.c.field),
+                    False, True)),
             "SELECT op.field FROM op WHERE (op.field = op.field) "
-                    "BETWEEN :param_1 AND :param_2")
+            "BETWEEN :param_1 AND :param_2")
 
     def test_operator_precedence_13(self):
-        self.assert_compile(self.table2.select(
-                        self.table2.c.field.match(
-                                self.table2.c.field).is_(None)),
+        self.assert_compile(
+            self.table2.select(
+                self.table2.c.field.match(
+                    self.table2.c.field).is_(None)),
             "SELECT op.field FROM op WHERE (op.field MATCH op.field) IS NULL")
 
     def test_operator_precedence_collate_1(self):
@@ -839,7 +903,7 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_operator_precedence_collate_5(self):
         self.assert_compile(
             select([self.table1.c.name]).order_by(
-                        self.table1.c.name.collate('utf-8').desc()),
+                self.table1.c.name.collate('utf-8').desc()),
             "SELECT mytable.name FROM mytable "
             "ORDER BY mytable.name COLLATE utf-8 DESC"
         )
@@ -847,7 +911,7 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_operator_precedence_collate_6(self):
         self.assert_compile(
             select([self.table1.c.name]).order_by(
-                        self.table1.c.name.collate('utf-8').desc().nullslast()),
+                self.table1.c.name.collate('utf-8').desc().nullslast()),
             "SELECT mytable.name FROM mytable "
             "ORDER BY mytable.name COLLATE utf-8 DESC NULLS LAST"
         )
@@ -855,22 +919,22 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_operator_precedence_collate_7(self):
         self.assert_compile(
             select([self.table1.c.name]).order_by(
-                        self.table1.c.name.collate('utf-8').asc()),
+                self.table1.c.name.collate('utf-8').asc()),
             "SELECT mytable.name FROM mytable "
             "ORDER BY mytable.name COLLATE utf-8 ASC"
         )
 
     def test_commutative_operators(self):
         self.assert_compile(
-         literal("a") + literal("b") * literal("c"),
-                ":param_1 || :param_2 * :param_3"
+            literal("a") + literal("b") * literal("c"),
+            ":param_1 || :param_2 * :param_3"
         )
 
     def test_op_operators(self):
         self.assert_compile(
             self.table1.select(self.table1.c.myid.op('hoho')(12) == 14),
             "SELECT mytable.myid, mytable.name, mytable.description FROM "
-                    "mytable WHERE (mytable.myid hoho :myid_1) = :param_1"
+            "mytable WHERE (mytable.myid hoho :myid_1) = :param_1"
         )
 
     def test_op_operators_comma_precedence(self):
@@ -893,6 +957,7 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(op2, "mytable.myid hoho :myid_1 lala :param_1")
         self.assert_compile(op3, "(mytable.myid hoho :myid_1) lala :param_1")
 
+
 class OperatorAssociativityTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
@@ -911,7 +976,6 @@ class OperatorAssociativityTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_associativity_4(self):
         f = column('f')
         self.assert_compile((f - f).label('foo') - f, "(f - f) - f")
-
 
     def test_associativity_5(self):
         f = column('f')
@@ -985,12 +1049,13 @@ class OperatorAssociativityTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         f = column('f')
         self.assert_compile(f / (f / (f - f)), "f / (f / (f - f))")
 
+
 class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
     table1 = table('mytable',
-        column('myid', Integer),
-    )
+                   column('myid', Integer),
+                   )
     table2 = table(
         'myothertable',
         column('otherid', Integer),
@@ -999,152 +1064,164 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_in_1(self):
         self.assert_compile(self.table1.c.myid.in_(['a']),
-        "mytable.myid IN (:myid_1)")
+                            "mytable.myid IN (:myid_1)")
 
     def test_in_2(self):
         self.assert_compile(~self.table1.c.myid.in_(['a']),
-        "mytable.myid NOT IN (:myid_1)")
+                            "mytable.myid NOT IN (:myid_1)")
 
     def test_in_3(self):
         self.assert_compile(self.table1.c.myid.in_(['a', 'b']),
-        "mytable.myid IN (:myid_1, :myid_2)")
+                            "mytable.myid IN (:myid_1, :myid_2)")
 
     def test_in_4(self):
         self.assert_compile(self.table1.c.myid.in_(iter(['a', 'b'])),
-        "mytable.myid IN (:myid_1, :myid_2)")
+                            "mytable.myid IN (:myid_1, :myid_2)")
 
     def test_in_5(self):
         self.assert_compile(self.table1.c.myid.in_([literal('a')]),
-        "mytable.myid IN (:param_1)")
+                            "mytable.myid IN (:param_1)")
 
     def test_in_6(self):
         self.assert_compile(self.table1.c.myid.in_([literal('a'), 'b']),
-        "mytable.myid IN (:param_1, :myid_1)")
+                            "mytable.myid IN (:param_1, :myid_1)")
 
     def test_in_7(self):
         self.assert_compile(
-                self.table1.c.myid.in_([literal('a'), literal('b')]),
-        "mytable.myid IN (:param_1, :param_2)")
+            self.table1.c.myid.in_([literal('a'), literal('b')]),
+            "mytable.myid IN (:param_1, :param_2)")
 
     def test_in_8(self):
         self.assert_compile(self.table1.c.myid.in_(['a', literal('b')]),
-        "mytable.myid IN (:myid_1, :param_1)")
+                            "mytable.myid IN (:myid_1, :param_1)")
 
     def test_in_9(self):
         self.assert_compile(self.table1.c.myid.in_([literal(1) + 'a']),
-        "mytable.myid IN (:param_1 + :param_2)")
+                            "mytable.myid IN (:param_1 + :param_2)")
 
     def test_in_10(self):
         self.assert_compile(self.table1.c.myid.in_([literal('a') + 'a', 'b']),
-        "mytable.myid IN (:param_1 || :param_2, :myid_1)")
+                            "mytable.myid IN (:param_1 || :param_2, :myid_1)")
 
     def test_in_11(self):
-        self.assert_compile(self.table1.c.myid.in_([literal('a') + \
-                                            literal('a'), literal('b')]),
-        "mytable.myid IN (:param_1 || :param_2, :param_3)")
+        self.assert_compile(
+            self.table1.c.myid.in_(
+                [
+                    literal('a') +
+                    literal('a'),
+                    literal('b')]),
+            "mytable.myid IN (:param_1 || :param_2, :param_3)")
 
     def test_in_12(self):
         self.assert_compile(self.table1.c.myid.in_([1, literal(3) + 4]),
-        "mytable.myid IN (:myid_1, :param_1 + :param_2)")
+                            "mytable.myid IN (:myid_1, :param_1 + :param_2)")
 
     def test_in_13(self):
         self.assert_compile(self.table1.c.myid.in_([literal('a') < 'b']),
-        "mytable.myid IN (:param_1 < :param_2)")
+                            "mytable.myid IN (:param_1 < :param_2)")
 
     def test_in_14(self):
         self.assert_compile(self.table1.c.myid.in_([self.table1.c.myid]),
-        "mytable.myid IN (mytable.myid)")
+                            "mytable.myid IN (mytable.myid)")
 
     def test_in_15(self):
         self.assert_compile(self.table1.c.myid.in_(['a', self.table1.c.myid]),
-        "mytable.myid IN (:myid_1, mytable.myid)")
+                            "mytable.myid IN (:myid_1, mytable.myid)")
 
     def test_in_16(self):
         self.assert_compile(self.table1.c.myid.in_([literal('a'),
-                                    self.table1.c.myid]),
-        "mytable.myid IN (:param_1, mytable.myid)")
+                                                    self.table1.c.myid]),
+                            "mytable.myid IN (:param_1, mytable.myid)")
 
     def test_in_17(self):
-        self.assert_compile(self.table1.c.myid.in_([literal('a'), \
-                                    self.table1.c.myid + 'a']),
-        "mytable.myid IN (:param_1, mytable.myid + :myid_1)")
+        self.assert_compile(
+            self.table1.c.myid.in_(
+                [
+                    literal('a'),
+                    self.table1.c.myid +
+                    'a']),
+            "mytable.myid IN (:param_1, mytable.myid + :myid_1)")
 
     def test_in_18(self):
-        self.assert_compile(self.table1.c.myid.in_([literal(1), 'a' + \
-                            self.table1.c.myid]),
-        "mytable.myid IN (:param_1, :myid_1 + mytable.myid)")
+        self.assert_compile(
+            self.table1.c.myid.in_(
+                [
+                    literal(1),
+                    'a' +
+                    self.table1.c.myid]),
+            "mytable.myid IN (:param_1, :myid_1 + mytable.myid)")
 
     def test_in_19(self):
         self.assert_compile(self.table1.c.myid.in_([1, 2, 3]),
-        "mytable.myid IN (:myid_1, :myid_2, :myid_3)")
+                            "mytable.myid IN (:myid_1, :myid_2, :myid_3)")
 
     def test_in_20(self):
         self.assert_compile(self.table1.c.myid.in_(
-                                select([self.table2.c.otherid])),
-        "mytable.myid IN (SELECT myothertable.otherid FROM myothertable)")
+            select([self.table2.c.otherid])),
+            "mytable.myid IN (SELECT myothertable.otherid FROM myothertable)")
 
     def test_in_21(self):
         self.assert_compile(~self.table1.c.myid.in_(
                             select([self.table2.c.otherid])),
-        "mytable.myid NOT IN (SELECT myothertable.otherid FROM myothertable)")
+                            "mytable.myid NOT IN (SELECT myothertable.otherid FROM myothertable)")
 
     def test_in_22(self):
         self.assert_compile(
-                self.table1.c.myid.in_(
-                        text("SELECT myothertable.otherid FROM myothertable")
-                    ),
-                    "mytable.myid IN (SELECT myothertable.otherid "
-                    "FROM myothertable)"
+            self.table1.c.myid.in_(
+                text("SELECT myothertable.otherid FROM myothertable")
+            ),
+            "mytable.myid IN (SELECT myothertable.otherid "
+            "FROM myothertable)"
         )
 
     @testing.emits_warning('.*empty sequence.*')
     def test_in_23(self):
         self.assert_compile(self.table1.c.myid.in_([]),
-        "mytable.myid != mytable.myid")
+                            "mytable.myid != mytable.myid")
 
     def test_in_24(self):
         self.assert_compile(
             select([self.table1.c.myid.in_(select([self.table2.c.otherid]))]),
             "SELECT mytable.myid IN (SELECT myothertable.otherid "
-                "FROM myothertable) AS anon_1 FROM mytable"
+            "FROM myothertable) AS anon_1 FROM mytable"
         )
 
     def test_in_25(self):
         self.assert_compile(
             select([self.table1.c.myid.in_(
-                        select([self.table2.c.otherid]).as_scalar())]),
+                select([self.table2.c.otherid]).as_scalar())]),
             "SELECT mytable.myid IN (SELECT myothertable.otherid "
-                "FROM myothertable) AS anon_1 FROM mytable"
+            "FROM myothertable) AS anon_1 FROM mytable"
         )
 
     def test_in_26(self):
         self.assert_compile(self.table1.c.myid.in_(
             union(
-                  select([self.table1.c.myid], self.table1.c.myid == 5),
-                  select([self.table1.c.myid], self.table1.c.myid == 12),
+                select([self.table1.c.myid], self.table1.c.myid == 5),
+                select([self.table1.c.myid], self.table1.c.myid == 12),
             )
-        ), "mytable.myid IN ("\
-        "SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_1 "\
-        "UNION SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_2)")
+        ), "mytable.myid IN ("
+            "SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_1 "
+            "UNION SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_2)")
 
     def test_in_27(self):
         # test that putting a select in an IN clause does not
         # blow away its ORDER BY clause
         self.assert_compile(
             select([self.table1, self.table2],
-                self.table2.c.otherid.in_(
-                    select([self.table2.c.otherid],
-                                    order_by=[self.table2.c.othername],
-                                    limit=10, correlate=False)
-                ),
+                   self.table2.c.otherid.in_(
+                select([self.table2.c.otherid],
+                       order_by=[self.table2.c.othername],
+                       limit=10, correlate=False)
+            ),
                 from_obj=[self.table1.join(self.table2,
-                            self.table1.c.myid == self.table2.c.otherid)],
+                                           self.table1.c.myid == self.table2.c.otherid)],
                 order_by=[self.table1.c.myid]
             ),
             "SELECT mytable.myid, "
-            "myothertable.otherid, myothertable.othername FROM mytable "\
+            "myothertable.otherid, myothertable.othername FROM mytable "
             "JOIN myothertable ON mytable.myid = myothertable.otherid "
-            "WHERE myothertable.otherid IN (SELECT myothertable.otherid "\
+            "WHERE myothertable.otherid IN (SELECT myothertable.otherid "
             "FROM myothertable ORDER BY myothertable.othername "
             "LIMIT :param_1) ORDER BY mytable.myid",
             {'param_1': 10}
@@ -1159,20 +1236,20 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     @testing.emits_warning('.*empty sequence.*')
     def test_in_29(self):
         self.assert_compile(self.table1.c.myid.notin_([]),
-        "mytable.myid = mytable.myid")
+                            "mytable.myid = mytable.myid")
 
     @testing.emits_warning('.*empty sequence.*')
     def test_in_30(self):
         self.assert_compile(~self.table1.c.myid.in_([]),
-        "mytable.myid = mytable.myid")
+                            "mytable.myid = mytable.myid")
 
 
 class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
     table1 = table('mytable',
-        column('myid', Integer),
-    )
+                   column('myid', Integer),
+                   )
 
     def _test_math_op(self, py_op, sql_op):
         for (lhs, rhs, res) in (
@@ -1181,11 +1258,11 @@ class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             (self.table1.c.myid, 'b', 'mytable.myid %s :myid_1'),
             (self.table1.c.myid, literal(2.7), 'mytable.myid %s :param_1'),
             (self.table1.c.myid, self.table1.c.myid,
-                    'mytable.myid %s mytable.myid'),
+             'mytable.myid %s mytable.myid'),
             (literal(5), 8, ':param_1 %s :param_2'),
             (literal(6), self.table1.c.myid, ':param_1 %s mytable.myid'),
             (literal(7), literal(5.5), ':param_1 %s :param_2'),
-            ):
+        ):
             self.assert_compile(py_op(lhs, rhs), res % sql_op)
 
     def test_math_op_add(self):
@@ -1203,17 +1280,18 @@ class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         else:
             self._test_math_op(operator.div, '/')
 
+
 class ComparisonOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
     table1 = table('mytable',
-        column('myid', Integer),
-    )
+                   column('myid', Integer),
+                   )
 
     def test_pickle_operators_one(self):
         clause = (self.table1.c.myid == 12) & \
-                        self.table1.c.myid.between(15, 20) & \
-                            self.table1.c.myid.like('hoho')
+            self.table1.c.myid.between(15, 20) & \
+            self.table1.c.myid.like('hoho')
         eq_(str(clause), str(util.pickle.loads(util.pickle.dumps(clause))))
 
     def test_pickle_operators_two(self):
@@ -1228,13 +1306,13 @@ class ComparisonOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             (self.table1.c.myid, 'b', 'mytable.myid', ':myid_1'),
             (self.table1.c.myid, literal('b'), 'mytable.myid', ':param_1'),
             (self.table1.c.myid, self.table1.c.myid,
-                            'mytable.myid', 'mytable.myid'),
+             'mytable.myid', 'mytable.myid'),
             (literal('a'), 'b', ':param_1', ':param_2'),
             (literal('a'), self.table1.c.myid, ':param_1', 'mytable.myid'),
             (literal('a'), literal('b'), ':param_1', ':param_2'),
             (dt, literal('b'), ':param_2', ':param_1'),
             (literal('b'), dt, ':param_1', ':param_2'),
-            ):
+        ):
 
             # the compiled clause should match either (e.g.):
             # 'a' < 'b' -or- 'b' > 'a'.
@@ -1264,7 +1342,9 @@ class ComparisonOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_comparison_operators_ge(self):
         self._test_comparison_op(operator.ge, '>=', '<=')
 
+
 class NonZeroTest(fixtures.TestBase):
+
     def _raises(self, expr):
         assert_raises_message(
             TypeError,
@@ -1316,13 +1396,14 @@ class NonZeroTest(fixtures.TestBase):
         expr2 = (c1 > 5).label(None)
         self._assert_false(expr1 == expr2)
 
+
 class NegationTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
     table1 = table('mytable',
-        column('myid', Integer),
-        column('name', String),
-    )
+                   column('myid', Integer),
+                   column('name', String),
+                   )
 
     def test_negate_operators_1(self):
         for (py_op, op) in (
@@ -1337,187 +1418,188 @@ class NegationTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_negate_operators_2(self):
         self.assert_compile(
-         self.table1.select((self.table1.c.myid != 12) &
-                    ~(self.table1.c.name == 'john')),
-         "SELECT mytable.myid, mytable.name FROM "
+            self.table1.select((self.table1.c.myid != 12) &
+                               ~(self.table1.c.name == 'john')),
+            "SELECT mytable.myid, mytable.name FROM "
             "mytable WHERE mytable.myid != :myid_1 "
             "AND mytable.name != :name_1"
         )
 
     def test_negate_operators_3(self):
         self.assert_compile(
-         self.table1.select((self.table1.c.myid != 12) &
-                ~(self.table1.c.name.between('jack', 'john'))),
-         "SELECT mytable.myid, mytable.name FROM "
-             "mytable WHERE mytable.myid != :myid_1 AND "\
-             "mytable.name NOT BETWEEN :name_1 AND :name_2"
+            self.table1.select((self.table1.c.myid != 12) &
+                               ~(self.table1.c.name.between('jack', 'john'))),
+            "SELECT mytable.myid, mytable.name FROM "
+            "mytable WHERE mytable.myid != :myid_1 AND "
+            "mytable.name NOT BETWEEN :name_1 AND :name_2"
         )
 
     def test_negate_operators_4(self):
         self.assert_compile(
-         self.table1.select((self.table1.c.myid != 12) &
-                ~and_(self.table1.c.name == 'john',
-                        self.table1.c.name == 'ed',
-                        self.table1.c.name == 'fred')),
-         "SELECT mytable.myid, mytable.name FROM "
-         "mytable WHERE mytable.myid != :myid_1 AND "\
-         "NOT (mytable.name = :name_1 AND mytable.name = :name_2 "
-         "AND mytable.name = :name_3)"
+            self.table1.select((self.table1.c.myid != 12) &
+                               ~and_(self.table1.c.name == 'john',
+                                     self.table1.c.name == 'ed',
+                                     self.table1.c.name == 'fred')),
+            "SELECT mytable.myid, mytable.name FROM "
+            "mytable WHERE mytable.myid != :myid_1 AND "
+            "NOT (mytable.name = :name_1 AND mytable.name = :name_2 "
+            "AND mytable.name = :name_3)"
         )
 
     def test_negate_operators_5(self):
         self.assert_compile(
-         self.table1.select((self.table1.c.myid != 12) & ~self.table1.c.name),
-         "SELECT mytable.myid, mytable.name FROM "
-            "mytable WHERE mytable.myid != :myid_1 AND NOT mytable.name"
-        )
-
+            self.table1.select(
+                (self.table1.c.myid != 12) & ~self.table1.c.name),
+            "SELECT mytable.myid, mytable.name FROM "
+            "mytable WHERE mytable.myid != :myid_1 AND NOT mytable.name")
 
 
 class LikeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
     table1 = table('mytable',
-        column('myid', Integer),
-        column('name', String),
-    )
+                   column('myid', Integer),
+                   column('name', String),
+                   )
 
     def test_like_1(self):
         self.assert_compile(
-                self.table1.c.myid.like('somstr'),
-                "mytable.myid LIKE :myid_1")
+            self.table1.c.myid.like('somstr'),
+            "mytable.myid LIKE :myid_1")
 
     def test_like_2(self):
         self.assert_compile(
-                ~self.table1.c.myid.like('somstr'),
-                "mytable.myid NOT LIKE :myid_1")
+            ~self.table1.c.myid.like('somstr'),
+            "mytable.myid NOT LIKE :myid_1")
 
     def test_like_3(self):
         self.assert_compile(
-                self.table1.c.myid.like('somstr', escape='\\'),
-                "mytable.myid LIKE :myid_1 ESCAPE '\\'")
+            self.table1.c.myid.like('somstr', escape='\\'),
+            "mytable.myid LIKE :myid_1 ESCAPE '\\'")
 
     def test_like_4(self):
         self.assert_compile(
-                ~self.table1.c.myid.like('somstr', escape='\\'),
-                "mytable.myid NOT LIKE :myid_1 ESCAPE '\\'")
+            ~self.table1.c.myid.like('somstr', escape='\\'),
+            "mytable.myid NOT LIKE :myid_1 ESCAPE '\\'")
 
     def test_like_5(self):
         self.assert_compile(
-                self.table1.c.myid.ilike('somstr', escape='\\'),
-                "lower(mytable.myid) LIKE lower(:myid_1) ESCAPE '\\'")
+            self.table1.c.myid.ilike('somstr', escape='\\'),
+            "lower(mytable.myid) LIKE lower(:myid_1) ESCAPE '\\'")
 
     def test_like_6(self):
         self.assert_compile(
-                ~self.table1.c.myid.ilike('somstr', escape='\\'),
-                "lower(mytable.myid) NOT LIKE lower(:myid_1) ESCAPE '\\'")
+            ~self.table1.c.myid.ilike('somstr', escape='\\'),
+            "lower(mytable.myid) NOT LIKE lower(:myid_1) ESCAPE '\\'")
 
     def test_like_7(self):
         self.assert_compile(
-                self.table1.c.myid.ilike('somstr', escape='\\'),
-                    "mytable.myid ILIKE %(myid_1)s ESCAPE '\\\\'",
-                    dialect=postgresql.dialect())
+            self.table1.c.myid.ilike('somstr', escape='\\'),
+            "mytable.myid ILIKE %(myid_1)s ESCAPE '\\\\'",
+            dialect=postgresql.dialect())
 
     def test_like_8(self):
         self.assert_compile(
-                ~self.table1.c.myid.ilike('somstr', escape='\\'),
-                "mytable.myid NOT ILIKE %(myid_1)s ESCAPE '\\\\'",
-                dialect=postgresql.dialect())
+            ~self.table1.c.myid.ilike('somstr', escape='\\'),
+            "mytable.myid NOT ILIKE %(myid_1)s ESCAPE '\\\\'",
+            dialect=postgresql.dialect())
 
     def test_like_9(self):
         self.assert_compile(
-                self.table1.c.name.ilike('%something%'),
-                "lower(mytable.name) LIKE lower(:name_1)")
+            self.table1.c.name.ilike('%something%'),
+            "lower(mytable.name) LIKE lower(:name_1)")
 
     def test_like_10(self):
         self.assert_compile(
-                self.table1.c.name.ilike('%something%'),
-                "mytable.name ILIKE %(name_1)s",
-                dialect=postgresql.dialect())
+            self.table1.c.name.ilike('%something%'),
+            "mytable.name ILIKE %(name_1)s",
+            dialect=postgresql.dialect())
 
     def test_like_11(self):
         self.assert_compile(
-                ~self.table1.c.name.ilike('%something%'),
-                "lower(mytable.name) NOT LIKE lower(:name_1)")
+            ~self.table1.c.name.ilike('%something%'),
+            "lower(mytable.name) NOT LIKE lower(:name_1)")
 
     def test_like_12(self):
         self.assert_compile(
-                ~self.table1.c.name.ilike('%something%'),
-                "mytable.name NOT ILIKE %(name_1)s",
-                dialect=postgresql.dialect())
+            ~self.table1.c.name.ilike('%something%'),
+            "mytable.name NOT ILIKE %(name_1)s",
+            dialect=postgresql.dialect())
+
 
 class BetweenTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
     table1 = table('mytable',
-        column('myid', Integer),
-        column('name', String),
-    )
+                   column('myid', Integer),
+                   column('name', String),
+                   )
 
     def test_between_1(self):
         self.assert_compile(
-                self.table1.c.myid.between(1, 2),
-                "mytable.myid BETWEEN :myid_1 AND :myid_2")
+            self.table1.c.myid.between(1, 2),
+            "mytable.myid BETWEEN :myid_1 AND :myid_2")
 
     def test_between_2(self):
         self.assert_compile(
-                ~self.table1.c.myid.between(1, 2),
-                "mytable.myid NOT BETWEEN :myid_1 AND :myid_2")
+            ~self.table1.c.myid.between(1, 2),
+            "mytable.myid NOT BETWEEN :myid_1 AND :myid_2")
 
     def test_between_3(self):
         self.assert_compile(
-                self.table1.c.myid.between(1, 2, symmetric=True),
-                "mytable.myid BETWEEN SYMMETRIC :myid_1 AND :myid_2")
+            self.table1.c.myid.between(1, 2, symmetric=True),
+            "mytable.myid BETWEEN SYMMETRIC :myid_1 AND :myid_2")
 
     def test_between_4(self):
         self.assert_compile(
-                ~self.table1.c.myid.between(1, 2, symmetric=True),
-                "mytable.myid NOT BETWEEN SYMMETRIC :myid_1 AND :myid_2")
+            ~self.table1.c.myid.between(1, 2, symmetric=True),
+            "mytable.myid NOT BETWEEN SYMMETRIC :myid_1 AND :myid_2")
 
     def test_between_5(self):
         self.assert_compile(
-                between(self.table1.c.myid, 1, 2, symmetric=True),
-                "mytable.myid BETWEEN SYMMETRIC :myid_1 AND :myid_2")
+            between(self.table1.c.myid, 1, 2, symmetric=True),
+            "mytable.myid BETWEEN SYMMETRIC :myid_1 AND :myid_2")
 
     def test_between_6(self):
         self.assert_compile(
-                ~between(self.table1.c.myid, 1, 2, symmetric=True),
-                "mytable.myid NOT BETWEEN SYMMETRIC :myid_1 AND :myid_2")
-
+            ~between(self.table1.c.myid, 1, 2, symmetric=True),
+            "mytable.myid NOT BETWEEN SYMMETRIC :myid_1 AND :myid_2")
 
 
 class MatchTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
     table1 = table('mytable',
-        column('myid', Integer),
-        column('name', String),
-    )
+                   column('myid', Integer),
+                   column('name', String),
+                   )
 
     def test_match_1(self):
         self.assert_compile(self.table1.c.myid.match('somstr'),
-                        "mytable.myid MATCH ?",
-                        dialect=sqlite.dialect())
+                            "mytable.myid MATCH ?",
+                            dialect=sqlite.dialect())
 
     def test_match_2(self):
-        self.assert_compile(self.table1.c.myid.match('somstr'),
-                        "MATCH (mytable.myid) AGAINST (%s IN BOOLEAN MODE)",
-                        dialect=mysql.dialect())
+        self.assert_compile(
+            self.table1.c.myid.match('somstr'),
+            "MATCH (mytable.myid) AGAINST (%s IN BOOLEAN MODE)",
+            dialect=mysql.dialect())
 
     def test_match_3(self):
         self.assert_compile(self.table1.c.myid.match('somstr'),
-                        "CONTAINS (mytable.myid, :myid_1)",
-                        dialect=mssql.dialect())
+                            "CONTAINS (mytable.myid, :myid_1)",
+                            dialect=mssql.dialect())
 
     def test_match_4(self):
         self.assert_compile(self.table1.c.myid.match('somstr'),
-                        "mytable.myid @@ to_tsquery(%(myid_1)s)",
-                        dialect=postgresql.dialect())
+                            "mytable.myid @@ to_tsquery(%(myid_1)s)",
+                            dialect=postgresql.dialect())
 
     def test_match_5(self):
         self.assert_compile(self.table1.c.myid.match('somstr'),
-                        "CONTAINS (mytable.myid, :myid_1)",
-                        dialect=oracle.dialect())
+                            "CONTAINS (mytable.myid, :myid_1)",
+                            dialect=oracle.dialect())
+
 
 class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
@@ -1760,7 +1842,9 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             dialect=mysql.dialect()
         )
 
+
 class CustomOpTest(fixtures.TestBase):
+
     def test_is_comparison(self):
         c = column('x')
         c2 = column('y')
@@ -1770,6 +1854,7 @@ class CustomOpTest(fixtures.TestBase):
         assert operators.is_comparison(op1)
         assert not operators.is_comparison(op2)
 
+
 class TupleTypingTest(fixtures.TestBase):
 
     def _assert_types(self, expr):
@@ -1778,13 +1863,19 @@ class TupleTypingTest(fixtures.TestBase):
         eq_(expr.clauses[2].type._type_affinity, LargeBinary()._type_affinity)
 
     def test_type_coersion_on_eq(self):
-        a, b, c = column('a', Integer), column('b', String), column('c', LargeBinary)
+        a, b, c = column(
+            'a', Integer), column(
+            'b', String), column(
+            'c', LargeBinary)
         t1 = tuple_(a, b, c)
         expr = t1 == (3, 'hi', 'there')
         self._assert_types(expr.right)
 
     def test_type_coersion_on_in(self):
-        a, b, c = column('a', Integer), column('b', String), column('c', LargeBinary)
+        a, b, c = column(
+            'a', Integer), column(
+            'b', String), column(
+            'c', LargeBinary)
         t1 = tuple_(a, b, c)
         expr = t1.in_([(3, 'hi', 'there'), (4, 'Q', 'P')])
         eq_(len(expr.right.clauses), 2)

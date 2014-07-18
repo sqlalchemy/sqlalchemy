@@ -7,6 +7,7 @@ from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.util import u, ue
 
+
 class UnicodeSchemaTest(fixtures.TestBase):
     __requires__ = ('unicode_ddl',)
     __backend__ = True
@@ -17,17 +18,26 @@ class UnicodeSchemaTest(fixtures.TestBase):
 
         metadata = MetaData(testing.db)
         t1 = Table(u('unitable1'), metadata,
-            Column(u('méil'), Integer, primary_key=True),
-            Column(ue('\u6e2c\u8a66'), Integer),
-            test_needs_fk=True,
-            )
-        t2 = Table(u('Unitéble2'), metadata,
-            Column(u('méil'), Integer, primary_key=True, key="a"),
-            Column(ue('\u6e2c\u8a66'), Integer, ForeignKey(u('unitable1.méil')),
-                   key="b"
-                   ),
+                   Column(u('méil'), Integer, primary_key=True),
+                   Column(ue('\u6e2c\u8a66'), Integer),
                    test_needs_fk=True,
-            )
+                   )
+        t2 = Table(
+            u('Unitéble2'),
+            metadata,
+            Column(
+                u('méil'),
+                Integer,
+                primary_key=True,
+                key="a"),
+            Column(
+                ue('\u6e2c\u8a66'),
+                Integer,
+                ForeignKey(
+                    u('unitable1.méil')),
+                key="b"),
+            test_needs_fk=True,
+        )
 
         # Few DBs support Unicode foreign keys
         if testing.against('sqlite'):
@@ -68,8 +78,8 @@ class UnicodeSchemaTest(fixtures.TestBase):
         metadata.drop_all()
 
     def test_insert(self):
-        t1.insert().execute({u('méil'):1, ue('\u6e2c\u8a66'):5})
-        t2.insert().execute({u('a'):1, u('b'):1})
+        t1.insert().execute({u('méil'): 1, ue('\u6e2c\u8a66'): 5})
+        t2.insert().execute({u('a'): 1, u('b'): 1})
         t3.insert().execute({ue('\u6e2c\u8a66_id'): 1,
                              ue('unitable1_\u6e2c\u8a66'): 5,
                              u('Unitéble2_b'): 1,
@@ -121,10 +131,16 @@ class UnicodeSchemaTest(fixtures.TestBase):
                               u('Unitéble2_b'): 1,
                               ue('\u6e2c\u8a66_self'): 1})
 
-        self.assert_(tt1.select(order_by=desc(u('méil'))).execute().fetchall() ==
-                     [(2, 7), (1, 5)])
-        self.assert_(tt2.select(order_by=desc(u('méil'))).execute().fetchall() ==
-                     [(2, 2), (1, 1)])
+        self.assert_(
+            tt1.select(
+                order_by=desc(
+                    u('méil'))).execute().fetchall() == [
+                (2, 7), (1, 5)])
+        self.assert_(
+            tt2.select(
+                order_by=desc(
+                    u('méil'))).execute().fetchall() == [
+                (2, 2), (1, 1)])
         self.assert_(tt3.select(order_by=desc(ue('\u6e2c\u8a66_id'))).
                      execute().fetchall() ==
                      [(2, 7, 2, 2), (1, 5, 1, 1)])
@@ -132,14 +148,16 @@ class UnicodeSchemaTest(fixtures.TestBase):
     def test_repr(self):
 
         m = MetaData()
-        t = Table(ue('\u6e2c\u8a66'), m, Column(ue('\u6e2c\u8a66_id'), Integer))
+        t = Table(
+            ue('\u6e2c\u8a66'),
+            m,
+            Column(
+                ue('\u6e2c\u8a66_id'),
+                Integer))
 
         # I hardly understand what's going on with the backslashes in
         # this one on py2k vs. py3k
-        eq_(
-            repr(t),
-            (
-                "Table('\\u6e2c\\u8a66', MetaData(bind=None), "
-                "Column('\\u6e2c\\u8a66_id', Integer(), table=<\u6e2c\u8a66>), "
-                "schema=None)"))
-
+        eq_(repr(t),
+            ("Table('\\u6e2c\\u8a66', MetaData(bind=None), "
+             "Column('\\u6e2c\\u8a66_id', Integer(), table=<\u6e2c\u8a66>), "
+             "schema=None)"))
