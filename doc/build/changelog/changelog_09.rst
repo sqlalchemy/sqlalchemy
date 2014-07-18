@@ -15,6 +15,15 @@
     :released:
 
     .. change::
+        :tags: bug, oracle, tests
+        :tickets: 3128
+        :versions: 1.0.0
+
+        Fixed bug in oracle dialect test suite where in one test,
+        'username' was assumed to be in the database URL, even though
+        this might not be the case.
+
+    .. change::
         :tags: bug, orm, eagerloading
         :tickets: 3131
         :versions: 1.0.0

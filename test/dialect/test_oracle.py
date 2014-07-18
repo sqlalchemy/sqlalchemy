@@ -1688,14 +1688,15 @@ class RoundTripIndexTest(fixtures.TestBase):
                     obj.columns]), getattr(obj, 'unique', None)
 
         # find what the primary k constraint name should be
-        primaryconsname = testing.db.execute(
-           text("""SELECT constraint_name
+        primaryconsname = testing.db.scalar(
+            text(
+                """SELECT constraint_name
                FROM all_constraints
                WHERE table_name = :table_name
                AND owner = :owner
                AND constraint_type = 'P' """),
-           table_name=table.name.upper(),
-           owner=testing.db.url.username.upper()).fetchall()[0][0]
+            table_name=table.name.upper(),
+            owner=testing.db.dialect.default_schema_name.upper())
 
         reflectedtable = inspect.tables[table.name]
 
