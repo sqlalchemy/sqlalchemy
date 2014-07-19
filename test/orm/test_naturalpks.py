@@ -389,7 +389,6 @@ class NaturalPKTest(fixtures.MappedTest):
     def test_manytomany_passive(self):
         self._test_manytomany(True)
 
-    @testing.requires.non_updating_cascade
     def test_manytomany_nonpassive(self):
         self._test_manytomany(False)
 
