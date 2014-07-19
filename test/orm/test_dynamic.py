@@ -1,7 +1,7 @@
 from sqlalchemy.testing import eq_, is_
 from sqlalchemy.orm import backref, configure_mappers
 from sqlalchemy import testing
-from sqlalchemy import desc, select, func, exc
+from sqlalchemy import desc, select, func, exc, cast, Integer
 from sqlalchemy.orm import mapper, relationship, create_session, Query, \
                     attributes, exc as orm_exc, Session
 from sqlalchemy.orm.dynamic import AppenderMixin
@@ -361,8 +361,9 @@ class UOWTest(_DynamicFixture, _fixtures.FixtureTest,
 
         eq_(
             testing.db.scalar(
-                select([func.count(1)]).where(addresses.c.user_id != None)
-            ),
+                select(
+                    [func.count(cast(1, Integer))]).
+                    where(addresses.c.user_id != None)),
             0
         )
         u1 = sess.query(User).get(u1.id)
@@ -380,8 +381,9 @@ class UOWTest(_DynamicFixture, _fixtures.FixtureTest,
         sess.flush()
         eq_(
             testing.db.scalar(
-                select([func.count(1)]).where(addresses.c.user_id != None)
-            ),
+                select(
+                    [func.count(cast(1, Integer))]).
+                    where(addresses.c.user_id != None)),
             0
         )
 
