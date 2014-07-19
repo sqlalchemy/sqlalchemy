@@ -1390,7 +1390,6 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.fails_on("firebird", "unknown")
-    @testing.fails_on('postgresql+pg8000', "'type oid 705 not mapped to py type' (due to literal)")
     def test_self_referential(self):
         Order = self.classes.Order
 
