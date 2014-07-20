@@ -18,6 +18,7 @@ from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 # whether or not we use unittest changes things dramatically,
 # as far as how py.test collection works.
 
+
 class TestBase(object):
     # A sequence of database names to always run, regardless of the
     # constraints below.
@@ -48,6 +49,7 @@ class TestBase(object):
     def teardown(self):
         if hasattr(self, "tearDown"):
             self.tearDown()
+
 
 class TablesTest(TestBase):
 
@@ -222,6 +224,8 @@ class TablesTest(TestBase):
                  for column_values in rows[table]])
 
 from sqlalchemy import event
+
+
 class RemovesEvents(object):
     @util.memoized_property
     def _event_fns(self):
@@ -237,7 +241,6 @@ class RemovesEvents(object):
         super_ = super(RemovesEvents, self)
         if hasattr(super_, "teardown"):
             super_.teardown()
-
 
 
 class _ORMTest(object):
@@ -366,14 +369,14 @@ class DeclarativeMappedTest(MappedTest):
             def __init__(cls, classname, bases, dict_):
                 cls_registry[classname] = cls
                 return DeclarativeMeta.__init__(
-                        cls, classname, bases, dict_)
+                    cls, classname, bases, dict_)
 
         class DeclarativeBasic(object):
             __table_cls__ = schema.Table
 
         _DeclBase = declarative_base(metadata=cls.metadata,
-                            metaclass=FindFixtureDeclarative,
-                            cls=DeclarativeBasic)
+                                     metaclass=FindFixtureDeclarative,
+                                     cls=DeclarativeBasic)
         cls.DeclarativeBasic = _DeclBase
         fn()
 

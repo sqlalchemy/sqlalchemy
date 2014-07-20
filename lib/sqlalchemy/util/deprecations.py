@@ -38,7 +38,7 @@ def deprecated(version, message=None, add_deprecation_to_docstring=True):
 
     if add_deprecation_to_docstring:
         header = ".. deprecated:: %s %s" % \
-                    (version, (message or ''))
+            (version, (message or ''))
     else:
         header = None
 
@@ -72,7 +72,7 @@ def pending_deprecation(version, message=None,
 
     if add_deprecation_to_docstring:
         header = ".. deprecated:: %s (pending) %s" % \
-                        (version, (message or ''))
+            (version, (message or ''))
     else:
         header = None
 
@@ -117,6 +117,7 @@ def _decorate_with_warning(func, wtype, message, docstring_header=None):
 
 import textwrap
 
+
 def _dedent_docstring(text):
     split_text = text.split("\n", 1)
     if len(split_text) == 1:
@@ -127,6 +128,7 @@ def _dedent_docstring(text):
         return firstline + "\n" + textwrap.dedent(remaining)
     else:
         return textwrap.dedent(text)
+
 
 def inject_docstring_text(doctext, injecttext, pos):
     doctext = _dedent_docstring(doctext or "")

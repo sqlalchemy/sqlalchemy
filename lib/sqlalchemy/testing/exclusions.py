@@ -14,6 +14,7 @@ from .. import util
 import contextlib
 import inspect
 
+
 class skip_if(object):
     def __init__(self, predicate, reason=None):
         self.predicate = _as_predicate(predicate)
@@ -55,13 +56,13 @@ class skip_if(object):
             if self.predicate(config._current):
                 if self.reason:
                     msg = "'%s' : %s" % (
-                            fn.__name__,
-                            self.reason
-                        )
+                        fn.__name__,
+                        self.reason
+                    )
                 else:
                     msg = "'%s': %s" % (
-                            fn.__name__, self.predicate
-                        )
+                        fn.__name__, self.predicate
+                    )
                 raise SkipTest(msg)
             else:
                 if self._fails_on:
@@ -78,6 +79,7 @@ class skip_if(object):
     def fails_on_everything_except(self, *dbs):
         self._fails_on = skip_if(fails_on_everything_except(*dbs))
         return self
+
 
 class fails_if(skip_if):
     def __call__(self, fn):
@@ -150,15 +152,15 @@ class SpecPredicate(Predicate):
         self.description = description
 
     _ops = {
-            '<': operator.lt,
-             '>': operator.gt,
-             '==': operator.eq,
-             '!=': operator.ne,
-             '<=': operator.le,
-             '>=': operator.ge,
-             'in': operator.contains,
-             'between': lambda val, pair: val >= pair[0] and val <= pair[1],
-             }
+        '<': operator.lt,
+        '>': operator.gt,
+        '==': operator.eq,
+        '!=': operator.ne,
+        '<=': operator.le,
+        '>=': operator.ge,
+        'in': operator.contains,
+        'between': lambda val, pair: val >= pair[0] and val <= pair[1],
+    }
 
     def __call__(self, config):
         engine = config.db
@@ -178,7 +180,7 @@ class SpecPredicate(Predicate):
 
             version = _server_version(engine)
             oper = hasattr(self.op, '__call__') and self.op \
-                        or self._ops[self.op]
+                or self._ops[self.op]
             return oper(version, self.spec)
         else:
             return True
@@ -194,16 +196,16 @@ class SpecPredicate(Predicate):
         else:
             if negate:
                 return "not %s %s %s" % (
-                        self.db,
-                        self.op,
-                        self.spec
-                    )
+                    self.db,
+                    self.op,
+                    self.spec
+                )
             else:
                 return "%s %s %s" % (
-                        self.db,
-                        self.op,
-                        self.spec
-                    )
+                    self.db,
+                    self.op,
+                    self.spec
+                )
 
     def __str__(self):
         return self._as_string()
@@ -270,7 +272,7 @@ class OrPredicate(Predicate):
             else:
                 conjunction = " or "
             return conjunction.join(p._as_string(negate=negate)
-                            for p in self.predicates)
+                                    for p in self.predicates)
         else:
             return self._str._as_string(negate=negate)
 
@@ -311,8 +313,8 @@ def _server_version(engine):
 
 def db_spec(*dbs):
     return OrPredicate(
-            [Predicate.as_predicate(db) for db in dbs]
-        )
+        [Predicate.as_predicate(db) for db in dbs]
+    )
 
 
 def open():
@@ -322,8 +324,10 @@ def open():
 def closed():
     return skip_if(BooleanPredicate(True, "marked as skip"))
 
+
 def fails():
     return fails_if(BooleanPredicate(True, "expected to fail"))
+
 
 @decorator
 def future(fn, *arg):
@@ -336,10 +340,10 @@ def fails_on(db, reason=None):
 
 def fails_on_everything_except(*dbs):
     return succeeds_if(
-                OrPredicate([
+        OrPredicate([
                     SpecPredicate(db) for db in dbs
                     ])
-            )
+    )
 
 
 def skip(db, reason=None):
@@ -348,7 +352,7 @@ def skip(db, reason=None):
 
 def only_on(dbs, reason=None):
     return only_if(
-            OrPredicate([SpecPredicate(db) for db in util.to_list(dbs)])
+        OrPredicate([SpecPredicate(db) for db in util.to_list(dbs)])
     )
 
 
@@ -359,6 +363,6 @@ def exclude(db, op, spec, reason=None):
 def against(config, *queries):
     assert queries, "no queries sent!"
     return OrPredicate([
-                Predicate.as_predicate(query)
-                for query in queries
-            ])(config)
+        Predicate.as_predicate(query)
+        for query in queries
+    ])(config)

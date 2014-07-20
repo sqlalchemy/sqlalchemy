@@ -10,7 +10,8 @@
 .. dialect:: mysql+cymysql
     :name: CyMySQL
     :dbapi: cymysql
-    :connectstring: mysql+cymysql://<username>:<password>@<host>/<dbname>[?<options>]
+    :connectstring: mysql+cymysql://<username>:<password>@<host>/<dbname>\
+[?<options>]
     :url: https://github.com/nakagami/CyMySQL
 
 """
@@ -19,6 +20,7 @@ import re
 from .mysqldb import MySQLDialect_mysqldb
 from .base import (BIT, MySQLDialect)
 from ... import util
+
 
 class _cymysqlBIT(BIT):
     def result_processor(self, dialect, coltype):
@@ -74,7 +76,7 @@ class MySQLDialect_cymysql(MySQLDialect_mysqldb):
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.OperationalError):
             return self._extract_error_code(e) in \
-                        (2006, 2013, 2014, 2045, 2055)
+                (2006, 2013, 2014, 2045, 2055)
         elif isinstance(e, self.dbapi.InterfaceError):
             # if underlying connection is closed,
             # this is the error you get

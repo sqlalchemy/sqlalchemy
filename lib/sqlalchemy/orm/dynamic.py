@@ -17,8 +17,9 @@ from ..sql import operators
 from . import (
     attributes, object_session, util as orm_util, strategies,
     object_mapper, exc as orm_exc, properties
-    )
+)
 from .query import Query
+
 
 @log.class_logger
 @properties.RelationshipProperty.strategy_for(lazy="dynamic")
@@ -30,7 +31,8 @@ class DynaLoader(strategies.AbstractRelationshipLoader):
                 "On relationship %s, 'dynamic' loaders cannot be used with "
                 "many-to-one/one-to-one relationships and/or "
                 "uselist=False." % self.parent_property)
-        strategies._register_attribute(self,
+        strategies._register_attribute(
+            self,
             mapper,
             useobject=True,
             uselist=True,
@@ -41,6 +43,7 @@ class DynaLoader(strategies.AbstractRelationshipLoader):
             backref=self.parent_property.back_populates,
         )
 
+
 class DynamicAttributeImpl(attributes.AttributeImpl):
     uses_objects = True
     accepts_scalar_loader = False
@@ -48,10 +51,10 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
     collection = False
 
     def __init__(self, class_, key, typecallable,
-                     dispatch,
-                     target_mapper, order_by, query_class=None, **kw):
+                 dispatch,
+                 target_mapper, order_by, query_class=None, **kw):
         super(DynamicAttributeImpl, self).\
-                    __init__(class_, key, typecallable, dispatch, **kw)
+            __init__(class_, key, typecallable, dispatch, **kw)
         self.target_mapper = target_mapper
         self.order_by = order_by
         if not query_class:
@@ -63,16 +66,16 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
 
     def get(self, state, dict_, passive=attributes.PASSIVE_OFF):
         if not passive & attributes.SQL_OK:
-            return self._get_collection_history(state,
-                    attributes.PASSIVE_NO_INITIALIZE).added_items
+            return self._get_collection_history(
+                state, attributes.PASSIVE_NO_INITIALIZE).added_items
         else:
             return self.query_class(self, state)
 
     def get_collection(self, state, dict_, user_data=None,
-                            passive=attributes.PASSIVE_NO_INITIALIZE):
+                       passive=attributes.PASSIVE_NO_INITIALIZE):
         if not passive & attributes.SQL_OK:
             return self._get_collection_history(state,
-                    passive).added_items
+                                                passive).added_items
         else:
             history = self._get_collection_history(state, passive)
             return history.added_plus_unchanged
@@ -86,7 +89,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         return attributes.Event(self, attributes.OP_REMOVE)
 
     def fire_append_event(self, state, dict_, value, initiator,
-                                                    collection_history=None):
+                          collection_history=None):
         if collection_history is None:
             collection_history = self._modified_event(state, dict_)
 
@@ -99,7 +102,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             self.sethasparent(attributes.instance_state(value), state, True)
 
     def fire_remove_event(self, state, dict_, value, initiator,
-                                                    collection_history=None):
+                          collection_history=None):
         if collection_history is None:
             collection_history = self._modified_event(state, dict_)
 
@@ -117,8 +120,8 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             state.committed_state[self.key] = CollectionHistory(self, state)
 
         state._modified_event(dict_,
-                                self,
-                                attributes.NEVER_SET)
+                              self,
+                              attributes.NEVER_SET)
 
         # this is a hack to allow the fixtures.ComparableEntity fixture
         # to work
@@ -126,8 +129,8 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         return state.committed_state[self.key]
 
     def set(self, state, dict_, value, initiator,
-                        passive=attributes.PASSIVE_OFF,
-                        check_old=None, pop=False):
+            passive=attributes.PASSIVE_OFF,
+            check_old=None, pop=False):
         if initiator and initiator.parent_token is self.parent_token:
             return
 
@@ -145,7 +148,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             old_collection = collection_history.added_items
         else:
             old_collection = old_collection.union(
-                                    collection_history.added_items)
+                collection_history.added_items)
 
         idset = util.IdentitySet
         constants = old_collection.intersection(new_values)
@@ -155,11 +158,11 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         for member in new_values:
             if member in additions:
                 self.fire_append_event(state, dict_, member, None,
-                                        collection_history=collection_history)
+                                       collection_history=collection_history)
 
         for member in removals:
             self.fire_remove_event(state, dict_, member, None,
-                                        collection_history=collection_history)
+                                   collection_history=collection_history)
 
     def delete(self, *args, **kwargs):
         raise NotImplementedError()
@@ -173,14 +176,14 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         return c.as_history()
 
     def get_all_pending(self, state, dict_,
-                                passive=attributes.PASSIVE_NO_INITIALIZE):
+                        passive=attributes.PASSIVE_NO_INITIALIZE):
         c = self._get_collection_history(
             state, passive)
         return [
-                (attributes.instance_state(x), x)
-                for x in
-                c.all_items
-            ]
+            (attributes.instance_state(x), x)
+            for x in
+            c.all_items
+        ]
 
     def _get_collection_history(self, state, passive=attributes.PASSIVE_OFF):
         if self.key in state.committed_state:
@@ -194,17 +197,17 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             return c
 
     def append(self, state, dict_, value, initiator,
-                            passive=attributes.PASSIVE_OFF):
+               passive=attributes.PASSIVE_OFF):
         if initiator is not self:
             self.fire_append_event(state, dict_, value, initiator)
 
     def remove(self, state, dict_, value, initiator,
-                            passive=attributes.PASSIVE_OFF):
+               passive=attributes.PASSIVE_OFF):
         if initiator is not self:
             self.fire_remove_event(state, dict_, value, initiator)
 
     def pop(self, state, dict_, value, initiator,
-                                            passive=attributes.PASSIVE_OFF):
+            passive=attributes.PASSIVE_OFF):
         self.remove(state, dict_, value, initiator, passive=passive)
 
 
@@ -219,10 +222,10 @@ class AppenderMixin(object):
         mapper = object_mapper(instance)
         prop = mapper._props[self.attr.key]
         self._criterion = prop.compare(
-                            operators.eq,
-                            instance,
-                            value_is_parent=True,
-                            alias_secondary=False)
+            operators.eq,
+            instance,
+            value_is_parent=True,
+            alias_secondary=False)
 
         if self.attr.order_by:
             self._order_by = self.attr.order_by
@@ -230,7 +233,7 @@ class AppenderMixin(object):
     def session(self):
         sess = object_session(self.instance)
         if sess is not None and self.autoflush and sess.autoflush \
-            and self.instance in sess:
+                and self.instance in sess:
             sess.flush()
         if not orm_util.has_identity(self.instance):
             return None
@@ -339,7 +342,7 @@ class CollectionHistory(object):
     @property
     def all_items(self):
         return list(self.added_items.union(
-                        self.unchanged_items).union(self.deleted_items))
+            self.unchanged_items).union(self.deleted_items))
 
     def as_history(self):
         if self._reconcile_collection:
@@ -348,13 +351,13 @@ class CollectionHistory(object):
             unchanged = self.unchanged_items.difference(deleted)
         else:
             added, unchanged, deleted = self.added_items,\
-                                            self.unchanged_items,\
-                                            self.deleted_items
+                self.unchanged_items,\
+                self.deleted_items
         return attributes.History(
-                    list(added),
-                    list(unchanged),
-                    list(deleted),
-                )
+            list(added),
+            list(unchanged),
+            list(deleted),
+        )
 
     def indexed(self, index):
         return list(self.added_items)[index]
@@ -367,4 +370,3 @@ class CollectionHistory(object):
             self.added_items.remove(value)
         else:
             self.deleted_items.add(value)
-

@@ -120,7 +120,7 @@ RESERVED_WORDS = set([
     "union", "unique", "update", "upper", "user", "using", "value",
     "values", "varchar", "variable", "varying", "view", "wait", "when",
     "where", "while", "with", "work", "write", "year",
-    ])
+])
 
 
 class _StringType(sqltypes.String):
@@ -161,20 +161,20 @@ colspecs = {
 }
 
 ischema_names = {
-      'SHORT': SMALLINT,
-       'LONG': INTEGER,
-       'QUAD': FLOAT,
-      'FLOAT': FLOAT,
-       'DATE': DATE,
-       'TIME': TIME,
-       'TEXT': TEXT,
-      'INT64': BIGINT,
-     'DOUBLE': FLOAT,
-  'TIMESTAMP': TIMESTAMP,
+    'SHORT': SMALLINT,
+    'LONG': INTEGER,
+    'QUAD': FLOAT,
+    'FLOAT': FLOAT,
+    'DATE': DATE,
+    'TIME': TIME,
+    'TEXT': TEXT,
+    'INT64': BIGINT,
+    'DOUBLE': FLOAT,
+    'TIMESTAMP': TIMESTAMP,
     'VARYING': VARCHAR,
     'CSTRING': CHAR,
-       'BLOB': BLOB,
-    }
+    'BLOB': BLOB,
+}
 
 
 # TODO: date conversion types (should be implemented as _FBDateTime,
@@ -194,7 +194,7 @@ class FBTypeCompiler(compiler.GenericTypeCompiler):
         return "BLOB SUB_TYPE 0"
 
     def _extend_string(self, type_, basic):
-        charset = getattr(type_, 'charset',  None)
+        charset = getattr(type_, 'charset', None)
         if charset is None:
             return basic
         else:
@@ -207,8 +207,8 @@ class FBTypeCompiler(compiler.GenericTypeCompiler):
     def visit_VARCHAR(self, type_):
         if not type_.length:
             raise exc.CompileError(
-                    "VARCHAR requires a length on dialect %s" %
-                    self.dialect.name)
+                "VARCHAR requires a length on dialect %s" %
+                self.dialect.name)
         basic = super(FBTypeCompiler, self).visit_VARCHAR(type_)
         return self._extend_string(type_, basic)
 
@@ -218,46 +218,46 @@ class FBCompiler(sql.compiler.SQLCompiler):
 
     ansi_bind_rules = True
 
-    #def visit_contains_op_binary(self, binary, operator, **kw):
-        # cant use CONTAINING b.c. it's case insensitive.
+    # def visit_contains_op_binary(self, binary, operator, **kw):
+    # cant use CONTAINING b.c. it's case insensitive.
 
-    #def visit_notcontains_op_binary(self, binary, operator, **kw):
-        # cant use NOT CONTAINING b.c. it's case insensitive.
+    # def visit_notcontains_op_binary(self, binary, operator, **kw):
+    # cant use NOT CONTAINING b.c. it's case insensitive.
 
     def visit_now_func(self, fn, **kw):
         return "CURRENT_TIMESTAMP"
 
     def visit_startswith_op_binary(self, binary, operator, **kw):
         return '%s STARTING WITH %s' % (
-                            binary.left._compiler_dispatch(self, **kw),
-                            binary.right._compiler_dispatch(self, **kw))
+            binary.left._compiler_dispatch(self, **kw),
+            binary.right._compiler_dispatch(self, **kw))
 
     def visit_notstartswith_op_binary(self, binary, operator, **kw):
         return '%s NOT STARTING WITH %s' % (
-                            binary.left._compiler_dispatch(self, **kw),
-                            binary.right._compiler_dispatch(self, **kw))
+            binary.left._compiler_dispatch(self, **kw),
+            binary.right._compiler_dispatch(self, **kw))
 
     def visit_mod_binary(self, binary, operator, **kw):
         return "mod(%s, %s)" % (
-                                self.process(binary.left, **kw),
-                                self.process(binary.right, **kw))
+            self.process(binary.left, **kw),
+            self.process(binary.right, **kw))
 
     def visit_alias(self, alias, asfrom=False, **kwargs):
         if self.dialect._version_two:
             return super(FBCompiler, self).\
-                        visit_alias(alias, asfrom=asfrom, **kwargs)
+                visit_alias(alias, asfrom=asfrom, **kwargs)
         else:
             # Override to not use the AS keyword which FB 1.5 does not like
             if asfrom:
                 alias_name = isinstance(alias.name,
-                                expression._truncated_label) and \
-                                self._truncated_identifier("alias",
-                                alias.name) or alias.name
+                                        expression._truncated_label) and \
+                    self._truncated_identifier("alias",
+                                               alias.name) or alias.name
 
                 return self.process(
-                            alias.original, asfrom=asfrom, **kwargs) + \
-                            " " + \
-                            self.preparer.format_alias(alias, alias_name)
+                    alias.original, asfrom=asfrom, **kwargs) + \
+                    " " + \
+                    self.preparer.format_alias(alias, alias_name)
             else:
                 return self.process(alias.original, **kwargs)
 
@@ -316,9 +316,9 @@ class FBCompiler(sql.compiler.SQLCompiler):
 
     def returning_clause(self, stmt, returning_cols):
         columns = [
-                self._label_select_column(None, c, True, False, {})
-                for c in expression._select_iterables(returning_cols)
-            ]
+            self._label_select_column(None, c, True, False, {})
+            for c in expression._select_iterables(returning_cols)
+        ]
 
         return 'RETURNING ' + ', '.join(columns)
 
@@ -333,34 +333,35 @@ class FBDDLCompiler(sql.compiler.DDLCompiler):
         # http://www.firebirdsql.org/manual/generatorguide-sqlsyntax.html
         if create.element.start is not None:
             raise NotImplemented(
-                        "Firebird SEQUENCE doesn't support START WITH")
+                "Firebird SEQUENCE doesn't support START WITH")
         if create.element.increment is not None:
             raise NotImplemented(
-                        "Firebird SEQUENCE doesn't support INCREMENT BY")
+                "Firebird SEQUENCE doesn't support INCREMENT BY")
 
         if self.dialect._version_two:
             return "CREATE SEQUENCE %s" % \
-                        self.preparer.format_sequence(create.element)
+                self.preparer.format_sequence(create.element)
         else:
             return "CREATE GENERATOR %s" % \
-                        self.preparer.format_sequence(create.element)
+                self.preparer.format_sequence(create.element)
 
     def visit_drop_sequence(self, drop):
         """Generate a ``DROP GENERATOR`` statement for the sequence."""
 
         if self.dialect._version_two:
             return "DROP SEQUENCE %s" % \
-                        self.preparer.format_sequence(drop.element)
+                self.preparer.format_sequence(drop.element)
         else:
             return "DROP GENERATOR %s" % \
-                        self.preparer.format_sequence(drop.element)
+                self.preparer.format_sequence(drop.element)
 
 
 class FBIdentifierPreparer(sql.compiler.IdentifierPreparer):
     """Install Firebird specific reserved words."""
 
     reserved_words = RESERVED_WORDS
-    illegal_initial_characters = compiler.ILLEGAL_INITIAL_CHARACTERS.union(['_'])
+    illegal_initial_characters = compiler.ILLEGAL_INITIAL_CHARACTERS.union(
+        ['_'])
 
     def __init__(self, dialect):
         super(FBIdentifierPreparer, self).__init__(dialect, omit_schema=True)
@@ -371,10 +372,10 @@ class FBExecutionContext(default.DefaultExecutionContext):
         """Get the next value from the sequence using ``gen_id()``."""
 
         return self._execute_scalar(
-                "SELECT gen_id(%s, 1) FROM rdb$database" %
-                self.dialect.identifier_preparer.format_sequence(seq),
-                type_
-                )
+            "SELECT gen_id(%s, 1) FROM rdb$database" %
+            self.dialect.identifier_preparer.format_sequence(seq),
+            type_
+        )
 
 
 class FBDialect(default.DefaultDialect):
@@ -412,12 +413,12 @@ class FBDialect(default.DefaultDialect):
 
     def initialize(self, connection):
         super(FBDialect, self).initialize(connection)
-        self._version_two = ('firebird' in self.server_version_info and \
-                                self.server_version_info >= (2, )
-                            ) or \
-                            ('interbase' in self.server_version_info and \
+        self._version_two = ('firebird' in self.server_version_info and
+                             self.server_version_info >= (2, )
+                             ) or \
+                            ('interbase' in self.server_version_info and
                                 self.server_version_info >= (6, )
-                            )
+                             )
 
         if not self._version_two:
             # TODO: whatever other pre < 2.0 stuff goes here
@@ -427,8 +428,8 @@ class FBDialect(default.DefaultDialect):
                 sqltypes.DateTime: sqltypes.DATE
             }
 
-        self.implicit_returning = self._version_two  and \
-                            self.__dict__.get('implicit_returning', True)
+        self.implicit_returning = self._version_two and \
+            self.__dict__.get('implicit_returning', True)
 
     def normalize_name(self, name):
         # Remove trailing spaces: FB uses a CHAR() type,
@@ -437,7 +438,7 @@ class FBDialect(default.DefaultDialect):
         if name is None:
             return None
         elif name.upper() == name and \
-            not self.identifier_preparer._requires_quotes(name.lower()):
+                not self.identifier_preparer._requires_quotes(name.lower()):
             return name.lower()
         else:
             return name
@@ -446,7 +447,7 @@ class FBDialect(default.DefaultDialect):
         if name is None:
             return None
         elif name.lower() == name and \
-            not self.identifier_preparer._requires_quotes(name.lower()):
+                not self.identifier_preparer._requires_quotes(name.lower()):
             return name.upper()
         else:
             return name
@@ -540,8 +541,8 @@ class FBDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_column_sequence(self, connection,
-                                table_name, column_name,
-                                schema=None, **kw):
+                            table_name, column_name,
+                            schema=None, **kw):
         tablename = self.denormalize_name(table_name)
         colname = self.denormalize_name(column_name)
         # Heuristic-query to determine the generator associated to a PK field
@@ -614,8 +615,8 @@ class FBDialect(default.DefaultDialect):
                 coltype = sqltypes.NULLTYPE
             elif issubclass(coltype, Integer) and row['fprec'] != 0:
                 coltype = NUMERIC(
-                                precision=row['fprec'],
-                                scale=row['fscale'] * -1)
+                    precision=row['fprec'],
+                    scale=row['fscale'] * -1)
             elif colspec in ('VARYING', 'CSTRING'):
                 coltype = coltype(row['flen'])
             elif colspec == 'TEXT':
@@ -637,8 +638,8 @@ class FBDialect(default.DefaultDialect):
                 # (see also http://tracker.firebirdsql.org/browse/CORE-356)
                 defexpr = row['fdefault'].lstrip()
                 assert defexpr[:8].rstrip().upper() == \
-                            'DEFAULT', "Unrecognized default value: %s" % \
-                            defexpr
+                    'DEFAULT', "Unrecognized default value: %s" % \
+                    defexpr
                 defvalue = defexpr[8:].strip()
                 if defvalue == 'NULL':
                     # Redundant
@@ -701,9 +702,9 @@ class FBDialect(default.DefaultDialect):
                 fk['name'] = cname
                 fk['referred_table'] = self.normalize_name(row['targetrname'])
             fk['constrained_columns'].append(
-                                self.normalize_name(row['fname']))
+                self.normalize_name(row['fname']))
             fk['referred_columns'].append(
-                                self.normalize_name(row['targetfname']))
+                self.normalize_name(row['targetfname']))
         return list(fks.values())
 
     @reflection.cache
@@ -733,7 +734,6 @@ class FBDialect(default.DefaultDialect):
                 indexrec['unique'] = bool(row['unique_flag'])
 
             indexrec['column_names'].append(
-                                self.normalize_name(row['field_name']))
+                self.normalize_name(row['field_name']))
 
         return list(indexes.values())
-

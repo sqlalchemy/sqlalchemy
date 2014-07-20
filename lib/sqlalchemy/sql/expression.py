@@ -31,23 +31,23 @@ from .visitors import Visitable
 from .functions import func, modifier, FunctionElement, Function
 from ..util.langhelpers import public_factory
 from .elements import ClauseElement, ColumnElement,\
-  BindParameter, UnaryExpression, BooleanClauseList, \
-  Label, Cast, Case, ColumnClause, TextClause, Over, Null, \
-  True_, False_, BinaryExpression, Tuple, TypeClause, Extract, \
-  Grouping, not_, \
-  collate, literal_column, between,\
-  literal, outparam, type_coerce, ClauseList
+    BindParameter, UnaryExpression, BooleanClauseList, \
+    Label, Cast, Case, ColumnClause, TextClause, Over, Null, \
+    True_, False_, BinaryExpression, Tuple, TypeClause, Extract, \
+    Grouping, not_, \
+    collate, literal_column, between,\
+    literal, outparam, type_coerce, ClauseList
 
 from .elements import SavepointClause, RollbackToSavepointClause, \
-  ReleaseSavepointClause
+    ReleaseSavepointClause
 
 from .base import ColumnCollection, Generative, Executable, \
-          PARSE_AUTOCOMMIT
+    PARSE_AUTOCOMMIT
 
 from .selectable import Alias, Join, Select, Selectable, TableClause, \
-        CompoundSelect, CTE, FromClause, FromGrouping, SelectBase, \
-        alias, GenerativeSelect, \
-        subquery, HasPrefixes, Exists, ScalarSelect, TextAsFrom
+    CompoundSelect, CTE, FromClause, FromGrouping, SelectBase, \
+    alias, GenerativeSelect, \
+    subquery, HasPrefixes, Exists, ScalarSelect, TextAsFrom
 
 
 from .dml import Insert, Update, Delete, UpdateBase, ValuesBase
@@ -71,17 +71,24 @@ cast = public_factory(Cast, ".expression.cast")
 extract = public_factory(Extract, ".expression.extract")
 tuple_ = public_factory(Tuple, ".expression.tuple_")
 except_ = public_factory(CompoundSelect._create_except, ".expression.except_")
-except_all = public_factory(CompoundSelect._create_except_all, ".expression.except_all")
-intersect = public_factory(CompoundSelect._create_intersect, ".expression.intersect")
-intersect_all = public_factory(CompoundSelect._create_intersect_all, ".expression.intersect_all")
+except_all = public_factory(
+    CompoundSelect._create_except_all, ".expression.except_all")
+intersect = public_factory(
+    CompoundSelect._create_intersect, ".expression.intersect")
+intersect_all = public_factory(
+    CompoundSelect._create_intersect_all, ".expression.intersect_all")
 union = public_factory(CompoundSelect._create_union, ".expression.union")
-union_all = public_factory(CompoundSelect._create_union_all, ".expression.union_all")
+union_all = public_factory(
+    CompoundSelect._create_union_all, ".expression.union_all")
 exists = public_factory(Exists, ".expression.exists")
-nullsfirst = public_factory(UnaryExpression._create_nullsfirst, ".expression.nullsfirst")
-nullslast = public_factory(UnaryExpression._create_nullslast, ".expression.nullslast")
+nullsfirst = public_factory(
+    UnaryExpression._create_nullsfirst, ".expression.nullsfirst")
+nullslast = public_factory(
+    UnaryExpression._create_nullslast, ".expression.nullslast")
 asc = public_factory(UnaryExpression._create_asc, ".expression.asc")
 desc = public_factory(UnaryExpression._create_desc, ".expression.desc")
-distinct = public_factory(UnaryExpression._create_distinct, ".expression.distinct")
+distinct = public_factory(
+    UnaryExpression._create_distinct, ".expression.distinct")
 true = public_factory(True_._singleton, ".expression.true")
 false = public_factory(False_._singleton, ".expression.false")
 null = public_factory(Null._singleton, ".expression.null")
@@ -96,12 +103,11 @@ delete = public_factory(Delete, ".expression.delete")
 # these might be better off in some other namespace
 from .base import _from_objects
 from .elements import _literal_as_text, _clause_element_as_expr,\
-  _is_column, _labeled, _only_column_elements, _string_or_unprintable, \
+    _is_column, _labeled, _only_column_elements, _string_or_unprintable, \
     _truncated_label, _clone, _cloned_difference, _cloned_intersection,\
     _column_as_key, _literal_as_binds, _select_iterables, \
     _corresponding_column_or_error
 from .selectable import _interpret_as_from
-
 
 
 # old names for compatibility

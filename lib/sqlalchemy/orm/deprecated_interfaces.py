@@ -8,6 +8,7 @@
 from .. import event, util
 from .interfaces import EXT_CONTINUE
 
+
 @util.langhelpers.dependency_for("sqlalchemy.orm.interfaces")
 class MapperExtension(object):
     """Base implementation for :class:`.Mapper` event hooks.
@@ -64,20 +65,20 @@ class MapperExtension(object):
         cls._adapt_listener_methods(
             self, listener,
             (
-            'init_instance',
-            'init_failed',
-            'translate_row',
-            'create_instance',
-            'append_result',
-            'populate_instance',
-            'reconstruct_instance',
-            'before_insert',
-            'after_insert',
-            'before_update',
-            'after_update',
-            'before_delete',
-            'after_delete'
-        ))
+                'init_instance',
+                'init_failed',
+                'translate_row',
+                'create_instance',
+                'append_result',
+                'populate_instance',
+                'reconstruct_instance',
+                'before_insert',
+                'after_insert',
+                'before_update',
+                'after_update',
+                'before_delete',
+                'after_delete'
+            ))
 
     @classmethod
     def _adapt_listener_methods(cls, self, listener, methods):
@@ -93,29 +94,30 @@ class MapperExtension(object):
                             ls_meth(self, instance)
                         return reconstruct
                     event.listen(self.class_manager, 'load',
-                                        go(ls_meth), raw=False, propagate=True)
+                                 go(ls_meth), raw=False, propagate=True)
                 elif meth == 'init_instance':
                     def go(ls_meth):
                         def init_instance(instance, args, kwargs):
                             ls_meth(self, self.class_,
-                                        self.class_manager.original_init,
-                                        instance, args, kwargs)
+                                    self.class_manager.original_init,
+                                    instance, args, kwargs)
                         return init_instance
                     event.listen(self.class_manager, 'init',
-                                        go(ls_meth), raw=False, propagate=True)
+                                 go(ls_meth), raw=False, propagate=True)
                 elif meth == 'init_failed':
                     def go(ls_meth):
                         def init_failed(instance, args, kwargs):
-                            util.warn_exception(ls_meth, self, self.class_,
-                                            self.class_manager.original_init,
-                                            instance, args, kwargs)
+                            util.warn_exception(
+                                ls_meth, self, self.class_,
+                                self.class_manager.original_init,
+                                instance, args, kwargs)
 
                         return init_failed
                     event.listen(self.class_manager, 'init_failure',
-                                        go(ls_meth), raw=False, propagate=True)
+                                 go(ls_meth), raw=False, propagate=True)
                 else:
                     event.listen(self, "%s" % meth, ls_meth,
-                                        raw=False, retval=True, propagate=True)
+                                 raw=False, retval=True, propagate=True)
 
     def instrument_class(self, mapper, class_):
         """Receive a class when the mapper is first constructed, and has
@@ -198,7 +200,7 @@ class MapperExtension(object):
         return EXT_CONTINUE
 
     def append_result(self, mapper, selectcontext, row, instance,
-                        result, **flags):
+                      result, **flags):
         """Receive an object instance before that instance is appended
         to a result list.
 
@@ -232,7 +234,7 @@ class MapperExtension(object):
         return EXT_CONTINUE
 
     def populate_instance(self, mapper, selectcontext, row,
-                            instance, **flags):
+                          instance, **flags):
         """Receive an instance before that instance has
         its attributes populated.
 
@@ -555,14 +557,14 @@ class AttributeExtension(object):
     @classmethod
     def _adapt_listener(cls, self, listener):
         event.listen(self, 'append', listener.append,
-                            active_history=listener.active_history,
-                            raw=True, retval=True)
+                     active_history=listener.active_history,
+                     raw=True, retval=True)
         event.listen(self, 'remove', listener.remove,
-                            active_history=listener.active_history,
-                            raw=True, retval=True)
+                     active_history=listener.active_history,
+                     raw=True, retval=True)
         event.listen(self, 'set', listener.set,
-                            active_history=listener.active_history,
-                            raw=True, retval=True)
+                     active_history=listener.active_history,
+                     raw=True, retval=True)
 
     def append(self, state, value, initiator):
         """Receive a collection append event.

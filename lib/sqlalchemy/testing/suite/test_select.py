@@ -8,6 +8,7 @@ from ..schema import Table, Column
 
 
 class OrderByLabelTest(fixtures.TablesTest):
+
     """Test the dialect sends appropriate ORDER BY expressions when
     labels are used.
 
@@ -20,12 +21,12 @@ class OrderByLabelTest(fixtures.TablesTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("some_table", metadata,
-            Column('id', Integer, primary_key=True),
-            Column('x', Integer),
-            Column('y', Integer),
-            Column('q', String(50)),
-            Column('p', String(50))
-            )
+              Column('id', Integer, primary_key=True),
+              Column('x', Integer),
+              Column('y', Integer),
+              Column('q', String(50)),
+              Column('p', String(50))
+              )
 
     @classmethod
     def insert_data(cls):

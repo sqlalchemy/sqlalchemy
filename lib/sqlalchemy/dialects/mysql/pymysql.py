@@ -10,20 +10,22 @@
 .. dialect:: mysql+pymysql
     :name: PyMySQL
     :dbapi: pymysql
-    :connectstring: mysql+pymysql://<username>:<password>@<host>/<dbname>[?<options>]
+    :connectstring: mysql+pymysql://<username>:<password>@<host>/<dbname>\
+[?<options>]
     :url: http://code.google.com/p/pymysql/
 
 MySQL-Python Compatibility
 --------------------------
 
 The pymysql DBAPI is a pure Python port of the MySQL-python (MySQLdb) driver,
-and targets 100% compatibility.   Most behavioral notes for MySQL-python apply to
-the pymysql driver as well.
+and targets 100% compatibility.   Most behavioral notes for MySQL-python apply
+to the pymysql driver as well.
 
 """
 
 from .mysqldb import MySQLDialect_mysqldb
 from ...util import py3k
+
 
 class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     driver = 'pymysql'
@@ -31,7 +33,6 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     description_encoding = None
     if py3k:
         supports_unicode_statements = True
-
 
     @classmethod
     def dbapi(cls):

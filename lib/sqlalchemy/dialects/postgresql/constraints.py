@@ -6,13 +6,15 @@
 from sqlalchemy.schema import ColumnCollectionConstraint
 from sqlalchemy.sql import expression
 
+
 class ExcludeConstraint(ColumnCollectionConstraint):
     """A table-level EXCLUDE constraint.
 
     Defines an EXCLUDE constraint as described in the `postgres
     documentation`__.
 
-    __ http://www.postgresql.org/docs/9.0/static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
+    __ http://www.postgresql.org/docs/9.0/\
+static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
     """
 
     __visit_name__ = 'exclude_constraint'
@@ -52,7 +54,7 @@ class ExcludeConstraint(ColumnCollectionConstraint):
             name=kw.get('name'),
             deferrable=kw.get('deferrable'),
             initially=kw.get('initially')
-            )
+        )
         self.operators = {}
         for col_or_string, op in elements:
             name = getattr(col_or_string, 'name', col_or_string)
@@ -60,15 +62,14 @@ class ExcludeConstraint(ColumnCollectionConstraint):
         self.using = kw.get('using', 'gist')
         where = kw.get('where')
         if where:
-            self.where =  expression._literal_as_text(where)
+            self.where = expression._literal_as_text(where)
 
     def copy(self, **kw):
         elements = [(col, self.operators[col])
                     for col in self.columns.keys()]
         c = self.__class__(*elements,
-                            name=self.name,
-                            deferrable=self.deferrable,
-                            initially=self.initially)
+                           name=self.name,
+                           deferrable=self.deferrable,
+                           initially=self.initially)
         c.dispatch._update(self.dispatch)
         return c
-

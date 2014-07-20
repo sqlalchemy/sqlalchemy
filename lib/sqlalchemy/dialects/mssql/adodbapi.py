@@ -61,7 +61,7 @@ class MSDialect_adodbapi(MSDialect):
         connectors = ["Provider=SQLOLEDB"]
         if 'port' in keys:
             connectors.append("Data Source=%s, %s" %
-                                (keys.get("host"), keys.get("port")))
+                              (keys.get("host"), keys.get("port")))
         else:
             connectors.append("Data Source=%s" % keys.get("host"))
         connectors.append("Initial Catalog=%s" % keys.get("database"))
@@ -75,6 +75,6 @@ class MSDialect_adodbapi(MSDialect):
 
     def is_disconnect(self, e, connection, cursor):
         return isinstance(e, self.dbapi.adodbapi.DatabaseError) and \
-                            "'connection failure'" in str(e)
+            "'connection failure'" in str(e)
 
 dialect = MSDialect_adodbapi

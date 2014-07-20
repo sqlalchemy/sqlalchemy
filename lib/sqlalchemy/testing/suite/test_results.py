@@ -15,13 +15,13 @@ class RowFetchTest(fixtures.TablesTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('plain_pk', metadata,
-                Column('id', Integer, primary_key=True),
-                Column('data', String(50))
-            )
+              Column('id', Integer, primary_key=True),
+              Column('data', String(50))
+              )
         Table('has_dates', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('today', DateTime)
-        )
+              Column('id', Integer, primary_key=True),
+              Column('today', DateTime)
+              )
 
     @classmethod
     def insert_data(cls):
@@ -43,9 +43,9 @@ class RowFetchTest(fixtures.TablesTest):
 
     def test_via_string(self):
         row = config.db.execute(
-                self.tables.plain_pk.select().\
-                    order_by(self.tables.plain_pk.c.id)
-            ).first()
+            self.tables.plain_pk.select().
+            order_by(self.tables.plain_pk.c.id)
+        ).first()
 
         eq_(
             row['id'], 1
@@ -56,9 +56,9 @@ class RowFetchTest(fixtures.TablesTest):
 
     def test_via_int(self):
         row = config.db.execute(
-                self.tables.plain_pk.select().\
-                    order_by(self.tables.plain_pk.c.id)
-            ).first()
+            self.tables.plain_pk.select().
+            order_by(self.tables.plain_pk.c.id)
+        ).first()
 
         eq_(
             row[0], 1
@@ -69,9 +69,9 @@ class RowFetchTest(fixtures.TablesTest):
 
     def test_via_col_object(self):
         row = config.db.execute(
-                self.tables.plain_pk.select().\
-                    order_by(self.tables.plain_pk.c.id)
-            ).first()
+            self.tables.plain_pk.select().
+            order_by(self.tables.plain_pk.c.id)
+        ).first()
 
         eq_(
             row[self.tables.plain_pk.c.id], 1
@@ -83,14 +83,13 @@ class RowFetchTest(fixtures.TablesTest):
     @requirements.duplicate_names_in_cursor_description
     def test_row_with_dupe_names(self):
         result = config.db.execute(
-                        select([self.tables.plain_pk.c.data,
-                                    self.tables.plain_pk.c.data.label('data')]).\
-                        order_by(self.tables.plain_pk.c.id)
-                )
+            select([self.tables.plain_pk.c.data,
+                    self.tables.plain_pk.c.data.label('data')]).
+            order_by(self.tables.plain_pk.c.id)
+        )
         row = result.first()
         eq_(result.keys(), ['data', 'data'])
         eq_(row, ('d1', 'd1'))
-
 
     def test_row_w_scalar_select(self):
         """test that a scalar select as a column is returned as such
@@ -124,12 +123,13 @@ class PercentSchemaNamesTest(fixtures.TablesTest):
     @classmethod
     def define_tables(cls, metadata):
         cls.tables.percent_table = Table('percent%table', metadata,
-            Column("percent%", Integer),
-            Column("spaces % more spaces", Integer),
-        )
-        cls.tables.lightweight_percent_table = sql.table('percent%table',
-            sql.column("percent%"),
-            sql.column("spaces % more spaces"),
+                                         Column("percent%", Integer),
+                                         Column(
+                                             "spaces % more spaces", Integer),
+                                         )
+        cls.tables.lightweight_percent_table = sql.table(
+            'percent%table', sql.column("percent%"),
+            sql.column("spaces % more spaces")
         )
 
     def test_single_roundtrip(self):
@@ -152,8 +152,8 @@ class PercentSchemaNamesTest(fixtures.TablesTest):
         config.db.execute(
             percent_table.insert(),
             [{'percent%': 7, 'spaces % more spaces': 11},
-            {'percent%': 9, 'spaces % more spaces': 10},
-            {'percent%': 11, 'spaces % more spaces': 9}]
+             {'percent%': 9, 'spaces % more spaces': 10},
+             {'percent%': 11, 'spaces % more spaces': 9}]
         )
         self._assert_table()
 
@@ -162,10 +162,10 @@ class PercentSchemaNamesTest(fixtures.TablesTest):
         lightweight_percent_table = self.tables.lightweight_percent_table
 
         for table in (
-                    percent_table,
-                    percent_table.alias(),
-                    lightweight_percent_table,
-                    lightweight_percent_table.alias()):
+                percent_table,
+                percent_table.alias(),
+                lightweight_percent_table,
+                lightweight_percent_table.alias()):
             eq_(
                 list(
                     config.db.execute(
@@ -184,18 +184,18 @@ class PercentSchemaNamesTest(fixtures.TablesTest):
                 list(
                     config.db.execute(
                         table.select().
-                            where(table.c['spaces % more spaces'].in_([9, 10])).
-                            order_by(table.c['percent%']),
+                        where(table.c['spaces % more spaces'].in_([9, 10])).
+                        order_by(table.c['percent%']),
                     )
                 ),
-                    [
-                        (9, 10),
-                        (11, 9)
-                    ]
+                [
+                    (9, 10),
+                    (11, 9)
+                ]
             )
 
-            row = config.db.execute(table.select().\
-                        order_by(table.c['percent%'])).first()
+            row = config.db.execute(table.select().
+                                    order_by(table.c['percent%'])).first()
             eq_(row['percent%'], 5)
             eq_(row['spaces % more spaces'], 12)
 
@@ -211,9 +211,9 @@ class PercentSchemaNamesTest(fixtures.TablesTest):
         eq_(
             list(
                 config.db.execute(
-                    percent_table.\
-                        select().\
-                        order_by(percent_table.c['percent%'])
+                    percent_table.
+                    select().
+                    order_by(percent_table.c['percent%'])
                 )
             ),
             [(5, 15), (7, 15), (9, 15), (11, 15)]

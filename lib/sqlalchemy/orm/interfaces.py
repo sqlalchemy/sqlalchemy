@@ -22,7 +22,8 @@ from __future__ import absolute_import
 from .. import exc as sa_exc, util, inspect
 from ..sql import operators
 from collections import deque
-from .base import ONETOMANY, MANYTOONE, MANYTOMANY, EXT_CONTINUE, EXT_STOP, NOT_EXTENSION
+from .base import (ONETOMANY, MANYTOONE, MANYTOMANY,
+                   EXT_CONTINUE, EXT_STOP, NOT_EXTENSION)
 from .base import _InspectionAttr, _MappedAttribute
 from .path_registry import PathRegistry
 import collections
@@ -43,8 +44,7 @@ __all__ = (
     'PropComparator',
     'SessionExtension',
     'StrategizedProperty',
-    )
-
+)
 
 
 class MapperProperty(_MappedAttribute, _InspectionAttr):
@@ -82,14 +82,14 @@ class MapperProperty(_MappedAttribute, _InspectionAttr):
         pass
 
     def create_row_processor(self, context, path,
-                                            mapper, row, adapter):
+                             mapper, row, adapter):
         """Return a 3-tuple consisting of three row processing functions.
 
         """
         return None, None, None
 
     def cascade_iterator(self, type_, state, visited_instances=None,
-                            halt_on=None):
+                         halt_on=None):
         """Iterate through instances related to the given instance for
         a particular 'cascade', starting with this MapperProperty.
 
@@ -200,7 +200,7 @@ class MapperProperty(_MappedAttribute, _InspectionAttr):
         return not self.parent.non_primary
 
     def merge(self, session, source_state, source_dict, dest_state,
-                dest_dict, load, _recursive):
+              dest_dict, load, _recursive):
         """Merge the attribute represented by this ``MapperProperty``
         from source to destination object"""
 
@@ -222,6 +222,7 @@ class MapperProperty(_MappedAttribute, _InspectionAttr):
         return '<%s at 0x%x; %s>' % (
             self.__class__.__name__,
             id(self), getattr(self, 'key', 'no key'))
+
 
 class PropComparator(operators.ColumnOperators):
     """Defines boolean, comparison, and other operators for
@@ -434,10 +435,10 @@ class StrategizedProperty(MapperProperty):
         # search among: exact match, "attr.*", "default" strategy
         # if any.
         for path_key in (
-                        search_path._loader_key,
-                        search_path._wildcard_path_loader_key,
-                        search_path._default_path_loader_key
-                    ):
+            search_path._loader_key,
+            search_path._wildcard_path_loader_key,
+            search_path._default_path_loader_key
+        ):
             if path_key in context.attributes:
                 load = context.attributes[path_key]
                 break
@@ -449,7 +450,8 @@ class StrategizedProperty(MapperProperty):
             return self._strategies[key]
         except KeyError:
             cls = self._strategy_lookup(*key)
-            self._strategies[key] = self._strategies[cls] = strategy = cls(self)
+            self._strategies[key] = self._strategies[
+                cls] = strategy = cls(self)
             return strategy
 
     def _get_strategy_by_cls(self, cls):
@@ -470,7 +472,7 @@ class StrategizedProperty(MapperProperty):
         else:
             strat = self.strategy
         return strat.create_row_processor(context, path, loader,
-                                    mapper, row, adapter)
+                                          mapper, row, adapter)
 
     def do_init(self):
         self._strategies = {}
@@ -478,9 +480,8 @@ class StrategizedProperty(MapperProperty):
 
     def post_instrument_class(self, mapper):
         if self.is_primary() and \
-            not mapper.class_manager._attr_has_impl(self.key):
+                not mapper.class_manager._attr_has_impl(self.key):
             self.strategy.init_class_attribute(mapper)
-
 
     _strategies = collections.defaultdict(dict)
 
@@ -527,8 +528,6 @@ class MapperOption(object):
         self.process_query(query)
 
 
-
-
 class LoaderStrategy(object):
     """Describe the loading behavior of a StrategizedProperty object.
 
@@ -552,6 +551,7 @@ class LoaderStrategy(object):
       on a particular mapped instance.
 
     """
+
     def __init__(self, parent):
         self.parent_property = parent
         self.is_class_level = False
@@ -565,7 +565,7 @@ class LoaderStrategy(object):
         pass
 
     def create_row_processor(self, context, path, loadopt, mapper,
-                                row, adapter):
+                             row, adapter):
         """Return row processing functions which fulfill the contract
         specified by MapperProperty.create_row_processor.
 

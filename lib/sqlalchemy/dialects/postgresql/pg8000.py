@@ -165,6 +165,6 @@ class PGDialect_pg8000(PGDialect):
                 "Invalid value '%s' for isolation_level. "
                 "Valid isolation levels for %s are %s or AUTOCOMMIT" %
                 (level, self.name, ", ".join(self._isolation_lookup))
-                )
+            )
 
 dialect = PGDialect_pg8000

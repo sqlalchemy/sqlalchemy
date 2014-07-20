@@ -25,7 +25,9 @@ import decimal
 if util.jython:
     import array
 
+
 class _DateAffinity(object):
+
     """Mixin date/time specific expression adaptations.
 
     Rules are implemented within Date,Time,Interval,DateTime, Numeric,
@@ -43,19 +45,28 @@ class _DateAffinity(object):
 
         def _adapt_expression(self, op, other_comparator):
             othertype = other_comparator.type._type_affinity
-            return op, \
-                    to_instance(self.type._expression_adaptations.get(op, self._blank_dict).\
+            return (
+                op, to_instance(
+                    self.type._expression_adaptations.
+                    get(op, self._blank_dict).
                     get(othertype, NULLTYPE))
+            )
     comparator_factory = Comparator
 
+
 class Concatenable(object):
+
     """A mixin that marks a type as supporting 'concatenation',
     typically strings."""
 
     class Comparator(TypeEngine.Comparator):
+
         def _adapt_expression(self, op, other_comparator):
-            if op is operators.add and isinstance(other_comparator,
-                    (Concatenable.Comparator, NullType.Comparator)):
+            if (op is operators.add and
+                    isinstance(
+                        other_comparator,
+                        (Concatenable.Comparator, NullType.Comparator)
+                    )):
                 return operators.concat_op, self.expr.type
             else:
                 return op, self.expr.type
@@ -64,6 +75,7 @@ class Concatenable(object):
 
 
 class String(Concatenable, TypeEngine):
+
     """The base for all string and character types.
 
     In SQL, corresponds to VARCHAR.  Can also take Python unicode objects
@@ -79,10 +91,10 @@ class String(Concatenable, TypeEngine):
     __visit_name__ = 'string'
 
     def __init__(self, length=None, collation=None,
-                        convert_unicode=False,
-                        unicode_error=None,
-                        _warn_on_bytestring=False
-                        ):
+                 convert_unicode=False,
+                 unicode_error=None,
+                 _warn_on_bytestring=False
+                 ):
         """
         Create a string-holding type.
 
@@ -147,7 +159,7 @@ class String(Concatenable, TypeEngine):
         """
         if unicode_error is not None and convert_unicode != 'force':
             raise exc.ArgumentError("convert_unicode must be 'force' "
-                                        "when unicode_error is set.")
+                                    "when unicode_error is set.")
 
         self.length = length
         self.collation = collation
@@ -164,12 +176,12 @@ class String(Concatenable, TypeEngine):
     def bind_processor(self, dialect):
         if self.convert_unicode or dialect.convert_unicode:
             if dialect.supports_unicode_binds and \
-                self.convert_unicode != 'force':
+                    self.convert_unicode != 'force':
                 if self._warn_on_bytestring:
                     def process(value):
                         if isinstance(value, util.binary_type):
-                            util.warn("Unicode type received non-unicode bind "
-                                      "param value.")
+                            util.warn("Unicode type received non-unicode"
+                                      "bind param value.")
                         return value
                     return process
                 else:
@@ -192,23 +204,23 @@ class String(Concatenable, TypeEngine):
     def result_processor(self, dialect, coltype):
         wants_unicode = self.convert_unicode or dialect.convert_unicode
         needs_convert = wants_unicode and \
-                        (dialect.returns_unicode_strings is not True or
-                        self.convert_unicode in ('force', 'force_nocheck'))
+            (dialect.returns_unicode_strings is not True or
+             self.convert_unicode in ('force', 'force_nocheck'))
         needs_isinstance = (
-                                needs_convert and
-                                dialect.returns_unicode_strings and
-                                self.convert_unicode != 'force_nocheck'
-                            )
+            needs_convert and
+            dialect.returns_unicode_strings and
+            self.convert_unicode != 'force_nocheck'
+        )
         if needs_convert:
             to_unicode = processors.to_unicode_processor_factory(
-                                    dialect.encoding, self.unicode_error)
+                dialect.encoding, self.unicode_error)
 
             if needs_isinstance:
                 return processors.to_conditional_unicode_processor_factory(
-                                    dialect.encoding, self.unicode_error)
+                    dialect.encoding, self.unicode_error)
             else:
                 return processors.to_unicode_processor_factory(
-                                    dialect.encoding, self.unicode_error)
+                    dialect.encoding, self.unicode_error)
         else:
             return None
 
@@ -224,6 +236,7 @@ class String(Concatenable, TypeEngine):
 
 
 class Text(String):
+
     """A variably sized string type.
 
     In SQL, usually corresponds to CLOB or TEXT. Can also take Python
@@ -237,6 +250,7 @@ class Text(String):
 
 
 class Unicode(String):
+
     """A variable length Unicode string type.
 
     The :class:`.Unicode` type is a :class:`.String` subclass
@@ -308,6 +322,7 @@ class Unicode(String):
 
 
 class UnicodeText(Text):
+
     """An unbounded-length Unicode string type.
 
     See :class:`.Unicode` for details on the unicode
@@ -336,6 +351,7 @@ class UnicodeText(Text):
 
 
 class Integer(_DateAffinity, TypeEngine):
+
     """A type for ``int`` integers."""
 
     __visit_name__ = 'integer'
@@ -382,8 +398,8 @@ class Integer(_DateAffinity, TypeEngine):
         }
 
 
-
 class SmallInteger(Integer):
+
     """A type for smaller ``int`` integers.
 
     Typically generates a ``SMALLINT`` in DDL, and otherwise acts like
@@ -395,6 +411,7 @@ class SmallInteger(Integer):
 
 
 class BigInteger(Integer):
+
     """A type for bigger ``int`` integers.
 
     Typically generates a ``BIGINT`` in DDL, and otherwise acts like
@@ -405,13 +422,13 @@ class BigInteger(Integer):
     __visit_name__ = 'big_integer'
 
 
-
 class Numeric(_DateAffinity, TypeEngine):
+
     """A type for fixed precision numbers, such as ``NUMERIC`` or ``DECIMAL``.
 
-    This type returns Python ``decimal.Decimal`` objects by default, unless the
-    :paramref:`.Numeric.asdecimal` flag is set to False, in which case they
-    are coerced to Python ``float`` objects.
+    This type returns Python ``decimal.Decimal`` objects by default, unless
+    the :paramref:`.Numeric.asdecimal` flag is set to False, in which case
+    they are coerced to Python ``float`` objects.
 
     .. note::
 
@@ -421,8 +438,8 @@ class Numeric(_DateAffinity, TypeEngine):
         type (e.g. ``FLOAT``, ``REAL``, others).
         If the database column on the server is in fact a floating-point type
         type, such as ``FLOAT`` or ``REAL``, use the :class:`.Float`
-        type or a subclass, otherwise numeric coercion between ``float``/``Decimal``
-        may or may not function as expected.
+        type or a subclass, otherwise numeric coercion between
+        ``float``/``Decimal`` may or may not function as expected.
 
     .. note::
 
@@ -450,7 +467,7 @@ class Numeric(_DateAffinity, TypeEngine):
     _default_decimal_return_scale = 10
 
     def __init__(self, precision=None, scale=None,
-                  decimal_return_scale=None, asdecimal=True):
+                 decimal_return_scale=None, asdecimal=True):
         """
         Construct a Numeric.
 
@@ -471,9 +488,10 @@ class Numeric(_DateAffinity, TypeEngine):
          database types don't have a notion of "scale", so by default the
          float type looks for the first ten decimal places when converting.
          Specfiying this value will override that length.  Types which
-         do include an explicit ".scale" value, such as the base :class:`.Numeric`
-         as well as the MySQL float types, will use the value of ".scale"
-         as the default for decimal_return_scale, if not otherwise specified.
+         do include an explicit ".scale" value, such as the base
+         :class:`.Numeric` as well as the MySQL float types, will use the
+         value of ".scale" as the default for decimal_return_scale, if not
+         otherwise specified.
 
          .. versionadded:: 0.9.0
 
@@ -545,9 +563,9 @@ class Numeric(_DateAffinity, TypeEngine):
 
                 # we're a "numeric", DBAPI returns floats, convert.
                 return processors.to_decimal_processor_factory(
-                            decimal.Decimal,
-                            self.scale if self.scale is not None
-                            else self._default_decimal_return_scale)
+                    decimal.Decimal,
+                    self.scale if self.scale is not None
+                    else self._default_decimal_return_scale)
         else:
             if dialect.supports_native_decimal:
                 return processors.to_float
@@ -582,6 +600,7 @@ class Numeric(_DateAffinity, TypeEngine):
 
 
 class Float(Numeric):
+
     """Type representing floating point types, such as ``FLOAT`` or ``REAL``.
 
     This type returns Python ``float`` objects by default, unless the
@@ -596,8 +615,8 @@ class Float(Numeric):
         and not a decimal type (e.g. ``DECIMAL``, ``NUMERIC``, others).
         If the database column on the server is in fact a Numeric
         type, such as ``DECIMAL`` or ``NUMERIC``, use the :class:`.Numeric`
-        type or a subclass, otherwise numeric coercion between ``float``/``Decimal``
-        may or may not function as expected.
+        type or a subclass, otherwise numeric coercion between
+        ``float``/``Decimal`` may or may not function as expected.
 
     """
 
@@ -606,7 +625,7 @@ class Float(Numeric):
     scale = None
 
     def __init__(self, precision=None, asdecimal=False,
-                        decimal_return_scale=None, **kwargs):
+                 decimal_return_scale=None, **kwargs):
         """
         Construct a Float.
 
@@ -640,13 +659,13 @@ class Float(Numeric):
         self.decimal_return_scale = decimal_return_scale
         if kwargs:
             util.warn_deprecated("Additional keyword arguments "
-                                "passed to Float ignored.")
+                                 "passed to Float ignored.")
 
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
             return processors.to_decimal_processor_factory(
-                                    decimal.Decimal,
-                                    self._effective_decimal_return_scale)
+                decimal.Decimal,
+                self._effective_decimal_return_scale)
         else:
             return None
 
@@ -673,6 +692,7 @@ class Float(Numeric):
 
 
 class DateTime(_DateAffinity, TypeEngine):
+
     """A type for ``datetime.datetime()`` objects.
 
     Date and time types return objects from the Python ``datetime``
@@ -717,6 +737,7 @@ class DateTime(_DateAffinity, TypeEngine):
 
 
 class Date(_DateAffinity, TypeEngine):
+
     """A type for ``datetime.date()`` objects."""
 
     __visit_name__ = 'date'
@@ -754,6 +775,7 @@ class Date(_DateAffinity, TypeEngine):
 
 
 class Time(_DateAffinity, TypeEngine):
+
     """A type for ``datetime.time()`` objects."""
 
     __visit_name__ = 'time'
@@ -783,6 +805,7 @@ class Time(_DateAffinity, TypeEngine):
 
 
 class _Binary(TypeEngine):
+
     """Define base behavior for binary types."""
 
     def __init__(self, length=None):
@@ -850,6 +873,7 @@ class _Binary(TypeEngine):
 
 
 class LargeBinary(_Binary):
+
     """A type for large binary byte data.
 
     The Binary type generates BLOB or BYTEA when tables are created,
@@ -878,6 +902,7 @@ class LargeBinary(_Binary):
 
 
 class Binary(LargeBinary):
+
     """Deprecated.  Renamed to LargeBinary."""
 
     def __init__(self, *arg, **kw):
@@ -886,8 +911,8 @@ class Binary(LargeBinary):
         LargeBinary.__init__(self, *arg, **kw)
 
 
-
 class SchemaType(SchemaEventTarget):
+
     """Mark a type as possibly requiring schema-level DDL for usage.
 
     Supports types that must be explicitly created/dropped (i.e. PG ENUM type)
@@ -910,7 +935,7 @@ class SchemaType(SchemaEventTarget):
     """
 
     def __init__(self, name=None, schema=None, metadata=None,
-                inherit_schema=False, quote=None):
+                 inherit_schema=False, quote=None):
         if name is not None:
             self.name = quoted_name(name, quote)
         else:
@@ -941,8 +966,8 @@ class SchemaType(SchemaEventTarget):
         event.listen(
             table,
             "before_create",
-              util.portable_instancemethod(
-                    self._on_table_create)
+            util.portable_instancemethod(
+                self._on_table_create)
         )
         event.listen(
             table,
@@ -974,10 +999,10 @@ class SchemaType(SchemaEventTarget):
         # listeners
         metadata = kw.pop('metadata', None)
         return impltype(name=self.name,
-                    schema=schema,
-                    metadata=metadata,
-                    inherit_schema=self.inherit_schema,
-                    **kw)
+                        schema=schema,
+                        metadata=metadata,
+                        inherit_schema=self.inherit_schema,
+                        **kw)
 
     @property
     def bind(self):
@@ -1021,7 +1046,9 @@ class SchemaType(SchemaEventTarget):
         if t.__class__ is not self.__class__ and isinstance(t, SchemaType):
             t._on_metadata_drop(target, bind, **kw)
 
+
 class Enum(String, SchemaType):
+
     """Generic Enum Type.
 
     The Enum type provides a set of possible string values which the
@@ -1118,12 +1145,12 @@ class Enum(String, SchemaType):
 
     def __repr__(self):
         return util.generic_repr(self,
-              to_inspect=[Enum, SchemaType],
-          )
+                                 to_inspect=[Enum, SchemaType],
+                                 )
 
     def _should_create_constraint(self, compiler):
         return not self.native_enum or \
-                    not compiler.dialect.supports_native_enum
+            not compiler.dialect.supports_native_enum
 
     @util.dependencies("sqlalchemy.sql.schema")
     def _set_table(self, schema, column, table):
@@ -1131,11 +1158,11 @@ class Enum(String, SchemaType):
             SchemaType._set_table(self, column, table)
 
         e = schema.CheckConstraint(
-                        type_coerce(column, self).in_(self.enums),
-                        name=_defer_name(self.name),
-                        _create_rule=util.portable_instancemethod(
-                                        self._should_create_constraint)
-                    )
+            type_coerce(column, self).in_(self.enums),
+            name=_defer_name(self.name),
+            _create_rule=util.portable_instancemethod(
+                self._should_create_constraint)
+        )
         assert e.table is table
 
     def adapt(self, impltype, **kw):
@@ -1143,18 +1170,19 @@ class Enum(String, SchemaType):
         metadata = kw.pop('metadata', None)
         if issubclass(impltype, Enum):
             return impltype(name=self.name,
-                        schema=schema,
-                        metadata=metadata,
-                        convert_unicode=self.convert_unicode,
-                        native_enum=self.native_enum,
-                        inherit_schema=self.inherit_schema,
-                        *self.enums,
-                        **kw)
+                            schema=schema,
+                            metadata=metadata,
+                            convert_unicode=self.convert_unicode,
+                            native_enum=self.native_enum,
+                            inherit_schema=self.inherit_schema,
+                            *self.enums,
+                            **kw)
         else:
             return super(Enum, self).adapt(impltype, **kw)
 
 
 class PickleType(TypeDecorator):
+
     """Holds Python objects, which are serialized using pickle.
 
     PickleType builds upon the Binary type to apply Python's
@@ -1170,7 +1198,7 @@ class PickleType(TypeDecorator):
     impl = LargeBinary
 
     def __init__(self, protocol=pickle.HIGHEST_PROTOCOL,
-                    pickler=None, comparator=None):
+                 pickler=None, comparator=None):
         """
         Construct a PickleType.
 
@@ -1235,6 +1263,7 @@ class PickleType(TypeDecorator):
 
 
 class Boolean(TypeEngine, SchemaType):
+
     """A bool datatype.
 
     Boolean typically uses BOOLEAN or SMALLINT on the DDL side, and on
@@ -1267,11 +1296,11 @@ class Boolean(TypeEngine, SchemaType):
             return
 
         e = schema.CheckConstraint(
-                        type_coerce(column, self).in_([0, 1]),
-                        name=_defer_name(self.name),
-                        _create_rule=util.portable_instancemethod(
-                                    self._should_create_constraint)
-                    )
+            type_coerce(column, self).in_([0, 1]),
+            name=_defer_name(self.name),
+            _create_rule=util.portable_instancemethod(
+                self._should_create_constraint)
+        )
         assert e.table is table
 
     @property
@@ -1301,6 +1330,7 @@ class Boolean(TypeEngine, SchemaType):
 
 
 class Interval(_DateAffinity, TypeDecorator):
+
     """A type for ``datetime.timedelta()`` objects.
 
     The Interval type deals with ``datetime.timedelta`` objects.  In
@@ -1321,8 +1351,8 @@ class Interval(_DateAffinity, TypeDecorator):
     epoch = dt.datetime.utcfromtimestamp(0)
 
     def __init__(self, native=True,
-                        second_precision=None,
-                        day_precision=None):
+                 second_precision=None,
+                 day_precision=None):
         """Construct an Interval object.
 
         :param native: when True, use the actual
@@ -1349,10 +1379,10 @@ class Interval(_DateAffinity, TypeDecorator):
             return cls._adapt_from_generic_interval(self, **kw)
         else:
             return self.__class__(
-                        native=self.native,
-                        second_precision=self.second_precision,
-                        day_precision=self.day_precision,
-                        **kw)
+                native=self.native,
+                second_precision=self.second_precision,
+                day_precision=self.day_precision,
+                **kw)
 
     @property
     def python_type(self):
@@ -1423,30 +1453,35 @@ class Interval(_DateAffinity, TypeDecorator):
 
 
 class REAL(Float):
+
     """The SQL REAL type."""
 
     __visit_name__ = 'REAL'
 
 
 class FLOAT(Float):
+
     """The SQL FLOAT type."""
 
     __visit_name__ = 'FLOAT'
 
 
 class NUMERIC(Numeric):
+
     """The SQL NUMERIC type."""
 
     __visit_name__ = 'NUMERIC'
 
 
 class DECIMAL(Numeric):
+
     """The SQL DECIMAL type."""
 
     __visit_name__ = 'DECIMAL'
 
 
 class INTEGER(Integer):
+
     """The SQL INT or INTEGER type."""
 
     __visit_name__ = 'INTEGER'
@@ -1454,18 +1489,21 @@ INT = INTEGER
 
 
 class SMALLINT(SmallInteger):
+
     """The SQL SMALLINT type."""
 
     __visit_name__ = 'SMALLINT'
 
 
 class BIGINT(BigInteger):
+
     """The SQL BIGINT type."""
 
     __visit_name__ = 'BIGINT'
 
 
 class TIMESTAMP(DateTime):
+
     """The SQL TIMESTAMP type."""
 
     __visit_name__ = 'TIMESTAMP'
@@ -1475,30 +1513,35 @@ class TIMESTAMP(DateTime):
 
 
 class DATETIME(DateTime):
+
     """The SQL DATETIME type."""
 
     __visit_name__ = 'DATETIME'
 
 
 class DATE(Date):
+
     """The SQL DATE type."""
 
     __visit_name__ = 'DATE'
 
 
 class TIME(Time):
+
     """The SQL TIME type."""
 
     __visit_name__ = 'TIME'
 
 
 class TEXT(Text):
+
     """The SQL TEXT type."""
 
     __visit_name__ = 'TEXT'
 
 
 class CLOB(Text):
+
     """The CLOB type.
 
     This type is found in Oracle and Informix.
@@ -1508,53 +1551,63 @@ class CLOB(Text):
 
 
 class VARCHAR(String):
+
     """The SQL VARCHAR type."""
 
     __visit_name__ = 'VARCHAR'
 
 
 class NVARCHAR(Unicode):
+
     """The SQL NVARCHAR type."""
 
     __visit_name__ = 'NVARCHAR'
 
 
 class CHAR(String):
+
     """The SQL CHAR type."""
 
     __visit_name__ = 'CHAR'
 
 
 class NCHAR(Unicode):
+
     """The SQL NCHAR type."""
 
     __visit_name__ = 'NCHAR'
 
 
 class BLOB(LargeBinary):
+
     """The SQL BLOB type."""
 
     __visit_name__ = 'BLOB'
 
 
 class BINARY(_Binary):
+
     """The SQL BINARY type."""
 
     __visit_name__ = 'BINARY'
 
 
 class VARBINARY(_Binary):
+
     """The SQL VARBINARY type."""
 
     __visit_name__ = 'VARBINARY'
 
 
 class BOOLEAN(Boolean):
+
     """The SQL BOOLEAN type."""
 
     __visit_name__ = 'BOOLEAN'
 
+
 class NullType(TypeEngine):
+
     """An unknown type.
 
     :class:`.NullType` is used as a default type for those cases where
@@ -1568,12 +1621,13 @@ class NullType(TypeEngine):
       as ``None`` or is not passed at all.
 
     The :class:`.NullType` can be used within SQL expression invocation
-    without issue, it just has no behavior either at the expression construction
-    level or at the bind-parameter/result processing level.  :class:`.NullType`
-    will result in a :exc:`.CompileError` if the compiler is asked to render
-    the type itself, such as if it is used in a :func:`.cast` operation
-    or within a schema creation operation such as that invoked by
-    :meth:`.MetaData.create_all` or the :class:`.CreateTable` construct.
+    without issue, it just has no behavior either at the expression
+    construction level or at the bind-parameter/result processing level.
+    :class:`.NullType` will result in a :exc:`.CompileError` if the compiler
+    is asked to render the type itself, such as if it is used in a
+    :func:`.cast` operation or within a schema creation operation such as that
+    invoked by :meth:`.MetaData.create_all` or the :class:`.CreateTable`
+    construct.
 
     """
     __visit_name__ = 'null'
@@ -1586,9 +1640,10 @@ class NullType(TypeEngine):
         return process
 
     class Comparator(TypeEngine.Comparator):
+
         def _adapt_expression(self, op, other_comparator):
             if isinstance(other_comparator, NullType.Comparator) or \
-                not operators.is_commutative(op):
+                    not operators.is_commutative(op):
                 return op, self.expr.type
             else:
                 return other_comparator._adapt_expression(op, self)
@@ -1633,11 +1688,14 @@ type_api._type_map = _type_map
 # the expression element system, as you might expect.   We can use
 # importlaters or whatnot, but the typing system just necessarily has
 # to have some kind of connection like this.  right now we're injecting the
-# _DefaultColumnComparator implementation into the TypeEngine.Comparator interface.
-# Alternatively TypeEngine.Comparator could have an "impl" injected, though
-# just injecting the base is simpler, error free, and more performant.
+# _DefaultColumnComparator implementation into the TypeEngine.Comparator
+# interface.  Alternatively TypeEngine.Comparator could have an "impl"
+# injected, though just injecting the base is simpler, error free, and more
+# performant.
+
+
 class Comparator(_DefaultColumnComparator):
     BOOLEANTYPE = BOOLEANTYPE
 
-TypeEngine.Comparator.__bases__ = (Comparator, ) + TypeEngine.Comparator.__bases__
-
+TypeEngine.Comparator.__bases__ = (
+    Comparator, ) + TypeEngine.Comparator.__bases__

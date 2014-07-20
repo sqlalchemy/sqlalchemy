@@ -12,15 +12,17 @@ class TableDDLTest(fixtures.TestBase):
 
     def _simple_fixture(self):
         return Table('test_table', self.metadata,
-                Column('id', Integer, primary_key=True, autoincrement=False),
-                Column('data', String(50))
-            )
+                     Column('id', Integer, primary_key=True,
+                            autoincrement=False),
+                     Column('data', String(50))
+                     )
 
     def _underscore_fixture(self):
         return Table('_test_table', self.metadata,
-                Column('id', Integer, primary_key=True, autoincrement=False),
-                Column('_data', String(50))
-            )
+                     Column('id', Integer, primary_key=True,
+                            autoincrement=False),
+                     Column('_data', String(50))
+                     )
 
     def _simple_roundtrip(self, table):
         with config.db.begin() as conn:

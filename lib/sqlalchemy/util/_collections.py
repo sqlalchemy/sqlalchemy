@@ -210,6 +210,7 @@ class Properties(object):
 class OrderedProperties(Properties):
     """Provide a __getattr__/__setattr__ interface with an OrderedDict
     as backing store."""
+
     def __init__(self):
         Properties.__init__(self, OrderedDict())
 
@@ -263,7 +264,6 @@ class OrderedDict(dict):
     def __iter__(self):
         return iter(self._list)
 
-
     if py2k:
         def values(self):
             return [self[key] for key in self._list]
@@ -284,15 +284,15 @@ class OrderedDict(dict):
             return [(key, self[key]) for key in self._list]
     else:
         def values(self):
-            #return (self[key] for key in self)
+            # return (self[key] for key in self)
             return (self[key] for key in self._list)
 
         def keys(self):
-            #return iter(self)
+            # return iter(self)
             return iter(self._list)
 
         def items(self):
-            #return ((key, self[key]) for key in self)
+            # return ((key, self[key]) for key in self)
             return ((key, self[key]) for key in self._list)
 
     _debug_iter = False
@@ -304,14 +304,16 @@ class OrderedDict(dict):
             for item in self._list:
                 yield item
                 assert len_ == len(self._list), \
-                   "Dictionary changed size during iteration"
+                    "Dictionary changed size during iteration"
+
         def values(self):
             return (self[key] for key in self)
+
         def keys(self):
             return iter(self)
+
         def items(self):
             return ((key, self[key]) for key in self)
-
 
     def __setitem__(self, key, object):
         if key not in self:
@@ -506,7 +508,7 @@ class IdentitySet(object):
         if len(self) > len(other):
             return False
         for m in itertools_filterfalse(other._members.__contains__,
-                                        iter(self._members.keys())):
+                                       iter(self._members.keys())):
             return False
         return True
 
@@ -527,7 +529,7 @@ class IdentitySet(object):
             return False
 
         for m in itertools_filterfalse(self._members.__contains__,
-                                        iter(other._members.keys())):
+                                       iter(other._members.keys())):
             return False
         return True
 
@@ -668,7 +670,7 @@ class WeakSequence(object):
 
     def __iter__(self):
         return (obj for obj in
-                    (ref() for ref in self._storage) if obj is not None)
+                (ref() for ref in self._storage) if obj is not None)
 
     def __getitem__(self, index):
         try:
@@ -719,6 +721,7 @@ column_dict = dict
 ordered_column_set = OrderedSet
 populate_column_dict = PopulateDict
 
+
 def unique_list(seq, hashfunc=None):
     seen = {}
     if not hashfunc:
@@ -757,11 +760,13 @@ class UniqueAppender(object):
     def __iter__(self):
         return iter(self.data)
 
+
 def coerce_generator_arg(arg):
     if len(arg) == 1 and isinstance(arg[0], types.GeneratorType):
         return list(arg[0])
     else:
         return arg
+
 
 def to_list(x, default=None):
     if x is None:
@@ -818,6 +823,7 @@ class LRUCache(dict):
     recently used items.
 
     """
+
     def __init__(self, capacity=100, threshold=.5):
         self.capacity = capacity
         self.threshold = threshold
@@ -854,8 +860,8 @@ class LRUCache(dict):
     def _manage_size(self):
         while len(self) > self.capacity + self.capacity * self.threshold:
             by_counter = sorted(dict.values(self),
-                            key=operator.itemgetter(2),
-                            reverse=True)
+                                key=operator.itemgetter(2),
+                                reverse=True)
             for item in by_counter[self.capacity:]:
                 try:
                     del self[item[0]]
@@ -927,6 +933,7 @@ class ThreadLocalRegistry(ScopedRegistry):
     variable for storage.
 
     """
+
     def __init__(self, createfunc):
         self.createfunc = createfunc
         self.registry = threading.local()

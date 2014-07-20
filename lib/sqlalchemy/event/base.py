@@ -18,7 +18,8 @@ instances of ``_Dispatch``.
 from __future__ import absolute_import
 
 from .. import util
-from .attr import _JoinedDispatchDescriptor, _EmptyListener, _DispatchDescriptor
+from .attr import _JoinedDispatchDescriptor, \
+    _EmptyListener, _DispatchDescriptor
 
 _registrars = util.defaultdict(list)
 
@@ -32,6 +33,7 @@ class _UnpickleDispatch(object):
     :class:`_Dispatch` given a particular :class:`.Events` subclass.
 
     """
+
     def __call__(self, _parent_cls):
         for cls in _parent_cls.__mro__:
             if 'dispatch' in cls.__dict__:
@@ -80,9 +82,9 @@ class _Dispatch(object):
         """
         if '_joined_dispatch_cls' not in self.__class__.__dict__:
             cls = type(
-                    "Joined%s" % self.__class__.__name__,
-                    (_JoinedDispatcher, self.__class__), {}
-                )
+                "Joined%s" % self.__class__.__name__,
+                (_JoinedDispatcher, self.__class__), {}
+            )
             for ls in _event_descriptors(self):
                 setattr(cls, ls.name, _JoinedDispatchDescriptor(ls.name))
 
@@ -131,7 +133,7 @@ def _create_dispatcher_class(cls, classname, bases, dict_):
     # of the Event class, this is the straight monkeypatch.
     dispatch_base = getattr(cls, 'dispatch', _Dispatch)
     dispatch_cls = type("%sDispatch" % classname,
-                                        (dispatch_base, ), {})
+                        (dispatch_base, ), {})
     cls._set_dispatch(cls, dispatch_cls)
 
     for k in dict_:
@@ -150,6 +152,7 @@ def _remove_dispatcher(cls):
             if not _registrars[k]:
                 del _registrars[k]
 
+
 class Events(util.with_metaclass(_EventMeta, object)):
     """Define event listening functions for a particular target type."""
 
@@ -163,16 +166,15 @@ class Events(util.with_metaclass(_EventMeta, object)):
         cls.dispatch = dispatch_cls
         dispatch_cls._events = cls
 
-
     @classmethod
     def _accept_with(cls, target):
         # Mapper, ClassManager, Session override this to
         # also accept classes, scoped_sessions, sessionmakers, etc.
         if hasattr(target, 'dispatch') and (
-                    isinstance(target.dispatch, cls.dispatch) or \
-                    isinstance(target.dispatch, type) and \
-                    issubclass(target.dispatch, cls.dispatch)
-                ):
+            isinstance(target.dispatch, cls.dispatch) or
+            isinstance(target.dispatch, type) and
+            issubclass(target.dispatch, cls.dispatch)
+        ):
             return target
         else:
             return None
@@ -206,6 +208,7 @@ class dispatcher(object):
     instances.
 
     """
+
     def __init__(self, events):
         self.dispatch_cls = events.dispatch
         self.events = events
@@ -215,4 +218,3 @@ class dispatcher(object):
             return self.dispatch_cls
         obj.__dict__['dispatch'] = disp = self.dispatch_cls(cls)
         return disp
-

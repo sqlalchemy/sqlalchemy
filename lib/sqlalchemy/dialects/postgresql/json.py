@@ -27,24 +27,28 @@ class JSONElement(elements.BinaryExpression):
         expr = mytable.c.json_data['some_key']
 
     The expression typically compiles to a JSON access such as ``col -> key``.
-    Modifiers are then available for typing behavior, including :meth:`.JSONElement.cast`
-    and :attr:`.JSONElement.astext`.
+    Modifiers are then available for typing behavior, including
+    :meth:`.JSONElement.cast` and :attr:`.JSONElement.astext`.
 
     """
-    def __init__(self, left, right, astext=False, opstring=None, result_type=None):
+
+    def __init__(self, left, right, astext=False,
+                 opstring=None, result_type=None):
         self._astext = astext
         if opstring is None:
             if hasattr(right, '__iter__') and \
-                not isinstance(right, util.string_types):
+                    not isinstance(right, util.string_types):
                 opstring = "#>"
-                right = "{%s}" % (", ".join(util.text_type(elem) for elem in right))
+                right = "{%s}" % (
+                    ", ".join(util.text_type(elem) for elem in right))
             else:
                 opstring = "->"
 
         self._json_opstring = opstring
         operator = custom_op(opstring, precedence=5)
         right = left._check_literal(left, operator, right)
-        super(JSONElement, self).__init__(left, right, operator, type_=result_type)
+        super(JSONElement, self).__init__(
+            left, right, operator, type_=result_type)
 
     @property
     def astext(self):
@@ -64,12 +68,12 @@ class JSONElement(elements.BinaryExpression):
             return self
         else:
             return JSONElement(
-                    self.left,
-                    self.right,
-                    astext=True,
-                    opstring=self._json_opstring + ">",
-                    result_type=sqltypes.String(convert_unicode=True)
-                )
+                self.left,
+                self.right,
+                astext=True,
+                opstring=self._json_opstring + ">",
+                result_type=sqltypes.String(convert_unicode=True)
+            )
 
     def cast(self, type_):
         """Convert this :class:`.JSONElement` to apply both the 'astext' operator
@@ -126,15 +130,16 @@ class JSON(sqltypes.TypeEngine):
 
     * Path index operations returning text (required for text comparison)::
 
-        data_table.c.data[('key_1', 'key_2', ..., 'key_n')].astext == 'some value'
+        data_table.c.data[('key_1', 'key_2', ..., 'key_n')].astext == \\
+            'some value'
 
-    Index operations return an instance of :class:`.JSONElement`, which represents
-    an expression such as ``column -> index``.  This element then defines
-    methods such as :attr:`.JSONElement.astext` and :meth:`.JSONElement.cast`
-    for setting up type behavior.
+    Index operations return an instance of :class:`.JSONElement`, which
+    represents an expression such as ``column -> index``.  This element then
+    defines methods such as :attr:`.JSONElement.astext` and
+    :meth:`.JSONElement.cast` for setting up type behavior.
 
-    The :class:`.JSON` type, when used with the SQLAlchemy ORM, does not detect
-    in-place mutations to the structure.  In order to detect these, the
+    The :class:`.JSON` type, when used with the SQLAlchemy ORM, does not
+    detect in-place mutations to the structure.  In order to detect these, the
     :mod:`sqlalchemy.ext.mutable` extension must be used.  This extension will
     allow "in-place" changes to the datastructure to produce events which
     will be detected by the unit of work.  See the example at :class:`.HSTORE`
@@ -178,6 +183,7 @@ class JSON(sqltypes.TypeEngine):
         json_serializer = dialect._json_serializer or json.dumps
         if util.py2k:
             encoding = dialect.encoding
+
             def process(value):
                 return json_serializer(value).encode(encoding)
         else:
@@ -189,6 +195,7 @@ class JSON(sqltypes.TypeEngine):
         json_deserializer = dialect._json_deserializer or json.loads
         if util.py2k:
             encoding = dialect.encoding
+
             def process(value):
                 return json_deserializer(value.decode(encoding))
         else:
@@ -198,7 +205,6 @@ class JSON(sqltypes.TypeEngine):
 
 
 ischema_names['json'] = JSON
-
 
 
 class JSONB(JSON):
@@ -237,15 +243,16 @@ class JSONB(JSON):
 
     * Path index operations returning text (required for text comparison)::
 
-        data_table.c.data[('key_1', 'key_2', ..., 'key_n')].astext == 'some value'
+        data_table.c.data[('key_1', 'key_2', ..., 'key_n')].astext == \\
+            'some value'
 
-    Index operations return an instance of :class:`.JSONElement`, which represents
-    an expression such as ``column -> index``.  This element then defines
-    methods such as :attr:`.JSONElement.astext` and :meth:`.JSONElement.cast`
-    for setting up type behavior.
+    Index operations return an instance of :class:`.JSONElement`, which
+    represents an expression such as ``column -> index``.  This element then
+    defines methods such as :attr:`.JSONElement.astext` and
+    :meth:`.JSONElement.cast` for setting up type behavior.
 
-    The :class:`.JSON` type, when used with the SQLAlchemy ORM, does not detect
-    in-place mutations to the structure.  In order to detect these, the
+    The :class:`.JSON` type, when used with the SQLAlchemy ORM, does not
+    detect in-place mutations to the structure.  In order to detect these, the
     :mod:`sqlalchemy.ext.mutable` extension must be used.  This extension will
     allow "in-place" changes to the datastructure to produce events which
     will be detected by the unit of work.  See the example at :class:`.HSTORE`
@@ -280,7 +287,8 @@ class JSONB(JSON):
             return JSONElement(self.expr, other)
 
         def _adapt_expression(self, op, other_comparator):
-            # How does one do equality?? jsonb also has "=" eg. '[1,2,3]'::jsonb = '[1,2,3]'::jsonb
+            # How does one do equality?? jsonb also has "=" eg.
+            # '[1,2,3]'::jsonb = '[1,2,3]'::jsonb
             if isinstance(op, custom_op):
                 if op.opstring in ['?', '?&', '?|', '@>', '<@']:
                     return op, sqltypes.Boolean

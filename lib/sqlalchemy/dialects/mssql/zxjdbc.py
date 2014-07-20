@@ -9,7 +9,8 @@
 .. dialect:: mssql+zxjdbc
     :name: zxJDBC for Jython
     :dbapi: zxjdbc
-    :connectstring: mssql+zxjdbc://user:pass@host:port/dbname[?key=value&key=value...]
+    :connectstring: mssql+zxjdbc://user:pass@host:port/dbname\
+[?key=value&key=value...]
     :driverurl: http://jtds.sourceforge.net/
 
 
@@ -42,12 +43,12 @@ class MSExecutionContext_zxjdbc(MSExecutionContext):
             self._lastrowid = int(row[0])
 
         if (self.isinsert or self.isupdate or self.isdelete) and \
-            self.compiled.returning:
+                self.compiled.returning:
             self._result_proxy = engine.FullyBufferedResultProxy(self)
 
         if self._enable_identity_insert:
             table = self.dialect.identifier_preparer.format_table(
-                                        self.compiled.statement.table)
+                self.compiled.statement.table)
             self.cursor.execute("SET IDENTITY_INSERT %s OFF" % table)
 
 
@@ -59,8 +60,8 @@ class MSDialect_zxjdbc(ZxJDBCConnector, MSDialect):
 
     def _get_server_version_info(self, connection):
         return tuple(
-                    int(x)
-                    for x in connection.connection.dbversion.split('.')
-                )
+            int(x)
+            for x in connection.connection.dbversion.split('.')
+        )
 
 dialect = MSDialect_zxjdbc

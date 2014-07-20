@@ -55,9 +55,9 @@ Examples of pyodbc connection string URLs:
 
     DRIVER={SQL Server};Server=host;Database=db;UID=user;PWD=pass;port=123
 
-* ``mssql+pyodbc://user:pass@host/db?driver=MyDriver`` - connects using a connection
-  string that includes a custom
-  ODBC driver name.  This will create the following connection string::
+* ``mssql+pyodbc://user:pass@host/db?driver=MyDriver`` - connects using a
+  connection string that includes a custom ODBC driver name.  This will create
+  the following connection string::
 
     DRIVER={MyDriver};Server=host;Database=db;UID=user;PWD=pass
 
@@ -85,14 +85,14 @@ Unicode Binds
 -------------
 
 The current state of PyODBC on a unix backend with FreeTDS and/or
-EasySoft is poor regarding unicode; different OS platforms and versions of UnixODBC
-versus IODBC versus FreeTDS/EasySoft versus PyODBC itself dramatically
-alter how strings are received.  The PyODBC dialect attempts to use all the information
-it knows to determine whether or not a Python unicode literal can be
-passed directly to the PyODBC driver or not; while SQLAlchemy can encode
-these to bytestrings first, some users have reported that PyODBC mis-handles
-bytestrings for certain encodings and requires a Python unicode object,
-while the author has observed widespread cases where a Python unicode
+EasySoft is poor regarding unicode; different OS platforms and versions of
+UnixODBC versus IODBC versus FreeTDS/EasySoft versus PyODBC itself
+dramatically alter how strings are received.  The PyODBC dialect attempts to
+use all the information it knows to determine whether or not a Python unicode
+literal can be passed directly to the PyODBC driver or not; while SQLAlchemy
+can encode these to bytestrings first, some users have reported that PyODBC
+mis-handles bytestrings for certain encodings and requires a Python unicode
+object, while the author has observed widespread cases where a Python unicode
 is completely misinterpreted by PyODBC, particularly when dealing with
 the information schema tables used in table reflection, and the value
 must first be encoded to a bytestring.
@@ -117,6 +117,7 @@ from ...connectors.pyodbc import PyODBCConnector
 from ... import types as sqltypes, util
 import decimal
 
+
 class _ms_numeric_pyodbc(object):
 
     """Turns Decimals with adjusted() < 0 or > 7 into strings.
@@ -129,7 +130,7 @@ class _ms_numeric_pyodbc(object):
     def bind_processor(self, dialect):
 
         super_process = super(_ms_numeric_pyodbc, self).\
-                        bind_processor(dialect)
+            bind_processor(dialect)
 
         if not dialect._need_decimal_fix:
             return super_process
@@ -155,37 +156,40 @@ class _ms_numeric_pyodbc(object):
 
     def _small_dec_to_string(self, value):
         return "%s0.%s%s" % (
-                    (value < 0 and '-' or ''),
-                    '0' * (abs(value.adjusted()) - 1),
-                    "".join([str(nint) for nint in value.as_tuple()[1]]))
+            (value < 0 and '-' or ''),
+            '0' * (abs(value.adjusted()) - 1),
+            "".join([str(nint) for nint in value.as_tuple()[1]]))
 
     def _large_dec_to_string(self, value):
         _int = value.as_tuple()[1]
         if 'E' in str(value):
             result = "%s%s%s" % (
-                    (value < 0 and '-' or ''),
-                    "".join([str(s) for s in _int]),
-                    "0" * (value.adjusted() - (len(_int) - 1)))
+                (value < 0 and '-' or ''),
+                "".join([str(s) for s in _int]),
+                "0" * (value.adjusted() - (len(_int) - 1)))
         else:
             if (len(_int) - 1) > value.adjusted():
                 result = "%s%s.%s" % (
-                (value < 0 and '-' or ''),
-                "".join(
-                    [str(s) for s in _int][0:value.adjusted() + 1]),
-                "".join(
-                    [str(s) for s in _int][value.adjusted() + 1:]))
+                    (value < 0 and '-' or ''),
+                    "".join(
+                        [str(s) for s in _int][0:value.adjusted() + 1]),
+                    "".join(
+                        [str(s) for s in _int][value.adjusted() + 1:]))
             else:
                 result = "%s%s" % (
-                (value < 0 and '-' or ''),
-                "".join(
-                    [str(s) for s in _int][0:value.adjusted() + 1]))
+                    (value < 0 and '-' or ''),
+                    "".join(
+                        [str(s) for s in _int][0:value.adjusted() + 1]))
         return result
+
 
 class _MSNumeric_pyodbc(_ms_numeric_pyodbc, sqltypes.Numeric):
     pass
 
+
 class _MSFloat_pyodbc(_ms_numeric_pyodbc, sqltypes.Float):
     pass
+
 
 class MSExecutionContext_pyodbc(MSExecutionContext):
     _embedded_scope_identity = False
@@ -254,9 +258,9 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
             self.description_encoding = params.pop('description_encoding')
         super(MSDialect_pyodbc, self).__init__(**params)
         self.use_scope_identity = self.use_scope_identity and \
-                        self.dbapi and \
-                        hasattr(self.dbapi.Cursor, 'nextset')
+            self.dbapi and \
+            hasattr(self.dbapi.Cursor, 'nextset')
         self._need_decimal_fix = self.dbapi and \
-                            self._dbapi_version() < (2, 1, 8)
+            self._dbapi_version() < (2, 1, 8)
 
 dialect = MSDialect_pyodbc

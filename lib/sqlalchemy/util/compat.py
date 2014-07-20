@@ -42,13 +42,14 @@ else:
     safe_kwarg = str
 
 ArgSpec = collections.namedtuple("ArgSpec",
-                ["args", "varargs", "keywords", "defaults"])
+                                 ["args", "varargs", "keywords", "defaults"])
 
 if py3k:
     import builtins
 
     from inspect import getfullargspec as inspect_getfullargspec
-    from urllib.parse import quote_plus, unquote_plus, parse_qsl, quote, unquote
+    from urllib.parse import (quote_plus, unquote_plus,
+                              parse_qsl, quote, unquote)
     import configparser
     from io import StringIO
 
@@ -56,8 +57,8 @@ if py3k:
 
     def inspect_getargspec(func):
         return ArgSpec(
-                    *inspect_getfullargspec(func)[0:4]
-                )
+            *inspect_getfullargspec(func)[0:4]
+        )
 
     string_types = str,
     binary_type = bytes
@@ -95,10 +96,11 @@ if py3k:
     itertools_imap = map
     from itertools import zip_longest
 
-
     import base64
+
     def b64encode(x):
         return base64.b64encode(x).decode('ascii')
+
     def b64decode(x):
         return base64.b64decode(x.encode('ascii'))
 
@@ -115,6 +117,7 @@ else:
     binary_type = str
     text_type = unicode
     int_types = int, long
+
     def iterbytes(buf):
         return (ord(byte) for byte in buf)
 
@@ -160,7 +163,6 @@ else:
     from itertools import izip_longest as zip_longest
 
 
-
 import time
 if win32 or jython:
     time_func = time.clock
@@ -186,7 +188,7 @@ if py3k:
         reraise(type(exception), exception, tb=exc_tb, cause=exc_value)
 else:
     exec("def reraise(tp, value, tb=None, cause=None):\n"
-            "    raise tp, value, tb\n")
+         "    raise tp, value, tb\n")
 
     def raise_from_cause(exception, exc_info=None):
         # not as nice as that of Py3K, but at least preserves
@@ -218,10 +220,9 @@ def with_metaclass(meta, *bases):
     class metaclass(meta):
         __call__ = type.__call__
         __init__ = type.__init__
+
         def __new__(cls, name, this_bases, d):
             if this_bases is None:
                 return type.__new__(cls, name, (), d)
             return meta(name, bases, d)
     return metaclass('temporary_class', None, {})
-
-

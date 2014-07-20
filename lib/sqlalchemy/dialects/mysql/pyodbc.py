@@ -67,7 +67,8 @@ class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
             if opts.get(key, None):
                 return opts[key]
 
-        util.warn("Could not detect the connection character set.  Assuming latin1.")
+        util.warn("Could not detect the connection character set.  "
+                  "Assuming latin1.")
         return 'latin1'
 
     def _extract_error_code(self, exception):

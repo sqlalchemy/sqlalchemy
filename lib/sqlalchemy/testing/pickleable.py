@@ -63,8 +63,8 @@ class Foo(object):
 
     def __eq__(self, other):
         return other.data == self.data and \
-                other.stuff == self.stuff and \
-                other.moredata == self.moredata
+            other.stuff == self.stuff and \
+            other.moredata == self.moredata
 
 
 class Bar(object):
