@@ -14,15 +14,15 @@ class UnevaluatableError(Exception):
 
 _straight_ops = set(getattr(operators, op)
                     for op in ('add', 'mul', 'sub',
-                                'div',
-                                'mod', 'truediv',
+                               'div',
+                               'mod', 'truediv',
                                'lt', 'le', 'ne', 'gt', 'ge', 'eq'))
 
 
 _notimplemented_ops = set(getattr(operators, op)
-                      for op in ('like_op', 'notlike_op', 'ilike_op',
-                                 'notilike_op', 'between_op', 'in_op',
-                                 'notin_op', 'endswith_op', 'concat_op'))
+                          for op in ('like_op', 'notlike_op', 'ilike_op',
+                                     'notilike_op', 'between_op', 'in_op',
+                                     'notin_op', 'endswith_op', 'concat_op'))
 
 
 class EvaluatorCompiler(object):
@@ -55,7 +55,7 @@ class EvaluatorCompiler(object):
                     self.target_cls, parentmapper.class_):
                 raise UnevaluatableError(
                     "Can't evaluate criteria against alternate class %s" %
-                        parentmapper.class_
+                    parentmapper.class_
                 )
             key = parentmapper._columntoproperty[clause].key
         else:
@@ -95,7 +95,7 @@ class EvaluatorCompiler(object):
 
     def visit_binary(self, clause):
         eval_left, eval_right = list(map(self.process,
-                                [clause.left, clause.right]))
+                                         [clause.left, clause.right]))
         operator = clause.operator
         if operator is operators.is_:
             def evaluate(obj):
@@ -112,8 +112,8 @@ class EvaluatorCompiler(object):
                 return operator(eval_left(obj), eval_right(obj))
         else:
             raise UnevaluatableError(
-                    "Cannot evaluate %s with operator %s" %
-                    (type(clause).__name__, clause.operator))
+                "Cannot evaluate %s with operator %s" %
+                (type(clause).__name__, clause.operator))
         return evaluate
 
     def visit_unary(self, clause):
@@ -126,8 +126,8 @@ class EvaluatorCompiler(object):
                 return not value
             return evaluate
         raise UnevaluatableError(
-                    "Cannot evaluate %s with operator %s" %
-                    (type(clause).__name__, clause.operator))
+            "Cannot evaluate %s with operator %s" %
+            (type(clause).__name__, clause.operator))
 
     def visit_bindparam(self, clause):
         val = clause.value

@@ -38,6 +38,7 @@ import nose
 def main():
     nose.main(addplugins=[NoseSQLAlchemy()])
 
+
 def setup_py_test():
     """Runner to use for the 'test_suite' entry of your setup.py.
 

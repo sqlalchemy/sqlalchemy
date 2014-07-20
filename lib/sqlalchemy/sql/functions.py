@@ -11,8 +11,8 @@
 from . import sqltypes, schema
 from .base import Executable
 from .elements import ClauseList, Cast, Extract, _literal_as_binds, \
-        literal_column, _type_from_args, ColumnElement, _clone,\
-        Over, BindParameter
+    literal_column, _type_from_args, ColumnElement, _clone,\
+    Over, BindParameter
 from .selectable import FromClause, Select
 
 from . import operators
@@ -58,9 +58,9 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         """
         args = [_literal_as_binds(c, self.name) for c in clauses]
         self.clause_expr = ClauseList(
-                                operator=operators.comma_op,
-                                 group_contents=True, *args).\
-                                 self_group()
+            operator=operators.comma_op,
+            group_contents=True, *args).\
+            self_group()
 
     def _execute_on_connection(self, connection, multiparams, params):
         return connection._execute_function(self, multiparams, params)
@@ -160,7 +160,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
     def _bind_param(self, operator, obj):
         return BindParameter(None, obj, _compared_to_operator=operator,
-                                _compared_to_type=self.type, unique=True)
+                             _compared_to_type=self.type, unique=True)
 
 
 class _FunctionGenerator(object):
@@ -271,15 +271,17 @@ func = _FunctionGenerator()
    .. note::
 
         The :data:`.func` construct has only limited support for calling
-        standalone "stored procedures", especially those with special parameterization
-        concerns.
+        standalone "stored procedures", especially those with special
+        parameterization concerns.
 
         See the section :ref:`stored_procedures` for details on how to use
-        the DBAPI-level ``callproc()`` method for fully traditional stored procedures.
+        the DBAPI-level ``callproc()`` method for fully traditional stored
+        procedures.
 
 """
 
 modifier = _FunctionGenerator(group=False)
+
 
 class Function(FunctionElement):
     """Describe a named SQL function.
@@ -315,9 +317,10 @@ class Function(FunctionElement):
 
     def _bind_param(self, operator, obj):
         return BindParameter(self.name, obj,
-                                _compared_to_operator=operator,
-                                _compared_to_type=self.type,
-                                unique=True)
+                             _compared_to_operator=operator,
+                             _compared_to_type=self.type,
+                             unique=True)
+
 
 class _GenericMeta(VisitableType):
     def __init__(cls, clsname, bases, clsdict):
@@ -413,8 +416,8 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
         self.packagenames = []
         self._bind = kwargs.get('bind', None)
         self.clause_expr = ClauseList(
-                operator=operators.comma_op,
-                group_contents=True, *parsed_args).self_group()
+            operator=operators.comma_op,
+            group_contents=True, *parsed_args).self_group()
         self.type = sqltypes.to_instance(
             kwargs.pop("type_", None) or getattr(self, 'type', None))
 
@@ -436,7 +439,7 @@ class next_value(GenericFunction):
 
     def __init__(self, seq, **kw):
         assert isinstance(seq, schema.Sequence), \
-                "next_value() accepts a Sequence object as input."
+            "next_value() accepts a Sequence object as input."
         self._bind = kw.get('bind', None)
         self.sequence = seq
 

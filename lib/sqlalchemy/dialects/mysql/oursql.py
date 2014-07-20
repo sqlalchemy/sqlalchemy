@@ -80,7 +80,8 @@ class MySQLDialect_oursql(MySQLDialect):
         return __import__('oursql')
 
     def do_execute(self, cursor, statement, parameters, context=None):
-        """Provide an implementation of *cursor.execute(statement, parameters)*."""
+        """Provide an implementation of
+        *cursor.execute(statement, parameters)*."""
 
         if context and context.plain_query:
             cursor.execute(statement, plain_query=True)
@@ -95,9 +96,11 @@ class MySQLDialect_oursql(MySQLDialect):
             arg = connection.connection._escape_string(xid)
         else:
             charset = self._connection_charset
-            arg = connection.connection._escape_string(xid.encode(charset)).decode(charset)
+            arg = connection.connection._escape_string(
+                xid.encode(charset)).decode(charset)
         arg = "'%s'" % arg
-        connection.execution_options(_oursql_plain_query=True).execute(query % arg)
+        connection.execution_options(
+            _oursql_plain_query=True).execute(query % arg)
 
     # Because mysql is bad, these methods have to be
     # reimplemented to use _PlainQuery. Basically, some queries
@@ -127,10 +130,10 @@ class MySQLDialect_oursql(MySQLDialect):
     # am i on a newer/older version of OurSQL ?
     def has_table(self, connection, table_name, schema=None):
         return MySQLDialect.has_table(
-          self,
-          connection.connect().execution_options(_oursql_plain_query=True),
-          table_name,
-          schema
+            self,
+            connection.connect().execution_options(_oursql_plain_query=True),
+            table_name,
+            schema
         )
 
     def get_table_options(self, connection, table_name, schema=None, **kw):
@@ -190,7 +193,8 @@ class MySQLDialect_oursql(MySQLDialect):
 
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.ProgrammingError):
-            return e.errno is None and 'cursor' not in e.args[1] and e.args[1].endswith('closed')
+            return e.errno is None and 'cursor' not in e.args[1] \
+                and e.args[1].endswith('closed')
         else:
             return e.errno in (2006, 2013, 2014, 2045, 2055)
 
@@ -218,7 +222,7 @@ class MySQLDialect_oursql(MySQLDialect):
 
         ssl = {}
         for key in ['ssl_ca', 'ssl_key', 'ssl_cert',
-                        'ssl_capath', 'ssl_cipher']:
+                    'ssl_capath', 'ssl_cipher']:
             if key in opts:
                 ssl[key[4:]] = opts[key]
                 util.coerce_kw_type(ssl, key[4:], str)

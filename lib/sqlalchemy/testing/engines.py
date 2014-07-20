@@ -17,6 +17,7 @@ import re
 import warnings
 from .. import util
 
+
 class ConnectionKiller(object):
 
     def __init__(self):
@@ -43,8 +44,8 @@ class ConnectionKiller(object):
             raise
         except Exception as e:
             warnings.warn(
-                    "testing_reaper couldn't "
-                    "rollback/close connection: %s" % e)
+                "testing_reaper couldn't "
+                "rollback/close connection: %s" % e)
 
     def rollback_all(self):
         for rec in list(self.proxy_refs):
@@ -174,8 +175,8 @@ class ReconnectFixture(object):
             raise
         except Exception as e:
             warnings.warn(
-                    "ReconnectFixture couldn't "
-                    "close connection: %s" % e)
+                "ReconnectFixture couldn't "
+                "close connection: %s" % e)
 
     def shutdown(self):
         # TODO: this doesn't cover all cases
@@ -236,8 +237,6 @@ def testing_engine(url=None, options=None):
     return engine
 
 
-
-
 def mock_engine(dialect_name=None):
     """Provides a mocking engine based on the current testing.db.
 
@@ -262,7 +261,7 @@ def mock_engine(dialect_name=None):
 
     def assert_sql(stmts):
         recv = [re.sub(r'[\n\t]', '', str(s)) for s in buffer]
-        assert  recv == stmts, recv
+        assert recv == stmts, recv
 
     def print_sql():
         d = engine.dialect
@@ -287,6 +286,7 @@ class DBAPIProxyCursor(object):
     DBAPI-level cursor operations.
 
     """
+
     def __init__(self, engine, conn):
         self.engine = engine
         self.connection = conn
@@ -312,6 +312,7 @@ class DBAPIProxyConnection(object):
     DBAPI-level connection operations.
 
     """
+
     def __init__(self, engine, cursor_cls):
         self.conn = self._sqla_unwrap = engine.pool._creator()
         self.engine = engine
@@ -352,20 +353,20 @@ class ReplayableSession(object):
 
     if util.py2k:
         Natives = set([getattr(types, t)
-                   for t in dir(types) if not t.startswith('_')]).\
-                   difference([getattr(types, t)
-                           for t in ('FunctionType', 'BuiltinFunctionType',
-                                     'MethodType', 'BuiltinMethodType',
-                                     'LambdaType', 'UnboundMethodType',)])
+                       for t in dir(types) if not t.startswith('_')]).\
+            difference([getattr(types, t)
+                        for t in ('FunctionType', 'BuiltinFunctionType',
+                                  'MethodType', 'BuiltinMethodType',
+                                  'LambdaType', 'UnboundMethodType',)])
     else:
         Natives = set([getattr(types, t)
                        for t in dir(types) if not t.startswith('_')]).\
-                       union([type(t) if not isinstance(t, type)
-                                else t for t in __builtins__.values()]).\
-                       difference([getattr(types, t)
-                                for t in ('FunctionType', 'BuiltinFunctionType',
-                                          'MethodType', 'BuiltinMethodType',
-                                          'LambdaType', )])
+            union([type(t) if not isinstance(t, type)
+                   else t for t in __builtins__.values()]).\
+            difference([getattr(types, t)
+                        for t in ('FunctionType', 'BuiltinFunctionType',
+                                  'MethodType', 'BuiltinMethodType',
+                                  'LambdaType', )])
 
     def __init__(self):
         self.buffer = deque()

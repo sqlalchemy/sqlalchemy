@@ -12,18 +12,18 @@ class SimpleUpdateDeleteTest(fixtures.TablesTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('plain_pk', metadata,
-                Column('id', Integer, primary_key=True),
-                Column('data', String(50))
-            )
+              Column('id', Integer, primary_key=True),
+              Column('data', String(50))
+              )
 
     @classmethod
     def insert_data(cls):
         config.db.execute(
             cls.tables.plain_pk.insert(),
             [
-                {"id":1, "data":"d1"},
-                {"id":2, "data":"d2"},
-                {"id":3, "data":"d3"},
+                {"id": 1, "data": "d1"},
+                {"id": 2, "data": "d2"},
+                {"id": 3, "data": "d3"},
             ]
         )
 

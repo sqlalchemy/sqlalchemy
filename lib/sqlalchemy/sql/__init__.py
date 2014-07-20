@@ -63,9 +63,10 @@ from .expression import (
     union,
     union_all,
     update,
-    )
+)
 
 from .visitors import ClauseVisitor
+
 
 def __go(lcls):
     global __all__
@@ -74,7 +75,7 @@ def __go(lcls):
     import inspect as _inspect
 
     __all__ = sorted(name for name, obj in lcls.items()
-                 if not (name.startswith('_') or _inspect.ismodule(obj)))
+                     if not (name.startswith('_') or _inspect.ismodule(obj)))
 
     from .annotation import _prepare_annotations, Annotated
     from .elements import AnnotatedColumnElement, ClauseList
@@ -88,4 +89,3 @@ def __go(lcls):
     from . import naming
 
 __go(locals())
-

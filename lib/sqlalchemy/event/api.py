@@ -25,7 +25,8 @@ def _event_key(target, identifier, fn):
             return _EventKey(target, identifier, fn, tgt)
     else:
         raise exc.InvalidRequestError("No such event '%s' for target '%s'" %
-                                (identifier, target))
+                                      (identifier, target))
+
 
 def listen(target, identifier, fn, *args, **kw):
     """Register a listener function for the given target.
@@ -114,13 +115,14 @@ def remove(target, identifier, fn):
         event.remove(SomeMappedClass, "before_insert", my_listener_function)
 
     Above, the listener function associated with ``SomeMappedClass`` was also
-    propagated to subclasses of ``SomeMappedClass``; the :func:`.remove` function
-    will revert all of these operations.
+    propagated to subclasses of ``SomeMappedClass``; the :func:`.remove`
+    function will revert all of these operations.
 
     .. versionadded:: 0.9.0
 
     """
     _event_key(target, identifier, fn).remove()
+
 
 def contains(target, identifier, fn):
     """Return True if the given target/ident/fn is set up to listen.

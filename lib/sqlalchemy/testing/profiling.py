@@ -43,12 +43,12 @@ def profiled(target=None, **target_opts):
     """
 
     profile_config = {'targets': set(),
-                       'report': True,
-                       'print_callers': False,
-                       'print_callees': False,
-                       'graphic': False,
-                       'sort': ('time', 'calls'),
-                       'limit': None}
+                      'report': True,
+                      'print_callers': False,
+                      'print_callees': False,
+                      'graphic': False,
+                      'sort': ('time', 'calls'),
+                      'limit': None}
     if target is None:
         target = 'anonymous_target'
 
@@ -67,7 +67,7 @@ def profiled(target=None, **target_opts):
                 limit = target_opts.get('limit', profile_config['limit'])
                 print(("Profile report for target '%s'" % (
                     target, )
-                    ))
+                ))
 
                 stats = load_stats()
                 stats.sort_stats(*sort_)
@@ -97,6 +97,7 @@ class ProfileStatsFile(object):
     so no json lib :(  need to roll something silly
 
     """
+
     def __init__(self, filename):
         self.write = (
             config.options is not None and
@@ -177,19 +178,19 @@ class ProfileStatsFile(object):
 
     def _header(self):
         return \
-        "# %s\n"\
-        "# This file is written out on a per-environment basis.\n"\
-        "# For each test in aaa_profiling, the corresponding function and \n"\
-        "# environment is located within this file.  If it doesn't exist,\n"\
-        "# the test is skipped.\n"\
-        "# If a callcount does exist, it is compared to what we received. \n"\
-        "# assertions are raised if the counts do not match.\n"\
-        "# \n"\
-        "# To add a new callcount test, apply the function_call_count \n"\
-        "# decorator and re-run the tests using the --write-profiles \n"\
-        "# option - this file will be rewritten including the new count.\n"\
-        "# \n"\
-        "" % (self.fname)
+            "# %s\n"\
+            "# This file is written out on a per-environment basis.\n"\
+            "# For each test in aaa_profiling, the corresponding function and \n"\
+            "# environment is located within this file.  If it doesn't exist,\n"\
+            "# the test is skipped.\n"\
+            "# If a callcount does exist, it is compared to what we received. \n"\
+            "# assertions are raised if the counts do not match.\n"\
+            "# \n"\
+            "# To add a new callcount test, apply the function_call_count \n"\
+            "# decorator and re-run the tests using the --write-profiles \n"\
+            "# option - this file will be rewritten including the new count.\n"\
+            "# \n"\
+            "" % (self.fname)
 
     def _read(self):
         try:
@@ -225,7 +226,6 @@ class ProfileStatsFile(object):
         profile_f.close()
 
 
-
 def function_call_count(variance=0.05):
     """Assert a target for a test case's function call count.
 
@@ -248,9 +248,9 @@ def function_call_count(variance=0.05):
                 # (not a great idea but we have these in test_zoomark)
                 fn(*args, **kw)
                 raise SkipTest("No profiling stats available on this "
-                            "platform for this function.  Run tests with "
-                            "--write-profiles to add statistics to %s for "
-                            "this platform." % _profile_stats.short_fname)
+                               "platform for this function.  Run tests with "
+                               "--write-profiles to add statistics to %s for "
+                               "this platform." % _profile_stats.short_fname)
 
             gc_collect()
 
@@ -267,12 +267,12 @@ def function_call_count(variance=0.05):
                 line_no, expected_count = expected
 
             print(("Pstats calls: %d Expected %s" % (
-                    callcount,
-                    expected_count
-                )
+                callcount,
+                expected_count
+            )
             ))
             stats.print_stats()
-            #stats.print_callers()
+            # stats.print_callers()
 
             if expected_count:
                 deviance = int(callcount * variance)
@@ -287,8 +287,8 @@ def function_call_count(variance=0.05):
                             "of expected %s. Rerun with --write-profiles to "
                             "regenerate this callcount."
                             % (
-                            callcount, (variance * 100),
-                            expected_count))
+                                callcount, (variance * 100),
+                                expected_count))
             return fn_result
         return update_wrapper(wrap, fn)
     return decorate

@@ -58,7 +58,6 @@ class Queue:
         # a thread waiting to put is notified then.
         self.not_full = threading.Condition(self.mutex)
 
-
     def qsize(self):
         """Return the approximate size of the queue (not reliable!)."""
 

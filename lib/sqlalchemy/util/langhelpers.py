@@ -22,12 +22,14 @@ import hashlib
 from . import compat
 from . import _collections
 
+
 def md5_hex(x):
     if compat.py3k:
         x = x.encode('utf-8')
     m = hashlib.md5()
     m.update(x)
     return m.hexdigest()
+
 
 class safe_reraise(object):
     """Reraise an exception after invoking some
@@ -60,6 +62,7 @@ class safe_reraise(object):
             self._exc_info = None   # remove potential circular references
             compat.reraise(type_, value, traceback)
 
+
 def decode_slice(slc):
     """decode a slice object as sent to __getitem__.
 
@@ -73,12 +76,13 @@ def decode_slice(slc):
         ret.append(x)
     return tuple(ret)
 
+
 def _unique_symbols(used, *bases):
     used = set(used)
     for base in bases:
         pool = itertools.chain((base,),
                                compat.itertools_imap(lambda i: base + str(i),
-                                              range(1000)))
+                                                     range(1000)))
         for sym in pool:
             if sym not in used:
                 used.add(sym)
@@ -106,16 +110,18 @@ def %(name)s(%(args)s):
     return %(target)s(%(fn)s, %(apply_kw)s)
 """ % metadata
         decorated = _exec_code_in_env(code,
-                            {targ_name: target, fn_name: fn},
-                            fn.__name__)
+                                      {targ_name: target, fn_name: fn},
+                                      fn.__name__)
         decorated.__defaults__ = getattr(fn, 'im_func', fn).__defaults__
         decorated.__wrapped__ = fn
         return update_wrapper(decorated, fn)
     return update_wrapper(decorate, target)
 
+
 def _exec_code_in_env(code, env, fn_name):
     exec(code, env)
     return env[fn_name]
+
 
 def public_factory(target, location):
     """Produce a wrapping function for the given cls or classmethod.
@@ -128,13 +134,13 @@ def public_factory(target, location):
         fn = target.__init__
         callable_ = target
         doc = "Construct a new :class:`.%s` object. \n\n"\
-        "This constructor is mirrored as a public API function; see :func:`~%s` "\
-        "for a full usage and argument description." % (
-                    target.__name__, location, )
+            "This constructor is mirrored as a public API function; see :func:`~%s` "\
+            "for a full usage and argument description." % (
+                target.__name__, location, )
     else:
         fn = callable_ = target
         doc = "This function is mirrored; see :func:`~%s` "\
-                "for a description of arguments." % location
+            "for a description of arguments." % location
 
     location_name = location.split(".")[-1]
     spec = compat.inspect_getfullargspec(fn)
@@ -179,13 +185,13 @@ class PluginLoader(object):
             pass
         else:
             for impl in pkg_resources.iter_entry_points(
-                                self.group, name):
+                    self.group, name):
                 self.impls[name] = impl.load
                 return impl.load()
 
         raise exc.NoSuchModuleError(
-                "Can't load plugin: %s:%s" %
-                (self.group, name))
+            "Can't load plugin: %s:%s" %
+            (self.group, name))
 
     def register(self, name, modulepath, objname):
         def load():
@@ -200,15 +206,15 @@ def get_cls_kwargs(cls, _set=None):
     """Return the full set of inherited kwargs for the given `cls`.
 
     Probes a class's __init__ method, collecting all named arguments.  If the
-    __init__ defines a \**kwargs catch-all, then the constructor is presumed to
-    pass along unrecognized keywords to its base classes, and the collection
-    process is repeated recursively on each of the bases.
+    __init__ defines a \**kwargs catch-all, then the constructor is presumed
+    to pass along unrecognized keywords to its base classes, and the
+    collection process is repeated recursively on each of the bases.
 
     Uses a subset of inspect.getargspec() to cut down on method overhead.
     No anonymous tuple arguments please !
 
     """
-    toplevel = _set == None
+    toplevel = _set is None
     if toplevel:
         _set = set()
 
@@ -231,7 +237,6 @@ def get_cls_kwargs(cls, _set=None):
 
     _set.discard('self')
     return _set
-
 
 
 try:
@@ -262,6 +267,7 @@ def get_func_kwargs(func):
 
     return compat.inspect_getargspec(func)[0]
 
+
 def get_callable_argspec(fn, no_self=False, _is_init=False):
     """Return the argument signature for any callable.
 
@@ -277,18 +283,19 @@ def get_callable_argspec(fn, no_self=False, _is_init=False):
         if _is_init and no_self:
             spec = compat.inspect_getargspec(fn)
             return compat.ArgSpec(spec.args[1:], spec.varargs,
-                            spec.keywords, spec.defaults)
+                                  spec.keywords, spec.defaults)
         else:
             return compat.inspect_getargspec(fn)
     elif inspect.ismethod(fn):
         if no_self and (_is_init or fn.__self__):
             spec = compat.inspect_getargspec(fn.__func__)
             return compat.ArgSpec(spec.args[1:], spec.varargs,
-                            spec.keywords, spec.defaults)
+                                  spec.keywords, spec.defaults)
         else:
             return compat.inspect_getargspec(fn.__func__)
     elif inspect.isclass(fn):
-        return get_callable_argspec(fn.__init__, no_self=no_self, _is_init=True)
+        return get_callable_argspec(
+            fn.__init__, no_self=no_self, _is_init=True)
     elif hasattr(fn, '__func__'):
         return compat.inspect_getargspec(fn.__func__)
     elif hasattr(fn, '__call__'):
@@ -298,6 +305,7 @@ def get_callable_argspec(fn, no_self=False, _is_init=False):
             raise TypeError("Can't inspect callable: %s" % fn)
     else:
         raise TypeError("Can't inspect callable: %s" % fn)
+
 
 def format_argspec_plus(fn, grouped=True):
     """Returns a dictionary of formatted, introspected function arguments.
@@ -346,7 +354,7 @@ def format_argspec_plus(fn, grouped=True):
 
     if compat.py3k:
         apply_pos = inspect.formatargspec(spec[0], spec[1],
-            spec[2], None, spec[4])
+                                          spec[2], None, spec[4])
         num_defaults = 0
         if spec[3]:
             num_defaults += len(spec[3])
@@ -366,7 +374,7 @@ def format_argspec_plus(fn, grouped=True):
         defaulted_vals = ()
 
     apply_kw = inspect.formatargspec(name_args, spec[1], spec[2],
-                                        defaulted_vals,
+                                     defaulted_vals,
                                      formatvalue=lambda x: '=' + x)
     if grouped:
         return dict(args=args, self_arg=self_arg,
@@ -393,7 +401,7 @@ def format_argspec_init(method, grouped=True):
             return format_argspec_plus(method, grouped=grouped)
         except TypeError:
             args = (grouped and '(self, *args, **kwargs)'
-                            or 'self, *args, **kwargs')
+                    or 'self, *args, **kwargs')
     return dict(self_arg='self', args=args, apply_pos=args, apply_kw=args)
 
 
@@ -465,8 +473,8 @@ def generic_repr(obj, additional_kw=(), to_inspect=None):
             if default_len:
                 kw_args.update([
                     (arg, default)
-                        for arg, default
-                        in zip(_args[-default_len:], defaults)
+                    for arg, default
+                    in zip(_args[-default_len:], defaults)
                 ])
     output = []
 
@@ -500,6 +508,7 @@ class portable_instancemethod(object):
     to produce a serializable callable.
 
     """
+
     def __init__(self, meth):
         self.target = meth.__self__
         self.name = meth.__name__
@@ -533,7 +542,7 @@ def class_hierarchy(cls):
             if isinstance(c, types.ClassType):
                 continue
             bases = (_ for _ in c.__bases__
-                  if _ not in hier and not isinstance(_, types.ClassType))
+                     if _ not in hier and not isinstance(_, types.ClassType))
         else:
             bases = (_ for _ in c.__bases__ if _ not in hier)
 
@@ -545,7 +554,8 @@ def class_hierarchy(cls):
             if c.__module__ == 'builtins' or not hasattr(c, '__subclasses__'):
                 continue
         else:
-            if c.__module__ == '__builtin__' or not hasattr(c, '__subclasses__'):
+            if c.__module__ == '__builtin__' or not hasattr(
+                    c, '__subclasses__'):
                 continue
 
         for s in [_ for _ in c.__subclasses__() if _ not in hier]:
@@ -615,7 +625,8 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
 def methods_equivalent(meth1, meth2):
     """Return True if the two methods are the same implementation."""
 
-    return getattr(meth1, '__func__', meth1) is getattr(meth2, '__func__', meth2)
+    return getattr(meth1, '__func__', meth1) is getattr(
+        meth2, '__func__', meth2)
 
 
 def as_interface(obj, cls=None, methods=None, required=None):
@@ -673,7 +684,7 @@ def as_interface(obj, cls=None, methods=None, required=None):
         return obj
 
     # No dict duck typing here.
-    if not type(obj) is dict:
+    if not isinstance(obj, dict):
         qualifier = complies is operator.gt and 'any of' or 'all of'
         raise TypeError("%r does not implement %s: %s" % (
             obj, qualifier, ', '.join(interface)))
@@ -702,6 +713,7 @@ def as_interface(obj, cls=None, methods=None, required=None):
 
 class memoized_property(object):
     """A read-only @property that is only evaluated once."""
+
     def __init__(self, fget, doc=None):
         self.fget = fget
         self.__doc__ = doc or fget.__doc__
@@ -729,6 +741,7 @@ class memoized_instancemethod(object):
     called with different arguments.
 
     """
+
     def __init__(self, fget, doc=None):
         self.fget = fget
         self.__doc__ = doc or fget.__doc__
@@ -774,17 +787,18 @@ class group_expirable_memoized_property(object):
         return memoized_instancemethod(fn)
 
 
-
 def dependency_for(modulename):
     def decorate(obj):
         # TODO: would be nice to improve on this import silliness,
         # unfortunately importlib doesn't work that great either
         tokens = modulename.split(".")
-        mod = compat.import_(".".join(tokens[0:-1]), globals(), locals(), tokens[-1])
+        mod = compat.import_(
+            ".".join(tokens[0:-1]), globals(), locals(), tokens[-1])
         mod = getattr(mod, tokens[-1])
         setattr(mod, obj.__name__, obj)
         return obj
     return decorate
+
 
 class dependencies(object):
     """Apply imported dependencies as arguments to a function.
@@ -809,7 +823,7 @@ class dependencies(object):
         for dep in deps:
             tokens = dep.split(".")
             self.import_deps.append(
-                    dependencies._importlater(
+                dependencies._importlater(
                     ".".join(tokens[0:-1]),
                     tokens[-1]
                 )
@@ -834,8 +848,8 @@ class dependencies(object):
         outer_spec = format_argspec_plus(spec, grouped=False)
 
         code = 'lambda %(args)s: fn(%(apply_kw)s)' % {
-                    "args": outer_spec['args'],
-                    "apply_kw": inner_spec['apply_kw']
+            "args": outer_spec['args'],
+            "apply_kw": inner_spec['apply_kw']
         }
 
         decorated = eval(code, locals())
@@ -869,7 +883,6 @@ class dependencies(object):
             self._il_addtl = addtl
             dependencies._unresolved.add(self)
 
-
         @property
         def _full_path(self):
             return self._il_path + "." + self._il_addtl
@@ -878,29 +891,29 @@ class dependencies(object):
         def module(self):
             if self in dependencies._unresolved:
                 raise ImportError(
-                        "importlater.resolve_all() hasn't "
-                        "been called (this is %s %s)"
-                        % (self._il_path, self._il_addtl))
+                    "importlater.resolve_all() hasn't "
+                    "been called (this is %s %s)"
+                    % (self._il_path, self._il_addtl))
 
             return getattr(self._initial_import, self._il_addtl)
 
         def _resolve(self):
             dependencies._unresolved.discard(self)
             self._initial_import = compat.import_(
-                                self._il_path, globals(), locals(),
-                                [self._il_addtl])
+                self._il_path, globals(), locals(),
+                [self._il_addtl])
 
         def __getattr__(self, key):
             if key == 'module':
                 raise ImportError("Could not resolve module %s"
-                                    % self._full_path)
+                                  % self._full_path)
             try:
                 attr = getattr(self.module, key)
             except AttributeError:
                 raise AttributeError(
-                            "Module %s has no attribute '%s'" %
-                            (self._full_path, key)
-                        )
+                    "Module %s has no attribute '%s'" %
+                    (self._full_path, key)
+                )
             self.__dict__[key] = attr
             return attr
 
@@ -945,7 +958,7 @@ def coerce_kw_type(kw, key, type_, flexi_bool=True):
     when coercing to boolean.
     """
 
-    if key in kw and type(kw[key]) is not type_ and kw[key] is not None:
+    if key in kw and not isinstance(kw[key], type_) and kw[key] is not None:
         if type_ is bool and flexi_bool:
             kw[key] = asbool(kw[key])
         else:
@@ -1077,6 +1090,7 @@ class classproperty(property):
 
 class hybridmethod(object):
     """Decorate a function as cls- or instance- level."""
+
     def __init__(self, func, expr=None):
         self.func = func
 
@@ -1198,6 +1212,7 @@ def only_once(fn):
     once."""
 
     once = [fn]
+
     def go(*arg, **kw):
         if once:
             once_fn = once.pop()
@@ -1209,6 +1224,7 @@ def only_once(fn):
 _SQLA_RE = re.compile(r'sqlalchemy/([a-z_]+/){0,2}[a-z_]+\.py')
 _UNITTEST_RE = re.compile(r'unit(?:2|test2?/)')
 
+
 def chop_traceback(tb, exclude_prefix=_UNITTEST_RE, exclude_suffix=_SQLA_RE):
     """Chop extraneous lines off beginning and end of a traceback.
 
@@ -1216,7 +1232,8 @@ def chop_traceback(tb, exclude_prefix=_UNITTEST_RE, exclude_suffix=_SQLA_RE):
       a list of traceback lines as returned by ``traceback.format_stack()``
 
     :param exclude_prefix:
-      a regular expression object matching lines to skip at beginning of ``tb``
+      a regular expression object matching lines to skip at beginning of
+      ``tb``
 
     :param exclude_suffix:
       a regular expression object matching lines to skip at end of ``tb``

@@ -24,16 +24,14 @@ class HasTableTest(fixtures.TablesTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('test_table', metadata,
-                Column('id', Integer, primary_key=True),
-                Column('data', String(50))
-            )
+              Column('id', Integer, primary_key=True),
+              Column('data', String(50))
+              )
 
     def test_has_table(self):
         with config.db.begin() as conn:
             assert config.db.dialect.has_table(conn, "test_table")
             assert not config.db.dialect.has_table(conn, "nonexistent_table")
-
-
 
 
 class ComponentReflectionTest(fixtures.TablesTest):
@@ -56,41 +54,42 @@ class ComponentReflectionTest(fixtures.TablesTest):
 
         if testing.requires.self_referential_foreign_keys.enabled:
             users = Table('users', metadata,
-                Column('user_id', sa.INT, primary_key=True),
-                Column('test1', sa.CHAR(5), nullable=False),
-                Column('test2', sa.Float(5), nullable=False),
-                Column('parent_user_id', sa.Integer,
-                            sa.ForeignKey('%susers.user_id' % schema_prefix)),
-                schema=schema,
-                test_needs_fk=True,
-            )
+                          Column('user_id', sa.INT, primary_key=True),
+                          Column('test1', sa.CHAR(5), nullable=False),
+                          Column('test2', sa.Float(5), nullable=False),
+                          Column('parent_user_id', sa.Integer,
+                                 sa.ForeignKey('%susers.user_id' %
+                                               schema_prefix)),
+                          schema=schema,
+                          test_needs_fk=True,
+                          )
         else:
             users = Table('users', metadata,
-                Column('user_id', sa.INT, primary_key=True),
-                Column('test1', sa.CHAR(5), nullable=False),
-                Column('test2', sa.Float(5), nullable=False),
-                schema=schema,
-                test_needs_fk=True,
-            )
+                          Column('user_id', sa.INT, primary_key=True),
+                          Column('test1', sa.CHAR(5), nullable=False),
+                          Column('test2', sa.Float(5), nullable=False),
+                          schema=schema,
+                          test_needs_fk=True,
+                          )
 
         Table("dingalings", metadata,
-                  Column('dingaling_id', sa.Integer, primary_key=True),
-                  Column('address_id', sa.Integer,
-                    sa.ForeignKey('%semail_addresses.address_id' %
-                                    schema_prefix)),
-                  Column('data', sa.String(30)),
-                  schema=schema,
-                  test_needs_fk=True,
-            )
+              Column('dingaling_id', sa.Integer, primary_key=True),
+              Column('address_id', sa.Integer,
+                     sa.ForeignKey('%semail_addresses.address_id' %
+                                   schema_prefix)),
+              Column('data', sa.String(30)),
+              schema=schema,
+              test_needs_fk=True,
+              )
         Table('email_addresses', metadata,
-            Column('address_id', sa.Integer),
-            Column('remote_user_id', sa.Integer,
-                   sa.ForeignKey(users.c.user_id)),
-            Column('email_address', sa.String(20)),
-            sa.PrimaryKeyConstraint('address_id', name='email_ad_pk'),
-            schema=schema,
-            test_needs_fk=True,
-        )
+              Column('address_id', sa.Integer),
+              Column('remote_user_id', sa.Integer,
+                     sa.ForeignKey(users.c.user_id)),
+              Column('email_address', sa.String(20)),
+              sa.PrimaryKeyConstraint('address_id', name='email_ad_pk'),
+              schema=schema,
+              test_needs_fk=True,
+              )
 
         if testing.requires.index_reflection.enabled:
             cls.define_index(metadata, users)
@@ -110,7 +109,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
                 fullname = "%s.%s" % (schema, table_name)
             view_name = fullname + '_v'
             query = "CREATE VIEW %s AS SELECT * FROM %s" % (
-                                view_name, fullname)
+                view_name, fullname)
 
             event.listen(
                 metadata,
@@ -146,7 +145,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
                               order_by=None):
         meta = self.metadata
         users, addresses, dingalings = self.tables.users, \
-                self.tables.email_addresses, self.tables.dingalings
+            self.tables.email_addresses, self.tables.dingalings
         insp = inspect(meta.bind)
         if table_type == 'view':
             table_names = insp.get_view_names(schema)
@@ -195,13 +194,13 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def _test_get_columns(self, schema=None, table_type='table'):
         meta = MetaData(testing.db)
         users, addresses, dingalings = self.tables.users, \
-                self.tables.email_addresses, self.tables.dingalings
+            self.tables.email_addresses, self.tables.dingalings
         table_names = ['users', 'email_addresses']
         if table_type == 'view':
             table_names = ['users_v', 'email_addresses_v']
         insp = inspect(meta.bind)
         for table_name, table in zip(table_names, (users,
-                addresses)):
+                                                   addresses)):
             schema_name = schema
             cols = insp.get_columns(table_name, schema=schema_name)
             self.assert_(len(cols) > 0, len(cols))
@@ -218,23 +217,24 @@ class ComponentReflectionTest(fixtures.TablesTest):
                 # Oracle returns Date for DateTime.
 
                 if testing.against('oracle') and ctype_def \
-                    in (sql_types.Date, sql_types.DateTime):
+                        in (sql_types.Date, sql_types.DateTime):
                     ctype_def = sql_types.Date
 
                 # assert that the desired type and return type share
                 # a base within one of the generic types.
 
                 self.assert_(len(set(ctype.__mro__).
-                    intersection(ctype_def.__mro__).intersection([
-                    sql_types.Integer,
-                    sql_types.Numeric,
-                    sql_types.DateTime,
-                    sql_types.Date,
-                    sql_types.Time,
-                    sql_types.String,
-                    sql_types._Binary,
-                    ])) > 0, '%s(%s), %s(%s)' % (col.name,
-                            col.type, cols[i]['name'], ctype))
+                                 intersection(ctype_def.__mro__).
+                                 intersection([
+                                     sql_types.Integer,
+                                     sql_types.Numeric,
+                                     sql_types.DateTime,
+                                     sql_types.Date,
+                                     sql_types.Time,
+                                     sql_types.String,
+                                     sql_types._Binary,
+                                 ])) > 0, '%s(%s), %s(%s)' %
+                             (col.name, col.type, cols[i]['name'], ctype))
 
                 if not col.primary_key:
                     assert cols[i]['default'] is None
@@ -246,11 +246,11 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.provide_metadata
     def _type_round_trip(self, *types):
         t = Table('t', self.metadata,
-                    *[
-                        Column('t%d' % i, type_)
-                        for i, type_ in enumerate(types)
-                    ]
-                )
+                  *[
+                      Column('t%d' % i, type_)
+                      for i, type_ in enumerate(types)
+                  ]
+                  )
         t.create()
 
         return [
@@ -261,8 +261,8 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.table_reflection
     def test_numeric_reflection(self):
         for typ in self._type_round_trip(
-                            sql_types.Numeric(18, 5),
-                        ):
+            sql_types.Numeric(18, 5),
+        ):
             assert isinstance(typ, sql_types.Numeric)
             eq_(typ.precision, 18)
             eq_(typ.scale, 5)
@@ -277,8 +277,8 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.provide_metadata
     def test_nullable_reflection(self):
         t = Table('t', self.metadata,
-                        Column('a', Integer, nullable=True),
-                        Column('b', Integer, nullable=False))
+                  Column('a', Integer, nullable=True),
+                  Column('b', Integer, nullable=False))
         t.create()
         eq_(
             dict(
@@ -287,7 +287,6 @@ class ComponentReflectionTest(fixtures.TablesTest):
             ),
             {"a": True, "b": False}
         )
-
 
     @testing.requires.table_reflection
     @testing.requires.schemas
@@ -311,11 +310,11 @@ class ComponentReflectionTest(fixtures.TablesTest):
 
         users_cons = insp.get_pk_constraint(users.name, schema=schema)
         users_pkeys = users_cons['constrained_columns']
-        eq_(users_pkeys,  ['user_id'])
+        eq_(users_pkeys, ['user_id'])
 
         addr_cons = insp.get_pk_constraint(addresses.name, schema=schema)
         addr_pkeys = addr_cons['constrained_columns']
-        eq_(addr_pkeys,  ['address_id'])
+        eq_(addr_pkeys, ['address_id'])
 
         with testing.requires.reflects_pk_names.fail_if():
             eq_(addr_cons['name'], 'email_ad_pk')
@@ -347,7 +346,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def _test_get_foreign_keys(self, schema=None):
         meta = self.metadata
         users, addresses, dingalings = self.tables.users, \
-                    self.tables.email_addresses, self.tables.dingalings
+            self.tables.email_addresses, self.tables.dingalings
         insp = inspect(meta.bind)
         expected_schema = schema
         # users
@@ -366,7 +365,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
             if testing.requires.self_referential_foreign_keys.enabled:
                 eq_(fkey1['constrained_columns'], ['parent_user_id'])
 
-        #addresses
+        # addresses
         addr_fkeys = insp.get_foreign_keys(addresses.name,
                                            schema=schema)
         fkey1 = addr_fkeys[0]
@@ -392,7 +391,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def _test_get_indexes(self, schema=None):
         meta = self.metadata
         users, addresses, dingalings = self.tables.users, \
-                    self.tables.email_addresses, self.tables.dingalings
+            self.tables.email_addresses, self.tables.dingalings
         # The database may decide to create indexes for foreign keys, etc.
         # so there may be more indexes than expected.
         insp = inspect(meta.bind)
@@ -420,7 +419,6 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.schemas
     def test_get_indexes_with_schema(self):
         self._test_get_indexes(schema='test_schema')
-
 
     @testing.requires.unique_constraint_reflection
     def test_get_unique_constraints(self):
@@ -468,12 +466,11 @@ class ComponentReflectionTest(fixtures.TablesTest):
         for orig, refl in zip(uniques, reflected):
             eq_(orig, refl)
 
-
     @testing.provide_metadata
     def _test_get_view_definition(self, schema=None):
         meta = self.metadata
         users, addresses, dingalings = self.tables.users, \
-                    self.tables.email_addresses, self.tables.dingalings
+            self.tables.email_addresses, self.tables.dingalings
         view_name1 = 'users_v'
         view_name2 = 'email_addresses_v'
         insp = inspect(meta.bind)
@@ -496,7 +493,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def _test_get_table_oid(self, table_name, schema=None):
         meta = self.metadata
         users, addresses, dingalings = self.tables.users, \
-                    self.tables.email_addresses, self.tables.dingalings
+            self.tables.email_addresses, self.tables.dingalings
         insp = inspect(meta.bind)
         oid = insp.get_table_oid(table_name, schema)
         self.assert_(isinstance(oid, int))
@@ -527,14 +524,13 @@ class ComponentReflectionTest(fixtures.TablesTest):
         insp = inspect(meta.bind)
 
         for tname, cname in [
-                ('users', 'user_id'),
-                ('email_addresses', 'address_id'),
-                ('dingalings', 'dingaling_id'),
-            ]:
+            ('users', 'user_id'),
+            ('email_addresses', 'address_id'),
+            ('dingalings', 'dingaling_id'),
+        ]:
             cols = insp.get_columns(tname)
             id_ = dict((c['name'], c) for c in cols)[cname]
             assert id_.get('autoincrement', True)
-
 
 
 __all__ = ('ComponentReflectionTest', 'HasTableTest')

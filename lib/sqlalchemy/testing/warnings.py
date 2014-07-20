@@ -12,6 +12,7 @@ from .. import exc as sa_exc
 from .. import util
 import re
 
+
 def testing_warn(msg, stacklevel=3):
     """Replaces sqlalchemy.util.warn during tests."""
 

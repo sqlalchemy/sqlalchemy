@@ -17,8 +17,8 @@ from sqlalchemy.dialects.oracle.base import \
 
 
 __all__ = (
-'VARCHAR', 'NVARCHAR', 'CHAR', 'DATE', 'NUMBER',
-'BLOB', 'BFILE', 'CLOB', 'NCLOB', 'TIMESTAMP', 'RAW',
-'FLOAT', 'DOUBLE_PRECISION', 'LONG', 'dialect', 'INTERVAL',
-'VARCHAR2', 'NVARCHAR2', 'ROWID'
+    'VARCHAR', 'NVARCHAR', 'CHAR', 'DATE', 'NUMBER',
+    'BLOB', 'BFILE', 'CLOB', 'NCLOB', 'TIMESTAMP', 'RAW',
+    'FLOAT', 'DOUBLE_PRECISION', 'LONG', 'dialect', 'INTERVAL',
+    'VARCHAR2', 'NVARCHAR2', 'ROWID'
 )

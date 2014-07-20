@@ -15,6 +15,7 @@ file_config = None
 
 _current = None
 
+
 class Config(object):
     def __init__(self, db, db_opts, options, file_config):
         self.db = db
@@ -52,7 +53,8 @@ class Config(object):
     def push_engine(cls, db, namespace):
         assert _current, "Can't push without a default Config set up"
         cls.push(
-            Config(db, _current.db_opts, _current.options, _current.file_config),
+            Config(
+                db, _current.db_opts, _current.options, _current.file_config),
             namespace
         )
 

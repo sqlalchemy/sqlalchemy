@@ -37,8 +37,8 @@ from . import visitors
 from . import type_api
 from .base import _bind_or_error, ColumnCollection
 from .elements import ClauseElement, ColumnClause, _truncated_label, \
-                        _as_truncated, TextClause, _literal_as_text,\
-                        ColumnElement, _find_columns, quoted_name
+    _as_truncated, TextClause, _literal_as_text,\
+    ColumnElement, _find_columns, quoted_name
 from .selectable import TableClause
 import collections
 import sqlalchemy
@@ -53,7 +53,6 @@ def _get_table_key(name, schema):
         return name
     else:
         return schema + "." + name
-
 
 
 @inspection._self_inspects
@@ -189,7 +188,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         If ``extend_existing`` or ``keep_existing`` are not set, an error is
         raised if additional table modifiers are specified when
-        the given :class:`.Table` is already present in the :class:`.MetaData`.
+        the given :class:`.Table` is already present in the
+        :class:`.MetaData`.
 
         .. versionchanged:: 0.7.4
             ``extend_existing`` will work in conjunction
@@ -241,7 +241,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         If extend_existing or keep_existing are not set, an error is
         raised if additional table modifiers are specified when
-        the given :class:`.Table` is already present in the :class:`.MetaData`.
+        the given :class:`.Table` is already present in the
+        :class:`.MetaData`.
 
     :param listeners: A list of tuples of the form ``(<eventname>, <fn>)``
         which will be passed to :func:`.event.listen` upon construction.
@@ -287,8 +288,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         ``name`` parameter, in that quoting is applied for reserved words or
         case-sensitive names; to enable unconditional quoting for the
         schema name, specify the flag
-        ``quote_schema=True`` to the constructor, or use the :class:`.quoted_name`
-        construct to specify the name.
+        ``quote_schema=True`` to the constructor, or use the
+        :class:`.quoted_name` construct to specify the name.
 
     :param useexisting: Deprecated.  Use extend_existing.
 
@@ -357,7 +358,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                 metadata._remove_table(name, schema)
                 raise
 
-
     @property
     @util.deprecated('0.9', 'Use ``table.schema.quote``')
     def quote_schema(self):
@@ -379,7 +379,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         # calling the superclass constructor.
 
     def _init(self, name, metadata, *args, **kwargs):
-        super(Table, self).__init__(quoted_name(name, kwargs.pop('quote', None)))
+        super(Table, self).__init__(
+            quoted_name(name, kwargs.pop('quote', None)))
         self.metadata = metadata
 
         self.schema = kwargs.pop('schema', None)
@@ -438,16 +439,17 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                 self, include_columns, exclude_columns
             )
         else:
-            bind = _bind_or_error(metadata,
-                    msg="No engine is bound to this Table's MetaData. "
-                    "Pass an engine to the Table via "
-                    "autoload_with=<someengine>, "
-                    "or associate the MetaData with an engine via "
-                    "metadata.bind=<someengine>")
+            bind = _bind_or_error(
+                metadata,
+                msg="No engine is bound to this Table's MetaData. "
+                "Pass an engine to the Table via "
+                "autoload_with=<someengine>, "
+                "or associate the MetaData with an engine via "
+                "metadata.bind=<someengine>")
             bind.run_callable(
-                    bind.dialect.reflecttable,
-                    self, include_columns, exclude_columns
-                )
+                bind.dialect.reflecttable,
+                self, include_columns, exclude_columns
+            )
 
     @property
     def _sorted_constraints(self):
@@ -488,7 +490,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             else:
                 exclude_columns = ()
             self._autoload(
-                self.metadata, autoload_with, include_columns, exclude_columns)
+                self.metadata, autoload_with,
+                include_columns, exclude_columns)
 
         self._extra_kwargs(**kwargs)
         self._init_items(*args)
@@ -502,12 +505,14 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
     @util.memoized_property
     def _autoincrement_column(self):
         for col in self.primary_key:
-            if col.autoincrement and \
-                col.type._type_affinity is not None and \
-                issubclass(col.type._type_affinity, type_api.INTEGERTYPE._type_affinity) and \
-                (not col.foreign_keys or col.autoincrement == 'ignore_fk') and \
-                isinstance(col.default, (type(None), Sequence)) and \
-                (col.server_default is None or col.server_default.reflected):
+            if (col.autoincrement and col.type._type_affinity is not None and
+                    issubclass(col.type._type_affinity,
+                               type_api.INTEGERTYPE._type_affinity) and
+                    (not col.foreign_keys or
+                     col.autoincrement == 'ignore_fk') and
+                    isinstance(col.default, (type(None), Sequence)) and
+                    (col.server_default is None or
+                     col.server_default.reflected)):
                 return col
 
     @property
@@ -516,8 +521,9 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         This value is used as the dictionary key within the
         :attr:`.MetaData.tables` collection.   It is typically the same
-        as that of :attr:`.Table.name` for a table with no :attr:`.Table.schema`
-        set; otherwise it is typically of the form ``schemaname.tablename``.
+        as that of :attr:`.Table.name` for a table with no
+        :attr:`.Table.schema` set; otherwise it is typically of the form
+        ``schemaname.tablename``.
 
         """
         return _get_table_key(self.name, self.schema)
@@ -612,7 +618,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         self.metadata = metadata
 
     def get_children(self, column_collections=True,
-                                schema_visitor=False, **kw):
+                     schema_visitor=False, **kw):
         if not schema_visitor:
             return TableClause.get_children(
                 self, column_collections=column_collections, **kw)
@@ -629,7 +635,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             bind = _bind_or_error(self)
 
         return bind.run_callable(bind.dialect.has_table,
-                                self.name, schema=self.schema)
+                                 self.name, schema=self.schema)
 
     def create(self, bind=None, checkfirst=False):
         """Issue a ``CREATE`` statement for this
@@ -645,8 +651,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         if bind is None:
             bind = _bind_or_error(self)
         bind._run_visitor(ddl.SchemaGenerator,
-                            self,
-                            checkfirst=checkfirst)
+                          self,
+                          checkfirst=checkfirst)
 
     def drop(self, bind=None, checkfirst=False):
         """Issue a ``DROP`` statement for this
@@ -661,10 +667,11 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         if bind is None:
             bind = _bind_or_error(self)
         bind._run_visitor(ddl.SchemaDropper,
-                            self,
-                            checkfirst=checkfirst)
+                          self,
+                          checkfirst=checkfirst)
 
-    def tometadata(self, metadata, schema=RETAIN_SCHEMA, referred_schema_fn=None):
+    def tometadata(self, metadata, schema=RETAIN_SCHEMA,
+                   referred_schema_fn=None):
         """Return a copy of this :class:`.Table` associated with a different
         :class:`.MetaData`.
 
@@ -703,9 +710,10 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
          in order to provide for the schema name that should be assigned
          to the referenced table of a :class:`.ForeignKeyConstraint`.
          The callable accepts this parent :class:`.Table`, the
-         target schema that we are changing to, the :class:`.ForeignKeyConstraint`
-         object, and the existing "target schema" of that constraint.  The
-         function should return the string schema name that should be applied.
+         target schema that we are changing to, the
+         :class:`.ForeignKeyConstraint` object, and the existing
+         "target schema" of that constraint.  The function should return the
+         string schema name that should be applied.
          E.g.::
 
                 def referred_schema_fn(table, to_schema,
@@ -738,18 +746,22 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         table = Table(
             self.name, metadata, schema=schema,
             *args, **self.kwargs
-            )
+        )
         for c in self.constraints:
             if isinstance(c, ForeignKeyConstraint):
                 referred_schema = c._referred_schema
                 if referred_schema_fn:
-                    fk_constraint_schema = referred_schema_fn(self, schema, c, referred_schema)
+                    fk_constraint_schema = referred_schema_fn(
+                        self, schema, c, referred_schema)
                 else:
-                    fk_constraint_schema = schema if referred_schema == self.schema else None
-                table.append_constraint(c.copy(schema=fk_constraint_schema, target_table=table))
+                    fk_constraint_schema = (
+                        schema if referred_schema == self.schema else None)
+                table.append_constraint(
+                    c.copy(schema=fk_constraint_schema, target_table=table))
 
             else:
-                table.append_constraint(c.copy(schema=schema, target_table=table))
+                table.append_constraint(
+                    c.copy(schema=schema, target_table=table))
         for index in self.indexes:
             # skip indexes that would be generated
             # by the 'index' flag on Column
@@ -802,13 +814,13 @@ class Column(SchemaItem, ColumnClause):
           The ``type`` argument may be the second positional argument
           or specified by keyword.
 
-          If the ``type`` is ``None`` or is omitted, it will first default to the special
-          type :class:`.NullType`.  If and when this :class:`.Column` is
-          made to refer to another column using :class:`.ForeignKey`
-          and/or :class:`.ForeignKeyConstraint`, the type of the remote-referenced
-          column will be copied to this column as well, at the moment that
-          the foreign key is resolved against that remote :class:`.Column`
-          object.
+          If the ``type`` is ``None`` or is omitted, it will first default to
+          the special type :class:`.NullType`.  If and when this
+          :class:`.Column` is made to refer to another column using
+          :class:`.ForeignKey` and/or :class:`.ForeignKeyConstraint`, the type
+          of the remote-referenced column will be copied to this column as
+          well, at the moment that the foreign key is resolved against that
+          remote :class:`.Column` object.
 
           .. versionchanged:: 0.9.0
             Support for propagation of type to a :class:`.Column` from its
@@ -952,8 +964,8 @@ class Column(SchemaItem, ColumnClause):
 
                 y DATETIME DEFAULT NOW()
 
-            Strings and text() will be converted into a :class:`.DefaultClause`
-            object upon initialization.
+            Strings and text() will be converted into a
+            :class:`.DefaultClause` object upon initialization.
 
             Use :class:`.FetchedValue` to indicate that an already-existing
             column will generate a default value on the database side which
@@ -988,9 +1000,9 @@ class Column(SchemaItem, ColumnClause):
              database, and should not be included in the columns list for a
              ``CREATE TABLE`` statement.
 
-             For more elaborate scenarios where columns should be conditionally
-             rendered differently on different backends, consider custom
-             compilation rules for :class:`.CreateColumn`.
+             For more elaborate scenarios where columns should be
+             conditionally rendered differently on different backends,
+             consider custom compilation rules for :class:`.CreateColumn`.
 
              ..versionadded:: 0.8.3 Added the ``system=True`` parameter to
                :class:`.Column`.
@@ -1019,7 +1031,7 @@ class Column(SchemaItem, ColumnClause):
             name = quoted_name(name, kwargs.pop('quote', None))
         elif "quote" in kwargs:
             raise exc.ArgumentError("Explicit 'name' is required when "
-                            "sending 'quote' argument")
+                                    "sending 'quote' argument")
 
         super(Column, self).__init__(name, type_)
         self.key = kwargs.pop('key', name)
@@ -1076,7 +1088,7 @@ class Column(SchemaItem, ColumnClause):
                 args.append(self.server_onupdate._as_for_update(True))
             else:
                 args.append(DefaultClause(self.server_onupdate,
-                                            for_update=True))
+                                          for_update=True))
         self._init_items(*args)
 
         util.set_creation_order(self)
@@ -1135,7 +1147,7 @@ class Column(SchemaItem, ColumnClause):
             [repr(x) for x in self.foreign_keys if x is not None] +
             [repr(x) for x in self.constraints] +
             [(self.table is not None and "table=<%s>" %
-                    self.table.description or "table=None")] +
+              self.table.description or "table=None")] +
             ["%s=%s" % (k, repr(getattr(self, k))) for k in kwarg])
 
     def _set_parent(self, table):
@@ -1149,8 +1161,8 @@ class Column(SchemaItem, ColumnClause):
         existing = getattr(self, 'table', None)
         if existing is not None and existing is not table:
             raise exc.ArgumentError(
-                    "Column object already assigned to Table '%s'" %
-                    existing.description)
+                "Column object already assigned to Table '%s'" %
+                existing.description)
 
         if self.key in table._columns:
             col = table._columns.get(self.key)
@@ -1172,7 +1184,7 @@ class Column(SchemaItem, ColumnClause):
             raise exc.ArgumentError(
                 "Trying to redefine primary-key column '%s' as a "
                 "non-primary-key column on table '%s'" % (
-                self.key, table.fullname))
+                    self.key, table.fullname))
         self.table = table
 
         if self.index:
@@ -1219,27 +1231,27 @@ class Column(SchemaItem, ColumnClause):
             type_ = type_.copy(**kw)
 
         c = self._constructor(
-                name=self.name,
-                type_=type_,
-                key=self.key,
-                primary_key=self.primary_key,
-                nullable=self.nullable,
-                unique=self.unique,
-                system=self.system,
-                #quote=self.quote,
-                index=self.index,
-                autoincrement=self.autoincrement,
-                default=self.default,
-                server_default=self.server_default,
-                onupdate=self.onupdate,
-                server_onupdate=self.server_onupdate,
-                doc=self.doc,
-                *args
-                )
+            name=self.name,
+            type_=type_,
+            key=self.key,
+            primary_key=self.primary_key,
+            nullable=self.nullable,
+            unique=self.unique,
+            system=self.system,
+            # quote=self.quote,
+            index=self.index,
+            autoincrement=self.autoincrement,
+            default=self.default,
+            server_default=self.server_default,
+            onupdate=self.onupdate,
+            server_onupdate=self.server_onupdate,
+            doc=self.doc,
+            *args
+        )
         return self._schema_item_copy(c)
 
     def _make_proxy(self, selectable, name=None, key=None,
-                            name_is_truncatable=False, **kw):
+                    name_is_truncatable=False, **kw):
         """Create a *proxy* for this column.
 
         This is a copy of this ``Column`` referenced by a different parent
@@ -1249,15 +1261,16 @@ class Column(SchemaItem, ColumnClause):
 
         """
         fk = [ForeignKey(f.column, _constraint=f.constraint)
-                for f in self.foreign_keys]
+              for f in self.foreign_keys]
         if name is None and self.name is None:
-            raise exc.InvalidRequestError("Cannot initialize a sub-selectable"
-                    " with this Column object until its 'name' has "
-                    "been assigned.")
+            raise exc.InvalidRequestError(
+                "Cannot initialize a sub-selectable"
+                " with this Column object until its 'name' has "
+                "been assigned.")
         try:
             c = self._constructor(
-                _as_truncated(name or self.name) if \
-                                name_is_truncatable else (name or self.name),
+                _as_truncated(name or self.name) if
+                name_is_truncatable else (name or self.name),
                 self.type,
                 key=key if key else name if name else self.key,
                 primary_key=self.primary_key,
@@ -1271,7 +1284,7 @@ class Column(SchemaItem, ColumnClause):
                     "attribute or method which accepts the "
                     "standard Column constructor arguments, or "
                     "references the Column class itself." % self.__class__)
-                )
+            )
 
         c.table = selectable
         selectable._columns.add(c)
@@ -1331,9 +1344,9 @@ class ForeignKey(DialectKWArgs, SchemaItem):
     __visit_name__ = 'foreign_key'
 
     def __init__(self, column, _constraint=None, use_alter=False, name=None,
-                    onupdate=None, ondelete=None, deferrable=None,
-                    initially=None, link_to_name=False, match=None,
-                    **dialect_kw):
+                 onupdate=None, ondelete=None, deferrable=None,
+                 initially=None, link_to_name=False, match=None,
+                 **dialect_kw):
         """
         Construct a column-level FOREIGN KEY.
 
@@ -1375,19 +1388,20 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             assigned ``key``.
 
         :param use_alter: passed to the underlying
-            :class:`.ForeignKeyConstraint` to indicate the constraint should be
-            generated/dropped externally from the CREATE TABLE/ DROP TABLE
+            :class:`.ForeignKeyConstraint` to indicate the constraint should
+            be generated/dropped externally from the CREATE TABLE/ DROP TABLE
             statement. See that classes' constructor for details.
 
         :param match: Optional string. If set, emit MATCH <value> when issuing
             DDL for this constraint. Typical values include SIMPLE, PARTIAL
             and FULL.
 
-        :param \**dialect_kw:  Additional keyword arguments are dialect specific,
-            and passed in the form ``<dialectname>_<argname>``.  The arguments
-            are ultimately handled by a corresponding :class:`.ForeignKeyConstraint`.
-            See the documentation regarding an individual dialect at
-            :ref:`dialect_toplevel` for detail on documented arguments.
+        :param \**dialect_kw:  Additional keyword arguments are dialect
+            specific, and passed in the form ``<dialectname>_<argname>``.  The
+            arguments are ultimately handled by a corresponding
+            :class:`.ForeignKeyConstraint`.  See the documentation regarding
+            an individual dialect at :ref:`dialect_toplevel` for detail on
+            documented arguments.
 
             .. versionadded:: 0.9.2
 
@@ -1404,13 +1418,14 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
             if not isinstance(self._table_column, ColumnClause):
                 raise exc.ArgumentError(
-                        "String, Column, or Column-bound argument "
-                        "expected, got %r" % self._table_column)
-            elif not isinstance(self._table_column.table, (util.NoneType, TableClause)):
+                    "String, Column, or Column-bound argument "
+                    "expected, got %r" % self._table_column)
+            elif not isinstance(
+                    self._table_column.table, (util.NoneType, TableClause)):
                 raise exc.ArgumentError(
-                        "ForeignKey received Column not bound "
-                        "to a Table, got: %r" % self._table_column.table
-                    )
+                    "ForeignKey received Column not bound "
+                    "to a Table, got: %r" % self._table_column.table
+                )
 
         # the linked ForeignKeyConstraint.
         # ForeignKey will create this when parent Column
@@ -1449,19 +1464,18 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         """
 
         fk = ForeignKey(
-                self._get_colspec(schema=schema),
-                use_alter=self.use_alter,
-                name=self.name,
-                onupdate=self.onupdate,
-                ondelete=self.ondelete,
-                deferrable=self.deferrable,
-                initially=self.initially,
-                link_to_name=self.link_to_name,
-                match=self.match,
-                **self._unvalidated_dialect_kw
-                )
+            self._get_colspec(schema=schema),
+            use_alter=self.use_alter,
+            name=self.name,
+            onupdate=self.onupdate,
+            ondelete=self.ondelete,
+            deferrable=self.deferrable,
+            initially=self.initially,
+            link_to_name=self.link_to_name,
+            match=self.match,
+            **self._unvalidated_dialect_kw
+        )
         return self._schema_item_copy(fk)
-
 
     def _get_colspec(self, schema=None):
         """Return a string based 'column specification' for this
@@ -1476,14 +1490,13 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             return "%s.%s.%s" % (schema, tname, colname)
         elif self._table_column is not None:
             return "%s.%s" % (
-                    self._table_column.table.fullname, self._table_column.key)
+                self._table_column.table.fullname, self._table_column.key)
         else:
             return self._colspec
 
     @property
     def _referred_schema(self):
         return self._column_tokens[0]
-
 
     def _table_key(self):
         if self._table_column is not None:
@@ -1494,8 +1507,6 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         else:
             schema, tname, colname = self._column_tokens
             return _get_table_key(tname, schema)
-
-
 
     target_fullname = property(_get_colspec)
 
@@ -1550,13 +1561,13 @@ class ForeignKey(DialectKWArgs, SchemaItem):
     def _resolve_col_tokens(self):
         if self.parent is None:
             raise exc.InvalidRequestError(
-                    "this ForeignKey object does not yet have a "
-                    "parent Column associated with it.")
+                "this ForeignKey object does not yet have a "
+                "parent Column associated with it.")
 
         elif self.parent.table is None:
             raise exc.InvalidRequestError(
-                    "this ForeignKey's parent column is not yet associated "
-                    "with a Table.")
+                "this ForeignKey's parent column is not yet associated "
+                "with a Table.")
 
         parenttable = self.parent.table
 
@@ -1579,7 +1590,6 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
         tablekey = _get_table_key(tname, schema)
         return parenttable, tablekey, colname
-
 
     def _link_to_col_by_colstring(self, parenttable, table, colname):
         if not hasattr(self.constraint, '_referred_table'):
@@ -1606,9 +1616,10 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
         if _column is None:
             raise exc.NoReferencedColumnError(
-                "Could not initialize target column for ForeignKey '%s' on table '%s': "
-                "table '%s' has no column named '%s'" % (
-                self._colspec, parenttable.name, table.name, key),
+                "Could not initialize target column "
+                "for ForeignKey '%s' on table '%s': "
+                "table '%s' has no column named '%s'" %
+                (self._colspec, parenttable.name, table.name, key),
                 table.name, key)
 
         self._set_target_column(_column)
@@ -1664,7 +1675,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                     "Could not initialize target column for "
                     "ForeignKey '%s' on table '%s': "
                     "table '%s' has no column named '%s'" % (
-                    self._colspec, parenttable.name, tablekey, colname),
+                        self._colspec, parenttable.name, tablekey, colname),
                     tablekey, colname)
         elif hasattr(self._colspec, '__clause_element__'):
             _column = self._colspec.__clause_element__()
@@ -1676,7 +1687,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
     def _set_parent(self, column):
         if self.parent is not None and self.parent is not column:
             raise exc.InvalidRequestError(
-                    "This ForeignKey already has a parent !")
+                "This ForeignKey already has a parent !")
         self.parent = column
         self.parent.foreign_keys.add(self)
         self.parent._on_table_attach(self._set_table)
@@ -1704,7 +1715,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                 deferrable=self.deferrable, initially=self.initially,
                 match=self.match,
                 **self._unvalidated_dialect_kw
-                )
+            )
             self.constraint._elements[self.parent] = self
             self.constraint._set_parent_with_dispatch(table)
         table.foreign_keys.add(self)
@@ -1717,7 +1728,8 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             if table_key in parenttable.metadata.tables:
                 table = parenttable.metadata.tables[table_key]
                 try:
-                    self._link_to_col_by_colstring(parenttable, table, colname)
+                    self._link_to_col_by_colstring(
+                        parenttable, table, colname)
                 except exc.NoReferencedColumnError:
                     # this is OK, we'll try later
                     pass
@@ -1730,12 +1742,11 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             self._set_target_column(_column)
 
 
-
 class _NotAColumnExpr(object):
     def _not_a_column_expr(self):
         raise exc.InvalidRequestError(
-                "This %s cannot be used directly "
-                "as a column expression." % self.__class__.__name__)
+            "This %s cannot be used directly "
+            "as a column expression." % self.__class__.__name__)
 
     __clause_element__ = self_group = lambda self: self._not_a_column_expr()
     _from_objects = property(lambda self: self._not_a_column_expr())
@@ -1841,8 +1852,8 @@ class ColumnDefault(DefaultGenerator):
     @util.memoized_property
     def is_scalar(self):
         return not self.is_callable and \
-                    not self.is_clause_element and \
-                    not self.is_sequence
+            not self.is_clause_element and \
+            not self.is_sequence
 
     def _maybe_wrap_callable(self, fn):
         """Wrap callables that don't accept a context.
@@ -1890,8 +1901,10 @@ class Sequence(DefaultGenerator):
 
     The :class:`.Sequence` is typically associated with a primary key column::
 
-        some_table = Table('some_table', metadata,
-            Column('id', Integer, Sequence('some_table_seq'), primary_key=True)
+        some_table = Table(
+            'some_table', metadata,
+            Column('id', Integer, Sequence('some_table_seq'),
+            primary_key=True)
         )
 
     When CREATE TABLE is emitted for the above :class:`.Table`, if the
@@ -1938,8 +1951,8 @@ class Sequence(DefaultGenerator):
          creates a sequence for us automatically".
         :param quote: boolean value, when ``True`` or ``False``, explicitly
          forces quoting of the schema name on or off.  When left at its
-         default of ``None``, normal quoting rules based on casing and reserved
-         words take place.
+         default of ``None``, normal quoting rules based on casing and
+         reserved words take place.
         :param quote_schema: set the quoting preferences for the ``schema``
          name.
         :param metadata: optional :class:`.MetaData` object which will be
@@ -2023,8 +2036,8 @@ class Sequence(DefaultGenerator):
         if bind is None:
             bind = _bind_or_error(self)
         bind._run_visitor(ddl.SchemaGenerator,
-                            self,
-                            checkfirst=checkfirst)
+                          self,
+                          checkfirst=checkfirst)
 
     def drop(self, bind=None, checkfirst=True):
         """Drops this sequence from the database."""
@@ -2032,16 +2045,16 @@ class Sequence(DefaultGenerator):
         if bind is None:
             bind = _bind_or_error(self)
         bind._run_visitor(ddl.SchemaDropper,
-                            self,
-                            checkfirst=checkfirst)
+                          self,
+                          checkfirst=checkfirst)
 
     def _not_a_column_expr(self):
         raise exc.InvalidRequestError(
-                "This %s cannot be used directly "
-                "as a column expression.  Use func.next_value(sequence) "
-                "to produce a 'next value' function that's usable "
-                "as a column element."
-                % self.__class__.__name__)
+            "This %s cannot be used directly "
+            "as a column expression.  Use func.next_value(sequence) "
+            "to produce a 'next value' function that's usable "
+            "as a column element."
+            % self.__class__.__name__)
 
 
 @inspection._self_inspects
@@ -2129,7 +2142,7 @@ class DefaultClause(FetchedValue):
 
     def __repr__(self):
         return "DefaultClause(%r, for_update=%r)" % \
-                        (self.arg, self.for_update)
+            (self.arg, self.for_update)
 
 
 class PassiveDefault(DefaultClause):
@@ -2140,9 +2153,9 @@ class PassiveDefault(DefaultClause):
         Use :class:`.DefaultClause`.
     """
     @util.deprecated("0.6",
-                ":class:`.PassiveDefault` is deprecated.  "
-                "Use :class:`.DefaultClause`.",
-                False)
+                     ":class:`.PassiveDefault` is deprecated.  "
+                     "Use :class:`.DefaultClause`.",
+                     False)
     def __init__(self, *arg, **kw):
         DefaultClause.__init__(self, *arg, **kw)
 
@@ -2153,8 +2166,8 @@ class Constraint(DialectKWArgs, SchemaItem):
     __visit_name__ = 'constraint'
 
     def __init__(self, name=None, deferrable=None, initially=None,
-                            _create_rule=None,
-                            **dialect_kw):
+                 _create_rule=None,
+                 **dialect_kw):
         """Create a SQL constraint.
 
         :param name:
@@ -2185,10 +2198,10 @@ class Constraint(DialectKWArgs, SchemaItem):
           _create_rule is used by some types to create constraints.
           Currently, its call signature is subject to change at any time.
 
-        :param \**dialect_kw:  Additional keyword arguments are dialect specific,
-            and passed in the form ``<dialectname>_<argname>``.  See the
-            documentation regarding an individual dialect at :ref:`dialect_toplevel`
-            for detail on documented arguments.
+        :param \**dialect_kw:  Additional keyword arguments are dialect
+            specific, and passed in the form ``<dialectname>_<argname>``.  See
+            the documentation regarding an individual dialect at
+            :ref:`dialect_toplevel` for detail on documented arguments.
 
         """
 
@@ -2207,8 +2220,8 @@ class Constraint(DialectKWArgs, SchemaItem):
         except AttributeError:
             pass
         raise exc.InvalidRequestError(
-                    "This constraint is not bound to a table.  Did you "
-                    "mean to call table.append_constraint(constraint) ?")
+            "This constraint is not bound to a table.  Did you "
+            "mean to call table.append_constraint(constraint) ?")
 
     def _set_parent(self, parent):
         self.parent = parent
@@ -2239,7 +2252,7 @@ class ColumnCollectionMixin(object):
     def __init__(self, *columns):
         self.columns = ColumnCollection()
         self._pending_colargs = [_to_schema_column_or_string(c)
-                                    for c in columns]
+                                 for c in columns]
         if self._pending_colargs and \
                 isinstance(self._pending_colargs[0], Column) and \
                 isinstance(self._pending_colargs[0].table, Table):
@@ -2287,7 +2300,7 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
 
     def copy(self, **kw):
         c = self.__class__(name=self.name, deferrable=self.deferrable,
-                              initially=self.initially, *self.columns.keys())
+                           initially=self.initially, *self.columns.keys())
         return self._schema_item_copy(c)
 
     def contains_column(self, col):
@@ -2311,8 +2324,8 @@ class CheckConstraint(Constraint):
     """
 
     def __init__(self, sqltext, name=None, deferrable=None,
-                    initially=None, table=None, _create_rule=None,
-                    _autoattach=True):
+                 initially=None, table=None, _create_rule=None,
+                 _autoattach=True):
         """Construct a CHECK constraint.
 
         :param sqltext:
@@ -2337,17 +2350,17 @@ class CheckConstraint(Constraint):
         """
 
         super(CheckConstraint, self).\
-                        __init__(name, deferrable, initially, _create_rule)
+            __init__(name, deferrable, initially, _create_rule)
         self.sqltext = _literal_as_text(sqltext)
         if table is not None:
             self._set_parent_with_dispatch(table)
         elif _autoattach:
             cols = _find_columns(self.sqltext)
             tables = set([c.table for c in cols
-                        if isinstance(c.table, Table)])
+                          if isinstance(c.table, Table)])
             if len(tables) == 1:
                 self._set_parent_with_dispatch(
-                        tables.pop())
+                    tables.pop())
 
     def __visit_name__(self):
         if isinstance(self.parent, Table):
@@ -2367,12 +2380,12 @@ class CheckConstraint(Constraint):
         else:
             sqltext = self.sqltext
         c = CheckConstraint(sqltext,
-                                name=self.name,
-                                initially=self.initially,
-                                deferrable=self.deferrable,
-                                _create_rule=self._create_rule,
-                                table=target_table,
-                                _autoattach=False)
+                            name=self.name,
+                            initially=self.initially,
+                            deferrable=self.deferrable,
+                            _create_rule=self._create_rule,
+                            table=target_table,
+                            _autoattach=False)
         return self._schema_item_copy(c)
 
 
@@ -2381,8 +2394,9 @@ class ForeignKeyConstraint(Constraint):
 
     Defines a single column or composite FOREIGN KEY ... REFERENCES
     constraint. For a no-frills, single column foreign key, adding a
-    :class:`.ForeignKey` to the definition of a :class:`.Column` is a shorthand
-    equivalent for an unnamed, single column :class:`.ForeignKeyConstraint`.
+    :class:`.ForeignKey` to the definition of a :class:`.Column` is a
+    shorthand equivalent for an unnamed, single column
+    :class:`.ForeignKeyConstraint`.
 
     Examples of foreign key configuration are in :ref:`metadata_foreignkeys`.
 
@@ -2390,8 +2404,9 @@ class ForeignKeyConstraint(Constraint):
     __visit_name__ = 'foreign_key_constraint'
 
     def __init__(self, columns, refcolumns, name=None, onupdate=None,
-            ondelete=None, deferrable=None, initially=None, use_alter=False,
-            link_to_name=False, match=None, table=None, **dialect_kw):
+                 ondelete=None, deferrable=None, initially=None,
+                 use_alter=False, link_to_name=False, match=None,
+                 table=None, **dialect_kw):
         """Construct a composite-capable FOREIGN KEY.
 
         :param columns: A sequence of local column names. The named columns
@@ -2427,25 +2442,25 @@ class ForeignKeyConstraint(Constraint):
           ALTER TABLE statement issued after the full collection of tables
           have been created, and drop it via an ALTER TABLE statement before
           the full collection of tables are dropped. This is shorthand for the
-          usage of :class:`.AddConstraint` and :class:`.DropConstraint` applied
-          as "after-create" and "before-drop" events on the MetaData object.
-          This is normally used to generate/drop constraints on objects that
-          are mutually dependent on each other.
+          usage of :class:`.AddConstraint` and :class:`.DropConstraint`
+          applied as "after-create" and "before-drop" events on the MetaData
+          object.  This is normally used to generate/drop constraints on
+          objects that are mutually dependent on each other.
 
         :param match: Optional string. If set, emit MATCH <value> when issuing
-            DDL for this constraint. Typical values include SIMPLE, PARTIAL
-            and FULL.
+          DDL for this constraint. Typical values include SIMPLE, PARTIAL
+          and FULL.
 
-        :param \**dialect_kw:  Additional keyword arguments are dialect specific,
-            and passed in the form ``<dialectname>_<argname>``.  See the
-            documentation regarding an individual dialect at :ref:`dialect_toplevel`
-            for detail on documented arguments.
+        :param \**dialect_kw:  Additional keyword arguments are dialect
+          specific, and passed in the form ``<dialectname>_<argname>``.  See
+          the documentation regarding an individual dialect at
+          :ref:`dialect_toplevel` for detail on documented arguments.
 
             .. versionadded:: 0.9.2
 
         """
         super(ForeignKeyConstraint, self).\
-                        __init__(name, deferrable, initially, **dialect_kw)
+            __init__(name, deferrable, initially, **dialect_kw)
 
         self.onupdate = onupdate
         self.ondelete = ondelete
@@ -2463,18 +2478,18 @@ class ForeignKeyConstraint(Constraint):
         # to the Table for string-specified names
         for col, refcol in zip(columns, refcolumns):
             self._elements[col] = ForeignKey(
-                    refcol,
-                    _constraint=self,
-                    name=self.name,
-                    onupdate=self.onupdate,
-                    ondelete=self.ondelete,
-                    use_alter=self.use_alter,
-                    link_to_name=self.link_to_name,
-                    match=self.match,
-                    deferrable=self.deferrable,
-                    initially=self.initially,
-                    **self.dialect_kwargs
-                )
+                refcol,
+                _constraint=self,
+                name=self.name,
+                onupdate=self.onupdate,
+                ondelete=self.ondelete,
+                use_alter=self.use_alter,
+                link_to_name=self.link_to_name,
+                match=self.match,
+                deferrable=self.deferrable,
+                initially=self.initially,
+                **self.dialect_kwargs
+            )
 
         if table is not None:
             self._set_parent_with_dispatch(table)
@@ -2491,17 +2506,18 @@ class ForeignKeyConstraint(Constraint):
             return None
 
     def _validate_dest_table(self, table):
-        table_keys = set([elem._table_key() for elem in self._elements.values()])
+        table_keys = set([elem._table_key()
+                          for elem in self._elements.values()])
         if None not in table_keys and len(table_keys) > 1:
             elem0, elem1 = sorted(table_keys)[0:2]
             raise exc.ArgumentError(
                 'ForeignKeyConstraint on %s(%s) refers to '
                 'multiple remote tables: %s and %s' % (
-                table.fullname,
-                self._col_description,
-                elem0,
-                elem1
-            ))
+                    table.fullname,
+                    self._col_description,
+                    elem0,
+                    elem1
+                ))
 
     @property
     def _col_description(self):
@@ -2539,7 +2555,7 @@ class ForeignKeyConstraint(Constraint):
         if self.use_alter:
             def supports_alter(ddl, event, schema_item, bind, **kw):
                 return table in set(kw['tables']) and \
-                            bind.dialect.supports_alter
+                    bind.dialect.supports_alter
 
             event.listen(table.metadata, "after_create",
                          ddl.AddConstraint(self, on=supports_alter))
@@ -2548,20 +2564,21 @@ class ForeignKeyConstraint(Constraint):
 
     def copy(self, schema=None, **kw):
         fkc = ForeignKeyConstraint(
-                    [x.parent.key for x in self._elements.values()],
-                    [x._get_colspec(schema=schema) for x in self._elements.values()],
-                    name=self.name,
-                    onupdate=self.onupdate,
-                    ondelete=self.ondelete,
-                    use_alter=self.use_alter,
-                    deferrable=self.deferrable,
-                    initially=self.initially,
-                    link_to_name=self.link_to_name,
-                    match=self.match
-                )
+            [x.parent.key for x in self._elements.values()],
+            [x._get_colspec(schema=schema)
+             for x in self._elements.values()],
+            name=self.name,
+            onupdate=self.onupdate,
+            ondelete=self.ondelete,
+            use_alter=self.use_alter,
+            deferrable=self.deferrable,
+            initially=self.initially,
+            link_to_name=self.link_to_name,
+            match=self.match
+        )
         for self_fk, other_fk in zip(
-                                self._elements.values(),
-                                fkc._elements.values()):
+                self._elements.values(),
+                fkc._elements.values()):
             self_fk._schema_item_copy(other_fk)
         return self._schema_item_copy(fkc)
 
@@ -2581,8 +2598,10 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
         ...     )
         >>> my_table.primary_key
         PrimaryKeyConstraint(
-            Column('id', Integer(), table=<mytable>, primary_key=True, nullable=False),
-            Column('version_id', Integer(), table=<mytable>, primary_key=True, nullable=False)
+            Column('id', Integer(), table=<mytable>,
+                   primary_key=True, nullable=False),
+            Column('version_id', Integer(), table=<mytable>,
+                   primary_key=True, nullable=False)
         )
 
     The primary key of a :class:`.Table` can also be specified by using
@@ -2594,7 +2613,8 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
                     Column('id', Integer),
                     Column('version_id', Integer),
                     Column('data', String(50)),
-                    PrimaryKeyConstraint('id', 'version_id', name='mytable_pk')
+                    PrimaryKeyConstraint('id', 'version_id',
+                                         name='mytable_pk')
                 )
 
     The two styles of column-specification should generally not be mixed.
@@ -2602,9 +2622,9 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     :class:`.PrimaryKeyConstraint`
     don't match the columns that were marked as ``primary_key=True``, if both
     are present; in this case, the columns are taken strictly from the
-    :class:`.PrimaryKeyConstraint` declaration, and those columns otherwise marked
-    as ``primary_key=True`` are ignored.  This behavior is intended to be
-    backwards compatible with previous behavior.
+    :class:`.PrimaryKeyConstraint` declaration, and those columns otherwise
+    marked as ``primary_key=True`` are ignored.  This behavior is intended to
+    be backwards compatible with previous behavior.
 
     .. versionchanged:: 0.9.2  Using a mixture of columns within a
        :class:`.PrimaryKeyConstraint` in addition to columns marked as
@@ -2614,23 +2634,26 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
        may raise an exception in a future release.
 
     For the use case where specific options are to be specified on the
-    :class:`.PrimaryKeyConstraint`, but the usual style of using ``primary_key=True``
-    flags is still desirable, an empty :class:`.PrimaryKeyConstraint` may be
-    specified, which will take on the primary key column collection from
-    the :class:`.Table` based on the flags::
+    :class:`.PrimaryKeyConstraint`, but the usual style of using
+    ``primary_key=True`` flags is still desirable, an empty
+    :class:`.PrimaryKeyConstraint` may be specified, which will take on the
+    primary key column collection from the :class:`.Table` based on the
+    flags::
 
         my_table = Table('mytable', metadata,
                     Column('id', Integer, primary_key=True),
                     Column('version_id', Integer, primary_key=True),
                     Column('data', String(50)),
-                    PrimaryKeyConstraint(name='mytable_pk', mssql_clustered=True)
+                    PrimaryKeyConstraint(name='mytable_pk',
+                                         mssql_clustered=True)
                 )
 
     .. versionadded:: 0.9.2 an empty :class:`.PrimaryKeyConstraint` may now
-       be specified for the purposes of establishing keyword arguments with the
-       constraint, independently of the specification of "primary key" columns
-       within the :class:`.Table` itself; columns marked as ``primary_key=True``
-       will be gathered into the empty constraint's column collection.
+       be specified for the purposes of establishing keyword arguments with
+       the constraint, independently of the specification of "primary key"
+       columns within the :class:`.Table` itself; columns marked as
+       ``primary_key=True`` will be gathered into the empty constraint's
+       column collection.
 
     """
 
@@ -2646,19 +2669,19 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
 
         table_pks = [c for c in table.c if c.primary_key]
         if self.columns and table_pks and \
-            set(table_pks) != set(self.columns.values()):
+                set(table_pks) != set(self.columns.values()):
             util.warn(
-                    "Table '%s' specifies columns %s as primary_key=True, "
-                    "not matching locally specified columns %s; setting the "
-                    "current primary key columns to %s. This warning "
-                    "may become an exception in a future release" %
-                    (
-                        table.name,
-                        ", ".join("'%s'" % c.name for c in table_pks),
-                        ", ".join("'%s'" % c.name for c in self.columns),
-                        ", ".join("'%s'" % c.name for c in self.columns)
-                    )
+                "Table '%s' specifies columns %s as primary_key=True, "
+                "not matching locally specified columns %s; setting the "
+                "current primary key columns to %s. This warning "
+                "may become an exception in a future release" %
+                (
+                    table.name,
+                    ", ".join("'%s'" % c.name for c in table_pks),
+                    ", ".join("'%s'" % c.name for c in self.columns),
+                    ", ".join("'%s'" % c.name for c in self.columns)
                 )
+            )
             table_pks[:] = []
 
         for c in self.columns:
@@ -2745,9 +2768,9 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
     .. versionadded:: 0.8 support for functional and expression-based indexes.
 
     An :class:`.Index` can also be manually associated with a :class:`.Table`,
-    either through inline declaration or using :meth:`.Table.append_constraint`.
-    When this approach is used, the names of the indexed columns can be specified
-    as strings::
+    either through inline declaration or using
+    :meth:`.Table.append_constraint`.  When this approach is used, the names
+    of the indexed columns can be specified as strings::
 
         Table("sometable", metadata,
                         Column("name", String(50)),
@@ -2775,8 +2798,8 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
 
         :ref:`schema_indexes` - General information on :class:`.Index`.
 
-        :ref:`postgresql_indexes` - PostgreSQL-specific options available for the
-        :class:`.Index` construct.
+        :ref:`postgresql_indexes` - PostgreSQL-specific options available for
+        the :class:`.Index` construct.
 
         :ref:`mysql_indexes` - MySQL-specific options available for the
         :class:`.Index` construct.
@@ -2809,9 +2832,10 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
             :paramref:`.Column.quote`.
 
         :param \**kw: Additional keyword arguments not mentioned above are
-            dialect specific, and passed in the form ``<dialectname>_<argname>``.
-            See the documentation regarding an individual dialect at
-            :ref:`dialect_toplevel` for detail on documented arguments.
+            dialect specific, and passed in the form
+            ``<dialectname>_<argname>``. See the documentation regarding an
+            individual dialect at :ref:`dialect_toplevel` for detail on
+            documented arguments.
 
         """
         self.table = None
@@ -2834,7 +2858,6 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         # will call _set_parent() if table-bound column
         # objects are present
         ColumnCollectionMixin.__init__(self, *columns)
-
 
     def _set_parent(self, table):
         ColumnCollectionMixin._set_parent(self, table)
@@ -2860,7 +2883,8 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         self.expressions = [
             expr if isinstance(expr, ClauseElement)
             else colexpr
-            for expr, colexpr in util.zip_longest(self.expressions, self.columns)
+            for expr, colexpr in util.zip_longest(self.expressions,
+                                                  self.columns)
         ]
 
     @property
@@ -2900,11 +2924,11 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
 
     def __repr__(self):
         return 'Index(%s)' % (
-                    ", ".join(
-                        [repr(self.name)] +
-                        [repr(e) for e in self.expressions] +
-                        (self.unique and ["unique=True"] or [])
-                    ))
+            ", ".join(
+                [repr(self.name)] +
+                [repr(e) for e in self.expressions] +
+                (self.unique and ["unique=True"] or [])
+            ))
 
 
 DEFAULT_NAMING_CONVENTION = util.immutabledict({
@@ -2925,9 +2949,9 @@ class MetaData(SchemaItem):
     The :class:`.Table` objects themselves are stored in the
     :attr:`.MetaData.tables` dictionary.
 
-    :class:`.MetaData` is a thread-safe object for read operations.  Construction
-    of new tables within a single :class:`.MetaData` object, either explicitly
-    or via reflection, may not be completely thread-safe.
+    :class:`.MetaData` is a thread-safe object for read operations.
+    Construction of new tables within a single :class:`.MetaData` object,
+    either explicitly or via reflection, may not be completely thread-safe.
 
     .. seealso::
 
@@ -2940,7 +2964,7 @@ class MetaData(SchemaItem):
     def __init__(self, bind=None, reflect=False, schema=None,
                  quote_schema=None,
                  naming_convention=DEFAULT_NAMING_CONVENTION
-            ):
+                 ):
         """Create a new MetaData object.
 
         :param bind:
@@ -2985,9 +3009,9 @@ class MetaData(SchemaItem):
           The values associated with each "constraint class" or "constraint
           mnemonic" key are string naming templates, such as
           ``"uq_%(table_name)s_%(column_0_name)s"``,
-          which describe how the name should be composed.  The values associated
-          with user-defined "token" keys should be callables of the form
-          ``fn(constraint, table)``, which accepts the constraint/index
+          which describe how the name should be composed.  The values
+          associated with user-defined "token" keys should be callables of the
+          form ``fn(constraint, table)``, which accepts the constraint/index
           object and :class:`.Table` as arguments, returning a string
           result.
 
@@ -3011,14 +3035,15 @@ class MetaData(SchemaItem):
               index position "0", e.g. :attr:`.Column.key`
 
             * ``%(referred_column_0_name)s`` - the name of a :class:`.Column`
-              at index position "0" referenced by a :class:`.ForeignKeyConstraint`.
+              at index position "0" referenced by a
+              :class:`.ForeignKeyConstraint`.
 
-            * ``%(constraint_name)s`` - a special key that refers to the existing
-              name given to the constraint.  When this key is present, the
-              :class:`.Constraint` object's existing name will be replaced with
-              one that is composed from template string that uses this token.
-              When this token is present, it is required that the :class:`.Constraint`
-              is given an expicit name ahead of time.
+            * ``%(constraint_name)s`` - a special key that refers to the
+              existing name given to the constraint.  When this key is
+              present, the :class:`.Constraint` object's existing name will be
+              replaced with one that is composed from template string that
+              uses this token. When this token is present, it is required that
+              the :class:`.Constraint` is given an expicit name ahead of time.
 
             * user-defined: any additional token may be implemented by passing
               it along with a ``fn(constraint, table)`` callable to the
@@ -3042,7 +3067,7 @@ class MetaData(SchemaItem):
         self.bind = bind
         if reflect:
             util.warn_deprecated("reflect=True is deprecate; please "
-                            "use the reflect() method.")
+                                 "use the reflect() method.")
             if not bind:
                 raise exc.ArgumentError(
                     "A bind must be supplied in conjunction "
@@ -3077,8 +3102,6 @@ class MetaData(SchemaItem):
         if schema:
             self._schemas.add(schema)
 
-
-
     def _remove_table(self, name, schema):
         key = _get_table_key(name, schema)
         removed = dict.pop(self.tables, key, None)
@@ -3087,9 +3110,8 @@ class MetaData(SchemaItem):
                 fk._remove_from_metadata(self)
         if self._schemas:
             self._schemas = set([t.schema
-                                for t in self.tables.values()
-                                if t.schema is not None])
-
+                                 for t in self.tables.values()
+                                 if t.schema is not None])
 
     def __getstate__(self):
         return {'tables': self.tables,
@@ -3172,9 +3194,9 @@ class MetaData(SchemaItem):
         return ddl.sort_tables(self.tables.values())
 
     def reflect(self, bind=None, schema=None, views=False, only=None,
-                                extend_existing=False,
-                                autoload_replace=True,
-                                **dialect_kwargs):
+                extend_existing=False,
+                autoload_replace=True,
+                **dialect_kwargs):
         """Load all available table definitions from the database.
 
         Automatically creates ``Table`` entries in this ``MetaData`` for any
@@ -3219,13 +3241,15 @@ class MetaData(SchemaItem):
 
           .. versionadded:: 0.9.1
 
-        :param \**dialect_kwargs: Additional keyword arguments not mentioned above are
-         dialect specific, and passed in the form ``<dialectname>_<argname>``.
-         See the documentation regarding an individual dialect at
-         :ref:`dialect_toplevel` for detail on documented arguments.
+        :param \**dialect_kwargs: Additional keyword arguments not mentioned
+         above are dialect specific, and passed in the form
+         ``<dialectname>_<argname>``.  See the documentation regarding an
+         individual dialect at :ref:`dialect_toplevel` for detail on
+         documented arguments.
 
-          .. versionadded:: 0.9.2 - Added :paramref:`.MetaData.reflect.**dialect_kwargs`
-             to support dialect-level reflection options for all :class:`.Table`
+          .. versionadded:: 0.9.2 - Added
+             :paramref:`.MetaData.reflect.**dialect_kwargs` to support
+             dialect-level reflection options for all :class:`.Table`
              objects reflected.
 
         """
@@ -3249,8 +3273,8 @@ class MetaData(SchemaItem):
             if schema is not None:
                 reflect_opts['schema'] = schema
 
-            available = util.OrderedSet(bind.engine.table_names(schema,
-                                                            connection=conn))
+            available = util.OrderedSet(
+                bind.engine.table_names(schema, connection=conn))
             if views:
                 available.update(
                     bind.dialect.get_view_names(conn, schema)
@@ -3258,7 +3282,7 @@ class MetaData(SchemaItem):
 
             if schema is not None:
                 available_w_schema = util.OrderedSet(["%s.%s" % (schema, name)
-                                        for name in available])
+                                                      for name in available])
             else:
                 available_w_schema = available
 
@@ -3270,9 +3294,9 @@ class MetaData(SchemaItem):
                         if extend_existing or schname not in current]
             elif util.callable(only):
                 load = [name for name, schname in
-                            zip(available, available_w_schema)
-                            if (extend_existing or schname not in current)
-                            and only(name, self)]
+                        zip(available, available_w_schema)
+                        if (extend_existing or schname not in current)
+                        and only(name, self)]
             else:
                 missing = [name for name in only if name not in available]
                 if missing:
@@ -3282,7 +3306,7 @@ class MetaData(SchemaItem):
                         'in %s%s: (%s)' %
                         (bind.engine.url, s, ', '.join(missing)))
                 load = [name for name in only if extend_existing or
-                                                    name not in current]
+                        name not in current]
 
             for name in load:
                 Table(name, self, **reflect_opts)
@@ -3323,9 +3347,9 @@ class MetaData(SchemaItem):
         if bind is None:
             bind = _bind_or_error(self)
         bind._run_visitor(ddl.SchemaGenerator,
-                            self,
-                            checkfirst=checkfirst,
-                            tables=tables)
+                          self,
+                          checkfirst=checkfirst,
+                          tables=tables)
 
     def drop_all(self, bind=None, tables=None, checkfirst=True):
         """Drop all tables stored in this metadata.
@@ -3350,9 +3374,9 @@ class MetaData(SchemaItem):
         if bind is None:
             bind = _bind_or_error(self)
         bind._run_visitor(ddl.SchemaDropper,
-                            self,
-                            checkfirst=checkfirst,
-                            tables=tables)
+                          self,
+                          checkfirst=checkfirst,
+                          tables=tables)
 
 
 class ThreadLocalMetaData(MetaData):
@@ -3418,6 +3442,3 @@ class ThreadLocalMetaData(MetaData):
         for e in self.__engines.values():
             if hasattr(e, 'dispose'):
                 e.dispose()
-
-
-

@@ -5,7 +5,7 @@ from ..assertions import eq_
 from ..config import requirements
 from sqlalchemy import Integer, Unicode, UnicodeText, select
 from sqlalchemy import Date, DateTime, Time, MetaData, String, \
-            Text, Numeric, Float, literal, Boolean
+    Text, Numeric, Float, literal, Boolean
 from ..schema import Table, Column
 from ... import testing
 import decimal
@@ -28,9 +28,9 @@ class _LiteralRoundTripFixture(object):
 
         for value in input_:
             ins = t.insert().values(x=literal(value)).compile(
-                            dialect=testing.db.dialect,
-                            compile_kwargs=dict(literal_binds=True)
-                        )
+                dialect=testing.db.dialect,
+                compile_kwargs=dict(literal_binds=True)
+            )
             testing.db.execute(ins)
 
         for row in t.select().execute():
@@ -43,17 +43,17 @@ class _LiteralRoundTripFixture(object):
 class _UnicodeFixture(_LiteralRoundTripFixture):
     __requires__ = 'unicode_data',
 
-    data = u("Alors vous imaginez ma surprise, au lever du jour, "\
-                "quand une drôle de petite voix m’a réveillé. Elle "\
-                "disait: « S’il vous plaît… dessine-moi un mouton! »")
+    data = u("Alors vous imaginez ma surprise, au lever du jour, "
+             "quand une drôle de petite voix m’a réveillé. Elle "
+             "disait: « S’il vous plaît… dessine-moi un mouton! »")
 
     @classmethod
     def define_tables(cls, metadata):
         Table('unicode_table', metadata,
-            Column('id', Integer, primary_key=True,
-                        test_needs_autoincrement=True),
-            Column('unicode_data', cls.datatype),
-            )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('unicode_data', cls.datatype),
+              )
 
     def test_round_trip(self):
         unicode_table = self.tables.unicode_table
@@ -66,10 +66,10 @@ class _UnicodeFixture(_LiteralRoundTripFixture):
         )
 
         row = config.db.execute(
-                    select([
-                            unicode_table.c.unicode_data,
-                    ])
-                ).first()
+            select([
+                unicode_table.c.unicode_data,
+            ])
+        ).first()
 
         eq_(
             row,
@@ -91,10 +91,10 @@ class _UnicodeFixture(_LiteralRoundTripFixture):
         )
 
         rows = config.db.execute(
-                    select([
-                            unicode_table.c.unicode_data,
-                    ])
-                ).fetchall()
+            select([
+                unicode_table.c.unicode_data,
+            ])
+        ).fetchall()
         eq_(
             rows,
             [(self.data, ) for i in range(3)]
@@ -110,8 +110,8 @@ class _UnicodeFixture(_LiteralRoundTripFixture):
             {"unicode_data": u('')}
         )
         row = config.db.execute(
-                    select([unicode_table.c.unicode_data])
-                ).first()
+            select([unicode_table.c.unicode_data])
+        ).first()
         eq_(row, (u(''),))
 
     def test_literal(self):
@@ -139,6 +139,7 @@ class UnicodeTextTest(_UnicodeFixture, fixtures.TablesTest):
     def test_empty_strings_text(self):
         self._test_empty_strings()
 
+
 class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     __requires__ = 'text_type',
     __backend__ = True
@@ -146,10 +147,10 @@ class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('text_table', metadata,
-            Column('id', Integer, primary_key=True,
-                        test_needs_autoincrement=True),
-            Column('text_data', Text),
-            )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('text_data', Text),
+              )
 
     def test_text_roundtrip(self):
         text_table = self.tables.text_table
@@ -159,8 +160,8 @@ class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             {"text_data": 'some text'}
         )
         row = config.db.execute(
-                    select([text_table.c.text_data])
-                ).first()
+            select([text_table.c.text_data])
+        ).first()
         eq_(row, ('some text',))
 
     def test_text_empty_strings(self):
@@ -171,8 +172,8 @@ class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             {"text_data": ''}
         )
         row = config.db.execute(
-                    select([text_table.c.text_data])
-                ).first()
+            select([text_table.c.text_data])
+        ).first()
         eq_(row, ('',))
 
     def test_literal(self):
@@ -186,6 +187,7 @@ class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         data = r'backslash one \ backslash two \\ end'
         self._literal_round_trip(Text, [data], [data])
 
+
 class StringTest(_LiteralRoundTripFixture, fixtures.TestBase):
     __backend__ = True
 
@@ -194,7 +196,7 @@ class StringTest(_LiteralRoundTripFixture, fixtures.TestBase):
         metadata = MetaData()
         foo = Table('foo', metadata,
                     Column('one', String)
-                )
+                    )
 
         foo.create(config.db)
         foo.drop(config.db)
@@ -217,10 +219,10 @@ class _DateFixture(_LiteralRoundTripFixture):
     @classmethod
     def define_tables(cls, metadata):
         Table('date_table', metadata,
-            Column('id', Integer, primary_key=True,
-                        test_needs_autoincrement=True),
-            Column('date_data', cls.datatype),
-            )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('date_data', cls.datatype),
+              )
 
     def test_round_trip(self):
         date_table = self.tables.date_table
@@ -231,10 +233,10 @@ class _DateFixture(_LiteralRoundTripFixture):
         )
 
         row = config.db.execute(
-                    select([
-                            date_table.c.date_data,
-                    ])
-                ).first()
+            select([
+                date_table.c.date_data,
+            ])
+        ).first()
 
         compare = self.compare or self.data
         eq_(row,
@@ -250,17 +252,16 @@ class _DateFixture(_LiteralRoundTripFixture):
         )
 
         row = config.db.execute(
-                    select([
-                            date_table.c.date_data,
-                    ])
-                ).first()
+            select([
+                date_table.c.date_data,
+            ])
+        ).first()
         eq_(row, (None,))
 
     @testing.requires.datetime_literals
     def test_literal(self):
         compare = self.compare or self.data
         self._literal_round_trip(self.datatype, [self.data], [compare])
-
 
 
 class DateTimeTest(_DateFixture, fixtures.TablesTest):
@@ -322,19 +323,22 @@ class DateHistoricTest(_DateFixture, fixtures.TablesTest):
 
 class IntegerTest(_LiteralRoundTripFixture, fixtures.TestBase):
     __backend__ = True
+
     def test_literal(self):
         self._literal_round_trip(Integer, [5], [5])
+
 
 class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
     __backend__ = True
 
     @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
     @testing.provide_metadata
-    def _do_test(self, type_, input_, output, filter_=None, check_scale=False):
+    def _do_test(self, type_, input_, output,
+                 filter_=None, check_scale=False):
         metadata = self.metadata
         t = Table('t', metadata, Column('x', type_))
         t.create()
-        t.insert().execute([{'x':x} for x in input_])
+        t.insert().execute([{'x': x} for x in input_])
 
         result = set([row[0] for row in t.select().execute()])
         output = set(output)
@@ -347,7 +351,6 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
                 [str(x) for x in result],
                 [str(x) for x in output],
             )
-
 
     @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
     def test_render_literal_numeric(self):
@@ -369,17 +372,16 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
         self._literal_round_trip(
             Float(4),
             [15.7563, decimal.Decimal("15.7563")],
-            [15.7563,],
+            [15.7563, ],
             filter_=lambda n: n is not None and round(n, 5) or None
         )
-
 
     @testing.requires.precision_generic_float_type
     def test_float_custom_scale(self):
         self._do_test(
             Float(None, decimal_return_scale=7, asdecimal=True),
             [15.7563827, decimal.Decimal("15.7563827")],
-            [decimal.Decimal("15.7563827"),],
+            [decimal.Decimal("15.7563827"), ],
             check_scale=True
         )
 
@@ -421,7 +423,6 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             [decimal.Decimal("15.7563"), None],
         )
 
-
     def test_float_as_float(self):
         self._do_test(
             Float(precision=8),
@@ -429,7 +430,6 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             [15.7563],
             filter_=lambda n: n is not None and round(n, 5) or None
         )
-
 
     @testing.requires.precision_numerics_general
     def test_precision_decimal(self):
@@ -444,7 +444,6 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             numbers,
             numbers,
         )
-
 
     @testing.requires.precision_numerics_enotation_large
     def test_enotation_decimal(self):
@@ -474,7 +473,6 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             numbers,
             numbers
         )
-
 
     @testing.requires.precision_numerics_enotation_large
     def test_enotation_decimal_large(self):
@@ -526,10 +524,10 @@ class BooleanTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('boolean_table', metadata,
-            Column('id', Integer, primary_key=True, autoincrement=False),
-            Column('value', Boolean),
-            Column('unconstrained_value', Boolean(create_constraint=False)),
-            )
+              Column('id', Integer, primary_key=True, autoincrement=False),
+              Column('value', Boolean),
+              Column('unconstrained_value', Boolean(create_constraint=False)),
+              )
 
     def test_render_literal_bool(self):
         self._literal_round_trip(
@@ -551,11 +549,11 @@ class BooleanTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         )
 
         row = config.db.execute(
-                    select([
-                            boolean_table.c.value,
-                            boolean_table.c.unconstrained_value
-                    ])
-                ).first()
+            select([
+                boolean_table.c.value,
+                boolean_table.c.unconstrained_value
+            ])
+        ).first()
 
         eq_(
             row,
@@ -576,11 +574,11 @@ class BooleanTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         )
 
         row = config.db.execute(
-                    select([
-                            boolean_table.c.value,
-                            boolean_table.c.unconstrained_value
-                    ])
-                ).first()
+            select([
+                boolean_table.c.value,
+                boolean_table.c.unconstrained_value
+            ])
+        ).first()
 
         eq_(
             row,
@@ -588,11 +586,9 @@ class BooleanTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         )
 
 
-
-
 __all__ = ('UnicodeVarcharTest', 'UnicodeTextTest',
-            'DateTest', 'DateTimeTest', 'TextTest',
-            'NumericTest', 'IntegerTest',
-            'DateTimeHistoricTest', 'DateTimeCoercedToDateTimeTest',
-            'TimeMicrosecondsTest', 'TimeTest', 'DateTimeMicrosecondsTest',
-            'DateHistoricTest', 'StringTest', 'BooleanTest')
+           'DateTest', 'DateTimeTest', 'TextTest',
+           'NumericTest', 'IntegerTest',
+           'DateTimeHistoricTest', 'DateTimeCoercedToDateTimeTest',
+           'TimeMicrosecondsTest', 'TimeTest', 'DateTimeMicrosecondsTest',
+           'DateHistoricTest', 'StringTest', 'BooleanTest')

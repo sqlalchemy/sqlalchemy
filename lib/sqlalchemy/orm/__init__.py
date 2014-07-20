@@ -15,40 +15,40 @@ documentation for an overview of how this module is used.
 
 from . import exc
 from .mapper import (
-     Mapper,
-     _mapper_registry,
-     class_mapper,
-     configure_mappers,
-     reconstructor,
-     validates
-     )
+    Mapper,
+    _mapper_registry,
+    class_mapper,
+    configure_mappers,
+    reconstructor,
+    validates
+)
 from .interfaces import (
-     EXT_CONTINUE,
-     EXT_STOP,
-     PropComparator,
-     )
+    EXT_CONTINUE,
+    EXT_STOP,
+    PropComparator,
+)
 from .deprecated_interfaces import (
-     MapperExtension,
-     SessionExtension,
-     AttributeExtension,
+    MapperExtension,
+    SessionExtension,
+    AttributeExtension,
 )
 from .util import (
-     aliased,
-     join,
-     object_mapper,
-     outerjoin,
-     polymorphic_union,
-     was_deleted,
-     with_parent,
-     with_polymorphic,
-     )
+    aliased,
+    join,
+    object_mapper,
+    outerjoin,
+    polymorphic_union,
+    was_deleted,
+    with_parent,
+    with_polymorphic,
+)
 from .properties import ColumnProperty
 from .relationships import RelationshipProperty
 from .descriptor_props import (
-     ComparableProperty,
-     CompositeProperty,
-     SynonymProperty,
-    )
+    ComparableProperty,
+    CompositeProperty,
+    SynonymProperty,
+)
 from .relationships import (
     foreign,
     remote,
@@ -68,6 +68,7 @@ from .query import AliasOption, Query, Bundle
 from ..util.langhelpers import public_factory
 from .. import util as _sa_util
 from . import strategies as _strategies
+
 
 def create_session(bind=None, **kwargs):
     """Create a new :class:`.Session`
@@ -107,6 +108,7 @@ def create_session(bind=None, **kwargs):
 
 relationship = public_factory(RelationshipProperty, ".orm.relationship")
 
+
 def relation(*arg, **kw):
     """A synonym for :func:`relationship`."""
 
@@ -144,7 +146,8 @@ def backref(name, **kwargs):
     Used with the ``backref`` keyword argument to :func:`relationship` in
     place of a string argument, e.g.::
 
-        'items':relationship(SomeItem, backref=backref('parent', lazy='subquery'))
+        'items':relationship(
+            SomeItem, backref=backref('parent', lazy='subquery'))
 
     """
     return (name, kwargs)
@@ -158,7 +161,8 @@ def deferred(*columns, **kw):
      :class:`.Column` object, however a collection is supported in order
      to support multiple columns mapped under the same attribute.
 
-    :param \**kw: additional keyword arguments passed to :class:`.ColumnProperty`.
+    :param \**kw: additional keyword arguments passed to
+     :class:`.ColumnProperty`.
 
     .. seealso::
 
@@ -173,11 +177,11 @@ mapper = public_factory(Mapper, ".orm.mapper")
 synonym = public_factory(SynonymProperty, ".orm.synonym")
 
 comparable_property = public_factory(ComparableProperty,
-                    ".orm.comparable_property")
+                                     ".orm.comparable_property")
 
 
 @_sa_util.deprecated("0.7", message=":func:`.compile_mappers` "
-                            "is renamed to :func:`.configure_mappers`")
+                     "is renamed to :func:`.configure_mappers`")
 def compile_mappers():
     """Initialize the inter-mapper relationships of all mappers that have
     been defined.
@@ -196,14 +200,14 @@ def clear_mappers():
     :func:`.clear_mappers` is *not* for normal use, as there is literally no
     valid usage for it outside of very specific testing scenarios. Normally,
     mappers are permanent structural components of user-defined classes, and
-    are never discarded independently of their class.  If a mapped class itself
-    is garbage collected, its mapper is automatically disposed of as well. As
-    such, :func:`.clear_mappers` is only for usage in test suites that re-use
-    the same classes with different mappings, which is itself an extremely rare
-    use case - the only such use case is in fact SQLAlchemy's own test suite,
-    and possibly the test suites of other ORM extension libraries which
-    intend to test various combinations of mapper construction upon a fixed
-    set of classes.
+    are never discarded independently of their class.  If a mapped class
+    itself is garbage collected, its mapper is automatically disposed of as
+    well. As such, :func:`.clear_mappers` is only for usage in test suites
+    that re-use the same classes with different mappings, which is itself an
+    extremely rare use case - the only such use case is in fact SQLAlchemy's
+    own test suite, and possibly the test suites of other ORM extension
+    libraries which intend to test various combinations of mapper construction
+    upon a fixed set of classes.
 
     """
     mapperlib._CONFIGURE_MUTEX.acquire()
@@ -237,6 +241,7 @@ defaultload = strategy_options.defaultload._unbound_fn
 
 from .strategy_options import Load
 
+
 def eagerload(*args, **kwargs):
     """A synonym for :func:`joinedload()`."""
     return joinedload(*args, **kwargs)
@@ -247,10 +252,7 @@ def eagerload_all(*args, **kwargs):
     return joinedload_all(*args, **kwargs)
 
 
-
-
 contains_alias = public_factory(AliasOption, ".orm.contains_alias")
-
 
 
 def __go(lcls):
@@ -261,9 +263,8 @@ def __go(lcls):
     import inspect as _inspect
 
     __all__ = sorted(name for name, obj in lcls.items()
-                 if not (name.startswith('_') or _inspect.ismodule(obj)))
+                     if not (name.startswith('_') or _inspect.ismodule(obj)))
 
     _sa_util.dependencies.resolve_all("sqlalchemy.orm")
 
 __go(locals())
-

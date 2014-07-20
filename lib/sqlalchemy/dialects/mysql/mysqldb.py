@@ -42,7 +42,7 @@ It is strongly advised to use the latest version of MySQL-Python.
 """
 
 from .base import (MySQLDialect, MySQLExecutionContext,
-                                        MySQLCompiler, MySQLIdentifierPreparer)
+                   MySQLCompiler, MySQLIdentifierPreparer)
 from .base import TEXT
 from ... import sql
 from ... import util
@@ -58,13 +58,15 @@ class MySQLExecutionContext_mysqldb(MySQLExecutionContext):
         else:
             return self.cursor.rowcount
 
+
 class MySQLCompiler_mysqldb(MySQLCompiler):
     def visit_mod_binary(self, binary, operator, **kw):
         return self.process(binary.left, **kw) + " %% " + \
-                    self.process(binary.right, **kw)
+            self.process(binary.right, **kw)
 
     def post_process_text(self, text):
         return text.replace('%', '%%')
+
 
 class MySQLIdentifierPreparer_mysqldb(MySQLIdentifierPreparer):
 
@@ -86,7 +88,6 @@ class MySQLDialect_mysqldb(MySQLDialect):
     statement_compiler = MySQLCompiler_mysqldb
     preparer = MySQLIdentifierPreparer_mysqldb
 
-
     @classmethod
     def dbapi(cls):
         return __import__('MySQLdb')
@@ -102,23 +103,22 @@ class MySQLDialect_mysqldb(MySQLDialect):
         # specific issue w/ the utf8_bin collation and unicode returns
 
         has_utf8_bin = connection.scalar(
-                        "show collation where %s = 'utf8' and %s = 'utf8_bin'"
-                            % (
-                            self.identifier_preparer.quote("Charset"),
-                            self.identifier_preparer.quote("Collation")
-                        ))
+            "show collation where %s = 'utf8' and %s = 'utf8_bin'"
+            % (
+                self.identifier_preparer.quote("Charset"),
+                self.identifier_preparer.quote("Collation")
+            ))
         if has_utf8_bin:
             additional_tests = [
                 sql.collate(sql.cast(
-                        sql.literal_column(
+                    sql.literal_column(
                             "'test collated returns'"),
-                            TEXT(charset='utf8')), "utf8_bin")
+                    TEXT(charset='utf8')), "utf8_bin")
             ]
         else:
             additional_tests = []
         return super(MySQLDialect_mysqldb, self)._check_unicode_returns(
-                            connection, additional_tests)
-
+            connection, additional_tests)
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(database='db', username='user',
@@ -130,9 +130,9 @@ class MySQLDialect_mysqldb(MySQLDialect):
         util.coerce_kw_type(opts, 'read_timeout', int)
         util.coerce_kw_type(opts, 'client_flag', int)
         util.coerce_kw_type(opts, 'local_infile', int)
-        # Note: using either of the below will cause all strings to be returned
-        # as Unicode, both in raw SQL operations and with column types like
-        # String and MSString.
+        # Note: using either of the below will cause all strings to be
+        # returned as Unicode, both in raw SQL operations and with column
+        # types like String and MSString.
         util.coerce_kw_type(opts, 'use_unicode', bool)
         util.coerce_kw_type(opts, 'charset', str)
 
@@ -155,8 +155,8 @@ class MySQLDialect_mysqldb(MySQLDialect):
         if self.dbapi is not None:
             try:
                 CLIENT_FLAGS = __import__(
-                                    self.dbapi.__name__ + '.constants.CLIENT'
-                                    ).constants.CLIENT
+                    self.dbapi.__name__ + '.constants.CLIENT'
+                ).constants.CLIENT
                 client_flag |= CLIENT_FLAGS.FOUND_ROWS
             except (AttributeError, ImportError):
                 self.supports_sane_rowcount = False

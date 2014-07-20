@@ -44,6 +44,7 @@ class RefCollection(object):
     def ref(self):
         return weakref.ref(self, registry._collection_gced)
 
+
 class _DispatchDescriptor(RefCollection):
     """Class-level attributes on :class:`._Dispatch` classes."""
 
@@ -53,13 +54,13 @@ class _DispatchDescriptor(RefCollection):
         self.arg_names = argspec.args[1:]
         self.has_kw = bool(argspec.keywords)
         self.legacy_signatures = list(reversed(
-                        sorted(
-                            getattr(fn, '_legacy_signatures', []),
-                            key=lambda s: s[0]
-                        )
-                    ))
+            sorted(
+                getattr(fn, '_legacy_signatures', []),
+                key=lambda s: s[0]
+            )
+        ))
         self.__doc__ = fn.__doc__ = legacy._augment_fn_docs(
-                                        self, parent_dispatch_cls, fn)
+            self, parent_dispatch_cls, fn)
 
         self._clslevel = weakref.WeakKeyDictionary()
         self._empty_listeners = weakref.WeakKeyDictionary()
@@ -83,11 +84,10 @@ class _DispatchDescriptor(RefCollection):
             return fn(**argdict)
         return wrap_kw
 
-
     def insert(self, event_key, propagate):
         target = event_key.dispatch_target
         assert isinstance(target, type), \
-                "Class-level Event targets must be classes."
+            "Class-level Event targets must be classes."
         stack = [target]
         while stack:
             cls = stack.pop(0)
@@ -103,7 +103,7 @@ class _DispatchDescriptor(RefCollection):
     def append(self, event_key, propagate):
         target = event_key.dispatch_target
         assert isinstance(target, type), \
-                "Class-level Event targets must be classes."
+            "Class-level Event targets must be classes."
 
         stack = [target]
         while stack:
@@ -170,9 +170,11 @@ class _DispatchDescriptor(RefCollection):
         obj.__dict__[self.__name__] = ret
         return ret
 
+
 class _HasParentDispatchDescriptor(object):
     def _adjust_fn_spec(self, fn, named):
         return self.parent._adjust_fn_spec(fn, named)
+
 
 class _EmptyListener(_HasParentDispatchDescriptor):
     """Serves as a class-level interface to the events
@@ -183,6 +185,7 @@ class _EmptyListener(_HasParentDispatchDescriptor):
     events are added.
 
     """
+
     def __init__(self, parent, target_cls):
         if target_cls not in parent._clslevel:
             parent.update_subclass(target_cls)
@@ -191,7 +194,6 @@ class _EmptyListener(_HasParentDispatchDescriptor):
         self.name = parent.__name__
         self.propagate = frozenset()
         self.listeners = ()
-
 
     def for_modify(self, obj):
         """Return an event collection which can be modified.
@@ -268,6 +270,7 @@ class _CompoundListener(_HasParentDispatchDescriptor):
 
     __nonzero__ = __bool__
 
+
 class _ListenerCollection(RefCollection, _CompoundListener):
     """Instance-level attributes on instances of :class:`._Dispatch`.
 
@@ -304,10 +307,10 @@ class _ListenerCollection(RefCollection, _CompoundListener):
         existing_listener_set = set(existing_listeners)
         self.propagate.update(other.propagate)
         other_listeners = [l for l
-                in other.listeners
-                if l not in existing_listener_set
-                and not only_propagate or l in self.propagate
-                ]
+                           in other.listeners
+                           if l not in existing_listener_set
+                           and not only_propagate or l in self.propagate
+                           ]
 
         existing_listeners.extend(other_listeners)
 
@@ -346,9 +349,9 @@ class _JoinedDispatchDescriptor(object):
             return self
         else:
             obj.__dict__[self.name] = ret = _JoinedListener(
-                        obj.parent, self.name,
-                        getattr(obj.local, self.name)
-                    )
+                obj.parent, self.name,
+                getattr(obj.local, self.name)
+            )
             return ret
 
 
@@ -383,5 +386,3 @@ class _JoinedListener(_CompoundListener):
 
     def clear(self):
         raise NotImplementedError()
-
-

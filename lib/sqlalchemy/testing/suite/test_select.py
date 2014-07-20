@@ -21,12 +21,12 @@ class OrderByLabelTest(fixtures.TablesTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("some_table", metadata,
-            Column('id', Integer, primary_key=True),
-            Column('x', Integer),
-            Column('y', Integer),
-            Column('q', String(50)),
-            Column('p', String(50))
-            )
+              Column('id', Integer, primary_key=True),
+              Column('x', Integer),
+              Column('y', Integer),
+              Column('q', String(50)),
+              Column('p', String(50))
+              )
 
     @classmethod
     def insert_data(cls):
@@ -86,15 +86,16 @@ class OrderByLabelTest(fixtures.TablesTest):
             [(7, ), (5, ), (3, )]
         )
 
+
 class LimitOffsetTest(fixtures.TablesTest):
     __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
         Table("some_table", metadata,
-            Column('id', Integer, primary_key=True),
-            Column('x', Integer),
-            Column('y', Integer))
+              Column('id', Integer, primary_key=True),
+              Column('x', Integer),
+              Column('y', Integer))
 
     @classmethod
     def insert_data(cls):
@@ -157,8 +158,8 @@ class LimitOffsetTest(fixtures.TablesTest):
     def test_bound_limit_offset(self):
         table = self.tables.some_table
         self._assert_result(
-            select([table]).order_by(table.c.id).\
-                limit(bindparam("l")).offset(bindparam("o")),
+            select([table]).order_by(table.c.id).
+            limit(bindparam("l")).offset(bindparam("o")),
             [(2, 2, 3), (3, 3, 4)],
             params={"l": 2, "o": 1}
         )

@@ -9,7 +9,8 @@
 .. dialect:: postgresql+psycopg2
     :name: psycopg2
     :dbapi: psycopg2
-    :connectstring: postgresql+psycopg2://user:password@host:port/dbname[?key=value&key=value...]
+    :connectstring: postgresql+psycopg2://user:password@host:port/dbname\
+[?key=value&key=value...]
     :url: http://pypi.python.org/pypi/psycopg2/
 
 psycopg2 Connect Arguments
@@ -21,9 +22,9 @@ psycopg2-specific keyword arguments which are accepted by
 * ``server_side_cursors``: Enable the usage of "server side cursors" for SQL
   statements which support this feature. What this essentially means from a
   psycopg2 point of view is that the cursor is created using a name, e.g.
-  ``connection.cursor('some name')``, which has the effect that result rows are
-  not immediately pre-fetched and buffered after statement execution, but are
-  instead left on the server and only retrieved as needed. SQLAlchemy's
+  ``connection.cursor('some name')``, which has the effect that result rows
+  are not immediately pre-fetched and buffered after statement execution, but
+  are instead left on the server and only retrieved as needed. SQLAlchemy's
   :class:`~sqlalchemy.engine.ResultProxy` uses special row-buffering
   behavior when this feature is enabled, such that groups of 100 rows at a
   time are fetched over the wire to reduce conversational overhead.
@@ -54,7 +55,8 @@ using ``host`` as an additional keyword argument::
 
 See also:
 
-`PQconnectdbParams <http://www.postgresql.org/docs/9.1/static/libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
+`PQconnectdbParams <http://www.postgresql.org/docs/9.1/static\
+/libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
 
 Per-Statement/Connection Execution Options
 -------------------------------------------
@@ -90,11 +92,13 @@ Typically, this can be changed to ``utf-8``, as a more useful default::
 
 A second way to affect the client encoding is to set it within Psycopg2
 locally.   SQLAlchemy will call psycopg2's ``set_client_encoding()``
-method (see: http://initd.org/psycopg/docs/connection.html#connection.set_client_encoding)
+method (see:
+http://initd.org/psycopg/docs/connection.html#connection.set_client_encoding)
 on all new connections based on the value passed to
 :func:`.create_engine` using the ``client_encoding`` parameter::
 
-    engine = create_engine("postgresql://user:pass@host/dbname", client_encoding='utf8')
+    engine = create_engine("postgresql://user:pass@host/dbname",
+                           client_encoding='utf8')
 
 This overrides the encoding specified in the Postgresql client configuration.
 
@@ -128,11 +132,12 @@ Psycopg2 Transaction Isolation Level
 As discussed in :ref:`postgresql_isolation_level`,
 all Postgresql dialects support setting of transaction isolation level
 both via the ``isolation_level`` parameter passed to :func:`.create_engine`,
-as well as the ``isolation_level`` argument used by :meth:`.Connection.execution_options`.
-When using the psycopg2 dialect, these options make use of
-psycopg2's ``set_isolation_level()`` connection method, rather than
-emitting a Postgresql directive; this is because psycopg2's API-level
-setting is always emitted at the start of each transaction in any case.
+as well as the ``isolation_level`` argument used by
+:meth:`.Connection.execution_options`.  When using the psycopg2 dialect, these
+options make use of psycopg2's ``set_isolation_level()`` connection method,
+rather than emitting a Postgresql directive; this is because psycopg2's
+API-level setting is always emitted at the start of each transaction in any
+case.
 
 The psycopg2 dialect supports these constants for isolation level:
 
@@ -166,35 +171,38 @@ The psycopg2 dialect will log Postgresql NOTICE messages via the
 HSTORE type
 ------------
 
-The ``psycopg2`` DBAPI includes an extension to natively handle marshalling of the
-HSTORE type.   The SQLAlchemy psycopg2 dialect will enable this extension
+The ``psycopg2`` DBAPI includes an extension to natively handle marshalling of
+the HSTORE type.   The SQLAlchemy psycopg2 dialect will enable this extension
 by default when it is detected that the target database has the HSTORE
 type set up for use.   In other words, when the dialect makes the first
 connection, a sequence like the following is performed:
 
-1. Request the available HSTORE oids using ``psycopg2.extras.HstoreAdapter.get_oids()``.
-   If this function returns a list of HSTORE identifiers, we then determine that
-   the ``HSTORE`` extension is present.
+1. Request the available HSTORE oids using
+   ``psycopg2.extras.HstoreAdapter.get_oids()``.
+   If this function returns a list of HSTORE identifiers, we then determine
+   that the ``HSTORE`` extension is present.
 
 2. If the ``use_native_hstore`` flag is at its default of ``True``, and
    we've detected that ``HSTORE`` oids are available, the
    ``psycopg2.extensions.register_hstore()`` extension is invoked for all
    connections.
 
-The ``register_hstore()`` extension has the effect of **all Python dictionaries
-being accepted as parameters regardless of the type of target column in SQL**.
-The dictionaries are converted by this extension into a textual HSTORE expression.
-If this behavior is not desired, disable the
-use of the hstore extension by setting ``use_native_hstore`` to ``False`` as follows::
+The ``register_hstore()`` extension has the effect of **all Python
+dictionaries being accepted as parameters regardless of the type of target
+column in SQL**. The dictionaries are converted by this extension into a
+textual HSTORE expression.  If this behavior is not desired, disable the
+use of the hstore extension by setting ``use_native_hstore`` to ``False`` as
+follows::
 
     engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test",
                 use_native_hstore=False)
 
-The ``HSTORE`` type is **still supported** when the ``psycopg2.extensions.register_hstore()``
-extension is not used.  It merely means that the coercion between Python dictionaries and the HSTORE
+The ``HSTORE`` type is **still supported** when the
+``psycopg2.extensions.register_hstore()`` extension is not used.  It merely
+means that the coercion between Python dictionaries and the HSTORE
 string format, on both the parameter side and the result side, will take
-place within SQLAlchemy's own marshalling logic, and not that of ``psycopg2`` which
-may be more performant.
+place within SQLAlchemy's own marshalling logic, and not that of ``psycopg2``
+which may be more performant.
 
 """
 from __future__ import absolute_import
@@ -209,9 +217,9 @@ from ...engine import result as _result
 from ...sql import expression
 from ... import types as sqltypes
 from .base import PGDialect, PGCompiler, \
-                                PGIdentifierPreparer, PGExecutionContext, \
-                                ENUM, ARRAY, _DECIMAL_TYPES, _FLOAT_TYPES,\
-                                _INT_TYPES
+    PGIdentifierPreparer, PGExecutionContext, \
+    ENUM, ARRAY, _DECIMAL_TYPES, _FLOAT_TYPES,\
+    _INT_TYPES
 from .hstore import HSTORE
 from .json import JSON
 
@@ -227,14 +235,14 @@ class _PGNumeric(sqltypes.Numeric):
         if self.asdecimal:
             if coltype in _FLOAT_TYPES:
                 return processors.to_decimal_processor_factory(
-                                decimal.Decimal,
-                                self._effective_decimal_return_scale)
+                    decimal.Decimal,
+                    self._effective_decimal_return_scale)
             elif coltype in _DECIMAL_TYPES or coltype in _INT_TYPES:
                 # pg8000 returns Decimal natively for 1700
                 return None
             else:
                 raise exc.InvalidRequestError(
-                            "Unknown PG numeric type: %d" % coltype)
+                    "Unknown PG numeric type: %d" % coltype)
         else:
             if coltype in _FLOAT_TYPES:
                 # pg8000 returns float natively for 701
@@ -243,7 +251,7 @@ class _PGNumeric(sqltypes.Numeric):
                 return processors.to_float
             else:
                 raise exc.InvalidRequestError(
-                            "Unknown PG numeric type: %d" % coltype)
+                    "Unknown PG numeric type: %d" % coltype)
 
 
 class _PGEnum(ENUM):
@@ -254,6 +262,7 @@ class _PGEnum(ENUM):
             # function anyway - not really worth it.
             self.convert_unicode = "force_nocheck"
         return super(_PGEnum, self).result_processor(dialect, coltype)
+
 
 class _PGHStore(HSTORE):
     def bind_processor(self, dialect):
@@ -293,13 +302,16 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
         if self.dialect.server_side_cursors:
             is_server_side = \
                 self.execution_options.get('stream_results', True) and (
-                    (self.compiled and isinstance(self.compiled.statement, expression.Selectable) \
-                    or \
-                    (
+                    (self.compiled and isinstance(self.compiled.statement,
+                                                  expression.Selectable)
+                     or
+                     (
                         (not self.compiled or
-                        isinstance(self.compiled.statement, expression.TextClause))
-                        and self.statement and SERVER_SIDE_CURSOR_RE.match(self.statement))
-                    )
+                         isinstance(self.compiled.statement,
+                                    expression.TextClause))
+                        and self.statement and SERVER_SIDE_CURSOR_RE.match(
+                            self.statement))
+                     )
                 )
         else:
             is_server_side = \
@@ -309,7 +321,8 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
         if is_server_side:
             # use server-side cursors:
             # http://lists.initd.org/pipermail/psycopg/2007-January/005251.html
-            ident = "c_%s_%s" % (hex(id(self))[2:], hex(_server_side_id())[2:])
+            ident = "c_%s_%s" % (hex(id(self))[2:],
+                                 hex(_server_side_id())[2:])
             return self._dbapi_connection.cursor(ident)
         else:
             return self._dbapi_connection.cursor()
@@ -336,7 +349,7 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
 class PGCompiler_psycopg2(PGCompiler):
     def visit_mod_binary(self, binary, operator, **kw):
         return self.process(binary.left, **kw) + " %% " + \
-                self.process(binary.right, **kw)
+            self.process(binary.right, **kw)
 
     def post_process_text(self, text):
         return text.replace('%', '%%')
@@ -354,7 +367,8 @@ class PGDialect_psycopg2(PGDialect):
         supports_unicode_statements = False
 
     default_paramstyle = 'pyformat'
-    supports_sane_multi_rowcount = False  # set to true based on psycopg2 version
+    # set to true based on psycopg2 version
+    supports_sane_multi_rowcount = False
     execution_ctx_cls = PGExecutionContext_psycopg2
     statement_compiler = PGCompiler_psycopg2
     preparer = PGIdentifierPreparer_psycopg2
@@ -375,9 +389,9 @@ class PGDialect_psycopg2(PGDialect):
     )
 
     def __init__(self, server_side_cursors=False, use_native_unicode=True,
-                        client_encoding=None,
-                        use_native_hstore=True,
-                        **kwargs):
+                 client_encoding=None,
+                 use_native_hstore=True,
+                 **kwargs):
         PGDialect.__init__(self, **kwargs)
         self.server_side_cursors = server_side_cursors
         self.use_native_unicode = use_native_unicode
@@ -386,18 +400,18 @@ class PGDialect_psycopg2(PGDialect):
         self.client_encoding = client_encoding
         if self.dbapi and hasattr(self.dbapi, '__version__'):
             m = re.match(r'(\d+)\.(\d+)(?:\.(\d+))?',
-                                self.dbapi.__version__)
+                         self.dbapi.__version__)
             if m:
                 self.psycopg2_version = tuple(
-                                            int(x)
-                                            for x in m.group(1, 2, 3)
-                                            if x is not None)
+                    int(x)
+                    for x in m.group(1, 2, 3)
+                    if x is not None)
 
     def initialize(self, connection):
         super(PGDialect_psycopg2, self).initialize(connection)
         self._has_native_hstore = self.use_native_hstore and \
-                        self._hstore_oids(connection.connection) \
-                            is not None
+            self._hstore_oids(connection.connection) \
+            is not None
         self._has_native_json = self.psycopg2_version >= (2, 5)
 
         # http://initd.org/psycopg/docs/news.html#what-s-new-in-psycopg-2-0-9
@@ -427,7 +441,7 @@ class PGDialect_psycopg2(PGDialect):
                 "Invalid value '%s' for isolation_level. "
                 "Valid isolation levels for %s are %s" %
                 (level, self.name, ", ".join(self._isolation_lookup))
-                )
+            )
 
         connection.set_isolation_level(level)
 
@@ -458,16 +472,17 @@ class PGDialect_psycopg2(PGDialect):
                     oid, array_oid = hstore_oids
                     if util.py2k:
                         extras.register_hstore(conn, oid=oid,
-                                        array_oid=array_oid,
-                                           unicode=True)
+                                               array_oid=array_oid,
+                                               unicode=True)
                     else:
                         extras.register_hstore(conn, oid=oid,
-                                        array_oid=array_oid)
+                                               array_oid=array_oid)
             fns.append(on_connect)
 
         if self.dbapi and self._json_deserializer:
             def on_connect(conn):
-                extras.register_default_json(conn, loads=self._json_deserializer)
+                extras.register_default_json(
+                    conn, loads=self._json_deserializer)
             fns.append(on_connect)
 
         if fns:

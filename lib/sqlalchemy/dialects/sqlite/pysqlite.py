@@ -88,7 +88,8 @@ nor should be necessary, for use with SQLAlchemy, usage of PARSE_DECLTYPES
 can be forced if one configures "native_datetime=True" on create_engine()::
 
     engine = create_engine('sqlite://',
-        connect_args={'detect_types': sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES},
+        connect_args={'detect_types':
+            sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES},
         native_datetime=True
     )
 
@@ -96,7 +97,8 @@ With this flag enabled, the DATE and TIMESTAMP types (but note - not the
 DATETIME or TIME types...confused yet ?) will not perform any bind parameter
 or result processing. Execution of "func.current_date()" will return a string.
 "func.current_timestamp()" is registered as returning a DATETIME type in
-SQLAlchemy, so this function still receives SQLAlchemy-level result processing.
+SQLAlchemy, so this function still receives SQLAlchemy-level result
+processing.
 
 .. _pysqlite_threading_pooling:
 
@@ -111,12 +113,12 @@ did not allow a ``:memory:`` database to be used in multiple threads
 under any circumstances.
 
 Pysqlite does include a now-undocumented flag known as
-``check_same_thread`` which will disable this check, however note that pysqlite
-connections are still not safe to use in concurrently in multiple threads.
-In particular, any statement execution calls would need to be externally
-mutexed, as Pysqlite does not provide for thread-safe propagation of error
-messages among other things.   So while even ``:memory:`` databases can be
-shared among threads in modern SQLite, Pysqlite doesn't provide enough
+``check_same_thread`` which will disable this check, however note that
+pysqlite connections are still not safe to use in concurrently in multiple
+threads.  In particular, any statement execution calls would need to be
+externally mutexed, as Pysqlite does not provide for thread-safe propagation
+of error messages among other things.   So while even ``:memory:`` databases
+can be shared among threads in modern SQLite, Pysqlite doesn't provide enough
 thread-safety to make this usage worth it.
 
 SQLAlchemy sets up pooling to work with Pysqlite's default behavior:
@@ -142,8 +144,8 @@ SQLAlchemy sets up pooling to work with Pysqlite's default behavior:
 Using a Memory Database in Multiple Threads
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To use a ``:memory:`` database in a multithreaded scenario, the same connection
-object must be shared among threads, since the database exists
+To use a ``:memory:`` database in a multithreaded scenario, the same
+connection object must be shared among threads, since the database exists
 only within the scope of that connection.   The
 :class:`.StaticPool` implementation will maintain a single connection
 globally, and the ``check_same_thread`` flag can be passed to Pysqlite
@@ -164,10 +166,10 @@ Due to the way SQLite deals with temporary tables, if you wish to use a
 temporary table in a file-based SQLite database across multiple checkouts
 from the connection pool, such as when using an ORM :class:`.Session` where
 the temporary table should continue to remain after :meth:`.Session.commit` or
-:meth:`.Session.rollback` is called, a pool which maintains a single connection must
-be used.   Use :class:`.SingletonThreadPool` if the scope is only needed
-within the current thread, or :class:`.StaticPool` is scope is needed within
-multiple threads for this case::
+:meth:`.Session.rollback` is called, a pool which maintains a single
+connection must be used.   Use :class:`.SingletonThreadPool` if the scope is
+only needed within the current thread, or :class:`.StaticPool` is scope is
+needed within multiple threads for this case::
 
     # maintain the same connection per thread
     from sqlalchemy.pool import SingletonThreadPool
@@ -215,7 +217,8 @@ a :meth:`.ConnectionEvents.begin` handler to achieve this::
 
     from sqlalchemy import create_engine, event
 
-    engine = create_engine("sqlite:///myfile.db", isolation_level='SERIALIZABLE')
+    engine = create_engine("sqlite:///myfile.db",
+                           isolation_level='SERIALIZABLE')
 
     @event.listens_for(engine, "begin")
     def do_begin(conn):
@@ -331,6 +334,6 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
 
     def is_disconnect(self, e, connection, cursor):
         return isinstance(e, self.dbapi.ProgrammingError) and \
-                "Cannot operate on a closed database." in str(e)
+            "Cannot operate on a closed database." in str(e)
 
 dialect = SQLiteDialect_pysqlite

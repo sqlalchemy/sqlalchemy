@@ -9,7 +9,8 @@
 .. dialect:: postgresql+pypostgresql
     :name: py-postgresql
     :dbapi: pypostgresql
-    :connectstring: postgresql+pypostgresql://user:password@host:port/dbname[?key=value&key=value...]
+    :connectstring: postgresql+pypostgresql://user:password@host:port/dbname\
+[?key=value&key=value...]
     :url: http://python.projects.pgfoundry.org/
 
 

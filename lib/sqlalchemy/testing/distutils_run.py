@@ -5,6 +5,7 @@ custom setuptools/distutils code.
 import unittest
 import pytest
 
+
 class TestSuite(unittest.TestCase):
     def test_sqlalchemy(self):
         pytest.main()

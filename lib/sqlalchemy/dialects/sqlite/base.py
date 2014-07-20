@@ -39,8 +39,8 @@ Two things to note:
   one column, if the table has a composite (i.e. multi-column) primary key.
   This is regardless of the AUTOINCREMENT keyword being present or not.
 
-To specifically render the AUTOINCREMENT keyword on the primary key column when
-rendering DDL, add the flag ``sqlite_autoincrement=True`` to the Table
+To specifically render the AUTOINCREMENT keyword on the primary key column
+when rendering DDL, add the flag ``sqlite_autoincrement=True`` to the Table
 construct::
 
     Table('sometable', metadata,
@@ -63,29 +63,29 @@ Database Locking Behavior / Concurrency
 Note that SQLite is not designed for a high level of concurrency. The database
 itself, being a file, is locked completely during write operations and within
 transactions, meaning exactly one connection has exclusive access to the
-database during this period - all other connections will be blocked during this
-time.
+database during this period - all other connections will be blocked during
+this time.
 
-The Python DBAPI specification also calls for a connection model that is always
-in a transaction; there is no BEGIN method, only commit and rollback. This
-implies that a SQLite DBAPI driver would technically allow only serialized
-access to a particular database file at all times. The pysqlite driver attempts
-to ameliorate this by deferring the actual BEGIN statement until the first DML
-(INSERT, UPDATE, or DELETE) is received within a transaction. While this breaks
-serializable isolation, it at least delays the exclusive locking inherent in
-SQLite's design.
+The Python DBAPI specification also calls for a connection model that is
+always in a transaction; there is no BEGIN method, only commit and rollback.
+This implies that a SQLite DBAPI driver would technically allow only
+serialized access to a particular database file at all times. The pysqlite
+driver attempts to ameliorate this by deferring the actual BEGIN statement
+until the first DML (INSERT, UPDATE, or DELETE) is received within a
+transaction. While this breaks serializable isolation, it at least delays the
+exclusive locking inherent in SQLite's design.
 
-SQLAlchemy's default mode of usage with the ORM is known as "autocommit=False",
-which means the moment the :class:`.Session` begins to be used, a transaction
-is begun. As the :class:`.Session` is used, the autoflush feature, also on by
-default, will flush out pending changes to the database before each query. The
-effect of this is that a :class:`.Session` used in its default mode will often
-emit DML early on, long before the transaction is actually committed. This
-again will have the effect of serializing access to the SQLite database. If
-highly concurrent reads are desired against the SQLite database, it is advised
-that the autoflush feature be disabled, and potentially even that autocommit be
-re-enabled, which has the effect of each SQL statement and flush committing
-changes immediately.
+SQLAlchemy's default mode of usage with the ORM is known as
+"autocommit=False", which means the moment the :class:`.Session` begins to be
+used, a transaction is begun. As the :class:`.Session` is used, the autoflush
+feature, also on by default, will flush out pending changes to the database
+before each query. The effect of this is that a :class:`.Session` used in its
+default mode will often emit DML early on, long before the transaction is
+actually committed. This again will have the effect of serializing access to
+the SQLite database. If highly concurrent reads are desired against the SQLite
+database, it is advised that the autoflush feature be disabled, and
+potentially even that autocommit be re-enabled, which has the effect of each
+SQL statement and flush committing changes immediately.
 
 For more information on SQLite's lack of concurrency by design, please see
 `Situations Where Another RDBMS May Work Better - High Concurrency
@@ -105,8 +105,8 @@ Constraint checking on SQLite has three prerequisites:
 * At least version 3.6.19 of SQLite must be in use
 * The SQLite library must be compiled *without* the SQLITE_OMIT_FOREIGN_KEY
   or SQLITE_OMIT_TRIGGER symbols enabled.
-* The ``PRAGMA foreign_keys = ON`` statement must be emitted on all connections
-  before use.
+* The ``PRAGMA foreign_keys = ON`` statement must be emitted on all
+  connections before use.
 
 SQLAlchemy allows for the ``PRAGMA`` statement to be emitted automatically for
 new connections through the usage of events::
@@ -122,8 +122,8 @@ new connections through the usage of events::
 
 .. seealso::
 
-    `SQLite Foreign Key Support <http://www.sqlite.org/foreignkeys.html>`_ - on
-    the SQLite web site.
+    `SQLite Foreign Key Support <http://www.sqlite.org/foreignkeys.html>`_
+    - on the SQLite web site.
 
     :ref:`event_toplevel` - SQLAlchemy event API.
 
@@ -189,8 +189,9 @@ from ... import util
 from ...engine import default, reflection
 from ...sql import compiler
 
-from ...types import (BLOB, BOOLEAN, CHAR, DATE, DECIMAL, FLOAT, INTEGER, REAL,
-                      NUMERIC, SMALLINT, TEXT, TIMESTAMP, VARCHAR)
+from ...types import (BLOB, BOOLEAN, CHAR, DATE, DECIMAL, FLOAT,
+                      INTEGER, REAL, NUMERIC, SMALLINT, TEXT,
+                      TIMESTAMP, VARCHAR)
 
 
 class _DateTimeMixin(object):
@@ -214,6 +215,7 @@ class _DateTimeMixin(object):
 
     def literal_processor(self, dialect):
         bp = self.bind_processor(dialect)
+
         def process(value):
             return "'%s'" % bp(value)
         return process
@@ -224,7 +226,8 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
 
     The default string storage format is::
 
-        "%(year)04d-%(month)02d-%(day)02d %(hour)02d:%(min)02d:%(second)02d.%(microsecond)06d"
+        "%(year)04d-%(month)02d-%(day)02d %(hour)02d:%(min)02d:\
+%(second)02d.%(microsecond)06d"
 
     e.g.::
 
@@ -237,12 +240,13 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
         from sqlalchemy.dialects.sqlite import DATETIME
 
         dt = DATETIME(
-            storage_format="%(year)04d/%(month)02d/%(day)02d %(hour)02d:%(min)02d:%(second)02d",
+            storage_format="%(year)04d/%(month)02d/%(day)02d %(hour)02d:\
+%(min)02d:%(second)02d",
             regexp=r"(\d+)/(\d+)/(\d+) (\d+)-(\d+)-(\d+)"
         )
 
-    :param storage_format: format string which will be applied to the dict with
-     keys year, month, day, hour, minute, second, and microsecond.
+    :param storage_format: format string which will be applied to the dict
+     with keys year, month, day, hour, minute, second, and microsecond.
 
     :param regexp: regular expression which will be applied to incoming result
      rows. If the regexp contains named groups, the resulting match dict is
@@ -390,12 +394,13 @@ class TIME(_DateTimeMixin, sqltypes.Time):
         from sqlalchemy.dialects.sqlite import TIME
 
         t = TIME(
-            storage_format="%(hour)02d-%(minute)02d-%(second)02d-%(microsecond)06d",
+            storage_format="%(hour)02d-%(minute)02d-%(second)02d-\
+%(microsecond)06d",
             regexp=re.compile("(\d+)-(\d+)-(\d+)-(?:-(\d+))?")
         )
 
-    :param storage_format: format string which will be applied to the dict with
-     keys hour, minute, second, and microsecond.
+    :param storage_format: format string which will be applied to the dict
+     with keys hour, minute, second, and microsecond.
 
     :param regexp: regular expression which will be applied to incoming result
      rows. If the regexp contains named groups, the resulting match dict is
@@ -581,8 +586,9 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         if local_table.schema != remote_table.schema:
             return None
         else:
-            return super(SQLiteDDLCompiler, self).visit_foreign_key_constraint(
-                constraint)
+            return super(
+                SQLiteDDLCompiler,
+                self).visit_foreign_key_constraint(constraint)
 
     def define_constraint_remote_table(self, constraint, table, preparer):
         """Format the remote table clause of a CREATE CONSTRAINT clause."""
@@ -619,7 +625,7 @@ class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
         'temporary', 'then', 'to', 'transaction', 'trigger', 'true', 'union',
         'unique', 'update', 'using', 'vacuum', 'values', 'view', 'virtual',
         'when', 'where',
-        ])
+    ])
 
     def format_index(self, index, use_schema=True, name=None):
         """Prepare a quoted index and schema name."""
@@ -630,8 +636,8 @@ class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
         if (not self.omit_schema and
                 use_schema and
                 getattr(index.table, "schema", None)):
-            result = self.quote_schema(index.table.schema,
-                                       index.table.quote_schema) + "." + result
+            result = self.quote_schema(
+                index.table.schema, index.table.quote_schema) + "." + result
         return result
 
 
@@ -641,8 +647,8 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
         return self.execution_options.get("sqlite_raw_colnames", False)
 
     def _translate_colname(self, colname):
-        # adjust for dotted column names. SQLite in the case of UNION may store
-        # col names as "tablename.colname" in cursor.description
+        # adjust for dotted column names. SQLite in the case of UNION may
+        # store col names as "tablename.colname" in cursor.description
         if not self._preserve_raw_colnames and "." in colname:
             return colname.split(".")[1], colname
         else:
@@ -685,9 +691,10 @@ class SQLiteDialect(default.DefaultDialect):
         default.DefaultDialect.__init__(self, **kwargs)
         self.isolation_level = isolation_level
 
-        # this flag used by pysqlite dialect, and perhaps others in the future,
-        # to indicate the driver is handling date/timestamp conversions (and
-        # perhaps datetime/time as well on some hypothetical driver ?)
+        # this flag used by pysqlite dialect, and perhaps others in the
+        # future, to indicate the driver is handling date/timestamp
+        # conversions (and perhaps datetime/time as well on some hypothetical
+        # driver ?)
         self.native_datetime = native_datetime
 
         if self.dbapi is not None:
@@ -716,7 +723,7 @@ class SQLiteDialect(default.DefaultDialect):
                 "Invalid value '%s' for isolation_level. "
                 "Valid isolation levels for %s are %s" %
                 (level, self.name, ", ".join(self._isolation_lookup))
-                )
+            )
         cursor = connection.cursor()
         cursor.execute("PRAGMA read_uncommitted = %d" % isolation_level)
         cursor.close()
@@ -918,9 +925,9 @@ class SQLiteDialect(default.DefaultDialect):
                 coltype = coltype(*[int(a) for a in args])
             except TypeError:
                 util.warn(
-                        "Could not instantiate type %s with "
-                        "reflected arguments %s; using no arguments." %
-                        (coltype, args))
+                    "Could not instantiate type %s with "
+                    "reflected arguments %s; using no arguments." %
+                    (coltype, args))
                 coltype = coltype()
         else:
             coltype = coltype()
@@ -952,7 +959,8 @@ class SQLiteDialect(default.DefaultDialect):
             row = c.fetchone()
             if row is None:
                 break
-            (numerical_id, rtbl, lcol, rcol) = (row[0], row[2], row[3], row[4])
+            (numerical_id, rtbl, lcol, rcol) = (
+                row[0], row[2], row[3], row[4])
 
             self._parse_fk(fks, fkeys, numerical_id, rtbl, lcol, rcol)
         return fkeys

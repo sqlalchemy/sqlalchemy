@@ -13,9 +13,10 @@ __all__ = (
     'postgresql',
     'sqlite',
     'sybase',
-    )
+)
 
 from .. import util
+
 
 def _auto_fn(name):
     """default dialect importer.

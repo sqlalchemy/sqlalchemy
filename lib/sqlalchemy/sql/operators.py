@@ -16,7 +16,7 @@ from .. import util
 from operator import (
     and_, or_, inv, add, mul, sub, mod, truediv, lt, le, ne, gt, ge, eq, neg,
     getitem, lshift, rshift
-    )
+)
 
 if util.py2k:
     from operator import div
@@ -24,11 +24,11 @@ else:
     div = truediv
 
 
-
 class Operators(object):
     """Base of comparison and logical operators.
 
-    Implements base methods :meth:`~sqlalchemy.sql.operators.Operators.operate` and
+    Implements base methods
+    :meth:`~sqlalchemy.sql.operators.Operators.operate` and
     :meth:`~sqlalchemy.sql.operators.Operators.reverse_operate`, as well as
     :meth:`~sqlalchemy.sql.operators.Operators.__and__`,
     :meth:`~sqlalchemy.sql.operators.Operators.__or__`,
@@ -38,6 +38,7 @@ class Operators(object):
     :class:`.ColumnOperators`.
 
     """
+
     def __and__(self, other):
         """Implement the ``&`` operator.
 
@@ -136,13 +137,13 @@ class Operators(object):
          .. versionadded:: 0.8 - added the 'precedence' argument.
 
         :param is_comparison: if True, the operator will be considered as a
-         "comparison" operator, that is which evaulates to a boolean true/false
-         value, like ``==``, ``>``, etc.  This flag should be set so that
-         ORM relationships can establish that the operator is a comparison
-         operator when used in a custom join condition.
+         "comparison" operator, that is which evaulates to a boolean
+         true/false value, like ``==``, ``>``, etc.  This flag should be set
+         so that ORM relationships can establish that the operator is a
+         comparison operator when used in a custom join condition.
 
-         .. versionadded:: 0.9.2 - added the :paramref:`.Operators.op.is_comparison`
-            flag.
+         .. versionadded:: 0.9.2 - added the
+            :paramref:`.Operators.op.is_comparison` flag.
 
         .. seealso::
 
@@ -422,8 +423,8 @@ class ColumnOperators(Operators):
     def notin_(self, other):
         """implement the ``NOT IN`` operator.
 
-        This is equivalent to using negation with :meth:`.ColumnOperators.in_`,
-        i.e. ``~x.in_(y)``.
+        This is equivalent to using negation with
+        :meth:`.ColumnOperators.in_`, i.e. ``~x.in_(y)``.
 
         .. versionadded:: 0.8
 
@@ -681,8 +682,10 @@ def exists():
 def istrue(a):
     raise NotImplementedError()
 
+
 def isfalse(a):
     raise NotImplementedError()
+
 
 def is_(a, b):
     return a.is_(b)
@@ -718,6 +721,7 @@ def notilike_op(a, b, escape=None):
 
 def between_op(a, b, c, symmetric=False):
     return a.between(b, c, symmetric=symmetric)
+
 
 def notbetween_op(a, b, c, symmetric=False):
     return a.notbetween(b, c, symmetric=symmetric)
@@ -803,7 +807,7 @@ def is_commutative(op):
 
 def is_ordering_modifier(op):
     return op in (asc_op, desc_op,
-                    nullsfirst_op, nullslast_op)
+                  nullsfirst_op, nullslast_op)
 
 _associative = _commutative.union([concat_op, and_, or_])
 
@@ -875,6 +879,6 @@ def is_precedent(operator, against):
         return False
     else:
         return (_PRECEDENCE.get(operator,
-                getattr(operator, 'precedence', _smallest)) <=
-            _PRECEDENCE.get(against,
-                getattr(against, 'precedence', _largest)))
+                                getattr(operator, 'precedence', _smallest)) <=
+                _PRECEDENCE.get(against,
+                                getattr(against, 'precedence', _largest)))

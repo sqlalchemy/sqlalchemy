@@ -10,7 +10,8 @@
 .. dialect:: oracle+cx_oracle
     :name: cx-Oracle
     :dbapi: cx_oracle
-    :connectstring: oracle+cx_oracle://user:pass@host:port/dbname[?key=value&key=value...]
+    :connectstring: oracle+cx_oracle://user:pass@host:port/dbname\
+[?key=value&key=value...]
     :url: http://cx-oracle.sourceforge.net/
 
 Additional Connect Arguments
@@ -52,21 +53,21 @@ on the URL, or as keyword arguments to :func:`.create_engine()` are:
   .. versionadded:: 0.8 specific DBAPI types can be excluded from the
      auto_setinputsizes feature via the exclude_setinputsizes attribute.
 
-* ``mode`` - This is given the string value of SYSDBA or SYSOPER, or alternatively
-  an integer value.  This value is only available as a URL query string
-  argument.
+* ``mode`` - This is given the string value of SYSDBA or SYSOPER, or
+  alternatively an integer value.  This value is only available as a URL query
+  string argument.
 
-* ``threaded`` - enable multithreaded access to cx_oracle connections.  Defaults
-  to ``True``.  Note that this is the opposite default of the cx_Oracle DBAPI
-  itself.
+* ``threaded`` - enable multithreaded access to cx_oracle connections.
+  Defaults to ``True``.  Note that this is the opposite default of the
+  cx_Oracle DBAPI itself.
 
 .. _cx_oracle_unicode:
 
 Unicode
 -------
 
-The cx_Oracle DBAPI as of version 5 fully supports unicode, and has the ability
-to return string results as Python unicode objects natively.
+The cx_Oracle DBAPI as of version 5 fully supports unicode, and has the
+ability to return string results as Python unicode objects natively.
 
 When used in Python 3, cx_Oracle returns all strings as Python unicode objects
 (that is, plain ``str`` in Python 3).  In Python 2, it will return as Python
@@ -74,37 +75,39 @@ unicode those column values that are of type ``NVARCHAR`` or ``NCLOB``.  For
 column values that are of type ``VARCHAR`` or other non-unicode string types,
 it will return values as Python strings (e.g. bytestrings).
 
-The cx_Oracle SQLAlchemy dialect presents two different options for the use case of
-returning ``VARCHAR`` column values as Python unicode objects under Python 2:
+The cx_Oracle SQLAlchemy dialect presents two different options for the use
+case of returning ``VARCHAR`` column values as Python unicode objects under
+Python 2:
 
 * the cx_Oracle DBAPI has the ability to coerce all string results to Python
   unicode objects unconditionally using output type handlers.  This has
   the advantage that the unicode conversion is global to all statements
   at the cx_Oracle driver level, meaning it works with raw textual SQL
   statements that have no typing information associated.  However, this system
-  has been observed to incur signfiicant performance overhead, not only because
-  it takes effect for all string values unconditionally, but also because cx_Oracle under
-  Python 2 seems to use a pure-Python function call in order to do the
-  decode operation, which under cPython can orders of magnitude slower
-  than doing it using C functions alone.
+  has been observed to incur signfiicant performance overhead, not only
+  because it takes effect for all string values unconditionally, but also
+  because cx_Oracle under Python 2 seems to use a pure-Python function call in
+  order to do the decode operation, which under cPython can orders of
+  magnitude slower than doing it using C functions alone.
 
-* SQLAlchemy has unicode-decoding services built in, and when using SQLAlchemy's
-  C extensions, these functions do not use any Python function calls and
-  are very fast.  The disadvantage to this approach is that the unicode
-  conversion only takes effect for statements where the :class:`.Unicode` type
-  or :class:`.String` type with ``convert_unicode=True`` is explicitly
-  associated with the result column.  This is the case for any ORM or Core
-  query or SQL expression as well as for a :func:`.text` construct that specifies
-  output column types, so in the vast majority of cases this is not an issue.
-  However, when sending a completely raw string to :meth:`.Connection.execute`,
-  this typing information isn't present, unless the string is handled
-  within a :func:`.text` construct that adds typing information.
+* SQLAlchemy has unicode-decoding services built in, and when using
+  SQLAlchemy's C extensions, these functions do not use any Python function
+  calls and are very fast.  The disadvantage to this approach is that the
+  unicode conversion only takes effect for statements where the
+  :class:`.Unicode` type or :class:`.String` type with
+  ``convert_unicode=True`` is explicitly associated with the result column.
+  This is the case for any ORM or Core query or SQL expression as well as for
+  a :func:`.text` construct that specifies output column types, so in the vast
+  majority of cases this is not an issue. However, when sending a completely
+  raw string to :meth:`.Connection.execute`, this typing information isn't
+  present, unless the string is handled within a :func:`.text` construct that
+  adds typing information.
 
 As of version 0.9.2 of SQLAlchemy, the default approach is to use SQLAlchemy's
 typing system.  This keeps cx_Oracle's expensive Python 2 approach
-disabled unless the user explicitly wants it.  Under Python 3, SQLAlchemy detects
-that cx_Oracle is returning unicode objects natively and cx_Oracle's system
-is used.
+disabled unless the user explicitly wants it.  Under Python 3, SQLAlchemy
+detects that cx_Oracle is returning unicode objects natively and cx_Oracle's
+system is used.
 
 To re-enable cx_Oracle's output type handler under Python 2, the
 ``coerce_to_unicode=True`` flag (new in 0.9.4) can be passed to
@@ -117,12 +120,13 @@ as Python unicode under Python 2 without using cx_Oracle's native handlers,
 the :func:`.text` feature can be used::
 
     from sqlalchemy import text, Unicode
-    result = conn.execute(text("select username from user").columns(username=Unicode))
+    result = conn.execute(
+        text("select username from user").columns(username=Unicode))
 
-.. versionchanged:: 0.9.2 cx_Oracle's outputtypehandlers are no longer used for
-   unicode results of non-unicode datatypes in Python 2, after they were identified as a major
-   performance bottleneck.  SQLAlchemy's own unicode facilities are used
-   instead.
+.. versionchanged:: 0.9.2 cx_Oracle's outputtypehandlers are no longer used
+   for unicode results of non-unicode datatypes in Python 2, after they were
+   identified as a major performance bottleneck.  SQLAlchemy's own unicode
+   facilities are used instead.
 
 .. versionadded:: 0.9.4 Added the ``coerce_to_unicode`` flag, to re-enable
    cx_Oracle's outputtypehandler and revert to pre-0.9.2 behavior.
@@ -132,38 +136,43 @@ the :func:`.text` feature can be used::
 RETURNING Support
 -----------------
 
-The cx_oracle DBAPI supports a limited subset of Oracle's already limited RETURNING support.
-Typically, results can only be guaranteed for at most one column being returned;
-this is the typical case when SQLAlchemy uses RETURNING to get just the value of a
-primary-key-associated sequence value.    Additional column expressions will
-cause problems in a non-determinative way, due to cx_oracle's lack of support for
-the OCI_DATA_AT_EXEC API which is required for more complex RETURNING scenarios.
+The cx_oracle DBAPI supports a limited subset of Oracle's already limited
+RETURNING support.  Typically, results can only be guaranteed for at most one
+column being returned; this is the typical case when SQLAlchemy uses RETURNING
+to get just the value of a primary-key-associated sequence value.
+Additional column expressions will cause problems in a non-determinative way,
+due to cx_oracle's lack of support for the OCI_DATA_AT_EXEC API which is
+required for more complex RETURNING scenarios.
 
-For this reason, stability may be enhanced by disabling RETURNING support completely;
-SQLAlchemy otherwise will use RETURNING to fetch newly sequence-generated
-primary keys.  As illustrated in :ref:`oracle_returning`::
+For this reason, stability may be enhanced by disabling RETURNING support
+completely; SQLAlchemy otherwise will use RETURNING to fetch newly
+sequence-generated primary keys.  As illustrated in :ref:`oracle_returning`::
 
-    engine = create_engine("oracle://scott:tiger@dsn", implicit_returning=False)
+    engine = create_engine("oracle://scott:tiger@dsn",
+                           implicit_returning=False)
 
 .. seealso::
 
-    http://docs.oracle.com/cd/B10501_01/appdev.920/a96584/oci05bnd.htm#420693 - OCI documentation for RETURNING
+    http://docs.oracle.com/cd/B10501_01/appdev.920/a96584/oci05bnd.htm#420693
+    - OCI documentation for RETURNING
 
-    http://sourceforge.net/mailarchive/message.php?msg_id=31338136 - cx_oracle developer commentary
+    http://sourceforge.net/mailarchive/message.php?msg_id=31338136
+    - cx_oracle developer commentary
 
 .. _cx_oracle_lob:
 
 LOB Objects
 -----------
 
-cx_oracle returns oracle LOBs using the cx_oracle.LOB object.  SQLAlchemy converts
-these to strings so that the interface of the Binary type is consistent with that of
-other backends, and so that the linkage to a live cursor is not needed in scenarios
-like result.fetchmany() and result.fetchall().   This means that by default, LOB
-objects are fully fetched unconditionally by SQLAlchemy, and the linkage to a live
-cursor is broken.
+cx_oracle returns oracle LOBs using the cx_oracle.LOB object.  SQLAlchemy
+converts these to strings so that the interface of the Binary type is
+consistent with that of other backends, and so that the linkage to a live
+cursor is not needed in scenarios like result.fetchmany() and
+result.fetchall().   This means that by default, LOB objects are fully fetched
+unconditionally by SQLAlchemy, and the linkage to a live cursor is broken.
 
-To disable this processing, pass ``auto_convert_lobs=False`` to :func:`.create_engine()`.
+To disable this processing, pass ``auto_convert_lobs=False`` to
+:func:`.create_engine()`.
 
 Two Phase Transaction Support
 -----------------------------
@@ -314,7 +323,7 @@ class _OracleNumeric(sqltypes.Numeric):
                 if self.precision is None and self.scale is None:
                     return processors.to_float
                 elif not getattr(self, '_is_oracle_number', False) \
-                    and self.scale is not None:
+                        and self.scale is not None:
                     return processors.to_float
                 else:
                     return None
@@ -322,7 +331,7 @@ class _OracleNumeric(sqltypes.Numeric):
             # cx_oracle 4 behavior, will assume
             # floats
             return super(_OracleNumeric, self).\
-                            result_processor(dialect, coltype)
+                result_processor(dialect, coltype)
 
 
 class _OracleDate(sqltypes.Date):
@@ -363,7 +372,8 @@ class _NativeUnicodeMixin(object):
                         return unicode(value)
                 return process
             else:
-                return super(_NativeUnicodeMixin, self).bind_processor(dialect)
+                return super(
+                    _NativeUnicodeMixin, self).bind_processor(dialect)
 
     # we apply a connection output handler that returns
     # unicode in all cases, so the "native_unicode" flag
@@ -392,11 +402,13 @@ class _OracleLong(oracle.LONG):
     def get_dbapi_type(self, dbapi):
         return dbapi.LONG_STRING
 
+
 class _OracleString(_NativeUnicodeMixin, sqltypes.String):
     pass
 
 
-class _OracleUnicodeText(_LOBMixin, _NativeUnicodeMixin, sqltypes.UnicodeText):
+class _OracleUnicodeText(
+        _LOBMixin, _NativeUnicodeMixin, sqltypes.UnicodeText):
     def get_dbapi_type(self, dbapi):
         return dbapi.NCLOB
 
@@ -405,7 +417,8 @@ class _OracleUnicodeText(_LOBMixin, _NativeUnicodeMixin, sqltypes.UnicodeText):
         if lob_processor is None:
             return None
 
-        string_processor = sqltypes.UnicodeText.result_processor(self, dialect, coltype)
+        string_processor = sqltypes.UnicodeText.result_processor(
+            self, dialect, coltype)
 
         if string_processor is None:
             return lob_processor
@@ -450,7 +463,7 @@ class OracleCompiler_cx_oracle(OracleCompiler):
     def bindparam_string(self, name, **kw):
         quote = getattr(name, 'quote', None)
         if quote is True or quote is not False and \
-            self.preparer._bindparam_requires_quotes(name):
+                self.preparer._bindparam_requires_quotes(name):
             quoted_name = '"%s"' % name
             self._quoted_bind_names[name] = quoted_name
             return OracleCompiler.bindparam_string(self, quoted_name, **kw)
@@ -470,12 +483,12 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                 # here.  so convert names in quoted_bind_names
                 # to encoded as well.
                 quoted_bind_names = \
-                                dict(
-                                    (fromname.encode(self.dialect.encoding),
-                                    toname.encode(self.dialect.encoding))
-                                    for fromname, toname in
-                                    quoted_bind_names.items()
-                                )
+                    dict(
+                        (fromname.encode(self.dialect.encoding),
+                         toname.encode(self.dialect.encoding))
+                        for fromname, toname in
+                        quoted_bind_names.items()
+                    )
             for param in self.parameters:
                 for fromname, toname in quoted_bind_names.items():
                     param[toname] = param[fromname]
@@ -485,29 +498,30 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
             # cx_oracle really has issues when you setinputsizes
             # on String, including that outparams/RETURNING
             # breaks for varchars
-            self.set_input_sizes(quoted_bind_names,
-                                 exclude_types=self.dialect.exclude_setinputsizes
-                                )
+            self.set_input_sizes(
+                quoted_bind_names,
+                exclude_types=self.dialect.exclude_setinputsizes
+            )
 
         # if a single execute, check for outparams
         if len(self.compiled_parameters) == 1:
             for bindparam in self.compiled.binds.values():
                 if bindparam.isoutparam:
                     dbtype = bindparam.type.dialect_impl(self.dialect).\
-                                    get_dbapi_type(self.dialect.dbapi)
+                        get_dbapi_type(self.dialect.dbapi)
                     if not hasattr(self, 'out_parameters'):
                         self.out_parameters = {}
                     if dbtype is None:
                         raise exc.InvalidRequestError(
-                                    "Cannot create out parameter for parameter "
-                                    "%r - its type %r is not supported by"
-                                    " cx_oracle" %
-                                    (bindparam.key, bindparam.type)
-                                    )
+                            "Cannot create out parameter for parameter "
+                            "%r - its type %r is not supported by"
+                            " cx_oracle" %
+                            (bindparam.key, bindparam.type)
+                        )
                     name = self.compiled.bind_names[bindparam]
                     self.out_parameters[name] = self.cursor.var(dbtype)
                     self.parameters[0][quoted_bind_names.get(name, name)] = \
-                                                        self.out_parameters[name]
+                        self.out_parameters[name]
 
     def create_cursor(self):
         c = self._dbapi_connection.cursor()
@@ -519,9 +533,9 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
     def get_result_proxy(self):
         if hasattr(self, 'out_parameters') and self.compiled.returning:
             returning_params = dict(
-                                    (k, v.getvalue())
-                                    for k, v in self.out_parameters.items()
-                                )
+                (k, v.getvalue())
+                for k, v in self.out_parameters.items()
+            )
             return ReturningResultProxy(self, returning_params)
 
         result = None
@@ -543,25 +557,29 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                     if name in self.out_parameters:
                         type = bind.type
                         impl_type = type.dialect_impl(self.dialect)
-                        dbapi_type = impl_type.get_dbapi_type(self.dialect.dbapi)
+                        dbapi_type = impl_type.get_dbapi_type(
+                            self.dialect.dbapi)
                         result_processor = impl_type.\
-                                                    result_processor(self.dialect,
-                                                    dbapi_type)
+                            result_processor(self.dialect,
+                                             dbapi_type)
                         if result_processor is not None:
                             out_parameters[name] = \
-                                    result_processor(self.out_parameters[name].getvalue())
+                                result_processor(
+                                    self.out_parameters[name].getvalue())
                         else:
-                            out_parameters[name] = self.out_parameters[name].getvalue()
+                            out_parameters[name] = self.out_parameters[
+                                name].getvalue()
             else:
                 result.out_parameters = dict(
                                             (k, v.getvalue())
-                                            for k, v in self.out_parameters.items()
-                                        )
+                    for k, v in self.out_parameters.items()
+                )
 
         return result
 
 
-class OracleExecutionContext_cx_oracle_with_unicode(OracleExecutionContext_cx_oracle):
+class OracleExecutionContext_cx_oracle_with_unicode(
+        OracleExecutionContext_cx_oracle):
     """Support WITH_UNICODE in Python 2.xx.
 
     WITH_UNICODE allows cx_Oracle's Python 3 unicode handling
@@ -574,17 +592,19 @@ class OracleExecutionContext_cx_oracle_with_unicode(OracleExecutionContext_cx_or
     passed as Python unicode objects.
 
     """
+
     def __init__(self, *arg, **kw):
         OracleExecutionContext_cx_oracle.__init__(self, *arg, **kw)
         self.statement = util.text_type(self.statement)
 
     def _execute_scalar(self, stmt):
         return super(OracleExecutionContext_cx_oracle_with_unicode, self).\
-                            _execute_scalar(util.text_type(stmt))
+            _execute_scalar(util.text_type(stmt))
 
 
 class ReturningResultProxy(_result.FullyBufferedResultProxy):
-    """Result proxy which stuffs the _returning clause + outparams into the fetch."""
+    """Result proxy which stuffs the _returning clause + outparams
+    into the fetch."""
 
     def __init__(self, context, returning_params):
         self._returning_params = returning_params
@@ -598,8 +618,10 @@ class ReturningResultProxy(_result.FullyBufferedResultProxy):
         ]
 
     def _buffer_rows(self):
-        return collections.deque([tuple(self._returning_params["ret_%d" % i]
-                    for i, c in enumerate(self._returning_params))])
+        return collections.deque(
+            [tuple(self._returning_params["ret_%d" % i]
+                   for i, c in enumerate(self._returning_params))]
+        )
 
 
 class OracleDialect_cx_oracle(OracleDialect):
@@ -610,7 +632,8 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     colspecs = colspecs = {
         sqltypes.Numeric: _OracleNumeric,
-        sqltypes.Date: _OracleDate,  # generic type, assume datetime.date is desired
+        # generic type, assume datetime.date is desired
+        sqltypes.Date: _OracleDate,
         sqltypes.LargeBinary: _OracleBinary,
         sqltypes.Boolean: oracle._OracleBoolean,
         sqltypes.Interval: _OracleInterval,
@@ -637,50 +660,50 @@ class OracleDialect_cx_oracle(OracleDialect):
     execute_sequence_format = list
 
     def __init__(self,
-                auto_setinputsizes=True,
-                exclude_setinputsizes=("STRING", "UNICODE"),
-                auto_convert_lobs=True,
-                threaded=True,
-                allow_twophase=True,
-                coerce_to_decimal=True,
-                coerce_to_unicode=False,
-                arraysize=50, **kwargs):
+                 auto_setinputsizes=True,
+                 exclude_setinputsizes=("STRING", "UNICODE"),
+                 auto_convert_lobs=True,
+                 threaded=True,
+                 allow_twophase=True,
+                 coerce_to_decimal=True,
+                 coerce_to_unicode=False,
+                 arraysize=50, **kwargs):
         OracleDialect.__init__(self, **kwargs)
         self.threaded = threaded
         self.arraysize = arraysize
         self.allow_twophase = allow_twophase
         self.supports_timestamp = self.dbapi is None or \
-                                        hasattr(self.dbapi, 'TIMESTAMP')
+            hasattr(self.dbapi, 'TIMESTAMP')
         self.auto_setinputsizes = auto_setinputsizes
         self.auto_convert_lobs = auto_convert_lobs
 
         if hasattr(self.dbapi, 'version'):
             self.cx_oracle_ver = tuple([int(x) for x in
-                                self.dbapi.version.split('.')])
+                                        self.dbapi.version.split('.')])
         else:
             self.cx_oracle_ver = (0, 0, 0)
 
         def types(*names):
             return set(
-                    getattr(self.dbapi, name, None) for name in names
-                    ).difference([None])
+                getattr(self.dbapi, name, None) for name in names
+            ).difference([None])
 
         self.exclude_setinputsizes = types(*(exclude_setinputsizes or ()))
         self._cx_oracle_string_types = types("STRING", "UNICODE",
-                                            "NCLOB", "CLOB")
+                                             "NCLOB", "CLOB")
         self._cx_oracle_unicode_types = types("UNICODE", "NCLOB")
         self._cx_oracle_binary_types = types("BFILE", "CLOB", "NCLOB", "BLOB")
         self.supports_unicode_binds = self.cx_oracle_ver >= (5, 0)
 
         self.coerce_to_unicode = (
-                                        self.cx_oracle_ver >= (5, 0) and
-                                        coerce_to_unicode
-                                    )
+            self.cx_oracle_ver >= (5, 0) and
+            coerce_to_unicode
+        )
 
         self.supports_native_decimal = (
-                                        self.cx_oracle_ver >= (5, 0) and
-                                        coerce_to_decimal
-                                    )
+            self.cx_oracle_ver >= (5, 0) and
+            coerce_to_decimal
+        )
 
         self._cx_oracle_native_nvarchar = self.cx_oracle_ver >= (5, 0)
 
@@ -688,7 +711,8 @@ class OracleDialect_cx_oracle(OracleDialect):
             # this occurs in tests with mock DBAPIs
             self._cx_oracle_string_types = set()
             self._cx_oracle_with_unicode = False
-        elif self.cx_oracle_ver >= (5,) and not hasattr(self.dbapi, 'UNICODE'):
+        elif self.cx_oracle_ver >= (5,) and not \
+                hasattr(self.dbapi, 'UNICODE'):
             # cx_Oracle WITH_UNICODE mode.  *only* python
             # unicode objects accepted for anything
             self.supports_unicode_statements = True
@@ -696,32 +720,32 @@ class OracleDialect_cx_oracle(OracleDialect):
             self._cx_oracle_with_unicode = True
 
             if util.py2k:
-                # There's really no reason to run with WITH_UNICODE under Python 2.x.
-                # Give the user a hint.
+                # There's really no reason to run with WITH_UNICODE under
+                # Python 2.x.  Give the user a hint.
                 util.warn(
                     "cx_Oracle is compiled under Python 2.xx using the "
                     "WITH_UNICODE flag.  Consider recompiling cx_Oracle "
-                    "without this flag, which is in no way necessary for full "
-                    "support of Unicode. Otherwise, all string-holding bind "
-                    "parameters must be explicitly typed using SQLAlchemy's "
-                    "String type or one of its subtypes,"
+                    "without this flag, which is in no way necessary for "
+                    "full support of Unicode. Otherwise, all string-holding "
+                    "bind parameters must be explicitly typed using "
+                    "SQLAlchemy's String type or one of its subtypes,"
                     "or otherwise be passed as Python unicode.  "
                     "Plain Python strings passed as bind parameters will be "
                     "silently corrupted by cx_Oracle."
-                    )
+                )
                 self.execution_ctx_cls = \
-                                OracleExecutionContext_cx_oracle_with_unicode
+                    OracleExecutionContext_cx_oracle_with_unicode
         else:
             self._cx_oracle_with_unicode = False
 
         if self.cx_oracle_ver is None or \
-                    not self.auto_convert_lobs or \
-                    not hasattr(self.dbapi, 'CLOB'):
+                not self.auto_convert_lobs or \
+                not hasattr(self.dbapi, 'CLOB'):
             self.dbapi_type_map = {}
         else:
             # only use this for LOB objects.  using it for strings, dates
-            # etc. leads to a little too much magic, reflection doesn't know if it should
-            # expect encoded strings or unicodes, etc.
+            # etc. leads to a little too much magic, reflection doesn't know
+            # if it should expect encoded strings or unicodes, etc.
             self.dbapi_type_map = {
                 self.dbapi.CLOB: oracle.CLOB(),
                 self.dbapi.NCLOB: oracle.NCLOB(),
@@ -764,8 +788,8 @@ class OracleDialect_cx_oracle(OracleDialect):
         def output_type_handler(cursor, name, defaultType,
                                 size, precision, scale):
             return cursor.var(
-                        cx_Oracle.STRING,
-                        255, arraysize=cursor.arraysize)
+                cx_Oracle.STRING,
+                255, arraysize=cursor.arraysize)
 
         cursor = conn.cursor()
         cursor.outputtypehandler = output_type_handler
@@ -796,17 +820,17 @@ class OracleDialect_cx_oracle(OracleDialect):
         cx_Oracle = self.dbapi
 
         def output_type_handler(cursor, name, defaultType,
-                                    size, precision, scale):
+                                size, precision, scale):
             # convert all NUMBER with precision + positive scale to Decimal
             # this almost allows "native decimal" mode.
             if self.supports_native_decimal and \
                     defaultType == cx_Oracle.NUMBER and \
                     precision and scale > 0:
                 return cursor.var(
-                            cx_Oracle.STRING,
-                            255,
-                            outconverter=self._to_decimal,
-                            arraysize=cursor.arraysize)
+                    cx_Oracle.STRING,
+                    255,
+                    outconverter=self._to_decimal,
+                    arraysize=cursor.arraysize)
             # if NUMBER with zero precision and 0 or neg scale, this appears
             # to indicate "ambiguous".  Use a slower converter that will
             # make a decision based on each value received - the type
@@ -816,10 +840,10 @@ class OracleDialect_cx_oracle(OracleDialect):
                     defaultType == cx_Oracle.NUMBER \
                     and not precision and scale <= 0:
                 return cursor.var(
-                            cx_Oracle.STRING,
-                            255,
-                            outconverter=self._detect_decimal,
-                            arraysize=cursor.arraysize)
+                    cx_Oracle.STRING,
+                    255,
+                    outconverter=self._detect_decimal,
+                    arraysize=cursor.arraysize)
             # allow all strings to come back natively as Unicode
             elif self.coerce_to_unicode and \
                     defaultType in (cx_Oracle.STRING, cx_Oracle.FIXED_CHAR):
@@ -856,7 +880,7 @@ class OracleDialect_cx_oracle(OracleDialect):
             dsn=dsn,
             threaded=self.threaded,
             twophase=self.allow_twophase,
-            )
+        )
 
         if util.py2k:
             if self._cx_oracle_with_unicode:
@@ -882,9 +906,9 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     def _get_server_version_info(self, connection):
         return tuple(
-                        int(x)
-                        for x in connection.connection.version.split('.')
-                    )
+            int(x)
+            for x in connection.connection.version.split('.')
+        )
 
     def is_disconnect(self, e, connection, cursor):
         error, = e.args
@@ -924,11 +948,11 @@ class OracleDialect_cx_oracle(OracleDialect):
         connection.info['cx_oracle_prepared'] = result
 
     def do_rollback_twophase(self, connection, xid, is_prepared=True,
-                                                recover=False):
+                             recover=False):
         self.do_rollback(connection.connection)
 
     def do_commit_twophase(self, connection, xid, is_prepared=True,
-                                                recover=False):
+                           recover=False):
         if not is_prepared:
             self.do_commit(connection.connection)
         else:
