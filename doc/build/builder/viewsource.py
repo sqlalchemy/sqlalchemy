@@ -167,7 +167,7 @@ class AutoSourceDirective(Directive):
         env = self.state.document.settings.env
         self.docname = env.docname
 
-        sourcefile = self.state.document.current_source.split(":")[0]
+        sourcefile = self.state.document.current_source.split(os.pathsep)[0]
         dir_ = os.path.dirname(sourcefile)
         files = [
             f for f in os.listdir(dir_) if f.endswith(".py")
