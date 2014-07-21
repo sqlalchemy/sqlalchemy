@@ -70,7 +70,7 @@ class ExecutionTest(fixtures.TestBase):
             c.execute("select 1")
         go()
 
-    def test_minimal_engine_execute(self):
+    def test_minimal_engine_execute(self, variance=0.10):
         # create an engine without any instrumentation.
         e = create_engine('sqlite://')
         # ensure initial connect activities complete
