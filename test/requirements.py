@@ -361,6 +361,7 @@ class DefaultRequirements(SuiteRequirements):
                        'need separate XA implementation'),
             exclude('mysql', '<', (5, 0, 3),
                         'two-phase xact not supported by database'),
+            no_support("postgresql+pg8000", "not supported and/or hangs")
             ])
 
     @property
