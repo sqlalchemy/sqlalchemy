@@ -15,6 +15,15 @@
     :released:
 
     .. change::
+        :tags: bug, postgresql, pg8000
+        :tickets: 3134
+        :versions: 1.0.0
+
+        Fixed bug introduced in 0.9.5 by new pg8000 isolation level feature
+        where engine-level isolation level parameter would raise an error
+        on connect.
+
+    .. change::
         :tags: bug, oracle, tests
         :tickets: 3128
         :versions: 1.0.0
