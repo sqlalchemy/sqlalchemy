@@ -154,8 +154,7 @@ def _assert_no_stray_pool_connections():
     # there's a ref in there.  usually just one.
     if pool._refs:
 
-        # OK, let's be somewhat forgiving.  Increment a counter,
-        # we'll allow a couple of these at most.
+        # OK, let's be somewhat forgiving.
         _STRAY_CONNECTION_FAILURES += 1
 
         print("Encountered a stray connection in test cleanup: %s"
@@ -168,7 +167,7 @@ def _assert_no_stray_pool_connections():
     # if we've already had two of these occurrences, or
     # after a hard gc sweep we still have pool._refs?!
     # now we have to raise.
-    if _STRAY_CONNECTION_FAILURES >= 2 or pool._refs:
+    if pool._refs:
         err = str(pool._refs)
 
         # but clean out the pool refs collection directly,
@@ -176,7 +175,11 @@ def _assert_no_stray_pool_connections():
         # so the error doesn't at least keep happening.
         pool._refs.clear()
         _STRAY_CONNECTION_FAILURES = 0
-        assert False, "Stray connections in cleanup: %s" % err
+        assert False, "Stray connection refused to leave "\
+            "after gc.collect(): %s" % err
+    elif _STRAY_CONNECTION_FAILURES > 10:
+        assert False, "Encountered more than 10 stray connections"
+        _STRAY_CONNECTION_FAILURES = 0
 
 
 def eq_(a, b, msg=None):
