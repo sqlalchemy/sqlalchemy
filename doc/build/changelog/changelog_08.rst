@@ -10,6 +10,7 @@
 
 .. changelog::
     :version: 0.8.7
+    :released: July 22, 2014
 
     .. change::
         :tags: bug, mssql
