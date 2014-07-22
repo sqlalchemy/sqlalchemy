@@ -12,7 +12,7 @@
 
 .. changelog::
     :version: 0.9.7
-    :released:
+    :released: July 22, 2014
 
     .. change::
         :tags: bug, postgresql, pg8000
