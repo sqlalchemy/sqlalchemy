@@ -118,14 +118,10 @@
     .. change::
         :tags: bug, ext
         :versions: 0.9.5, 1.0.0
-        :tickets: 3051
+        :tickets: 3051, 3093
 
         Fixed bug in mutable extension where :class:`.MutableDict` did not
         report change events for the ``setdefault()`` dictionary operation.
-
-        .. seealso::
-
-            :ticket:`3093`
 
     .. change::
         :tags: bug, ext
