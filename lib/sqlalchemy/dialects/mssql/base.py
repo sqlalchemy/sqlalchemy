@@ -769,7 +769,23 @@ class MSExecutionContext(default.DefaultExecutionContext):
 
             if insert_has_sequence:
                 self._enable_identity_insert = \
-                    seq_column.key in self.compiled_parameters[0]
+                    seq_column.key in self.compiled_parameters[0] or \
+                    (
+                        self.compiled.statement.parameters and (
+                            (
+                                self.compiled.statement._has_multi_parameters
+                                and
+                                seq_column.key in
+                                self.compiled.statement.parameters[0]
+                            ) or (
+                                not
+                                self.compiled.statement._has_multi_parameters
+                                and
+                                seq_column.key in
+                                self.compiled.statement.parameters
+                            )
+                        )
+                    )
             else:
                 self._enable_identity_insert = False
 
