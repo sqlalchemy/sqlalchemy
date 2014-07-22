@@ -896,9 +896,13 @@ class UnicodeTest(fixtures.TestBase):
     def test_native_unicode(self):
         """assert expected values for 'native unicode' mode"""
 
-        if (testing.against('mssql+pyodbc') and
-                not testing.db.dialect.freetds) \
-                or testing.against('mssql+mxodbc'):
+        if testing.against('mssql+pyodbc'):
+            eq_(
+                testing.db.dialect.returns_unicode_strings,
+                'conditional'
+            )
+
+        elif testing.against('mssql+mxodbc'):
             eq_(
                 testing.db.dialect.returns_unicode_strings,
                 'conditional'

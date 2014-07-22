@@ -403,13 +403,19 @@ class DefaultRequirements(SuiteRequirements):
     def unicode_ddl(self):
         """Target driver must support some degree of non-ascii symbol names."""
         # TODO: expand to exclude MySQLdb versions w/ broken unicode
+
         return skip_if([
             no_support('oracle', 'FIXME: no support in database?'),
             no_support('sybase', 'FIXME: guessing, needs confirmation'),
             no_support('mssql+pymssql', 'no FreeTDS support'),
-
+            LambdaPredicate(
+                lambda config: against(config, 'mssql+pyodbc') and
+                config.db.dialect.freetds and
+                config.db.dialect.freetds_driver_version < "0.91",
+                "older freetds doesn't support unicode DDL"
+            ),
             exclude('mysql', '<', (4, 1, 1), 'no unicode connection support'),
-            ])
+        ])
 
     @property
     def sane_rowcount(self):

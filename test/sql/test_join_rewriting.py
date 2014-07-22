@@ -631,6 +631,8 @@ class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
             assert col in result._metadata._keymap
 
     @testing.skip_if("oracle", "oracle's cranky")
+    @testing.skip_if("mssql", "can't query EXISTS in the columns "
+                     "clause w/o subquery")
     def test_a_atobalias_balias_c_w_exists(self):
         super(JoinExecTest, self).test_a_atobalias_balias_c_w_exists()
 

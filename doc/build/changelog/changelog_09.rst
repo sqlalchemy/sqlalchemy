@@ -174,7 +174,9 @@
         :versions: 1.0.0
 
         Enabled "multivalues insert" for SQL Server 2008.  Pull request
-        courtesy Albert Cervin.
+        courtesy Albert Cervin.  Also expanded the checks for "IDENTITY INSERT"
+        mode to include when the identity key is present in the
+        VALUEs clause of the statement.
 
     .. change::
         :tags: feature, engine
