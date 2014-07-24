@@ -449,10 +449,12 @@ class ColumnCollection(util.OrderedProperties):
 
     """
 
-    def __init__(self):
+    def __init__(self, *columns):
         super(ColumnCollection, self).__init__()
         self.__dict__['_all_col_set'] = util.column_set()
         self.__dict__['_all_columns'] = []
+        for c in columns:
+            self.add(c)
 
     def __str__(self):
         return repr([str(c) for c in self])

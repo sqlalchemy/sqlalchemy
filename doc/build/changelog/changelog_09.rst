@@ -13,6 +13,18 @@
 .. changelog::
     :version: 0.9.8
 
+    .. change::
+        :tags: bug, postgresql
+        :versions: 1.0.0
+        :tickets: 3137
+
+        Added a supported :meth:`.FunctionElement.alias` method to functions,
+        e.g. the ``func`` construct.  Previously, behavior for this method
+        was undefined.  The current behavior mimics that of pre-0.9.4,
+        which is that the function is turned into a single-column FROM
+        clause with the given alias name, where the column itself is
+        anonymously named.
+
 .. changelog::
     :version: 0.9.7
     :released: July 22, 2014
