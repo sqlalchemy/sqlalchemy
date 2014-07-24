@@ -9,11 +9,11 @@
 
 """
 from . import sqltypes, schema
-from .base import Executable
+from .base import Executable, ColumnCollection
 from .elements import ClauseList, Cast, Extract, _literal_as_binds, \
     literal_column, _type_from_args, ColumnElement, _clone,\
     Over, BindParameter
-from .selectable import FromClause, Select
+from .selectable import FromClause, Select, Alias
 
 from . import operators
 from .visitors import VisitableType
@@ -67,12 +67,24 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
     @property
     def columns(self):
-        """Fulfill the 'columns' contract of :class:`.ColumnElement`.
+        """The set of columns exported by this :class:`.FunctionElement`.
 
-        Returns a single-element list consisting of this object.
+        Function objects currently have no result column names built in;
+        this method returns a single-element column collection with
+        an anonymously named column.
+
+        An interim approach to providing named columns for a function
+        as a FROM clause is to build a :func:`.select` with the
+        desired columns::
+
+            from sqlalchemy.sql import column
+
+            stmt = select([column('x'), column('y')]).\
+                select_from(func.myfunction())
+
 
         """
-        return [self]
+        return ColumnCollection(self.label(None))
 
     @util.memoized_property
     def clauses(self):
@@ -115,6 +127,36 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         self.clause_expr = clone(self.clause_expr, **kw)
         self._reset_exported()
         FunctionElement.clauses._reset(self)
+
+    def alias(self, name=None, flat=False):
+        """Produce a :class:`.Alias` construct against this
+        :class:`.FunctionElement`.
+
+        This construct wraps the function in a named alias which
+        is suitable for the FROM clause.
+
+        e.g.::
+
+            from sqlalchemy.sql import column
+
+            stmt = select([column('data')]).select_from(
+                func.unnest(Table.data).alias('data_view')
+            )
+
+        Would produce:
+
+        .. sourcecode:: sql
+
+            SELECT data
+            FROM unnest(sometable.data) AS data_view
+
+        .. versionadded:: 0.9.8 The :meth:`.FunctionElement.alias` method
+           is now supported.  Previously, this method's behavior was
+           undefined and did not behave consistently across versions.
+
+        """
+
+        return Alias(self, name)
 
     def select(self):
         """Produce a :func:`~.expression.select` construct

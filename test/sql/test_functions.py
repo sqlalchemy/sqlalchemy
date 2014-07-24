@@ -316,6 +316,57 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         expr = func.extract("year", datetime.date(2010, 12, 5))
         self.assert_compile(expr, "EXTRACT(year FROM :param_1)")
 
+    def test_select_method_one(self):
+        expr = func.rows("foo")
+        self.assert_compile(
+            expr.select(),
+            "SELECT rows(:rows_2) AS rows_1"
+        )
+
+    def test_alias_method_one(self):
+        expr = func.rows("foo")
+        self.assert_compile(
+            expr.alias(),
+            "rows(:rows_1)"
+        )
+
+    def test_select_method_two(self):
+        expr = func.rows("foo")
+        self.assert_compile(
+            select(['*']).select_from(expr.select()),
+            "SELECT * FROM (SELECT rows(:rows_2) AS rows_1)"
+        )
+
+    def test_select_method_three(self):
+        expr = func.rows("foo")
+        self.assert_compile(
+            select(['foo']).select_from(expr),
+            "SELECT foo FROM rows(:rows_1)"
+        )
+
+    def test_alias_method_two(self):
+        expr = func.rows("foo")
+        self.assert_compile(
+            select(['*']).select_from(expr.alias('bar')),
+            "SELECT * FROM rows(:rows_1) AS bar"
+        )
+
+    def test_alias_method_columns(self):
+        expr = func.rows("foo").alias('bar')
+
+        # this isn't very useful but is the old behavior
+        # prior to #2974.
+        # testing here that the expression exports its column
+        # list in a way that at least doesn't break.
+        self.assert_compile(
+            select([expr]),
+            "SELECT bar.rows_1 FROM rows(:rows_2) AS bar"
+        )
+
+    def test_alias_method_columns_two(self):
+        expr = func.rows("foo").alias('bar')
+        assert len(expr.c)
+
 
 class ExecuteTest(fixtures.TestBase):
 
