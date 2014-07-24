@@ -11,6 +11,9 @@
         :start-line: 5
 
 .. changelog::
+    :version: 0.9.8
+
+.. changelog::
     :version: 0.9.7
     :released: July 22, 2014
 
