@@ -1574,6 +1574,12 @@ class PGInspector(reflection.Inspector):
 
         return self.dialect.get_table_oid(self.bind, table_name, schema,
                                           info_cache=self.info_cache)
+    def load_enums(self, conn, schema=None):
+        """Return a enums list.
+
+        A per-database and per-schema enums list."""
+        schema = schema or self.default_schema_name
+        return self.dialect._load_enums(conn, schema)
 
 
 class CreateEnumType(schema._CreateDropBase):
@@ -2424,7 +2430,8 @@ class PGDialect(default.DefaultDialect):
             for name, uc in uniques.items()
         ]
 
-    def _load_enums(self, connection):
+    def _load_enums(self, connection, schema=None):
+        schema = schema or self.default_schema_name
         if not self.supports_native_enum:
             return {}
 
@@ -2440,8 +2447,9 @@ class PGDialect(default.DefaultDialect):
                  LEFT JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
                  LEFT JOIN pg_catalog.pg_enum e ON t.oid = e.enumtypid
             WHERE t.typtype = 'e'
+            AND n.nspname = '%s'
             ORDER BY "name", e.oid -- e.oid gives us label order
-        """
+        """ % schema
 
         s = sql.text(SQL_ENUMS, typemap={
             'attname': sqltypes.Unicode,

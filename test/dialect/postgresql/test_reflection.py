@@ -1,5 +1,6 @@
 # coding: utf-8
 
+from sqlalchemy.engine import reflection
 from sqlalchemy.testing.assertions import eq_, assert_raises, \
     AssertsExecutionResults
 from sqlalchemy.testing import fixtures
@@ -621,6 +622,26 @@ class ReflectionTest(fixtures.TestBase):
             inspector.get_foreign_keys('company')
         for fk in fks:
             eq_(fk, fk_ref[fk['name']])
+
+    @testing.provide_metadata
+    def test_inspect_enums_custom_schema(self):
+        conn = testing.db.connect()
+        enum_type = postgresql.ENUM('sad', 'ok', 'happy', name='mood',
+            metadata=self.metadata, schema='test_schema')
+        enum_type.create(conn)
+        inspector = reflection.Inspector.from_engine(conn.engine)
+        eq_(inspector.load_enums(conn, 'test_schema'), {
+            u'test_schema.mood': {'labels': [u'sad', u'ok', u'happy']}})
+
+    @testing.provide_metadata
+    def test_inspect_enums_schema(self):
+        conn = testing.db.connect()
+        enum_type = postgresql.ENUM('cat', 'dog', 'rat', name='pet',
+            metadata=self.metadata)
+        enum_type.create(conn)
+        inspector = reflection.Inspector.from_engine(conn.engine)
+        eq_(inspector.load_enums(conn), {
+            u'pet': {'labels': [u'cat', u'dog', u'rat']}})
 
 
 class CustomTypeReflectionTest(fixtures.TestBase):
