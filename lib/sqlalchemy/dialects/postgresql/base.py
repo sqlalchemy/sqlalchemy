@@ -695,7 +695,7 @@ class array(expression.Tuple):
         self.type = ARRAY(self.type)
 
     def _bind_param(self, operator, obj):
-        return array(*[
+        return array([
             expression.BindParameter(None, o, _compared_to_operator=operator,
                                      _compared_to_type=self.type, unique=True)
             for o in obj
