@@ -1119,6 +1119,7 @@ class ManyToManyDP(DependencyProcessor):
                 if c.key in associationrow
             ]))
             result = connection.execute(statement, secondary_update)
+
             if result.supports_sane_multi_rowcount() and \
                     result.rowcount != len(secondary_update):
                 raise exc.StaleDataError(
