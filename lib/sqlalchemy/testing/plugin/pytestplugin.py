@@ -3,6 +3,7 @@ import argparse
 import inspect
 from . import plugin_base
 import collections
+import itertools
 
 
 def pytest_addoption(parser):
@@ -24,12 +25,27 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config):
+    if hasattr(config, "slaveinput"):
+        plugin_base.configure_follower(
+            config.slaveinput["follower_ident"]
+        )
+
     plugin_base.pre_begin(config.option)
 
     plugin_base.set_coverage_flag(bool(getattr(config.option,
                                                "cov_source", False)))
 
     plugin_base.post_begin()
+
+_follower_count = itertools.count(1)
+
+
+def pytest_configure_node(node):
+    # the master for each node fills slaveinput dictionary
+    # which pytest-xdist will transfer to the subprocess
+    node.slaveinput["follower_ident"] = next(_follower_count)
+    from . import provision
+    provision.create_follower_db(node.slaveinput["follower_ident"])
 
 
 def pytest_collection_modifyitems(session, config, items):

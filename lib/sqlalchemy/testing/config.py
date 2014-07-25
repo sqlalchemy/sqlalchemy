@@ -78,3 +78,4 @@ class Config(object):
     def all_dbs(cls):
         for cfg in cls.all_configs():
             yield cfg.db
+

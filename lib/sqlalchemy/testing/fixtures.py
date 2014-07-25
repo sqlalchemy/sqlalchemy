@@ -91,20 +91,12 @@ class TablesTest(TestBase):
                 cls.run_create_tables = 'each'
             assert cls.run_inserts in ('each', None)
 
-        if cls.other is None:
-            cls.other = adict()
+        cls.other = adict()
+        cls.tables = adict()
 
-        if cls.tables is None:
-            cls.tables = adict()
-
-        if cls.bind is None:
-            setattr(cls, 'bind', cls.setup_bind())
-
-        if cls.metadata is None:
-            setattr(cls, 'metadata', sa.MetaData())
-
-        if cls.metadata.bind is None:
-            cls.metadata.bind = cls.bind
+        cls.bind = cls.setup_bind()
+        cls.metadata = sa.MetaData()
+        cls.metadata.bind = cls.bind
 
     @classmethod
     def _setup_once_inserts(cls):

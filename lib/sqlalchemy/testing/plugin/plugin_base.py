@@ -31,6 +31,7 @@ if py3k:
 else:
     import ConfigParser as configparser
 
+FOLLOWER_IDENT = None
 
 # late imports
 fixtures = None
@@ -100,6 +101,11 @@ def setup_options(make_option):
                 help="Write/update profiling data.")
 
 
+def configure_follower(follower_ident):
+    global FOLLOWER_IDENT
+    FOLLOWER_IDENT = "test_%s" % follower_ident
+
+
 def read_config():
     global file_config
     file_config = configparser.ConfigParser()
@@ -133,6 +139,7 @@ def post_begin():
     from sqlalchemy.testing import fixtures, engines, exclusions, \
         assertions, warnings, profiling, config
     from sqlalchemy import util
+
 
 
 def _log(opt_str, value, parser):
@@ -176,6 +183,7 @@ def post(fn):
     return fn
 
 
+
 @pre
 def _setup_options(opt, file_config):
     global options
@@ -214,6 +222,10 @@ def _engine_uri(options, file_config):
         db_urls.append(file_config.get('db', 'default'))
 
     for db_url in db_urls:
+        if FOLLOWER_IDENT:
+            from sqlalchemy.engine import url
+            db_url = url.make_url(db_url)
+            db_url.database = FOLLOWER_IDENT
         eng = engines.testing_engine(db_url, db_opts)
         eng.connect().close()
         config.Config.register(eng, db_opts, options, file_config, testing)
