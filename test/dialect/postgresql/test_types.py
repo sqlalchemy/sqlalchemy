@@ -1,62 +1,60 @@
 # coding: utf-8
 from sqlalchemy.testing.assertions import eq_, assert_raises, \
-                assert_raises_message, is_, AssertsExecutionResults, \
-                AssertsCompiledSQL, ComparesTables
+    assert_raises_message, is_, AssertsExecutionResults, \
+    AssertsCompiledSQL, ComparesTables
 from sqlalchemy.testing import engines, fixtures
 from sqlalchemy import testing
 import datetime
-from sqlalchemy import Table, Column, select, MetaData, text, Integer, \
-            String, Sequence, ForeignKey, join, Numeric, \
-            PrimaryKeyConstraint, DateTime, tuple_, Float, BigInteger, \
-            func, literal_column, literal, bindparam, cast, extract, \
-            SmallInteger, Enum, REAL, update, insert, Index, delete, \
-            and_, Date, TypeDecorator, Time, Unicode, Interval, or_, Text, \
-            type_coerce
-from sqlalchemy.orm import Session, mapper, aliased
-from sqlalchemy import exc, schema, types
+from sqlalchemy import Table, MetaData, Column, Integer, Enum, Float, select, \
+    func, DateTime, Numeric, exc, String, cast, REAL, TypeDecorator, Unicode, \
+    Text
+from sqlalchemy.sql import operators
+from sqlalchemy import types
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import HSTORE, hstore, array, \
-            INT4RANGE, INT8RANGE, NUMRANGE, DATERANGE, TSRANGE, TSTZRANGE, \
-            JSON, JSONB
+    INT4RANGE, INT8RANGE, NUMRANGE, DATERANGE, TSRANGE, TSTZRANGE, \
+    JSON, JSONB
 import decimal
 from sqlalchemy import util
 from sqlalchemy.testing.util import round_decimal
-from sqlalchemy.sql import table, column, operators
-import logging
-import re
 from sqlalchemy import inspect
 from sqlalchemy import event
+
+tztable = notztable = metadata = table = None
+
 
 class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
     __only_on__ = 'postgresql'
     __dialect__ = postgresql.dialect()
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
         data_table = Table('data_table', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', Integer)
-        )
+                           Column('id', Integer, primary_key=True),
+                           Column('data', Integer)
+                           )
 
     @classmethod
     def insert_data(cls):
         data_table = cls.tables.data_table
 
         data_table.insert().execute(
-            {'data':3},
-            {'data':5},
-            {'data':7},
-            {'data':2},
-            {'data':15},
-            {'data':12},
-            {'data':6},
-            {'data':478},
-            {'data':52},
-            {'data':9},
+            {'data': 3},
+            {'data': 5},
+            {'data': 7},
+            {'data': 2},
+            {'data': 15},
+            {'data': 12},
+            {'data': 6},
+            {'data': 478},
+            {'data': 52},
+            {'data': 9},
         )
 
-    @testing.fails_on('postgresql+zxjdbc',
-                      'XXX: postgresql+zxjdbc currently returns a Decimal result for Float')
+    @testing.fails_on(
+        'postgresql+zxjdbc',
+        'XXX: postgresql+zxjdbc currently returns a Decimal result for Float')
     def test_float_coercion(self):
         data_table = self.tables.data_table
 
@@ -87,11 +85,11 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
     def test_arrays(self):
         metadata = self.metadata
         t1 = Table('t', metadata,
-            Column('x', postgresql.ARRAY(Float)),
-            Column('y', postgresql.ARRAY(REAL)),
-            Column('z', postgresql.ARRAY(postgresql.DOUBLE_PRECISION)),
-            Column('q', postgresql.ARRAY(Numeric))
-        )
+                   Column('x', postgresql.ARRAY(Float)),
+                   Column('y', postgresql.ARRAY(REAL)),
+                   Column('z', postgresql.ARRAY(postgresql.DOUBLE_PRECISION)),
+                   Column('q', postgresql.ARRAY(Numeric))
+                   )
         metadata.create_all()
         t1.insert().execute(x=[5], y=[5], z=[6], q=[decimal.Decimal("6.4")])
         row = t1.select().execute().first()
@@ -100,19 +98,24 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
             ([5], [5], [6], [decimal.Decimal("6.4")])
         )
 
+
 class EnumTest(fixtures.TestBase, AssertsExecutionResults):
+    __backend__ = True
 
     __only_on__ = 'postgresql > 8.3'
-
 
     @testing.fails_on('postgresql+zxjdbc',
                       'zxjdbc fails on ENUM: column "XXX" is of type '
                       'XXX but expression is of type character varying')
     def test_create_table(self):
         metadata = MetaData(testing.db)
-        t1 = Table('table', metadata, Column('id', Integer,
-                   primary_key=True), Column('value', Enum('one', 'two'
-                   , 'three', name='onetwothreetype')))
+        t1 = Table(
+            'table', metadata,
+            Column(
+                'id', Integer, primary_key=True),
+            Column(
+                'value', Enum(
+                    'one', 'two', 'three', name='onetwothreetype')))
         t1.create()
         t1.create(checkfirst=True)  # check the create
         try:
@@ -138,20 +141,28 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
     @testing.provide_metadata
     def test_unicode_labels(self):
         metadata = self.metadata
-        t1 = Table('table', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('value',
-                    Enum(util.u('réveillé'), util.u('drôle'), util.u('S’il'),
-                            name='onetwothreetype'))
-        )
+        t1 = Table(
+            'table',
+            metadata,
+            Column(
+                'id',
+                Integer,
+                primary_key=True),
+            Column(
+                'value',
+                Enum(
+                    util.u('réveillé'),
+                    util.u('drôle'),
+                    util.u('S’il'),
+                    name='onetwothreetype')))
         metadata.create_all()
         t1.insert().execute(value=util.u('drôle'))
         t1.insert().execute(value=util.u('réveillé'))
         t1.insert().execute(value=util.u('S’il'))
         eq_(t1.select().order_by(t1.c.id).execute().fetchall(),
             [(1, util.u('drôle')), (2, util.u('réveillé')),
-                    (3, util.u('S’il'))]
-        )
+             (3, util.u('S’il'))]
+            )
         m2 = MetaData(testing.db)
         t2 = Table('table', m2, autoload=True)
         eq_(
@@ -161,17 +172,27 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
 
     def test_non_native_type(self):
         metadata = MetaData()
-        t1 = Table('foo', metadata, Column('bar', Enum('one', 'two',
-                   'three', name='myenum', native_enum=False)))
+        t1 = Table(
+            'foo',
+            metadata,
+            Column(
+                'bar',
+                Enum(
+                    'one',
+                    'two',
+                    'three',
+                    name='myenum',
+                    native_enum=False)))
 
         def go():
             t1.create(testing.db)
 
         try:
-            self.assert_sql(testing.db, go, [],
-                            with_sequences=[("CREATE TABLE foo (\tbar "
-                            "VARCHAR(5), \tCONSTRAINT myenum CHECK "
-                            "(bar IN ('one', 'two', 'three')))", {})])
+            self.assert_sql(
+                testing.db, go, [], with_sequences=[
+                    ("CREATE TABLE foo (\tbar "
+                     "VARCHAR(5), \tCONSTRAINT myenum CHECK "
+                     "(bar IN ('one', 'two', 'three')))", {})])
         finally:
             metadata.drop_all(testing.db)
 
@@ -180,12 +201,12 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         metadata = self.metadata
 
         e1 = postgresql.ENUM('one', 'two', 'three',
-                            name="myenum",
-                            create_type=False)
+                             name="myenum",
+                             create_type=False)
 
         t1 = Table('e1', metadata,
-            Column('c1', e1)
-        )
+                   Column('c1', e1)
+                   )
         # table can be created separately
         # without conflict
         e1.create(bind=testing.db)
@@ -205,14 +226,14 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         metadata = self.metadata
 
         e1 = Enum('one', 'two', 'three',
-                            name="myenum")
+                  name="myenum")
         t1 = Table('e1', metadata,
-            Column('c1', e1)
-        )
+                   Column('c1', e1)
+                   )
 
         t2 = Table('e2', metadata,
-            Column('c1', e1)
-        )
+                   Column('c1', e1)
+                   )
 
         metadata.create_all(checkfirst=False)
         metadata.drop_all(checkfirst=False)
@@ -222,17 +243,26 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         engine.connect()
         engine.dialect.supports_native_enum = False
         metadata = MetaData()
-        t1 = Table('foo', metadata, Column('bar', Enum('one', 'two',
-                   'three', name='myenum')))
+        t1 = Table(
+            'foo',
+            metadata,
+            Column(
+                'bar',
+                Enum(
+                    'one',
+                    'two',
+                    'three',
+                    name='myenum')))
 
         def go():
             t1.create(engine)
 
         try:
-            self.assert_sql(engine, go, [],
-                            with_sequences=[("CREATE TABLE foo (\tbar "
-                            "VARCHAR(5), \tCONSTRAINT myenum CHECK "
-                            "(bar IN ('one', 'two', 'three')))", {})])
+            self.assert_sql(
+                engine, go, [], with_sequences=[
+                    ("CREATE TABLE foo (\tbar "
+                     "VARCHAR(5), \tCONSTRAINT myenum CHECK "
+                     "(bar IN ('one', 'two', 'three')))", {})])
         finally:
             metadata.drop_all(engine)
 
@@ -243,19 +273,19 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         etype.create()
         try:
             assert testing.db.dialect.has_type(testing.db,
-                    'fourfivesixtype')
+                                               'fourfivesixtype')
         finally:
             etype.drop()
             assert not testing.db.dialect.has_type(testing.db,
-                    'fourfivesixtype')
+                                                   'fourfivesixtype')
         metadata.create_all()
         try:
             assert testing.db.dialect.has_type(testing.db,
-                    'fourfivesixtype')
+                                               'fourfivesixtype')
         finally:
             metadata.drop_all()
             assert not testing.db.dialect.has_type(testing.db,
-                    'fourfivesixtype')
+                                                   'fourfivesixtype')
 
     def test_no_support(self):
         def server_version_info(self):
@@ -274,15 +304,18 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         e.connect()
         assert not dialect.supports_native_enum
 
-
     def test_reflection(self):
         metadata = MetaData(testing.db)
         etype = Enum('four', 'five', 'six', name='fourfivesixtype',
                      metadata=metadata)
-        t1 = Table('table', metadata, Column('id', Integer,
-                   primary_key=True), Column('value', Enum('one', 'two'
-                   , 'three', name='onetwothreetype')), Column('value2'
-                   , etype))
+        t1 = Table(
+            'table', metadata,
+            Column(
+                'id', Integer, primary_key=True),
+            Column(
+                'value', Enum(
+                    'one', 'two', 'three', name='onetwothreetype')),
+            Column('value2', etype))
         metadata.create_all()
         try:
             m2 = MetaData(testing.db)
@@ -303,11 +336,16 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             name='fourfivesixtype',
             schema='test_schema',
             metadata=metadata,
-            )
-        t1 = Table('table', metadata, Column('id', Integer,
-                   primary_key=True), Column('value', Enum('one', 'two'
-                   , 'three', name='onetwothreetype',
-                   schema='test_schema')), Column('value2', etype))
+        )
+        t1 = Table(
+            'table', metadata,
+            Column(
+                'id', Integer, primary_key=True),
+            Column(
+                'value', Enum(
+                    'one', 'two', 'three',
+                    name='onetwothreetype', schema='test_schema')),
+            Column('value2', etype))
         metadata.create_all()
         try:
             m2 = MetaData(testing.db)
@@ -320,21 +358,25 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         finally:
             metadata.drop_all()
 
+
 class OIDTest(fixtures.TestBase):
     __only_on__ = 'postgresql'
+    __backend__ = True
 
     @testing.provide_metadata
     def test_reflection(self):
         metadata = self.metadata
         Table('table', metadata, Column('x', Integer),
-                            Column('y', postgresql.OID))
+              Column('y', postgresql.OID))
         metadata.create_all()
         m2 = MetaData()
         t2 = Table('table', m2, autoload_with=testing.db, autoload=True)
         assert isinstance(t2.c.y.type, postgresql.OID)
 
+
 class NumericInterpretationTest(fixtures.TestBase):
     __only_on__ = 'postgresql'
+    __backend__ = True
 
     def test_numeric_codes(self):
         from sqlalchemy.dialects.postgresql import pg8000, psycopg2, base
@@ -343,7 +385,7 @@ class NumericInterpretationTest(fixtures.TestBase):
 
             typ = Numeric().dialect_impl(dialect)
             for code in base._INT_TYPES + base._FLOAT_TYPES + \
-                        base._DECIMAL_TYPES:
+                    base._DECIMAL_TYPES:
                 proc = typ.result_processor(dialect, code)
                 val = 23.7
                 if proc is not None:
@@ -355,13 +397,13 @@ class NumericInterpretationTest(fixtures.TestBase):
         metadata = self.metadata
         # pg8000 appears to fail when the value is 0,
         # returns an int instead of decimal.
-        t =Table('t', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('nd', Numeric(asdecimal=True), default=1),
-            Column('nf', Numeric(asdecimal=False), default=1),
-            Column('fd', Float(asdecimal=True), default=1),
-            Column('ff', Float(asdecimal=False), default=1),
-        )
+        t = Table('t', metadata,
+                  Column('id', Integer, primary_key=True),
+                  Column('nd', Numeric(asdecimal=True), default=1),
+                  Column('nf', Numeric(asdecimal=False), default=1),
+                  Column('fd', Float(asdecimal=True), default=1),
+                  Column('ff', Float(asdecimal=False), default=1),
+                  )
         metadata.create_all()
         r = t.insert().execute()
 
@@ -375,7 +417,9 @@ class NumericInterpretationTest(fixtures.TestBase):
             (1, decimal.Decimal("1"), 1, decimal.Decimal("1"), 1)
         )
 
+
 class TimezoneTest(fixtures.TestBase):
+    __backend__ = True
 
     """Test timezone-aware datetimes.
 
@@ -395,17 +439,24 @@ class TimezoneTest(fixtures.TestBase):
         # current_timestamp() in postgresql is assumed to return
         # TIMESTAMP WITH TIMEZONE
 
-        tztable = Table('tztable', metadata, Column('id', Integer,
-                        primary_key=True), Column('date',
-                        DateTime(timezone=True),
-                        onupdate=func.current_timestamp()),
-                        Column('name', String(20)))
-        notztable = Table('notztable', metadata, Column('id', Integer,
-                          primary_key=True), Column('date',
-                          DateTime(timezone=False),
-                          onupdate=cast(func.current_timestamp(),
-                          DateTime(timezone=False))), Column('name',
-                          String(20)))
+        tztable = Table(
+            'tztable', metadata,
+            Column(
+                'id', Integer, primary_key=True),
+            Column(
+                'date', DateTime(
+                    timezone=True), onupdate=func.current_timestamp()),
+            Column('name', String(20)))
+        notztable = Table(
+            'notztable', metadata,
+            Column(
+                'id', Integer, primary_key=True),
+            Column(
+                'date', DateTime(
+                    timezone=False), onupdate=cast(
+                    func.current_timestamp(), DateTime(
+                        timezone=False))),
+            Column('name', String(20)))
         metadata.create_all()
 
     @classmethod
@@ -429,8 +480,8 @@ class TimezoneTest(fixtures.TestBase):
             row[0].tzinfo.utcoffset(row[0]))
         result = tztable.update(tztable.c.id
                                 == 1).returning(tztable.c.date).\
-                                    execute(name='newname'
-                )
+            execute(name='newname'
+                    )
         row = result.first()
         assert row[0] >= somedate
 
@@ -438,7 +489,7 @@ class TimezoneTest(fixtures.TestBase):
 
         # get a date without a tzinfo
 
-        somedate = datetime.datetime( 2005, 10, 20, 11, 52, 0, )
+        somedate = datetime.datetime(2005, 10, 20, 11, 52, 0, )
         assert not somedate.tzinfo
         notztable.insert().execute(id=1, name='row1', date=somedate)
         row = select([notztable.c.date], notztable.c.id
@@ -447,15 +498,17 @@ class TimezoneTest(fixtures.TestBase):
         eq_(row[0].tzinfo, None)
         result = notztable.update(notztable.c.id
                                   == 1).returning(notztable.c.date).\
-                                    execute(name='newname'
-                )
+            execute(name='newname'
+                    )
         row = result.first()
         assert row[0] >= somedate
+
 
 class TimePrecisionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __dialect__ = postgresql.dialect()
     __prefer__ = 'postgresql'
+    __backend__ = True
 
     def test_compile(self):
         for type_, expected in [
@@ -469,7 +522,7 @@ class TimePrecisionTest(fixtures.TestBase, AssertsCompiledSQL):
              'TIMESTAMP(5) WITHOUT TIME ZONE'),
             (postgresql.TIMESTAMP(timezone=True, precision=5),
              'TIMESTAMP(5) WITH TIME ZONE'),
-            ]:
+        ]:
             self.assert_compile(type_, expected)
 
     @testing.only_on('postgresql', 'DB specific feature')
@@ -485,8 +538,8 @@ class TimePrecisionTest(fixtures.TestBase, AssertsCompiledSQL):
             Column('c4', postgresql.TIMESTAMP()),
             Column('c5', postgresql.TIMESTAMP(precision=5)),
             Column('c6', postgresql.TIMESTAMP(timezone=True,
-                   precision=5)),
-            )
+                                              precision=5)),
+        )
         t1.create()
         m2 = MetaData(testing.db)
         t2 = Table('t1', m2, autoload=True)
@@ -503,10 +556,11 @@ class TimePrecisionTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(t2.c.c5.type.timezone, False)
         eq_(t2.c.c6.type.timezone, True)
 
+
 class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
 
     __only_on__ = 'postgresql'
-
+    __backend__ = True
     __unsupported_on__ = 'postgresql+pg8000', 'postgresql+zxjdbc'
 
     @classmethod
@@ -532,23 +586,23 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
                 ]
 
         Table('arrtable', metadata,
-                        Column('id', Integer, primary_key=True),
-                        Column('intarr', postgresql.ARRAY(Integer)),
-                         Column('strarr', postgresql.ARRAY(Unicode())),
-                        Column('dimarr', ProcValue)
-                    )
+              Column('id', Integer, primary_key=True),
+              Column('intarr', postgresql.ARRAY(Integer)),
+              Column('strarr', postgresql.ARRAY(Unicode())),
+              Column('dimarr', ProcValue)
+              )
 
         Table('dim_arrtable', metadata,
-                        Column('id', Integer, primary_key=True),
-                        Column('intarr', postgresql.ARRAY(Integer, dimensions=1)),
-                         Column('strarr', postgresql.ARRAY(Unicode(), dimensions=1)),
-                        Column('dimarr', ProcValue)
-                    )
+              Column('id', Integer, primary_key=True),
+              Column('intarr', postgresql.ARRAY(Integer, dimensions=1)),
+              Column('strarr', postgresql.ARRAY(Unicode(), dimensions=1)),
+              Column('dimarr', ProcValue)
+              )
 
     def _fixture_456(self, table):
         testing.db.execute(
-                table.insert(),
-                intarr=[4, 5, 6]
+            table.insert(),
+            intarr=[4, 5, 6]
         )
 
     def test_reflect_array_column(self):
@@ -562,7 +616,7 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
     def test_insert_array(self):
         arrtable = self.tables.arrtable
         arrtable.insert().execute(intarr=[1, 2, 3], strarr=[util.u('abc'),
-                                  util.u('def')])
+                                                            util.u('def')])
         results = arrtable.select().execute().fetchall()
         eq_(len(results), 1)
         eq_(results[0]['intarr'], [1, 2, 3])
@@ -571,9 +625,12 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
     def test_array_where(self):
         arrtable = self.tables.arrtable
         arrtable.insert().execute(intarr=[1, 2, 3], strarr=[util.u('abc'),
-                                  util.u('def')])
+                                                            util.u('def')])
         arrtable.insert().execute(intarr=[4, 5, 6], strarr=util.u('ABC'))
-        results = arrtable.select().where(arrtable.c.intarr == [1, 2,
+        results = arrtable.select().where(
+            arrtable.c.intarr == [
+                1,
+                2,
                 3]).execute().fetchall()
         eq_(len(results), 1)
         eq_(results[0]['intarr'], [1, 2, 3])
@@ -581,24 +638,26 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
     def test_array_concat(self):
         arrtable = self.tables.arrtable
         arrtable.insert().execute(intarr=[1, 2, 3],
-                    strarr=[util.u('abc'), util.u('def')])
+                                  strarr=[util.u('abc'), util.u('def')])
         results = select([arrtable.c.intarr + [4, 5,
-                         6]]).execute().fetchall()
+                                               6]]).execute().fetchall()
         eq_(len(results), 1)
-        eq_(results[0][0], [ 1, 2, 3, 4, 5, 6, ])
+        eq_(results[0][0], [1, 2, 3, 4, 5, 6, ])
 
     def test_array_subtype_resultprocessor(self):
         arrtable = self.tables.arrtable
         arrtable.insert().execute(intarr=[4, 5, 6],
                                   strarr=[[util.ue('m\xe4\xe4')], [
-                                    util.ue('m\xf6\xf6')]])
+                                      util.ue('m\xf6\xf6')]])
         arrtable.insert().execute(intarr=[1, 2, 3], strarr=[
-                        util.ue('m\xe4\xe4'), util.ue('m\xf6\xf6')])
+            util.ue('m\xe4\xe4'), util.ue('m\xf6\xf6')])
         results = \
             arrtable.select(order_by=[arrtable.c.intarr]).execute().fetchall()
         eq_(len(results), 2)
         eq_(results[0]['strarr'], [util.ue('m\xe4\xe4'), util.ue('m\xf6\xf6')])
-        eq_(results[1]['strarr'], [[util.ue('m\xe4\xe4')], [util.ue('m\xf6\xf6')]])
+        eq_(results[1]['strarr'],
+            [[util.ue('m\xe4\xe4')],
+             [util.ue('m\xf6\xf6')]])
 
     def test_array_literal(self):
         eq_(
@@ -606,7 +665,7 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
                 select([
                     postgresql.array([1, 2]) + postgresql.array([3, 4, 5])
                 ])
-                ), [1,2,3,4,5]
+            ), [1, 2, 3, 4, 5]
         )
 
     def test_array_getitem_single_type(self):
@@ -640,7 +699,7 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
         eq_(
             testing.db.scalar(
                 select([arrtable.c.intarr]).
-                    where(arrtable.c.intarr.contains([]))
+                where(arrtable.c.intarr.contains([]))
             ),
             [4, 5, 6]
         )
@@ -664,14 +723,13 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
             [7, 8]
         )
 
-
     def _test_undim_array_contains_typed_exec(self, struct):
         arrtable = self.tables.arrtable
         self._fixture_456(arrtable)
         eq_(
             testing.db.scalar(
                 select([arrtable.c.intarr]).
-                    where(arrtable.c.intarr.contains(struct([4, 5])))
+                where(arrtable.c.intarr.contains(struct([4, 5])))
             ),
             [4, 5, 6]
         )
@@ -684,7 +742,7 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
 
     def test_undim_array_contains_generator_exec(self):
         self._test_undim_array_contains_typed_exec(
-                    lambda elem: (x for x in elem))
+            lambda elem: (x for x in elem))
 
     def _test_dim_array_contains_typed_exec(self, struct):
         dim_arrtable = self.tables.dim_arrtable
@@ -692,7 +750,7 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
         eq_(
             testing.db.scalar(
                 select([dim_arrtable.c.intarr]).
-                    where(dim_arrtable.c.intarr.contains(struct([4, 5])))
+                where(dim_arrtable.c.intarr.contains(struct([4, 5])))
             ),
             [4, 5, 6]
         )
@@ -704,7 +762,9 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
         self._test_dim_array_contains_typed_exec(list)
 
     def test_dim_array_contains_generator_exec(self):
-        self._test_dim_array_contains_typed_exec(lambda elem: (x for x in elem))
+        self._test_dim_array_contains_typed_exec(
+            lambda elem: (
+                x for x in elem))
 
     def test_array_contained_by_exec(self):
         arrtable = self.tables.arrtable
@@ -730,7 +790,7 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
             eq_(
                 conn.scalar(
                     select([arrtable.c.intarr]).
-                        where(arrtable.c.intarr.overlap([7, 6]))
+                    where(arrtable.c.intarr.overlap([7, 6]))
                 ),
                 [4, 5, 6]
             )
@@ -745,7 +805,7 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
             eq_(
                 conn.scalar(
                     select([arrtable.c.intarr]).
-                        where(postgresql.Any(5, arrtable.c.intarr))
+                    where(postgresql.Any(5, arrtable.c.intarr))
                 ),
                 [4, 5, 6]
             )
@@ -760,26 +820,40 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
             eq_(
                 conn.scalar(
                     select([arrtable.c.intarr]).
-                        where(arrtable.c.intarr.all(4, operator=operators.le))
+                    where(arrtable.c.intarr.all(4, operator=operators.le))
                 ),
                 [4, 5, 6]
             )
-
 
     @testing.provide_metadata
     def test_tuple_flag(self):
         metadata = self.metadata
 
-        t1 = Table('t1', metadata,
+        t1 = Table(
+            't1', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', postgresql.ARRAY(String(5), as_tuple=True)),
-            Column('data2', postgresql.ARRAY(Numeric(asdecimal=False), as_tuple=True)),
+            Column(
+                'data2',
+                postgresql.ARRAY(
+                    Numeric(asdecimal=False), as_tuple=True)
+            )
         )
         metadata.create_all()
-        testing.db.execute(t1.insert(), id=1, data=["1","2","3"], data2=[5.4, 5.6])
-        testing.db.execute(t1.insert(), id=2, data=["4", "5", "6"], data2=[1.0])
+        testing.db.execute(
+            t1.insert(), id=1, data=[
+                "1", "2", "3"], data2=[
+                5.4, 5.6])
+        testing.db.execute(
+            t1.insert(),
+            id=2,
+            data=[
+                "4",
+                "5",
+                "6"],
+            data2=[1.0])
         testing.db.execute(t1.insert(), id=3, data=[["4", "5"], ["6", "7"]],
-                        data2=[[5.4, 5.6], [1.0, 1.1]])
+                           data2=[[5.4, 5.6], [1.0, 1.1]])
 
         r = testing.db.execute(t1.select().order_by(t1.c.id)).fetchall()
         eq_(
@@ -798,14 +872,16 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
 
     def test_dimension(self):
         arrtable = self.tables.arrtable
-        testing.db.execute(arrtable.insert(), dimarr=[[1, 2, 3], [4,5, 6]])
+        testing.db.execute(arrtable.insert(), dimarr=[[1, 2, 3], [4, 5, 6]])
         eq_(
             testing.db.scalar(select([arrtable.c.dimarr])),
             [[-1, 0, 1], [2, 3, 4]]
         )
 
+
 class TimestampTest(fixtures.TestBase, AssertsExecutionResults):
     __only_on__ = 'postgresql'
+    __backend__ = True
 
     def test_timestamp(self):
         engine = testing.db
@@ -817,10 +893,12 @@ class TimestampTest(fixtures.TestBase, AssertsExecutionResults):
 
 
 class SpecialTypesTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
+
     """test DDL and reflection of PG-specific types """
 
     __only_on__ = 'postgresql'
     __excluded_on__ = (('postgresql', '<', (8, 3, 0)),)
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -830,17 +908,23 @@ class SpecialTypesTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         # create these types so that we can issue
         # special SQL92 INTERVAL syntax
         class y2m(types.UserDefinedType, postgresql.INTERVAL):
+
             def get_col_spec(self):
                 return "INTERVAL YEAR TO MONTH"
 
         class d2s(types.UserDefinedType, postgresql.INTERVAL):
+
             def get_col_spec(self):
                 return "INTERVAL DAY TO SECOND"
 
-        table = Table('sometable', metadata,
-            Column('id', postgresql.UUID, primary_key=True),
-            Column('flag', postgresql.BIT),
-            Column('bitstring', postgresql.BIT(4)),
+        table = Table(
+            'sometable', metadata,
+            Column(
+                'id', postgresql.UUID, primary_key=True),
+            Column(
+                'flag', postgresql.BIT),
+            Column(
+                'bitstring', postgresql.BIT(4)),
             Column('addr', postgresql.INET),
             Column('addr2', postgresql.MACADDR),
             Column('addr3', postgresql.CIDR),
@@ -848,9 +932,9 @@ class SpecialTypesTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             Column('plain_interval', postgresql.INTERVAL),
             Column('year_interval', y2m()),
             Column('month_interval', d2s()),
-            Column('precision_interval', postgresql.INTERVAL(precision=3)),
-            Column('tsvector_document', postgresql.TSVECTOR)
-        )
+            Column('precision_interval', postgresql.INTERVAL(
+                precision=3)),
+            Column('tsvector_document', postgresql.TSVECTOR))
 
         metadata.create_all()
 
@@ -877,7 +961,7 @@ class SpecialTypesTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                  (postgresql.BIT(5), 'BIT(5)'),
                  (postgresql.BIT(varying=True), 'BIT VARYING'),
                  (postgresql.BIT(5, varying=True), 'BIT VARYING(5)'),
-                ]
+                 ]
         for type_, expected in pairs:
             self.assert_compile(type_, expected)
 
@@ -890,17 +974,18 @@ class SpecialTypesTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
 
         testing.db.execute(t.update(), data="'a' 'cat' 'fat' 'mat' 'sat'")
 
-        eq_(testing.db.scalar(select([t.c.data])), "'a' 'cat' 'fat' 'mat' 'sat'")
+        eq_(testing.db.scalar(select([t.c.data])),
+            "'a' 'cat' 'fat' 'mat' 'sat'")
 
     @testing.provide_metadata
     def test_bit_reflection(self):
         metadata = self.metadata
         t1 = Table('t1', metadata,
-        Column('bit1', postgresql.BIT()),
-        Column('bit5', postgresql.BIT(5)),
-        Column('bitvarying', postgresql.BIT(varying=True)),
-        Column('bitvarying5', postgresql.BIT(5, varying=True)),
-        )
+                   Column('bit1', postgresql.BIT()),
+                   Column('bit5', postgresql.BIT(5)),
+                   Column('bitvarying', postgresql.BIT(varying=True)),
+                   Column('bitvarying5', postgresql.BIT(5, varying=True)),
+                   )
         t1.create()
         m2 = MetaData(testing.db)
         t2 = Table('t1', m2, autoload=True)
@@ -913,33 +998,40 @@ class SpecialTypesTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         eq_(t2.c.bitvarying5.type.length, 5)
         eq_(t2.c.bitvarying5.type.varying, True)
 
+
 class UUIDTest(fixtures.TestBase):
+
     """Test the bind/return values of the UUID type."""
 
     __only_on__ = 'postgresql >= 8.3'
+    __backend__ = True
 
-    @testing.fails_on('postgresql+zxjdbc',
-                      'column "data" is of type uuid but expression is of type character varying')
+    @testing.fails_on(
+        'postgresql+zxjdbc',
+        'column "data" is of type uuid but expression '
+        'is of type character varying')
     @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
     def test_uuid_string(self):
         import uuid
         self._test_round_trip(
             Table('utable', MetaData(),
-                Column('data', postgresql.UUID())
-            ),
+                  Column('data', postgresql.UUID())
+                  ),
             str(uuid.uuid4()),
             str(uuid.uuid4())
         )
 
-    @testing.fails_on('postgresql+zxjdbc',
-                      'column "data" is of type uuid but expression is of type character varying')
+    @testing.fails_on(
+        'postgresql+zxjdbc',
+        'column "data" is of type uuid but expression is '
+        'of type character varying')
     @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
     def test_uuid_uuid(self):
         import uuid
         self._test_round_trip(
             Table('utable', MetaData(),
-                Column('data', postgresql.UUID(as_uuid=True))
-            ),
+                  Column('data', postgresql.UUID(as_uuid=True))
+                  ),
             uuid.uuid4(),
             uuid.uuid4()
         )
@@ -965,15 +1057,14 @@ class UUIDTest(fixtures.TestBase):
 
     def _test_round_trip(self, utable, value1, value2):
         utable.create(self.conn)
-        self.conn.execute(utable.insert(), {'data':value1})
-        self.conn.execute(utable.insert(), {'data':value2})
+        self.conn.execute(utable.insert(), {'data': value1})
+        self.conn.execute(utable.insert(), {'data': value2})
         r = self.conn.execute(
-                select([utable.c.data]).
-                    where(utable.c.data != value1)
-                )
+            select([utable.c.data]).
+            where(utable.c.data != value1)
+        )
         eq_(r.fetchone()[0], value2)
         eq_(r.fetchone(), None)
-
 
 
 class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
@@ -982,9 +1073,9 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
     def setup(self):
         metadata = MetaData()
         self.test_table = Table('test_table', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('hash', HSTORE)
-        )
+                                Column('id', Integer, primary_key=True),
+                                Column('hash', HSTORE)
+                                )
         self.hashcol = self.test_table.c.hash
 
     def _test_where(self, whereclause, expected):
@@ -1025,20 +1116,20 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_parse_error(self):
         dialect = postgresql.dialect()
         proc = self.test_table.c.hash.type._cached_result_processor(
-                    dialect, None)
+            dialect, None)
         assert_raises_message(
             ValueError,
             r'''After u?'\[\.\.\.\], "key1"=>"value1", ', could not parse '''
             '''residual at position 36: u?'crapcrapcrap, "key3"\[\.\.\.\]''',
             proc,
             '"key2"=>"value2", "key1"=>"value1", '
-                        'crapcrapcrap, "key3"=>"value3"'
+            'crapcrapcrap, "key3"=>"value3"'
         )
 
     def test_result_deserialize_default(self):
         dialect = postgresql.dialect()
         proc = self.test_table.c.hash.type._cached_result_processor(
-                    dialect, None)
+            dialect, None)
         eq_(
             proc('"key2"=>"value2", "key1"=>"value1"'),
             {"key1": "value1", "key2": "value2"}
@@ -1047,7 +1138,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_result_deserialize_with_slashes_and_quotes(self):
         dialect = postgresql.dialect()
         proc = self.test_table.c.hash.type._cached_result_processor(
-                    dialect, None)
+            dialect, None)
         eq_(
             proc('"\\\\\\"a"=>"\\\\\\"1"'),
             {'\\"a': '\\"1'}
@@ -1075,13 +1166,13 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         dialect = psycopg2.PGDialect_psycopg2()
         dialect._has_native_hstore = True
         proc = self.test_table.c.hash.type._cached_result_processor(
-                    dialect, None)
+            dialect, None)
         is_(proc, None)
 
         dialect = psycopg2.PGDialect_psycopg2()
         dialect._has_native_hstore = False
         proc = self.test_table.c.hash.type._cached_result_processor(
-                    dialect, None)
+            dialect, None)
         eq_(
             proc('"key2"=>"value2", "key1"=>"value1"'),
             {"key1": "value1", "key2": "value2"}
@@ -1246,30 +1337,31 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
 class HStoreRoundTripTest(fixtures.TablesTest):
     __requires__ = 'hstore',
     __dialect__ = 'postgresql'
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
         Table('data_table', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('name', String(30), nullable=False),
-            Column('data', HSTORE)
-        )
+              Column('id', Integer, primary_key=True),
+              Column('name', String(30), nullable=False),
+              Column('data', HSTORE)
+              )
 
     def _fixture_data(self, engine):
         data_table = self.tables.data_table
         engine.execute(
-                data_table.insert(),
-                {'name': 'r1', 'data': {"k1": "r1v1", "k2": "r1v2"}},
-                {'name': 'r2', 'data': {"k1": "r2v1", "k2": "r2v2"}},
-                {'name': 'r3', 'data': {"k1": "r3v1", "k2": "r3v2"}},
-                {'name': 'r4', 'data': {"k1": "r4v1", "k2": "r4v2"}},
-                {'name': 'r5', 'data': {"k1": "r5v1", "k2": "r5v2"}},
+            data_table.insert(),
+            {'name': 'r1', 'data': {"k1": "r1v1", "k2": "r1v2"}},
+            {'name': 'r2', 'data': {"k1": "r2v1", "k2": "r2v2"}},
+            {'name': 'r3', 'data': {"k1": "r3v1", "k2": "r3v2"}},
+            {'name': 'r4', 'data': {"k1": "r4v1", "k2": "r4v2"}},
+            {'name': 'r5', 'data': {"k1": "r5v1", "k2": "r5v2"}},
         )
 
     def _assert_data(self, compare):
         data = testing.db.execute(
             select([self.tables.data_table.c.data]).
-                order_by(self.tables.data_table.c.name)
+            order_by(self.tables.data_table.c.name)
         ).fetchall()
         eq_([d for d, in data], compare)
 
@@ -1282,7 +1374,9 @@ class HStoreRoundTripTest(fixtures.TablesTest):
 
     def _non_native_engine(self):
         if testing.against("postgresql+psycopg2"):
-            engine = engines.testing_engine(options=dict(use_native_hstore=False))
+            engine = engines.testing_engine(
+                options=dict(
+                    use_native_hstore=False))
         else:
             engine = testing.db
         engine.connect()
@@ -1316,17 +1410,17 @@ class HStoreRoundTripTest(fixtures.TablesTest):
     def _test_criterion(self, engine):
         data_table = self.tables.data_table
         result = engine.execute(
-            select([data_table.c.data]).where(data_table.c.data['k1'] == 'r3v1')
-        ).first()
+            select([data_table.c.data]).where(
+                data_table.c.data['k1'] == 'r3v1')).first()
         eq_(result, ({'k1': 'r3v1', 'k2': 'r3v2'},))
 
     def _test_fixed_round_trip(self, engine):
         s = select([
-                hstore(
-                    array(['key1', 'key2', 'key3']),
-                    array(['value1', 'value2', 'value3'])
-                )
-            ])
+            hstore(
+                array(['key1', 'key2', 'key3']),
+                array(['value1', 'value2', 'value3'])
+            )
+        ])
         eq_(
             engine.scalar(s),
             {"key1": "value1", "key2": "value2", "key3": "value3"}
@@ -1357,6 +1451,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
             }
         )
 
+    @testing.only_on("postgresql+psycopg2")
     def test_unicode_round_trip_python(self):
         engine = self._non_native_engine()
         self._test_unicode_round_trip(engine)
@@ -1384,22 +1479,27 @@ class HStoreRoundTripTest(fixtures.TablesTest):
 
     def test_orm_round_trip(self):
         from sqlalchemy import orm
+
         class Data(object):
+
             def __init__(self, name, data):
                 self.name = name
                 self.data = data
         orm.mapper(Data, self.tables.data_table)
         s = orm.Session(testing.db)
         d = Data(name='r1', data={"key1": "value1", "key2": "value2",
-                                    "key3": "value3"})
+                                  "key3": "value3"})
         s.add(d)
         eq_(
             s.query(Data.data, Data).all(),
             [(d.data, d)]
         )
+
+
 class _RangeTypeMixin(object):
     __requires__ = 'range_types',
     __dialect__ = 'postgresql+psycopg2'
+    __backend__ = True
 
     def extras(self):
         # done this way so we don't get ImportErrors with
@@ -1412,8 +1512,8 @@ class _RangeTypeMixin(object):
         # no reason ranges shouldn't be primary keys,
         # so lets just use them as such
         table = Table('data_table', metadata,
-            Column('range', cls._col_type, primary_key=True),
-        )
+                      Column('range', cls._col_type, primary_key=True),
+                      )
         cls.col = table.c.range
 
     def test_actual_type(self):
@@ -1454,13 +1554,13 @@ class _RangeTypeMixin(object):
 
     def test_where_equal(self):
         self._test_clause(
-            self.col==self._data_str,
+            self.col == self._data_str,
             "data_table.range = %(range_1)s"
         )
 
     def test_where_not_equal(self):
         self._test_clause(
-            self.col!=self._data_str,
+            self.col != self._data_str,
             "data_table.range <> %(range_1)s"
         )
 
@@ -1560,9 +1660,8 @@ class _RangeTypeMixin(object):
         range = self.tables.data_table.c.range
         data = testing.db.execute(
             select([range + range])
-            ).fetchall()
+        ).fetchall()
         eq_(data, [(self._data_obj(), )])
-
 
     def test_intersection(self):
         self._test_clause(
@@ -1580,7 +1679,7 @@ class _RangeTypeMixin(object):
         range = self.tables.data_table.c.range
         data = testing.db.execute(
             select([range * range])
-            ).fetchall()
+        ).fetchall()
         eq_(data, [(self._data_obj(), )])
 
     def test_different(self):
@@ -1599,57 +1698,68 @@ class _RangeTypeMixin(object):
         range = self.tables.data_table.c.range
         data = testing.db.execute(
             select([range - range])
-            ).fetchall()
+        ).fetchall()
         eq_(data, [(self._data_obj().__class__(empty=True), )])
+
 
 class Int4RangeTests(_RangeTypeMixin, fixtures.TablesTest):
 
     _col_type = INT4RANGE
     _col_str = 'INT4RANGE'
     _data_str = '[1,2)'
+
     def _data_obj(self):
         return self.extras().NumericRange(1, 2)
+
 
 class Int8RangeTests(_RangeTypeMixin, fixtures.TablesTest):
 
     _col_type = INT8RANGE
     _col_str = 'INT8RANGE'
     _data_str = '[9223372036854775806,9223372036854775807)'
+
     def _data_obj(self):
         return self.extras().NumericRange(
             9223372036854775806, 9223372036854775807
-            )
+        )
+
 
 class NumRangeTests(_RangeTypeMixin, fixtures.TablesTest):
 
     _col_type = NUMRANGE
     _col_str = 'NUMRANGE'
     _data_str = '[1.0,2.0)'
+
     def _data_obj(self):
         return self.extras().NumericRange(
             decimal.Decimal('1.0'), decimal.Decimal('2.0')
-            )
+        )
+
 
 class DateRangeTests(_RangeTypeMixin, fixtures.TablesTest):
 
     _col_type = DATERANGE
     _col_str = 'DATERANGE'
     _data_str = '[2013-03-23,2013-03-24)'
+
     def _data_obj(self):
         return self.extras().DateRange(
             datetime.date(2013, 3, 23), datetime.date(2013, 3, 24)
-            )
+        )
+
 
 class DateTimeRangeTests(_RangeTypeMixin, fixtures.TablesTest):
 
     _col_type = TSRANGE
     _col_str = 'TSRANGE'
     _data_str = '[2013-03-23 14:30,2013-03-23 23:30)'
+
     def _data_obj(self):
         return self.extras().DateTimeRange(
             datetime.datetime(2013, 3, 23, 14, 30),
             datetime.datetime(2013, 3, 23, 23, 30)
-            )
+        )
+
 
 class DateTimeTZRangeTests(_RangeTypeMixin, fixtures.TablesTest):
 
@@ -1659,12 +1769,13 @@ class DateTimeTZRangeTests(_RangeTypeMixin, fixtures.TablesTest):
     # make sure we use one, steady timestamp with timezone pair
     # for all parts of all these tests
     _tstzs = None
+
     def tstzs(self):
         if self._tstzs is None:
             lower = testing.db.connect().scalar(
                 func.current_timestamp().select()
-                )
-            upper = lower+datetime.timedelta(1)
+            )
+            upper = lower + datetime.timedelta(1)
             self._tstzs = (lower, upper)
         return self._tstzs
 
@@ -1682,9 +1793,9 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
     def setup(self):
         metadata = MetaData()
         self.test_table = Table('test_table', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('test_column', JSON)
-        )
+                                Column('id', Integer, primary_key=True),
+                                Column('test_column', JSON)
+                                )
         self.jsoncol = self.test_table.c.test_column
 
     def _test_where(self, whereclause, expected):
@@ -1707,7 +1818,8 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
 
     def test_bind_serialize_default(self):
         dialect = postgresql.dialect()
-        proc = self.test_table.c.test_column.type._cached_bind_processor(dialect)
+        proc = self.test_table.c.test_column.type._cached_bind_processor(
+            dialect)
         eq_(
             proc({"A": [1, 2, 3, True, False]}),
             '{"A": [1, 2, 3, true, false]}'
@@ -1716,13 +1828,14 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_result_deserialize_default(self):
         dialect = postgresql.dialect()
         proc = self.test_table.c.test_column.type._cached_result_processor(
-                    dialect, None)
+            dialect, None)
         eq_(
             proc('{"A": [1, 2, 3, true, false]}'),
             {"A": [1, 2, 3, True, False]}
         )
 
-    # This test is a bit misleading -- in real life you will need to cast to do anything
+    # This test is a bit misleading -- in real life you will need to cast to
+    # do anything
     def test_where_getitem(self):
         self._test_where(
             self.jsoncol['bar'] == None,
@@ -1764,30 +1877,31 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
 
 class JSONRoundTripTest(fixtures.TablesTest):
     __only_on__ = ('postgresql >= 9.3',)
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
         Table('data_table', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('name', String(30), nullable=False),
-            Column('data', JSON)
-        )
+              Column('id', Integer, primary_key=True),
+              Column('name', String(30), nullable=False),
+              Column('data', JSON)
+              )
 
     def _fixture_data(self, engine):
         data_table = self.tables.data_table
         engine.execute(
-                data_table.insert(),
-                {'name': 'r1', 'data': {"k1": "r1v1", "k2": "r1v2"}},
-                {'name': 'r2', 'data': {"k1": "r2v1", "k2": "r2v2"}},
-                {'name': 'r3', 'data': {"k1": "r3v1", "k2": "r3v2"}},
-                {'name': 'r4', 'data': {"k1": "r4v1", "k2": "r4v2"}},
-                {'name': 'r5', 'data': {"k1": "r5v1", "k2": "r5v2", "k3": 5}},
+            data_table.insert(),
+            {'name': 'r1', 'data': {"k1": "r1v1", "k2": "r1v2"}},
+            {'name': 'r2', 'data': {"k1": "r2v1", "k2": "r2v2"}},
+            {'name': 'r3', 'data': {"k1": "r3v1", "k2": "r3v2"}},
+            {'name': 'r4', 'data': {"k1": "r4v1", "k2": "r4v2"}},
+            {'name': 'r5', 'data': {"k1": "r5v1", "k2": "r5v2", "k3": 5}},
         )
 
     def _assert_data(self, compare):
         data = testing.db.execute(
             select([self.tables.data_table.c.data]).
-                order_by(self.tables.data_table.c.name)
+            order_by(self.tables.data_table.c.name)
         ).fetchall()
         eq_([d for d, in data], compare)
 
@@ -1810,9 +1924,11 @@ class JSONRoundTripTest(fixtures.TablesTest):
         if testing.against("postgresql+psycopg2"):
             from psycopg2.extras import register_default_json
             engine = engines.testing_engine(options=options)
+
             @event.listens_for(engine, "connect")
             def connect(dbapi_connection, connection_record):
                 engine.dialect._has_native_json = False
+
                 def pass_(value):
                     return value
                 register_default_json(dbapi_connection, loads=pass_)
@@ -1837,9 +1953,9 @@ class JSONRoundTripTest(fixtures.TablesTest):
         engine = self._non_native_engine()
         self._test_insert(engine)
 
-
     def _test_custom_serialize_deserialize(self, native):
         import json
+
         def loads(value):
             value = json.loads(value)
             value['x'] = value['x'] + '_loads'
@@ -1852,24 +1968,24 @@ class JSONRoundTripTest(fixtures.TablesTest):
 
         if native:
             engine = engines.testing_engine(options=dict(
-                            json_serializer=dumps,
-                            json_deserializer=loads
-                        ))
+                json_serializer=dumps,
+                json_deserializer=loads
+            ))
         else:
             engine = self._non_native_engine(
-                            json_serializer=dumps,
-                            json_deserializer=loads
-                        )
+                json_serializer=dumps,
+                json_deserializer=loads
+            )
 
         s = select([
-                cast(
-                    {
-                        "key": "value",
-                        "x": "q"
-                    },
-                    JSON
-                )
-            ])
+            cast(
+                {
+                    "key": "value",
+                    "x": "q"
+                },
+                JSON
+            )
+        ])
         eq_(
             engine.scalar(s),
             {
@@ -1885,7 +2001,6 @@ class JSONRoundTripTest(fixtures.TablesTest):
     @testing.only_on("postgresql+psycopg2")
     def test_custom_python(self):
         self._test_custom_serialize_deserialize(False)
-
 
     @testing.only_on("postgresql+psycopg2")
     def test_criterion_native(self):
@@ -1924,7 +2039,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
         data_table = self.tables.data_table
         result = engine.execute(
             select([data_table.c.data['k3'].cast(Integer)]).where(
-                    data_table.c.name == 'r5')
+                data_table.c.name == 'r5')
         ).first()
         assert isinstance(result[0], int)
 
@@ -1939,14 +2054,14 @@ class JSONRoundTripTest(fixtures.TablesTest):
 
     def _test_fixed_round_trip(self, engine):
         s = select([
-                cast(
-                    {
-                        "key": "value",
-                        "key2": {"k1": "v1", "k2": "v2"}
-                    },
-                    JSON
-                )
-            ])
+            cast(
+                {
+                    "key": "value",
+                    "key2": {"k1": "v1", "k2": "v2"}
+                },
+                JSON
+            )
+        ])
         eq_(
             engine.scalar(s),
             {
@@ -1976,10 +2091,10 @@ class JSONRoundTripTest(fixtures.TablesTest):
         ])
         eq_(
             engine.scalar(s),
-                {
-                    util.u('réveillé'): util.u('réveillé'),
-                    "data": {"k1": util.u('drôle')}
-                },
+            {
+                util.u('réveillé'): util.u('réveillé'),
+                "data": {"k1": util.u('drôle')}
+            },
         )
 
     def test_unicode_round_trip_python(self):
@@ -1991,16 +2106,18 @@ class JSONRoundTripTest(fixtures.TablesTest):
         engine = testing.db
         self._test_unicode_round_trip(engine)
 
+
 class JSONBTest(JSONTest):
+
     def setup(self):
         metadata = MetaData()
         self.test_table = Table('test_table', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('test_column', JSONB)
-        )
+                                Column('id', Integer, primary_key=True),
+                                Column('test_column', JSONB)
+                                )
         self.jsoncol = self.test_table.c.test_column
 
-    #Note - add fixture data for arrays []
+    # Note - add fixture data for arrays []
 
     def test_where_has_key(self):
         self._test_where(
@@ -2011,9 +2128,9 @@ class JSONBTest(JSONTest):
 
     def test_where_has_all(self):
         self._test_where(
-            self.jsoncol.has_all({'name': 'r1', 'data': {"k1": "r1v1", "k2": "r1v2"}}),
-            "test_table.test_column ?& %(test_column_1)s"
-        )
+            self.jsoncol.has_all(
+                {'name': 'r1', 'data': {"k1": "r1v1", "k2": "r1v2"}}),
+            "test_table.test_column ?& %(test_column_1)s")
 
     def test_where_has_any(self):
         self._test_where(
@@ -2036,5 +2153,3 @@ class JSONBTest(JSONTest):
 
 class JSONBRoundTripTest(JSONRoundTripTest):
     __only_on__ = ('postgresql >= 9.4',)
-
-
