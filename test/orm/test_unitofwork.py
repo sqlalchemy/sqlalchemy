@@ -61,11 +61,8 @@ class UnicodeTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        if testing.against('mysql+oursql'):
-            from sqlalchemy.dialects.mysql import VARCHAR
-            uni_type = VARCHAR(50, collation='utf8_unicode_ci')
-        else:
-            uni_type = sa.Unicode(50)
+        uni_type = sa.Unicode(50).with_variant(
+            sa.Unicode(50, collation="utf8_unicode_ci"), "mysql")
 
         Table('uni_t1', metadata,
             Column('id',  Integer, primary_key=True,
