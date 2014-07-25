@@ -16,6 +16,16 @@
     .. change::
         :tags: bug, postgresql
         :versions: 1.0.0
+        :tickets: 3141
+        :pullreq: github:124
+
+        Fixed bug in :class:`.postgresql.array` object where comparison
+        to a plain Python list would fail to use the correct array constructor.
+        Pull request courtesy Andrew.
+
+    .. change::
+        :tags: bug, postgresql
+        :versions: 1.0.0
         :tickets: 3137
 
         Added a supported :meth:`.FunctionElement.alias` method to functions,

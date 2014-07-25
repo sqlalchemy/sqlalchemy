@@ -644,6 +644,16 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
         eq_(len(results), 1)
         eq_(results[0][0], [1, 2, 3, 4, 5, 6, ])
 
+    def test_array_comparison(self):
+        arrtable = self.tables.arrtable
+        arrtable.insert().execute(intarr=[1, 2, 3],
+                    strarr=[util.u('abc'), util.u('def')])
+        results = select([arrtable.c.id]).\
+                        where(arrtable.c.intarr < [4, 5, 6]).execute()\
+                        .fetchall()
+        eq_(len(results), 1)
+        eq_(results[0][0], 3)
+
     def test_array_subtype_resultprocessor(self):
         arrtable = self.tables.arrtable
         arrtable.insert().execute(intarr=[4, 5, 6],
@@ -666,6 +676,15 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
                     postgresql.array([1, 2]) + postgresql.array([3, 4, 5])
                 ])
             ), [1, 2, 3, 4, 5]
+        )
+
+    def test_array_literal_compare(self):
+        eq_(
+            testing.db.scalar(
+                select([
+                    postgresql.array([1, 2]) < [3, 4, 5]
+                ])
+                ), True
         )
 
     def test_array_getitem_single_type(self):
