@@ -2310,7 +2310,8 @@ class MySQLDialect(default.DefaultDialect):
         rs = None
         try:
             try:
-                rs = connection.execute(st)
+                rs = connection.execution_options(
+                    skip_user_error_events=True).execute(st)
                 have = rs.fetchone() is not None
                 rs.close()
                 return have
@@ -2616,7 +2617,8 @@ class MySQLDialect(default.DefaultDialect):
 
         rp = None
         try:
-            rp = connection.execute(st)
+            rp = connection.execution_options(
+                skip_user_error_events=True).execute(st)
         except exc.DBAPIError as e:
             if self._extract_error_code(e.orig) == 1146:
                 raise exc.NoSuchTableError(full_name)
@@ -2640,7 +2642,8 @@ class MySQLDialect(default.DefaultDialect):
         rp, rows = None, None
         try:
             try:
-                rp = connection.execute(st)
+                rp = connection.execution_options(
+                    skip_user_error_events=True).execute(st)
             except exc.DBAPIError as e:
                 if self._extract_error_code(e.orig) == 1146:
                     raise exc.NoSuchTableError(full_name)

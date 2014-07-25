@@ -1659,6 +1659,34 @@ class HandleErrorTest(fixtures.TestBase):
         is_(ctx.is_disconnect, False)
         is_(ctx.original_exception, nope)
 
+    def test_exception_event_disable_handlers(self):
+        engine = engines.testing_engine()
+
+        class MyException1(Exception):
+            pass
+
+        @event.listens_for(engine, 'handle_error')
+        def err1(context):
+            stmt = context.statement
+
+            if "ERROR_ONE" in str(stmt):
+                raise MyException1("my exception short circuit")
+
+        with engine.connect() as conn:
+            assert_raises(
+                tsa.exc.DBAPIError,
+                conn.execution_options(
+                    skip_user_error_events=True
+                ).execute, "SELECT ERROR_ONE FROM I_DONT_EXIST"
+            )
+
+            assert_raises(
+                MyException1,
+                conn.execution_options(
+                    skip_user_error_events=False
+                ).execute, "SELECT ERROR_ONE FROM I_DONT_EXIST"
+            )
+
     def _test_alter_disconnect(self, orig_error, evt_value):
         engine = engines.testing_engine()
 

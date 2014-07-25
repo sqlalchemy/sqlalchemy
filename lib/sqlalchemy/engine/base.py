@@ -1112,7 +1112,9 @@ class Connection(Connectable):
 
             newraise = None
 
-            if self._has_events or self.engine._has_events:
+            if (self._has_events or self.engine._has_events) and \
+                not self._execution_options.get(
+                    'skip_user_error_events', False):
                 # legacy dbapi_error event
                 if should_wrap and context:
                     self.dispatch.dbapi_error(self,

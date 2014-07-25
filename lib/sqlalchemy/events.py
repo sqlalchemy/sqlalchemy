@@ -733,6 +733,16 @@ class ConnectionEvents(event.Events):
         .. versionadded:: 0.9.7 Added the
             :meth:`.ConnectionEvents.handle_error` hook.
 
+        .. versionchanged:: 1.0.0 The :meth:`.handle_error` event is
+           not fired off when a dialect makes use of the
+           ``skip_user_error_events`` execution option.   This is used
+           by dialects which intend to catch SQLAlchemy-specific exceptions
+           within specific operations, such as when the MySQL dialect detects
+           a table not present within the ``has_table()`` dialect method.
+           Prior to 1.0.0, code which implements :meth:`.handle_error` needs
+           to ensure that exceptions thrown in these scenarios are re-raised
+           without modification.
+
         """
 
     def engine_connect(self, conn, branch):

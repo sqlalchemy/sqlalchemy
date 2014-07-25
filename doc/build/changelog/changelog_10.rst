@@ -18,6 +18,18 @@
 
     .. change::
         :tags: mysql, bug
+
+        The MySQL dialect will now disable :meth:`.ConnectionEvents.handle_error`
+        events from firing for those statements which it uses internally
+        to detect if a table exists or not.   This is achieved using an
+        execution option ``skip_user_error_events`` that disables the handle
+        error event for the scope of that execution.   In this way, user code
+        that rewrites exceptions doesn't need to worry about the MySQL
+        dialect or other dialects that occasionally need to catch
+        SQLAlchemy specific exceptions.
+
+    .. change::
+        :tags: mysql, bug
         :tickets: 2515
 
         Changed the default value of "raise_on_warnings" to False for
