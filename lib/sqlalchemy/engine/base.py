@@ -1071,7 +1071,6 @@ class Connection(Connectable):
                                 parameters,
                                 cursor,
                                 context):
-
         exc_info = sys.exc_info()
 
         if context and context.exception is None:

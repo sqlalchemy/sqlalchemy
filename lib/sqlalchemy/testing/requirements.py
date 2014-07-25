@@ -593,6 +593,14 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def graceful_disconnects(self):
+        """Target driver must raise a DBAPI-level exception, such as
+        InterfaceError, when the underlying connection has been closed
+        and the execute() method is called.
+        """
+        return exclusions.open()
+
+    @property
     def skip_mysql_on_windows(self):
         """Catchall for a large variety of MySQL on Windows failures"""
         return exclusions.open()
