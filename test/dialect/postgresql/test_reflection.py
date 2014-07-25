@@ -1,40 +1,36 @@
 # coding: utf-8
 
 from sqlalchemy.testing.assertions import eq_, assert_raises, \
-                assert_raises_message, is_, AssertsExecutionResults, \
-                AssertsCompiledSQL, ComparesTables
-from sqlalchemy.testing import engines, fixtures
+    AssertsExecutionResults
+from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
 from sqlalchemy import inspect
-from sqlalchemy import Table, Column, select, MetaData, text, Integer, \
-            String, Sequence, ForeignKey, join, Numeric, \
-            PrimaryKeyConstraint, DateTime, tuple_, Float, BigInteger, \
-            func, literal_column, literal, bindparam, cast, extract, \
-            SmallInteger, Enum, REAL, update, insert, Index, delete, \
-            and_, Date, TypeDecorator, Time, Unicode, Interval, or_, Text
+from sqlalchemy import Table, Column, MetaData, Integer, String, \
+    PrimaryKeyConstraint, ForeignKey, join, Sequence
 from sqlalchemy import exc
+import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import base as postgresql
-import logging
+
 
 class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
 
     """Test PostgreSQL domains"""
 
     __only_on__ = 'postgresql > 8.3'
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
         con = testing.db.connect()
         for ddl in \
-            'CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42', \
-            'CREATE DOMAIN test_schema.testdomain INTEGER DEFAULT 0', \
-            "CREATE TYPE testtype AS ENUM ('test')", \
-            'CREATE DOMAIN enumdomain AS testtype'\
-            :
+                'CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42', \
+                'CREATE DOMAIN test_schema.testdomain INTEGER DEFAULT 0', \
+                "CREATE TYPE testtype AS ENUM ('test')", \
+                'CREATE DOMAIN enumdomain AS testtype':
             try:
                 con.execute(ddl)
             except exc.DBAPIError as e:
-                if not 'already exists' in str(e):
+                if 'already exists' not in str(e):
                     raise e
         con.execute('CREATE TABLE testtable (question integer, answer '
                     'testdomain)')
@@ -86,7 +82,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         table = Table('testtable', metadata, autoload=True,
                       schema='test_schema')
         eq_(set(table.columns.keys()), set(['question', 'answer',
-            'anything']),
+                                            'anything']),
             "Columns of reflected table didn't equal expected columns")
         assert isinstance(table.c.anything.type, Integer)
 
@@ -127,9 +123,10 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
 
 class ReflectionTest(fixtures.TestBase):
     __only_on__ = 'postgresql'
+    __backend__ = True
 
     @testing.fails_if("postgresql < 8.4",
-                    "Better int2vector functions not available")
+                      "Better int2vector functions not available")
     @testing.provide_metadata
     def test_reflected_primary_key_order(self):
         meta1 = self.metadata
@@ -147,28 +144,32 @@ class ReflectionTest(fixtures.TestBase):
     def test_pg_weirdchar_reflection(self):
         meta1 = self.metadata
         subject = Table('subject', meta1, Column('id$', Integer,
-                        primary_key=True))
-        referer = Table('referer', meta1, Column('id', Integer,
-                        primary_key=True), Column('ref', Integer,
-                        ForeignKey('subject.id$')))
+                                                 primary_key=True))
+        referer = Table(
+            'referer', meta1,
+            Column(
+                'id', Integer, primary_key=True),
+            Column(
+                'ref', Integer, ForeignKey('subject.id$')))
         meta1.create_all()
         meta2 = MetaData(testing.db)
         subject = Table('subject', meta2, autoload=True)
         referer = Table('referer', meta2, autoload=True)
         self.assert_((subject.c['id$']
-                     == referer.c.ref).compare(
-                        subject.join(referer).onclause))
+                      == referer.c.ref).compare(
+            subject.join(referer).onclause))
 
     @testing.provide_metadata
     def test_reflect_default_over_128_chars(self):
         Table('t', self.metadata,
-                Column('x', String(200), server_default="abcd" * 40)
-            ).create(testing.db)
+              Column('x', String(200), server_default="abcd" * 40)
+              ).create(testing.db)
 
         m = MetaData()
         t = Table('t', m, autoload=True, autoload_with=testing.db)
         eq_(
-            t.c.x.server_default.arg.text, "'%s'::character varying" % ("abcd" * 40)
+            t.c.x.server_default.arg.text, "'%s'::character varying" % (
+                "abcd" * 40)
         )
 
     @testing.fails_if("postgresql < 8.1", "schema name leaks in, not sure")
@@ -184,8 +185,8 @@ class ReflectionTest(fixtures.TestBase):
         r = t2.insert().execute()
         eq_(r.inserted_primary_key, [1])
         testing.db.connect().execution_options(autocommit=True).\
-                execute('alter table t_id_seq rename to foobar_id_seq'
-                )
+            execute('alter table t_id_seq rename to foobar_id_seq'
+                    )
         m3 = MetaData(testing.db)
         t3 = Table('t', m3, autoload=True, implicit_returning=False)
         eq_(t3.c.id.server_default.arg.text,
@@ -210,14 +211,18 @@ class ReflectionTest(fixtures.TestBase):
         meta1 = self.metadata
 
         users = Table('users', meta1,
-                    Column('user_id', Integer, primary_key=True),
-                    Column('user_name', String(30), nullable=False),
-                    schema='test_schema')
-        addresses = Table('email_addresses', meta1,
-            Column('address_id', Integer, primary_key=True),
-            Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
-            Column('email_address', String(20)),
-            schema='test_schema')
+                      Column('user_id', Integer, primary_key=True),
+                      Column('user_name', String(30), nullable=False),
+                      schema='test_schema')
+        addresses = Table(
+            'email_addresses', meta1,
+            Column(
+                'address_id', Integer, primary_key=True),
+            Column(
+                'remote_user_id', Integer, ForeignKey(
+                    users.c.user_id)),
+                Column(
+                    'email_address', String(20)), schema='test_schema')
         meta1.create_all()
         meta2 = MetaData(testing.db)
         addresses = Table('email_addresses', meta2, autoload=True,
@@ -226,25 +231,25 @@ class ReflectionTest(fixtures.TestBase):
                       schema='test_schema')
         j = join(users, addresses)
         self.assert_((users.c.user_id
-                     == addresses.c.remote_user_id).compare(j.onclause))
+                      == addresses.c.remote_user_id).compare(j.onclause))
 
     @testing.provide_metadata
     def test_cross_schema_reflection_two(self):
         meta1 = self.metadata
         subject = Table('subject', meta1,
-                    Column('id', Integer, primary_key=True))
+                        Column('id', Integer, primary_key=True))
         referer = Table('referer', meta1,
-                    Column('id', Integer, primary_key=True),
-                    Column('ref', Integer, ForeignKey('subject.id')),
-                    schema='test_schema')
+                        Column('id', Integer, primary_key=True),
+                        Column('ref', Integer, ForeignKey('subject.id')),
+                        schema='test_schema')
         meta1.create_all()
         meta2 = MetaData(testing.db)
         subject = Table('subject', meta2, autoload=True)
         referer = Table('referer', meta2, schema='test_schema',
                         autoload=True)
         self.assert_((subject.c.id
-                     == referer.c.ref).compare(
-                        subject.join(referer).onclause))
+                      == referer.c.ref).compare(
+            subject.join(referer).onclause))
 
     @testing.provide_metadata
     def test_cross_schema_reflection_three(self):
@@ -252,10 +257,18 @@ class ReflectionTest(fixtures.TestBase):
         subject = Table('subject', meta1,
                         Column('id', Integer, primary_key=True),
                         schema='test_schema_2')
-        referer = Table('referer', meta1,
-                        Column('id', Integer, primary_key=True),
-                        Column('ref', Integer, ForeignKey('test_schema_2.subject.id')),
-                        schema='test_schema')
+        referer = Table(
+            'referer',
+            meta1,
+            Column(
+                'id',
+                Integer,
+                primary_key=True),
+            Column(
+                'ref',
+                Integer,
+                ForeignKey('test_schema_2.subject.id')),
+            schema='test_schema')
         meta1.create_all()
         meta2 = MetaData(testing.db)
         subject = Table('subject', meta2, autoload=True,
@@ -263,8 +276,8 @@ class ReflectionTest(fixtures.TestBase):
         referer = Table('referer', meta2, autoload=True,
                         schema='test_schema')
         self.assert_((subject.c.id
-                     == referer.c.ref).compare(
-                        subject.join(referer).onclause))
+                      == referer.c.ref).compare(
+            subject.join(referer).onclause))
 
     @testing.provide_metadata
     def test_cross_schema_reflection_four(self):
@@ -272,10 +285,18 @@ class ReflectionTest(fixtures.TestBase):
         subject = Table('subject', meta1,
                         Column('id', Integer, primary_key=True),
                         schema='test_schema_2')
-        referer = Table('referer', meta1,
-                        Column('id', Integer, primary_key=True),
-                        Column('ref', Integer, ForeignKey('test_schema_2.subject.id')),
-                        schema='test_schema')
+        referer = Table(
+            'referer',
+            meta1,
+            Column(
+                'id',
+                Integer,
+                primary_key=True),
+            Column(
+                'ref',
+                Integer,
+                ForeignKey('test_schema_2.subject.id')),
+            schema='test_schema')
         meta1.create_all()
 
         conn = testing.db.connect()
@@ -289,8 +310,8 @@ class ReflectionTest(fixtures.TestBase):
                         schema='test_schema',
                         postgresql_ignore_search_path=True)
         self.assert_((subject.c.id
-                     == referer.c.ref).compare(
-                        subject.join(referer).onclause))
+                      == referer.c.ref).compare(
+            subject.join(referer).onclause))
         conn.close()
 
     @testing.provide_metadata
@@ -317,8 +338,8 @@ class ReflectionTest(fixtures.TestBase):
                         )
         assert subject.schema == default_schema
         self.assert_((subject.c.id
-                     == referer.c.ref).compare(
-                        subject.join(referer).onclause))
+                      == referer.c.ref).compare(
+            subject.join(referer).onclause))
 
     @testing.provide_metadata
     def test_cross_schema_reflection_six(self):
@@ -327,60 +348,60 @@ class ReflectionTest(fixtures.TestBase):
         meta1 = self.metadata
 
         Table('some_table', meta1,
-                Column('id', Integer, primary_key=True),
-                schema='test_schema'
-            )
+              Column('id', Integer, primary_key=True),
+              schema='test_schema'
+              )
         Table('some_other_table', meta1,
-                Column('id', Integer, primary_key=True),
-                Column('sid', Integer, ForeignKey('test_schema.some_table.id')),
-                schema='test_schema_2'
-                )
+              Column('id', Integer, primary_key=True),
+              Column('sid', Integer, ForeignKey('test_schema.some_table.id')),
+              schema='test_schema_2'
+              )
         meta1.create_all()
         with testing.db.connect() as conn:
             conn.detach()
 
-            conn.execute("set search_path to test_schema_2, test_schema, public")
+            conn.execute(
+                "set search_path to test_schema_2, test_schema, public")
 
             m1 = MetaData(conn)
 
             t1_schema = Table('some_table',
-                                m1,
-                                schema="test_schema",
-                                autoload=True)
+                              m1,
+                              schema="test_schema",
+                              autoload=True)
             t2_schema = Table('some_other_table',
-                                m1,
-                                schema="test_schema_2",
-                                autoload=True)
+                              m1,
+                              schema="test_schema_2",
+                              autoload=True)
 
             t2_no_schema = Table('some_other_table',
-                                m1,
-                                autoload=True)
+                                 m1,
+                                 autoload=True)
 
             t1_no_schema = Table('some_table',
-                                m1,
-                                autoload=True)
+                                 m1,
+                                 autoload=True)
 
             m2 = MetaData(conn)
             t1_schema_isp = Table('some_table',
-                                m2,
-                                schema="test_schema",
-                                autoload=True,
-                                postgresql_ignore_search_path=True)
+                                  m2,
+                                  schema="test_schema",
+                                  autoload=True,
+                                  postgresql_ignore_search_path=True)
             t2_schema_isp = Table('some_other_table',
-                                m2,
-                                schema="test_schema_2",
-                                autoload=True,
-                                postgresql_ignore_search_path=True)
-
+                                  m2,
+                                  schema="test_schema_2",
+                                  autoload=True,
+                                  postgresql_ignore_search_path=True)
 
             # t2_schema refers to t1_schema, but since "test_schema"
             # is in the search path, we instead link to t2_no_schema
             assert t2_schema.c.sid.references(
-                                t1_no_schema.c.id)
+                t1_no_schema.c.id)
 
             # the two no_schema tables refer to each other also.
             assert t2_no_schema.c.sid.references(
-                                t1_no_schema.c.id)
+                t1_no_schema.c.id)
 
             # but if we're ignoring search path, then we maintain
             # those explicit schemas vs. what the "default" schema is
@@ -393,30 +414,32 @@ class ReflectionTest(fixtures.TestBase):
         meta1 = self.metadata
 
         Table('some_table', meta1,
-                Column('id', Integer, primary_key=True),
-                schema='test_schema'
-            )
+              Column('id', Integer, primary_key=True),
+              schema='test_schema'
+              )
         Table('some_other_table', meta1,
-                Column('id', Integer, primary_key=True),
-                Column('sid', Integer, ForeignKey('test_schema.some_table.id')),
-                schema='test_schema_2'
-                )
+              Column('id', Integer, primary_key=True),
+              Column('sid', Integer, ForeignKey('test_schema.some_table.id')),
+              schema='test_schema_2'
+              )
         meta1.create_all()
         with testing.db.connect() as conn:
             conn.detach()
 
-            conn.execute("set search_path to test_schema_2, test_schema, public")
+            conn.execute(
+                "set search_path to test_schema_2, test_schema, public")
             meta2 = MetaData(conn)
             meta2.reflect(schema="test_schema_2")
 
-            eq_(set(meta2.tables), set(['test_schema_2.some_other_table', 'some_table']))
+            eq_(set(meta2.tables), set(
+                ['test_schema_2.some_other_table', 'some_table']))
 
             meta3 = MetaData(conn)
-            meta3.reflect(schema="test_schema_2", postgresql_ignore_search_path=True)
+            meta3.reflect(
+                schema="test_schema_2", postgresql_ignore_search_path=True)
 
-            eq_(set(meta3.tables),
-                    set(['test_schema_2.some_other_table', 'test_schema.some_table']))
-
+            eq_(set(meta3.tables), set(
+                ['test_schema_2.some_other_table', 'test_schema.some_table']))
 
     @testing.provide_metadata
     def test_uppercase_lowercase_table(self):
@@ -445,7 +468,6 @@ class ReflectionTest(fixtures.TestBase):
         a_seq.drop(testing.db)
         A_seq.drop(testing.db)
 
-
     @testing.provide_metadata
     def test_index_reflection(self):
         """ Reflecting partial & expression-based indexes should warn
@@ -453,9 +475,14 @@ class ReflectionTest(fixtures.TestBase):
 
         metadata = self.metadata
 
-        t1 = Table('party', metadata, Column('id', String(10),
-                   nullable=False), Column('name', String(20),
-                   index=True), Column('aname', String(20)))
+        t1 = Table(
+            'party', metadata,
+            Column(
+                'id', String(10), nullable=False),
+            Column(
+                'name', String(20), index=True),
+            Column(
+                'aname', String(20)))
         metadata.create_all()
         testing.db.execute("""
           create index idx1 on party ((id || name))
@@ -484,15 +511,14 @@ class ReflectionTest(fixtures.TestBase):
             assert [t2.c.id] == r1.columns
             assert [t2.c.name] == r2.columns
 
-        testing.assert_warnings(go,
-            [
-                'Skipped unsupported reflection of '
-                'expression-based index idx1',
-                'Predicate of partial index idx2 ignored during '
-                'reflection',
-                'Skipped unsupported reflection of '
-                'expression-based index idx3'
-            ])
+        testing.assert_warnings(
+            go,
+            ['Skipped unsupported reflection of '
+             'expression-based index idx1',
+             'Predicate of partial index idx2 ignored during '
+             'reflection',
+             'Skipped unsupported reflection of '
+             'expression-based index idx3'])
 
     @testing.provide_metadata
     def test_index_reflection_modified(self):
@@ -505,9 +531,9 @@ class ReflectionTest(fixtures.TestBase):
         metadata = self.metadata
 
         t1 = Table('t', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('x', Integer)
-        )
+                   Column('id', Integer, primary_key=True),
+                   Column('x', Integer)
+                   )
         metadata.create_all()
         conn = testing.db.connect().execution_options(autocommit=True)
         conn.execute("CREATE INDEX idx1 ON t (x)")
@@ -520,30 +546,45 @@ class ReflectionTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_foreign_key_option_inspection(self):
         metadata = self.metadata
-        Table('person', metadata,
-            Column('id', String(length=32), nullable=False, primary_key=True),
-            Column('company_id', ForeignKey('company.id',
-                name='person_company_id_fkey',
-                match='FULL', onupdate='RESTRICT', ondelete='RESTRICT',
-                deferrable=True, initially='DEFERRED'
-                )
-            )
-        )
-        Table('company', metadata,
+        Table(
+            'person',
+            metadata,
+            Column(
+                'id',
+                String(
+                    length=32),
+                nullable=False,
+                primary_key=True),
+            Column(
+                'company_id',
+                ForeignKey(
+                    'company.id',
+                    name='person_company_id_fkey',
+                    match='FULL',
+                    onupdate='RESTRICT',
+                    ondelete='RESTRICT',
+                    deferrable=True,
+                    initially='DEFERRED')))
+        Table(
+            'company', metadata,
             Column('id', String(length=32), nullable=False, primary_key=True),
             Column('name', String(length=255)),
-            Column('industry_id', ForeignKey('industry.id',
-                name='company_industry_id_fkey',
-                onupdate='CASCADE', ondelete='CASCADE',
-                deferrable=False,  # PG default
-                initially='IMMEDIATE'  # PG default
+            Column(
+                'industry_id',
+                ForeignKey(
+                    'industry.id',
+                    name='company_industry_id_fkey',
+                    onupdate='CASCADE', ondelete='CASCADE',
+                    deferrable=False,  # PG default
+                    # PG default
+                    initially='IMMEDIATE'
                 )
             )
         )
         Table('industry', metadata,
-            Column('id', Integer(), nullable=False, primary_key=True),
-            Column('name', String(length=255))
-        )
+              Column('id', Integer(), nullable=False, primary_key=True),
+              Column('name', String(length=255))
+              )
         fk_ref = {
             'person_company_id_fkey': {
                 'name': 'person_company_id_fkey',
@@ -557,8 +598,8 @@ class ReflectionTest(fixtures.TestBase):
                     'ondelete': 'RESTRICT',
                     'initially': 'DEFERRED',
                     'match': 'FULL'
-                    }
-                },
+                }
+            },
             'company_industry_id_fkey': {
                 'name': 'company_industry_id_fkey',
                 'constrained_columns': ['industry_id'],
@@ -581,9 +622,11 @@ class ReflectionTest(fixtures.TestBase):
         for fk in fks:
             eq_(fk, fk_ref[fk['name']])
 
+
 class CustomTypeReflectionTest(fixtures.TestBase):
 
     class CustomType(object):
+
         def __init__(self, arg1=None, arg2=None):
             self.arg1 = arg1
             self.arg2 = arg2

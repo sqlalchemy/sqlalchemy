@@ -19,6 +19,7 @@ from sqlalchemy.testing.mock import Mock
 class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     __only_on__ = 'postgresql'
+    __backend__ = True
 
     @testing.provide_metadata
     def test_date_reflection(self):
@@ -129,15 +130,19 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             - datetime.timedelta(days=5)
         for field, exp in ('year', fivedaysago.year), \
                 ('month', fivedaysago.month), ('day', fivedaysago.day):
-            r = testing.db.execute(select([extract(field, func.now()
-                                   + datetime.timedelta(days=-5))])).scalar()
+            r = testing.db.execute(
+                select([
+                    extract(field, func.now() + datetime.timedelta(days=-5))])
+            ).scalar()
             eq_(r, exp)
 
     def test_checksfor_sequence(self):
         meta1 = MetaData(testing.db)
         seq = Sequence('fooseq')
-        t = Table('mytable', meta1, Column('col1', Integer,
-                  seq))
+        t = Table(
+            'mytable', meta1,
+            Column('col1', Integer, seq)
+        )
         seq.drop()
         try:
             testing.db.execute('CREATE SEQUENCE fooseq')
@@ -147,9 +152,10 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     def test_schema_roundtrips(self):
         meta = MetaData(testing.db)
-        users = Table('users', meta, Column('id', Integer,
-                      primary_key=True), Column('name', String(50)),
-                      schema='test_schema')
+        users = Table(
+            'users', meta, Column(
+                'id', Integer, primary_key=True), Column(
+                'name', String(50)), schema='test_schema')
         users.create()
         try:
             users.insert().execute(id=1, name='name1')
@@ -158,15 +164,15 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             users.insert().execute(id=4, name='name4')
             eq_(users.select().where(users.c.name == 'name2')
                 .execute().fetchall(), [(2, 'name2')])
-            eq_(users.select(use_labels=True).where(users.c.name
-                == 'name2').execute().fetchall(), [(2, 'name2')])
+            eq_(users.select(use_labels=True).where(
+                users.c.name == 'name2').execute().fetchall(), [(2, 'name2')])
             users.delete().where(users.c.id == 3).execute()
             eq_(users.select().where(users.c.name == 'name3')
                 .execute().fetchall(), [])
             users.update().where(users.c.name == 'name4'
                                  ).execute(name='newname')
-            eq_(users.select(use_labels=True).where(users.c.id
-                == 4).execute().fetchall(), [(4, 'newname')])
+            eq_(users.select(use_labels=True).where(
+                users.c.id == 4).execute().fetchall(), [(4, 'newname')])
         finally:
             users.drop()
 
