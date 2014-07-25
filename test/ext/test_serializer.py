@@ -3,7 +3,7 @@
 from sqlalchemy.ext import serializer
 from sqlalchemy import testing
 from sqlalchemy import Integer, String, ForeignKey, select, \
-    desc, func, util, MetaData
+    desc, func, util, MetaData, literal_column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.orm import relationship, sessionmaker, scoped_session, \
@@ -105,7 +105,7 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
         self.assert_sql_count(testing.db, go, 1)
 
         eq_(q2.join(User.addresses).filter(Address.email
-            == 'ed@bettyboop.com').value(func.count('*')), 1)
+            == 'ed@bettyboop.com').value(func.count(literal_column('*'))), 1)
         u1 = Session.query(User).get(8)
         q = Session.query(Address).filter(Address.user
                 == u1).order_by(desc(Address.email))

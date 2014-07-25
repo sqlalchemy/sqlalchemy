@@ -365,6 +365,16 @@ class DefaultRequirements(SuiteRequirements):
             ])
 
     @property
+    def graceful_disconnects(self):
+        """Target driver must raise a DBAPI-level exception, such as
+        InterfaceError, when the underlying connection has been closed
+        and the execute() method is called.
+        """
+        return fails_on(
+                    "postgresql+pg8000", "Driver crashes"
+                )
+
+    @property
     def views(self):
         """Target database must support VIEWs."""
 

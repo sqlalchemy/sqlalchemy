@@ -461,12 +461,11 @@ class DDLExecutionTest(fixtures.TestBase):
                 r = eval(py)
                 assert list(r) == [(1,)], py
 
-    @testing.fails_on('postgresql+pg8000', 'pg8000 requires explicit types')
     def test_platform_escape(self):
         """test the escaping of % characters in the DDL construct."""
 
         default_from = testing.db.dialect.statement_compiler(
-                            testing.db.dialect, None).default_from()
+            testing.db.dialect, None).default_from()
 
         # We're abusing the DDL()
         # construct here by pushing a SELECT through it

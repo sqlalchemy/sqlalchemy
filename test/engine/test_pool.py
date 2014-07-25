@@ -101,6 +101,7 @@ class PoolTest(PoolTestBase):
 
     @testing.fails_on('+pyodbc',
                       "pyodbc cursor doesn't implement tuple __eq__")
+    @testing.fails_on("+pg8000", "returns [1], not (1,)")
     def test_cursor_iterable(self):
         conn = testing.db.raw_connection()
         cursor = conn.cursor()
@@ -108,7 +109,6 @@ class PoolTest(PoolTestBase):
         expected = [(1, )]
         for row in cursor:
             eq_(row, expected.pop(0))
-
 
     def test_no_connect_on_recreate(self):
         def creator():

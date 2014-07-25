@@ -444,7 +444,6 @@ class CursorErrTest(fixtures.TestBase):
         )
 
 
-
 def _assert_invalidated(fn, *args):
     try:
         fn(*args)
@@ -453,8 +452,10 @@ def _assert_invalidated(fn, *args):
         if not e.connection_invalidated:
             raise
 
+
 class RealReconnectTest(fixtures.TestBase):
     __backend__ = True
+    __requires__ = 'graceful_disconnects',
 
     def setup(self):
         self.engine = engines.reconnecting_engine()
