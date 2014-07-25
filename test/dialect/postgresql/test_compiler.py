@@ -501,6 +501,16 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                          'param_3': 3, 'param_2': 2}
         )
 
+    def test_array_literal_compare(self):
+        self.assert_compile(
+            postgresql.array([1, 2]) == [3, 4, 5],
+            "ARRAY[%(param_1)s, %(param_2)s] = "
+            "ARRAY[%(param_3)s, %(param_4)s, %(param_5)s]",
+            checkparams={'param_5': 5, 'param_4': 4, 'param_1': 1,
+                'param_3': 3, 'param_2': 2}
+
+        )
+
     def test_array_literal_insert(self):
         m = MetaData()
         t = Table('t', m, Column('data', postgresql.ARRAY(Integer)))
