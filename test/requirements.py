@@ -60,7 +60,7 @@ class DefaultRequirements(SuiteRequirements):
 
         return skip_if(
                     ['sqlite', 'oracle'],
-                    'target backend does not support ON UPDATE CASCADE'
+                    'target backend %(doesnt_support)s ON UPDATE CASCADE'
                 )
 
     @property
@@ -68,7 +68,8 @@ class DefaultRequirements(SuiteRequirements):
         """target database must *not* support ON UPDATE..CASCADE behavior in
         foreign keys."""
 
-        return fails_on_everything_except('sqlite', 'oracle', '+zxjdbc') + skip_if('mssql')
+        return fails_on_everything_except('sqlite', 'oracle', '+zxjdbc') + \
+            skip_if('mssql')
 
     @property
     def deferrable_fks(self):
@@ -208,7 +209,7 @@ class DefaultRequirements(SuiteRequirements):
         return only_on(
                     ('postgresql', 'sqlite', 'mysql'),
                     "DBAPI has no isolation level support"
-                ).fails_on('postgresql+pypostgresql',
+                ) + fails_on('postgresql+pypostgresql',
                           'pypostgresql bombs on multiple isolation level calls')
 
     @property
@@ -463,9 +464,9 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def sane_multi_rowcount(self):
         return fails_if(
-                    lambda config: not config.db.dialect.supports_sane_multi_rowcount,
-                    "driver doesn't support 'sane' multi row count"
-                )
+            lambda config: not config.db.dialect.supports_sane_multi_rowcount,
+            "driver %(driver)s %(doesnt_support)s 'sane' multi row count"
+        )
 
     @property
     def nullsordering(self):
@@ -717,12 +718,14 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def percent_schema_names(self):
         return skip_if(
-                [
-                    ("+psycopg2", None, None,
-                            "psycopg2 2.4 no longer accepts % in bind placeholders"),
-                    ("mysql", None, None, "executemany() doesn't work here")
-                ]
-            )
+            [
+                (
+                    "+psycopg2", None, None,
+                    "psycopg2 2.4 no longer accepts percent "
+                    "sign in bind placeholders"),
+                ("mysql", None, None, "executemany() doesn't work here")
+            ]
+        )
 
     @property
     def order_by_label_with_expression(self):

@@ -368,7 +368,7 @@ def generate_sub_tests(cls, module):
                 (cls, ),
                 {
                     "__only_on__": ("%s+%s" % (cfg.db.name, cfg.db.driver)),
-                    "__backend__": False}
+                }
             )
             setattr(module, name, subcls)
             yield subcls
@@ -419,7 +419,7 @@ def after_test(test):
     warnings.resetwarnings()
 
 
-def _possible_configs_for_cls(cls):
+def _possible_configs_for_cls(cls, reasons=None):
     all_configs = set(config.Config.all_configs())
     if cls.__unsupported_on__:
         spec = exclusions.db_spec(*cls.__unsupported_on__)
@@ -431,12 +431,6 @@ def _possible_configs_for_cls(cls):
         for config_obj in list(all_configs):
             if not spec(config_obj):
                 all_configs.remove(config_obj)
-    return all_configs
-
-
-def _do_skips(cls):
-    all_configs = _possible_configs_for_cls(cls)
-    reasons = []
 
     if hasattr(cls, '__requires__'):
         requirements = config.requirements
@@ -444,10 +438,11 @@ def _do_skips(cls):
             for requirement in cls.__requires__:
                 check = getattr(requirements, requirement)
 
-                if check.predicate(config_obj):
+                skip_reasons = check.matching_config_reasons(config_obj)
+                if skip_reasons:
                     all_configs.remove(config_obj)
-                    if check.reason:
-                        reasons.append(check.reason)
+                    if reasons is not None:
+                        reasons.extend(skip_reasons)
                     break
 
     if hasattr(cls, '__prefer_requires__'):
@@ -457,10 +452,24 @@ def _do_skips(cls):
             for requirement in cls.__prefer_requires__:
                 check = getattr(requirements, requirement)
 
-                if check.predicate(config_obj):
+                if not check.enabled_for_config(config_obj):
                     non_preferred.add(config_obj)
         if all_configs.difference(non_preferred):
             all_configs.difference_update(non_preferred)
+
+    for db_spec, op, spec in getattr(cls, '__excluded_on__', ()):
+        for config_obj in list(all_configs):
+            if not exclusions.skip_if(
+                    exclusions.SpecPredicate(db_spec, op, spec)
+            ).enabled_for_config(config_obj):
+                all_configs.remove(config_obj)
+
+    return all_configs
+
+
+def _do_skips(cls):
+    reasons = []
+    all_configs = _possible_configs_for_cls(cls, reasons)
 
     if getattr(cls, '__skip_if__', False):
         for c in getattr(cls, '__skip_if__'):
@@ -469,24 +478,26 @@ def _do_skips(cls):
                     cls.__name__, c.__name__)
                 )
 
-    for db_spec, op, spec in getattr(cls, '__excluded_on__', ()):
-        for config_obj in list(all_configs):
-            if exclusions.skip_if(
-                    exclusions.SpecPredicate(db_spec, op, spec)
-            ).predicate(config_obj):
-                all_configs.remove(config_obj)
     if not all_configs:
-        raise SkipTest(
-            "'%s' unsupported on DB implementation %s%s" % (
+        if getattr(cls, '__backend__', False):
+            msg = "'%s' unsupported for implementation '%s'" % (
+                cls.__name__, cls.__only_on__)
+        else:
+            msg = "'%s' unsupported on any DB implementation %s%s" % (
                 cls.__name__,
-                ", ".join("'%s' = %s"
-                          % (config_obj.db.name,
-                             config_obj.db.dialect.server_version_info)
-                          for config_obj in config.Config.all_configs()
-                          ),
+                ", ".join(
+                    "'%s(%s)+%s'" % (
+                        config_obj.db.name,
+                        ".".join(
+                            str(dig) for dig in
+                            config_obj.db.dialect.server_version_info),
+                        config_obj.db.driver
+                    )
+                  for config_obj in config.Config.all_configs()
+                ),
                 ", ".join(reasons)
             )
-        )
+        raise SkipTest(msg)
     elif hasattr(cls, '__prefer_backends__'):
         non_preferred = set()
         spec = exclusions.db_spec(*util.to_list(cls.__prefer_backends__))
