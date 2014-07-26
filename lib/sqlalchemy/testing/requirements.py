@@ -187,7 +187,7 @@ class SuiteRequirements(Requirements):
 
         return exclusions.only_if(
             lambda config: config.db.dialect.implicit_returning,
-            "'returning' not supported by database"
+            "%(database)s %(does_support)s 'returning'"
         )
 
     @property

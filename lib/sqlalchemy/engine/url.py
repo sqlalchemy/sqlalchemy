@@ -105,6 +105,18 @@ class URL(object):
             self.database == other.database and \
             self.query == other.query
 
+    def get_backend_name(self):
+        if '+' not in self.drivername:
+            return self.drivername
+        else:
+            return self.drivername.split('+')[0]
+
+    def get_driver_name(self):
+        if '+' not in self.drivername:
+            return self.get_dialect().driver
+        else:
+            return self.drivername.split('+')[1]
+
     def get_dialect(self):
         """Return the SQLAlchemy database dialect class corresponding
         to this URL's driver name.

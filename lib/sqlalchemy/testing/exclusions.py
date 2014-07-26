@@ -11,83 +11,137 @@ from .plugin.plugin_base import SkipTest
 from ..util import decorator
 from . import config
 from .. import util
-import contextlib
 import inspect
+import contextlib
 
 
-class skip_if(object):
-    def __init__(self, predicate, reason=None):
-        self.predicate = _as_predicate(predicate)
-        self.reason = reason
+def skip_if(predicate, reason=None):
+    rule = compound()
+    pred = _as_predicate(predicate, reason)
+    rule.skips.add(pred)
+    return rule
 
-    _fails_on = None
+
+def fails_if(predicate, reason=None):
+    rule = compound()
+    pred = _as_predicate(predicate, reason)
+    rule.fails.add(pred)
+    return rule
+
+
+class compound(object):
+    def __init__(self):
+        self.fails = set()
+        self.skips = set()
 
     def __add__(self, other):
-        def decorate(fn):
-            return other(self(fn))
-        return decorate
+        return self.add(other)
+
+    def add(self, *others):
+        copy = compound()
+        copy.fails.update(self.fails)
+        copy.skips.update(self.skips)
+        for other in others:
+            copy.fails.update(other.fails)
+            copy.skips.update(other.skips)
+        return copy
+
+    def not_(self):
+        copy = compound()
+        copy.fails.update(NotPredicate(fail) for fail in self.fails)
+        copy.skips.update(NotPredicate(skip) for skip in self.skips)
+        return copy
 
     @property
     def enabled(self):
         return self.enabled_for_config(config._current)
 
     def enabled_for_config(self, config):
-        return not self.predicate(config)
+        for predicate in self.skips.union(self.fails):
+            if predicate(config):
+                return False
+        else:
+            return True
+
+    def matching_config_reasons(self, config):
+        return [
+            predicate._as_string(config) for predicate
+            in self.skips.union(self.fails)
+            if predicate(config)
+        ]
+
+    def __call__(self, fn):
+        if hasattr(fn, '_sa_exclusion_extend'):
+            fn._sa_exclusion_extend(self)
+            return fn
+
+        def extend(other):
+            self.skips.update(other.skips)
+            self.fails.update(other.fails)
+
+        @decorator
+        def decorate(fn, *args, **kw):
+            return self._do(config._current, fn, *args, **kw)
+        decorated = decorate(fn)
+        decorated._sa_exclusion_extend = extend
+        return decorated
+
 
     @contextlib.contextmanager
-    def fail_if(self, name='block'):
+    def fail_if(self):
+        all_fails = compound()
+        all_fails.fails.update(self.skips.union(self.fails))
+
         try:
             yield
         except Exception as ex:
-            if self.predicate(config._current):
-                print(("%s failed as expected (%s): %s " % (
-                    name, self.predicate, str(ex))))
-            else:
-                raise
+            all_fails._expect_failure(config._current, ex)
         else:
-            if self.predicate(config._current):
-                raise AssertionError(
-                    "Unexpected success for '%s' (%s)" %
-                    (name, self.predicate))
+            all_fails._expect_success(config._current)
 
-    def __call__(self, fn):
-        @decorator
-        def decorate(fn, *args, **kw):
-            if self.predicate(config._current):
-                if self.reason:
-                    msg = "'%s' : %s" % (
-                        fn.__name__,
-                        self.reason
-                    )
-                else:
-                    msg = "'%s': %s" % (
-                        fn.__name__, self.predicate
-                    )
+    def _do(self, config, fn, *args, **kw):
+        for skip in self.skips:
+            if skip(config):
+                msg = "'%s' : %s" % (
+                    fn.__name__,
+                    skip._as_string(config)
+                )
                 raise SkipTest(msg)
-            else:
-                if self._fails_on:
-                    with self._fails_on.fail_if(name=fn.__name__):
-                        return fn(*args, **kw)
-                else:
-                    return fn(*args, **kw)
-        return decorate(fn)
 
-    def fails_on(self, other, reason=None):
-        self._fails_on = skip_if(other, reason)
-        return self
+        try:
+            return_value = fn(*args, **kw)
+        except Exception as ex:
+            self._expect_failure(config, ex, name=fn.__name__)
+        else:
+            self._expect_success(config, name=fn.__name__)
+            return return_value
 
-    def fails_on_everything_except(self, *dbs):
-        self._fails_on = skip_if(fails_on_everything_except(*dbs))
-        return self
+    def _expect_failure(self, config, ex, name='block'):
+        for fail in self.fails:
+            if fail(config):
+                print(("%s failed as expected (%s): %s " % (
+                    name, fail._as_string(config), str(ex))))
+                break
+        else:
+            raise ex
 
-
-class fails_if(skip_if):
-    def __call__(self, fn):
-        @decorator
-        def decorate(fn, *args, **kw):
-            with self.fail_if(name=fn.__name__):
-                return fn(*args, **kw)
-        return decorate(fn)
+    def _expect_success(self, config, name='block'):
+        if not self.fails:
+            return
+        for fail in self.fails:
+            if not fail(config):
+                break
+        else:
+            raise AssertionError(
+                "Unexpected success for '%s' (%s)" %
+                (
+                    name,
+                    " and ".join(
+                        fail._as_string(config)
+                        for fail in self.fails
+                    )
+                )
+            )
 
 
 def only_if(predicate, reason=None):
@@ -102,13 +156,18 @@ def succeeds_if(predicate, reason=None):
 
 class Predicate(object):
     @classmethod
-    def as_predicate(cls, predicate):
-        if isinstance(predicate, skip_if):
-            return NotPredicate(predicate.predicate)
+    def as_predicate(cls, predicate, description=None):
+        if isinstance(predicate, compound):
+            return cls.as_predicate(predicate.fails.union(predicate.skips))
+
         elif isinstance(predicate, Predicate):
+            if description and predicate.description is None:
+                predicate.description = description
             return predicate
-        elif isinstance(predicate, list):
-            return OrPredicate([cls.as_predicate(pred) for pred in predicate])
+        elif isinstance(predicate, (list, set)):
+            return OrPredicate(
+                [cls.as_predicate(pred) for pred in predicate],
+                description)
         elif isinstance(predicate, tuple):
             return SpecPredicate(*predicate)
         elif isinstance(predicate, util.string_types):
@@ -119,11 +178,25 @@ class Predicate(object):
                 op = tokens.pop(0)
             if tokens:
                 spec = tuple(int(d) for d in tokens.pop(0).split("."))
-            return SpecPredicate(db, op, spec)
+            return SpecPredicate(db, op, spec, description=description)
         elif util.callable(predicate):
-            return LambdaPredicate(predicate)
+            return LambdaPredicate(predicate, description)
         else:
             assert False, "unknown predicate type: %s" % predicate
+
+    def _format_description(self, config, negate=False):
+        bool_ = self(config)
+        if negate:
+            bool_ = not negate
+        return self.description % {
+            "driver": config.db.url.get_driver_name(),
+            "database": config.db.url.get_backend_name(),
+            "doesnt_support": "doesn't support" if bool_ else "does support",
+            "does_support": "does support" if bool_ else "doesn't support"
+        }
+
+    def _as_string(self, config=None, negate=False):
+        raise NotImplementedError()
 
 
 class BooleanPredicate(Predicate):
@@ -134,14 +207,8 @@ class BooleanPredicate(Predicate):
     def __call__(self, config):
         return self.value
 
-    def _as_string(self, negate=False):
-        if negate:
-            return "not " + self.description
-        else:
-            return self.description
-
-    def __str__(self):
-        return self._as_string()
+    def _as_string(self, config, negate=False):
+        return self._format_description(config, negate=negate)
 
 
 class SpecPredicate(Predicate):
@@ -185,9 +252,9 @@ class SpecPredicate(Predicate):
         else:
             return True
 
-    def _as_string(self, negate=False):
+    def _as_string(self, config, negate=False):
         if self.description is not None:
-            return self.description
+            return self._format_description(config)
         elif self.op is None:
             if negate:
                 return "not %s" % self.db
@@ -206,9 +273,6 @@ class SpecPredicate(Predicate):
                     self.op,
                     self.spec
                 )
-
-    def __str__(self):
-        return self._as_string()
 
 
 class LambdaPredicate(Predicate):
@@ -230,25 +294,23 @@ class LambdaPredicate(Predicate):
     def __call__(self, config):
         return self.lambda_(config)
 
-    def _as_string(self, negate=False):
-        if negate:
-            return "not " + self.description
-        else:
-            return self.description
-
-    def __str__(self):
-        return self._as_string()
+    def _as_string(self, config, negate=False):
+        return self._format_description(config)
 
 
 class NotPredicate(Predicate):
-    def __init__(self, predicate):
+    def __init__(self, predicate, description=None):
         self.predicate = predicate
+        self.description = description
 
     def __call__(self, config):
         return not self.predicate(config)
 
-    def __str__(self):
-        return self.predicate._as_string(True)
+    def _as_string(self, config, negate=False):
+        if self.description:
+            return self._format_description(config, not negate)
+        else:
+            return self.predicate._as_string(config, not negate)
 
 
 class OrPredicate(Predicate):
@@ -259,40 +321,32 @@ class OrPredicate(Predicate):
     def __call__(self, config):
         for pred in self.predicates:
             if pred(config):
-                self._str = pred
                 return True
         return False
 
-    _str = None
-
-    def _eval_str(self, negate=False):
-        if self._str is None:
-            if negate:
-                conjunction = " and "
-            else:
-                conjunction = " or "
-            return conjunction.join(p._as_string(negate=negate)
-                                    for p in self.predicates)
-        else:
-            return self._str._as_string(negate=negate)
-
-    def _negation_str(self):
-        if self.description is not None:
-            return "Not " + (self.description % {"spec": self._str})
-        else:
-            return self._eval_str(negate=True)
-
-    def _as_string(self, negate=False):
+    def _eval_str(self, config, negate=False):
         if negate:
-            return self._negation_str()
+            conjunction = " and "
+        else:
+            conjunction = " or "
+        return conjunction.join(p._as_string(config, negate=negate)
+                                for p in self.predicates)
+
+    def _negation_str(self, config):
+        if self.description is not None:
+            return "Not " + self._format_description(config)
+        else:
+            return self._eval_str(config, negate=True)
+
+    def _as_string(self, config, negate=False):
+        if negate:
+            return self._negation_str(config)
         else:
             if self.description is not None:
-                return self.description % {"spec": self._str}
+                return self._format_description(config)
             else:
-                return self._eval_str()
+                return self._eval_str(config)
 
-    def __str__(self):
-        return self._as_string()
 
 _as_predicate = Predicate.as_predicate
 
@@ -341,8 +395,8 @@ def fails_on(db, reason=None):
 def fails_on_everything_except(*dbs):
     return succeeds_if(
         OrPredicate([
-                    SpecPredicate(db) for db in dbs
-                    ])
+            SpecPredicate(db) for db in dbs
+        ])
     )
 
 
