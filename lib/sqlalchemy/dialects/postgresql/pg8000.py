@@ -172,11 +172,9 @@ class PGDialect_pg8000(PGDialect):
             )
 
     def do_begin_twophase(self, connection, xid):
-        print("begin twophase", xid)
         connection.connection.tpc_begin((0, xid, ''))
 
     def do_prepare_twophase(self, connection, xid):
-        print("prepare twophase", xid)
         connection.connection.tpc_prepare()
 
     def do_rollback_twophase(
