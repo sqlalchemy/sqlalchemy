@@ -67,7 +67,7 @@ def Column(*args, **kw):
     test_opts = dict([(k, kw.pop(k)) for k in list(kw)
                       if k.startswith('test_')])
 
-    if config.requirements.foreign_key_ddl.predicate(config):
+    if not config.requirements.foreign_key_ddl.enabled_for_config(config):
         args = [arg for arg in args if not isinstance(arg, schema.ForeignKey)]
 
     col = schema.Column(*args, **kw)
