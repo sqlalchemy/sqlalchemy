@@ -1,11 +1,15 @@
 from sqlalchemy.engine import url as sa_url
 
+
 def create_follower_db(follower_ident):
     from .. import config, engines
 
     follower_ident = "test_%s" % follower_ident
 
     hosts = set()
+
+    for cfg in config.Config.all_configs():
+        cfg.db.dispose()
 
     for cfg in config.Config.all_configs():
         url = cfg.db.url
@@ -40,13 +44,12 @@ def _pg_create_db(eng, ident):
             conn.execute("DROP DATABASE %s" % ident)
         except:
             pass
-        conn.execute("CREATE DATABASE %s" % ident)
+        currentdb = conn.scalar("select current_database()")
+        conn.execute("CREATE DATABASE %s TEMPLATE %s" % (ident, currentdb))
 
 
 def _pg_init_db(eng):
-    with eng.connect() as conn:
-        conn.execute("CREATE SCHEMA test_schema")
-        conn.execute("CREATE SCHEMA test_schema_2")
+    pass
 
 
 def _mysql_create_db(eng, ident):
