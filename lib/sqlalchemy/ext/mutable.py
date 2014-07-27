@@ -627,10 +627,10 @@ class MutableDict(Mutable, dict):
 
     @classmethod
     def coerce(cls, key, value):
-        """Convert plain dictionary to MutableDict."""
-        if not isinstance(value, MutableDict):
+        """Convert plain dictionary to instance of this class."""
+        if not isinstance(value, cls):
             if isinstance(value, dict):
-                return MutableDict(value)
+                return cls(value)
             return Mutable.coerce(key, value)
         else:
             return value
