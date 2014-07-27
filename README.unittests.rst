@@ -285,44 +285,48 @@ coverage numbers are coming out as low/zero, try deleting all .pyc files.
 DEVELOPING AND TESTING NEW DIALECTS
 -----------------------------------
 
-See the new file README.dialects.rst for detail on dialects.
+See the file README.dialects.rst for detail on dialects.
 
 
 TESTING WITH MULTIPLE PYTHON VERSIONS USING TOX
 -----------------------------------------------
 
 If you want to test across multiple versions of Python, you may find `tox
-<http://tox.testrun.org/>`_ useful. To use it:
+<http://tox.testrun.org/>`_ useful.  SQLAlchemy includes a tox.ini file::
 
-1. Create a ``tox.ini`` file with the following:
+    tox -e full
 
-.. code-block:: ini
+SQLAlchemy uses tox mostly for pre-fab testing configurations, to simplify
+configuration of Jenkins jobs, and *not* for testing different Python
+interpreters simultaneously.  You can of course create whatever alternate
+tox.ini file you want.
 
-    # Tox (http://tox.testrun.org/) is a tool for running tests
-    # in multiple virtualenvs. This configuration file will run the
-    # test suite on all supported python versions. To use it, "pip install tox"
-    # and then run "tox" from this directory.
+Environments include::
 
-    [tox]
-    envlist = py26, py27, py33, py34, pypy
+    "full" - runs a full py.test
 
-    [testenv]
-    deps =
-        mock
-        nose
-    commands = {envpython} ./sqla_nose.py
+    "coverage" - runs a full py.test plus coverage, minus memusage
 
-2. Run::
+    "lightweight" - runs tests without the very heavy "memusage" tests, without
+    coverage.  Suitable running tests against pypy and for parallel testing.
 
-    pip install tox
+    "memusage" - runs only the memusage tests (very slow and heavy)
 
-3. Run::
+    "pep8" - runs flake8 against the codebase (useful with --diff to check
+    against a patch)
 
-    tox
 
-This will run the test suite on all the Python versions listed in the
-``envlist`` in the ``tox.ini`` file. You can also manually specify the versions
-to test against::
+PARALLEL TESTING
+----------------
 
-    tox -e py26,py27,py33
+Parallel testing is supported using the Pytest xdist plugin.   Supported
+databases currently include sqlite, postgresql, and mysql.  The username
+for the database should have CREATE DATABASE and DROP DATABASE privileges.
+After installing pytest-xdist, testing is run adding the -n<num> option.
+For example, to run against sqlite, mysql, postgresql with four processes::
 
+    tox -e lightweight -- -n 4 --db sqlite --db postgresql --db mysql
+
+Each backend has a different scheme for setting up the database.  Postgresql
+still needs the "test_schema" and "test_schema_2" schemas present, as the
+parallel databases are created using the base database as a "template".
