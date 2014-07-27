@@ -720,16 +720,16 @@ class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
         # don't really know how else to go here unless
         # we connect as the other user.
 
-        for stmt in """
-create table test_schema.parent(
+        for stmt in ("""
+create table %(test_schema)s.parent(
     id integer primary key,
     data varchar2(50)
 );
 
-create table test_schema.child(
+create table %(test_schema)s.child(
     id integer primary key,
     data varchar2(50),
-    parent_id integer references test_schema.parent(id)
+    parent_id integer references %(test_schema)s.parent(id)
 );
 
 create table local_table(
@@ -737,35 +737,35 @@ create table local_table(
     data varchar2(50)
 );
 
-create synonym test_schema.ptable for test_schema.parent;
-create synonym test_schema.ctable for test_schema.child;
+create synonym %(test_schema)s.ptable for %(test_schema)s.parent;
+create synonym %(test_schema)s.ctable for %(test_schema)s.child;
 
-create synonym test_schema_ptable for test_schema.parent;
+create synonym %(test_schema)s_ptable for %(test_schema)s.parent;
 
-create synonym test_schema.local_table for local_table;
+create synonym %(test_schema)s.local_table for local_table;
 
 -- can't make a ref from local schema to the
 -- remote schema's table without this,
 -- *and* cant give yourself a grant !
 -- so we give it to public.  ideas welcome.
-grant references on test_schema.parent to public;
-grant references on test_schema.child to public;
-""".split(";"):
+grant references on %(test_schema)s.parent to public;
+grant references on %(test_schema)s.child to public;
+""" % {"test_schema": testing.config.test_schema}).split(";"):
             if stmt.strip():
                 testing.db.execute(stmt)
 
     @classmethod
     def teardown_class(cls):
-        for stmt in """
-drop table test_schema.child;
-drop table test_schema.parent;
+        for stmt in ("""
+drop table %(test_schema)s.child;
+drop table %(test_schema)s.parent;
 drop table local_table;
-drop synonym test_schema.ctable;
-drop synonym test_schema.ptable;
-drop synonym test_schema_ptable;
-drop synonym test_schema.local_table;
+drop synonym %(test_schema)s.ctable;
+drop synonym %(test_schema)s.ptable;
+drop synonym %(test_schema)s_ptable;
+drop synonym %(test_schema)s.local_table;
 
-""".split(";"):
+""" % {"test_schema": testing.config.test_schema}).split(";"):
             if stmt.strip():
                 testing.db.execute(stmt)
 
@@ -798,11 +798,16 @@ drop synonym test_schema.local_table;
 
     def test_reflect_alt_synonym_owner_local_table(self):
         meta = MetaData(testing.db)
-        parent = Table('local_table', meta, autoload=True,
-                            oracle_resolve_synonyms=True, schema="test_schema")
-        self.assert_compile(parent.select(),
-                "SELECT test_schema.local_table.id, "
-                "test_schema.local_table.data FROM test_schema.local_table")
+        parent = Table(
+            'local_table', meta, autoload=True,
+            oracle_resolve_synonyms=True, schema=testing.config.test_schema)
+        self.assert_compile(
+            parent.select(),
+            "SELECT %(test_schema)s.local_table.id, "
+            "%(test_schema)s.local_table.data "
+            "FROM %(test_schema)s.local_table" %
+            {"test_schema": testing.config.test_schema}
+        )
         select([parent]).execute().fetchall()
 
     @testing.provide_metadata
@@ -820,31 +825,41 @@ drop synonym test_schema.local_table;
         child.insert().execute({'cid': 1, 'pid': 1})
         eq_(child.select().execute().fetchall(), [(1, 1)])
 
-
     def test_reflect_alt_owner_explicit(self):
         meta = MetaData(testing.db)
-        parent = Table('parent', meta, autoload=True, schema='test_schema')
-        child = Table('child', meta, autoload=True, schema='test_schema')
+        parent = Table(
+            'parent', meta, autoload=True,
+            schema=testing.config.test_schema)
+        child = Table(
+            'child', meta, autoload=True,
+            schema=testing.config.test_schema)
 
-        self.assert_compile(parent.join(child),
-                "test_schema.parent JOIN test_schema.child ON "
-                "test_schema.parent.id = test_schema.child.parent_id")
+        self.assert_compile(
+            parent.join(child),
+            "%(test_schema)s.parent JOIN %(test_schema)s.child ON "
+            "%(test_schema)s.parent.id = %(test_schema)s.child.parent_id" % {
+                "test_schema": testing.config.test_schema
+            })
         select([parent, child]).\
-                select_from(parent.join(child)).\
-                execute().fetchall()
+            select_from(parent.join(child)).\
+            execute().fetchall()
 
     def test_reflect_local_to_remote(self):
-        testing.db.execute('CREATE TABLE localtable (id INTEGER '
-                           'PRIMARY KEY, parent_id INTEGER REFERENCES '
-                           'test_schema.parent(id))')
+        testing.db.execute(
+            'CREATE TABLE localtable (id INTEGER '
+            'PRIMARY KEY, parent_id INTEGER REFERENCES '
+            '%(test_schema)s.parent(id))' % {
+                "test_schema": testing.config.test_schema})
         try:
             meta = MetaData(testing.db)
             lcl = Table('localtable', meta, autoload=True)
-            parent = meta.tables['test_schema.parent']
+            parent = meta.tables['%s.parent' % testing.config.test_schema]
             self.assert_compile(parent.join(lcl),
-                                'test_schema.parent JOIN localtable ON '
-                                'test_schema.parent.id = '
-                                'localtable.parent_id')
+                                '%(test_schema)s.parent JOIN localtable ON '
+                                '%(test_schema)s.parent.id = '
+                                'localtable.parent_id' % {
+                                    "test_schema": testing.config.test_schema}
+                                )
             select([parent,
                    lcl]).select_from(parent.join(lcl)).execute().fetchall()
         finally:
@@ -852,30 +867,36 @@ drop synonym test_schema.local_table;
 
     def test_reflect_alt_owner_implicit(self):
         meta = MetaData(testing.db)
-        parent = Table('parent', meta, autoload=True,
-                       schema='test_schema')
-        child = Table('child', meta, autoload=True, schema='test_schema'
-                      )
-        self.assert_compile(parent.join(child),
-                            'test_schema.parent JOIN test_schema.child '
-                            'ON test_schema.parent.id = '
-                            'test_schema.child.parent_id')
+        parent = Table(
+            'parent', meta, autoload=True,
+            schema=testing.config.test_schema)
+        child = Table(
+            'child', meta, autoload=True,
+            schema=testing.config.test_schema)
+        self.assert_compile(
+            parent.join(child),
+            '%(test_schema)s.parent JOIN %(test_schema)s.child '
+            'ON %(test_schema)s.parent.id = '
+            '%(test_schema)s.child.parent_id' % {
+                "test_schema": testing.config.test_schema})
         select([parent,
                child]).select_from(parent.join(child)).execute().fetchall()
 
     def test_reflect_alt_owner_synonyms(self):
         testing.db.execute('CREATE TABLE localtable (id INTEGER '
                            'PRIMARY KEY, parent_id INTEGER REFERENCES '
-                           'test_schema.ptable(id))')
+                           '%s.ptable(id))' % testing.config.test_schema)
         try:
             meta = MetaData(testing.db)
             lcl = Table('localtable', meta, autoload=True,
                         oracle_resolve_synonyms=True)
-            parent = meta.tables['test_schema.ptable']
-            self.assert_compile(parent.join(lcl),
-                                'test_schema.ptable JOIN localtable ON '
-                                'test_schema.ptable.id = '
-                                'localtable.parent_id')
+            parent = meta.tables['%s.ptable' % testing.config.test_schema]
+            self.assert_compile(
+                parent.join(lcl),
+                '%(test_schema)s.ptable JOIN localtable ON '
+                '%(test_schema)s.ptable.id = '
+                'localtable.parent_id' % {
+                    "test_schema": testing.config.test_schema})
             select([parent,
                    lcl]).select_from(parent.join(lcl)).execute().fetchall()
         finally:
@@ -884,17 +905,21 @@ drop synonym test_schema.local_table;
     def test_reflect_remote_synonyms(self):
         meta = MetaData(testing.db)
         parent = Table('ptable', meta, autoload=True,
-                       schema='test_schema',
+                       schema=testing.config.test_schema,
                        oracle_resolve_synonyms=True)
         child = Table('ctable', meta, autoload=True,
-                      schema='test_schema',
+                      schema=testing.config.test_schema,
                       oracle_resolve_synonyms=True)
-        self.assert_compile(parent.join(child),
-                            'test_schema.ptable JOIN '
-                            'test_schema.ctable ON test_schema.ptable.i'
-                            'd = test_schema.ctable.parent_id')
+        self.assert_compile(
+            parent.join(child),
+            '%(test_schema)s.ptable JOIN '
+            '%(test_schema)s.ctable '
+            'ON %(test_schema)s.ptable.id = '
+            '%(test_schema)s.ctable.parent_id' % {
+                "test_schema": testing.config.test_schema})
         select([parent,
                child]).select_from(parent.join(child)).execute().fetchall()
+
 
 class ConstraintTest(fixtures.TablesTest):
 

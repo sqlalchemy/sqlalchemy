@@ -1625,7 +1625,7 @@ class KeyTargetingTest(fixtures.TablesTest):
                 'wschema', metadata,
                 Column("a", CHAR(2), key="b"),
                 Column("c", CHAR(2), key="q"),
-                schema="test_schema"
+                schema=testing.config.test_schema
             )
 
     @classmethod
@@ -1637,12 +1637,12 @@ class KeyTargetingTest(fixtures.TablesTest):
         cls.tables.content.insert().execute(type="t1")
 
         if testing.requires.schemas.enabled:
-            cls.tables['test_schema.wschema'].insert().execute(
+            cls.tables['%s.wschema' % testing.config.test_schema].insert().execute(
                 dict(b="a1", q="c1"))
 
     @testing.requires.schemas
     def test_keyed_accessor_wschema(self):
-        keyed1 = self.tables['test_schema.wschema']
+        keyed1 = self.tables['%s.wschema' % testing.config.test_schema]
         row = testing.db.execute(keyed1.select()).first()
 
         eq_(row.b, "a1")

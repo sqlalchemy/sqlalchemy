@@ -5,6 +5,12 @@ from . import plugin_base
 import collections
 import itertools
 
+try:
+    import xdist
+    has_xdist = True
+except ImportError:
+    has_xdist = False
+
 
 def pytest_addoption(parser):
     group = parser.getgroup("sqlalchemy")
@@ -37,15 +43,19 @@ def pytest_configure(config):
 
     plugin_base.post_begin()
 
-_follower_count = itertools.count(1)
+if has_xdist:
+    _follower_count = itertools.count(1)
 
+    def pytest_configure_node(node):
+        # the master for each node fills slaveinput dictionary
+        # which pytest-xdist will transfer to the subprocess
+        node.slaveinput["follower_ident"] = "test_%s" % next(_follower_count)
+        from . import provision
+        provision.create_follower_db(node.slaveinput["follower_ident"])
 
-def pytest_configure_node(node):
-    # the master for each node fills slaveinput dictionary
-    # which pytest-xdist will transfer to the subprocess
-    node.slaveinput["follower_ident"] = next(_follower_count)
-    from . import provision
-    provision.create_follower_db(node.slaveinput["follower_ident"])
+    def pytest_testnodedown(node, error):
+        from . import provision
+        provision.drop_follower_db(node.slaveinput["follower_ident"])
 
 
 def pytest_collection_modifyitems(session, config, items):

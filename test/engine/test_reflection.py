@@ -1237,8 +1237,10 @@ class SchemaTest(fixtures.TestBase):
     @testing.requires.schemas
     @testing.requires.cross_schema_fk_reflection
     def test_has_schema(self):
-        eq_(testing.db.dialect.has_schema(testing.db, 'test_schema'), True)
-        eq_(testing.db.dialect.has_schema(testing.db, 'sa_fake_schema_123'), False)
+        eq_(testing.db.dialect.has_schema(testing.db,
+            testing.config.test_schema), True)
+        eq_(testing.db.dialect.has_schema(testing.db,
+            'sa_fake_schema_123'), False)
 
     @testing.requires.schemas
     @testing.fails_on('sqlite', 'FIXME: unknown')
@@ -1320,14 +1322,17 @@ class SchemaTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_metadata_reflect_schema(self):
         metadata = self.metadata
-        createTables(metadata, "test_schema")
+        createTables(metadata, testing.config.test_schema)
         metadata.create_all()
-        m2 = MetaData(schema="test_schema", bind=testing.db)
+        m2 = MetaData(schema=testing.config.test_schema, bind=testing.db)
         m2.reflect()
         eq_(
             set(m2.tables),
-            set(['test_schema.dingalings', 'test_schema.users',
-                'test_schema.email_addresses'])
+            set([
+                '%s.dingalings' % testing.config.test_schema,
+                '%s.users' % testing.config.test_schema,
+                '%s.email_addresses' % testing.config.test_schema
+                ])
         )
 
     @testing.requires.schemas
@@ -1339,16 +1344,16 @@ class SchemaTest(fixtures.TestBase):
 
         t2 = Table('t', self.metadata,
             Column('id1', sa.ForeignKey('t.id')),
-            schema="test_schema"
+            schema=testing.config.test_schema
         )
 
         self.metadata.create_all()
         m2 = MetaData()
-        m2.reflect(testing.db, schema="test_schema")
+        m2.reflect(testing.db, schema=testing.config.test_schema)
 
         m3 = MetaData()
         m3.reflect(testing.db)
-        m3.reflect(testing.db, schema="test_schema")
+        m3.reflect(testing.db, schema=testing.config.test_schema)
 
         eq_(
             set((t.name, t.schema) for t in m2.tables.values()),

@@ -103,7 +103,7 @@ def setup_options(make_option):
 
 def configure_follower(follower_ident):
     global FOLLOWER_IDENT
-    FOLLOWER_IDENT = "test_%s" % follower_ident
+    FOLLOWER_IDENT = follower_ident
 
 
 def read_config():
@@ -221,16 +221,18 @@ def _engine_uri(options, file_config):
     if not db_urls:
         db_urls.append(file_config.get('db', 'default'))
 
+    from . import provision
+
     for db_url in db_urls:
-        if FOLLOWER_IDENT:
-            from sqlalchemy.engine import url
-            db_url = url.make_url(db_url)
-            db_url.database = FOLLOWER_IDENT
-        eng = engines.testing_engine(db_url, db_opts)
-        eng.connect().close()
-        config.Config.register(eng, db_opts, options, file_config, testing)
+        cfg = provision.setup_config(
+            db_url, db_opts, options, file_config, FOLLOWER_IDENT)
+
+        if not config._current:
+            cfg.set_as_current(cfg, testing)
 
     config.db_opts = db_opts
+
+
 
 
 @post
