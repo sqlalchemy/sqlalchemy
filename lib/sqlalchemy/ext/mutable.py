@@ -621,6 +621,10 @@ class MutableDict(Mutable, dict):
         dict.__delitem__(self, key)
         self.changed()
 
+    def update(self, *a, **kw):
+        dict.update(self, *a, **kw)
+        self.changed()
+
     def clear(self):
         dict.clear(self)
         self.changed()

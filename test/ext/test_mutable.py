@@ -119,6 +119,18 @@ class _MutableDictTestBase(object):
 
         eq_(f1.data, {})
 
+    def test_update(self):
+        sess = Session()
+
+        f1 = Foo(data={'a': 'b'})
+        sess.add(f1)
+        sess.commit()
+
+        f1.data.update({'a': 'z'})
+        sess.commit()
+
+        eq_(f1.data, {'a': 'z'})
+
     def test_setdefault(self):
         sess = Session()
 
