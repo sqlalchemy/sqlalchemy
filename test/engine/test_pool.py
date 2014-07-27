@@ -528,6 +528,7 @@ class PoolEventsTest(PoolTestBase):
 class PoolFirstConnectSyncTest(PoolTestBase):
     # test [ticket:2964]
 
+    @testing.requires.timing_intensive
     def test_sync(self):
         pool = self._queuepool_fixture(pool_size=3, max_overflow=0)
 
@@ -806,11 +807,8 @@ class QueuePoolTest(PoolTestBase):
                            max_overflow=-1)
 
         def status(pool):
-            tup = pool.size(), pool.checkedin(), pool.overflow(), \
+            return pool.size(), pool.checkedin(), pool.overflow(), \
                 pool.checkedout()
-            print('Pool size: %d  Connections in pool: %d Current '\
-                'Overflow: %d Current Checked out connections: %d' % tup)
-            return tup
 
         c1 = p.connect()
         self.assert_(status(p) == (3, 0, -2, 1))
@@ -853,6 +851,7 @@ class QueuePoolTest(PoolTestBase):
         lazy_gc()
         assert not pool._refs
 
+    @testing.requires.timing_intensive
     def test_timeout(self):
         p = self._queuepool_fixture(pool_size=3,
                            max_overflow=0,
@@ -868,6 +867,7 @@ class QueuePoolTest(PoolTestBase):
             assert int(time.time() - now) == 2
 
     @testing.requires.threading_with_mock
+    @testing.requires.timing_intensive
     def test_timeout_race(self):
         # test a race condition where the initial connecting threads all race
         # to queue.Empty, then block on the mutex.  each thread consumes a
@@ -967,6 +967,7 @@ class QueuePoolTest(PoolTestBase):
         eq_(p._overflow, 1)
 
     @testing.requires.threading_with_mock
+    @testing.requires.timing_intensive
     def test_hanging_connect_within_overflow(self):
         """test that a single connect() call which is hanging
         does not block other connections from proceeding."""
@@ -1028,6 +1029,7 @@ class QueuePoolTest(PoolTestBase):
 
 
     @testing.requires.threading_with_mock
+    @testing.requires.timing_intensive
     def test_waiters_handled(self):
         """test that threads waiting for connections are
         handled when the pool is replaced.
@@ -1079,6 +1081,7 @@ class QueuePoolTest(PoolTestBase):
         eq_(len(success), 12, "successes: %s" % success)
 
     @testing.requires.threading_with_mock
+    @testing.requires.timing_intensive
     def test_notify_waiters(self):
         dbapi = MockDBAPI()
 
@@ -1149,10 +1152,12 @@ class QueuePoolTest(PoolTestBase):
         assert c3.connection is c2_con
 
     @testing.requires.threading_with_mock
+    @testing.requires.timing_intensive
     def test_no_overflow(self):
         self._test_overflow(40, 0)
 
     @testing.requires.threading_with_mock
+    @testing.requires.timing_intensive
     def test_max_overflow(self):
         self._test_overflow(40, 5)
 
@@ -1254,6 +1259,7 @@ class QueuePoolTest(PoolTestBase):
         c3 = p.connect()
         assert id(c3.connection) != c_id
 
+    @testing.requires.timing_intensive
     def test_recycle_on_invalidate(self):
         p = self._queuepool_fixture(pool_size=1,
                            max_overflow=0)
@@ -1300,14 +1306,16 @@ class QueuePoolTest(PoolTestBase):
         c1.close()
         self._assert_cleanup_on_pooled_reconnect(dbapi, p)
 
+    @testing.requires.timing_intensive
     def test_error_on_pooled_reconnect_cleanup_recycle(self):
         dbapi, p = self._queuepool_dbapi_fixture(pool_size=1,
                                         max_overflow=2, recycle=1)
         c1 = p.connect()
         c1.close()
-        time.sleep(1)
+        time.sleep(1.5)
         self._assert_cleanup_on_pooled_reconnect(dbapi, p)
 
+    @testing.requires.timing_intensive
     def test_recycle_pool_no_race(self):
         def slow_close():
             slow_closing_connection._slow_close()

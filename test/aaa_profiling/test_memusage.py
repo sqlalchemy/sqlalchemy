@@ -111,6 +111,7 @@ class EnsureZeroed(fixtures.ORMTest):
 
 class MemUsageTest(EnsureZeroed):
 
+    __tags__ = 'memory_intensive',
     __requires__ = 'cpython',
     __backend__ = True
 

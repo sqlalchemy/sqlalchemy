@@ -18,7 +18,8 @@ from sqlalchemy.testing.exclusions import \
      succeeds_if,\
      SpecPredicate,\
      against,\
-     LambdaPredicate
+     LambdaPredicate,\
+     requires_tag
 
 def no_support(db, reason):
     return SpecPredicate(db, description=reason)
@@ -745,17 +746,6 @@ class DefaultRequirements(SuiteRequirements):
                 "Not supported on MySQL + Windows"
             )
 
-    @property
-    def threading_with_mock(self):
-        """Mark tests that use threading and mock at the same time - stability
-        issues have been observed with coverage + python 3.3
-
-        """
-        return skip_if(
-                lambda config: util.py3k and
-                    config.options.has_coverage,
-                "Stability issues with coverage + py3k"
-            )
 
     @property
     def selectone(self):

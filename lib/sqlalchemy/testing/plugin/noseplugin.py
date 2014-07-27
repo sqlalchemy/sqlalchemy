@@ -18,6 +18,7 @@ import sys
 from nose.plugins import Plugin
 fixtures = None
 
+py3k = sys.version_info >= (3, 0)
 # no package imports yet!  this prevents us from tripping coverage
 # too soon.
 path = os.path.join(os.path.dirname(__file__), "plugin_base.py")
@@ -67,10 +68,14 @@ class NoseSQLAlchemy(Plugin):
         return ""
 
     def wantFunction(self, fn):
-        if fn.__module__ is None:
-            return False
-        if fn.__module__.startswith('sqlalchemy.testing'):
-            return False
+        return False
+
+    def wantMethod(self, fn):
+        if py3k:
+            cls = fn.__self__.cls
+        else:
+            cls = fn.im_class
+        return plugin_base.want_method(cls, fn)
 
     def wantClass(self, cls):
         return plugin_base.want_class(cls)

@@ -45,9 +45,10 @@ class Config(object):
 
     @classmethod
     def set_as_current(cls, config, namespace):
-        global db, _current, db_url, test_schema, test_schema_2
+        global db, _current, db_url, test_schema, test_schema_2, db_opts
         _current = config
         db_url = config.db.url
+        db_opts = config.db_opts
         test_schema = config.test_schema
         test_schema_2 = config.test_schema_2
         namespace.db = db = config.db

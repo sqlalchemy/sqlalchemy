@@ -16,6 +16,7 @@ to provide specific inclusion/exclusions.
 """
 
 from . import exclusions
+from .. import util
 
 
 class Requirements(object):
@@ -616,6 +617,38 @@ class SuiteRequirements(Requirements):
         """
         return exclusions.skip_if(
             lambda config: config.options.low_connections)
+
+    @property
+    def timing_intensive(self):
+        return exclusions.requires_tag("timing_intensive")
+
+    @property
+    def memory_intensive(self):
+        return exclusions.requires_tag("memory_intensive")
+
+    @property
+    def threading_with_mock(self):
+        """Mark tests that use threading and mock at the same time - stability
+        issues have been observed with coverage + python 3.3
+
+        """
+        return exclusions.skip_if(
+            lambda config: util.py3k and config.options.has_coverage,
+            "Stability issues with coverage + py3k"
+        )
+
+    @property
+    def no_coverage(self):
+        """Test should be skipped if coverage is enabled.
+
+        This is to block tests that exercise libraries that seem to be
+        sensitive to coverage, such as Postgresql notice logging.
+
+        """
+        return exclusions.skip_if(
+            lambda config: config.options.has_coverage,
+            "Issues observed when coverage is enabled"
+        )
 
     def _has_mysql_on_windows(self, config):
         return False

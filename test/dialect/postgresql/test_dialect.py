@@ -67,6 +67,7 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     # currently not passing with pg 9.3 that does not seem to generate
     # any notices here, would rather find a way to mock this
+    @testing.requires.no_coverage
     @testing.only_on('postgresql+psycopg2', 'psycopg2-specific feature')
     def _test_notice_logging(self):
         log = logging.getLogger('sqlalchemy.dialects.postgresql')

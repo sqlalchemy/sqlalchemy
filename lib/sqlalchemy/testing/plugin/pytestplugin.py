@@ -32,6 +32,7 @@ def pytest_addoption(parser):
 
 def pytest_configure(config):
     if hasattr(config, "slaveinput"):
+        plugin_base.restore_important_follower_config(config.slaveinput)
         plugin_base.configure_follower(
             config.slaveinput["follower_ident"]
         )
@@ -49,6 +50,9 @@ if has_xdist:
     def pytest_configure_node(node):
         # the master for each node fills slaveinput dictionary
         # which pytest-xdist will transfer to the subprocess
+
+        plugin_base.memoize_important_follower_config(node.slaveinput)
+
         node.slaveinput["follower_ident"] = "test_%s" % next(_follower_count)
         from . import provision
         provision.create_follower_db(node.slaveinput["follower_ident"])
@@ -100,12 +104,11 @@ def pytest_collection_modifyitems(session, config, items):
 
 
 def pytest_pycollect_makeitem(collector, name, obj):
-
     if inspect.isclass(obj) and plugin_base.want_class(obj):
         return pytest.Class(name, parent=collector)
     elif inspect.isfunction(obj) and \
-            name.startswith("test_") and \
-            isinstance(collector, pytest.Instance):
+            isinstance(collector, pytest.Instance) and \
+            plugin_base.want_method(collector.cls, obj):
         return pytest.Function(name, parent=collector)
     else:
         return []

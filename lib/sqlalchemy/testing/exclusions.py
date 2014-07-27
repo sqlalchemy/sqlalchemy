@@ -33,6 +33,7 @@ class compound(object):
     def __init__(self):
         self.fails = set()
         self.skips = set()
+        self.tags = set()
 
     def __add__(self, other):
         return self.add(other)
@@ -41,15 +42,18 @@ class compound(object):
         copy = compound()
         copy.fails.update(self.fails)
         copy.skips.update(self.skips)
+        copy.tags.update(self.tags)
         for other in others:
             copy.fails.update(other.fails)
             copy.skips.update(other.skips)
+            copy.tags.update(other.tags)
         return copy
 
     def not_(self):
         copy = compound()
         copy.fails.update(NotPredicate(fail) for fail in self.fails)
         copy.skips.update(NotPredicate(skip) for skip in self.skips)
+        copy.tags.update(self.tags)
         return copy
 
     @property
@@ -70,22 +74,28 @@ class compound(object):
             if predicate(config)
         ]
 
+    def include_test(self, include_tags, exclude_tags):
+        return bool(
+            not self.tags.intersection(exclude_tags) and
+            (not include_tags or self.tags.intersection(include_tags))
+        )
+
+    def _extend(self, other):
+        self.skips.update(other.skips)
+        self.fails.update(other.fails)
+        self.tags.update(other.tags)
+
     def __call__(self, fn):
         if hasattr(fn, '_sa_exclusion_extend'):
-            fn._sa_exclusion_extend(self)
+            fn._sa_exclusion_extend._extend(self)
             return fn
-
-        def extend(other):
-            self.skips.update(other.skips)
-            self.fails.update(other.fails)
 
         @decorator
         def decorate(fn, *args, **kw):
             return self._do(config._current, fn, *args, **kw)
         decorated = decorate(fn)
-        decorated._sa_exclusion_extend = extend
+        decorated._sa_exclusion_extend = self
         return decorated
-
 
     @contextlib.contextmanager
     def fail_if(self):
@@ -142,6 +152,16 @@ class compound(object):
                     )
                 )
             )
+
+
+def requires_tag(tagname):
+    return tags([tagname])
+
+
+def tags(tagnames):
+    comp = compound()
+    comp.tags.update(tagnames)
+    return comp
 
 
 def only_if(predicate, reason=None):

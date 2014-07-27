@@ -49,6 +49,8 @@ file_config = None
 
 logging = None
 db_opts = {}
+include_tags = set()
+exclude_tags = set()
 options = None
 
 
@@ -87,8 +89,13 @@ def setup_options(make_option):
                 dest="cdecimal", default=False,
                 help="Monkeypatch the cdecimal library into Python 'decimal' "
                 "for all tests")
-    make_option("--serverside", action="callback",
-                callback=_server_side_cursors,
+    make_option("--include-tag", action="callback", callback=_include_tag,
+                type="string",
+                help="Include tests with tag <tag>")
+    make_option("--exclude-tag", action="callback", callback=_exclude_tag,
+                type="string",
+                help="Exclude tests with tag <tag>")
+    make_option("--serverside", action="store_true",
                 help="Turn on server side cursors for PG")
     make_option("--mysql-engine", action="store",
                 dest="mysql_engine", default=None,
@@ -102,8 +109,44 @@ def setup_options(make_option):
 
 
 def configure_follower(follower_ident):
+    """Configure required state for a follower.
+
+    This invokes in the parent process and typically includes
+    database creation.
+
+    """
     global FOLLOWER_IDENT
     FOLLOWER_IDENT = follower_ident
+
+
+def memoize_important_follower_config(dict_):
+    """Store important configuration we will need to send to a follower.
+
+    This invokes in the parent process after normal config is set up.
+
+    This is necessary as py.test seems to not be using forking, so we
+    start with nothing in memory, *but* it isn't running our argparse
+    callables, so we have to just copy all of that over.
+
+    """
+    dict_['memoized_config'] = {
+        'db_opts': db_opts,
+        'include_tags': include_tags,
+        'exclude_tags': exclude_tags
+    }
+
+
+def restore_important_follower_config(dict_):
+    """Restore important configuration needed by a follower.
+
+    This invokes in the follower process.
+
+    """
+    global db_opts, include_tags, exclude_tags
+    db_opts.update(dict_['memoized_config']['db_opts'])
+    include_tags.update(dict_['memoized_config']['include_tags'])
+    exclude_tags.update(dict_['memoized_config']['exclude_tags'])
+    print "EXCLUDE TAGS!!!!!", exclude_tags
 
 
 def read_config():
@@ -141,7 +184,6 @@ def post_begin():
     from sqlalchemy import util
 
 
-
 def _log(opt_str, value, parser):
     global logging
     if not logging:
@@ -161,13 +203,16 @@ def _list_dbs(*args):
     sys.exit(0)
 
 
-def _server_side_cursors(opt_str, value, parser):
-    db_opts['server_side_cursors'] = True
-
-
 def _requirements_opt(opt_str, value, parser):
     _setup_requirements(value)
 
+
+def _exclude_tag(opt_str, value, parser):
+    exclude_tags.add(value.replace('-', '_'))
+
+
+def _include_tag(opt_str, value, parser):
+    include_tags.add(value.replace('-', '_'))
 
 pre_configure = []
 post_configure = []
@@ -183,11 +228,16 @@ def post(fn):
     return fn
 
 
-
 @pre
 def _setup_options(opt, file_config):
     global options
     options = opt
+
+
+@pre
+def _server_side_cursors(options, file_config):
+    if options.serverside:
+        db_opts['server_side_cursors'] = True
 
 
 @pre
@@ -199,8 +249,9 @@ def _monkeypatch_cdecimal(options, file_config):
 
 @post
 def _engine_uri(options, file_config):
-    from sqlalchemy.testing import engines, config
+    from sqlalchemy.testing import config
     from sqlalchemy import testing
+    from sqlalchemy.testing.plugin import provision
 
     if options.dburi:
         db_urls = list(options.dburi)
@@ -221,18 +272,12 @@ def _engine_uri(options, file_config):
     if not db_urls:
         db_urls.append(file_config.get('db', 'default'))
 
-    from . import provision
-
     for db_url in db_urls:
         cfg = provision.setup_config(
             db_url, db_opts, options, file_config, FOLLOWER_IDENT)
 
         if not config._current:
             cfg.set_as_current(cfg, testing)
-
-    config.db_opts = db_opts
-
-
 
 
 @post
@@ -361,6 +406,35 @@ def want_class(cls):
         return True
 
 
+def want_method(cls, fn):
+    if cls.__name__ == 'PoolFirstConnectSyncTest' and fn.__name__ == 'test_sync':
+        assert exclude_tags
+        assert hasattr(fn, '_sa_exclusion_extend')
+        assert not fn._sa_exclusion_extend.include_test(include_tags, exclude_tags)
+
+    if fn.__module__ is None:
+        return False
+    elif fn.__module__.startswith('sqlalchemy.testing'):
+        return False
+    elif include_tags:
+        return (
+            hasattr(cls, '__tags__') and
+            exclusions.tags(cls.__tags__).include_test(
+                include_tags, exclude_tags)
+        ) or (
+            hasattr(fn, '_sa_exclusion_extend') and
+            fn._sa_exclusion_extend.include_test(
+                include_tags, exclude_tags)
+        )
+    elif exclude_tags and hasattr(cls, '__tags__'):
+        return exclusions.tags(cls.__tags__).include_test(
+            include_tags, exclude_tags)
+    elif exclude_tags and hasattr(fn, '_sa_exclusion_extend'):
+        return fn._sa_exclusion_extend.include_test(include_tags, exclude_tags)
+    else:
+        return fn.__name__.startswith("test_")
+
+
 def generate_sub_tests(cls, module):
     if getattr(cls, '__backend__', False):
         for cfg in _possible_configs_for_cls(cls):
@@ -423,11 +497,13 @@ def after_test(test):
 
 def _possible_configs_for_cls(cls, reasons=None):
     all_configs = set(config.Config.all_configs())
+
     if cls.__unsupported_on__:
         spec = exclusions.db_spec(*cls.__unsupported_on__)
         for config_obj in list(all_configs):
             if spec(config_obj):
                 all_configs.remove(config_obj)
+
     if getattr(cls, '__only_on__', None):
         spec = exclusions.db_spec(*util.to_list(cls.__only_on__))
         for config_obj in list(all_configs):
@@ -458,13 +534,6 @@ def _possible_configs_for_cls(cls, reasons=None):
                     non_preferred.add(config_obj)
         if all_configs.difference(non_preferred):
             all_configs.difference_update(non_preferred)
-
-    for db_spec, op, spec in getattr(cls, '__excluded_on__', ()):
-        for config_obj in list(all_configs):
-            if not exclusions.skip_if(
-                    exclusions.SpecPredicate(db_spec, op, spec)
-            ).enabled_for_config(config_obj):
-                all_configs.remove(config_obj)
 
     return all_configs
 

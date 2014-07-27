@@ -1164,9 +1164,6 @@ binary_table = MyPickleType = metadata = None
 
 
 class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
-    __excluded_on__ = (
-        ('mysql', '<', (4, 1, 1)),  # screwy varbinary types
-    )
 
     @classmethod
     def setup_class(cls):
