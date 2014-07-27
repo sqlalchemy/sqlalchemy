@@ -110,9 +110,9 @@ def _follower_url_from_main(url, ident):
     return url
 
 
-@_follower_url_from_main.for_db("sqlite")
-def _sqlite_follower_url_from_main(url, ident):
-    return sa_url.make_url("sqlite:///%s.db" % ident)
+#@_follower_url_from_main.for_db("sqlite")
+#def _sqlite_follower_url_from_main(url, ident):
+#    return sa_url.make_url("sqlite:///%s.db" % ident)
 
 
 @_create_db.for_db("postgresql")
@@ -165,7 +165,8 @@ def _pg_drop_db(cfg, eng, ident):
 
 @_drop_db.for_db("sqlite")
 def _sqlite_drop_db(cfg, eng, ident):
-    os.remove("%s.db" % ident)
+    pass
+    #os.remove("%s.db" % ident)
 
 
 @_drop_db.for_db("mysql")

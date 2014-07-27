@@ -407,11 +407,6 @@ def want_class(cls):
 
 
 def want_method(cls, fn):
-    if cls.__name__ == 'PoolFirstConnectSyncTest' and fn.__name__ == 'test_sync':
-        assert exclude_tags
-        assert hasattr(fn, '_sa_exclusion_extend')
-        assert not fn._sa_exclusion_extend.include_test(include_tags, exclude_tags)
-
     if fn.__module__ is None:
         return False
     elif fn.__module__.startswith('sqlalchemy.testing'):
