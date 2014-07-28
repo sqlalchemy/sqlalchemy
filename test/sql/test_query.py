@@ -230,6 +230,7 @@ class QueryTest(fixtures.TestBase):
                 finally:
                     table.drop(bind=engine)
 
+    # TODO: why not in the sqlite suite?
     @testing.only_on('sqlite+pysqlite')
     @testing.provide_metadata
     def test_lastrowid_zero(self):
@@ -242,7 +243,7 @@ class QueryTest(fixtures.TestBase):
                 return 0
         eng.dialect.execution_ctx_cls = ExcCtx
         t = Table(
-            't', MetaData(), Column('x', Integer, primary_key=True),
+            't', self.metadata, Column('x', Integer, primary_key=True),
             Column('y', Integer))
         t.create(eng)
         r = eng.execute(t.insert().values(y=5))
