@@ -6,16 +6,18 @@ from sqlalchemy.orm.instrumentation import ClassManager
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.testing import eq_, assert_raises_message
 from sqlalchemy.testing.util import picklers
-from sqlalchemy import testing
 from sqlalchemy.testing import fixtures
-import sys
-import pickle
+from sqlalchemy.ext.mutable import MutableComposite
+from sqlalchemy.ext.mutable import MutableDict
+
 
 class Foo(fixtures.BasicEntity):
     pass
 
+
 class SubFoo(Foo):
     pass
+
 
 class FooWithEq(object):
     def __init__(self, **kw):
@@ -28,7 +30,38 @@ class FooWithEq(object):
     def __eq__(self, other):
         return self.id == other.id
 
-from sqlalchemy.ext.mutable import MutableDict
+
+class Point(MutableComposite):
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+    def __setattr__(self, key, value):
+        object.__setattr__(self, key, value)
+        self.changed()
+
+    def __composite_values__(self):
+        return self.x, self.y
+
+    def __getstate__(self):
+        return self.x, self.y
+
+    def __setstate__(self, state):
+        self.x, self.y = state
+
+    def __eq__(self, other):
+        return isinstance(other, Point) and \
+            other.x == self.x and \
+            other.y == self.y
+
+
+class MyPoint(Point):
+    @classmethod
+    def coerce(cls, key, value):
+        if isinstance(value, tuple):
+            value = Point(*value)
+        return value
+
 
 class _MutableDictTestBase(object):
     run_define_tables = 'each'
@@ -325,32 +358,7 @@ class _CompositeTestBase(object):
     @classmethod
     def _type_fixture(cls):
 
-        from sqlalchemy.ext.mutable import MutableComposite
 
-        global Point
-
-        class Point(MutableComposite):
-            def __init__(self, x, y):
-                self.x = x
-                self.y = y
-
-            def __setattr__(self, key, value):
-                object.__setattr__(self, key, value)
-                self.changed()
-
-            def __composite_values__(self):
-                return self.x, self.y
-
-            def __getstate__(self):
-                return self.x, self.y
-
-            def __setstate__(self, state):
-                self.x, self.y = state
-
-            def __eq__(self, other):
-                return isinstance(other, Point) and \
-                    other.x == self.x and \
-                    other.y == self.y
         return Point
 
 class MutableCompositesUnpickleTest(_CompositeTestBase, fixtures.MappedTest):
@@ -473,39 +481,7 @@ class MutableCompositeCustomCoerceTest(_CompositeTestBase, fixtures.MappedTest):
     @classmethod
     def _type_fixture(cls):
 
-        from sqlalchemy.ext.mutable import MutableComposite
-
-        global Point
-
-        class Point(MutableComposite):
-            def __init__(self, x, y):
-                self.x = x
-                self.y = y
-
-            @classmethod
-            def coerce(cls, key, value):
-                if isinstance(value, tuple):
-                    value = Point(*value)
-                return value
-
-            def __setattr__(self, key, value):
-                object.__setattr__(self, key, value)
-                self.changed()
-
-            def __composite_values__(self):
-                return self.x, self.y
-
-            def __getstate__(self):
-                return self.x, self.y
-
-            def __setstate__(self, state):
-                self.x, self.y = state
-
-            def __eq__(self, other):
-                return isinstance(other, Point) and \
-                    other.x == self.x and \
-                    other.y == self.y
-        return Point
+        return MyPoint
 
 
     @classmethod
