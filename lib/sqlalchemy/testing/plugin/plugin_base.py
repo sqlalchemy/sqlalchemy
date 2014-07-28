@@ -146,7 +146,6 @@ def restore_important_follower_config(dict_):
     db_opts.update(dict_['memoized_config']['db_opts'])
     include_tags.update(dict_['memoized_config']['include_tags'])
     exclude_tags.update(dict_['memoized_config']['exclude_tags'])
-    print "EXCLUDE TAGS!!!!!", exclude_tags
 
 
 def read_config():
@@ -407,7 +406,9 @@ def want_class(cls):
 
 
 def want_method(cls, fn):
-    if fn.__module__ is None:
+    if not fn.__name__.startswith("test_"):
+        return False
+    elif fn.__module__ is None:
         return False
     elif fn.__module__.startswith('sqlalchemy.testing'):
         return False
@@ -427,7 +428,7 @@ def want_method(cls, fn):
     elif exclude_tags and hasattr(fn, '_sa_exclusion_extend'):
         return fn._sa_exclusion_extend.include_test(include_tags, exclude_tags)
     else:
-        return fn.__name__.startswith("test_")
+        return True
 
 
 def generate_sub_tests(cls, module):
