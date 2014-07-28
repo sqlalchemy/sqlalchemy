@@ -125,8 +125,10 @@ class MyClass(object):
 class UserDefinedExtensionTest(fixtures.ORMTest):
     @classmethod
     def teardown_class(cls):
-        clear_mappers()
         instrumentation._reinstall_default_lookups()
+
+    def teardown(self):
+        clear_mappers()
 
     def test_instance_dict(self):
         class User(MyClass):

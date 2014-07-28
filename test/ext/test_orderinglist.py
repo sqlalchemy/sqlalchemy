@@ -45,8 +45,7 @@ class OrderingListTest(fixtures.TestBase):
         global metadata, slides_table, bullets_table, Slide, Bullet
         slides_table, bullets_table = None, None
         Slide, Bullet = None, None
-        if metadata:
-            metadata.clear()
+        metadata = MetaData(testing.db)
 
     def _setup(self, test_collection_class):
         """Build a relationship situation using the given
@@ -54,7 +53,6 @@ class OrderingListTest(fixtures.TestBase):
 
         global metadata, slides_table, bullets_table, Slide, Bullet
 
-        metadata = MetaData(testing.db)
         slides_table = Table('test_Slides', metadata,
                              Column('id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
