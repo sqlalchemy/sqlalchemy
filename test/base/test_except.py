@@ -127,16 +127,19 @@ class WrapTest(fixtures.TestBase):
 
     def test_db_error_noncompliant_dbapi(self):
         try:
-            raise sa_exceptions.DBAPIError.instance('', [], OutOfSpec(),
-                        DatabaseError)
+            raise sa_exceptions.DBAPIError.instance(
+                '', [], OutOfSpec(),
+                DatabaseError)
         except sa_exceptions.DBAPIError as e:
-            self.assert_(e.__class__ is sa_exceptions.DBAPIError)
+            # OutOfSpec subclasses DatabaseError
+            self.assert_(e.__class__ is sa_exceptions.DatabaseError)
         except OutOfSpec:
             self.assert_(False)
 
         try:
-            raise sa_exceptions.DBAPIError.instance('', [],
-                    sa_exceptions.ArgumentError(), DatabaseError)
+            raise sa_exceptions.DBAPIError.instance(
+                '', [],
+                sa_exceptions.ArgumentError(), DatabaseError)
         except sa_exceptions.DBAPIError as e:
             self.assert_(e.__class__ is sa_exceptions.DBAPIError)
         except sa_exceptions.ArgumentError:
