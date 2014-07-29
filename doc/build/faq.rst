@@ -603,6 +603,90 @@ The same idea applies to all the other arguments, such as ``foreign_keys``::
 
         foo = relationship(Dest, foreign_keys=[foo_id, bar_id])
 
+.. _faq_subqueryload_sort:
+
+Why must I always ``ORDER BY`` a unique column when using ``subqueryload``?
+----------------------------------------------------------------------------
+
+The SQL standard prescribes that RDBMSs are free to return rows in any order it
+deems appropriate, if no ``ORDER BY`` clause is specified. This even extends to
+the case where the ``ORDER BY`` clause is not unique across all rows, i.e. rows
+with the same value in the ``ORDER BY`` column(s) will not necessarily be
+returned in a deterministic order.
+
+SQLAlchemy implements :func:`.orm.subqueryload` by issuing a separate query
+(where the table specified in the relationship is joined to the original query)
+and then attempting to match up the results in Python. This works fine
+normally:
+
+.. sourcecode:: python+sql
+
+    >>> session.query(User).options(subqueryload(User.addresses)).all()
+    {opensql}# the "main" query
+    SELECT users.id AS users_id
+    FROM users
+    {stop}
+    {opensql}# the "load" query issued by subqueryload
+    SELECT addresses.id AS addresses_id, addresses.user_id AS addresses_user_id, anon_1.users_id AS anon_1_users_id
+    FROM (SELECT users.id AS users_id
+    FROM users) AS anon_1 JOIN addresses ON anon_1.users_id = addresses.user_id ORDER BY anon_1.users_id
+
+Notice how the main query is a subquery in the load query. When an
+``OFFSET``/``LIMIT`` is involved, however, things get a bit tricky:
+
+.. sourcecode:: python+sql
+
+    >>> user = session.query(User).options(subqueryload(User.addresses)).first()
+    {opensql}# the "main" query
+    SELECT users.id AS users_id
+    FROM users
+     LIMIT 1
+    {stop}
+    {opensql}# the "load" query issued by subqueryload
+    SELECT addresses.id AS addresses_id, addresses.user_id AS addresses_user_id, anon_1.users_id AS anon_1_users_id
+    FROM (SELECT users.id AS users_id
+    FROM users
+     LIMIT 1) AS anon_1 JOIN addresses ON anon_1.users_id = addresses.user_id ORDER BY anon_1.users_id
+
+The main query is still a subquery in the load query, but *it may return a
+different set of results in the second query from the first* because it does
+not have a deterministic sort order! Depending on database internals, there is
+a chance we may get the following resultset for the two queries::
+
+    +--------+
+    |users_id|
+    +--------+
+    |       1|
+    +--------+
+
+    +------------+-----------------+---------------+
+    |addresses_id|addresses_user_id|anon_1_users_id|
+    +------------+-----------------+---------------+
+    |           3|                2|              2|
+    +------------+-----------------+---------------+
+    |           4|                2|              2|
+    +------------+-----------------+---------------+
+
+From SQLAlchemy's point of view, it didn't get any addresses back for user 1,
+so ``user.addresses`` is empty. Oops.
+
+The solution to this problem is to always specify a deterministic sort order,
+so that the main query always returns the same set of rows. This generally
+means that you should :meth:`.Query.order_by` on a unique column on the table,
+usually the primary key::
+
+    session.query(User).options(subqueryload(User.addresses)).order_by(User.id).first()
+
+You can get away with not doing a sort if the ``OFFSET``/``LIMIT`` does not
+throw away any rows at all, but it's much simpler to remember to always ``ORDER
+BY`` the primary key::
+
+    session.query(User).options(subqueryload(User.addresses)).filter(User.id == 1).first()
+
+Note that :func:`.joinedload` does not suffer from the same problem because
+only one query is ever issued, so the load query cannot be different from the
+main query.
+
 Performance
 ===========
 
