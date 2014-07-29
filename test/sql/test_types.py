@@ -232,9 +232,9 @@ class TypeAffinityTest(fixtures.TestBase):
         assert t1.dialect_impl(d)._type_affinity is postgresql.UUID
 
 
-class PickleMetadataTest(fixtures.TestBase):
+class PickleTypesTest(fixtures.TestBase):
 
-    def testmeta(self):
+    def test_pickle_types(self):
         for loads, dumps in picklers():
             column_types = [
                 Column('Boo', Boolean()),

@@ -14,6 +14,15 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, sql
+        :versions: 1.0.0
+        :tickets: 3144, 3067
+
+        Fixed 0.9.7 regression caused by :ticket:`3067` in conjunction with
+        a mis-named unit test such that so-called "schema" types like
+        :class:`.Boolean` and :class:`.Enum` could no longer be pickled.
+
+    .. change::
         :tags: bug, postgresql
         :versions: 1.0.0
         :tickets: 3141
