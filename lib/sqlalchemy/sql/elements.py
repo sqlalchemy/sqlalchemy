@@ -3276,6 +3276,9 @@ class _defer_name(_truncated_label):
         else:
             return super(_defer_name, cls).__new__(cls, value)
 
+    def __reduce__(self):
+        return self.__class__, (util.text_type(self), )
+
 
 class _defer_none_name(_defer_name):
     """indicate a 'deferred' name that was ultimately the value None."""
