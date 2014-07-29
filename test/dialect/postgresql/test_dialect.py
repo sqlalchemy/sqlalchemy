@@ -65,6 +65,16 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         assert testing.db.dialect.dbapi.__version__.\
             startswith(".".join(str(x) for x in v))
 
+    @testing.only_on('postgresql+psycopg2', 'psycopg2-specific feature')
+    def test_psycopg2_non_standard_err(self):
+        from psycopg2.extensions import TransactionRollbackError
+        import psycopg2
+
+        exception = exc.DBAPIError.instance(
+            "some statement", {}, TransactionRollbackError("foo"),
+            psycopg2.Error)
+        assert isinstance(exception, exc.OperationalError)
+
     # currently not passing with pg 9.3 that does not seem to generate
     # any notices here, would rather find a way to mock this
     @testing.requires.no_coverage

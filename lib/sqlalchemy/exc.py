@@ -294,9 +294,12 @@ class DBAPIError(StatementError):
                     statement, params, orig
                 )
 
-            name, glob = orig.__class__.__name__, globals()
-            if name in glob and issubclass(glob[name], DBAPIError):
-                cls = glob[name]
+            glob = globals()
+            for super_ in orig.__class__.__mro__:
+                name = super_.__name__
+                if name in glob and issubclass(glob[name], DBAPIError):
+                    cls = glob[name]
+                    break
 
         return cls(statement, params, orig, connection_invalidated)
 
