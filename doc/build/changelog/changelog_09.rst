@@ -14,6 +14,17 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, postgresql
+        :versions: 1.0.0
+        :tickets: 3075
+
+        The exception wrapping system for DBAPI errors can now accommodate
+        non-standard DBAPI exceptions, such as the psycopg2
+        TransactionRollbackError.  These exceptions will now be raised
+        using the closest available subclass in ``sqlalchemy.exc``, in the
+        case of TransactionRollbackError, ``sqlalchemy.exc.OperationalError``.
+
+    .. change::
         :tags: bug, sql
         :versions: 1.0.0
         :tickets: 3144, 3067

@@ -20,7 +20,7 @@ from sqlalchemy.engine import result as _result, default
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.mock import Mock, call, patch
-from contextlib import contextmanager
+from contextlib import contextmanager, nested
 
 users, metadata, users_autoinc = None, None, None
 class ExecuteTest(fixtures.TestBase):
@@ -234,6 +234,31 @@ class ExecuteTest(fixtures.TestBase):
                 c.execute, "select "
             )
             eq_(is_disconnect.call_count, 0)
+
+    def test_exception_wrapping_non_standard_dbapi_error(self):
+        class DBAPIError(Exception):
+            pass
+
+        class OperationalError(DBAPIError):
+            pass
+
+        class NonStandardException(OperationalError):
+            pass
+
+        with nested(
+            patch.object(testing.db.dialect, "dbapi", Mock(Error=DBAPIError)),
+            patch.object(
+                testing.db.dialect, "is_disconnect",
+                lambda *arg: False),
+            patch.object(
+                testing.db.dialect, "do_execute",
+                Mock(side_effect=NonStandardException)),
+        ):
+            with testing.db.connect() as conn:
+                assert_raises(
+                    tsa.exc.OperationalError,
+                    conn.execute, "select 1"
+                )
 
 
     def test_exception_wrapping_non_dbapi_statement(self):
