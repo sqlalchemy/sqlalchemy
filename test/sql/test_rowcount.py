@@ -45,7 +45,7 @@ class FoundRowsTest(fixtures.TestBase, AssertsExecutionResults):
     def teardown_class(cls):
         metadata.drop_all()
 
-    def testbasic(self):
+    def test_basic(self):
         s = employees_table.select()
         r = s.execute().fetchall()
 

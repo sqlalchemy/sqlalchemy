@@ -129,10 +129,10 @@ class PoolTest(PoolTestBase):
             p.dispose()
             p.recreate()
 
-    def testthreadlocal_del(self):
+    def test_threadlocal_del(self):
         self._do_testthreadlocal(useclose=False)
 
-    def testthreadlocal_close(self):
+    def test_threadlocal_close(self):
         self._do_testthreadlocal(useclose=True)
 
     def _do_testthreadlocal(self, useclose=False):
@@ -794,12 +794,13 @@ class DeprecatedPoolListenerTest(PoolTestBase):
             c.close()
             assert counts == [1, 2, 2]
 
+
 class QueuePoolTest(PoolTestBase):
 
-    def testqueuepool_del(self):
+    def test_queuepool_del(self):
         self._do_testqueuepool(useclose=False)
 
-    def testqueuepool_close(self):
+    def test_queuepool_close(self):
         self._do_testqueuepool(useclose=True)
 
     def _do_testqueuepool(self, useclose=False):

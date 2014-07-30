@@ -135,20 +135,20 @@ class RelationshipTest2(fixtures.MappedTest):
             Column('data', String(30))
             )
 
-    def testrelationshiponsubclass_j1_nodata(self):
-        self.do_test("join1", False)
-    def testrelationshiponsubclass_j2_nodata(self):
-        self.do_test("join2", False)
-    def testrelationshiponsubclass_j1_data(self):
-        self.do_test("join1", True)
-    def testrelationshiponsubclass_j2_data(self):
-        self.do_test("join2", True)
-    def testrelationshiponsubclass_j3_nodata(self):
-        self.do_test("join3", False)
-    def testrelationshiponsubclass_j3_data(self):
-        self.do_test("join3", True)
+    def test_relationshiponsubclass_j1_nodata(self):
+        self._do_test("join1", False)
+    def test_relationshiponsubclass_j2_nodata(self):
+        self._do_test("join2", False)
+    def test_relationshiponsubclass_j1_data(self):
+        self._do_test("join1", True)
+    def test_relationshiponsubclass_j2_data(self):
+        self._do_test("join2", True)
+    def test_relationshiponsubclass_j3_nodata(self):
+        self._do_test("join3", False)
+    def test_relationshiponsubclass_j3_data(self):
+        self._do_test("join3", True)
 
-    def do_test(self, jointype="join1", usedata=False):
+    def _do_test(self, jointype="join1", usedata=False):
         class Person(AttrSettable):
             pass
         class Manager(Person):
@@ -252,7 +252,7 @@ class RelationshipTest3(fixtures.MappedTest):
            )
 
 def _generate_test(jointype="join1", usedata=False):
-    def do_test(self):
+    def _do_test(self):
         class Person(AttrSettable):
             pass
         class Manager(Person):
@@ -342,7 +342,7 @@ def _generate_test(jointype="join1", usedata=False):
             assert m.data.data == 'ms data'
 
     do_test = function_named(
-        do_test, 'test_relationship_on_base_class_%s_%s' % (
+        _do_test, 'test_relationship_on_base_class_%s_%s' % (
         jointype, data and "nodata" or "data"))
     return do_test
 
@@ -835,7 +835,7 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
         for t in reversed(metadata.sorted_tables):
             t.delete().execute()
 
-    def testjointo(self):
+    def test_join_to(self):
         # class definitions
         class PersistentObject(object):
             def __init__(self, **kwargs):

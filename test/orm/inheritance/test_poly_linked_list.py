@@ -115,16 +115,16 @@ class PolymorphicCircularTest(fixtures.MappedTest):
         configure_mappers()
         assert table1_mapper.primary_key == (table1.c.id,), table1_mapper.primary_key
 
-    def testone(self):
+    def test_one(self):
         self._testlist([Table1, Table2, Table1, Table2])
 
-    def testtwo(self):
+    def test_two(self):
         self._testlist([Table3])
 
-    def testthree(self):
+    def test_three(self):
         self._testlist([Table2, Table1, Table1B, Table3, Table3, Table1B, Table1B, Table2, Table1])
 
-    def testfour(self):
+    def test_four(self):
         self._testlist([
                 Table2('t2', [Data('data1'), Data('data2')]),
                 Table1('t1', []),
