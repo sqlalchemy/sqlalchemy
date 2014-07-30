@@ -1065,7 +1065,7 @@ class CreateDropTest(fixtures.TestBase):
         eq_(oi, ['orders', 'items'])
 
 
-    def testcheckfirst(self):
+    def test_checkfirst(self):
         try:
             assert not users.exists(testing.db)
             users.create(bind=testing.db)

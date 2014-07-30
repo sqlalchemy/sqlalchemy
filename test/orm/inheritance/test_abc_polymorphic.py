@@ -24,7 +24,7 @@ class ABCTest(fixtures.MappedTest):
             Column('id', Integer, ForeignKey('b.id'), primary_key=True),
             Column('cdata', String(30)))
 
-    def make_test(fetchtype):
+    def _make_test(fetchtype):
         def test_roundtrip(self):
             class A(fixtures.ComparableEntity):pass
             class B(A):pass
@@ -86,7 +86,7 @@ class ABCTest(fixtures.MappedTest):
             test_roundtrip, 'test_%s' % fetchtype)
         return test_roundtrip
 
-    test_union = make_test('union')
-    test_none = make_test('none')
+    test_union = _make_test('union')
+    test_none = _make_test('none')
 
 

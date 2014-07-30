@@ -802,7 +802,7 @@ class ScalarTest(fixtures.TestBase):
         assert a1.a2b_name is None
         assert a1.b_single is None
 
-    def custom_getset_test(self):
+    def test_custom_getset(self):
         metadata = MetaData()
         p = Table('p', metadata,
                               Column('id', Integer, primary_key=True),

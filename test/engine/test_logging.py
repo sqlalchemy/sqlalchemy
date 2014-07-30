@@ -196,7 +196,7 @@ class EchoTest(fixtures.TestBase):
         logging.getLogger('sqlalchemy.engine').removeHandler(self.buf)
         logging.getLogger('sqlalchemy.engine').setLevel(self.level)
 
-    def testing_engine(self):
+    def _testing_engine(self):
         e = engines.testing_engine()
 
         # do an initial execute to clear out 'first connect'
@@ -235,8 +235,8 @@ class EchoTest(fixtures.TestBase):
     def test_echo_flag_independence(self):
         """test the echo flag's independence to a specific engine."""
 
-        e1 = self.testing_engine()
-        e2 = self.testing_engine()
+        e1 = self._testing_engine()
+        e2 = self._testing_engine()
 
         e1.echo = True
         e1.execute(select([1])).close()

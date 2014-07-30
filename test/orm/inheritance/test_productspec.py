@@ -79,7 +79,7 @@ class InheritTest(fixtures.MappedTest):
         class RasterDocument(Document):
             pass
 
-    def testone(self):
+    def test_one(self):
         product_mapper = mapper(Product, products_table,
             polymorphic_on=products_table.c.product_type,
             polymorphic_identity='product')
@@ -126,7 +126,7 @@ class InheritTest(fixtures.MappedTest):
         print(new)
         assert orig == new == '<Assembly a1> specification=[<SpecLine 1.0 <Product p1>>, <SpecLine 1.0 <Detail d1>>] documents=None'
 
-    def testtwo(self):
+    def test_two(self):
         product_mapper = mapper(Product, products_table,
             polymorphic_on=products_table.c.product_type,
             polymorphic_identity='product')
@@ -157,7 +157,7 @@ class InheritTest(fixtures.MappedTest):
         print(new)
         assert orig == new == '[<SpecLine 1.0 <Product p1>>, <SpecLine 1.0 <Detail d1>>]'
 
-    def testthree(self):
+    def test_three(self):
         product_mapper = mapper(Product, products_table,
             polymorphic_on=products_table.c.product_type,
             polymorphic_identity='product')
@@ -210,7 +210,7 @@ class InheritTest(fixtures.MappedTest):
         print(new)
         assert orig == new  == '<Assembly a1> specification=[<SpecLine 1.0 <Detail d1>>] documents=[<Document doc1>, <RasterDocument doc2>]'
 
-    def testfour(self):
+    def test_four(self):
         """this tests the RasterDocument being attached to the Assembly, but *not* the Document.  this means only
         a "sub-class" task, i.e. corresponding to an inheriting mapper but not the base mapper, is created. """
 
@@ -256,7 +256,7 @@ class InheritTest(fixtures.MappedTest):
         a1 = session.query(Product).filter_by(name='a1').one()
         assert len(session.query(Document).all()) == 0
 
-    def testfive(self):
+    def test_five(self):
         """tests the late compilation of mappers"""
 
         specification_mapper = mapper(SpecLine, specification_table,

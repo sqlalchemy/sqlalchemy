@@ -39,7 +39,7 @@ class InheritTest(fixtures.MappedTest):
                    primary_key=True ),
             )
 
-    def testbasic(self):
+    def test_basic(self):
         class Principal(object):
             def __init__(self, **kwargs):
                 for key, value in kwargs.items():
@@ -86,7 +86,7 @@ class InheritTest2(fixtures.MappedTest):
             Column('foo_id', Integer, ForeignKey('foo.id')),
             Column('bar_id', Integer, ForeignKey('bar.bid')))
 
-    def testget(self):
+    def test_get(self):
         class Foo(object):
             def __init__(self, data=None):
                 self.data = data
@@ -106,7 +106,7 @@ class InheritTest2(fixtures.MappedTest):
         # (ticket 185)
         assert sess.query(Bar).get(b.id).id == b.id
 
-    def testbasic(self):
+    def test_basic(self):
         class Foo(object):
             def __init__(self, data=None):
                 self.data = data
@@ -172,7 +172,7 @@ class InheritTest3(fixtures.MappedTest):
             Column('blub_id', Integer, ForeignKey('blub.id')),
             Column('foo_id', Integer, ForeignKey('foo.id')))
 
-    def testbasic(self):
+    def test_basic(self):
         class Foo(object):
             def __init__(self, data=None):
                 self.data = data
@@ -201,7 +201,7 @@ class InheritTest3(fixtures.MappedTest):
         found = [repr(l[0])] + sorted([repr(o) for o in l[0].foos])
         eq_(found, compare)
 
-    def testadvanced(self):
+    def test_advanced(self):
         class Foo(object):
             def __init__(self, data=None):
                 self.data = data

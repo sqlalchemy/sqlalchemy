@@ -212,7 +212,7 @@ class DependencyTwoParentTest(fixtures.MappedTest):
         session.add(b)
         session.flush()
 
-    def testDeleteRootTable(self):
+    def test_DeleteRootTable(self):
         A = self.classes.A
 
         session = create_session()
@@ -221,7 +221,7 @@ class DependencyTwoParentTest(fixtures.MappedTest):
         session.delete(a)
         session.flush()
 
-    def testDeleteMiddleTable(self):
+    def test_DeleteMiddleTable(self):
         C = self.classes.C
 
         session = create_session()
@@ -1632,7 +1632,7 @@ class TypedAssociationTable(fixtures.MappedTest):
               Column('t1c1', MySpecialType(30), ForeignKey('t1.col1')),
               Column('t2c1', MySpecialType(30), ForeignKey('t2.col1')))
 
-    def testm2m(self):
+    def test_m2m(self):
         """Many-to-many tables with special types for candidate keys."""
 
         t2, t3, t1 = (self.tables.t2,
