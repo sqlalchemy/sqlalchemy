@@ -410,8 +410,6 @@ def want_method(cls, fn):
         return False
     elif fn.__module__ is None:
         return False
-    elif fn.__module__.startswith('sqlalchemy.testing'):
-        return False
     elif include_tags:
         return (
             hasattr(cls, '__tags__') and

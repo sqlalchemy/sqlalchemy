@@ -75,6 +75,7 @@ class NoseSQLAlchemy(Plugin):
             cls = fn.__self__.cls
         else:
             cls = fn.im_class
+        print "METH:", fn, "CLS:", cls
         return plugin_base.want_method(cls, fn)
 
     def wantClass(self, cls):
