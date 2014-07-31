@@ -736,10 +736,10 @@ class Delete(UpdateBase):
         :meth:`~.TableClause.delete` method on
         :class:`~.schema.Table`.
 
-        :param table: The table to be updated.
+        :param table: The table to delete rows from.
 
         :param whereclause: A :class:`.ClauseElement` describing the ``WHERE``
-          condition of the ``UPDATE`` statement. Note that the
+          condition of the ``DELETE`` statement. Note that the
           :meth:`~Delete.where()` generative method may be used instead.
 
         .. seealso::
