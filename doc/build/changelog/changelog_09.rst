@@ -14,6 +14,15 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, sql
+        :versions: 1.0.0
+        :tickets: 3154
+
+        Fixed bug in CTE where ``literal_binds`` compiler argument would not
+        be always be correctly propagated when one CTE referred to another
+        aliased CTE in a statement.
+
+    .. change::
         :tags: bug, postgresql
         :versions: 1.0.0
         :tickets: 3075

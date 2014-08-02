@@ -1118,7 +1118,7 @@ class SQLCompiler(Compiled):
         if cte._cte_alias is not None:
             orig_cte = cte._cte_alias
             if orig_cte not in self.ctes:
-                self.visit_cte(orig_cte)
+                self.visit_cte(orig_cte, **kwargs)
             cte_alias_name = cte._cte_alias.name
             if isinstance(cte_alias_name, elements._truncated_label):
                 cte_alias_name = self._truncated_identifier(

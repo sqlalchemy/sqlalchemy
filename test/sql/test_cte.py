@@ -391,6 +391,44 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             'regional_sales_2."order" FROM regional_sales_2',
             checkpositional=('x', 'y', 'z'), dialect=dialect)
 
+    def test_positional_binds_2_asliteral(self):
+        orders = table('orders',
+                       column('order'),
+                       )
+        s = select([orders.c.order, literal("x")]).cte("regional_sales")
+        s = select([s.c.order, literal("y")])
+        dialect = default.DefaultDialect()
+        dialect.positional = True
+        dialect.paramstyle = 'numeric'
+        s1 = select([orders.c.order]).where(orders.c.order == 'x').\
+            cte("regional_sales_1")
+
+        s1a = s1.alias()
+
+        s2 = select([orders.c.order == 'y', s1a.c.order,
+                     orders.c.order, s1.c.order]).\
+            where(orders.c.order == 'z').\
+            cte("regional_sales_2")
+
+        s3 = select([s2])
+
+        self.assert_compile(
+            s3,
+            'WITH regional_sales_1 AS '
+            '(SELECT orders."order" AS "order" '
+            'FROM orders '
+            'WHERE orders."order" = \'x\'), '
+            'regional_sales_2 AS '
+            '(SELECT orders."order" = \'y\' AS anon_1, '
+            'anon_2."order" AS "order", orders."order" AS "order", '
+            'regional_sales_1."order" AS "order" '
+            'FROM orders, regional_sales_1 AS anon_2, regional_sales_1 '
+            'WHERE orders."order" = \'z\') '
+            'SELECT regional_sales_2.anon_1, regional_sales_2."order" '
+            'FROM regional_sales_2',
+            checkpositional=(), dialect=dialect,
+            literal_binds=True)
+
     def test_all_aliases(self):
         orders = table('order', column('order'))
         s = select([orders.c.order]).cte("regional_sales")
