@@ -119,7 +119,7 @@ class PGDialect_pg8000(PGDialect):
     supports_unicode_binds = True
 
     default_paramstyle = 'format'
-    supports_sane_multi_rowcount = False
+    supports_sane_multi_rowcount = True
     execution_ctx_cls = PGExecutionContext_pg8000
     statement_compiler = PGCompiler_pg8000
     preparer = PGIdentifierPreparer_pg8000
