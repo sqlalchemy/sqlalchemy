@@ -341,6 +341,95 @@ reflection will not include foreign keys.  For these tables, you may supply a
 
     :ref:`mysql_storage_engines`
 
+
+.. _mysql_timestamp_null:
+
+TIMESTAMP Columns and NULL
+--------------------------
+
+MySQL enforces that a column which specifies the TIMESTAMP datatype implicitly
+includes a default value of CURRENT_TIMESTAMP, even though this is not
+stated, and additionally sets the column as NOT NULL, the opposite behavior
+vs. that of all other datatypes::
+
+    mysql> CREATE TABLE ts_test (
+        -> a INTEGER,
+        -> b INTEGER NOT NULL,
+        -> c TIMESTAMP,
+        -> d TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        -> e TIMESTAMP NULL);
+    Query OK, 0 rows affected (0.03 sec)
+
+    mysql> SHOW CREATE TABLE ts_test;
+    +---------+-----------------------------------------------------
+    | Table   | Create Table
+    +---------+-----------------------------------------------------
+    | ts_test | CREATE TABLE `ts_test` (
+      `a` int(11) DEFAULT NULL,
+      `b` int(11) NOT NULL,
+      `c` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      `d` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      `e` timestamp NULL DEFAULT NULL
+    ) ENGINE=MyISAM DEFAULT CHARSET=latin1
+
+Above, we see that an INTEGER column defaults to NULL, unless it is specified
+with NOT NULL.   But when the column is of type TIMESTAMP, an implicit
+default of CURRENT_TIMESTAMP is generated which also coerces the column
+to be a NOT NULL, even though we did not specify it as such.
+
+Therefore, the usual "NOT NULL" clause *does not apply* to a TIMESTAMP
+column; MySQL selects this implicitly.   SQLAlchemy therefore does not render
+NOT NULL for a TIMESTAMP column on MySQL.   However, it *does* render
+NULL when we specify nullable=True, or if we leave nullable absent, as it
+also defaults to True.  This is to accommodate the essentially
+reverse behavior of the NULL flag for TIMESTAMP::
+
+    from sqlalchemy import MetaData, TIMESTAMP, Integer, Table, Column, text
+
+    m = MetaData()
+    t = Table('ts_test', m,
+            Column('a', Integer),
+            Column('b', Integer, nullable=False),
+            Column('c', TIMESTAMP),
+            Column('d', TIMESTAMP, nullable=False),
+            Column('e', TIMESTAMP, nullable=True)
+        )
+
+
+    from sqlalchemy import create_engine
+    e = create_engine("mysql://scott:tiger@localhost/test", echo=True)
+    m.create_all(e)
+
+In the output, we can see that the TIMESTAMP column receives a different
+treatment for NULL / NOT NULL vs. that of the INTEGER::
+
+    CREATE TABLE ts_test (
+        a INTEGER,
+        b INTEGER NOT NULL,
+        c TIMESTAMP NULL,
+        d TIMESTAMP,
+        e TIMESTAMP NULL
+    )
+
+MySQL above receives the NULL/NOT NULL constraint as is stated in our
+original :class:`.Table`::
+
+    mysql> SHOW CREATE TABLE ts_test;
+    +---------+---------------------------
+    | Table   | Create Table
+    +---------+---------------------------
+    | ts_test | CREATE TABLE `ts_test` (
+      `a` int(11) DEFAULT NULL,
+      `b` int(11) NOT NULL,
+      `c` timestamp NULL DEFAULT NULL,
+      `d` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+      `e` timestamp NULL DEFAULT NULL
+    ) ENGINE=MyISAM DEFAULT CHARSET=latin1
+
+Be sure to always favor the ``SHOW CREATE TABLE`` output over the
+SQLAlchemy-emitted DDL when checking table definitions, as MySQL's
+rules can be hard to predict.
+
 """
 
 import datetime
@@ -1679,6 +1768,8 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         if not column.nullable and not is_timestamp:
             colspec.append('NOT NULL')
 
+        # see: http://docs.sqlalchemy.org/en/latest/dialects/
+        #   mysql.html#mysql_timestamp_null
         elif column.nullable and is_timestamp and default is None:
             colspec.append('NULL')
 
