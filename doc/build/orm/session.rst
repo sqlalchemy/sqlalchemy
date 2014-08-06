@@ -1368,7 +1368,7 @@ the :paramref:`~.relationship.cascade` parameter are described in the following 
 save-update
 -----------
 
-``save-update`` cacade indicates that when an object is placed into a
+``save-update`` cascade indicates that when an object is placed into a
 :class:`.Session` via :meth:`.Session.add`, all the objects associated
 with it via this :func:`.relationship` should also be added to that
 same :class:`.Session`.  Suppose we have an object ``user1`` with two
