@@ -12,24 +12,25 @@ from sqlalchemy.testing.mock import Mock, call
 
 join_timeout = 10
 
+
 def MockDBAPI():
     def cursor():
-        while True:
-            yield Mock()
+        return Mock()
 
-    def connect():
-        while True:
-            yield Mock(cursor=Mock(side_effect=cursor()))
+    def connect(*arg, **kw):
+        return Mock(cursor=Mock(side_effect=cursor))
 
     def shutdown(value):
         if value:
             db.connect = Mock(side_effect=Exception("connect failed"))
         else:
-            db.connect = Mock(side_effect=connect())
+            db.connect = Mock(side_effect=connect)
 
-    db = Mock(connect=Mock(side_effect=connect()),
-                    shutdown=shutdown, _shutdown=False)
+    db = Mock(
+        connect=Mock(side_effect=connect),
+        shutdown=shutdown, _shutdown=False)
     return db
+
 
 class PoolTestBase(fixtures.TestBase):
     def setup(self):
