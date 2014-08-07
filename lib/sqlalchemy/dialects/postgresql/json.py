@@ -164,6 +164,23 @@ class JSON(sqltypes.TypeEngine):
 
     __visit_name__ = 'JSON'
 
+    def __init__(self, none_as_null=False):
+        """Construct a :class:`.JSON` type.
+
+        :param none_as_null: if True, persist the value ``None`` as a
+         SQL NULL value, not the JSON encoding of ``null``.   Note that
+         when this flag is False, the :func:`.null` construct can still
+         be used to persist a NULL value::
+
+             from sqlalchemy import null
+             conn.execute(table.insert(), data=null())
+
+         .. versionchanged:: 0.9.8 - Added ``none_as_null``, and :func:`.null`
+            is now supported in order to persist a NULL value.
+
+         """
+        self.none_as_null = none_as_null
+
     class comparator_factory(sqltypes.Concatenable.Comparator):
         """Define comparison operations for :class:`.JSON`."""
 
@@ -185,9 +202,17 @@ class JSON(sqltypes.TypeEngine):
             encoding = dialect.encoding
 
             def process(value):
+                if isinstance(value, elements.Null) or (
+                    value is None and self.none_as_null
+                ):
+                    return None
                 return json_serializer(value).encode(encoding)
         else:
             def process(value):
+                if isinstance(value, elements.Null) or (
+                    value is None and self.none_as_null
+                ):
+                    return None
                 return json_serializer(value)
         return process
 
@@ -197,9 +222,13 @@ class JSON(sqltypes.TypeEngine):
             encoding = dialect.encoding
 
             def process(value):
+                if value is None:
+                    return None
                 return json_deserializer(value.decode(encoding))
         else:
             def process(value):
+                if value is None:
+                    return None
                 return json_deserializer(value)
         return process
 

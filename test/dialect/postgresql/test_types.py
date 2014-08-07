@@ -7,7 +7,7 @@ from sqlalchemy import testing
 import datetime
 from sqlalchemy import Table, MetaData, Column, Integer, Enum, Float, select, \
     func, DateTime, Numeric, exc, String, cast, REAL, TypeDecorator, Unicode, \
-    Text
+    Text, null
 from sqlalchemy.sql import operators
 from sqlalchemy import types
 from sqlalchemy.dialects.postgresql import base as postgresql
@@ -1813,7 +1813,7 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
         metadata = MetaData()
         self.test_table = Table('test_table', metadata,
                                 Column('id', Integer, primary_key=True),
-                                Column('test_column', JSON)
+                                Column('test_column', JSON),
                                 )
         self.jsoncol = self.test_table.c.test_column
 
@@ -1844,6 +1844,37 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
             '{"A": [1, 2, 3, true, false]}'
         )
 
+    def test_bind_serialize_None(self):
+        dialect = postgresql.dialect()
+        proc = self.test_table.c.test_column.type._cached_bind_processor(
+            dialect)
+        eq_(
+            proc(None),
+            'null'
+        )
+
+    def test_bind_serialize_none_as_null(self):
+        dialect = postgresql.dialect()
+        proc = JSON(none_as_null=True)._cached_bind_processor(
+            dialect)
+        eq_(
+            proc(None),
+            None
+        )
+        eq_(
+            proc(null()),
+            None
+        )
+
+    def test_bind_serialize_null(self):
+        dialect = postgresql.dialect()
+        proc = self.test_table.c.test_column.type._cached_bind_processor(
+            dialect)
+        eq_(
+            proc(null()),
+            None
+        )
+
     def test_result_deserialize_default(self):
         dialect = postgresql.dialect()
         proc = self.test_table.c.test_column.type._cached_result_processor(
@@ -1851,6 +1882,24 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(
             proc('{"A": [1, 2, 3, true, false]}'),
             {"A": [1, 2, 3, True, False]}
+        )
+
+    def test_result_deserialize_null(self):
+        dialect = postgresql.dialect()
+        proc = self.test_table.c.test_column.type._cached_result_processor(
+            dialect, None)
+        eq_(
+            proc('null'),
+            None
+        )
+
+    def test_result_deserialize_None(self):
+        dialect = postgresql.dialect()
+        proc = self.test_table.c.test_column.type._cached_result_processor(
+            dialect, None)
+        eq_(
+            proc(None),
+            None
         )
 
     # This test is a bit misleading -- in real life you will need to cast to
@@ -1903,7 +1952,8 @@ class JSONRoundTripTest(fixtures.TablesTest):
         Table('data_table', metadata,
               Column('id', Integer, primary_key=True),
               Column('name', String(30), nullable=False),
-              Column('data', JSON)
+              Column('data', JSON),
+              Column('nulldata', JSON(none_as_null=True))
               )
 
     def _fixture_data(self, engine):
@@ -1917,12 +1967,23 @@ class JSONRoundTripTest(fixtures.TablesTest):
             {'name': 'r5', 'data': {"k1": "r5v1", "k2": "r5v2", "k3": 5}},
         )
 
-    def _assert_data(self, compare):
+    def _assert_data(self, compare, column='data'):
+        col = self.tables.data_table.c[column]
+
         data = testing.db.execute(
-            select([self.tables.data_table.c.data]).
+            select([col]).
             order_by(self.tables.data_table.c.name)
         ).fetchall()
         eq_([d for d, in data], compare)
+
+    def _assert_column_is_NULL(self, column='data'):
+        col = self.tables.data_table.c[column]
+
+        data = testing.db.execute(
+            select([col]).
+            where(col.is_(null()))
+        ).fetchall()
+        eq_([d for d, in data], [None])
 
     def _test_insert(self, engine):
         engine.execute(
@@ -1930,6 +1991,20 @@ class JSONRoundTripTest(fixtures.TablesTest):
             {'name': 'r1', 'data': {"k1": "r1v1", "k2": "r1v2"}}
         )
         self._assert_data([{"k1": "r1v1", "k2": "r1v2"}])
+
+    def _test_insert_nulls(self, engine):
+        engine.execute(
+            self.tables.data_table.insert(),
+            {'name': 'r1', 'data': null()}
+        )
+        self._assert_data([None])
+
+    def _test_insert_none_as_null(self, engine):
+        engine.execute(
+            self.tables.data_table.insert(),
+            {'name': 'r1', 'nulldata': None}
+        )
+        self._assert_column_is_NULL(column='nulldata')
 
     def _non_native_engine(self, json_serializer=None, json_deserializer=None):
         if json_serializer is not None or json_deserializer is not None:
@@ -1968,9 +2043,27 @@ class JSONRoundTripTest(fixtures.TablesTest):
         engine = testing.db
         self._test_insert(engine)
 
+    @testing.only_on("postgresql+psycopg2")
+    def test_insert_native_nulls(self):
+        engine = testing.db
+        self._test_insert_nulls(engine)
+
+    @testing.only_on("postgresql+psycopg2")
+    def test_insert_native_none_as_null(self):
+        engine = testing.db
+        self._test_insert_none_as_null(engine)
+
     def test_insert_python(self):
         engine = self._non_native_engine()
         self._test_insert(engine)
+
+    def test_insert_python_nulls(self):
+        engine = self._non_native_engine()
+        self._test_insert_nulls(engine)
+
+    def test_insert_python_none_as_null(self):
+        engine = self._non_native_engine()
+        self._test_insert_none_as_null(engine)
 
     def _test_custom_serialize_deserialize(self, native):
         import json

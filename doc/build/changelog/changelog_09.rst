@@ -14,6 +14,25 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, postgresql
+        :versions: 1.0.0
+        :tickets: 3159
+
+        Fixed bug where Postgresql JSON type was not able to persist or
+        otherwise render a SQL NULL column value, rather than a JSON-encoded
+        ``'null'``.  To support this case, changes are as follows:
+
+        * The value :func:`.null` can now be specified, which will always
+          result in a NULL value resulting in the statement.
+
+        * A new parameter :paramref:`.JSON.none_as_null` is added, which
+          when True indicates that the Python ``None`` value should be
+          peristed as SQL NULL, rather than JSON-encoded ``'null'``.
+
+        Retrival of NULL as None is also repaired for DBAPIs other than
+        psycopg2, namely pg8000.
+
+    .. change::
         :tags: bug, sql
         :versions: 1.0.0
         :tickets: 3154
