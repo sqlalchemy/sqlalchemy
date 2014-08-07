@@ -472,7 +472,8 @@ subselect back to the parent ``companies`` table.
 Eager Loading of Specific or Polymorphic Subtypes
 ++++++++++++++++++++++++++++++++++++++++++++++++++
 
-The :func:`.joinedload` and :func:`.subqueryload` options also support
+The :func:`.joinedload`, :func:`.subqueryload`, :func:`.contains_eager` and
+other loading-related options also support
 paths which make use of :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type`.
 Below we load ``Company`` rows while eagerly loading related ``Engineer``
 objects, querying the ``employee`` and ``engineer`` tables simultaneously::
@@ -500,10 +501,12 @@ can be loaded::
         )
 
 .. versionadded:: 0.8
-    :func:`.joinedload` and :func:`.subqueryload` support
+    :func:`.joinedload`, :func:`.subqueryload`, :func:`.contains_eager`
+    and related loader options support
     paths that are qualified with
     :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type`, supporting
     single target types as well as :func:`.orm.with_polymorphic` targets.
+
 
 Single Table Inheritance
 ------------------------
