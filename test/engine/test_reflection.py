@@ -65,6 +65,22 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         self.assert_tables_equal(addresses, reflected_addresses)
 
     @testing.provide_metadata
+    def test_autoload_with_imply_autoload(self,):
+        meta = self.metadata
+        t = Table(
+                't',
+                meta,
+                Column('id', sa.Integer, primary_key=True),
+                Column('x', sa.String(20)),
+                Column('y', sa.Integer))
+        meta.create_all()
+
+        meta2 = MetaData()
+        reflected_t = Table('t',  meta2,
+                autoload_with=testing.db)
+        self.assert_tables_equal(t, reflected_t)
+
+    @testing.provide_metadata
     def test_two_foreign_keys(self):
         meta = self.metadata
         Table(

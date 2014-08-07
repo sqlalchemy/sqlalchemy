@@ -401,8 +401,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         else:
             self.fullname = self.name
 
-        autoload = kwargs.pop('autoload', False)
         autoload_with = kwargs.pop('autoload_with', None)
+        autoload = kwargs.pop('autoload', autoload_with is not None)
         # this argument is only used with _init_existing()
         kwargs.pop('autoload_replace', True)
         include_columns = kwargs.pop('include_columns', None)
@@ -460,8 +460,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         return sorted(self.constraints, key=lambda c: c._creation_order)
 
     def _init_existing(self, *args, **kwargs):
-        autoload = kwargs.pop('autoload', False)
         autoload_with = kwargs.pop('autoload_with', None)
+        autoload = kwargs.pop('autoload', autoload_with is not None)
         autoload_replace = kwargs.pop('autoload_replace', True)
         schema = kwargs.pop('schema', None)
         if schema and schema != self.schema:
