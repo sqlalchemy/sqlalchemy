@@ -321,7 +321,7 @@ for the database should have CREATE DATABASE and DROP DATABASE privileges.
 After installing pytest-xdist, testing is run adding the -n<num> option.
 For example, to run against sqlite, mysql, postgresql with four processes::
 
-    tox -e -- -n 4 --exclude-tags memory-intensive --db sqlite --db postgresql --db mysql
+    tox -e -- -n 4 --db sqlite --db postgresql --db mysql
 
 Each backend has a different scheme for setting up the database.  Postgresql
 still needs the "test_schema" and "test_schema_2" schemas present, as the
