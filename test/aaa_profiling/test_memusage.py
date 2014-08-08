@@ -42,6 +42,7 @@ def profile_memory(maxtimes=50):
             # get reset after 220 iterations.  We'd like to keep these
             # tests under 50 iterations and ideally about ten, so
             # just filter them out so that we get a "flatline" more quickly.
+
             if testing.against("sqlite+pysqlite"):
                 return [o for o in gc.get_objects()
                         if not isinstance(o, weakref.ref)]
@@ -107,6 +108,7 @@ class EnsureZeroed(fixtures.ORMTest):
     def setup(self):
         _sessions.clear()
         _mapper_registry.clear()
+        self.engine = engines.testing_engine(options={"use_reaper": False})
 
 
 class MemUsageTest(EnsureZeroed):
@@ -129,7 +131,7 @@ class MemUsageTest(EnsureZeroed):
         go()
 
     def test_session(self):
-        metadata = MetaData(testing.db)
+        metadata = MetaData(self.engine)
 
         table1 = Table("mytable", metadata,
                        Column('col1', Integer, primary_key=True,
@@ -187,7 +189,7 @@ class MemUsageTest(EnsureZeroed):
     def test_sessionmaker(self):
         @profile_memory()
         def go():
-            sessmaker = sessionmaker(bind=testing.db)
+            sessmaker = sessionmaker(bind=self.engine)
             sess = sessmaker()
             r = sess.execute(select([1]))
             r.close()
@@ -198,7 +200,7 @@ class MemUsageTest(EnsureZeroed):
 
     @testing.crashes('sqlite', ':memory: connection not suitable here')
     def test_orm_many_engines(self):
-        metadata = MetaData(testing.db)
+        metadata = MetaData(self.engine)
 
         table1 = Table("mytable", metadata,
                        Column('col1', Integer, primary_key=True,
@@ -295,7 +297,7 @@ class MemUsageTest(EnsureZeroed):
         assert not eng.dialect._type_memos
 
     def test_many_updates(self):
-        metadata = MetaData(testing.db)
+        metadata = MetaData(self.engine)
 
         wide_table = Table('t', metadata,
                            Column('id', Integer, primary_key=True,
@@ -341,7 +343,7 @@ class MemUsageTest(EnsureZeroed):
 
     @testing.crashes('mysql+cymysql', 'blocking')
     def test_unicode_warnings(self):
-        metadata = MetaData(testing.db)
+        metadata = MetaData(self.engine)
         table1 = Table(
             'mytable',
             metadata,
@@ -366,7 +368,7 @@ class MemUsageTest(EnsureZeroed):
             # execute with a non-unicode object. a warning is emitted,
             # this warning shouldn't clog up memory.
 
-            testing.db.execute(table1.select().where(table1.c.col2
+            self.engine.execute(table1.select().where(table1.c.col2
                                                      == 'foo%d' % i[0]))
             i[0] += 1
         try:
@@ -375,7 +377,7 @@ class MemUsageTest(EnsureZeroed):
             metadata.drop_all()
 
     def test_mapper_reset(self):
-        metadata = MetaData(testing.db)
+        metadata = MetaData(self.engine)
 
         table1 = Table("mytable", metadata,
                        Column('col1', Integer, primary_key=True,
@@ -432,7 +434,7 @@ class MemUsageTest(EnsureZeroed):
         assert_no_mappers()
 
     def test_alias_pathing(self):
-        metadata = MetaData(testing.db)
+        metadata = MetaData(self.engine)
 
         a = Table("a", metadata,
                   Column('id', Integer, primary_key=True,
@@ -498,7 +500,7 @@ class MemUsageTest(EnsureZeroed):
         clear_mappers()
 
     def test_with_inheritance(self):
-        metadata = MetaData(testing.db)
+        metadata = MetaData(self.engine)
 
         table1 = Table("mytable", metadata,
                        Column('col1', Integer, primary_key=True,
@@ -560,7 +562,7 @@ class MemUsageTest(EnsureZeroed):
         assert_no_mappers()
 
     def test_with_manytomany(self):
-        metadata = MetaData(testing.db)
+        metadata = MetaData(self.engine)
 
         table1 = Table("mytable", metadata,
                        Column('col1', Integer, primary_key=True,
@@ -629,7 +631,7 @@ class MemUsageTest(EnsureZeroed):
 
     @testing.provide_metadata
     def test_key_fallback_result(self):
-        e = testing.db
+        e = self.engine
         m = self.metadata
         t = Table('t', m, Column('x', Integer), Column('y', Integer))
         m.create_all(e)
@@ -648,7 +650,7 @@ class MemUsageTest(EnsureZeroed):
 
     @testing.crashes('mysql+cymysql', 'blocking')
     def test_join_cache(self):
-        metadata = MetaData(testing.db)
+        metadata = MetaData(self.engine)
         table1 = Table(
             'table1',
             metadata,
