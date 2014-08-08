@@ -655,13 +655,7 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
 
         res = set_table.select().execute().fetchall()
 
-        if testing.against("+oursql"):
-            expected = [
-                # 1st row with all c's, data truncated
-                (set(['']), set(['']), set(['']), set(['']), None),
-            ]
-        else:
-            expected = []
+        expected = []
 
         expected.extend([
             (set(['a']), set(['a']), set(['a']), set(["'a'"]), set(['a', 'b'])),
