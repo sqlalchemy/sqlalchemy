@@ -43,7 +43,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def define_tables(cls, metadata):
         cls.define_reflected_tables(metadata, None)
         if testing.requires.schemas.enabled:
-            cls.define_reflected_tables(metadata, "test_schema")
+            cls.define_reflected_tables(metadata, testing.config.test_schema)
 
     @classmethod
     def define_reflected_tables(cls, metadata, schema):
@@ -126,7 +126,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def test_get_schema_names(self):
         insp = inspect(testing.db)
 
-        self.assert_('test_schema' in insp.get_schema_names())
+        self.assert_(testing.config.test_schema in insp.get_schema_names())
 
     @testing.requires.schema_reflection
     def test_dialect_initialize(self):
@@ -174,7 +174,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.table_reflection
     @testing.requires.schemas
     def test_get_table_names_with_schema(self):
-        self._test_get_table_names('test_schema')
+        self._test_get_table_names(testing.config.test_schema)
 
     @testing.requires.view_column_reflection
     def test_get_view_names(self):
@@ -183,7 +183,8 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.view_column_reflection
     @testing.requires.schemas
     def test_get_view_names_with_schema(self):
-        self._test_get_table_names('test_schema', table_type='view')
+        self._test_get_table_names(
+            testing.config.test_schema, table_type='view')
 
     @testing.requires.table_reflection
     @testing.requires.view_column_reflection
@@ -291,7 +292,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.table_reflection
     @testing.requires.schemas
     def test_get_columns_with_schema(self):
-        self._test_get_columns(schema='test_schema')
+        self._test_get_columns(schema=testing.config.test_schema)
 
     @testing.requires.view_column_reflection
     def test_get_view_columns(self):
@@ -300,7 +301,8 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.view_column_reflection
     @testing.requires.schemas
     def test_get_view_columns_with_schema(self):
-        self._test_get_columns(schema='test_schema', table_type='view')
+        self._test_get_columns(
+            schema=testing.config.test_schema, table_type='view')
 
     @testing.provide_metadata
     def _test_get_pk_constraint(self, schema=None):
@@ -327,7 +329,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.primary_key_constraint_reflection
     @testing.requires.schemas
     def test_get_pk_constraint_with_schema(self):
-        self._test_get_pk_constraint(schema='test_schema')
+        self._test_get_pk_constraint(schema=testing.config.test_schema)
 
     @testing.requires.table_reflection
     @testing.provide_metadata
@@ -385,7 +387,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.foreign_key_constraint_reflection
     @testing.requires.schemas
     def test_get_foreign_keys_with_schema(self):
-        self._test_get_foreign_keys(schema='test_schema')
+        self._test_get_foreign_keys(schema=testing.config.test_schema)
 
     @testing.provide_metadata
     def _test_get_indexes(self, schema=None):
@@ -418,7 +420,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.index_reflection
     @testing.requires.schemas
     def test_get_indexes_with_schema(self):
-        self._test_get_indexes(schema='test_schema')
+        self._test_get_indexes(schema=testing.config.test_schema)
 
     @testing.requires.unique_constraint_reflection
     def test_get_unique_constraints(self):
@@ -427,7 +429,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.unique_constraint_reflection
     @testing.requires.schemas
     def test_get_unique_constraints_with_schema(self):
-        self._test_get_unique_constraints(schema='test_schema')
+        self._test_get_unique_constraints(schema=testing.config.test_schema)
 
     @testing.provide_metadata
     def _test_get_unique_constraints(self, schema=None):
@@ -486,7 +488,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.view_reflection
     @testing.requires.schemas
     def test_get_view_definition_with_schema(self):
-        self._test_get_view_definition(schema='test_schema')
+        self._test_get_view_definition(schema=testing.config.test_schema)
 
     @testing.only_on("postgresql", "PG specific feature")
     @testing.provide_metadata
@@ -503,7 +505,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
 
     @testing.requires.schemas
     def test_get_table_oid_with_schema(self):
-        self._test_get_table_oid('users', schema='test_schema')
+        self._test_get_table_oid('users', schema=testing.config.test_schema)
 
     @testing.requires.table_reflection
     @testing.provide_metadata
