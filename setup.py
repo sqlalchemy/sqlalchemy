@@ -132,7 +132,7 @@ def run_setup(with_cext):
           package_dir={'': 'lib'},
           license="MIT License",
           cmdclass=cmdclass,
-          tests_require=['pytest >= 2.5.2', 'mock'],
+          tests_require=['pytest >= 2.5.2', 'mock', 'pytest-xdist'],
           test_suite="sqlalchemy.testing.distutils_run",
           long_description=readme,
           classifiers=[

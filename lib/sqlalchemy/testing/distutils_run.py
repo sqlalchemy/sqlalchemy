@@ -8,4 +8,4 @@ import pytest
 
 class TestSuite(unittest.TestCase):
     def test_sqlalchemy(self):
-        pytest.main()
+        pytest.main(["-n", "4", "-q"])
