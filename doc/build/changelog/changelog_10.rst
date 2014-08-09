@@ -17,6 +17,15 @@
 	:version: 1.0.0
 
     .. change::
+        :tags: sql, feature
+        :tickets: 3027
+        :pullrequest: bitbucket:29
+
+        The :paramref:`.Table.autoload_with` flag now implies that
+        :paramref:`.Table.autoload` should be ``True``.  Pull request
+        courtesy Malik Diarra.
+
+    .. change::
         :tags: mysql, bug
 
         The MySQL dialect will now disable :meth:`.ConnectionEvents.handle_error`
