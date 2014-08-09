@@ -248,6 +248,22 @@ def create_engine(*args, **kwargs):
         Microsoft SQL Server.   Set this to ``False`` to disable
         the automatic usage of RETURNING.
 
+    :param isolation_level: this string parameter is interpreted by various
+        dialects in order to affect the transaction isolation level of the
+        database connection.   The parameter essentially accepts some subset of
+        these string arguments: ``"SERIALIZABLE"``, ``"REPEATABLE_READ"``,
+        ``"READ_COMMITTED"``, ``"READ_UNCOMMITTED"`` and ``"AUTOCOMMIT"``.
+        Behavior here varies per backend, and
+        individual dialects should be consulted directly.
+
+        .. seealso::
+
+            :ref:`SQLite Concurrency <sqlite_concurrency>`
+
+            :ref:`Postgresql Transaction Isolation <postgresql_isolation_level>`
+
+            :ref:`MySQL Transaction Isolation <mysql_isolation_level>`
+
     :param label_length=None: optional integer value which limits
         the size of dynamically generated column labels to that many
         characters. If less than 6, labels are generated as

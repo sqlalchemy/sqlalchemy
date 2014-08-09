@@ -101,6 +101,8 @@ all lower case both within SQLAlchemy as well as on the MySQL
 database itself, especially if database reflection features are
 to be used.
 
+.. _mysql_isolation_level:
+
 Transaction Isolation Level
 ---------------------------
 

@@ -200,29 +200,67 @@ is passed containing non-ASCII characters.
 
 .. _pysqlite_serializable:
 
-Serializable Transaction Isolation
-----------------------------------
+Serializable isolation / Savepoints / Transactional DDL
+-------------------------------------------------------
 
-The pysqlite DBAPI driver has a long-standing bug in which transactional
-state is not begun until the first DML statement, that is INSERT, UPDATE
-or DELETE, is emitted.  A SELECT statement will not cause transactional
-state to begin.   While this mode of usage is fine for typical situations
-and has the advantage that the SQLite database file is not prematurely
-locked, it breaks serializable transaction isolation, which requires
-that the database file be locked upon any SQL being emitted.
+In the section :ref:`sqlite_concurrency`, we refer to the pysqlite
+driver's assortment of issues that prevent several features of SQLite
+from working correctly.  The pysqlite DBAPI driver has several
+long-standing bugs which impact the correctness of its transactional
+behavior.   In its default mode of operation, SQLite features such as
+SERIALIZABLE isolation, transactional DDL, and SAVEPOINT support are
+non-functional, and in order to use these features, workarounds must
+be taken.
 
-To work around this issue, the ``BEGIN`` keyword can be emitted
-at the start of each transaction.   The following recipe establishes
-a :meth:`.ConnectionEvents.begin` handler to achieve this::
+The issue is essentially that the driver attempts to second-guess the user's
+intent, failing to start transactions and sometimes ending them prematurely, in
+an effort to minimize the SQLite databases's file locking behavior, even
+though SQLite itself uses "shared" locks for read-only activities.
+
+SQLAlchemy chooses to not alter this behavior by default, as it is the
+long-expected behavior of the pysqlite driver; if and when the pysqlite
+driver attempts to repair these issues, that will be more of a driver towards
+defaults for SQLAlchemy.
+
+The good news is that with a few events, we can implement transactional
+support fully, by disabling pysqlite's feature entirely and emitting BEGIN
+ourselves. This is achieved using two event listeners::
 
     from sqlalchemy import create_engine, event
 
-    engine = create_engine("sqlite:///myfile.db",
-                           isolation_level='SERIALIZABLE')
+    engine = create_engine("sqlite:///myfile.db")
+
+    @event.listens_for(engine, "connect")
+    def do_connect(dbapi_connection, connection_record):
+        # disable pysqlite's emitting of the BEGIN statement entirely.
+        # also stops it from emitting COMMIT before any DDL.
+        dbapi_connection.isolation_level = None
 
     @event.listens_for(engine, "begin")
     def do_begin(conn):
+        # emit our own BEGIN
         conn.execute("BEGIN")
+
+Above, we intercept a new pysqlite connection and disable any transactional
+integration.   Then, at the point at which SQLAlchemy knows that transaction
+scope is to begin, we emit ``"BEGIN"`` ourselves.
+
+When we take control of ``"BEGIN"``, we can also control directly SQLite's
+locking modes, introduced at `BEGIN TRANSACTION <http://sqlite.org/lang_transaction.html>`_,
+by adding the desired locking mode to our ``"BEGIN"``::
+
+    @event.listens_for(engine, "begin")
+    def do_begin(conn):
+        conn.execute("BEGIN EXCLUSIVE")
+
+.. seealso::
+
+    `BEGIN TRANSACTION <http://sqlite.org/lang_transaction.html>`_ - on the SQLite site
+
+    `sqlite3 SELECT does not BEGIN a transaction <http://bugs.python.org/issue9924>`_ - on the Python bug tracker
+
+    `sqlite3 module breaks transactions and potentially corrupts data <http://bugs.python.org/issue10740>`_ - on the Python bug tracker
+
 
 """
 

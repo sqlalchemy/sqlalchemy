@@ -47,49 +47,115 @@ construct::
             Column('id', Integer, primary_key=True),
             sqlite_autoincrement=True)
 
-Transaction Isolation Level
----------------------------
 
-:func:`.create_engine` accepts an ``isolation_level`` parameter which results
-in the command ``PRAGMA read_uncommitted <level>`` being invoked for every new
-connection. Valid values for this parameter are ``SERIALIZABLE`` and ``READ
-UNCOMMITTED`` corresponding to a value of 0 and 1, respectively. See the
-section :ref:`pysqlite_serializable` for an important workaround when using
-serializable isolation with Pysqlite.
+.. _sqlite_concurrency:
 
 Database Locking Behavior / Concurrency
 ---------------------------------------
 
-Note that SQLite is not designed for a high level of concurrency. The database
-itself, being a file, is locked completely during write operations and within
-transactions, meaning exactly one connection has exclusive access to the
-database during this period - all other connections will be blocked during
-this time.
+SQLite is not designed for a high level of write concurrency. The database
+itself, being a file, is locked completely during write operations within
+transactions, meaning exactly one "connection" (in reality a file handle)
+has exclusive access to the database during this period - all other
+"connections" will be blocked during this time.
 
 The Python DBAPI specification also calls for a connection model that is
-always in a transaction; there is no BEGIN method, only commit and rollback.
-This implies that a SQLite DBAPI driver would technically allow only
-serialized access to a particular database file at all times. The pysqlite
-driver attempts to ameliorate this by deferring the actual BEGIN statement
-until the first DML (INSERT, UPDATE, or DELETE) is received within a
-transaction. While this breaks serializable isolation, it at least delays the
-exclusive locking inherent in SQLite's design.
+always in a transaction; there is no ``connection.begin()`` method,
+only ``connection.commit()`` and ``connection.rollback()``, upon which a
+new transaction is to be begun immediately.  This may seem to imply
+that the SQLite driver would in theory allow only a single filehandle on a
+particular database file at any time; however, there are several
+factors both within SQlite itself as well as within the pysqlite driver
+which loosen this restriction significantly.
 
-SQLAlchemy's default mode of usage with the ORM is known as
-"autocommit=False", which means the moment the :class:`.Session` begins to be
-used, a transaction is begun. As the :class:`.Session` is used, the autoflush
-feature, also on by default, will flush out pending changes to the database
-before each query. The effect of this is that a :class:`.Session` used in its
-default mode will often emit DML early on, long before the transaction is
-actually committed. This again will have the effect of serializing access to
-the SQLite database. If highly concurrent reads are desired against the SQLite
-database, it is advised that the autoflush feature be disabled, and
-potentially even that autocommit be re-enabled, which has the effect of each
-SQL statement and flush committing changes immediately.
+However, no matter what locking modes are used, SQLite will still always
+lock the database file once a transaction is started and DML (e.g. INSERT,
+UPDATE, DELETE) has at least been emitted, and this will block
+other transactions at least at the point that they also attempt to emit DML.
+By default, the length of time on this block is very short before it times out
+with an error.
 
-For more information on SQLite's lack of concurrency by design, please see
+This behavior becomes more critical when used in conjunction with the
+SQLAlchemy ORM.  SQLAlchemy's :class:`.Session` object by default runs
+within a transaction, and with its autoflush model, may emit DML preceding
+any SELECT statement.   This may lead to a SQLite database that locks
+more quickly than is expected.   The locking mode of SQLite and the pysqlite
+driver can be manipulated to some degree, however it should be noted that
+achieving a high degree of write-concurrency with SQLite is a losing battle.
+
+For more information on SQLite's lack of write concurrency by design, please
+see
 `Situations Where Another RDBMS May Work Better - High Concurrency
 <http://www.sqlite.org/whentouse.html>`_ near the bottom of the page.
+
+The following subsections introduce areas that are impacted by SQLite's
+file-based architecture and additionally will usually require workarounds to
+work when using the pysqlite driver.
+
+Transaction Isolation Level
+===========================
+
+SQLite supports "transaction isolation" in a non-standard way, along two
+axes.  One is that of the `PRAGMA read_uncommitted <http://www.sqlite.org/pragma.html#pragma_read_uncommitted>`_
+instruction.   This setting can essentially switch SQLite between its
+default mode of ``SERIALIZABLE`` isolation, and a "dirty read" isolation
+mode normally referred to as ``READ UNCOMMITTED``.
+
+SQLAlchemy ties into this PRAGMA statement using the
+:paramref:`.create_engine.isolation_level` parameter of :func:`.create_engine`.
+Valid values for this parameter when used with SQLite are ``"SERIALIZABLE"``
+and ``"READ UNCOMMITTED"`` corresponding to a value of 0 and 1, respectively.
+SQLite defaults to ``SERIALIZABLE``, however its behavior is impacted by
+the pysqlite driver's default behavior.
+
+The other axis along which SQLite's transactional locking is impacted is
+via the nature of the ``BEGIN`` statement used.   The three varieties
+are "deferred", "immediate", and "exclusive", as described at
+`BEGIN TRANSACTION <http://sqlite.org/lang_transaction.html>`_.   A straight
+``BEGIN`` statement uses the "deferred" mode, where the the database file is
+not locked until the first read or write operation, and read access remains
+open to other transactions until the first write operation.  But again,
+it is critical to note that the pysqlite driver interferes with this behavior
+by *not even emitting BEGIN* until the first write operation.
+
+.. warning::
+
+    SQLite's transactional scope is impacted by unresolved
+    issues in the pysqlite driver, which defers BEGIN statements to a greater
+    degree than is often feasible. See the section :ref:`pysqlite_serializable`
+    for techniques to work around this behavior.
+
+SAVEPOINT Support
+=================
+
+SQLite supports SAVEPOINTs, which only function once a transaction is
+begun.   SQLAlchemy's SAVEPOINT support is available using the
+:meth:`.Connection.begin_nested` method at the Core level, and
+:meth:`.Session.begin_nested` at the ORM level.   However, SAVEPOINTs
+won't work at all with pysqlite unless workarounds are taken.
+
+.. warning::
+
+    SQLite's SAVEPOINT feature is impacted by unresolved
+    issues in the pysqlite driver, which defers BEGIN statements to a greater
+    degree than is often feasible. See the section :ref:`pysqlite_serializable`
+    for techniques to work around this behavior.
+
+Transactional DDL
+=================
+
+The SQLite database supports transactional :term:`DDL` as well.
+In this case, the pysqlite driver is not only failing to start transactions,
+it also is ending any existing transction when DDL is detected, so again,
+workarounds are required.
+
+.. warning::
+
+    SQLite's transactional DDL is impacted by unresolved issues
+    in the pysqlite driver, which fails to emit BEGIN and additionally
+    forces a COMMIT to cancel any transaction when DDL is encountered.
+    See the section :ref:`pysqlite_serializable`
+    for techniques to work around this behavior.
 
 .. _sqlite_foreign_keys:
 
