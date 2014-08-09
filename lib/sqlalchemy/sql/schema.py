@@ -161,47 +161,85 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         :class:`.SchemaItem` constructs may be added here, including
         :class:`.PrimaryKeyConstraint`, and :class:`.ForeignKeyConstraint`.
 
-    :param autoload: Defaults to False: the Columns for this table should
-        be reflected from the database. Usually there will be no Column
-        objects in the constructor if this property is set.
+    :param autoload: Defaults to ``False``.  When ``True``, :class:`.Column`
+        objects
+        for this table should be reflected from the database, possibly
+        augmenting or replacing existing :class:`.Column` objects that were
+        expicitly specified.
 
-    :param autoload_replace: If ``True``, when using ``autoload=True``
-        and ``extend_existing=True``,
-        replace ``Column`` objects already present in the ``Table`` that's
-        in the ``MetaData`` registry with
-        what's reflected.  Otherwise, all existing columns will be
-        excluded from the reflection process.    Note that this does
-        not impact ``Column`` objects specified in the same call to ``Table``
-        which includes ``autoload``, those always take precedence.
-        Defaults to ``True``.
+        .. seealso::
+
+            :ref:`metadata_reflection_toplevel`
+
+    :param autoload_replace: Defaults to ``True``; when using
+        :paramref:`.Table.autoload`
+        in conjunction with :paramref:`.Table.extend_existing`, indicates
+        that :class:`.Column` objects present in the already-existing
+        :class:`.Table` object should be replaced with columns of the same
+        name retrieved from the autoload process.   When ``False``, columns
+        already present under existing names will be omitted from the
+        reflection process.
+
+        Note that this setting does not impact :class:`.Column` objects
+        specified programmatically within the call to :class:`.Table` that
+        also is autoloading; those :class:`.Column` objects will always
+        replace existing columns of the same name when
+        :paramref:`.Table.extend_existing` is ``True``.
 
         .. versionadded:: 0.7.5
 
-    :param autoload_with: If autoload==True, this is an optional Engine
-        or Connection instance to be used for the table reflection. If
-        ``None``, the underlying MetaData's bound connectable will be used.
+        .. seealso::
+
+            :paramref:`.Table.autoload`
+
+            :paramref:`.Table.extend_existing`
+
+    :param autoload_with: An :class:`.Engine` or :class:`.Connection` object
+        with which this :class:`.Table` object will be reflected, when
+        :paramref:`.Table.autoload` is also ``True``. If left unset,
+        but :paramref:`.Table.autoload` is set to ``True``, an autoload
+        operation will attempt to proceed by locating an :class:`.Engine` or
+        :class:`.Connection` bound to the underlying :class:`.MetaData` object.
+
+        .. seealso::
+
+            :paramref:`.Table.autoload`
 
     :param extend_existing: When ``True``, indicates that if this
         :class:`.Table` is already present in the given :class:`.MetaData`,
         apply further arguments within the constructor to the existing
         :class:`.Table`.
 
-        If ``extend_existing`` or ``keep_existing`` are not set, an error is
-        raised if additional table modifiers are specified when
-        the given :class:`.Table` is already present in the
-        :class:`.MetaData`.
+        If :paramref:`.Table.extend_existing` or
+        :paramref:`.Table.keep_existing` are not set, and the given name
+        of the new :class:`.Table` refers to a :class:`.Table` that is
+        already present in the target :class:`.MetaData` collection, and
+        this :class:`.Table` specifies additional columns or other constructs
+        or flags that modify the table's state, an
+        error is raised.  The purpose of these two mutually-exclusive flags
+        is to specify what action should be taken when a :class:`.Table`
+        is specified that matches an existing :class:`.Table`, yet specifies
+        additional constructs.
 
-        .. versionchanged:: 0.7.4
-            ``extend_existing`` will work in conjunction
-            with ``autoload=True`` to run a new reflection operation against
-            the database; new :class:`.Column` objects will be produced
-            from database metadata to replace those existing with the same
-            name, and additional :class:`.Column` objects not present
-            in the :class:`.Table` will be added.
+        :paramref:`.Table.extend_existing` will also work in conjunction
+        with :paramref:`.Table.autoload` to run a new reflection
+        operation against the database, even if a :class:`.Table`
+        of the same name is already present in the target
+        :class:`.MetaData`; newly reflected :class:`.Column` objects
+        and other options will be added into the state of the
+        :class:`.Table`, potentially overwriting existing columns
+        and options of the same name.
 
-        As is always the case with ``autoload=True``, :class:`.Column`
-        objects can be specified in the same :class:`.Table` constructor,
-        which will take precedence.  I.e.::
+        .. versionchanged:: 0.7.4 :paramref:`.Table.extend_existing` will
+           invoke a new reflection operation when combined with
+           :paramref:`.Table.autoload` set to True.
+
+        As is always the case with :paramref:`.Table.autoload`,
+        :class:`.Column` objects can be specified in the same :class:`.Table`
+        constructor, which will take precedence.  Below, the existing
+        table ``mytable`` will be augmented with :class:`.Column` objects
+        both reflected from the database, as well as the given :class:`.Column`
+        named "y"::
 
             Table("mytable", metadata,
                         Column('y', Integer),
@@ -210,10 +248,14 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                         autoload_with=engine
                     )
 
-        The above will overwrite all columns within ``mytable`` which
-        are present in the database, except for ``y`` which will be used as is
-        from the above definition.   If the ``autoload_replace`` flag
-        is set to False, no existing columns will be replaced.
+        .. seealso::
+
+            :paramref:`.Table.autoload`
+
+            :paramref:`.Table.autoload_replace`
+
+            :paramref:`.Table.keep_existing`
+
 
     :param implicit_returning: True by default - indicates that
         RETURNING can be used by default to fetch newly inserted primary key
@@ -237,12 +279,22 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         to define a new :class:`.Table` on first call, but on
         subsequent calls will return the same :class:`.Table`,
         without any of the declarations (particularly constraints)
-        being applied a second time. Also see extend_existing.
+        being applied a second time.
 
-        If extend_existing or keep_existing are not set, an error is
-        raised if additional table modifiers are specified when
-        the given :class:`.Table` is already present in the
-        :class:`.MetaData`.
+        If :paramref:`.Table.extend_existing` or
+        :paramref:`.Table.keep_existing` are not set, and the given name
+        of the new :class:`.Table` refers to a :class:`.Table` that is
+        already present in the target :class:`.MetaData` collection, and
+        this :class:`.Table` specifies additional columns or other constructs
+        or flags that modify the table's state, an
+        error is raised.  The purpose of these two mutually-exclusive flags
+        is to specify what action should be taken when a :class:`.Table`
+        is specified that matches an existing :class:`.Table`, yet specifies
+        additional constructs.
+
+        .. seealso::
+
+            :paramref:`.Table.extend_existing`
 
     :param listeners: A list of tuples of the form ``(<eventname>, <fn>)``
         which will be passed to :func:`.event.listen` upon construction.
@@ -291,7 +343,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         ``quote_schema=True`` to the constructor, or use the
         :class:`.quoted_name` construct to specify the name.
 
-    :param useexisting: Deprecated.  Use extend_existing.
+    :param useexisting: Deprecated.  Use :paramref:`.Table.extend_existing`.
 
     :param \**kw: Additional keyword arguments not mentioned above are
         dialect specific, and passed in the form ``<dialectname>_<argname>``.
