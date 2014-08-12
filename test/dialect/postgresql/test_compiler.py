@@ -166,6 +166,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             "VARCHAR(1), CHECK (somecolumn IN ('x', "
                             "'y', 'z')))")
 
+    def test_create_table_with_tablespace(self):
+        m = MetaData()
+        tbl = Table('atable', m, Column("id", Integer), postgresql_tablespace = 'sometablespace')
+        self.assert_compile(schema.CreateTable(tbl),
+                "CREATE TABLE atable (id INTEGER)TABLESPACE sometablespace")
+
     def test_create_partial_index(self):
         m = MetaData()
         tbl = Table('testtbl', m, Column('data', Integer))

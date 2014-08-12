@@ -1448,6 +1448,13 @@ class PGDDLCompiler(compiler.DDLCompiler):
         text += self.define_constraint_deferrability(constraint)
         return text
 
+    def post_create_table(self, table):
+        table_opts = []
+        if table.dialect_options['postgresql']['tablespace']:
+            table_opts.append('TABLESPACE %s' % table.dialect_options['postgresql']['tablespace'])
+
+        return ' '.join(table_opts)
+
 
 class PGTypeCompiler(compiler.GenericTypeCompiler):
 
@@ -1707,7 +1714,8 @@ class PGDialect(default.DefaultDialect):
             "ops": {}
         }),
         (schema.Table, {
-            "ignore_search_path": False
+            "ignore_search_path": False,
+            "tablespace": None
         })
     ]
 
