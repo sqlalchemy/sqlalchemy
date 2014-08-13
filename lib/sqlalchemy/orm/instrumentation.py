@@ -97,7 +97,7 @@ class ClassManager(dict):
 
     def _all_sqla_attributes(self, exclude=None):
         """return an iterator of all classbound attributes that are
-        implement :class:`._InspectionAttr`.
+        implement :class:`.InspectionAttr`.
 
         This includes :class:`.QueryableAttribute` as well as extension
         types such as :class:`.hybrid_property` and
@@ -110,7 +110,7 @@ class ClassManager(dict):
             for key in set(supercls.__dict__).difference(exclude):
                 exclude.add(key)
                 val = supercls.__dict__[key]
-                if isinstance(val, interfaces._InspectionAttr):
+                if isinstance(val, interfaces.InspectionAttr):
                     yield key, val
 
     def _attr_has_impl(self, key):

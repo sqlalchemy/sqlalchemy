@@ -173,10 +173,10 @@ MANYTOMANY = util.symbol(
 
 NOT_EXTENSION = util.symbol(
     'NOT_EXTENSION',
-    """Symbol indicating an :class:`_InspectionAttr` that's
+    """Symbol indicating an :class:`InspectionAttr` that's
     not part of sqlalchemy.ext.
 
-    Is assigned to the :attr:`._InspectionAttr.extension_type`
+    Is assigned to the :attr:`.InspectionAttr.extension_type`
     attibute.
 
     """)
@@ -423,7 +423,7 @@ def class_mapper(class_, configure=True):
         return mapper
 
 
-class _InspectionAttr(object):
+class InspectionAttr(object):
     """A base class applied to all ORM objects that can be returned
     by the :func:`.inspect` function.
 
@@ -460,7 +460,7 @@ class _InspectionAttr(object):
     :class:`.QueryableAttribute` which handles attributes events on behalf
     of a :class:`.MapperProperty`.   But can also be an extension type
     such as :class:`.AssociationProxy` or :class:`.hybrid_property`.
-    The :attr:`._InspectionAttr.extension_type` will refer to a constant
+    The :attr:`.InspectionAttr.extension_type` will refer to a constant
     identifying the specific subtype.
 
     .. seealso::

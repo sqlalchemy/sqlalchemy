@@ -26,7 +26,7 @@ from ..sql import expression, visitors, operators, util as sql_util
 from . import instrumentation, attributes, exc as orm_exc, loading
 from . import properties
 from . import util as orm_util
-from .interfaces import MapperProperty, _InspectionAttr, _MappedAttribute
+from .interfaces import MapperProperty, InspectionAttr, _MappedAttribute
 
 from .base import _class_to_mapper, _state_mapper, class_mapper, \
     state_str, _INSTRUMENTOR
@@ -52,7 +52,7 @@ _CONFIGURE_MUTEX = util.threading.RLock()
 
 @inspection._self_inspects
 @log.class_logger
-class Mapper(_InspectionAttr):
+class Mapper(InspectionAttr):
     """Define the correlation of class attributes to database table
     columns.
 
@@ -1979,7 +1979,7 @@ class Mapper(_InspectionAttr):
 
     @util.memoized_property
     def all_orm_descriptors(self):
-        """A namespace of all :class:`._InspectionAttr` attributes associated
+        """A namespace of all :class:`.InspectionAttr` attributes associated
         with the mapped class.
 
         These attributes are in all cases Python :term:`descriptors`
@@ -1988,13 +1988,13 @@ class Mapper(_InspectionAttr):
         This namespace includes attributes that are mapped to the class
         as well as attributes declared by extension modules.
         It includes any Python descriptor type that inherits from
-        :class:`._InspectionAttr`.  This includes
+        :class:`.InspectionAttr`.  This includes
         :class:`.QueryableAttribute`, as well as extension types such as
         :class:`.hybrid_property`, :class:`.hybrid_method` and
         :class:`.AssociationProxy`.
 
         To distinguish between mapped attributes and extension attributes,
-        the attribute :attr:`._InspectionAttr.extension_type` will refer
+        the attribute :attr:`.InspectionAttr.extension_type` will refer
         to a constant that distinguishes between different extension types.
 
         When dealing with a :class:`.QueryableAttribute`, the

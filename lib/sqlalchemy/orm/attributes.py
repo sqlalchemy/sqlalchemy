@@ -30,7 +30,7 @@ from .base import state_str, instance_str
 
 @inspection._self_inspects
 class QueryableAttribute(interfaces._MappedAttribute,
-                         interfaces._InspectionAttr,
+                         interfaces.InspectionAttr,
                          interfaces.PropComparator):
     """Base class for :term:`descriptor` objects that intercept
     attribute events on behalf of a :class:`.MapperProperty`

@@ -21,7 +21,7 @@ from .base import PASSIVE_NO_RESULT, SQL_OK, NEVER_SET, ATTR_WAS_SET, \
 from . import base
 
 
-class InstanceState(interfaces._InspectionAttr):
+class InstanceState(interfaces.InspectionAttr):
     """tracks state information at the instance level.
 
     The :class:`.InstanceState` is a key object used by the

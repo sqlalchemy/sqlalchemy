@@ -23,7 +23,7 @@ from .. import util
 from ..sql import operators
 from .base import (ONETOMANY, MANYTOONE, MANYTOMANY,
                    EXT_CONTINUE, EXT_STOP, NOT_EXTENSION)
-from .base import _InspectionAttr, _MappedAttribute
+from .base import InspectionAttr, _MappedAttribute
 import collections
 
 # imported later
@@ -47,7 +47,7 @@ __all__ = (
 )
 
 
-class MapperProperty(_MappedAttribute, _InspectionAttr):
+class MapperProperty(_MappedAttribute, InspectionAttr):
     """Manage the relationship of a ``Mapper`` to a single class
     attribute, as well as that attribute as it appears on individual
     instances of the class, including attribute instrumentation,

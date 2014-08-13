@@ -634,10 +634,10 @@ from .. import util
 from ..orm import attributes, interfaces
 
 HYBRID_METHOD = util.symbol('HYBRID_METHOD')
-"""Symbol indicating an :class:`_InspectionAttr` that's
+"""Symbol indicating an :class:`InspectionAttr` that's
    of type :class:`.hybrid_method`.
 
-   Is assigned to the :attr:`._InspectionAttr.extension_type`
+   Is assigned to the :attr:`.InspectionAttr.extension_type`
    attibute.
 
    .. seealso::
@@ -647,10 +647,10 @@ HYBRID_METHOD = util.symbol('HYBRID_METHOD')
 """
 
 HYBRID_PROPERTY = util.symbol('HYBRID_PROPERTY')
-"""Symbol indicating an :class:`_InspectionAttr` that's
+"""Symbol indicating an :class:`InspectionAttr` that's
     of type :class:`.hybrid_method`.
 
-   Is assigned to the :attr:`._InspectionAttr.extension_type`
+   Is assigned to the :attr:`.InspectionAttr.extension_type`
    attibute.
 
    .. seealso::
@@ -660,7 +660,7 @@ HYBRID_PROPERTY = util.symbol('HYBRID_PROPERTY')
 """
 
 
-class hybrid_method(interfaces._InspectionAttr):
+class hybrid_method(interfaces.InspectionAttr):
     """A decorator which allows definition of a Python object method with both
     instance-level and class-level behavior.
 
@@ -703,7 +703,7 @@ class hybrid_method(interfaces._InspectionAttr):
         return self
 
 
-class hybrid_property(interfaces._InspectionAttr):
+class hybrid_property(interfaces.InspectionAttr):
     """A decorator which allows definition of a Python descriptor with both
     instance-level and class-level behavior.
 
