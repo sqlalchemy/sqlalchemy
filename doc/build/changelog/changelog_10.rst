@@ -18,6 +18,23 @@
 
     .. change::
         :tags: orm, feature
+        :tickets: 2963
+
+        The ``info`` parameter has been added to the constructor for
+        :class:`.SynonymProperty` and :class:`.ComparableProperty`.
+
+    .. change::
+        :tags: sql, feature
+        :tickets: 2963
+
+        The ``info`` parameter has been added as a constructor argument
+        to all schema constructs including :class:`.MetaData`,
+        :class:`.Index`, :class:`.ForeignKey`, :class:`.ForeignKeyConstraint`,
+        :class:`.UniqueConstraint`, :class:`.PrimaryKeyConstraint`,
+        :class:`.CheckConstraint`.
+
+    .. change::
+        :tags: orm, feature
         :tickets: 2971
 
         The :meth:`.InspectionAttr.info` collection is now moved down to

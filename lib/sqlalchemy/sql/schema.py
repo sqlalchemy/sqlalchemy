@@ -76,7 +76,7 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
         return []
 
     def __repr__(self):
-        return util.generic_repr(self)
+        return util.generic_repr(self, omit_kwarg=['info'])
 
     @property
     @util.deprecated('0.9', 'Use ``<obj>.name.quote``')
@@ -1403,6 +1403,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
     def __init__(self, column, _constraint=None, use_alter=False, name=None,
                  onupdate=None, ondelete=None, deferrable=None,
                  initially=None, link_to_name=False, match=None,
+                 info=None,
                  **dialect_kw):
         """
         Construct a column-level FOREIGN KEY.
@@ -1453,6 +1454,11 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             DDL for this constraint. Typical values include SIMPLE, PARTIAL
             and FULL.
 
+        :param info: Optional data dictionary which will be populated into the
+            :attr:`.SchemaItem.info` attribute of this object.
+
+            .. versionadded:: 1.0.0
+
         :param \**dialect_kw:  Additional keyword arguments are dialect
             specific, and passed in the form ``<dialectname>_<argname>``.  The
             arguments are ultimately handled by a corresponding
@@ -1499,6 +1505,8 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         self.initially = initially
         self.link_to_name = link_to_name
         self.match = match
+        if info:
+            self.info = info
         self._unvalidated_dialect_kw = dialect_kw
 
     def __repr__(self):
@@ -2223,7 +2231,7 @@ class Constraint(DialectKWArgs, SchemaItem):
     __visit_name__ = 'constraint'
 
     def __init__(self, name=None, deferrable=None, initially=None,
-                 _create_rule=None,
+                 _create_rule=None, info=None,
                  **dialect_kw):
         """Create a SQL constraint.
 
@@ -2237,6 +2245,11 @@ class Constraint(DialectKWArgs, SchemaItem):
         :param initially:
           Optional string.  If set, emit INITIALLY <value> when issuing DDL
           for this constraint.
+
+        :param info: Optional data dictionary which will be populated into the
+            :attr:`.SchemaItem.info` attribute of this object.
+
+            .. versionadded:: 1.0.0
 
         :param _create_rule:
           a callable which is passed the DDLCompiler object during
@@ -2265,6 +2278,8 @@ class Constraint(DialectKWArgs, SchemaItem):
         self.name = name
         self.deferrable = deferrable
         self.initially = initially
+        if info:
+            self.info = info
         self._create_rule = _create_rule
         util.set_creation_order(self)
         self._validate_dialect_kwargs(dialect_kw)
@@ -2381,7 +2396,7 @@ class CheckConstraint(Constraint):
     """
 
     def __init__(self, sqltext, name=None, deferrable=None,
-                 initially=None, table=None, _create_rule=None,
+                 initially=None, table=None, info=None, _create_rule=None,
                  _autoattach=True):
         """Construct a CHECK constraint.
 
@@ -2404,10 +2419,15 @@ class CheckConstraint(Constraint):
           Optional string.  If set, emit INITIALLY <value> when issuing DDL
           for this constraint.
 
+        :param info: Optional data dictionary which will be populated into the
+            :attr:`.SchemaItem.info` attribute of this object.
+
+            .. versionadded:: 1.0.0
+
         """
 
         super(CheckConstraint, self).\
-            __init__(name, deferrable, initially, _create_rule)
+            __init__(name, deferrable, initially, _create_rule, info=info)
         self.sqltext = _literal_as_text(sqltext)
         if table is not None:
             self._set_parent_with_dispatch(table)
@@ -2463,7 +2483,7 @@ class ForeignKeyConstraint(Constraint):
     def __init__(self, columns, refcolumns, name=None, onupdate=None,
                  ondelete=None, deferrable=None, initially=None,
                  use_alter=False, link_to_name=False, match=None,
-                 table=None, **dialect_kw):
+                 table=None, info=None, **dialect_kw):
         """Construct a composite-capable FOREIGN KEY.
 
         :param columns: A sequence of local column names. The named columns
@@ -2508,6 +2528,11 @@ class ForeignKeyConstraint(Constraint):
           DDL for this constraint. Typical values include SIMPLE, PARTIAL
           and FULL.
 
+        :param info: Optional data dictionary which will be populated into the
+            :attr:`.SchemaItem.info` attribute of this object.
+
+            .. versionadded:: 1.0.0
+
         :param \**dialect_kw:  Additional keyword arguments are dialect
           specific, and passed in the form ``<dialectname>_<argname>``.  See
           the documentation regarding an individual dialect at
@@ -2517,7 +2542,7 @@ class ForeignKeyConstraint(Constraint):
 
         """
         super(ForeignKeyConstraint, self).\
-            __init__(name, deferrable, initially, **dialect_kw)
+            __init__(name, deferrable, initially, info=info, **dialect_kw)
 
         self.onupdate = onupdate
         self.ondelete = ondelete
@@ -2888,6 +2913,11 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
             the index.  Works in the same manner as that of
             :paramref:`.Column.quote`.
 
+        :param info=None: Optional data dictionary which will be populated
+            into the :attr:`.SchemaItem.info` attribute of this object.
+
+            .. versionadded:: 1.0.0
+
         :param \**kw: Additional keyword arguments not mentioned above are
             dialect specific, and passed in the form
             ``<dialectname>_<argname>``. See the documentation regarding an
@@ -2910,6 +2940,8 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         self.expressions = expressions
         self.name = quoted_name(name, kw.pop("quote", None))
         self.unique = kw.pop('unique', False)
+        if 'info' in kw:
+            self.info = kw.pop('info')
         self._validate_dialect_kwargs(kw)
 
         # will call _set_parent() if table-bound column
@@ -3020,7 +3052,8 @@ class MetaData(SchemaItem):
 
     def __init__(self, bind=None, reflect=False, schema=None,
                  quote_schema=None,
-                 naming_convention=DEFAULT_NAMING_CONVENTION
+                 naming_convention=DEFAULT_NAMING_CONVENTION,
+                 info=None
                  ):
         """Create a new MetaData object.
 
@@ -3045,6 +3078,11 @@ class MetaData(SchemaItem):
             Sets the ``quote_schema`` flag for those :class:`.Table`,
             :class:`.Sequence`, and other objects which make usage of the
             local ``schema`` name.
+
+        :param info: Optional data dictionary which will be populated into the
+            :attr:`.SchemaItem.info` attribute of this object.
+
+            .. versionadded:: 1.0.0
 
         :param naming_convention: a dictionary referring to values which
           will establish default naming conventions for :class:`.Constraint`
@@ -3117,6 +3155,8 @@ class MetaData(SchemaItem):
         self.tables = util.immutabledict()
         self.schema = quoted_name(schema, quote_schema)
         self.naming_convention = naming_convention
+        if info:
+            self.info = info
         self._schemas = set()
         self._sequences = {}
         self._fk_memos = collections.defaultdict(list)

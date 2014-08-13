@@ -956,6 +956,71 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
             'mytable.myid = othertable.myid')
 
 
+class InfoTest(fixtures.TestBase):
+    def test_metadata_info(self):
+        m1 = MetaData()
+        eq_(m1.info, {})
+
+        m1 = MetaData(info={"foo": "bar"})
+        eq_(m1.info, {"foo": "bar"})
+
+    def test_foreignkey_constraint_info(self):
+        fkc = ForeignKeyConstraint(['a'], ['b'], name='bar')
+        eq_(fkc.info, {})
+
+        fkc = ForeignKeyConstraint(
+            ['a'], ['b'], name='bar', info={"foo": "bar"})
+        eq_(fkc.info, {"foo": "bar"})
+
+    def test_foreignkey_info(self):
+        fkc = ForeignKey('a')
+        eq_(fkc.info, {})
+
+        fkc = ForeignKey('a', info={"foo": "bar"})
+        eq_(fkc.info, {"foo": "bar"})
+
+    def test_primarykey_constraint_info(self):
+        pkc = PrimaryKeyConstraint('a', name='x')
+        eq_(pkc.info, {})
+
+        pkc = PrimaryKeyConstraint('a', name='x', info={'foo': 'bar'})
+        eq_(pkc.info, {'foo': 'bar'})
+
+    def test_unique_constraint_info(self):
+        uc = UniqueConstraint('a', name='x')
+        eq_(uc.info, {})
+
+        uc = UniqueConstraint('a', name='x', info={'foo': 'bar'})
+        eq_(uc.info, {'foo': 'bar'})
+
+    def test_check_constraint_info(self):
+        cc = CheckConstraint('foo=bar', name='x')
+        eq_(cc.info, {})
+
+        cc = CheckConstraint('foo=bar', name='x', info={'foo': 'bar'})
+        eq_(cc.info, {'foo': 'bar'})
+
+    def test_index_info(self):
+        ix = Index('x', 'a')
+        eq_(ix.info, {})
+
+        ix = Index('x', 'a', info={'foo': 'bar'})
+        eq_(ix.info, {'foo': 'bar'})
+
+    def test_column_info(self):
+        c = Column('x', Integer)
+        eq_(c.info, {})
+
+        c = Column('x', Integer, info={'foo': 'bar'})
+        eq_(c.info, {'foo': 'bar'})
+
+    def test_table_info(self):
+        t = Table('x', MetaData())
+        eq_(t.info, {})
+
+        t = Table('x', MetaData(), info={'foo': 'bar'})
+        eq_(t.info, {'foo': 'bar'})
+
 class TableTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @testing.skip_if('mssql', 'different col format')

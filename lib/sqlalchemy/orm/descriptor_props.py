@@ -496,7 +496,7 @@ class SynonymProperty(DescriptorProperty):
 
     def __init__(self, name, map_column=None,
                  descriptor=None, comparator_factory=None,
-                 doc=None):
+                 doc=None, info=None):
         """Denote an attribute name as a synonym to a mapped property,
         in that the attribute will mirror the value and expression behavior
         of another attribute.
@@ -531,6 +531,11 @@ class SynonymProperty(DescriptorProperty):
           conjunction with the ``descriptor`` argument in order to link a
           user-defined descriptor as a "wrapper" for an existing column.
 
+        :param info: Optional data dictionary which will be populated into the
+            :attr:`.InspectionAttr.info` attribute of this object.
+
+            .. versionadded:: 1.0.0
+
         :param comparator_factory: A subclass of :class:`.PropComparator`
           that will provide custom comparison behavior at the SQL expression
           level.
@@ -556,6 +561,8 @@ class SynonymProperty(DescriptorProperty):
         self.descriptor = descriptor
         self.comparator_factory = comparator_factory
         self.doc = doc or (descriptor and descriptor.__doc__) or None
+        if info:
+            self.info = info
 
         util.set_creation_order(self)
 
@@ -608,7 +615,8 @@ class SynonymProperty(DescriptorProperty):
 class ComparableProperty(DescriptorProperty):
     """Instruments a Python property for use in query expressions."""
 
-    def __init__(self, comparator_factory, descriptor=None, doc=None):
+    def __init__(
+            self, comparator_factory, descriptor=None, doc=None, info=None):
         """Provides a method of applying a :class:`.PropComparator`
         to any Python descriptor attribute.
 
@@ -670,10 +678,17 @@ class ComparableProperty(DescriptorProperty):
           The like-named descriptor will be automatically retrieved from the
           mapped class if left blank in a ``properties`` declaration.
 
+        :param info: Optional data dictionary which will be populated into the
+            :attr:`.InspectionAttr.info` attribute of this object.
+
+            .. versionadded:: 1.0.0
+
         """
         self.descriptor = descriptor
         self.comparator_factory = comparator_factory
         self.doc = doc or (descriptor and descriptor.__doc__) or None
+        if info:
+            self.info = info
         util.set_creation_order(self)
 
     def _comparator_factory(self, mapper):

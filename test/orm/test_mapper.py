@@ -414,7 +414,9 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         for constructor, args in [
             (column_property, (users.c.name,)),
             (relationship, (Address,)),
-            (composite, (MyComposite, 'id', 'name'))
+            (composite, (MyComposite, 'id', 'name')),
+            (synonym, 'foo'),
+            (comparable_property, 'foo')
         ]:
             obj = constructor(info={"x": "y"}, *args)
             eq_(obj.info, {"x": "y"})
