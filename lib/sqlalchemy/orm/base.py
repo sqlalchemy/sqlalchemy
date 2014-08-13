@@ -144,38 +144,42 @@ _INSTRUMENTOR = ('mapper', 'instrumentor')
 EXT_CONTINUE = util.symbol('EXT_CONTINUE')
 EXT_STOP = util.symbol('EXT_STOP')
 
-ONETOMANY = util.symbol('ONETOMANY',
-                        """Indicates the one-to-many direction for a :func:`.relationship`.
+ONETOMANY = util.symbol(
+    'ONETOMANY',
+    """Indicates the one-to-many direction for a :func:`.relationship`.
 
-This symbol is typically used by the internals but may be exposed within
-certain API features.
+    This symbol is typically used by the internals but may be exposed within
+    certain API features.
 
-""")
+    """)
 
-MANYTOONE = util.symbol('MANYTOONE',
-                        """Indicates the many-to-one direction for a :func:`.relationship`.
+MANYTOONE = util.symbol(
+    'MANYTOONE',
+    """Indicates the many-to-one direction for a :func:`.relationship`.
 
-This symbol is typically used by the internals but may be exposed within
-certain API features.
+    This symbol is typically used by the internals but may be exposed within
+    certain API features.
 
-""")
+    """)
 
-MANYTOMANY = util.symbol('MANYTOMANY',
-                         """Indicates the many-to-many direction for a :func:`.relationship`.
+MANYTOMANY = util.symbol(
+    'MANYTOMANY',
+    """Indicates the many-to-many direction for a :func:`.relationship`.
 
-This symbol is typically used by the internals but may be exposed within
-certain API features.
+    This symbol is typically used by the internals but may be exposed within
+    certain API features.
 
-""")
+    """)
 
-NOT_EXTENSION = util.symbol('NOT_EXTENSION',
-                            """Symbol indicating an :class:`_InspectionAttr` that's
-   not part of sqlalchemy.ext.
+NOT_EXTENSION = util.symbol(
+    'NOT_EXTENSION',
+    """Symbol indicating an :class:`_InspectionAttr` that's
+    not part of sqlalchemy.ext.
 
-   Is assigned to the :attr:`._InspectionAttr.extension_type`
-   attibute.
+    Is assigned to the :attr:`._InspectionAttr.extension_type`
+    attibute.
 
-""")
+    """)
 
 _none_set = frozenset([None, NEVER_SET, PASSIVE_NO_RESULT])
 
