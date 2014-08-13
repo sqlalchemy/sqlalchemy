@@ -17,6 +17,16 @@
 	:version: 1.0.0
 
     .. change::
+        :tags: orm, feature
+        :tickets: 2971
+
+        The :meth:`.InspectionAttr.info` collection is now moved down to
+        :class:`.InspectionAttr`, where in addition to being available
+        on all :class:`.MapperProperty` objects, it is also now available
+        on hybrid properties, association proxies, when accessed via
+        :attr:`.Mapper.all_orm_descriptors`.
+
+    .. change::
         :tags: sql, feature
         :tickets: 3027
         :pullrequest: bitbucket:29

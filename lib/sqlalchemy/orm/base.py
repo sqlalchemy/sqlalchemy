@@ -488,6 +488,32 @@ class InspectionAttr(object):
 
     """
 
+    @util.memoized_property
+    def info(self):
+        """Info dictionary associated with the object, allowing user-defined
+        data to be associated with this :class:`.InspectionAttr`.
+
+        The dictionary is generated when first accessed.  Alternatively,
+        it can be specified as a constructor argument to the
+        :func:`.column_property`, :func:`.relationship`, or :func:`.composite`
+        functions.
+
+        .. versionadded:: 0.8  Added support for .info to all
+           :class:`.MapperProperty` subclasses.
+
+        .. versionchanged:: 1.0.0 :attr:`.InspectionAttr.info` moved
+           from :class:`.MapperProperty` so that it can apply to a wider
+           variety of ORM and extension constructs.
+
+        .. seealso::
+
+            :attr:`.QueryableAttribute.info`
+
+            :attr:`.SchemaItem.info`
+
+        """
+        return {}
+
 
 class _MappedAttribute(object):
     """Mixin for attributes which should be replaced by mapper-assigned
