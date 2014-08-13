@@ -624,24 +624,69 @@ class ReflectionTest(fixtures.TestBase):
             eq_(fk, fk_ref[fk['name']])
 
     @testing.provide_metadata
-    def test_inspect_enums_custom_schema(self):
-        conn = testing.db.connect()
-        enum_type = postgresql.ENUM('sad', 'ok', 'happy', name='mood',
-            metadata=self.metadata, schema='test_schema')
-        enum_type.create(conn)
-        inspector = reflection.Inspector.from_engine(conn.engine)
-        eq_(inspector.load_enums(conn, 'test_schema'), {
-            u'test_schema.mood': {'labels': [u'sad', u'ok', u'happy']}})
-
-    @testing.provide_metadata
     def test_inspect_enums_schema(self):
         conn = testing.db.connect()
-        enum_type = postgresql.ENUM('cat', 'dog', 'rat', name='pet',
+        enum_type = postgresql.ENUM(
+            'sad', 'ok', 'happy', name='mood',
+            schema='test_schema',
             metadata=self.metadata)
         enum_type.create(conn)
         inspector = reflection.Inspector.from_engine(conn.engine)
-        eq_(inspector.load_enums(conn), {
-            u'pet': {'labels': [u'cat', u'dog', u'rat']}})
+        eq_(
+            inspector.get_enums('test_schema'), [{
+                'visible': False,
+                'name': 'mood',
+                'schema': 'test_schema',
+                'labels': ['sad', 'ok', 'happy']
+            }])
+
+    @testing.provide_metadata
+    def test_inspect_enums(self):
+        enum_type = postgresql.ENUM(
+            'cat', 'dog', 'rat', name='pet', metadata=self.metadata)
+        enum_type.create(testing.db)
+        inspector = reflection.Inspector.from_engine(testing.db)
+        eq_(inspector.get_enums(), [
+            {
+                'visible': True,
+                'labels': ['cat', 'dog', 'rat'],
+                'name': 'pet',
+                'schema': 'public'
+            }])
+
+    @testing.provide_metadata
+    def test_inspect_enums_star(self):
+        enum_type = postgresql.ENUM(
+            'cat', 'dog', 'rat', name='pet', metadata=self.metadata)
+        schema_enum_type = postgresql.ENUM(
+            'sad', 'ok', 'happy', name='mood',
+            schema='test_schema',
+            metadata=self.metadata)
+        enum_type.create(testing.db)
+        schema_enum_type.create(testing.db)
+        inspector = reflection.Inspector.from_engine(testing.db)
+
+        eq_(inspector.get_enums(), [
+            {
+                'visible': True,
+                'labels': ['cat', 'dog', 'rat'],
+                'name': 'pet',
+                'schema': 'public'
+            }])
+
+        eq_(inspector.get_enums('*'), [
+            {
+                'visible': True,
+                'labels': ['cat', 'dog', 'rat'],
+                'name': 'pet',
+                'schema': 'public'
+            },
+            {
+                'visible': False,
+                'name': 'mood',
+                'schema': 'test_schema',
+                'labels': ['sad', 'ok', 'happy']
+            }])
 
 
 class CustomTypeReflectionTest(fixtures.TestBase):
