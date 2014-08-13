@@ -1,5 +1,6 @@
 # coding: utf-8
 
+from sqlalchemy.engine import reflection
 from sqlalchemy.testing.assertions import eq_, assert_raises, \
     AssertsExecutionResults
 from sqlalchemy.testing import fixtures
@@ -621,6 +622,71 @@ class ReflectionTest(fixtures.TestBase):
             inspector.get_foreign_keys('company')
         for fk in fks:
             eq_(fk, fk_ref[fk['name']])
+
+    @testing.provide_metadata
+    def test_inspect_enums_schema(self):
+        conn = testing.db.connect()
+        enum_type = postgresql.ENUM(
+            'sad', 'ok', 'happy', name='mood',
+            schema='test_schema',
+            metadata=self.metadata)
+        enum_type.create(conn)
+        inspector = reflection.Inspector.from_engine(conn.engine)
+        eq_(
+            inspector.get_enums('test_schema'), [{
+                'visible': False,
+                'name': 'mood',
+                'schema': 'test_schema',
+                'labels': ['sad', 'ok', 'happy']
+            }])
+
+    @testing.provide_metadata
+    def test_inspect_enums(self):
+        enum_type = postgresql.ENUM(
+            'cat', 'dog', 'rat', name='pet', metadata=self.metadata)
+        enum_type.create(testing.db)
+        inspector = reflection.Inspector.from_engine(testing.db)
+        eq_(inspector.get_enums(), [
+            {
+                'visible': True,
+                'labels': ['cat', 'dog', 'rat'],
+                'name': 'pet',
+                'schema': 'public'
+            }])
+
+    @testing.provide_metadata
+    def test_inspect_enums_star(self):
+        enum_type = postgresql.ENUM(
+            'cat', 'dog', 'rat', name='pet', metadata=self.metadata)
+        schema_enum_type = postgresql.ENUM(
+            'sad', 'ok', 'happy', name='mood',
+            schema='test_schema',
+            metadata=self.metadata)
+        enum_type.create(testing.db)
+        schema_enum_type.create(testing.db)
+        inspector = reflection.Inspector.from_engine(testing.db)
+
+        eq_(inspector.get_enums(), [
+            {
+                'visible': True,
+                'labels': ['cat', 'dog', 'rat'],
+                'name': 'pet',
+                'schema': 'public'
+            }])
+
+        eq_(inspector.get_enums('*'), [
+            {
+                'visible': True,
+                'labels': ['cat', 'dog', 'rat'],
+                'name': 'pet',
+                'schema': 'public'
+            },
+            {
+                'visible': False,
+                'name': 'mood',
+                'schema': 'test_schema',
+                'labels': ['sad', 'ok', 'happy']
+            }])
 
 
 class CustomTypeReflectionTest(fixtures.TestBase):

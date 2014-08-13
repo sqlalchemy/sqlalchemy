@@ -26,6 +26,14 @@
         courtesy Malik Diarra.
 
     .. change::
+        :tags: postgresql, feature
+        :pullreq: github:126
+
+        Added new method :meth:`.PGInspector.get_enums`, when using the
+        inspector for Postgresql will provide a list of ENUM types.
+        Pull request courtesy Ilya Pekelny.
+
+    .. change::
         :tags: mysql, bug
 
         The MySQL dialect will now disable :meth:`.ConnectionEvents.handle_error`

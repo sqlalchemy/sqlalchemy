@@ -401,6 +401,23 @@ The value passed to the keyword argument will be simply passed through to the
 underlying CREATE INDEX command, so it *must* be a valid index type for your
 version of PostgreSQL.
 
+Special Reflection Options
+--------------------------
+
+The :class:`.Inspector` used for the Postgresql backend is an instance
+of :class:`.PGInspector`, which offers additional methods::
+
+    from sqlalchemy import create_engine, inspect
+
+    engine = create_engine("postgresql+psycopg2://localhost/test")
+    insp = inspect(engine)  # will be a PGInspector
+
+    print(insp.get_enums())
+
+.. autoclass:: PGInspector
+    :members:
+
+
 """
 from collections import defaultdict
 import re
@@ -1570,10 +1587,31 @@ class PGInspector(reflection.Inspector):
         reflection.Inspector.__init__(self, conn)
 
     def get_table_oid(self, table_name, schema=None):
-        """Return the oid from `table_name` and `schema`."""
+        """Return the OID for the given table name."""
 
         return self.dialect.get_table_oid(self.bind, table_name, schema,
                                           info_cache=self.info_cache)
+
+    def get_enums(self, schema=None):
+        """Return a list of ENUM objects.
+
+        Each member is a dictionary containing these fields:
+
+            * name - name of the enum
+            * schema - the schema name for the enum.
+            * visible - boolean, whether or not this enum is visible
+              in the default search path.
+            * labels - a list of string labels that apply to the enum.
+
+        :param schema: schema name.  If None, the default schema
+         (typically 'public') is used.  May also be set to '*' to
+         indicate load enums for all schemas.
+
+        .. versionadded:: 1.0.0
+
+        """
+        schema = schema or self.default_schema_name
+        return self.dialect._load_enums(self.bind, schema)
 
 
 class CreateEnumType(schema._CreateDropBase):
@@ -2039,7 +2077,12 @@ class PGDialect(default.DefaultDialect):
         c = connection.execute(s, table_oid=table_oid)
         rows = c.fetchall()
         domains = self._load_domains(connection)
-        enums = self._load_enums(connection)
+        enums = dict(
+            (
+                "%s.%s" % (rec['schema'], rec['name'])
+                if not rec['visible'] else rec['name'], rec) for rec in
+            self._load_enums(connection, schema='*')
+        )
 
         # format columns
         columns = []
@@ -2113,10 +2156,9 @@ class PGDialect(default.DefaultDialect):
             elif attype in enums:
                 enum = enums[attype]
                 coltype = ENUM
-                if "." in attype:
-                    kwargs['schema'], kwargs['name'] = attype.split('.')
-                else:
-                    kwargs['name'] = attype
+                kwargs['name'] = enum['name']
+                if not enum['visible']:
+                    kwargs['schema'] = enum['schema']
                 args = tuple(enum['labels'])
                 break
             elif attype in domains:
@@ -2424,7 +2466,8 @@ class PGDialect(default.DefaultDialect):
             for name, uc in uniques.items()
         ]
 
-    def _load_enums(self, connection):
+    def _load_enums(self, connection, schema=None):
+        schema = schema or self.default_schema_name
         if not self.supports_native_enum:
             return {}
 
@@ -2440,31 +2483,37 @@ class PGDialect(default.DefaultDialect):
                  LEFT JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
                  LEFT JOIN pg_catalog.pg_enum e ON t.oid = e.enumtypid
             WHERE t.typtype = 'e'
-            ORDER BY "name", e.oid -- e.oid gives us label order
         """
+
+        if schema != '*':
+            SQL_ENUMS += "AND n.nspname = :schema "
+
+        # e.oid gives us label order within an enum
+        SQL_ENUMS += 'ORDER BY "schema", "name", e.oid'
 
         s = sql.text(SQL_ENUMS, typemap={
             'attname': sqltypes.Unicode,
             'label': sqltypes.Unicode})
+
+        if schema != '*':
+            s = s.bindparams(schema=schema)
+
         c = connection.execute(s)
 
-        enums = {}
+        enums = []
+        enum_by_name = {}
         for enum in c.fetchall():
-            if enum['visible']:
-                # 'visible' just means whether or not the enum is in a
-                # schema that's on the search path -- or not overridden by
-                # a schema with higher precedence. If it's not visible,
-                # it will be prefixed with the schema-name when it's used.
-                name = enum['name']
+            key = (enum['schema'], enum['name'])
+            if key in enum_by_name:
+                enum_by_name[key]['labels'].append(enum['label'])
             else:
-                name = "%s.%s" % (enum['schema'], enum['name'])
-
-            if name in enums:
-                enums[name]['labels'].append(enum['label'])
-            else:
-                enums[name] = {
+                enum_by_name[key] = enum_rec = {
+                    'name': enum['name'],
+                    'schema': enum['schema'],
+                    'visible': enum['visible'],
                     'labels': [enum['label']],
                 }
+                enums.append(enum_rec)
 
         return enums
 
