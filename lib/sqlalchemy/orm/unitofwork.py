@@ -394,9 +394,9 @@ class UOWTransaction(object):
         if other:
             self.session._register_newly_persistent(other)
 
-    def bulk_save(self, objects):
-        for (base_mapper, in_session), states in itertools.groupby(
-                (attributes.instance_state(obj) for obj in objects),
+    def bulk_save(self, states):
+        for (base_mapper, in_session), states_ in itertools.groupby(
+                states,
                 lambda state:
                 (
                     state.mapper.base_mapper,
@@ -404,12 +404,12 @@ class UOWTransaction(object):
                 )):
 
             persistence.save_obj(
-                base_mapper, list(states), self, bookkeeping=in_session)
+                base_mapper, list(states_), self, bookkeeping=in_session)
 
             if in_session:
                 self.states.update(
                     (state, (False, False))
-                    for state in states
+                    for state in states_
                 )
 
 

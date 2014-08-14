@@ -482,7 +482,7 @@ class Session(_SessionClassMethods):
         '__contains__', '__iter__', 'add', 'add_all', 'begin', 'begin_nested',
         'close', 'commit', 'connection', 'delete', 'execute', 'expire',
         'expire_all', 'expunge', 'expunge_all', 'flush', 'get_bind',
-        'is_modified',
+        'is_modified', 'bulk_save_objects', 'bulk_save_mappings',
         'merge', 'query', 'refresh', 'rollback',
         'scalar')
 
@@ -2033,31 +2033,42 @@ class Session(_SessionClassMethods):
             with util.safe_reraise():
                 transaction.rollback(_capture_exception=True)
 
-    def bulk_save(self, objects):
+    def bulk_save_objects(self, objects):
+        self._bulk_save((attributes.instance_state(obj) for obj in objects))
+
+    def bulk_save_mappings(self, mapper, mappings):
+        mapper = class_mapper(mapper)
+
+        self._bulk_save((
+            statelib.MappingState(mapper, mapping)
+            for mapping in mappings)
+        )
+
+    def _bulk_save(self, states):
         self._flushing = True
         flush_context = UOWTransaction(self)
 
         if self.dispatch.before_bulk_save:
             self.dispatch.before_bulk_save(
-                self, flush_context, objects)
+                self, flush_context, states)
 
         flush_context.transaction = transaction = self.begin(
             subtransactions=True)
         try:
             self._warn_on_events = True
             try:
-                flush_context.bulk_save(objects)
+                flush_context.bulk_save(states)
             finally:
                 self._warn_on_events = False
 
             self.dispatch.after_bulk_save(
-                self, flush_context, objects
+                self, flush_context, states
             )
 
             flush_context.finalize_flush_changes()
 
             self.dispatch.after_bulk_save_postexec(
-                self, flush_context, objects)
+                self, flush_context, states)
 
             transaction.commit()
 

@@ -18,7 +18,7 @@ import operator
 from itertools import groupby
 from .. import sql, util, exc as sa_exc, schema
 from . import attributes, sync, exc as orm_exc, evaluator
-from .base import _state_mapper, state_str, _attr_as_key
+from .base import state_str, _attr_as_key
 from ..sql import expression
 from . import loading
 
@@ -65,7 +65,8 @@ def save_obj(
         if insert:
             _emit_insert_statements(base_mapper, uowtransaction,
                                     cached_connections,
-                                    mapper, table, insert)
+                                    mapper, table, insert,
+                                    bookkeeping)
 
     _finalize_insert_update_commands(base_mapper, uowtransaction,
                                      states_to_insert, states_to_update,
@@ -140,13 +141,16 @@ def _organize_states_for_save(
 
     states_to_insert = []
     states_to_update = []
+    instance_key = None
 
     for state, dict_, mapper, connection in _connections_for_states(
             base_mapper, uowtransaction,
             states):
 
         has_identity = bool(state.key)
-        instance_key = state.key or mapper._identity_key_from_state(state)
+
+        if bookkeeping:
+            instance_key = state.key or mapper._identity_key_from_state(state)
 
         row_switch = None
 
@@ -188,12 +192,12 @@ def _organize_states_for_save(
         if not has_identity and not row_switch:
             states_to_insert.append(
                 (state, dict_, mapper, connection,
-                 has_identity, instance_key, row_switch)
+                 has_identity, row_switch)
             )
         else:
             states_to_update.append(
                 (state, dict_, mapper, connection,
-                 has_identity, instance_key, row_switch)
+                 has_identity, row_switch)
             )
 
     return states_to_insert, states_to_update
@@ -242,7 +246,8 @@ def _collect_insert_commands(base_mapper, uowtransaction, table,
     """
     insert = []
     for state, state_dict, mapper, connection, has_identity, \
-            instance_key, row_switch in states_to_insert:
+            row_switch in states_to_insert:
+
         if table not in mapper._pks_by_table:
             continue
 
@@ -265,13 +270,13 @@ def _collect_insert_commands(base_mapper, uowtransaction, table,
                 prop = mapper._columntoproperty[col]
                 value = state_dict.get(prop.key, None)
 
-                if value is None:
-                    if bookkeeping and col in pks:
+                if bookkeeping and value is None:
+                    if col in pks:
                         has_all_pks = False
                     elif col.default is None and \
                             col.server_default is None:
                         params[col.key] = value
-                    elif bookkeeping and col.server_default is not None and \
+                    elif col.server_default is not None and \
                             mapper.base_mapper.eager_defaults:
                         has_all_defaults = False
 
@@ -301,7 +306,7 @@ def _collect_update_commands(base_mapper, uowtransaction,
 
     update = []
     for state, state_dict, mapper, connection, has_identity, \
-            instance_key, row_switch in states_to_update:
+            row_switch in states_to_update:
         if table not in mapper._pks_by_table:
             continue
 
@@ -567,7 +572,8 @@ def _emit_update_statements(base_mapper, uowtransaction,
 
 
 def _emit_insert_statements(base_mapper, uowtransaction,
-                            cached_connections, mapper, table, insert):
+                            cached_connections, mapper, table, insert,
+                            bookkeeping):
     """Emit INSERT statements corresponding to value lists collected
     by _collect_insert_commands()."""
 
@@ -593,19 +599,20 @@ def _emit_insert_statements(base_mapper, uowtransaction,
             c = cached_connections[connection].\
                 execute(statement, multiparams)
 
-            for (state, state_dict, params, mapper_rec,
-                    conn, value_params, has_all_pks, has_all_defaults), \
-                    last_inserted_params in \
-                    zip(records, c.context.compiled_parameters):
-                _postfetch(
-                    mapper_rec,
-                    uowtransaction,
-                    table,
-                    state,
-                    state_dict,
-                    c,
-                    last_inserted_params,
-                    value_params)
+            if bookkeeping:
+                for (state, state_dict, params, mapper_rec,
+                        conn, value_params, has_all_pks, has_all_defaults), \
+                        last_inserted_params in \
+                        zip(records, c.context.compiled_parameters):
+                    _postfetch(
+                        mapper_rec,
+                        uowtransaction,
+                        table,
+                        state,
+                        state_dict,
+                        c,
+                        last_inserted_params,
+                        value_params)
 
         else:
             if not has_all_defaults and base_mapper.eager_defaults:
@@ -768,7 +775,7 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction,
 
     """
     for state, state_dict, mapper, connection, has_identity, \
-            instance_key, row_switch in states_to_insert + \
+            row_switch in states_to_insert + \
             states_to_update:
 
         if bookkeeping:
@@ -871,7 +878,7 @@ def _connections_for_states(base_mapper, uowtransaction, states):
         if connection_callable:
             connection = connection_callable(base_mapper, state.obj())
 
-        mapper = _state_mapper(state)
+        mapper = state.manager.mapper
 
         yield state, state.dict, mapper, connection
 
