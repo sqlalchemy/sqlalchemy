@@ -8,6 +8,7 @@ from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing.mock import Mock, call
 from sqlalchemy import testing
 
+
 class EventsTest(fixtures.TestBase):
     """Test class- and instance-level event registration."""
 
@@ -155,8 +156,8 @@ class EventsTest(fixtures.TestBase):
         t2.dispatch.event_one(5, 6)
         is_(
             t1.dispatch.__dict__['event_one'],
-            self.Target.dispatch.event_one.\
-                _empty_listeners[self.Target]
+            self.Target.dispatch.event_one.
+            _empty_listeners[self.Target]
         )
 
         @event.listens_for(t1, "event_one")
@@ -164,13 +165,13 @@ class EventsTest(fixtures.TestBase):
             pass
         is_not_(
             t1.dispatch.__dict__['event_one'],
-            self.Target.dispatch.event_one.\
-                _empty_listeners[self.Target]
+            self.Target.dispatch.event_one.
+            _empty_listeners[self.Target]
         )
         is_(
             t2.dispatch.__dict__['event_one'],
-            self.Target.dispatch.event_one.\
-                _empty_listeners[self.Target]
+            self.Target.dispatch.event_one.
+            _empty_listeners[self.Target]
         )
 
     def test_immutable_methods(self):
@@ -187,6 +188,7 @@ class EventsTest(fixtures.TestBase):
                 r"need to call for_modify\(\)",
                 meth
             )
+
 
 class NamedCallTest(fixtures.TestBase):
 
@@ -206,8 +208,8 @@ class NamedCallTest(fixtures.TestBase):
         self.TargetOne = TargetOne
 
     def tearDown(self):
-        event.base._remove_dispatcher(self.TargetOne.__dict__['dispatch'].events)
-
+        event.base._remove_dispatcher(
+            self.TargetOne.__dict__['dispatch'].events)
 
     def test_kw_accept(self):
         canary = Mock()
@@ -255,7 +257,6 @@ class NamedCallTest(fixtures.TestBase):
 class LegacySignatureTest(fixtures.TestBase):
     """test adaption of legacy args"""
 
-
     def setUp(self):
         class TargetEventsOne(event.Events):
 
@@ -267,18 +268,19 @@ class LegacySignatureTest(fixtures.TestBase):
             def event_four(self, x, y, z, q, **kw):
                 pass
 
-            @event._legacy_signature("0.9", ["x", "y", "z", "q"],
-                                lambda x, y: (x, y, x + y, x * y))
+            @event._legacy_signature(
+                "0.9", ["x", "y", "z", "q"],
+                lambda x, y: (x, y, x + y, x * y))
             def event_six(self, x, y):
                 pass
-
 
         class TargetOne(object):
             dispatch = event.dispatcher(TargetEventsOne)
         self.TargetOne = TargetOne
 
     def tearDown(self):
-        event.base._remove_dispatcher(self.TargetOne.__dict__['dispatch'].events)
+        event.base._remove_dispatcher(
+            self.TargetOne.__dict__['dispatch'].events)
 
     def test_legacy_accept(self):
         canary = Mock()
@@ -306,6 +308,7 @@ class LegacySignatureTest(fixtures.TestBase):
         canary = Mock()
 
         inst = self.TargetOne()
+
         @event.listens_for(inst, "event_four")
         def handler1(x, y, **kw):
             canary(x, y, kw)
@@ -313,6 +316,7 @@ class LegacySignatureTest(fixtures.TestBase):
 
     def test_legacy_accept_partial(self):
         canary = Mock()
+
         def evt(a, x, y, **kw):
             canary(a, x, y, **kw)
         from functools import partial
@@ -329,7 +333,6 @@ class LegacySignatureTest(fixtures.TestBase):
             canary.mock_calls,
             [call(5, 4, 5, foo="bar")]
         )
-
 
     def _test_legacy_accept_kw(self, target, canary):
         target.dispatch.event_four(4, 5, 6, 7, foo="bar")
@@ -410,21 +413,18 @@ class LegacySignatureTest(fixtures.TestBase):
 
 class ClsLevelListenTest(fixtures.TestBase):
 
-
     def tearDown(self):
-        event.base._remove_dispatcher(self.TargetOne.__dict__['dispatch'].events)
+        event.base._remove_dispatcher(
+            self.TargetOne.__dict__['dispatch'].events)
 
     def setUp(self):
         class TargetEventsOne(event.Events):
             def event_one(self, x, y):
                 pass
+
         class TargetOne(object):
             dispatch = event.dispatcher(TargetEventsOne)
         self.TargetOne = TargetOne
-
-    def tearDown(self):
-        event.base._remove_dispatcher(
-            self.TargetOne.__dict__['dispatch'].events)
 
     def test_lis_subcalss_lis(self):
         @event.listens_for(self.TargetOne, "event_one")
@@ -470,12 +470,14 @@ class ClsLevelListenTest(fixtures.TestBase):
     def test_two_sub_lis(self):
         class SubTarget1(self.TargetOne):
             pass
+
         class SubTarget2(self.TargetOne):
             pass
 
         @event.listens_for(self.TargetOne, "event_one")
         def handler1(x, y):
             pass
+
         @event.listens_for(SubTarget1, "event_one")
         def handler2(x, y):
             pass
@@ -510,8 +512,10 @@ class AcceptTargetsTest(fixtures.TestBase):
         self.TargetTwo = TargetTwo
 
     def tearDown(self):
-        event.base._remove_dispatcher(self.TargetOne.__dict__['dispatch'].events)
-        event.base._remove_dispatcher(self.TargetTwo.__dict__['dispatch'].events)
+        event.base._remove_dispatcher(
+            self.TargetOne.__dict__['dispatch'].events)
+        event.base._remove_dispatcher(
+            self.TargetTwo.__dict__['dispatch'].events)
 
     def test_target_accept(self):
         """Test that events of the same name are routed to the correct
@@ -560,6 +564,7 @@ class AcceptTargetsTest(fixtures.TestBase):
             [listen_two, listen_four]
         )
 
+
 class CustomTargetsTest(fixtures.TestBase):
     """Test custom target acceptance."""
 
@@ -599,6 +604,7 @@ class CustomTargetsTest(fixtures.TestBase):
             listen, "event_one", self.Target
         )
 
+
 class SubclassGrowthTest(fixtures.TestBase):
     """test that ad-hoc subclasses are garbage collected."""
 
@@ -625,7 +631,8 @@ class SubclassGrowthTest(fixtures.TestBase):
 
 
 class ListenOverrideTest(fixtures.TestBase):
-    """Test custom listen functions which change the listener function signature."""
+    """Test custom listen functions which change the listener function
+    signature."""
 
     def setUp(self):
         class TargetEvents(event.Events):
@@ -715,7 +722,6 @@ class PropagateTest(fixtures.TestBase):
             dispatch = event.dispatcher(TargetEvents)
         self.Target = Target
 
-
     def test_propagate(self):
         listen_one = Mock()
         listen_two = Mock()
@@ -740,6 +746,7 @@ class PropagateTest(fixtures.TestBase):
             listen_two.mock_calls,
             []
         )
+
 
 class JoinTest(fixtures.TestBase):
     def setUp(self):
@@ -767,7 +774,8 @@ class JoinTest(fixtures.TestBase):
         self.TargetElement = TargetElement
 
     def tearDown(self):
-        for cls in (self.TargetElement,
+        for cls in (
+            self.TargetElement,
                 self.TargetFactory, self.BaseTarget):
             if 'dispatch' in cls.__dict__:
                 event.base._remove_dispatcher(cls.__dict__['dispatch'].events)
@@ -780,6 +788,7 @@ class JoinTest(fixtures.TestBase):
 
     def test_kw_ok(self):
         l1 = Mock()
+
         def listen(**kw):
             l1(kw)
 
@@ -789,8 +798,10 @@ class JoinTest(fixtures.TestBase):
         element.run_event(2)
         eq_(
             l1.mock_calls,
-            [call({"target": element, "arg": 1}),
-                call({"target": element, "arg": 2}),]
+            [
+                call({"target": element, "arg": 1}),
+                call({"target": element, "arg": 2}),
+            ]
         )
 
     def test_parent_class_only(self):
@@ -895,7 +906,6 @@ class JoinTest(fixtures.TestBase):
             [call(element, 1), call(element, 2), call(element, 3)]
         )
 
-
     def test_parent_instance_child_class_apply_after(self):
         l1 = Mock()
         l2 = Mock()
@@ -969,6 +979,7 @@ class JoinTest(fixtures.TestBase):
             [call(element, 1), call(element, 2), call(element, 3)]
         )
 
+
 class RemovalTest(fixtures.TestBase):
     def _fixture(self):
         class TargetEvents(event.Events):
@@ -1003,6 +1014,7 @@ class RemovalTest(fixtures.TestBase):
 
     def test_clslevel_subclass(self):
         Target = self._fixture()
+
         class SubTarget(Target):
             pass
 
@@ -1097,8 +1109,10 @@ class RemovalTest(fixtures.TestBase):
         t2.dispatch.event_two("t2e2y")
 
         eq_(m1.mock_calls,
-                [call('t1e1x'), call('t1e2x'),
-                call('t2e1x')])
+            [
+                call('t1e1x'), call('t1e2x'),
+                call('t2e1x')
+            ])
 
     @testing.requires.predictable_gc
     def test_listener_collection_removed_cleanup(self):
@@ -1140,7 +1154,8 @@ class RemovalTest(fixtures.TestBase):
         event.remove(t1, "event_one", m1)
         assert_raises_message(
             exc.InvalidRequestError,
-            r"No listeners found for event <.*Target.*> / 'event_two' / <Mock.*> ",
+            r"No listeners found for event <.*Target.*> / "
+            r"'event_two' / <Mock.*> ",
             event.remove, t1, "event_two", m1
         )
 
