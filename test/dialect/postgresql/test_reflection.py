@@ -12,8 +12,108 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import base as postgresql
 
 
-class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
+class RelKindReflectionTest(fixtures.TestBase, AssertsExecutionResults):
+    """Test postgresql_relkind reflection option"""
 
+    __requires__ = 'postgresql_test_dblink',
+    __only_on__ = 'postgresql >= 9.3'
+    __backend__ = True
+
+    @classmethod
+    def setup_class(cls):
+        from sqlalchemy.testing import config
+        cls.dblink = config.file_config.get('sqla_testing', 'postgres_test_db_link')
+
+        metadata = MetaData(testing.db)
+        testtable = Table(
+            'testtable', metadata,
+            Column(
+                'id', Integer, primary_key=True),
+            Column(
+                'data', String(30)))
+        metadata.create_all()
+        testtable.insert().execute({'id': 89, 'data': 'd1'})
+
+        con = testing.db.connect()
+
+        for ddl in \
+                "CREATE MATERIALIZED VIEW test_mview AS SELECT * FROM testtable;", \
+                "CREATE SERVER test_server FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname 'test', host '%s');" % cls.dblink, \
+                "CREATE USER MAPPING FOR public SERVER test_server options (user 'scott', password 'tiger');", \
+                "CREATE FOREIGN TABLE test_foreigntable ( \
+                    id          INT, \
+                    data        VARCHAR(30) \
+                ) SERVER test_server OPTIONS (table_name 'testtable');":
+            try:
+                con.execute(ddl)
+            except exc.DBAPIError as e:
+                if 'already exists' not in str(e):
+                    raise e
+
+    @classmethod
+    def teardown_class(cls):
+        con = testing.db.connect()
+        con.execute('DROP FOREIGN TABLE test_foreigntable;')
+        con.execute('DROP USER MAPPING FOR public SERVER test_server;')
+        con.execute('DROP SERVER test_server;')
+        con.execute('DROP MATERIALIZED VIEW test_mview;')
+        con.execute('DROP TABLE testtable;')
+
+    def test_mview_is_reflected(self):
+        mview_relkind_names = ('m', 'materialized')
+        for mview_relkind_name in mview_relkind_names:
+            metadata = MetaData(testing.db)
+            table = Table('test_mview', metadata, autoload=True, postgresql_relkind=mview_relkind_name)
+            eq_(set(table.columns.keys()), set(['id', 'data']), "Columns of reflected mview didn't equal expected columns")
+
+    def test_mview_select(self):
+        metadata = MetaData(testing.db)
+        table = Table('test_mview', metadata, autoload=True, postgresql_relkind='m')
+        assert table.select().execute().fetchall() == [
+            (89, 'd1',)
+        ]
+
+    def test_foreign_table_is_reflected(self):
+        foreign_table_relkind_names = ('f', 'foreign')
+        for foreign_table_relkind_name in foreign_table_relkind_names:
+            metadata = MetaData(testing.db)
+            table = Table('test_foreigntable', metadata, autoload=True, postgresql_relkind=foreign_table_relkind_name)
+            eq_(set(table.columns.keys()), set(['id', 'data']), "Columns of reflected foreign table didn't equal expected columns")
+
+    def test_foreign_table_select(self):
+        metadata = MetaData(testing.db)
+        table = Table('test_foreigntable', metadata, autoload=True, postgresql_relkind='f')
+        assert table.select().execute().fetchall() == [
+            (89, 'd1',)
+        ]
+
+    def test_foreign_table_roundtrip(self):
+        metadata = MetaData(testing.db)
+        table = Table('test_foreigntable', metadata, autoload=True, postgresql_relkind='f')
+
+        connection = testing.db.connect()
+        trans = connection.begin()
+        try:
+            table.delete().execute()
+            table.insert().execute({'id': 89, 'data': 'd1'})
+            trans.commit()
+        except:
+            trans.rollback()
+            raise
+
+        assert table.select().execute().fetchall() == [
+            (89, 'd1',)
+        ]
+
+    def test_invalid_relkind(self):
+        metadata = MetaData(testing.db)
+        def create_bad_table():
+            return Table('test_foreigntable', metadata, autoload=True, postgresql_relkind='nope')
+
+        assert_raises(exc.SQLAlchemyError, create_bad_table)
+
+
+class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     """Test PostgreSQL domains"""
 
     __only_on__ = 'postgresql > 8.3'
