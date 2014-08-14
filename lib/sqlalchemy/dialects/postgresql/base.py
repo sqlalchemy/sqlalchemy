@@ -1953,7 +1953,8 @@ class PGDialect(default.DefaultDialect):
 
         RELKIND_SYNONYMS = {
             'materialized': 'm',
-            'foreign': 'f'
+            'foreign': 'f',
+            'view': 'v'
         }
         ACCEPTED_RELKINDS = ('r','v','m','f')
         if postgresql_relkind is None:
