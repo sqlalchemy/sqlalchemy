@@ -17,6 +17,17 @@
 	:version: 1.0.0
 
     .. change::
+        :tags: engine, bug
+        :tickets: 3163
+
+        Removing (or adding) an event listener at the same time that the event
+        is being run itself, either from inside the listener or from a
+        concurrent thread, now raises a RuntimeError, as the collection used is
+        now an instance of ``colletions.deque()`` and does not support changes
+        while being iterated.  Previously, a plain Python list was used where
+        removal from inside the event itself would produce silent failures.
+
+    .. change::
         :tags: orm, feature
         :tickets: 2963
 

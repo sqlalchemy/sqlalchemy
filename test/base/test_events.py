@@ -1160,3 +1160,37 @@ class RemovalTest(fixtures.TestBase):
         )
 
         event.remove(t1, "event_three", m1)
+
+    def test_no_remove_in_event(self):
+        Target = self._fixture()
+
+        t1 = Target()
+
+        def evt():
+            event.remove(t1, "event_one", evt)
+
+        event.listen(t1, "event_one", evt)
+
+        assert_raises_message(
+            Exception,
+            "deque mutated during iteration",
+            t1.dispatch.event_one
+        )
+
+    def test_no_add_in_event(self):
+        Target = self._fixture()
+
+        t1 = Target()
+
+        m1 = Mock()
+
+        def evt():
+            event.listen(t1, "event_one", m1)
+
+        event.listen(t1, "event_one", evt)
+
+        assert_raises_message(
+            Exception,
+            "deque mutated during iteration",
+            t1.dispatch.event_one
+        )

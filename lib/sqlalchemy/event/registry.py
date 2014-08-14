@@ -243,4 +243,4 @@ class _EventKey(object):
 
     def prepend_to_list(self, owner, list_):
         _stored_in_collection(self, owner)
-        list_.insert(0, self._listen_fn)
+        list_.appendleft(self._listen_fn)
