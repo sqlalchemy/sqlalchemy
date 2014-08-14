@@ -114,13 +114,6 @@ alone::
 
 :ticket:`3027`
 
-``raise_on_warnings`` defaults to False for mysql-connector-python
-------------------------------------------------------------------
-
-The Mysql-connector-Python dialect now sets ``raise_on_warnings`` to
-``False``, matching the default of the DBAPI itself.
-
-:ticket:`2515`
 
 New Features
 ============
