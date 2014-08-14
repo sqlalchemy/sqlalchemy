@@ -907,12 +907,11 @@ methods of inserting rows, going from the most automated to the least.
 With cPython 2.7, runtimes observed::
 
     classics-MacBook-Pro:sqlalchemy classic$ python test.py
-    SQLAlchemy ORM: Total time for 100000 records 12.4703581333 secs
-    SQLAlchemy ORM pk given: Total time for 100000 records 7.32723999023 secs
-    SQLAlchemy ORM bulk_save_objects(): Total time for 100000 records 3.43464708328 secs
-    SQLAlchemy ORM bulk_save_mappings(): Total time for 100000 records 2.37040805817 secs
-    SQLAlchemy Core: Total time for 100000 records 0.495043992996 secs
-    sqlite3: Total time for 100000 records 0.508063077927 sec
+    SQLAlchemy ORM: Total time for 100000 records 12.0471920967 secs
+    SQLAlchemy ORM pk given: Total time for 100000 records 7.06283402443 secs
+    SQLAlchemy ORM bulk_save_objects(): Total time for 100000 records 0.856323003769 secs
+    SQLAlchemy Core: Total time for 100000 records 0.485800027847 secs
+    sqlite3: Total time for 100000 records 0.487842082977 sec
 
 We can reduce the time by a factor of three using recent versions of `Pypy <http://pypy.org/>`_::
 
@@ -980,37 +979,22 @@ Script::
             " records " + str(time.time() - t0) + " secs")
 
 
-    def test_sqlalchemy_orm_bulk_save(n=100000):
+    def test_sqlalchemy_orm_bulk_insert(n=100000):
         init_sqlalchemy()
         t0 = time.time()
         n1 = n
         while n1 > 0:
             n1 = n1 - 10000
-            DBSession.bulk_save_objects(
+            DBSession.bulk_insert_mappings(
+                Customer,
                 [
-                    Customer(name="NAME " + str(i))
+                    dict(name="NAME " + str(i))
                     for i in xrange(min(10000, n1))
                 ]
             )
         DBSession.commit()
         print(
             "SQLAlchemy ORM bulk_save_objects(): Total time for " + str(n) +
-            " records " + str(time.time() - t0) + " secs")
-
-
-    def test_sqlalchemy_orm_bulk_save_mappings(n=100000):
-        init_sqlalchemy()
-        t0 = time.time()
-        DBSession.bulk_save_mappings(
-            Customer,
-            [
-                dict(name="NAME " + str(i))
-                for i in xrange(n)
-            ]
-        )
-        DBSession.commit()
-        print(
-            "SQLAlchemy ORM bulk_save_mappings(): Total time for " + str(n) +
             " records " + str(time.time() - t0) + " secs")
 
 
@@ -1052,8 +1036,7 @@ Script::
     if __name__ == '__main__':
         test_sqlalchemy_orm(100000)
         test_sqlalchemy_orm_pk_given(100000)
-        test_sqlalchemy_orm_bulk_save(100000)
-        test_sqlalchemy_orm_bulk_save_mappings(100000)
+        test_sqlalchemy_orm_bulk_insert(100000)
         test_sqlalchemy_core(100000)
         test_sqlite3(100000)
 

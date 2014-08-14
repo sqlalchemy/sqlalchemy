@@ -20,6 +20,7 @@ from .base import (
     _class_to_mapper, _state_mapper, object_state,
     _none_set, state_str, instance_str
 )
+import itertools
 from .unitofwork import UOWTransaction
 from . import state as statelib
 import sys
@@ -482,7 +483,8 @@ class Session(_SessionClassMethods):
         '__contains__', '__iter__', 'add', 'add_all', 'begin', 'begin_nested',
         'close', 'commit', 'connection', 'delete', 'execute', 'expire',
         'expire_all', 'expunge', 'expunge_all', 'flush', 'get_bind',
-        'is_modified', 'bulk_save_objects', 'bulk_save_mappings',
+        'is_modified', 'bulk_save_objects', 'bulk_insert_mappings',
+        'bulk_update_mappings',
         'merge', 'query', 'refresh', 'rollback',
         'scalar')
 
@@ -2034,42 +2036,41 @@ class Session(_SessionClassMethods):
                 transaction.rollback(_capture_exception=True)
 
     def bulk_save_objects(self, objects):
-        self._bulk_save((attributes.instance_state(obj) for obj in objects))
+        for (mapper, isupdate), states in itertools.groupby(
+            (attributes.instance_state(obj) for obj in objects),
+            lambda state: (state.mapper, state.key is not None)
+        ):
+            if isupdate:
+                self.bulk_update_mappings(mapper, (s.dict for s in states))
+            else:
+                self.bulk_insert_mappings(mapper, (s.dict for s in states))
 
-    def bulk_save_mappings(self, mapper, mappings):
-        mapper = class_mapper(mapper)
+    def bulk_insert_mappings(self, mapper, mappings):
+        self._bulk_save_mappings(mapper, mappings, False)
 
-        self._bulk_save((
-            statelib.MappingState(mapper, mapping)
-            for mapping in mappings)
-        )
+    def bulk_update_mappings(self, mapper, mappings):
+        self._bulk_save_mappings(mapper, mappings, True)
 
-    def _bulk_save(self, states):
+    def _bulk_save_mappings(self, mapper, mappings, isupdate):
+        mapper = _class_to_mapper(mapper)
         self._flushing = True
         flush_context = UOWTransaction(self)
-
-        if self.dispatch.before_bulk_save:
-            self.dispatch.before_bulk_save(
-                self, flush_context, states)
 
         flush_context.transaction = transaction = self.begin(
             subtransactions=True)
         try:
-            self._warn_on_events = True
-            try:
-                flush_context.bulk_save(states)
-            finally:
-                self._warn_on_events = False
-
-            self.dispatch.after_bulk_save(
-                self, flush_context, states
-            )
-
-            flush_context.finalize_flush_changes()
-
-            self.dispatch.after_bulk_save_postexec(
-                self, flush_context, states)
-
+            if isupdate:
+                self.dispatch.before_bulk_update(
+                    self, flush_context, mapper, mappings)
+                flush_context.bulk_update(mapper, mappings)
+                self.dispatch.after_bulk_update(
+                    self, flush_context, mapper, mappings)
+            else:
+                self.dispatch.before_bulk_insert(
+                    self, flush_context, mapper, mappings)
+                flush_context.bulk_insert(mapper, mappings)
+                self.dispatch.after_bulk_insert(
+                    self, flush_context, mapper, mappings)
             transaction.commit()
 
         except:

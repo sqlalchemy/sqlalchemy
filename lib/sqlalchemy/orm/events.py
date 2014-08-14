@@ -1453,13 +1453,16 @@ class SessionEvents(event.Events):
 
         """
 
-    def before_bulk_save(self, session, flush_context, objects):
+    def before_bulk_insert(self, session, flush_context, mapper, mappings):
         """"""
 
-    def after_bulk_save(self, session, flush_context, objects):
+    def after_bulk_insert(self, session, flush_context, mapper, mappings):
         """"""
 
-    def after_bulk_save_postexec(self, session, flush_context, objects):
+    def before_bulk_update(self, session, flush_context, mapper, mappings):
+        """"""
+
+    def after_bulk_update(self, session, flush_context, mapper, mappings):
         """"""
 
     def after_begin(self, session, transaction, connection):

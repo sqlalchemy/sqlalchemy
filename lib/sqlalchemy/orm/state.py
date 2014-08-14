@@ -580,21 +580,6 @@ class InstanceState(interfaces.InspectionAttr):
             state._strong_obj = None
 
 
-class MappingState(InstanceState):
-    committed_state = {}
-    callables = {}
-
-    def __init__(self, mapper, mapping):
-        self.class_ = mapper.class_
-        self.manager = mapper.class_manager
-        self.modified = True
-        self._dict = mapping
-
-    @property
-    def dict(self):
-        return self._dict
-
-
 class AttributeState(object):
     """Provide an inspection interface corresponding
     to a particular attribute on a particular mapped object.

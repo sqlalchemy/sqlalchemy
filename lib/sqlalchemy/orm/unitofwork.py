@@ -394,23 +394,11 @@ class UOWTransaction(object):
         if other:
             self.session._register_newly_persistent(other)
 
-    def bulk_save(self, states):
-        for (base_mapper, in_session), states_ in itertools.groupby(
-                states,
-                lambda state:
-                (
-                    state.mapper.base_mapper,
-                    state.key is self.session.hash_key
-                )):
+    def bulk_insert(self, mapper, mappings):
+        persistence.bulk_insert(mapper, mappings, self)
 
-            persistence.save_obj(
-                base_mapper, list(states_), self, bookkeeping=in_session)
-
-            if in_session:
-                self.states.update(
-                    (state, (False, False))
-                    for state in states_
-                )
+    def bulk_update(self, mapper, mappings):
+        persistence.bulk_update(mapper, mappings, self)
 
 
 class IterateMappersMixin(object):
