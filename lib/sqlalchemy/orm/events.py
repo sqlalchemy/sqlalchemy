@@ -1453,6 +1453,15 @@ class SessionEvents(event.Events):
 
         """
 
+    def before_bulk_save(self, session, flush_context, objects):
+        """"""
+
+    def after_bulk_save(self, session, flush_context, objects):
+        """"""
+
+    def after_bulk_save_postexec(self, session, flush_context, objects):
+        """"""
+
     def after_begin(self, session, transaction, connection):
         """Execute after a transaction is begun on a connection
 

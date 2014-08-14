@@ -2033,6 +2033,40 @@ class Session(_SessionClassMethods):
             with util.safe_reraise():
                 transaction.rollback(_capture_exception=True)
 
+    def bulk_save(self, objects):
+        self._flushing = True
+        flush_context = UOWTransaction(self)
+
+        if self.dispatch.before_bulk_save:
+            self.dispatch.before_bulk_save(
+                self, flush_context, objects)
+
+        flush_context.transaction = transaction = self.begin(
+            subtransactions=True)
+        try:
+            self._warn_on_events = True
+            try:
+                flush_context.bulk_save(objects)
+            finally:
+                self._warn_on_events = False
+
+            self.dispatch.after_bulk_save(
+                self, flush_context, objects
+            )
+
+            flush_context.finalize_flush_changes()
+
+            self.dispatch.after_bulk_save_postexec(
+                self, flush_context, objects)
+
+            transaction.commit()
+
+        except:
+            with util.safe_reraise():
+                transaction.rollback(_capture_exception=True)
+        finally:
+            self._flushing = False
+
     def is_modified(self, instance, include_collections=True,
                     passive=True):
         """Return ``True`` if the given instance has locally
