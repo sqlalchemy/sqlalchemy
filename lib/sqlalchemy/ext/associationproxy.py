@@ -77,16 +77,16 @@ def association_proxy(target_collection, attr, **kw):
 
 
 ASSOCIATION_PROXY = util.symbol('ASSOCIATION_PROXY')
-"""Symbol indicating an :class:`_InspectionAttr` that's
+"""Symbol indicating an :class:`InspectionAttr` that's
     of type :class:`.AssociationProxy`.
 
-   Is assigned to the :attr:`._InspectionAttr.extension_type`
+   Is assigned to the :attr:`.InspectionAttr.extension_type`
    attibute.
 
 """
 
 
-class AssociationProxy(interfaces._InspectionAttr):
+class AssociationProxy(interfaces.InspectionAttr):
     """A descriptor that presents a read/write view of an object attribute."""
 
     is_attribute = False

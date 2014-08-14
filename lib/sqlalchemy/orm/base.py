@@ -144,38 +144,42 @@ _INSTRUMENTOR = ('mapper', 'instrumentor')
 EXT_CONTINUE = util.symbol('EXT_CONTINUE')
 EXT_STOP = util.symbol('EXT_STOP')
 
-ONETOMANY = util.symbol('ONETOMANY',
-                        """Indicates the one-to-many direction for a :func:`.relationship`.
+ONETOMANY = util.symbol(
+    'ONETOMANY',
+    """Indicates the one-to-many direction for a :func:`.relationship`.
 
-This symbol is typically used by the internals but may be exposed within
-certain API features.
+    This symbol is typically used by the internals but may be exposed within
+    certain API features.
 
-""")
+    """)
 
-MANYTOONE = util.symbol('MANYTOONE',
-                        """Indicates the many-to-one direction for a :func:`.relationship`.
+MANYTOONE = util.symbol(
+    'MANYTOONE',
+    """Indicates the many-to-one direction for a :func:`.relationship`.
 
-This symbol is typically used by the internals but may be exposed within
-certain API features.
+    This symbol is typically used by the internals but may be exposed within
+    certain API features.
 
-""")
+    """)
 
-MANYTOMANY = util.symbol('MANYTOMANY',
-                         """Indicates the many-to-many direction for a :func:`.relationship`.
+MANYTOMANY = util.symbol(
+    'MANYTOMANY',
+    """Indicates the many-to-many direction for a :func:`.relationship`.
 
-This symbol is typically used by the internals but may be exposed within
-certain API features.
+    This symbol is typically used by the internals but may be exposed within
+    certain API features.
 
-""")
+    """)
 
-NOT_EXTENSION = util.symbol('NOT_EXTENSION',
-                            """Symbol indicating an :class:`_InspectionAttr` that's
-   not part of sqlalchemy.ext.
+NOT_EXTENSION = util.symbol(
+    'NOT_EXTENSION',
+    """Symbol indicating an :class:`InspectionAttr` that's
+    not part of sqlalchemy.ext.
 
-   Is assigned to the :attr:`._InspectionAttr.extension_type`
-   attibute.
+    Is assigned to the :attr:`.InspectionAttr.extension_type`
+    attibute.
 
-""")
+    """)
 
 _none_set = frozenset([None, NEVER_SET, PASSIVE_NO_RESULT])
 
@@ -419,7 +423,7 @@ def class_mapper(class_, configure=True):
         return mapper
 
 
-class _InspectionAttr(object):
+class InspectionAttr(object):
     """A base class applied to all ORM objects that can be returned
     by the :func:`.inspect` function.
 
@@ -456,7 +460,7 @@ class _InspectionAttr(object):
     :class:`.QueryableAttribute` which handles attributes events on behalf
     of a :class:`.MapperProperty`.   But can also be an extension type
     such as :class:`.AssociationProxy` or :class:`.hybrid_property`.
-    The :attr:`._InspectionAttr.extension_type` will refer to a constant
+    The :attr:`.InspectionAttr.extension_type` will refer to a constant
     identifying the specific subtype.
 
     .. seealso::
@@ -483,6 +487,32 @@ class _InspectionAttr(object):
         :data:`.ASSOCIATION_PROXY`
 
     """
+
+    @util.memoized_property
+    def info(self):
+        """Info dictionary associated with the object, allowing user-defined
+        data to be associated with this :class:`.InspectionAttr`.
+
+        The dictionary is generated when first accessed.  Alternatively,
+        it can be specified as a constructor argument to the
+        :func:`.column_property`, :func:`.relationship`, or :func:`.composite`
+        functions.
+
+        .. versionadded:: 0.8  Added support for .info to all
+           :class:`.MapperProperty` subclasses.
+
+        .. versionchanged:: 1.0.0 :attr:`.InspectionAttr.info` moved
+           from :class:`.MapperProperty` so that it can apply to a wider
+           variety of ORM and extension constructs.
+
+        .. seealso::
+
+            :attr:`.QueryableAttribute.info`
+
+            :attr:`.SchemaItem.info`
+
+        """
+        return {}
 
 
 class _MappedAttribute(object):

@@ -15,7 +15,7 @@ import re
 from .base import instance_str, state_str, state_class_str, attribute_str, \
     state_attribute_str, object_mapper, object_state, _none_set
 from .base import class_mapper, _class_to_mapper
-from .base import _InspectionAttr
+from .base import InspectionAttr
 from .path_registry import PathRegistry
 
 all_cascades = frozenset(("delete", "delete-orphan", "all", "merge",
@@ -412,7 +412,7 @@ class AliasedClass(object):
             id(self), self._aliased_insp._target.__name__)
 
 
-class AliasedInsp(_InspectionAttr):
+class AliasedInsp(InspectionAttr):
     """Provide an inspection interface for an
     :class:`.AliasedClass` object.
 

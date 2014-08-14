@@ -19,15 +19,15 @@ classes within should be considered mostly private.
 
 from __future__ import absolute_import
 
-from .. import exc as sa_exc, util, inspect
+from .. import util
 from ..sql import operators
-from collections import deque
 from .base import (ONETOMANY, MANYTOONE, MANYTOMANY,
                    EXT_CONTINUE, EXT_STOP, NOT_EXTENSION)
-from .base import _InspectionAttr, _MappedAttribute
-from .path_registry import PathRegistry
+from .base import InspectionAttr, _MappedAttribute
 import collections
 
+# imported later
+MapperExtension = SessionExtension = AttributeExtension = None
 
 __all__ = (
     'AttributeExtension',
@@ -47,7 +47,7 @@ __all__ = (
 )
 
 
-class MapperProperty(_MappedAttribute, _InspectionAttr):
+class MapperProperty(_MappedAttribute, InspectionAttr):
     """Manage the relationship of a ``Mapper`` to a single class
     attribute, as well as that attribute as it appears on individual
     instances of the class, including attribute instrumentation,
@@ -108,28 +108,6 @@ class MapperProperty(_MappedAttribute, _InspectionAttr):
 
     def instrument_class(self, mapper):  # pragma: no-coverage
         raise NotImplementedError()
-
-    @util.memoized_property
-    def info(self):
-        """Info dictionary associated with the object, allowing user-defined
-        data to be associated with this :class:`.MapperProperty`.
-
-        The dictionary is generated when first accessed.  Alternatively,
-        it can be specified as a constructor argument to the
-        :func:`.column_property`, :func:`.relationship`, or :func:`.composite`
-        functions.
-
-        .. versionadded:: 0.8  Added support for .info to all
-           :class:`.MapperProperty` subclasses.
-
-        .. seealso::
-
-            :attr:`.QueryableAttribute.info`
-
-            :attr:`.SchemaItem.info`
-
-        """
-        return {}
 
     _configure_started = False
     _configure_finished = False

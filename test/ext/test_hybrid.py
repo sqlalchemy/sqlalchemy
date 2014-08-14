@@ -5,6 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext import hybrid
 from sqlalchemy.testing import eq_, AssertsCompiledSQL, assert_raises_message
 from sqlalchemy.testing import fixtures
+from sqlalchemy import inspect
 
 class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
@@ -140,6 +141,14 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         return A, B
 
+    def test_info(self):
+        A = self._fixture()
+        inspect(A).all_orm_descriptors.value.info["some key"] = "some value"
+        eq_(
+            inspect(A).all_orm_descriptors.value.info,
+            {"some key": "some value"}
+        )
+
     def test_set_get(self):
         A = self._fixture()
         a1 = A(value=5)
@@ -266,6 +275,15 @@ class MethodExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
             A.value(5),
             "foo(a.value, :foo_1) + :foo_2"
         )
+
+    def test_info(self):
+        A = self._fixture()
+        inspect(A).all_orm_descriptors.value.info["some key"] = "some value"
+        eq_(
+            inspect(A).all_orm_descriptors.value.info,
+            {"some key": "some value"}
+        )
+
 
     def test_aliased_expression(self):
         A = self._fixture()

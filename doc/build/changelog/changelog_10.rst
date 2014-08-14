@@ -17,6 +17,33 @@
 	:version: 1.0.0
 
     .. change::
+        :tags: orm, feature
+        :tickets: 2963
+
+        The ``info`` parameter has been added to the constructor for
+        :class:`.SynonymProperty` and :class:`.ComparableProperty`.
+
+    .. change::
+        :tags: sql, feature
+        :tickets: 2963
+
+        The ``info`` parameter has been added as a constructor argument
+        to all schema constructs including :class:`.MetaData`,
+        :class:`.Index`, :class:`.ForeignKey`, :class:`.ForeignKeyConstraint`,
+        :class:`.UniqueConstraint`, :class:`.PrimaryKeyConstraint`,
+        :class:`.CheckConstraint`.
+
+    .. change::
+        :tags: orm, feature
+        :tickets: 2971
+
+        The :meth:`.InspectionAttr.info` collection is now moved down to
+        :class:`.InspectionAttr`, where in addition to being available
+        on all :class:`.MapperProperty` objects, it is also now available
+        on hybrid properties, association proxies, when accessed via
+        :attr:`.Mapper.all_orm_descriptors`.
+
+    .. change::
         :tags: sql, feature
         :tickets: 3027
         :pullrequest: bitbucket:29
@@ -24,6 +51,14 @@
         The :paramref:`.Table.autoload_with` flag now implies that
         :paramref:`.Table.autoload` should be ``True``.  Pull request
         courtesy Malik Diarra.
+
+    .. change::
+        :tags: postgresql, feature
+        :pullreq: github:126
+
+        Added new method :meth:`.PGInspector.get_enums`, when using the
+        inspector for Postgresql will provide a list of ENUM types.
+        Pull request courtesy Ilya Pekelny.
 
     .. change::
         :tags: mysql, bug

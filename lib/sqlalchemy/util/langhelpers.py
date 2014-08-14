@@ -435,7 +435,7 @@ def unbound_method_to_callable(func_or_cls):
         return func_or_cls
 
 
-def generic_repr(obj, additional_kw=(), to_inspect=None):
+def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
     """Produce a __repr__() based on direct association of the __init__()
     specification vs. same-named attributes present.
 
@@ -484,6 +484,8 @@ def generic_repr(obj, additional_kw=(), to_inspect=None):
         output.extend([repr(val) for val in getattr(obj, vargs)])
 
     for arg, defval in kw_args.items():
+        if arg in omit_kwarg:
+            continue
         try:
             val = getattr(obj, arg, missing)
             if val is not missing and val != defval:
