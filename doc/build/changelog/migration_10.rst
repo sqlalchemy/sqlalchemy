@@ -102,6 +102,25 @@ symbol, and no change to the object's state occurs.
 Behavioral Changes - Core
 =========================
 
+.. _change_3027:
+
+``autoload_with`` now implies ``autoload=True``
+-----------------------------------------------
+
+A :class:`.Table` can be set up for reflection by passing ``autoload_with``
+alone::
+
+	my_table = Table('my_table', metadata, autoload_with=some_engine)
+
+:ticket:`3027`
+
+``raise_on_warnings`` defaults to False for mysql-connector-python
+------------------------------------------------------------------
+
+The Mysql-connector-Python dialect now sets ``raise_on_warnings`` to
+``False``, matching the default of the DBAPI itself.
+
+:ticket:`2515`
 
 New Features
 ============
@@ -131,10 +150,54 @@ wishes to support the new feature should now call upon the ``._limit_clause``
 and ``._offset_clause`` attributes to receive the full SQL expression, rather
 than the integer value.
 
-.. _feature_3076:
+.. _feature_get_enums:
+
+New get_enums() method with Postgresql Dialect
+----------------------------------------------
+
+The :func:`.inspect` method returns a :class:`.PGInspector` object in the
+case of Postgresql, which includes a new :meth:`.PGInspector.get_enums`
+method that returns information on all available ``ENUM`` types::
+
+	from sqlalchemy import inspect, create_engine
+
+	engine = create_engine("postgresql+psycopg2://host/dbname")
+	insp = inspect(engine)
+	print(insp.get_enums())
+
+.. seealso::
+
+	:meth:`.PGInspector.get_enums`
 
 Behavioral Improvements
 =======================
+
+.. _feature_2963:
+
+.info dictionary improvements
+-----------------------------
+
+The :attr:`.InspectionAttr.info` collection is now available on every kind
+of object that one would retrieve from the :attr:`.Mapper.all_orm_descriptors`
+collection::
+
+	class SomeObject(Base):
+	    # ...
+
+	    @hybrid_property(self):
+	    def some_prop(self):
+	        return self.value + 5
+
+
+	inspect(SomeObject).all_orm_descriptors.some_prop.info['foo'] = 'bar'
+
+It is also available as a constructor argument for all :class:`.SchemaItem`
+objects (e.g. :class:`.ForeignKey`, :class:`.UniqueConstraint` etc.) as well
+as remaining ORM constructs such as :func:`.orm.synonym`.
+
+:ticket:`2971`
+
+:ticket:`2963`
 
 Dialect Changes
 ===============
