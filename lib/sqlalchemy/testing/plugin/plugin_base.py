@@ -315,7 +315,8 @@ def _setup_requirements(argument):
 @post
 def _prep_testing_database(options, file_config):
     from sqlalchemy.testing import config
-    from sqlalchemy import schema, inspect, testing
+    from sqlalchemy.testing.exclusions import against
+    from sqlalchemy import schema, inspect
 
     if options.dropfirst:
         for cfg in config.Config.all_configs():
@@ -358,7 +359,7 @@ def _prep_testing_database(options, file_config):
                                      schema="test_schema")
                     ))
 
-            if testing.against("postgresql"):
+            if against(cfg, "postgresql"):
                 from sqlalchemy.dialects import postgresql
                 for enum in inspector.get_enums("*"):
                     e.execute(postgresql.DropEnumType(
