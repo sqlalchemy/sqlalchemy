@@ -13,7 +13,6 @@ import operator
 from .compat import threading, itertools_filterfalse
 from . import py2k
 import types
-from collections import MutableMapping
 
 EMPTY_SET = frozenset()
 
@@ -265,13 +264,18 @@ class OrderedDict(dict):
     def __iter__(self):
         return iter(self._list)
 
-    keys = MutableMapping.keys
-    values = MutableMapping.values
-    items = MutableMapping.items
+    def keys(self):
+        return list(self)
+
+    def values(self):
+        return [self[key] for key in self._list]
+
+    def items(self):
+        return [(key, self[key]) for key in self._list]
 
     if py2k:
         def itervalues(self):
-            return iter([self[key] for key in self._list])
+            return iter(self.values())
 
         def iterkeys(self):
             return iter(self)
