@@ -115,7 +115,6 @@ def pytest_pycollect_makeitem(collector, name, obj):
 
 _current_class = None
 
-
 def pytest_runtest_setup(item):
     # here we seem to get called only based on what we collected
     # in pytest_collection_modifyitems.   So to do class-based stuff
@@ -126,16 +125,18 @@ def pytest_runtest_setup(item):
         return
 
     # ... so we're doing a little dance here to figure it out...
-    if item.parent.parent is not _current_class:
-
+    if _current_class is None:
         class_setup(item.parent.parent)
         _current_class = item.parent.parent
 
         # this is needed for the class-level, to ensure that the
         # teardown runs after the class is completed with its own
         # class-level teardown...
-        item.parent.parent.addfinalizer(
-            lambda: class_teardown(item.parent.parent))
+        def finalize():
+            global _current_class
+            class_teardown(item.parent.parent)
+            _current_class = None
+        item.parent.parent.addfinalizer(finalize)
 
     test_setup(item)
 
