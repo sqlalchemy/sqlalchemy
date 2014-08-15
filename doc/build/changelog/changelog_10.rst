@@ -17,6 +17,14 @@
 	:version: 1.0.0
 
     .. change::
+        :tags: bug, orm, py3k
+
+        The :class:`.IdentityMap` exposed from :class:`.Session.identity`
+        now returns lists for ``items()`` and ``values()`` in Py3K.
+        Early porting to Py3K here had these returning iterators, when
+        they technically should be "iterable views"..for now, lists are OK.
+
+    .. change::
         :tags: orm, feature
 
         UPDATE statements can now be batched within an ORM flush
