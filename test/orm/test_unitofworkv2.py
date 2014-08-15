@@ -131,12 +131,10 @@ class RudimentaryFlushTest(UOWTest):
             CompiledSQL(
                 "UPDATE addresses SET user_id=:user_id WHERE "
                 "addresses.id = :addresses_id",
-                lambda ctx: [{'addresses_id': a1.id, 'user_id': None}]
-            ),
-            CompiledSQL(
-                "UPDATE addresses SET user_id=:user_id WHERE "
-                "addresses.id = :addresses_id",
-                lambda ctx: [{'addresses_id': a2.id, 'user_id': None}]
+                lambda ctx: [
+                    {'addresses_id': a1.id, 'user_id': None},
+                    {'addresses_id': a2.id, 'user_id': None}
+                ]
             ),
             CompiledSQL(
                 "DELETE FROM users WHERE users.id = :id",
@@ -240,12 +238,10 @@ class RudimentaryFlushTest(UOWTest):
             CompiledSQL(
                 "UPDATE addresses SET user_id=:user_id WHERE "
                 "addresses.id = :addresses_id",
-                lambda ctx: [{'addresses_id': a1.id, 'user_id': None}]
-            ),
-            CompiledSQL(
-                "UPDATE addresses SET user_id=:user_id WHERE "
-                "addresses.id = :addresses_id",
-                lambda ctx: [{'addresses_id': a2.id, 'user_id': None}]
+                lambda ctx: [
+                    {'addresses_id': a1.id, 'user_id': None},
+                    {'addresses_id': a2.id, 'user_id': None}
+                ]
             ),
             CompiledSQL(
                 "DELETE FROM users WHERE users.id = :id",
@@ -732,12 +728,11 @@ class SingleCycleTest(UOWTest):
             testing.db, sess.flush, AllOf(
                 CompiledSQL(
                     "UPDATE nodes SET parent_id=:parent_id "
-                    "WHERE nodes.id = :nodes_id", lambda ctx: {
-                        'nodes_id': n3.id, 'parent_id': None}),
-                CompiledSQL(
-                    "UPDATE nodes SET parent_id=:parent_id "
-                    "WHERE nodes.id = :nodes_id", lambda ctx: {
-                        'nodes_id': n2.id, 'parent_id': None}),
+                    "WHERE nodes.id = :nodes_id", lambda ctx: [
+                        {'nodes_id': n3.id, 'parent_id': None},
+                        {'nodes_id': n2.id, 'parent_id': None}
+                    ]
+                    )
             ),
             CompiledSQL(
                 "DELETE FROM nodes WHERE nodes.id = :id", lambda ctx: {

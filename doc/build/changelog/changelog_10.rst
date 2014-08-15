@@ -17,6 +17,17 @@
 	:version: 1.0.0
 
     .. change::
+        :tags: orm, feature
+
+        UPDATE statements can now be batched within an ORM flush
+        into more performant executemany() call, similarly to how INSERT
+        statements can be batched; this will be invoked within flush
+        to the degree that subsequent UPDATE statements for the
+        same mapping and table involve the identical columns within the
+        VALUES clause, as well as that no VALUES-level SQL expressions
+        are embedded.
+
+    .. change::
         :tags: engine, bug
         :tickets: 3163
 
