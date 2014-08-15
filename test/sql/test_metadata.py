@@ -349,6 +349,20 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         assert t.c.x.default is s2
         assert m1._sequences['x_seq'] is s2
 
+
+    def test_sequence_attach_to_table(self):
+        m1 = MetaData()
+        s1 = Sequence("s")
+        t = Table('a', m1, Column('x', Integer, s1))
+        assert s1.metadata is m1
+
+    def test_sequence_attach_to_existing_table(self):
+        m1 = MetaData()
+        s1 = Sequence("s")
+        t = Table('a', m1, Column('x', Integer))
+        t.c.x._init_items(s1)
+        assert s1.metadata is m1
+
     def test_pickle_metadata_sequence_implicit(self):
         m1 = MetaData()
         Table('a', m1,

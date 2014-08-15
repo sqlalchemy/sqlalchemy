@@ -1269,7 +1269,8 @@ class Column(SchemaItem, ColumnClause):
     def _on_table_attach(self, fn):
         if self.table is not None:
             fn(self, self.table)
-        event.listen(self, 'after_parent_attach', fn)
+        else:
+            event.listen(self, 'after_parent_attach', fn)
 
     def copy(self, **kw):
         """Create a copy of this ``Column``, unitialized.
