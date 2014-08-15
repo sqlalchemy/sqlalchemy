@@ -309,10 +309,10 @@ def _collect_update_commands(base_mapper, uowtransaction,
             if col is mapper.version_id_col:
                 params[col._label] = \
                     mapper._get_committed_state_attr_by_column(
-                    row_switch or state,
-                    row_switch and row_switch.dict
-                    or state_dict,
-                    col)
+                        row_switch or state,
+                        row_switch and row_switch.dict
+                        or state_dict,
+                        col)
 
                 prop = mapper._columntoproperty[col]
                 history = state.manager[prop.key].impl.get_history(
@@ -417,8 +417,8 @@ def _collect_post_update_commands(base_mapper, uowtransaction, table,
             if col in pks:
                 params[col._label] = \
                     mapper._get_state_attr_by_column(
-                    state,
-                    state_dict, col)
+                        state,
+                        state_dict, col)
 
             elif col in post_update_cols:
                 prop = mapper._columntoproperty[col]
@@ -453,7 +453,7 @@ def _collect_delete_commands(base_mapper, uowtransaction, table,
             params[col.key] = \
                 value = \
                 mapper._get_committed_state_attr_by_column(
-                state, state_dict, col)
+                    state, state_dict, col)
             if value is None:
                 raise orm_exc.FlushError(
                     "Can't delete from table "
@@ -464,8 +464,8 @@ def _collect_delete_commands(base_mapper, uowtransaction, table,
                 table.c.contains_column(mapper.version_id_col):
             params[mapper.version_id_col.key] = \
                 mapper._get_committed_state_attr_by_column(
-                state, state_dict,
-                mapper.version_id_col)
+                    state, state_dict,
+                    mapper.version_id_col)
     return delete
 
 
