@@ -1892,6 +1892,41 @@ class Mapper(InspectionAttr):
 
     """
 
+    @_memoized_configured_property
+    def _col_to_propkey(self):
+        return dict(
+            (
+                table,
+                [
+                    (col, self._columntoproperty[col].key)
+                    for col in columns
+                ]
+            )
+            for table, columns in self._cols_by_table.items()
+        )
+
+    @_memoized_configured_property
+    def _pk_keys_by_table(self):
+        return dict(
+            (
+                table,
+                frozenset([col.key for col in pks])
+            )
+            for table, pks in self._pks_by_table.items()
+        )
+
+    @_memoized_configured_property
+    def _server_default_cols(self):
+        return dict(
+            (
+                table,
+                frozenset([
+                    col for col in columns
+                    if col.server_default is not None])
+            )
+            for table, columns in self._cols_by_table.items()
+        )
+
     @property
     def selectable(self):
         """The :func:`.select` construct this :class:`.Mapper` selects from
