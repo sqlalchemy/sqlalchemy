@@ -687,6 +687,7 @@ class CompiledCacheTest(fixtures.TestBase):
                       Column('user_id', INT, primary_key=True,
                              test_needs_autoincrement=True),
                       Column('user_name', VARCHAR(20)),
+                      Column("extra_data", VARCHAR(20))
                       )
         metadata.create_all()
 
@@ -704,11 +705,52 @@ class CompiledCacheTest(fixtures.TestBase):
         cached_conn = conn.execution_options(compiled_cache=cache)
 
         ins = users.insert()
-        cached_conn.execute(ins, {'user_name': 'u1'})
-        cached_conn.execute(ins, {'user_name': 'u2'})
-        cached_conn.execute(ins, {'user_name': 'u3'})
+        with patch.object(
+            ins, "compile",
+                Mock(side_effect=ins.compile)) as compile_mock:
+            cached_conn.execute(ins, {'user_name': 'u1'})
+            cached_conn.execute(ins, {'user_name': 'u2'})
+            cached_conn.execute(ins, {'user_name': 'u3'})
+        eq_(compile_mock.call_count, 1)
         assert len(cache) == 1
         eq_(conn.execute("select count(*) from users").scalar(), 3)
+
+    def test_keys_independent_of_ordering(self):
+        conn = testing.db.connect()
+        conn.execute(
+            users.insert(),
+            {"user_id": 1, "user_name": "u1", "extra_data": "e1"})
+        cache = {}
+        cached_conn = conn.execution_options(compiled_cache=cache)
+
+        upd = users.update().where(users.c.user_id == bindparam("b_user_id"))
+
+        with patch.object(
+            upd, "compile",
+                Mock(side_effect=upd.compile)) as compile_mock:
+            cached_conn.execute(
+                upd, util.OrderedDict([
+                    ("b_user_id", 1),
+                    ("user_name", "u2"),
+                    ("extra_data", "e2")
+                ])
+            )
+            cached_conn.execute(
+                upd, util.OrderedDict([
+                    ("b_user_id", 1),
+                    ("extra_data", "e3"),
+                    ("user_name", "u3"),
+                ])
+            )
+            cached_conn.execute(
+                upd, util.OrderedDict([
+                    ("extra_data", "e4"),
+                    ("user_name", "u4"),
+                    ("b_user_id", 1),
+                ])
+            )
+        eq_(compile_mock.call_count, 1)
+        eq_(len(cache), 1)
 
 
 class MockStrategyTest(fixtures.TestBase):

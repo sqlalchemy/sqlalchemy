@@ -14,6 +14,18 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, engine
+        :versions: 1.0.0
+        :tickets: 3165
+
+        The string keys that are used to determine the columns impacted
+        for an INSERT or UPDATE are now sorted when they contribute towards
+        the "compiled cache" cache key.   These keys were previously not
+        deterministically ordered, meaning the same statement could be
+        cached multiple times on equivalent keys, costing both in terms of
+        memory as well as performance.
+
+    .. change::
         :tags: bug, postgresql
         :versions: 1.0.0
         :tickets: 3159

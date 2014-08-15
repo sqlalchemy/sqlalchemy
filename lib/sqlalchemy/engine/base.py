@@ -805,7 +805,7 @@ class Connection(Connectable):
 
         dialect = self.dialect
         if 'compiled_cache' in self._execution_options:
-            key = dialect, elem, tuple(keys), len(distilled_params) > 1
+            key = dialect, elem, tuple(sorted(keys)), len(distilled_params) > 1
             if key in self._execution_options['compiled_cache']:
                 compiled_sql = self._execution_options['compiled_cache'][key]
             else:
