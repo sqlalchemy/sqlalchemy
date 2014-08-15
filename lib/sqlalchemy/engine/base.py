@@ -799,7 +799,7 @@ class Connection(Connectable):
         if distilled_params:
             # note this is usually dict but we support RowProxy
             # as well; but dict.keys() as an iterator is OK
-            keys = distilled_params[0].keys()
+            keys = list(distilled_params[0].keys())
         else:
             keys = []
 

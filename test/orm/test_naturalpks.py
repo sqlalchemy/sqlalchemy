@@ -184,7 +184,7 @@ class NaturalPKTest(fixtures.MappedTest):
         if not passive_updates:
             # test passive_updates=False;
             #load addresses, update user, update 2 addresses
-            self.assert_sql_count(testing.db, go, 4)
+            self.assert_sql_count(testing.db, go, 3)
         else:
             # test passive_updates=True; update user
             self.assert_sql_count(testing.db, go, 1)
@@ -239,7 +239,7 @@ class NaturalPKTest(fixtures.MappedTest):
 
         def go():
             sess.flush()
-        self.assert_sql_count(testing.db, go, 3)
+        self.assert_sql_count(testing.db, go, 2)
 
     def _test_manytoone(self, passive_updates):
         users, Address, addresses, User = (self.tables.users,
@@ -270,7 +270,7 @@ class NaturalPKTest(fixtures.MappedTest):
         if passive_updates:
             self.assert_sql_count(testing.db, go, 1)
         else:
-            self.assert_sql_count(testing.db, go, 3)
+            self.assert_sql_count(testing.db, go, 2)
 
         def go():
             sess.flush()
@@ -366,7 +366,8 @@ class NaturalPKTest(fixtures.MappedTest):
         if passive_updates:
             self.assert_sql_count(testing.db, go, 1)
         else:
-            self.assert_sql_count(testing.db, go, 3)
+            # two updates bundled
+            self.assert_sql_count(testing.db, go, 2)
         eq_([Address(username='ed'), Address(username='ed')], [ad1, ad2])
         sess.expunge_all()
         eq_(
@@ -383,7 +384,8 @@ class NaturalPKTest(fixtures.MappedTest):
         if passive_updates:
             self.assert_sql_count(testing.db, go, 1)
         else:
-            self.assert_sql_count(testing.db, go, 3)
+            # two updates bundled
+            self.assert_sql_count(testing.db, go, 2)
         sess.expunge_all()
         eq_(
             [Address(username='fred'), Address(username='fred')],
@@ -789,8 +791,8 @@ class NonPKCascadeTest(fixtures.MappedTest):
             sess.flush()
         if not passive_updates:
             # test passive_updates=False; load addresses,
-            #  update user, update 2 addresses
-            self.assert_sql_count(testing.db, go, 4)
+            #  update user, update 2 addresses (in one executemany)
+            self.assert_sql_count(testing.db, go, 3)
         else:
             # test passive_updates=True; update user
             self.assert_sql_count(testing.db, go, 1)
