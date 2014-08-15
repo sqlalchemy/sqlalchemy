@@ -36,13 +36,7 @@ class register(object):
 def create_follower_db(follower_ident):
 
     for cfg in _configs_for_db_operation():
-        url = cfg.db.url
-        backend = url.get_backend_name()
         _create_db(cfg, cfg.db, follower_ident)
-
-        new_url = sa_url.make_url(str(url))
-
-        new_url.database = follower_ident
 
 
 def configure_follower(follower_ident):
@@ -63,7 +57,6 @@ def setup_config(db_url, db_opts, options, file_config, follower_ident):
 
 def drop_follower_db(follower_ident):
     for cfg in _configs_for_db_operation():
-        url = cfg.db.url
         _drop_db(cfg, cfg.db, follower_ident)
 
 
@@ -110,9 +103,13 @@ def _follower_url_from_main(url, ident):
     return url
 
 
-#@_follower_url_from_main.for_db("sqlite")
-#def _sqlite_follower_url_from_main(url, ident):
-#    return sa_url.make_url("sqlite:///%s.db" % ident)
+@_follower_url_from_main.for_db("sqlite")
+def _sqlite_follower_url_from_main(url, ident):
+    url = sa_url.make_url(url)
+    if not url.database or url.database == ':memory:':
+        return url
+    else:
+        return sa_url.make_url("sqlite:///%s.db" % ident)
 
 
 @_create_db.for_db("postgresql")
