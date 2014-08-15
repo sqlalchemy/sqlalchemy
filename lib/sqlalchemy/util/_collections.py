@@ -13,6 +13,7 @@ import operator
 from .compat import threading, itertools_filterfalse
 from . import py2k
 import types
+from collections import MutableMapping
 
 EMPTY_SET = frozenset()
 
@@ -264,13 +265,11 @@ class OrderedDict(dict):
     def __iter__(self):
         return iter(self._list)
 
+    keys = MutableMapping.keys
+    values = MutableMapping.values
+    items = MutableMapping.items
+
     if py2k:
-        def values(self):
-            return [self[key] for key in self._list]
-
-        def keys(self):
-            return self._list
-
         def itervalues(self):
             return iter([self[key] for key in self._list])
 
@@ -279,41 +278,6 @@ class OrderedDict(dict):
 
         def iteritems(self):
             return iter(self.items())
-
-        def items(self):
-            return [(key, self[key]) for key in self._list]
-    else:
-        def values(self):
-            # return (self[key] for key in self)
-            return (self[key] for key in self._list)
-
-        def keys(self):
-            # return iter(self)
-            return iter(self._list)
-
-        def items(self):
-            # return ((key, self[key]) for key in self)
-            return ((key, self[key]) for key in self._list)
-
-    _debug_iter = False
-    if _debug_iter:
-        # normally disabled to reduce function call
-        # overhead
-        def __iter__(self):
-            len_ = len(self._list)
-            for item in self._list:
-                yield item
-                assert len_ == len(self._list), \
-                    "Dictionary changed size during iteration"
-
-        def values(self):
-            return (self[key] for key in self)
-
-        def keys(self):
-            return iter(self)
-
-        def items(self):
-            return ((key, self[key]) for key in self)
 
     def __setitem__(self, key, object):
         if key not in self:
