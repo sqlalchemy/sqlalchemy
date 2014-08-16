@@ -1450,6 +1450,14 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
     def post_create_table(self, table):
         table_opts = []
+        if table.dialect_options['postgresql']['withoids'] is not None:
+            if table.dialect_options['postgresql']['withoids']:
+                table_opts.append('WITH OIDS')
+            else:
+                table_opts.append('WITHOUT OIDS')
+        if table.dialect_options['postgresql']['on_commit']:
+            on_commit_options = table.dialect_options['postgresql']['on_commit'].replace("_", " ").upper()
+            table_opts.append('ON COMMIT %s' % on_commit_options) 
         if table.dialect_options['postgresql']['tablespace']:
             table_opts.append('TABLESPACE %s' % table.dialect_options['postgresql']['tablespace'])
 
@@ -1715,7 +1723,9 @@ class PGDialect(default.DefaultDialect):
         }),
         (schema.Table, {
             "ignore_search_path": False,
-            "tablespace": None
+            "tablespace": None,
+            "withoids" : None,
+            "on_commit" : None,
         })
     ]
 
