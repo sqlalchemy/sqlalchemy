@@ -7,43 +7,42 @@ An adaptation of Robert Brewers' ZooMark speed tests. """
 
 import datetime
 from sqlalchemy import Table, Column, Integer, Unicode, Date, \
-    DateTime, Time, Float, MetaData, Sequence, ForeignKey, create_engine, \
+    DateTime, Time, Float, Sequence, ForeignKey,  \
     select, join, and_, outerjoin, func
-from sqlalchemy.testing import fixtures, engines, profiling
-from sqlalchemy import testing
+from sqlalchemy.testing import replay_fixture
+
 ITERATIONS = 1
-dbapi_session = engines.ReplayableSession()
-metadata = None
 
 
-class ZooMarkTest(fixtures.TestBase):
+class ZooMarkTest(replay_fixture.ReplayFixtureTest):
 
-    """Runs the ZooMark and squawks if method counts vary from the norm.
+    """Runs the ZooMark and squawks if method counts vary from the norm."""
 
-    Each test has an associated `call_range`, the total number of
-    accepted function calls made during the test.  The count can vary
-    between Python 2.4 and 2.5.
-
-    Unlike a unit test, this is a ordered collection of steps.  Running
-    components individually will fail.
-
-    """
     __requires__ = 'cpython',
     __only_on__ = 'postgresql+psycopg2'
 
-    def test_baseline_0_setup(self):
-        global metadata
-        creator = testing.db.pool._creator
-        recorder = lambda: dbapi_session.recorder(creator())
-        engine = engines.testing_engine(options={'creator': recorder,
-                                                 'use_reaper': False})
-        metadata = MetaData(engine)
-        engine.connect()
+    def _run_steps(self, ctx):
+        self._baseline_1_create_tables()
+        with ctx():
+            self._baseline_1a_populate()
+        with ctx():
+            self._baseline_2_insert()
+        with ctx():
+            self._baseline_3_properties()
+        with ctx():
+            self._baseline_4_expressions()
+        with ctx():
+            self._baseline_5_aggregates()
+        with ctx():
+            self._baseline_6_editing()
+        with ctx():
+            self._baseline_7_multiview()
+        self._baseline_8_drop()
 
-    def test_baseline_1_create_tables(self):
+    def _baseline_1_create_tables(self):
         Table(
             'Zoo',
-            metadata,
+            self.metadata,
             Column('ID', Integer, Sequence('zoo_id_seq'),
                    primary_key=True, index=True),
             Column('Name', Unicode(255)),
@@ -54,7 +53,7 @@ class ZooMarkTest(fixtures.TestBase):
         )
         Table(
             'Animal',
-            metadata,
+            self.metadata,
             Column('ID', Integer, Sequence('animal_id_seq'),
                    primary_key=True),
             Column('ZooID', Integer, ForeignKey('Zoo.ID'), index=True),
@@ -67,12 +66,12 @@ class ZooMarkTest(fixtures.TestBase):
             Column('PreferredFoodID', Integer),
             Column('AlternateFoodID', Integer),
         )
-        metadata.create_all()
+        self.metadata.create_all()
 
-    def test_baseline_1a_populate(self):
-        Zoo = metadata.tables['Zoo']
-        Animal = metadata.tables['Animal']
-        engine = metadata.bind
+    def _baseline_1a_populate(self):
+        Zoo = self.metadata.tables['Zoo']
+        Animal = self.metadata.tables['Animal']
+        engine = self.metadata.bind
         wap = engine.execute(Zoo.insert(), Name='Wild Animal Park',
                              Founded=datetime.date(2000, 1, 1),
                              Opens=datetime.time(8, 15, 59),
@@ -137,16 +136,16 @@ class ZooMarkTest(fixtures.TestBase):
         engine.execute(Animal.insert(inline=True), Species='Ape',
                        Name='Hua Mei', Legs=2, MotherID=bai_yun)
 
-    def test_baseline_2_insert(self):
-        Animal = metadata.tables['Animal']
+    def _baseline_2_insert(self):
+        Animal = self.metadata.tables['Animal']
         i = Animal.insert(inline=True)
         for x in range(ITERATIONS):
             i.execute(Species='Tick', Name='Tick %d' % x, Legs=8)
 
-    def test_baseline_3_properties(self):
-        Zoo = metadata.tables['Zoo']
-        Animal = metadata.tables['Animal']
-        engine = metadata.bind
+    def _baseline_3_properties(self):
+        Zoo = self.metadata.tables['Zoo']
+        Animal = self.metadata.tables['Animal']
+        engine = self.metadata.bind
 
         def fullobject(select):
             """Iterate over the full result row."""
@@ -171,10 +170,10 @@ class ZooMarkTest(fixtures.TestBase):
             fullobject(Animal.select(Animal.c.Legs == 1000000))
             fullobject(Animal.select(Animal.c.Species == 'Tick'))
 
-    def test_baseline_4_expressions(self):
-        Zoo = metadata.tables['Zoo']
-        Animal = metadata.tables['Animal']
-        engine = metadata.bind
+    def _baseline_4_expressions(self):
+        Zoo = self.metadata.tables['Zoo']
+        Animal = self.metadata.tables['Animal']
+        engine = self.metadata.bind
 
         def fulltable(select):
             """Iterate over the full result table."""
@@ -280,10 +279,10 @@ class ZooMarkTest(fixtures.TestBase):
                             'day',
                             Animal.c.LastEscape) == 21))) == 1
 
-    def test_baseline_5_aggregates(self):
-        Animal = metadata.tables['Animal']
-        Zoo = metadata.tables['Zoo']
-        engine = metadata.bind
+    def _baseline_5_aggregates(self):
+        Animal = self.metadata.tables['Animal']
+        Zoo = self.metadata.tables['Zoo']
+        engine = self.metadata.bind
 
         for x in range(ITERATIONS):
 
@@ -327,9 +326,9 @@ class ZooMarkTest(fixtures.TestBase):
                            distinct=True)).fetchall()]
             legs.sort()
 
-    def test_baseline_6_editing(self):
-        Zoo = metadata.tables['Zoo']
-        engine = metadata.bind
+    def _baseline_6_editing(self):
+        Zoo = self.metadata.tables['Zoo']
+        engine = self.metadata.bind
         for x in range(ITERATIONS):
 
             # Edit
@@ -364,10 +363,10 @@ class ZooMarkTest(fixtures.TestBase):
                                             )).first()
             assert SDZ['Founded'] == datetime.date(1935, 9, 13)
 
-    def test_baseline_7_multiview(self):
-        Zoo = metadata.tables['Zoo']
-        Animal = metadata.tables['Animal']
-        engine = metadata.bind
+    def _baseline_7_multiview(self):
+        Zoo = self.metadata.tables['Zoo']
+        Animal = self.metadata.tables['Animal']
+        engine = self.metadata.bind
 
         def fulltable(select):
             """Iterate over the full result table."""
@@ -403,52 +402,6 @@ class ZooMarkTest(fixtures.TestBase):
                 Zoo.c.Name, Animal.c.Species],
                 from_obj=[outerjoin(Animal, Zoo)]))
 
-    def test_baseline_8_drop(self):
-        metadata.drop_all()
+    def _baseline_8_drop(self):
+        self.metadata.drop_all()
 
-    # Now, run all of these tests again with the DB-API driver factored
-    # out: the ReplayableSession playback stands in for the database.
-    #
-    # How awkward is this in a unittest framework?  Very.
-
-    def test_profile_0(self):
-        global metadata
-        player = lambda: dbapi_session.player()
-        engine = create_engine('postgresql:///', creator=player,
-                               use_native_hstore=False)
-        metadata = MetaData(engine)
-        engine.connect()
-
-    def test_profile_1_create_tables(self):
-        self.test_baseline_1_create_tables()
-
-    @profiling.function_call_count()
-    def test_profile_1a_populate(self):
-        self.test_baseline_1a_populate()
-
-    @profiling.function_call_count()
-    def test_profile_2_insert(self):
-        self.test_baseline_2_insert()
-
-    @profiling.function_call_count()
-    def test_profile_3_properties(self):
-        self.test_baseline_3_properties()
-
-    @profiling.function_call_count()
-    def test_profile_4_expressions(self):
-        self.test_baseline_4_expressions()
-
-    @profiling.function_call_count()
-    def test_profile_5_aggregates(self):
-        self.test_baseline_5_aggregates()
-
-    @profiling.function_call_count()
-    def test_profile_6_editing(self):
-        self.test_baseline_6_editing()
-
-    @profiling.function_call_count()
-    def test_profile_7_multiview(self):
-        self.test_baseline_7_multiview()
-
-    def test_profile_8_drop(self):
-        self.test_baseline_8_drop()
