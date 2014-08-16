@@ -14,6 +14,16 @@
     :version: 0.9.8
 
     .. change::
+        :tags: feature, postgresql, pg8000
+        :versions: 1.0.0
+        :pullreq: github:125
+
+        Support is added for "sane multi row count" with the pg8000 driver,
+        which applies mostly to when using versioning with the ORM.
+        The feature is version-detected based on pg8000 1.9.14 or greater
+        in use.  Pull request courtesy Tony Locke.
+
+    .. change::
         :tags: bug, engine
         :versions: 1.0.0
         :tickets: 3165
