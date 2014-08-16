@@ -529,22 +529,40 @@ def _emit_update_statements(base_mapper, uowtransaction,
                     value_params)
                 rows += c.rowcount
         else:
-            multiparams = [rec[2] for rec in records]
-            c = cached_connections[connection].\
-                execute(statement, multiparams)
+            if needs_version_id and \
+                not connection.dialect.supports_sane_multi_rowcount and \
+                    connection.dialect.supports_sane_rowcount:
+                for state, state_dict, params, mapper, \
+                        connection, value_params in records:
+                    c = cached_connections[connection].\
+                        execute(statement, params)
+                    _postfetch(
+                        mapper,
+                        uowtransaction,
+                        table,
+                        state,
+                        state_dict,
+                        c,
+                        c.context.compiled_parameters[0],
+                        value_params)
+                    rows += c.rowcount
+            else:
+                multiparams = [rec[2] for rec in records]
+                c = cached_connections[connection].\
+                    execute(statement, multiparams)
 
-            rows += c.rowcount
-            for state, state_dict, params, mapper, \
-                    connection, value_params in records:
-                _postfetch(
-                    mapper,
-                    uowtransaction,
-                    table,
-                    state,
-                    state_dict,
-                    c,
-                    c.context.compiled_parameters[0],
-                    value_params)
+                rows += c.rowcount
+                for state, state_dict, params, mapper, \
+                        connection, value_params in records:
+                    _postfetch(
+                        mapper,
+                        uowtransaction,
+                        table,
+                        state,
+                        state_dict,
+                        c,
+                        c.context.compiled_parameters[0],
+                        value_params)
 
         if connection.dialect.supports_sane_rowcount:
             if rows != len(records):
