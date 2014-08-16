@@ -363,18 +363,7 @@ class DefaultRequirements(SuiteRequirements):
                        'need separate XA implementation'),
             exclude('mysql', '<', (5, 0, 3),
                         'two-phase xact not supported by database'),
-            no_support("postgresql+pg8000", "not supported and/or hangs")
             ])
-
-    @property
-    def graceful_disconnects(self):
-        """Target driver must raise a DBAPI-level exception, such as
-        InterfaceError, when the underlying connection has been closed
-        and the execute() method is called.
-        """
-        return fails_on(
-                    "postgresql+pg8000", "Driver crashes"
-                )
 
     @property
     def views(self):

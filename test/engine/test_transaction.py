@@ -347,9 +347,10 @@ class TransactionTest(fixtures.TestBase):
         connection.invalidate()
 
         connection2 = testing.db.connect()
-        eq_(connection2.execute(select([users.c.user_id]).
-            order_by(users.c.user_id)).fetchall(),
-            [])
+        eq_(
+            connection2.execution_options(autocommit=True).
+            execute(select([users.c.user_id]).
+            order_by(users.c.user_id)).fetchall(), [])
         recoverables = connection2.recover_twophase()
         assert transaction.xid in recoverables
         connection2.commit_prepared(transaction.xid, recover=True)

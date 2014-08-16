@@ -119,7 +119,7 @@ class PGDialect_pg8000(PGDialect):
     supports_unicode_binds = True
 
     default_paramstyle = 'format'
-    supports_sane_multi_rowcount = False
+    supports_sane_multi_rowcount = True
     execution_ctx_cls = PGExecutionContext_pg8000
     statement_compiler = PGCompiler_pg8000
     preparer = PGIdentifierPreparer_pg8000
@@ -172,11 +172,9 @@ class PGDialect_pg8000(PGDialect):
             )
 
     def do_begin_twophase(self, connection, xid):
-        print("begin twophase", xid)
         connection.connection.tpc_begin((0, xid, ''))
 
     def do_prepare_twophase(self, connection, xid):
-        print("prepare twophase", xid)
         connection.connection.tpc_prepare()
 
     def do_rollback_twophase(
