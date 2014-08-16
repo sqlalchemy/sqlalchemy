@@ -1459,7 +1459,8 @@ class PGDDLCompiler(compiler.DDLCompiler):
             on_commit_options = table.dialect_options['postgresql']['on_commit'].replace("_", " ").upper()
             table_opts.append('ON COMMIT %s' % on_commit_options) 
         if table.dialect_options['postgresql']['tablespace']:
-            table_opts.append('TABLESPACE %s' % table.dialect_options['postgresql']['tablespace'])
+            tablespace_name = table.dialect_options['postgresql']['tablespace']
+            table_opts.append('TABLESPACE %s' % self.preparer.quote(tablespace_name))
 
         return ' '.join(table_opts)
 

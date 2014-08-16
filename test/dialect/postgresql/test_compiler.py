@@ -172,6 +172,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(schema.CreateTable(tbl),
                 "CREATE TABLE atable (id INTEGER)TABLESPACE sometablespace")
 
+        # testing quoting of tablespace name
+        tbl = Table('anothertable', m, Column("id", Integer), postgresql_tablespace = 'table')
+        self.assert_compile(schema.CreateTable(tbl),
+                'CREATE TABLE anothertable (id INTEGER)TABLESPACE "table"')
+
     def test_create_table_with_oids(self):
         m = MetaData()
         tbl = Table('atable', m, Column("id", Integer), postgresql_withoids = True, )
