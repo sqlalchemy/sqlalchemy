@@ -133,6 +133,16 @@ class PGDialect_pg8000(PGDialect):
         }
     )
 
+    def initialize(self, connection):
+        if self.dbapi and hasattr(self.dbapi, '__version__'):
+            self._dbapi_version = tuple([
+                int(x) for x in
+                self.dbapi.__version__.split(".")])
+        else:
+            self._dbapi_version = (99, 99, 99)
+        self.supports_sane_multi_rowcount = self._dbapi_version >= (1, 9, 14)
+        super(PGDialect_pg8000, self).initialize(connection)
+
     @classmethod
     def dbapi(cls):
         return __import__('pg8000')
