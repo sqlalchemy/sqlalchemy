@@ -417,6 +417,22 @@ of :class:`.PGInspector`, which offers additional methods::
 .. autoclass:: PGInspector
     :members:
 
+PostgreSQL specific table options
+---------------------------------
+
+PostgreSQL provides several CREATE TABLE specific options allowing to 
+specify how table data are stored. The following options are currently 
+supported: ``TABLESPACE``, ``ON COMMIT``, ``WITH OIDS``.
+
+``postgresql_tablespace`` is probably the more common and allows to specify 
+where in the filesystem the data files for the table will be created (see
+http://www.postgresql.org/docs/9.3/static/manage-ag-tablespaces.html)
+
+.. seealso::
+
+    `Postgresql CREATE TABLE options
+    <http://www.postgresql.org/docs/9.3/static/sql-createtable.html>`_ -
+    on the PostgreSQL website
 
 """
 from collections import defaultdict
