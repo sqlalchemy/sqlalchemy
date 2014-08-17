@@ -179,11 +179,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_create_table_with_oids(self):
         m = MetaData()
-        tbl = Table('atable', m, Column("id", Integer), postgresql_withoids = True, )
+        tbl = Table('atable', m, Column("id", Integer), postgresql_with_oids = True, )
         self.assert_compile(schema.CreateTable(tbl),
                 "CREATE TABLE atable (id INTEGER)WITH OIDS")
 
-        tbl2 = Table('anothertable', m, Column("id", Integer), postgresql_withoids = False, )
+        tbl2 = Table('anothertable', m, Column("id", Integer), postgresql_with_oids = False, )
         self.assert_compile(schema.CreateTable(tbl2),
                 "CREATE TABLE anothertable (id INTEGER)WITHOUT OIDS")
 
@@ -195,7 +195,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     
     def create_table_with_multiple_options(self):
         m = MetaData()
-        tbl = Table('atable', m, Column("id", Integer), postgresql_tablespace = 'sometablespace', postgresql_withoids = False, postgresql_on_commit = "preserve_rows")
+        tbl = Table('atable', m, Column("id", Integer), postgresql_tablespace = 'sometablespace', postgresql_with_oids = False, postgresql_on_commit = "preserve_rows")
         self.assert_compile(schema.CreateTable(tbl),
                 "CREATE TABLE atable (id INTEGER)WITHOUT OIDS ON COMMIT PRESERVE ROWS TABLESPACE sometablespace")
     

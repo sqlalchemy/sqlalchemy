@@ -1450,8 +1450,8 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
     def post_create_table(self, table):
         table_opts = []
-        if table.dialect_options['postgresql']['withoids'] is not None:
-            if table.dialect_options['postgresql']['withoids']:
+        if table.dialect_options['postgresql']['with_oids'] is not None:
+            if table.dialect_options['postgresql']['with_oids']:
                 table_opts.append('WITH OIDS')
             else:
                 table_opts.append('WITHOUT OIDS')
@@ -1725,7 +1725,7 @@ class PGDialect(default.DefaultDialect):
         (schema.Table, {
             "ignore_search_path": False,
             "tablespace": None,
-            "withoids" : None,
+            "with_oids" : None,
             "on_commit" : None,
         })
     ]
