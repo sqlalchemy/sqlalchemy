@@ -1894,6 +1894,19 @@ class Mapper(InspectionAttr):
     """
 
     @_memoized_configured_property
+    def _insert_cols_as_none(self):
+        return dict(
+            (
+                table,
+                frozenset(
+                    col.key for col in columns
+                    if not col.primary_key and
+                    not col.server_default and not col.default)
+            )
+            for table, columns in self._cols_by_table.items()
+        )
+
+    @_memoized_configured_property
     def _propkey_to_col(self):
         return dict(
             (
@@ -1902,19 +1915,6 @@ class Mapper(InspectionAttr):
                     (self._columntoproperty[col].key, col)
                     for col in columns
                 )
-            )
-            for table, columns in self._cols_by_table.items()
-        )
-
-    @_memoized_configured_property
-    def _col_to_propkey(self):
-        return dict(
-            (
-                table,
-                [
-                    (col, self._columntoproperty[col].key)
-                    for col in columns
-                ]
             )
             for table, columns in self._cols_by_table.items()
         )

@@ -282,14 +282,8 @@ def _collect_insert_commands(table, states_to_insert):
             else:
                 params[col.key] = value
 
-        for colkey in (
-            set(
-                col.key for col in
-                mapper._cols_by_table[table]
-                if not col.primary_key and
-                not col.server_default and not col.default
-            ).difference(params).difference(value_params)
-        ):
+        for colkey in mapper._insert_cols_as_none[table].\
+                difference(params).difference(value_params):
             params[colkey] = None
 
         has_all_pks = mapper._pk_keys_by_table[table].issubset(params)
