@@ -34,26 +34,25 @@ def bulk_insert(mapper, mappings, uowtransaction):
             "not supported in bulk_insert()")
 
     connection = uowtransaction.transaction.connection(base_mapper)
-    for table, sub_mapper in base_mapper._sorted_tables.items():
-        if not mapper.isa(sub_mapper):
+    for table, super_mapper in base_mapper._sorted_tables.items():
+        if not mapper.isa(super_mapper):
             continue
 
-        records = []
-        for (
-            state, state_dict, params, mapper,
-            connection, value_params, has_all_pks,
-            has_all_defaults) in _collect_insert_commands(table, (
-                (None, mapping, sub_mapper, connection)
+        records = (
+            (None, None, params, super_mapper,
+                connection, value_params, True, True)
+            for
+            state, state_dict, params, mp,
+            conn, value_params, has_all_pks,
+            has_all_defaults in _collect_insert_commands(table, (
+                (None, mapping, super_mapper, connection)
                 for mapping in mappings)
-        ):
-            records.append(
-                (None, None, params, sub_mapper,
-                    connection, value_params, True, True)
             )
+        )
 
         _emit_insert_statements(base_mapper, uowtransaction,
                                 cached_connections,
-                                mapper, table, records,
+                                super_mapper, table, records,
                                 bookkeeping=False)
 
 
@@ -70,17 +69,17 @@ def bulk_update(mapper, mappings, uowtransaction):
     connection = uowtransaction.transaction.connection(base_mapper)
 
     value_params = {}
-    for table, sub_mapper in base_mapper._sorted_tables.items():
-        if not mapper.isa(sub_mapper):
+    for table, super_mapper in base_mapper._sorted_tables.items():
+        if not mapper.isa(super_mapper):
             continue
 
-        label_pks = sub_mapper._pks_by_table[table]
+        label_pks = super_mapper._pks_by_table[table]
         if mapper.version_id_col is not None:
             label_pks = label_pks.union([mapper.version_id_col])
 
         to_translate = dict(
             (propkey, col._label if col in label_pks else col.key)
-            for propkey, col in sub_mapper._propkey_to_col[table].items()
+            for propkey, col in super_mapper._propkey_to_col[table].items()
         )
 
         records = []
@@ -97,12 +96,12 @@ def bulk_update(mapper, mappings, uowtransaction):
                         params[mapper.version_id_col._label])
 
             records.append(
-                (None, None, params, sub_mapper, connection, value_params)
+                (None, None, params, super_mapper, connection, value_params)
             )
 
         _emit_update_statements(base_mapper, uowtransaction,
                                 cached_connections,
-                                mapper, table, records,
+                                super_mapper, table, records,
                                 bookkeeping=False)
 
 
