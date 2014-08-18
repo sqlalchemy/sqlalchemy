@@ -42,7 +42,7 @@ class CompileTest(fixtures.TestBase, AssertsExecutionResults):
     def test_insert(self):
         t1.insert().compile(dialect=self.dialect)
 
-    @profiling.function_call_count()
+    @profiling.function_call_count(variance=.15)
     def test_update(self):
         t1.update().compile(dialect=self.dialect)
 

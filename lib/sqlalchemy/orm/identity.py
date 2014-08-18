@@ -181,7 +181,10 @@ class WeakInstanceDict(IdentityMap):
             return iter(self.values())
 
     def all_states(self):
-        return self._dict.values()
+        if util.py2k:
+            return self._dict.values()
+        else:
+            return list(self._dict.values())
 
     def discard(self, state):
         if state.key in self._dict:

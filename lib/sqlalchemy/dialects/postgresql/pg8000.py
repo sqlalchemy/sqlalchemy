@@ -119,7 +119,7 @@ class PGDialect_pg8000(PGDialect):
     supports_unicode_binds = True
 
     default_paramstyle = 'format'
-    supports_sane_multi_rowcount = False
+    supports_sane_multi_rowcount = True
     execution_ctx_cls = PGExecutionContext_pg8000
     statement_compiler = PGCompiler_pg8000
     preparer = PGIdentifierPreparer_pg8000
@@ -132,6 +132,16 @@ class PGDialect_pg8000(PGDialect):
             sqltypes.Float: _PGNumeric
         }
     )
+
+    def initialize(self, connection):
+        if self.dbapi and hasattr(self.dbapi, '__version__'):
+            self._dbapi_version = tuple([
+                int(x) for x in
+                self.dbapi.__version__.split(".")])
+        else:
+            self._dbapi_version = (99, 99, 99)
+        self.supports_sane_multi_rowcount = self._dbapi_version >= (1, 9, 14)
+        super(PGDialect_pg8000, self).initialize(connection)
 
     @classmethod
     def dbapi(cls):
@@ -172,11 +182,9 @@ class PGDialect_pg8000(PGDialect):
             )
 
     def do_begin_twophase(self, connection, xid):
-        print("begin twophase", xid)
         connection.connection.tpc_begin((0, xid, ''))
 
     def do_prepare_twophase(self, connection, xid):
-        print("prepare twophase", xid)
         connection.connection.tpc_prepare()
 
     def do_rollback_twophase(

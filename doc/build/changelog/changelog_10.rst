@@ -17,6 +17,16 @@
 	:version: 1.0.0
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3167
+
+        Fixed bug where attribute "set" events or columns with
+        ``@validates`` would have events triggered within the flush process,
+        when those columns were the targets of a "fetch and populate"
+        operation, such as an autoincremented primary key, a Python side
+        default, or a server-side default "eagerly" fetched via RETURNING.
+
+    .. change::
         :tags: bug, orm, py3k
 
         The :class:`.IdentityMap` exposed from :class:`.Session.identity`
