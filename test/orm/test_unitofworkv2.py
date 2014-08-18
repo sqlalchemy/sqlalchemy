@@ -1277,6 +1277,8 @@ class RowswitchAccountingTest(fixtures.MappedTest):
         old = attributes.get_history(p3, 'child')[2][0]
         assert old in sess
 
+        # essentially no SQL should emit here,
+        # because we've replaced the row with another identical one
         sess.flush()
 
         assert p3.child._sa_instance_state.session_id == sess.hash_key

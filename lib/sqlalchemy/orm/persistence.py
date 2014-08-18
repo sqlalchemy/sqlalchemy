@@ -304,96 +304,70 @@ def _collect_update_commands(base_mapper, uowtransaction,
         params = {}
         value_params = {}
 
-        hasdata = hasnull = False
+        propkey_to_col = mapper._propkey_to_col[table]
 
-        for col in mapper._cols_by_table[table]:
-            if col is mapper.version_id_col:
-                params[col._label] = \
-                    mapper._get_committed_state_attr_by_column(
-                        row_switch or state,
-                        row_switch and row_switch.dict
-                        or state_dict,
-                        col)
+        for propkey in set(propkey_to_col).intersection(state.committed_state):
+            value = state_dict[propkey]
+            col = propkey_to_col[propkey]
 
-                prop = mapper._columntoproperty[col]
-                history = state.manager[prop.key].impl.get_history(
-                    state, state_dict, attributes.PASSIVE_NO_INITIALIZE
-                )
-                if history.added:
-                    params[col.key] = history.added[0]
-                    hasdata = True
+            if not state.manager[propkey].impl.is_equal(
+                    value, state.committed_state[propkey]):
+                if isinstance(value, sql.ClauseElement):
+                    value_params[col] = value
                 else:
-                    if mapper.version_id_generator is not False:
-                        val = mapper.version_id_generator(params[col._label])
-                        params[col.key] = val
+                    params[col.key] = value
 
-                        # HACK: check for history, in case the
-                        # history is only
-                        # in a different table than the one
-                        # where the version_id_col is.
-                        for prop in mapper._columntoproperty.values():
-                            history = (
-                                state.manager[prop.key].impl.get_history(
-                                    state, state_dict,
-                                    attributes.PASSIVE_NO_INITIALIZE))
-                            if history.added:
-                                hasdata = True
+        if mapper.version_id_col is not None:
+            col = mapper.version_id_col
+            params[col._label] = \
+                mapper._get_committed_state_attr_by_column(
+                    row_switch if row_switch else state,
+                    row_switch.dict if row_switch else state_dict,
+                    col)
+
+            if col.key not in params and \
+                    mapper.version_id_generator is not False:
+                val = mapper.version_id_generator(params[col._label])
+                params[col.key] = val
+
+        if not (params or value_params):
+            continue
+
+        pk_params = {}
+        for col in pks:
+            propkey = mapper._columntoproperty[col].key
+            history = state.manager[propkey].impl.get_history(
+                state, state_dict, attributes.PASSIVE_OFF)
+
+            if row_switch and not history.deleted and history.added:
+                # row switch present.  convert a row that thought
+                # it would be an INSERT into an UPDATE, by removing
+                # the PK value from the SET clause and instead putting
+                # it in the WHERE clause.
+                del params[col.key]
+                pk_params[col._label] = history.added[0]
+            elif history.added:
+                # we're updating the PK value.
+                assert history.deleted, (
+                    "New PK value without an old one not "
+                    "possible for an UPDATE")
+                # check if an UPDATE of the PK value
+                # has already occurred as a result of ON UPDATE CASCADE.
+                # If so, use the new value to locate the row.
+                if ("pk_cascaded", state, col) in uowtransaction.attributes:
+                    pk_params[col._label] = history.added[0]
+                else:
+                    # else, use the old value to locate the row
+                    pk_params[col._label] = history.deleted[0]
             else:
-                prop = mapper._columntoproperty[col]
-                history = state.manager[prop.key].impl.get_history(
-                    state, state_dict,
-                    attributes.PASSIVE_OFF if col in pks else
-                    attributes.PASSIVE_NO_INITIALIZE)
-                if history.added:
-                    if isinstance(history.added[0],
-                                  sql.ClauseElement):
-                        value_params[col] = history.added[0]
-                    else:
-                        value = history.added[0]
-                        params[col.key] = value
+                pk_params[col._label] = history.unchanged[0]
 
-                    if col in pks:
-                        if history.deleted and \
-                                not row_switch:
-                            # if passive_updates and sync detected
-                            # this was a  pk->pk sync, use the new
-                            # value to locate the row, since the
-                            # DB would already have set this
-                            if ("pk_cascaded", state, col) in \
-                                    uowtransaction.attributes:
-                                value = history.added[0]
-                                params[col._label] = value
-                            else:
-                                # use the old value to
-                                # locate the row
-                                value = history.deleted[0]
-                                params[col._label] = value
-                            hasdata = True
-                        else:
-                            # row switch logic can reach us here
-                            # remove the pk from the update params
-                            # so the update doesn't
-                            # attempt to include the pk in the
-                            # update statement
-                            del params[col.key]
-                            value = history.added[0]
-                            params[col._label] = value
-                        if value is None:
-                            hasnull = True
-                    else:
-                        hasdata = True
-                elif col in pks:
-                    value = history.unchanged[0]
-                    if value is None:
-                        hasnull = True
-                    params[col._label] = value
-
-        if hasdata:
-            if hasnull:
+        if params or value_params:
+            if None in pk_params.values():
                 raise orm_exc.FlushError(
-                    "Can't update table "
-                    "using NULL for primary "
+                    "Can't update table using NULL for primary "
                     "key value")
+            params.update(pk_params)
             update.append((state, state_dict, params, mapper,
                            connection, value_params))
     return update

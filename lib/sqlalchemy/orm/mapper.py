@@ -1894,6 +1894,19 @@ class Mapper(InspectionAttr):
     """
 
     @_memoized_configured_property
+    def _propkey_to_col(self):
+        return dict(
+            (
+                table,
+                dict(
+                    (self._columntoproperty[col].key, col)
+                    for col in columns
+                )
+            )
+            for table, columns in self._cols_by_table.items()
+        )
+
+    @_memoized_configured_property
     def _col_to_propkey(self):
         return dict(
             (
