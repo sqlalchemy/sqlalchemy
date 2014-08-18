@@ -253,20 +253,28 @@ def _collect_insert_commands(table, states_to_insert):
 
         params = {}
         value_params = {}
-        for col, propkey in mapper._col_to_propkey[table]:
-            if propkey in state_dict:
-                value = state_dict[propkey]
-                if isinstance(value, sql.ClauseElement):
-                    value_params[col.key] = value
-                elif value is not None or (
-                        not col.primary_key and
-                        not col.server_default and
-                        not col.default):
-                    params[col.key] = value
+
+        propkey_to_col = mapper._propkey_to_col[table]
+
+        for propkey in set(propkey_to_col).intersection(state_dict):
+            value = state_dict[propkey]
+            col = propkey_to_col[propkey]
+            if value is None:
+                continue
+            elif isinstance(value, sql.ClauseElement):
+                value_params[col.key] = value
             else:
-                if not col.server_default \
-                        and not col.default and not col.primary_key:
-                    params[col.key] = None
+                params[col.key] = value
+
+        for colkey in (
+            set(
+                col.key for col in
+                mapper._cols_by_table[table]
+                if not col.primary_key and
+                not col.server_default and not col.default
+            ).difference(params).difference(value_params)
+        ):
+            params[colkey] = None
 
         has_all_pks = mapper._pk_keys_by_table[table].issubset(params)
 
