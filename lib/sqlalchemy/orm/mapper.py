@@ -1189,14 +1189,6 @@ class Mapper(InspectionAttr):
                 util.ordered_column_set(t.c).\
                 intersection(all_cols)
 
-        # determine cols that aren't expressed within our tables; mark these
-        # as "read only" properties which are refreshed upon INSERT/UPDATE
-        self._readonly_props = set(
-            self._columntoproperty[col]
-            for col in self._columntoproperty
-            if not hasattr(col, 'table') or
-            col.table not in self._cols_by_table)
-
         # if explicit PK argument sent, add those columns to the
         # primary key mappings
         if self._primary_key_argument:
@@ -1246,6 +1238,15 @@ class Mapper(InspectionAttr):
 
             self.primary_key = tuple(primary_key)
             self._log("Identified primary key columns: %s", primary_key)
+
+        # determine cols that aren't expressed within our tables; mark these
+        # as "read only" properties which are refreshed upon INSERT/UPDATE
+        self._readonly_props = set(
+            self._columntoproperty[col]
+            for col in self._columntoproperty
+            if self._columntoproperty[col] not in self._primary_key_props and
+            (not hasattr(col, 'table') or
+                col.table not in self._cols_by_table))
 
     def _configure_properties(self):
 
@@ -2342,17 +2343,25 @@ class Mapper(InspectionAttr):
         dict_ = state.dict
         manager = state.manager
         return [
-            manager[self._columntoproperty[col].key].
+            manager[prop.key].
             impl.get(state, dict_,
                      attributes.PASSIVE_RETURN_NEVER_SET)
-            for col in self.primary_key
+            for prop in self._primary_key_props
         ]
+
+    @_memoized_configured_property
+    def _primary_key_props(self):
+        return [self._columntoproperty[col] for col in self.primary_key]
 
     def _get_state_attr_by_column(
             self, state, dict_, column,
             passive=attributes.PASSIVE_RETURN_NEVER_SET):
         prop = self._columntoproperty[column]
         return state.manager[prop.key].impl.get(state, dict_, passive=passive)
+
+    def _set_committed_state_attr_by_column(self, state, dict_, column, value):
+        prop = self._columntoproperty[column]
+        state.manager[prop.key].impl.set_committed_value(state, dict_, value)
 
     def _set_state_attr_by_column(self, state, dict_, column, value):
         prop = self._columntoproperty[column]

@@ -9,8 +9,9 @@ from sqlalchemy import Integer, String, ForeignKey, func
 from sqlalchemy.orm import mapper, relationship, backref, \
     create_session, unitofwork, attributes,\
     Session, exc as orm_exc
-
+from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.assertsql import AllOf, CompiledSQL
+from sqlalchemy import event
 
 
 class AssertsUOW(object):
@@ -1703,3 +1704,46 @@ class LoadersUsingCommittedTest(UOWTest):
             sess.flush()
         except AvoidReferencialError:
             pass
+
+
+class NoAttrEventInFlushTest(fixtures.MappedTest):
+    """test [ticket:3167]"""
+
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'test', metadata,
+            Column('id', Integer, primary_key=True,
+                   test_needs_autoincrement=True),
+            Column('prefetch_val', Integer, default=5),
+            Column('returning_val', Integer, server_default="5")
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Thing(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Thing = cls.classes.Thing
+
+        mapper(Thing, cls.tables.test, eager_defaults=True)
+
+    def test_no_attr_events_flush(self):
+        Thing = self.classes.Thing
+        mock = Mock()
+        event.listen(Thing.id, "set", mock.id)
+        event.listen(Thing.prefetch_val, "set", mock.prefetch_val)
+        event.listen(Thing.returning_val, "set", mock.prefetch_val)
+        t1 = Thing()
+        s = Session()
+        s.add(t1)
+        s.flush()
+
+        eq_(len(mock.mock_calls), 0)
+        eq_(t1.id, 1)
+        eq_(t1.prefetch_val, 5)
+        eq_(t1.returning_val, 5)

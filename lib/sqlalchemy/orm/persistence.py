@@ -645,13 +645,7 @@ def _emit_insert_statements(base_mapper, uowtransaction,
                                        mapper._pks_by_table[table]):
                         prop = mapper_rec._columntoproperty[col]
                         if state_dict.get(prop.key) is None:
-                            # TODO: would rather say:
-                            # state_dict[prop.key] = pk
-                            mapper_rec._set_state_attr_by_column(
-                                state,
-                                state_dict,
-                                col, pk)
-
+                            state_dict[prop.key] = pk
                 _postfetch(
                     mapper_rec,
                     uowtransaction,
@@ -836,11 +830,11 @@ def _postfetch(mapper, uowtransaction, table,
             for col in returning_cols:
                 if col.primary_key:
                     continue
-                mapper._set_state_attr_by_column(state, dict_, col, row[col])
+                dict_[mapper._columntoproperty[col].key] = row[col]
 
     for c in prefetch_cols:
         if c.key in params and c in mapper._columntoproperty:
-            mapper._set_state_attr_by_column(state, dict_, c, params[c.key])
+            dict_[mapper._columntoproperty[c].key] = params[c.key]
 
     if postfetch_cols:
         state._expire_attributes(state.dict,
