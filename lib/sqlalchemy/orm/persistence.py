@@ -362,28 +362,18 @@ def _collect_update_commands(uowtransaction, table, states_to_update):
             history = state.manager[propkey].impl.get_history(
                 state, state_dict, attributes.PASSIVE_OFF)
 
-            if row_switch and not history.deleted and history.added:
-                # row switch present.  convert a row that thought
-                # it would be an INSERT into an UPDATE, by removing
-                # the PK value from the SET clause and instead putting
-                # it in the WHERE clause.
-                del params[col.key]
-                pk_params[col._label] = history.added[0]
-            elif history.added:
-                # we're updating the PK value.
-                assert history.deleted, (
-                    "New PK value without an old one not "
-                    "possible for an UPDATE")
-                # check if an UPDATE of the PK value
-                # has already occurred as a result of ON UPDATE CASCADE.
-                # If so, use the new value to locate the row.
-                if ("pk_cascaded", state, col) in uowtransaction.attributes:
+            if history.added:
+                if not history.deleted or \
+                    ("pk_cascaded", state, col) in uowtransaction.attributes:
                     pk_params[col._label] = history.added[0]
+                    params.pop(col.key, None)
                 else:
                     # else, use the old value to locate the row
                     pk_params[col._label] = history.deleted[0]
+                    params[col.key] = history.added[0]
             else:
                 pk_params[col._label] = history.unchanged[0]
+
 
         if params or value_params:
             if None in pk_params.values():

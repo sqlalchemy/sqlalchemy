@@ -2364,6 +2364,9 @@ class Mapper(InspectionAttr):
 
     @_memoized_configured_property
     def _primary_key_props(self):
+        # TODO: this should really be called "identity key props",
+        # as it does not necessarily include primary key columns within
+        # individual tables
         return [self._columntoproperty[col] for col in self.primary_key]
 
     def _get_state_attr_by_column(
