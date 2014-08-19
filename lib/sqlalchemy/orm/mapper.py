@@ -1244,7 +1244,7 @@ class Mapper(InspectionAttr):
         self._readonly_props = set(
             self._columntoproperty[col]
             for col in self._columntoproperty
-            if self._columntoproperty[col] not in self._primary_key_props and
+            if self._columntoproperty[col] not in self._identity_key_props and
             (not hasattr(col, 'table') or
                 col.table not in self._cols_by_table))
 
@@ -2359,19 +2359,23 @@ class Mapper(InspectionAttr):
             manager[prop.key].
             impl.get(state, dict_,
                      attributes.PASSIVE_RETURN_NEVER_SET)
-            for prop in self._primary_key_props
+            for prop in self._identity_key_props
         ]
 
     @_memoized_configured_property
-    def _primary_key_props(self):
-        # TODO: this should really be called "identity key props",
-        # as it does not necessarily include primary key columns within
-        # individual tables
+    def _identity_key_props(self):
         return [self._columntoproperty[col] for col in self.primary_key]
 
     @_memoized_configured_property
+    def _all_pk_props(self):
+        collection = set()
+        for table in self.tables:
+            collection.update(self._pks_by_table[table])
+        return collection
+
+    @_memoized_configured_property
     def _primary_key_propkeys(self):
-        return set([prop.key for prop in self._primary_key_props])
+        return set([prop.key for prop in self._all_pk_props])
 
     def _get_state_attr_by_column(
             self, state, dict_, column,
