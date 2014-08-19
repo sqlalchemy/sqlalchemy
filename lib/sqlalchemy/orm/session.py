@@ -21,6 +21,7 @@ from .base import (
     _none_set, state_str, instance_str
 )
 import itertools
+from . import persistence
 from .unitofwork import UOWTransaction
 from . import state as statelib
 import sys
@@ -2040,37 +2041,27 @@ class Session(_SessionClassMethods):
             (attributes.instance_state(obj) for obj in objects),
             lambda state: (state.mapper, state.key is not None)
         ):
-            if isupdate:
-                self.bulk_update_mappings(mapper, (s.dict for s in states))
-            else:
-                self.bulk_insert_mappings(mapper, (s.dict for s in states))
+            self._bulk_save_mappings(mapper, states, isupdate, True)
 
     def bulk_insert_mappings(self, mapper, mappings):
-        self._bulk_save_mappings(mapper, mappings, False)
+        self._bulk_save_mappings(mapper, mappings, False, False)
 
     def bulk_update_mappings(self, mapper, mappings):
-        self._bulk_save_mappings(mapper, mappings, True)
+        self._bulk_save_mappings(mapper, mappings, True, False)
 
-    def _bulk_save_mappings(self, mapper, mappings, isupdate):
+    def _bulk_save_mappings(self, mapper, mappings, isupdate, isstates):
         mapper = _class_to_mapper(mapper)
         self._flushing = True
-        flush_context = UOWTransaction(self)
 
-        flush_context.transaction = transaction = self.begin(
+        transaction = self.begin(
             subtransactions=True)
         try:
             if isupdate:
-                self.dispatch.before_bulk_update(
-                    self, flush_context, mapper, mappings)
-                flush_context.bulk_update(mapper, mappings)
-                self.dispatch.after_bulk_update(
-                    self, flush_context, mapper, mappings)
+                persistence._bulk_update(
+                    mapper, mappings, transaction, isstates)
             else:
-                self.dispatch.before_bulk_insert(
-                    self, flush_context, mapper, mappings)
-                flush_context.bulk_insert(mapper, mappings)
-                self.dispatch.after_bulk_insert(
-                    self, flush_context, mapper, mappings)
+                persistence._bulk_insert(
+                    mapper, mappings, transaction, isstates)
             transaction.commit()
 
         except:

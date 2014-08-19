@@ -2366,6 +2366,10 @@ class Mapper(InspectionAttr):
     def _primary_key_props(self):
         return [self._columntoproperty[col] for col in self.primary_key]
 
+    @_memoized_configured_property
+    def _primary_key_propkeys(self):
+        return set([prop.key for prop in self._primary_key_props])
+
     def _get_state_attr_by_column(
             self, state, dict_, column,
             passive=attributes.PASSIVE_RETURN_NEVER_SET):

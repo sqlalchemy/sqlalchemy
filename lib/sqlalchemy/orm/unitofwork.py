@@ -394,12 +394,6 @@ class UOWTransaction(object):
         if other:
             self.session._register_newly_persistent(other)
 
-    def bulk_insert(self, mapper, mappings):
-        persistence.bulk_insert(mapper, mappings, self)
-
-    def bulk_update(self, mapper, mappings):
-        persistence.bulk_update(mapper, mappings, self)
-
 
 class IterateMappersMixin(object):
     def _mappers(self, uow):
