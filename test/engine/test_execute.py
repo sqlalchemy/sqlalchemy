@@ -21,7 +21,6 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.mock import Mock, call, patch
 from contextlib import contextmanager
 from sqlalchemy.util import nested
-import logging.handlers  # needed for logging tests to work correctly
 
 users, metadata, users_autoinc = None, None, None
 
