@@ -14,6 +14,17 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, pool
+        :versions: 1.0.0
+        :tickets: 3168
+
+        Fixed bug in connection pool logging where the "connection checked out"
+        debug logging message would not emit if the logging were set up using
+        ``logging.setLevel()``, rather than using the ``echo_pool`` flag.
+        Tests to assert this logging have been added.  This is a
+        regression that was introduced in 0.9.0.
+
+    .. change::
         :tags: feature, postgresql, pg8000
         :versions: 1.0.0
         :pullreq: github:125
