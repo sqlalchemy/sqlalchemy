@@ -4,6 +4,8 @@ import sqlalchemy as tsa
 from sqlalchemy.testing import engines
 import logging.handlers
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
+from sqlalchemy.testing.util import lazy_gc
 
 
 class LogParamsTest(fixtures.TestBase):
@@ -16,7 +18,6 @@ class LogParamsTest(fixtures.TestBase):
         self.buf = logging.handlers.BufferingHandler(100)
         for log in [
             logging.getLogger('sqlalchemy.engine'),
-            logging.getLogger('sqlalchemy.pool')
         ]:
             log.addHandler(self.buf)
 
@@ -24,7 +25,6 @@ class LogParamsTest(fixtures.TestBase):
         self.eng.execute("drop table foo")
         for log in [
             logging.getLogger('sqlalchemy.engine'),
-            logging.getLogger('sqlalchemy.pool')
         ]:
             log.removeHandler(self.buf)
 
@@ -80,6 +80,87 @@ class LogParamsTest(fixtures.TestBase):
                 [(str(i), ) for i in range(100)]
             )
         )
+
+
+class PoolLoggingTest(fixtures.TestBase):
+    def setup(self):
+        self.existing_level = logging.getLogger("sqlalchemy.pool").level
+
+        self.buf = logging.handlers.BufferingHandler(100)
+        for log in [
+            logging.getLogger('sqlalchemy.pool')
+        ]:
+            log.addHandler(self.buf)
+
+    def teardown(self):
+        for log in [
+            logging.getLogger('sqlalchemy.pool')
+        ]:
+            log.removeHandler(self.buf)
+        logging.getLogger("sqlalchemy.pool").setLevel(self.existing_level)
+
+    def _queuepool_echo_fixture(self):
+        return tsa.pool.QueuePool(creator=mock.Mock(), echo='debug')
+
+    def _queuepool_logging_fixture(self):
+        logging.getLogger("sqlalchemy.pool").setLevel(logging.DEBUG)
+        return tsa.pool.QueuePool(creator=mock.Mock())
+
+    def _stpool_echo_fixture(self):
+        return tsa.pool.SingletonThreadPool(creator=mock.Mock(), echo='debug')
+
+    def _stpool_logging_fixture(self):
+        logging.getLogger("sqlalchemy.pool").setLevel(logging.DEBUG)
+        return tsa.pool.SingletonThreadPool(creator=mock.Mock())
+
+    def _test_queuepool(self, q, dispose=True):
+        conn = q.connect()
+        conn.close()
+        conn = None
+
+        conn = q.connect()
+        conn.close()
+        conn = None
+
+        conn = q.connect()
+        conn = None
+        del conn
+        lazy_gc()
+        q.dispose()
+
+        eq_(
+            [buf.msg for buf in self.buf.buffer],
+            [
+                'Created new connection %r',
+                'Connection %r checked out from pool',
+                'Connection %r being returned to pool',
+                'Connection %s rollback-on-return%s',
+                'Connection %r checked out from pool',
+                'Connection %r being returned to pool',
+                'Connection %s rollback-on-return%s',
+                'Connection %r checked out from pool',
+                'Connection %r being returned to pool',
+                'Connection %s rollback-on-return%s',
+                'Closing connection %r',
+
+            ] + (['Pool disposed. %s'] if dispose else [])
+        )
+
+    def test_stpool_echo(self):
+        q = self._stpool_echo_fixture()
+        self._test_queuepool(q, False)
+
+    def test_stpool_logging(self):
+        q = self._stpool_logging_fixture()
+        self._test_queuepool(q, False)
+
+    def test_queuepool_echo(self):
+        q = self._queuepool_echo_fixture()
+        self._test_queuepool(q)
+
+    def test_queuepool_logging(self):
+        q = self._queuepool_logging_fixture()
+        self._test_queuepool(q)
 
 
 class LoggingNameTest(fixtures.TestBase):
