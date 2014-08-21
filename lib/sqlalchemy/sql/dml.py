@@ -269,6 +269,13 @@ class ValuesBase(UpdateBase):
          .. versionadded:: 0.8
              Support for multiple-VALUES INSERT statements.
 
+        .. versionchanged:: 1.0.0 an INSERT that uses a multiple-VALUES
+           clause, even a list of length one,
+           implies that the :paramref:`.Insert.inline` flag is set to
+           True, indicating that the statement will not attempt to fetch
+           the "last inserted primary key" or other defaults.  The statement
+           deals with an arbitrary number of rows, so the
+           :attr:`.ResultProxy.inserted_primary_key` accessor does not apply.
 
         .. seealso::
 
@@ -434,8 +441,13 @@ class Insert(ValuesBase):
          dynamically render the VALUES clause at execution time based on
          the parameters passed to :meth:`.Connection.execute`.
 
-        :param inline: if True, SQL defaults will be compiled 'inline' into
-         the statement and not pre-executed.
+        :param inline: if True, no attempt will be made to retrieve the
+         SQL-generated default values to be provided within the statement;
+         in particular,
+         this allows SQL expressions to be rendered 'inline' within the
+         statement without the need to pre-execute them beforehand; for
+         backends that support "returning", this turns off the "implicit
+         returning" feature for the statement.
 
         If both `values` and compile-time bind parameters are present, the
         compile-time bind parameters override the information specified
@@ -495,17 +507,12 @@ class Insert(ValuesBase):
          would normally raise an exception if these column lists don't
          correspond.
 
-        .. note::
-
-           Depending on backend, it may be necessary for the :class:`.Insert`
-           statement to be constructed using the ``inline=True`` flag; this
-           flag will prevent the implicit usage of ``RETURNING`` when the
-           ``INSERT`` statement is rendered, which isn't supported on a
-           backend such as Oracle in conjunction with an ``INSERT..SELECT``
-           combination::
-
-             sel = select([table1.c.a, table1.c.b]).where(table1.c.c > 5)
-             ins = table2.insert(inline=True).from_select(['a', 'b'], sel)
+        .. versionchanged:: 1.0.0 an INSERT that uses FROM SELECT
+           implies that the :paramref:`.Insert.inline` flag is set to
+           True, indicating that the statement will not attempt to fetch
+           the "last inserted primary key" or other defaults.  The statement
+           deals with an arbitrary number of rows, so the
+           :attr:`.ResultProxy.inserted_primary_key` accessor does not apply.
 
         .. note::
 
@@ -525,6 +532,7 @@ class Insert(ValuesBase):
             self._process_colparams(dict((n, Null()) for n in names))
 
         self.select_names = names
+        self.inline = True
         self.select = _interpret_as_select(select)
 
     def _copy_internals(self, clone=_clone, **kw):

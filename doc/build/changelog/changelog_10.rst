@@ -17,6 +17,31 @@
 	:version: 1.0.0
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3169
+
+        The INSERT...FROM SELECT construct now implies ``inline=True``
+        on :class:`.Insert`.  This helps to fix a bug where an
+        INSERT...FROM SELECT construct would inadvertently be compiled
+        as "implicit returning" on supporting backends, which would
+        cause breakage in the case of an INSERT that inserts zero rows
+        (as implicit returning expects a row), as well as arbitrary
+        return data in the case of an INSERT that inserts multiple
+        rows (e.g. only the first row of many).
+        A similar change is also applied to an INSERT..VALUES
+        with multiple parameter sets; implicit RETURNING will no longer emit
+        for this statement either.  As both of these constructs deal
+        with varible numbers of rows, the
+        :attr:`.ResultProxy.inserted_primary_key` accessor does not
+        apply.   Previously, there was a documentation note that one
+        may prefer ``inline=True`` with INSERT..FROM SELECT as some databases
+        don't support returning and therefore can't do "implicit" returning,
+        but there's no reason an INSERT...FROM SELECT needs implicit returning
+        in any case.   Regular explicit :meth:`.Insert.returning` should
+        be used to return variable numbers of result rows if inserted
+        data is needed.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3167
 

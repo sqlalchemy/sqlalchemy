@@ -1981,11 +1981,13 @@ class SQLCompiler(Compiled):
 
         need_pks = self.isinsert and \
             not self.inline and \
-            not stmt._returning
+            not stmt._returning and \
+            not stmt._has_multi_parameters
 
         implicit_returning = need_pks and \
             self.dialect.implicit_returning and \
             stmt.table.implicit_returning
+
         if self.isinsert:
             implicit_return_defaults = (implicit_returning and
                                         stmt._return_defaults)
