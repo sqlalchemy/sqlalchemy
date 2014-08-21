@@ -508,7 +508,7 @@ class Insert(ValuesBase):
          correspond.
 
         .. versionchanged:: 1.0.0 an INSERT that uses FROM SELECT
-           implies that the :paramref:`.Insert.inline` flag is set to
+           implies that the :paramref:`.insert.inline` flag is set to
            True, indicating that the statement will not attempt to fetch
            the "last inserted primary key" or other defaults.  The statement
            deals with an arbitrary number of rows, so the
