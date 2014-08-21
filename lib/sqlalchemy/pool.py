@@ -305,7 +305,7 @@ class Pool(log.Identified):
         """Return a new :class:`.Pool`, of the same class as this one
         and configured with identical creation arguments.
 
-        This method is used in conjunection with :meth:`dispose`
+        This method is used in conjunction with :meth:`dispose`
         to close out an entire :class:`.Pool` and create a new one in
         its place.
 
