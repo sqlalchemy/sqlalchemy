@@ -1773,7 +1773,10 @@ method::
 of times, which will issue a new SAVEPOINT with a unique identifier for each
 call. For each :meth:`~.Session.begin_nested` call, a
 corresponding :meth:`~.Session.rollback` or
-:meth:`~.Session.commit` must be issued.
+:meth:`~.Session.commit` must be issued. (But note that if the return value is
+used as a context manager, i.e. in a with-statement, then this rollback/commit
+is issued by the context manager upon exiting the context, and so should not be
+added explicitly.)
 
 When :meth:`~.Session.begin_nested` is called, a
 :meth:`~.Session.flush` is unconditionally issued
