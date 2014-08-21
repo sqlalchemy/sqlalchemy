@@ -495,17 +495,24 @@ class Insert(ValuesBase):
          would normally raise an exception if these column lists don't
          correspond.
 
-        .. note::
+        .. warning::
 
-           Depending on backend, it may be necessary for the :class:`.Insert`
-           statement to be constructed using the ``inline=True`` flag; this
-           flag will prevent the implicit usage of ``RETURNING`` when the
-           ``INSERT`` statement is rendered, which isn't supported on a
-           backend such as Oracle in conjunction with an ``INSERT..SELECT``
-           combination::
+           The ``inline=True`` flag should be set to True when using
+           backends that support RETURNING, including Postgresql, Oracle,
+           and SQL Server.   This will prevent the implicit ``RETURNING``
+           clause from being appended to the statement, which is normally
+           used to fetch the "last inserted primary key" value.  This feature
+           will raise an error if the statement inserts zero rows, and
+           on some backends (e.g. Oracle) it will raise an error if the
+           statement inserts more than one row.
+
+           :paramref:`.Insert.inline` is set to True as follows::
 
              sel = select([table1.c.a, table1.c.b]).where(table1.c.c > 5)
              ins = table2.insert(inline=True).from_select(['a', 'b'], sel)
+
+           Version 1.0 of SQLAlchemy will set this flag to True in **all**
+           cases.
 
         .. note::
 
