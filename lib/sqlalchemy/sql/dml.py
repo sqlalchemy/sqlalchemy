@@ -506,7 +506,7 @@ class Insert(ValuesBase):
            on some backends (e.g. Oracle) it will raise an error if the
            statement inserts more than one row.
 
-           :paramref:`.Insert.inline` is set to True as follows::
+           :paramref:`.insert.inline` is set to True as follows::
 
              sel = select([table1.c.a, table1.c.b]).where(table1.c.c > 5)
              ins = table2.insert(inline=True).from_select(['a', 'b'], sel)
@@ -614,12 +614,13 @@ class Update(ValuesBase):
           :meth:`.Update.values` method to set the values of the
           UPDATE statement.
 
-        :param inline:
-          if True, SQL defaults present on :class:`.Column` objects via
-          the ``default`` keyword will be compiled 'inline' into the statement
-          and not pre-executed.  This means that their values will not
-          be available in the dictionary returned from
-          :meth:`.ResultProxy.last_updated_params`.
+        :param inline: if True, no attempt will be made to retrieve the
+            SQL-generated default values to be provided within the statement;
+            in particular,
+            this allows SQL expressions to be rendered 'inline' within the
+            statement without the need to pre-execute them beforehand; for
+            backends that support "returning", this turns off the "implicit
+            returning" feature for the statement.
 
         If both ``values`` and compile-time bind parameters are present, the
         compile-time bind parameters override the information specified
