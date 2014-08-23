@@ -17,6 +17,19 @@
 	:version: 1.0.0
 
     .. change::
+        :tags: feature, postgresql
+        :tickets: 2051
+
+        Added support for PG table options TABLESPACE, ON COMMIT,
+        WITH(OUT) OIDS, and INHERITS, when rendering DDL via
+        the :class:`.Table` construct.   Pull request courtesy
+        malikdiarra.
+
+        .. seealso::
+
+            :ref:`postgresql_table_options`
+
+    .. change::
         :tags: bug, orm, py3k
 
         The :class:`.IdentityMap` exposed from :class:`.Session.identity`

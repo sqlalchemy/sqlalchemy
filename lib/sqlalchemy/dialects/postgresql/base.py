@@ -417,22 +417,42 @@ of :class:`.PGInspector`, which offers additional methods::
 .. autoclass:: PGInspector
     :members:
 
-PostgreSQL specific table options
----------------------------------
+.. postgresql_table_options:
 
-PostgreSQL provides several CREATE TABLE specific options allowing to 
-specify how table data are stored. The following options are currently 
-supported: ``TABLESPACE``, ``ON COMMIT``, ``WITH OIDS``.
+PostgreSQL Table Options
+-------------------------
 
-``postgresql_tablespace`` is probably the more common and allows to specify 
-where in the filesystem the data files for the table will be created (see
-http://www.postgresql.org/docs/9.3/static/manage-ag-tablespaces.html)
+Several options for CREATE TABLE are supported directly by the PostgreSQL
+dialect in conjunction with the :class:`.Table` construct:
+
+* ``TABLESPACE``::
+
+    Table("some_table", metadata, ..., postgresql_tablespace='some_tablespace')
+
+* ``ON COMMIT``::
+
+    Table("some_table", metadata, ..., postgresql_on_commit='PRESERVE ROWS')
+
+* ``WITH OIDS``::
+
+    Table("some_table", metadata, ..., postgresql_with_oids=True)
+
+* ``WITHOUT OIDS``::
+
+    Table("some_table", metadata, ..., postgresql_with_oids=False)
+
+* ``INHERITS``::
+
+    Table("some_table", metadata, ..., postgresql_inherits="some_supertable")
+
+    Table("some_table", metadata, ..., postgresql_inherits=("t1", "t2", ...))
+
+.. versionadded:: 1.0.0
 
 .. seealso::
 
     `Postgresql CREATE TABLE options
-    <http://www.postgresql.org/docs/9.3/static/sql-createtable.html>`_ -
-    on the PostgreSQL website
+    <http://www.postgresql.org/docs/9.3/static/sql-createtable.html>`_
 
 """
 from collections import defaultdict
@@ -1466,19 +1486,33 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
     def post_create_table(self, table):
         table_opts = []
-        if table.dialect_options['postgresql']['with_oids'] is not None:
-            if table.dialect_options['postgresql']['with_oids']:
-                table_opts.append('WITH OIDS')
-            else:
-                table_opts.append('WITHOUT OIDS')
-        if table.dialect_options['postgresql']['on_commit']:
-            on_commit_options = table.dialect_options['postgresql']['on_commit'].replace("_", " ").upper()
-            table_opts.append('ON COMMIT %s' % on_commit_options) 
-        if table.dialect_options['postgresql']['tablespace']:
-            tablespace_name = table.dialect_options['postgresql']['tablespace']
-            table_opts.append('TABLESPACE %s' % self.preparer.quote(tablespace_name))
+        pg_opts = table.dialect_options['postgresql']
 
-        return ' '.join(table_opts)
+        inherits = pg_opts.get('inherits')
+        if inherits is not None:
+            if not isinstance(inherits, (list, tuple)):
+                inherits = (inherits, )
+            table_opts.append(
+                '\n INHERITS ( ' +
+                ', '.join(self.preparer.quote(name) for name in inherits) +
+                ' )')
+
+        if pg_opts['with_oids'] is True:
+            table_opts.append('\n WITH OIDS')
+        elif pg_opts['with_oids'] is False:
+            table_opts.append('\n WITHOUT OIDS')
+
+        if pg_opts['on_commit']:
+            on_commit_options = pg_opts['on_commit'].replace("_", " ").upper()
+            table_opts.append('\n ON COMMIT %s' % on_commit_options)
+
+        if pg_opts['tablespace']:
+            tablespace_name = pg_opts['tablespace']
+            table_opts.append(
+                '\n TABLESPACE %s' % self.preparer.quote(tablespace_name)
+            )
+
+        return ''.join(table_opts)
 
 
 class PGTypeCompiler(compiler.GenericTypeCompiler):
@@ -1741,8 +1775,9 @@ class PGDialect(default.DefaultDialect):
         (schema.Table, {
             "ignore_search_path": False,
             "tablespace": None,
-            "with_oids" : None,
-            "on_commit" : None,
+            "with_oids": None,
+            "on_commit": None,
+            "inherits": None
         })
     ]
 
