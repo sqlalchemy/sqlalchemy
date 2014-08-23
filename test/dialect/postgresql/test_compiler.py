@@ -166,6 +166,90 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             "VARCHAR(1), CHECK (somecolumn IN ('x', "
                             "'y', 'z')))")
 
+    def test_create_table_with_tablespace(self):
+        m = MetaData()
+        tbl = Table(
+            'atable', m, Column("id", Integer),
+            postgresql_tablespace='sometablespace')
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE atable (id INTEGER) TABLESPACE sometablespace")
+
+    def test_create_table_with_tablespace_quoted(self):
+        # testing quoting of tablespace name
+        m = MetaData()
+        tbl = Table(
+            'anothertable', m, Column("id", Integer),
+            postgresql_tablespace='table')
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            'CREATE TABLE anothertable (id INTEGER) TABLESPACE "table"')
+
+    def test_create_table_inherits(self):
+        m = MetaData()
+        tbl = Table(
+            'atable', m, Column("id", Integer),
+            postgresql_inherits='i1')
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE atable (id INTEGER) INHERITS ( i1 )")
+
+    def test_create_table_inherits_tuple(self):
+        m = MetaData()
+        tbl = Table(
+            'atable', m, Column("id", Integer),
+            postgresql_inherits=('i1', 'i2'))
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE atable (id INTEGER) INHERITS ( i1, i2 )")
+
+    def test_create_table_inherits_quoting(self):
+        m = MetaData()
+        tbl = Table(
+            'atable', m, Column("id", Integer),
+            postgresql_inherits=('Quote Me', 'quote Me Too'))
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            'CREATE TABLE atable (id INTEGER) INHERITS '
+            '( "Quote Me", "quote Me Too" )')
+
+    def test_create_table_with_oids(self):
+        m = MetaData()
+        tbl = Table(
+            'atable', m, Column("id", Integer),
+            postgresql_with_oids=True, )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE atable (id INTEGER) WITH OIDS")
+
+        tbl2 = Table(
+            'anothertable', m, Column("id", Integer),
+            postgresql_with_oids=False)
+        self.assert_compile(
+            schema.CreateTable(tbl2),
+            "CREATE TABLE anothertable (id INTEGER) WITHOUT OIDS")
+
+    def test_create_table_with_oncommit_option(self):
+        m = MetaData()
+        tbl = Table(
+            'atable', m, Column("id", Integer),
+            postgresql_on_commit="drop")
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE atable (id INTEGER) ON COMMIT DROP")
+
+    def test_create_table_with_multiple_options(self):
+        m = MetaData()
+        tbl = Table(
+            'atable', m, Column("id", Integer),
+            postgresql_tablespace='sometablespace',
+            postgresql_with_oids=False,
+            postgresql_on_commit="preserve_rows")
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE atable (id INTEGER) WITHOUT OIDS "
+            "ON COMMIT PRESERVE ROWS TABLESPACE sometablespace")
+
     def test_create_partial_index(self):
         m = MetaData()
         tbl = Table('testtbl', m, Column('data', Integer))

@@ -417,6 +417,42 @@ of :class:`.PGInspector`, which offers additional methods::
 .. autoclass:: PGInspector
     :members:
 
+.. postgresql_table_options:
+
+PostgreSQL Table Options
+-------------------------
+
+Several options for CREATE TABLE are supported directly by the PostgreSQL
+dialect in conjunction with the :class:`.Table` construct:
+
+* ``TABLESPACE``::
+
+    Table("some_table", metadata, ..., postgresql_tablespace='some_tablespace')
+
+* ``ON COMMIT``::
+
+    Table("some_table", metadata, ..., postgresql_on_commit='PRESERVE ROWS')
+
+* ``WITH OIDS``::
+
+    Table("some_table", metadata, ..., postgresql_with_oids=True)
+
+* ``WITHOUT OIDS``::
+
+    Table("some_table", metadata, ..., postgresql_with_oids=False)
+
+* ``INHERITS``::
+
+    Table("some_table", metadata, ..., postgresql_inherits="some_supertable")
+
+    Table("some_table", metadata, ..., postgresql_inherits=("t1", "t2", ...))
+
+.. versionadded:: 1.0.0
+
+.. seealso::
+
+    `Postgresql CREATE TABLE options
+    <http://www.postgresql.org/docs/9.3/static/sql-createtable.html>`_
 
 """
 from collections import defaultdict
@@ -1448,6 +1484,36 @@ class PGDDLCompiler(compiler.DDLCompiler):
         text += self.define_constraint_deferrability(constraint)
         return text
 
+    def post_create_table(self, table):
+        table_opts = []
+        pg_opts = table.dialect_options['postgresql']
+
+        inherits = pg_opts.get('inherits')
+        if inherits is not None:
+            if not isinstance(inherits, (list, tuple)):
+                inherits = (inherits, )
+            table_opts.append(
+                '\n INHERITS ( ' +
+                ', '.join(self.preparer.quote(name) for name in inherits) +
+                ' )')
+
+        if pg_opts['with_oids'] is True:
+            table_opts.append('\n WITH OIDS')
+        elif pg_opts['with_oids'] is False:
+            table_opts.append('\n WITHOUT OIDS')
+
+        if pg_opts['on_commit']:
+            on_commit_options = pg_opts['on_commit'].replace("_", " ").upper()
+            table_opts.append('\n ON COMMIT %s' % on_commit_options)
+
+        if pg_opts['tablespace']:
+            tablespace_name = pg_opts['tablespace']
+            table_opts.append(
+                '\n TABLESPACE %s' % self.preparer.quote(tablespace_name)
+            )
+
+        return ''.join(table_opts)
+
 
 class PGTypeCompiler(compiler.GenericTypeCompiler):
 
@@ -1707,7 +1773,11 @@ class PGDialect(default.DefaultDialect):
             "ops": {}
         }),
         (schema.Table, {
-            "ignore_search_path": False
+            "ignore_search_path": False,
+            "tablespace": None,
+            "with_oids": None,
+            "on_commit": None,
+            "inherits": None
         })
     ]
 
