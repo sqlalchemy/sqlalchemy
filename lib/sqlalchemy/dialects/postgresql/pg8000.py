@@ -13,17 +13,30 @@
 postgresql+pg8000://user:password@host:port/dbname[?key=value&key=value...]
     :url: https://pythonhosted.org/pg8000/
 
+
+.. _pg8000_unicode:
+
 Unicode
 -------
 
-When communicating with the server, pg8000 **always uses the server-side
-character set**.  SQLAlchemy has no ability to modify what character set
-pg8000 chooses to use, and additionally SQLAlchemy does no unicode conversion
-of any kind with the pg8000 backend. The origin of the client encoding setting
-is ultimately the CLIENT_ENCODING setting in postgresql.conf.
+pg8000 will encode / decode string values between it and the server using the
+PostgreSQL ``client_encoding`` parameter; by default this is the value in
+the ``postgresql.conf`` file, which often defaults to ``SQL_ASCII``.
+Typically, this can be changed to ``utf-8``, as a more useful default::
 
-It is not necessary, though is also harmless, to pass the "encoding" parameter
-to :func:`.create_engine` when using pg8000.
+    #client_encoding = sql_ascii # actually, defaults to database
+                                 # encoding
+    client_encoding = utf8
+
+The ``client_encoding`` can be overriden for a session by executing the SQL:
+
+SET CLIENT_ENCODING TO 'utf8';
+
+SQLAlchemy will execute this SQL on all new connections based on the value
+passed to :func:`.create_engine` using the ``client_encoding`` parameter::
+
+    engine = create_engine(
+        "postgresql+pg8000://user:pass@host/dbname", client_encoding='utf8')
 
 
 .. _pg8000_isolation_level:
@@ -133,6 +146,10 @@ class PGDialect_pg8000(PGDialect):
         }
     )
 
+    def __init__(self, client_encoding=None, **kwargs):
+        PGDialect.__init__(self, **kwargs)
+        self.client_encoding = client_encoding
+
     def initialize(self, connection):
         if self.dbapi and hasattr(self.dbapi, '__version__'):
             self._dbapi_version = tuple([
@@ -181,6 +198,16 @@ class PGDialect_pg8000(PGDialect):
                 (level, self.name, ", ".join(self._isolation_lookup))
             )
 
+    def set_client_encoding(self, connection, client_encoding):
+        # adjust for ConnectionFairy possibly being present
+        if hasattr(connection, 'connection'):
+            connection = connection.connection
+
+        cursor = connection.cursor()
+        cursor.execute("SET CLIENT_ENCODING TO '" + client_encoding + "'")
+        cursor.execute("COMMIT")
+        cursor.close()
+
     def do_begin_twophase(self, connection, xid):
         connection.connection.tpc_begin((0, xid, ''))
 
@@ -197,5 +224,25 @@ class PGDialect_pg8000(PGDialect):
 
     def do_recover_twophase(self, connection):
         return [row[1] for row in connection.connection.tpc_recover()]
+
+    def on_connect(self):
+        fns = []
+        if self.client_encoding is not None:
+            def on_connect(conn):
+                self.set_client_encoding(conn, self.client_encoding)
+            fns.append(on_connect)
+
+        if self.isolation_level is not None:
+            def on_connect(conn):
+                self.set_isolation_level(conn, self.isolation_level)
+            fns.append(on_connect)
+
+        if len(fns) > 0:
+            def on_connect(conn):
+                for fn in fns:
+                    fn(conn)
+            return on_connect
+        else:
+            return None
 
 dialect = PGDialect_pg8000
