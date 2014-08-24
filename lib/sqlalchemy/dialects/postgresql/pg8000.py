@@ -71,6 +71,7 @@ from ... import types as sqltypes
 from .base import (
     PGDialect, PGCompiler, PGIdentifierPreparer, PGExecutionContext,
     _DECIMAL_TYPES, _FLOAT_TYPES, _INT_TYPES)
+import re
 
 
 class _PGNumeric(sqltypes.Numeric):
@@ -151,14 +152,18 @@ class PGDialect_pg8000(PGDialect):
         self.client_encoding = client_encoding
 
     def initialize(self, connection):
-        if self.dbapi and hasattr(self.dbapi, '__version__'):
-            self._dbapi_version = tuple([
-                int(x) for x in
-                self.dbapi.__version__.split(".")])
-        else:
-            self._dbapi_version = (99, 99, 99)
         self.supports_sane_multi_rowcount = self._dbapi_version >= (1, 9, 14)
         super(PGDialect_pg8000, self).initialize(connection)
+
+    @util.memoized_property
+    def _dbapi_version(self):
+        if self.dbapi and hasattr(self.dbapi, '__version__'):
+            return tuple(
+                [
+                    int(x) for x in re.findall(
+                        r'(\d+)(?:[-\.]?|$)', self.dbapi.__version__)])
+        else:
+            return (99, 99, 99)
 
     @classmethod
     def dbapi(cls):
