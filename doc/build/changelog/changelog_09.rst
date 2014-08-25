@@ -16,6 +16,15 @@
     .. change::
         :tags: bug, ext
         :versions: 1.0.0
+        :pullrequest: bitbucket:28
+
+        Fixed bug where :ref:`ext.mutable.MutableDict`
+        failed to implement the ``update()`` dictionary method, thus
+        not catching changes. Pull request courtesy Matt Chisholm.
+
+    .. change::
+        :tags: bug, ext
+        :versions: 1.0.0
         :pullrequest: bitbucket:27
 
         Fixed bug where a custom subclass of :ref:`ext.mutable.MutableDict`
