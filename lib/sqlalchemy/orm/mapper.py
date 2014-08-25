@@ -1127,7 +1127,6 @@ class Mapper(InspectionAttr):
 
         event.listen(manager, 'first_init', _event_on_first_init, raw=True)
         event.listen(manager, 'init', _event_on_init, raw=True)
-        event.listen(manager, 'resurrect', _event_on_resurrect, raw=True)
 
         for key, method in util.iterate_attributes(self.class_):
             if isinstance(method, types.FunctionType):
@@ -2760,16 +2759,6 @@ def _event_on_init(state, args, kwargs):
             configure_mappers()
         if instrumenting_mapper._set_polymorphic_identity:
             instrumenting_mapper._set_polymorphic_identity(state)
-
-
-def _event_on_resurrect(state):
-    # re-populate the primary key elements
-    # of the dict based on the mapping.
-    instrumenting_mapper = state.manager.info.get(_INSTRUMENTOR)
-    if instrumenting_mapper:
-        for col, val in zip(instrumenting_mapper.primary_key, state.key[1]):
-            instrumenting_mapper._set_state_attr_by_column(
-                state, state.dict, col, val)
 
 
 class _ColumnMapping(dict):

@@ -293,18 +293,6 @@ class InstanceEvents(event.Events):
 
         """
 
-    def resurrect(self, target):
-        """Receive an object instance as it is 'resurrected' from
-        garbage collection, which occurs when a "dirty" state falls
-        out of scope.
-
-        :param target: the mapped instance.  If
-         the event is configured with ``raw=True``, this will
-         instead be the :class:`.InstanceState` state-management
-         object associated with the instance.
-
-        """
-
     def pickle(self, target, state_dict):
         """Receive an object instance when its associated state is
         being pickled.

@@ -17,6 +17,14 @@
 	:version: 1.0.0
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3171
+
+        The "resurrect" ORM event has been removed.  This event hook had
+        no purpose since the old "mutable attribute" system was removed
+        in 0.8.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3169
 
