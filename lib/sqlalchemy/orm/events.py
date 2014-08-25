@@ -303,6 +303,11 @@ class InstanceEvents(event.Events):
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
 
+        .. deprecated:: 0.9 - the resurrect event has no function, as the
+           underlying functionality was dependent on the "mutation tracking"
+           feature removed from SQLAlchemy in the 0.8 series.   This event
+           is removed in 1.0.
+
         """
 
     def pickle(self, target, state_dict):
