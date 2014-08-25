@@ -14,6 +14,16 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, ext
+        :versions: 1.0.0
+        :pullrequest: bitbucket:27
+
+        Fixed bug where a custom subclass of :ref:`ext.mutable.MutableDict`
+        would not show up in a "coerce" operation, and would instead
+        return a plain :ref:`ext.mutable.MutableDict`.  Pull request
+        courtesy Matt Chisholm.
+
+    .. change::
         :tags: bug, pool
         :versions: 1.0.0
         :tickets: 3168
