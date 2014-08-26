@@ -798,14 +798,14 @@ class Connection(Connectable):
         distilled_params = _distill_params(multiparams, params)
         if distilled_params:
             # note this is usually dict but we support RowProxy
-            # as well; but dict.keys() as an iterator is OK
+            # as well; but dict.keys() as an iterable is OK
             keys = distilled_params[0].keys()
         else:
             keys = []
 
         dialect = self.dialect
         if 'compiled_cache' in self._execution_options:
-            key = dialect, elem, tuple(keys), len(distilled_params) > 1
+            key = dialect, elem, tuple(sorted(keys)), len(distilled_params) > 1
             if key in self._execution_options['compiled_cache']:
                 compiled_sql = self._execution_options['compiled_cache'][key]
             else:

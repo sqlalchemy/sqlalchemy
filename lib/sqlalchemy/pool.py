@@ -305,7 +305,7 @@ class Pool(log.Identified):
         """Return a new :class:`.Pool`, of the same class as this one
         and configured with identical creation arguments.
 
-        This method is used in conjunection with :meth:`dispose`
+        This method is used in conjunction with :meth:`dispose`
         to close out an entire :class:`.Pool` and create a new one in
         its place.
 
@@ -443,16 +443,17 @@ class _ConnectionRecord(object):
         except:
             rec.checkin()
             raise
-        fairy = _ConnectionFairy(dbapi_connection, rec)
+        echo = pool._should_log_debug()
+        fairy = _ConnectionFairy(dbapi_connection, rec, echo)
         rec.fairy_ref = weakref.ref(
             fairy,
             lambda ref: _finalize_fairy and
             _finalize_fairy(
                 dbapi_connection,
-                rec, pool, ref, pool._echo)
+                rec, pool, ref, echo)
         )
         _refs.add(rec)
-        if pool._echo:
+        if echo:
             pool.logger.debug("Connection %r checked out from pool",
                               dbapi_connection)
         return fairy
@@ -560,9 +561,10 @@ def _finalize_fairy(connection, connection_record,
                               connection)
 
         try:
-            fairy = fairy or _ConnectionFairy(connection, connection_record)
+            fairy = fairy or _ConnectionFairy(
+                connection, connection_record, echo)
             assert fairy.connection is connection
-            fairy._reset(pool, echo)
+            fairy._reset(pool)
 
             # Immediately close detached instances
             if not connection_record:
@@ -603,9 +605,10 @@ class _ConnectionFairy(object):
 
     """
 
-    def __init__(self, dbapi_connection, connection_record):
+    def __init__(self, dbapi_connection, connection_record, echo):
         self.connection = dbapi_connection
         self._connection_record = connection_record
+        self._echo = echo
 
     connection = None
     """A reference to the actual DBAPI connection being tracked."""
@@ -642,7 +645,6 @@ class _ConnectionFairy(object):
 
             fairy._pool = pool
             fairy._counter = 0
-            fairy._echo = pool._should_log_debug()
 
             if threadconns is not None:
                 threadconns.current = weakref.ref(fairy)
@@ -684,11 +686,11 @@ class _ConnectionFairy(object):
 
     _close = _checkin
 
-    def _reset(self, pool, echo):
+    def _reset(self, pool):
         if pool.dispatch.reset:
             pool.dispatch.reset(self, self._connection_record)
         if pool._reset_on_return is reset_rollback:
-            if echo:
+            if self._echo:
                 pool.logger.debug("Connection %s rollback-on-return%s",
                                   self.connection,
                                   ", via agent"
@@ -698,7 +700,7 @@ class _ConnectionFairy(object):
             else:
                 pool._dialect.do_rollback(self)
         elif pool._reset_on_return is reset_commit:
-            if echo:
+            if self._echo:
                 pool.logger.debug("Connection %s commit-on-return%s",
                                   self.connection,
                                   ", via agent"

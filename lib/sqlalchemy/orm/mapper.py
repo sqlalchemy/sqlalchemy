@@ -1127,7 +1127,6 @@ class Mapper(InspectionAttr):
 
         event.listen(manager, 'first_init', _event_on_first_init, raw=True)
         event.listen(manager, 'init', _event_on_init, raw=True)
-        event.listen(manager, 'resurrect', _event_on_resurrect, raw=True)
 
         for key, method in util.iterate_attributes(self.class_):
             if isinstance(method, types.FunctionType):
@@ -1189,14 +1188,6 @@ class Mapper(InspectionAttr):
                 util.ordered_column_set(t.c).\
                 intersection(all_cols)
 
-        # determine cols that aren't expressed within our tables; mark these
-        # as "read only" properties which are refreshed upon INSERT/UPDATE
-        self._readonly_props = set(
-            self._columntoproperty[col]
-            for col in self._columntoproperty
-            if not hasattr(col, 'table') or
-            col.table not in self._cols_by_table)
-
         # if explicit PK argument sent, add those columns to the
         # primary key mappings
         if self._primary_key_argument:
@@ -1246,6 +1237,15 @@ class Mapper(InspectionAttr):
 
             self.primary_key = tuple(primary_key)
             self._log("Identified primary key columns: %s", primary_key)
+
+        # determine cols that aren't expressed within our tables; mark these
+        # as "read only" properties which are refreshed upon INSERT/UPDATE
+        self._readonly_props = set(
+            self._columntoproperty[col]
+            for col in self._columntoproperty
+            if self._columntoproperty[col] not in self._primary_key_props and
+            (not hasattr(col, 'table') or
+                col.table not in self._cols_by_table))
 
     def _configure_properties(self):
 
@@ -1892,6 +1892,54 @@ class Mapper(InspectionAttr):
 
     """
 
+    @_memoized_configured_property
+    def _insert_cols_as_none(self):
+        return dict(
+            (
+                table,
+                frozenset(
+                    col.key for col in columns
+                    if not col.primary_key and
+                    not col.server_default and not col.default)
+            )
+            for table, columns in self._cols_by_table.items()
+        )
+
+    @_memoized_configured_property
+    def _propkey_to_col(self):
+        return dict(
+            (
+                table,
+                dict(
+                    (self._columntoproperty[col].key, col)
+                    for col in columns
+                )
+            )
+            for table, columns in self._cols_by_table.items()
+        )
+
+    @_memoized_configured_property
+    def _pk_keys_by_table(self):
+        return dict(
+            (
+                table,
+                frozenset([col.key for col in pks])
+            )
+            for table, pks in self._pks_by_table.items()
+        )
+
+    @_memoized_configured_property
+    def _server_default_cols(self):
+        return dict(
+            (
+                table,
+                frozenset([
+                    col for col in columns
+                    if col.server_default is not None])
+            )
+            for table, columns in self._cols_by_table.items()
+        )
+
     @property
     def selectable(self):
         """The :func:`.select` construct this :class:`.Mapper` selects from
@@ -2307,17 +2355,28 @@ class Mapper(InspectionAttr):
         dict_ = state.dict
         manager = state.manager
         return [
-            manager[self._columntoproperty[col].key].
+            manager[prop.key].
             impl.get(state, dict_,
                      attributes.PASSIVE_RETURN_NEVER_SET)
-            for col in self.primary_key
+            for prop in self._primary_key_props
         ]
+
+    @_memoized_configured_property
+    def _primary_key_props(self):
+        # TODO: this should really be called "identity key props",
+        # as it does not necessarily include primary key columns within
+        # individual tables
+        return [self._columntoproperty[col] for col in self.primary_key]
 
     def _get_state_attr_by_column(
             self, state, dict_, column,
             passive=attributes.PASSIVE_RETURN_NEVER_SET):
         prop = self._columntoproperty[column]
         return state.manager[prop.key].impl.get(state, dict_, passive=passive)
+
+    def _set_committed_state_attr_by_column(self, state, dict_, column, value):
+        prop = self._columntoproperty[column]
+        state.manager[prop.key].impl.set_committed_value(state, dict_, value)
 
     def _set_state_attr_by_column(self, state, dict_, column, value):
         prop = self._columntoproperty[column]
@@ -2700,16 +2759,6 @@ def _event_on_init(state, args, kwargs):
             configure_mappers()
         if instrumenting_mapper._set_polymorphic_identity:
             instrumenting_mapper._set_polymorphic_identity(state)
-
-
-def _event_on_resurrect(state):
-    # re-populate the primary key elements
-    # of the dict based on the mapping.
-    instrumenting_mapper = state.manager.info.get(_INSTRUMENTOR)
-    if instrumenting_mapper:
-        for col, val in zip(instrumenting_mapper.primary_key, state.key[1]):
-            instrumenting_mapper._set_state_attr_by_column(
-                state, state.dict, col, val)
 
 
 class _ColumnMapping(dict):

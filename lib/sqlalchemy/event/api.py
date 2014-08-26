@@ -58,6 +58,32 @@ def listen(target, identifier, fn, *args, **kw):
     .. versionadded:: 0.9.4 Added ``once=True`` to :func:`.event.listen`
        and :func:`.event.listens_for`.
 
+    .. note::
+
+        The :func:`.listen` function cannot be called at the same time
+        that the target event is being run.   This has implications
+        for thread safety, and also means an event cannot be added
+        from inside the listener function for itself.  The list of
+        events to be run are present inside of a mutable collection
+        that can't be changed during iteration.
+
+        Event registration and removal is not intended to be a "high
+        velocity" operation; it is a configurational operation.  For
+        systems that need to quickly associate and deassociate with
+        events at high scale, use a mutable structure that is handled
+        from inside of a single listener.
+
+        .. versionchanged:: 1.0.0 - a ``collections.deque()`` object is now
+           used as the container for the list of events, which explicitly
+           disallows collection mutation while the collection is being
+           iterated.
+
+    .. seealso::
+
+        :func:`.listens_for`
+
+        :func:`.remove`
+
     """
 
     _event_key(target, identifier, fn).listen(*args, **kw)
@@ -89,6 +115,10 @@ def listens_for(target, identifier, *args, **kw):
     .. versionadded:: 0.9.4 Added ``once=True`` to :func:`.event.listen`
        and :func:`.event.listens_for`.
 
+    .. seealso::
+
+        :func:`.listen` - general description of event listening
+
     """
     def decorate(fn):
         listen(target, identifier, fn, *args, **kw)
@@ -119,6 +149,30 @@ def remove(target, identifier, fn):
     function will revert all of these operations.
 
     .. versionadded:: 0.9.0
+
+    .. note::
+
+        The :func:`.remove` function cannot be called at the same time
+        that the target event is being run.   This has implications
+        for thread safety, and also means an event cannot be removed
+        from inside the listener function for itself.  The list of
+        events to be run are present inside of a mutable collection
+        that can't be changed during iteration.
+
+        Event registration and removal is not intended to be a "high
+        velocity" operation; it is a configurational operation.  For
+        systems that need to quickly associate and deassociate with
+        events at high scale, use a mutable structure that is handled
+        from inside of a single listener.
+
+        .. versionchanged:: 1.0.0 - a ``collections.deque()`` object is now
+           used as the container for the list of events, which explicitly
+           disallows collection mutation while the collection is being
+           iterated.
+
+    .. seealso::
+
+        :func:`.listen`
 
     """
     _event_key(target, identifier, fn).remove()

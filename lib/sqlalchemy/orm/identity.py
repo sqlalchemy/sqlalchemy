@@ -150,7 +150,7 @@ class WeakInstanceDict(IdentityMap):
             return default
         return o
 
-    def _items(self):
+    def items(self):
         values = self.all_states()
         result = []
         for state in values:
@@ -159,7 +159,7 @@ class WeakInstanceDict(IdentityMap):
                 result.append((state.key, value))
         return result
 
-    def _values(self):
+    def values(self):
         values = self.all_states()
         result = []
         for state in values:
@@ -169,28 +169,16 @@ class WeakInstanceDict(IdentityMap):
 
         return result
 
+    def __iter__(self):
+        return iter(self.keys())
+
     if util.py2k:
-        items = _items
-        values = _values
 
         def iteritems(self):
             return iter(self.items())
 
         def itervalues(self):
             return iter(self.values())
-
-        def __iter__(self):
-            return iter(self.keys())
-
-    else:
-        def items(self):
-            return iter(self._items())
-
-        def values(self):
-            return iter(self._values())
-
-        def __iter__(self):
-            return self.keys()
 
     def all_states(self):
         if util.py2k:
@@ -217,11 +205,8 @@ class StrongInstanceDict(IdentityMap):
         def iteritems(self):
             return self._dict.iteritems()
 
-        def __iter__(self):
-            return iter(self.keys())
-    else:
-        def __iter__(self):
-            return self.keys()
+    def __iter__(self):
+        return iter(self.dict_)
 
     def __getitem__(self, key):
         return self._dict[key]

@@ -510,10 +510,6 @@ class UOWTest(
             testing.db,
             sess.flush,
             CompiledSQL(
-                "SELECT users.id AS users_id, users.name AS users_name "
-                "FROM users WHERE users.id = :param_1",
-                lambda ctx: [{"param_1": u1_id}]),
-            CompiledSQL(
                 "SELECT addresses.id AS addresses_id, addresses.email_address "
                 "AS addresses_email_address FROM addresses "
                 "WHERE addresses.id = :param_1",
@@ -523,7 +519,11 @@ class UOWTest(
                 "UPDATE addresses SET user_id=:user_id WHERE addresses.id = "
                 ":addresses_id",
                 lambda ctx: [{'addresses_id': a2_id, 'user_id': None}]
-            )
+            ),
+            CompiledSQL(
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users WHERE users.id = :param_1",
+                lambda ctx: [{"param_1": u1_id}]),
         )
 
     def test_rollback(self):

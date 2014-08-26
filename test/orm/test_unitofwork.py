@@ -1126,11 +1126,12 @@ class OneToManyTest(_fixtures.FixtureTest):
 
             ("UPDATE addresses SET user_id=:user_id "
              "WHERE addresses.id = :addresses_id",
-             {'user_id': None, 'addresses_id': a1.id}),
+             [
+                {'user_id': None, 'addresses_id': a1.id},
+                {'user_id': u1.id, 'addresses_id': a3.id}
+            ]),
 
-            ("UPDATE addresses SET user_id=:user_id "
-             "WHERE addresses.id = :addresses_id",
-             {'user_id': u1.id, 'addresses_id': a3.id})])
+            ])
 
     def test_child_move(self):
         """Moving a child from one parent to another, with a delete.

@@ -17,7 +17,7 @@ class _InsertTestBase(object):
               Column('name', String(30)),
               Column('description', String(30)))
         Table('myothertable', metadata,
-              Column('otherid', Integer),
+              Column('otherid', Integer, primary_key=True),
               Column('othername', String(30)))
 
 
@@ -138,6 +138,23 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             dialect=default.DefaultDialect()
         )
 
+    def test_insert_from_select_returning(self):
+        table1 = self.tables.mytable
+        sel = select([table1.c.myid, table1.c.name]).where(
+            table1.c.name == 'foo')
+        ins = self.tables.myothertable.insert().\
+            from_select(("otherid", "othername"), sel).returning(
+                self.tables.myothertable.c.otherid
+            )
+        self.assert_compile(
+            ins,
+            "INSERT INTO myothertable (otherid, othername) "
+            "SELECT mytable.myid, mytable.name FROM mytable "
+            "WHERE mytable.name = %(name_1)s RETURNING myothertable.otherid",
+            checkparams={"name_1": "foo"},
+            dialect="postgresql"
+        )
+
     def test_insert_from_select_select(self):
         table1 = self.tables.mytable
         sel = select([table1.c.myid, table1.c.name]).where(
@@ -230,7 +247,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
         ins = mytable.insert().\
             from_select(
-            [mytable.c.name, mytable.c.description], sel)
+                [mytable.c.name, mytable.c.description], sel)
         self.assert_compile(
             ins,
             "INSERT INTO mytable (name, description) "
@@ -251,6 +268,94 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "SELECT mytable.myid, mytable.name FROM mytable "
             "WHERE mytable.name = :name_1",
             checkparams={"name_1": "foo"}
+        )
+
+
+class InsertImplicitReturningTest(
+        _InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
+    __dialect__ = postgresql.dialect(implicit_returning=True)
+
+    def test_insert_select(self):
+        table1 = self.tables.mytable
+        sel = select([table1.c.myid, table1.c.name]).where(
+            table1.c.name == 'foo')
+        ins = self.tables.myothertable.insert().\
+            from_select(("otherid", "othername"), sel)
+        self.assert_compile(
+            ins,
+            "INSERT INTO myothertable (otherid, othername) "
+            "SELECT mytable.myid, mytable.name FROM mytable "
+            "WHERE mytable.name = %(name_1)s",
+            checkparams={"name_1": "foo"}
+        )
+
+    def test_insert_select_return_defaults(self):
+        table1 = self.tables.mytable
+        sel = select([table1.c.myid, table1.c.name]).where(
+            table1.c.name == 'foo')
+        ins = self.tables.myothertable.insert().\
+            from_select(("otherid", "othername"), sel).\
+            return_defaults(self.tables.myothertable.c.otherid)
+        self.assert_compile(
+            ins,
+            "INSERT INTO myothertable (otherid, othername) "
+            "SELECT mytable.myid, mytable.name FROM mytable "
+            "WHERE mytable.name = %(name_1)s",
+            checkparams={"name_1": "foo"}
+        )
+
+    def test_insert_multiple_values(self):
+        ins = self.tables.myothertable.insert().values([
+            {"othername": "foo"},
+            {"othername": "bar"},
+        ])
+        self.assert_compile(
+            ins,
+            "INSERT INTO myothertable (othername) "
+            "VALUES (%(othername_0)s), "
+            "(%(othername_1)s)",
+            checkparams={
+                'othername_1': 'bar',
+                'othername_0': 'foo'}
+        )
+
+    def test_insert_multiple_values_return_defaults(self):
+        # TODO: not sure if this should raise an
+        # error or what
+        ins = self.tables.myothertable.insert().values([
+            {"othername": "foo"},
+            {"othername": "bar"},
+        ]).return_defaults(self.tables.myothertable.c.otherid)
+        self.assert_compile(
+            ins,
+            "INSERT INTO myothertable (othername) "
+            "VALUES (%(othername_0)s), "
+            "(%(othername_1)s)",
+            checkparams={
+                'othername_1': 'bar',
+                'othername_0': 'foo'}
+        )
+
+    def test_insert_single_list_values(self):
+        ins = self.tables.myothertable.insert().values([
+            {"othername": "foo"},
+        ])
+        self.assert_compile(
+            ins,
+            "INSERT INTO myothertable (othername) "
+            "VALUES (%(othername_0)s)",
+            checkparams={'othername_0': 'foo'}
+        )
+
+    def test_insert_single_element_values(self):
+        ins = self.tables.myothertable.insert().values(
+            {"othername": "foo"},
+        )
+        self.assert_compile(
+            ins,
+            "INSERT INTO myothertable (othername) "
+            "VALUES (%(othername)s) RETURNING myothertable.otherid",
+            checkparams={'othername': 'foo'}
         )
 
 

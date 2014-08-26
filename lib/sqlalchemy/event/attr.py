@@ -37,6 +37,7 @@ from . import registry
 from . import legacy
 from itertools import chain
 import weakref
+import collections
 
 
 class RefCollection(object):
@@ -96,8 +97,8 @@ class _DispatchDescriptor(RefCollection):
                 self.update_subclass(cls)
             else:
                 if cls not in self._clslevel:
-                    self._clslevel[cls] = []
-                self._clslevel[cls].insert(0, event_key._listen_fn)
+                    self._clslevel[cls] = collections.deque()
+                self._clslevel[cls].appendleft(event_key._listen_fn)
         registry._stored_in_collection(event_key, self)
 
     def append(self, event_key, propagate):
@@ -113,13 +114,13 @@ class _DispatchDescriptor(RefCollection):
                 self.update_subclass(cls)
             else:
                 if cls not in self._clslevel:
-                    self._clslevel[cls] = []
+                    self._clslevel[cls] = collections.deque()
                 self._clslevel[cls].append(event_key._listen_fn)
         registry._stored_in_collection(event_key, self)
 
     def update_subclass(self, target):
         if target not in self._clslevel:
-            self._clslevel[target] = []
+            self._clslevel[target] = collections.deque()
         clslevel = self._clslevel[target]
         for cls in target.__mro__[1:]:
             if cls in self._clslevel:
@@ -145,7 +146,7 @@ class _DispatchDescriptor(RefCollection):
         to_clear = set()
         for dispatcher in self._clslevel.values():
             to_clear.update(dispatcher)
-            dispatcher[:] = []
+            dispatcher.clear()
         registry._clear(self, to_clear)
 
     def for_modify(self, obj):
@@ -287,7 +288,7 @@ class _ListenerCollection(RefCollection, _CompoundListener):
         self.parent_listeners = parent._clslevel[target_cls]
         self.parent = parent
         self.name = parent.__name__
-        self.listeners = []
+        self.listeners = collections.deque()
         self.propagate = set()
 
     def for_modify(self, obj):
@@ -337,7 +338,7 @@ class _ListenerCollection(RefCollection, _CompoundListener):
     def clear(self):
         registry._clear(self, self.listeners)
         self.propagate.clear()
-        self.listeners[:] = []
+        self.listeners.clear()
 
 
 class _JoinedDispatchDescriptor(object):

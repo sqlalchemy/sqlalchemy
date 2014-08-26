@@ -17,6 +17,92 @@
 	:version: 1.0.0
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3171
+
+        The "resurrect" ORM event has been removed.  This event hook had
+        no purpose since the old "mutable attribute" system was removed
+        in 0.8.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 3169
+
+        The INSERT...FROM SELECT construct now implies ``inline=True``
+        on :class:`.Insert`.  This helps to fix a bug where an
+        INSERT...FROM SELECT construct would inadvertently be compiled
+        as "implicit returning" on supporting backends, which would
+        cause breakage in the case of an INSERT that inserts zero rows
+        (as implicit returning expects a row), as well as arbitrary
+        return data in the case of an INSERT that inserts multiple
+        rows (e.g. only the first row of many).
+        A similar change is also applied to an INSERT..VALUES
+        with multiple parameter sets; implicit RETURNING will no longer emit
+        for this statement either.  As both of these constructs deal
+        with varible numbers of rows, the
+        :attr:`.ResultProxy.inserted_primary_key` accessor does not
+        apply.   Previously, there was a documentation note that one
+        may prefer ``inline=True`` with INSERT..FROM SELECT as some databases
+        don't support returning and therefore can't do "implicit" returning,
+        but there's no reason an INSERT...FROM SELECT needs implicit returning
+        in any case.   Regular explicit :meth:`.Insert.returning` should
+        be used to return variable numbers of result rows if inserted
+        data is needed.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3167
+
+        Fixed bug where attribute "set" events or columns with
+        ``@validates`` would have events triggered within the flush process,
+        when those columns were the targets of a "fetch and populate"
+        operation, such as an autoincremented primary key, a Python side
+        default, or a server-side default "eagerly" fetched via RETURNING.
+
+    .. change::
+        :tags: feature, postgresql
+        :tickets: 2051
+
+        Added support for PG table options TABLESPACE, ON COMMIT,
+        WITH(OUT) OIDS, and INHERITS, when rendering DDL via
+        the :class:`.Table` construct.   Pull request courtesy
+        malikdiarra.
+
+        .. seealso::
+
+            :ref:`postgresql_table_options`
+
+    .. change::
+        :tags: bug, orm, py3k
+
+        The :class:`.IdentityMap` exposed from :class:`.Session.identity`
+        now returns lists for ``items()`` and ``values()`` in Py3K.
+        Early porting to Py3K here had these returning iterators, when
+        they technically should be "iterable views"..for now, lists are OK.
+
+    .. change::
+        :tags: orm, feature
+
+        UPDATE statements can now be batched within an ORM flush
+        into more performant executemany() call, similarly to how INSERT
+        statements can be batched; this will be invoked within flush
+        to the degree that subsequent UPDATE statements for the
+        same mapping and table involve the identical columns within the
+        VALUES clause, as well as that no VALUES-level SQL expressions
+        are embedded.
+
+    .. change::
+        :tags: engine, bug
+        :tickets: 3163
+
+        Removing (or adding) an event listener at the same time that the event
+        is being run itself, either from inside the listener or from a
+        concurrent thread, now raises a RuntimeError, as the collection used is
+        now an instance of ``colletions.deque()`` and does not support changes
+        while being iterated.  Previously, a plain Python list was used where
+        removal from inside the event itself would produce silent failures.
+
+    .. change::
         :tags: orm, feature
         :tickets: 2963
 

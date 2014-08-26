@@ -14,6 +14,58 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, ext
+        :versions: 1.0.0
+        :pullrequest: bitbucket:28
+
+        Fixed bug where :ref:`ext.mutable.MutableDict`
+        failed to implement the ``update()`` dictionary method, thus
+        not catching changes. Pull request courtesy Matt Chisholm.
+
+    .. change::
+        :tags: bug, ext
+        :versions: 1.0.0
+        :pullrequest: bitbucket:27
+
+        Fixed bug where a custom subclass of :ref:`ext.mutable.MutableDict`
+        would not show up in a "coerce" operation, and would instead
+        return a plain :ref:`ext.mutable.MutableDict`.  Pull request
+        courtesy Matt Chisholm.
+
+    .. change::
+        :tags: bug, pool
+        :versions: 1.0.0
+        :tickets: 3168
+
+        Fixed bug in connection pool logging where the "connection checked out"
+        debug logging message would not emit if the logging were set up using
+        ``logging.setLevel()``, rather than using the ``echo_pool`` flag.
+        Tests to assert this logging have been added.  This is a
+        regression that was introduced in 0.9.0.
+
+    .. change::
+        :tags: feature, postgresql, pg8000
+        :versions: 1.0.0
+        :pullreq: github:125
+
+        Support is added for "sane multi row count" with the pg8000 driver,
+        which applies mostly to when using versioning with the ORM.
+        The feature is version-detected based on pg8000 1.9.14 or greater
+        in use.  Pull request courtesy Tony Locke.
+
+    .. change::
+        :tags: bug, engine
+        :versions: 1.0.0
+        :tickets: 3165
+
+        The string keys that are used to determine the columns impacted
+        for an INSERT or UPDATE are now sorted when they contribute towards
+        the "compiled cache" cache key.   These keys were previously not
+        deterministically ordered, meaning the same statement could be
+        cached multiple times on equivalent keys, costing both in terms of
+        memory as well as performance.
+
+    .. change::
         :tags: bug, postgresql
         :versions: 1.0.0
         :tickets: 3159

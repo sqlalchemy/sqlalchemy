@@ -667,6 +667,12 @@ issued when the ORM is populating the object::
             assert '@' in address
             return address
 
+.. versionchanged:: 1.0.0 - validators are no longer triggered within
+   the flush process when the newly fetched values for primary key
+   columns as well as some python- or server-side defaults are fetched.
+   Prior to 1.0, validators may be triggered in those cases as well.
+
+
 Validators also receive collection append events, when items are added to a
 collection::
 
