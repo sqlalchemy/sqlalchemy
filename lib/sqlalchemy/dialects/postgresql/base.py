@@ -1712,7 +1712,7 @@ class PGDialect(default.DefaultDialect):
         })
     ]
 
-    reflection_options = ('postgresql_ignore_search_path', 'postgresql_relkind')
+    reflection_options = ('postgresql_ignore_search_path',)
 
     _backslash_escapes = True
 
@@ -1937,7 +1937,7 @@ class PGDialect(default.DefaultDialect):
         return tuple([int(x) for x in m.group(1, 2, 3) if x is not None])
 
     @reflection.cache
-    def get_table_oid(self, connection, table_name, schema=None, postgresql_relkind=None, **kw):
+    def get_table_oid(self, connection, table_name, schema=None, **kw):
         """Fetch the oid for schema.table_name.
 
         Several reflection methods require the table oid.  The idea for using
@@ -1951,28 +1951,13 @@ class PGDialect(default.DefaultDialect):
         else:
             schema_where_clause = "pg_catalog.pg_table_is_visible(c.oid)"
 
-        RELKIND_SYNONYMS = {
-            'materialized': 'm',
-            'foreign': 'f',
-            'view': 'v'
-        }
-        ACCEPTED_RELKINDS = ('r','v','m','f')
-        if postgresql_relkind is None:
-            postgresql_relkind = 'r'
-        else:
-            postgresql_relkind = postgresql_relkind.lower()
-            if postgresql_relkind in RELKIND_SYNONYMS:
-                postgresql_relkind = RELKIND_SYNONYMS[postgresql_relkind.lower()]
-            if postgresql_relkind not in ACCEPTED_RELKINDS:
-                raise exc.SQLAlchemyError('Invalid postgresql_relkind: %s' % postgresql_relkind)
-
         query = """
             SELECT c.oid
             FROM pg_catalog.pg_class c
             LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
             WHERE (%s)
-            AND c.relname = :table_name AND c.relkind in ('%s', 'v')
-        """ % (schema_where_clause, postgresql_relkind)
+            AND c.relname = :table_name AND c.relkind in ('r', 'v', 'm', 'f')
+        """ % schema_where_clause
         # Since we're binding to unicode, table_name and schema_name must be
         # unicode.
         table_name = util.text_type(table_name)
@@ -2069,8 +2054,7 @@ class PGDialect(default.DefaultDialect):
     def get_columns(self, connection, table_name, schema=None, **kw):
 
         table_oid = self.get_table_oid(connection, table_name, schema,
-                                       info_cache=kw.get('info_cache'),
-                                       postgresql_relkind=kw.get('postgresql_relkind'))
+                                       info_cache=kw.get('info_cache'))
         SQL_COLS = """
             SELECT a.attname,
               pg_catalog.format_type(a.atttypid, a.atttypmod),
@@ -2224,8 +2208,7 @@ class PGDialect(default.DefaultDialect):
     @reflection.cache
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
         table_oid = self.get_table_oid(connection, table_name, schema,
-                                       info_cache=kw.get('info_cache'),
-                                       postgresql_relkind=kw.get('postgresql_relkind'))
+                                       info_cache=kw.get('info_cache'))
 
         if self.server_version_info < (8, 4):
             PK_SQL = """
@@ -2275,8 +2258,7 @@ class PGDialect(default.DefaultDialect):
                          postgresql_ignore_search_path=False, **kw):
         preparer = self.identifier_preparer
         table_oid = self.get_table_oid(connection, table_name, schema,
-                                       info_cache=kw.get('info_cache'),
-                                       postgresql_relkind=kw.get('postgresql_relkind'))
+                                       info_cache=kw.get('info_cache'))
 
         FK_SQL = """
           SELECT r.conname,
@@ -2380,8 +2362,7 @@ class PGDialect(default.DefaultDialect):
     @reflection.cache
     def get_indexes(self, connection, table_name, schema, **kw):
         table_oid = self.get_table_oid(connection, table_name, schema,
-                                       info_cache=kw.get('info_cache'),
-                                       postgresql_relkind=kw.get('postgresql_relkind'))
+                                       info_cache=kw.get('info_cache'))
 
         # cast indkey as varchar since it's an int2vector,
         # returned as a list by some drivers such as pypostgresql
@@ -2453,8 +2434,7 @@ class PGDialect(default.DefaultDialect):
     def get_unique_constraints(self, connection, table_name,
                                schema=None, **kw):
         table_oid = self.get_table_oid(connection, table_name, schema,
-                                       info_cache=kw.get('info_cache'),
-                                       postgresql_relkind=kw.get('postgresql_relkind'))
+                                       info_cache=kw.get('info_cache'))
 
         UNIQUE_SQL = """
             SELECT

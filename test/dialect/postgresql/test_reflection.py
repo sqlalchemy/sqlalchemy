@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import base as postgresql
 
 
-class RelKindReflectionTest(fixtures.TestBase, AssertsExecutionResults):
-    """Test postgresql_relkind reflection option"""
+class AlternateRelkindReflectionTest(fixtures.TestBase, AssertsExecutionResults):
+    """Test reflection on materialized views and foreign tables"""
 
     __requires__ = 'postgresql_test_dblink',
     __only_on__ = 'postgresql >= 9.3'
@@ -61,36 +61,32 @@ class RelKindReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         con.execute('DROP TABLE testtable;')
 
     def test_mview_is_reflected(self):
-        mview_relkind_names = ('m', 'materialized')
-        for mview_relkind_name in mview_relkind_names:
-            metadata = MetaData(testing.db)
-            table = Table('test_mview', metadata, autoload=True, postgresql_relkind=mview_relkind_name)
-            eq_(set(table.columns.keys()), set(['id', 'data']), "Columns of reflected mview didn't equal expected columns")
+        metadata = MetaData(testing.db)
+        table = Table('test_mview', metadata, autoload=True)
+        eq_(set(table.columns.keys()), set(['id', 'data']), "Columns of reflected mview didn't equal expected columns")
 
     def test_mview_select(self):
         metadata = MetaData(testing.db)
-        table = Table('test_mview', metadata, autoload=True, postgresql_relkind='m')
+        table = Table('test_mview', metadata, autoload=True)
         assert table.select().execute().fetchall() == [
             (89, 'd1',)
         ]
 
     def test_foreign_table_is_reflected(self):
-        foreign_table_relkind_names = ('f', 'foreign')
-        for foreign_table_relkind_name in foreign_table_relkind_names:
-            metadata = MetaData(testing.db)
-            table = Table('test_foreigntable', metadata, autoload=True, postgresql_relkind=foreign_table_relkind_name)
-            eq_(set(table.columns.keys()), set(['id', 'data']), "Columns of reflected foreign table didn't equal expected columns")
+        metadata = MetaData(testing.db)
+        table = Table('test_foreigntable', metadata, autoload=True)
+        eq_(set(table.columns.keys()), set(['id', 'data']), "Columns of reflected foreign table didn't equal expected columns")
 
     def test_foreign_table_select(self):
         metadata = MetaData(testing.db)
-        table = Table('test_foreigntable', metadata, autoload=True, postgresql_relkind='f')
+        table = Table('test_foreigntable', metadata, autoload=True)
         assert table.select().execute().fetchall() == [
             (89, 'd1',)
         ]
 
     def test_foreign_table_roundtrip(self):
         metadata = MetaData(testing.db)
-        table = Table('test_foreigntable', metadata, autoload=True, postgresql_relkind='f')
+        table = Table('test_foreigntable', metadata, autoload=True)
 
         connection = testing.db.connect()
         trans = connection.begin()
@@ -105,13 +101,6 @@ class RelKindReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         assert table.select().execute().fetchall() == [
             (89, 'd1',)
         ]
-
-    def test_invalid_relkind(self):
-        metadata = MetaData(testing.db)
-        def create_bad_table():
-            return Table('test_foreigntable', metadata, autoload=True, postgresql_relkind='nope')
-
-        assert_raises(exc.SQLAlchemyError, create_bad_table)
 
 
 class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
