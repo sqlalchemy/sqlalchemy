@@ -1707,8 +1707,7 @@ class PGDialect(default.DefaultDialect):
             "ops": {}
         }),
         (schema.Table, {
-            "ignore_search_path": False,
-            "relkind": None
+            "ignore_search_path": False
         })
     ]
 
