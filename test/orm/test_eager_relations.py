@@ -879,18 +879,15 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             sess.query(User).options(joinedload(User.orders)).limit(10),
-            "SELECT anon_1.users_id AS anon_1_users_id, "
-            "anon_1.users_name AS anon_1_users_name, "
-            "orders_1.id AS orders_1_id, orders_1.user_id "
-            "AS orders_1_user_id, "
-            "orders_1.address_id AS "
-            "orders_1_address_id, orders_1.description "
-            "AS orders_1_description, "
-            "orders_1.isopen AS orders_1_isopen "
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name "
+            "AS anon_1_users_name, orders_1.id AS orders_1_id, "
+            "orders_1.user_id AS orders_1_user_id, orders_1.address_id "
+            "AS orders_1_address_id, orders_1.description AS "
+            "orders_1_description, orders_1.isopen AS orders_1_isopen "
             "FROM (SELECT users.id AS users_id, users.name AS users_name "
             "FROM users "
-            "LIMIT :param_1) AS anon_1 LEFT OUTER JOIN orders AS orders_1 "
-            "ON anon_1.users_id = orders_1.user_id",
+            "LIMIT :param_1) AS anon_1 LEFT OUTER JOIN orders AS "
+            "orders_1 ON anon_1.users_id = orders_1.user_id",
             {'param_1': 10}
         )
 
@@ -969,22 +966,20 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 joinedload(
                     "orders.address",
                     innerjoin=True)).limit(10),
-            "SELECT anon_1.users_id AS anon_1_users_id, "
-            "anon_1.users_name AS anon_1_users_name, "
-            "addresses_1.id AS addresses_1_id, "
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name "
+            "AS anon_1_users_name, addresses_1.id AS addresses_1_id, "
             "addresses_1.user_id AS addresses_1_user_id, "
             "addresses_1.email_address AS addresses_1_email_address, "
-            "orders_1.id AS orders_1_id, "
-            "orders_1.user_id AS orders_1_user_id, "
-            "orders_1.address_id AS orders_1_address_id, "
+            "orders_1.id AS orders_1_id, orders_1.user_id AS "
+            "orders_1_user_id, orders_1.address_id AS orders_1_address_id, "
             "orders_1.description AS orders_1_description, "
             "orders_1.isopen AS orders_1_isopen "
             "FROM (SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users "
-            "LIMIT :param_1) AS anon_1 LEFT OUTER JOIN orders "
-            "AS orders_1 ON anon_1.users_id = "
-            "orders_1.user_id LEFT OUTER JOIN addresses AS addresses_1 "
-            "ON addresses_1.id = orders_1.address_id",
+            "FROM users"
+            " LIMIT :param_1) AS anon_1 LEFT OUTER JOIN "
+            "(orders AS orders_1 JOIN addresses AS addresses_1 "
+            "ON addresses_1.id = orders_1.address_id) ON "
+            "anon_1.users_id = orders_1.user_id",
             {'param_1': 10}
         )
 
@@ -1291,7 +1286,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             "addresses AS addresses_1 ON users.id = addresses_1.user_id "
             "ORDER BY addresses_1.id")
 
-    def test_inner_join_chaining_options(self):
+    def test_inner_join_unnested_chaining_options(self):
         users, items, order_items, Order, Item, User, orders = (
             self.tables.users,
             self.tables.items,
@@ -1302,12 +1297,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.tables.orders)
 
         mapper(User, users, properties=dict(
-            orders=relationship(Order, innerjoin=True,
+            orders=relationship(Order, innerjoin="unnested",
                                 lazy=False)
         ))
         mapper(Order, orders, properties=dict(
             items=relationship(Item, secondary=order_items, lazy=False,
-                               innerjoin=True)
+                               innerjoin="unnested")
         ))
         mapper(Item, items)
 
@@ -1382,12 +1377,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.tables.orders)
 
         mapper(User, users, properties=dict(
-            orders=relationship(Order, innerjoin='nested',
+            orders=relationship(Order, innerjoin=True,
                                 lazy=False, order_by=orders.c.id)
         ))
         mapper(Order, orders, properties=dict(
             items=relationship(Item, secondary=order_items, lazy=False,
-                               innerjoin='nested', order_by=items.c.id)
+                               innerjoin=True, order_by=items.c.id)
         ))
         mapper(Item, items)
 
@@ -1505,7 +1500,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         sess = create_session()
         q = sess.query(User).options(
             joinedload("orders", innerjoin=False).
-            joinedload("items", innerjoin="nested")
+            joinedload("items", innerjoin=True)
         )
 
         self.assert_compile(
@@ -1572,7 +1567,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         sess = create_session()
         q = sess.query(User).options(
             joinedload("orders"),
-            joinedload("addresses", innerjoin=True),
+            joinedload("addresses", innerjoin="unnested"),
         )
 
         self.assert_compile(
@@ -1608,7 +1603,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         sess = create_session()
         q = sess.query(User).options(
             joinedload("orders"),
-            joinedload("addresses", innerjoin='nested'),
+            joinedload("addresses", innerjoin=True),
         )
 
         self.assert_compile(
@@ -1692,7 +1687,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             "ORDER BY items_1.id, keywords_1.id"
         )
 
-    def test_inner_join_chaining_fixed(self):
+    def test_inner_join_unnested_chaining_fixed(self):
         users, items, order_items, Order, Item, User, orders = (
             self.tables.users,
             self.tables.items,
@@ -1707,7 +1702,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         ))
         mapper(Order, orders, properties=dict(
             items=relationship(Item, secondary=order_items, lazy=False,
-                               innerjoin=True)
+                               innerjoin="unnested")
         ))
         mapper(Item, items)
 

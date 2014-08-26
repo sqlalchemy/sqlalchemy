@@ -104,6 +104,55 @@ symbol, and no change to the object's state occurs.
 
 :ticket:`3061`
 
+.. _migration_3008:
+
+Right inner join nesting now the default for joinedload with innerjoin=True
+---------------------------------------------------------------------------
+
+The behavior of :paramref:`.joinedload.innerjoin` as well as
+:paramref:`.relationship.innerjoin` is now to use "nested"
+inner joins, that is, right-nested, as the default behavior when an
+inner join joined eager load is chained to an outer join eager load.  In
+order to get the old behavior of chaining all joined eager loads as
+outer join when an outer join is present, use ``innerjoin="unnested"``.
+
+As introduced in :ref:`feature_2976` from version 0.9, the behavior of
+``innerjoin="nested"`` is that an inner join eager load chained to an outer
+join eager load will use a right-nested join.  ``"nested"`` is now implied
+when using ``innerjoin=True``::
+
+	query(User).options(
+		joinedload("orders", innerjoin=False).joinedload("items", innerjoin=True))
+
+With the new default, this will render the FROM clause in the form::
+
+	FROM users LEFT OUTER JOIN (orders JOIN items ON <onclause>) ON <onclause>
+
+That is, using a right-nested join for the INNER join so that the full
+result of ``users`` can be returned.   The use of an INNER join is more efficient
+than using an OUTER join, and allows the :paramref:`.joinedload.innerjoin`
+optimization parameter to take effect in all cases.
+
+To get the older behavior, use ``innerjoin="unnested"``::
+
+	query(User).options(
+		joinedload("orders", innerjoin=False).joinedload("items", innerjoin="unnested"))
+
+This will avoid right-nested joins and chain the joins together using all
+OUTER joins despite the innerjoin directive::
+
+	FROM users LEFT OUTER JOIN orders ON <onclause> LEFT OUTER JOIN items ON <onclause>
+
+As noted in the 0.9 notes, the only database backend that has difficulty
+with right-nested joins is SQLite; SQLAlchemy as of 0.9 converts a right-nested
+join into a subquery as a join target on SQLite.
+
+.. seealso::
+
+	:ref:`feature_2976` - description of the feature as introduced in 0.9.4.
+
+:ticket:`3008`
+
 query.update() with ``synchronize_session='evaluate'`` raises on multi-table update
 -----------------------------------------------------------------------------------
 

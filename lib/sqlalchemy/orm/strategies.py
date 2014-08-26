@@ -1324,7 +1324,8 @@ class JoinedLoader(AbstractRelationshipLoader):
         join_to_outer = innerjoin and isinstance(towrap, sql.Join) and \
             towrap.isouter
 
-        if chained_from_outerjoin and join_to_outer and innerjoin == 'nested':
+        if chained_from_outerjoin and \
+                join_to_outer and innerjoin != 'unnested':
             inner = orm_util.join(
                 towrap.right,
                 clauses.aliased_class,

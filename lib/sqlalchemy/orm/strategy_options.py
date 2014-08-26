@@ -1,4 +1,3 @@
-# orm/strategy_options.py
 # Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
@@ -631,15 +630,47 @@ def joinedload(loadopt, attr, innerjoin=None):
 
         query(Order).options(joinedload(Order.user, innerjoin=True))
 
-     If the joined-eager load is chained onto an existing LEFT OUTER JOIN,
-     ``innerjoin=True`` will be bypassed and the join will continue to
-     chain as LEFT OUTER JOIN so that the results don't change.  As an
-     alternative, specify the value ``"nested"``.  This will instead nest the
-     join on the right side, e.g. using the form "a LEFT OUTER JOIN
-     (b JOIN c)".
+     In order to chain multiple eager joins together where some may be
+     OUTER and others INNER, right-nested joins are used to link them::
 
-     .. versionadded:: 0.9.4 Added ``innerjoin="nested"`` option to support
-        nesting of eager "inner" joins.
+        query(A).options(
+            joinedload(A.bs, innerjoin=False).
+                joinedload(B.cs, innerjoin=True)
+        )
+
+     The above query, linking A.bs via "outer" join and B.cs via "inner" join
+     would render the joins as "a LEFT OUTER JOIN (b JOIN c)".   When using
+     SQLite, this form of JOIN is translated to use full subqueries as this
+     syntax is otherwise not directly supported.
+
+     The ``innerjoin`` flag can also be stated with the term ``"unnested"``.
+     This will prevent joins from being right-nested, and will instead
+     link an "innerjoin" eagerload to an "outerjoin" eagerload by bypassing
+     the "inner" join.   Using this form as follows::
+
+        query(A).options(
+            joinedload(A.bs, innerjoin=False).
+                joinedload(B.cs, innerjoin="unnested")
+        )
+
+     Joins will be rendered as "a LEFT OUTER JOIN b LEFT OUTER JOIN c", so that
+     all of "a" is matched rather than being incorrectly limited by a "b" that
+     does not contain a "c".
+
+     .. note:: The "unnested" flag does **not** affect the JOIN rendered
+        from a many-to-many association table, e.g. a table configured
+        as :paramref:`.relationship.secondary`, to the target table; for
+        correctness of results, these joins are always INNER and are
+        therefore right-nested if linked to an OUTER join.
+
+     .. versionadded:: 0.9.4 Added support for "nesting" of eager "inner"
+        joins.  See :ref:`feature_2976`.
+
+     .. versionchanged:: 1.0.0 ``innerjoin=True`` now implies
+        ``innerjoin="nested"``, whereas in 0.9 it implied
+        ``innerjoin="unnested"``.  In order to achieve the pre-1.0 "unnested"
+        inner join behavior, use the value ``innerjoin="unnested"``.
+        See :ref:`migration_3008`.
 
     .. note::
 

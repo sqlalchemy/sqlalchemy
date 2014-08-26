@@ -23,6 +23,19 @@
 
 
     .. change::
+        :tags: feature, orm
+        :tickets: 3008
+
+        The behavior of :paramref:`.joinedload.innerjoin` as well as
+        :paramref:`.relationship.innerjoin` is now to use "nested"
+        inner joins, that is, right-nested, as the default behavior when an
+        inner join joined eager load is chained to an outer join eager load.
+
+        .. seealso::
+
+            :ref:`migration_3008`
+
+    .. change::
         :tags: bug, orm
         :tickets: 3171
 
