@@ -378,6 +378,7 @@ class Inspector(object):
          use :class:`.quoted_name`.
 
         """
+
         return self.dialect.get_indexes(self.bind, table_name,
                                         schema,
                                         info_cache=self.info_cache, **kw)
@@ -404,6 +405,7 @@ class Inspector(object):
         .. versionadded:: 0.8.4
 
         """
+
         return self.dialect.get_unique_constraints(
             self.bind, table_name, schema, info_cache=self.info_cache, **kw)
 
@@ -571,7 +573,7 @@ class Inspector(object):
                                                conname, link_to_name=True,
                                                **options))
         # Indexes
-        indexes = self.get_indexes(table_name, schema, **table.dialect_kwargs)
+        indexes = self.get_indexes(table_name, schema)
         for index_d in indexes:
             name = index_d['name']
             columns = index_d['column_names']

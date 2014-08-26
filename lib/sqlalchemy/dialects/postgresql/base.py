@@ -1781,7 +1781,7 @@ class PGDialect(default.DefaultDialect):
         })
     ]
 
-    reflection_options = ('postgresql_ignore_search_path',)
+    reflection_options = ('postgresql_ignore_search_path', )
 
     _backslash_escapes = True
 
@@ -2019,7 +2019,6 @@ class PGDialect(default.DefaultDialect):
             schema_where_clause = "n.nspname = :schema"
         else:
             schema_where_clause = "pg_catalog.pg_table_is_visible(c.oid)"
-
         query = """
             SELECT c.oid
             FROM pg_catalog.pg_class c
@@ -2435,6 +2434,7 @@ class PGDialect(default.DefaultDialect):
 
         # cast indkey as varchar since it's an int2vector,
         # returned as a list by some drivers such as pypostgresql
+        
         IDX_SQL = """
           SELECT
               i.relname as relname,
