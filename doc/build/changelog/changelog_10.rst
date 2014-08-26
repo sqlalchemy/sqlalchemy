@@ -16,6 +16,12 @@
 .. changelog::
 	:version: 1.0.0
 
+    Version 1.0.0 is the first release of the 1.0 series.   Many changes
+    described here are also present in the 0.9 and sometimes the 0.8
+    series as well.  For changes that are specific to 1.0 with an emphasis
+    on compatibility concerns, see :doc:`/changelog/migration_10`.
+
+
     .. change::
         :tags: bug, orm
         :tickets: 3171
@@ -28,8 +34,8 @@
         :tags: bug, sql
         :tickets: 3169
 
-        The INSERT...FROM SELECT construct now implies ``inline=True``
-        on :class:`.Insert`.  This helps to fix a bug where an
+        Using :meth:`.Insert.from_select`  now implies ``inline=True``
+        on :func:`.insert`.  This helps to fix a bug where an
         INSERT...FROM SELECT construct would inadvertently be compiled
         as "implicit returning" on supporting backends, which would
         cause breakage in the case of an INSERT that inserts zero rows
@@ -88,8 +94,10 @@
         statements can be batched; this will be invoked within flush
         to the degree that subsequent UPDATE statements for the
         same mapping and table involve the identical columns within the
-        VALUES clause, as well as that no VALUES-level SQL expressions
-        are embedded.
+        VALUES clause, that no SET-level SQL expressions
+        are embedded, and that the versioning requirements for the mapping
+        are compatible with the backend dialect's ability to return
+        a correct rowcount for an executemany operation.
 
     .. change::
         :tags: engine, bug

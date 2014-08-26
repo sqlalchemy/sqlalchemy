@@ -8,7 +8,7 @@ What's New in SQLAlchemy 1.0?
     undergoing maintenance releases as of May, 2014,
     and SQLAlchemy version 1.0, as of yet unreleased.
 
-    Document last updated: May 23, 2014
+    Document last updated: August 26, 2014
 
 Introduction
 ============
@@ -31,6 +31,13 @@ Behavioral Changes - ORM
 
 Changes to attribute events and other operations regarding attributes that have no pre-existing value
 ------------------------------------------------------------------------------------------------------
+
+In this change, the default return value of ``None`` when accessing an object
+is now returned dynamically on each access, rather than implicitly setting the
+attribute's state with a special "set" operation when it is first accessed.
+The visible result of this change is that ``obj.__dict__`` is not implicitly
+modified on get, and there are also some minor behavioral changes
+for :func:`.attributes.get_history` and related functions.
 
 Given an object with no state::
 
@@ -90,25 +97,87 @@ attribute set operation on a many-to-one is received; previously, the "old" valu
 would be "None" if it had been not set otherwise; it now will send the
 value :data:`.orm.attributes.NEVER_SET`, which is a value that may be sent
 to an attribute listener now.   This symbol may also be received when
-calling on mapper utility functions such as :meth:`.Mapper.primary_key_from_state`;
+calling on mapper utility functions such as :meth:`.Mapper.primary_key_from_instance`;
 if the primary key attributes have no setting at all, whereas the value
 would be ``None`` before, it will now be the :data:`.orm.attributes.NEVER_SET`
 symbol, and no change to the object's state occurs.
 
 :ticket:`3061`
 
+query.update() with ``synchronize_session='evaluate'`` raises on multi-table update
+-----------------------------------------------------------------------------------
+
+The "evaulator" for :meth:`.Query.update` won't work with multi-table
+updates, and needs to be set to ``synchronize_session=False`` or
+``synchronize_session='fetch'`` when multiple tables are present.
+The new behavior is that an explicit exception is now raised, with a message
+to change the synchronize setting.
+This is upgraded from a warning emitted as of 0.9.7.
+
+:ticket:`3117`
+
+Resurrect Event has been Removed
+--------------------------------
+
+The "resurrect" ORM event has been removed entirely.  This event ceased to
+have any function since version 0.8 removed the older "mutable" system
+from the unit of work.
+
+
 .. _behavioral_changes_core_10:
 
 Behavioral Changes - Core
 =========================
+
+.. _change_3163:
+
+Event listeners can not be added or removed from within that event's runner
+---------------------------------------------------------------------------
+
+Removal of an event listener from inside that same event itself would
+modify  the elements of a list during iteration, which would cause
+still-attached event listeners to silently fail to fire.    To prevent
+this while still maintaining performance, the lists have been replaced
+with ``collections.deque()``, which does not allow any additions or
+removals during iteration, and instead raises ``RuntimeError``.
+
+:ticket:`3163`
+
+.. _change_3169:
+
+The INSERT...FROM SELECT construct now implies ``inline=True``
+--------------------------------------------------------------
+
+Using :meth:`.Insert.from_select` now implies ``inline=True``
+on :func:`.insert`.  This helps to fix a bug where an
+INSERT...FROM SELECT construct would inadvertently be compiled
+as "implicit returning" on supporting backends, which would
+cause breakage in the case of an INSERT that inserts zero rows
+(as implicit returning expects a row), as well as arbitrary
+return data in the case of an INSERT that inserts multiple
+rows (e.g. only the first row of many).
+A similar change is also applied to an INSERT..VALUES
+with multiple parameter sets; implicit RETURNING will no longer emit
+for this statement either.  As both of these constructs deal
+with varible numbers of rows, the
+:attr:`.ResultProxy.inserted_primary_key` accessor does not
+apply.   Previously, there was a documentation note that one
+may prefer ``inline=True`` with INSERT..FROM SELECT as some databases
+don't support returning and therefore can't do "implicit" returning,
+but there's no reason an INSERT...FROM SELECT needs implicit returning
+in any case.   Regular explicit :meth:`.Insert.returning` should
+be used to return variable numbers of result rows if inserted
+data is needed.
+
+:ticket:`3169`
 
 .. _change_3027:
 
 ``autoload_with`` now implies ``autoload=True``
 -----------------------------------------------
 
-A :class:`.Table` can be set up for reflection by passing ``autoload_with``
-alone::
+A :class:`.Table` can be set up for reflection by passing
+:paramref:`.Table.autoload_with` alone::
 
 	my_table = Table('my_table', metadata, autoload_with=some_engine)
 
@@ -143,6 +212,78 @@ wishes to support the new feature should now call upon the ``._limit_clause``
 and ``._offset_clause`` attributes to receive the full SQL expression, rather
 than the integer value.
 
+Behavioral Improvements
+=======================
+
+.. _feature_updatemany:
+
+UPDATE statements are now batched with executemany() in a flush
+----------------------------------------------------------------
+
+UPDATE statements can now be batched within an ORM flush
+into more performant executemany() call, similarly to how INSERT
+statements can be batched; this will be invoked within flush
+based on the following criteria:
+
+* two or more UPDATE statements in sequence involve the identical set of
+  columns to be modified.
+
+* The statement has no embedded SQL expressions in the SET clause.
+
+* The mapping does not use a :paramref:`~.orm.mapper.version_id_col`, or
+  the backend dialect supports a "sane" rowcount for an executemany()
+  operation; most DBAPIs support this correctly now.
+
+
+.. _feature_2963:
+
+.info dictionary improvements
+-----------------------------
+
+The :attr:`.InspectionAttr.info` collection is now available on every kind
+of object that one would retrieve from the :attr:`.Mapper.all_orm_descriptors`
+collection.  This includes :class:`.hybrid_property` and :func:`.association_proxy`.
+However, as these objects are class-bound descriptors, they must be accessed
+**separately** from the class to which they are attached in order to get
+at the attribute.  Below this is illustared using the
+:attr:`.Mapper.all_orm_descriptors` namespace::
+
+	class SomeObject(Base):
+	    # ...
+
+	    @hybrid_property
+	    def some_prop(self):
+	        return self.value + 5
+
+
+	inspect(SomeObject).all_orm_descriptors.some_prop.info['foo'] = 'bar'
+
+It is also available as a constructor argument for all :class:`.SchemaItem`
+objects (e.g. :class:`.ForeignKey`, :class:`.UniqueConstraint` etc.) as well
+as remaining ORM constructs such as :func:`.orm.synonym`.
+
+:ticket:`2971`
+
+:ticket:`2963`
+
+Dialect Changes
+===============
+
+.. _change_2051:
+
+New Postgresql Table options
+-----------------------------
+
+Added support for PG table options TABLESPACE, ON COMMIT,
+WITH(OUT) OIDS, and INHERITS, when rendering DDL via
+the :class:`.Table` construct.
+
+.. seealso::
+
+    :ref:`postgresql_table_options`
+
+:ticket:`2051`
+
 .. _feature_get_enums:
 
 New get_enums() method with Postgresql Dialect
@@ -162,38 +303,28 @@ method that returns information on all available ``ENUM`` types::
 
 	:meth:`.PGInspector.get_enums`
 
-Behavioral Improvements
-=======================
+MySQL internal "no such table" exceptions not passed to event handlers
+----------------------------------------------------------------------
 
-.. _feature_2963:
-
-.info dictionary improvements
------------------------------
-
-The :attr:`.InspectionAttr.info` collection is now available on every kind
-of object that one would retrieve from the :attr:`.Mapper.all_orm_descriptors`
-collection::
-
-	class SomeObject(Base):
-	    # ...
-
-	    @hybrid_property(self):
-	    def some_prop(self):
-	        return self.value + 5
+The MySQL dialect will now disable :meth:`.ConnectionEvents.handle_error`
+events from firing for those statements which it uses internally
+to detect if a table exists or not.   This is achieved using an
+execution option ``skip_user_error_events`` that disables the handle
+error event for the scope of that execution.   In this way, user code
+that rewrites exceptions doesn't need to worry about the MySQL
+dialect or other dialects that occasionally need to catch
+SQLAlchemy specific exceptions.
 
 
-	inspect(SomeObject).all_orm_descriptors.some_prop.info['foo'] = 'bar'
+Changed the default value of ``raise_on_warnings`` for MySQL-Connector
+----------------------------------------------------------------------
 
-It is also available as a constructor argument for all :class:`.SchemaItem`
-objects (e.g. :class:`.ForeignKey`, :class:`.UniqueConstraint` etc.) as well
-as remaining ORM constructs such as :func:`.orm.synonym`.
+Changed the default value of "raise_on_warnings" to False for
+MySQL-Connector.  This was set at True for some reason.  The "buffered"
+flag unfortunately must stay at True as MySQLconnector does not allow
+a cursor to be closed unless all results are fully fetched.
 
-:ticket:`2971`
-
-:ticket:`2963`
-
-Dialect Changes
-===============
+:ticket:`2515`
 
 .. _change_2984:
 

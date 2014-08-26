@@ -417,7 +417,7 @@ of :class:`.PGInspector`, which offers additional methods::
 .. autoclass:: PGInspector
     :members:
 
-.. postgresql_table_options:
+.. _postgresql_table_options:
 
 PostgreSQL Table Options
 -------------------------

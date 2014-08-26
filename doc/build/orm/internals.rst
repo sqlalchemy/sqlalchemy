@@ -27,7 +27,7 @@ sections, are listed here.
     :members:
 
 
-.. autoclass:: sqlalchemy.orm.interfaces.InspectionAttr
+.. autoclass:: sqlalchemy.orm.base.InspectionAttr
     :members:
 
 
