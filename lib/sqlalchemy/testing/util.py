@@ -203,5 +203,7 @@ class adict(dict):
         except KeyError:
             return dict.__getattribute__(self, key)
 
-    def get_all(self, *keys):
+    def __call__(self, *keys):
         return tuple([self[key] for key in keys])
+
+    get_all = __call__

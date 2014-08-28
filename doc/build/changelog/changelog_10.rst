@@ -23,6 +23,18 @@
 
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3145
+
+        Made a small adjustment to the mechanics of lazy loading,
+        such that it has less chance of interfering with a joinload() in the
+        very rare circumstance that an object points to itself; in this
+        scenario, the object refers to itself while loading its attributes
+        which can cause a mixup between loaders.   The use case of
+        "object points to itself" is not fully supported, but the fix also
+        removes some overhead so for now is part of testing.
+
+    .. change::
         :tags: feature, orm
         :tickets: 3176
 

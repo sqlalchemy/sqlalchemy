@@ -2,7 +2,7 @@
 
 from sqlalchemy.testing import assert_raises
 import datetime
-from sqlalchemy.orm import attributes, exc as orm_exc
+from sqlalchemy.orm import attributes, exc as orm_exc, configure_mappers
 import sqlalchemy as sa
 from sqlalchemy import testing, and_
 from sqlalchemy import Integer, String, ForeignKey, SmallInteger, Boolean
@@ -892,3 +892,81 @@ class O2MWOSideFixedTest(fixtures.MappedTest):
             [p.id for p in c2.people],
             []
         )
+
+
+class RefersToSelfLazyLoadInterferenceTest(fixtures.MappedTest):
+    """Test [issue:3145].
+
+    This involves an object that refers to itself, which isn't
+    entirely a supported use case.   Here, we're able to fix it,
+    but long term it's not clear if future needs will affect this.
+    The use case is not super-critical.
+
+    """
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'a', metadata,
+            Column('a_id', Integer, primary_key=True),
+            Column('b_id', ForeignKey('b.b_id')),
+        )
+
+        Table(
+            'b', metadata,
+            Column('b_id', Integer, primary_key=True),
+            Column('parent_id', ForeignKey('b.b_id')),
+        )
+
+        Table(
+            'c', metadata,
+            Column('c_id', Integer, primary_key=True),
+            Column('b_id', ForeignKey('b.b_id')),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Basic):
+            pass
+
+        class B(cls.Basic):
+            pass
+
+        class C(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        mapper(cls.classes.A, cls.tables.a, properties={
+            "b": relationship(cls.classes.B)
+        })
+        bm = mapper(cls.classes.B, cls.tables.b, properties={
+            "parent": relationship(
+                cls.classes.B, remote_side=cls.tables.b.c.b_id),
+            "zc": relationship(cls.classes.C)
+        })
+        mapper(cls.classes.C, cls.tables.c)
+
+        bmp = bm._props
+        configure_mappers()
+        # Bug is order-dependent, must sort the "zc" property to the end
+        bmp.sort()
+
+    def test_lazy_doesnt_interfere(self):
+        A, B, C = self.classes("A", "B", "C")
+
+        session = Session()
+        b = B()
+        session.add(b)
+        session.flush()
+
+        b.parent_id = b.b_id
+
+        b.zc.append(C())
+        b.zc.append(C())
+        session.commit()
+
+        # If the bug is here, the next line throws an exception
+        session.query(B).options(
+            sa.orm.joinedload('parent').joinedload('zc')).all()
+

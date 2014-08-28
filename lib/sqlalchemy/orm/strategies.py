@@ -634,7 +634,7 @@ class LazyLoader(AbstractRelationshipLoader):
                 LoadLazyAttribute(key), key)
 
             return set_lazy_callable, None, None
-        else:
+        elif context.populate_existing or mapper.always_refresh:
             def reset_for_lazy_callable(state, dict_, row):
                 # we are the primary manager for this attribute on
                 # this class - reset its
@@ -647,6 +647,9 @@ class LazyLoader(AbstractRelationshipLoader):
                 state._reset(dict_, key)
 
             return reset_for_lazy_callable, None, None
+        else:
+            return None, None, None
+
 
 
 class LoadLazyAttribute(object):
