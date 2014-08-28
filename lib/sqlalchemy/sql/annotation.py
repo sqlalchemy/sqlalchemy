@@ -46,6 +46,7 @@ class Annotated(object):
         self.__dict__ = element.__dict__.copy()
         self.__element = element
         self._annotations = values
+        self._hash = hash(element)
 
     def _annotate(self, values):
         _values = self._annotations.copy()
@@ -87,7 +88,7 @@ class Annotated(object):
             return self.__class__(clone, self._annotations)
 
     def __hash__(self):
-        return hash(self.__element)
+        return self._hash
 
     def __eq__(self, other):
         if isinstance(self.__element, operators.ColumnOperators):
