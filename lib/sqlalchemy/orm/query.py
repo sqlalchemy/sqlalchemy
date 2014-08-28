@@ -3275,9 +3275,10 @@ class Bundle(object):
             :ref:`bundles` - includes an example of subclassing.
 
         """
+        keyed_tuple = util.lightweight_named_tuple('result', labels)
+
         def proc(row, result):
-            return util.KeyedTuple(
-                [proc(row, None) for proc in procs], labels)
+            return keyed_tuple([proc(row, None) for proc in procs])
         return proc
 
 

@@ -24,6 +24,18 @@
 
     .. change::
         :tags: feature, orm
+        :tickets: 3176
+
+        A new implementation for :class:`.KeyedTuple` used by the
+        :class:`.Query` object offers dramatic speed improvements when
+        fetching large numbers of column-oriented rows.
+
+        .. seealso::
+
+            :ref:`feature_3176`
+
+    .. change::
+        :tags: feature, orm
         :tickets: 3008
 
         The behavior of :paramref:`.joinedload.innerjoin` as well as

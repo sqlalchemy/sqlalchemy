@@ -284,6 +284,55 @@ based on the following criteria:
   operation; most DBAPIs support this correctly now.
 
 
+.. _feature_3176:
+
+New KeyedTuple implementation dramatically faster
+-------------------------------------------------
+
+We took a look into the :class:`.KeyedTuple` implementation in the hopes
+of improving queries like this::
+
+	rows = sess.query(Foo.a, Foo.b, Foo.c).all()
+
+The :class:`.KeyedTuple` class is used rather than Python's
+``collections.namedtuple()``, because the latter has a very complex
+type-creation routine that benchmarks much slower than :class:`.KeyedTuple`.
+However, when fetching hundreds of thousands of rows,
+``collections.namedtuple()`` quickly overtakes :class:`.KeyedTuple` which
+becomes dramatically slower as instance invocation goes up.   What to do?
+A new type that hedges between the approaches of both.   Benching
+all three types for "size" (number of rows returned) and "num"
+(number of distinct queries), the new "lightweight keyed tuple" either
+outperforms both, or lags very slightly behind the faster object, based on
+which scenario.  In the "sweet spot", where we are both creating a good number
+of new types as well as fetching a good number of rows, the lightweight
+object totally smokes both namedtuple and KeyedTuple::
+
+	-----------------
+	size=10 num=10000                 # few rows, lots of queries
+	namedtuple: 3.60302400589         # namedtuple falls over
+	keyedtuple: 0.255059957504        # KeyedTuple very fast
+	lw keyed tuple: 0.582715034485    # lw keyed trails right on KeyedTuple
+	-----------------
+	size=100 num=1000                 # <--- sweet spot
+	namedtuple: 0.365247011185
+	keyedtuple: 0.24896979332
+	lw keyed tuple: 0.0889317989349   # lw keyed blows both away!
+	-----------------
+	size=10000 num=100
+	namedtuple: 0.572599887848
+	keyedtuple: 2.54251694679
+	lw keyed tuple: 0.613876104355
+	-----------------
+	size=1000000 num=10               # few queries, lots of rows
+	namedtuple: 5.79669594765         # namedtuple very fast
+	keyedtuple: 28.856498003          # KeyedTuple falls over
+	lw keyed tuple: 6.74346804619     # lw keyed trails right on namedtuple
+
+
+:ticket:`3176`
+
+
 .. _feature_2963:
 
 .info dictionary improvements

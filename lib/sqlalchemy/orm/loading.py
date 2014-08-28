@@ -54,6 +54,9 @@ def instances(query, cursor, context):
             for query_entity in query._entities
         ]))
 
+    if not custom_rows and not single_entity:
+        keyed_tuple = util.lightweight_named_tuple('result', labels)
+
     while True:
         context.progress = {}
         context.partials = {}
@@ -72,8 +75,8 @@ def instances(query, cursor, context):
         elif single_entity:
             rows = [process[0](row, None) for row in fetch]
         else:
-            rows = [util.KeyedTuple([proc(row, None) for proc in process],
-                                    labels) for row in fetch]
+            rows = [keyed_tuple([proc(row, None) for proc in process])
+                    for row in fetch]
 
         if filtered:
             rows = util.unique_list(rows, filter_fn)
@@ -126,6 +129,7 @@ def merge_result(querylib, query, iterator, load=True):
                                if isinstance(e, querylib._MapperEntity)]
             result = []
             keys = [ent._label_name for ent in query._entities]
+            keyed_tuple = util.lightweight_named_tuple('result', keys)
             for row in iterator:
                 newrow = list(row)
                 for i in mapped_entities:
@@ -134,7 +138,7 @@ def merge_result(querylib, query, iterator, load=True):
                             attributes.instance_state(newrow[i]),
                             attributes.instance_dict(newrow[i]),
                             load=load, _recursive={})
-                result.append(util.KeyedTuple(newrow, keys))
+                result.append(keyed_tuple(newrow))
 
         return iter(result)
     finally:
