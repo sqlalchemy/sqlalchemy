@@ -28,8 +28,7 @@ def instances(query, cursor, context):
 
     context.runid = _new_runid()
 
-    filter_fns = [ent.filter_fn
-                  for ent in query._entities]
+    filter_fns = [ent.filter_fn for ent in query._entities]
     filtered = id in filter_fns
 
     single_entity = len(query._entities) == 1 and \
@@ -384,7 +383,7 @@ def instance_processor(mapper, context, result, path, adapter,
                 state.manager.dispatch.refresh(
                     state, context, only_load_props)
 
-            if populate_existing:
+            if populate_existing or state.modified:
                 if refresh_state and only_load_props:
                     state._commit(dict_, only_load_props)
                 else:
@@ -398,33 +397,35 @@ def instance_processor(mapper, context, result, path, adapter,
 
             if state in context.partials:
                 isnew = False
-                (d_, attrs) = context.partials[state]
+                to_load = context.partials[state]
                 for key, populator in existing_populators:
-                    if key not in attrs:
+                    if key not in to_load:
                         continue
                     populator(state, dict_, row)
             else:
                 isnew = True
-                attrs = unloaded
-                context.partials[state] = (dict_, attrs)
+                to_load = unloaded
+                context.partials[state] = to_load
+
                 if context.propagate_options:
                     state.load_options = context.propagate_options
                 if state.load_options:
                     state.load_path = load_path
 
                 for key, populator in new_populators:
-                    if key not in attrs:
+                    if key not in to_load:
                         continue
                     populator(state, dict_, row)
-
-                state._commit(dict_, attrs)
 
             for key, pop in eager_populators:
                 if key not in unloaded:
                     pop(state, dict_, row)
 
             if isnew and refresh_evt:
-                state.manager.dispatch.refresh(state, context, attrs)
+                state.manager.dispatch.refresh(state, context, to_load)
+
+            if isnew:
+                state._commit(dict_, to_load)
 
         return instance
     return _instance
