@@ -1166,11 +1166,17 @@ return structure with a straight Python dictionary::
     class DictBundle(Bundle):
         def create_row_processor(self, query, procs, labels):
             """Override create_row_processor to return values as dictionaries"""
-            def proc(row, result):
+            def proc(row):
                 return dict(
-                            zip(labels, (proc(row, result) for proc in procs))
+                            zip(labels, (proc(row) for proc in procs))
                         )
             return proc
+
+.. versionchanged:: 1.0
+
+   The ``proc()`` callable passed to the ``create_row_processor()``
+   method of custom :class:`.Bundle` classes now accepts only a single
+   "row" argument.
 
 A result from the above bundle will return dictionary values::
 

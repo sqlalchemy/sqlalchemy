@@ -3003,7 +3003,6 @@ class _MapperEntity(_QueryEntity):
         else:
             self._label_name = self.mapper.class_.__name__
         self.path = self.entity_zero._path_registry
-        self.custom_rows = bool(self.mapper.dispatch.append_result)
 
     def set_with_polymorphic(self, query, cls_or_mappers,
                              selectable, polymorphic_on):
@@ -3082,7 +3081,7 @@ class _MapperEntity(_QueryEntity):
 
         return ret
 
-    def row_processor(self, query, context, custom_rows):
+    def row_processor(self, query, context, result):
         adapter = self._get_entity_clauses(query, context)
 
         if context.adapter and adapter:
@@ -3102,6 +3101,7 @@ class _MapperEntity(_QueryEntity):
             _instance = loading.instance_processor(
                 self.mapper,
                 context,
+                result,
                 self.path,
                 adapter,
                 only_load_props=query._only_load_props,
@@ -3112,6 +3112,7 @@ class _MapperEntity(_QueryEntity):
             _instance = loading.instance_processor(
                 self.mapper,
                 context,
+                result,
                 self.path,
                 adapter,
                 polymorphic_discriminator=self._polymorphic_discriminator
@@ -3277,8 +3278,8 @@ class Bundle(object):
         """
         keyed_tuple = util.lightweight_named_tuple('result', labels)
 
-        def proc(row, result):
-            return keyed_tuple([proc(row, None) for proc in procs])
+        def proc(row):
+            return keyed_tuple([proc(row) for proc in procs])
         return proc
 
 
@@ -3303,7 +3304,6 @@ class _BundleEntity(_QueryEntity):
 
         self.supports_single_entity = self.bundle.single_entity
 
-    custom_rows = False
 
     @property
     def entity_zero(self):
@@ -3345,9 +3345,9 @@ class _BundleEntity(_QueryEntity):
         for ent in self._entities:
             ent.setup_context(query, context)
 
-    def row_processor(self, query, context, custom_rows):
+    def row_processor(self, query, context, result):
         procs, labels = zip(
-            *[ent.row_processor(query, context, custom_rows)
+            *[ent.row_processor(query, context, result)
               for ent in self._entities]
         )
 
@@ -3437,7 +3437,6 @@ class _ColumnEntity(_QueryEntity):
             self.entity_zero = None
 
     supports_single_entity = False
-    custom_rows = False
 
     @property
     def entity_zero_or_selectable(self):
@@ -3474,17 +3473,15 @@ class _ColumnEntity(_QueryEntity):
     def _resolve_expr_against_query_aliases(self, query, expr, context):
         return query._adapt_clause(expr, False, True)
 
-    def row_processor(self, query, context, custom_rows):
+    def row_processor(self, query, context, result):
         column = self._resolve_expr_against_query_aliases(
             query, self.column, context)
 
         if context.adapter:
             column = context.adapter.columns[column]
 
-        def proc(row, result):
-            return row[column]
-
-        return proc, self._label_name
+        getter = result._getter(column)
+        return getter, self._label_name
 
     def setup_context(self, query, context):
         column = self._resolve_expr_against_query_aliases(

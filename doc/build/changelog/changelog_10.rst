@@ -23,6 +23,27 @@
 
 
     .. change::
+        :tags: change, orm
+
+        The ``proc()`` callable passed to the ``create_row_processor()``
+        method of custom :class:`.Bundle` classes now accepts only a single
+        "row" argument.
+
+        .. seealso::
+
+            :ref:`bundle_api_change`
+
+    .. change::
+        :tags: change, orm
+
+        Deprecated event hooks removed:  ``populate_instance``,
+        ``create_instance``, ``translate_row``, ``append_result``
+
+        .. seealso::
+
+            :ref:`migration_deprecated_orm_events`
+
+    .. change::
         :tags: bug, orm
         :tickets: 3145
 

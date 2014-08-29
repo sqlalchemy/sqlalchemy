@@ -2286,6 +2286,16 @@ class Mapper(InspectionAttr):
     def primary_base_mapper(self):
         return self.class_manager.mapper.base_mapper
 
+    def _result_has_identity_key(self, result, adapter=None):
+        pk_cols = self.primary_key
+        if adapter:
+            pk_cols = [adapter.columns[c] for c in pk_cols]
+        for col in pk_cols:
+            if not result._has_key(col):
+                return False
+        else:
+            return True
+
     def identity_key_from_row(self, row, adapter=None):
         """Return an identity-map key for use in storing/retrieving an
         item from the identity map.

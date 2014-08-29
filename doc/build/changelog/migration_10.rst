@@ -104,6 +104,59 @@ symbol, and no change to the object's state occurs.
 
 :ticket:`3061`
 
+.. _migration_migration_deprecated_orm_events:
+
+Deprecated ORM Event Hooks Removed
+----------------------------------
+
+The following ORM event hooks, some of which have been deprecated since
+0.5, have been removed:   ``translate_row``, ``populate_instance``,
+``append_result``, ``create_instance``.  The use cases for these hooks
+originated in the very early 0.1 / 0.2 series of SQLAlchemy and have long
+since been unnecessary.  In particular, the hooks were largely unusable
+as the behavioral contracts within these events was strongly linked to
+the surrounding internals, such as how an instance needs to be created
+and initialized as well as how columns are located within an ORM-generated
+row.   The removal of these hooks greatly simplifies the mechanics of ORM
+object loading.
+
+.. _bundle_api_change:
+
+API Change for new Bundle feature when custom row loaders are used
+------------------------------------------------------------------
+
+The new :class:`.Bundle` object of 0.9 has a small change in API,
+when the ``create_row_processor()`` method is overridden on a custom class.
+Previously, the sample code looked like::
+
+    from sqlalchemy.orm import Bundle
+
+    class DictBundle(Bundle):
+        def create_row_processor(self, query, procs, labels):
+            """Override create_row_processor to return values as dictionaries"""
+            def proc(row, result):
+                return dict(
+                            zip(labels, (proc(row, result) for proc in procs))
+                        )
+            return proc
+
+The unused ``result`` member is now removed::
+
+    from sqlalchemy.orm import Bundle
+
+    class DictBundle(Bundle):
+        def create_row_processor(self, query, procs, labels):
+            """Override create_row_processor to return values as dictionaries"""
+            def proc(row):
+                return dict(
+                            zip(labels, (proc(row) for proc in procs))
+                        )
+            return proc
+
+.. seealso::
+
+	:ref:`bundles`
+
 .. _migration_3008:
 
 Right inner join nesting now the default for joinedload with innerjoin=True

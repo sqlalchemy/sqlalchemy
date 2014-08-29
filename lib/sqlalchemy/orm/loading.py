@@ -16,7 +16,6 @@ as well as some of the attribute loading strategies.
 
 from .. import util
 from . import attributes, exc as orm_exc, state as statelib
-from .interfaces import EXT_CONTINUE
 from ..sql import util as sql_util
 from .util import _none_set, state_str
 from .. import exc as sa_exc
@@ -44,17 +43,14 @@ def instances(query, cursor, context):
             def filter_fn(row):
                 return tuple(fn(x) for x, fn in zip(row, filter_fns))
 
-    custom_rows = single_entity and \
-        query._entities[0].custom_rows
-
     (process, labels) = \
         list(zip(*[
             query_entity.row_processor(query,
-                                       context, custom_rows)
+                                       context, cursor)
             for query_entity in query._entities
         ]))
 
-    if not custom_rows and not single_entity:
+    if not single_entity:
         keyed_tuple = util.lightweight_named_tuple('result', labels)
 
     while True:
@@ -68,14 +64,11 @@ def instances(query, cursor, context):
         else:
             fetch = cursor.fetchall()
 
-        if custom_rows:
-            rows = []
-            for row in fetch:
-                process[0](row, rows)
-        elif single_entity:
-            rows = [process[0](row, None) for row in fetch]
+        if single_entity:
+            proc = process[0]
+            rows = [proc(row) for row in fetch]
         else:
-            rows = [keyed_tuple([proc(row, None) for proc in process])
+            rows = [keyed_tuple([proc(row) for proc in process])
                     for row in fetch]
 
         if filtered:
@@ -237,7 +230,7 @@ def load_on_ident(query, key,
         return None
 
 
-def instance_processor(mapper, context, path, adapter,
+def instance_processor(mapper, context, result, path, adapter,
                        polymorphic_from=None,
                        only_load_props=None,
                        refresh_state=None,
@@ -260,11 +253,12 @@ def instance_processor(mapper, context, path, adapter,
             polymorphic_on = polymorphic_discriminator
         else:
             polymorphic_on = mapper.polymorphic_on
-        polymorphic_instances = util.PopulateDict(
-            _configure_subclass_mapper(
-                mapper,
-                context, path, adapter)
-        )
+        if polymorphic_on is not None:
+            polymorphic_instances = util.PopulateDict(
+                _configure_subclass_mapper(
+                    mapper,
+                    context, result, path, adapter)
+            )
 
     version_id_col = mapper.version_id_col
 
@@ -277,56 +271,19 @@ def instance_processor(mapper, context, path, adapter,
 
     identity_class = mapper._identity_class
 
-    new_populators = []
-    existing_populators = []
-    eager_populators = []
+    (new_populators, existing_populators,
+        eager_populators) = _populators(
+        mapper, context, path, result, adapter, only_load_props)
 
     load_path = context.query._current_path + path \
         if context.query._current_path.path \
         else path
 
-    def populate_state(state, dict_, row, isnew, only_load_props):
-        if isnew:
-            if context.propagate_options:
-                state.load_options = context.propagate_options
-            if state.load_options:
-                state.load_path = load_path
-
-        if not new_populators:
-            _populators(mapper, context, path, row, adapter,
-                        new_populators,
-                        existing_populators,
-                        eager_populators
-                        )
-
-        if isnew:
-            populators = new_populators
-        else:
-            populators = existing_populators
-
-        if only_load_props is None:
-            for key, populator in populators:
-                populator(state, dict_, row)
-        elif only_load_props:
-            for key, populator in populators:
-                if key in only_load_props:
-                    populator(state, dict_, row)
-
     session_identity_map = context.session.identity_map
 
-    listeners = mapper.dispatch
-
-    # legacy events - I'd very much like to yank these totally
-    translate_row = listeners.translate_row or None
-    create_instance = listeners.create_instance or None
-    populate_instance = listeners.populate_instance or None
-    append_result = listeners.append_result or None
-    ####
-
     populate_existing = context.populate_existing or mapper.always_refresh
-    invoke_all_eagers = context.invoke_all_eagers
-    load_evt = mapper.class_manager.dispatch.load or None
-    refresh_evt = mapper.class_manager.dispatch.refresh or None
+    load_evt = bool(mapper.class_manager.dispatch.load)
+    refresh_evt = bool(mapper.class_manager.dispatch.refresh)
     instance_state = attributes.instance_state
     instance_dict = attributes.instance_dict
 
@@ -335,26 +292,14 @@ def instance_processor(mapper, context, path, adapter,
     else:
         is_not_primary_key = _none_set.intersection
 
-    def _instance(row, result):
-        if not new_populators and invoke_all_eagers:
-            _populators(mapper, context, path, row, adapter,
-                        new_populators,
-                        existing_populators,
-                        eager_populators)
-
-        if translate_row:
-            for fn in translate_row:
-                ret = fn(mapper, context, row)
-                if ret is not EXT_CONTINUE:
-                    row = ret
-                    break
+    def _instance(row):
 
         if polymorphic_on is not None:
             discriminator = row[polymorphic_on]
             if discriminator is not None:
                 _instance = polymorphic_instances[discriminator]
                 if _instance:
-                    return _instance(row, result)
+                    return _instance(row)
 
         # determine identity key
         if refresh_state:
@@ -393,9 +338,9 @@ def instance_processor(mapper, context, path, adapter,
                     "Instance '%s' has version id '%s' which "
                     "does not match database-loaded version id '%s'."
                     % (state_str(state),
-                       mapper._get_state_attr_by_column(
-                        state, dict_,
-                        mapper.version_id_col),
+                        mapper._get_state_attr_by_column(
+                            state, dict_,
+                            mapper.version_id_col),
                        row[version_id_col]))
         elif refresh_state:
             # out of band refresh_state detected (i.e. its not in the
@@ -418,21 +363,7 @@ def instance_processor(mapper, context, path, adapter,
             currentload = True
             loaded_instance = True
 
-            if create_instance:
-                for fn in create_instance:
-                    instance = fn(mapper, context,
-                                  row, mapper.class_)
-                    if instance is not EXT_CONTINUE:
-                        manager = attributes.manager_of_class(
-                            instance.__class__)
-                        # TODO: if manager is None, raise a friendly error
-                        # about returning instances of unmapped types
-                        manager.setup_instance(instance)
-                        break
-                else:
-                    instance = mapper.class_manager.new_instance()
-            else:
-                instance = mapper.class_manager.new_instance()
+            instance = mapper.class_manager.new_instance()
 
             dict_ = instance_dict(instance)
             state = instance_state(instance)
@@ -448,18 +379,15 @@ def instance_processor(mapper, context, path, adapter,
             if isnew:
                 state.runid = context.runid
                 context.progress[state] = dict_
-
-            if populate_instance:
-                for fn in populate_instance:
-                    ret = fn(mapper, context, row, state,
-                             only_load_props=only_load_props,
-                             instancekey=identitykey, isnew=isnew)
-                    if ret is not EXT_CONTINUE:
-                        break
-                else:
-                    populate_state(state, dict_, row, isnew, only_load_props)
+                if context.propagate_options:
+                    state.load_options = context.propagate_options
+                if state.load_options:
+                    state.load_path = load_path
+                for key, populator in new_populators:
+                    populator(state, dict_, row)
             else:
-                populate_state(state, dict_, row, isnew, only_load_props)
+                for key, populator in existing_populators:
+                    populator(state, dict_, row)
 
             if loaded_instance and load_evt:
                 state.manager.dispatch.load(state, context)
@@ -471,72 +399,72 @@ def instance_processor(mapper, context, path, adapter,
             # state is having a partial set of its attributes
             # refreshed.  Populate those attributes,
             # and add to the "context.partials" collection.
+            unloaded = state.unloaded
+
             if state in context.partials:
                 isnew = False
                 (d_, attrs) = context.partials[state]
+                for key, populator in existing_populators:
+                    if key not in attrs:
+                        continue
+                    populator(state, dict_, row)
             else:
                 isnew = True
-                attrs = state.unloaded
+                attrs = unloaded
                 context.partials[state] = (dict_, attrs)
-
-            if populate_instance:
-                for fn in populate_instance:
-                    ret = fn(mapper, context, row, state,
-                             only_load_props=attrs,
-                             instancekey=identitykey, isnew=isnew)
-                    if ret is not EXT_CONTINUE:
-                        break
-                else:
-                    populate_state(state, dict_, row, isnew, attrs)
-            else:
-                populate_state(state, dict_, row, isnew, attrs)
+                if context.propagate_options:
+                    state.load_options = context.propagate_options
+                if state.load_options:
+                    state.load_path = load_path
+                for key, populator in new_populators:
+                    if key not in attrs:
+                        continue
+                    populator(state, dict_, row)
 
             for key, pop in eager_populators:
-                if key not in state.unloaded:
+                if key not in unloaded:
                     pop(state, dict_, row)
 
             if isnew and refresh_evt:
                 state.manager.dispatch.refresh(state, context, attrs)
 
-        if result is not None:
-            if append_result:
-                for fn in append_result:
-                    if fn(mapper, context, row, state,
-                          result, instancekey=identitykey,
-                          isnew=isnew) is not EXT_CONTINUE:
-                        break
-                else:
-                    result.append(instance)
-            else:
-                result.append(instance)
-
         return instance
     return _instance
 
 
-def _populators(mapper, context, path, row, adapter,
-                new_populators, existing_populators, eager_populators):
+def _populators(mapper, context, path, result, adapter, only_load_props):
     """Produce a collection of attribute level row processor
     callables."""
 
+    new_populators = []
+    existing_populators = []
     delayed_populators = []
-    pops = (new_populators, existing_populators, delayed_populators,
-            eager_populators)
+    eager_populators = []
+    invoke_eagers = context.invoke_all_eagers
 
-    for prop in mapper._props.values():
+    props = mapper._props.values()
+    if only_load_props is not None:
+        props = (p for p in props if p.key in only_load_props)
 
-        for i, pop in enumerate(prop.create_row_processor(
-                context,
-                path,
-                mapper, row, adapter)):
-            if pop is not None:
-                pops[i].append((prop.key, pop))
+    for prop in props:
+        np, ep, dp, gp = prop.create_row_processor(
+            context, path, mapper, result, adapter)
+        if np:
+            new_populators.append((prop.key, np))
+        if ep:
+            existing_populators.append((prop.key, ep))
+        if dp:
+            delayed_populators.append((prop.key, dp))
+        if invoke_eagers and gp:
+            eager_populators.append((prop.key, gp))
 
     if delayed_populators:
-        new_populators.extend(delayed_populators)
+        new_populators += delayed_populators
+
+    return new_populators, existing_populators, eager_populators
 
 
-def _configure_subclass_mapper(mapper, context, path, adapter):
+def _configure_subclass_mapper(mapper, context, result, path, adapter):
     """Produce a mapper level row processor callable factory for mappers
     inheriting this one."""
 
@@ -553,6 +481,7 @@ def _configure_subclass_mapper(mapper, context, path, adapter):
         return instance_processor(
             sub_mapper,
             context,
+            result,
             path,
             adapter,
             polymorphic_from=mapper)

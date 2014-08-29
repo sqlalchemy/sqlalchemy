@@ -1249,3 +1249,11 @@ def chop_traceback(tb, exclude_prefix=_UNITTEST_RE, exclude_suffix=_SQLA_RE):
     return tb[start:end + 1]
 
 NoneType = type(None)
+
+def attrsetter(attrname):
+    code = \
+        "def set(obj, value):"\
+        "    obj.%s = value" % attrname
+    env = locals().copy()
+    exec(code, env)
+    return env['set']

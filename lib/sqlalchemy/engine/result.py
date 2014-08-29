@@ -110,7 +110,7 @@ class RowProxy(BaseRowProxy):
     __slots__ = ()
 
     def __contains__(self, key):
-        return self._parent._has_key(self._row, key)
+        return self._parent._has_key(key)
 
     def __getstate__(self):
         return {
@@ -155,7 +155,7 @@ class RowProxy(BaseRowProxy):
     def has_key(self, key):
         """Return True if this RowProxy contains the given key."""
 
-        return self._parent._has_key(self._row, key)
+        return self._parent._has_key(key)
 
     def items(self):
         """Return a list of tuples, each tuple containing a key/value pair."""
@@ -331,11 +331,27 @@ class ResultMetaData(object):
             map[key] = result
         return result
 
-    def _has_key(self, row, key):
+    def _has_key(self, key):
         if key in self._keymap:
             return True
         else:
             return self._key_fallback(key, False) is not None
+
+    def _getter(self, key):
+        if key in self._keymap:
+            processor, obj, index = self._keymap[key]
+        else:
+            ret = self._key_fallback(key, False)
+            if ret is None:
+                return None
+            processor, obj, index = ret
+
+        if index is None:
+            raise exc.InvalidRequestError(
+                "Ambiguous column name '%s' in result set! "
+                "try 'use_labels' option on select statement." % key)
+
+        return operator.itemgetter(index)
 
     def __getstate__(self):
         return {
@@ -397,6 +413,12 @@ class ResultProxy(object):
         self._echo = self.connection._echo and \
             context.engine._should_log_debug()
         self._init_metadata()
+
+    def _getter(self, key):
+        return self._metadata._getter(key)
+
+    def _has_key(self, key):
+        return self._metadata._has_key(key)
 
     def _init_metadata(self):
         metadata = self._cursor_description()

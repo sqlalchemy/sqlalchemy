@@ -79,10 +79,10 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         class MyBundle(Bundle):
             def create_row_processor(self, query, procs, labels):
-                def proc(row, result):
+                def proc(row):
                     return dict(
-                                zip(labels, (proc(row, result) for proc in procs))
-                            )
+                        zip(labels, (proc(row) for proc in procs))
+                    )
                 return proc
 
         b1 = MyBundle('b1', Data.d1, Data.d2)

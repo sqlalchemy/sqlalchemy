@@ -372,9 +372,9 @@ class CompositeProperty(DescriptorProperty):
                 property.key, *expr)
 
         def create_row_processor(self, query, procs, labels):
-            def proc(row, result):
+            def proc(row):
                 return self.property.composite_class(
-                    *[proc(row, result) for proc in procs])
+                    *[proc(row) for proc in procs])
             return proc
 
     class Comparator(PropComparator):
