@@ -304,6 +304,9 @@ def instance_processor(mapper, context, result, path, adapter,
 
     def _instance(row):
 
+        # if we are doing polymorphic, dispatch
+        # to a different _instance() method specific to
+        # the subclass mapper
         if polymorphic_on is not None:
             discriminator = row[polymorphic_on]
             if discriminator is not None:
@@ -311,43 +314,9 @@ def instance_processor(mapper, context, result, path, adapter,
                 if _instance:
                     return _instance(row)
 
-        # determine identity key
-        identitykey = refresh_identity_key or (
-            identity_class,
-            tuple([row[column] for column in pk_cols])
-        )
-
-        instance = session_identity_map.get(identitykey)
-
-        if instance is not None:
-            state = instance_state(instance)
-            dict_ = instance_dict(instance)
-
-            isnew = state.runid != runid
-            currentload = not isnew
-            loaded_instance = False
-
-            if version_check and not currentload and \
-                    version_id_col is not None and \
-                    mapper._get_state_attr_by_column(
-                        state,
-                        dict_,
-                        mapper.version_id_col) != \
-                    row[version_id_col]:
-
-                raise orm_exc.StaleDataError(
-                    "Instance '%s' has version id '%s' which "
-                    "does not match database-loaded version id '%s'."
-                    % (state_str(state),
-                        mapper._get_state_attr_by_column(
-                            state, dict_,
-                            mapper.version_id_col),
-                       row[version_id_col]))
-        elif refresh_state:
-            # out of band refresh_state detected (i.e. its not in the
-            # session.identity_map) honor it anyway.  this can happen
-            # if a _get() occurs within save_obj(), such as
-            # when eager_defaults is True.
+        # determine the state that we'll be populating
+        if refresh_identity_key:
+            # fixed state that we're refreshing
             state = refresh_state
             instance = state.obj()
             dict_ = instance_dict(instance)
@@ -355,25 +324,65 @@ def instance_processor(mapper, context, result, path, adapter,
             currentload = True
             loaded_instance = False
         else:
-            # check for non-NULL values in the primary key columns,
-            # else no entity is returned for the row
-            if is_not_primary_key(identitykey[1]):
-                return None
+            # look at the row, see if that identity is in the
+            # session, or we have to create a new one
+            identitykey = (
+                identity_class,
+                tuple([row[column] for column in pk_cols])
+            )
 
-            isnew = True
-            currentload = True
-            loaded_instance = True
+            instance = session_identity_map.get(identitykey)
 
-            instance = mapper.class_manager.new_instance()
+            if instance is not None:
+                # existing instance
+                state = instance_state(instance)
+                dict_ = instance_dict(instance)
 
-            dict_ = instance_dict(instance)
-            state = instance_state(instance)
-            state.key = identitykey
+                isnew = state.runid != runid
+                currentload = not isnew
+                loaded_instance = False
 
-            # attach instance to session.
-            state.session_id = session_id
-            session_identity_map._add_unpresent(state, identitykey)
+                if version_check and not currentload and \
+                        version_id_col is not None and \
+                        mapper._get_state_attr_by_column(
+                            state,
+                            dict_,
+                            mapper.version_id_col) != \
+                        row[version_id_col]:
 
+                    raise orm_exc.StaleDataError(
+                        "Instance '%s' has version id '%s' which "
+                        "does not match database-loaded version id '%s'."
+                        % (state_str(state),
+                            mapper._get_state_attr_by_column(
+                                state, dict_,
+                                mapper.version_id_col),
+                           row[version_id_col]))
+            else:
+                # create a new instance
+
+                # check for non-NULL values in the primary key columns,
+                # else no entity is returned for the row
+                if is_not_primary_key(identitykey[1]):
+                    return None
+
+                isnew = True
+                currentload = True
+                loaded_instance = True
+
+                instance = mapper.class_manager.new_instance()
+
+                dict_ = instance_dict(instance)
+                state = instance_state(instance)
+                state.key = identitykey
+
+                # attach instance to session.
+                state.session_id = session_id
+                session_identity_map._add_unpresent(state, identitykey)
+
+        # populate.  this looks at whether this state is new
+        # for this load or was existing, and whether or not this
+        # row is the first row with this identity.
         if currentload or populate_existing:
             # full population routines.  Objects here are either
             # just created, or we are doing a populate_existing
