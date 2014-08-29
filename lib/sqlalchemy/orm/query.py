@@ -705,24 +705,44 @@ class Query(object):
     def yield_per(self, count):
         """Yield only ``count`` rows at a time.
 
-        WARNING: use this method with caution; if the same instance is present
-        in more than one batch of rows, end-user changes to attributes will be
-        overwritten.
+        The purpose of this method is when fetching very large result sets
+        (> 10K rows), to batch results in sub-collections and yield them
+        out partially, so that the Python interpreter doesn't need to declare
+        very large areas of memory which is both time consuming and leads
+        to excessive memory use.   The performance from fetching hundreds of
+        thousands of rows can often double when a suitable yield-per setting
+        (e.g. approximately 1000) is used, even with DBAPIs that buffer
+        rows (which are most).
 
-        In particular, it's usually impossible to use this setting with
-        eagerly loaded collections (i.e. any lazy='joined' or 'subquery')
-        since those collections will be cleared for a new load when
-        encountered in a subsequent result batch.   In the case of 'subquery'
-        loading, the full result for all rows is fetched which generally
-        defeats the purpose of :meth:`~sqlalchemy.orm.query.Query.yield_per`.
+        The :meth:`.yield_per` method **is not compatible with most
+        eager loading schemes, including joinedload and subqueryload**.
+        See the warning below.
 
-        Also note that while :meth:`~sqlalchemy.orm.query.Query.yield_per`
-        will set the ``stream_results`` execution option to True, currently
-        this is only understood by
-        :mod:`~sqlalchemy.dialects.postgresql.psycopg2` dialect which will
-        stream results using server side cursors instead of pre-buffer all
-        rows for this query. Other DBAPIs pre-buffer all rows before making
-        them available.
+        .. warning::
+
+            Use this method with caution; if the same instance is
+            present in more than one batch of rows, end-user changes
+            to attributes will be overwritten.
+
+            In particular, it's usually impossible to use this setting
+            with eagerly loaded collections (i.e. any lazy='joined' or
+            'subquery') since those collections will be cleared for a
+            new load when encountered in a subsequent result batch.
+            In the case of 'subquery' loading, the full result for all
+            rows is fetched which generally defeats the purpose of
+            :meth:`~sqlalchemy.orm.query.Query.yield_per`.
+
+            Also note that while
+            :meth:`~sqlalchemy.orm.query.Query.yield_per` will set the
+            ``stream_results`` execution option to True, currently
+            this is only understood by
+            :mod:`~sqlalchemy.dialects.postgresql.psycopg2` dialect
+            which will stream results using server side cursors
+            instead of pre-buffer all rows for this query. Other
+            DBAPIs **pre-buffer all rows** before making them
+            available.  The memory use of raw database rows is much less
+            than that of an ORM-mapped object, but should still be taken into
+            consideration when benchmarking.
 
         """
         self._yield_per = count
