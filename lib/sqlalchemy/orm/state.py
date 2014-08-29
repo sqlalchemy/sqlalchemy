@@ -58,7 +58,6 @@ class InstanceState(interfaces.InspectionAttr):
     expired = False
     deleted = False
     _load_pending = False
-
     is_instance = True
 
     def __init__(self, obj, manager):
@@ -221,7 +220,7 @@ class InstanceState(interfaces.InspectionAttr):
 
     def _cleanup(self, ref):
         instance_dict = self._instance_dict()
-        if instance_dict:
+        if instance_dict is not None:
             instance_dict.discard(self)
 
         self.callables.clear()

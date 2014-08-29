@@ -1427,10 +1427,10 @@ class Session(_SessionClassMethods):
                 if state.key is None:
                     state.key = instance_key
                 elif state.key != instance_key:
-                    # primary key switch. use discard() in case another
+                    # primary key switch. use safe_discard() in case another
                     # state has already replaced this one in the identity
                     # map (see test/orm/test_naturalpks.py ReversePKsTest)
-                    self.identity_map.discard(state)
+                    self.identity_map.safe_discard(state)
                     if state in self.transaction._key_switches:
                         orig_key = self.transaction._key_switches[state][0]
                     else:
