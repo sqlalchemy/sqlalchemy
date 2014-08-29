@@ -149,10 +149,23 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
                             'employees_manager_data, '
                             'employees.engineer_info AS '
                             'employees_engineer_info, employees.type '
-                            'AS employees_type FROM employees) AS '
-                            'anon_1 WHERE anon_1.employees_type IN '
-                            '(:type_1, :type_2)',
+                            'AS employees_type FROM employees WHERE '
+                            'employees.type IN (:type_1, :type_2)) AS '
+                            'anon_1',
                             use_default_dialect=True)
+
+    def test_from_self_count(self):
+        Engineer = self.classes.Engineer
+
+        sess = create_session()
+        col = func.count(literal_column('*'))
+        self.assert_compile(
+            sess.query(Engineer.employee_id).from_self(col),
+            "SELECT count(*) AS count_1 "
+            "FROM (SELECT employees.employee_id AS employees_employee_id "
+            "FROM employees "
+            "WHERE employees.type IN (?, ?)) AS anon_1"
+        )
 
     def test_select_from(self):
         Manager, JuniorEngineer, employees, Engineer = (self.classes.Manager,

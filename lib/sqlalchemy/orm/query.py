@@ -945,9 +945,9 @@ class Query(object):
 
         """
         fromclause = self.with_labels().enable_eagerloads(False).\
-            _set_enable_single_crit(False).\
             statement.correlate(None)
         q = self._from_selectable(fromclause)
+        q._enable_single_crit = False
         if entities:
             q._set_entities(entities)
         return q

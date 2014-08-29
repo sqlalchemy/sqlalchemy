@@ -23,6 +23,22 @@
 
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3177
+
+        Changed the approach by which the "single inheritance criterion"
+        is applied, when using :meth:`.Query.from_self`, or its common
+        user :meth:`.Query.count`.  The criteria to limit rows to those
+        with a certain type is now indicated on the inside subquery,
+        not the outside one, so that even if the "type" column is not
+        available in the columns clause, we can filter on it on the "inner"
+        query.
+
+        .. seealso::
+
+            :ref:`migration_3177`
+
+    .. change::
         :tags: change, orm
 
         The ``proc()`` callable passed to the ``create_row_processor()``

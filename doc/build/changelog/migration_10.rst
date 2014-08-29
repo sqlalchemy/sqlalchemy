@@ -417,6 +417,63 @@ as remaining ORM constructs such as :func:`.orm.synonym`.
 
 :ticket:`2963`
 
+.. _migration_3177:
+
+Change to single-table-inheritance criteria when using from_self(), count()
+---------------------------------------------------------------------------
+
+Given a single-table inheritance mapping, such as::
+
+	class Widget(Base):
+		__table__ = 'widget_table'
+
+	class FooWidget(Widget):
+		pass
+
+Using :meth:`.Query.from_self` or :meth:`.Query.count` against a subclass
+would produce a subquery, but then add the "WHERE" criteria for subtypes
+to the outside::
+
+	sess.query(FooWidget).from_self().all()
+
+rendering::
+
+	SELECT
+		anon_1.widgets_id AS anon_1_widgets_id,
+		anon_1.widgets_type AS anon_1_widgets_type
+	FROM (SELECT widgets.id AS widgets_id, widgets.type AS widgets_type,
+	FROM widgets) AS anon_1
+	WHERE anon_1.widgets_type IN (?)
+
+The issue with this is that if the inner query does not specify all
+columns, then we can't add the WHERE clause on the outside (it actually tries,
+and produces a bad query).  This decision
+apparently goes way back to 0.6.5 with the note "may need to make more
+adjustments to this".   Well, those adjustments have arrived!  So now the
+above query will render::
+
+	SELECT
+		anon_1.widgets_id AS anon_1_widgets_id,
+		anon_1.widgets_type AS anon_1_widgets_type
+	FROM (SELECT widgets.id AS widgets_id, widgets.type AS widgets_type,
+	FROM widgets
+	WHERE widgets.type IN (?)) AS anon_1
+
+So that queries that don't include "type" will still work!::
+
+	sess.query(FooWidget.id).count()
+
+Renders::
+
+	SELECT count(*) AS count_1
+	FROM (SELECT widgets.id AS widgets_id
+	FROM widgets
+	WHERE widgets.type IN (?)) AS anon_1
+
+
+:ticket:`3177`
+
+
 Dialect Changes
 ===============
 
