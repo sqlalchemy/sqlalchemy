@@ -336,6 +336,54 @@ based on the following criteria:
   the backend dialect supports a "sane" rowcount for an executemany()
   operation; most DBAPIs support this correctly now.
 
+ORM full object fetches 25% faster
+----------------------------------
+
+The mechanics of the ``loading.py`` module as well as the identity map
+have undergone several passes of inlining, refactoring, and pruning, so
+that a raw load of rows now populates ORM-based objects around 25% faster.
+Assuming a 1M row table, a script like the following illustrates the type
+of load that's improved the most::
+
+	import time
+	from sqlalchemy import Integer, Column, create_engine, Table
+	from sqlalchemy.orm import Session
+	from sqlalchemy.ext.declarative import declarative_base
+
+	Base = declarative_base()
+
+	class Foo(Base):
+	    __table__ = Table(
+	        'foo', Base.metadata,
+	        Column('id', Integer, primary_key=True),
+	        Column('a', Integer(), nullable=False),
+	        Column('b', Integer(), nullable=False),
+	        Column('c', Integer(), nullable=False),
+	    )
+
+	engine = create_engine(
+		'mysql+mysqldb://scott:tiger@localhost/test', echo=True)
+
+	sess = Session(engine)
+
+	now = time.time()
+
+	# avoid using all() so that we don't have the overhead of building
+	# a large list of full objects in memory
+	for obj in sess.query(Foo).yield_per(100).limit(1000000):
+	    pass
+
+	print("Total time: %d" % (time.time() - now))
+
+Local MacBookPro results bench from 19 seconds for 0.9 down to 14 seconds for
+1.0.  The :meth:`.Query.yield_per` call is always a good idea when batching
+huge numbers of rows, as it prevents the Python interpreter from having
+to allocate a huge amount of memory for all objects and their instrumentation
+at once.  Without the :meth:`.Query.yield_per`, the above script on the
+MacBookPro is 31 seconds on 0.9 and 26 seconds on 1.0, the extra time spent
+setting up very large memory buffers.
+
+
 
 .. _feature_3176:
 
