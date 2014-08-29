@@ -964,6 +964,47 @@ class RefreshTest(_fixtures.FixtureTest):
         sess.query(User).first()
         eq_(canary, [])
 
+    def test_changes_reset(self):
+        """test the contract of load/refresh such that history is reset.
+
+        This has never been an official contract but we are testing it
+        here to ensure it is maintained given the loading performance
+        enhancements.
+
+        """
+        User = self.classes.User
+
+        @event.listens_for(User, "load")
+        def canary1(obj, context):
+            obj.name = 'new name!'
+
+        @event.listens_for(User, "refresh")
+        def canary2(obj, context, props):
+            obj.name = 'refreshed name!'
+
+        sess = Session()
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+        sess.close()
+
+        u1 = sess.query(User).first()
+        eq_(
+            attributes.get_history(u1, "name"),
+            ((), ['new name!'], ())
+        )
+        assert "name" not in attributes.instance_state(u1).committed_state
+        assert u1 not in sess.dirty
+
+        sess.expire(u1)
+        u1.id
+        eq_(
+            attributes.get_history(u1, "name"),
+            ((), ['refreshed name!'], ())
+        )
+        assert "name" not in attributes.instance_state(u1).committed_state
+        assert u1 in sess.dirty
+
     def test_repeated_rows(self):
         User = self.classes.User
 
