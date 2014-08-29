@@ -1814,7 +1814,11 @@ class HistoryTest(fixtures.TestBase):
         self._commit_someattr(f)
 
         state = attributes.instance_state(f)
-        state._expire_attribute_pre_commit(state.dict, 'someattr')
+        # do the same thing that
+        # populators.expire.append((self.key, True))
+        # does in loading.py
+        state.dict.pop('someattr', None)
+        state.callables['someattr'] = state
 
         def scalar_loader(state, toload):
             state.dict['someattr'] = 'one'

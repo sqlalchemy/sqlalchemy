@@ -213,9 +213,6 @@ def load_on_ident(query, key,
     except orm_exc.NoResultFound:
         return None
 
-_populator_struct = collections.namedtuple(
-    'populators', ['new', 'existing', 'eager', 'delayed'])
-
 
 def instance_processor(mapper, context, result, path, adapter,
                        polymorphic_from=None,
@@ -258,7 +255,7 @@ def instance_processor(mapper, context, result, path, adapter,
 
     identity_class = mapper._identity_class
 
-    populators = _populator_struct([], [], [], [])
+    populators = collections.defaultdict(list)
 
     props = mapper._props.values()
     if only_load_props is not None:
@@ -268,16 +265,14 @@ def instance_processor(mapper, context, result, path, adapter,
         prop.create_row_processor(
             context, path, mapper, result, adapter, populators)
 
-    if populators.delayed:
-        populators.new.extend(populators.delayed)
-
-    (new_populators, existing_populators,
-        eager_populators) = (
-        populators.new, populators.existing, populators.eager)
+    quick_populators = populators.get('quick', ())
+    expire_populators = populators.get('expire', ())
+    new_populators = populators.get('new', []) + populators.get('delayed', [])
+    existing_populators = populators.get('existing', ())
+    eager_populators = populators.get('eager', ())
 
     load_path = context.query._current_path + path \
-        if context.query._current_path.path \
-        else path
+        if context.query._current_path.path else path
 
     session_identity_map = context.session.identity_map
 
@@ -380,69 +375,96 @@ def instance_processor(mapper, context, result, path, adapter,
             session_identity_map._add_unpresent(state, identitykey)
 
         if currentload or populate_existing:
-            # state is being fully loaded, so populate.
-            # add to the "context.progress" collection.
+            # full population routines.  Objects here are either
+            # just created, or we are doing a populate_existing
             if isnew:
+                # first time we are seeing a row with this identity.
                 state.runid = runid
                 if propagate_options:
                     state.load_options = propagate_options
                 if state.load_options:
                     state.load_path = load_path
-                for key, populator in new_populators:
-                    populator(state, dict_, row)
-            else:
-                for key, populator in existing_populators:
-                    populator(state, dict_, row)
 
-            if loaded_instance and load_evt:
-                state.manager.dispatch.load(state, context)
-            elif isnew and refresh_evt:
-                state.manager.dispatch.refresh(
-                    state, context, only_load_props)
-
-            if populate_existing or state.modified:
-                if refresh_state and only_load_props:
-                    state._commit(dict_, only_load_props)
+                for key, getter in quick_populators:
+                    dict_[key] = getter(row)
+                if populate_existing:
+                    for key, set_callable in expire_populators:
+                        dict_.pop(key, None)
+                        if set_callable:
+                            state.callables[key] = state
                 else:
-                    state._commit_all(dict_, session_identity_map)
-
-        elif state in context.partials or state.unloaded or eager_populators:
-            # state is having a partial set of its attributes
-            # refreshed.  Populate those attributes,
-            # and add to the "context.partials" collection.
-            unloaded = state.unloaded
-
-            if state in context.partials:
-                isnew = False
-                to_load = context.partials[state]
-                for key, populator in existing_populators:
-                    if key not in to_load:
-                        continue
-                    populator(state, dict_, row)
-            else:
-                isnew = True
-                to_load = unloaded
-                context.partials[state] = to_load
-
-                if context.propagate_options:
-                    state.load_options = context.propagate_options
-                if state.load_options:
-                    state.load_path = load_path
-
+                    for key, set_callable in expire_populators:
+                        if set_callable:
+                            state.callables[key] = state
                 for key, populator in new_populators:
-                    if key not in to_load:
-                        continue
                     populator(state, dict_, row)
 
-            for key, pop in eager_populators:
-                if key not in unloaded:
-                    pop(state, dict_, row)
+                if loaded_instance and load_evt:
+                    state.manager.dispatch.load(state, context)
+                elif isnew and refresh_evt:
+                    state.manager.dispatch.refresh(
+                        state, context, only_load_props)
 
-            if isnew and refresh_evt:
-                state.manager.dispatch.refresh(state, context, to_load)
+                if populate_existing or state.modified:
+                    if refresh_state and only_load_props:
+                        state._commit(dict_, only_load_props)
+                    else:
+                        state._commit_all(dict_, session_identity_map)
+            else:
+                # have already seen rows with this identity.
+                for key, populator in existing_populators:
+                    populator(state, dict_, row)
+        else:
+            # partial population routines, for objects that were already
+            # in the Session, but a row matches them; apply eager loaders
+            # on existing objects, etc.
+            unloaded = state.unloaded
+            isnew = state not in context.partials
 
-            if isnew:
-                state._commit(dict_, to_load)
+            if not isnew or unloaded or eager_populators:
+                # state is having a partial set of its attributes
+                # refreshed.  Populate those attributes,
+                # and add to the "context.partials" collection.
+
+                if not isnew:
+                    to_load = context.partials[state]
+                    for key, populator in existing_populators:
+                        if key not in to_load:
+                            continue
+                        populator(state, dict_, row)
+                else:
+                    to_load = unloaded
+                    context.partials[state] = to_load
+
+                    if context.propagate_options:
+                        state.load_options = context.propagate_options
+                    if state.load_options:
+                        state.load_path = load_path
+
+                    for key, getter in quick_populators:
+                        if key not in to_load:
+                            continue
+                        dict_[key] = getter(row)
+                    for key, set_callable in expire_populators:
+                        if key not in to_load:
+                            continue
+                        dict_.pop(key, None)
+                        if set_callable:
+                            state.callables[key] = state
+                    for key, populator in new_populators:
+                        if key not in to_load:
+                            continue
+                        populator(state, dict_, row)
+
+                for key, pop in eager_populators:
+                    if key not in unloaded:
+                        pop(state, dict_, row)
+
+                if isnew:
+                    if refresh_evt:
+                        state.manager.dispatch.refresh(state, context, to_load)
+
+                    state._commit(dict_, to_load)
 
         return instance
     return _instance

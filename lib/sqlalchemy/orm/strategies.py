@@ -158,7 +158,6 @@ class ColumnLoader(LoaderStrategy):
     def create_row_processor(
             self, context, path,
             loadopt, mapper, result, adapter, populators):
-        key = self.key
         # look through list of columns represented here
         # to see which, if any, is present in the row.
         for col in self.columns:
@@ -166,14 +165,10 @@ class ColumnLoader(LoaderStrategy):
                 col = adapter.columns[col]
             getter = result._getter(col)
             if getter:
-                def fetch_col(state, dict_, row):
-                    dict_[key] = getter(row)
-                populators.new.append((self.key, fetch_col))
+                populators["quick"].append((self.key, getter))
                 break
         else:
-            def expire_for_non_present_col(state, dict_, row):
-                state._expire_attribute_pre_commit(dict_, key)
-            populators.new.append((self.key, expire_for_non_present_col))
+            populators["expire"].append((self.key, True))
 
 
 @log.class_logger
@@ -196,8 +191,6 @@ class DeferredColumnLoader(LoaderStrategy):
         if adapter:
             col = adapter.columns[col]
 
-        key = self.key
-
         # TODO: put a result-level contains here
         getter = result._getter(col)
         if getter:
@@ -209,14 +202,10 @@ class DeferredColumnLoader(LoaderStrategy):
         elif not self.is_class_level:
             set_deferred_for_local_state = InstanceState._row_processor(
                 mapper.class_manager,
-                LoadDeferredColumns(key), key)
-            populators.new.append((self.key, set_deferred_for_local_state))
+                LoadDeferredColumns(self.key), self.key)
+            populators["new"].append((self.key, set_deferred_for_local_state))
         else:
-            def reset_col_for_deferred(state, dict_, row):
-                # reset state on the key so that deferred callables
-                # fire off on next access.
-                state._reset(dict_, key)
-            populators.new.append((self.key, reset_col_for_deferred))
+            populators["expire"].append((self.key, False))
 
     def init_class_attribute(self, mapper):
         self.is_class_level = True
@@ -342,7 +331,7 @@ class NoLoader(AbstractRelationshipLoader):
             result, adapter, populators):
         def invoke_no_load(state, dict_, row):
             state._initialize(self.key)
-        populators.new.append((self.key, invoke_no_load))
+        populators["new"].append((self.key, invoke_no_load))
 
 
 @log.class_logger
@@ -639,7 +628,7 @@ class LazyLoader(AbstractRelationshipLoader):
                 mapper.class_manager,
                 LoadLazyAttribute(key), key)
 
-            populators.new.append((self.key, set_lazy_callable))
+            populators["new"].append((self.key, set_lazy_callable))
         elif context.populate_existing or mapper.always_refresh:
             def reset_for_lazy_callable(state, dict_, row):
                 # we are the primary manager for this attribute on
@@ -652,7 +641,7 @@ class LazyLoader(AbstractRelationshipLoader):
                 # any existing state.
                 state._reset(dict_, key)
 
-            populators.new.append((self.key, reset_for_lazy_callable))
+            populators["new"].append((self.key, reset_for_lazy_callable))
 
 
 class LoadLazyAttribute(object):
@@ -689,7 +678,7 @@ class ImmediateLoader(AbstractRelationshipLoader):
         def load_immediate(state, dict_, row):
             state.get_impl(self.key).get(state, dict_)
 
-        populators.delayed.append((self.key, load_immediate))
+        populators["delayed"].append((self.key, load_immediate))
 
 
 @log.class_logger
@@ -1046,9 +1035,9 @@ class SubqueryLoader(AbstractRelationshipLoader):
             state.get_impl(self.key).\
                 set_committed_value(state, dict_, collection)
 
-        populators.new.append((self.key, load_collection_from_subq))
+        populators["new"].append((self.key, load_collection_from_subq))
         if context.invoke_all_eagers:
-            populators.eager.append((self.key, collections.loader))
+            populators["eager"].append((self.key, collections.loader))
 
     def _create_scalar_loader(
             self, context, collections, local_cols, populators):
@@ -1067,9 +1056,9 @@ class SubqueryLoader(AbstractRelationshipLoader):
             state.get_impl(self.key).\
                 set_committed_value(state, dict_, scalar)
 
-        populators.new.append((self.key, load_scalar_from_subq))
+        populators["new"].append((self.key, load_scalar_from_subq))
         if context.invoke_all_eagers:
-            populators.eager.append((self.key, collections.loader))
+            populators["eager"].append((self.key, collections.loader))
 
 
 @log.class_logger
@@ -1491,11 +1480,11 @@ class JoinedLoader(AbstractRelationshipLoader):
         def load_collection_from_joined_exec(state, dict_, row):
             _instance(row)
 
-        populators.new.append((self.key, load_collection_from_joined_new_row))
-        populators.existing.append(
+        populators["new"].append((self.key, load_collection_from_joined_new_row))
+        populators["existing"].append(
             (self.key, load_collection_from_joined_existing_row))
         if context.invoke_all_eagers:
-            populators.eager.append(
+            populators["eager"].append(
                 (self.key, load_collection_from_joined_exec))
 
     def _create_scalar_loader(self, context, key, _instance, populators):
@@ -1519,11 +1508,11 @@ class JoinedLoader(AbstractRelationshipLoader):
         def load_scalar_from_joined_exec(state, dict_, row):
             _instance(row)
 
-        populators.new.append((self.key, load_scalar_from_joined_new_row))
-        populators.existing.append(
+        populators["new"].append((self.key, load_scalar_from_joined_new_row))
+        populators["existing"].append(
             (self.key, load_scalar_from_joined_existing_row))
         if context.invoke_all_eagers:
-            populators.eager.append((self.key, load_scalar_from_joined_exec))
+            populators["eager"].append((self.key, load_scalar_from_joined_exec))
 
 
 def single_parent_validator(desc, prop):
