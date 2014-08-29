@@ -119,8 +119,8 @@ class UninstrumentedColumnLoader(LoaderStrategy):
 
     def create_row_processor(
             self, context, path, loadopt,
-            mapper, result, adapter):
-        return None, None, None, None
+            mapper, result, adapter, populators):
+        pass
 
 
 @log.class_logger
@@ -157,7 +157,7 @@ class ColumnLoader(LoaderStrategy):
 
     def create_row_processor(
             self, context, path,
-            loadopt, mapper, result, adapter):
+            loadopt, mapper, result, adapter, populators):
         key = self.key
         # look through list of columns represented here
         # to see which, if any, is present in the row.
@@ -168,11 +168,12 @@ class ColumnLoader(LoaderStrategy):
             if getter:
                 def fetch_col(state, dict_, row):
                     dict_[key] = getter(row)
-                return fetch_col, None, None, None
+                populators.new.append((self.key, fetch_col))
+                break
         else:
             def expire_for_non_present_col(state, dict_, row):
                 state._expire_attribute_pre_commit(dict_, key)
-            return expire_for_non_present_col, None, None, None
+            populators.new.append((self.key, expire_for_non_present_col))
 
 
 @log.class_logger
@@ -190,7 +191,7 @@ class DeferredColumnLoader(LoaderStrategy):
 
     def create_row_processor(
             self, context, path, loadopt,
-            mapper, result, adapter):
+            mapper, result, adapter, populators):
         col = self.columns[0]
         if adapter:
             col = adapter.columns[col]
@@ -200,21 +201,22 @@ class DeferredColumnLoader(LoaderStrategy):
         # TODO: put a result-level contains here
         getter = result._getter(col)
         if getter:
-            return self.parent_property._get_strategy_by_cls(ColumnLoader).\
+            self.parent_property._get_strategy_by_cls(ColumnLoader).\
                 create_row_processor(
-                    context, path, loadopt, mapper, result, adapter)
+                    context, path, loadopt, mapper, result,
+                    adapter, populators)
 
         elif not self.is_class_level:
             set_deferred_for_local_state = InstanceState._row_processor(
                 mapper.class_manager,
                 LoadDeferredColumns(key), key)
-            return set_deferred_for_local_state, None, None, None
+            populators.new.append((self.key, set_deferred_for_local_state))
         else:
             def reset_col_for_deferred(state, dict_, row):
                 # reset state on the key so that deferred callables
                 # fire off on next access.
                 state._reset(dict_, key)
-            return reset_col_for_deferred, None, None, None
+            populators.new.append((self.key, reset_col_for_deferred))
 
     def init_class_attribute(self, mapper):
         self.is_class_level = True
@@ -337,10 +339,10 @@ class NoLoader(AbstractRelationshipLoader):
 
     def create_row_processor(
             self, context, path, loadopt, mapper,
-            result, adapter):
+            result, adapter, populators):
         def invoke_no_load(state, dict_, row):
             state._initialize(self.key)
-        return invoke_no_load, None, None, None
+        populators.new.append((self.key, invoke_no_load))
 
 
 @log.class_logger
@@ -622,7 +624,7 @@ class LazyLoader(AbstractRelationshipLoader):
 
     def create_row_processor(
             self, context, path, loadopt,
-            mapper, result, adapter):
+            mapper, result, adapter, populators):
         key = self.key
         if not self.is_class_level:
             # we are not the primary manager for this attribute
@@ -637,7 +639,7 @@ class LazyLoader(AbstractRelationshipLoader):
                 mapper.class_manager,
                 LoadLazyAttribute(key), key)
 
-            return set_lazy_callable, None, None, None
+            populators.new.append((self.key, set_lazy_callable))
         elif context.populate_existing or mapper.always_refresh:
             def reset_for_lazy_callable(state, dict_, row):
                 # we are the primary manager for this attribute on
@@ -650,9 +652,7 @@ class LazyLoader(AbstractRelationshipLoader):
                 # any existing state.
                 state._reset(dict_, key)
 
-            return reset_for_lazy_callable, None, None, None
-        else:
-            return None, None, None, None
+            populators.new.append((self.key, reset_for_lazy_callable))
 
 
 class LoadLazyAttribute(object):
@@ -685,11 +685,11 @@ class ImmediateLoader(AbstractRelationshipLoader):
 
     def create_row_processor(
             self, context, path, loadopt,
-            mapper, result, adapter):
+            mapper, result, adapter, populators):
         def load_immediate(state, dict_, row):
             state.get_impl(self.key).get(state, dict_)
 
-        return None, None, load_immediate, None
+        populators.delayed.append((self.key, load_immediate))
 
 
 @log.class_logger
@@ -1002,7 +1002,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
 
     def create_row_processor(
             self, context, path, loadopt,
-            mapper, result, adapter):
+            mapper, result, adapter, populators):
         if not self.parent.class_manager[self.key].impl.supports_population:
             raise sa_exc.InvalidRequestError(
                 "'%s' does not support object "
@@ -1014,7 +1014,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         subq = path.get(context.attributes, 'subquery')
 
         if subq is None:
-            return None, None, None, None
+            return
 
         local_cols = self.parent_property.local_columns
 
@@ -1030,11 +1030,14 @@ class SubqueryLoader(AbstractRelationshipLoader):
             local_cols = [adapter.columns[c] for c in local_cols]
 
         if self.uselist:
-            return self._create_collection_loader(collections, local_cols)
+            self._create_collection_loader(
+                context, collections, local_cols, populators)
         else:
-            return self._create_scalar_loader(collections, local_cols)
+            self._create_scalar_loader(
+                context, collections, local_cols, populators)
 
-    def _create_collection_loader(self, collections, local_cols):
+    def _create_collection_loader(
+            self, context, collections, local_cols, populators):
         def load_collection_from_subq(state, dict_, row):
             collection = collections.get(
                 tuple([row[col] for col in local_cols]),
@@ -1043,9 +1046,12 @@ class SubqueryLoader(AbstractRelationshipLoader):
             state.get_impl(self.key).\
                 set_committed_value(state, dict_, collection)
 
-        return load_collection_from_subq, None, None, collections.loader
+        populators.new.append((self.key, load_collection_from_subq))
+        if context.invoke_all_eagers:
+            populators.eager.append((self.key, collections.loader))
 
-    def _create_scalar_loader(self, collections, local_cols):
+    def _create_scalar_loader(
+            self, context, collections, local_cols, populators):
         def load_scalar_from_subq(state, dict_, row):
             collection = collections.get(
                 tuple([row[col] for col in local_cols]),
@@ -1061,7 +1067,9 @@ class SubqueryLoader(AbstractRelationshipLoader):
             state.get_impl(self.key).\
                 set_committed_value(state, dict_, scalar)
 
-        return load_scalar_from_subq, None, None, collections.loader
+        populators.new.append((self.key, load_scalar_from_subq))
+        if context.invoke_all_eagers:
+            populators.eager.append((self.key, collections.loader))
 
 
 @log.class_logger
@@ -1415,7 +1423,7 @@ class JoinedLoader(AbstractRelationshipLoader):
 
     def create_row_processor(
             self, context, path, loadopt, mapper,
-            result, adapter):
+            result, adapter, populators):
         if not self.parent.class_manager[self.key].impl.supports_population:
             raise sa_exc.InvalidRequestError(
                 "'%s' does not support object "
@@ -1441,16 +1449,17 @@ class JoinedLoader(AbstractRelationshipLoader):
                 eager_adapter)
 
             if not self.uselist:
-                return self._create_scalar_loader(context, key, _instance)
+                self._create_scalar_loader(context, key, _instance, populators)
             else:
-                return self._create_collection_loader(context, key, _instance)
+                self._create_collection_loader(
+                    context, key, _instance, populators)
         else:
-            return self.parent_property._get_strategy_by_cls(LazyLoader).\
+            self.parent_property._get_strategy_by_cls(LazyLoader).\
                 create_row_processor(
                     context, path, loadopt,
-                    mapper, result, adapter)
+                    mapper, result, adapter, populators)
 
-    def _create_collection_loader(self, context, key, _instance):
+    def _create_collection_loader(self, context, key, _instance, populators):
         def load_collection_from_joined_new_row(state, dict_, row):
             collection = attributes.init_state_collection(
                 state, dict_, key)
@@ -1482,11 +1491,14 @@ class JoinedLoader(AbstractRelationshipLoader):
         def load_collection_from_joined_exec(state, dict_, row):
             _instance(row)
 
-        return load_collection_from_joined_new_row, \
-            load_collection_from_joined_existing_row, \
-            None, load_collection_from_joined_exec
+        populators.new.append((self.key, load_collection_from_joined_new_row))
+        populators.existing.append(
+            (self.key, load_collection_from_joined_existing_row))
+        if context.invoke_all_eagers:
+            populators.eager.append(
+                (self.key, load_collection_from_joined_exec))
 
-    def _create_scalar_loader(self, context, key, _instance):
+    def _create_scalar_loader(self, context, key, _instance, populators):
         def load_scalar_from_joined_new_row(state, dict_, row):
             # set a scalar object instance directly on the parent
             # object, bypassing InstrumentedAttribute event handlers.
@@ -1507,9 +1519,11 @@ class JoinedLoader(AbstractRelationshipLoader):
         def load_scalar_from_joined_exec(state, dict_, row):
             _instance(row)
 
-        return load_scalar_from_joined_new_row, \
-            load_scalar_from_joined_existing_row, \
-            None, load_scalar_from_joined_exec
+        populators.new.append((self.key, load_scalar_from_joined_new_row))
+        populators.existing.append(
+            (self.key, load_scalar_from_joined_existing_row))
+        if context.invoke_all_eagers:
+            populators.eager.append((self.key, load_scalar_from_joined_exec))
 
 
 def single_parent_validator(desc, prop):

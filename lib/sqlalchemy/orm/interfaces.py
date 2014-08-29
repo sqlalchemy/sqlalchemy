@@ -82,11 +82,11 @@ class MapperProperty(_MappedAttribute, InspectionAttr):
         pass
 
     def create_row_processor(self, context, path,
-                             mapper, result, adapter):
+                             mapper, result, adapter, populators):
         """Return a 3-tuple consisting of three row processing functions.
 
         """
-        return None, None, None, None
+        pass
 
     def cascade_iterator(self, type_, state, visited_instances=None,
                          halt_on=None):
@@ -443,14 +443,17 @@ class StrategizedProperty(MapperProperty):
             strat = self.strategy
         strat.setup_query(context, entity, path, loader, adapter, **kwargs)
 
-    def create_row_processor(self, context, path, mapper, result, adapter):
+    def create_row_processor(
+            self, context, path, mapper,
+            result, adapter, populators):
         loader = self._get_context_loader(context, path)
         if loader and loader.strategy:
             strat = self._get_strategy(loader.strategy)
         else:
             strat = self.strategy
-        return strat.create_row_processor(context, path, loader,
-                                          mapper, result, adapter)
+        strat.create_row_processor(
+            context, path, loader,
+            mapper, result, adapter, populators)
 
     def do_init(self):
         self._strategies = {}
@@ -543,14 +546,14 @@ class LoaderStrategy(object):
         pass
 
     def create_row_processor(self, context, path, loadopt, mapper,
-                             result, adapter):
+                             result, adapter, populators):
         """Return row processing functions which fulfill the contract
         specified by MapperProperty.create_row_processor.
 
         StrategizedProperty delegates its create_row_processor method
         directly to this method. """
 
-        return None, None, None, None
+        pass
 
     def __str__(self):
         return str(self.parent_property)

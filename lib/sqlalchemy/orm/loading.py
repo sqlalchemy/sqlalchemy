@@ -12,13 +12,14 @@ the functions here are called primarily by Query, Mapper,
 as well as some of the attribute loading strategies.
 
 """
-
+from __future__ import absolute_import
 
 from .. import util
 from . import attributes, exc as orm_exc
 from ..sql import util as sql_util
 from .util import _none_set, state_str
 from .. import exc as sa_exc
+import collections
 
 _new_runid = util.counter()
 
@@ -212,6 +213,9 @@ def load_on_ident(query, key,
     except orm_exc.NoResultFound:
         return None
 
+_populator_struct = collections.namedtuple(
+    'populators', ['new', 'existing', 'eager', 'delayed'])
+
 
 def instance_processor(mapper, context, result, path, adapter,
                        polymorphic_from=None,
@@ -254,9 +258,22 @@ def instance_processor(mapper, context, result, path, adapter,
 
     identity_class = mapper._identity_class
 
+    populators = _populator_struct([], [], [], [])
+
+    props = mapper._props.values()
+    if only_load_props is not None:
+        props = (p for p in props if p.key in only_load_props)
+
+    for prop in props:
+        prop.create_row_processor(
+            context, path, mapper, result, adapter, populators)
+
+    if populators.delayed:
+        populators.new.extend(populators.delayed)
+
     (new_populators, existing_populators,
-        eager_populators) = _populators(
-        mapper, context, path, result, adapter, only_load_props)
+        eager_populators) = (
+        populators.new, populators.existing, populators.eager)
 
     load_path = context.query._current_path + path \
         if context.query._current_path.path \
@@ -429,38 +446,6 @@ def instance_processor(mapper, context, result, path, adapter,
 
         return instance
     return _instance
-
-
-def _populators(mapper, context, path, result, adapter, only_load_props):
-    """Produce a collection of attribute level row processor
-    callables."""
-
-    new_populators = []
-    existing_populators = []
-    delayed_populators = []
-    eager_populators = []
-    invoke_eagers = context.invoke_all_eagers
-
-    props = mapper._props.values()
-    if only_load_props is not None:
-        props = (p for p in props if p.key in only_load_props)
-
-    for prop in props:
-        np, ep, dp, gp = prop.create_row_processor(
-            context, path, mapper, result, adapter)
-        if np:
-            new_populators.append((prop.key, np))
-        if ep:
-            existing_populators.append((prop.key, ep))
-        if dp:
-            delayed_populators.append((prop.key, dp))
-        if invoke_eagers and gp:
-            eager_populators.append((prop.key, gp))
-
-    if delayed_populators:
-        new_populators += delayed_populators
-
-    return new_populators, existing_populators, eager_populators
 
 
 def _configure_subclass_mapper(mapper, context, result, path, adapter):
