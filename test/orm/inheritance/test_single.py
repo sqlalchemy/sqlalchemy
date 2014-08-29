@@ -164,7 +164,8 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             "SELECT count(*) AS count_1 "
             "FROM (SELECT employees.employee_id AS employees_employee_id "
             "FROM employees "
-            "WHERE employees.type IN (?, ?)) AS anon_1"
+            "WHERE employees.type IN (:type_1, :type_2)) AS anon_1",
+            use_default_dialect=True
         )
 
     def test_select_from(self):
