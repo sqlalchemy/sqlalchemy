@@ -15,7 +15,7 @@ as well as some of the attribute loading strategies.
 
 
 from .. import util
-from . import attributes, exc as orm_exc, state as statelib
+from . import attributes, exc as orm_exc
 from ..sql import util as sql_util
 from .util import _none_set, state_str
 from .. import exc as sa_exc
@@ -25,7 +25,6 @@ _new_runid = util.counter()
 
 def instances(query, cursor, context):
     """Return an ORM result as an iterator."""
-    session = query.session
 
     context.runid = _new_runid()
 
@@ -54,7 +53,6 @@ def instances(query, cursor, context):
         keyed_tuple = util.lightweight_named_tuple('result', labels)
 
     while True:
-        context.progress = {}
         context.partials = {}
 
         if query._yield_per:
@@ -73,17 +71,6 @@ def instances(query, cursor, context):
 
         if filtered:
             rows = util.unique_list(rows, filter_fn)
-
-        if context.refresh_state and query._only_load_props \
-                and context.refresh_state in context.progress:
-            context.refresh_state._commit(
-                context.refresh_state.dict, query._only_load_props)
-            context.progress.pop(context.refresh_state)
-
-        statelib.InstanceState._commit_all_states(
-            context.progress.items(),
-            session.identity_map
-        )
 
         for state, (dict_, attrs) in context.partials.items():
             state._commit(dict_, attrs)
@@ -286,6 +273,21 @@ def instance_processor(mapper, context, result, path, adapter,
     refresh_evt = bool(mapper.class_manager.dispatch.refresh)
     instance_state = attributes.instance_state
     instance_dict = attributes.instance_dict
+    session_id = context.session.hash_key
+    version_check = context.version_check
+    runid = context.runid
+    propagate_options = context.propagate_options
+
+    if refresh_state:
+        refresh_identity_key = refresh_state.key
+        if refresh_identity_key is None:
+            # super-rare condition; a refresh is being called
+            # on a non-instance-key instance; this is meant to only
+            # occur within a flush()
+            refresh_identity_key = \
+                mapper._identity_key_from_state(refresh_state)
+    else:
+        refresh_identity_key = None
 
     if mapper.allow_partial_pks:
         is_not_primary_key = _none_set.issuperset
@@ -302,18 +304,10 @@ def instance_processor(mapper, context, result, path, adapter,
                     return _instance(row)
 
         # determine identity key
-        if refresh_state:
-            identitykey = refresh_state.key
-            if identitykey is None:
-                # super-rare condition; a refresh is being called
-                # on a non-instance-key instance; this is meant to only
-                # occur within a flush()
-                identitykey = mapper._identity_key_from_state(refresh_state)
-        else:
-            identitykey = (
-                identity_class,
-                tuple([row[column] for column in pk_cols])
-            )
+        identitykey = refresh_identity_key or (
+            identity_class,
+            tuple([row[column] for column in pk_cols])
+        )
 
         instance = session_identity_map.get(identitykey)
 
@@ -321,13 +315,12 @@ def instance_processor(mapper, context, result, path, adapter,
             state = instance_state(instance)
             dict_ = instance_dict(instance)
 
-            isnew = state.runid != context.runid
+            isnew = state.runid != runid
             currentload = not isnew
             loaded_instance = False
 
-            if not currentload and \
+            if version_check and not currentload and \
                     version_id_col is not None and \
-                    context.version_check and \
                     mapper._get_state_attr_by_column(
                         state,
                         dict_,
@@ -370,17 +363,16 @@ def instance_processor(mapper, context, result, path, adapter,
             state.key = identitykey
 
             # attach instance to session.
-            state.session_id = context.session.hash_key
+            state.session_id = session_id
             session_identity_map._add_unpresent(state, identitykey)
 
         if currentload or populate_existing:
             # state is being fully loaded, so populate.
             # add to the "context.progress" collection.
             if isnew:
-                state.runid = context.runid
-                context.progress[state] = dict_
-                if context.propagate_options:
-                    state.load_options = context.propagate_options
+                state.runid = runid
+                if propagate_options:
+                    state.load_options = propagate_options
                 if state.load_options:
                     state.load_path = load_path
                 for key, populator in new_populators:
@@ -394,6 +386,12 @@ def instance_processor(mapper, context, result, path, adapter,
             elif isnew and refresh_evt:
                 state.manager.dispatch.refresh(
                     state, context, only_load_props)
+
+            if populate_existing:
+                if refresh_state and only_load_props:
+                    state._commit(dict_, only_load_props)
+                else:
+                    state._commit_all(dict_, session_identity_map)
 
         elif state in context.partials or state.unloaded or eager_populators:
             # state is having a partial set of its attributes
