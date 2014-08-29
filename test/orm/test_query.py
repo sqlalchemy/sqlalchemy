@@ -6,7 +6,8 @@ from sqlalchemy.sql import operators, column, expression
 from sqlalchemy.engine import default
 from sqlalchemy.orm import (
     attributes, mapper, relationship, create_session, synonym, Session,
-    aliased, column_property, joinedload_all, joinedload, Query, Bundle)
+    aliased, column_property, joinedload_all, joinedload, Query, Bundle,
+    subqueryload)
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.schema import Table, Column
 import sqlalchemy as sa
@@ -2146,6 +2147,39 @@ class YieldTest(QueryTest):
         q = q.execution_options(foo='bar')
         assert q._yield_per
         eq_(q._execution_options, {"stream_results": True, "foo": "bar"})
+
+    def test_no_joinedload(self):
+        User = self.classes.User
+        sess = create_session()
+        q = sess.query(User).options(joinedload("addresses")).yield_per(1)
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "The yield_per Query option is currently not compatible with "
+            "joined eager loading.  Please specify ",
+            q.all
+        )
+
+    def test_no_subqueryload(self):
+        User = self.classes.User
+        sess = create_session()
+        q = sess.query(User).options(subqueryload("addresses")).yield_per(1)
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "The yield_per Query option is currently not compatible with "
+            "subquery eager loading.  Please specify ",
+            q.all
+        )
+
+    def test_eagerload_disable(self):
+        User = self.classes.User
+        sess = create_session()
+        q = sess.query(User).options(subqueryload("addresses")).\
+            enable_eagerloads(False).yield_per(1)
+        q.all()
+
+        q = sess.query(User).options(joinedload("addresses")).\
+            enable_eagerloads(False).yield_per(1)
+        q.all()
 
 
 class HintsTest(QueryTest, AssertsCompiledSQL):

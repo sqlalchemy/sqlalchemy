@@ -712,6 +712,8 @@ class SubqueryLoader(AbstractRelationshipLoader):
 
         if not context.query._enable_eagerloads:
             return
+        elif context.query._yield_per:
+            context.query._no_yield_per("subquery")
 
         path = path[self.parent_property]
 
@@ -1087,6 +1089,8 @@ class JoinedLoader(AbstractRelationshipLoader):
 
         if not context.query._enable_eagerloads:
             return
+        elif context.query._yield_per:
+            context.query._no_yield_per("joined")
 
         path = path[self.parent_property]
 

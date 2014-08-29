@@ -21,6 +21,19 @@
     series as well.  For changes that are specific to 1.0 with an emphasis
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
+    .. change::
+        :tags: feature, orm
+
+        The :class:`.Query` will raise an exception when :meth:`.Query.yield_per`
+        is used with mappings or options where eager loading, either
+        joined or subquery, would take place.  These loading strategies are
+        not currently compatible with yield_per, so by raising this error,
+        the method is safer to use - combine with sending False to
+        :meth:`.Query.enable_eagerloads` to disable the eager loaders.
+
+        .. seealso::
+
+            :ref:`migration_yield_per_eager_loading`
 
     .. change::
         :tags: bug, orm

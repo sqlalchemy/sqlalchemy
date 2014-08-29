@@ -595,10 +595,17 @@ class Query(object):
 
         This is used primarily when nesting the Query's
         statement into a subquery or other
-        selectable.
+        selectable, or when using :meth:`.Query.yield_per`.
 
         """
         self._enable_eagerloads = value
+
+    def _no_yield_per(self, message):
+        raise sa_exc.InvalidRequestError(
+            "The yield_per Query option is currently not "
+            "compatible with %s eager loading.  Please "
+            "specify query.enable_eagerloads(False) in order to "
+            "proceed with query.yield_per()." % message)
 
     @_generative()
     def with_labels(self):
@@ -714,9 +721,11 @@ class Query(object):
         (e.g. approximately 1000) is used, even with DBAPIs that buffer
         rows (which are most).
 
-        The :meth:`.yield_per` method **is not compatible with most
+        The :meth:`.Query.yield_per` method **is not compatible with most
         eager loading schemes, including joinedload and subqueryload**.
-        See the warning below.
+        For this reason it typically should be combined with the use of
+        the :meth:`.Query.enable_eagerloads` method, passing a value of
+        False.  See the warning below.
 
         .. warning::
 
@@ -743,6 +752,10 @@ class Query(object):
             available.  The memory use of raw database rows is much less
             than that of an ORM-mapped object, but should still be taken into
             consideration when benchmarking.
+
+        .. seealso::
+
+            :meth:`.Query.enable_eagerloads`
 
         """
         self._yield_per = count

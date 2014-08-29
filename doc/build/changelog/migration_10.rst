@@ -104,6 +104,18 @@ symbol, and no change to the object's state occurs.
 
 :ticket:`3061`
 
+.. _migration_yield_per_eager_loading:
+
+Joined/Subquery eager loading explicitly disallowed with yield_per
+------------------------------------------------------------------
+
+In order to make the :meth:`.Query.yield_per` method easier to use,
+an exception is raised if any joined or subquery eager loaders are
+to take effect when yield_per is used, as these are currently not compatible
+with yield-per (subquery loading could be in theory, however).
+When this error is raised, the :meth:`.Query.enable_eagerloads` method
+should be called with a value of False to disable these eager loaders.
+
 .. _migration_migration_deprecated_orm_events:
 
 Deprecated ORM Event Hooks Removed
