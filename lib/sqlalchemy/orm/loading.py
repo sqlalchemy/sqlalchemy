@@ -72,9 +72,6 @@ def instances(query, cursor, context):
         if filtered:
             rows = util.unique_list(rows, filter_fn)
 
-        for state, (dict_, attrs) in context.partials.items():
-            state._commit(dict_, attrs)
-
         for row in rows:
             yield row
 
@@ -414,10 +411,13 @@ def instance_processor(mapper, context, result, path, adapter,
                     state.load_options = context.propagate_options
                 if state.load_options:
                     state.load_path = load_path
+
                 for key, populator in new_populators:
                     if key not in attrs:
                         continue
                     populator(state, dict_, row)
+
+                state._commit(dict_, attrs)
 
             for key, pop in eager_populators:
                 if key not in unloaded:
