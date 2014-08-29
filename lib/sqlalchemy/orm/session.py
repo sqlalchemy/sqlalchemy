@@ -269,7 +269,7 @@ class SessionTransaction(object):
                 del s.key
 
         for s, (oldkey, newkey) in self._key_switches.items():
-            self.session.identity_map.discard(s)
+            self.session.identity_map.safe_discard(s)
             s.key = oldkey
             self.session.identity_map.replace(s)
 
@@ -1394,7 +1394,7 @@ class Session(_SessionClassMethods):
             self._new.pop(state)
             state._detach()
         elif self.identity_map.contains_state(state):
-            self.identity_map.discard(state)
+            self.identity_map.safe_discard(state)
             self._deleted.pop(state, None)
             state._detach()
         elif self.transaction:
@@ -1464,7 +1464,7 @@ class Session(_SessionClassMethods):
             if self._enable_transaction_accounting and self.transaction:
                 self.transaction._deleted[state] = True
 
-            self.identity_map.discard(state)
+            self.identity_map.safe_discard(state)
             self._deleted.pop(state, None)
             state.deleted = True
 
