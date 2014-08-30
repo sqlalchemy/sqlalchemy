@@ -1086,8 +1086,8 @@ class JoinedLoader(AbstractRelationshipLoader):
 
         if not context.query._enable_eagerloads:
             return
-        elif context.query._yield_per:
-            context.query._no_yield_per("joined")
+        elif context.query._yield_per and self.uselist:
+            context.query._no_yield_per("joined collection")
 
         path = path[self.parent_property]
 

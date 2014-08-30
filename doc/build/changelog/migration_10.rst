@@ -110,11 +110,25 @@ Joined/Subquery eager loading explicitly disallowed with yield_per
 ------------------------------------------------------------------
 
 In order to make the :meth:`.Query.yield_per` method easier to use,
-an exception is raised if any joined or subquery eager loaders are
+an exception is raised if any subquery eager loaders, or joined
+eager loaders that would use collections, are
 to take effect when yield_per is used, as these are currently not compatible
 with yield-per (subquery loading could be in theory, however).
-When this error is raised, the :meth:`.Query.enable_eagerloads` method
-should be called with a value of False to disable these eager loaders.
+When this error is raised, the :func:`.lazyload` option can be sent with
+an asterisk::
+
+	q = sess.query(Object).options(lazyload('*')).yield_per(100)
+
+or use :meth:`.Query.enable_eagerloads`::
+
+	q = sess.query(Object).enable_eagerloads(False).yield_per(100)
+
+The :func:`.lazyload` option has the advantage that additional many-to-one
+joined loader options can still be used::
+
+	q = sess.query(Object).options(
+		lazyload('*'), joinedload("some_manytoone")).yield_per(100)
+
 
 .. _migration_migration_deprecated_orm_events:
 

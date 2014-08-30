@@ -7,7 +7,7 @@ from sqlalchemy.engine import default
 from sqlalchemy.orm import (
     attributes, mapper, relationship, create_session, synonym, Session,
     aliased, column_property, joinedload_all, joinedload, Query, Bundle,
-    subqueryload)
+    subqueryload, backref, lazyload)
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.schema import Table, Column
 import sqlalchemy as sa
@@ -2116,8 +2116,24 @@ class PrefixWithTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(query, expected, dialect=default.DefaultDialect())
 
 
-class YieldTest(QueryTest):
+class YieldTest(_fixtures.FixtureTest):
+    run_setup_mappers = 'each'
+    run_inserts = 'each'
+
+    def _eagerload_mappings(self, addresses_lazy=True, user_lazy=True):
+        User, Address = self.classes("User", "Address")
+        users, addresses = self.tables("users", "addresses")
+        mapper(User, users, properties={
+            "addresses": relationship(
+                Address, lazy=addresses_lazy,
+                backref=backref("user", lazy=user_lazy)
+            )
+        })
+        mapper(Address, addresses)
+
     def test_basic(self):
+        self._eagerload_mappings()
+
         User = self.classes.User
 
         sess = create_session()
@@ -2140,6 +2156,8 @@ class YieldTest(QueryTest):
             pass
 
     def test_yield_per_and_execution_options(self):
+        self._eagerload_mappings()
+
         User = self.classes.User
 
         sess = create_session()
@@ -2148,18 +2166,22 @@ class YieldTest(QueryTest):
         assert q._yield_per
         eq_(q._execution_options, {"stream_results": True, "foo": "bar"})
 
-    def test_no_joinedload(self):
+    def test_no_joinedload_opt(self):
+        self._eagerload_mappings()
+
         User = self.classes.User
         sess = create_session()
         q = sess.query(User).options(joinedload("addresses")).yield_per(1)
         assert_raises_message(
             sa_exc.InvalidRequestError,
             "The yield_per Query option is currently not compatible with "
-            "joined eager loading.  Please specify ",
+            "joined collection eager loading.  Please specify ",
             q.all
         )
 
-    def test_no_subqueryload(self):
+    def test_no_subqueryload_opt(self):
+        self._eagerload_mappings()
+
         User = self.classes.User
         sess = create_session()
         q = sess.query(User).options(subqueryload("addresses")).yield_per(1)
@@ -2170,7 +2192,29 @@ class YieldTest(QueryTest):
             q.all
         )
 
-    def test_eagerload_disable(self):
+    def test_no_subqueryload_mapping(self):
+        self._eagerload_mappings(addresses_lazy="subquery")
+
+        User = self.classes.User
+        sess = create_session()
+        q = sess.query(User).yield_per(1)
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "The yield_per Query option is currently not compatible with "
+            "subquery eager loading.  Please specify ",
+            q.all
+        )
+
+    def test_joinedload_m2o_ok(self):
+        self._eagerload_mappings(user_lazy="joined")
+        Address = self.classes.Address
+        sess = create_session()
+        q = sess.query(Address).yield_per(1)
+        q.all()
+
+    def test_eagerload_opt_disable(self):
+        self._eagerload_mappings()
+
         User = self.classes.User
         sess = create_session()
         q = sess.query(User).options(subqueryload("addresses")).\
@@ -2180,6 +2224,18 @@ class YieldTest(QueryTest):
         q = sess.query(User).options(joinedload("addresses")).\
             enable_eagerloads(False).yield_per(1)
         q.all()
+
+    def test_m2o_joinedload_not_others(self):
+        self._eagerload_mappings(addresses_lazy="joined")
+        Address = self.classes.Address
+        sess = create_session()
+        q = sess.query(Address).options(
+            lazyload('*'), joinedload("user")).yield_per(1).filter_by(id=1)
+
+        def go():
+            result = q.all()
+            assert result[0].user
+        self.assert_sql_count(testing.db, go, 1)
 
 
 class HintsTest(QueryTest, AssertsCompiledSQL):

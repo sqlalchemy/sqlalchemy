@@ -604,7 +604,8 @@ class Query(object):
         raise sa_exc.InvalidRequestError(
             "The yield_per Query option is currently not "
             "compatible with %s eager loading.  Please "
-            "specify query.enable_eagerloads(False) in order to "
+            "specify lazyload('*') or query.enable_eagerloads(False) in "
+            "order to "
             "proceed with query.yield_per()." % message)
 
     @_generative()
@@ -722,10 +723,18 @@ class Query(object):
         rows (which are most).
 
         The :meth:`.Query.yield_per` method **is not compatible with most
-        eager loading schemes, including joinedload and subqueryload**.
-        For this reason it typically should be combined with the use of
-        the :meth:`.Query.enable_eagerloads` method, passing a value of
-        False.  See the warning below.
+        eager loading schemes, including subqueryload and joinedload with
+        collections**.  For this reason, it may be helpful to disable
+        eager loads, either unconditionally with
+        :meth:`.Query.enable_eagerloads`::
+
+            q = sess.query(Object).yield_per(100).enable_eagerloads(False)
+
+        Or more selectively using :func:`.lazyload`; such as with
+        an asterisk to specify the default loader scheme::
+
+            q = sess.query(Object).yield_per(100).\\
+                options(lazyload('*'), joinedload(Object.some_related))
 
         .. warning::
 

@@ -25,11 +25,12 @@
         :tags: feature, orm
 
         The :class:`.Query` will raise an exception when :meth:`.Query.yield_per`
-        is used with mappings or options where eager loading, either
-        joined or subquery, would take place.  These loading strategies are
+        is used with mappings or options where either
+        subquery eager loading, or joined eager loading with collections,
+        would take place.  These loading strategies are
         not currently compatible with yield_per, so by raising this error,
-        the method is safer to use - combine with sending False to
-        :meth:`.Query.enable_eagerloads` to disable the eager loaders.
+        the method is safer to use.  Eager loads can be disabled with
+        the ``lazyload('*')`` option or :meth:`.Query.enable_eagerloads`.
 
         .. seealso::
 
