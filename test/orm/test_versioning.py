@@ -180,6 +180,20 @@ class VersioningTest(fixtures.MappedTest):
         s1.close()
         s1.query(Foo).with_lockmode('read').get(f1s1.id)
 
+    def test_versioncheck_not_versioned(self):
+        """ensure the versioncheck logic skips if there isn't a
+        version_id_col actually configured"""
+
+        Foo = self.classes.Foo
+        version_table = self.tables.version_table
+
+        mapper(Foo, version_table)
+        s1 = Session()
+        f1s1 = Foo(value='f1 value', version_id=1)
+        s1.add(f1s1)
+        s1.commit()
+        s1.query(Foo).with_lockmode('read').get(f1s1.id)
+
     @testing.emits_warning(r'.*does not support updated rowcount')
     @engines.close_open_connections
     @testing.requires.update_nowait
