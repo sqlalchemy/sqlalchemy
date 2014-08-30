@@ -230,12 +230,6 @@ def instance_processor(mapper, context, result, path, adapter,
 
     pk_cols = mapper.primary_key
 
-    if polymorphic_from or refresh_state:
-        polymorphic_switch = None
-    else:
-        polymorphic_switch = _polymorphic_switch(
-            context, mapper, result, path, polymorphic_discriminator, adapter)
-
     version_id_col = mapper.version_id_col
 
     if adapter:
@@ -288,14 +282,6 @@ def instance_processor(mapper, context, result, path, adapter,
         is_not_primary_key = _none_set.intersection
 
     def _instance(row):
-
-        # if we are doing polymorphic, dispatch
-        # to a different _instance() method specific to
-        # the subclass mapper
-        if polymorphic_switch is not None:
-            result = polymorphic_switch(row)
-            if result is not False:
-                return result
 
         # determine the state that we'll be populating
         if refresh_identity_key:
@@ -414,6 +400,14 @@ def instance_processor(mapper, context, result, path, adapter,
                     state._commit(dict_, to_load)
 
         return instance
+
+    if not polymorphic_from and not refresh_state:
+        # if we are doing polymorphic, dispatch to a different _instance()
+        # method specific to the subclass mapper
+        _instance = _decorate_polymorphic_switch(
+            _instance, context, mapper, result, path,
+            polymorphic_discriminator, adapter)
+
     return _instance
 
 
@@ -490,14 +484,18 @@ def _populate_partial(
     return to_load
 
 
-def _polymorphic_switch(
-        context, mapper, result, path, polymorphic_discriminator, adapter):
+def _decorate_polymorphic_switch(
+        instance_fn, context, mapper, result, path,
+        polymorphic_discriminator, adapter):
     if polymorphic_discriminator is not None:
         polymorphic_on = polymorphic_discriminator
     else:
         polymorphic_on = mapper.polymorphic_on
     if polymorphic_on is None:
-        return None
+        return instance_fn
+
+    if adapter:
+        polymorphic_on = adapter.columns[polymorphic_on]
 
     def configure_subclass_mapper(discriminator):
         try:
@@ -506,23 +504,17 @@ def _polymorphic_switch(
             raise AssertionError(
                 "No such polymorphic_identity %r is defined" %
                 discriminator)
-        if sub_mapper is mapper:
-            return None
+        else:
+            if sub_mapper is mapper:
+                return None
 
-        return instance_processor(
-            sub_mapper,
-            context,
-            result,
-            path,
-            adapter,
-            polymorphic_from=mapper)
+            return instance_processor(
+                sub_mapper, context, result,
+                path, adapter, polymorphic_from=mapper)
 
     polymorphic_instances = util.PopulateDict(
         configure_subclass_mapper
     )
-
-    if adapter:
-        polymorphic_on = adapter.columns[polymorphic_on]
 
     def polymorphic_instance(row):
         discriminator = row[polymorphic_on]
@@ -530,8 +522,7 @@ def _polymorphic_switch(
             _instance = polymorphic_instances[discriminator]
             if _instance:
                 return _instance(row)
-            else:
-                return False
+        return instance_fn(row)
     return polymorphic_instance
 
 
