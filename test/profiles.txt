@@ -160,12 +160,12 @@ test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove 
 
 # TEST: test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline
 
-test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_mysql_mysqldb_cextensions 27151
-test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_mysql_mysqldb_nocextensions 36168
+test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_mysql_mysqldb_cextensions 19132
+test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_mysql_mysqldb_nocextensions 28149
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_postgresql_psycopg2_cextensions 31132
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_postgresql_psycopg2_nocextensions 40149
-test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_sqlite_pysqlite_cextensions 27299
-test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_sqlite_pysqlite_nocextensions 36316
+test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_sqlite_pysqlite_cextensions 19280
+test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_sqlite_pysqlite_nocextensions 28297
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 3.3_mysql_mysqlconnector_cextensions 107603
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 3.3_mysql_mysqlconnector_nocextensions 116606
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 3.3_postgresql_psycopg2_nocextensions 29138
