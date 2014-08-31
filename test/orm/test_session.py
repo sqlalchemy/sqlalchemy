@@ -838,6 +838,7 @@ class SessionStateTest(_fixtures.FixtureTest):
     def test_extra_dirty_state_post_flush_state(self):
         s, a1, a2 = self._test_extra_dirty_state()
         canary = []
+
         @event.listens_for(s, "after_flush_postexec")
         def e(sess, ctx):
             canary.append(bool(sess.identity_map._modified))

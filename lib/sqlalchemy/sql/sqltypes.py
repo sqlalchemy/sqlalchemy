@@ -180,8 +180,10 @@ class String(Concatenable, TypeEngine):
                 if self._warn_on_bytestring:
                     def process(value):
                         if isinstance(value, util.binary_type):
-                            util.warn("Unicode type received non-unicode"
-                                      "bind param value.")
+                            util.warn_limited(
+                                "Unicode type received non-unicode "
+                                "bind param value %r.",
+                                util.ellipses_string(value))
                         return value
                     return process
                 else:
@@ -194,8 +196,10 @@ class String(Concatenable, TypeEngine):
                     if isinstance(value, util.text_type):
                         return encoder(value, self.unicode_error)[0]
                     elif warn_on_bytestring and value is not None:
-                        util.warn("Unicode type received non-unicode bind "
-                                  "param value")
+                        util.warn_limited(
+                            "Unicode type received non-unicode bind "
+                            "param value %r.",
+                            util.ellipses_string(value))
                     return value
             return process
         else:

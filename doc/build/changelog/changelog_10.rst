@@ -22,6 +22,21 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, engine
+        :tickets: 3178
+
+        A new style of warning can be emitted which will "filter" up to
+        N occurrences of a parameterized string.   This allows parameterized
+        warnings that can refer to their arguments to be delivered a fixed
+        number of times until allowing Python warning filters to squelch them,
+        and prevents memory from growing unbounded within Python's
+        warning registries.
+
+        .. seealso::
+
+            :ref:`feature_3178`
+
+    .. change::
         :tags: feature, orm
 
         The :class:`.Query` will raise an exception when :meth:`.Query.yield_per`

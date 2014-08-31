@@ -17,7 +17,9 @@ from sqlalchemy.testing.util import gc_collect
 import decimal
 import gc
 from sqlalchemy.testing import fixtures
+from sqlalchemy import util
 import weakref
+import itertools
 
 
 class A(fixtures.ComparableEntity):
@@ -375,6 +377,18 @@ class MemUsageTest(EnsureZeroed):
             go()
         finally:
             metadata.drop_all()
+
+    def test_warnings_util(self):
+        counter = itertools.count()
+        import warnings
+        warnings.filterwarnings("ignore", "memusage warning.*")
+
+        @profile_memory()
+        def go():
+            util.warn_limited(
+                "memusage warning, param1: %s, param2: %s",
+                next(counter), next(counter))
+        go()
 
     def test_mapper_reset(self):
         metadata = MetaData(self.engine)

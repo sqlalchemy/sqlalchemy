@@ -459,6 +459,55 @@ object totally smokes both namedtuple and KeyedTuple::
 
 :ticket:`3176`
 
+.. _feature_3178:
+
+New systems to safely emit parameterized warnings
+-------------------------------------------------
+
+For a long time, there has been a restriction that warning messages could not
+refer to data elements, such that a particular function might emit an
+infinite number of unique warnings.  The key place this occurs is in the
+``Unicode type received non-unicode bind param value`` warning.  Placing
+the data value in this message would mean that the Python ``__warningregistry__``
+for that module, or in some cases the Python-global ``warnings.onceregistry``,
+would grow unbounded, as in most warning scenarios, one of these two collections
+is populated with every distinct warning message.
+
+The change here is that by using a special ``string`` type that purposely
+changes how the string is hashed, we can control that a large number of
+parameterized messages are hashed only on a small set of possible hash
+values, such that a warning such as ``Unicode type received non-unicode
+bind param value`` can be tailored to be emitted only a specific number
+of times; beyond that, the Python warnings registry will begin recording
+them as duplicates.
+
+To illustrate, the following test script will show only ten warnings being
+emitted for ten of the parameter sets, out of a total of 1000:
+
+	from sqlalchemy import create_engine, Unicode, select, cast
+	import random
+	import warnings
+
+	e = create_engine("sqlite://")
+
+	# Use the "once" filter (which is also the default for Python
+	# warnings).  Exactly ten of these warnings will
+	# be emitted; beyond that, the Python warnings registry will accumulate
+	# new values as dupes of one of the ten existing.
+	warnings.filterwarnings("once")
+
+	for i in range(1000):
+	    e.execute(select([cast(
+	        ('foo_%d' % random.randint(0, 1000000)).encode('ascii'), Unicode)]))
+
+The format of the warning here is::
+
+	/path/lib/sqlalchemy/sql/sqltypes.py:186: SAWarning: Unicode type received
+	  non-unicode bind param value 'foo_4852'. (this warning may be
+	  suppressed after 10 occurrences)
+
+
+:ticket:`3178`
 
 .. _feature_2963:
 

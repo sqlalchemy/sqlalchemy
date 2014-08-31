@@ -6,7 +6,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-from .warnings import testing_warn, assert_warnings, resetwarnings
+from .warnings import assert_warnings
 
 from . import config
 
