@@ -2326,9 +2326,15 @@ class Query(object):
         This method bypasses all internal statement compilation, and the
         statement is executed without modification.
 
-        The statement argument is either a string, a ``select()`` construct,
-        or a ``text()`` construct, and should return the set of columns
-        appropriate to the entity class represented by this ``Query``.
+        The statement is typically either a :func:`~.expression.text`
+        or :func:`~.expression.select` construct, and should return the set
+        of columns
+        appropriate to the entity class represented by this :class:`.Query`.
+
+        .. seealso::
+
+            :ref:`orm_tutorial_literal_sql` - usage examples in the
+            ORM tutorial
 
         """
         if isinstance(statement, util.string_types):
