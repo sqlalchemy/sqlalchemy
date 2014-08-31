@@ -913,16 +913,18 @@ Using Literal SQL
 -----------------
 
 Literal strings can be used flexibly with
-:class:`~sqlalchemy.orm.query.Query`. Most methods accept strings in addition
-to SQLAlchemy clause constructs. For example,
+:class:`~sqlalchemy.orm.query.Query`, by specifying their use
+with the :func:`~.expression.text` construct, which is accepted
+by most applicable methods.  For example,
 :meth:`~sqlalchemy.orm.query.Query.filter()` and
 :meth:`~sqlalchemy.orm.query.Query.order_by()`:
 
 .. sourcecode:: python+sql
 
+    >>> from sqlalchemy import text
     {sql}>>> for user in session.query(User).\
-    ...             filter("id<224").\
-    ...             order_by("id").all(): #doctest: +NORMALIZE_WHITESPACE
+    ...             filter(text("id<224")).\
+    ...             order_by(text("id")).all(): #doctest: +NORMALIZE_WHITESPACE
     ...     print user.name
     SELECT users.id AS users_id,
             users.name AS users_name,
@@ -942,7 +944,7 @@ method:
 
 .. sourcecode:: python+sql
 
-    {sql}>>> session.query(User).filter("id<:value and name=:name").\
+    {sql}>>> session.query(User).filter(text("id<:value and name=:name")).\
     ...     params(value=224, name='fred').order_by(User.id).one() # doctest: +NORMALIZE_WHITESPACE
     SELECT users.id AS users_id,
             users.name AS users_name,
@@ -961,7 +963,7 @@ mapper (below illustrated using an asterisk):
 .. sourcecode:: python+sql
 
     {sql}>>> session.query(User).from_statement(
-    ...                     "SELECT * FROM users where name=:name").\
+    ...                     text("SELECT * FROM users where name=:name")).\
     ...                     params(name='ed').all()
     SELECT * FROM users where name=?
     ('ed',)
@@ -973,8 +975,8 @@ completely "raw", using string names to identify desired columns:
 .. sourcecode:: python+sql
 
     {sql}>>> session.query("id", "name", "thenumber12").\
-    ...         from_statement("SELECT id, name, 12 as "
-    ...                 "thenumber12 FROM users where name=:name").\
+    ...         from_statement(text("SELECT id, name, 12 as "
+    ...                 "thenumber12 FROM users where name=:name")).\
     ...                 params(name='ed').all()
     SELECT id, name, 12 as thenumber12 FROM users where name=?
     ('ed',)
