@@ -778,8 +778,9 @@ feeding in the bind parameters to the :meth:`~.Connection.execute` method:
     ('m', 'z', '%@aol.com', '%@msn.com')
     {stop}[(u'Wendy Williams, wendy@aol.com',)]
 
-To gain a "hybrid" approach, the :func:`.select` construct accepts strings for most
-of its arguments. Below we combine the usage of strings with our constructed
+To gain a "hybrid" approach, the :func:`.select` construct accepts
+:func:`~.expression.text` constructs for most of its arguments.
+Below we combine the usage of :func:`~.expression.text` with our constructed
 :func:`.select` object, by using the :func:`.select` object to structure the
 statement, and strings to provide all the content within the structure. For
 this example, SQLAlchemy is not given any :class:`~sqlalchemy.schema.Column`
@@ -791,15 +792,15 @@ to be placed within the FROM clause:
 .. sourcecode:: pycon+sql
 
     >>> s = select([
-    ...            "users.fullname || ', ' || addresses.email_address AS title"
+    ...            text("users.fullname || ', ' || addresses.email_address AS title")
     ...          ]).\
     ...           where(
     ...              and_(
-    ...                 "users.id = addresses.user_id",
-    ...                 "users.name BETWEEN 'm' AND 'z'",
-    ...                 "(addresses.email_address LIKE :x OR addresses.email_address LIKE :y)"
+    ...                 text("users.id = addresses.user_id"),
+    ...                 text("users.name BETWEEN 'm' AND 'z'"),
+    ...                 text("(addresses.email_address LIKE :x OR addresses.email_address LIKE :y)")
     ...             )
-    ...           ).select_from('users, addresses')
+    ...           ).select_from(text('users, addresses'))
     {sql}>>> conn.execute(s, x='%@aol.com', y='%@msn.com').fetchall() #doctest: +NORMALIZE_WHITESPACE
     SELECT users.fullname || ', ' || addresses.email_address AS title
     FROM users, addresses
