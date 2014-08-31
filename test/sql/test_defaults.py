@@ -1273,7 +1273,7 @@ class UnicodeDefaultsTest(fixtures.TestBase):
         assert_raises_message(
             sa.exc.SAWarning,
             "Unicode column 'foobar' has non-unicode "
-            "default value 'foo' specified.",
+            "default value b?'foo' specified.",
             Column,
             "foobar", Unicode(32),
             default=default
