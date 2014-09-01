@@ -2133,14 +2133,15 @@ class Case(ColumnElement):
 
 
 def literal_column(text, type_=None):
-    """Return a textual column expression, as would be in the columns
-    clause of a ``SELECT`` statement.
+    """Produce a :class:`.ColumnClause` object that has the
+    :paramref:`.column.is_literal` flag set to True.
 
-    The object returned supports further expressions in the same way as any
-    other column object, including comparison, math and string operations.
-    The type\_ parameter is important to determine proper expression behavior
-    (such as, '+' means string concatenation or numerical addition based on
-    the type).
+    :func:`.literal_column` is similar to :func:`.column`, except that
+    it is more often used as a "standalone" column expression that renders
+    exactly as stated; while :func:`.column` stores a string name that
+    will be assumed to be part of a table and may be quoted as such,
+    :func:`.literal_column` can be that, or any other arbitrary column-oriented
+    expression.
 
     :param text: the text of the expression; can be any SQL expression.
       Quoting rules will not be applied. To specify a column-name expression
@@ -2151,6 +2152,14 @@ def literal_column(text, type_=None):
       object which will
       provide result-set translation and additional expression semantics for
       this column. If left as None the type will be NullType.
+
+    .. seealso::
+
+        :func:`.column`
+
+        :func:`.text`
+
+        :ref:`sqlexpression_literal_column`
 
     """
     return ColumnClause(text, type_=type_, is_literal=True)
@@ -2965,9 +2974,11 @@ class ColumnClause(Immutable, ColumnElement):
 
             :func:`.literal_column`
 
+            :func:`.table`
+
             :func:`.text`
 
-            :ref:`metadata_toplevel`
+            :ref:`sqlexpression_literal_column`
 
         """
 
