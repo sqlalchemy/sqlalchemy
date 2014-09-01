@@ -982,91 +982,16 @@ completely "raw", using string names to identify desired columns:
     ('ed',)
     {stop}[(1, u'ed', 12)]
 
-.. topic:: Pros and Cons of Literal SQL
+.. sidebar:: Why not use strings everywhere?
 
-   :class:`.Query` is constructed like the rest of SQLAlchemy, in that it tries
-   to always allow "falling back" to a less automated, lower level approach to things.
-   Accepting strings for all SQL fragments is a big part of that, so that
-   you can bypass the need to organize SQL constructs if you know specifically
-   what string output you'd like.
-   But when using literal strings, the :class:`.Query` no longer knows anything about
-   that part of the SQL construct being emitted, and has no ability to
-   **transform** it to adapt to new contexts.
-
-   For example, suppose we selected ``User`` objects and ordered by the ``name``
-   column, using a string to indicate ``name``:
-
-   .. sourcecode:: python+sql
-
-       >>> q = session.query(User.id, User.name)
-       {sql}>>> q.order_by("name").all() #doctest: +NORMALIZE_WHITESPACE
-       SELECT users.id AS users_id, users.name AS users_name
-       FROM users ORDER BY name
-       ()
-       {stop}[(1, u'ed'), (4, u'fred'), (3, u'mary'), (2, u'wendy')]
-
-   Perfectly fine.  But suppose, before we got a hold of the :class:`.Query`,
-   some sophisticated transformations were applied to it, such as below
-   where we use :meth:`~.Query.from_self`, a particularly advanced
-   method, to retrieve pairs of user names with
-   different numbers of characters::
-
-        >>> from sqlalchemy import func
-        >>> ua = aliased(User)
-        >>> q = q.from_self(User.id, User.name, ua.name).\
-        ...     filter(User.name < ua.name).\
-        ...     filter(func.length(ua.name) != func.length(User.name))
-
-   The :class:`.Query` now represents a select from a subquery, where
-   ``User`` is represented twice both inside and outside of the subquery.
-   Telling the :class:`.Query` to order by "name" doesn't really give
-   us much guarantee which "name" it's going to order on.  In this
-   case it assumes "name" is against the outer "aliased" ``User`` construct:
-
-   .. sourcecode:: python+sql
-
-       {sql}>>> q.order_by("name").all() #doctest: +NORMALIZE_WHITESPACE
-       SELECT anon_1.users_id AS anon_1_users_id,
-                anon_1.users_name AS anon_1_users_name,
-                users_1.name AS users_1_name
-       FROM (SELECT users.id AS users_id, users.name AS users_name
-            FROM users) AS anon_1, users AS users_1
-       WHERE anon_1.users_name < users_1.name
-            AND length(users_1.name) != length(anon_1.users_name)
-       ORDER BY name
-       ()
-       {stop}[(1, u'ed', u'fred'), (1, u'ed', u'mary'), (1, u'ed', u'wendy'), (3, u'mary', u'wendy'), (4, u'fred', u'wendy')]
-
-   Only if we use the SQL element directly, in this case ``User.name``
-   or ``ua.name``, do we give :class:`.Query` enough information to know
-   for sure which "name" we'd like to order on, where we can see we get different results
-   for each:
-
-   .. sourcecode:: python+sql
-
-       {sql}>>> q.order_by(ua.name).all() #doctest: +NORMALIZE_WHITESPACE
-       SELECT anon_1.users_id AS anon_1_users_id,
-                anon_1.users_name AS anon_1_users_name,
-                users_1.name AS users_1_name
-       FROM (SELECT users.id AS users_id, users.name AS users_name
-            FROM users) AS anon_1, users AS users_1
-       WHERE anon_1.users_name < users_1.name
-            AND length(users_1.name) != length(anon_1.users_name)
-       ORDER BY users_1.name
-       ()
-       {stop}[(1, u'ed', u'fred'), (1, u'ed', u'mary'), (1, u'ed', u'wendy'), (3, u'mary', u'wendy'), (4, u'fred', u'wendy')]
-
-       {sql}>>> q.order_by(User.name).all() #doctest: +NORMALIZE_WHITESPACE
-       SELECT anon_1.users_id AS anon_1_users_id,
-                anon_1.users_name AS anon_1_users_name,
-                users_1.name AS users_1_name
-       FROM (SELECT users.id AS users_id, users.name AS users_name
-            FROM users) AS anon_1, users AS users_1
-       WHERE anon_1.users_name < users_1.name
-            AND length(users_1.name) != length(anon_1.users_name)
-       ORDER BY anon_1.users_name
-       ()
-       {stop}[(1, u'ed', u'wendy'), (1, u'ed', u'mary'), (1, u'ed', u'fred'), (4, u'fred', u'wendy'), (3, u'mary', u'wendy')]
+    When we use literal strings, the Core can't adapt our SQL to work
+    on different database backends.  We also lose typing information about
+    result columns and bound parameters.  Depending on how much of our
+    SQL is specified as fixed text, the :class:`.Query` object
+    has less ability to perform transformations and adaptations of the
+    SQL statement as a whole, which can impact features such as eager loading,
+    generation of joins and subqueries, and working with compound
+    mappings such as inheritance mappings.
 
 Counting
 --------

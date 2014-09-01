@@ -809,21 +809,19 @@ to be placed within the FROM clause:
     ('%@aol.com', '%@msn.com')
     {stop}[(u'Wendy Williams, wendy@aol.com',)]
 
-Going from constructed SQL to text, we lose some capabilities. We lose the
-capability for SQLAlchemy to compile our expression to a specific target
-database; above, our expression won't work with MySQL since it has no ``||``
-construct. It also becomes more tedious for SQLAlchemy to be made aware of the
-datatypes in use; for example, if our bind parameters required UTF-8 encoding
-before going in, or conversion from a Python ``datetime`` into a string (as is
-required with SQLite), we would have to add extra information to our
-:func:`~.expression.text` construct. Similar issues arise on the result set side, where
-SQLAlchemy also performs type-specific data conversion in some cases; still
-more information can be added to :func:`~.expression.text` to work around this. But what we
-really lose from our statement is the ability to manipulate it, transform it,
-and analyze it. These features are critical when using the ORM, which makes
-heavy usage of relational transformations. To show off what we mean, we'll
-first introduce the ALIAS construct and the JOIN construct, just so we have
-some juicier bits to play with.
+.. sidebar:: Why not use strings everywhere?
+
+    When we use literal strings, the Core can't adapt our SQL to work
+    on different database backends.  Above, our expression won't work
+    with MySQL since MySQL doesn't have the ``||`` construct.
+    If we only use :func:`.text` to specify columns, our :func:`.select`
+    construct will have an empty ``.c`` collection
+    that we'd normally use to create subqueries.
+    We also lose typing information about result columns and bound parameters,
+    which is often needed to correctly translate data values between
+    Python and the database.  Overall, the more :func:`.text` we use,
+    the less flexibility and ability for manipulation/transformation
+    the statement will have.
 
 Using Aliases
 ==============
