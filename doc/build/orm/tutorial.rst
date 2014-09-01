@@ -982,16 +982,12 @@ completely "raw", using string names to identify desired columns:
     ('ed',)
     {stop}[(1, u'ed', 12)]
 
-.. sidebar:: Why not use strings everywhere?
+.. seealso::
 
-    When we use literal strings, the Core can't adapt our SQL to work
-    on different database backends.  We also lose typing information about
-    result columns and bound parameters.  Depending on how much of our
-    SQL is specified as fixed text, the :class:`.Query` object
-    has less ability to perform transformations and adaptations of the
-    SQL statement as a whole, which can impact features such as eager loading,
-    generation of joins and subqueries, and working with compound
-    mappings such as inheritance mappings.
+    :ref:`sqlexpression_text` - Core description of textual segments.  The
+    behavior of the ORM :class:`.Query` object with regards to
+    :func:`.text` and related constructs is very similar to that of the
+    Core :func:`.select` object.
 
 Counting
 --------
